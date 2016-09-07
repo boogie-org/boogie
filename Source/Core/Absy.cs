@@ -293,6 +293,11 @@ namespace Microsoft.Boogie {
     #endregion
 
   }
+  
+  public interface ICarriesAttributes
+  {
+    QKeyValue Attributes { get; set; }
+  }
 
   [ContractClassFor(typeof(Absy))]
   public abstract class AbsyContracts : Absy {
@@ -1362,8 +1367,8 @@ namespace Microsoft.Boogie {
   // Declarations
 
   [ContractClass(typeof(DeclarationContracts))]
-  public abstract class Declaration : Absy {
-    public QKeyValue Attributes;
+  public abstract class Declaration : Absy, ICarriesAttributes {
+    public QKeyValue Attributes { get; set; }
 
     public Declaration(IToken tok)
       : base(tok) {
@@ -2855,7 +2860,7 @@ namespace Microsoft.Boogie {
       : base(tok, name, args, result) { }
   }
 
-  public class Requires : Absy, IPotentialErrorNode<string, string> {
+  public class Requires : Absy, ICarriesAttributes, IPotentialErrorNode<string, string> {
     public readonly bool Free;
     
     private Expr/*!*/ _condition;
@@ -2900,7 +2905,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public QKeyValue Attributes;
+    public QKeyValue Attributes { get; set; }
 
     public String ErrorMessage {
       get {
@@ -2967,7 +2972,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class Ensures : Absy, IPotentialErrorNode<string, string> {
+  public class Ensures : Absy, ICarriesAttributes, IPotentialErrorNode<string, string> {
     public readonly bool Free;
 
     private Expr/*!*/ _condition;
@@ -3017,7 +3022,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public QKeyValue Attributes;
+    public QKeyValue Attributes { get; set; }
 
     public Ensures(IToken token, bool free, Expr/*!*/ condition, string comment, QKeyValue kv)
       : base(token) {

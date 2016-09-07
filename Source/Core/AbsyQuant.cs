@@ -45,10 +45,10 @@ namespace Microsoft.Boogie {
     }
   }
   [ContractClass(typeof(BinderExprContracts))]
-  public abstract class BinderExpr : Expr {
+  public abstract class BinderExpr : Expr, ICarriesAttributes {
     public List<TypeVariable>/*!*/ TypeParameters;
     public List<Variable>/*!*/ Dummies;
-    public QKeyValue Attributes;
+    public QKeyValue Attributes { get; set; }
     // FIXME: Protect the above Fields
     public Expr _Body;
     public Expr/*!*/ Body {

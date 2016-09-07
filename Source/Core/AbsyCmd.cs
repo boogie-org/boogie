@@ -2108,8 +2108,8 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public abstract class CallCommonality : SugaredCmd {
-    public QKeyValue Attributes;
+  public abstract class CallCommonality : SugaredCmd, ICarriesAttributes {
+    public QKeyValue Attributes { get; set; }
 
     private bool isFree = false;
     public bool IsFree {
@@ -2872,8 +2872,8 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public abstract class PredicateCmd : Cmd {
-    public QKeyValue Attributes;
+  public abstract class PredicateCmd : Cmd, ICarriesAttributes {
+    public QKeyValue Attributes { get; set; }
     public /*readonly--except in StandardVisitor*/ Expr/*!*/ Expr;
     [ContractInvariantMethod]
     void ObjectInvariant() {
