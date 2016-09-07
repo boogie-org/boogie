@@ -18,6 +18,7 @@ Binaries/*.mdb
 Binaries/*.exe
 Binaries/*.pdb
 Binaries/*.config
+Binaries/*.vshost.exe.manifest
 
 # Editor temporary files
 .*.swp
@@ -29,3 +30,4 @@ Source/*/*.user
 Source/*.user
 Source/*.suo
 Source/*.cache
+Source/.vs/
