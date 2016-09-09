@@ -1000,10 +1000,12 @@ ensures {:atomic} |{
     yield;
     spaceFound := false;
     while (true) 
+    invariant {:layer 98} !spaceFound;	
     invariant {:layer 98} (forall x: int, f: fld :: memAddr(x) && Unalloc(Color[x]) ==> toAbs[x] == nil);
     {
         iter := memLo;
         while (iter < memHi)
+        invariant {:layer 98} !spaceFound;	
         invariant {:layer 98} memLo <= iter && iter <= memHi;
         invariant {:layer 98} memAddr(iter) && Unalloc(Color[iter]) ==> toAbs[iter] == nil;
         {
