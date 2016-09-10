@@ -2,6 +2,9 @@
 // Copyright (c) Microsoft Corporation.  All rights reserved.
 //
 
+// RUN: %boogie -noinfer -useArrayTheory -typeEncoding:m "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
 type X = int;
 function {:builtin "MapConst"} MapConstBool(bool): [X]bool;
 function {:builtin "MapOr"} MapOr([X]bool, [X]bool) : [X]bool;
