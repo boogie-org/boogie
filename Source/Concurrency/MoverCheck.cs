@@ -476,56 +476,41 @@ namespace Microsoft.Boogie
                 return;
             if (first.CommutesWith(second))
                 return;
-            Tuple<AtomicActionInfo, AtomicActionInfo> actionPair = new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second);
-            if (commutativityCheckerCache.Contains(actionPair))
+            if (!commutativityCheckerCache.Add(new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second)))
                 return;
-            commutativityCheckerCache.Add(actionPair);
 
-            List<Variable> inputs = new List<Variable>();
-            inputs.AddRange(first.thatInParams);
-            inputs.AddRange(second.thisInParams);
-            List<Variable> outputs = new List<Variable>();
-            outputs.AddRange(first.thatOutParams);
-            outputs.AddRange(second.thisOutParams);
-            List<Variable> locals = new List<Variable>();
-            locals.AddRange(first.thatAction.LocVars);
-            locals.AddRange(second.thisAction.LocVars);
+            List<Variable> inputs  = Enumerable.Union(first.thatInParams, second.thisInParams).ToList();
+            List<Variable> outputs = Enumerable.Union(first.thatOutParams, second.thisOutParams).ToList();
+            List<Variable> locals  = Enumerable.Union(first.thatAction.LocVars, second.thisAction.LocVars).ToList();
             List<Block> firstBlocks = CloneBlocks(first.thatAction.Blocks);
             List<Block> secondBlocks = CloneBlocks(second.thisAction.Blocks);
-            foreach (Block b in firstBlocks)
+            foreach (Block b in firstBlocks.Where(b => b.TransferCmd is ReturnCmd))
             {
-                if (b.TransferCmd is ReturnCmd)
-                {
-                    List<Block> bs = new List<Block>();
-                    bs.Add(secondBlocks[0]);
-                    List<string> ls = new List<string>();
-                    ls.Add(secondBlocks[0].Label);
-                    b.TransferCmd = new GotoCmd(Token.NoToken, ls, bs);
-                }
+                List<Block>  bs = new List<Block>  { secondBlocks[0] };
+                List<string> ls = new List<string> { secondBlocks[0].Label };
+                b.TransferCmd = new GotoCmd(Token.NoToken, ls, bs);
             }
-            List<Block> blocks = new List<Block>();
-            blocks.AddRange(firstBlocks);
-            blocks.AddRange(secondBlocks);
+            List<Block> blocks = Enumerable.Union(firstBlocks, secondBlocks).ToList();
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(first.actionUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
             frame.UnionWith(second.actionUsedGlobalVars);
+            
             List<Requires> requires = new List<Requires>();
             requires.Add(DisjointnessRequires(program, first.thatInParams.Union(second.thisInParams), frame));
-            foreach (AssertCmd assertCmd in first.thatGate)
+            foreach (AssertCmd assertCmd in Enumerable.Union(first.thatGate, second.thisGate))
                 requires.Add(new Requires(false, assertCmd.Expr));
-            foreach (AssertCmd assertCmd in second.thisGate)
-                requires.Add(new Requires(false, assertCmd.Expr));
-            List<Ensures> ensures = new List<Ensures>();
+
             Expr transitionRelation = (new TransitionRelationComputation(program, first, second, frame, new HashSet<Variable>())).TransitionRelationCompute();
             IEnumerable<Expr> linearityAssumes = DisjointnessExpr(program, first.thatOutParams.Union(second.thisInParams), frame).Union(DisjointnessExpr(program, first.thatOutParams.Union(second.thisOutParams), frame));
             Ensures ensureCheck = new Ensures(false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation));
             ensureCheck.ErrorData = string.Format("Commutativity check between {0} and {1} failed", first.proc.Name, second.proc.Name);
-            ensures.Add(ensureCheck);
+            List<Ensures> ensures = new List<Ensures> { ensureCheck };
+            
             string checkerName = string.Format("CommutativityChecker_{0}_{1}", first.proc.Name, second.proc.Name);
-            List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            civlTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
+            List<IdentifierExpr> globalVars = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
+
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, blocks);
             impl.Proc = proc;
@@ -537,28 +522,25 @@ namespace Microsoft.Boogie
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
-            Tuple<AtomicActionInfo, AtomicActionInfo> actionPair = new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second);
-            if (gatePreservationCheckerCache.Contains(actionPair))
+            if (!gatePreservationCheckerCache.Add(new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second)))
                 return;
-            gatePreservationCheckerCache.Add(actionPair);
 
-            List<Variable> inputs = new List<Variable>();
-            inputs.AddRange(first.thatInParams);
-            inputs.AddRange(second.thisInParams);
-            List<Variable> outputs = new List<Variable>();
-            outputs.AddRange(first.thatOutParams);
-            outputs.AddRange(second.thisOutParams);
-            List<Variable> locals = new List<Variable>();
-            locals.AddRange(second.thisAction.LocVars);
+            List<Variable> inputs = Enumerable.Union(first.thatInParams, second.thisInParams).ToList();
+            List<Variable> outputs = Enumerable.Union(first.thatOutParams, second.thisOutParams).ToList();
+            List<Variable> locals = new List<Variable>(second.thisAction.LocVars);
             List<Block> secondBlocks = CloneBlocks(second.thisAction.Blocks);
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
             frame.UnionWith(second.actionUsedGlobalVars);
+
             List<Requires> requires = new List<Requires>();
+            List<Ensures> ensures = new List<Ensures>();
             requires.Add(DisjointnessRequires(program, first.thatInParams.Union(second.thisInParams), frame));
             IEnumerable<Expr> linearityAssumes = DisjointnessExpr(program, first.thatInParams.Union(second.thisOutParams), frame);
-            List<Ensures> ensures = new List<Ensures>();
+            foreach (AssertCmd assertCmd in second.thisGate)
+                requires.Add(new Requires(false, assertCmd.Expr));
+            
             foreach (AssertCmd assertCmd in first.thatGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
@@ -566,11 +548,9 @@ namespace Microsoft.Boogie
                 ensureCheck.ErrorData = string.Format("Gate not preserved by {0}", second.proc.Name);
                 ensures.Add(ensureCheck);
             }
-            foreach (AssertCmd assertCmd in second.thisGate)
-                requires.Add(new Requires(false, assertCmd.Expr));
             string checkerName = string.Format("GatePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
-            List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            civlTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
+            List<IdentifierExpr> globalVars = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
+
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
             impl.Proc = proc;
@@ -582,45 +562,34 @@ namespace Microsoft.Boogie
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
-            Tuple<AtomicActionInfo, AtomicActionInfo> actionPair = new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second);
-            if (failurePreservationCheckerCache.Contains(actionPair))
+            if (!failurePreservationCheckerCache.Add(new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second)))
                 return;
-            failurePreservationCheckerCache.Add(actionPair);
 
-            List<Variable> inputs = new List<Variable>();
-            inputs.AddRange(first.thatInParams);
-            inputs.AddRange(second.thisInParams);
-            List<Variable> outputs = new List<Variable>();
-            outputs.AddRange(first.thatOutParams);
-            outputs.AddRange(second.thisOutParams);
-            List<Variable> locals = new List<Variable>();
-            locals.AddRange(second.thisAction.LocVars);
+            List<Variable> inputs = Enumerable.Union(first.thatInParams, second.thisInParams).ToList();
+            List<Variable> outputs = Enumerable.Union(first.thatOutParams, second.thisOutParams).ToList();
+            List<Variable> locals = new List<Variable>(second.thisAction.LocVars);
             List<Block> secondBlocks = CloneBlocks(second.thisAction.Blocks);
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
             frame.UnionWith(second.actionUsedGlobalVars);
+
             List<Requires> requires = new List<Requires>();
             requires.Add(DisjointnessRequires(program, first.thatInParams.Union(second.thisInParams), frame));
-            Expr gateExpr = Expr.True;
-            foreach (AssertCmd assertCmd in first.thatGate)
-            {
-                gateExpr = Expr.And(gateExpr, assertCmd.Expr);
-                gateExpr.Type = Type.Bool;
-            }
-            gateExpr = Expr.Not(gateExpr);
-            gateExpr.Type = Type.Bool;
+            Expr gateExpr = Expr.Not(Expr.And(first.thatGate.Select(a => a.Expr)));
+            gateExpr.Type = Type.Bool; // necessary?
             requires.Add(new Requires(false, gateExpr));
-            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(program, first.thatInParams.Union(second.thisOutParams), frame);
-            List<Ensures> ensures = new List<Ensures>();
-            Ensures ensureCheck = new Ensures(false, Expr.Imp(Expr.And(linearityAssumes), gateExpr));
-            ensureCheck.ErrorData = string.Format("Gate failure of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
-            ensures.Add(ensureCheck);
             foreach (AssertCmd assertCmd in second.thisGate)
                 requires.Add(new Requires(false, assertCmd.Expr));
+
+            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(program, first.thatInParams.Union(second.thisOutParams), frame);
+            Ensures ensureCheck = new Ensures(false, Expr.Imp(Expr.And(linearityAssumes), gateExpr));
+            ensureCheck.ErrorData = string.Format("Gate failure of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
+            List<Ensures> ensures = new List<Ensures> { ensureCheck };
+            
             string checkerName = string.Format("FailurePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
-            List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            civlTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
+            List<IdentifierExpr> globalVars = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
+
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
             impl.Proc = proc;
@@ -636,26 +605,26 @@ namespace Microsoft.Boogie
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(second.gateUsedGlobalVars);
             frame.UnionWith(second.actionUsedGlobalVars);
+            
             List<Requires> requires = new List<Requires>();
             requires.Add(DisjointnessRequires(program, second.thisInParams, frame));
             foreach (AssertCmd assertCmd in second.thisGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
             }
+
             HashSet<Variable> postExistVars = new HashSet<Variable>();
             postExistVars.UnionWith(frame);
             postExistVars.UnionWith(second.thisOutParams);
             Expr ensuresExpr = (new TransitionRelationComputation(program, second, frame, postExistVars)).TransitionRelationCompute();
-            List<Ensures> ensures = new List<Ensures>();
             Ensures ensureCheck = new Ensures(false, ensuresExpr);
             ensureCheck.ErrorData = string.Format("{0} is blocking", second.proc.Name);
-            ensures.Add(ensureCheck);
+            List<Ensures> ensures = new List<Ensures> { ensureCheck };
 
-            List<Block> blocks = new List<Block>();
-            blocks.Add(new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)));
+            List<Block> blocks = new List<Block> { new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)) };
             string checkerName = string.Format("NonBlockingChecker_{0}", second.proc.Name);
-            List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            civlTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
+            List<IdentifierExpr> globalVars = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
+            
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             impl.Proc = proc;
