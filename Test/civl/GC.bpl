@@ -215,13 +215,18 @@ ensures {:layer 100} Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
 
 procedure {:yields} {:layer 96,100} InitVars100({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
 ensures {:atomic}
-    |{ A:
+    |{
+      var memNew:[int][fld]int;
+      var rootNew:[idx]int;
+      var ColorNew:[int]int;
+      var mutatorPhaseNew:[X]int;
+      A:
         assert tid == GcTid;
         assert (forall i:int :: mutatorId(i) ==> mutatorTids[i] && mutatorTids[-i]);
-        havoc mem;
-        havoc root;
-        havoc Color;
-        havoc mutatorPhase;
+        mem := memNew;
+        root := rootNew;
+        Color := ColorNew;
+        mutatorPhase := mutatorPhaseNew;
         assume (forall x: int, f: fld :: memAddr(x) && fieldAddr(f) ==> mem[x][f] == x);
         assume (forall x: idx :: rootAddr(x) ==> root[x] == 0);
         assume (forall i:int :: memAddr(i) ==> Color[i] == UNALLOC());
@@ -756,10 +761,10 @@ ensures {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
 ensures {:layer 98} collectorPhase == old(collectorPhase);
 requires {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
 ensures {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
-ensures {:atomic} |{var oldColor: [int]int;
+ensures {:atomic} |{var oldColor, newColor: [int]int;
 		    A: assert tid == GcTid;
 		       oldColor := Color;
-		       havoc Color;
+		       Color := newColor;
 		       assume (forall u: int :: if memAddr(u) && White(oldColor[u]) && (exists k: int :: rootAddr(k) && root[k] == u) then Color[u] == GRAY() else Color[u] == oldColor[u]); 
 		       canStop := (forall v: int :: memAddr(v) ==> !Gray(Color[v])); 
 		       return true;

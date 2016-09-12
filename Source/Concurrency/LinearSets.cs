@@ -827,6 +827,10 @@ namespace Microsoft.Boogie
 
         public Expr DisjointnessExpr(string domainName, Variable inputVar, HashSet<Variable> scope)
         {
+            if (scope.Count == 0)
+            {
+                return Expr.True;
+            }
             LinearDomain domain = linearDomains[domainName];
             BoundVariable partition = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("partition_{0}", domainName), new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Microsoft.Boogie.Type.Int)));
             return SubsetExprs(domain, scope, partition, 1, SubsetExpr(domain, Expr.Ident(inputVar), partition, 0));
@@ -834,6 +838,10 @@ namespace Microsoft.Boogie
 
         public Expr DisjointnessExpr(string domainName, HashSet<Variable> scope)
         {
+            if (scope.Count <= 1)
+            {
+                return Expr.True;
+            }
             LinearDomain domain = linearDomains[domainName];
             BoundVariable partition = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("partition_{0}", domainName), new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Microsoft.Boogie.Type.Int)));
             return SubsetExprs(domain, scope, partition, 0, Expr.True);

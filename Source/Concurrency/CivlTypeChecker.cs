@@ -82,6 +82,20 @@ namespace Microsoft.Boogie
         public Dictionary<Variable, Expr> thisMap;
         public Dictionary<Variable, Expr> thatMap;
 
+        public Dictionary<Variable, Function> triggerFuns;
+
+        public Function TriggerFunction(Variable v)
+        {
+            if (!triggerFuns.ContainsKey(v))
+            {
+                List<Variable> args = new List<Variable>();
+                args.Add(new Formal(v.tok, new TypedIdent(v.tok, "v", v.TypedIdent.Type), true));
+                Variable result = new Formal(v.tok, new TypedIdent(v.tok, "r", Type.Bool), false);
+                triggerFuns[v] = new Function(v.tok, string.Format("Trigger_{0}_{1}", proc.Name, v.Name), args, result);
+            }
+            return triggerFuns[v];
+        }
+
         public bool CommutesWith(AtomicActionInfo actionInfo)
         {
             if (this.modifiedGlobalVars.Intersect(actionInfo.actionUsedGlobalVars).Count() > 0)
@@ -117,6 +131,7 @@ namespace Microsoft.Boogie
             this.hasAssumeCmd = false;
             this.thisMap = new Dictionary<Variable, Expr>();
             this.thatMap = new Dictionary<Variable, Expr>();
+            this.triggerFuns = new Dictionary<Variable, Function>();
 
             foreach (Block block in this.action.Blocks)
             {
@@ -990,6 +1005,15 @@ namespace Microsoft.Boogie
                 Error(node, "Atomic actions must be introduced at the highest layer");
             }
             return base.VisitParCallCmd(node);
+        }
+
+        public override Cmd VisitHavocCmd(HavocCmd node)
+        {
+            if (enclosingProc != null)
+            {
+                Error(node, "Havoc command not allowed inside an atomic actions");
+            }
+            return base.VisitHavocCmd(node);
         }
 
         public override Expr VisitIdentifierExpr(IdentifierExpr node)

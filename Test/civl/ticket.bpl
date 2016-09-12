@@ -110,7 +110,7 @@ ensures {:atomic} |{ A: assert xls == MapConstBool(true); cs := nil; s := 0; T :
 procedure {:yields} {:layer 1,2} GetTicketAbstract({:linear "tid"} tid: X) returns (m: int)
 requires {:layer 1} Inv1(T, t);
 ensures {:layer 1} Inv1(T, t);
-ensures {:right} |{ A: havoc m; assume !T[m]; T[m] := true; return true; }|;
+ensures {:right} |{ A: assume !T[m]; T[m] := true; return true; }|;
 {
     par Yield1();
     call m := GetTicket(tid);
