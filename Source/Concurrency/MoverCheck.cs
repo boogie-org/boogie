@@ -124,20 +124,32 @@ namespace Microsoft.Boogie
             private HashSet<Variable> firstExistsVars;
             private HashSet<Variable> secondExistsVars;
 
+            public TransitionRelationComputation(Program program, AtomicActionInfo second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
+                : this(program, null, second, frame, postExistVars) { }
+
+            public TransitionRelationComputation(Program program, AtomicActionInfo first, AtomicActionInfo second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
+            {
+                this.program = program;
+                this.first = first;
+                this.second = second;
+                this.postExistVars = postExistVars;
+                this.frame = frame;
+
+                this.existsVars = new Dictionary<Variable, Variable>();
+                this.firstExistsVars = new HashSet<Variable>(
+                    first != null ? first.thatOutParams.Union(first.thatAction.LocVars)
+                                  : Enumerable.Empty<Variable>());
+                this.secondExistsVars = new HashSet<Variable>(second.thisOutParams.Union(second.thisAction.LocVars));
+
+                this.cmdStack = new Stack<Cmd>();
+                this.paths = new List<PathInfo>();
+
+                Search(this.second.thisAction.Blocks[0], false);
+            }
+
             private bool IsExistsVar(Variable v)
             {
-                if (firstExistsVars.Contains(v))
-                {
-                    return true;
-                }
-                else if (secondExistsVars.Contains(v))
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
+                return firstExistsVars.Concat(secondExistsVars).Contains(v);
             }
 
             private void PopulateExistsVars(Variable v)
@@ -166,55 +178,12 @@ namespace Microsoft.Boogie
 
             public List<Cmd> TriggerAssumes()
             {
-                List<Cmd> list = new List<Cmd>();
-                foreach (var v in existsVars.Keys)
-                {
-                    var triggerFun = TriggerFunction(v);
-                    Expr expr = new NAryExpr(Token.NoToken, new FunctionCall(triggerFun), new Expr[] { Expr.Ident(v) });
-                    list.Add(new AssumeCmd(Token.NoToken, expr));
-                }
-                return list;
-            }
-
-            public TransitionRelationComputation(Program program, AtomicActionInfo second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
-            {
-                this.postExistVars = postExistVars;
-                this.frame = frame;
-                this.existsVars = new Dictionary<Variable, Variable>();
-                this.firstExistsVars = new HashSet<Variable>();
-                this.secondExistsVars = new HashSet<Variable>();
-                TransitionRelationComputationHelper(program, null, second);
-            }
-
-            public TransitionRelationComputation(Program program, AtomicActionInfo first, AtomicActionInfo second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
-            {
-                this.postExistVars = postExistVars;
-                this.frame = frame;
-                this.existsVars = new Dictionary<Variable, Variable>();
-                this.firstExistsVars = new HashSet<Variable>();
-                this.secondExistsVars = new HashSet<Variable>();
-                TransitionRelationComputationHelper(program, first, second);
-            }
-
-            private void TransitionRelationComputationHelper(Program program, AtomicActionInfo first, AtomicActionInfo second)
-            {
-                this.program = program;
-                this.first = first;
-                this.second = second;
-                this.cmdStack = new Stack<Cmd>();
-                this.paths = new List<PathInfo>();
-                foreach (Variable v in second.thisOutParams.Union(second.thisAction.LocVars))
-                {
-                    secondExistsVars.Add(v);
-                }
-                if (first != null)
-                {
-                    foreach (Variable v in first.thatOutParams.Union(first.thatAction.LocVars))
-                    {
-                        firstExistsVars.Add(v);
-                    }
-                }
-                Search(this.second.thisAction.Blocks[0], false);
+                return existsVars.Keys.Select(v =>
+                    new AssumeCmd(Token.NoToken,
+                        new NAryExpr(Token.NoToken,
+                            new FunctionCall(TriggerFunction(v)),
+                            new Expr[] { Expr.Ident(v) })))
+                    .ToList<Cmd>();
             }
 
             private void Substitute(Dictionary<Variable, Expr> map, ref List<Expr> pathExprs, ref Dictionary<Variable, Expr> varToExpr)
@@ -262,23 +231,12 @@ namespace Microsoft.Boogie
 
             private void AddPath()
             {
-                Dictionary<Variable, Variable> existsVars = new Dictionary<Variable, Variable>();
-                Dictionary<Variable, Expr> varToExpr = new Dictionary<Variable, Expr>();
-                foreach (Variable v in frame)
-                {
-                    varToExpr[v] = Expr.Ident(v);
-                }
-                if (first != null)
-                {
-                    foreach (Variable v in first.thatOutParams)
-                    {
-                        varToExpr[v] = Expr.Ident(v);
-                    }
-                }
-                foreach (Variable v in second.thisOutParams)
-                {
-                    varToExpr[v] = Expr.Ident(v);
-                }
+                Dictionary<Variable, Expr> varToExpr =
+                    frame
+                    .Concat(first != null ? first.thatOutParams : Enumerable.Empty<Variable>())
+                    .Concat(second.thisOutParams)
+                    .ToDictionary(v => v, v => Expr.Ident(v) as Expr);
+
                 List<Expr> pathExprs = new List<Expr>();
                 foreach (Cmd cmd in cmdStack)
                 {
