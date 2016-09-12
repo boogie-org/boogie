@@ -308,27 +308,30 @@ namespace Microsoft.Boogie
             private Expr CalculatePathCondition(PathInfo path)
             {
                 HashSet<Variable> allExistsVars = new HashSet<Variable>(firstExistsVars.Union(secondExistsVars));
+
                 HashSet<Variable> usedExistsVars = new HashSet<Variable>();
                 Dictionary<Variable, Expr> existsSubstitutionMap = new Dictionary<Variable, Expr>();
                 foreach (Variable v in path.varToExpr.Keys)
                 {
                     if (postExistVars.Contains(v)) continue;
+                    var expr = path.varToExpr[v];
                     VariableCollector collector = new VariableCollector();
-                    collector.Visit(path.varToExpr[v]);
+                    collector.Visit(expr);
                     usedExistsVars.UnionWith(collector.usedVars.Intersect(allExistsVars));
-                    IdentifierExpr ie = path.varToExpr[v] as IdentifierExpr;
+                    IdentifierExpr ie = expr as IdentifierExpr;
                     if (ie != null && IsExistsVar(ie.Decl) && !existsSubstitutionMap.ContainsKey(ie.Decl))
                     {
                         existsSubstitutionMap[ie.Decl] = Expr.Ident(v);
                     }
                 }
-                foreach (Expr x in path.pathExprs)
+                foreach (Expr expr in path.pathExprs)
                 {
                     VariableCollector collector = new VariableCollector();
-                    collector.Visit(x);
+                    collector.Visit(expr);
                     usedExistsVars.UnionWith(collector.usedVars.Intersect(allExistsVars));
-                    InferSubstitution(x, existsSubstitutionMap);
                 }
+                InferSubstitution(allExistsVars, existsSubstitutionMap, path.pathExprs);
+
                 List<Expr> triggerExprs = new List<Expr>();
                 List<Variable> quantifiedVars = new List<Variable>();
                 foreach (var v in usedExistsVars)
@@ -372,28 +375,66 @@ namespace Microsoft.Boogie
                     {
                         returnExpr = new ExistsExpr(Token.NoToken, quantifiedVars, new Trigger(Token.NoToken, true, triggerExprs), returnExpr);
                     }
-                    
                 }
                 return returnExpr;
             }
 
-            void InferSubstitution(Expr x, Dictionary<Variable, Expr> existsSubstitutionMap)
+            void InferSubstitution(HashSet<Variable> allExistsVars, Dictionary<Variable, Expr> existsSubstitutionMap, List<Expr> pathExprs)
             {
-                NAryExpr naryExpr = x as NAryExpr;
-                if (naryExpr == null || naryExpr.Fun.FunctionName != "==")
+                Dictionary<Variable, Expr> pendingMap = new Dictionary<Variable, Expr>();
+                foreach (var x in pathExprs)
                 {
-                    return;
+                    NAryExpr naryExpr = x as NAryExpr;
+                    if (naryExpr == null || naryExpr.Fun.FunctionName != "==")
+                    {
+                        continue;
+                    }
+                    Variable eVar = null;
+                    Expr eVarSubstExpr = null;
+                    IdentifierExpr arg0 = naryExpr.Args[0] as IdentifierExpr;
+                    IdentifierExpr arg1 = naryExpr.Args[1] as IdentifierExpr;
+                    if (arg0 != null && IsExistsVar(arg0.Decl))
+                    {
+                        eVar = arg0.Decl;
+                        eVarSubstExpr = naryExpr.Args[1];
+                    }
+                    else if (arg1 != null && IsExistsVar(arg1.Decl))
+                    {
+                        eVar = arg1.Decl;
+                        eVarSubstExpr = naryExpr.Args[0];
+                    }
+                    if (eVar == null || existsSubstitutionMap.ContainsKey(eVar)) continue;
+                    PendingPropagate(allExistsVars, existsSubstitutionMap, eVar, eVarSubstExpr, pendingMap);
                 }
-                IdentifierExpr arg0 = naryExpr.Args[0] as IdentifierExpr;
-                if (arg0 != null && IsExistsVar(arg0.Decl) && !existsSubstitutionMap.ContainsKey(arg0.Decl))
+                while (pendingMap.Count != 0)
                 {
-                    existsSubstitutionMap[arg0.Decl] = naryExpr.Args[1];
-                    return;
+                    Dictionary<Variable, Expr> newPendingMap = new Dictionary<Variable, Expr>();
+                    foreach (var v in pendingMap.Keys)
+                    {
+                        PendingPropagate(allExistsVars, existsSubstitutionMap, v, pendingMap[v], newPendingMap);
+                    }
+                    if (pendingMap.Count == newPendingMap.Count) break;
+                    pendingMap = newPendingMap;
                 }
-                IdentifierExpr arg1 = naryExpr.Args[1] as IdentifierExpr;
-                if (arg1 != null && IsExistsVar(arg1.Decl) && !existsSubstitutionMap.ContainsKey(arg1.Decl))
+            }
+
+            private void PendingPropagate(HashSet<Variable> allExistsVars, Dictionary<Variable, Expr> existsSubstitutionMap, Variable eVar, Expr eVarSubstExpr, Dictionary<Variable, Expr> pendingMap)
+            {
+                var collector = new VariableCollector();
+                collector.Visit(eVarSubstExpr);
+                var usedExistsVars = collector.usedVars.Intersect(allExistsVars);
+                if (usedExistsVars.Count() == 0)
                 {
-                    existsSubstitutionMap[arg1.Decl] = naryExpr.Args[0];
+                    existsSubstitutionMap[eVar] = eVarSubstExpr;
+                }
+                else if (usedExistsVars.Except(existsSubstitutionMap.Keys).Count() == 0)
+                {
+                    Substitution subst = Substituter.SubstitutionFromHashtable(existsSubstitutionMap);
+                    existsSubstitutionMap[eVar] = Substituter.Apply(subst, eVarSubstExpr);
+                }
+                else
+                {
+                    pendingMap[eVar] = eVarSubstExpr;
                 }
             }
 
@@ -433,7 +474,6 @@ namespace Microsoft.Boogie
                 {
                     return transitionRelation;
                 }
-
             }
 
             private void Search(Block b, bool inFirst)
