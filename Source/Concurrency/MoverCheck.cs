@@ -61,29 +61,34 @@ namespace Microsoft.Boogie
                 currPool = pools[currLayerNum];
             }
 
+            // No atomic action has mover type Top
+            Debug.Assert(pools.All(l => l.Value.All(a => a.moverType != MoverType.Top)));
+
             Program program = civlTypeChecker.program;
             MoverCheck moverChecking = new MoverCheck(linearTypeChecker, civlTypeChecker, decls);
-            foreach (int layerNum in pools.Keys)
+
+            var moverChecks =
+            from layer in pools.Keys
+            from first in pools[layer]
+            from second in pools[layer]
+            where first.moverType != MoverType.Atomic
+            select new { First = first, Second = second };
+
+            foreach (var moverCheck in moverChecks)
             {
-                foreach (AtomicActionInfo first in pools[layerNum])
+                var first = moverCheck.First;
+                var second = moverCheck.Second;
+
+                if (first.IsRightMover)
                 {
-                    Debug.Assert(first.moverType != MoverType.Top);
-                    if (first.moverType == MoverType.Atomic)
-                        continue;
-                    foreach (AtomicActionInfo second in pools[layerNum])
-                    {
-                        if (first.IsRightMover)
-                        {
-                            moverChecking.CreateCommutativityChecker(program, first, second);
-                            moverChecking.CreateGatePreservationChecker(program, second, first);
-                        }
-                        if (first.IsLeftMover)
-                        {
-                            moverChecking.CreateCommutativityChecker(program, second, first);
-                            moverChecking.CreateGatePreservationChecker(program, first, second);
-                            moverChecking.CreateFailurePreservationChecker(program, second, first);
-                        }
-                    }
+                    moverChecking.CreateCommutativityChecker(program, first, second);
+                    moverChecking.CreateGatePreservationChecker(program, second, first);
+                }
+                if (first.IsLeftMover)
+                {
+                    moverChecking.CreateCommutativityChecker(program, second, first);
+                    moverChecking.CreateGatePreservationChecker(program, first, second);
+                    moverChecking.CreateFailurePreservationChecker(program, second, first);
                 }
             }
             foreach (AtomicActionInfo atomicActionInfo in sortedByCreatedLayerNum)
