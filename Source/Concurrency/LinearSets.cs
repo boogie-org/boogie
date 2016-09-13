@@ -10,22 +10,15 @@ namespace Microsoft.Boogie
 {
     public class LinearEraser : ReadOnlyVisitor
     {
-        private QKeyValue RemoveLinearAttribute(QKeyValue iter)
-        {
-            if (iter == null) return null;
-            iter.Next = RemoveLinearAttribute(iter.Next);
-            return (iter.Key == "linear" || iter.Key == "linear_in" || iter.Key == "linear_out") ? iter.Next : iter;
-        }
-
         public override Variable VisitVariable(Variable node)
         {
-            node.Attributes = RemoveLinearAttribute(node.Attributes);
+            node.Attributes = Concurrency.RemoveLinearAttribute(node.Attributes);
             return base.VisitVariable(node);
         }
 
         public override Function VisitFunction(Function node)
         {
-            node.Attributes = RemoveLinearAttribute(node.Attributes);
+            node.Attributes = Concurrency.RemoveLinearAttribute(node.Attributes);
             return base.VisitFunction(node);
         }
     }

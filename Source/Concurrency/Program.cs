@@ -38,11 +38,41 @@ namespace Microsoft.Boogie
             }
             foreach (Declaration decl in decls)
             {
-                decl.Attributes = CivlRefinement.RemoveYieldsAttribute(decl.Attributes);
+                decl.Attributes = RemoveYieldsAttribute(decl.Attributes);
             }
             program.RemoveTopLevelDeclarations(x => originalDecls.Contains(x));
             program.AddTopLevelDeclarations(decls);
         }
 
+        public static QKeyValue RemoveYieldsAttribute(QKeyValue iter)
+        {
+            if (iter == null) return null;
+            iter.Next = RemoveYieldsAttribute(iter.Next);
+            return (iter.Key == "yields") ? iter.Next : iter;
+        }
+
+        public static QKeyValue RemoveMoverAttribute(QKeyValue iter)
+        {
+            if (iter == null) return null;
+            iter.Next = RemoveMoverAttribute(iter.Next);
+            if (iter.Key == "atomic" || iter.Key == "right" || iter.Key == "left" || iter.Key == "both")
+                return iter.Next;
+            else
+                return iter;
+        }
+
+        public static QKeyValue RemoveLayerAttribute(QKeyValue iter)
+        {
+            if (iter == null) return null;
+            iter.Next = RemoveLayerAttribute(iter.Next);
+            return (iter.Key == "layer") ? iter.Next : iter;
+        }
+
+        public static QKeyValue RemoveLinearAttribute(QKeyValue iter)
+        {
+            if (iter == null) return null;
+            iter.Next = RemoveLinearAttribute(iter.Next);
+            return (iter.Key == "linear" || iter.Key == "linear_in" || iter.Key == "linear_out") ? iter.Next : iter;
+        }
     }
 }

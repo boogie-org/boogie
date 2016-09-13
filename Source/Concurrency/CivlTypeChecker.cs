@@ -267,46 +267,39 @@ namespace Microsoft.Boogie
 
     public class LayerEraser : ReadOnlyVisitor
     {
-        private QKeyValue RemoveLayerAttribute(QKeyValue iter)
-        {
-            if (iter == null) return null;
-            iter.Next = RemoveLayerAttribute(iter.Next);
-            return (iter.Key == "layer") ? iter.Next : iter;
-        }
-
         public override Variable VisitVariable(Variable node)
         {
-            node.Attributes = RemoveLayerAttribute(node.Attributes);
+            node.Attributes = Concurrency.RemoveLayerAttribute(node.Attributes);
             return base.VisitVariable(node);
         }
 
         public override Procedure VisitProcedure(Procedure node)
         {
-            node.Attributes = RemoveLayerAttribute(node.Attributes);
+            node.Attributes = Concurrency.RemoveLayerAttribute(node.Attributes);
             return base.VisitProcedure(node);
         }
 
         public override Implementation VisitImplementation(Implementation node)
         {
-            node.Attributes = RemoveLayerAttribute(node.Attributes);
+            node.Attributes = Concurrency.RemoveLayerAttribute(node.Attributes);
             return base.VisitImplementation(node);
         }
 
         public override Requires VisitRequires(Requires node)
         {
-            node.Attributes = RemoveLayerAttribute(node.Attributes);
+            node.Attributes = Concurrency.RemoveLayerAttribute(node.Attributes);
             return base.VisitRequires(node);
         }
 
         public override Ensures VisitEnsures(Ensures node)
         {
-            node.Attributes = RemoveLayerAttribute(node.Attributes);
+            node.Attributes = Concurrency.RemoveLayerAttribute(node.Attributes);
             return base.VisitEnsures(node);
         }
 
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
-            node.Attributes = RemoveLayerAttribute(node.Attributes);
+            node.Attributes = Concurrency.RemoveLayerAttribute(node.Attributes);
             return base.VisitAssertCmd(node);
         }
     }
