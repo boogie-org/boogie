@@ -290,7 +290,7 @@ namespace Microsoft.Boogie
         Expr beta;
         HashSet<Variable> frame;
 
-        public CivlRefinement(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, MyDuplicator duplicator)
+        private CivlRefinement(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, MyDuplicator duplicator)
         {
             this.linearTypeChecker = linearTypeChecker;
             this.civlTypeChecker = civlTypeChecker;
@@ -797,7 +797,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    Expr betaExpr = (new MoverCheck.TransitionRelationComputation(civlTypeChecker.program, atomicActionInfo, frame, new HashSet<Variable>())).TransitionRelationCompute(true);
+                    Expr betaExpr = (new TransitionRelationComputation(civlTypeChecker.program, atomicActionInfo, frame, new HashSet<Variable>())).TransitionRelationCompute(true);
                     beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
                     Expr alphaExpr = Expr.True;
                     foreach (AssertCmd assertCmd in atomicActionInfo.gate)
