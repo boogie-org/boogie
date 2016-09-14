@@ -258,10 +258,15 @@ namespace Microsoft.Boogie
             }
             return naryExpr.Fun is MapStore;
         }
-        
+
+        private IEnumerable<NAryExpr> FilterEqualities(IEnumerable<Expr> exprs)
+        {
+            return exprs.OfType<NAryExpr>().Where(x => x.Fun.FunctionName == "==");
+        }
+
         void InferSubstitution(HashSet<Variable> allExistsVars, Dictionary<Variable, Expr> existsSubstitutionMap, List<Expr> pathExprs, List<Expr> inferredSelectEqualities)
         {
-            foreach (var eqExpr in pathExprs.OfType<NAryExpr>().Where(x => x.Fun.FunctionName == "=="))
+            foreach (var eqExpr in FilterEqualities(pathExprs))
             {
                 Expr arg0 = eqExpr.Args[0];
                 Expr arg1 = eqExpr.Args[1];
@@ -276,7 +281,7 @@ namespace Microsoft.Boogie
             }
             
             Dictionary<Variable, Expr> pendingMap = new Dictionary<Variable, Expr>();
-            foreach (var eqExpr in pathExprs.Union(inferredSelectEqualities).OfType<NAryExpr>().Where(x => x.Fun.FunctionName == "=="))
+            foreach (var eqExpr in FilterEqualities(pathExprs.Union(inferredSelectEqualities)))
             {
                 Variable eVar = null;
                 Expr eVarSubstExpr = null;
