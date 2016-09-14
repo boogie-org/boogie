@@ -166,6 +166,7 @@ namespace Microsoft.Boogie
 
             HashSet<Variable> usedExistsVars = new HashSet<Variable>();
             Dictionary<Variable, Expr> existsSubstitutionMap = new Dictionary<Variable, Expr>();
+            List<Expr> inferredSelectEqualities = new List<Expr>();
             foreach (Variable v in path.varToExpr.Keys)
             {
                 if (postExistVars.Contains(v)) continue;
@@ -178,14 +179,19 @@ namespace Microsoft.Boogie
                 {
                     existsSubstitutionMap[ie.Decl] = Expr.Ident(v);
                 }
+                else if (IsMapStoreExpr(expr))
+                {
+                    inferredSelectEqualities.Add(GenerateEqualityWithSelect(expr as NAryExpr, Expr.Ident(v)));
+                }
             }
+            
             foreach (Expr expr in path.pathExprs)
             {
                 VariableCollector collector = new VariableCollector();
                 collector.Visit(expr);
                 usedExistsVars.UnionWith(collector.usedVars.Intersect(allExistsVars));
             }
-            InferSubstitution(allExistsVars, existsSubstitutionMap, path.pathExprs);
+            InferSubstitution(allExistsVars, existsSubstitutionMap, path.pathExprs, inferredSelectEqualities);
 
             List<Expr> triggerExprs = new List<Expr>();
             List<Variable> quantifiedVars = new List<Variable>();
@@ -234,10 +240,52 @@ namespace Microsoft.Boogie
             return returnExpr;
         }
 
-        void InferSubstitution(HashSet<Variable> allExistsVars, Dictionary<Variable, Expr> existsSubstitutionMap, List<Expr> pathExprs)
+        Expr GenerateEqualityWithSelect(NAryExpr mapStoreExpr, Expr otherExpr)
         {
-            Dictionary<Variable, Expr> pendingMap = new Dictionary<Variable, Expr>();
+            List<Expr> args = new List<Expr>();
+            int i = 1;
+            for (; i < mapStoreExpr.Args.Count - 1; i++)
+            {
+                args.Add(mapStoreExpr.Args[i]);
+            }
+            Expr expr = Expr.Eq(mapStoreExpr.Args[i], Expr.Select(otherExpr, args));
+            expr.Resolve(new ResolutionContext(null));
+            return expr;
+        }
+
+        private bool IsMapStoreExpr(Expr expr)
+        {
+            NAryExpr naryExpr = expr as NAryExpr;
+            if (naryExpr == null)
+            {
+                return false;
+            }
+            return naryExpr.Fun is MapStore;
+        }
+        
+        void InferSubstitution(HashSet<Variable> allExistsVars, Dictionary<Variable, Expr> existsSubstitutionMap, List<Expr> pathExprs, List<Expr> inferredSelectEqualities)
+        {
             foreach (var x in pathExprs)
+            {
+                NAryExpr naryExpr = x as NAryExpr;
+                if (naryExpr == null || naryExpr.Fun.FunctionName != "==")
+                {
+                    continue;
+                }
+                Expr arg0 = naryExpr.Args[0];
+                Expr arg1 = naryExpr.Args[1];
+                if (IsMapStoreExpr(arg0))
+                {
+                    inferredSelectEqualities.Add(GenerateEqualityWithSelect(arg0 as NAryExpr, arg1));
+                }
+                if (IsMapStoreExpr(arg1))
+                {
+                    inferredSelectEqualities.Add(GenerateEqualityWithSelect(arg1 as NAryExpr, arg0));
+                }
+            }
+
+            Dictionary<Variable, Expr> pendingMap = new Dictionary<Variable, Expr>();
+            foreach (var x in pathExprs.Union(inferredSelectEqualities))
             {
                 NAryExpr naryExpr = x as NAryExpr;
                 if (naryExpr == null || naryExpr.Fun.FunctionName != "==")
