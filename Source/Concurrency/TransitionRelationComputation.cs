@@ -163,27 +163,23 @@ namespace Microsoft.Boogie
         private Expr CalculatePathCondition(PathInfo path)
         {
             HashSet<Variable> allExistsVars = new HashSet<Variable>(firstExistsVars.Union(secondExistsVars));
-
             HashSet<Variable> usedExistsVars = new HashSet<Variable>();
             Dictionary<Variable, Expr> existsSubstitutionMap = new Dictionary<Variable, Expr>();
-            foreach (Variable v in path.varToExpr.Keys)
+
+            foreach (Variable v in path.varToExpr.Keys.Except(postExistVars))
             {
-                if (postExistVars.Contains(v)) continue;
                 var expr = path.varToExpr[v];
-                VariableCollector collector = new VariableCollector();
-                collector.Visit(expr);
-                usedExistsVars.UnionWith(collector.usedVars.Intersect(allExistsVars));
+                usedExistsVars.UnionWith(VariableCollector.Collect(expr).Intersect(allExistsVars));
                 IdentifierExpr ie = expr as IdentifierExpr;
                 if (ie != null && IsExistsVar(ie.Decl) && !existsSubstitutionMap.ContainsKey(ie.Decl))
                 {
                     existsSubstitutionMap[ie.Decl] = Expr.Ident(v);
                 }
             }
+
             foreach (Expr expr in path.pathExprs)
             {
-                VariableCollector collector = new VariableCollector();
-                collector.Visit(expr);
-                usedExistsVars.UnionWith(collector.usedVars.Intersect(allExistsVars));
+                usedExistsVars.UnionWith(VariableCollector.Collect(expr).Intersect(allExistsVars));
             }
             InferSubstitution(allExistsVars, existsSubstitutionMap, path.pathExprs);
 
@@ -234,9 +230,12 @@ namespace Microsoft.Boogie
             return returnExpr;
         }
 
-        void InferSubstitution(HashSet<Variable> allExistsVars, Dictionary<Variable, Expr> existsSubstitutionMap, List<Expr> pathExprs)
+        void InferSubstitution(HashSet<Variable> allExistsVars,
+                               Dictionary<Variable, Expr> existsSubstitutionMap,
+                               List<Expr> pathExprs)
         {
             Dictionary<Variable, Expr> pendingMap = new Dictionary<Variable, Expr>();
+
             foreach (var x in pathExprs)
             {
                 NAryExpr naryExpr = x as NAryExpr;
@@ -261,6 +260,7 @@ namespace Microsoft.Boogie
                 if (eVar == null || existsSubstitutionMap.ContainsKey(eVar)) continue;
                 PendingPropagate(allExistsVars, existsSubstitutionMap, eVar, eVarSubstExpr, pendingMap);
             }
+
             while (pendingMap.Count != 0)
             {
                 Dictionary<Variable, Expr> newPendingMap = new Dictionary<Variable, Expr>();
@@ -275,9 +275,7 @@ namespace Microsoft.Boogie
 
         private void PendingPropagate(HashSet<Variable> allExistsVars, Dictionary<Variable, Expr> existsSubstitutionMap, Variable eVar, Expr eVarSubstExpr, Dictionary<Variable, Expr> pendingMap)
         {
-            var collector = new VariableCollector();
-            collector.Visit(eVarSubstExpr);
-            var usedExistsVars = collector.usedVars.Intersect(allExistsVars);
+            var usedExistsVars = VariableCollector.Collect(eVarSubstExpr).Intersect(allExistsVars);
             if (usedExistsVars.Count() == 0)
             {
                 existsSubstitutionMap[eVar] = eVarSubstExpr;
