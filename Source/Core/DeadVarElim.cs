@@ -326,6 +326,13 @@ namespace Microsoft.Boogie {
       }
       return node;
     }
+
+    public static IEnumerable<Variable> Collect(Absy node)
+    {
+      var collector = new VariableCollector();
+      collector.Visit(node);
+      return collector.usedVars;
+    }
   }
 
   public class BlockCoalescer : ReadOnlyVisitor {

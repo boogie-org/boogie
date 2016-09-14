@@ -163,17 +163,13 @@ namespace Microsoft.Boogie
         private Expr CalculatePathCondition(PathInfo path)
         {
             HashSet<Variable> allExistsVars = new HashSet<Variable>(firstExistsVars.Union(secondExistsVars));
-
             HashSet<Variable> usedExistsVars = new HashSet<Variable>();
             Dictionary<Variable, Expr> existsSubstitutionMap = new Dictionary<Variable, Expr>();
             List<Expr> inferredSelectEqualities = new List<Expr>();
-            foreach (Variable v in path.varToExpr.Keys)
+            foreach (Variable v in path.varToExpr.Keys.Except(postExistVars))
             {
-                if (postExistVars.Contains(v)) continue;
                 var expr = path.varToExpr[v];
-                VariableCollector collector = new VariableCollector();
-                collector.Visit(expr);
-                usedExistsVars.UnionWith(collector.usedVars.Intersect(allExistsVars));
+                usedExistsVars.UnionWith(VariableCollector.Collect(expr).Intersect(allExistsVars));
                 IdentifierExpr ie = expr as IdentifierExpr;
                 if (ie != null && IsExistsVar(ie.Decl) && !existsSubstitutionMap.ContainsKey(ie.Decl))
                 {
@@ -184,36 +180,33 @@ namespace Microsoft.Boogie
                     inferredSelectEqualities.Add(GenerateEqualityWithSelect(expr as NAryExpr, Expr.Ident(v)));
                 }
             }
-            
+
             foreach (Expr expr in path.pathExprs)
             {
-                VariableCollector collector = new VariableCollector();
-                collector.Visit(expr);
-                usedExistsVars.UnionWith(collector.usedVars.Intersect(allExistsVars));
+                usedExistsVars.UnionWith(VariableCollector.Collect(expr).Intersect(allExistsVars));
             }
             InferSubstitution(allExistsVars, existsSubstitutionMap, path.pathExprs, inferredSelectEqualities);
 
             List<Expr> triggerExprs = new List<Expr>();
             List<Variable> quantifiedVars = new List<Variable>();
-            foreach (var v in usedExistsVars)
+            foreach (var v in usedExistsVars.Except(existsSubstitutionMap.Keys))
             {
-                if (!existsSubstitutionMap.ContainsKey(v))
-                {
-                    var triggerFun = TriggerFunction(v); // this call populates existsVars[v]
-                    var quantifiedVar = existsVars[v];
-                    triggerExprs.Add(new NAryExpr(Token.NoToken, new FunctionCall(triggerFun), new Expr[] { Expr.Ident(quantifiedVar) }));
-                    quantifiedVars.Add(quantifiedVar);
-                    existsSubstitutionMap[v] = Expr.Ident(quantifiedVar);
-                }
+                var triggerFun = TriggerFunction(v); // this call populates existsVars[v]
+                var quantifiedVar = existsVars[v];
+                triggerExprs.Add(
+                    new NAryExpr(Token.NoToken, 
+                        new FunctionCall(triggerFun), 
+                        new Expr[] { Expr.Ident(quantifiedVar) }));
+                quantifiedVars.Add(quantifiedVar);
+                existsSubstitutionMap[v] = Expr.Ident(quantifiedVar);
             }
 
             Substitution subst = Substituter.SubstitutionFromHashtable(existsSubstitutionMap);
             List<Expr> returnExprs = new List<Expr>();
 
-            foreach (Variable v in path.varToExpr.Keys)
+            foreach (Variable v in path.varToExpr.Keys.Except(postExistVars))
             {
-                if (postExistVars.Contains(v)) continue;
-                Expr withOldExpr = new MyDuplicator().VisitExpr(path.varToExpr[v]);
+                Expr withOldExpr = MyDuplicator.Duplicate(path.varToExpr[v]);
                 var substExpr = Expr.Eq(Expr.Ident(v), Substituter.Apply(subst, withOldExpr));
                 substExpr.Type = Type.Bool;
                 returnExprs.Add(substExpr);
@@ -221,7 +214,7 @@ namespace Microsoft.Boogie
 
             foreach (Expr x in path.pathExprs)
             {
-                var withOldExpr = new MyDuplicator().VisitExpr(x);
+                var withOldExpr = MyDuplicator.Duplicate(x);
                 returnExprs.Add(Substituter.Apply(subst, withOldExpr));
             }
 
@@ -234,7 +227,10 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    returnExpr = new ExistsExpr(Token.NoToken, quantifiedVars, new Trigger(Token.NoToken, true, triggerExprs), returnExpr);
+                    returnExpr = new ExistsExpr(Token.NoToken, 
+                                    quantifiedVars, 
+                                    new Trigger(Token.NoToken, true, triggerExprs), 
+                                    returnExpr);
                 }
             }
             return returnExpr;
@@ -265,15 +261,10 @@ namespace Microsoft.Boogie
         
         void InferSubstitution(HashSet<Variable> allExistsVars, Dictionary<Variable, Expr> existsSubstitutionMap, List<Expr> pathExprs, List<Expr> inferredSelectEqualities)
         {
-            foreach (var x in pathExprs)
+            foreach (var eqExpr in pathExprs.OfType<NAryExpr>().Where(x => x.Fun.FunctionName == "=="))
             {
-                NAryExpr naryExpr = x as NAryExpr;
-                if (naryExpr == null || naryExpr.Fun.FunctionName != "==")
-                {
-                    continue;
-                }
-                Expr arg0 = naryExpr.Args[0];
-                Expr arg1 = naryExpr.Args[1];
+                Expr arg0 = eqExpr.Args[0];
+                Expr arg1 = eqExpr.Args[1];
                 if (IsMapStoreExpr(arg0))
                 {
                     inferredSelectEqualities.Add(GenerateEqualityWithSelect(arg0 as NAryExpr, arg1));
@@ -283,32 +274,28 @@ namespace Microsoft.Boogie
                     inferredSelectEqualities.Add(GenerateEqualityWithSelect(arg1 as NAryExpr, arg0));
                 }
             }
-
+            
             Dictionary<Variable, Expr> pendingMap = new Dictionary<Variable, Expr>();
-            foreach (var x in pathExprs.Union(inferredSelectEqualities))
+            foreach (var eqExpr in pathExprs.Union(inferredSelectEqualities).OfType<NAryExpr>().Where(x => x.Fun.FunctionName == "=="))
             {
-                NAryExpr naryExpr = x as NAryExpr;
-                if (naryExpr == null || naryExpr.Fun.FunctionName != "==")
-                {
-                    continue;
-                }
                 Variable eVar = null;
                 Expr eVarSubstExpr = null;
-                IdentifierExpr arg0 = naryExpr.Args[0] as IdentifierExpr;
-                IdentifierExpr arg1 = naryExpr.Args[1] as IdentifierExpr;
+                IdentifierExpr arg0 = eqExpr.Args[0] as IdentifierExpr;
+                IdentifierExpr arg1 = eqExpr.Args[1] as IdentifierExpr;
                 if (arg0 != null && IsExistsVar(arg0.Decl))
                 {
                     eVar = arg0.Decl;
-                    eVarSubstExpr = naryExpr.Args[1];
+                    eVarSubstExpr = eqExpr.Args[1];
                 }
                 else if (arg1 != null && IsExistsVar(arg1.Decl))
                 {
                     eVar = arg1.Decl;
-                    eVarSubstExpr = naryExpr.Args[0];
+                    eVarSubstExpr = eqExpr.Args[0];
                 }
                 if (eVar == null || existsSubstitutionMap.ContainsKey(eVar)) continue;
                 PendingPropagate(allExistsVars, existsSubstitutionMap, eVar, eVarSubstExpr, pendingMap);
             }
+
             while (pendingMap.Count != 0)
             {
                 Dictionary<Variable, Expr> newPendingMap = new Dictionary<Variable, Expr>();
@@ -323,9 +310,7 @@ namespace Microsoft.Boogie
 
         private void PendingPropagate(HashSet<Variable> allExistsVars, Dictionary<Variable, Expr> existsSubstitutionMap, Variable eVar, Expr eVarSubstExpr, Dictionary<Variable, Expr> pendingMap)
         {
-            var collector = new VariableCollector();
-            collector.Visit(eVarSubstExpr);
-            var usedExistsVars = collector.usedVars.Intersect(allExistsVars);
+            var usedExistsVars = VariableCollector.Collect(eVarSubstExpr).Intersect(allExistsVars);
             if (usedExistsVars.Count() == 0)
             {
                 existsSubstitutionMap[eVar] = eVarSubstExpr;
@@ -414,8 +399,13 @@ namespace Microsoft.Boogie
             }
         }
 
-        public sealed class MyDuplicator : Duplicator
+        private sealed class MyDuplicator : Duplicator
         {
+            public static Expr Duplicate(Expr expr)
+            {
+                return new MyDuplicator().VisitExpr(expr);
+            }
+
             public override Expr VisitIdentifierExpr(IdentifierExpr node)
             {
                 IdentifierExpr ret = (IdentifierExpr)base.VisitIdentifierExpr(node);
@@ -429,6 +419,5 @@ namespace Microsoft.Boogie
                 }
             }
         }
-
     }
 }

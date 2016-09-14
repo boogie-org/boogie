@@ -256,7 +256,7 @@ namespace Microsoft.Boogie
             if (isAtomicSpecification || !civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
             {
                 ensures.Condition = Expr.True;
-                ensures.Attributes = CivlRefinement.RemoveMoverAttribute(ensures.Attributes);
+                ensures.Attributes = Concurrency.RemoveMoverAttribute(ensures.Attributes);
             }
             return ensures;
         }
@@ -1170,23 +1170,6 @@ namespace Microsoft.Boogie
             yieldImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             decls.Add(yieldProc);
             decls.Add(yieldImpl);
-        }
-
-        public static QKeyValue RemoveYieldsAttribute(QKeyValue iter)
-        {
-            if (iter == null) return null;
-            iter.Next = RemoveYieldsAttribute(iter.Next);
-            return (iter.Key == "yields") ? iter.Next : iter;
-        }
-
-        public static QKeyValue RemoveMoverAttribute(QKeyValue iter)
-        {
-            if (iter == null) return null;
-            iter.Next = RemoveMoverAttribute(iter.Next);
-            if (iter.Key == "atomic" || iter.Key == "right" || iter.Key == "left" || iter.Key == "both") 
-                return iter.Next;
-            else 
-                return iter;
         }
 
         private List<Declaration> Collect()
