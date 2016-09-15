@@ -31,3 +31,6 @@ Source/*.user
 Source/*.suo
 Source/*.cache
 Source/.vs/
+
+# MonoDevelop files
+Source/*.userprefs
