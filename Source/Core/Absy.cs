@@ -3234,7 +3234,7 @@ namespace Microsoft.Boogie {
         e.Typecheck(tc);
       }
       bool oldYields = tc.Yields;
-      tc.Yields = QKeyValue.FindBoolAttribute(Attributes, "yields");
+      tc.Yields = QKeyValue.FindBoolAttribute(Attributes, CivlAttributes.YIELDS);
       foreach (Ensures/*!*/ e in Ensures) {
         Contract.Assert(e != null);
         e.Typecheck(tc);
@@ -3769,7 +3769,7 @@ namespace Microsoft.Boogie {
       List<IdentifierExpr> oldFrame = tc.Frame;
       bool oldYields = tc.Yields;
       tc.Frame = Proc.Modifies;
-      tc.Yields = QKeyValue.FindBoolAttribute(Proc.Attributes, "yields");
+      tc.Yields = QKeyValue.FindBoolAttribute(Proc.Attributes, CivlAttributes.YIELDS);
       foreach (Block b in Blocks) {
         b.Typecheck(tc);
       }

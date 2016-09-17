@@ -483,7 +483,7 @@ namespace Microsoft.Boogie
           PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
         }
 
-        Concurrency.DesugarYieldAssert(program);
+        CivlAttributes.DesugarYieldAssert(program);
 
         LinearTypeChecker linearTypeChecker;
         CivlTypeChecker civlTypeChecker;

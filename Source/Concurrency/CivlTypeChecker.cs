@@ -50,13 +50,13 @@ namespace Microsoft.Boogie
         public static bool HasAttribute(this ICarriesAttributes obj, string attribute)
         { return QKeyValue.FindBoolAttribute(obj.Attributes, attribute); }
 
-        public static bool IsPure (this Declaration decl) { return decl.HasAttribute("pure"); }
-        public static bool IsYield(this Declaration decl) { return decl.HasAttribute("yields"); }
+        public static bool IsPure (this Declaration decl) { return decl.HasAttribute(CivlAttributes.PURE); }
+        public static bool IsYield(this Declaration decl) { return decl.HasAttribute(CivlAttributes.YIELDS); }
 
-        public static bool IsAtomic(this Ensures decl) { return decl.HasAttribute("atomic"); }
-        public static bool IsLeft(this Ensures decl) { return decl.HasAttribute("left"); }
-        public static bool IsRight(this Ensures decl) { return decl.HasAttribute("right"); }
-        public static bool IsBoth(this Ensures decl) { return decl.HasAttribute("both"); }
+        public static bool IsAtomic(this Ensures decl) { return decl.HasAttribute(CivlAttributes.ATOMIC); }
+        public static bool IsLeft(this Ensures decl) { return decl.HasAttribute(CivlAttributes.LEFT); }
+        public static bool IsRight(this Ensures decl) { return decl.HasAttribute(CivlAttributes.RIGHT); }
+        public static bool IsBoth(this Ensures decl) { return decl.HasAttribute(CivlAttributes.BOTH); }
 
         public static bool IsExtern(this Declaration decl) { return decl.HasAttribute("extern"); }
     }
@@ -269,37 +269,37 @@ namespace Microsoft.Boogie
     {
         public override Variable VisitVariable(Variable node)
         {
-            Concurrency.RemoveLayerAttribute(node);
+            CivlAttributes.RemoveLayerAttribute(node);
             return base.VisitVariable(node);
         }
 
         public override Procedure VisitProcedure(Procedure node)
         {
-            Concurrency.RemoveLayerAttribute(node);
+            CivlAttributes.RemoveLayerAttribute(node);
             return base.VisitProcedure(node);
         }
 
         public override Implementation VisitImplementation(Implementation node)
         {
-            Concurrency.RemoveLayerAttribute(node);
+            CivlAttributes.RemoveLayerAttribute(node);
             return base.VisitImplementation(node);
         }
 
         public override Requires VisitRequires(Requires node)
         {
-            Concurrency.RemoveLayerAttribute(node);
+            CivlAttributes.RemoveLayerAttribute(node);
             return base.VisitRequires(node);
         }
 
         public override Ensures VisitEnsures(Ensures node)
         {
-            Concurrency.RemoveLayerAttribute(node);
+            CivlAttributes.RemoveLayerAttribute(node);
             return base.VisitEnsures(node);
         }
 
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
-            Concurrency.RemoveLayerAttribute(node);
+            CivlAttributes.RemoveLayerAttribute(node);
             return base.VisitAssertCmd(node);
         }
     }
@@ -415,7 +415,7 @@ namespace Microsoft.Boogie
             List<int> layers = new List<int>();
             for (; kv != null; kv = kv.Next)
             {
-                if (kv.Key != "layer") continue;
+                if (kv.Key != CivlAttributes.LAYER) continue;
                 foreach (var o in kv.Params)
                 {
                     Expr e = o as Expr;

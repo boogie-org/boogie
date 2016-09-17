@@ -2247,7 +2247,7 @@ namespace Microsoft.Boogie {
               }
               foreach (CallCmd callCmd in CallCmds)
               {
-                  if (!QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
+                  if (!QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, CivlAttributes.YIELDS))
                   {
                       tc.Error(callCmd, "target procedure of a parallel call must yield");
                   }
@@ -2546,7 +2546,7 @@ namespace Microsoft.Boogie {
             {
                 tc.Error(this, "enclosing procedure of an async call must yield");
             }
-            if (!QKeyValue.FindBoolAttribute(Proc.Attributes, "yields"))
+            if (!QKeyValue.FindBoolAttribute(Proc.Attributes, CivlAttributes.YIELDS))
             {
                 tc.Error(this, "target procedure of an async call must yield");
             }

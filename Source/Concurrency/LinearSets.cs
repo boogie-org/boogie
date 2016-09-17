@@ -12,13 +12,13 @@ namespace Microsoft.Boogie
     {
         public override Variable VisitVariable(Variable node)
         {
-            Concurrency.RemoveLinearAttribute(node);
+            CivlAttributes.RemoveLinearAttribute(node);
             return base.VisitVariable(node);
         }
 
         public override Function VisitFunction(Function node)
         {
-            Concurrency.RemoveLinearAttribute(node);
+            CivlAttributes.RemoveLinearAttribute(node);
             return base.VisitFunction(node);
         }
     }
@@ -121,7 +121,7 @@ namespace Microsoft.Boogie
         }
         public override Function VisitFunction(Function node)
         {
-            string domainName = QKeyValue.FindStringAttribute(node.Attributes, "linear");
+            string domainName = QKeyValue.FindStringAttribute(node.Attributes, CivlAttributes.LINEAR);
             if (domainName != null)
             {
                 if (!domainNameToCollectors.ContainsKey(domainName)) 
@@ -403,13 +403,13 @@ namespace Microsoft.Boogie
                 return inParamToLinearQualifier[v].domainName;
             if (outParamToDomainName.ContainsKey(v))
                 return outParamToDomainName[v];
-            string domainName = QKeyValue.FindStringAttribute(v.Attributes, "linear");
+            string domainName = QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR);
             if (domainName != null)
                 return domainName;
-            domainName = QKeyValue.FindStringAttribute(v.Attributes, "linear_in");
+            domainName = QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_IN);
             if (domainName != null)
                 return domainName;
-            return QKeyValue.FindStringAttribute(v.Attributes, "linear_out");
+            return QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT);
         }
         public LinearKind FindLinearKind(Variable v)
         {
@@ -420,15 +420,15 @@ namespace Microsoft.Boogie
             if (outParamToDomainName.ContainsKey(v))
                 return LinearKind.LINEAR;
 
-            if (QKeyValue.FindStringAttribute(v.Attributes, "linear") != null)
+            if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR) != null)
             {
                 return LinearKind.LINEAR;
             }
-            else if (QKeyValue.FindStringAttribute(v.Attributes, "linear_in") != null)
+            else if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_IN) != null)
             { 
                 return LinearKind.LINEAR_IN; 
             }
-            else if (QKeyValue.FindStringAttribute(v.Attributes, "linear_out") != null)
+            else if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT) != null)
             {
                 return LinearKind.LINEAR_OUT;
             }
