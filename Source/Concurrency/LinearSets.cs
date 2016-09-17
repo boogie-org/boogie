@@ -12,13 +12,13 @@ namespace Microsoft.Boogie
     {
         public override Variable VisitVariable(Variable node)
         {
-            node.Attributes = Concurrency.RemoveLinearAttribute(node.Attributes);
+            Concurrency.RemoveLinearAttribute(node);
             return base.VisitVariable(node);
         }
 
         public override Function VisitFunction(Function node)
         {
-            node.Attributes = Concurrency.RemoveLinearAttribute(node.Attributes);
+            Concurrency.RemoveLinearAttribute(node);
             return base.VisitFunction(node);
         }
     }

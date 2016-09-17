@@ -44,8 +44,9 @@
         "async" "par"
         )) . font-lock-keyword-face)
    `(,(boogie-regexp-opt '(
-        "layer" "yields" "linear" "linear_in" "linear_out"
+        "layer" "yields" "yield_assert"
         "atomic" "left" "right" "both"
+        "linear" "linear_in" "linear_out"
         "yield"
         )) . font-lock-preprocessor-face)
    `(,(boogie-regexp-opt '(

@@ -269,37 +269,37 @@ namespace Microsoft.Boogie
     {
         public override Variable VisitVariable(Variable node)
         {
-            node.Attributes = Concurrency.RemoveLayerAttribute(node.Attributes);
+            Concurrency.RemoveLayerAttribute(node);
             return base.VisitVariable(node);
         }
 
         public override Procedure VisitProcedure(Procedure node)
         {
-            node.Attributes = Concurrency.RemoveLayerAttribute(node.Attributes);
+            Concurrency.RemoveLayerAttribute(node);
             return base.VisitProcedure(node);
         }
 
         public override Implementation VisitImplementation(Implementation node)
         {
-            node.Attributes = Concurrency.RemoveLayerAttribute(node.Attributes);
+            Concurrency.RemoveLayerAttribute(node);
             return base.VisitImplementation(node);
         }
 
         public override Requires VisitRequires(Requires node)
         {
-            node.Attributes = Concurrency.RemoveLayerAttribute(node.Attributes);
+            Concurrency.RemoveLayerAttribute(node);
             return base.VisitRequires(node);
         }
 
         public override Ensures VisitEnsures(Ensures node)
         {
-            node.Attributes = Concurrency.RemoveLayerAttribute(node.Attributes);
+            Concurrency.RemoveLayerAttribute(node);
             return base.VisitEnsures(node);
         }
 
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
-            node.Attributes = Concurrency.RemoveLayerAttribute(node.Attributes);
+            Concurrency.RemoveLayerAttribute(node);
             return base.VisitAssertCmd(node);
         }
     }

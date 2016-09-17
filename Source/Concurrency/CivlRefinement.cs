@@ -256,7 +256,7 @@ namespace Microsoft.Boogie
             if (isAtomicSpecification || !civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
             {
                 ensures.Condition = Expr.True;
-                ensures.Attributes = Concurrency.RemoveMoverAttribute(ensures.Attributes);
+                Concurrency.RemoveMoverAttribute(ensures);
             }
             return ensures;
         }

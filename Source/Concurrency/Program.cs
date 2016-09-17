@@ -38,41 +38,68 @@ namespace Microsoft.Boogie
             }
             foreach (Declaration decl in decls)
             {
-                decl.Attributes = RemoveYieldsAttribute(decl.Attributes);
+                RemoveYieldsAttribute(decl);
             }
             program.RemoveTopLevelDeclarations(x => originalDecls.Contains(x));
             program.AddTopLevelDeclarations(decls);
         }
 
-        public static QKeyValue RemoveYieldsAttribute(QKeyValue iter)
+        public static bool RemoveAttribute(ICarriesAttributes obj, Func<QKeyValue, bool> cond)
         {
-            if (iter == null) return null;
-            iter.Next = RemoveYieldsAttribute(iter.Next);
-            return (iter.Key == "yields") ? iter.Next : iter;
+            QKeyValue curr = obj.Attributes;
+            bool removed = false;
+
+            while (curr != null && cond (curr)) {
+                curr = curr.Next;
+                removed = true;
+            }
+            obj.Attributes = curr;
+            while (curr != null) {
+                QKeyValue next = curr.Next;
+                while (next != null && cond (next)) {
+                    next = next.Next;
+                    removed = true;
+                }
+                curr.Next = next;
+                curr = next;
+            }
+
+            return removed;
         }
 
-        public static QKeyValue RemoveMoverAttribute(QKeyValue iter)
+        public static void RemoveYieldsAttribute(ICarriesAttributes obj)
         {
-            if (iter == null) return null;
-            iter.Next = RemoveMoverAttribute(iter.Next);
-            if (iter.Key == "atomic" || iter.Key == "right" || iter.Key == "left" || iter.Key == "both")
-                return iter.Next;
-            else
-                return iter;
+            RemoveAttribute(obj, kv => kv.Key == "yields");
         }
 
-        public static QKeyValue RemoveLayerAttribute(QKeyValue iter)
+        public static void RemoveMoverAttribute(ICarriesAttributes obj)
         {
-            if (iter == null) return null;
-            iter.Next = RemoveLayerAttribute(iter.Next);
-            return (iter.Key == "layer") ? iter.Next : iter;
+            RemoveAttribute (obj,
+                kv => kv.Key == "atomic" || kv.Key == "right" || kv.Key == "left" || kv.Key == "both");
         }
 
-        public static QKeyValue RemoveLinearAttribute(QKeyValue iter)
+        public static void RemoveLayerAttribute(ICarriesAttributes obj)
         {
-            if (iter == null) return null;
-            iter.Next = RemoveLinearAttribute(iter.Next);
-            return (iter.Key == "linear" || iter.Key == "linear_in" || iter.Key == "linear_out") ? iter.Next : iter;
+            RemoveAttribute(obj, kv => kv.Key == "layer");
+        }
+
+        public static void RemoveLinearAttribute(ICarriesAttributes obj)
+        {
+            RemoveAttribute(obj, 
+                kv => kv.Key == "linear" || kv.Key == "linear_in" || kv.Key == "linear_out");
+        }
+
+        public static void DesugarYieldAssert (Program program) {
+            foreach (var proc in program.Procedures) {
+                if (RemoveAttribute(proc, kv => kv.Key == "yield_assert")) {
+                    proc.AddAttribute("yields");
+                    foreach (var requires in proc.Requires) {
+                        var ensures = new Ensures(false, requires.Condition);
+                        ensures.Attributes = requires.Attributes;
+                        proc.Ensures.Add(ensures);
+                    }
+                }
+            }
         }
     }
 }
