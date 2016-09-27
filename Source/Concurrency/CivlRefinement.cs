@@ -889,6 +889,35 @@ namespace Microsoft.Boogie
             impl.Blocks.Add(yieldCheckBlock);
         }
 
+        private void AddDisjointnessExpr(List<Cmd> newCmds, HashSet<Variable> availableVars)
+        {
+            Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
+            foreach (var domainName in linearTypeChecker.linearDomains.Keys)
+            {
+                domainNameToScope[domainName] = new HashSet<Variable>();
+            }
+            foreach (Variable v in availableVars)
+            {
+                var domainName = linearTypeChecker.FindDomainName(v);
+                if (linearTypeChecker.linearDomains.ContainsKey(domainName))
+                {
+                    domainNameToScope[domainName].Add(v);
+                }
+            }
+            foreach (Variable v in linearTypeChecker.globalVarToDomainName.Keys)
+            {
+                var domainName = linearTypeChecker.FindDomainName(v);
+                if (linearTypeChecker.linearDomains.ContainsKey(domainName))
+                {
+                    domainNameToScope[domainName].Add(v);
+                }
+            }
+            foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+            {
+                newCmds.Add(new AssumeCmd(Token.NoToken, linearTypeChecker.DisjointnessExpr(domainName, domainNameToScope[domainName])));
+            }
+        }
+
         private List<List<Cmd>> CollectAndDesugarYields(Implementation impl,
             Dictionary<string, Variable> domainNameToInputVar, Dictionary<string, Variable> domainNameToLocalVar, Dictionary<Variable, Variable> ogOldGlobalMap)
         {
@@ -953,6 +982,8 @@ namespace Microsoft.Boogie
                             HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(callCmd));
                             linearTypeChecker.AddAvailableVars(callCmd, availableLinearVars);
 
+                            AddDisjointnessExpr(newCmds, availableLinearVars);
+
                             if (!callCmd.IsAsync && globalMods.Count > 0 && pc != null)
                             {
                                 // assume pc || alpha(i, g);
@@ -972,6 +1003,8 @@ namespace Microsoft.Boogie
                         DesugarParallelCallCmd(newCmds, parCallCmd);
                         HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(parCallCmd));
                         linearTypeChecker.AddAvailableVars(parCallCmd, availableLinearVars);
+
+                        AddDisjointnessExpr(newCmds, availableLinearVars);
 
                         if (globalMods.Count > 0 && pc != null)
                         {
