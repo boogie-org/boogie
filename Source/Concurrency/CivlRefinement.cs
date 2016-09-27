@@ -411,12 +411,13 @@ namespace Microsoft.Boogie
             }
         }
 
-        private Dictionary<string, Expr> ComputeAvailableExprs(IEnumerable<Variable> availableLinearVars, Dictionary<string, Variable> domainNameToInputVar)
+        private Dictionary<string, Expr> ComputeAvailableExprs(IEnumerable<Variable> availableLinearVars)
         {
             Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
             foreach (var domainName in linearTypeChecker.linearDomains.Keys)
             {
-                var expr = Expr.Ident(domainNameToInputVar[domainName]);
+                var domain = linearTypeChecker.linearDomains[domainName];
+                var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new Expr[] { Expr.False });
                 expr.Resolve(new ResolutionContext(null));
                 expr.Typecheck(new TypecheckingContext(null));
                 domainNameToExpr[domainName] = expr;
@@ -482,7 +483,7 @@ namespace Microsoft.Boogie
             return bb;
         }
 
-        private void DesugarYield(YieldCmd yieldCmd, List<Cmd> cmds, List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToInputVar, Dictionary<string, Variable> domainNameToLocalVar)
+        private void DesugarYield(YieldCmd yieldCmd, List<Cmd> cmds, List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
         {
             AddCallToYieldProc(yieldCmd.tok, newCmds, ogOldGlobalMap, domainNameToLocalVar);
 
@@ -498,7 +499,7 @@ namespace Microsoft.Boogie
                 }
             }
 
-            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(AvailableLinearVars(yieldCmd), domainNameToInputVar);
+            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(AvailableLinearVars(yieldCmd));
             AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
 
             for (int j = 0; j < cmds.Count; j++)
@@ -733,7 +734,7 @@ namespace Microsoft.Boogie
 
         private void SetupRefinementCheck(Implementation impl, 
             out List<Variable> newLocalVars,
-            out Dictionary<string, Variable> domainNameToInputVar, out Dictionary<string, Variable> domainNameToLocalVar, out Dictionary<Variable, Variable> ogOldGlobalMap)
+            out Dictionary<string, Variable> domainNameToLocalVar, out Dictionary<Variable, Variable> ogOldGlobalMap)
         {
             pc = null;
             ok = null;
@@ -815,14 +816,12 @@ namespace Microsoft.Boogie
                 }
             }
 
-            domainNameToInputVar = new Dictionary<string, Variable>();
             domainNameToLocalVar = new Dictionary<string, Variable>();
             {
                 int i = impl.InParams.Count - linearTypeChecker.linearDomains.Count;
                 foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
                     Variable inParam = impl.InParams[i];
-                    domainNameToInputVar[domainName] = inParam;
                     Variable l = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name + "_local", inParam.TypedIdent.Type));
                     domainNameToLocalVar[domainName] = l;
                     newLocalVars.Add(l);
@@ -837,16 +836,16 @@ namespace Microsoft.Boogie
             Graph<Block> graph = ComputeYieldingLoopHeaders(impl, out yieldingHeaders);
 
             List<Variable> newLocalVars;
-            Dictionary<string, Variable> domainNameToInputVar, domainNameToLocalVar;
+            Dictionary<string, Variable> domainNameToLocalVar;
             Dictionary<Variable, Variable> ogOldGlobalMap;
-            SetupRefinementCheck(impl, out newLocalVars, out domainNameToInputVar, out domainNameToLocalVar, out ogOldGlobalMap);
+            SetupRefinementCheck(impl, out newLocalVars, out domainNameToLocalVar, out ogOldGlobalMap);
 
-            List<List<Cmd>> yields = CollectAndDesugarYields(impl, domainNameToInputVar, domainNameToLocalVar, ogOldGlobalMap);
+            List<List<Cmd>> yields = CollectAndDesugarYields(impl, domainNameToLocalVar, ogOldGlobalMap);
 
             List<Variable> oldPcs, oldOks;
-            ProcessLoopHeaders(impl, graph, yieldingHeaders, domainNameToInputVar, domainNameToLocalVar, ogOldGlobalMap, out oldPcs, out oldOks);
+            ProcessLoopHeaders(impl, graph, yieldingHeaders, domainNameToLocalVar, ogOldGlobalMap, out oldPcs, out oldOks);
 
-            AddInitialBlock(impl, oldPcs, oldOks, domainNameToInputVar, domainNameToLocalVar, ogOldGlobalMap);
+            AddInitialBlock(impl, oldPcs, oldOks, domainNameToLocalVar, ogOldGlobalMap);
 
             CreateYieldCheckerImpl(impl, yields);
             
@@ -889,37 +888,8 @@ namespace Microsoft.Boogie
             impl.Blocks.Add(yieldCheckBlock);
         }
 
-        private void AddDisjointnessExpr(List<Cmd> newCmds, HashSet<Variable> availableVars)
-        {
-            Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
-            foreach (var domainName in linearTypeChecker.linearDomains.Keys)
-            {
-                domainNameToScope[domainName] = new HashSet<Variable>();
-            }
-            foreach (Variable v in availableVars)
-            {
-                var domainName = linearTypeChecker.FindDomainName(v);
-                if (linearTypeChecker.linearDomains.ContainsKey(domainName))
-                {
-                    domainNameToScope[domainName].Add(v);
-                }
-            }
-            foreach (Variable v in linearTypeChecker.globalVarToDomainName.Keys)
-            {
-                var domainName = linearTypeChecker.FindDomainName(v);
-                if (linearTypeChecker.linearDomains.ContainsKey(domainName))
-                {
-                    domainNameToScope[domainName].Add(v);
-                }
-            }
-            foreach (string domainName in linearTypeChecker.linearDomains.Keys)
-            {
-                newCmds.Add(new AssumeCmd(Token.NoToken, linearTypeChecker.DisjointnessExpr(domainName, domainNameToScope[domainName])));
-            }
-        }
-
         private List<List<Cmd>> CollectAndDesugarYields(Implementation impl,
-            Dictionary<string, Variable> domainNameToInputVar, Dictionary<string, Variable> domainNameToLocalVar, Dictionary<Variable, Variable> ogOldGlobalMap)
+            Dictionary<string, Variable> domainNameToLocalVar, Dictionary<Variable, Variable> ogOldGlobalMap)
         {
             // Collect the yield predicates and desugar yields
             List<List<Cmd>> yields = new List<List<Cmd>>();
@@ -941,7 +911,7 @@ namespace Microsoft.Boogie
                         PredicateCmd pcmd = cmd as PredicateCmd;
                         if (pcmd == null)
                         {
-                            DesugarYield(yieldCmd, cmds, newCmds, ogOldGlobalMap, domainNameToInputVar, domainNameToLocalVar);
+                            DesugarYield(yieldCmd, cmds, newCmds, ogOldGlobalMap, domainNameToLocalVar);
                             if (cmds.Count > 0)
                             {
                                 yields.Add(cmds);
@@ -980,9 +950,6 @@ namespace Microsoft.Boogie
                         if (yieldingProcs.Contains(callCmd.Proc))
                         {
                             HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(callCmd));
-                            linearTypeChecker.AddAvailableVars(callCmd, availableLinearVars);
-
-                            AddDisjointnessExpr(newCmds, availableLinearVars);
 
                             if (!callCmd.IsAsync && globalMods.Count > 0 && pc != null)
                             {
@@ -992,7 +959,7 @@ namespace Microsoft.Boogie
                                 newCmds.Add(new AssumeCmd(Token.NoToken, assumeExpr));
                             }
 
-                            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(availableLinearVars, domainNameToInputVar);
+                            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(availableLinearVars);
                             AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                         }
                     }
@@ -1002,9 +969,6 @@ namespace Microsoft.Boogie
                         AddCallToYieldProc(parCallCmd.tok, newCmds, ogOldGlobalMap, domainNameToLocalVar);
                         DesugarParallelCallCmd(newCmds, parCallCmd);
                         HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(parCallCmd));
-                        linearTypeChecker.AddAvailableVars(parCallCmd, availableLinearVars);
-
-                        AddDisjointnessExpr(newCmds, availableLinearVars);
 
                         if (globalMods.Count > 0 && pc != null)
                         {
@@ -1014,7 +978,7 @@ namespace Microsoft.Boogie
                             newCmds.Add(new AssumeCmd(Token.NoToken, assumeExpr));
                         }
 
-                        Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(availableLinearVars, domainNameToInputVar);
+                        Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(availableLinearVars);
                         AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                     }
                     else
@@ -1024,7 +988,7 @@ namespace Microsoft.Boogie
                 }
                 if (yieldCmd != null)
                 {
-                    DesugarYield(yieldCmd, cmds, newCmds, ogOldGlobalMap, domainNameToInputVar, domainNameToLocalVar);
+                    DesugarYield(yieldCmd, cmds, newCmds, ogOldGlobalMap, domainNameToLocalVar);
                     if (cmds.Count > 0)
                     {
                         yields.Add(cmds);
@@ -1047,7 +1011,7 @@ namespace Microsoft.Boogie
         }
 
         private void ProcessLoopHeaders(Implementation impl, Graph<Block> graph, HashSet<Block> yieldingHeaders, 
-            Dictionary<string, Variable> domainNameToInputVar, Dictionary<string, Variable> domainNameToLocalVar, Dictionary<Variable, Variable> ogOldGlobalMap,
+            Dictionary<string, Variable> domainNameToLocalVar, Dictionary<Variable, Variable> ogOldGlobalMap,
             out List<Variable> oldPcs, out List<Variable> oldOks)
         {
             oldPcs = new List<Variable>();
@@ -1063,7 +1027,7 @@ namespace Microsoft.Boogie
                     oldOk = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("{0}_{1}", ok.Name, header.Label), Type.Bool));
                     oldOks.Add(oldOk);
                 }
-                Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(AvailableLinearVars(header), domainNameToInputVar);
+                Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(AvailableLinearVars(header));
                 foreach (Block pred in header.Predecessors)
                 {
                     AddCallToYieldProc(header.tok, pred.Cmds, ogOldGlobalMap, domainNameToLocalVar);
@@ -1100,7 +1064,7 @@ namespace Microsoft.Boogie
         }
 
         private void AddInitialBlock(Implementation impl, List<Variable> oldPcs, List<Variable> oldOks,
-            Dictionary<string, Variable> domainNameToInputVar, Dictionary<string, Variable> domainNameToLocalVar, Dictionary<Variable, Variable> ogOldGlobalMap)
+            Dictionary<string, Variable> domainNameToLocalVar, Dictionary<Variable, Variable> ogOldGlobalMap)
         {
             // Add initial block
             List<AssignLhs> lhss = new List<AssignLhs>();
@@ -1125,7 +1089,9 @@ namespace Microsoft.Boogie
             Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
             foreach (var domainName in linearTypeChecker.linearDomains.Keys)
             {
-                domainNameToExpr[domainName] = Expr.Ident(domainNameToInputVar[domainName]);
+                var domain = linearTypeChecker.linearDomains[domainName];
+                var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new Expr[] { Expr.False });
+                domainNameToExpr[domainName] = expr;
             }
             for (int i = 0; i < impl.InParams.Count - linearTypeChecker.linearDomains.Count; i++)
             {
