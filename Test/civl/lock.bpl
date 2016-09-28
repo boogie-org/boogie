@@ -49,8 +49,8 @@ ensures {:atomic} |{ A: assume !b; b := true; return true; }|;
 procedure {:yields} {:layer 0,2} CAS(prev: bool, next: bool) returns (status: bool);
 ensures {:atomic} |{ 
 A: goto B, C; 
-B: assume b == prev; b := next; status := true; return true; 
-C: status := false; return true; 
+B: assume b == prev; b := next; status := true;  return true;
+C: assume b != prev;            status := false; return true;
 }|;
 
 procedure {:yields} {:layer 0,2} Leave();

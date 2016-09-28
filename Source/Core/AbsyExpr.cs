@@ -502,6 +502,29 @@ namespace Microsoft.Boogie {
       }
       return result;
     }
+    
+    public static Expr Or(IEnumerable<Expr> disjuncts, bool returnNullIfEmpty = false)
+    {
+      Expr result = null;
+      foreach (var d in disjuncts)
+      {
+        if (result != null)
+        {
+          result = LiteralExpr.Or(result, d);
+          result.Type = Type.Bool;
+        }
+        else
+        {
+          result = d;
+          result.Type = Type.Bool;
+        }
+      }
+      if (result == null && !returnNullIfEmpty)
+      {
+        result = Expr.False;
+      }
+      return result;
+    }
   }
   [ContractClassFor(typeof(Expr))]
   public abstract class ExprContracts : Expr {

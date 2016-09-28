@@ -32,13 +32,16 @@ namespace Microsoft.Boogie
                 MoverCheck.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
             } 
             CivlRefinement.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
+            foreach (AtomicActionInfo info in civlTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo))
+            {
+                decls.AddRange(info.triggerFuns.Values);
+            }
             foreach (Declaration decl in decls)
             {
-                decl.Attributes = CivlRefinement.RemoveYieldsAttribute(decl.Attributes);
+                CivlAttributes.RemoveYieldsAttribute(decl);
             }
             program.RemoveTopLevelDeclarations(x => originalDecls.Contains(x));
             program.AddTopLevelDeclarations(decls);
         }
-
     }
 }

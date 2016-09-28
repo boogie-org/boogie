@@ -111,9 +111,9 @@ namespace Microsoft.Boogie {
       }
       foreach (Procedure x in yieldingProcs)
       {
-          if (!QKeyValue.FindBoolAttribute(x.Attributes, "yields"))
+          if (!QKeyValue.FindBoolAttribute(x.Attributes, CivlAttributes.YIELDS))
           {
-              x.AddAttribute("yields");
+              x.AddAttribute(CivlAttributes.YIELDS);
           }
       }
 
@@ -325,6 +325,13 @@ namespace Microsoft.Boogie {
         }
       }
       return node;
+    }
+
+    public static IEnumerable<Variable> Collect(Absy node)
+    {
+      var collector = new VariableCollector();
+      collector.Visit(node);
+      return collector.usedVars;
     }
   }
 
