@@ -530,6 +530,7 @@ namespace Microsoft.Boogie {
     }
     public ShowEnvironment ShowEnv = ShowEnvironment.DuringPrint;
     public bool DontShowLogo = false;
+    public bool ShowVerifiedProcedureCount = true;
     [ContractInvariantMethod]
     void ObjectInvariant3() {
       Contract.Invariant(-1 <= LoopFrameConditions && LoopFrameConditions < 3);
@@ -1006,6 +1007,14 @@ namespace Microsoft.Boogie {
                     throw new cce.UnreachableException();
                   } // postcondition of GetNumericArgument guarantees that we don't get here
               }
+            }
+            return true;
+          }
+
+        case "printVerifiedProceduresCount": {
+            int n = 0;
+            if (ps.GetNumericArgument(ref n, 2)) {
+              ShowVerifiedProcedureCount = n != 0;
             }
             return true;
           }
@@ -1853,6 +1862,9 @@ namespace Microsoft.Boogie {
   /env:<n>      print command line arguments
                   0 - never, 1 (default) - during BPL print and prover log,
                   2 - like 1 and also to standard output
+  /printVerifiedProceduresCount:<n>
+                0 - no
+                1 (default) - yes
   /wait         await Enter from keyboard before terminating program
   /xml:<file>   also produce output in XML format to <file>
 

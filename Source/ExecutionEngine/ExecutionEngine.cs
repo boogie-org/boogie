@@ -106,9 +106,13 @@ namespace Microsoft.Boogie
       {
         Console.Write("{0} finished with {1} credible, {2} doomed{3}", CommandLineOptions.Clo.DescriptiveToolName, stats.VerifiedCount, stats.ErrorCount, stats.ErrorCount == 1 ? "" : "s");
       }
-      else
+      else if (CommandLineOptions.Clo.ShowVerifiedProcedureCount)
       {
         Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.DescriptiveToolName, stats.VerifiedCount, stats.ErrorCount, stats.ErrorCount == 1 ? "" : "s");
+      }
+      else 
+      {
+        Console.Write("{0} finished with {1} error{2}", CommandLineOptions.Clo.DescriptiveToolName, stats.ErrorCount, stats.ErrorCount == 1 ? "" : "s");
       }
       if (stats.InconclusiveCount != 0)
       {
