@@ -653,10 +653,11 @@ namespace Microsoft.Boogie
                         assertCmd.ErrorData = "Non-interference check failed";
                         newCmds.Add(assertCmd);
                     }
-                    else
-                    {
-                        newCmds.Add(new AssumeCmd(Token.NoToken, newExpr));
-                    }
+                    /*
+                    Disjointness assumes injected by LinearSets.cs are dropped now because the 
+                    previous loop has already subsituted the old global state in these assumes.
+                    It would be unsound to have these assumes on the current global state.
+                    */
                 }
                 newCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
                 yieldCheckerBlock = new Block(Token.NoToken, "L" + yieldCount++, newCmds, new ReturnCmd(Token.NoToken));
