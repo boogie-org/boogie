@@ -6,9 +6,8 @@ axiom (forall x: int, y: int :: RightOpen(x)[y] <==> y < x);
 axiom (forall x: int, y: int :: RightClosed(x)[y] <==> y <= x);
 
 type X;
-function {:builtin "MapConst"} mapconstbool(bool): [X]bool;
 const nil: X;
-var {:layer 0,2} t: int;
+var {:layer 0,1} t: int;
 var {:layer 0,2} s: int;
 var {:layer 0,2} cs: X;
 var {:layer 0,2} T: [int]bool;
@@ -42,14 +41,15 @@ ensures {:layer 1} {:layer 2} xl != nil;
 }
 
 procedure {:yields} {:layer 2} main({:linear_in "tid"} xls':[X]bool)
-requires {:layer 2} xls' == mapconstbool(true);
+requires {:layer 1} Inv1(T, t);
+requires {:layer 2} xls' == MapConstBool(true) && Inv2(T, s, cs);
 {
     var {:linear "tid"} tid: X;
     var {:linear "tid"} xls: [X]bool;
 
-    yield;
+    par Yield1() | Yield2();
 
-    call Init(xls');
+    call InitAbstract(xls');
     xls := xls';
 
     par Yield1() | Yield2();
@@ -97,10 +97,20 @@ ensures {:layer 2} Inv2(T, s, cs) && cs == tid;
     par Yield1() | Yield2() | YieldSpec(tid);
 }
 
+procedure {:yields} {:layer 1,2} InitAbstract({:linear "tid"} xls:[X]bool)
+requires {:layer 1} Inv1(T, t);
+ensures {:layer 1} Inv1(T, t);
+ensures {:atomic} |{ A: assert xls == MapConstBool(true); cs := nil; s := 0; T := RightOpen(0); return true; }|;
+{
+    par Yield1();
+    call Init(xls);
+    par Yield1();
+}
+
 procedure {:yields} {:layer 1,2} GetTicketAbstract({:linear "tid"} tid: X) returns (m: int)
 requires {:layer 1} Inv1(T, t);
 ensures {:layer 1} Inv1(T, t);
-ensures {:right} |{ A: havoc m, t; assume !T[m]; T[m] := true; return true; }|;
+ensures {:right} |{ A: assume !T[m]; T[m] := true; return true; }|;
 {
     par Yield1();
     call m := GetTicket(tid);
@@ -131,8 +141,8 @@ ensures {:layer 1} Inv1(T,t);
     assert {:layer 1} Inv1(T,t);
 }
 
-procedure {:yields} {:layer 0,2} Init({:linear "tid"} xls:[X]bool);
-ensures {:atomic} |{ A: assert xls == mapconstbool(true); cs := nil; t := 0; s := 0; T := RightOpen(0); return true; }|;
+procedure {:yields} {:layer 0,1} Init({:linear "tid"} xls:[X]bool);
+ensures {:atomic} |{ A: assert xls == MapConstBool(true); cs := nil; t := 0; s := 0; T := RightOpen(0); return true; }|;
 
 procedure {:yields} {:layer 0,1} GetTicket({:linear "tid"} tid: X) returns (m: int);
 ensures {:atomic} |{ A: m := t; t := t + 1; T[m] := true; return true; }|;
@@ -141,7 +151,7 @@ procedure {:yields} {:layer 0,2} WaitAndEnter({:linear "tid"} tid: X, m:int);
 ensures {:atomic} |{ A: assume m <= s; cs := tid; return true; }|;
 
 procedure {:yields} {:layer 0,2} Leave({:linear "tid"} tid: X);
-ensures {:atomic} |{ A: s := s + 1; cs := nil; return true; }|;
+ensures {:atomic} |{ A: assert cs == tid; s := s + 1; cs := nil; return true; }|;
 
 procedure {:yields} {:layer 0,2} AllocateLow({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
 ensures {:atomic} |{ A: assume xl != nil; return true; }|;

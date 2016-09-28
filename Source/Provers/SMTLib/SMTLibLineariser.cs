@@ -34,14 +34,14 @@ namespace Microsoft.Boogie.SMTLib
   public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions/*!*/>
   {
 
-    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibProverOptions opts, IList<string> optReqs = null)
+    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibProverOptions opts, ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null, ISet<VCExprVar> tryAssumes = null)
     {
       Contract.Requires(e != null);
       Contract.Requires(namer != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
       StringWriter sw = new StringWriter();
-      SMTLibExprLineariser lin = new SMTLibExprLineariser(sw, namer, opts, optReqs);
+      SMTLibExprLineariser lin = new SMTLibExprLineariser(sw, namer, opts, namedAssumes, optReqs);
       Contract.Assert(lin != null);
       lin.Linearise(e, LineariserOptions.Default);
       return cce.NonNull(sw.ToString());
@@ -75,14 +75,16 @@ namespace Microsoft.Boogie.SMTLib
     internal readonly SMTLibProverOptions ProverOptions;
 
     readonly IList<string> OptimizationRequests;
+    readonly ISet<VCExprVar> NamedAssumes;
 
-    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibProverOptions opts, IList<string> optReqs = null)
+    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibProverOptions opts, ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null)
     {
       Contract.Requires(wr != null); Contract.Requires(namer != null);
       this.wr = wr;
       this.Namer = namer;
       this.ProverOptions = opts;
       this.OptimizationRequests = optReqs;
+      this.NamedAssumes = namedAssumes;
     }
 
     public void Linearise(VCExpr expr, LineariserOptions options)
@@ -119,7 +121,7 @@ namespace Microsoft.Boogie.SMTLib
           }
           sb.Append(']');
           TypeToStringHelper(m.Result, sb);
-        } else if (t.IsBool || t.IsInt || t.IsReal || t.IsBv) {
+        } else if (t.IsBool || t.IsInt || t.IsReal || t.IsFloat || t.IsBv) {
           sb.Append(TypeToString(t));
         } else {
           System.IO.StringWriter buffer = new System.IO.StringWriter();
@@ -143,6 +145,8 @@ namespace Microsoft.Boogie.SMTLib
         return "Int";
       else if (t.IsReal)
         return "Real";
+      else if (t.IsFloat)
+        return "(_ FloatingPoint " + t.FloatExponent + " " + t.FloatSignificand + ")";
       else if (t.IsBv) {
         return "(_ BitVec " + t.BvBits + ")";
       } else {
@@ -201,6 +205,11 @@ namespace Microsoft.Boogie.SMTLib
           wr.Write("(- 0.0 {0})", lit.Abs.ToDecimalString());
         else
           wr.Write(lit.ToDecimalString());
+      }
+      else if (node is VCExprFloatLit)
+      {
+        BigFloat lit = ((VCExprFloatLit)node).Val;
+        wr.Write("(" + lit.ToBVString() + ")");
       }
       else {
         Contract.Assert(false);
@@ -270,7 +279,19 @@ namespace Microsoft.Boogie.SMTLib
             && (node.Op.Equals(VCExpressionGenerator.MinimizeOp) || node.Op.Equals(VCExpressionGenerator.MaximizeOp)))
         {
           string optOp = node.Op.Equals(VCExpressionGenerator.MinimizeOp) ? "minimize" : "maximize";
-          OptimizationRequests.Add(string.Format("({0} {1})", optOp, ToString(node[0], Namer, ProverOptions)));
+          OptimizationRequests.Add(string.Format("({0} {1})", optOp, ToString(node[0], Namer, ProverOptions, NamedAssumes)));
+          Linearise(node[1], options);
+          return true;
+        }
+        if (node.Op is VCExprSoftOp)
+        {
+          Linearise(node[1], options);
+          return true;
+        }
+        if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp))
+        {
+          var exprVar = node[0] as VCExprVar;
+          NamedAssumes.Add(exprVar);
           Linearise(node[1], options);
           return true;
         }
@@ -613,6 +634,78 @@ namespace Microsoft.Boogie.SMTLib
         if (CommandLineOptions.Clo.UseArrayTheory)
           name = "store";
         WriteApplication(name, node, options);
+        return true;
+      }
+
+      public bool VisitFloatAddOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.add RNE", node, options);
+        return true;
+      }
+
+      public bool VisitFloatSubOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.sub RNE", node, options);
+        return true;
+      }
+
+      public bool VisitFloatMulOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.mul RNE", node, options);
+        return true;
+      }
+
+      public bool VisitFloatDivOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.div RNE", node, options);
+        return true;
+      }
+
+      public bool VisitFloatRemOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.rem RNE", node, options);
+        return true;
+      }
+
+      public bool VisitFloatMinOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.min", node, options);
+        return true;
+      }
+
+      public bool VisitFloatMaxOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.max", node, options);
+        return true;
+      }
+
+      public bool VisitFloatLeqOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.leq", node, options);
+        return true;
+      }
+
+      public bool VisitFloatLtOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.lt", node, options);
+        return true;
+      }
+
+      public bool VisitFloatGeqOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.geq", node, options);
+        return true;
+      }
+
+      public bool VisitFloatGtOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.gt", node, options);
+        return true;
+      }
+
+      public bool VisitFloatEqOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.eq", node, options);
         return true;
       }
 

@@ -443,6 +443,8 @@ namespace Microsoft.Boogie
 
     static readonly ConcurrentDictionary<string, CancellationTokenSource> RequestIdToCancellationTokenSource = new ConcurrentDictionary<string, CancellationTokenSource>();
 
+    static ThreadTaskScheduler Scheduler = new ThreadTaskScheduler(16 * 1024 * 1024);
+
     public static void ProcessFiles(List<string> fileNames, bool lookForSnapshots = true, string programId = null)
     {
       Contract.Requires(cce.NonNullElements(fileNames));
@@ -480,6 +482,8 @@ namespace Microsoft.Boogie
         {
           PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
         }
+
+        CivlAttributes.DesugarYieldAssert(program);
 
         LinearTypeChecker linearTypeChecker;
         CivlTypeChecker civlTypeChecker;
@@ -977,7 +981,7 @@ namespace Microsoft.Boogie
               {                  
                   break;
               }
-              tasks[j].Start(TaskScheduler.Default);
+              tasks[j].Start(Scheduler);
           }
 
           // Don't wait for tasks that haven't been started yet.

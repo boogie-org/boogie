@@ -31,7 +31,7 @@ namespace Microsoft.Boogie
             this.createdAtLayerNum = createdAtLayerNum;
             this.availableUptoLayerNum = availableUptoLayerNum;
             this.hasImplementation = false;
-            this.isExtern = QKeyValue.FindBoolAttribute(proc.Attributes, "extern");
+            this.isExtern = proc.IsExtern();
         }
 
         public virtual bool IsRightMover
@@ -43,6 +43,22 @@ namespace Microsoft.Boogie
         {
             get { return true; }
         }
+    }
+
+    public static class AttributeQueryExtensionMethods
+    {
+        public static bool HasAttribute(this ICarriesAttributes obj, string attribute)
+        { return QKeyValue.FindBoolAttribute(obj.Attributes, attribute); }
+
+        public static bool IsPure (this Declaration decl) { return decl.HasAttribute(CivlAttributes.PURE); }
+        public static bool IsYield(this Declaration decl) { return decl.HasAttribute(CivlAttributes.YIELDS); }
+
+        public static bool IsAtomic(this Ensures decl) { return decl.HasAttribute(CivlAttributes.ATOMIC); }
+        public static bool IsLeft(this Ensures decl) { return decl.HasAttribute(CivlAttributes.LEFT); }
+        public static bool IsRight(this Ensures decl) { return decl.HasAttribute(CivlAttributes.RIGHT); }
+        public static bool IsBoth(this Ensures decl) { return decl.HasAttribute(CivlAttributes.BOTH); }
+
+        public static bool IsExtern(this Declaration decl) { return decl.HasAttribute("extern"); }
     }
 
     public class AtomicActionInfo : ActionInfo
@@ -65,6 +81,20 @@ namespace Microsoft.Boogie
         public bool hasAssumeCmd;
         public Dictionary<Variable, Expr> thisMap;
         public Dictionary<Variable, Expr> thatMap;
+
+        public Dictionary<Variable, Function> triggerFuns;
+
+        public Function TriggerFunction(Variable v)
+        {
+            if (!triggerFuns.ContainsKey(v))
+            {
+                List<Variable> args = new List<Variable>();
+                args.Add(new Formal(v.tok, new TypedIdent(v.tok, "v", v.TypedIdent.Type), true));
+                Variable result = new Formal(v.tok, new TypedIdent(v.tok, "r", Type.Bool), false);
+                triggerFuns[v] = new Function(v.tok, string.Format("Trigger_{0}_{1}", proc.Name, v.Name), args, result);
+            }
+            return triggerFuns[v];
+        }
 
         public bool CommutesWith(AtomicActionInfo actionInfo)
         {
@@ -101,6 +131,7 @@ namespace Microsoft.Boogie
             this.hasAssumeCmd = false;
             this.thisMap = new Dictionary<Variable, Expr>();
             this.thatMap = new Dictionary<Variable, Expr>();
+            this.triggerFuns = new Dictionary<Variable, Function>();
 
             foreach (Block block in this.action.Blocks)
             {
@@ -236,46 +267,39 @@ namespace Microsoft.Boogie
 
     public class LayerEraser : ReadOnlyVisitor
     {
-        private QKeyValue RemoveLayerAttribute(QKeyValue iter)
-        {
-            if (iter == null) return null;
-            iter.Next = RemoveLayerAttribute(iter.Next);
-            return (iter.Key == "layer") ? iter.Next : iter;
-        }
-
         public override Variable VisitVariable(Variable node)
         {
-            node.Attributes = RemoveLayerAttribute(node.Attributes);
+            CivlAttributes.RemoveLayerAttribute(node);
             return base.VisitVariable(node);
         }
 
         public override Procedure VisitProcedure(Procedure node)
         {
-            node.Attributes = RemoveLayerAttribute(node.Attributes);
+            CivlAttributes.RemoveLayerAttribute(node);
             return base.VisitProcedure(node);
         }
 
         public override Implementation VisitImplementation(Implementation node)
         {
-            node.Attributes = RemoveLayerAttribute(node.Attributes);
+            CivlAttributes.RemoveLayerAttribute(node);
             return base.VisitImplementation(node);
         }
 
         public override Requires VisitRequires(Requires node)
         {
-            node.Attributes = RemoveLayerAttribute(node.Attributes);
+            CivlAttributes.RemoveLayerAttribute(node);
             return base.VisitRequires(node);
         }
 
         public override Ensures VisitEnsures(Ensures node)
         {
-            node.Attributes = RemoveLayerAttribute(node.Attributes);
+            CivlAttributes.RemoveLayerAttribute(node);
             return base.VisitEnsures(node);
         }
 
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
-            node.Attributes = RemoveLayerAttribute(node.Attributes);
+            CivlAttributes.RemoveLayerAttribute(node);
             return base.VisitAssertCmd(node);
         }
     }
@@ -391,7 +415,7 @@ namespace Microsoft.Boogie
             List<int> layers = new List<int>();
             for (; kv != null; kv = kv.Next)
             {
-                if (kv.Key != "layer") continue;
+                if (kv.Key != CivlAttributes.LAYER) continue;
                 foreach (var o in kv.Params)
                 {
                     Expr e = o as Expr;
@@ -420,13 +444,13 @@ namespace Microsoft.Boogie
 
         private static MoverType GetMoverType(Ensures e)
         {
-            if (QKeyValue.FindBoolAttribute(e.Attributes, "atomic"))
+            if (e.IsAtomic())
                 return MoverType.Atomic;
-            if (QKeyValue.FindBoolAttribute(e.Attributes, "right"))
+            if (e.IsRight())
                 return MoverType.Right;
-            if (QKeyValue.FindBoolAttribute(e.Attributes, "left"))
+            if (e.IsLeft())
                 return MoverType.Left;
-            if (QKeyValue.FindBoolAttribute(e.Attributes, "both"))
+            if (e.IsBoth())
                 return MoverType.Both;
             return MoverType.Top;
         }
@@ -448,6 +472,7 @@ namespace Microsoft.Boogie
             this.procToAtomicProcedureInfo = new Dictionary<Procedure, AtomicProcedureInfo>();
             this.pureCallLayer = new Dictionary<CallCmd, int>();
             
+            // Global variables
             foreach (var g in program.GlobalVariables)
             {
                 List<int> layerNums = FindLayers(g.Attributes);
@@ -494,6 +519,8 @@ namespace Microsoft.Boogie
             }
         }
 
+        // Caller has to make sure sharedVarsAccessed is set correctly for the
+        // currently checked procedure.
         private LayerRange FindLayerRange()
         {
             int maxIntroLayerNum = int.MinValue;
@@ -514,15 +541,15 @@ namespace Microsoft.Boogie
 
         public void TypeCheck()
         {
-            foreach (var proc in program.Procedures)
+            // Pure procedures
+            foreach (var proc in program.Procedures.Where(proc => proc.IsPure()))
             {
-                if (!QKeyValue.FindBoolAttribute(proc.Attributes, "pure")) continue;
-                if (QKeyValue.FindBoolAttribute(proc.Attributes, "yields"))
+                if (proc.IsYield())
                 {
                     Error(proc, "Pure procedure must not yield");
                     continue;
                 }
-                if (QKeyValue.FindBoolAttribute(proc.Attributes, "layer"))
+                if (FindLayers(proc.Attributes).Count != 0)
                 {
                     Error(proc, "Pure procedure must not have layers");
                     continue;
@@ -534,9 +561,10 @@ namespace Microsoft.Boogie
                 }
                 procToAtomicProcedureInfo[proc] = new AtomicProcedureInfo();
             }
-            foreach (var proc in program.Procedures)
+
+            // Atomic procedures (not yielding)
+            foreach (var proc in program.Procedures.Where(proc => !proc.IsYield()))
             {
-                if (QKeyValue.FindBoolAttribute(proc.Attributes, "yields")) continue;
                 var procLayerNums = FindLayers(proc.Attributes);
                 if (procLayerNums.Count == 0) continue;
                 foreach (IdentifierExpr ie in proc.Modifies)
@@ -573,10 +601,12 @@ namespace Microsoft.Boogie
             }
             if (errorCount > 0) return;
 
+            // Implementations of atomic procedures
             foreach (Implementation impl in program.Implementations)
             {
-                if (!procToAtomicProcedureInfo.ContainsKey(impl.Proc)) continue;
-                var atomicProcedureInfo = procToAtomicProcedureInfo[impl.Proc];
+                AtomicProcedureInfo atomicProcedureInfo;
+                if (!procToAtomicProcedureInfo.TryGetValue(impl.Proc, out atomicProcedureInfo)) continue;
+
                 if (atomicProcedureInfo.isPure)
                 {
                     this.enclosingImpl = impl;
@@ -598,10 +628,9 @@ namespace Microsoft.Boogie
             }
             if (errorCount > 0) return; 
             
-            foreach (var proc in program.Procedures)
+            // Yielding procedures
+            foreach (var proc in program.Procedures.Where(proc => proc.IsYield()))
             {
-                if (!QKeyValue.FindBoolAttribute(proc.Attributes, "yields")) continue;
-
                 int createdAtLayerNum;  // must be initialized by the following code, otherwise it is an error
                 int availableUptoLayerNum = int.MaxValue;
                 List<int> attrs = FindLayers(proc.Attributes);
@@ -785,7 +814,11 @@ namespace Microsoft.Boogie
                 ActionInfo actionInfo = procToActionInfo[node.Proc];
                 if (node.IsAsync && actionInfo is AtomicActionInfo)
                 {
-                    Error(node, "Target of async call cannot be an atomic action");
+                    AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
+                    if (!atomicActionInfo.IsLeftMover)
+                    {
+                        Error(node, "Target of async call must be a left mover");
+                    }
                 }
                 int calleeLayerNum = procToActionInfo[node.Proc].createdAtLayerNum;
                 if (enclosingProcLayerNum < calleeLayerNum ||
@@ -965,6 +998,15 @@ namespace Microsoft.Boogie
                 Error(node, "Atomic actions must be introduced at the highest layer");
             }
             return base.VisitParCallCmd(node);
+        }
+
+        public override Cmd VisitHavocCmd(HavocCmd node)
+        {
+            if (enclosingProc != null)
+            {
+                Error(node, "Havoc command not allowed inside an atomic actions");
+            }
+            return base.VisitHavocCmd(node);
         }
 
         public override Expr VisitIdentifierExpr(IdentifierExpr node)

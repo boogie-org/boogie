@@ -86,6 +86,21 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    public override void AssertNamed(VCExpr vc, bool polarity, string name)
+    {
+      string vcString;
+      if (polarity)
+      {
+        vcString = VCExpr2String(vc, 1);
+      }
+      else
+      {
+        vcString = "(not " + VCExpr2String(vc, 1) + ")";
+      }
+      AssertAxioms();
+      SendThisVC(string.Format("(assert (! {0} :named {1}))", vcString, name));
+    }
+
     private void SetupAxiomBuilder(VCExpressionGenerator gen)
     {
       switch (CommandLineOptions.Clo.TypeEncodingMethod)
@@ -411,15 +426,6 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(push 1)");
       SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
 
-      if (CommandLineOptions.Clo.PrintNecessaryAssumes && NamedAssumeVars != null)
-      {
-        foreach (var v in NamedAssumeVars)
-        {
-          SendThisVC(string.Format("(declare-fun {0} () Bool)", v));
-          SendThisVC(string.Format("(assert (! {0} :named {1}))", v, "aux$$" + v.Name));
-        }
-      }
-
       SendThisVC(vcString);
 
       SendOptimizationRequests();
@@ -433,7 +439,7 @@ namespace Microsoft.Boogie.SMTLib
           Process.Inspector.NewProblem(descriptiveName, vc, handler);
       }
 
-      SendThisVC("(check-sat)");
+      SendCheckSat();
       FlushLogFile();
     }
 
@@ -483,6 +489,8 @@ namespace Microsoft.Boogie.SMTLib
         ctx.KnownDatatypeConstructors.Clear();
         ctx.parent = this;
         DeclCollector.Reset();
+        NamedAssumes.Clear();
+        UsedNamedAssumes = null;
         SendThisVC("; did a full reset");
       }
     }
@@ -1293,17 +1301,33 @@ namespace Microsoft.Boogie.SMTLib
 
             var reporter = handler as VC.VCGen.ErrorReporter;
             // TODO(wuestholz): Is the reporter ever null?
-            if (CommandLineOptions.Clo.PrintNecessaryAssumes && NamedAssumeVars != null && NamedAssumeVars.Any() && result == Outcome.Valid && reporter != null)
+            if (usingUnsatCore && result == Outcome.Valid && reporter != null && 0 < NamedAssumes.Count)
             {
-              SendThisVC("(get-unsat-core)");
-              var resp = Process.GetProverResponse();
-              if (resp.Name != "")
+              if (usingUnsatCore)
               {
-                 reporter.AddNecessaryAssume(resp.Name.Substring("aux$$assume$$".Length));
+                UsedNamedAssumes = new HashSet<string>();
+                SendThisVC("(get-unsat-core)");
+                var resp = Process.GetProverResponse();
+                if (resp.Name != "")
+                {
+                  UsedNamedAssumes.Add(resp.Name);
+                  if (CommandLineOptions.Clo.PrintNecessaryAssumes)
+                  {
+                    reporter.AddNecessaryAssume(resp.Name.Substring("aux$$assume$$".Length));
+                  }
+                }
+                foreach (var arg in resp.Arguments)
+                {
+                  UsedNamedAssumes.Add(arg.Name);
+                  if (CommandLineOptions.Clo.PrintNecessaryAssumes)
+                  {
+                    reporter.AddNecessaryAssume(arg.Name.Substring("aux$$assume$$".Length));
+                  }
+                }
               }
-              foreach (var arg in resp.Arguments)
+              else
               {
-                reporter.AddNecessaryAssume(arg.Name.Substring("aux$$assume$$".Length));
+                UsedNamedAssumes = null;
               }
             }
 
@@ -1466,13 +1490,13 @@ namespace Microsoft.Boogie.SMTLib
               expr = "false";
             }
             SendThisVC("(assert " + expr + ")");
-            SendThisVC("(check-sat)");
+            SendCheckSat();
           }
           else {
             string source = labels[labels.Length - 2];
             string target = labels[labels.Length - 1];
             SendThisVC("(assert (not (= (ControlFlow 0 " + source + ") (- " + target + "))))");
-            SendThisVC("(check-sat)");
+            SendCheckSat();
           }
         }
 
@@ -1517,7 +1541,7 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC("(apply (then (using-params propagate-values :max_rounds 1) simplify) :print false)");
       }
       FlushLogFile();
-      SendThisVC("(check-sat)");
+      SendCheckSat();
       queries++;
       return GetResponse();
     }
@@ -2032,8 +2056,8 @@ namespace Microsoft.Boogie.SMTLib
         DeclCollector.Collect(sortedExpr);
         FeedTypeDeclsToProver();
 
-        AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options));
-        string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options, OptimizationRequests);
+        AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options, namedAssumes: NamedAssumes));
+        string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options, NamedAssumes, OptimizationRequests);
         Contract.Assert(res != null);
 
         if (CommandLineOptions.Clo.Trace)
@@ -2141,20 +2165,19 @@ namespace Microsoft.Boogie.SMTLib
         throw new NotImplementedException();
     }
 
-    public override void Assert(VCExpr vc, bool polarity)
+    public override void Assert(VCExpr vc, bool polarity, bool isSoft = false, int weight = 1)
     {
         OptimizationRequests.Clear();
-        string a = "";
-        if (polarity)
-        {
-            a = "(assert " + VCExpr2String(vc, 1) + ")";
+        string assert = "assert";
+        if (options.Solver == SolverKind.Z3 && isSoft) {
+            assert += "-soft";
         }
-        else
-        {
-            a = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
+        var expr = polarity ? VCExpr2String(vc, 1) : "(not\n" + VCExpr2String(vc, 1) + "\n)";
+        if (options.Solver == SolverKind.Z3 && isSoft) {
+            expr += " :weight " + weight;
         }
         AssertAxioms();
-        SendThisVC(a);
+        SendThisVC("(" + assert + " " + expr + ")");
         SendOptimizationRequests();
     }
 
@@ -2175,8 +2198,14 @@ namespace Microsoft.Boogie.SMTLib
     public override void Check()
     {
         PrepareCommon();
-        SendThisVC("(check-sat)");
+        SendCheckSat();
         FlushLogFile();
+    }
+
+    public void SendCheckSat()
+    {
+      UsedNamedAssumes = null;
+      SendThisVC("(check-sat)");
     }
 	
     public override void SetTimeOut(int ms)
@@ -2372,21 +2401,6 @@ namespace Microsoft.Boogie.SMTLib
           if (CommandLineOptions.Clo.PrintFixedPoint == null)
               CommandLineOptions.Clo.PrintFixedPoint = "itp.fixedpoint.bpl";
           return opts;
-      }
-
-      public override void AssertNamed(VCExpr vc, bool polarity, string name)
-      {
-          string vcString;
-          if (polarity)
-          {
-              vcString = VCExpr2String(vc, 1);
-          }
-          else
-          {
-              vcString = "(not " + VCExpr2String(vc, 1) + ")";
-          }
-          AssertAxioms();
-          SendThisVC(string.Format("(assert (! {0} :named {1}))", vcString, name));
       }
 
       public override VCExpr ComputeInterpolant(VCExpr A, VCExpr B)

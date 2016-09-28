@@ -1960,6 +1960,19 @@ namespace Microsoft.Boogie {
 
   /break        launch and break into debugger
 
+  ---- CIVL options ----------------------------------------------------------
+
+  /trustAtomicityTypes
+                do not verify atomic action declarations
+  /trustNonInterference
+                do not perform noninterference checks
+  /trustLayersUpto:<n>
+                do not verify layers <n> and below
+  /trustLayersDownto:<n>
+                do not verify layers <n> and above
+  /CivlDesugaredFile:<file>
+                print plain Boogie program to <file>
+
   ---- Verification-condition generation options -----------------------------
 
   /liveVariableAnalysis:<c>

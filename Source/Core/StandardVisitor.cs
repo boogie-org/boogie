@@ -103,6 +103,12 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Type>() != null);
       return this.VisitType(node);
     }
+    public virtual Type VisitFloatType(FloatType node)
+    {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Type>() != null);
+      return this.VisitType(node);
+    }
     public virtual Expr VisitBvConcatExpr(BvConcatExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);

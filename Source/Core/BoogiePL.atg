@@ -144,7 +144,12 @@ TOKENS
   string = quote { regularStringChar | "\\\"" } quote.
 
   decimal = digit {digit} 'e' [ '-' ] digit {digit} .
-  float = digit {digit} '.' digit {digit} [ 'e' [ '-' ] digit {digit} ] .
+  dec_float = digit {digit} '.' digit {digit} [ 'e' [ '-' ] digit {digit} ] .
+		float = [ '-' ] digit {digit} 'e' [ '-' ] digit {digit} 'f' digit {digit} 'e' digit {digit} 
+										| '0' 'N' 'a' 'N' digit {digit} 'e' digit {digit}
+										| '0' 'n' 'a' 'n' digit {digit} 'e' digit {digit}
+										| '0' '+' 'o' 'o' digit {digit} 'e' digit {digit}
+										| '0' '-' 'o' 'o' digit {digit} 'e' digit {digit} .
 
 COMMENTS FROM "/*" TO "*/" NESTED
 COMMENTS FROM "//" TO lf
@@ -330,7 +335,7 @@ TypeAtom<out Bpl.Type/*!*/ ty>
   ( "int"              (. ty = new BasicType(t, SimpleType.Int); .)
   | "real"             (. ty = new BasicType(t, SimpleType.Real); .)
   | "bool"             (. ty = new BasicType(t, SimpleType.Bool); .)
-  /* note: bitvectors are handled in UnresolvedTypeIdentifier */
+  /* note: bitvectors and floats are handled in UnresolvedTypeIdentifier */
   |
   "("
   Type<out ty>
@@ -1252,7 +1257,7 @@ ArrayExpression<out Expr/*!*/ e>
 
 /*------------------------------------------------------------------------*/
 AtomExpression<out Expr/*!*/ e>
-= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; int n; BigNum bn; BigDec bd;
+= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; int n; BigNum bn; BigDec bd; BigFloat bf;
      List<Expr>/*!*/ es;  List<Variable>/*!*/ ds;  Trigger trig;
      List<TypeVariable>/*!*/ typeParams;
      IdentifierExpr/*!*/ id;
@@ -1265,6 +1270,7 @@ AtomExpression<out Expr/*!*/ e>
   | "true"            (. e = new LiteralExpr(t, true); .)
   | Nat<out bn>            (. e = new LiteralExpr(t, bn); .)
   | Dec<out bd>            (. e = new LiteralExpr(t, bd); .)
+		| Float<out bf>            (. e = new LiteralExpr(t, bf); .)
   | BvLit<out bn, out n> (. e = new LiteralExpr(t, bn, n); .)
 
   | Ident<out x>            (. id = new IdentifierExpr(x, x.val);  e = id; .)
@@ -1290,7 +1296,7 @@ AtomExpression<out Expr/*!*/ e>
     Expression<out e>
     ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToReal), new List<Expr>{ e }); .)
 
-  | "(" ( Expression<out e>                 (. if (e is BvBounds)
+		| "(" ( Expression<out e>                 (. if (e is BvBounds)
                                                  this.SemErr("parentheses around bitvector bounds " +
                                                         "are not allowed"); .)
         | Forall                            (. x = t; .)
@@ -1479,7 +1485,7 @@ Dec<out BigDec n>
   (
     decimal   (. s = t.val; .)
   |
-    float     (. s = t.val; .)
+    dec_float     (. s = t.val; .)
   )
   (. try {
        n = BigDec.FromString(s);
@@ -1508,4 +1514,19 @@ BvLit<out BigNum n, out int m>
      }
   .)
   .
+
+Float<out BigFloat n>
+= (. string s = ""; .)
+  (
+    float   (. s = t.val; .)
+  )
+  (. try {
+       n = BigFloat.FromString(s);
+     } catch (FormatException e) {
+       this.SemErr("incorrectly formatted floating point, " + e.Message);
+       n = BigFloat.ZERO;
+     }
+  .)
+  .
+
 END BoogiePL.

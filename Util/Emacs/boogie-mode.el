@@ -26,27 +26,42 @@
    ; comments have the form /* ... */
    '("/\\*\\([^*]\\|\\*[^/]\\)*\\*/" . font-lock-comment-face)
    ; or // ...
-   '("//\\([^
-]\\)*" . font-lock-comment-face)
-
+   '("//[^\r\n]*" . font-lock-comment-face)
    `(,(boogie-regexp-opt '(
         "type" "const" "function" "axiom" "var" "procedure" "implementation"
         "returns" "where" "requires" "ensures" "modifies" "free" "unique"
         "invariant" "extends" "complete"
-        )) . font-lock-builtin-face)
+        )) . font-lock-keyword-face)
    `(,(boogie-regexp-opt '(
         "assert" "assume" "break" "call" "then" "else" "havoc" "if" "goto" "return" "while"
         "old" "forall" "exists" "lambda" "cast" "div" "mod"
-        "false" "true")) . font-lock-keyword-face)
-   `(,(boogie-regexp-opt '("bool" "int" "real"
-                             "bv0" "bv1" "bv2" "bv3" "bv4" "bv5" "bv6" "bv7" "bv8" "bv9"
-                             "bv10" "bv11" "bv12" "bv13" "bv14" "bv15" "bv16" "bv17" "bv18" "bv19"
-                             "bv20" "bv21" "bv22" "bv23" "bv24" "bv25" "bv26" "bv27" "bv28" "bv29"
-                             "bv30" "bv31" "bv32" "bv33" "bv34" "bv35" "bv36" "bv37" "bv38" "bv39"
-                             "bv40" "bv41" "bv42" "bv43" "bv44" "bv45" "bv46" "bv47" "bv48" "bv49"
-                             "bv50" "bv51" "bv52" "bv53" "bv54" "bv55" "bv56" "bv57" "bv58" "bv59"
-                             "bv60" "bv61" "bv62" "bv63" "bv64" ; and so on
-                             )) . font-lock-type-face)
+        )) . font-lock-keyword-face)
+   `(,(boogie-regexp-opt '(
+        "builtin" "inline" "datatype" "constructor"
+        )) . font-lock-preprocessor-face)
+   ;; CIVL stuff
+   `(,(boogie-regexp-opt '(
+        "async" "par"
+        )) . font-lock-keyword-face)
+   `(,(boogie-regexp-opt '(
+        "layer" "yields" "yield_assert"
+        "atomic" "left" "right" "both"
+        "linear" "linear_in" "linear_out"
+        "yield"
+        )) . font-lock-preprocessor-face)
+   `(,(boogie-regexp-opt '(
+        "false" "true"
+        )) . font-lock-constant-face)
+   `(,(boogie-regexp-opt '(
+        "bool" "int" "real"
+        "bv0" "bv1" "bv2" "bv3" "bv4" "bv5" "bv6" "bv7" "bv8" "bv9"
+        "bv10" "bv11" "bv12" "bv13" "bv14" "bv15" "bv16" "bv17" "bv18" "bv19"
+        "bv20" "bv21" "bv22" "bv23" "bv24" "bv25" "bv26" "bv27" "bv28" "bv29"
+        "bv30" "bv31" "bv32" "bv33" "bv34" "bv35" "bv36" "bv37" "bv38" "bv39"
+        "bv40" "bv41" "bv42" "bv43" "bv44" "bv45" "bv46" "bv47" "bv48" "bv49"
+        "bv50" "bv51" "bv52" "bv53" "bv54" "bv55" "bv56" "bv57" "bv58" "bv59"
+        "bv60" "bv61" "bv62" "bv63" "bv64" ; and so on
+        )) . font-lock-type-face)
    )
   "Minimal highlighting for Boogie mode")
 
@@ -108,6 +123,7 @@
   ; indentation
   ; (make-local-variable 'indent-line-function)
   ; (setq indent-line-function 'boogie-indent-line)
+  (setq-local tab-width 2)
   ; menu
   ; providing the mode
   (setq major-mode 'boogie-mode)

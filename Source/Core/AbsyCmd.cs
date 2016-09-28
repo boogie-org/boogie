@@ -2108,8 +2108,8 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public abstract class CallCommonality : SugaredCmd {
-    public QKeyValue Attributes;
+  public abstract class CallCommonality : SugaredCmd, ICarriesAttributes {
+    public QKeyValue Attributes { get; set; }
 
     private bool isFree = false;
     public bool IsFree {
@@ -2247,7 +2247,7 @@ namespace Microsoft.Boogie {
               }
               foreach (CallCmd callCmd in CallCmds)
               {
-                  if (!QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
+                  if (!QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, CivlAttributes.YIELDS))
                   {
                       tc.Error(callCmd, "target procedure of a parallel call must yield");
                   }
@@ -2546,7 +2546,7 @@ namespace Microsoft.Boogie {
             {
                 tc.Error(this, "enclosing procedure of an async call must yield");
             }
-            if (!QKeyValue.FindBoolAttribute(Proc.Attributes, "yields"))
+            if (!QKeyValue.FindBoolAttribute(Proc.Attributes, CivlAttributes.YIELDS))
             {
                 tc.Error(this, "target procedure of an async call must yield");
             }
@@ -2872,8 +2872,8 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public abstract class PredicateCmd : Cmd {
-    public QKeyValue Attributes;
+  public abstract class PredicateCmd : Cmd, ICarriesAttributes {
+    public QKeyValue Attributes { get; set; }
     public /*readonly--except in StandardVisitor*/ Expr/*!*/ Expr;
     [ContractInvariantMethod]
     void ObjectInvariant() {

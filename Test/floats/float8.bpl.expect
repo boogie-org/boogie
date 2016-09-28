@@ -1,0 +1,5 @@
+float8.bpl(12,2): Error BP5001: This assertion might not hold.
+Execution trace:
+    float8.bpl(8,4): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

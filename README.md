@@ -33,9 +33,13 @@ several other institutions make the open-source Boogie tool what it is.
 
 ![boogie architecture](http://research.microsoft.com/en-us/projects/boogie/boogie.png)
 
+More documentation can be found at http://boogie-docs.readthedocs.org/en/latest/ .
+
 ## Language Reference
 
-[This is Boogie2](http://research.microsoft.com/en-us/um/people/leino/papers/krml178.pdf) details
+See [Language reference](http://boogie-docs.readthedocs.org/en/latest/LangRef.html).
+
+Note: [This is Boogie2](http://research.microsoft.com/en-us/um/people/leino/papers/krml178.pdf) details
 many aspects of the Boogie IVL but is slightly out of date.
 
 ## Getting help
