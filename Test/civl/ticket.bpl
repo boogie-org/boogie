@@ -8,10 +8,10 @@ axiom (forall x: int, y: int :: RightClosed(x)[y] <==> y <= x);
 
 type X;
 const nil: X;
-var {:layer 0,1} t: int;
-var {:layer 0,2} s: int;
-var {:layer 0,2} cs: X;
-var {:layer 0,2} T: [int]bool;
+var {:layer 0,1} t: int;       // next ticket to issue
+var {:layer 0,2} s: int;       // current ticket permitted to critical section
+var {:layer 0,2} cs: X;        // current thread in critical section
+var {:layer 0,2} T: [int]bool; // set of issued tickets
 
 // ###########################################################################
 // Invariants
@@ -58,13 +58,12 @@ ensures  {:layer 2} Inv2(T, s, cs);
 // Main program
 
 procedure {:yields} {:layer 2} main ({:linear_in "tid"} xls':[X]bool)
-requires {:layer 1} Inv1(T, t);
-requires {:layer 2} xls' == MapConstBool(true) && Inv2(T, s, cs);
+requires {:layer 2} xls' == MapConstBool(true);
 {
     var {:linear "tid"} tid: X;
     var {:linear "tid"} xls: [X]bool;
 
-    par Yield1() | Yield2();
+    yield;
 
     call InitAbstract(xls');
     xls := xls';
@@ -92,7 +91,7 @@ ensures {:layer 1,2} xl != nil;
 
 procedure {:yields} {:layer 2} Customer ({:linear_in "tid"} tid: X)
 requires {:layer 1} Inv1(T, t);
-requires {:layer 2} tid != nil && Inv2(T, s, cs);
+requires {:layer 2} Inv2(T, s, cs) && tid != nil;
 {
     par Yield1() | Yield2();    
     while (*) 
@@ -109,15 +108,14 @@ requires {:layer 2} tid != nil && Inv2(T, s, cs);
 
 procedure {:yields} {:layer 2} Enter ({:linear "tid"} tid: X)
 requires {:layer 1} Inv1(T, t);
-ensures {:layer 1} Inv1(T,t);
-requires {:layer 2} tid != nil && Inv2(T, s, cs);
-ensures {:layer 2} Inv2(T, s, cs) && cs == tid;
+ensures  {:layer 1} Inv1(T, t);
+requires {:layer 2} Inv2(T, s, cs) && tid != nil;
+ensures  {:layer 2} Inv2(T, s, cs) && cs == tid;
 {
     var m: int;
 
     par Yield1() | Yield2();
     call m := GetTicketAbstract(tid);
-    par Yield1();
     call WaitAndEnter(tid, m);
     par Yield1() | Yield2() | YieldSpec(tid);
 }
@@ -128,11 +126,10 @@ ensures {:layer 2} Inv2(T, s, cs) && cs == tid;
 // Note how GetTicketAbstract becomes a right mover
 
 procedure {:yields} {:layer 1,2} InitAbstract ({:linear "tid"} xls:[X]bool)
-requires {:layer 1} Inv1(T, t);
 ensures  {:layer 1} Inv1(T, t);
 ensures {:atomic} |{ A: assert xls == MapConstBool(true); cs := nil; s := 0; T := RightOpen(0); return true; }|;
 {
-    par Yield1();
+    yield;
     call Init(xls);
     par Yield1();
 }
@@ -157,7 +154,7 @@ procedure {:yields} {:layer 0,1} GetTicket ({:linear "tid"} tid: X) returns (m: 
 ensures {:atomic} |{ A: m := t; t := t + 1; T[m] := true; return true; }|;
 
 procedure {:yields} {:layer 0,2} WaitAndEnter ({:linear "tid"} tid: X, m:int);
-ensures {:atomic} |{ A: assume m <= s; cs := tid; return true; }|;
+ensures {:atomic} |{ A: assume m == s; cs := tid; return true; }|;
 
 procedure {:yields} {:layer 0,2} Leave ({:linear "tid"} tid: X);
 ensures {:atomic} |{ A: assert cs == tid; s := s + 1; cs := nil; return true; }|;
