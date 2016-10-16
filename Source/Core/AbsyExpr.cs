@@ -1746,11 +1746,11 @@ namespace Microsoft.Boogie {
           if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
             return Type.Real;
           }
-          if (arg0type.IsFloat && arg0type.Unify(arg1type)) {
-            return Type.GetFloatType(arg0.Type.FloatSignificand, arg0.Type.FloatExponent);
-          }
-          if (arg1type.IsFloat && arg1type.Unify(arg0type)) {
-            return Type.GetFloatType(arg1.Type.FloatSignificand, arg1.Type.FloatExponent);
+          if (arg0type.IsFloat && arg1type.IsFloat) {
+            if (arg0type.FloatExponent == arg1type.FloatExponent && arg0type.FloatSignificand == arg1type.FloatSignificand) {
+              //So we never call arg0type.Unify, but it should be ok
+              return Type.GetFloatType(arg0type.FloatSignificand, arg0type.FloatExponent);
+            }
           }
           goto BAD_TYPE;
         case Opcode.Div:
@@ -1764,11 +1764,11 @@ namespace Microsoft.Boogie {
               (arg1type.Unify(Type.Int) || arg1type.Unify(Type.Real))) {
             return Type.Real;
           }
-          if (arg0type.IsFloat && arg0type.Unify(arg1type)) {
-            return Type.GetFloatType(arg0.Type.FloatSignificand, arg0.Type.FloatExponent);
-          }
-          if (arg1type.IsFloat && arg1type.Unify(arg0type)) {
-            return Type.GetFloatType(arg1.Type.FloatSignificand, arg1.Type.FloatExponent);
+          if (arg0type.IsFloat && arg1type.IsFloat) {
+            if (arg0type.FloatExponent == arg1type.FloatExponent && arg0type.FloatSignificand == arg1type.FloatSignificand) {
+              //So we never call arg0type.Unify, but it should be ok
+              return Type.GetFloatType(arg0type.FloatSignificand, arg0type.FloatExponent);
+            }
           }
           goto BAD_TYPE;
         case Opcode.Pow:
@@ -1802,8 +1802,10 @@ namespace Microsoft.Boogie {
           if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
             return Type.Bool;
           }
-          if ((arg0type.IsFloat && arg0type.Unify(arg1type)) || (arg1type.IsFloat && arg1type.Unify(arg0type))) {
-            return Type.Bool;
+          if (arg0type.IsFloat && arg1type.IsFloat) {
+            if (arg0type.FloatExponent == arg1type.FloatExponent && arg0type.FloatSignificand == arg1type.FloatSignificand) {
+              return Type.Bool;
+            }
           }
           goto BAD_TYPE;
         case Opcode.And:
@@ -2291,8 +2293,7 @@ namespace Microsoft.Boogie {
   public class ArithmeticCoercion : IAppliable {
     public enum CoercionType {
       ToInt,
-      ToReal,
-      ToFloat
+      ToReal
     }
 
     private IToken/*!*/ tok;
