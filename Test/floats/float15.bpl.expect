@@ -1,0 +1,4 @@
+float15.bpl(14,1): Error: mismatched types in assignment command (cannot assign double to float)
+float15.bpl(15,8): Error: invalid argument types (double and float24e8) to binary operator *
+float15.bpl(16,8): Error: invalid argument types (double and float24e8) to binary operator +
+3 type checking errors detected in float15.bpl
