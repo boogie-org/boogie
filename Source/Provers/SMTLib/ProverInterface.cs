@@ -1522,7 +1522,11 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       SendThisVC("(push 1)");
-      SendThisVC(string.Format("(set-option :{0} {1})", Z3.SetTimeoutOption(), (0 < tla && tla < timeLimit) ? tla : timeLimit));
+      // FIXME: Gross. Timeout should be set in one place! This is also Z3 specific!
+      int newTimeout = (0 < tla && tla < timeLimit) ? tla : timeLimit;
+      if (newTimeout > 0) {
+        SendThisVC(string.Format("(set-option :{0} {1})", Z3.SetTimeoutOption(), newTimeout));
+      }
       popLater = true;
 
       SendThisVC(string.Format("; checking split VC with {0} unverified assertions", split.Count));
@@ -2210,14 +2214,10 @@ namespace Microsoft.Boogie.SMTLib
 	
     public override void SetTimeOut(int ms)
     {
-	    if (options.Solver == SolverKind.Z3) {
-            var name = Z3.SetTimeoutOption();
-            var value = ms.ToString();
-            options.TimeLimit = ms;
-            options.SmtOptions.RemoveAll(ov => ov.Option == name);
-            options.AddSmtOption(name, value);
-            SendThisVC(string.Format("(set-option :{0} {1})", name, value));
-	    }
+      if (ms < 0) {
+          throw new ArgumentOutOfRangeException ("ms must be >= 0");
+      }
+      options.TimeLimit = ms;
     }
 
     public override object Evaluate(VCExpr expr)
