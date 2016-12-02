@@ -364,15 +364,15 @@ namespace Microsoft.Boogie {
 
     // Float nodes
 
-    public VCExprOp BinaryFloatOp(int exp, int man, string op)
+    public VCExprOp BinaryFloatOp(int sig, int exp, string op)
     {
       Contract.Requires(exp > 0);
-      Contract.Requires(man > 0);
+      Contract.Requires(sig > 0);
       Contract.Requires(op != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return new VCExprBinaryFloatOp(exp, man, op);
+      return new VCExprBinaryFloatOp(sig, exp, op);
     }
-
+        
     // Bitvector nodes
 
     public VCExpr Bitvector(BvConst bv) {
@@ -1694,7 +1694,7 @@ namespace Microsoft.Boogie.VCExprAST {
   // Float operators
 
   public class VCExprBinaryFloatOp : VCExprOp {
-    public readonly int Mantissa;
+    public readonly int Significand;
     public readonly int Exponent;
     private string op;
 
@@ -1712,7 +1712,7 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(cce.NonNullElements(typeArgs));
       //Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
-      return Type.GetFloatType(Exponent, Mantissa);
+      return Type.GetFloatType(Significand, Exponent);
     }
 
     [Pure]
@@ -1721,17 +1721,17 @@ namespace Microsoft.Boogie.VCExprAST {
       if (Object.ReferenceEquals(this, that))
         return true;
       if (that is VCExprBinaryFloatOp)
-        return this.Exponent == ((VCExprBinaryFloatOp)that).Exponent && this.Mantissa == ((VCExprBinaryFloatOp)that).Mantissa;
+        return this.Exponent == ((VCExprBinaryFloatOp)that).Exponent && this.Significand == ((VCExprBinaryFloatOp)that).Significand;
       return false;
     }
     [Pure]
     public override int GetHashCode() {
-      return Exponent * 81748912 + Mantissa * 67867979;
+      return Exponent * 81748912 + Significand * 67867979;
     }
 
-    internal VCExprBinaryFloatOp(int exp, int man, string op) {
+    internal VCExprBinaryFloatOp(int sig, int exp, string op) {
       this.Exponent = exp;
-      this.Mantissa = man;
+      this.Significand = sig;
       this.op = op;
     }
     public override Result Accept<Result, Arg>

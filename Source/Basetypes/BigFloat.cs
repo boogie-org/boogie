@@ -385,7 +385,7 @@ namespace Microsoft.Basetypes
     [Pure]
     public BigFloat Abs {
       get {
-        return new BigFloat(true, Exponent, Significand, ExponentSize, SignificandSize);
+        return new BigFloat(true, Significand, Exponent, SignificandSize, ExponentSize);
       }
     }
 
@@ -393,8 +393,8 @@ namespace Microsoft.Basetypes
     public BigFloat Negate {
       get {
         if (value != "")
-          return value[0] == '-' ? new BigFloat(value.Remove(0, 1), ExponentSize, significandSize) : new BigFloat("-" + value, ExponentSize, significandSize);
-        return new BigFloat(!isNeg, Exponent, Significand, ExponentSize, SignificandSize);
+          return value[0] == '-' ? new BigFloat(value.Remove(0, 1), significandSize, ExponentSize) : new BigFloat("-" + value, significandSize, ExponentSize);
+        return new BigFloat(!isNeg, Significand, Exponent, SignificandSize, ExponentSize);
       }
     }
 
@@ -438,7 +438,7 @@ namespace Microsoft.Basetypes
     public static BigFloat operator *(BigFloat x, BigFloat y) {
       Contract.Requires(x.ExponentSize == y.ExponentSize);
       Contract.Requires(x.significandSize == y.significandSize);
-      return new BigFloat(x.isNeg ^ y.isNeg, x.Exponent + y.Exponent, x.significand * y.significand, x.significandSize, x.ExponentSize);
+      return new BigFloat(x.isNeg ^ y.isNeg, x.significand * y.significand, x.Exponent + y.Exponent, x.significandSize, x.ExponentSize);
     }
 
 
