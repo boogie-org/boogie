@@ -198,13 +198,12 @@ namespace Microsoft.Boogie
                 var initBlock = new Block(Token.NoToken, string.Format("{0}_{1}_init", first.proc.Name, second.proc.Name), transitionRelationComputation.TriggerAssumes(), new GotoCmd(Token.NoToken, ls, bs));
                 blocks.Insert(0, initBlock);
             }
-            List<Variable> linearInParams = new List<Variable>();
-            foreach (var v in second.thisInParams)
-            {
-                if (linearTypeChecker.FindLinearKind(v) == LinearKind.LINEAR_IN) continue;
-                linearInParams.Add(v);
-            }
-            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(program, first.thatOutParams.Union(linearInParams), frame).Union(DisjointnessExpr(program, first.thatOutParams.Union(second.thisOutParams), frame));
+
+            var thisInParamsFiltered = second.thisInParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_IN);
+            IEnumerable<Expr> linearityAssumes = Enumerable.Union(
+                DisjointnessExpr(program, first.thatOutParams.Union(thisInParamsFiltered), frame),
+                DisjointnessExpr(program, first.thatOutParams.Union(second.thisOutParams), frame));
+            // TODO: add further disjointness expressions?
             Ensures ensureCheck = new Ensures(false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation));
             ensureCheck.ErrorData = string.Format("Commutativity check between {0} and {1} failed", first.proc.Name, second.proc.Name);
             List<Ensures> ensures = new List<Ensures> { ensureCheck };

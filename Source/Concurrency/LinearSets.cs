@@ -741,6 +741,8 @@ namespace Microsoft.Boogie
                     if (!this.linearDomains.ContainsKey(domainName)) continue;
                     domainNameToOutputScope[domainName].Add(v);
                 }
+                // TODO: Also add linear and linear_out parameters to domainNameToOutputScope?
+                //       This should still be sound and strengthen the generated postcondition.
                 foreach (var domainName in linearDomains.Keys)
                 {
                     proc.Requires.Add(new Requires(true, DisjointnessExpr(domainName, domainNameToInputScope[domainName])));
