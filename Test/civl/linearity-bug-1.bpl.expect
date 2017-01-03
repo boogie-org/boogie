@@ -1,0 +1,6 @@
+(0,0): Error BP5003: A postcondition might not hold on this return path.
+(0,0): Related location: Commutativity check between read_n and inc_n failed
+Execution trace:
+    (0,0): read_n_inc_n_init
+
+Boogie program verifier finished with 0 verified, 1 error
