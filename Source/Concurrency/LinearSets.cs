@@ -24,6 +24,7 @@ namespace Microsoft.Boogie
     }
 
     public enum LinearKind {
+        ORDINARY,
         LINEAR,
         LINEAR_IN,
         LINEAR_OUT
@@ -434,8 +435,7 @@ namespace Microsoft.Boogie
             }
             else
             {
-                Debug.Assert(false);
-                return LinearKind.LINEAR;
+                return LinearKind.ORDINARY;
             }
         }
         public override Variable VisitVariable(Variable node)
