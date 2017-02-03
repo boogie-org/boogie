@@ -4,6 +4,10 @@
 " Last Change:	Fri Mar 14 13:47:43 WEST 2008
 " Filenames:	*.bpl
 
+" Comments: 
+" Make sure to create a file name .vim/ftdetect/bpl.vim containing this line:
+" au BufRead,BufNewFile *.bpl		set filetype=boogie
+
 if exists("b:current_syntax")
     finish
 endif
@@ -61,6 +65,7 @@ syn match   bplNumber		"\<\(0[0-7]*\|0[xX]\x\+\|\d\+\)[lL]\=\>"
 syn match   bplNumber		"\(\<\d\+\.\d*\|\.\d\+\)\([eE][-+]\=\d\+\)\=[fFdD]\="
 syn match   bplNumber		"\<\d\+[eE][-+]\=\d\+[fFdD]\=\>"
 syn match   bplNumber		"\<\d\+\([eE][-+]\=\d\+\)\=[fFdD]\>"
+syn match   bplNumber		"\<\d\+bv\d\+\>"
 
 " The default highlighting.
 hi def link bplType			Type
