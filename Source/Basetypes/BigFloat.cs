@@ -24,17 +24,11 @@ namespace Microsoft.Basetypes
     //Please note that this code outline is copy-pasted from BigDec.cs
 
     // the internal representation
-    [Rep]
     internal readonly BIM significand; //Note that the significand arrangement matches standard fp arrangement (most significant bit is farthest left)
-    [Rep]
     internal readonly int significandSize;
-    [Rep]
     internal readonly BIM exponent; //The value of the exponent is always positive as per fp representation requirements
-    [Rep]
     internal readonly int exponentSize; //The bit size of the exponent
-    [Rep]
     internal readonly String value; //Only used with second syntax
-    [Rep]
     internal readonly bool isNeg;
 
     public BIM Significand {
@@ -407,7 +401,7 @@ namespace Microsoft.Basetypes
     public static BigFloat operator +(BigFloat x, BigFloat y) {
       //TODO: Modify for correct fp functionality
       Contract.Requires(x.ExponentSize == y.ExponentSize);
-      Contract.Requires(x.significandSize == y.significandSize);
+      Contract.Requires(x.SignificandSize == y.SignificandSize);
       BIM m1 = x.significand;
       BIM e1 = x.Exponent;
       BIM m2 = y.significand;
@@ -437,7 +431,7 @@ namespace Microsoft.Basetypes
     [Pure]
     public static BigFloat operator *(BigFloat x, BigFloat y) {
       Contract.Requires(x.ExponentSize == y.ExponentSize);
-      Contract.Requires(x.significandSize == y.significandSize);
+      Contract.Requires(x.SignificandSize == y.SignificandSize);
       return new BigFloat(x.isNeg ^ y.isNeg, x.significand * y.significand, x.Exponent + y.Exponent, x.significandSize, x.ExponentSize);
     }
 
