@@ -1763,6 +1763,8 @@ namespace Microsoft.Boogie.VCExprAST {
         return visitor.VisitFloatGtOp(expr, arg);
       case ("=="):
         return visitor.VisitFloatEqOp(expr, arg);
+      case ("!="):
+        return visitor.VisitFloatNeqOp(expr, arg);
       default:
         Contract.Assert(false);
         throw new cce.UnreachableException();

@@ -129,10 +129,10 @@ namespace Microsoft.Basetypes
        */
       BIM sig, exp;
       int sigSize, expSize;
-      bool isNeg;
+      bool isNeg;    
 
       if (s.IndexOf('f') == -1) {
-        String val = s;
+        String val = s.Substring(1, 3);
         sigSize = int.Parse(s.Substring(4, s.IndexOf('e')-4));
         expSize = int.Parse(s.Substring(s.IndexOf('e') + 1));
         if (sigSize <= 0 || expSize <= 0)
