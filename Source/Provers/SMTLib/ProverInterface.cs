@@ -168,6 +168,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     internal TypeAxiomBuilder AxBuilder { get; private set; }
+    private TypeAxiomBuilder CachedAxBuilder;
     internal readonly UniqueNamer Namer;
     readonly TypeDeclCollector DeclCollector;
     protected SMTLibProcess Process;
@@ -354,6 +355,7 @@ namespace Microsoft.Boogie.SMTLib
         else
           AddAxiom(VCExpr2String(axioms, -1));
         AxiomsAreSetup = true;
+        CachedAxBuilder = AxBuilder;
       }
     }
 
@@ -363,14 +365,24 @@ namespace Microsoft.Boogie.SMTLib
       return 0;
     }
 
+    private void FlushCommons()
+    {
+      FlushAxioms(SendCommon);
+    }
+
     private void FlushAxioms()
     {
-      TypeDecls.Iter(SendCommon);
+      FlushAxioms(SendThisVC);
+    }
+
+    private void FlushAxioms(Action<String> fn)
+    {
+      TypeDecls.Iter(fn);
       TypeDecls.Clear();
       foreach (string s in Axioms) {
         Contract.Assert(s != null);
         if (s != "true")
-          SendCommon("(assert " + s + ")");
+          fn("(assert " + s + ")");
       }
       Axioms.Clear();
       //FlushPushedAssertions();
@@ -415,6 +427,12 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       PrepareCommon();
+      FlushCommons();
+
+      if (HasReset) {
+        AxBuilder = (TypeAxiomBuilder)CachedAxBuilder.Clone();
+        DeclCollector.Push();
+      }
 
       OptimizationRequests.Clear();
 
@@ -439,6 +457,10 @@ namespace Microsoft.Boogie.SMTLib
           Process.Inspector.NewProblem(descriptiveName, vc, handler);
       }
 
+      if (HasReset) {
+        DeclCollector.Pop();
+        HasReset = false;
+      }
       SendCheckSat();
       FlushLogFile();
     }
@@ -470,6 +492,7 @@ namespace Microsoft.Boogie.SMTLib
             currentLogFile.WriteLine(c);
           }
         }
+        HasReset = true;
       }
     }
 
@@ -2075,8 +2098,7 @@ namespace Microsoft.Boogie.SMTLib
     // verification condition
     private readonly List<string/*!>!*/> Axioms = new List<string/*!*/>();
     private bool AxiomsAreSetup = false;
-
-
+    private bool HasReset = false;
 
 
     // similarly, a list of function/predicate declarations
