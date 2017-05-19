@@ -369,7 +369,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(exp > 0);
       Contract.Requires(sig > 0);
       Contract.Requires(op != null);
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      Contract.Ensures(Contract.Result<VCExprOp>() != null);
       return new VCExprBinaryFloatOp(sig, exp, op);
     }
         

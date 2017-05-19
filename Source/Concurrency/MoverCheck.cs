@@ -198,7 +198,12 @@ namespace Microsoft.Boogie
                 var initBlock = new Block(Token.NoToken, string.Format("{0}_{1}_init", first.proc.Name, second.proc.Name), transitionRelationComputation.TriggerAssumes(), new GotoCmd(Token.NoToken, ls, bs));
                 blocks.Insert(0, initBlock);
             }
-            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(program, first.thatOutParams.Union(second.thisInParams), frame).Union(DisjointnessExpr(program, first.thatOutParams.Union(second.thisOutParams), frame));
+
+            var thisInParamsFiltered = second.thisInParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_IN);
+            IEnumerable<Expr> linearityAssumes = Enumerable.Union(
+                DisjointnessExpr(program, first.thatOutParams.Union(thisInParamsFiltered), frame),
+                DisjointnessExpr(program, first.thatOutParams.Union(second.thisOutParams), frame));
+            // TODO: add further disjointness expressions?
             Ensures ensureCheck = new Ensures(false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation));
             ensureCheck.ErrorData = string.Format("Commutativity check between {0} and {1} failed", first.proc.Name, second.proc.Name);
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
@@ -232,10 +237,10 @@ namespace Microsoft.Boogie
             List<Requires> requires = new List<Requires>();
             List<Ensures> ensures = new List<Ensures>();
             requires.Add(DisjointnessRequires(program, first.thatInParams.Union(second.thisInParams), frame));
-            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(program, first.thatInParams.Union(second.thisOutParams), frame);
             foreach (AssertCmd assertCmd in second.thisGate)
                 requires.Add(new Requires(false, assertCmd.Expr));
             
+            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(program, first.thatInParams.Union(second.thisOutParams), frame);
             foreach (AssertCmd assertCmd in first.thatGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));

@@ -313,13 +313,12 @@ namespace Microsoft.Boogie {
     private void WaitForOutput(object dummy) {
       lock (this)
       {
-        try
-        {
+        try {
           outcome = thmProver.CheckOutcome(cce.NonNull(handler));
-        }
-        catch (UnexpectedProverOutputException e)
-        {
+        } catch (UnexpectedProverOutputException e) {
           outputExn = e;
+        } catch (Exception e) {
+          outputExn = new UnexpectedProverOutputException(e.Message);
         }
 
         switch (outcome)
