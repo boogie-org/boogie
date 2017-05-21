@@ -119,7 +119,10 @@ namespace Microsoft.Boogie
             }
             foreach (Block block in blocks)
             {
-                if (block.TransferCmd is ReturnCmd) continue;
+                if (block.TransferCmd is ReturnCmd) {
+                    blockMap[block].TransferCmd = new ReturnCmd(block.TransferCmd.tok);
+                    continue;
+                }
                 List<Block> otherGotoCmdLabelTargets = new List<Block>();
                 List<string> otherGotoCmdLabelNames = new List<string>();
                 GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
@@ -204,7 +207,7 @@ namespace Microsoft.Boogie
                 DisjointnessExpr(program, first.thatOutParams.Union(thisInParamsFiltered), frame),
                 DisjointnessExpr(program, first.thatOutParams.Union(second.thisOutParams), frame));
             // TODO: add further disjointness expressions?
-            Ensures ensureCheck = new Ensures(false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation));
+            Ensures ensureCheck = new Ensures(first.proc.tok, false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation), null);
             ensureCheck.ErrorData = string.Format("Commutativity check between {0} and {1} failed", first.proc.Name, second.proc.Name);
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
             
