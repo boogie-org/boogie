@@ -123,7 +123,7 @@ namespace Microsoft.Basetypes
        */
       BIM sig, exp;
       int sigSize, expSize;
-      bool isNeg;    
+      bool isNeg;
 
       if (s.IndexOf('f') == -1) {
         String val = s.Substring(1, 3);
