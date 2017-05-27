@@ -118,7 +118,7 @@ namespace Microsoft.Boogie
             program = _program;
             gen = ctx;
             if(old_checker == null)
-                checker = new Checker(this, program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime, null);
+                checker = new Checker(this, program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime, CommandLineOptions.Clo.Resourcelimit, null);
             else {
                 checker = old_checker;
                 checker.RetargetWithoutReset(program,checker.TheoremProver.Context);
@@ -1555,6 +1555,8 @@ namespace Microsoft.Boogie
                     return VC.ConditionGeneration.Outcome.Errors;
                 case ProverInterface.Outcome.TimeOut:
                     return VC.ConditionGeneration.Outcome.TimedOut;
+                case ProverInterface.Outcome.OutOfResource:
+                    return VC.ConditionGeneration.Outcome.OutOfResource;
                 default:
                    return VC.ConditionGeneration.Outcome.Inconclusive;
             }

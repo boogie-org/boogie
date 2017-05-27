@@ -186,6 +186,17 @@ namespace Microsoft.Boogie.SMTLib
                 return "SOFT_TIMEOUT";
         }
 
+        public static string SetRlimitOption()
+        {
+            int major, minor;
+            GetVersion(out major, out minor);
+            if (major > 4 || major == 4 && minor >= 3)
+                return "RLIMIT";
+            else
+                // not sure what is for "rlimit" in earlier versions.
+                return "";
+        }
+
         // options that work only on the command line
         static string[] commandLineOnly = { "TRACE", "PROOF_MODE" };
 
@@ -264,6 +275,11 @@ namespace Microsoft.Boogie.SMTLib
                     options.AddWeakSmtOption("fixedpoint.TIMEOUT", options.TimeLimit.ToString());
               // This kills the Z3 *instance* after the specified time, not a particular query, so we cannot use it.
               // options.AddSolverArgument("/T:" + (options.TimeLimit + 1000) / 1000);
+            }
+
+            if (options.ResourceLimit > 0) 
+            {
+              options.AddWeakSmtOption("RLIMIT", options.ResourceLimit.ToString());
             }
 
             if (options.Inspector != null)

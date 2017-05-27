@@ -352,7 +352,7 @@ namespace Microsoft.Boogie.Houdini {
             outcome = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions, out unsatisfiedSoftAssumptions, handler);
             hardAssumptions.RemoveAt(hardAssumptions.Count - 1);
 
-            if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory || outcome == ProverInterface.Outcome.Undetermined)
+            if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory || outcome == ProverInterface.Outcome.OutOfResource || outcome == ProverInterface.Outcome.Undetermined)
                 break;
 
             var reason = new HashSet<string>();
@@ -382,7 +382,7 @@ namespace Microsoft.Boogie.Houdini {
             var unsatisfiedSoftAssumptions2 = new List<int>();
             outcome = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions2, out unsatisfiedSoftAssumptions2, handler);
 
-            if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory || outcome == ProverInterface.Outcome.Undetermined)
+            if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory || outcome == ProverInterface.Outcome.OutOfResource|| outcome == ProverInterface.Outcome.Undetermined)
                 break;
 
             unsatisfiedSoftAssumptions2.Iter(i => reason.Remove(softAssumptions2[i].ToString()));
@@ -406,7 +406,7 @@ namespace Microsoft.Boogie.Houdini {
             }
         } while (false);
 
-        if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory || outcome == ProverInterface.Outcome.Undetermined)
+        if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory || outcome == ProverInterface.Outcome.OutOfResource || outcome == ProverInterface.Outcome.Undetermined)
         {
             Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name, "TimeOut", descriptiveName);
         }
