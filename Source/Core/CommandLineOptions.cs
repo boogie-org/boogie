@@ -1805,7 +1805,7 @@ namespace Microsoft.Boogie {
        Set the time limit for a given implementation.
 
      {:rlimit N}
-       Set the resource limit for a given implementation.
+       Set the Z3 resource limit for a given implementation.
 
   ---- On functions ----------------------------------------------------------
 
@@ -2127,7 +2127,7 @@ namespace Microsoft.Boogie {
                 Limit the number of seconds spent trying to verify
                 each procedure
   /rlimit:<num>
-                Limit the resource spent trying to verify each procedure
+                Limit the Z3 resource spent trying to verify each procedure
   /errorTrace:<n>
                 0 - no Trace labels in the error output,
                 1 (default) - include useful Trace labels in error output,

@@ -1,22 +1,22 @@
-// RUN: %boogie -rlimit:8000 "%s" > "%t"
-// RUN: %diff "%s.expect" "%t"
+// RUN: %boogie -rlimit:8000 "%s" | %OutputCheck "%s"
 
-procedure TestTimeouts0(in: [int]int, len: int) returns (out: [int]int);
+procedure TestRlimit0(in: [int]int, len: int) returns (out: [int]int);
   requires in[0] == 0 && (forall i: int :: 0 <= i ==> in[i + 1] == in[i] + 1);
   requires 0 < len;
-  ensures (forall j: int :: 0 <= j && j < len ==> out[j] == j);
+  ensures (forall j: int :: 0 <= j && j < len ==> out[j] == in[j]);
 
-implementation TestTimeouts0(in: [int]int, len: int) returns (out: [int]int)
+implementation TestRlimit0(in: [int]int, len: int) returns (out: [int]int)
 {
+    // CHECK-L: ${CHECKFILE_NAME}(${LINE:-2},16): Verification out of resource (TestRlimit0)
     var i : int;
 
     i := 0;
     out[i] := 0;
     while (i < len)
       invariant 0 <= i && i <= len;
-      invariant out[0] == 0 && (forall j: int :: 0 <= j && j < i ==> out[j + 1] == out[j] + 1);
+      invariant out[0] == 0 && (forall j: int :: 0 <= j && j < i ==> out[j] == in[j]);
     {
-        out[i + 1] := out[i] + 1;
+        out[i] := in[i];
         i := i + 1;
     }
 
@@ -29,12 +29,12 @@ implementation TestTimeouts0(in: [int]int, len: int) returns (out: [int]int)
     }
 }
 
-procedure TestTimeouts1(in: [int]int, len: int) returns (out: [int]int);
+procedure TestRlimit1(in: [int]int, len: int) returns (out: [int]int);
   requires in[0] == 0 && (forall i: int :: 0 <= i ==> in[i + 1] == in[i] + 1);
   requires 0 < len;
-  ensures (forall j: int :: 0 <= j && j < len ==> out[j] == j);
+  ensures (forall j: int :: 0 <= j && j < len ==> out[j] == in[j]);
 
-implementation {:rlimit 60000} TestTimeouts1(in: [int]int, len: int) returns (out: [int]int)
+implementation {:rlimit 60000} TestRlimit1(in: [int]int, len: int) returns (out: [int]int)
 {
     var i : int;
 
@@ -42,9 +42,9 @@ implementation {:rlimit 60000} TestTimeouts1(in: [int]int, len: int) returns (ou
     out[i] := 0;
     while (i < len)
       invariant 0 <= i && i <= len;
-      invariant out[0] == 0 && (forall j: int :: 0 <= j && j < i ==> out[j + 1] == out[j] + 1);
+      invariant out[0] == 0 && (forall j: int :: 0 <= j && j < i ==> out[j] == in[j]);
     {
-        out[i + 1] := out[i] + 1;
+        out[i] := in[i];
         i := i + 1;
     }
 
@@ -57,23 +57,23 @@ implementation {:rlimit 60000} TestTimeouts1(in: [int]int, len: int) returns (ou
     }
 }
 
-
-procedure TestTimeouts2(in: [int]int, len: int) returns (out: [int]int);
+procedure TestRlimit2(in: [int]int, len: int) returns (out: [int]int);
   requires in[0] == 0 && (forall i: int :: 0 <= i ==> in[i + 1] == in[i] + 1);
   requires 0 < len;
-  ensures (forall j: int :: 0 <= j && j < len ==> out[j] == j);
+  ensures (forall j: int :: 0 <= j && j < len ==> out[j] == in[j]);
 
-implementation {:rlimit 2000} TestTimeouts2(in: [int]int, len: int) returns (out: [int]int)
+implementation {:rlimit 2000} TestRlimit2(in: [int]int, len: int) returns (out: [int]int)
 {
+    // CHECK-L: ${CHECKFILE_NAME}(${LINE:-2},31): Verification out of resource (TestRlimit2)
     var i : int;
 
     i := 0;
     out[i] := 0;
     while (i < len)
       invariant 0 <= i && i <= len;
-      invariant out[0] == 0 && (forall j: int :: 0 <= j && j < i ==> out[j + 1] == out[j] + 1);
+      invariant out[0] == 0 && (forall j: int :: 0 <= j && j < i ==> out[j] == in[j]);
     {
-        out[i + 1] := out[i] + 1;
+        out[i] := in[i];
         i := i + 1;
     }
 
@@ -85,3 +85,4 @@ implementation {:rlimit 2000} TestTimeouts2(in: [int]int, len: int) returns (out
         i := i + 1;
     }
 }
+// CHECK-L: Boogie program verifier finished with 1 verified, 0 errors, 2 out of resource

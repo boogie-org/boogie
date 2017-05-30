@@ -1977,6 +1977,15 @@ namespace Microsoft.Boogie.SMTLib
           case "objectives":
             // We ignore this.
             break;
+          case "error":
+            if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId &&
+                resp.Arguments[0].Name.Contains("max. resource limit exceeded")) {
+              currentErrorHandler.OnResourceExceeded("max resource limit");
+              result = Outcome.OutOfResource;
+            } else {
+              HandleProverError("Unexpected prover response: " + resp.ToString());
+            }
+            break;
           default:
             HandleProverError("Unexpected prover response: " + resp.ToString());
             break;
