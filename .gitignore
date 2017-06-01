@@ -32,5 +32,7 @@ Source/*.suo
 Source/*.cache
 Source/.vs/
 
+.vscode
+
 # MonoDevelop files
 Source/*.userprefs
