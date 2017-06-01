@@ -33,7 +33,6 @@ namespace Microsoft.Boogie
     public class LinearTypeChecker : ReadOnlyVisitor
     {
         public Program program;
-        public int errorCount;
         public CheckingContext checkingContext;
         public Dictionary<string, Dictionary<Type, Function>> domainNameToCollectors;
         private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
@@ -46,7 +45,6 @@ namespace Microsoft.Boogie
         public LinearTypeChecker(Program program)
         {
             this.program = program;
-            this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
             this.domainNameToCollectors = new Dictionary<string, Dictionary<Type, Function>>();
             this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
@@ -106,7 +104,6 @@ namespace Microsoft.Boogie
         private void Error(Absy node, string message)
         {
             checkingContext.Error(node, message);
-            errorCount++;
         }
         public override Program VisitProgram(Program node)
         {
@@ -184,9 +181,9 @@ namespace Microsoft.Boogie
                 }
             }
             
-            var oldErrorCount = this.errorCount;
+            var oldErrorCount = checkingContext.ErrorCount;
             var impl = base.VisitImplementation(node);
-            if (oldErrorCount < this.errorCount)
+            if (oldErrorCount < checkingContext.ErrorCount)
                 return impl;
 
             Stack<Block> dfsStack = new Stack<Block>();

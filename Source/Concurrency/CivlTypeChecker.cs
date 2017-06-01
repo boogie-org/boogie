@@ -381,14 +381,13 @@ namespace Microsoft.Boogie
 
     public class CivlTypeChecker : ReadOnlyVisitor
     {
-        CheckingContext checkingContext;
+        public CheckingContext checkingContext;
         Procedure enclosingProc;
         Implementation enclosingImpl;
         HashSet<Variable> sharedVarsAccessed;
         int introducedLocalVarsUpperBound;
 
         public Program program;
-        public int errorCount;
         public Dictionary<Variable, SharedVariableInfo> globalVarToSharedVarInfo;
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
         public Dictionary<Procedure, AtomicProcedureInfo> procToAtomicProcedureInfo;
@@ -457,7 +456,6 @@ namespace Microsoft.Boogie
 
         public CivlTypeChecker(Program program)
         {
-            this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
             this.program = program;
             this.enclosingProc = null;
@@ -599,7 +597,7 @@ namespace Microsoft.Boogie
                 LayerRange layerRange = new LayerRange(lower, upper);
                 procToAtomicProcedureInfo[proc] = new AtomicProcedureInfo(layerRange);
             }
-            if (errorCount > 0) return;
+            if (checkingContext.ErrorCount > 0) return;
 
             // Implementations of atomic procedures
             foreach (Implementation impl in program.Implementations)
@@ -626,7 +624,7 @@ namespace Microsoft.Boogie
                     this.sharedVarsAccessed = null;
                 }
             }
-            if (errorCount > 0) return; 
+            if (checkingContext.ErrorCount > 0) return; 
             
             // Yielding procedures
             foreach (var proc in program.Procedures.Where(proc => proc.IsYield()))
@@ -685,7 +683,7 @@ namespace Microsoft.Boogie
                     }
                     sharedVarsAccessed = null;
                 }
-                if (errorCount > 0) continue;
+                if (checkingContext.ErrorCount > 0) continue;
                 if (!procToActionInfo.ContainsKey(proc))
                 {
                     if (availableUptoLayerNum < createdAtLayerNum)
@@ -699,7 +697,7 @@ namespace Microsoft.Boogie
                     }
                 }
             }
-            if (errorCount > 0) return;
+            if (checkingContext.ErrorCount > 0) return;
             
             foreach (var impl in program.Implementations)
             {
@@ -711,7 +709,7 @@ namespace Microsoft.Boogie
                     Error(impl.Proc, "Extern procedure cannot have an implementation");
                 }
             }
-            if (errorCount > 0) return;
+            if (checkingContext.ErrorCount > 0) return;
 
             foreach (Procedure proc in procToActionInfo.Keys)
             {
@@ -754,10 +752,10 @@ namespace Microsoft.Boogie
                     localVarToLocalVariableInfo[node.OutParams[i]] = new LocalVariableInfo(layer);
                 }
             }
-            if (errorCount > 0) return; 
+            if (checkingContext.ErrorCount > 0) return; 
             
             this.VisitProgram(program);
-            if (errorCount > 0) return;
+            if (checkingContext.ErrorCount > 0) return;
             YieldTypeChecker.PerformYieldSafeCheck(this);
             new LayerEraser().VisitProgram(program);
         }
@@ -1134,7 +1132,6 @@ namespace Microsoft.Boogie
         public void Error(Absy node, string message)
         {
             checkingContext.Error(node, message);
-            errorCount++;
         }
 
         private class PurityChecker : StandardVisitor

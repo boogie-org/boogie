@@ -745,21 +745,21 @@ namespace Microsoft.Boogie
 
       civlTypeChecker = new CivlTypeChecker(program);
       civlTypeChecker.TypeCheck();
-      if (civlTypeChecker.errorCount != 0)
+      if (civlTypeChecker.checkingContext.ErrorCount != 0)
       {
-          Console.WriteLine("{0} type checking errors detected in {1}", civlTypeChecker.errorCount, GetFileNameForConsole(bplFileName));
+          Console.WriteLine("{0} type checking errors detected in {1}", civlTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(bplFileName));
           return PipelineOutcome.TypeCheckingError;
       }
 
       linearTypeChecker = new LinearTypeChecker(program);
       linearTypeChecker.TypeCheck();
-      if (linearTypeChecker.errorCount == 0)
+      if (linearTypeChecker.checkingContext.ErrorCount == 0)
       {
         linearTypeChecker.Transform();
       }
       else
       {
-        Console.WriteLine("{0} type checking errors detected in {1}", linearTypeChecker.errorCount, GetFileNameForConsole(bplFileName));
+        Console.WriteLine("{0} type checking errors detected in {1}", linearTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(bplFileName));
         return PipelineOutcome.TypeCheckingError;
       }
 

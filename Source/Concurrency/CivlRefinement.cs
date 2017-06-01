@@ -801,12 +801,8 @@ namespace Microsoft.Boogie
                 {
                     Expr betaExpr = (new TransitionRelationComputation(civlTypeChecker.program, atomicActionInfo, frame, new HashSet<Variable>())).TransitionRelationCompute(true);
                     beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
-                    Expr alphaExpr = Expr.True;
-                    foreach (AssertCmd assertCmd in atomicActionInfo.gate)
-                    {
-                        alphaExpr = Expr.And(alphaExpr, assertCmd.Expr);
-                        alphaExpr.Type = Type.Bool;
-                    }
+                    Expr alphaExpr = Expr.And(atomicActionInfo.gate.Select(g => g.Expr));
+                    alphaExpr.Type = Type.Bool;
                     alpha = Substituter.Apply(always, alphaExpr);
                 }
                 foreach (Variable f in impl.OutParams)
