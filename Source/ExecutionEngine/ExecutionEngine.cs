@@ -509,7 +509,7 @@ namespace Microsoft.Boogie
         if (CommandLineOptions.Clo.StratifiedInlining == 0)
         {
           Concurrency.Transform(linearTypeChecker, civlTypeChecker);
-          (new LinearEraser()).VisitProgram(program);
+          linearTypeChecker.EraseLinearAnnotations();
           if (CommandLineOptions.Clo.CivlDesugaredFile != null)
           {
               int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;

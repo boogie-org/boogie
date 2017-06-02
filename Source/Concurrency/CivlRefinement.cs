@@ -654,7 +654,7 @@ namespace Microsoft.Boogie
                         newCmds.Add(assertCmd);
                     }
                     /*
-                    Disjointness assumes injected by LinearSets.cs are dropped now because the 
+                    Disjointness assumes injected by LinearTypeChecker are dropped now because the 
                     previous loop has already subsituted the old global state in these assumes.
                     It would be unsound to have these assumes on the current global state.
                     */
