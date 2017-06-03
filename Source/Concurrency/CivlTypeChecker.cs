@@ -45,22 +45,6 @@ namespace Microsoft.Boogie
         }
     }
 
-    public static class AttributeQueryExtensionMethods
-    {
-        public static bool HasAttribute(this ICarriesAttributes obj, string attribute)
-        { return QKeyValue.FindBoolAttribute(obj.Attributes, attribute); }
-
-        public static bool IsPure (this Declaration decl) { return decl.HasAttribute(CivlAttributes.PURE); }
-        public static bool IsYield(this Declaration decl) { return decl.HasAttribute(CivlAttributes.YIELDS); }
-
-        public static bool IsAtomic(this Ensures decl) { return decl.HasAttribute(CivlAttributes.ATOMIC); }
-        public static bool IsLeft(this Ensures decl) { return decl.HasAttribute(CivlAttributes.LEFT); }
-        public static bool IsRight(this Ensures decl) { return decl.HasAttribute(CivlAttributes.RIGHT); }
-        public static bool IsBoth(this Ensures decl) { return decl.HasAttribute(CivlAttributes.BOTH); }
-
-        public static bool IsExtern(this Declaration decl) { return decl.HasAttribute("extern"); }
-    }
-
     public class AtomicActionInfo : ActionInfo
     {
         public Ensures ensures;
@@ -95,13 +79,10 @@ namespace Microsoft.Boogie
             return triggerFuns[v];
         }
 
-        public bool CommutesWith(AtomicActionInfo actionInfo)
+        public bool TriviallyCommutesWith(AtomicActionInfo other)
         {
-            if (this.modifiedGlobalVars.Intersect(actionInfo.actionUsedGlobalVars).Count() > 0)
-                return false;
-            if (this.actionUsedGlobalVars.Intersect(actionInfo.modifiedGlobalVars).Count() > 0)
-                return false;
-            return true;
+            return this.modifiedGlobalVars.Intersect(other.actionUsedGlobalVars).Count() == 0 &&
+                   this.actionUsedGlobalVars.Intersect(other.modifiedGlobalVars).Count() == 0;
         }
 
         public override bool IsRightMover
@@ -252,6 +233,22 @@ namespace Microsoft.Boogie
         }
     }
 
+    public class AtomicProcedureInfo
+    {
+        public bool isPure;
+        public LayerRange layerRange;
+        public AtomicProcedureInfo()
+        {
+            this.isPure = true;
+            this.layerRange = null;
+        }
+        public AtomicProcedureInfo(LayerRange layerRange)
+        {
+            this.isPure = false;
+            this.layerRange = layerRange;
+        }
+    }
+
     public class SharedVariableInfo
     {
         public int introLayerNum;
@@ -264,42 +261,12 @@ namespace Microsoft.Boogie
         }
     }
 
-    public class LayerEraser : ReadOnlyVisitor
+    public class LocalVariableInfo
     {
-        public override Variable VisitVariable(Variable node)
+        public int layer;
+        public LocalVariableInfo(int layer)
         {
-            CivlAttributes.RemoveLayerAttribute(node);
-            return base.VisitVariable(node);
-        }
-
-        public override Procedure VisitProcedure(Procedure node)
-        {
-            CivlAttributes.RemoveLayerAttribute(node);
-            return base.VisitProcedure(node);
-        }
-
-        public override Implementation VisitImplementation(Implementation node)
-        {
-            CivlAttributes.RemoveLayerAttribute(node);
-            return base.VisitImplementation(node);
-        }
-
-        public override Requires VisitRequires(Requires node)
-        {
-            CivlAttributes.RemoveLayerAttribute(node);
-            return base.VisitRequires(node);
-        }
-
-        public override Ensures VisitEnsures(Ensures node)
-        {
-            CivlAttributes.RemoveLayerAttribute(node);
-            return base.VisitEnsures(node);
-        }
-
-        public override Cmd VisitAssertCmd(AssertCmd node)
-        {
-            CivlAttributes.RemoveLayerAttribute(node);
-            return base.VisitAssertCmd(node);
+            this.layer = layer;
         }
     }
 
@@ -319,21 +286,8 @@ namespace Microsoft.Boogie
         }
         public LayerRange(IEnumerable<int> layerNums)
         {
-            int min = int.MaxValue;
-            int max = int.MinValue;
-            foreach (var layerNum in layerNums)
-            {
-                if (layerNum < min)
-                {
-                    min = layerNum;
-                }
-                if (max < layerNum)
-                {
-                    max = layerNum;
-                }
-            }
-            this.lowerLayerNum = min;
-            this.upperLayerNum = max;
+            this.lowerLayerNum = layerNums.Min();
+            this.upperLayerNum = layerNums.Max();
         }
         public bool Contains(int layerNum)
         {
@@ -353,29 +307,20 @@ namespace Microsoft.Boogie
         }
     }
 
-    public class AtomicProcedureInfo
+    public static class AttributeQueryExtensionMethods
     {
-        public bool isPure;
-        public LayerRange layerRange;
-        public AtomicProcedureInfo()
-        {
-            this.isPure = true;
-            this.layerRange = null;
-        }
-        public AtomicProcedureInfo(LayerRange layerRange)
-        {
-            this.isPure = false;
-            this.layerRange = layerRange;
-        }
-    }
+        public static bool HasAttribute(this ICarriesAttributes obj, string attribute)
+        { return QKeyValue.FindBoolAttribute(obj.Attributes, attribute); }
 
-    public class LocalVariableInfo
-    {
-        public int layer;
-        public LocalVariableInfo(int layer)
-        {
-            this.layer = layer;
-        }
+        public static bool IsPure (this Declaration decl) { return decl.HasAttribute(CivlAttributes.PURE); }
+        public static bool IsYield(this Declaration decl) { return decl.HasAttribute(CivlAttributes.YIELDS); }
+
+        public static bool IsAtomic(this Ensures decl) { return decl.HasAttribute(CivlAttributes.ATOMIC); }
+        public static bool IsLeft(this Ensures decl) { return decl.HasAttribute(CivlAttributes.LEFT); }
+        public static bool IsRight(this Ensures decl) { return decl.HasAttribute(CivlAttributes.RIGHT); }
+        public static bool IsBoth(this Ensures decl) { return decl.HasAttribute(CivlAttributes.BOTH); }
+
+        public static bool IsExtern(this Declaration decl) { return decl.HasAttribute("extern"); }
     }
 
     public class CivlTypeChecker : ReadOnlyVisitor
@@ -1193,6 +1138,45 @@ namespace Microsoft.Boogie
                 }
                 return node;
             }
+        }
+    }
+
+    public class LayerEraser : ReadOnlyVisitor
+    {
+        public override Variable VisitVariable(Variable node)
+        {
+            CivlAttributes.RemoveLayerAttribute(node);
+            return base.VisitVariable(node);
+        }
+
+        public override Procedure VisitProcedure(Procedure node)
+        {
+            CivlAttributes.RemoveLayerAttribute(node);
+            return base.VisitProcedure(node);
+        }
+
+        public override Implementation VisitImplementation(Implementation node)
+        {
+            CivlAttributes.RemoveLayerAttribute(node);
+            return base.VisitImplementation(node);
+        }
+
+        public override Requires VisitRequires(Requires node)
+        {
+            CivlAttributes.RemoveLayerAttribute(node);
+            return base.VisitRequires(node);
+        }
+
+        public override Ensures VisitEnsures(Ensures node)
+        {
+            CivlAttributes.RemoveLayerAttribute(node);
+            return base.VisitEnsures(node);
+        }
+
+        public override Cmd VisitAssertCmd(AssertCmd node)
+        {
+            CivlAttributes.RemoveLayerAttribute(node);
+            return base.VisitAssertCmd(node);
         }
     }
 }

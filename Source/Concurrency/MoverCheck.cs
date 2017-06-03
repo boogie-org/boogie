@@ -162,7 +162,7 @@ namespace Microsoft.Boogie
         {
             if (first == second && first.thatInParams.Count == 0 && first.thatOutParams.Count == 0)
                 return;
-            if (first.CommutesWith(second))
+            if (first.TriviallyCommutesWith(second))
                 return;
             if (!commutativityCheckerCache.Add(new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second)))
                 return;

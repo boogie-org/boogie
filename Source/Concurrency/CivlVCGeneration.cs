@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Microsoft.Boogie
 {
-    public class Concurrency
+    public class CivlVCGeneration
     {
         public static void Transform(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker)
         {
