@@ -202,8 +202,7 @@ namespace Microsoft.Boogie
                     else
                     {
                         Block newInitBlock = new Block(Token.NoToken, "_init", new List<Cmd>(), new ReturnCmd(Token.NoToken));
-                        List<Block> newBlocks = new List<Block>();
-                        newBlocks.Add(newInitBlock);
+                        List<Block> newBlocks = new List<Block> { newInitBlock };
                         impl = new Implementation(Token.NoToken, proc.Name, node.TypeParameters, node.InParams, node.OutParams, new List<Variable>(), newBlocks);
                     }
                     impl.Proc = proc;

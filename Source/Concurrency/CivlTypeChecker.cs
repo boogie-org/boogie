@@ -88,8 +88,7 @@ namespace Microsoft.Boogie
         {
             if (!triggerFuns.ContainsKey(v))
             {
-                List<Variable> args = new List<Variable>();
-                args.Add(new Formal(v.tok, new TypedIdent(v.tok, "v", v.TypedIdent.Type), true));
+                List<Variable> args = new List<Variable> { new Formal(v.tok, new TypedIdent(v.tok, "v", v.TypedIdent.Type), true) };
                 Variable result = new Formal(v.tok, new TypedIdent(v.tok, "r", Type.Bool), false);
                 triggerFuns[v] = new Function(v.tok, string.Format("Trigger_{0}_{1}", proc.Name, v.Name), args, result);
             }
