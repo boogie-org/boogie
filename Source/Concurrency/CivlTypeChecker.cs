@@ -68,6 +68,22 @@ namespace Microsoft.Boogie
 
         public Dictionary<Variable, Function> triggerFuns;
 
+        public override bool IsRightMover
+        {
+            get { return moverType == MoverType.Right || moverType == MoverType.Both; }
+        }
+
+        public override bool IsLeftMover
+        {
+            get { return moverType == MoverType.Left || moverType == MoverType.Both; }
+        }
+
+        public bool TriviallyCommutesWith(AtomicActionInfo other)
+        {
+            return this.modifiedGlobalVars.Intersect(other.actionUsedGlobalVars).Count() == 0 &&
+                   this.actionUsedGlobalVars.Intersect(other.modifiedGlobalVars).Count() == 0;
+        }
+
         public Function TriggerFunction(Variable v)
         {
             if (!triggerFuns.ContainsKey(v))
@@ -77,22 +93,6 @@ namespace Microsoft.Boogie
                 triggerFuns[v] = new Function(v.tok, string.Format("Trigger_{0}_{1}", proc.Name, v.Name), args, result);
             }
             return triggerFuns[v];
-        }
-
-        public bool TriviallyCommutesWith(AtomicActionInfo other)
-        {
-            return this.modifiedGlobalVars.Intersect(other.actionUsedGlobalVars).Count() == 0 &&
-                   this.actionUsedGlobalVars.Intersect(other.modifiedGlobalVars).Count() == 0;
-        }
-
-        public override bool IsRightMover
-        {
-            get { return moverType == MoverType.Right || moverType == MoverType.Both; }
-        }
-
-        public override bool IsLeftMover
-        {
-            get { return moverType == MoverType.Left || moverType == MoverType.Both; }
         }
 
         public AtomicActionInfo(Procedure proc, Ensures ensures, MoverType moverType, int layerNum, int availableUptoLayerNum)
@@ -113,17 +113,11 @@ namespace Microsoft.Boogie
             this.thatMap = new Dictionary<Variable, Expr>();
             this.triggerFuns = new Dictionary<Variable, Function>();
 
-            foreach (Block block in this.action.Blocks)
-            {
-                block.Cmds.ForEach(x => this.hasAssumeCmd = this.hasAssumeCmd || x is AssumeCmd);
-            }
+            this.hasAssumeCmd = this.action.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
 
-            foreach (Block block in this.action.Blocks)
+            foreach (Block block in this.action.Blocks.Where(b => b.TransferCmd is ReturnExprCmd))
             {
-                if (block.TransferCmd is ReturnExprCmd)
-                {
-                    block.TransferCmd = new ReturnCmd(block.TransferCmd.tok);
-                }
+                block.TransferCmd = new ReturnCmd(block.TransferCmd.tok);
             }
 
             var cmds = this.action.Blocks[0].Cmds;
