@@ -22,7 +22,7 @@ namespace Microsoft.Boogie
         public Procedure proc;
         public int createdAtLayerNum;
         public int availableUptoLayerNum;
-        public bool hasImplementation;
+        public bool hasImplementation; 
         public bool isExtern;
 
         public ActionInfo(Procedure proc, int createdAtLayerNum, int availableUptoLayerNum)
@@ -51,18 +51,21 @@ namespace Microsoft.Boogie
         public MoverType moverType;
         public List<AssertCmd> gate;
         public CodeExpr action;
-        public List<AssertCmd> thisGate;
-        public CodeExpr thisAction;
-        public List<Variable> thisInParams;
-        public List<Variable> thisOutParams;
-        public List<AssertCmd> thatGate;
-        public CodeExpr thatAction;
-        public List<Variable> thatInParams;
-        public List<Variable> thatOutParams;
         public HashSet<Variable> actionUsedGlobalVars;
         public HashSet<Variable> modifiedGlobalVars;
         public HashSet<Variable> gateUsedGlobalVars;
         public bool hasAssumeCmd;
+
+        public List<AssertCmd> thisGate;
+        public CodeExpr thisAction;
+        public List<Variable> thisInParams;
+        public List<Variable> thisOutParams;
+
+        public List<AssertCmd> thatGate;
+        public CodeExpr thatAction;
+        public List<Variable> thatInParams;
+        public List<Variable> thatOutParams;
+        
         public Dictionary<Variable, Expr> thisMap;
         public Dictionary<Variable, Expr> thatMap;
 
@@ -327,11 +330,11 @@ namespace Microsoft.Boogie
 
         public Program program;
         public Dictionary<Variable, SharedVariableInfo> globalVarToSharedVarInfo;
+        public Dictionary<Variable, LocalVariableInfo> localVarToLocalVariableInfo;
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
         public Dictionary<Procedure, AtomicProcedureInfo> procToAtomicProcedureInfo;
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
-        public Dictionary<Variable, LocalVariableInfo> localVarToLocalVariableInfo;
-        Dictionary<CallCmd, int> pureCallLayer;
+        Dictionary<CallCmd, int> pureCallToLayer;
 
         public bool CallExists(CallCmd callCmd, int enclosingProcLayerNum, int layerNum)
         {
@@ -339,7 +342,7 @@ namespace Microsoft.Boogie
             var atomicProcedureInfo = procToAtomicProcedureInfo[callCmd.Proc];
             if (atomicProcedureInfo.isPure)
             {
-                return pureCallLayer[callCmd] <= layerNum;
+                return pureCallToLayer[callCmd] <= layerNum;
             }
             else
             {
@@ -368,15 +371,7 @@ namespace Microsoft.Boogie
 
         private static int Least(IEnumerable<int> layerNums)
         {
-            int least = int.MaxValue;
-            foreach (var layer in layerNums)
-            {
-                if (layer < least)
-                {
-                    least = layer;
-                }
-            }
-            return least;
+            return layerNums.DefaultIfEmpty(int.MaxValue).Min();
         }
 
         private static MoverType GetMoverType(Ensures e)
@@ -406,29 +401,7 @@ namespace Microsoft.Boogie
             this.globalVarToSharedVarInfo = new Dictionary<Variable, SharedVariableInfo>();
             this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
             this.procToAtomicProcedureInfo = new Dictionary<Procedure, AtomicProcedureInfo>();
-            this.pureCallLayer = new Dictionary<CallCmd, int>();
-            
-            // Global variables
-            foreach (var g in program.GlobalVariables)
-            {
-                List<int> layerNums = FindLayers(g.Attributes);
-                if (layerNums.Count == 0)
-                {
-                    // Inaccessible from  yielding and atomic procedures
-                }
-                else if (layerNums.Count == 1)
-                {
-                    this.globalVarToSharedVarInfo[g] = new SharedVariableInfo(layerNums[0], int.MaxValue);
-                }
-                else if (layerNums.Count == 2)
-                {
-                    this.globalVarToSharedVarInfo[g] = new SharedVariableInfo(layerNums[0], layerNums[1]);
-                }
-                else
-                {
-                    Error(g, "Too many layer numbers");
-                }
-            }
+            this.pureCallToLayer = new Dictionary<CallCmd, int>();
         }
 
         private HashSet<int> allLayerNums;
@@ -477,6 +450,28 @@ namespace Microsoft.Boogie
 
         public void TypeCheck()
         {
+            // Global variables
+            foreach (var g in program.GlobalVariables)
+            {
+                List<int> layerNums = FindLayers(g.Attributes);
+                if (layerNums.Count == 0)
+                {
+                    // Inaccessible from  yielding and atomic procedures
+                }
+                else if (layerNums.Count == 1)
+                {
+                    this.globalVarToSharedVarInfo[g] = new SharedVariableInfo(layerNums[0], int.MaxValue);
+                }
+                else if (layerNums.Count == 2)
+                {
+                    this.globalVarToSharedVarInfo[g] = new SharedVariableInfo(layerNums[0], layerNums[1]);
+                }
+                else
+                {
+                    Error(g, "Too many layer numbers");
+                }
+            }
+
             // Pure procedures
             foreach (var proc in program.Procedures.Where(proc => proc.IsPure()))
             {
@@ -538,10 +533,9 @@ namespace Microsoft.Boogie
             if (checkingContext.ErrorCount > 0) return;
 
             // Implementations of atomic procedures
-            foreach (Implementation impl in program.Implementations)
+            foreach (Implementation impl in program.Implementations.Where(impl => procToAtomicProcedureInfo.ContainsKey(impl.Proc)))
             {
-                AtomicProcedureInfo atomicProcedureInfo;
-                if (!procToAtomicProcedureInfo.TryGetValue(impl.Proc, out atomicProcedureInfo)) continue;
+                AtomicProcedureInfo atomicProcedureInfo = procToAtomicProcedureInfo[impl.Proc];
 
                 if (atomicProcedureInfo.isPure)
                 {
@@ -637,11 +631,10 @@ namespace Microsoft.Boogie
             }
             if (checkingContext.ErrorCount > 0) return;
             
-            foreach (var impl in program.Implementations)
+            foreach (var impl in program.Implementations.Where(impl => procToActionInfo.ContainsKey(impl.Proc)))
             {
-                if (!procToActionInfo.ContainsKey(impl.Proc)) continue;
                 ActionInfo actionInfo = procToActionInfo[impl.Proc];
-                procToActionInfo[impl.Proc].hasImplementation = true;
+                actionInfo.hasImplementation = true;
                 if (actionInfo.isExtern)
                 {
                     Error(impl.Proc, "Extern procedure cannot have an implementation");
@@ -649,6 +642,7 @@ namespace Microsoft.Boogie
             }
             if (checkingContext.ErrorCount > 0) return;
 
+            // Collect layers of local variables
             foreach (Procedure proc in procToActionInfo.Keys)
             {
                 for (int i = 0; i < proc.InParams.Count; i++)
@@ -666,28 +660,28 @@ namespace Microsoft.Boogie
                     localVarToLocalVariableInfo[v] = new LocalVariableInfo(layer);
                 }
             }
-            foreach (Implementation node in program.Implementations)
+            foreach (Implementation impl in program.Implementations)
             {
-                if (!procToActionInfo.ContainsKey(node.Proc)) continue;
-                foreach (Variable v in node.LocVars)
+                if (!procToActionInfo.ContainsKey(impl.Proc)) continue;
+                foreach (Variable v in impl.LocVars)
                 {
-                    var layer = FindLocalVariableLayer(node, v, procToActionInfo[node.Proc].createdAtLayerNum);
+                    var layer = FindLocalVariableLayer(impl, v, procToActionInfo[impl.Proc].createdAtLayerNum);
                     if (layer == int.MinValue) continue;
                     localVarToLocalVariableInfo[v] = new LocalVariableInfo(layer);
                 }
-                for (int i = 0; i < node.Proc.InParams.Count; i++)
+                for (int i = 0; i < impl.Proc.InParams.Count; i++)
                 {
-                    Variable v = node.Proc.InParams[i];
+                    Variable v = impl.Proc.InParams[i];
                     if (!localVarToLocalVariableInfo.ContainsKey(v)) continue;
                     var layer = localVarToLocalVariableInfo[v].layer;
-                    localVarToLocalVariableInfo[node.InParams[i]] = new LocalVariableInfo(layer);
+                    localVarToLocalVariableInfo[impl.InParams[i]] = new LocalVariableInfo(layer);
                 }
-                for (int i = 0; i < node.Proc.OutParams.Count; i++)
+                for (int i = 0; i < impl.Proc.OutParams.Count; i++)
                 {
-                    Variable v = node.Proc.OutParams[i];
+                    Variable v = impl.Proc.OutParams[i];
                     if (!localVarToLocalVariableInfo.ContainsKey(v)) continue;
                     var layer = localVarToLocalVariableInfo[v].layer;
-                    localVarToLocalVariableInfo[node.OutParams[i]] = new LocalVariableInfo(layer);
+                    localVarToLocalVariableInfo[impl.OutParams[i]] = new LocalVariableInfo(layer);
                 }
             }
             if (checkingContext.ErrorCount > 0) return; 
@@ -823,7 +817,7 @@ namespace Microsoft.Boogie
                                 inferredLayer = localVarToLocalVariableInfo[ie.Decl].layer;
                             }
                         }
-                        pureCallLayer[node] = inferredLayer;
+                        pureCallToLayer[node] = inferredLayer;
                         if (inferredLayer != int.MinValue)
                         {
                             foreach (var ie in node.Outs)
@@ -862,7 +856,7 @@ namespace Microsoft.Boogie
                             }
                             introducedLocalVarsUpperBound = int.MinValue;
                         }
-                        pureCallLayer[node] = inferredLayer;
+                        pureCallToLayer[node] = inferredLayer;
                     }
                 }
                 else
