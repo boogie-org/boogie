@@ -335,6 +335,7 @@ namespace Microsoft.Boogie
         public Dictionary<Procedure, AtomicProcedureInfo> procToAtomicProcedureInfo;
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
         Dictionary<CallCmd, int> pureCallToLayer;
+        public List<int> allLayerNums;
 
         public bool CallExists(CallCmd callCmd, int enclosingProcLayerNum, int layerNum)
         {
@@ -402,30 +403,6 @@ namespace Microsoft.Boogie
             this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
             this.procToAtomicProcedureInfo = new Dictionary<Procedure, AtomicProcedureInfo>();
             this.pureCallToLayer = new Dictionary<CallCmd, int>();
-        }
-
-        private HashSet<int> allLayerNums;
-        public IEnumerable<int> AllLayerNums
-        {
-            get
-            {
-                if (allLayerNums == null)
-                {
-                    allLayerNums = new HashSet<int>();
-                    foreach (ActionInfo actionInfo in procToActionInfo.Values)
-                    {
-                        allLayerNums.Add(actionInfo.createdAtLayerNum);
-                    }
-                    foreach (var layerNums in absyToLayerNums.Values)
-                    {
-                        foreach (var layer in layerNums)
-                        {
-                            allLayerNums.Add(layer);
-                        }
-                    }
-                }
-                return allLayerNums;
-            }
         }
 
         // Caller has to make sure sharedVarsAccessed is set correctly for the
@@ -684,12 +661,22 @@ namespace Microsoft.Boogie
                     localVarToLocalVariableInfo[impl.OutParams[i]] = new LocalVariableInfo(layer);
                 }
             }
-            if (checkingContext.ErrorCount > 0) return; 
-            
+            if (checkingContext.ErrorCount > 0) return;
+
+            // After collecting all procedure declarations, we can now type check the specifications and implementations.
             this.VisitProgram(program);
             if (checkingContext.ErrorCount > 0) return;
-            YieldTypeChecker.PerformYieldSafeCheck(this);
+
+            // Store a list of all layers
+            allLayerNums = Enumerable.Union(procToActionInfo.Values.Select(a => a.createdAtLayerNum),
+                                            absyToLayerNums.SelectMany(x => x.Value))
+                           .OrderBy(l => l)
+                           .Distinct()
+                           .ToList();
+
             new LayerEraser().VisitProgram(program);
+            // TODO: Move yield checker outside?
+            YieldTypeChecker.PerformYieldSafeCheck(this);
         }
 
         public IEnumerable<Variable> SharedVariables
@@ -1006,24 +993,24 @@ namespace Microsoft.Boogie
             return requires;
         }
 
-        public override Cmd VisitAssertCmd(AssertCmd node)
+        public override Cmd VisitAssertCmd(AssertCmd assert)
         {
             if (enclosingImpl == null)
             {
                 // in this case, we are visiting an assert inside a CodeExpr
-                return base.VisitAssertCmd(node);
+                return base.VisitAssertCmd(assert);
             }
             sharedVarsAccessed = new HashSet<Variable>();
             Debug.Assert(introducedLocalVarsUpperBound == int.MinValue);
-            base.VisitAssertCmd(node);
-            CheckAndAddLayers(node, node.Attributes, procToActionInfo[enclosingImpl.Proc].createdAtLayerNum);
-            if (introducedLocalVarsUpperBound > Least(FindLayers(node.Attributes)))
+            base.VisitAssertCmd(assert);
+            CheckAndAddLayers(assert, assert.Attributes, procToActionInfo[enclosingImpl.Proc].createdAtLayerNum);
+            if (introducedLocalVarsUpperBound > Least(FindLayers(assert.Attributes)))
             {
-                Error(node, "An introduced local variable is accessed but not available");
+                Error(assert, "An introduced local variable is accessed but not available");
             }
             introducedLocalVarsUpperBound = int.MinValue;
             sharedVarsAccessed = null;
-            return node;
+            return assert;
         }
 
         private List<int> RemoveDuplicatesAndSort(List<int> attrs)

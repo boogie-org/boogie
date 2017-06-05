@@ -141,7 +141,7 @@ namespace Microsoft.Boogie
                 Graph<Block> implGraph = Program.GraphFromImpl(impl);
                 implGraph.ComputeLoops();
                 int specLayerNum = civlTypeChecker.procToActionInfo[impl.Proc].createdAtLayerNum;
-                foreach (int layerNum in civlTypeChecker.AllLayerNums)
+                foreach (int layerNum in civlTypeChecker.allLayerNums)
                 {
                     if (layerNum > specLayerNum) continue;
                     YieldTypeChecker executor = new YieldTypeChecker(civlTypeChecker, impl, layerNum, implGraph.Headers);
