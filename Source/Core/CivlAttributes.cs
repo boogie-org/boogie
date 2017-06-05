@@ -18,6 +18,8 @@ namespace Microsoft.Boogie
         public const string RIGHT = "right";
         public const string BOTH = "both";
 
+        public const string TERMINATES = "terminates";
+
         public const string LINEAR = "linear";
         public const string LINEAR_IN = "linear_in";
         public const string LINEAR_OUT = "linear_out";
@@ -86,6 +88,11 @@ namespace Microsoft.Boogie
                         proc.Ensures.Add(ensures);
                     }
                 }
+            }
+
+            foreach (var impl in program.Implementations)
+            {
+                RemoveAttribute(impl, kv => kv.Key == YIELD_ASSERT);
             }
         }
     }

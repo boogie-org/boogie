@@ -124,7 +124,7 @@ namespace Microsoft.Boogie
             foreach (Cmd cmd in block.Cmds)
             {
                 AssertCmd assertCmd = cmd as AssertCmd;
-                if (assertCmd != null && QKeyValue.FindBoolAttribute(assertCmd.Attributes, "terminates") && civlTypeChecker.absyToLayerNums[assertCmd].Contains(currLayerNum))
+                if (assertCmd != null && assertCmd.HasAttribute(CivlAttributes.TERMINATES) && civlTypeChecker.absyToLayerNums[assertCmd].Contains(currLayerNum))
                 {
                     return true;
                 }
@@ -147,6 +147,8 @@ namespace Microsoft.Boogie
                     YieldTypeChecker executor = new YieldTypeChecker(civlTypeChecker, impl, layerNum, implGraph.Headers);
                 }
             }
+
+            // TODO: Remove "terminates" attribute
         }
 
         int stateCounter;
