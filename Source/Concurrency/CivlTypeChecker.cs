@@ -22,7 +22,7 @@ namespace Microsoft.Boogie
         public Procedure proc;
         public int createdAtLayerNum;
         public int availableUptoLayerNum;
-        public bool hasImplementation; 
+        public bool hasImplementation;
         public bool isExtern;
 
         public ActionInfo(Procedure proc, int createdAtLayerNum, int availableUptoLayerNum)
@@ -622,24 +622,15 @@ namespace Microsoft.Boogie
             // Collect layers of local variables
             foreach (Procedure proc in procToActionInfo.Keys)
             {
-                for (int i = 0; i < proc.InParams.Count; i++)
+                foreach (var param in Enumerable.Union(proc.InParams, proc.OutParams))
                 {
-                    Variable v = proc.InParams[i];
-                    var layer = FindLocalVariableLayer(proc, v, procToActionInfo[proc].createdAtLayerNum);
+                    var layer = FindLocalVariableLayer(proc, param, procToActionInfo[proc].createdAtLayerNum);
                     if (layer == int.MinValue) continue;
-                    localVarToLocalVariableInfo[v] = new LocalVariableInfo(layer);
-                }
-                for (int i = 0; i < proc.OutParams.Count; i++)
-                {
-                    Variable v = proc.OutParams[i];
-                    var layer = FindLocalVariableLayer(proc, v, procToActionInfo[proc].createdAtLayerNum);
-                    if (layer == int.MinValue) continue;
-                    localVarToLocalVariableInfo[v] = new LocalVariableInfo(layer);
+                    localVarToLocalVariableInfo[param] = new LocalVariableInfo(layer);
                 }
             }
-            foreach (Implementation impl in program.Implementations)
+            foreach (Implementation impl in program.Implementations.Where(i => procToActionInfo.ContainsKey(i.Proc)))
             {
-                if (!procToActionInfo.ContainsKey(impl.Proc)) continue;
                 foreach (Variable v in impl.LocVars)
                 {
                     var layer = FindLocalVariableLayer(impl, v, procToActionInfo[impl.Proc].createdAtLayerNum);
