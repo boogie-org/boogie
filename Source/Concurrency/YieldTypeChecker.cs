@@ -248,11 +248,7 @@ namespace Microsoft.Boogie
                             }
                             else
                             {
-                                AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
-                                if (atomicActionInfo == null)
-                                    moverType = MoverType.Both;
-                                else
-                                    moverType = atomicActionInfo.moverType;
+                                moverType = actionInfo.moverType;
                             }
                             switch (moverType)
                             {
