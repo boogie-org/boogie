@@ -3072,6 +3072,10 @@ namespace Microsoft.Boogie {
         v.Register(rc);
         v.Resolve(rc);
       }
+      foreach (Variable/*!*/ v in LocVars) {
+        Contract.Assert(v != null);
+        v.ResolveWhere(rc);
+      }
 
       rc.PushProcedureContext();
       foreach (Block/*!*/ b in Blocks) {
