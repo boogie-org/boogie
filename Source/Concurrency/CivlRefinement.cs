@@ -217,8 +217,7 @@ namespace Microsoft.Boogie
                     proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
                 }
                 procMap[node] = proc;
-                proc.Modifies = new List<IdentifierExpr>();
-                civlTypeChecker.SharedVariables.Iter(x => proc.Modifies.Add(Expr.Ident(x)));
+                proc.Modifies = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
             }
             return procMap[node];
         }
