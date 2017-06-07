@@ -754,41 +754,71 @@ namespace Microsoft.Boogie
 
         public override Cmd VisitCallCmd(CallCmd call)
         {
-            // TODO: rewrite to handle mover procedures!
+            var callerAction = procToActionInfo[enclosingImpl.Proc];
             int callerLayerNum = procToActionInfo[enclosingImpl.Proc].createdAtLayerNum;
+
             if (procToActionInfo.ContainsKey(call.Proc))
             {
-                ActionInfo actionInfo = procToActionInfo[call.Proc];
-                if (call.IsAsync && !actionInfo.IsLeftMover)
+                ActionInfo calleeAction = procToActionInfo[call.Proc];
+                int calleeLayerNum = calleeAction.createdAtLayerNum;
+
+                // Check that callee layer is "lower" then caller layer
+                if (calleeAction is AtomicActionInfo)
+                {
+                    if (callerLayerNum <= calleeLayerNum)
+                    {
+                        Error(call, "The layer of the caller must be greater than the layer of the callee");
+                    }
+                }
+                else if (calleeAction is SkipActionInfo)
+                {
+                    if (calleeAction is MoverActionInfo)
+                    {
+                        Error(call, "A mover procedure can not call a skip procedure");
+                    }
+                    else if (callerLayerNum < calleeLayerNum)
+                    {
+                        Error(call, "The layer of the caller must be greater than or equal to the layer of the callee");
+                    }
+                }
+                else if (calleeAction is MoverActionInfo)
+                {
+                    if (callerAction is SkipActionInfo)
+                    {
+                        Error(call, "A skip procedure can not call a mover procedure");
+                    }
+                    else if (callerLayerNum != calleeLayerNum)
+                    {
+                        Error(call, "The layer of the caller must be equal to the layer of the callee");
+                    }
+                }
+
+                // check that callee is available
+                if (calleeAction.availableUptoLayerNum < callerLayerNum && !(calleeAction is MoverActionInfo)) // for mover procedures we already have a tighter check above
+                {
+                    Error(call, "The callee is not available in the caller procedure");
+                }
+
+                if (call.IsAsync && !calleeAction.IsLeftMover)
                 {
                     Error(call, "Target of async call must be a left mover");
                 }
 
-                int calleeLayerNum = procToActionInfo[call.Proc].createdAtLayerNum;
-                if (callerLayerNum < calleeLayerNum ||
-                    (callerLayerNum == calleeLayerNum && actionInfo is AtomicActionInfo))
+                
+                if (callerLayerNum == calleeLayerNum && enclosingImpl.OutParams.Count > 0) // call to skip (or mover) procedure
                 {
-                    Error(call, "The layer of the caller must be greater than the layer of the callee");
-                }
-                else if (callerLayerNum == calleeLayerNum && enclosingImpl.OutParams.Count > 0) // call to skip procedure
-                {
-                    HashSet<Variable> outParams = new HashSet<Variable>(enclosingImpl.OutParams);
+                    HashSet<Variable> callerOutParams = new HashSet<Variable>(enclosingImpl.OutParams);
                     foreach (var x in call.Outs)
                     {
                         if (x.Decl is GlobalVariable)
                         {
                             Error(call, "A global variable cannot be used as output argument for this call");
                         }
-                        else if (outParams.Contains(x.Decl))
+                        else if (callerOutParams.Contains(x.Decl))
                         {
                             Error(call, "An output variable of the enclosing implementation cannot be used as output argument for this call");
                         }
                     }
-                }
-
-                if (actionInfo.availableUptoLayerNum < callerLayerNum)
-                {
-                    Error(call, "The callee is not available in the caller procedure");
                 }
 
                 for (int i = 0; i < call.Ins.Count; i++)
@@ -798,7 +828,7 @@ namespace Microsoft.Boogie
                     {
                         var formal = call.Proc.InParams[i];
                         if (!localVarToLocalVariableInfo.ContainsKey(formal) ||
-                            introducedLocalVarsUpperBound > localVarToLocalVariableInfo[formal].layer)
+                             localVarToLocalVariableInfo[formal].layer < introducedLocalVarsUpperBound)
                         {
                             Error(call, "An introduced local variable is accessed but not available");
                         }
@@ -809,12 +839,14 @@ namespace Microsoft.Boogie
                 for (int i = 0; i < call.Outs.Count; i++)
                 {
                     var formal = call.Proc.OutParams[i];
-                    if (!localVarToLocalVariableInfo.ContainsKey(formal)) continue;
                     var actual = call.Outs[i].Decl;
-                    if (localVarToLocalVariableInfo.ContainsKey(actual) && 
-                        localVarToLocalVariableInfo[formal].layer <= localVarToLocalVariableInfo[actual].layer)
-                        continue;
-                    Error(call, "Formal parameter of call must be introduced no later than the actual parameter");
+
+                    if (localVarToLocalVariableInfo.ContainsKey(formal) &&
+                        (!localVarToLocalVariableInfo.ContainsKey(actual) ||
+                          localVarToLocalVariableInfo[actual].layer < localVarToLocalVariableInfo[formal].layer))
+                    {
+                        Error(call, "Formal return parameter of call must be introduced no later than the actual parameter");
+                    }
                 }
 
                 return call;
