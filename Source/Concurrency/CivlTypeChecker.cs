@@ -780,14 +780,27 @@ namespace Microsoft.Boogie
                     {
                         Error(call, "The layer of the caller must be greater than or equal to the layer of the callee");
                     }
+                    else if (callerLayerNum == calleeLayerNum && enclosingImpl.OutParams.Count > 0)
+                    {
+                        HashSet<Variable> callerOutParams = new HashSet<Variable>(enclosingImpl.OutParams);
+                        foreach (var x in call.Outs)
+                        {
+                            // TODO: Can be removed?
+                            if (x.Decl is GlobalVariable)
+                            {
+                                Error(call, "A global variable cannot be used as output argument for this call");
+                            }
+                            // TODO: document
+                            else if (callerOutParams.Contains(x.Decl))
+                            {
+                                Error(call, "An output variable of the enclosing implementation cannot be used as output argument for this call");
+                            }
+                        }
+                    }
                 }
                 else if (calleeAction is MoverActionInfo)
                 {
-                    if (callerAction is SkipActionInfo)
-                    {
-                        Error(call, "A skip procedure can not call a mover procedure");
-                    }
-                    else if (callerLayerNum != calleeLayerNum)
+                    if (callerLayerNum != calleeLayerNum)
                     {
                         Error(call, "The layer of the caller must be equal to the layer of the callee");
                     }
@@ -804,25 +817,9 @@ namespace Microsoft.Boogie
                     Error(call, "Target of async call must be a left mover");
                 }
 
-                
-                if (callerLayerNum == calleeLayerNum && enclosingImpl.OutParams.Count > 0) // call to skip (or mover) procedure
-                {
-                    HashSet<Variable> callerOutParams = new HashSet<Variable>(enclosingImpl.OutParams);
-                    foreach (var x in call.Outs)
-                    {
-                        if (x.Decl is GlobalVariable)
-                        {
-                            Error(call, "A global variable cannot be used as output argument for this call");
-                        }
-                        else if (callerOutParams.Contains(x.Decl))
-                        {
-                            Error(call, "An output variable of the enclosing implementation cannot be used as output argument for this call");
-                        }
-                    }
-                }
-
                 for (int i = 0; i < call.Ins.Count; i++)
                 {
+                    // Visitor checks for global variable accesses and introduced local variables
                     Visit(call.Ins[i]);
                     if (introducedLocalVarsUpperBound != int.MinValue)
                     {
