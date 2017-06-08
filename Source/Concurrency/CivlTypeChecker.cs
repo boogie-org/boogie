@@ -1072,6 +1072,15 @@ namespace Microsoft.Boogie
             return assert;
         }
 
+        public override YieldCmd VisitYieldCmd(YieldCmd node)
+        {
+            if (procToActionInfo[enclosingImpl.Proc] is MoverActionInfo)
+            {
+                Error(node, "A mover procedure cannot contain explicit yield statements");
+            }
+            return base.VisitYieldCmd(node);
+        }
+
         private List<int> RemoveDuplicatesAndSort(List<int> attrs)
         {
             HashSet<int> layerSet = new HashSet<int>(attrs);
