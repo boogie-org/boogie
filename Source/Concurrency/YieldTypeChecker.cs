@@ -13,48 +13,46 @@ namespace Microsoft.Boogie
 {
     class YieldTypeChecker
     {
-        static List<Tuple<int, int, int>> ASpec;
-        static List<Tuple<int, int, int>> BSpec;
-        static List<Tuple<int, int, int>> CSpec;
-        static YieldTypeChecker()
-        {
-            // initial: 0, final: 1
-            ASpec = new List<Tuple<int,int,int>>();
-            ASpec.Add(new Tuple<int, int, int>(0, 'Y', 1));
-            ASpec.Add(new Tuple<int, int, int>(1, 'Y', 1));
-            ASpec.Add(new Tuple<int, int, int>(1, 'B', 1));
-            ASpec.Add(new Tuple<int, int, int>(1, 'R', 1));
-            ASpec.Add(new Tuple<int, int, int>(1, 'L', 1));
-            ASpec.Add(new Tuple<int, int, int>(1, 'A', 1));
-            ASpec.Add(new Tuple<int, int, int>(0, 'P', 0));
-            ASpec.Add(new Tuple<int, int, int>(1, 'P', 1));
+        static int RM = 0;
+        static int LM = 1;
 
-            // initial: 1, final: 0
-            BSpec = new List<Tuple<int, int, int>>();
-            BSpec.Add(new Tuple<int, int, int>(1, 'Y', 0));
-            BSpec.Add(new Tuple<int, int, int>(1, 'Y', 1));
-            BSpec.Add(new Tuple<int, int, int>(1, 'B', 1));
-            BSpec.Add(new Tuple<int, int, int>(1, 'R', 1));
-            BSpec.Add(new Tuple<int, int, int>(1, 'L', 1));
-            BSpec.Add(new Tuple<int, int, int>(1, 'A', 1));
-            BSpec.Add(new Tuple<int, int, int>(0, 'P', 0));
-            BSpec.Add(new Tuple<int, int, int>(1, 'P', 1));
-
-            // initial: {0, 1}, final: {0, 1}
-            CSpec = new List<Tuple<int,int,int>>();
-            CSpec.Add(new Tuple<int, int, int>(0, 'B', 0));
-            CSpec.Add(new Tuple<int, int, int>(0, 'R', 0));
-            CSpec.Add(new Tuple<int, int, int>(0, 'Y', 0));
-            CSpec.Add(new Tuple<int, int, int>(0, 'B', 1));
-            CSpec.Add(new Tuple<int, int, int>(0, 'R', 1));
-            CSpec.Add(new Tuple<int, int, int>(0, 'L', 1));
-            CSpec.Add(new Tuple<int, int, int>(0, 'A', 1));
-            CSpec.Add(new Tuple<int, int, int>(1, 'B', 1));
-            CSpec.Add(new Tuple<int, int, int>(1, 'L', 1));
-            CSpec.Add(new Tuple<int, int, int>(1, 'Y', 0));
-            CSpec.Add(new Tuple<int, int, int>(0, 'P', 0));
-            CSpec.Add(new Tuple<int, int, int>(1, 'P', 1));
-        }
+        static List<Tuple<int, int, int>> ASpec = new List<Tuple<int, int, int>>
+        { // initial: RM, final: LM
+            new Tuple<int, int, int>(RM, 'Y', LM),
+            new Tuple<int, int, int>(LM, 'Y', LM),
+            new Tuple<int, int, int>(LM, 'B', LM),
+            new Tuple<int, int, int>(LM, 'R', LM),
+            new Tuple<int, int, int>(LM, 'L', LM),
+            new Tuple<int, int, int>(LM, 'A', LM),
+            new Tuple<int, int, int>(RM, 'P', RM),
+            new Tuple<int, int, int>(LM, 'P', LM)
+        };
+        static List<Tuple<int, int, int>> BSpec = new List<Tuple<int, int, int>>
+        { // initial: LM, final: RM
+            new Tuple<int, int, int>(LM, 'Y', RM),
+            new Tuple<int, int, int>(LM, 'Y', LM),
+            new Tuple<int, int, int>(LM, 'B', LM),
+            new Tuple<int, int, int>(LM, 'R', LM),
+            new Tuple<int, int, int>(LM, 'L', LM),
+            new Tuple<int, int, int>(LM, 'A', LM),
+            new Tuple<int, int, int>(RM, 'P', RM),
+            new Tuple<int, int, int>(LM, 'P', LM)
+        };
+        static List<Tuple<int, int, int>> CSpec = new List<Tuple<int, int, int>>
+        { // initial: {RM, LM}, final: {RM, LM}
+            new Tuple<int, int, int>(RM, 'B', RM),
+            new Tuple<int, int, int>(RM, 'R', RM),
+            new Tuple<int, int, int>(RM, 'Y', RM),
+            new Tuple<int, int, int>(RM, 'B', LM),
+            new Tuple<int, int, int>(RM, 'R', LM),
+            new Tuple<int, int, int>(RM, 'L', LM),
+            new Tuple<int, int, int>(RM, 'A', LM),
+            new Tuple<int, int, int>(LM, 'B', LM),
+            new Tuple<int, int, int>(LM, 'L', LM),
+            new Tuple<int, int, int>(LM, 'Y', RM),
+            new Tuple<int, int, int>(RM, 'P', RM),
+            new Tuple<int, int, int>(LM, 'P', LM)
+        };
 
         private void IsYieldTypeSafe()
         {
@@ -72,10 +70,10 @@ namespace Microsoft.Boogie
         private void ASpecCheck(List<Tuple<int, int, int>> implEdges)
         {
             Dictionary<int, HashSet<int>> initialConstraints = new Dictionary<int, HashSet<int>>();
-            initialConstraints[initialState] = new HashSet<int>(new int[] { 0 });
+            initialConstraints[initialState] = new HashSet<int>(new int[] { RM });
             foreach (var finalState in finalStates)
             {
-                initialConstraints[finalState] = new HashSet<int>(new int[] { 1 });
+                initialConstraints[finalState] = new HashSet<int>(new int[] { LM });
             }
             SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, ASpec, initialConstraints);
             Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
@@ -88,10 +86,10 @@ namespace Microsoft.Boogie
         private void BSpecCheck(List<Tuple<int, int, int>> implEdges)
         {
             Dictionary<int, HashSet<int>> initialConstraints = new Dictionary<int, HashSet<int>>();
-            initialConstraints[initialState] = new HashSet<int>(new int[] { 1 });
+            initialConstraints[initialState] = new HashSet<int>(new int[] { LM });
             foreach (var finalState in finalStates)
             {
-                initialConstraints[finalState] = new HashSet<int>(new int[] { 0 });
+                initialConstraints[finalState] = new HashSet<int>(new int[] { RM });
             }
             SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, BSpec, initialConstraints);
             Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
@@ -108,7 +106,7 @@ namespace Microsoft.Boogie
             {
                 if (!IsTerminatingLoopHeader(block))
                 {
-                    initialConstraints[absyToNode[block]] = new HashSet<int>(new int[] { 0 });
+                    initialConstraints[absyToNode[block]] = new HashSet<int>(new int[] { RM });
                 }
             }
             SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, CSpec, initialConstraints);
@@ -134,16 +132,14 @@ namespace Microsoft.Boogie
         
         public static void PerformYieldSafeCheck(CivlTypeChecker civlTypeChecker)
         {
-            foreach (var impl in civlTypeChecker.program.Implementations)
+            foreach (var impl in civlTypeChecker.program.Implementations.Where(i => civlTypeChecker.procToActionInfo.ContainsKey(i.Proc)))
             {
-                if (!civlTypeChecker.procToActionInfo.ContainsKey(impl.Proc)) continue;
                 impl.PruneUnreachableBlocks();
                 Graph<Block> implGraph = Program.GraphFromImpl(impl);
                 implGraph.ComputeLoops();
                 int specLayerNum = civlTypeChecker.procToActionInfo[impl.Proc].createdAtLayerNum;
-                foreach (int layerNum in civlTypeChecker.allLayerNums)
+                foreach (int layerNum in civlTypeChecker.allLayerNums.Where(l => l <= specLayerNum))
                 {
-                    if (layerNum > specLayerNum) continue;
                     YieldTypeChecker executor = new YieldTypeChecker(civlTypeChecker, impl, layerNum, implGraph.Headers);
                 }
             }
@@ -176,15 +172,12 @@ namespace Microsoft.Boogie
             
             foreach (Block block in impl.Blocks)
             {
-                absyToNode[block] = stateCounter;
-                stateCounter++;
+                absyToNode[block] = stateCounter++;
                 foreach (Cmd cmd in block.Cmds)
                 {
-                    absyToNode[cmd] = stateCounter;
-                    stateCounter++;
+                    absyToNode[cmd] = stateCounter++;
                 }
-                absyToNode[block.TransferCmd] = stateCounter;
-                stateCounter++;
+                absyToNode[block.TransferCmd] = stateCounter++;
                 if (block.TransferCmd is ReturnCmd)
                 {
                     finalStates.Add(absyToNode[block.TransferCmd]);
