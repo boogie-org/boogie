@@ -143,10 +143,10 @@ namespace Microsoft.Boogie
             private void ASpecCheck(List<Tuple<int, int, int>> implEdges)
             {
                 Dictionary<int, HashSet<int>> initialConstraints = new Dictionary<int, HashSet<int>>();
-                initialConstraints[initialState] = new HashSet<int>(new int[] { RM });
+                initialConstraints[initialState] = new HashSet<int> { RM };
                 foreach (var finalState in finalStates)
                 {
-                    initialConstraints[finalState] = new HashSet<int>(new int[] { LM });
+                    initialConstraints[finalState] = new HashSet<int> { LM };
                 }
                 SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, ASpec, initialConstraints);
                 Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
@@ -159,10 +159,10 @@ namespace Microsoft.Boogie
             private void BSpecCheck(List<Tuple<int, int, int>> implEdges)
             {
                 Dictionary<int, HashSet<int>> initialConstraints = new Dictionary<int, HashSet<int>>();
-                initialConstraints[initialState] = new HashSet<int>(new int[] { LM });
+                initialConstraints[initialState] = new HashSet<int> { LM };
                 foreach (var finalState in finalStates)
                 {
-                    initialConstraints[finalState] = new HashSet<int>(new int[] { RM });
+                    initialConstraints[finalState] = new HashSet<int> { RM };
                 }
                 SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, BSpec, initialConstraints);
                 Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
@@ -179,7 +179,7 @@ namespace Microsoft.Boogie
                 {
                     if (!IsTerminatingLoopHeader(block))
                     {
-                        initialConstraints[absyToNode[block]] = new HashSet<int>(new int[] { RM });
+                        initialConstraints[absyToNode[block]] = new HashSet<int> { RM };
                     }
                 }
                 SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, CSpec, initialConstraints);
@@ -231,11 +231,8 @@ namespace Microsoft.Boogie
                     }
                 }
 
-                this.nodeToAbsy = new Dictionary<int, Absy>();
-                foreach (KeyValuePair<Absy, int> state in absyToNode)
-                {
-                    this.nodeToAbsy[state.Value] = state.Key;
-                }
+                // reverse mapping
+                this.nodeToAbsy = absyToNode.ToDictionary(x => x.Value, x => x.Key);
             }
 
             private void ComputeEdges()
