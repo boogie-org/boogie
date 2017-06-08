@@ -11,7 +11,7 @@ using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
-    class YieldTypeChecker
+    public class YieldTypeChecker
     {
         static int RM = 0;
         static int LM = 1;
@@ -54,83 +54,16 @@ namespace Microsoft.Boogie
             new Tuple<int, int, int>(LM, 'P', LM)
         };
 
-        private void IsYieldTypeSafe()
+        CivlTypeChecker civlTypeChecker;
+        public CheckingContext checkingContext;
+
+        public YieldTypeChecker(CivlTypeChecker civlTypeChecker)
         {
-            List<Tuple<int, int, int>> implEdges = new List<Tuple<int, int, int>>();
-            foreach (Tuple<int, int> e in edgeLabels.Keys)
-            {
-                implEdges.Add(new Tuple<int, int, int>(e.Item1, edgeLabels[e], e.Item2));
-            }
-            //Console.WriteLine(PrintGraph(impl, implEdges, initialState, finalStates));
-            ASpecCheck(implEdges);
-            BSpecCheck(implEdges);
-            CSpecCheck(implEdges);
+            this.civlTypeChecker = civlTypeChecker;
+            this.checkingContext = new CheckingContext(null);
         }
 
-        private void ASpecCheck(List<Tuple<int, int, int>> implEdges)
-        {
-            Dictionary<int, HashSet<int>> initialConstraints = new Dictionary<int, HashSet<int>>();
-            initialConstraints[initialState] = new HashSet<int>(new int[] { RM });
-            foreach (var finalState in finalStates)
-            {
-                initialConstraints[finalState] = new HashSet<int>(new int[] { LM });
-            }
-            SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, ASpec, initialConstraints);
-            Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
-            if (simulationRelation[initialState].Count == 0)
-            {
-                civlTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check A at layer {1}. An action must be preceded by a yield.\n", impl.Name, currLayerNum));
-            }
-        }
-
-        private void BSpecCheck(List<Tuple<int, int, int>> implEdges)
-        {
-            Dictionary<int, HashSet<int>> initialConstraints = new Dictionary<int, HashSet<int>>();
-            initialConstraints[initialState] = new HashSet<int>(new int[] { LM });
-            foreach (var finalState in finalStates)
-            {
-                initialConstraints[finalState] = new HashSet<int>(new int[] { RM });
-            }
-            SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, BSpec, initialConstraints);
-            Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
-            if (simulationRelation[initialState].Count == 0)
-            {
-                civlTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check B at layer {1}. An action must be succeeded by a yield.\n", impl.Name, currLayerNum));
-            }
-        }
-
-        private void CSpecCheck(List<Tuple<int, int, int>> implEdges)
-        {
-            Dictionary<int, HashSet<int>> initialConstraints = new Dictionary<int, HashSet<int>>();
-            foreach (Block block in loopHeaders)
-            {
-                if (!IsTerminatingLoopHeader(block))
-                {
-                    initialConstraints[absyToNode[block]] = new HashSet<int>(new int[] { RM });
-                }
-            }
-            SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, CSpec, initialConstraints);
-            Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
-            if (simulationRelation[initialState].Count == 0)
-            {
-                civlTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check C at layer {1}. Transactions must be separated by a yield.\n", impl.Name, currLayerNum));
-            }
-        }
-
-        private bool IsTerminatingLoopHeader(Block block)
-        {
-            foreach (Cmd cmd in block.Cmds)
-            {
-                AssertCmd assertCmd = cmd as AssertCmd;
-                if (assertCmd != null && assertCmd.HasAttribute(CivlAttributes.TERMINATES) && civlTypeChecker.absyToLayerNums[assertCmd].Contains(currLayerNum))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-        
-        public static void PerformYieldSafeCheck(CivlTypeChecker civlTypeChecker)
+        public void TypeCheck()
         {
             foreach (var impl in civlTypeChecker.program.Implementations.Where(i => civlTypeChecker.procToActionInfo.ContainsKey(i.Proc)))
             {
@@ -140,220 +73,311 @@ namespace Microsoft.Boogie
                 int specLayerNum = civlTypeChecker.procToActionInfo[impl.Proc].createdAtLayerNum;
                 foreach (int layerNum in civlTypeChecker.allLayerNums.Where(l => l <= specLayerNum))
                 {
-                    YieldTypeChecker executor = new YieldTypeChecker(civlTypeChecker, impl, layerNum, implGraph.Headers);
+                    PerLayerYieldTypeChecker perLayerTypeChecker = new PerLayerYieldTypeChecker(civlTypeChecker, impl, layerNum, implGraph.Headers, checkingContext);
+                    perLayerTypeChecker.TypeCheckLayer();
                 }
             }
 
             // TODO: Remove "terminates" attribute
         }
 
-        int stateCounter;
-        CivlTypeChecker civlTypeChecker;
-        Implementation impl;
-        int currLayerNum;
-        Dictionary<Absy, int> absyToNode;
-        Dictionary<int, Absy> nodeToAbsy;
-        int initialState;
-        HashSet<int> finalStates;
-        Dictionary<Tuple<int, int>, int> edgeLabels;
-        IEnumerable<Block> loopHeaders;
-
-        private YieldTypeChecker(CivlTypeChecker civlTypeChecker, Implementation impl, int currLayerNum, IEnumerable<Block> loopHeaders)
+        private class PerLayerYieldTypeChecker
         {
-            this.civlTypeChecker = civlTypeChecker;
-            this.impl = impl;
-            this.currLayerNum = currLayerNum;
-            this.loopHeaders = loopHeaders;
-            this.stateCounter = 0;
-            this.absyToNode = new Dictionary<Absy, int>();
-            this.initialState = 0;
-            this.finalStates = new HashSet<int>();
-            this.edgeLabels = new Dictionary<Tuple<int, int>, int>(); 
-            
-            foreach (Block block in impl.Blocks)
+            int stateCounter;
+            CivlTypeChecker civlTypeChecker;
+            Implementation impl;
+            int currLayerNum;
+            Dictionary<Absy, int> absyToNode;
+            Dictionary<int, Absy> nodeToAbsy;
+            int initialState;
+            HashSet<int> finalStates;
+            Dictionary<Tuple<int, int>, int> edgeLabels;
+            IEnumerable<Block> loopHeaders;
+
+            CheckingContext checkingContext;
+
+            public PerLayerYieldTypeChecker(CivlTypeChecker civlTypeChecker, Implementation impl, int currLayerNum, IEnumerable<Block> loopHeaders, CheckingContext checkingContext)
             {
-                absyToNode[block] = stateCounter++;
+                this.civlTypeChecker = civlTypeChecker;
+                this.impl = impl;
+                this.currLayerNum = currLayerNum;
+                this.loopHeaders = loopHeaders;
+                this.stateCounter = 0;
+                this.absyToNode = new Dictionary<Absy, int>();
+                this.initialState = 0;
+                this.finalStates = new HashSet<int>();
+                this.edgeLabels = new Dictionary<Tuple<int, int>, int>();
+
+                this.checkingContext = checkingContext;
+            }
+
+            public void TypeCheckLayer()
+            {
+                ComputeStates();
+                ComputeEdges();
+                IsYieldTypeSafe();
+            }
+
+            private void IsYieldTypeSafe()
+            {
+                List<Tuple<int, int, int>> implEdges = new List<Tuple<int, int, int>>();
+                foreach (Tuple<int, int> e in edgeLabels.Keys)
+                {
+                    implEdges.Add(new Tuple<int, int, int>(e.Item1, edgeLabels[e], e.Item2));
+                }
+                //Console.WriteLine(PrintGraph(impl, implEdges, initialState, finalStates));
+                ASpecCheck(implEdges);
+                BSpecCheck(implEdges);
+                CSpecCheck(implEdges);
+            }
+
+            private void ASpecCheck(List<Tuple<int, int, int>> implEdges)
+            {
+                Dictionary<int, HashSet<int>> initialConstraints = new Dictionary<int, HashSet<int>>();
+                initialConstraints[initialState] = new HashSet<int>(new int[] { RM });
+                foreach (var finalState in finalStates)
+                {
+                    initialConstraints[finalState] = new HashSet<int>(new int[] { LM });
+                }
+                SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, ASpec, initialConstraints);
+                Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
+                if (simulationRelation[initialState].Count == 0)
+                {
+                    checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check A at layer {1}. An action must be preceded by a yield.\n", impl.Name, currLayerNum));
+                }
+            }
+
+            private void BSpecCheck(List<Tuple<int, int, int>> implEdges)
+            {
+                Dictionary<int, HashSet<int>> initialConstraints = new Dictionary<int, HashSet<int>>();
+                initialConstraints[initialState] = new HashSet<int>(new int[] { LM });
+                foreach (var finalState in finalStates)
+                {
+                    initialConstraints[finalState] = new HashSet<int>(new int[] { RM });
+                }
+                SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, BSpec, initialConstraints);
+                Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
+                if (simulationRelation[initialState].Count == 0)
+                {
+                    checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check B at layer {1}. An action must be succeeded by a yield.\n", impl.Name, currLayerNum));
+                }
+            }
+
+            private void CSpecCheck(List<Tuple<int, int, int>> implEdges)
+            {
+                Dictionary<int, HashSet<int>> initialConstraints = new Dictionary<int, HashSet<int>>();
+                foreach (Block block in loopHeaders)
+                {
+                    if (!IsTerminatingLoopHeader(block))
+                    {
+                        initialConstraints[absyToNode[block]] = new HashSet<int>(new int[] { RM });
+                    }
+                }
+                SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, CSpec, initialConstraints);
+                Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
+                if (simulationRelation[initialState].Count == 0)
+                {
+                    checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check C at layer {1}. Transactions must be separated by a yield.\n", impl.Name, currLayerNum));
+                }
+            }
+
+            private bool IsTerminatingLoopHeader(Block block)
+            {
                 foreach (Cmd cmd in block.Cmds)
                 {
-                    absyToNode[cmd] = stateCounter++;
-                }
-                absyToNode[block.TransferCmd] = stateCounter++;
-                if (block.TransferCmd is ReturnCmd)
-                {
-                    finalStates.Add(absyToNode[block.TransferCmd]);
-                }
-            }
-            foreach (Block block in impl.Blocks)
-            {
-                Absy blockEntry = block.Cmds.Count == 0 ? (Absy)block.TransferCmd : (Absy)block.Cmds[0];
-                edgeLabels[new Tuple<int, int>(absyToNode[block], absyToNode[blockEntry])] = 'P';
-                
-                GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
-                if (gotoCmd == null) continue;
-                foreach (Block successor in gotoCmd.labelTargets)
-                {
-                    edgeLabels[new Tuple<int, int>(absyToNode[gotoCmd], absyToNode[successor])] = 'P';
-                }
-            }
-
-            this.nodeToAbsy = new Dictionary<int, Absy>();
-            foreach (KeyValuePair<Absy, int> state in absyToNode)
-            {
-                this.nodeToAbsy[state.Value] = state.Key;
-            }
-
-            ComputeGraph();
-            IsYieldTypeSafe();
-        }
-
-        private void ComputeGraph()
-        {
-            foreach (Block block in impl.Blocks)
-            {
-                for (int i = 0; i < block.Cmds.Count; i++)
-                {
-                    Cmd cmd = block.Cmds[i];
-                    int curr = absyToNode[cmd];
-                    int next = (i + 1 == block.Cmds.Count) ? absyToNode[block.TransferCmd] : absyToNode[block.Cmds[i + 1]];
-                    Tuple<int, int> edge = new Tuple<int, int>(curr, next);
-                    if (cmd is CallCmd)
+                    AssertCmd assertCmd = cmd as AssertCmd;
+                    if (assertCmd != null && assertCmd.HasAttribute(CivlAttributes.TERMINATES) && civlTypeChecker.absyToLayerNums[assertCmd].Contains(currLayerNum))
                     {
-                        CallCmd callCmd = cmd as CallCmd;
-                        if (callCmd.IsAsync)
-                        {
-                            ActionInfo actionInfo = civlTypeChecker.procToActionInfo[callCmd.Proc];
-                            if (currLayerNum <= actionInfo.createdAtLayerNum)
-                                edgeLabels[edge] = 'L';
-                            else
-                                edgeLabels[edge] = 'B';
-                        }
-                        else if (!civlTypeChecker.procToActionInfo.ContainsKey(callCmd.Proc))
-                        {
-                            edgeLabels[edge] = 'P';
-                        }
-                        else
-                        {
-                            MoverType moverType;
-                            ActionInfo actionInfo = civlTypeChecker.procToActionInfo[callCmd.Proc];
-                            if (actionInfo.createdAtLayerNum >= currLayerNum)
-                            {
-                                moverType = MoverType.Top;
-                            }
-                            else
-                            {
-                                moverType = actionInfo.moverType;
-                            }
-                            switch (moverType)
-                            {
-                                case MoverType.Atomic:
-                                    edgeLabels[edge] = 'A';
-                                    break;
-                                case MoverType.Both:
-                                    edgeLabels[edge] = 'B';
-                                    break;
-                                case MoverType.Left:
-                                    edgeLabels[edge] = 'L';
-                                    break;
-                                case MoverType.Right:
-                                    edgeLabels[edge] = 'R';
-                                    break;
-                                case MoverType.Top:
-                                    edgeLabels[edge] = 'Y';
-                                    break;
-                            }
-                        }
+                        return true;
                     }
-                    else if (cmd is ParCallCmd)
+                }
+                return false;
+            }
+
+            private void ComputeStates()
+            {
+                foreach (Block block in impl.Blocks)
+                {
+                    absyToNode[block] = stateCounter++;
+                    foreach (Cmd cmd in block.Cmds)
                     {
-                        ParCallCmd parCallCmd = cmd as ParCallCmd;
-                        bool isYield = false;
-                        bool isRightMover = true;
-                        bool isLeftMover = true;
-                        foreach (CallCmd callCmd in parCallCmd.CallCmds)
+                        absyToNode[cmd] = stateCounter++;
+                    }
+                    absyToNode[block.TransferCmd] = stateCounter++;
+                    if (block.TransferCmd is ReturnCmd)
+                    {
+                        finalStates.Add(absyToNode[block.TransferCmd]);
+                    }
+                }
+                foreach (Block block in impl.Blocks)
+                {
+                    Absy blockEntry = block.Cmds.Count == 0 ? (Absy)block.TransferCmd : (Absy)block.Cmds[0];
+                    edgeLabels[new Tuple<int, int>(absyToNode[block], absyToNode[blockEntry])] = 'P';
+
+                    GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
+                    if (gotoCmd == null) continue;
+                    foreach (Block successor in gotoCmd.labelTargets)
+                    {
+                        edgeLabels[new Tuple<int, int>(absyToNode[gotoCmd], absyToNode[successor])] = 'P';
+                    }
+                }
+
+                this.nodeToAbsy = new Dictionary<int, Absy>();
+                foreach (KeyValuePair<Absy, int> state in absyToNode)
+                {
+                    this.nodeToAbsy[state.Value] = state.Key;
+                }
+            }
+
+            private void ComputeEdges()
+            {
+                foreach (Block block in impl.Blocks)
+                {
+                    for (int i = 0; i < block.Cmds.Count; i++)
+                    {
+                        Cmd cmd = block.Cmds[i];
+                        int curr = absyToNode[cmd];
+                        int next = (i + 1 == block.Cmds.Count) ? absyToNode[block.TransferCmd] : absyToNode[block.Cmds[i + 1]];
+                        Tuple<int, int> edge = new Tuple<int, int>(curr, next);
+                        if (cmd is CallCmd)
                         {
-                            if (civlTypeChecker.procToActionInfo[callCmd.Proc].createdAtLayerNum >= currLayerNum)
+                            CallCmd callCmd = cmd as CallCmd;
+                            if (callCmd.IsAsync)
                             {
-                                isYield = true;
+                                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[callCmd.Proc];
+                                if (currLayerNum <= actionInfo.createdAtLayerNum)
+                                    edgeLabels[edge] = 'L';
+                                else
+                                    edgeLabels[edge] = 'B';
+                            }
+                            else if (!civlTypeChecker.procToActionInfo.ContainsKey(callCmd.Proc))
+                            {
+                                edgeLabels[edge] = 'P';
+                            }
+                            else
+                            {
+                                MoverType moverType;
+                                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[callCmd.Proc];
+                                if (actionInfo.createdAtLayerNum >= currLayerNum)
+                                {
+                                    moverType = MoverType.Top;
+                                }
+                                else
+                                {
+                                    moverType = actionInfo.moverType;
+                                }
+                                switch (moverType)
+                                {
+                                    case MoverType.Atomic:
+                                        edgeLabels[edge] = 'A';
+                                        break;
+                                    case MoverType.Both:
+                                        edgeLabels[edge] = 'B';
+                                        break;
+                                    case MoverType.Left:
+                                        edgeLabels[edge] = 'L';
+                                        break;
+                                    case MoverType.Right:
+                                        edgeLabels[edge] = 'R';
+                                        break;
+                                    case MoverType.Top:
+                                        edgeLabels[edge] = 'Y';
+                                        break;
+                                }
                             }
                         }
-                        if (isYield)
+                        else if (cmd is ParCallCmd)
+                        {
+                            ParCallCmd parCallCmd = cmd as ParCallCmd;
+                            bool isYield = false;
+                            bool isRightMover = true;
+                            bool isLeftMover = true;
+                            foreach (CallCmd callCmd in parCallCmd.CallCmds)
+                            {
+                                if (civlTypeChecker.procToActionInfo[callCmd.Proc].createdAtLayerNum >= currLayerNum)
+                                {
+                                    isYield = true;
+                                }
+                            }
+                            if (isYield)
+                            {
+                                edgeLabels[edge] = 'Y';
+                            }
+                            else
+                            {
+                                int numAtomicActions = 0;
+                                foreach (CallCmd callCmd in parCallCmd.CallCmds)
+                                {
+                                    ActionInfo actionInfo = civlTypeChecker.procToActionInfo[callCmd.Proc];
+                                    isRightMover = isRightMover && actionInfo.IsRightMover;
+                                    isLeftMover = isLeftMover && actionInfo.IsLeftMover;
+                                    if (actionInfo is AtomicActionInfo)
+                                    {
+                                        numAtomicActions++;
+                                    }
+                                }
+                                if (isLeftMover && isRightMover)
+                                {
+                                    edgeLabels[edge] = 'B';
+                                }
+                                else if (isLeftMover)
+                                {
+                                    edgeLabels[edge] = 'L';
+                                }
+                                else if (isRightMover)
+                                {
+                                    edgeLabels[edge] = 'R';
+                                }
+                                else
+                                {
+                                    Debug.Assert(numAtomicActions == 1);
+                                    edgeLabels[edge] = 'A';
+                                }
+                            }
+                        }
+                        else if (cmd is YieldCmd)
                         {
                             edgeLabels[edge] = 'Y';
                         }
                         else
                         {
-                            int numAtomicActions = 0;
-                            foreach (CallCmd callCmd in parCallCmd.CallCmds)
-                            {
-                                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[callCmd.Proc];
-                                isRightMover = isRightMover && actionInfo.IsRightMover;
-                                isLeftMover = isLeftMover && actionInfo.IsLeftMover;
-                                if (actionInfo is AtomicActionInfo)
-                                {
-                                    numAtomicActions++;
-                                }
-                            }
-                            if (isLeftMover && isRightMover)
-                            {
-                                edgeLabels[edge] = 'B';
-                            }
-                            else if (isLeftMover)
-                            {
-                                edgeLabels[edge] = 'L';
-                            }
-                            else if (isRightMover)
-                            {
-                                edgeLabels[edge] = 'R';
-                            }
-                            else
-                            {
-                                Debug.Assert(numAtomicActions == 1);
-                                edgeLabels[edge] = 'A';
-                            }
+                            edgeLabels[edge] = 'P';
                         }
                     }
-                    else if (cmd is YieldCmd)
-                    {
-                        edgeLabels[edge] = 'Y';
-                    }
-                    else
-                    {
-                        edgeLabels[edge] = 'P';
-                    }
                 }
             }
-        }
 
-        private static string PrintGraph(Implementation impl, List<Tuple<int, int, int>> edges, int initialState, HashSet<int> finalStates)
-        {
-            var s = new StringBuilder();
-            s.AppendLine("\nImplementation " + impl.Proc.Name + " digraph G {");
-            foreach (var e in edges)
+            private static string PrintGraph(Implementation impl, List<Tuple<int, int, int>> edges, int initialState, HashSet<int> finalStates)
             {
-                string label = "P";
-                switch (e.Item2)
+                var s = new StringBuilder();
+                s.AppendLine("\nImplementation " + impl.Proc.Name + " digraph G {");
+                foreach (var e in edges)
                 {
-                    case 'P': label = "P"; break;
-                    case 'Y': label = "Y"; break;
-                    case 'B': label = "B"; break;
-                    case 'R': label = "R"; break;
-                    case 'L': label = "L"; break;
-                    case 'A': label = "A"; break;
-                    default: Debug.Assert(false); break;
+                    string label = "P";
+                    switch (e.Item2)
+                    {
+                        case 'P': label = "P"; break;
+                        case 'Y': label = "Y"; break;
+                        case 'B': label = "B"; break;
+                        case 'R': label = "R"; break;
+                        case 'L': label = "L"; break;
+                        case 'A': label = "A"; break;
+                        default: Debug.Assert(false); break;
+                    }
+                    s.AppendLine("  \"" + e.Item1.ToString() + "\" -- " + label + " --> " + "  \"" + e.Item3.ToString() + "\";");
                 }
-                s.AppendLine("  \"" + e.Item1.ToString() + "\" -- " + label + " --> " + "  \"" + e.Item3.ToString() + "\";");
+                s.AppendLine("}");
+                s.AppendLine("Initial state: " + initialState);
+                s.Append("Final states: ");
+                bool first = true;
+                foreach (int finalState in finalStates)
+                {
+                    s.Append((first ? "" : ", ") + finalState);
+                    first = false;
+                }
+                s.AppendLine();
+                return s.ToString();
             }
-            s.AppendLine("}");
-            s.AppendLine("Initial state: " + initialState);
-            s.Append("Final states: ");
-            bool first = true;
-            foreach (int finalState in finalStates)
-            { 
-                s.Append((first ? "" : ", ") + finalState);
-                first = false;
-            }
-            s.AppendLine();
-            return s.ToString();
         }
     }
 }

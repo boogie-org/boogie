@@ -491,7 +491,8 @@ namespace Microsoft.Boogie
 
         LinearTypeChecker linearTypeChecker;
         CivlTypeChecker civlTypeChecker;
-        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypeChecker, out civlTypeChecker);
+        YieldTypeChecker yieldTypeChecker;
+        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypeChecker, out civlTypeChecker, out yieldTypeChecker);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
           return;
 
@@ -700,13 +701,14 @@ namespace Microsoft.Boogie
     ///  - TypeCheckingError if a type checking error occurred
     ///  - ResolvedAndTypeChecked if both resolution and type checking succeeded
     /// </summary>
-    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypeChecker linearTypeChecker, out CivlTypeChecker civlTypeChecker)
+    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypeChecker linearTypeChecker, out CivlTypeChecker civlTypeChecker, out YieldTypeChecker yieldTypeChecker)
     {
       Contract.Requires(program != null);
       Contract.Requires(bplFileName != null);
 
       linearTypeChecker = null;
       civlTypeChecker = null;
+      yieldTypeChecker = null;
 
       // ---------- Resolve ------------------------------------------------------------
 
@@ -748,6 +750,14 @@ namespace Microsoft.Boogie
       if (civlTypeChecker.checkingContext.ErrorCount != 0)
       {
           Console.WriteLine("{0} type checking errors detected in {1}", civlTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(bplFileName));
+          return PipelineOutcome.TypeCheckingError;
+      }
+
+      yieldTypeChecker = new YieldTypeChecker(civlTypeChecker);
+      yieldTypeChecker.TypeCheck();
+      if (yieldTypeChecker.checkingContext.ErrorCount != 0)
+      {
+          Console.WriteLine("{0} type checking errors detected in {1}", yieldTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(bplFileName));
           return PipelineOutcome.TypeCheckingError;
       }
 
@@ -1372,7 +1382,8 @@ namespace Microsoft.Boogie
       System.Diagnostics.Debug.Assert(p != null);
       LinearTypeChecker linearTypeChecker;
       CivlTypeChecker civlTypeChecker;
-      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out linearTypeChecker, out civlTypeChecker);
+      YieldTypeChecker yieldTypeChecker;
+      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out linearTypeChecker, out civlTypeChecker, out yieldTypeChecker);
       System.Diagnostics.Debug.Assert(oc == PipelineOutcome.ResolvedAndTypeChecked);
       return p;
     }

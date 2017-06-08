@@ -456,8 +456,6 @@ namespace Microsoft.Boogie
                            .ToList();
 
             new LayerEraser().VisitProgram(program);
-            // TODO: Move yield checker outside?
-            YieldTypeChecker.PerformYieldSafeCheck(this);
         }
 
         private void TypeCheckGlobalVariables()
