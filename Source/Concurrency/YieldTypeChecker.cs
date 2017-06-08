@@ -13,45 +13,54 @@ namespace Microsoft.Boogie
 {
     public class YieldTypeChecker
     {
+        // States of Yield Sufficiency Automaton (YSA)
         static int RM = 0;
         static int LM = 1;
 
+        // Edge labels of YSA
+        static char Y = 'Y';
+        static char B = 'B';
+        static char L = 'L';
+        static char R = 'R';
+        static char A = 'A';
+        static char P = 'P';
+
         static List<Tuple<int, int, int>> ASpec = new List<Tuple<int, int, int>>
         { // initial: RM, final: LM
-            new Tuple<int, int, int>(RM, 'Y', LM),
-            new Tuple<int, int, int>(LM, 'Y', LM),
-            new Tuple<int, int, int>(LM, 'B', LM),
-            new Tuple<int, int, int>(LM, 'R', LM),
-            new Tuple<int, int, int>(LM, 'L', LM),
-            new Tuple<int, int, int>(LM, 'A', LM),
-            new Tuple<int, int, int>(RM, 'P', RM),
-            new Tuple<int, int, int>(LM, 'P', LM)
+            new Tuple<int, int, int>(RM, Y, LM),
+            new Tuple<int, int, int>(LM, Y, LM),
+            new Tuple<int, int, int>(LM, B, LM),
+            new Tuple<int, int, int>(LM, R, LM),
+            new Tuple<int, int, int>(LM, L, LM),
+            new Tuple<int, int, int>(LM, A, LM),
+            new Tuple<int, int, int>(RM, P, RM),
+            new Tuple<int, int, int>(LM, P, LM)
         };
         static List<Tuple<int, int, int>> BSpec = new List<Tuple<int, int, int>>
         { // initial: LM, final: RM
-            new Tuple<int, int, int>(LM, 'Y', RM),
-            new Tuple<int, int, int>(LM, 'Y', LM),
-            new Tuple<int, int, int>(LM, 'B', LM),
-            new Tuple<int, int, int>(LM, 'R', LM),
-            new Tuple<int, int, int>(LM, 'L', LM),
-            new Tuple<int, int, int>(LM, 'A', LM),
-            new Tuple<int, int, int>(RM, 'P', RM),
-            new Tuple<int, int, int>(LM, 'P', LM)
+            new Tuple<int, int, int>(LM, Y, RM),
+            new Tuple<int, int, int>(LM, Y, LM),
+            new Tuple<int, int, int>(LM, B, LM),
+            new Tuple<int, int, int>(LM, R, LM),
+            new Tuple<int, int, int>(LM, L, LM),
+            new Tuple<int, int, int>(LM, A, LM),
+            new Tuple<int, int, int>(RM, P, RM),
+            new Tuple<int, int, int>(LM, P, LM)
         };
         static List<Tuple<int, int, int>> CSpec = new List<Tuple<int, int, int>>
         { // initial: {RM, LM}, final: {RM, LM}
-            new Tuple<int, int, int>(RM, 'B', RM),
-            new Tuple<int, int, int>(RM, 'R', RM),
-            new Tuple<int, int, int>(RM, 'Y', RM),
-            new Tuple<int, int, int>(RM, 'B', LM),
-            new Tuple<int, int, int>(RM, 'R', LM),
-            new Tuple<int, int, int>(RM, 'L', LM),
-            new Tuple<int, int, int>(RM, 'A', LM),
-            new Tuple<int, int, int>(LM, 'B', LM),
-            new Tuple<int, int, int>(LM, 'L', LM),
-            new Tuple<int, int, int>(LM, 'Y', RM),
-            new Tuple<int, int, int>(RM, 'P', RM),
-            new Tuple<int, int, int>(LM, 'P', LM)
+            new Tuple<int, int, int>(RM, B, RM),
+            new Tuple<int, int, int>(RM, R, RM),
+            new Tuple<int, int, int>(RM, Y, RM),
+            new Tuple<int, int, int>(RM, B, LM),
+            new Tuple<int, int, int>(RM, R, LM),
+            new Tuple<int, int, int>(RM, L, LM),
+            new Tuple<int, int, int>(RM, A, LM),
+            new Tuple<int, int, int>(LM, B, LM),
+            new Tuple<int, int, int>(LM, L, LM),
+            new Tuple<int, int, int>(LM, Y, RM),
+            new Tuple<int, int, int>(RM, P, RM),
+            new Tuple<int, int, int>(LM, P, LM)
         };
 
         CivlTypeChecker civlTypeChecker;
@@ -212,13 +221,13 @@ namespace Microsoft.Boogie
                 foreach (Block block in impl.Blocks)
                 {
                     Absy blockEntry = block.Cmds.Count == 0 ? (Absy)block.TransferCmd : (Absy)block.Cmds[0];
-                    edgeLabels[new Tuple<int, int>(absyToNode[block], absyToNode[blockEntry])] = 'P';
+                    edgeLabels[new Tuple<int, int>(absyToNode[block], absyToNode[blockEntry])] = P;
 
                     GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
                     if (gotoCmd == null) continue;
                     foreach (Block successor in gotoCmd.labelTargets)
                     {
-                        edgeLabels[new Tuple<int, int>(absyToNode[gotoCmd], absyToNode[successor])] = 'P';
+                        edgeLabels[new Tuple<int, int>(absyToNode[gotoCmd], absyToNode[successor])] = P;
                     }
                 }
 
@@ -246,13 +255,13 @@ namespace Microsoft.Boogie
                             {
                                 ActionInfo actionInfo = civlTypeChecker.procToActionInfo[callCmd.Proc];
                                 if (currLayerNum <= actionInfo.createdAtLayerNum)
-                                    edgeLabels[edge] = 'L';
+                                    edgeLabels[edge] = L;
                                 else
-                                    edgeLabels[edge] = 'B';
+                                    edgeLabels[edge] = B;
                             }
                             else if (!civlTypeChecker.procToActionInfo.ContainsKey(callCmd.Proc))
                             {
-                                edgeLabels[edge] = 'P';
+                                edgeLabels[edge] = P;
                             }
                             else
                             {
@@ -269,19 +278,19 @@ namespace Microsoft.Boogie
                                 switch (moverType)
                                 {
                                     case MoverType.Atomic:
-                                        edgeLabels[edge] = 'A';
+                                        edgeLabels[edge] = A;
                                         break;
                                     case MoverType.Both:
-                                        edgeLabels[edge] = 'B';
+                                        edgeLabels[edge] = B;
                                         break;
                                     case MoverType.Left:
-                                        edgeLabels[edge] = 'L';
+                                        edgeLabels[edge] = L;
                                         break;
                                     case MoverType.Right:
-                                        edgeLabels[edge] = 'R';
+                                        edgeLabels[edge] = R;
                                         break;
                                     case MoverType.Top:
-                                        edgeLabels[edge] = 'Y';
+                                        edgeLabels[edge] = Y;
                                         break;
                                 }
                             }
@@ -301,7 +310,7 @@ namespace Microsoft.Boogie
                             }
                             if (isYield)
                             {
-                                edgeLabels[edge] = 'Y';
+                                edgeLabels[edge] = Y;
                             }
                             else
                             {
@@ -318,30 +327,30 @@ namespace Microsoft.Boogie
                                 }
                                 if (isLeftMover && isRightMover)
                                 {
-                                    edgeLabels[edge] = 'B';
+                                    edgeLabels[edge] = B;
                                 }
                                 else if (isLeftMover)
                                 {
-                                    edgeLabels[edge] = 'L';
+                                    edgeLabels[edge] = L;
                                 }
                                 else if (isRightMover)
                                 {
-                                    edgeLabels[edge] = 'R';
+                                    edgeLabels[edge] = R;
                                 }
                                 else
                                 {
                                     Debug.Assert(numAtomicActions == 1);
-                                    edgeLabels[edge] = 'A';
+                                    edgeLabels[edge] = A;
                                 }
                             }
                         }
                         else if (cmd is YieldCmd)
                         {
-                            edgeLabels[edge] = 'Y';
+                            edgeLabels[edge] = Y;
                         }
                         else
                         {
-                            edgeLabels[edge] = 'P';
+                            edgeLabels[edge] = P;
                         }
                     }
                 }
@@ -353,18 +362,7 @@ namespace Microsoft.Boogie
                 s.AppendLine("\nImplementation " + impl.Proc.Name + " digraph G {");
                 foreach (var e in edges)
                 {
-                    string label = "P";
-                    switch (e.Item2)
-                    {
-                        case 'P': label = "P"; break;
-                        case 'Y': label = "Y"; break;
-                        case 'B': label = "B"; break;
-                        case 'R': label = "R"; break;
-                        case 'L': label = "L"; break;
-                        case 'A': label = "A"; break;
-                        default: Debug.Assert(false); break;
-                    }
-                    s.AppendLine("  \"" + e.Item1.ToString() + "\" -- " + label + " --> " + "  \"" + e.Item3.ToString() + "\";");
+                    s.AppendLine("  \"" + e.Item1.ToString() + "\" -- " + (char)e.Item2 + " --> " + "  \"" + e.Item3.ToString() + "\";");
                 }
                 s.AppendLine("}");
                 s.AppendLine("Initial state: " + initialState);
