@@ -169,7 +169,8 @@ namespace Microsoft.Boogie.SMTLib
 
     internal TypeAxiomBuilder AxBuilder { get; private set; }
     private TypeAxiomBuilder CachedAxBuilder;
-    internal readonly UniqueNamer Namer;
+    private UniqueNamer CachedNamer;
+    internal UniqueNamer Namer { get; private set; }
     readonly TypeDeclCollector DeclCollector;
     protected SMTLibProcess Process;
     readonly List<string> proverErrors = new List<string>();
@@ -356,6 +357,7 @@ namespace Microsoft.Boogie.SMTLib
           AddAxiom(VCExpr2String(axioms, -1));
         AxiomsAreSetup = true;
         CachedAxBuilder = AxBuilder;
+        CachedNamer = Namer;
       }
     }
 
@@ -431,6 +433,9 @@ namespace Microsoft.Boogie.SMTLib
 
       if (HasReset) {
         AxBuilder = (TypeAxiomBuilder)CachedAxBuilder.Clone();
+        Namer = (SMTLibNamer)CachedNamer.Clone();
+        Namer.ResetLabelCount();
+        DeclCollector.SetNamer(Namer);
         DeclCollector.Push();
       }
 
@@ -1503,7 +1508,7 @@ namespace Microsoft.Boogie.SMTLib
           if (CommandLineOptions.Clo.UseLabels) {
             var negLabels = labels.Where(l => l.StartsWith("@")).ToArray();
             var posLabels = labels.Where(l => !l.StartsWith("@"));
-            Func<string, string> lbl = (s) => SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(s));
+            Func<string, string> lbl = (s) => SMTLibNamer.QuoteId(Namer.LabelVar(s));
             if (!options.MultiTraces)
               posLabels = Enumerable.Empty<string>();
             var conjuncts = posLabels.Select(s => "(not " + lbl(s) + ")").Concat(negLabels.Select(lbl)).ToArray();
@@ -1965,7 +1970,7 @@ namespace Microsoft.Boogie.SMTLib
         if (res != null)
           HandleProverError("Expecting only one sequence of labels but got many");
         if (resp.Name == "labels" && resp.ArgCount >= 1) {
-          res = resp.Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
+          res = resp.Arguments.Select(a => Namer.AbsyLabel(a.Name.Replace("|", ""))).ToArray();
         }
         else {
           HandleProverError("Unexpected prover response getting labels: " + resp.ToString());
