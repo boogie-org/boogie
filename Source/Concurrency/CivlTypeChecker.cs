@@ -785,13 +785,9 @@ namespace Microsoft.Boogie
                         HashSet<Variable> callerOutParams = new HashSet<Variable>(enclosingImpl.OutParams);
                         foreach (var x in call.Outs)
                         {
-                            // TODO: Can be removed?
-                            if (x.Decl is GlobalVariable)
-                            {
-                                Error(call, "A global variable cannot be used as output argument for this call");
-                            }
-                            // TODO: document
-                            else if (callerOutParams.Contains(x.Decl))
+                            // For refinement checking, skip procedures are just empty procedures that immediately return.
+                            // Thus, the effect on output variables is havoc, which would propagate to the callers output.
+                            if (callerOutParams.Contains(x.Decl))
                             {
                                 Error(call, "An output variable of the enclosing implementation cannot be used as output argument for this call");
                             }
@@ -837,6 +833,10 @@ namespace Microsoft.Boogie
                 {
                     var formal = call.Proc.OutParams[i];
                     var actual = call.Outs[i].Decl;
+
+                    // Visitor only called to check for global variable accesses
+                    Visit(call.Outs[i]);
+                    introducedLocalVarsUpperBound = int.MinValue;
 
                     if (localVarToLocalVariableInfo.ContainsKey(formal) &&
                         (!localVarToLocalVariableInfo.ContainsKey(actual) ||
@@ -993,7 +993,7 @@ namespace Microsoft.Boogie
             {
                 if (sharedVarsAccessed == null)
                 {
-                    Error(node, "Shared variable can be accessed only in atomic actions or specifications");
+                    Error(node, "Shared variable can be accessed only in atomic procedures, atomic actions, and specifications");
                 }
                 else if (this.globalVarToSharedVarInfo.ContainsKey(node.Decl))
                 {
