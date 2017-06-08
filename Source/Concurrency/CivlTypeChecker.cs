@@ -613,7 +613,7 @@ namespace Microsoft.Boogie
                     }
                     if (procMoverType != MoverType.Top)
                     {
-                        Error(proc, "A procedure with an atomic action can not have a separate mover type");
+                        Error(proc, "A procedure with an atomic action cannot have a separate mover type");
                     }
 
                     var atomicEnsures = atomicActionSpecs.First();
@@ -772,7 +772,7 @@ namespace Microsoft.Boogie
                 {
                     if (calleeAction is MoverActionInfo)
                     {
-                        Error(call, "A mover procedure can not call a skip procedure");
+                        Error(call, "A mover procedure cannot call a skip procedure");
                     }
                     else if (callerLayerNum < calleeLayerNum)
                     {
