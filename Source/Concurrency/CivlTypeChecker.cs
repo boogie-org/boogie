@@ -455,7 +455,7 @@ namespace Microsoft.Boogie
                            .Distinct()
                            .ToList();
 
-            new LayerEraser().VisitProgram(program);
+            new AttributeEraser().VisitProgram(program);
         }
 
         private void TypeCheckGlobalVariables()
@@ -848,7 +848,7 @@ namespace Microsoft.Boogie
             }
             else if (procToAtomicProcedureInfo.ContainsKey(call.Proc))
             {
-                var atomicProcedureInfo = procToAtomicProcedureInfo[call.Proc];                
+                var atomicProcedureInfo = procToAtomicProcedureInfo[call.Proc];
                 if (atomicProcedureInfo.isPure)
                 {
                     if (call.Outs.Count > 0)
@@ -927,7 +927,7 @@ namespace Microsoft.Boogie
                 }
                 return call;
             }
-            else  
+            else
             {
                 Error(call, "A yielding procedure can call only atomic or yielding procedures");
                 return call;
@@ -1009,7 +1009,7 @@ namespace Microsoft.Boogie
                 {
                     introducedLocalVarsUpperBound = localVariableInfo.layer;
                 }
-            } 
+            }
             return base.VisitIdentifierExpr(node);
         }
 
@@ -1025,7 +1025,7 @@ namespace Microsoft.Boogie
             {
                 sharedVarsAccessed = new HashSet<Variable>();
                 Debug.Assert(introducedLocalVarsUpperBound == int.MinValue);
-                base.VisitEnsures(ensures); 
+                base.VisitEnsures(ensures);
                 CheckAndAddLayers(ensures, ensures.Attributes, actionInfo.createdAtLayerNum);
                 if (introducedLocalVarsUpperBound > Least(FindLayers(ensures.Attributes)))
                 {
@@ -1129,7 +1129,7 @@ namespace Microsoft.Boogie
             {
                 this.civlTypeChecker = civlTypeChecker;
             }
-            
+
             public override Cmd VisitCallCmd(CallCmd node)
             {
                 Procedure enclosingProc = civlTypeChecker.enclosingImpl.Proc;
@@ -1169,12 +1169,12 @@ namespace Microsoft.Boogie
                     if (civlTypeChecker.procToAtomicProcedureInfo[enclosingProc].isPure)
                     {
                         civlTypeChecker.Error(node, "Pure procedure cannot access global variables");
-                    } 
+                    }
                     else if (!civlTypeChecker.globalVarToSharedVarInfo.ContainsKey(node.Decl))
                     {
                         civlTypeChecker.Error(node, "Atomic procedure cannot access a global variable without layer numbers");
-                    } 
-                    else 
+                    }
+                    else
                     {
                         civlTypeChecker.sharedVarsAccessed.Add(node.Decl);
                     }
@@ -1182,44 +1182,51 @@ namespace Microsoft.Boogie
                 return node;
             }
         }
-    }
 
-    public class LayerEraser : ReadOnlyVisitor
-    {
-        public override Variable VisitVariable(Variable node)
+        private class AttributeEraser : ReadOnlyVisitor
         {
-            CivlAttributes.RemoveLayerAttribute(node);
-            return base.VisitVariable(node);
-        }
+            public override Declaration VisitDeclaration(Declaration node)
+            {
+                CivlAttributes.RemoveYieldsAttribute(node);
+                CivlAttributes.RemoveMoverAttribute(node);
+                return base.VisitDeclaration(node);
+            }
 
-        public override Procedure VisitProcedure(Procedure node)
-        {
-            CivlAttributes.RemoveLayerAttribute(node);
-            return base.VisitProcedure(node);
-        }
+            public override Variable VisitVariable(Variable node)
+            {
+                CivlAttributes.RemoveLayerAttribute(node);
+                return base.VisitVariable(node);
+            }
 
-        public override Implementation VisitImplementation(Implementation node)
-        {
-            CivlAttributes.RemoveLayerAttribute(node);
-            return base.VisitImplementation(node);
-        }
+            public override Procedure VisitProcedure(Procedure node)
+            {
+                CivlAttributes.RemoveLayerAttribute(node);
+                return base.VisitProcedure(node);
+            }
 
-        public override Requires VisitRequires(Requires node)
-        {
-            CivlAttributes.RemoveLayerAttribute(node);
-            return base.VisitRequires(node);
-        }
+            public override Implementation VisitImplementation(Implementation node)
+            {
+                CivlAttributes.RemoveLayerAttribute(node);
+                return base.VisitImplementation(node);
+            }
 
-        public override Ensures VisitEnsures(Ensures node)
-        {
-            CivlAttributes.RemoveLayerAttribute(node);
-            return base.VisitEnsures(node);
-        }
+            public override Requires VisitRequires(Requires node)
+            {
+                CivlAttributes.RemoveLayerAttribute(node);
+                return base.VisitRequires(node);
+            }
 
-        public override Cmd VisitAssertCmd(AssertCmd node)
-        {
-            CivlAttributes.RemoveLayerAttribute(node);
-            return base.VisitAssertCmd(node);
+            public override Ensures VisitEnsures(Ensures node)
+            {
+                CivlAttributes.RemoveLayerAttribute(node);
+                return base.VisitEnsures(node);
+            }
+
+            public override Cmd VisitAssertCmd(AssertCmd node)
+            {
+                CivlAttributes.RemoveLayerAttribute(node);
+                return base.VisitAssertCmd(node);
+            }
         }
     }
 }

@@ -9,37 +9,27 @@ namespace Microsoft.Boogie
     {
         public static void Transform(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker)
         {
-            List<Declaration> originalDecls = new List<Declaration>();
             Program program = linearTypeChecker.program;
-            foreach (var decl in program.TopLevelDeclarations)
-            {
-                Procedure proc = decl as Procedure;
-                if (proc != null && civlTypeChecker.procToActionInfo.ContainsKey(proc))
-                {
-                    originalDecls.Add(proc);
-                    continue;
-                }
-                Implementation impl = decl as Implementation;
-                if (impl != null && civlTypeChecker.procToActionInfo.ContainsKey(impl.Proc))
-                {
-                    originalDecls.Add(impl);
-                }
-            }
 
+            // Store the original declarations of yielding procedures, which will be removed after desugaring below.
+            var origProc = program.TopLevelDeclarations.OfType<Procedure>().Where(p => civlTypeChecker.procToActionInfo.ContainsKey(p));
+            var origImpl = program.TopLevelDeclarations.OfType<Implementation>().Where(i => civlTypeChecker.procToActionInfo.ContainsKey(i.Proc));
+            List<Declaration> originalDecls = Enumerable.Union<Declaration>(origProc, origImpl).ToList();
+
+            // Commutativity checks
             List<Declaration> decls = new List<Declaration>();
             if (!CommandLineOptions.Clo.TrustAtomicityTypes)
             {
                 MoverCheck.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
-            } 
+            }
+
+            // Desugaring of yielding procedures
             CivlRefinement.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
-            foreach (AtomicActionInfo info in civlTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo))
-            {
-                decls.AddRange(info.triggerFuns.Values);
-            }
-            foreach (Declaration decl in decls)
-            {
-                CivlAttributes.RemoveYieldsAttribute(decl);
-            }
+
+            // Trigger functions for existential vairables in transition relations
+            decls.AddRange(civlTypeChecker.procToActionInfo.Values.OfType<AtomicActionInfo>().SelectMany(a => a.triggerFuns.Values));
+            
+            // Remove original declarations and add new checkers generated above
             program.RemoveTopLevelDeclarations(x => originalDecls.Contains(x));
             program.AddTopLevelDeclarations(decls);
         }
