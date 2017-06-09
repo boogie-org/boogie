@@ -65,24 +65,28 @@ namespace Microsoft.Boogie
 
         CivlTypeChecker civlTypeChecker;
         public CheckingContext checkingContext;
+        public HashSet<Absy> absysMatchedToLM;
 
         public YieldTypeChecker(CivlTypeChecker civlTypeChecker)
         {
             this.civlTypeChecker = civlTypeChecker;
             this.checkingContext = new CheckingContext(null);
+            this.absysMatchedToLM = new HashSet<Absy>();
         }
 
         public void TypeCheck()
         {
-            foreach (var impl in civlTypeChecker.program.Implementations.Where(i => civlTypeChecker.procToActionInfo.ContainsKey(i.Proc)))
+            foreach (var impl in civlTypeChecker.program.Implementations.Where(impl => civlTypeChecker.procToActionInfo.ContainsKey(impl.Proc)))
             {
+                var actionInfo = civlTypeChecker.procToActionInfo[impl.Proc];
+
                 impl.PruneUnreachableBlocks();
                 Graph<Block> implGraph = Program.GraphFromImpl(impl);
                 implGraph.ComputeLoops();
-                int specLayerNum = civlTypeChecker.procToActionInfo[impl.Proc].createdAtLayerNum;
-                foreach (int layerNum in civlTypeChecker.allLayerNums.Where(l => l <= specLayerNum))
+
+                foreach (int layerNum in civlTypeChecker.allLayerNums.Where(l => l <= actionInfo.createdAtLayerNum))
                 {
-                    PerLayerYieldTypeChecker perLayerTypeChecker = new PerLayerYieldTypeChecker(civlTypeChecker, impl, layerNum, implGraph.Headers, checkingContext);
+                    PerLayerYieldTypeChecker perLayerTypeChecker = new PerLayerYieldTypeChecker(this, actionInfo, impl, layerNum, implGraph.Headers);
                     perLayerTypeChecker.TypeCheckLayer();
                 }
             }
@@ -93,7 +97,8 @@ namespace Microsoft.Boogie
         private class PerLayerYieldTypeChecker
         {
             int stateCounter;
-            CivlTypeChecker civlTypeChecker;
+            YieldTypeChecker @base;
+            ActionInfo actionInfo;
             Implementation impl;
             int currLayerNum;
             Dictionary<Absy, int> absyToNode;
@@ -103,11 +108,10 @@ namespace Microsoft.Boogie
             Dictionary<Tuple<int, int>, int> edgeLabels;
             IEnumerable<Block> loopHeaders;
 
-            CheckingContext checkingContext;
-
-            public PerLayerYieldTypeChecker(CivlTypeChecker civlTypeChecker, Implementation impl, int currLayerNum, IEnumerable<Block> loopHeaders, CheckingContext checkingContext)
+            public PerLayerYieldTypeChecker(YieldTypeChecker @base, ActionInfo actionInfo, Implementation impl, int currLayerNum, IEnumerable<Block> loopHeaders)
             {
-                this.civlTypeChecker = civlTypeChecker;
+                this.@base = @base;
+                this.actionInfo = actionInfo;
                 this.impl = impl;
                 this.currLayerNum = currLayerNum;
                 this.loopHeaders = loopHeaders;
@@ -116,8 +120,6 @@ namespace Microsoft.Boogie
                 this.initialState = 0;
                 this.finalStates = new HashSet<int>();
                 this.edgeLabels = new Dictionary<Tuple<int, int>, int>();
-
-                this.checkingContext = checkingContext;
             }
 
             public void TypeCheckLayer()
@@ -135,67 +137,98 @@ namespace Microsoft.Boogie
                     implEdges.Add(new Tuple<int, int, int>(e.Item1, edgeLabels[e], e.Item2));
                 }
                 //Console.WriteLine(PrintGraph(impl, implEdges, initialState, finalStates));
-                ASpecCheck(implEdges);
-                BSpecCheck(implEdges);
+
+                if (!IsMoverProcedure)
+                {
+                    ASpecCheck(implEdges);
+                    BSpecCheck(implEdges);
+                }
                 CSpecCheck(implEdges);
             }
 
             private void ASpecCheck(List<Tuple<int, int, int>> implEdges)
             {
-                Dictionary<int, HashSet<int>> initialConstraints = new Dictionary<int, HashSet<int>>();
+                var initialConstraints = new Dictionary<int, HashSet<int>>();
                 initialConstraints[initialState] = new HashSet<int> { RM };
                 foreach (var finalState in finalStates)
                 {
                     initialConstraints[finalState] = new HashSet<int> { LM };
                 }
-                SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, ASpec, initialConstraints);
-                Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
+
+                var simulationRelation = new SimulationRelation<int, int, int>(implEdges, ASpec, initialConstraints).ComputeSimulationRelation();
                 if (simulationRelation[initialState].Count == 0)
                 {
-                    checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check A at layer {1}. An action must be preceded by a yield.\n", impl.Name, currLayerNum));
+                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check A at layer {1}. An action must be preceded by a yield.\n", impl.Name, currLayerNum));
                 }
             }
 
             private void BSpecCheck(List<Tuple<int, int, int>> implEdges)
             {
-                Dictionary<int, HashSet<int>> initialConstraints = new Dictionary<int, HashSet<int>>();
+                var initialConstraints = new Dictionary<int, HashSet<int>>();
                 initialConstraints[initialState] = new HashSet<int> { LM };
                 foreach (var finalState in finalStates)
                 {
                     initialConstraints[finalState] = new HashSet<int> { RM };
                 }
-                SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, BSpec, initialConstraints);
-                Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
+
+                var simulationRelation = new SimulationRelation<int, int, int>(implEdges, BSpec, initialConstraints).ComputeSimulationRelation();
                 if (simulationRelation[initialState].Count == 0)
                 {
-                    checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check B at layer {1}. An action must be succeeded by a yield.\n", impl.Name, currLayerNum));
+                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check B at layer {1}. An action must be succeeded by a yield.\n", impl.Name, currLayerNum));
                 }
             }
 
             private void CSpecCheck(List<Tuple<int, int, int>> implEdges)
             {
-                Dictionary<int, HashSet<int>> initialConstraints = new Dictionary<int, HashSet<int>>();
-                foreach (Block block in loopHeaders)
+                var initialConstraints = new Dictionary<int, HashSet<int>>();
+                if (!IsMoverProcedure)
                 {
-                    if (!IsTerminatingLoopHeader(block))
+                    foreach (Block block in loopHeaders)
                     {
                         initialConstraints[absyToNode[block]] = new HashSet<int> { RM };
                     }
                 }
-                SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, CSpec, initialConstraints);
-                Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
-                if (simulationRelation[initialState].Count == 0)
+
+                var simulationRelation = new SimulationRelation<int, int, int>(implEdges, CSpec, initialConstraints).ComputeSimulationRelation();
+
+                if (IsMoverProcedure)
                 {
-                    checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check C at layer {1}. Transactions must be separated by a yield.\n", impl.Name, currLayerNum));
+                    if (!CheckAtomicity(simulationRelation))
+                    {
+                        @base.checkingContext.Error(impl, "The atomicity declared for mover procedure is not valid");
+                    }
+
+                    // store loop heads and calls that are mapped to LM
+                    var query =
+                    from x in simulationRelation
+                    where x.Value.Contains(LM) && !x.Value.Contains(RM)
+                    where nodeToAbsy[x.Key] is CallCmd ||
+                          loopHeaders.Contains(nodeToAbsy[x.Key])
+                    select nodeToAbsy[x.Key];
+                    @base.absysMatchedToLM.UnionWith(query);
+                }
+                else if (simulationRelation[initialState].Count == 0)
+                {
+                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check C at layer {1}. Transactions must be separated by a yield.\n", impl.Name, currLayerNum));
                 }
             }
 
+            private bool CheckAtomicity(Dictionary<int, HashSet<int>> simulationRelation)
+            {
+                if (actionInfo.moverType == MoverType.Atomic && simulationRelation[initialState].Count == 0) return false;
+                if (actionInfo.IsRightMover && (!simulationRelation[initialState].Contains(RM) || finalStates.Any(f => !simulationRelation[f].Contains(RM)))) return false;
+                if (actionInfo.IsLeftMover && !simulationRelation[initialState].Contains(LM)) return false;
+                return true;
+            }
+
+            private bool IsMoverProcedure { get { return actionInfo is MoverActionInfo && actionInfo.createdAtLayerNum == currLayerNum; } }
+
+            // Deprecated way to bypass constraint that loop heads have to be mapped by RM
             private bool IsTerminatingLoopHeader(Block block)
             {
-                foreach (Cmd cmd in block.Cmds)
+                foreach (AssertCmd assertCmd in block.Cmds.OfType<AssertCmd>())
                 {
-                    AssertCmd assertCmd = cmd as AssertCmd;
-                    if (assertCmd != null && assertCmd.HasAttribute(CivlAttributes.TERMINATES) && civlTypeChecker.absyToLayerNums[assertCmd].Contains(currLayerNum))
+                    if (assertCmd.HasAttribute(CivlAttributes.TERMINATES) && @base.civlTypeChecker.absyToLayerNums[assertCmd].Contains(currLayerNum))
                     {
                         return true;
                     }
@@ -248,59 +281,63 @@ namespace Microsoft.Boogie
                         if (cmd is CallCmd)
                         {
                             CallCmd callCmd = cmd as CallCmd;
-                            if (callCmd.IsAsync)
-                            {
-                                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[callCmd.Proc];
-                                if (currLayerNum <= actionInfo.createdAtLayerNum)
-                                    edgeLabels[edge] = L;
-                                else
-                                    edgeLabels[edge] = B;
-                            }
-                            else if (!civlTypeChecker.procToActionInfo.ContainsKey(callCmd.Proc))
+                            if (!@base.civlTypeChecker.procToActionInfo.ContainsKey(callCmd.Proc))
                             {
                                 edgeLabels[edge] = P;
                             }
                             else
                             {
-                                MoverType moverType;
-                                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[callCmd.Proc];
-                                if (actionInfo.createdAtLayerNum >= currLayerNum)
+                                ActionInfo calledAction = @base.civlTypeChecker.procToActionInfo[callCmd.Proc];
+                                if (callCmd.IsAsync)
                                 {
-                                    moverType = MoverType.Top;
+                                    if (currLayerNum <= calledAction.createdAtLayerNum)
+                                        edgeLabels[edge] = L;
+                                    else
+                                        edgeLabels[edge] = B;
                                 }
                                 else
                                 {
-                                    moverType = actionInfo.moverType;
-                                }
-                                switch (moverType)
-                                {
-                                    case MoverType.Atomic:
-                                        edgeLabels[edge] = A;
-                                        break;
-                                    case MoverType.Both:
-                                        edgeLabels[edge] = B;
-                                        break;
-                                    case MoverType.Left:
-                                        edgeLabels[edge] = L;
-                                        break;
-                                    case MoverType.Right:
-                                        edgeLabels[edge] = R;
-                                        break;
-                                    case MoverType.Top:
-                                        edgeLabels[edge] = Y;
-                                        break;
+                                    MoverType moverType;
+                                    if (calledAction.createdAtLayerNum < currLayerNum || (calledAction.createdAtLayerNum == currLayerNum && calledAction is MoverActionInfo))
+                                    {
+                                        moverType = calledAction.moverType;
+                                    }
+                                    else
+                                    {
+                                        moverType = MoverType.Top;
+                                    }
+
+                                    switch (moverType)
+                                    {
+                                        case MoverType.Atomic:
+                                            edgeLabels[edge] = A;
+                                            break;
+                                        case MoverType.Both:
+                                            edgeLabels[edge] = B;
+                                            break;
+                                        case MoverType.Left:
+                                            edgeLabels[edge] = L;
+                                            break;
+                                        case MoverType.Right:
+                                            edgeLabels[edge] = R;
+                                            break;
+                                        case MoverType.Top:
+                                            edgeLabels[edge] = Y;
+                                            break;
+                                    }
                                 }
                             }
                         }
                         else if (cmd is ParCallCmd)
                         {
+                            // TODO: handle mover procedures!
                             ParCallCmd parCallCmd = cmd as ParCallCmd;
                             bool isYield = false;
                             bool isRightMover = true;
                             bool isLeftMover = true;
                             foreach (CallCmd callCmd in parCallCmd.CallCmds)
                             {
-                                if (civlTypeChecker.procToActionInfo[callCmd.Proc].createdAtLayerNum >= currLayerNum)
+                                if (@base.civlTypeChecker.procToActionInfo[callCmd.Proc].createdAtLayerNum >= currLayerNum)
                                 {
                                     isYield = true;
                                 }
@@ -314,7 +351,7 @@ namespace Microsoft.Boogie
                                 int numAtomicActions = 0;
                                 foreach (CallCmd callCmd in parCallCmd.CallCmds)
                                 {
-                                    ActionInfo actionInfo = civlTypeChecker.procToActionInfo[callCmd.Proc];
+                                    ActionInfo actionInfo = @base.civlTypeChecker.procToActionInfo[callCmd.Proc];
                                     isRightMover = isRightMover && actionInfo.IsRightMover;
                                     isLeftMover = isLeftMover && actionInfo.IsLeftMover;
                                     if (actionInfo is AtomicActionInfo)
