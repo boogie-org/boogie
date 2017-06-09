@@ -53,7 +53,7 @@ namespace Microsoft.Boogie
                 AtomicActionInfo atomicActionInfo = civlTypeChecker.procToActionInfo[originalProc] as AtomicActionInfo;
                 if (atomicActionInfo != null && atomicActionInfo.gate.Count > 0 && layerNum == enclosingProcLayerNum)
                 {
-                    newCmds.Add(new HavocCmd(Token.NoToken, new List<IdentifierExpr>(new IdentifierExpr[] { Expr.Ident(dummyLocalVar) })));
+                    newCmds.Add(new HavocCmd(Token.NoToken, new List<IdentifierExpr> { Expr.Ident(dummyLocalVar) }));
                     Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
                     for (int i = 0; i < originalProc.InParams.Count; i++)
                     {
@@ -192,8 +192,8 @@ namespace Microsoft.Boogie
                             cmds.Add(new AssumeCmd(Token.NoToken, (Expr)Visit(assertCmd.Expr)));
                         }
                         Block newInitBlock = new Block(Token.NoToken, "_init", cmds,
-                            new GotoCmd(Token.NoToken, new List<string>(new string[] { action.Blocks[0].Label }),
-                                                       new List<Block>(new Block[] { action.Blocks[0] })));
+                            new GotoCmd(Token.NoToken, new List<string> { action.Blocks[0].Label },
+                                                       new List<Block> { action.Blocks[0] }));
                         List<Block> newBlocks = new List<Block>();
                         newBlocks.Add(newInitBlock);
                         newBlocks.AddRange(action.Blocks);
@@ -391,11 +391,10 @@ namespace Microsoft.Boogie
                 newCmds.Add(skipAssertCmd);
 
                 // pc, ok := g_old == g ==> pc, ok || beta(i, g_old, o, g);
-                List<AssignLhs> pcUpdateLHS = new List<AssignLhs>(
-                    new AssignLhs[] { 
+                List<AssignLhs> pcUpdateLHS = new List<AssignLhs> { 
                         new SimpleAssignLhs(Token.NoToken, Expr.Ident(pc)), 
                         new SimpleAssignLhs(Token.NoToken, Expr.Ident(ok))
-                    });
+                    };
                 List<Expr> pcUpdateRHS = new List<Expr>(
                     new Expr[] { 
                         Expr.Imp(aa, Expr.Ident(pc)),
@@ -854,7 +853,7 @@ namespace Microsoft.Boogie
         private void UnifyCallsToYieldProc(Implementation impl, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
         {
             CallCmd yieldCallCmd = CallToYieldProc(Token.NoToken, ogOldGlobalMap, domainNameToLocalVar);
-            Block yieldCheckBlock = new Block(Token.NoToken, "CallToYieldProc", new List<Cmd>(new Cmd[] { yieldCallCmd, new AssumeCmd(Token.NoToken, Expr.False) }), new ReturnCmd(Token.NoToken));
+            Block yieldCheckBlock = new Block(Token.NoToken, "CallToYieldProc", new List<Cmd> { yieldCallCmd, new AssumeCmd(Token.NoToken, Expr.False) }, new ReturnCmd(Token.NoToken));
             List<Block> newBlocks = new List<Block>();
             foreach (Block b in impl.Blocks)
             {
@@ -871,8 +870,8 @@ namespace Microsoft.Boogie
                     {
                         Block newBlock = new Block(Token.NoToken, b.Label + i, newCmds, transferCmd);
                         newCmds = new List<Cmd>();
-                        transferCmd = new GotoCmd(Token.NoToken, new List<string>(new string[] { newBlock.Label, yieldCheckBlock.Label }), 
-                                                                 new List<Block>(new Block[] { newBlock, yieldCheckBlock }));
+                        transferCmd = new GotoCmd(Token.NoToken, new List<string> { newBlock.Label, yieldCheckBlock.Label },
+                                                                 new List<Block> { newBlock, yieldCheckBlock });
                         newBlocks.Add(newBlock);
                     }
                 }
@@ -1028,9 +1027,9 @@ namespace Microsoft.Boogie
                     AddCallToYieldProc(header.tok, pred.Cmds, ogOldGlobalMap, domainNameToLocalVar);
                     if (pc != null && !graph.BackEdgeNodes(header).Contains(pred))
                     {
-                        pred.Cmds.Add(new AssignCmd(Token.NoToken, new List<AssignLhs>(
-                            new AssignLhs[] { new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldPc)), new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldOk)) }),
-                            new List<Expr>(new Expr[] { Expr.Ident(pc), Expr.Ident(ok) })));
+                        pred.Cmds.Add(new AssignCmd(Token.NoToken,
+                            new List<AssignLhs> { new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldPc)), new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldOk)) },
+                            new List<Expr> { Expr.Ident(pc), Expr.Ident(ok) }));
                     }
                     AddUpdatesToOldGlobalVars(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                 }
