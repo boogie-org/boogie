@@ -288,6 +288,7 @@ namespace Microsoft.Boogie
                             else
                             {
                                 ActionInfo calledAction = @base.civlTypeChecker.procToActionInfo[callCmd.Proc];
+                                // TODO: double check that label assignment is correct
                                 if (callCmd.IsAsync)
                                 {
                                     if (currLayerNum <= calledAction.createdAtLayerNum)
@@ -297,33 +298,24 @@ namespace Microsoft.Boogie
                                 }
                                 else
                                 {
-                                    MoverType moverType;
+                                    MoverType moverType = MoverType.Top;
                                     if (calledAction.createdAtLayerNum < currLayerNum || (calledAction.createdAtLayerNum == currLayerNum && calledAction is MoverActionInfo))
                                     {
                                         moverType = calledAction.moverType;
-                                    }
-                                    else
-                                    {
-                                        moverType = MoverType.Top;
                                     }
 
                                     switch (moverType)
                                     {
                                         case MoverType.Atomic:
-                                            edgeLabels[edge] = A;
-                                            break;
+                                            edgeLabels[edge] = A; break;
                                         case MoverType.Both:
-                                            edgeLabels[edge] = B;
-                                            break;
+                                            edgeLabels[edge] = B; break;
                                         case MoverType.Left:
-                                            edgeLabels[edge] = L;
-                                            break;
+                                            edgeLabels[edge] = L; break;
                                         case MoverType.Right:
-                                            edgeLabels[edge] = R;
-                                            break;
+                                            edgeLabels[edge] = R; break;
                                         case MoverType.Top:
-                                            edgeLabels[edge] = Y;
-                                            break;
+                                            edgeLabels[edge] = Y; break;
                                     }
                                 }
                             }
