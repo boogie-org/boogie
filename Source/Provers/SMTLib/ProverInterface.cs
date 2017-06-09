@@ -175,7 +175,8 @@ namespace Microsoft.Boogie.SMTLib
     protected SMTLibProcess Process;
     readonly List<string> proverErrors = new List<string>();
     readonly List<string> proverWarnings = new List<string>();
-    readonly StringBuilder common = new StringBuilder();
+    StringBuilder common = new StringBuilder();
+    private string CachedCommon = null;
     protected TextWriter currentLogFile;
     protected volatile ErrorHandler currentErrorHandler;
 
@@ -367,24 +368,22 @@ namespace Microsoft.Boogie.SMTLib
       return 0;
     }
 
-    private void FlushCommons()
+    private void FlushAndCacheCommons()
     {
-      FlushAxioms(SendCommon);
+      FlushAxioms();
+      if (CachedCommon == null) {
+        CachedCommon = common.ToString();
+      }
     }
 
     private void FlushAxioms()
     {
-      FlushAxioms(SendThisVC);
-    }
-
-    private void FlushAxioms(Action<String> fn)
-    {
-      TypeDecls.Iter(fn);
+      TypeDecls.Iter(SendCommon);
       TypeDecls.Clear();
       foreach (string s in Axioms) {
         Contract.Assert(s != null);
         if (s != "true")
-          fn("(assert " + s + ")");
+          SendCommon("(assert " + s + ")");
       }
       Axioms.Clear();
       //FlushPushedAssertions();
@@ -429,7 +428,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       PrepareCommon();
-      FlushCommons();
+      FlushAndCacheCommons();
 
       if (HasReset) {
         AxBuilder = (TypeAxiomBuilder)CachedAxBuilder.Clone();
@@ -464,6 +463,7 @@ namespace Microsoft.Boogie.SMTLib
 
       if (HasReset) {
         DeclCollector.Pop();
+        common = new StringBuilder(CachedCommon);
         HasReset = false;
       }
       SendCheckSat();
