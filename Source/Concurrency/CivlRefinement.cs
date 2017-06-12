@@ -40,7 +40,7 @@ namespace Microsoft.Boogie
         {
             int enclosingProcLayerNum = civlTypeChecker.procToActionInfo[enclosingImpl.Proc].createdAtLayerNum;
             Procedure originalProc = originalCallCmd.Proc;
-            
+
             if (civlTypeChecker.procToAtomicProcedureInfo.ContainsKey(originalProc))
             {
                 if (civlTypeChecker.CallExists(originalCallCmd, enclosingProcLayerNum, layerNum))
@@ -84,7 +84,7 @@ namespace Microsoft.Boogie
             }
             if (layerNum > maxCalleeLayerNum)
             {
-                for (int i = 0; i < parCallCmd.CallCmds.Count; i++) 
+                for (int i = 0; i < parCallCmd.CallCmds.Count; i++)
                 {
                     ProcessCallCmd(originalParCallCmd.CallCmds[i], parCallCmd.CallCmds[i], newCmds);
                     absyMap[parCallCmd.CallCmds[i]] = originalParCallCmd;
@@ -118,7 +118,7 @@ namespace Microsoft.Boogie
                     ProcessParCallCmd(originalParCallCmd, cmd as ParCallCmd, newCmds);
                     continue;
                 }
-             
+
                 newCmds.Add(cmd);
             }
             return newCmds;
@@ -130,17 +130,17 @@ namespace Microsoft.Boogie
             absyMap[yieldCmd] = node;
             return yieldCmd;
         }
-        
+
         public override Block VisitBlock(Block node)
         {
             Block block = base.VisitBlock(node);
             absyMap[block] = node;
             return block;
         }
-        
+
         public override Cmd VisitCallCmd(CallCmd node)
         {
-            CallCmd callCmd = (CallCmd) base.VisitCallCmd(node);
+            CallCmd callCmd = (CallCmd)base.VisitCallCmd(node);
             if (callCmd.IsAsync && civlTypeChecker.procToActionInfo.ContainsKey(node.Proc))
             {
                 ActionInfo actionInfo = civlTypeChecker.procToActionInfo[node.Proc];
@@ -158,7 +158,7 @@ namespace Microsoft.Boogie
 
         public override Cmd VisitParCallCmd(ParCallCmd node)
         {
-            ParCallCmd parCallCmd = (ParCallCmd) base.VisitParCallCmd(node);
+            ParCallCmd parCallCmd = (ParCallCmd)base.VisitParCallCmd(node);
             absyMap[parCallCmd] = node;
             return parCallCmd;
         }
@@ -249,7 +249,7 @@ namespace Microsoft.Boogie
             Ensures ensures = base.VisitEnsures(node);
             if (node.Free)
                 return ensures;
-            AtomicActionInfo atomicActionInfo =  civlTypeChecker.procToActionInfo[enclosingProc] as AtomicActionInfo;
+            AtomicActionInfo atomicActionInfo = civlTypeChecker.procToActionInfo[enclosingProc] as AtomicActionInfo;
             bool isAtomicSpecification = atomicActionInfo != null && atomicActionInfo.ensures == node;
             if (isAtomicSpecification || !civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
             {
@@ -261,7 +261,7 @@ namespace Microsoft.Boogie
 
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
-            AssertCmd assertCmd = (AssertCmd) base.VisitAssertCmd(node);
+            AssertCmd assertCmd = (AssertCmd)base.VisitAssertCmd(node);
             if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
                 assertCmd.Expr = Expr.True;
             return assertCmd;
@@ -387,16 +387,16 @@ namespace Microsoft.Boogie
                 assertExpr = Expr.Imp(Expr.Ident(pc), bb);
                 assertExpr.Typecheck(new TypecheckingContext(null));
                 AssertCmd skipAssertCmd = new AssertCmd(tok, assertExpr);
-                skipAssertCmd.ErrorData = "Transition invariant in final state violated"; ;
+                skipAssertCmd.ErrorData = "Transition invariant in final state violated";
                 newCmds.Add(skipAssertCmd);
 
                 // pc, ok := g_old == g ==> pc, ok || beta(i, g_old, o, g);
-                List<AssignLhs> pcUpdateLHS = new List<AssignLhs> { 
-                        new SimpleAssignLhs(Token.NoToken, Expr.Ident(pc)), 
+                List<AssignLhs> pcUpdateLHS = new List<AssignLhs> {
+                        new SimpleAssignLhs(Token.NoToken, Expr.Ident(pc)),
                         new SimpleAssignLhs(Token.NoToken, Expr.Ident(ok))
                     };
                 List<Expr> pcUpdateRHS = new List<Expr>(
-                    new Expr[] { 
+                    new Expr[] {
                         Expr.Imp(aa, Expr.Ident(pc)),
                         Expr.Or(Expr.Ident(ok), beta)
                     });
@@ -620,7 +620,7 @@ namespace Microsoft.Boogie
                 inputs.Add(f);
                 assumeMap[g] = Expr.Ident(f);
             }
-            
+
             Substitution assumeSubst = Substituter.SubstitutionFromHashtable(assumeMap);
             Substitution oldSubst = Substituter.SubstitutionFromHashtable(ogOldLocalMap);
             Substitution subst = Substituter.SubstitutionFromHashtable(map);
@@ -701,7 +701,7 @@ namespace Microsoft.Boogie
 
         private Graph<Block> ComputeYieldingLoopHeaders(Implementation impl, out HashSet<Block> yieldingHeaders)
         {
-            Graph<Block> graph; 
+            Graph<Block> graph;
             impl.PruneUnreachableBlocks();
             impl.ComputePredecessorsForBlocks();
             graph = Program.GraphFromImpl(impl);
@@ -730,7 +730,7 @@ namespace Microsoft.Boogie
             return graph;
         }
 
-        private void SetupRefinementCheck(Implementation impl, 
+        private void SetupRefinementCheck(Implementation impl,
             out List<Variable> newLocalVars,
             out Dictionary<string, Variable> domainNameToLocalVar, out Dictionary<Variable, Variable> ogOldGlobalMap)
         {
@@ -739,7 +739,7 @@ namespace Microsoft.Boogie
             alpha = null;
             beta = null;
             frame = null;
-            
+
             newLocalVars = new List<Variable>();
             Program program = linearTypeChecker.program;
             ogOldGlobalMap = new Dictionary<Variable, Variable>();
@@ -778,7 +778,7 @@ namespace Microsoft.Boogie
                 frame = new HashSet<Variable>(civlTypeChecker.SharedVariables);
                 foreach (Variable v in civlTypeChecker.SharedVariables)
                 {
-                    if (civlTypeChecker.globalVarToSharedVarInfo[v].hideLayerNum <= actionInfo.createdAtLayerNum || 
+                    if (civlTypeChecker.globalVarToSharedVarInfo[v].hideLayerNum <= actionInfo.createdAtLayerNum ||
                         civlTypeChecker.globalVarToSharedVarInfo[v].introLayerNum > actionInfo.createdAtLayerNum)
                     {
                         frame.Remove(v);
@@ -842,7 +842,7 @@ namespace Microsoft.Boogie
             AddInitialBlock(impl, oldPcs, oldOks, domainNameToLocalVar, ogOldGlobalMap);
 
             CreateYieldCheckerImpl(impl, yields);
-            
+
             impl.LocVars.AddRange(newLocalVars);
             impl.LocVars.AddRange(oldPcs);
             impl.LocVars.AddRange(oldOks);
@@ -859,7 +859,7 @@ namespace Microsoft.Boogie
             {
                 TransferCmd transferCmd = b.TransferCmd;
                 List<Cmd> newCmds = new List<Cmd>();
-                for (int i = b.Cmds.Count-1; i >= 0; i--)
+                for (int i = b.Cmds.Count - 1; i >= 0; i--)
                 {
                     CallCmd callCmd = b.Cmds[i] as CallCmd;
                     if (callCmd == null || callCmd.Proc != yieldProc)
@@ -1004,7 +1004,7 @@ namespace Microsoft.Boogie
             return yields;
         }
 
-        private void ProcessLoopHeaders(Implementation impl, Graph<Block> graph, HashSet<Block> yieldingHeaders, 
+        private void ProcessLoopHeaders(Implementation impl, Graph<Block> graph, HashSet<Block> yieldingHeaders,
             Dictionary<string, Variable> domainNameToLocalVar, Dictionary<Variable, Variable> ogOldGlobalMap,
             out List<Variable> oldPcs, out List<Variable> oldOks)
         {
@@ -1115,7 +1115,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        private void AddYieldProcAndImpl(List<Declaration> decls) 
+        private void AddYieldProcAndImpl(List<Declaration> decls)
         {
             if (yieldProc == null) return;
 
@@ -1131,7 +1131,7 @@ namespace Microsoft.Boogie
             {
                 Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
                 inputs.Add(f);
-            } 
+            }
             List<Block> blocks = new List<Block>();
             TransferCmd transferCmd = new ReturnCmd(Token.NoToken);
             if (yieldCheckerProcs.Count > 0)
@@ -1157,7 +1157,7 @@ namespace Microsoft.Boogie
                 transferCmd = new GotoCmd(Token.NoToken, labelTargets, blockTargets);
             }
             blocks.Insert(0, new Block(Token.NoToken, "enter", new List<Cmd>(), transferCmd));
-            
+
             var yieldImpl = new Implementation(Token.NoToken, yieldProc.Name, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             yieldImpl.Proc = yieldProc;
             yieldImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
@@ -1192,13 +1192,13 @@ namespace Microsoft.Boogie
                 if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum || layerNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
 
                 MyDuplicator duplicator = new MyDuplicator(civlTypeChecker, layerNum);
-                foreach (var proc in program.Procedures)
+                foreach (var proc in program.Procedures.Where(proc => civlTypeChecker.procToActionInfo.ContainsKey(proc)))
                 {
-                    if (!civlTypeChecker.procToActionInfo.ContainsKey(proc)) continue;
                     Procedure duplicateProc = duplicator.VisitProcedure(proc);
                     decls.Add(duplicateProc);
                 }
                 decls.AddRange(duplicator.impls);
+
                 CivlRefinement civlTransform = new CivlRefinement(linearTypeChecker, civlTypeChecker, duplicator);
                 foreach (var impl in program.Implementations)
                 {
