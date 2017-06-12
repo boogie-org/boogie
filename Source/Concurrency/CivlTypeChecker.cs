@@ -1185,27 +1185,18 @@ namespace Microsoft.Boogie
 
         private class AttributeEraser : ReadOnlyVisitor
         {
-            public override Declaration VisitDeclaration(Declaration node)
+            public override Procedure VisitProcedure(Procedure node)
             {
                 CivlAttributes.RemoveYieldsAttribute(node);
                 CivlAttributes.RemoveMoverAttribute(node);
-                return base.VisitDeclaration(node);
-            }
-
-            public override Variable VisitVariable(Variable node)
-            {
-                CivlAttributes.RemoveLayerAttribute(node);
-                return base.VisitVariable(node);
-            }
-
-            public override Procedure VisitProcedure(Procedure node)
-            {
                 CivlAttributes.RemoveLayerAttribute(node);
                 return base.VisitProcedure(node);
             }
 
             public override Implementation VisitImplementation(Implementation node)
             {
+                CivlAttributes.RemoveYieldsAttribute(node);
+                CivlAttributes.RemoveMoverAttribute(node);
                 CivlAttributes.RemoveLayerAttribute(node);
                 return base.VisitImplementation(node);
             }
@@ -1226,6 +1217,12 @@ namespace Microsoft.Boogie
             {
                 CivlAttributes.RemoveLayerAttribute(node);
                 return base.VisitAssertCmd(node);
+            }
+
+            public override Variable VisitVariable(Variable node)
+            {
+                CivlAttributes.RemoveLayerAttribute(node);
+                return base.VisitVariable(node);
             }
         }
     }
