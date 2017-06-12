@@ -36,6 +36,92 @@ namespace Microsoft.Boogie
             this.impls = new List<Implementation>();
         }
 
+        public override Procedure VisitProcedure(Procedure node)
+        {
+            if (!civlTypeChecker.procToActionInfo.ContainsKey(node))
+                return node;
+            if (!procMap.ContainsKey(node))
+            {
+                enclosingProc = node;
+                Procedure proc = (Procedure)node.Clone();
+                proc.Name = string.Format("{0}_{1}", node.Name, layerNum);
+                proc.InParams = this.VisitVariableSeq(node.InParams);
+                proc.Modifies = this.VisitIdentifierExprSeq(node.Modifies);
+                proc.OutParams = this.VisitVariableSeq(node.OutParams);
+
+                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[node];
+                if (actionInfo.createdAtLayerNum < layerNum)
+                {
+                    proc.Requires = new List<Requires>();
+                    proc.Ensures = new List<Ensures>();
+                    Implementation impl;
+                    AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
+                    if (atomicActionInfo != null)
+                    {
+                        CodeExpr action = (CodeExpr)VisitCodeExpr(atomicActionInfo.action);
+                        List<Cmd> cmds = new List<Cmd>();
+                        foreach (AssertCmd assertCmd in atomicActionInfo.gate)
+                        {
+                            cmds.Add(new AssumeCmd(Token.NoToken, (Expr)Visit(assertCmd.Expr)));
+                        }
+                        Block newInitBlock = new Block(Token.NoToken, "_init", cmds,
+                            new GotoCmd(Token.NoToken, new List<string> { action.Blocks[0].Label },
+                                                       new List<Block> { action.Blocks[0] }));
+                        List<Block> newBlocks = new List<Block>();
+                        newBlocks.Add(newInitBlock);
+                        newBlocks.AddRange(action.Blocks);
+                        impl = new Implementation(Token.NoToken, proc.Name, node.TypeParameters, node.InParams, node.OutParams, action.LocVars, newBlocks);
+                    }
+                    else
+                    {
+                        Block newInitBlock = new Block(Token.NoToken, "_init", new List<Cmd>(), new ReturnCmd(Token.NoToken));
+                        List<Block> newBlocks = new List<Block> { newInitBlock };
+                        impl = new Implementation(Token.NoToken, proc.Name, node.TypeParameters, node.InParams, node.OutParams, new List<Variable>(), newBlocks);
+                    }
+                    impl.Proc = proc;
+                    impl.Proc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+                    impl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+                    impls.Add(impl);
+                }
+                else
+                {
+                    yieldingProcs.Add(proc);
+                    proc.Requires = this.VisitRequiresSeq(node.Requires);
+                    proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
+                }
+                procMap[node] = proc;
+                proc.Modifies = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
+            }
+            return procMap[node];
+        }
+
+        public override Requires VisitRequires(Requires node)
+        {
+            Requires requires = base.VisitRequires(node);
+            if (node.Free)
+                return requires;
+            if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
+                requires.Condition = Expr.True;
+            return requires;
+        }
+
+        public override Ensures VisitEnsures(Ensures node)
+        {
+            Ensures ensures = base.VisitEnsures(node);
+            if (node.Free)
+                return ensures;
+            AtomicActionInfo atomicActionInfo = civlTypeChecker.procToActionInfo[enclosingProc] as AtomicActionInfo;
+            bool isAtomicSpecification = atomicActionInfo != null && atomicActionInfo.ensures == node;
+            // TODO: Can we remove the "atomic action ensures" already in CivlTypeChecker?
+            // Then perhaps we do not even need the ensures field in AtomicActionInfo.
+            if (isAtomicSpecification || !civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
+            {
+                ensures.Condition = Expr.True;
+                CivlAttributes.RemoveMoverAttribute(ensures);
+            }
+            return ensures;
+        }
+
         private void ProcessCallCmd(CallCmd originalCallCmd, CallCmd callCmd, List<Cmd> newCmds)
         {
             int enclosingProcLayerNum = civlTypeChecker.procToActionInfo[enclosingImpl.Proc].createdAtLayerNum;
@@ -163,65 +249,6 @@ namespace Microsoft.Boogie
             return parCallCmd;
         }
 
-        public override Procedure VisitProcedure(Procedure node)
-        {
-            if (!civlTypeChecker.procToActionInfo.ContainsKey(node))
-                return node;
-            if (!procMap.ContainsKey(node))
-            {
-                enclosingProc = node;
-                Procedure proc = (Procedure)node.Clone();
-                proc.Name = string.Format("{0}_{1}", node.Name, layerNum);
-                proc.InParams = this.VisitVariableSeq(node.InParams);
-                proc.Modifies = this.VisitIdentifierExprSeq(node.Modifies);
-                proc.OutParams = this.VisitVariableSeq(node.OutParams);
-
-                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[node];
-                if (actionInfo.createdAtLayerNum < layerNum)
-                {
-                    proc.Requires = new List<Requires>();
-                    proc.Ensures = new List<Ensures>();
-                    Implementation impl;
-                    AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
-                    if (atomicActionInfo != null)
-                    {
-                        CodeExpr action = (CodeExpr)VisitCodeExpr(atomicActionInfo.action);
-                        List<Cmd> cmds = new List<Cmd>();
-                        foreach (AssertCmd assertCmd in atomicActionInfo.gate)
-                        {
-                            cmds.Add(new AssumeCmd(Token.NoToken, (Expr)Visit(assertCmd.Expr)));
-                        }
-                        Block newInitBlock = new Block(Token.NoToken, "_init", cmds,
-                            new GotoCmd(Token.NoToken, new List<string> { action.Blocks[0].Label },
-                                                       new List<Block> { action.Blocks[0] }));
-                        List<Block> newBlocks = new List<Block>();
-                        newBlocks.Add(newInitBlock);
-                        newBlocks.AddRange(action.Blocks);
-                        impl = new Implementation(Token.NoToken, proc.Name, node.TypeParameters, node.InParams, node.OutParams, action.LocVars, newBlocks);
-                    }
-                    else
-                    {
-                        Block newInitBlock = new Block(Token.NoToken, "_init", new List<Cmd>(), new ReturnCmd(Token.NoToken));
-                        List<Block> newBlocks = new List<Block> { newInitBlock };
-                        impl = new Implementation(Token.NoToken, proc.Name, node.TypeParameters, node.InParams, node.OutParams, new List<Variable>(), newBlocks);
-                    }
-                    impl.Proc = proc;
-                    impl.Proc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-                    impl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-                    impls.Add(impl);
-                }
-                else
-                {
-                    yieldingProcs.Add(proc);
-                    proc.Requires = this.VisitRequiresSeq(node.Requires);
-                    proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
-                }
-                procMap[node] = proc;
-                proc.Modifies = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
-            }
-            return procMap[node];
-        }
-
         private Variable dummyLocalVar;
         public override Implementation VisitImplementation(Implementation node)
         {
@@ -232,31 +259,6 @@ namespace Microsoft.Boogie
             impl.LocVars.Add(dummyLocalVar);
             impl.Name = impl.Proc.Name;
             return impl;
-        }
-
-        public override Requires VisitRequires(Requires node)
-        {
-            Requires requires = base.VisitRequires(node);
-            if (node.Free)
-                return requires;
-            if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
-                requires.Condition = Expr.True;
-            return requires;
-        }
-
-        public override Ensures VisitEnsures(Ensures node)
-        {
-            Ensures ensures = base.VisitEnsures(node);
-            if (node.Free)
-                return ensures;
-            AtomicActionInfo atomicActionInfo = civlTypeChecker.procToActionInfo[enclosingProc] as AtomicActionInfo;
-            bool isAtomicSpecification = atomicActionInfo != null && atomicActionInfo.ensures == node;
-            if (isAtomicSpecification || !civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
-            {
-                ensures.Condition = Expr.True;
-                CivlAttributes.RemoveMoverAttribute(ensures);
-            }
-            return ensures;
         }
 
         public override Cmd VisitAssertCmd(AssertCmd node)
