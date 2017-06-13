@@ -338,12 +338,11 @@ namespace Microsoft.Boogie
         public Dictionary<Procedure, AtomicProcedureInfo> procToAtomicProcedureInfo;
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
         Dictionary<CallCmd, int> pureCallToLayer;
-        public List<int> allLayerNums;
 
-        public IEnumerable<Variable> SharedVariables
-        {
-            get { return this.globalVarToSharedVarInfo.Keys; }
-        }
+        // This collections are for convenience in later phases and are only initialized at the end of type checking.
+        public List<int> allLayerNums;
+        public List<Variable> sharedVariables;
+        public List<IdentifierExpr> sharedVariableIdentifiers;
 
         public bool CallExists(CallCmd callCmd, int enclosingProcLayerNum, int layerNum)
         {
@@ -454,6 +453,10 @@ namespace Microsoft.Boogie
                            .OrderBy(l => l)
                            .Distinct()
                            .ToList();
+
+            
+            sharedVariables = globalVarToSharedVarInfo.Keys.ToList();
+            sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
 
             new AttributeEraser().VisitProgram(program);
         }

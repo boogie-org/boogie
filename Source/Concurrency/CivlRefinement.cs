@@ -90,7 +90,7 @@ namespace Microsoft.Boogie
                     proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
                 }
                 procMap[node] = proc;
-                proc.Modifies = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
+                proc.Modifies = civlTypeChecker.sharedVariableIdentifiers;
             }
             return procMap[node];
         }
@@ -275,7 +275,6 @@ namespace Microsoft.Boogie
         Dictionary<Implementation, Implementation> implMap;
         HashSet<Procedure> yieldingProcs;
         int layerNum;
-        List<IdentifierExpr> globalMods;
         Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
         List<Procedure> yieldCheckerProcs;
         List<Implementation> yieldCheckerImpls;
@@ -296,7 +295,6 @@ namespace Microsoft.Boogie
             this.implMap = duplicator.implMap;
             this.yieldingProcs = duplicator.yieldingProcs;
 
-            globalMods = civlTypeChecker.SharedVariables.Select(g => Expr.Ident(g)).ToList();
             asyncAndParallelCallDesugarings = new Dictionary<string, Procedure>();
             yieldCheckerProcs = new List<Procedure>();
             yieldCheckerImpls = new List<Implementation>();
@@ -442,9 +440,8 @@ namespace Microsoft.Boogie
 
             newLocalVars = new List<Variable>();
             ogOldGlobalMap = new Dictionary<Variable, Variable>();
-            foreach (IdentifierExpr ie in globalMods)
+            foreach (Variable g in civlTypeChecker.sharedVariables)
             {
-                Variable g = ie.Decl;
                 LocalVariable l = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type));
                 ogOldGlobalMap[g] = l;
                 newLocalVars.Add(l);
@@ -469,13 +466,13 @@ namespace Microsoft.Boogie
                 }
                 Substitution always = Substituter.SubstitutionFromHashtable(alwaysMap);
                 Dictionary<Variable, Expr> foroldMap = new Dictionary<Variable, Expr>();
-                foreach (IdentifierExpr ie in globalMods)
+                foreach (Variable g in civlTypeChecker.sharedVariables)
                 {
-                    foroldMap[ie.Decl] = Expr.Ident(ogOldGlobalMap[ie.Decl]);
+                    foroldMap[g] = Expr.Ident(ogOldGlobalMap[g]);
                 }
                 Substitution forold = Substituter.SubstitutionFromHashtable(foroldMap);
-                frame = new HashSet<Variable>(civlTypeChecker.SharedVariables);
-                foreach (Variable v in civlTypeChecker.SharedVariables)
+                frame = new HashSet<Variable>(civlTypeChecker.sharedVariables);
+                foreach (Variable v in civlTypeChecker.sharedVariables)
                 {
                     if (civlTypeChecker.globalVarToSharedVarInfo[v].hideLayerNum <= actionInfo.createdAtLayerNum ||
                         civlTypeChecker.globalVarToSharedVarInfo[v].introLayerNum > actionInfo.createdAtLayerNum)
@@ -586,7 +583,7 @@ namespace Microsoft.Boogie
                         {
                             HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(callCmd));
 
-                            if (!callCmd.IsAsync && globalMods.Count > 0 && pc != null)
+                            if (!callCmd.IsAsync && civlTypeChecker.sharedVariables.Count > 0 && pc != null)
                             {
                                 // assume pc || alpha(i, g);
                                 Expr assumeExpr = Expr.Or(Expr.Ident(pc), alpha);
@@ -605,7 +602,7 @@ namespace Microsoft.Boogie
                         DesugarParallelCallCmd(newCmds, parCallCmd);
                         HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(parCallCmd));
 
-                        if (globalMods.Count > 0 && pc != null)
+                        if (civlTypeChecker.sharedVariables.Count > 0 && pc != null)
                         {
                             // assume pc || alpha(i, g);
                             Expr assumeExpr = Expr.Or(Expr.Ident(pc), alpha);
@@ -652,9 +649,9 @@ namespace Microsoft.Boogie
             {
                 exprSeq.Add(Expr.Ident(domainNameToLocalVar[domainName]));
             }
-            foreach (IdentifierExpr ie in globalMods)
+            foreach (Variable g in civlTypeChecker.sharedVariables)
             {
-                exprSeq.Add(Expr.Ident(ogOldGlobalMap[ie.Decl]));
+                exprSeq.Add(Expr.Ident(ogOldGlobalMap[g]));
             }
             if (yieldProc == null)
             {
@@ -665,9 +662,9 @@ namespace Microsoft.Boogie
                     Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
                     inputs.Add(f);
                 }
-                foreach (IdentifierExpr ie in globalMods)
+                foreach (Variable g in civlTypeChecker.sharedVariables)
                 {
-                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
+                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type), true);
                     inputs.Add(f);
                 }
                 yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", layerNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
@@ -753,9 +750,9 @@ namespace Microsoft.Boogie
         {
             AddCallToYieldProc(yieldCmd.tok, newCmds, ogOldGlobalMap, domainNameToLocalVar);
 
-            if (globalMods.Count > 0)
+            if (civlTypeChecker.sharedVariableIdentifiers.Count > 0)
             {
-                newCmds.Add(new HavocCmd(Token.NoToken, globalMods));
+                newCmds.Add(new HavocCmd(Token.NoToken, civlTypeChecker.sharedVariableIdentifiers));
                 if (pc != null)
                 {
                     // assume pc || alpha(i, g);
@@ -846,7 +843,7 @@ namespace Microsoft.Boogie
                     }
                     count++;
                 }
-                proc = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, globalMods, ensuresSeq);
+                proc = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, civlTypeChecker.sharedVariableIdentifiers, ensuresSeq);
                 asyncAndParallelCallDesugarings[procName] = proc;
             }
             CallCmd dummyCallCmd = new CallCmd(parCallCmd.tok, proc.Name, ins, outs, parCallCmd.Attributes);
@@ -1010,9 +1007,8 @@ namespace Microsoft.Boogie
             }
             Dictionary<Variable, Expr> ogOldLocalMap = new Dictionary<Variable, Expr>();
             Dictionary<Variable, Expr> assumeMap = new Dictionary<Variable, Expr>(map);
-            foreach (IdentifierExpr ie in globalMods)
+            foreach (Variable g in civlTypeChecker.sharedVariables)
             {
-                Variable g = ie.Decl;
                 var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_local_old_{0}", g.Name), g.TypedIdent.Type));
                 locals.Add(copy);
                 ogOldLocalMap[g] = Expr.Ident(copy);
@@ -1121,9 +1117,9 @@ namespace Microsoft.Boogie
                 Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
                 inputs.Add(f);
             }
-            foreach (IdentifierExpr ie in globalMods)
+            foreach (Variable g in civlTypeChecker.sharedVariables)
             {
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type), true);
                 inputs.Add(f);
             }
             List<Block> blocks = new List<Block>();

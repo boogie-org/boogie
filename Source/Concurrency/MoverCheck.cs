@@ -209,9 +209,8 @@ namespace Microsoft.Boogie
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
             
             string checkerName = string.Format("CommutativityChecker_{0}_{1}", first.proc.Name, second.proc.Name);
-            List<IdentifierExpr> globalVars = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
 
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
+            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, blocks);
             impl.Proc = proc;
             this.decls.Add(impl);
@@ -249,9 +248,8 @@ namespace Microsoft.Boogie
                 ensures.Add(ensureCheck);
             }
             string checkerName = string.Format("GatePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
-            List<IdentifierExpr> globalVars = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
-
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
+            
+            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
             impl.Proc = proc;
             this.decls.Add(impl);
@@ -288,9 +286,8 @@ namespace Microsoft.Boogie
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
             
             string checkerName = string.Format("FailurePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
-            List<IdentifierExpr> globalVars = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
 
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
+            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
             impl.Proc = proc;
             this.decls.Add(impl);
@@ -323,9 +320,8 @@ namespace Microsoft.Boogie
 
             List<Block> blocks = new List<Block> { new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)) };
             string checkerName = string.Format("NonBlockingChecker_{0}", second.proc.Name);
-            List<IdentifierExpr> globalVars = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
             
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), requires, globalVars, ensures);
+            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             impl.Proc = proc;
             this.decls.Add(impl);
