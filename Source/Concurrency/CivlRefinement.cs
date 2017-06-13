@@ -122,6 +122,90 @@ namespace Microsoft.Boogie
             return ensures;
         }
 
+        private Variable dummyLocalVar; // TODO: document purpose of dummy var
+        public override Implementation VisitImplementation(Implementation impl)
+        {
+            enclosingImpl = impl;
+            dummyLocalVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_dummy", Type.Bool));
+            Implementation newImpl = base.VisitImplementation(impl);
+            newImpl.LocVars.Add(dummyLocalVar);
+            newImpl.Name = newImpl.Proc.Name;
+            implMap[newImpl] = impl;
+            return newImpl;
+        }
+
+        public override YieldCmd VisitYieldCmd(YieldCmd node)
+        {
+            YieldCmd yieldCmd = base.VisitYieldCmd(node);
+            absyMap[yieldCmd] = node;
+            return yieldCmd;
+        }
+
+        public override Block VisitBlock(Block node)
+        {
+            Block block = base.VisitBlock(node);
+            absyMap[block] = node;
+            return block;
+        }
+
+        public override Cmd VisitAssertCmd(AssertCmd node)
+        {
+            AssertCmd assertCmd = (AssertCmd)base.VisitAssertCmd(node);
+            if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
+                assertCmd.Expr = Expr.True;
+            return assertCmd;
+        }
+
+        public override Cmd VisitCallCmd(CallCmd call)
+        {
+            CallCmd newCall = (CallCmd)base.VisitCallCmd(call);
+            if (newCall.IsAsync && civlTypeChecker.procToActionInfo.ContainsKey(call.Proc))
+            {
+                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[call.Proc];
+                Debug.Assert(actionInfo.IsLeftMover);
+                if (actionInfo.createdAtLayerNum < layerNum)
+                {
+                    newCall.IsAsync = false;
+                }
+            }
+            newCall.Proc = VisitProcedure(newCall.Proc);
+            newCall.callee = newCall.Proc.Name;
+            absyMap[newCall] = call;
+            return newCall;
+        }
+
+        public override Cmd VisitParCallCmd(ParCallCmd node)
+        {
+            ParCallCmd parCallCmd = (ParCallCmd)base.VisitParCallCmd(node);
+            absyMap[parCallCmd] = node;
+            return parCallCmd;
+        }
+
+        public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
+        {
+            List<Cmd> cmds = base.VisitCmdSeq(cmdSeq);
+            List<Cmd> newCmds = new List<Cmd>();
+            for (int i = 0; i < cmds.Count; i++)
+            {
+                Cmd originalCmd = cmdSeq[i];
+                Cmd cmd = cmds[i];
+
+                if (originalCmd is CallCmd)
+                {
+                    ProcessCallCmd((CallCmd)originalCmd, (CallCmd)cmd, newCmds);
+                }
+                else if (originalCmd is ParCallCmd)
+                {
+                    ProcessParCallCmd((ParCallCmd)originalCmd, (ParCallCmd)cmd, newCmds);
+                }
+                else
+                {
+                    newCmds.Add(cmd);
+                }
+            }
+            return newCmds;
+        }
+
         private void ProcessCallCmd(CallCmd originalCallCmd, CallCmd callCmd, List<Cmd> newCmds)
         {
             int enclosingProcLayerNum = civlTypeChecker.procToActionInfo[enclosingImpl.Proc].createdAtLayerNum;
@@ -181,93 +265,6 @@ namespace Microsoft.Boogie
                 newCmds.Add(parCallCmd);
             }
         }
-
-        public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
-        {
-            List<Cmd> cmds = base.VisitCmdSeq(cmdSeq);
-            List<Cmd> newCmds = new List<Cmd>();
-            for (int i = 0; i < cmds.Count; i++)
-            {
-                Cmd originalCmd = cmdSeq[i];
-                Cmd cmd = cmds[i];
-
-                CallCmd originalCallCmd = originalCmd as CallCmd;
-                if (originalCallCmd != null)
-                {
-                    ProcessCallCmd(originalCallCmd, cmd as CallCmd, newCmds);
-                    continue;
-                }
-
-                ParCallCmd originalParCallCmd = originalCmd as ParCallCmd;
-                if (originalParCallCmd != null)
-                {
-                    ProcessParCallCmd(originalParCallCmd, cmd as ParCallCmd, newCmds);
-                    continue;
-                }
-
-                newCmds.Add(cmd);
-            }
-            return newCmds;
-        }
-
-        public override YieldCmd VisitYieldCmd(YieldCmd node)
-        {
-            YieldCmd yieldCmd = base.VisitYieldCmd(node);
-            absyMap[yieldCmd] = node;
-            return yieldCmd;
-        }
-
-        public override Block VisitBlock(Block node)
-        {
-            Block block = base.VisitBlock(node);
-            absyMap[block] = node;
-            return block;
-        }
-
-        public override Cmd VisitCallCmd(CallCmd node)
-        {
-            CallCmd callCmd = (CallCmd)base.VisitCallCmd(node);
-            if (callCmd.IsAsync && civlTypeChecker.procToActionInfo.ContainsKey(node.Proc))
-            {
-                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[node.Proc];
-                Debug.Assert(actionInfo.IsLeftMover);
-                if (actionInfo.createdAtLayerNum < layerNum)
-                {
-                    callCmd.IsAsync = false;
-                }
-            }
-            callCmd.Proc = VisitProcedure(callCmd.Proc);
-            callCmd.callee = callCmd.Proc.Name;
-            absyMap[callCmd] = node;
-            return callCmd;
-        }
-
-        public override Cmd VisitParCallCmd(ParCallCmd node)
-        {
-            ParCallCmd parCallCmd = (ParCallCmd)base.VisitParCallCmd(node);
-            absyMap[parCallCmd] = node;
-            return parCallCmd;
-        }
-
-        private Variable dummyLocalVar;
-        public override Implementation VisitImplementation(Implementation node)
-        {
-            enclosingImpl = node;
-            dummyLocalVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_dummy", Type.Bool));
-            Implementation impl = base.VisitImplementation(node);
-            implMap[impl] = node;
-            impl.LocVars.Add(dummyLocalVar);
-            impl.Name = impl.Proc.Name;
-            return impl;
-        }
-
-        public override Cmd VisitAssertCmd(AssertCmd node)
-        {
-            AssertCmd assertCmd = (AssertCmd)base.VisitAssertCmd(node);
-            if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
-                assertCmd.Expr = Expr.True;
-            return assertCmd;
-        }
     }
 
     public class CivlRefinement
@@ -298,12 +295,8 @@ namespace Microsoft.Boogie
             this.layerNum = duplicator.layerNum;
             this.implMap = duplicator.implMap;
             this.yieldingProcs = duplicator.yieldingProcs;
-            Program program = linearTypeChecker.program;
-            globalMods = new List<IdentifierExpr>();
-            foreach (Variable g in civlTypeChecker.SharedVariables)
-            {
-                globalMods.Add(Expr.Ident(g));
-            }
+
+            globalMods = civlTypeChecker.SharedVariables.Select(g => Expr.Ident(g)).ToList();
             asyncAndParallelCallDesugarings = new Dictionary<string, Procedure>();
             yieldCheckerProcs = new List<Procedure>();
             yieldCheckerImpls = new List<Implementation>();
