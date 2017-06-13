@@ -61,7 +61,6 @@ namespace Microsoft.Boogie
 
     public class AtomicActionInfo : ActionInfo
     {
-        public Ensures ensures;
         public List<AssertCmd> gate;
         public CodeExpr action;
         public HashSet<Variable> actionUsedGlobalVars;
@@ -104,7 +103,6 @@ namespace Microsoft.Boogie
         public AtomicActionInfo(Procedure proc, Ensures ensures, MoverType moverType, int layerNum, int availableUptoLayerNum)
             : base(proc, moverType, layerNum, availableUptoLayerNum)
         {
-            this.ensures = ensures;
             this.moverType = moverType;
             this.gate = new List<AssertCmd>();
             this.action = ensures.Condition as CodeExpr;
@@ -620,6 +618,7 @@ namespace Microsoft.Boogie
                     }
 
                     var atomicEnsures = atomicActionSpecs.First();
+                    proc.Ensures.Remove(atomicEnsures.Ensures);
                     if (!(atomicEnsures.Ensures.Condition is CodeExpr))
                     {
                         Error(atomicEnsures.Ensures, "An atomic action must be a CodeExpr");
@@ -1018,25 +1017,16 @@ namespace Microsoft.Boogie
 
         public override Ensures VisitEnsures(Ensures ensures)
         {
-            ActionInfo actionInfo = procToActionInfo[enclosingProc];
-            AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
-            if (atomicActionInfo != null && atomicActionInfo.ensures == ensures)
+            sharedVarsAccessed = new HashSet<Variable>();
+            Debug.Assert(introducedLocalVarsUpperBound == int.MinValue);
+            base.VisitEnsures(ensures);
+            CheckAndAddLayers(ensures, ensures.Attributes, procToActionInfo[enclosingProc].createdAtLayerNum);
+            if (introducedLocalVarsUpperBound > Least(FindLayers(ensures.Attributes)))
             {
-                // This case has already been checked
+                Error(ensures, "An introduced local variable is accessed but not available");
             }
-            else
-            {
-                sharedVarsAccessed = new HashSet<Variable>();
-                Debug.Assert(introducedLocalVarsUpperBound == int.MinValue);
-                base.VisitEnsures(ensures);
-                CheckAndAddLayers(ensures, ensures.Attributes, actionInfo.createdAtLayerNum);
-                if (introducedLocalVarsUpperBound > Least(FindLayers(ensures.Attributes)))
-                {
-                    Error(ensures, "An introduced local variable is accessed but not available");
-                }
-                introducedLocalVarsUpperBound = int.MinValue;
-                sharedVarsAccessed = null;
-            }
+            introducedLocalVarsUpperBound = int.MinValue;
+            sharedVarsAccessed = null;
             return ensures;
         }
 

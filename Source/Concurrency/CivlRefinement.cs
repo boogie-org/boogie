@@ -110,15 +110,8 @@ namespace Microsoft.Boogie
             Ensures ensures = base.VisitEnsures(node);
             if (node.Free)
                 return ensures;
-            AtomicActionInfo atomicActionInfo = civlTypeChecker.procToActionInfo[enclosingProc] as AtomicActionInfo;
-            bool isAtomicSpecification = atomicActionInfo != null && atomicActionInfo.ensures == node;
-            // TODO: Can we remove the "atomic action ensures" already in CivlTypeChecker?
-            // Then perhaps we do not even need the ensures field in AtomicActionInfo.
-            if (isAtomicSpecification || !civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
-            {
+            if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
                 ensures.Condition = Expr.True;
-                CivlAttributes.RemoveMoverAttribute(ensures);
-            }
             return ensures;
         }
 
