@@ -850,7 +850,7 @@ namespace Microsoft.Boogie
             {
                 var atomicProcedureInfo = procToAtomicProcedureInfo[call.Proc];
                 if (atomicProcedureInfo.isPure)
-                {
+                { // pure procedure
                     if (call.Outs.Count > 0)
                     {
                         int inferredLayer = int.MinValue;
@@ -905,7 +905,7 @@ namespace Microsoft.Boogie
                     }
                 }
                 else
-                {
+                { // atomic procedure
                     if (callerLayerNum != atomicProcedureInfo.layerRange.upperLayerNum)
                     {
                         Error(call, "Creation layer of caller must be the upper bound of the layer range of callee");
@@ -1132,14 +1132,15 @@ namespace Microsoft.Boogie
 
             public override Cmd VisitCallCmd(CallCmd node)
             {
-                Procedure enclosingProc = civlTypeChecker.enclosingImpl.Proc;
-                if (!civlTypeChecker.procToAtomicProcedureInfo.ContainsKey(node.Proc))
+                Procedure caller = civlTypeChecker.enclosingImpl.Proc;
+                Procedure callee = node.Proc;
+                if (!civlTypeChecker.procToAtomicProcedureInfo.ContainsKey(callee))
                 {
                     civlTypeChecker.Error(node, "Atomic procedure can only call an atomic procedure");
                     return base.VisitCallCmd(node);
                 }
-                var callerInfo = civlTypeChecker.procToAtomicProcedureInfo[enclosingProc];
-                var calleeInfo = civlTypeChecker.procToAtomicProcedureInfo[node.Proc];
+                var callerInfo = civlTypeChecker.procToAtomicProcedureInfo[caller];
+                var calleeInfo = civlTypeChecker.procToAtomicProcedureInfo[callee];
                 if (calleeInfo.isPure)
                 {
                     // do nothing
