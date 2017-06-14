@@ -314,6 +314,13 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(node != null);
       return PrintNAry("fp.eq", node, wr);
     }
+    public bool VisitFloatNeqOp(VCExprNAry node, TextWriter wr) {
+      //Contract.Requires(wr != null);
+      //Contract.Requires(node != null);
+      bool toReturn = PrintNAry("not (fp.eq", node, wr);
+      wr.Write(")"); // A bit hacky, but it works
+      return toReturn;
+    }
     public bool VisitBvOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
