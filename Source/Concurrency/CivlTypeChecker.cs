@@ -55,8 +55,13 @@ namespace Microsoft.Boogie
 
     public class MoverActionInfo : ActionInfo
     {
+        public HashSet<Variable> modifiedGlobalVars;
+
         public MoverActionInfo(Procedure proc, MoverType moverType, int layerNum)
-            : base(proc, moverType, layerNum, layerNum) { }
+            : base(proc, moverType, layerNum, layerNum)
+        {
+            modifiedGlobalVars = new HashSet<Variable>(proc.Modifies.Select(ie => ie.Decl));
+        }
     }
 
     public class AtomicActionInfo : ActionInfo
@@ -674,6 +679,43 @@ namespace Microsoft.Boogie
                 {
                     Error(impl.Proc, "Extern procedure cannot have an implementation");
                 }
+
+                // Check the modifies clause of mover procedures.
+                if (actionInfo is MoverActionInfo)
+                {
+                    var declaredModifiedVars = ((MoverActionInfo)actionInfo).modifiedGlobalVars;
+                    // TODO: In mover procedures, only calls to atomic actions can modify shared variables, right?
+                    foreach (var callCmd in impl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
+                    {
+                        if (!procToActionInfo.ContainsKey(callCmd.Proc))
+                        {
+                            throw new NotSupportedException("Modset check for mover procedures only supports calls to yielding procedures");
+                        }
+                        else
+                        {
+                            var calledAction = procToActionInfo[callCmd.Proc];
+                            HashSet<Variable> mods = null;
+                            if (calledAction is AtomicActionInfo)
+                            {
+                                mods = ((AtomicActionInfo)calledAction).modifiedGlobalVars;
+                            }else if(calledAction is MoverActionInfo)
+                            {
+                                mods = ((MoverActionInfo)calledAction).modifiedGlobalVars;
+                            }
+                            else
+                            {
+                                Debug.Assert(false);
+                            }
+                            foreach(var mod in mods)
+                            {
+                                if (!declaredModifiedVars.Contains(mod))
+                                {
+                                    Error(callCmd, string.Format("Modified variable {0} does not appear in modifies clause of mover procedure.", mod.Name));
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -772,7 +814,7 @@ namespace Microsoft.Boogie
                 }
                 else if (calleeAction is SkipActionInfo)
                 {
-                    if (calleeAction is MoverActionInfo)
+                    if (callerAction is MoverActionInfo)
                     {
                         Error(call, "A mover procedure cannot call a skip procedure");
                     }
@@ -993,7 +1035,12 @@ namespace Microsoft.Boogie
             {
                 if (sharedVarsAccessed == null)
                 {
-                    Error(node, "Shared variable can be accessed only in atomic procedures, atomic actions, and specifications");
+                    // TODO: This if is to prevent errors from modifies clauses on mover procedures.
+                    // It's a bit weird and should be done better. It's also weird that ReadOnlyVisitor calls VisitProcedure inside VisitImplementation. Why?
+                    if (enclosingProc == null || !(procToActionInfo[enclosingProc] is MoverActionInfo))
+                    {
+                        Error(node, "Shared variable can be accessed only in atomic procedures, atomic actions, and specifications");
+                    }
                 }
                 else if (this.globalVarToSharedVarInfo.ContainsKey(node.Decl))
                 {
