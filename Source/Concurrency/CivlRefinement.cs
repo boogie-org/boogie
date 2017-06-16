@@ -1177,19 +1177,24 @@ namespace Microsoft.Boogie
                 MyDuplicator duplicator = new MyDuplicator(civlTypeChecker, layerNum);
                 foreach (var proc in program.Procedures.Where(proc => civlTypeChecker.procToActionInfo.ContainsKey(proc)))
                 {
-                    Procedure duplicateProc = duplicator.VisitProcedure(proc);
-                    decls.Add(duplicateProc);
+                    if (layerNum <= civlTypeChecker.procToActionInfo[proc].availableUptoLayerNum)
+                    {
+                        Procedure duplicateProc = duplicator.VisitProcedure(proc);
+                        decls.Add(duplicateProc);
+                    }
                 }
                 decls.AddRange(duplicator.impls);
 
                 CivlRefinement civlTransform = new CivlRefinement(linearTypeChecker, civlTypeChecker, duplicator);
                 foreach (var impl in program.Implementations)
                 {
-                    if (!civlTypeChecker.procToActionInfo.ContainsKey(impl.Proc) || civlTypeChecker.procToActionInfo[impl.Proc].createdAtLayerNum < layerNum)
-                        continue;
-                    Implementation duplicateImpl = duplicator.VisitImplementation(impl);
-                    civlTransform.TransformImpl(duplicateImpl);
-                    decls.Add(duplicateImpl);
+                    if (civlTypeChecker.procToActionInfo.ContainsKey(impl.Proc) &&
+                        layerNum <= civlTypeChecker.procToActionInfo[impl.Proc].createdAtLayerNum)
+                    {
+                        Implementation duplicateImpl = duplicator.VisitImplementation(impl);
+                        civlTransform.TransformImpl(duplicateImpl);
+                        decls.Add(duplicateImpl);
+                    }
                 }
                 decls.AddRange(civlTransform.Collect());
             }
