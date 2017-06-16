@@ -361,7 +361,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        private static List<int> FindLayers(QKeyValue kv)
+        private List<int> FindLayers(QKeyValue kv)
         {
             List<int> layers = new List<int>();
             for (; kv != null; kv = kv.Next)
@@ -369,12 +369,16 @@ namespace Microsoft.Boogie
                 if (kv.Key != CivlAttributes.LAYER) continue;
                 foreach (var o in kv.Params)
                 {
-                    Expr e = o as Expr;
-                    if (e == null) return null;
-                    LiteralExpr l = e as LiteralExpr;
-                    if (l == null) return null;
-                    if (!l.isBigNum) return null;
-                    layers.Add(l.asBigNum.ToIntSafe);
+                    LiteralExpr l = o as LiteralExpr;
+                    if (l != null && l.isBigNum)
+                    {
+                        layers.Add(l.asBigNum.ToIntSafe);
+                    }
+                    else
+                    {
+                        Console.WriteLine(new System.Diagnostics.StackTrace());
+                        checkingContext.Error(kv, "Layer has to be an integer.");
+                    }
                 }
             }
             return layers;
@@ -584,15 +588,15 @@ namespace Microsoft.Boogie
             {
                 int createdAtLayerNum;  // must be initialized by the following code, otherwise it is an error
                 int availableUptoLayerNum = int.MaxValue;
-                List<int> attrs = FindLayers(proc.Attributes);
-                if (attrs.Count == 1)
+                List<int> layers = FindLayers(proc.Attributes);
+                if (layers.Count == 1)
                 {
-                    createdAtLayerNum = attrs[0];
+                    createdAtLayerNum = layers[0];
                 }
-                else if (attrs.Count == 2)
+                else if (layers.Count == 2)
                 {
-                    createdAtLayerNum = attrs[0];
-                    availableUptoLayerNum = attrs[1];
+                    createdAtLayerNum = layers[0];
+                    availableUptoLayerNum = layers[1];
                 }
                 else
                 {
@@ -780,18 +784,28 @@ namespace Microsoft.Boogie
             }
             this.enclosingImpl = node;
             this.enclosingProc = null;
-            return base.VisitImplementation(node);
+            var ret = base.VisitImplementation(node);
+            this.enclosingImpl = null;
+            return ret;
         }
 
         public override Procedure VisitProcedure(Procedure node)
         {
+            if (enclosingImpl != null)
+            {
+                // We don't want to descend from an implementation into the corresponding procedure,
+                // otherwise the procedure would be visited twice, causing duplicate error messages.
+                return node;
+            }
             if (!procToActionInfo.ContainsKey(node))
             {
                 return node;
             }
             this.enclosingProc = node;
             this.enclosingImpl = null;
-            return base.VisitProcedure(node);
+            var ret = base.VisitProcedure(node);
+            this.enclosingProc = null;
+            return ret;
         }
 
         public override Cmd VisitCallCmd(CallCmd call)
@@ -1067,8 +1081,9 @@ namespace Microsoft.Boogie
             sharedVarsAccessed = new HashSet<Variable>();
             Debug.Assert(introducedLocalVarsUpperBound == int.MinValue);
             base.VisitEnsures(ensures);
-            CheckAndAddLayers(ensures, ensures.Attributes, procToActionInfo[enclosingProc].createdAtLayerNum);
-            if (introducedLocalVarsUpperBound > Least(FindLayers(ensures.Attributes)))
+            var layers = FindLayers(ensures.Attributes);
+            CheckAndAddLayers(ensures, layers, procToActionInfo[enclosingProc].createdAtLayerNum);
+            if (introducedLocalVarsUpperBound > Least(layers))
             {
                 Error(ensures, "An introduced local variable is accessed but not available");
             }
@@ -1082,8 +1097,9 @@ namespace Microsoft.Boogie
             sharedVarsAccessed = new HashSet<Variable>();
             Debug.Assert(introducedLocalVarsUpperBound == int.MinValue);
             base.VisitRequires(requires);
-            CheckAndAddLayers(requires, requires.Attributes, procToActionInfo[enclosingProc].createdAtLayerNum);
-            if (introducedLocalVarsUpperBound > Least(FindLayers(requires.Attributes)))
+            var layers = FindLayers(requires.Attributes);
+            CheckAndAddLayers(requires, layers, procToActionInfo[enclosingProc].createdAtLayerNum);
+            if (introducedLocalVarsUpperBound > Least(layers))
             {
                 Error(requires, "An introduced local variable is accessed but not available");
             }
@@ -1102,8 +1118,9 @@ namespace Microsoft.Boogie
             sharedVarsAccessed = new HashSet<Variable>();
             Debug.Assert(introducedLocalVarsUpperBound == int.MinValue);
             base.VisitAssertCmd(assert);
-            CheckAndAddLayers(assert, assert.Attributes, procToActionInfo[enclosingImpl.Proc].createdAtLayerNum);
-            if (introducedLocalVarsUpperBound > Least(FindLayers(assert.Attributes)))
+            var layers = FindLayers(assert.Attributes);
+            CheckAndAddLayers(assert, layers, procToActionInfo[enclosingImpl.Proc].createdAtLayerNum);
+            if (introducedLocalVarsUpperBound > Least(layers))
             {
                 Error(assert, "An introduced local variable is accessed but not available");
             }
@@ -1129,17 +1146,17 @@ namespace Microsoft.Boogie
             return layers;
         }
 
-        private void CheckAndAddLayers(Absy node, QKeyValue attributes, int enclosingProcLayerNum)
+        private void CheckAndAddLayers(Absy node, List<int> layers, int enclosingProcLayerNum)
         {
-            List<int> attrs = RemoveDuplicatesAndSort(FindLayers(attributes));
-            if (attrs.Count == 0)
+            layers = RemoveDuplicatesAndSort(layers);
+            if (layers.Count == 0)
             {
                 Error(node, "layer not present");
                 return;
             }
             LayerRange upperBound = FindLayerRange();
             absyToLayerNums[node] = new HashSet<int>();
-            foreach (int layerNum in attrs)
+            foreach (int layerNum in layers)
             {
                 if (layerNum > enclosingProcLayerNum)
                 {
