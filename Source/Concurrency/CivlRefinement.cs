@@ -43,21 +43,25 @@ namespace Microsoft.Boogie
             if (!procMap.ContainsKey(node))
             {
                 enclosingProc = node;
+                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[node];
+                
                 Procedure proc = (Procedure)node.Clone();
                 proc.Name = string.Format("{0}_{1}", node.Name, layerNum);
                 proc.InParams = this.VisitVariableSeq(node.InParams);
-                proc.Modifies = this.VisitIdentifierExprSeq(node.Modifies);
                 proc.OutParams = this.VisitVariableSeq(node.OutParams);
 
-                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[node];
+                procMap[node] = proc;
+                
                 if (actionInfo.createdAtLayerNum < layerNum)
                 {
                     proc.Requires = new List<Requires>();
                     proc.Ensures = new List<Ensures>();
+
                     Implementation impl;
                     AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
                     if (atomicActionInfo != null)
                     {
+                        proc.Modifies = atomicActionInfo.modifiedGlobalVars.Select(g => Expr.Ident(g)).ToList();
                         CodeExpr action = (CodeExpr)VisitCodeExpr(atomicActionInfo.action);
                         List<Cmd> cmds = new List<Cmd>();
                         foreach (AssertCmd assertCmd in atomicActionInfo.gate)
@@ -74,6 +78,7 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
+                        proc.Modifies = new List<IdentifierExpr>();
                         Block newInitBlock = new Block(Token.NoToken, "_init", new List<Cmd>(), new ReturnCmd(Token.NoToken));
                         List<Block> newBlocks = new List<Block> { newInitBlock };
                         impl = new Implementation(Token.NoToken, proc.Name, node.TypeParameters, node.InParams, node.OutParams, new List<Variable>(), newBlocks);
@@ -85,12 +90,18 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    yieldingProcs.Add(proc);
                     proc.Requires = this.VisitRequiresSeq(node.Requires);
                     proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
+                    if (actionInfo is MoverActionInfo && actionInfo.createdAtLayerNum == layerNum)
+                    {
+                        proc.Modifies = ((MoverActionInfo)actionInfo).modifiedGlobalVars.Select(g => Expr.Ident(g)).ToList();
+                    }
+                    else
+                    {
+                        proc.Modifies = civlTypeChecker.sharedVariableIdentifiers;
+                        yieldingProcs.Add(proc);
+                    }
                 }
-                procMap[node] = proc;
-                proc.Modifies = civlTypeChecker.sharedVariableIdentifiers;
             }
             return procMap[node];
         }
@@ -156,7 +167,7 @@ namespace Microsoft.Boogie
             {
                 ActionInfo actionInfo = civlTypeChecker.procToActionInfo[call.Proc];
                 Debug.Assert(actionInfo.IsLeftMover);
-                if (actionInfo.createdAtLayerNum < layerNum)
+                if (actionInfo.createdAtLayerNum < layerNum || (actionInfo is MoverActionInfo && actionInfo.createdAtLayerNum == layerNum))
                 {
                     newCall.IsAsync = false;
                 }
@@ -214,6 +225,8 @@ namespace Microsoft.Boogie
             else if (civlTypeChecker.procToActionInfo.ContainsKey(originalProc))
             {
                 AtomicActionInfo atomicActionInfo = civlTypeChecker.procToActionInfo[originalProc] as AtomicActionInfo;
+                // We only have to check the gate of a called atomic action (via an assert) at the creation layer of the caller.
+                // In all layers below we just establish invariants which do not require the gates to be checked.
                 if (atomicActionInfo != null && atomicActionInfo.gate.Count > 0 && layerNum == enclosingProcLayerNum)
                 {
                     newCmds.Add(new HavocCmd(Token.NoToken, new List<IdentifierExpr> { Expr.Ident(dummyLocalVar) }));
@@ -1186,13 +1199,16 @@ namespace Microsoft.Boogie
                 decls.AddRange(duplicator.impls);
 
                 CivlRefinement civlTransform = new CivlRefinement(linearTypeChecker, civlTypeChecker, duplicator);
-                foreach (var impl in program.Implementations)
+                foreach (var impl in program.Implementations.Where(impl => civlTypeChecker.procToActionInfo.ContainsKey(impl.Proc)))
                 {
-                    if (civlTypeChecker.procToActionInfo.ContainsKey(impl.Proc) &&
-                        layerNum <= civlTypeChecker.procToActionInfo[impl.Proc].createdAtLayerNum)
+                    var actionInfo = civlTypeChecker.procToActionInfo[impl.Proc];
+                    if (layerNum <= actionInfo.createdAtLayerNum)
                     {
                         Implementation duplicateImpl = duplicator.VisitImplementation(impl);
-                        civlTransform.TransformImpl(duplicateImpl);
+                        if (!(actionInfo is MoverActionInfo && actionInfo.createdAtLayerNum == layerNum))
+                        {
+                            civlTransform.TransformImpl(duplicateImpl);
+                        }
                         decls.Add(duplicateImpl);
                     }
                 }
