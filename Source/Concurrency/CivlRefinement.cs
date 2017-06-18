@@ -307,6 +307,39 @@ namespace Microsoft.Boogie
             yieldProc = null;
         }
 
+        private Formal OgOldGlobalFormal(Variable v)
+        { return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", v.Name), v.TypedIdent.Type), true); }
+
+        private LocalVariable OgOldGlobalLocal(Variable v)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", v.Name), v.TypedIdent.Type)); }
+
+        private LocalVariable OgOldLocalLocal(Variable v)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_local_old_{0}", v.Name), v.TypedIdent.Type)); }
+
+        private LocalVariable OgOldLocal(Variable v)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_old_{0}", v.Name), v.TypedIdent.Type)); }
+
+        private LocalVariable OgPcLocal()
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_pc", Type.Bool)); }
+
+        private LocalVariable OgPcLabelLocal(string label)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_pc_{0}", label), Type.Bool)); }
+
+        private LocalVariable OgOkLocal()
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_ok", Type.Bool)); }
+
+        private LocalVariable OgOkLabelLocal(string label)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_ok_{0}", label), Type.Bool)); }
+
+        private Formal OgParCallDesugarFormal(Variable v, int count, bool incoming)
+        { return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_{0}_{1}", count, v.Name), v.TypedIdent.Type), incoming); }
+
+        private LocalVariable CopyLocal(Variable v)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)); }
+
+        private Formal CopyIn(Variable v)
+        { return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true); }
+
         private IEnumerable<Variable> AvailableLinearVars(Absy absy)
         {
             HashSet<Variable> availableVars = new HashSet<Variable>(linearTypeChecker.AvailableLinearVars(absyMap[absy]));
@@ -448,7 +481,7 @@ namespace Microsoft.Boogie
             ogOldGlobalMap = new Dictionary<Variable, Variable>();
             foreach (Variable g in civlTypeChecker.sharedVariables)
             {
-                LocalVariable l = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type));
+                LocalVariable l = OgOldGlobalLocal(g);
                 ogOldGlobalMap[g] = l;
                 newLocalVars.Add(l);
             }
@@ -457,9 +490,9 @@ namespace Microsoft.Boogie
             ActionInfo actionInfo = civlTypeChecker.procToActionInfo[originalProc];
             if (actionInfo.createdAtLayerNum == this.layerNum)
             {
-                pc = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_pc", Type.Bool));
+                pc = OgPcLocal();
+                ok = OgOkLocal();
                 newLocalVars.Add(pc);
-                ok = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_ok", Type.Bool));
                 newLocalVars.Add(ok);
                 Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
                 for (int i = 0; i < originalProc.InParams.Count; i++)
@@ -506,7 +539,7 @@ namespace Microsoft.Boogie
                 }
                 foreach (Variable f in impl.OutParams)
                 {
-                    LocalVariable copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_old_{0}", f.Name), f.TypedIdent.Type));
+                    LocalVariable copy = OgOldLocal(f);
                     newLocalVars.Add(copy);
                     ogOldGlobalMap[f] = copy;
                 }
@@ -514,14 +547,11 @@ namespace Microsoft.Boogie
 
             domainNameToLocalVar = new Dictionary<string, Variable>();
             {
-                int i = impl.InParams.Count - linearTypeChecker.linearDomains.Count;
                 foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
-                    Variable inParam = impl.InParams[i];
-                    Variable l = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name + "_local", inParam.TypedIdent.Type));
+                    Variable l = linearTypeChecker.LinearDomainInLocal(domainName);
                     domainNameToLocalVar[domainName] = l;
                     newLocalVars.Add(l);
-                    i++;
                 }
             }
         }
@@ -664,14 +694,11 @@ namespace Microsoft.Boogie
                 List<Variable> inputs = new List<Variable>();
                 foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
-                    var domain = linearTypeChecker.linearDomains[domainName];
-                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
-                    inputs.Add(f);
+                    inputs.Add(linearTypeChecker.LinearDomainInFormal(domainName));
                 }
                 foreach (Variable g in civlTypeChecker.sharedVariables)
                 {
-                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type), true);
-                    inputs.Add(f);
+                    inputs.Add(OgOldGlobalFormal(g));
                 }
                 yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", layerNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
                 yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
@@ -827,13 +854,13 @@ namespace Microsoft.Boogie
                     Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
                     foreach (Variable x in callCmd.Proc.InParams)
                     {
-                        Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_{0}_{1}", count, x.Name), x.TypedIdent.Type), true);
+                        Variable y = OgParCallDesugarFormal(x, count, true);
                         inParams.Add(y);
                         map[x] = Expr.Ident(y);
                     }
                     foreach (Variable x in callCmd.Proc.OutParams)
                     {
-                        Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_{0}_{1}", count, x.Name), x.TypedIdent.Type), false);
+                        Variable y = OgParCallDesugarFormal(x, count, false);
                         outParams.Add(y);
                         map[x] = Expr.Ident(y);
                     }
@@ -869,9 +896,9 @@ namespace Microsoft.Boogie
                 LocalVariable oldOk = null;
                 if (pc != null)
                 {
-                    oldPc = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("{0}_{1}", pc.Name, header.Label), Type.Bool));
+                    oldPc = OgPcLabelLocal(header.Label);
+                    oldOk = OgOkLabelLocal(header.Label);
                     oldPcs.Add(oldPc);
-                    oldOk = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("{0}_{1}", ok.Name, header.Label), Type.Bool));
                     oldOks.Add(oldOk);
                 }
                 Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(AvailableLinearVars(header));
@@ -973,41 +1000,35 @@ namespace Microsoft.Boogie
             if (yields.Count == 0) return;
 
             Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-            foreach (Variable local in impl.LocVars)
-            {
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, local.Name, local.TypedIdent.Type));
-                map[local] = Expr.Ident(copy);
-            }
-
-            Program program = linearTypeChecker.program;
             List<Variable> locals = new List<Variable>();
             List<Variable> inputs = new List<Variable>();
-            foreach (IdentifierExpr ie in map.Values)
+
+            foreach (Variable local in impl.LocVars)
             {
-                locals.Add(ie.Decl);
+                var copy = CopyLocal(local);
+                locals.Add(copy);
+                map[local] = Expr.Ident(copy);
             }
-            for (int i = 0; i < impl.InParams.Count - linearTypeChecker.linearDomains.Count; i++)
+            for (int i = 0; i < impl.InParams.Count; i++)
             {
                 Variable inParam = impl.InParams[i];
-                Variable copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type));
-                locals.Add(copy);
-                map[impl.InParams[i]] = Expr.Ident(copy);
-            }
-            {
-                int i = impl.InParams.Count - linearTypeChecker.linearDomains.Count;
-                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+                Variable copy;
+                if (i < impl.InParams.Count - linearTypeChecker.linearDomains.Count)
                 {
-                    Variable inParam = impl.InParams[i];
-                    Variable copy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type), true);
-                    inputs.Add(copy);
-                    map[impl.InParams[i]] = Expr.Ident(copy);
-                    i++;
+                    copy = CopyLocal(inParam);
+                    locals.Add(copy);
                 }
+                else
+                {
+                    copy = CopyIn(inParam);
+                    inputs.Add(copy);
+                }
+                map[impl.InParams[i]] = Expr.Ident(copy);
             }
             for (int i = 0; i < impl.OutParams.Count; i++)
             {
                 Variable outParam = impl.OutParams[i];
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, outParam.Name, outParam.TypedIdent.Type));
+                var copy = CopyLocal(outParam);
                 locals.Add(copy);
                 map[impl.OutParams[i]] = Expr.Ident(copy);
             }
@@ -1015,10 +1036,10 @@ namespace Microsoft.Boogie
             Dictionary<Variable, Expr> assumeMap = new Dictionary<Variable, Expr>(map);
             foreach (Variable g in civlTypeChecker.sharedVariables)
             {
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_local_old_{0}", g.Name), g.TypedIdent.Type));
+                var copy = OgOldLocalLocal(g);
                 locals.Add(copy);
                 ogOldLocalMap[g] = Expr.Ident(copy);
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type), true);
+                Formal f = OgOldGlobalFormal(g);
                 inputs.Add(f);
                 assumeMap[g] = Expr.Ident(f);
             }
@@ -1067,7 +1088,7 @@ namespace Microsoft.Boogie
             yieldCheckerBlocks.Insert(0, new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
 
             // Create the yield checker procedure
-            var yieldCheckerName = string.Format("{0}_YieldChecker_{1}", "Impl", impl.Name);
+            var yieldCheckerName = string.Format("Impl_YieldChecker_{0}", impl.Name);
             var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, impl.TypeParameters, inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
             yieldCheckerProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             yieldCheckerProcs.Add(yieldCheckerProc);
@@ -1119,14 +1140,11 @@ namespace Microsoft.Boogie
             List<Variable> inputs = new List<Variable>();
             foreach (string domainName in linearTypeChecker.linearDomains.Keys)
             {
-                var domain = linearTypeChecker.linearDomains[domainName];
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
-                inputs.Add(f);
+                inputs.Add(linearTypeChecker.LinearDomainInFormal(domainName));
             }
             foreach (Variable g in civlTypeChecker.sharedVariables)
             {
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type), true);
-                inputs.Add(f);
+                inputs.Add(OgOldGlobalFormal(g));
             }
             List<Block> blocks = new List<Block>();
             TransferCmd transferCmd = new ReturnCmd(Token.NoToken);

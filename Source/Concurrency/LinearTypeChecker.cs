@@ -35,6 +35,8 @@ namespace Microsoft.Boogie
         public Function mapConstBool;
         public List<Axiom> axioms;
         public Type elementType;
+        public MapType mapTypeBool;
+        public MapType mapTypeInt;
         public Dictionary<Type, Function> collectors;
 
         public LinearDomain(Program program, string domainName, Dictionary<Type, Function> collectors)
@@ -43,8 +45,8 @@ namespace Microsoft.Boogie
             this.collectors = collectors;
             MapType setType = (MapType)collectors.First().Value.OutParams[0].TypedIdent.Type;
             this.elementType = setType.Arguments[0];
-            MapType mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.elementType }, Type.Bool);
-            MapType mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.elementType }, Type.Int);
+            this.mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.elementType }, Type.Bool);
+            this.mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.elementType }, Type.Int);
             this.mapOrBool = new Function(Token.NoToken, "linear_" + domainName + "_MapOr",
                                           new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
                                                           new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true) },
@@ -257,6 +259,12 @@ namespace Microsoft.Boogie
                 return LinearKind.ORDINARY;
             }
         }
+
+        public Formal LinearDomainInFormal(string domainName)
+        { return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", linearDomains[domainName].mapTypeBool), true); }
+
+        public LocalVariable LinearDomainInLocal(string domainName)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in_local", linearDomains[domainName].mapTypeBool)); }
 
         public void TypeCheck()
         {
@@ -762,13 +770,7 @@ namespace Microsoft.Boogie
                 Dictionary<string, Variable> domainNameToInputVar = new Dictionary<string, Variable>();
                 foreach (string domainName in linearDomains.Keys)
                 {
-                    var domain = linearDomains[domainName];
-                    Formal f = new Formal(
-                      Token.NoToken,
-                      new TypedIdent(Token.NoToken, 
-                        "linear_" + domainName + "_in",
-                        new MapType(Token.NoToken, new List<TypeVariable>(), 
-                          new List<Type> { domain.elementType }, Type.Bool)), true);
+                    Formal f = LinearDomainInFormal(domainName);
                     impl.InParams.Add(f);
                     domainNameToInputVar[domainName] = f;
                 }
@@ -871,9 +873,7 @@ namespace Microsoft.Boogie
                 foreach (var domainName in linearDomains.Keys)
                 {
                     proc.Requires.Add(new Requires(true, DisjointnessExpr(domainName, domainNameToInputScope[domainName])));
-                    var domain = linearDomains[domainName];
-                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
-                    proc.InParams.Add(f);
+                    proc.InParams.Add(LinearDomainInFormal(domainName));
                     proc.Ensures.Add(new Ensures(true, DisjointnessExpr(domainName, domainNameToOutputScope[domainName])));
                 }
             }
@@ -956,10 +956,7 @@ namespace Microsoft.Boogie
               Token.NoToken,
               new TypedIdent(Token.NoToken,
                              string.Format("partition_{0}", domainName),
-                             new MapType(Token.NoToken,
-                                         new List<TypeVariable>(),
-                                         new List<Type> { domain.elementType },
-                                         Microsoft.Boogie.Type.Int)));
+                             domain.mapTypeInt));
 
             if (inputVar != null)
             {
