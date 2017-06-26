@@ -31,7 +31,7 @@ namespace Microsoft.Boogie.VCExprAST {
       GlobalPlusLocalNames = new Dictionary<Object, string>();
     }
 
-    private UniqueNamer(UniqueNamer namer) {
+    protected UniqueNamer(UniqueNamer namer) {
       Contract.Requires(namer != null);
 
       Spacer = namer.Spacer;
@@ -46,12 +46,12 @@ namespace Microsoft.Boogie.VCExprAST {
       GlobalPlusLocalNames = new Dictionary<Object, string>(namer.GlobalPlusLocalNames);
     }
 
-    public Object Clone() {
+    public virtual Object Clone() {
       Contract.Ensures(Contract.Result<Object>() != null);
       return new UniqueNamer(this);
     }
 
-    public void Reset()
+    public virtual void Reset()
     {
       GlobalNames.Clear();
       LocalNames.Clear();
@@ -183,6 +183,20 @@ namespace Microsoft.Boogie.VCExprAST {
     {
       return GetLocalName(thingie, inherentName);
     }
+
+    public virtual string LabelVar(string s) {
+      return s;
+    }
+
+    public virtual string LabelName(string s) {
+      return s;
+    }
+
+    public virtual string AbsyLabel(string s) {
+      return s;
+    }
+
+    public virtual void ResetLabelCount() { }
 
     public string Lookup(Object thingie) {
       Contract.Requires(thingie != null);

@@ -168,12 +168,15 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     internal TypeAxiomBuilder AxBuilder { get; private set; }
-    internal readonly UniqueNamer Namer;
+    private TypeAxiomBuilder CachedAxBuilder;
+    private UniqueNamer CachedNamer;
+    internal UniqueNamer Namer { get; private set; }
     readonly TypeDeclCollector DeclCollector;
     protected SMTLibProcess Process;
     readonly List<string> proverErrors = new List<string>();
     readonly List<string> proverWarnings = new List<string>();
-    readonly StringBuilder common = new StringBuilder();
+    StringBuilder common = new StringBuilder();
+    private string CachedCommon = null;
     protected TextWriter currentLogFile;
     protected volatile ErrorHandler currentErrorHandler;
 
@@ -354,6 +357,8 @@ namespace Microsoft.Boogie.SMTLib
         else
           AddAxiom(VCExpr2String(axioms, -1));
         AxiomsAreSetup = true;
+        CachedAxBuilder = AxBuilder;
+        CachedNamer = Namer;
       }
     }
 
@@ -361,6 +366,14 @@ namespace Microsoft.Boogie.SMTLib
     {
       // we feed the axioms when begincheck is called.
       return 0;
+    }
+
+    private void FlushAndCacheCommons()
+    {
+      FlushAxioms();
+      if (CachedCommon == null) {
+        CachedCommon = common.ToString();
+      }
     }
 
     private void FlushAxioms()
@@ -415,6 +428,15 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       PrepareCommon();
+      FlushAndCacheCommons();
+
+      if (HasReset) {
+        AxBuilder = (TypeAxiomBuilder)CachedAxBuilder.Clone();
+        Namer = (SMTLibNamer)CachedNamer.Clone();
+        Namer.ResetLabelCount();
+        DeclCollector.SetNamer(Namer);
+        DeclCollector.Push();
+      }
 
       OptimizationRequests.Clear();
 
@@ -439,6 +461,11 @@ namespace Microsoft.Boogie.SMTLib
           Process.Inspector.NewProblem(descriptiveName, vc, handler);
       }
 
+      if (HasReset) {
+        DeclCollector.Pop();
+        common = new StringBuilder(CachedCommon);
+        HasReset = false;
+      }
       SendCheckSat();
       FlushLogFile();
     }
@@ -470,6 +497,7 @@ namespace Microsoft.Boogie.SMTLib
             currentLogFile.WriteLine(c);
           }
         }
+        HasReset = true;
       }
     }
 
@@ -1480,7 +1508,7 @@ namespace Microsoft.Boogie.SMTLib
           if (CommandLineOptions.Clo.UseLabels) {
             var negLabels = labels.Where(l => l.StartsWith("@")).ToArray();
             var posLabels = labels.Where(l => !l.StartsWith("@"));
-            Func<string, string> lbl = (s) => SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(s));
+            Func<string, string> lbl = (s) => SMTLibNamer.QuoteId(Namer.LabelVar(s));
             if (!options.MultiTraces)
               posLabels = Enumerable.Empty<string>();
             var conjuncts = posLabels.Select(s => "(not " + lbl(s) + ")").Concat(negLabels.Select(lbl)).ToArray();
@@ -1946,7 +1974,7 @@ namespace Microsoft.Boogie.SMTLib
         if (res != null)
           HandleProverError("Expecting only one sequence of labels but got many");
         if (resp.Name == "labels") {
-          res = resp.Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
+          res = resp.Arguments.Select(a => Namer.AbsyLabel(a.Name.Replace("|", ""))).ToArray();
         }
         else {
           HandleProverError("Unexpected prover response getting labels: " + resp.ToString());
@@ -2103,8 +2131,7 @@ namespace Microsoft.Boogie.SMTLib
     // verification condition
     private readonly List<string/*!>!*/> Axioms = new List<string/*!*/>();
     private bool AxiomsAreSetup = false;
-
-
+    private bool HasReset = false;
 
 
     // similarly, a list of function/predicate declarations

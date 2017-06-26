@@ -1,7 +1,7 @@
 *** MODEL
-%lbl%@147 -> false
-%lbl%+64 -> true
-%lbl%+84 -> true
+%lbl%@1 -> false
+%lbl%+0 -> true
+%lbl%+3 -> true
 i@0 -> 1
 j@0 -> 2
 j@1 -> 3

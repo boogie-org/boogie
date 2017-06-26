@@ -18,7 +18,7 @@ namespace Microsoft.Boogie.SMTLib
 
   public class TypeDeclCollector : BoundVarTraversingVCExprVisitor<bool, bool> {
 
-    private readonly UniqueNamer Namer;
+    private UniqueNamer Namer;
     private readonly SMTLibProverOptions Options;
     private HashSet<Function/*!*/>/*!*/ RegisteredRelations = new HashSet<Function>();
 
@@ -148,6 +148,11 @@ void ObjectInvariant()
         _KnownLBL.Pop();
     }
 
+    public void SetNamer(UniqueNamer namer)
+    {
+      Namer = namer;
+    }
+
     public List<string/*!>!*/> AllDeclarations { get {
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<string>>() ));
 
@@ -249,7 +254,7 @@ void ObjectInvariant()
           var lab = node.Op as VCExprLabelOp;
           if (lab != null && !KnownLBL.Contains(lab.label)) {
             KnownLBL.Add(lab.label);
-            var name = SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(lab.label));
+            var name = SMTLibNamer.QuoteId(Namer.LabelVar(lab.label));
             AddDeclaration("(declare-fun " + name + " () Bool)");
           }
         }
