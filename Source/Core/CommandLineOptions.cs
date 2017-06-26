@@ -670,6 +670,7 @@ namespace Microsoft.Boogie {
 
     public int SimplifyProverMatchDepth = -1;  // -1 means not specified
     public int ProverKillTime = -1;  // -1 means not specified
+    public int Resourcelimit = 0; // default to 0
     public int SmokeTimeout = 10; // default to 10s
     public int ProverCCLimit = 5;
     public bool z3AtFlag = true;
@@ -1501,6 +1502,10 @@ namespace Microsoft.Boogie {
           ps.GetNumericArgument(ref ProverKillTime);
           return true;
 
+        case "rlimit":
+          ps.GetNumericArgument(ref Resourcelimit);
+          return true;
+
         case "timeLimitPerAssertionInPercent":
           ps.GetNumericArgument(ref TimeLimitPerAssertionInPercent, a => 0 < a);
           return true;
@@ -1807,6 +1812,9 @@ namespace Microsoft.Boogie {
 
      {:timeLimit N}
        Set the time limit for a given implementation.
+
+     {:rlimit N}
+       Set the Z3 resource limit for a given implementation.
 
   ---- On functions ----------------------------------------------------------
 
@@ -2130,6 +2138,8 @@ namespace Microsoft.Boogie {
   /timeLimit:<num>
                 Limit the number of seconds spent trying to verify
                 each procedure
+  /rlimit:<num>
+                Limit the Z3 resource spent trying to verify each procedure
   /errorTrace:<n>
                 0 - no Trace labels in the error output,
                 1 (default) - include useful Trace labels in error output,

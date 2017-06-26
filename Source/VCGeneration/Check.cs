@@ -44,6 +44,7 @@ namespace Microsoft.Boogie {
 
     private ProverInterface thmProver;
     private int timeout;
+    private int rlimit;
 
     // state for the async interface
     private volatile ProverInterface.Outcome outcome;
@@ -71,8 +72,8 @@ namespace Microsoft.Boogie {
 
     public Task ProverTask { get; set; }
 
-    public bool WillingToHandle(int timeout, Program prog) {
-      return status == CheckerStatus.Idle && timeout == this.timeout && (prog == null || Program == prog);
+    public bool WillingToHandle(int timeout, int rlimit, Program prog) {
+      return status == CheckerStatus.Idle && timeout == this.timeout && rlimit == this.rlimit && (prog == null || Program == prog);
     }
 
     public VCExpressionGenerator VCExprGen {
@@ -126,10 +127,11 @@ namespace Microsoft.Boogie {
     /// Constructor.  Initialize a checker with the program and log file.
     /// Optionally, use prover context provided by parameter "ctx". 
     /// </summary>
-    public Checker(VC.ConditionGeneration vcgen, Program prog, string/*?*/ logFilePath, bool appendLogFile, int timeout, ProverContext ctx = null) {
+    public Checker(VC.ConditionGeneration vcgen, Program prog, string/*?*/ logFilePath, bool appendLogFile, int timeout, int rlimit = 0, ProverContext ctx = null) {
       Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
       this.timeout = timeout;
+      this.rlimit = rlimit;
       this.Program = prog;
 
       ProverOptions options = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
@@ -142,6 +144,12 @@ namespace Microsoft.Boogie {
 
       if (timeout > 0) {
         options.TimeLimit = timeout * 1000;
+      }
+
+      if (rlimit > 0) {
+        options.ResourceLimit = rlimit;
+      } else {
+        options.ResourceLimit = 0;
       }
 
       options.Parse(CommandLineOptions.Clo.ProverOptions);
@@ -176,7 +184,7 @@ namespace Microsoft.Boogie {
       this.gen = prover.VCExprGen;
     }
 
-    public void Retarget(Program prog, ProverContext ctx, int timeout = 0)
+    public void Retarget(Program prog, ProverContext ctx, int timeout = 0, int rlimit = 0)
     {
       lock (this)
       {
@@ -189,6 +197,8 @@ namespace Microsoft.Boogie {
         Setup(prog, ctx);
         this.timeout = timeout;
         SetTimeout();
+        this.rlimit = rlimit;
+        SetRlimit();
       }
     }
 
@@ -208,6 +218,17 @@ namespace Microsoft.Boogie {
       else
       {
         TheoremProver.SetTimeOut(0);
+      }
+    }
+
+    public void SetRlimit()
+    {
+      if (0 < rlimit) {
+        TheoremProver.SetRlimit(rlimit);
+      }
+      else 
+      {
+        TheoremProver.SetRlimit(0);
       }
     }
 
@@ -332,6 +353,9 @@ namespace Microsoft.Boogie {
           case ProverInterface.Outcome.TimeOut:
             thmProver.LogComment("Timed out");
             break;
+          case ProverInterface.Outcome.OutOfResource:
+            thmProver.LogComment("Out of resource");
+            break;
           case ProverInterface.Outcome.OutOfMemory:
             thmProver.LogComment("Out of memory");
             break;
@@ -449,6 +473,7 @@ namespace Microsoft.Boogie {
       Invalid,
       TimeOut,
       OutOfMemory,
+      OutOfResource,
       Undetermined,
       Bounded
     }
@@ -586,6 +611,9 @@ namespace Microsoft.Boogie {
 
     // Set theorem prover timeout for the next "check-sat"
     public virtual void SetTimeOut(int ms)
+    { }
+
+    public virtual void SetRlimit(int limit)
     { }
 
     public abstract ProverContext Context {

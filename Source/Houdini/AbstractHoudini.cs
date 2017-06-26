@@ -217,7 +217,7 @@ namespace Microsoft.Boogie.Houdini {
                 if (CommandLineOptions.Clo.Trace)
                     Console.WriteLine("Time taken = " + inc.TotalSeconds.ToString());
 
-                if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory)
+                if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory || proverOutcome == ProverInterface.Outcome.OutOfResource)
                 {
                     // pick some function; make it true and keep going
                     bool changed = false;
@@ -2794,7 +2794,7 @@ namespace Microsoft.Boogie.Houdini {
 
                 if (UseBilateralAlgo)
                 {
-                    if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory)
+                    if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory || proverOutcome == ProverInterface.Outcome.OutOfResource)
                     {
                         if(CommandLineOptions.Clo.Trace)
                             Console.WriteLine("Timeout/Spaceout while verifying " + impl.Name);
@@ -2819,7 +2819,7 @@ namespace Microsoft.Boogie.Houdini {
                 }
                 else
                 {
-                    if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory)
+                    if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory || proverOutcome == ProverInterface.Outcome.OutOfResource)
                     {
                         if (CommandLineOptions.Clo.Trace)
                             Console.WriteLine("Timeout/Spaceout while verifying " + impl.Name);
