@@ -24,6 +24,7 @@ namespace Microsoft.Boogie
     }
 
     public enum LinearKind {
+        ORDINARY,
         LINEAR,
         LINEAR_IN,
         LINEAR_OUT
@@ -434,8 +435,7 @@ namespace Microsoft.Boogie
             }
             else
             {
-                Debug.Assert(false);
-                return LinearKind.LINEAR;
+                return LinearKind.ORDINARY;
             }
         }
         public override Variable VisitVariable(Variable node)
@@ -741,6 +741,8 @@ namespace Microsoft.Boogie
                     if (!this.linearDomains.ContainsKey(domainName)) continue;
                     domainNameToOutputScope[domainName].Add(v);
                 }
+                // TODO: Also add linear and linear_out parameters to domainNameToOutputScope?
+                //       This should still be sound and strengthen the generated postcondition.
                 foreach (var domainName in linearDomains.Keys)
                 {
                     proc.Requires.Add(new Requires(true, DisjointnessExpr(domainName, domainNameToInputScope[domainName])));
@@ -779,41 +781,53 @@ namespace Microsoft.Boogie
             return e;
         }
 
-        private Expr SubsetExprs(LinearDomain domain, HashSet<Variable> scope, Variable partition, int count, Expr expr)
-        {
-            foreach (Variable v in scope)
-            {
-                if (!domain.collectors.ContainsKey(v.TypedIdent.Type)) continue;
-                Expr ie = new NAryExpr(Token.NoToken, new FunctionCall(domain.collectors[v.TypedIdent.Type]), new List<Expr> { Expr.Ident(v) });
-                expr = Expr.And(SubsetExpr(domain, ie, partition, count), expr);
-                count++;
-            }
-            expr = new ExistsExpr(Token.NoToken, new List<Variable> { partition }, expr);
-            expr.Resolve(new ResolutionContext(null));
-            expr.Typecheck(new TypecheckingContext(null));
-            return expr;
-        }
-
         private Expr DisjointnessExpr(string domainName, Variable inputVar, HashSet<Variable> scope)
         {
-            if (scope.Count == 0)
+            int count = 0;
+            List<Expr> subsetExprs = new List<Expr>();
+            
+            if (scope.Count == 0 || (inputVar == null && scope.Count == 1))
             {
                 return Expr.True;
             }
+		
             LinearDomain domain = linearDomains[domainName];
-            BoundVariable partition = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("partition_{0}", domainName), new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Microsoft.Boogie.Type.Int)));
-            return SubsetExprs(domain, scope, partition, 1, SubsetExpr(domain, Expr.Ident(inputVar), partition, 0));
+            BoundVariable partition = new BoundVariable(
+              Token.NoToken,
+              new TypedIdent(Token.NoToken,
+                             string.Format("partition_{0}", domainName),
+                             new MapType(Token.NoToken,
+                                         new List<TypeVariable>(),
+                                         new List<Type> { domain.elementType },
+                                         Microsoft.Boogie.Type.Int)));
+
+            if (inputVar != null)
+            {
+                subsetExprs.Add(SubsetExpr(domain, Expr.Ident(inputVar), partition, count));
+                count++;
+            }
+            
+            foreach (Variable v in scope)
+            {
+                if (!domain.collectors.ContainsKey(v.TypedIdent.Type)) continue;
+                Expr ie = new NAryExpr(Token.NoToken,
+                                       new FunctionCall(domain.collectors[v.TypedIdent.Type]),
+                                       new List<Expr> { Expr.Ident(v) });
+                subsetExprs.Add(SubsetExpr(domain, ie, partition, count));
+                count++;
+            }
+            var expr = new ExistsExpr(Token.NoToken,
+                                      new List<Variable> { partition },
+                                      Expr.And(subsetExprs));
+            expr.Resolve(new ResolutionContext(null));
+            expr.Typecheck(new TypecheckingContext(null));
+            
+            return expr;
         }
 
         public Expr DisjointnessExpr(string domainName, HashSet<Variable> scope)
         {
-            if (scope.Count <= 1)
-            {
-                return Expr.True;
-            }
-            LinearDomain domain = linearDomains[domainName];
-            BoundVariable partition = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("partition_{0}", domainName), new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Microsoft.Boogie.Type.Int)));
-            return SubsetExprs(domain, scope, partition, 0, Expr.True);
+            return DisjointnessExpr(domainName, null, scope);
         }
     }
 

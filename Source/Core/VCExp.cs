@@ -27,6 +27,7 @@ namespace Microsoft.Boogie {
     // Say (DBG_WAS_VALID) or (DBG_WAS_INVALID) after query
     public bool ForceLogStatus = false;
     public int TimeLimit = 0;
+    public int ResourceLimit = 0;
     public int MemoryLimit = 0;
     public int Verbosity = 0;
     public string ProverPath;

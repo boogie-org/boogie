@@ -526,6 +526,11 @@ namespace Microsoft.Boogie {
       Contract.Requires(reason != null);
     }
 
+    public virtual void OnOutOfResource(string reason)
+    {
+      Contract.Requires(reason != null);
+    }
+
     public virtual void OnProgress(string phase, int step, int totalSteps, double progressEstimate) {
     }
 
@@ -583,6 +588,7 @@ namespace VC {
       Correct,
       Errors,
       TimedOut,
+      OutOfResource,
       OutOfMemory,
       Inconclusive,
       ReachedBound
@@ -596,6 +602,8 @@ namespace VC {
           return Outcome.OutOfMemory;
         case ProverInterface.Outcome.TimeOut:
           return Outcome.TimedOut;
+        case ProverInterface.Outcome.OutOfResource:
+          return Outcome.OutOfResource;
         case ProverInterface.Outcome.Undetermined:
           return Outcome.Inconclusive;
         case ProverInterface.Outcome.Valid:
@@ -656,7 +664,7 @@ namespace VC {
       CounterexampleCollector collector = new CounterexampleCollector();
       collector.RequestId = requestId;
       Outcome outcome = VerifyImplementation(impl, collector);
-      if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory) {
+      if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory || outcome == Outcome.OutOfResource) {
         errors = collector.examples;
       } else {
         errors = null;
@@ -994,7 +1002,7 @@ namespace VC {
     #endregion
 
 
-    protected Checker FindCheckerFor(int timeout, bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
+    protected Checker FindCheckerFor(int timeout, int rlimit = 0, bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
     {
       Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
       Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
@@ -1010,7 +1018,7 @@ namespace VC {
           {
             try
             {
-              if (c.WillingToHandle(timeout, program))
+              if (c.WillingToHandle(timeout, rlimit, program))
               {
                 c.GetReady();
                 return c;
@@ -1019,7 +1027,7 @@ namespace VC {
               {
                 if (c.IsIdle)
                 {
-                  c.Retarget(program, c.TheoremProver.Context, timeout);
+                  c.Retarget(program, c.TheoremProver.Context, timeout, rlimit);
                   c.GetReady();
                   return c;
                 }
@@ -1061,7 +1069,7 @@ namespace VC {
         {
           log = log + "." + checkers.Count;
         }
-        Checker ch = new Checker(this, program, log, appendLogFile, timeout);
+        Checker ch = new Checker(this, program, log, appendLogFile, timeout, rlimit);
         ch.GetReady();
         checkers.Add(ch);
         return ch;

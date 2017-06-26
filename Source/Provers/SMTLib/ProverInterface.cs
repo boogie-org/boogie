@@ -27,7 +27,7 @@ namespace Microsoft.Boogie.SMTLib
   {
     private readonly SMTLibProverContext ctx;
     private VCExpressionGenerator gen;
-    private readonly SMTLibProverOptions options;
+    protected readonly SMTLibProverOptions options;
     private bool usingUnsatCore;
     private RPFP rpfp = null;
 
@@ -1472,7 +1472,7 @@ namespace Microsoft.Boogie.SMTLib
             if (globalResult == Outcome.Undetermined)
               globalResult = result;
             
-            if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory) {
+            if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory || result == Outcome.OutOfResource) {
               IList<string> xlabels;
               if (CommandLineOptions.Clo.UseLabels) {
                 labels = GetLabelsInfo();
@@ -1492,7 +1492,7 @@ namespace Microsoft.Boogie.SMTLib
                 labels = CalculatePath(handler.StartingProcId());
                 xlabels = labels;
               }
-                Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory) ? null :
+                Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory || result == Outcome.OutOfResource) ? null :
                     GetErrorModel();
               handler.OnModel(xlabels, model, result);
             }
@@ -1550,7 +1550,11 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       SendThisVC("(push 1)");
-      SendThisVC(string.Format("(set-option :{0} {1})", Z3.SetTimeoutOption(), (0 < tla && tla < timeLimit) ? tla : timeLimit));
+      // FIXME: Gross. Timeout should be set in one place! This is also Z3 specific!
+      int newTimeout = (0 < tla && tla < timeLimit) ? tla : timeLimit;
+      if (newTimeout > 0) {
+        SendThisVC(string.Format("(set-option :{0} {1})", Z3.SetTimeoutOption(), newTimeout));
+      }
       popLater = true;
 
       SendThisVC(string.Format("; checking split VC with {0} unverified assertions", split.Count));
@@ -1969,7 +1973,7 @@ namespace Microsoft.Boogie.SMTLib
           break;
         if (res != null)
           HandleProverError("Expecting only one sequence of labels but got many");
-        if (resp.Name == "labels" && resp.ArgCount >= 1) {
+        if (resp.Name == "labels") {
           res = resp.Arguments.Select(a => Namer.AbsyLabel(a.Name.Replace("|", ""))).ToArray();
         }
         else {
@@ -2005,6 +2009,15 @@ namespace Microsoft.Boogie.SMTLib
           case "objectives":
             // We ignore this.
             break;
+          case "error":
+            if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId &&
+                resp.Arguments[0].Name.Contains("max. resource limit exceeded")) {
+              currentErrorHandler.OnResourceExceeded("max resource limit");
+              result = Outcome.OutOfResource;
+            } else {
+              HandleProverError("Unexpected prover response: " + resp.ToString());
+            }
+            break;
           default:
             HandleProverError("Unexpected prover response: " + resp.ToString());
             break;
@@ -2026,9 +2039,24 @@ namespace Microsoft.Boogie.SMTLib
                 result = Outcome.OutOfMemory;
                 Process.NeedsRestart = true;
                 break;
-                case "timeout": case "canceled":
+                case "timeout":
                 currentErrorHandler.OnResourceExceeded("timeout");
                 result = Outcome.TimeOut;
+                break;
+                case "canceled":
+                // both timeout and max resource limit are reported as
+                // canceled in version 4.4.1 
+                if (this.options.TimeLimit > 0) {
+                  currentErrorHandler.OnResourceExceeded("timeout");
+                  result = Outcome.TimeOut;
+                } else {
+                  currentErrorHandler.OnResourceExceeded("max resource limit");
+                  result = Outcome.OutOfResource;
+                }
+                break;
+                case "max. resource limit exceeded":
+                currentErrorHandler.OnResourceExceeded("max resource limit");
+                result = Outcome.OutOfResource;
                 break;
               default:
                 break;
@@ -2237,14 +2265,24 @@ namespace Microsoft.Boogie.SMTLib
 	
     public override void SetTimeOut(int ms)
     {
-	    if (options.Solver == SolverKind.Z3) {
-            var name = Z3.SetTimeoutOption();
-            var value = ms.ToString();
-            options.TimeLimit = ms;
-            options.SmtOptions.RemoveAll(ov => ov.Option == name);
-            options.AddSmtOption(name, value);
-            SendThisVC(string.Format("(set-option :{0} {1})", name, value));
-	    }
+      if (ms < 0) {
+          throw new ArgumentOutOfRangeException ("ms must be >= 0");
+      }
+      options.TimeLimit = ms;
+    }
+
+    public override void SetRlimit(int limit)
+    {
+      if (options.Solver == SolverKind.Z3) {
+        var name = Z3.SetRlimitOption();
+        if (name != "") {
+          var value = limit.ToString();
+          options.ResourceLimit = limit;
+          options.SmtOptions.RemoveAll(ov => ov.Option == name);
+          options.AddSmtOption(name, value);
+          SendThisVC(string.Format("(set-option :{0} {1})", name, value));
+        }
+      }
     }
 
     public override object Evaluate(VCExpr expr)
@@ -2510,9 +2548,23 @@ namespace Microsoft.Boogie.SMTLib
                               Process.NeedsRestart = true;
                               break;
                           case "timeout":
-                          case "canceled":
                               currentErrorHandler.OnResourceExceeded("timeout");
                               result = Outcome.TimeOut;
+                              break;
+                          case "canceled":
+                              // both timeout and max resource limit are reported as
+                              // canceled in version 4.4.1 
+                              if (this.options.TimeLimit > 0) {
+                                currentErrorHandler.OnResourceExceeded("timeout");
+                                result = Outcome.TimeOut;
+                              } else {
+                                currentErrorHandler.OnResourceExceeded("max resource limit");
+                                result = Outcome.OutOfResource;
+                              }
+                          break;
+                          case "max. resource limit exceeded":
+                              currentErrorHandler.OnResourceExceeded("max resource limit");
+                              result = Outcome.OutOfResource;
                               break;
                           default:
                               break;

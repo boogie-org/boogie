@@ -291,7 +291,7 @@ namespace VC {
         ModelViewInfo mvInfo;
         parent.PassifyImpl(impl, out mvInfo);
         Dictionary<int, Absy> label2Absy;
-        Checker ch = parent.FindCheckerFor(CommandLineOptions.Clo.SmokeTimeout);
+        Checker ch = parent.FindCheckerFor(CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.Resourcelimit);
         Contract.Assert(ch != null);
 
         ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
@@ -1352,6 +1352,11 @@ namespace VC {
             if (cur_outcome != Outcome.Errors && cur_outcome != Outcome.Inconclusive)
               cur_outcome = Outcome.TimedOut;
             return;
+          case ProverInterface.Outcome.OutOfResource:
+            prover_failed = true;
+            if (cur_outcome != Outcome.Errors && cur_outcome != Outcome.Inconclusive)
+              cur_outcome = Outcome.OutOfResource;
+            return;
           case ProverInterface.Outcome.Undetermined:
             if (cur_outcome != Outcome.Errors)
               cur_outcome = Outcome.Inconclusive;
@@ -1824,7 +1829,7 @@ namespace VC {
                   keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
                   impl.TimeLimit;
 
-            var checker = s.parent.FindCheckerFor(timeout, false);            
+            var checker = s.parent.FindCheckerFor(timeout, impl.ResourceLimit, false);            
             try
             {
               if (checker == null)
@@ -1965,6 +1970,14 @@ namespace VC {
                 msg = s.reporter.resourceExceededMessage;
               }
               callback.OnOutOfMemory(msg);
+            } 
+            else if (outcome == Outcome.OutOfResource) 
+            {
+              string msg = "out of resource";
+              if (s.reporter != null && s.reporter.resourceExceededMessage != null) {
+                msg = s.reporter.resourceExceededMessage;
+              }
+              callback.OnOutOfResource(msg);
             }
 
             break;
@@ -2068,6 +2081,9 @@ namespace VC {
           model.Write(ErrorReporter.ModelWriter);
           ErrorReporter.ModelWriter.Flush();
         }
+
+        // no counter examples reported.
+        if (labels.Count == 0) return;
 
         Hashtable traceNodes = new Hashtable();
         foreach (string s in labels) {

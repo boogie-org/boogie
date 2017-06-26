@@ -9,5 +9,6 @@ procedure main() returns () {
 	y := x + 0e1023f53e11;
 	z := x - 0e1023f53e11;
 	r := y - z;
+	
 	assert r == 0e1024f53e11;
 }

@@ -530,6 +530,7 @@ namespace Microsoft.Boogie {
     }
     public ShowEnvironment ShowEnv = ShowEnvironment.DuringPrint;
     public bool DontShowLogo = false;
+    public bool ShowVerifiedProcedureCount = true;
     [ContractInvariantMethod]
     void ObjectInvariant3() {
       Contract.Invariant(-1 <= LoopFrameConditions && LoopFrameConditions < 3);
@@ -669,6 +670,7 @@ namespace Microsoft.Boogie {
 
     public int SimplifyProverMatchDepth = -1;  // -1 means not specified
     public int ProverKillTime = -1;  // -1 means not specified
+    public int Resourcelimit = 0; // default to 0
     public int SmokeTimeout = 10; // default to 10s
     public int ProverCCLimit = 5;
     public bool z3AtFlag = true;
@@ -1006,6 +1008,14 @@ namespace Microsoft.Boogie {
                     throw new cce.UnreachableException();
                   } // postcondition of GetNumericArgument guarantees that we don't get here
               }
+            }
+            return true;
+          }
+
+        case "printVerifiedProceduresCount": {
+            int n = 0;
+            if (ps.GetNumericArgument(ref n, 2)) {
+              ShowVerifiedProcedureCount = n != 0;
             }
             return true;
           }
@@ -1492,6 +1502,10 @@ namespace Microsoft.Boogie {
           ps.GetNumericArgument(ref ProverKillTime);
           return true;
 
+        case "rlimit":
+          ps.GetNumericArgument(ref Resourcelimit);
+          return true;
+
         case "timeLimitPerAssertionInPercent":
           ps.GetNumericArgument(ref TimeLimitPerAssertionInPercent, a => 0 < a);
           return true;
@@ -1799,6 +1813,9 @@ namespace Microsoft.Boogie {
      {:timeLimit N}
        Set the time limit for a given implementation.
 
+     {:rlimit N}
+       Set the Z3 resource limit for a given implementation.
+
   ---- On functions ----------------------------------------------------------
 
      {:builtin ""spec""}
@@ -1853,6 +1870,9 @@ namespace Microsoft.Boogie {
   /env:<n>      print command line arguments
                   0 - never, 1 (default) - during BPL print and prover log,
                   2 - like 1 and also to standard output
+  /printVerifiedProceduresCount:<n>
+                0 - no
+                1 (default) - yes
   /wait         await Enter from keyboard before terminating program
   /xml:<file>   also produce output in XML format to <file>
 
@@ -2118,6 +2138,8 @@ namespace Microsoft.Boogie {
   /timeLimit:<num>
                 Limit the number of seconds spent trying to verify
                 each procedure
+  /rlimit:<num>
+                Limit the Z3 resource spent trying to verify each procedure
   /errorTrace:<n>
                 0 - no Trace labels in the error output,
                 1 (default) - include useful Trace labels in error output,

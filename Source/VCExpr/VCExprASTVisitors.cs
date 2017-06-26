@@ -80,6 +80,7 @@ namespace Microsoft.Boogie.VCExprAST {
     Result VisitFloatGeqOp(VCExprNAry node, Arg arg);
     Result VisitFloatGtOp(VCExprNAry node, Arg arg);
     Result VisitFloatEqOp(VCExprNAry node, Arg arg);
+    Result VisitFloatNeqOp(VCExprNAry node, Arg arg);
     Result VisitBvOp(VCExprNAry node, Arg arg);
     Result VisitBvExtractOp(VCExprNAry node, Arg arg);
     Result VisitBvConcatOp(VCExprNAry node, Arg arg);
@@ -224,6 +225,11 @@ namespace Microsoft.Boogie.VCExprAST {
 
     public Result VisitFloatEqOp(VCExprNAry node, Arg arg)
     {
+      Contract.Requires(node != null);
+      throw new NotImplementedException();
+    }
+
+    public Result VisitFloatNeqOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
@@ -1584,6 +1590,10 @@ namespace Microsoft.Boogie.VCExprAST {
     }
     public virtual Result VisitFloatEqOp(VCExprNAry node, Arg arg)
     {
+      //Contract.Requires(node != null);
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitFloatNeqOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }

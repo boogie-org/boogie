@@ -2122,6 +2122,23 @@ Contract.Requires(that != null);
         return p != null && p.IsFloat;
       }
     }
+    public override int FloatExponent {
+        get {
+          Type p = ProxyFor;
+          if (p == null || !p.IsFloat)
+            return base.FloatExponent; //Shouldn't happen, so get an unreachable exception
+          return p.FloatExponent;
+        }
+    }
+    public override int FloatSignificand {
+        get {
+          Type p = ProxyFor;
+          if (p == null || !p.IsFloat)
+            return base.FloatSignificand; //Shouldn't happen, so get an unreachable exception
+          return p.FloatSignificand;
+        }
+    }
+
     public override bool IsBool {
       get {
         Type p = ProxyFor;
@@ -2984,6 +3001,22 @@ Contract.Requires(that != null);
         return ExpandedType.IsFloat;
       }
     }
+    public override int FloatExponent 
+    {
+      get 
+      {
+        return ExpandedType.FloatExponent;
+      }
+    }
+
+    public override int FloatSignificand 
+    {
+      get 
+      {
+        return ExpandedType.FloatSignificand;
+      }
+    }
+
     public override bool IsBool {
       get {
         return ExpandedType.IsBool;
