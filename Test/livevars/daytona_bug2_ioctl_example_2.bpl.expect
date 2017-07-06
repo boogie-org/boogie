@@ -127,8 +127,7 @@ Execution trace:
     daytona_bug2_ioctl_example_2.bpl(3832,3): inline$storm_IoCancelIrp$0$anon10#2
     daytona_bug2_ioctl_example_2.bpl(3892,3): inline$storm_IoAcquireCancelSpinLock$0$label_11_true#2
     daytona_bug2_ioctl_example_2.bpl(3902,3): inline$storm_IoAcquireCancelSpinLock$0$anon8_Else#2
-    daytona_bug2_ioctl_example_2.bpl(3915,3): inline$storm_IoAcquireCancelSpinLock$0$anon9_Else#2
-    daytona_bug2_ioctl_example_2.bpl(3923,3): inline$storm_IoAcquireCancelSpinLock$0$anon10_Then#2
+    daytona_bug2_ioctl_example_2.bpl(3928,3): inline$storm_IoAcquireCancelSpinLock$0$anon9_Then#2
     daytona_bug2_ioctl_example_2.bpl(3933,3): inline$storm_IoAcquireCancelSpinLock$0$anon5#2
     daytona_bug2_ioctl_example_2.bpl(3944,3): inline$storm_IoAcquireCancelSpinLock$0$anon11_Then#2
     daytona_bug2_ioctl_example_2.bpl(3949,3): inline$storm_IoAcquireCancelSpinLock$0$anon7#2
