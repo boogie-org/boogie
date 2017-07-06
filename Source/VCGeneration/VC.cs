@@ -21,7 +21,6 @@ namespace VC {
   using System.Threading.Tasks;
 
   public class VCGen : ConditionGeneration {
-      private const bool _print_time = false;
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
@@ -1603,12 +1602,11 @@ namespace VC {
       callback.OnProgress("VCgen", 0, 0, 0.0);
       
       Stopwatch watch = new Stopwatch();
-      if (_print_time)
-      {
-          Console.WriteLine("Checking function {0}", impl.Name);
-          watch.Reset();
-          watch.Start();
-      }
+#if PRINT_TIME
+      Console.WriteLine("Checking function {0}", impl.Name);
+      watch.Reset();
+      watch.Start();
+#endif
 
       ConvertCFG2DAG(impl);
 
@@ -1991,11 +1989,10 @@ namespace VC {
 
       callback.OnProgress("done", 0, 0, 1.0);
 
-      if (_print_time)
-      {
-          watch.Stop();
-          Console.WriteLine("Total time for this method: {0}", watch.Elapsed.ToString());
-      }
+#if PRINT_TIME
+      watch.Stop();
+      Console.WriteLine("Total time for this method: {0}", watch.Elapsed.ToString());
+#endif
 
       return outcome;
     }
