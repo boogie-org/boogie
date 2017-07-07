@@ -3426,6 +3426,10 @@ namespace VC {
               break;
             }
           }
+          if (returnCmd == null) {
+            // As one last recourse, take the transfer command of the last block in the trace, if any
+            returnCmd = reconstructedTrace.Last().TransferCmd as ReturnCmd;
+          }
         }
         cc = new ReturnCounterexample(reconstructedTrace ?? cex.Trace, returnCmd ?? oldCex.FailingReturn, aa.Ensures, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
       } else {
