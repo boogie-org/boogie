@@ -2359,6 +2359,42 @@ namespace VC {
         return newCounterexample;
       }
 
+      private String GenerateTraceValue(Model model, Model.Element element) {
+        var str = new StringWriter();
+        if (element is Model.DatatypeValue) {
+          var val = (Model.DatatypeValue) element;
+          if (val.ConstructorName == "_" && val.Arguments[0].ToString() == "(as-array)") {
+            var parens = val.Arguments[1].ToString();
+            var func = model.TryGetFunc(parens.Substring(1, parens.Length - 2));
+            if (func != null) {
+              str.Write("{");
+              var appCount = 0;
+              foreach (var app in func.Apps) {
+                if (appCount++ > 0)
+                  str.Write(", ");
+                str.Write("[");
+                var argCount = 0;
+                foreach (var arg in app.Args) {
+                  if (argCount++ > 0)
+                    str.Write(", ");
+                  str.Write(GenerateTraceValue(model, arg));
+                }
+                str.Write("]: {0}", GenerateTraceValue(model, app.Result));
+              }
+              if (func.Else != null) {
+                if (func.AppCount > 0)
+                  str.Write(", ");
+                str.Write("*: {0}", GenerateTraceValue(model, func.Else));
+              }
+              str.Write("}");
+            }
+          }
+        }
+        if (str.ToString() == "")
+          str.Write(element.ToString());
+        return str.ToString();
+      }
+
       private Counterexample GenerateTraceRec(
                             IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo,
                             int candidateId,
@@ -2447,7 +2483,7 @@ namespace VC {
                       Model.Func f = errModel.TryGetFunc(name);
                       if (f != null)
                       {
-                          args.Add(f.GetConstant());
+                          args.Add(GenerateTraceValue(errModel, f.GetConstant()));
                       }
                   }
                   else
