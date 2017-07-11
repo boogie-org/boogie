@@ -29,6 +29,7 @@ script:
   - python Source/UnitTests/run-unittests.py ${BOOGIE_CONFIG}
   # Run driver tests
   - pwd
+  - find .
   - ln -s $(find z3* -name z3 -type f) Binaries/z3.exe
   - file Binaries/z3.exe
   - lit -v Test/
