@@ -1,5 +1,6 @@
 # vim: set sw=2 ts=2 softtabstop=2 expandtab:
 language: csharp
+dist: trusty
 sudo: true
 solution: "Source/Boogie.sln"
 env:
@@ -14,6 +15,7 @@ install:
   # Download a Z3 release
   - wget ${Z3URL}
   - unzip z3*.zip
+  - find z3* -name z3 -type f
   # NuGet is a little flakey in legacy TravisCI, use travis_retry command to retry the command if it fails
   - travis_retry nuget restore ${TRAVIS_SOLUTION}
   # Install needed python tools
@@ -25,5 +27,5 @@ script:
   # Run unit tests
   - python Source/UnitTests/run-unittests.py ${BOOGIE_CONFIG}
   # Run driver tests
-  - ln -s $(find . -name z3 -type f) Binaries/z3.exe
+  - ln -s $(find z3* -name z3 -type f) Binaries/z3.exe
   - lit -v Test/
