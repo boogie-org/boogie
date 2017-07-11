@@ -15,6 +15,7 @@ install:
   # Download a Z3 release
   - wget ${Z3URL}
   - unzip z3*.zip
+  - pwd
   - find z3* -name z3 -type f
   # NuGet is a little flakey in legacy TravisCI, use travis_retry command to retry the command if it fails
   - travis_retry nuget restore ${TRAVIS_SOLUTION}
@@ -27,5 +28,6 @@ script:
   # Run unit tests
   - python Source/UnitTests/run-unittests.py ${BOOGIE_CONFIG}
   # Run driver tests
+  - pwd
   - ln -s $(find z3* -name z3 -type f) Binaries/z3.exe
   - lit -v Test/
