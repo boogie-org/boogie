@@ -30,4 +30,5 @@ script:
   # Run driver tests
   - pwd
   - ln -s $(find z3* -name z3 -type f) Binaries/z3.exe
+  - file Binaries/z3.exe
   - lit -v Test/
