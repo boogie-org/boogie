@@ -2359,13 +2359,13 @@ namespace VC {
         return newCounterexample;
       }
 
-      private String GenerateTraceValue(Model model, Model.Element element) {
+      private String GenerateTraceValue(Model.Element element) {
         var str = new StringWriter();
         if (element is Model.DatatypeValue) {
           var val = (Model.DatatypeValue) element;
           if (val.ConstructorName == "_" && val.Arguments[0].ToString() == "(as-array)") {
             var parens = val.Arguments[1].ToString();
-            var func = model.TryGetFunc(parens.Substring(1, parens.Length - 2));
+            var func = element.Model.TryGetFunc(parens.Substring(1, parens.Length - 2));
             if (func != null) {
               str.Write("{");
               var appCount = 0;
@@ -2377,14 +2377,14 @@ namespace VC {
                 foreach (var arg in app.Args) {
                   if (argCount++ > 0)
                     str.Write(", ");
-                  str.Write(GenerateTraceValue(model, arg));
+                  str.Write(GenerateTraceValue(arg));
                 }
-                str.Write("]: {0}", GenerateTraceValue(model, app.Result));
+                str.Write("]: {0}", GenerateTraceValue(app.Result));
               }
               if (func.Else != null) {
                 if (func.AppCount > 0)
                   str.Write(", ");
-                str.Write("*: {0}", GenerateTraceValue(model, func.Else));
+                str.Write("*: {0}", GenerateTraceValue(func.Else));
               }
               str.Write("}");
             }
@@ -2483,7 +2483,7 @@ namespace VC {
                       Model.Func f = errModel.TryGetFunc(name);
                       if (f != null)
                       {
-                          args.Add(GenerateTraceValue(errModel, f.GetConstant()));
+                          args.Add(GenerateTraceValue(f.GetConstant()));
                       }
                   }
                   else
