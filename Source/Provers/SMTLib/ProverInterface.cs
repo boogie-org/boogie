@@ -2285,20 +2285,26 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    object ParseValueFromProver(SExpr expr) {
+      return expr.ToString().Replace(" ","").Replace("(","").Replace(")","");
+    }
+
     object GetArrayFromProverResponse(SExpr resp) {
-      var dict = new Dictionary<string, string>();
+      var dict = new Dictionary<string, object>();
       var curr = resp;
       while (curr != null) {
         if (curr.Name == "store") {
+          Console.WriteLine("Got store: {0}", curr);
           var ary = curr.Arguments[0];
-          var idx = curr.Arguments[1];
-          var val = curr.Arguments[2];
-          dict.Add(idx.ToString(), val.ToString());
+          var indices = curr.Arguments.Skip(1).Take(curr.ArgCount - 2).Select(ParseValueFromProver).ToArray();
+          var val = curr.Arguments[curr.ArgCount - 1];
+          dict.Add(String.Join(",", indices), ParseValueFromProver(val));
           curr = ary;
 
         } else if (curr.Name == "" && curr.ArgCount == 2 && curr.Arguments[0].Name == "as") {
+          Console.WriteLine("Got ary: {0}", curr);
           var val = curr.Arguments[1];
-          dict.Add("*", val.ToString());
+          dict.Add("*", ParseValueFromProver(val));
           curr = null;
 
         } else {
@@ -2309,9 +2315,9 @@ namespace Microsoft.Boogie.SMTLib
       str.Write("{");
       foreach (var entry in dict)
         if (entry.Key != "*")
-          str.Write("[{0}]: {1}, ", entry.Key, entry.Value);
+          str.Write("\"{0}\":{1},", entry.Key, entry.Value);
       if (dict.ContainsKey("*"))
-        str.Write("*: {0}", dict["*"]);
+        str.Write("\"*\":{0}", dict["*"]);
       str.Write("}");
       return str.ToString();
     }
