@@ -2285,6 +2285,37 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    object GetArrayFromProverResponse(SExpr resp) {
+      var dict = new Dictionary<string, string>();
+      var curr = resp;
+      while (curr != null) {
+        if (curr.Name == "store") {
+          var ary = curr.Arguments[0];
+          var idx = curr.Arguments[1];
+          var val = curr.Arguments[2];
+          dict.Add(idx.ToString(), val.ToString());
+          curr = ary;
+
+        } else if (curr.Name == "" && curr.ArgCount == 2 && curr.Arguments[0].Name == "as") {
+          var val = curr.Arguments[1];
+          dict.Add("*", val.ToString());
+          curr = null;
+
+        } else {
+          return null;
+        }
+      }
+      var str = new StringWriter();
+      str.Write("{");
+      foreach (var entry in dict)
+        if (entry.Key != "*")
+          str.Write("[{0}]: {1}, ", entry.Key, entry.Value);
+      if (dict.ContainsKey("*"))
+        str.Write("*: {0}", dict["*"]);
+      str.Write("}");
+      return str.ToString();
+    }
+
     public override object Evaluate(VCExpr expr)
     {
         string vcString = VCExpr2String(expr, 1);
@@ -2314,6 +2345,9 @@ namespace Microsoft.Boogie.SMTLib
         if (resp.Name == "_" && resp.ArgCount == 2 && resp.Arguments[0].Name.StartsWith("bv")) // bitvector
             return new BvConst(Microsoft.Basetypes.BigNum.FromString(resp.Arguments[0].Name.Substring("bv".Length)),
                 int.Parse(resp.Arguments[1].Name));
+        var ary = GetArrayFromProverResponse(resp);
+        if (ary != null)
+            return ary;
         if (resp.ArgCount != 0)
             throw new VCExprEvaluationException();
         if (expr.Type.Equals(Boogie.Type.Bool))
