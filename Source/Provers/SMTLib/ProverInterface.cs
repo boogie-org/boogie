@@ -2294,7 +2294,6 @@ namespace Microsoft.Boogie.SMTLib
       var curr = resp;
       while (curr != null) {
         if (curr.Name == "store") {
-          Console.WriteLine("Got store: {0}", curr);
           var ary = curr.Arguments[0];
           var indices = curr.Arguments.Skip(1).Take(curr.ArgCount - 2).Select(ParseValueFromProver).ToArray();
           var val = curr.Arguments[curr.ArgCount - 1];
@@ -2302,7 +2301,6 @@ namespace Microsoft.Boogie.SMTLib
           curr = ary;
 
         } else if (curr.Name == "" && curr.ArgCount == 2 && curr.Arguments[0].Name == "as") {
-          Console.WriteLine("Got ary: {0}", curr);
           var val = curr.Arguments[1];
           dict.Add("*", ParseValueFromProver(val));
           curr = null;
