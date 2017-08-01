@@ -2289,7 +2289,38 @@ namespace Microsoft.Boogie.SMTLib
       return expr.ToString().Replace(" ","").Replace("(","").Replace(")","");
     }
 
+    SExpr ReduceLet(SExpr expr) {
+      if (expr.Name != "let")
+        return expr;
+
+      var bindings = expr.Arguments[0].Arguments;
+      var subexpr = expr.Arguments[1];
+
+      var dict = new Dictionary<string, SExpr>();
+      foreach (var binding in bindings) {
+        Contract.Assert(binding.ArgCount == 1);
+        dict.Add(binding.Name, binding.Arguments[0]);
+      }
+
+      Contract.Assert(!dict.ContainsKey(subexpr.Name));
+
+      var workList = new Stack<SExpr>();
+      workList.Push(subexpr);
+      while (workList.Count > 0) {
+        var curr = workList.Pop();
+        for (int i = 0; i < curr.ArgCount; i++) {
+          var arg = curr.Arguments[i];
+          if (dict.ContainsKey(arg.Name))
+            curr.Arguments[i] = dict[arg.Name];
+          else
+            workList.Push(arg);
+        }
+      }
+      return subexpr;
+    }
+
     object GetArrayFromProverResponse(SExpr resp) {
+      resp = ReduceLet(resp);
       var dict = new Dictionary<string, object>();
       var curr = resp;
       while (curr != null) {
