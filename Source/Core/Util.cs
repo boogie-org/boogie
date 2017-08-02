@@ -83,8 +83,10 @@ namespace Microsoft.Boogie {
     public bool UseForComputingChecksums;
 
     private const int indent_size = 2;
-    protected static string Indent(int level) {
+    private int most_recent_indent_level = 0;
+    protected string Indent(int level) {
       Contract.Ensures(Contract.Result<string>() != null);
+      most_recent_indent_level = level;
       return new string(' ', (indent_size * level));
     }
 
@@ -179,17 +181,20 @@ namespace Microsoft.Boogie {
           }
           // figure out which is the next writer to use
           List<TextWriter> tw = wstk.Count > 0 ? wstk.Peek().Value : null;
+          string indent_string;
           if (tw == null) {
             writer = actual_writer;
+            indent_string = new string(' ', indent_size * most_recent_indent_level + indent_size);
           } else {
             writer = tw.Last();
+            indent_string = new string(' ', indent_size);
           }
           // write the strings (we would like to know WHERE we are in the document here)
           if (len > 80 /* - wstk.Count * 2 */) {
             for (int i = 0; i < ss.Count; i++) {
               if (i != ss.Count - 1) {
                 writer.WriteLine(ss[i]);
-                writer.Write("  ");
+                writer.Write(indent_string);
               } else {
                 writer.Write(ss[i]);
               }
