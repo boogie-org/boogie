@@ -2010,6 +2010,11 @@ namespace Microsoft.Boogie {
                     to the new source locations for errors and their
                     related locations (but not /errorTrace and CaptureState
                     locations) 
+  /traceCaching:<n>
+                0 (default) - none
+                1 - for testing
+                2 - for benchmarking
+                3 - for testing, benchmarking, and debugging
   /verifySeparately
                 verify each input program separately
   /removeEmptyBlocks:<c>

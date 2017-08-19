@@ -446,12 +446,11 @@ namespace Microsoft.Boogie
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      if (currentTrigger != null)
-      {
-        // We found a function call within a trigger of a quantifier expression.
-        var funCall = node.Fun as FunctionCall;
-        if (funCall != null && funCall.Func != null && funCall.Func.Checksum != null && funCall.Func.Checksum != "stable")
-        {
+      var funCall = node.Fun as FunctionCall;
+      if (funCall != null && funCall.Func != null && funCall.Func.Checksum != null && funCall.Func.Checksum != "stable") {
+        if (funCall.ArgumentCount == 0 || currentTrigger != null) {
+          // We found a function call within a trigger of a quantifier expression, or the function does not take any
+          // arguments so we don't expect it ever to sit inside a quantifier.
           funCall.Func.AddOtherDefinitionAxiom(currentAxiom);
         }
       }
