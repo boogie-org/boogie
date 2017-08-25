@@ -479,7 +479,10 @@ namespace Microsoft.Boogie {
         LocalVariable localVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, GetProcVarName(proc.Name, mVar.Name), mVar.TypedIdent.Type));
         newLocalVars.Add(localVar);
         IdentifierExpr ie = new IdentifierExpr(Token.NoToken, localVar);
-        substMapOld.Add(mVar, ie);
+        if (!substMapOld.ContainsKey(mVar)) {
+          substMapOld.Add(mVar, ie);
+        }
+
         // FIXME why are we doing this? the modifies list should already include them.
         // add the modified variable to the modifies list of the procedure
         if (!newModifies.Contains(mie)) {
