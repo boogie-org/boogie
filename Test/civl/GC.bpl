@@ -136,14 +136,14 @@ function tidOwns(tid:Tid, x:idx):bool { owner(x) == i#Tid(tid) }
 
 function {:inline} Iso(root:[idx]int, rootAbs:[idx]obj, mem:[int][fld]int, memAbs:[obj][fld]obj, Color:[int]int, toAbs:[int]obj, allocSet:[obj]bool) returns (bool)
 {
-	(forall x: int :: memAddr(x) <==> memAddrAbs(toAbs[x])) &&
-	(forall x: int, y: int :: toAbs[x] == toAbs[y] ==> x == y || (memAddr(x) && toAbs[x] == nil) || (memAddr(y) && toAbs[y] == nil)) &&
-	(forall x: idx :: rootAddr(x) ==> toAbs[root[x]] == rootAbs[x]) &&
-	(forall x: int, f: fld :: memAddr(x) && toAbs[x] != nil && fieldAddr(f) ==> toAbs[mem[x][f]] == memAbs[toAbs[x]][f]) &&
-	(forall x: int :: memAddr(x) && toAbs[x] != nil ==> allocSet[toAbs[x]]) && 
-	(forall x: idx :: rootAddr(x) && memAddr(root[x]) ==> toAbs[root[x]] != nil) &&
-	(forall x: int, f: fld :: memAddr(x) && toAbs[x] != nil && fieldAddr(f) && memAddr(mem[x][f]) ==> toAbs[mem[x][f]] != nil) &&
-	(forall x: int, f: fld :: memAddr(x) && Unalloc(Color[x]) ==> toAbs[x] == nil)
+  (forall x: int :: memAddr(x) <==> memAddrAbs(toAbs[x])) &&
+  (forall x: int, y: int :: toAbs[x] == toAbs[y] ==> x == y || (memAddr(x) && toAbs[x] == nil) || (memAddr(y) && toAbs[y] == nil)) &&
+  (forall x: idx :: rootAddr(x) ==> toAbs[root[x]] == rootAbs[x]) &&
+  (forall x: int, f: fld :: memAddr(x) && toAbs[x] != nil && fieldAddr(f) ==> toAbs[mem[x][f]] == memAbs[toAbs[x]][f]) &&
+  (forall x: int :: memAddr(x) && toAbs[x] != nil ==> allocSet[toAbs[x]]) && 
+  (forall x: idx :: rootAddr(x) && memAddr(root[x]) ==> toAbs[root[x]] != nil) &&
+  (forall x: int, f: fld :: memAddr(x) && toAbs[x] != nil && fieldAddr(f) && memAddr(mem[x][f]) ==> toAbs[mem[x][f]] != nil) &&
+  (forall x: int, f: fld :: memAddr(x) && Unalloc(Color[x]) ==> toAbs[x] == nil)
 }
 
 function {:inline false} MST(i:int) returns (bool) { true }
@@ -165,25 +165,25 @@ function {:inline} PhaseConsistent(collectorPhase: int, mutatorPhase: [int]int) 
 
 function {:inline} MarkInv(root:[idx]int, rootAbs:[idx]obj, mem:[int][fld]int, memAbs:[obj][fld]obj, Color:[int]int, toAbs:[int]obj, allocSet:[obj]bool) returns (bool)
 {
-	Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet) &&
-	(forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x]))) &&
-	(forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Gray(Color[mem[x][f]]) || Black(Color[mem[x][f]]))
+  Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet) &&
+  (forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x]))) &&
+  (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Gray(Color[mem[x][f]]) || Black(Color[mem[x][f]]))
 }
 
 function {:inline} SweepInv(root:[idx]int, rootAbs:[idx]obj, mem:[int][fld]int, memAbs:[obj][fld]obj, Color:[int]int, toAbs:[int]obj, allocSet:[obj]bool) returns (bool)
 {
-	Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet) &&
-  	(forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x]))) &&
-	(forall x: int :: memAddr(x) ==> !Gray(Color[x])) &&
-	(forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]))
+  Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet) &&
+    (forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x]))) &&
+  (forall x: int :: memAddr(x) ==> !Gray(Color[x])) &&
+  (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]))
 }
 
 function {:inline} SweepInvInit(root:[idx]int, rootAbs:[idx]obj, mem:[int][fld]int, memAbs:[obj][fld]obj, Color:[int]int, toAbs:[int]obj, allocSet:[obj]bool) returns (bool)
 {
-	Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet) &&
-  	(forall x: int :: memAddr(x) ==> (toAbs[x] != nil <==> Black(Color[x]))) &&
-	(forall x: int :: memAddr(x) ==> !Gray(Color[x])) &&
-	(forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]))
+  Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet) &&
+    (forall x: int :: memAddr(x) ==> (toAbs[x] != nil <==> Black(Color[x]))) &&
+  (forall x: int :: memAddr(x) ==> !Gray(Color[x])) &&
+  (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]))
 }
 
 procedure {:yields} {:layer 100,101} Initialize({:linear_in "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
@@ -378,14 +378,14 @@ ensures {:atomic} |{ A: return true; }|;
         assert{:layer 99} mutatorsInRootScanBarrier == mutatorsInRootScanBarrier[i#Tid(tid) := false];
         call tid_tmp := MutatorRootScanBarrierEnter(tid);
 
-   	yield;
-    	assert {:layer 99} mutatorTidLeft(tid_tmp) && mutatorsInRootScanBarrier[i#Tid(tid_tmp)] && RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
+        yield;
+        assert {:layer 99} mutatorTidLeft(tid_tmp) && mutatorsInRootScanBarrier[i#Tid(tid_tmp)] && RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
 
         assert{:layer 99} mutatorsInRootScanBarrier == mutatorsInRootScanBarrier[i#Tid(tid_tmp) := true];
         call tid_tmp := MutatorRootScanBarrierWait(tid_tmp);
         call TidOutput(tid_tmp, tid);
     }
-	yield;
+    yield;
 }
 
 procedure {:yields} {:layer 100,101} WriteField({:linear "tid"} tid:Tid, x: idx, f: fld, y: idx) // x.f = y
@@ -447,19 +447,20 @@ requires {:layer 97} done ==> (forall j:int:: 1 <= j && j < i ==> nextPhase == m
 ensures {:layer 97} nextPhase == collectorPhase;
 ensures {:layer 97} done ==> (forall j:int:: 1 <= j && j < i ==> nextPhase == mutatorPhase[j]);
 {
-	yield;
-	assert {:layer 97} tid == GcTid;
-	assert {:layer 97} nextPhase == collectorPhase;
-    	assert {:layer 97} done ==> (forall j:int:: 1 <= j && j < i ==> nextPhase == mutatorPhase[j]);
+  yield;
+  assert {:layer 97} tid == GcTid;
+  assert {:layer 97} nextPhase == collectorPhase;
+  assert {:layer 97} done ==> (forall j:int:: 1 <= j && j < i ==> nextPhase == mutatorPhase[j]);
 }
 
 procedure {:yields} {:layer 97,100} WaitForMutators({:linear "tid"} tid:Tid, nextPhase: int)
 requires {:layer 97} tid == GcTid;
 requires {:layer 97} nextPhase == collectorPhase;
-ensures {:atomic} |{ A: assert tid == GcTid;
-	                assume (forall j:int:: mutatorId(j) ==> nextPhase == mutatorPhase[j]); 
-			return true;
-                  }|;
+ensures {:atomic} |{
+  A: assert tid == GcTid;
+     assume (forall j:int:: mutatorId(j) ==> nextPhase == mutatorPhase[j]); 
+     return true;
+}|;
 {
     var done: bool;
     var i: int;
@@ -472,19 +473,19 @@ ensures {:atomic} |{ A: assert tid == GcTid;
     invariant {:layer 97} done ==> (forall j:int:: mutatorId(j) ==> nextPhase == mutatorPhase[j]);
     {
         done := true;
-    	i := 1;
-	call YieldWaitForMutators(tid, nextPhase, done, i);
-    	while (i <= numMutators)
-	invariant {:layer 97} nextPhase == collectorPhase;
-        invariant {:layer 97} done ==> (forall j:int:: 1 <= j && j < i ==> nextPhase == mutatorPhase[j]);
+        i := 1;
+        call YieldWaitForMutators(tid, nextPhase, done, i);
+        while (i <= numMutators)
+          invariant {:layer 97} nextPhase == collectorPhase;
+          invariant {:layer 97} done ==> (forall j:int:: 1 <= j && j < i ==> nextPhase == mutatorPhase[j]);
         {
             call mutatorPhaseLocal := ReadMutatorPhaseByCollector(tid, i);
-      	    if (nextPhase != mutatorPhaseLocal) 
-	    { 
-	        done := false; 
-   	    }
-      	    i := i + 1;
-	    call YieldWaitForMutators(tid, nextPhase, done, i);
+            if (nextPhase != mutatorPhaseLocal) 
+            { 
+                done := false;
+            }
+            i := i + 1;
+            call YieldWaitForMutators(tid, nextPhase, done, i);
         }
     }
     call YieldWaitForMutators(tid, nextPhase, done, numMutators+1);
@@ -498,20 +499,20 @@ requires {:layer 100} Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
 requires {:layer 100} (forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x])));
 requires {:layer 100} sweepPtr == memHi ==> (forall x: int :: memAddr(x) ==> !Black(Color[x]));
 requires {:layer 100} 
-    	   sweepPtr == memLo ==> 
-    	   	   (forall x: int :: memAddr(x) ==> !Gray(Color[x])) && 
-		   (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(Color[root[i]])) &&
-    		   (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]));
+         sweepPtr == memLo ==> 
+              (forall x: int :: memAddr(x) ==> !Gray(Color[x])) && 
+       (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(Color[root[i]])) &&
+           (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]));
 ensures {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
 ensures {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
 ensures {:layer 100} Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
 ensures {:layer 100} (forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x])));
 ensures {:layer 100} sweepPtr == memHi ==> (forall x: int :: memAddr(x) ==> !Black(Color[x]));
 ensures {:layer 100} 
-    	   sweepPtr == memLo ==> 
-    	   	   (forall x: int :: memAddr(x) ==> !Gray(Color[x])) && 
-		   (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(Color[root[i]])) &&
-    		   (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]));
+         sweepPtr == memLo ==> 
+              (forall x: int :: memAddr(x) ==> !Gray(Color[x])) && 
+       (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(Color[root[i]])) &&
+           (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]));
 ensures {:layer 97,99,100} old(collectorPhase) == collectorPhase;
 ensures {:layer 99,100} old(sweepPtr) == sweepPtr;
 ensures {:layer 98} collectorPhase == old(collectorPhase);
@@ -524,10 +525,10 @@ ensures {:layer 98} collectorPhase == old(collectorPhase);
     assert {:layer 100} (forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x])));
     assert {:layer 100} sweepPtr == memHi ==> (forall x: int :: memAddr(x) ==> !Black(Color[x]));
     assert {:layer 100} 
-    	   sweepPtr == memLo ==> 
-    	   	   (forall x: int :: memAddr(x) ==> !Gray(Color[x])) && 
-		   (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(Color[root[i]])) &&
-    		   (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]));
+         sweepPtr == memLo ==> 
+              (forall x: int :: memAddr(x) ==> !Gray(Color[x])) && 
+       (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(Color[root[i]])) &&
+           (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]));
     assert {:layer 97,99,100} old(collectorPhase) == collectorPhase;
     assert {:layer 99,100} old(sweepPtr) == sweepPtr;    
     assert {:layer 98} collectorPhase == old(collectorPhase);
@@ -555,21 +556,21 @@ requires {:layer 100} sweepPtr == memHi;
     invariant {:layer 100} (forall x: int :: memAddr(x) ==> !Black(Color[x]));
     invariant {:layer 100} sweepPtr == memHi;
     {
-  	call nextPhase := HandshakeCollector(tid); // IDLE --> MARK
-  	call YieldGarbageCollect(tid);
-	call WaitForMutators(tid, nextPhase);
-assert {:layer 98} MarkPhase(collectorPhase);
-  	call MarkOuterLoop(tid);
-assert {:layer 98} MarkPhase(collectorPhase);
-  	call nextPhase := HandshakeCollector(tid); // MARK --> SWEEP
-assert {:layer 98} SweepPhase(collectorPhase);
-  	call YieldGarbageCollect(tid);
-	call WaitForMutators(tid, nextPhase);
-assert {:layer 98} SweepPhase(collectorPhase);
-assert {:layer 98} PhaseConsistent(collectorPhase, mutatorPhase);
-  	call Sweep(tid);
-  	call nextPhase := HandshakeCollector(tid); // SWEEP --> IDLE
-  	call YieldGarbageCollect(tid);
+        call nextPhase := HandshakeCollector(tid); // IDLE --> MARK
+        call YieldGarbageCollect(tid);
+        call WaitForMutators(tid, nextPhase);
+        assert {:layer 98} MarkPhase(collectorPhase);
+        call MarkOuterLoop(tid);
+        assert {:layer 98} MarkPhase(collectorPhase);
+        call nextPhase := HandshakeCollector(tid); // MARK --> SWEEP
+        assert {:layer 98} SweepPhase(collectorPhase);
+        call YieldGarbageCollect(tid);
+        call WaitForMutators(tid, nextPhase);
+        assert {:layer 98} SweepPhase(collectorPhase);
+        assert {:layer 98} PhaseConsistent(collectorPhase, mutatorPhase);
+        call Sweep(tid);
+        call nextPhase := HandshakeCollector(tid); // SWEEP --> IDLE
+        call YieldGarbageCollect(tid);
     }
     yield;
 }
@@ -684,7 +685,7 @@ ensures {:layer 100} (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black
         call canStop := CanMarkStop(tid);
         if (canStop)
         {
-	    call YieldMarkEnd(tid);
+            call YieldMarkEnd(tid);
             return;
         }
         call MarkInnerLoop(tid);
@@ -704,54 +705,54 @@ ensures {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrie
 ensures {:layer 100} MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
 ensures {:layer 100} MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
 {
-    var nodeProcessed:int;
-    var fldIter: int;
-    var isEmpty: bool;
-    var child: int;
+  var nodeProcessed:int;
+  var fldIter: int;
+  var isEmpty: bool;
+  var child: int;
 
-    call YieldMark(tid);
-    while (true)
-    invariant {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
-    invariant {:layer 100} MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
-    invariant {:layer 100} MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
-    invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
-    invariant {:layer 98} collectorPhase == old(collectorPhase);
-    {
-        call isEmpty, nodeProcessed := SET_Peek(tid); 
-        if (isEmpty) {
-	    break;
-        }
-	fldIter := 0;
-	while (fldIter < numFields) 
-	invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, nodeProcessed);
-        invariant {:layer 98} collectorPhase == old(collectorPhase);
-    	invariant {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
-    	invariant {:layer 100} MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
-	invariant {:layer 100} !Unalloc(Color[nodeProcessed]);
-    	invariant {:layer 100} MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
-	invariant {:layer 100} 0 <= fldIter && fldIter <= numFields;
-	invariant {:layer 100} (forall x: int :: 0 <= x && x < fldIter && memAddr(mem[nodeProcessed][x]) ==> !Unalloc(Color[mem[nodeProcessed][x]]) && !White(Color[mem[nodeProcessed][x]]));
-	{
-	    call child := ReadFieldCollector(tid, nodeProcessed, fldIter);
-	    if (memAddr(child))
-	    {
-	        call SET_InsertIntoSetIfWhite(tid, nodeProcessed, child);
-	    }
-	    fldIter := fldIter + 1;
-	    yield;
-	    assert {:layer 98,99,100} tid == GcTid;
-	    assert {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, nodeProcessed);
-          assert {:layer 98} collectorPhase == old(collectorPhase);
-	    assert {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
-    	    assert {:layer 100} MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
-	    assert {:layer 100} !Unalloc(Color[nodeProcessed]);
-    	    assert {:layer 100} MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
-	    assert {:layer 100} (forall x: int :: 0 <= x && x < fldIter && memAddr(mem[nodeProcessed][x]) ==> !Unalloc(Color[mem[nodeProcessed][x]]) && !White(Color[mem[nodeProcessed][x]]));
-	}
-        call SET_RemoveFromSet(tid, nodeProcessed);
-	call YieldMark(tid);
+  call YieldMark(tid);
+  while (true)
+  invariant {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
+  invariant {:layer 100} MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
+  invariant {:layer 100} MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
+  invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
+  invariant {:layer 98} collectorPhase == old(collectorPhase);
+  {
+    call isEmpty, nodeProcessed := SET_Peek(tid); 
+    if (isEmpty) {
+      break;
     }
+    fldIter := 0;
+    while (fldIter < numFields) 
+    invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, nodeProcessed);
+    invariant {:layer 98} collectorPhase == old(collectorPhase);
+    invariant {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
+    invariant {:layer 100} MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
+    invariant {:layer 100} !Unalloc(Color[nodeProcessed]);
+    invariant {:layer 100} MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
+    invariant {:layer 100} 0 <= fldIter && fldIter <= numFields;
+    invariant {:layer 100} (forall x: int :: 0 <= x && x < fldIter && memAddr(mem[nodeProcessed][x]) ==> !Unalloc(Color[mem[nodeProcessed][x]]) && !White(Color[mem[nodeProcessed][x]]));
+    {
+      call child := ReadFieldCollector(tid, nodeProcessed, fldIter);
+      if (memAddr(child))
+      {
+        call SET_InsertIntoSetIfWhite(tid, nodeProcessed, child);
+      }
+      fldIter := fldIter + 1;
+      yield;
+      assert {:layer 98,99,100} tid == GcTid;
+      assert {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, nodeProcessed);
+      assert {:layer 98} collectorPhase == old(collectorPhase);
+      assert {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
+      assert {:layer 100} MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
+      assert {:layer 100} !Unalloc(Color[nodeProcessed]);
+      assert {:layer 100} MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
+      assert {:layer 100} (forall x: int :: 0 <= x && x < fldIter && memAddr(mem[nodeProcessed][x]) ==> !Unalloc(Color[mem[nodeProcessed][x]]) && !White(Color[mem[nodeProcessed][x]]));
+    }
+    call SET_RemoveFromSet(tid, nodeProcessed);
     call YieldMark(tid);
+  }
+  call YieldMark(tid);
 }
 
 procedure {:yields} {:layer 99,100} CanMarkStop({:linear "tid"} tid:Tid) returns (canStop: bool)
@@ -762,13 +763,13 @@ ensures {:layer 98} collectorPhase == old(collectorPhase);
 requires {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
 ensures {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
 ensures {:atomic} |{var oldColor, newColor: [int]int;
-		    A: assert tid == GcTid;
-		       oldColor := Color;
-		       Color := newColor;
-		       assume (forall u: int :: if memAddr(u) && White(oldColor[u]) && (exists k: int :: rootAddr(k) && root[k] == u) then Color[u] == GRAY() else Color[u] == oldColor[u]); 
-		       canStop := (forall v: int :: memAddr(v) ==> !Gray(Color[v])); 
-		       return true;
-		  }|;
+        A: assert tid == GcTid;
+           oldColor := Color;
+           Color := newColor;
+           assume (forall u: int :: if memAddr(u) && White(oldColor[u]) && (exists k: int :: rootAddr(k) && root[k] == u) then Color[u] == GRAY() else Color[u] == oldColor[u]); 
+           canStop := (forall v: int :: memAddr(v) ==> !Gray(Color[v])); 
+           return true;
+      }|;
 {
     var i: int;
     var o: int;
@@ -798,11 +799,11 @@ ensures {:atomic} |{var oldColor, newColor: [int]int;
     invariant {:layer 98} collectorPhase == old(collectorPhase);
     {
         call o := ReadRootInRootScanBarrier(tid, i);
-	if (memAddr(o))
-	{
+        if (memAddr(o))
+        {
             call InsertIntoSetIfWhiteInRootScanBarrier(tid, o);
-	}
-	i := i + 1;
+        }
+        i := i + 1;
     }
     call canStop := NoGrayInRootScanBarrier(tid);
     call CollectorRootScanBarrierEnd(tid);
@@ -921,7 +922,7 @@ requires {:layer 98} mutatorTidWhole(tid);
 ensures {:atomic} |{ A:   assert mutatorTidWhole(tid) && rootAddr(x) && tidOwns(tid, x) && fieldAddr(f) && rootAddr(y) && tidOwns(tid, y) && memAddr(root[x]) && toAbs[root[x]] != nil && memAddrAbs(rootAbs[x]);
                           memAbs[rootAbs[x]][f] := rootAbs[y]; 
                           mem[root[x]][f] := root[y]; 
-		          return true; }|;
+              return true; }|;
 {
     var valx: int;
     var valy: int;
@@ -938,9 +939,9 @@ ensures {:atomic} |{ A:   assert mutatorTidWhole(tid) && rootAddr(x) && tidOwns(
 
 procedure {:yields} {:layer 99,100} ReadFieldRaw({:linear "tid"} tid:Tid, x: idx, f: fld, y: idx)
 ensures {:atomic} |{ A:   assert mutatorTidWhole(tid) && rootAddr(x) && tidOwns(tid, x) && fieldAddr(f) && rootAddr(y) && tidOwns(tid, y) && memAddr(root[x]) && toAbs[root[x]] != nil && memAddrAbs(rootAbs[x]); 
-		     	  rootAbs[y] := memAbs[rootAbs[x]][f]; 
-			  root[y] := mem[root[x]][f];
-			  return true; }|;
+             rootAbs[y] := memAbs[rootAbs[x]][f]; 
+        root[y] := mem[root[x]][f];
+        return true; }|;
 {
     var valx: int;
     var valy: int;
@@ -968,19 +969,19 @@ ensures {:atomic} |{ A: assert mutatorTidWhole(tid) && rootAddr(x) && tidOwns(ti
 
 procedure {:yields} {:layer 99,100} AllocRaw({:linear "tid"} tid:Tid, y:idx) returns (ptr: int, absPtr: obj)
 ensures {:atomic} |{ 
-	A: assert mutatorTidWhole(tid) && rootAddr(y) && tidOwns(tid, y);
+  A: assert mutatorTidWhole(tid) && rootAddr(y) && tidOwns(tid, y);
            assert (forall x: int, f: fld :: memAddr(x) && Unalloc(Color[x]) ==> toAbs[x] == nil);
-	   assume(memAddr(ptr) && Unalloc(Color[ptr]));
-	   assume(memAddrAbs(absPtr) && !allocSet[absPtr] && absPtr != nil);
-	   allocSet[absPtr] := true; 
-	   rootAbs[y] := absPtr; 
-	   root[y] := ptr; 
-	   toAbs[ptr] := absPtr;
-	   memAbs[absPtr] := (lambda z: int :: if (fieldAddr(z)) then absPtr else memAbs[absPtr][z]);
-	   Color[ptr] := if sweepPtr <= ptr then BLACK() else WHITE();
-	   mem[ptr] := (lambda z: int :: if (fieldAddr(z)) then ptr else mem[ptr][z]);
-	   return true;
-	   }|;
+     assume(memAddr(ptr) && Unalloc(Color[ptr]));
+     assume(memAddrAbs(absPtr) && !allocSet[absPtr] && absPtr != nil);
+     allocSet[absPtr] := true; 
+     rootAbs[y] := absPtr; 
+     root[y] := ptr; 
+     toAbs[ptr] := absPtr;
+     memAbs[absPtr] := (lambda z: int :: if (fieldAddr(z)) then absPtr else memAbs[absPtr][z]);
+     Color[ptr] := if sweepPtr <= ptr then BLACK() else WHITE();
+     mem[ptr] := (lambda z: int :: if (fieldAddr(z)) then ptr else mem[ptr][z]);
+     return true;
+     }|;
 {
     yield;
     call absPtr := PrimitiveFindFreePtrAbs();
@@ -1008,12 +1009,12 @@ ensures {:atomic} |{
     yield;
     spaceFound := false;
     while (true) 
-    invariant {:layer 98} !spaceFound;	
+    invariant {:layer 98} !spaceFound;
     invariant {:layer 98} (forall x: int, f: fld :: memAddr(x) && Unalloc(Color[x]) ==> toAbs[x] == nil);
     {
         iter := memLo;
         while (iter < memHi)
-        invariant {:layer 98} !spaceFound;	
+        invariant {:layer 98} !spaceFound;
         invariant {:layer 98} memLo <= iter && iter <= memHi;
         invariant {:layer 98} memAddr(iter) && Unalloc(Color[iter]) ==> toAbs[iter] == nil;
         {
@@ -1041,8 +1042,8 @@ ensures {:atomic} |{
 procedure{:yields} {:layer 99,100} WriteBarrier({:linear "tid"} tid:Tid, y:idx)
 requires {:layer 98} mutatorTidWhole(tid);
 ensures {:atomic} |{ var val:int;
-		        A: assert mutatorTidWhole(tid) && rootAddr(y) && tidOwns(tid, y);
-			   val := root[y]; 
+            A: assert mutatorTidWhole(tid) && rootAddr(y) && tidOwns(tid, y);
+         val := root[y]; 
                            goto X, Y;
                         X: assume MarkPhase(mutatorPhase[i#Tid(tid)]) && memAddr(val) && White(Color[val]);
                            Color[val] := GRAY();
@@ -1060,7 +1061,7 @@ ensures {:atomic} |{ var val:int;
     if (memAddr(rootVal))
     {
         call phase := ReadMutatorPhase(tid);
-    	if (MarkPhase(phase))
+      if (MarkPhase(phase))
         {
             call SET_InsertIntoSetIfWhiteByMutator(tid, rootVal);
         }
@@ -1112,8 +1113,8 @@ ensures {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
 ensures {:layer 98} collectorPhase == old(collectorPhase);
 ensures {:left} |{ A: 
                           assert tid == GcTid && rootScanOn && mutatorsInRootScanBarrier == Mutators;
-			  noGray := (forall i: int :: memAddr(i) ==> !Gray(Color[i])); 
-			  return true;
+        noGray := (forall i: int :: memAddr(i) ==> !Gray(Color[i])); 
+        return true;
                     }|;
 {
     yield;
@@ -1340,10 +1341,10 @@ ensures {:atomic} |{ A: assert tid == GcTid; sweepPtr := memLo; return true; }|;
 
 procedure {:yields} {:layer 96,100} SweepNext({:linear "tid"} tid:Tid)
 ensures {:left} |{     A: assert SweepPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
-			  assert !Gray(Color[sweepPtr]);
+        assert !Gray(Color[sweepPtr]);
                           assert tid == GcTid;
-			  assert memAddr(sweepPtr);
-			  Color[sweepPtr] := if White(Color[sweepPtr]) then UNALLOC() else if Black(Color[sweepPtr]) then WHITE() else Color[sweepPtr];
+        assert memAddr(sweepPtr);
+        Color[sweepPtr] := if White(Color[sweepPtr]) then UNALLOC() else if Black(Color[sweepPtr]) then WHITE() else Color[sweepPtr];
                           sweepPtr := sweepPtr + 1;
                           return true;                          
                      }|;
@@ -1367,15 +1368,15 @@ ensures {:atomic} |{ A: assert tid == GcTid;
                           goto B, C, D;
                        B: assume (IdlePhase(collectorPhase));
                           collectorPhase := MARK();
-			  nextPhase := MARK();
+        nextPhase := MARK();
                           return true;      
                        C: assume (MarkPhase(collectorPhase));
                           collectorPhase := SWEEP();
-			  nextPhase := SWEEP();
+        nextPhase := SWEEP();
                           return true;
                        D: assume (SweepPhase(collectorPhase));
                           collectorPhase := IDLE();
-			  nextPhase := IDLE();
+        nextPhase := IDLE();
                           return true;
                     }|;
 {
@@ -1500,11 +1501,11 @@ procedure {:yields} {:layer 96,98} AllocIfPtrFree({:linear "tid"} tid:Tid, ptr:i
 ensures {:atomic} |{A: assert mutatorTidWhole(tid) && memAddr(ptr) && (Unalloc(Color[ptr]) ==> toAbs[ptr] == nil);
                          goto P, Q; 
                       P: assume Unalloc(Color[ptr]);
-			 Color[ptr] := if sweepPtr <= ptr then BLACK() else WHITE();
+       Color[ptr] := if sweepPtr <= ptr then BLACK() else WHITE();
                          spaceFound := true;
-	   		 toAbs[ptr] := absPtr;
-			 mem[ptr] := (lambda z: int :: if (fieldAddr(z)) then ptr else mem[ptr][z]);
-			 return true;
+          toAbs[ptr] := absPtr;
+       mem[ptr] := (lambda z: int :: if (fieldAddr(z)) then ptr else mem[ptr][z]);
+       return true;
                       Q: 
                          spaceFound := false;
                          return true; 
@@ -1536,14 +1537,14 @@ ensures {:atomic} |{A: assert mutatorTidWhole(tid) && memAddr(ptr) && (Unalloc(C
                 color := WHITE();
             }
 
-    	    call snapMem := GhostReadMem();
+          call snapMem := GhostReadMem();
             fldIter := 0;
-      	    while (fldIter < numFields)
-      	    invariant {:layer 96} 0 <= fldIter && fldIter <= numFields;
-    	    invariant {:layer 96} mem == snapMem[ptr := (lambda z: int :: if (0 <= z && z < fldIter) then ptr else snapMem[ptr][z])];
-      	    {
+            while (fldIter < numFields)
+            invariant {:layer 96} 0 <= fldIter && fldIter <= numFields;
+          invariant {:layer 96} mem == snapMem[ptr := (lambda z: int :: if (0 <= z && z < fldIter) then ptr else snapMem[ptr][z])];
+            {
                 call InitializeFieldInAlloc(tid, ptr, fldIter);
-		fldIter := fldIter + 1;
+    fldIter := fldIter + 1;
             }
 
             call SetColor3(tid, ptr, color, absPtr);
