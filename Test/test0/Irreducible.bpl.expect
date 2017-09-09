@@ -1,0 +1,4 @@
+Irreducible.bpl(4,11): BP5010: Irreducible flow graphs are unsupported. (encountered in implementation Irreducible).
+Irreducible.bpl(4,11): Verification inconclusive (Irreducible)
+
+Boogie program verifier finished with 0 verified, 0 errors, 1 inconclusive
