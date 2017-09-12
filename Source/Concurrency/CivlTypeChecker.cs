@@ -702,13 +702,15 @@ namespace Microsoft.Boogie
                             if (calledAction is AtomicActionInfo)
                             {
                                 mods = ((AtomicActionInfo)calledAction).modifiedGlobalVars;
-                            }else if(calledAction is MoverActionInfo)
+                            }
+                            else if (calledAction is MoverActionInfo)
                             {
                                 mods = ((MoverActionInfo)calledAction).modifiedGlobalVars;
                             }
                             else
                             {
-                                Debug.Assert(false);
+                                Debug.Assert(calledAction is SkipActionInfo);
+                                mods = new HashSet<Variable>();
                             }
                             foreach(var mod in mods)
                             {
@@ -819,7 +821,7 @@ namespace Microsoft.Boogie
                 int calleeLayerNum = calleeAction.createdAtLayerNum;
 
                 // Check that callee layer is "lower" then caller layer
-                if (calleeAction is AtomicActionInfo)
+                if (calleeAction is AtomicActionInfo || (calleeAction is SkipActionInfo && callerAction is MoverActionInfo))
                 {
                     if (callerLayerNum <= calleeLayerNum)
                     {
@@ -828,11 +830,12 @@ namespace Microsoft.Boogie
                 }
                 else if (calleeAction is SkipActionInfo)
                 {
-                    if (callerAction is MoverActionInfo)
+                    /*if (callerAction is MoverActionInfo)
                     {
                         Error(call, "A mover procedure cannot call a skip procedure");
                     }
-                    else if (callerLayerNum < calleeLayerNum)
+                    else*/
+                    if (callerLayerNum < calleeLayerNum)
                     {
                         Error(call, "The layer of the caller must be greater than or equal to the layer of the callee");
                     }
@@ -996,24 +999,25 @@ namespace Microsoft.Boogie
         {
             // TODO: rewrite to handle mover procedures!
             int enclosingProcLayerNum = procToActionInfo[enclosingImpl.Proc].createdAtLayerNum;
-            bool isLeftMover = true;
-            bool isRightMover = true;
-            int maxCalleeLayerNum = 0;
-            int atomicActionCalleeLayerNum = 0;
+            bool allLeftMover = true;
+            bool allRightMover = true;
+            int maxCalleeLayerNum = int.MinValue;
+            int atomicActionCalleeLayerNum = int.MinValue;
             int numAtomicActions = 0;
             foreach (CallCmd iter in parCall.CallCmds)
             {
                 ActionInfo actionInfo = procToActionInfo[iter.Proc];
-                isLeftMover = isLeftMover && actionInfo.IsLeftMover;
-                isRightMover = isRightMover && actionInfo.IsRightMover;
-                if (actionInfo.createdAtLayerNum > maxCalleeLayerNum)
+                allLeftMover = allLeftMover && actionInfo.IsLeftMover;
+                allRightMover = allRightMover && actionInfo.IsRightMover;
+                
+                if (actionInfo is MoverActionInfo)
                 {
-                    maxCalleeLayerNum = actionInfo.createdAtLayerNum;
+                    Error(parCall, "Mover procedure cannot be part of a parallel call");
                 }
-                if (actionInfo is AtomicActionInfo)
+                else if (actionInfo is AtomicActionInfo)
                 {
                     numAtomicActions++;
-                    if (atomicActionCalleeLayerNum == 0)
+                    if (atomicActionCalleeLayerNum == int.MinValue)
                     {
                         atomicActionCalleeLayerNum = actionInfo.createdAtLayerNum;
                     }
@@ -1022,12 +1026,18 @@ namespace Microsoft.Boogie
                         Error(parCall, "All atomic actions must be introduced at the same layer");
                     }
                 }
+
+                if (actionInfo.createdAtLayerNum > maxCalleeLayerNum)
+                {
+                    maxCalleeLayerNum = actionInfo.createdAtLayerNum;
+                }
             }
-            if (numAtomicActions > 1 && !isLeftMover && !isRightMover)
+            if (numAtomicActions > 1 && !allLeftMover && !allRightMover)
             {
+                // TODO: Erro message is misleading, since there can be a single non-mover.
                 Error(parCall, "The atomic actions in the parallel call must be all right movers or all left movers");
             }
-            if (0 < atomicActionCalleeLayerNum && atomicActionCalleeLayerNum < maxCalleeLayerNum)
+            if (atomicActionCalleeLayerNum != int.MinValue && atomicActionCalleeLayerNum < maxCalleeLayerNum)
             {
                 Error(parCall, "Atomic actions must be introduced at the highest layer");
             }
