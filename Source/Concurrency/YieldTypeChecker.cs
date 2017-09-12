@@ -65,17 +65,38 @@ namespace Microsoft.Boogie
 
         CivlTypeChecker civlTypeChecker;
         public CheckingContext checkingContext;
-        public HashSet<Absy> absysMatchedToLM;
+        private Graph<MoverActionInfo> moverProcedureCallGraph;
 
         public YieldTypeChecker(CivlTypeChecker civlTypeChecker)
         {
             this.civlTypeChecker = civlTypeChecker;
             this.checkingContext = new CheckingContext(null);
-            this.absysMatchedToLM = new HashSet<Absy>();
+            this.moverProcedureCallGraph = new Graph<MoverActionInfo>();
         }
 
         public void TypeCheck()
         {
+            // Mover procedures can only call other mover procedures on the same layer.
+            // Thus, the constructed call graph naturally forms disconnected components w.r.t. layers and we
+            // can keep a single graph instead of one for each layer;
+            foreach (var impl in civlTypeChecker.program.Implementations.Where(impl => civlTypeChecker.procToActionInfo.ContainsKey(impl.Proc)))
+            {
+                MoverActionInfo callerActionInfo = civlTypeChecker.procToActionInfo[impl.Proc] as MoverActionInfo;
+                if (callerActionInfo == null) continue;
+
+                foreach (var callCmd in impl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
+                {
+                    if (civlTypeChecker.procToActionInfo.ContainsKey(callCmd.Proc))
+                    {
+                        MoverActionInfo calleeActionInfo = civlTypeChecker.procToActionInfo[callCmd.Proc] as MoverActionInfo;
+                        if (calleeActionInfo == null) continue;
+
+                        Debug.Assert(callerActionInfo.createdAtLayerNum == calleeActionInfo.createdAtLayerNum);
+                        moverProcedureCallGraph.AddEdge(callerActionInfo, calleeActionInfo);
+                    }
+                }
+            }
+
             foreach (var impl in civlTypeChecker.program.Implementations.Where(impl => civlTypeChecker.procToActionInfo.ContainsKey(impl.Proc)))
             {
                 var actionInfo = civlTypeChecker.procToActionInfo[impl.Proc];
@@ -86,10 +107,13 @@ namespace Microsoft.Boogie
 
                 foreach (int layerNum in civlTypeChecker.allLayerNums.Where(l => l <= actionInfo.createdAtLayerNum))
                 {
-                    PerLayerYieldTypeChecker perLayerTypeChecker = new PerLayerYieldTypeChecker(this, actionInfo, impl, layerNum, implGraph.Headers);
+                    PerLayerYieldTypeChecker perLayerTypeChecker = new PerLayerYieldTypeChecker(this, actionInfo, impl, layerNum, implGraph);
                     perLayerTypeChecker.TypeCheckLayer();
                 }
             }
+
+            // To allow garbage collection
+            moverProcedureCallGraph = null;
 
             // TODO: Remove "terminates" attribute
         }
@@ -106,15 +130,15 @@ namespace Microsoft.Boogie
             int initialState;
             HashSet<int> finalStates;
             Dictionary<Tuple<int, int>, int> edgeLabels;
-            IEnumerable<Block> loopHeaders;
+            Graph<Block> implGraph;
 
-            public PerLayerYieldTypeChecker(YieldTypeChecker @base, ActionInfo actionInfo, Implementation impl, int currLayerNum, IEnumerable<Block> loopHeaders)
+            public PerLayerYieldTypeChecker(YieldTypeChecker @base, ActionInfo actionInfo, Implementation impl, int currLayerNum, Graph<Block> implGraph)
             {
                 this.@base = @base;
                 this.actionInfo = actionInfo;
                 this.impl = impl;
                 this.currLayerNum = currLayerNum;
-                this.loopHeaders = loopHeaders;
+                this.implGraph = implGraph;
                 this.stateCounter = 0;
                 this.absyToNode = new Dictionary<Absy, int>();
                 this.initialState = 0;
@@ -181,11 +205,23 @@ namespace Microsoft.Boogie
             private void CSpecCheck(List<Tuple<int, int, int>> implEdges)
             {
                 var initialConstraints = new Dictionary<int, HashSet<int>>();
-                if (!IsMoverProcedure)
+
+                if (IsMoverProcedure)
                 {
-                    foreach (Block block in loopHeaders)
+                    foreach (Block header in implGraph.Headers.Where(h => !IsTerminatingLoopHeader(h)))
                     {
-                        initialConstraints[absyToNode[block]] = new HashSet<int> { RM };
+                        initialConstraints[absyToNode[header]] = new HashSet<int> { RM };
+                    }
+                    foreach (var call in impl.Blocks.SelectMany(b => b.cmds).OfType<CallCmd>().Where(c => IsRecursiveMoverProcedureCall(c) && !IsTerminating(c.Proc)))
+                    {
+                        initialConstraints[absyToNode[call]] = new HashSet<int> { RM };
+                    }
+                }
+                else
+                {
+                    foreach (Block header in implGraph.Headers)
+                    {
+                        initialConstraints[absyToNode[header]] = new HashSet<int> { RM };
                     }
                 }
 
@@ -197,20 +233,23 @@ namespace Microsoft.Boogie
                     {
                         @base.checkingContext.Error(impl, "The atomicity declared for mover procedure is not valid");
                     }
-
-                    // store loop heads and calls that are mapped to LM
-                    var query =
-                    from x in simulationRelation
-                    where x.Value.Contains(LM) && !x.Value.Contains(RM)
-                    where nodeToAbsy[x.Key] is CallCmd ||
-                          loopHeaders.Contains(nodeToAbsy[x.Key])
-                    select nodeToAbsy[x.Key];
-                    @base.absysMatchedToLM.UnionWith(query);
                 }
                 else if (simulationRelation[initialState].Count == 0)
                 {
                     @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check C at layer {1}. Transactions must be separated by a yield.\n", impl.Name, currLayerNum));
                 }
+            }
+
+            private bool IsMoverProcedure { get { return actionInfo is MoverActionInfo && actionInfo.createdAtLayerNum == currLayerNum; } }
+
+            private static bool IsTerminating(ICarriesAttributes x)
+            {
+                return x.HasAttribute(CivlAttributes.TERMINATES);
+            }
+
+            private bool IsTerminatingLoopHeader(Block block)
+            {
+                return block.cmds.OfType<AssertCmd>().Any(c => IsTerminating(c));
             }
 
             private bool CheckAtomicity(Dictionary<int, HashSet<int>> simulationRelation)
@@ -220,19 +259,30 @@ namespace Microsoft.Boogie
                 if (actionInfo.IsLeftMover && !simulationRelation[initialState].Contains(LM)) return false;
                 return true;
             }
-
-            private bool IsMoverProcedure { get { return actionInfo is MoverActionInfo && actionInfo.createdAtLayerNum == currLayerNum; } }
-
-            // Deprecated way to bypass constraint that loop heads have to be mapped by RM
-            private bool IsTerminatingLoopHeader(Block block)
+            
+            private bool IsRecursiveMoverProcedureCall(CallCmd call)
             {
-                foreach (AssertCmd assertCmd in block.Cmds.OfType<AssertCmd>())
+                MoverActionInfo target = (MoverActionInfo)actionInfo;
+                MoverActionInfo source = null;
+                if (@base.civlTypeChecker.procToActionInfo.ContainsKey(call.Proc))
+                    source = @base.civlTypeChecker.procToActionInfo[call.Proc] as MoverActionInfo;
+                if (source == null)
+                    return false;
+
+                HashSet<MoverActionInfo> frontier = new HashSet<MoverActionInfo> { source };
+                HashSet<MoverActionInfo> visited = new HashSet<MoverActionInfo>();
+
+                while (frontier.Count > 0)
                 {
-                    if (assertCmd.HasAttribute(CivlAttributes.TERMINATES) && @base.civlTypeChecker.absyToLayerNums[assertCmd].Contains(currLayerNum))
-                    {
+                    var curr = frontier.First();
+                    frontier.Remove(curr);
+                    visited.Add(curr);
+
+                    if (curr == target)
                         return true;
-                    }
+                    frontier.UnionWith(@base.moverProcedureCallGraph.Successors(curr).Except(visited));
                 }
+
                 return false;
             }
 
