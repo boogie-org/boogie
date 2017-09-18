@@ -185,9 +185,9 @@ namespace Microsoft.Boogie
             }
 
             List<Variable> modifiedVars = new List<Variable>();
-            foreach (Block block in this.action.Blocks)
+            foreach (Cmd cmd in this.action.Blocks.SelectMany(b => b.Cmds))
             {
-                block.Cmds.ForEach(cmd => cmd.AddAssignedVariables(modifiedVars));
+                cmd.AddAssignedVariables(modifiedVars);
             }
             this.modifiedGlobalVars = new HashSet<Variable>(modifiedVars.Where(x => x is GlobalVariable));
 
