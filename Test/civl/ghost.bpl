@@ -12,7 +12,7 @@ ensures z == 2;
   z := y + 1;
 }
 
-procedure {:yields} {:layer 1,2} Incr2() 
+procedure {:yields} {:layer 1,2} Incr2()
 ensures {:right} |{ A: x := x + 2; return true; }|;
 {
   var {:layer 1} a: int;
@@ -30,7 +30,7 @@ ensures z == x;
   z := x;
 }
 
-procedure {:yields} {:layer 1,2} Incr2_0() 
+procedure {:yields} {:layer 1,2} Incr2_0()
 ensures {:right} |{ A: x := x + 2; return true; }|;
 {
   var {:layer 1} a: int;

@@ -111,23 +111,23 @@ requires {:layer 3} tid != nil && counter == 0;
     invariant {:layer 3} counter == 0;
     {
         if (*) {
-	    call cid := AllocTid();
-	    async call TA(cid);
-	}
-	if (*) {
-	    call cid := AllocTid();
-	    async call AbsTB(cid);
-	}
-    	yield;
-    	assert {:layer 3} counter == 0;
-	call LockA(tid);
-	call AbsAssertA(tid);
-	call LockB(tid);
-	call AbsAssertB(tid);
-	call UnlockB(tid);
-	call UnlockA(tid);
-	yield;
-    	assert {:layer 3} counter == 0;	
+            call cid := AllocTid();
+            async call TA(cid);
+        }
+        if (*) {
+            call cid := AllocTid();
+            async call AbsTB(cid);
+        }
+        yield;
+        assert {:layer 3} counter == 0;
+        call LockA(tid);
+        call AbsAssertA(tid);
+        call LockB(tid);
+        call AbsAssertB(tid);
+        call UnlockB(tid);
+        call UnlockA(tid);
+        yield;
+        assert {:layer 3} counter == 0;
     }
     yield;
 }

@@ -14,11 +14,11 @@ requires {:layer 1} allocated == MapConstBool(false);
     assert {:layer 1} AllocInv(count, allocated);
     while (true)
     invariant {:layer 1} AllocInv(count, allocated);
-    { 
-        call tid, i := Allocate(); 
-	async call P(tid, i); 
-	yield;
-        assert {:layer 1} AllocInv(count, allocated);	
+    {
+        call tid, i := Allocate();
+        async call P(tid, i);
+        yield;
+        assert {:layer 1} AllocInv(count, allocated);
     }
     yield;
 }
@@ -27,21 +27,21 @@ procedure {:yields} {:layer 2} P({:layer 1} {:linear "tid"} tid: int, i: int)
 requires {:layer 1} tid == i;
 requires {:layer 1} AllocInv(count, allocated);
 ensures {:layer 1} AllocInv(count, allocated);
-ensures {:layer 2} a[tid] == old(a)[tid] + 1; 
-{ 
+ensures {:layer 2} a[tid] == old(a)[tid] + 1;
+{
     var t:int;
 
     yield;
     assert {:layer 1} AllocInv(count, allocated);
     assert {:layer 2} a[tid] == old(a)[tid];
-    call t := Read(tid, i); 
+    call t := Read(tid, i);
     yield;
     assert {:layer 1} AllocInv(count, allocated);
-    assert {:layer 2} a[tid] == t; 
-    call Write(tid, i, t + 1); 
+    assert {:layer 2} a[tid] == t;
+    call Write(tid, i, t + 1);
     yield;
     assert {:layer 1} AllocInv(count, allocated);
-    assert {:layer 2} a[tid] == t + 1; 
+    assert {:layer 2} a[tid] == t + 1;
 }
 
 procedure {:yields} {:layer 1,2} Allocate() returns ({:layer 1} {:linear "tid"} tid: int, i: int)
@@ -58,7 +58,7 @@ ensures {:atomic}
     call i := AllocateLow();
     call tid := MakeLinear(i);
     yield;
-    assert {:layer 1} AllocInv(count, allocated);    
+    assert {:layer 1} AllocInv(count, allocated);
 }
 
 procedure {:yields} {:layer 1,2} Read({:layer 1} {:linear "tid"} tid: int, i: int) returns (val: int)

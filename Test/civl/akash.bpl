@@ -43,12 +43,12 @@ requires {:layer 1} x == mapconstbool(true);
 requires {:layer 1} y == mapconstbool(true);
 {
     var {:linear "tid"} tid_child: int;
-    tid_out := tid_in;    
+    tid_out := tid_in;
 
     yield;
     call SetG(0);
     yield;
-    assert {:layer 1} g == 0 && x == mapconstbool(true);    
+    assert {:layer 1} g == 0 && x == mapconstbool(true);
 
     yield;
     call tid_child := Allocate();
@@ -58,7 +58,7 @@ requires {:layer 1} y == mapconstbool(true);
     call SetH(0);
 
     yield;
-    assert {:layer 1} h == 0 && y == mapconstbool(true);    
+    assert {:layer 1} h == 0 && y == mapconstbool(true);
 
     yield;
     call tid_child := Allocate();
@@ -67,13 +67,13 @@ requires {:layer 1} y == mapconstbool(true);
     yield;
 }
 
-procedure {:yields} {:layer 1} B({:linear_in "tid"} tid_in: int, {:linear_in "1"} x_in: [int]bool) 
+procedure {:yields} {:layer 1} B({:linear_in "tid"} tid_in: int, {:linear_in "1"} x_in: [int]bool)
 requires {:layer 1} x_in != mapconstbool(false);
 {
     var {:linear "tid"} tid_out: int;
     var {:linear "1"} x: [int]bool;
     tid_out := tid_in;
-    x := x_in;    
+    x := x_in;
 
     yield;
 
@@ -86,13 +86,13 @@ requires {:layer 1} x_in != mapconstbool(false);
     yield;
 }
 
-procedure {:yields} {:layer 1} C({:linear_in "tid"} tid_in: int, {:linear_in "2"} y_in: [int]bool) 
+procedure {:yields} {:layer 1} C({:linear_in "tid"} tid_in: int, {:linear_in "2"} y_in: [int]bool)
 requires {:layer 1} y_in != mapconstbool(false);
 {
     var {:linear "tid"} tid_out: int;
     var {:linear "2"} y: [int]bool;
     tid_out := tid_in;
-    y := y_in;    
+    y := y_in;
 
     yield;
 

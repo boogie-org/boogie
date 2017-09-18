@@ -82,10 +82,10 @@ ensures {:right} |{ A: assert mutatorOrGcTid(tid); assume lock == 0; lock := tid
         call status := LockCAS(tid);
         if (status)
         {
-    	    call YieldLock();
+            call YieldLock();
             return;
         }
-	call YieldLock();
+        call YieldLock();
     }
     call YieldLock();
 }
@@ -113,7 +113,7 @@ ensures {:atomic} |{ A: assert mutatorOrGcTid(tid); assert lock == tid; phase :=
 {
     call YieldLock();
     call phase := PrimitiveRead(tid, collectorPhaseAddr);
-    call YieldLock();    
+    call YieldLock();
 }
 
 procedure {:yields} {:layer 1} ReadCollectorPhaseUnlocked({:linear "tid"} tid: int) returns (phase: int)
@@ -124,7 +124,7 @@ ensures {:atomic} |{ A: assert mutatorOrGcTid(tid); assert lock != tid; phase :=
 {
     call YieldLock();
     call phase := PrimitiveRead(tid, collectorPhaseAddr);
-    call YieldLock();    
+    call YieldLock();
 }
 
 procedure {:yields} {:layer 1} SetCollectorPhase({:linear "tid"} tid: int, phase: int)
@@ -161,9 +161,9 @@ ensures {:atomic} |{ A: assert mutatorOrGcTid(tid); assert lock == tid; assume c
 
 // Layer 0
 procedure {:yields} {:layer 0,1} LockCAS(tid: int) returns (status: bool);
-ensures {:atomic} |{ A: goto B, C; 
-                     B: assume Mem[lockAddr] == 0; Mem[lockAddr] := 1; lock := tid; status := true; return true; 
-                     C: status := false; return true; 
+ensures {:atomic} |{ A: goto B, C;
+                     B: assume Mem[lockAddr] == 0; Mem[lockAddr] := 1; lock := tid; status := true; return true;
+                     C: status := false; return true;
                   }|;
 
 procedure {:yields} {:layer 0,1} LockZero(tid: int);
@@ -174,7 +174,7 @@ ensures {:atomic} |{ A: assert StoreBufferPresent[tid][lockAddr]; assume StoreBu
 
 procedure {:yields} {:layer 0,1} PrimitiveRead(tid: int, addr: int) returns (val: int);
 ensures {:atomic} |{ A: goto B, C;
-                     B: assume StoreBufferPresent[tid][addr]; val := StoreBufferVal[tid][addr]; return true; 
+                     B: assume StoreBufferPresent[tid][addr]; val := StoreBufferVal[tid][addr]; return true;
                      C: assume !StoreBufferPresent[tid][addr]; val := Mem[addr]; return true; }|;
 
 procedure {:yields} {:layer 0,1} PrimitiveSetCollectorPhase(tid: int, phase:int);

@@ -20,7 +20,7 @@ function {:inline} {:linear "tid"} TidSetCollector(x: [X]bool) : [X]bool
 
 function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
 {
-    0 <= currsize && currsize <= newsize && 
+    0 <= currsize && currsize <= newsize &&
     (ghostLock == nil <==> currsize == newsize)
 }
 
@@ -64,7 +64,7 @@ requires {:layer 1} xls == mapconstbool(true);
     yield;
 
     call Init(xls);
-    
+
     yield;
     assert {:layer 1} Inv(ghostLock, currsize, newsize);
 
@@ -72,11 +72,11 @@ requires {:layer 1} xls == mapconstbool(true);
     invariant {:layer 1} Inv(ghostLock, currsize, newsize);
     {
         par tid := Allocate() | Yield();
-	yield;
-    	assert {:layer 1} Inv(ghostLock, currsize, newsize);
+        yield;
+        assert {:layer 1} Inv(ghostLock, currsize, newsize);
         async call Thread(tid);
-	yield;
-    	assert {:layer 1} Inv(ghostLock, currsize, newsize);
+        yield;
+        assert {:layer 1} Inv(ghostLock, currsize, newsize);
     }
     yield;
 }
@@ -106,16 +106,16 @@ ensures {:layer 1} 0 <= bytesRead && bytesRead <= size;
     call i := ReadCurrsize(tid);
     call tmp := ReadNewsize(tid);
     if (start + size <= i) {
-        call release(tid); 
-    	goto COPY_TO_BUFFER;
+        call release(tid);
+        goto COPY_TO_BUFFER;
     } else if (tmp > i) {
         bytesRead := if (start <= i) then (i - start) else 0;
-    	call release(tid); 
-	goto COPY_TO_BUFFER;
+        call release(tid);
+        goto COPY_TO_BUFFER;
     } else {
         call WriteNewsize(tid, start + size);
-    	call release(tid); 
-	goto READ_DEVICE;
+        call release(tid);
+        goto READ_DEVICE;
     }
 
 READ_DEVICE:
@@ -148,7 +148,7 @@ ensures {:layer 1} Inv(ghostLock, currsize, newsize) && old(currsize) == currsiz
     {
         par YieldToWriteCache(tid);
         call WriteCacheEntry(tid, j);
-	j := j + 1;
+        j := j + 1;
     }
     par YieldToWriteCache(tid);
 }
@@ -167,13 +167,13 @@ ensures {:layer 1} Inv(ghostLock, currsize, newsize);
     j := 0;
     while(j < bytesRead)
     invariant {:layer 1} 0 <= j;
-    invariant {:layer 1} bytesRead == 0 || start + bytesRead <= currsize; 
+    invariant {:layer 1} bytesRead == 0 || start + bytesRead <= currsize;
     invariant {:layer 1} Inv(ghostLock, currsize, newsize);
     {
-	assert {:layer 1} start + j < currsize;
+        assert {:layer 1} start + j < currsize;
         call ReadCacheEntry(tid, start + j);
         j := j + 1;
-	par YieldToReadCache(tid);
+        par YieldToReadCache(tid);
     }
 
     par YieldToReadCache(tid);

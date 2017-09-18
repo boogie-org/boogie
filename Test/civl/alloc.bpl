@@ -59,10 +59,10 @@ requires {:layer 2} dom(local_in)[i];
     {
         call l, y := Alloc();
         call l := Write(l, y, 42);
-	call o := Read(l, y);
-	assert {:layer 2} o == 42;
+        call o := Read(l, y);
+        assert {:layer 2} o == 42;
         call Free(l, y);
-	par Yield() | Dummy();
+        par Yield() | Dummy();
     }
     par Yield() | Dummy();
 }

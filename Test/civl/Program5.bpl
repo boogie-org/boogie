@@ -21,8 +21,8 @@ ensures {:layer 2} Color >= old(Color);
 }
 
 procedure {:yields} {:layer 2,3} WriteBarrier({:linear "tid"} tid:Tid)
-ensures {:atomic} |{ A: assert tid != nil; goto B, C; 
-                     B: assume White(Color); Color := GRAY(); return true; 
+ensures {:atomic} |{ A: assert tid != nil; goto B, C;
+                     B: assume White(Color); Color := GRAY(); return true;
                      C: assume !White(Color); return true;}|;
 requires {:layer 2} Color >= WHITE();
 ensures  {:layer 2} Color >= GRAY();
@@ -38,15 +38,15 @@ ensures  {:layer 2} Color >= GRAY();
 }
 
 procedure {:yields} {:layer 1,2} WriteBarrierSlow({:linear "tid"} tid:Tid)
-ensures {:atomic} |{ A: assert tid != nil; goto B, C; 
-                     B: assume WhiteOrLighter(Color); Color := GRAY(); return true; 
+ensures {:atomic} |{ A: assert tid != nil; goto B, C;
+                     B: assume WhiteOrLighter(Color); Color := GRAY(); return true;
                      C: assume !WhiteOrLighter(Color); return true; }|;
 {
        var colorLocal:int;
        yield;
        call AcquireLock(tid);
        call colorLocal := GetColorLocked(tid);
-       if (WhiteOrLighter(colorLocal)) { call SetColorLocked(tid, GRAY()); } 
+       if (WhiteOrLighter(colorLocal)) { call SetColorLocked(tid, GRAY()); }
        call ReleaseLock(tid);
        yield;
 }
@@ -57,7 +57,7 @@ procedure {:yields} {:layer 0,1} AcquireLock({:linear "tid"} tid: Tid);
 procedure {:yields} {:layer 0,1} ReleaseLock({:linear "tid"} tid: Tid);
   ensures {:left} |{ A: assert tid != nil; assert lock == tid; lock := nil; return true; }|;
 
-procedure {:yields} {:layer 0,1} SetColorLocked({:linear "tid"} tid:Tid, newCol:int); 
+procedure {:yields} {:layer 0,1} SetColorLocked({:linear "tid"} tid:Tid, newCol:int);
   ensures {:atomic} |{A: assert tid != nil; assert lock == tid; Color := newCol; return true;}|;
 
 procedure {:yields} {:layer 0,1} GetColorLocked({:linear "tid"} tid:Tid) returns (col:int);

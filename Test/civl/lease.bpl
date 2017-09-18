@@ -37,7 +37,7 @@ function addHistory(h:history, l:int):history
 function nextNode(me:int):int;
 
 
-////// primitive actions ////// 
+////// primitive actions //////
 
 procedure{:yields}{:layer 1,2} GetNode({:linear "me"} me:int) returns(n:node);
   ensures{:both}
@@ -83,7 +83,7 @@ procedure{:yields}{:layer 1,2} AddHistory(l:int);
   }|;
 
 
-////// composite actions ////// 
+////// composite actions //////
 
 function EpochInHistory(epoch:int, history:history):bool
 {

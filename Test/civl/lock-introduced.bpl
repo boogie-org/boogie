@@ -12,20 +12,20 @@ var {:layer 0,2} b: bool;
 var {:layer 1,3} lock: X;
 
 procedure {:yields} {:layer 3} Customer({:linear "tid"} tid: X)
-requires {:layer 2} tid != nil; 
+requires {:layer 2} tid != nil;
 requires {:layer 2} InvLock(lock, b);
 ensures {:layer 2} InvLock(lock, b);
 {
     yield;
     assert {:layer 2} InvLock(lock, b);
-    while (*) 
+    while (*)
     invariant {:layer 2} InvLock(lock, b);
     {
         call Enter(tid);
-    	call Leave(tid);
+        call Leave(tid);
         yield;
-	assert {:layer 2} InvLock(lock, b);
-    }    
+        assert {:layer 2} InvLock(lock, b);
+    }
     yield;
     assert {:layer 2} InvLock(lock, b);
 }
@@ -36,7 +36,7 @@ function {:inline} InvLock(lock: X, b: bool) : bool
 }
 
 procedure {:yields} {:layer 2,3} Enter({:linear "tid"} tid: X)
-requires {:layer 2} tid != nil; 
+requires {:layer 2} tid != nil;
 requires {:layer 2} InvLock(lock, b);
 ensures {:layer 2} InvLock(lock, b);
 ensures {:right} |{ A: assume lock == nil && tid != nil; lock := tid; return true; }|;
@@ -60,27 +60,27 @@ ensures {:atomic} |{ A: assert lock == tid && tid != nil; lock := nil; return tr
     assert {:layer 2} InvLock(lock, b);
 }
 
-procedure {:yields} {:layer 1,2} LowerEnter({:linear "tid"} tid: X) 
+procedure {:yields} {:layer 1,2} LowerEnter({:linear "tid"} tid: X)
 ensures {:atomic} |{ A: assume !b; b := true; lock := tid; return true; }|;
 {
     var status: bool;
     yield;
-    L: 
+    L:
         call status := CAS(false, true);
         if (status) {
-	    call SetLock(tid);
-	}
-	yield;
+            call SetLock(tid);
+        }
+        yield;
         goto A, B;
 
-    A: 
+    A:
         assume status;
-	yield;
-	return;
+        yield;
+        return;
 
     B:
         assume !status;
-	goto L;
+        goto L;
 }
 
 procedure {:yields} {:layer 1,2} LowerLeave()
@@ -99,10 +99,10 @@ modifies lock;
 }
 
 procedure {:yields} {:layer 0,1} CAS(prev: bool, next: bool) returns (status: bool);
-ensures {:atomic} |{ 
-A: goto B, C; 
-B: assume b == prev; b := next; status := true; return true; 
-C: status := false; return true; 
+ensures {:atomic} |{
+A: goto B, C;
+B: assume b == prev; b := next; status := true; return true;
+C: status := false; return true;
 }|;
 
 procedure {:yields} {:layer 0,1} SET(next: bool);

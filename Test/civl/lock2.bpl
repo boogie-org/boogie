@@ -16,35 +16,35 @@ procedure {:yields} {:layer 2} main()
 procedure {:yields} {:layer 2} Customer()
 {
     yield;
-    while (*) 
+    while (*)
     {
         call Enter();
-    	yield;
-    	call Leave();
+        yield;
+        call Leave();
         yield;
     }
     yield;
 }
 
-procedure {:yields} {:layer 1,2} Enter() 
+procedure {:yields} {:layer 1,2} Enter()
 ensures {:atomic} |{ A: assume b == 0; b := 1; return true; }|;
 {
     var _old, curr: int;
     yield;
-    while (true) { 
+    while (true) {
         call _old := CAS(0, 1);
-	yield;
+        yield;
         if (_old == 0) {
-	    break;
-	}
-	while (true) {
-	    call curr := Read();
-	    yield;
-	    if (curr == 0) {
-	        break;
-	    }
-	}
-	yield;
+            break;
+        }
+        while (true) {
+            call curr := Read();
+            yield;
+            if (curr == 0) {
+                break;
+            }
+        }
+        yield;
     }
     yield;
 }
@@ -53,10 +53,10 @@ procedure {:yields} {:layer 0,2} Read() returns (val: int);
 ensures {:atomic} |{ A: val := b; return true; }|;
 
 procedure {:yields} {:layer 0,2} CAS(prev: int, next: int) returns (_old: int);
-ensures {:atomic} |{ 
-A: _old := b; goto B, C; 
-B: assume _old == prev; b := next; return true; 
-C: assume _old != prev; return true; 
+ensures {:atomic} |{
+A: _old := b; goto B, C;
+B: assume _old == prev; b := next; return true;
+C: assume _old != prev; return true;
 }|;
 
 procedure {:yields} {:layer 0,2} Leave();

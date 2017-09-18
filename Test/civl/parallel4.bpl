@@ -15,7 +15,7 @@ function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
   MapConstBool(false)[x := true]
 }
 
-procedure {:yields} {:layer 1} main() 
+procedure {:yields} {:layer 1} main()
 {
   var {:linear "tid"} i: int;
   var {:linear "tid"} j: int;

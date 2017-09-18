@@ -93,8 +93,8 @@ procedure {:yields} {:layer 2} Customer ({:linear_in "tid"} tid: X)
 requires {:layer 1} Inv1(T, t);
 requires {:layer 2} Inv2(T, s, cs) && tid != nil;
 {
-    par Yield1() | Yield2();    
-    while (*) 
+    par Yield1() | Yield2();
+    while (*)
     invariant {:layer 1} Inv1(T, t);
     invariant {:layer 2} Inv2(T, s, cs);
     {

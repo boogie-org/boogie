@@ -55,7 +55,7 @@ ensures {:atomic} |{ A: assume xls == MapOr(xls1, xls2) && xls1 != None() && xls
 procedure {:yields} {:layer 0,1} AllocateLow() returns ({:linear "tid"} xls: X);
 ensures {:atomic} |{ A: assume xls != nil; return true; }|;
 
-procedure {:yields} {:layer 1} main({:linear_in "tid"} tidls': X, {:linear_in "x"} xls': [X]bool) 
+procedure {:yields} {:layer 1} main({:linear_in "tid"} tidls': X, {:linear_in "x"} xls': [X]bool)
 requires {:layer 1} tidls' != nil && xls' == All();
 {
     var {:linear "tid"} tidls: X;

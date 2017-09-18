@@ -25,12 +25,12 @@ procedure {:yields} {:layer 1} main()
     var val: int;
 
     yield;
-    while (*) 
+    while (*)
     {
         call tid := Allocate();
         havoc val;
         async call foo(tid, val);
-	yield;
+        yield;
     }
     yield;
 }
@@ -53,7 +53,7 @@ requires {:layer 1} tid' != nil;
     tid := tid';
 
     yield;
-    call Lock(tid);    
+    call Lock(tid);
     call tid := Yield(tid);
     call Set(val);
     call tid := Yield(tid);

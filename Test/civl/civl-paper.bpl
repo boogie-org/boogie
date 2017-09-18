@@ -123,20 +123,20 @@ ensures {:atomic} |{ A: assume lock == nil; lock := tid; return true; }|;
     var tmp: X;
 
     par Yield1();
-    L: 
-	assert {:layer 1} InvLock(lock, b);
+    L:
+        assert {:layer 1} InvLock(lock, b);
         call status := CAS(tid, false, true);
-	par Yield1();
+        par Yield1();
         goto A, B;
 
-    A: 
+    A:
         assume status;
-	par Yield1();	
-	return;
+        par Yield1();
+        return;
 
     B:
         assume !status;
-	goto L;
+        goto L;
 }
 
 procedure {:yields} {:layer 1,2} Release({:linear "tid"} tid: X)
@@ -162,14 +162,14 @@ procedure {:yields} {:layer 0,3} Store({:linear_in "mem"} l_in: lmap, a: int, v:
 ensures {:both} |{ A: assume l_out == cons(dom(l_in), map(l_in)[a := v]); return true; }|;
 
 procedure {:yields} {:layer 0,1} CAS(tid: X, prev: bool, next: bool) returns (status: bool);
-ensures {:atomic} |{ 
-A: goto B, C; 
-B: assume b == prev; b := next; status := true; lock := tid; return true; 
-C: status := false; return true; 
+ensures {:atomic} |{
+A: goto B, C;
+B: assume b == prev; b := next; status := true; lock := tid; return true;
+C: status := false; return true;
 }|;
 
 procedure {:yields} {:layer 0,1} CLEAR(tid: X, next: bool);
-ensures {:atomic} |{ 
-A: b := next; lock := nil; return true; 
+ensures {:atomic} |{
+A: b := next; lock := nil; return true;
 }|;
 

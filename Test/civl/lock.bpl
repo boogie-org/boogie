@@ -16,39 +16,39 @@ procedure {:yields} {:layer 2} main()
 procedure {:yields} {:layer 2} Customer()
 {
     yield;
-    while (*) 
+    while (*)
     {
         call Enter();
-    	yield;
-    	call Leave();
+        yield;
+        call Leave();
         yield;
     }
     yield;
 }
 
-procedure {:yields} {:layer 1,2} Enter() 
+procedure {:yields} {:layer 1,2} Enter()
 ensures {:atomic} |{ A: assume !b; b := true; return true; }|;
 {
     var status: bool;
     yield;
-    L: 
+    L:
         call status := CAS(false, true);
-	yield;
+        yield;
         goto A, B;
 
-    A: 
+    A:
         assume status;
-	yield;
-	return;
+        yield;
+        return;
 
     B:
         assume !status;
-	goto L;
+        goto L;
 }
 
 procedure {:yields} {:layer 0,2} CAS(prev: bool, next: bool) returns (status: bool);
-ensures {:atomic} |{ 
-A: goto B, C; 
+ensures {:atomic} |{
+A: goto B, C;
 B: assume b == prev; b := next; status := true;  return true;
 C: assume b != prev;            status := false; return true;
 }|;
