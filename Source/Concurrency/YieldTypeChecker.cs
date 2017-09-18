@@ -348,7 +348,7 @@ namespace Microsoft.Boogie
                                 }
                                 else
                                 {
-                                    MoverType moverType = MoverType.Top;
+                                    MoverType? moverType = null;
                                     if (calledAction.createdAtLayerNum < currLayerNum || (calledAction.createdAtLayerNum == currLayerNum && calledAction is MoverActionInfo))
                                     {
                                         moverType = calledAction.moverType;
@@ -364,7 +364,7 @@ namespace Microsoft.Boogie
                                             edgeLabels[edge] = L; break;
                                         case MoverType.Right:
                                             edgeLabels[edge] = R; break;
-                                        case MoverType.Top:
+                                        case null:
                                             edgeLabels[edge] = Y; break;
                                     }
                                 }

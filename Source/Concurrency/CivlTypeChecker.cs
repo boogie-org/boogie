@@ -10,7 +10,6 @@ namespace Microsoft.Boogie
 {
     public enum MoverType
     {
-        Top,
         Atomic,
         Right,
         Left,
@@ -318,11 +317,6 @@ namespace Microsoft.Boogie
         public static bool IsPure (this Declaration decl) { return decl.HasAttribute(CivlAttributes.PURE); }
         public static bool IsYield(this Declaration decl) { return decl.HasAttribute(CivlAttributes.YIELDS); }
 
-        public static bool IsAtomic(this ICarriesAttributes obj) { return obj.HasAttribute(CivlAttributes.ATOMIC); }
-        public static bool IsLeft(this ICarriesAttributes obj) { return obj.HasAttribute(CivlAttributes.LEFT); }
-        public static bool IsRight(this ICarriesAttributes obj) { return obj.HasAttribute(CivlAttributes.RIGHT); }
-        public static bool IsBoth(this ICarriesAttributes obj) { return obj.HasAttribute(CivlAttributes.BOTH); }
-
         public static bool IsExtern(this Declaration decl) { return decl.HasAttribute("extern"); }
     }
 
@@ -389,17 +383,37 @@ namespace Microsoft.Boogie
             return layerNums.DefaultIfEmpty(int.MaxValue).Min();
         }
 
-        private static MoverType GetMoverType(ICarriesAttributes e)
+        /// Parses attributes for mover type declarations.
+        /// Returns the first mover type found (or null if none is found) and issues warnings if multiple mover types are found.
+        private MoverType? GetMoverType(QKeyValue kv)
         {
-            if (e.IsAtomic())
-                return MoverType.Atomic;
-            if (e.IsRight())
-                return MoverType.Right;
-            if (e.IsLeft())
-                return MoverType.Left;
-            if (e.IsBoth())
-                return MoverType.Both;
-            return MoverType.Top;
+            MoverType? moverType = null;
+            
+            for (; kv != null; kv = kv.Next)
+            {
+                if (kv.Params.Count == 0)
+                {
+                    MoverType? x = null;
+                    if (kv.Key == CivlAttributes.ATOMIC)
+                        x = MoverType.Atomic;
+                    else if (kv.Key == CivlAttributes.RIGHT)
+                        x = MoverType.Right;
+                    else if (kv.Key == CivlAttributes.LEFT)
+                        x = MoverType.Left;
+                    else if (kv.Key == CivlAttributes.BOTH)
+                        x = MoverType.Both;
+
+                    if (x.HasValue)
+                    {
+                        if (moverType.HasValue)
+                            checkingContext.Warning(kv, string.Format("Ignoring duplicate mover type declaration ({0}).", kv.Key));
+                        else
+                            moverType = x;
+                    }
+                }
+            }
+
+            return moverType;
         }
 
         public CivlTypeChecker(Program program)
@@ -604,12 +618,14 @@ namespace Microsoft.Boogie
                     continue;
                 }
 
-                var procMoverType = GetMoverType(proc);
+                var procMoverType = GetMoverType(proc.Attributes);
 
                 // look for an atomic action spec
+                // TODO: Currently, multiple evaluations of GetMoverType can result in duplicate warnings being printed.
+                //       Will be solved in the process of separating out atomic action declarations.
                 var atomicActionSpecs = proc.Ensures
-                                        .Select(e => new { Ensures = e, MoverType = GetMoverType(e) })
-                                        .Where(aa => aa.MoverType != MoverType.Top);
+                                        .Where(e => GetMoverType(e.Attributes).HasValue)
+                                        .Select(e => new { Ensures = e, MoverType = GetMoverType(e.Attributes).Value });
 
                 if (atomicActionSpecs.Count() > 1)
                 {
@@ -621,7 +637,7 @@ namespace Microsoft.Boogie
                     {
                         Error(proc, "Creation layer number must be less than the available upto layer number");
                     }
-                    if (procMoverType != MoverType.Top)
+                    if (procMoverType.HasValue)
                     {
                         Error(proc, "A procedure with an atomic action cannot have a separate mover type");
                     }
@@ -650,7 +666,7 @@ namespace Microsoft.Boogie
                     }
                     sharedVarsAccessed = null;
                 }
-                else if (procMoverType == MoverType.Top) // proc is a skip procedure
+                else if (!procMoverType.HasValue) // proc is a skip procedure
                 {
                     if (availableUptoLayerNum < createdAtLayerNum)
                     {
@@ -669,7 +685,7 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        procToActionInfo[proc] = new MoverActionInfo(proc, procMoverType, createdAtLayerNum);
+                        procToActionInfo[proc] = new MoverActionInfo(proc, procMoverType.Value, createdAtLayerNum);
                     }
                 }
             }

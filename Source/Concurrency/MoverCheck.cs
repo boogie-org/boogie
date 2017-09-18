@@ -61,9 +61,6 @@ namespace Microsoft.Boogie
                 currPool = pools[currLayerNum];
             }
 
-            // No atomic action has mover type Top
-            Debug.Assert(pools.All(l => l.Value.All(a => a.moverType != MoverType.Top)));
-
             Program program = civlTypeChecker.program;
             MoverCheck moverChecking = new MoverCheck(linearTypeChecker, civlTypeChecker, decls);
 
