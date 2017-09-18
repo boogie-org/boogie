@@ -65,6 +65,7 @@ requires {:layer 1} tidls' != None() && xls' == All();
 
     tidls := tidls';
     xls := xls';
+
     yield;
     call Set(42);
     yield;
@@ -99,7 +100,6 @@ requires {:layer 1} tidls' != None() && xls' != None();
     yield;
     assert {:layer 1} tidls != None() && xls != None();
     assert {:layer 1} x == 0;
-    assert {:layer 1} tidls != None() && xls != None();
     call Unlock();
     yield;
 }

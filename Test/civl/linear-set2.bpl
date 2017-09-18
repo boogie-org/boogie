@@ -99,8 +99,6 @@ requires {:layer 1} tidls' != nil && xls' != None();
     yield;
     assert {:layer 1} tidls != nil && xls != None();
     assert {:layer 1} x == 0;
-    yield;
-    assert {:layer 1} tidls != nil && xls != None();
     call Unlock();
     yield;
 }
