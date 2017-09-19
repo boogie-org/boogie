@@ -370,7 +370,6 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        Console.WriteLine(new System.Diagnostics.StackTrace());
                         checkingContext.Error(kv, "Layer has to be an integer.");
                     }
                 }
