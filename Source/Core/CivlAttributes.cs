@@ -18,6 +18,8 @@ namespace Microsoft.Boogie
         public const string RIGHT = "right";
         public const string BOTH = "both";
 
+        public static string REFINES = "refines";
+
         public const string TERMINATES = "terminates";
 
         public const string LINEAR = "linear";
