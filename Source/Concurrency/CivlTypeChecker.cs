@@ -76,8 +76,8 @@ namespace Microsoft.Boogie
                 cmds[i] = new AssumeCmd(assertCmd.tok, Expr.True);
             }
 
-            SetupCopy(thisAction, thisGate, thisInParams, thisOutParams, thisMap, "_this");
-            SetupCopy(thatAction, thatGate, thatInParams, thatOutParams, thatMap, "_that");
+            SetupCopy(ref thisAction, ref thisGate, ref thisInParams, ref thisOutParams, ref thisMap, "_this");
+            SetupCopy(ref thatAction, ref thatGate, ref thatInParams, ref thatOutParams, ref thatMap, "_that");
 
             {
                 VariableCollector collector = new VariableCollector();
@@ -99,7 +99,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        private void SetupCopy(CodeExpr actionCopy, List<AssertCmd> gateCopy, List<Variable> inParamsCopy, List<Variable> outParamsCopy, Dictionary<Variable, Expr> varMap, string prefix)
+        private void SetupCopy(ref CodeExpr actionCopy, ref List<AssertCmd> gateCopy, ref List<Variable> inParamsCopy, ref List<Variable> outParamsCopy, ref Dictionary<Variable, Expr> varMap, string prefix)
         {
             foreach (Variable x in proc.InParams)
             {
@@ -525,18 +525,6 @@ namespace Microsoft.Boogie
             {
                 LayerRange layerRange = ToLayerRange(FindLayers(proc.Attributes), proc);
                 bool isLeaking = proc.Modifies.Count + proc.OutParams.Count > 0;
-                if (isLeaking && layerRange.lowerLayerNum != layerRange.upperLayerNum)
-                {
-                    Error(proc, "Leaking instrumentation procedures must have a singleton layer range");
-                }
-                foreach (var v in proc.Modifies.Select(ie => ie.Decl))
-                {
-                    if (globalVarToSharedVarInfo[v].layerRange.lowerLayerNum != layerRange.lowerLayerNum)
-                    {
-                        Error(proc, "Instrumentation procedures can modify shared variables only on their introduction layer");
-                    }
-                }
-
                 procToInstrumentationProc[proc] = new InstrumentationProc(layerRange, isLeaking);
             }
             if (checkingContext.ErrorCount > 0) return;
@@ -566,14 +554,14 @@ namespace Microsoft.Boogie
 
                 string refinesName = QKeyValue.FindStringAttribute(proc.Attributes, CivlAttributes.REFINES);
                 MoverType? moverType = GetMoverType(proc.Attributes);
+                if (refinesName != null && moverType.HasValue)
+                {
+                    Error(proc, "A yielding procedure cannot have both a refines annotation and a mover type");
+                    continue;
+                }
 
                 if (refinesName != null) // proc is an action procedure
                 {
-                    if (moverType.HasValue)
-                    {
-                        Error(proc, "An action procedure cannot have a separate mover type");
-                    }
-
                     AtomicAction refinedAction = procToAtomicAction.Values.Where(a => a.proc.Name == refinesName).FirstOrDefault();
                     if (refinedAction == null)
                     {
@@ -662,20 +650,17 @@ namespace Microsoft.Boogie
                 foreach (Variable v in impl.LocVars)
                 {
                     var layer = FindLocalVariableLayer(impl, v, procToYieldingProc[impl.Proc].upperLayer);
-                    if (layer == int.MinValue) continue;
                     localVarToLocalVariableInfo[v] = new LocalVariableInfo(layer);
                 }
                 for (int i = 0; i < impl.Proc.InParams.Count; i++)
                 {
                     Variable v = impl.Proc.InParams[i];
-                    if (!localVarToLocalVariableInfo.ContainsKey(v)) continue;
                     var layer = localVarToLocalVariableInfo[v].layer;
                     localVarToLocalVariableInfo[impl.InParams[i]] = new LocalVariableInfo(layer);
                 }
                 for (int i = 0; i < impl.Proc.OutParams.Count; i++)
                 {
                     Variable v = impl.Proc.OutParams[i];
-                    if (!localVarToLocalVariableInfo.ContainsKey(v)) continue;
                     var layer = localVarToLocalVariableInfo[v].layer;
                     localVarToLocalVariableInfo[impl.OutParams[i]] = new LocalVariableInfo(layer);
                 }
@@ -743,7 +728,10 @@ namespace Microsoft.Boogie
             {
                 if (node.Decl is GlobalVariable)
                 {
-                    if (!ctc.globalVarToSharedVarInfo[node.Decl].layerRange.Subset(atomicAction.layerRange))
+                    var sharedVarLayerRange = ctc.globalVarToSharedVarInfo[node.Decl].layerRange;
+                    if (!sharedVarLayerRange.Subset(atomicAction.layerRange) || sharedVarLayerRange.lowerLayerNum == atomicAction.layerRange.lowerLayerNum) 
+                        // a shared variable introduced at layer n is visible to an atomic action only at layer n+1 or higher
+                        // thus, a shared variable with layer range [n,n] is not accessible by an atomic action
                     {
                         ctc.Error(node, "Shared variable is not available in atomic action specification");
                     }
@@ -761,18 +749,6 @@ namespace Microsoft.Boogie
             {
                 ctc.Error(node, "Call command not allowed inside an atomic actions");
                 return base.VisitCallCmd(node);
-            }
-
-            public override Cmd VisitParCallCmd(ParCallCmd node)
-            {
-                ctc.Error(node, "Parallel call command not allowed inside an atomic actions");
-                return base.VisitParCallCmd(node);
-            }
-
-            public override YieldCmd VisitYieldCmd(YieldCmd node)
-            {
-                ctc.Error(node, "Yield command not allowed inside an atomic actions");
-                return base.VisitYieldCmd(node);
             }
         }
 
@@ -796,7 +772,7 @@ namespace Microsoft.Boogie
             {
                 if (!ctc.procToInstrumentationProc.ContainsKey(callCmd.Proc))
                 {
-                    ctc.Error(callCmd, "Atomic procedure can only call an atomic procedure");
+                    ctc.Error(callCmd, "Instrumentation procedure can only call an instrumentation procedure");
                     return base.VisitCallCmd(callCmd);
                 }
                 var calleeInfo = ctc.procToInstrumentationProc[callCmd.Proc];
@@ -805,12 +781,6 @@ namespace Microsoft.Boogie
                     ctc.Error(callCmd, "Caller layers must be subset of callee layers");
                 }
                 return base.VisitCallCmd(callCmd);
-            }
-
-            public override Cmd VisitParCallCmd(ParCallCmd node)
-            {
-                ctc.Error(node, "Instrumentation procedures cannot make parallel calls");
-                return node;
             }
 
             public override Expr VisitIdentifierExpr(IdentifierExpr node)
@@ -824,13 +794,6 @@ namespace Microsoft.Boogie
                     }
                 }
                 return node;
-            }
-
-            public override YieldCmd VisitYieldCmd(YieldCmd node)
-            {
-                // TODO: Should there be already some preliminary check that yield commands only occur in yielding procedures?
-                ctc.Error(node, "Yield command not allowed inside an instrumentation procedure");
-                return base.VisitYieldCmd(node);
             }
         }
 
