@@ -267,28 +267,20 @@ namespace Microsoft.Boogie
         public int lowerLayerNum;
         public int upperLayerNum;
 
-        public LayerRange(int layer)
-        {
-            this.lowerLayerNum = layer;
-            this.upperLayerNum = layer;
-        }
+        public LayerRange(int layer) : this(layer, layer) { }
+
         public LayerRange(int lower, int upper)
         {
+            Debug.Assert(lower <= upper);
             this.lowerLayerNum = lower;
             this.upperLayerNum = upper;
         }
+
         public bool Contains(int layerNum)
         {
             return lowerLayerNum <= layerNum && layerNum <= upperLayerNum;
         }
-        public bool Subset(int lower, int upper)
-        {
-            return lower <= lowerLayerNum && upperLayerNum <= upper;
-        }
-        public bool Equal(int lower, int upper)
-        {
-            return lower == lowerLayerNum && upperLayerNum == upper;
-        }
+
         public bool Subset(LayerRange info)
         {
             return info.lowerLayerNum <= lowerLayerNum && upperLayerNum <= info.upperLayerNum;
