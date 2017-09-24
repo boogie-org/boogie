@@ -166,6 +166,7 @@ namespace Microsoft.Boogie
             return otherBlocks;
         }
 
+        // TODO: Check usage!
         public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
         public bool IsLeftMover { get { return moverType == MoverType.Left || moverType == MoverType.Both; } }
 
@@ -201,6 +202,9 @@ namespace Microsoft.Boogie
             this.moverType = moverType;
             this.upperLayer = upperLayer;
         }
+
+        public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
+        public bool IsLeftMover { get { return moverType == MoverType.Left || moverType == MoverType.Both; } }
     }
 
     public class SkipProc : YieldingProc
@@ -234,31 +238,12 @@ namespace Microsoft.Boogie
     public class InstrumentationProc
     {
         public LayerRange layerRange;
-        public bool isLeaking;
+        public bool isLeaky;
 
         public InstrumentationProc(LayerRange layerRange, bool isLeaking)
         {
-            this.isLeaking = isLeaking;
+            this.isLeaky = isLeaking;
             this.layerRange = layerRange;
-        }
-    }
-
-    public class SharedVariableInfo
-    {
-        public LayerRange layerRange;
-
-        public SharedVariableInfo(LayerRange layerRange)
-        {
-            this.layerRange = layerRange;
-        }
-    }
-
-    public class LocalVariableInfo
-    {
-        public int layer;
-        public LocalVariableInfo(int layer)
-        {
-            this.layer = layer;
         }
     }
 
@@ -266,6 +251,8 @@ namespace Microsoft.Boogie
     {
         public int lowerLayerNum;
         public int upperLayerNum;
+
+        public static LayerRange MinMax = new LayerRange(int.MinValue, int.MaxValue);
 
         public LayerRange(int layer) : this(layer, layer) { }
 
@@ -301,32 +288,52 @@ namespace Microsoft.Boogie
     public class CivlTypeChecker
     {
         public CheckingContext checkingContext;
-
         public Program program;
-        public Dictionary<Variable, SharedVariableInfo> globalVarToSharedVarInfo;
-        public Dictionary<Variable, LocalVariableInfo> localVarToLocalVariableInfo;
+
+        // Don't access directly!
+        // TypeCheckLocalVariables initializes globalVarToLayerRange such that variables with min-max layer range are not explicitely stored.
+        // Similarly for localVartoIntroLayer / TypeCheckLocalVariables.
+        // Use public access methods.
+        private Dictionary<Variable, LayerRange> globalVarToLayerRange;
+        private Dictionary<Variable, int> localVarToIntroLayer;
+
         public Dictionary<Procedure, AtomicAction> procToAtomicAction;
         public Dictionary<Procedure, YieldingProc> procToYieldingProc;
         public Dictionary<Procedure, InstrumentationProc> procToInstrumentationProc;
+
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
-        Dictionary<CallCmd, int> pureCallToLayer;
+        Dictionary<CallCmd, int> instrumentationCallToLayer;
 
         // This collections are for convenience in later phases and are only initialized at the end of type checking.
         public List<int> allLayerNums;
         public List<Variable> sharedVariables;
         public List<IdentifierExpr> sharedVariableIdentifiers;
 
+        public CivlTypeChecker(Program program)
+        {
+            this.checkingContext = new CheckingContext(null);
+            this.program = program;
+
+            this.globalVarToLayerRange = new Dictionary<Variable, LayerRange>();
+            this.localVarToIntroLayer = new Dictionary<Variable, int>();
+            this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
+            this.procToAtomicAction = new Dictionary<Procedure, AtomicAction>();
+            this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
+            this.procToInstrumentationProc = new Dictionary<Procedure, InstrumentationProc>();
+            this.instrumentationCallToLayer = new Dictionary<CallCmd, int>();
+        }
+
         public bool CallExists(CallCmd callCmd, int enclosingProcLayerNum, int layerNum)
         {
-            Debug.Assert(procToAtomicProcedureInfo.ContainsKey(callCmd.Proc));
-            var atomicProcedureInfo = procToAtomicProcedureInfo[callCmd.Proc];
-            if (atomicProcedureInfo.isPure)
+            Debug.Assert(procToInstrumentationProc.ContainsKey(callCmd.Proc));
+            var instrumentationProc = procToInstrumentationProc[callCmd.Proc];
+            if (instrumentationProc.isLeaky)
             {
-                return pureCallToLayer[callCmd] <= layerNum;
+                return enclosingProcLayerNum == layerNum;
             }
             else
             {
-                return enclosingProcLayerNum == layerNum;
+                return instrumentationCallToLayer[callCmd] <= layerNum;
             }
         }
 
@@ -357,7 +364,7 @@ namespace Microsoft.Boogie
             // We return min-max range for invalid declarations in order to proceed with type checking.
             if (layerNums.Count == 0)
             {
-                return new LayerRange(int.MinValue, int.MaxValue);
+                return LayerRange.MinMax;
             }
             else if (layerNums.Count == 1)
             {
@@ -372,13 +379,13 @@ namespace Microsoft.Boogie
                 else
                 {
                     Error(absy, "Invalid layer range");
-                    return new LayerRange(int.MinValue, int.MaxValue);
+                    return LayerRange.MinMax;
                 }
             }
             else
             {
                 Error(absy, "Invalid layer range");
-                return new LayerRange(int.MinValue, int.MaxValue);
+                return LayerRange.MinMax;
             }
         }
 
@@ -415,20 +422,6 @@ namespace Microsoft.Boogie
             return moverType;
         }
 
-        public CivlTypeChecker(Program program)
-        {
-            this.checkingContext = new CheckingContext(null);
-            this.program = program;
-
-            this.localVarToLocalVariableInfo = new Dictionary<Variable, LocalVariableInfo>();
-            this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
-            this.globalVarToSharedVarInfo = new Dictionary<Variable, SharedVariableInfo>();
-            this.procToAtomicAction = new Dictionary<Procedure, AtomicAction>();
-            this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
-            this.procToInstrumentationProc = new Dictionary<Procedure, InstrumentationProc>();
-            this.pureCallToLayer = new Dictionary<CallCmd, int>();
-        }
-
         public void TypeCheck()
         {
             TypeCheckGlobalVariables();
@@ -452,7 +445,7 @@ namespace Microsoft.Boogie
                 }
             }
             
-            sharedVariables = globalVarToSharedVarInfo.Keys.ToList();
+            sharedVariables = globalVarToLayerRange.Keys.ToList();
             sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
 
             new AttributeEraser().VisitProgram(program);
@@ -462,9 +455,17 @@ namespace Microsoft.Boogie
         {
             foreach (var g in program.GlobalVariables)
             {
-                LayerRange layerRange = ToLayerRange(FindLayers(g.Attributes), g);
-                globalVarToSharedVarInfo[g] = new SharedVariableInfo(layerRange);
+                var layerRange = ToLayerRange(FindLayers(g.Attributes), g);
+                if (layerRange != LayerRange.MinMax)
+                    globalVarToLayerRange[g] = layerRange;
             }
+        }
+
+        public LayerRange GlobalVariableLayerRange(Variable g)
+        {
+            if (globalVarToLayerRange.ContainsKey(g))
+                return globalVarToLayerRange[g];
+            return LayerRange.MinMax;
         }
 
         private void TypeCheckAtomicActions()
@@ -516,8 +517,16 @@ namespace Microsoft.Boogie
             foreach (var proc in program.Procedures.Where(proc => !proc.IsYield()))
             {
                 LayerRange layerRange = ToLayerRange(FindLayers(proc.Attributes), proc);
-                bool isLeaking = proc.Modifies.Count + proc.OutParams.Count > 0;
-                procToInstrumentationProc[proc] = new InstrumentationProc(layerRange, isLeaking);
+                bool isLeaky = proc.Modifies.Count + proc.OutParams.Count > 0;
+                foreach (var ie in proc.Modifies)
+                {
+                    if (GlobalVariableLayerRange(ie.Decl).lowerLayerNum != layerRange.lowerLayerNum)
+                    {
+                        Error(ie, "Instrumentation procedures can modify shared variables only on their introduction layer");
+                    }
+                }
+
+                procToInstrumentationProc[proc] = new InstrumentationProc(layerRange, isLeaky);
             }
             if (checkingContext.ErrorCount > 0) return;
 
@@ -561,7 +570,7 @@ namespace Microsoft.Boogie
                         continue;
                     }
 
-                    // Check that layers and parameters of proc and action match!
+                    // TODO: Check that layers and parameters of proc and action match!
 
                     procToYieldingProc[proc] = new ActionProc(proc, refinedAction, upperLayer);
                 }
@@ -575,7 +584,7 @@ namespace Microsoft.Boogie
                 }
             }
             if (checkingContext.ErrorCount > 0) return;
-            CollectLocalVariableLayers();
+            TypeCheckLocalVariables();
             if (checkingContext.ErrorCount > 0) return;
 
             YieldingProcVisitor visitor = new YieldingProcVisitor(this);
@@ -626,37 +635,52 @@ namespace Microsoft.Boogie
             }
         }
 
-        private void CollectLocalVariableLayers()
+        private void TypeCheckLocalVariables()
         {
+            // Local variable with no declared introduction layer implicitely have layer int.MinValue.
+            // However, to save space and avoid hash collisions, we do not explicitely store variables with layer int.MinValue.
+
+            // First we collect in and out parameter layers from procedures
             foreach (Procedure proc in procToYieldingProc.Keys)
             {
                 foreach (var param in Enumerable.Union(proc.InParams, proc.OutParams))
                 {
                     var layer = FindLocalVariableLayer(proc, param, procToYieldingProc[proc].upperLayer);
-                    if (layer == int.MinValue) continue;
-                    localVarToLocalVariableInfo[param] = new LocalVariableInfo(layer);
+                    if (layer != int.MinValue)
+                        localVarToIntroLayer[param] = layer;
                 }
             }
             foreach (Implementation impl in program.Implementations.Where(i => procToYieldingProc.ContainsKey(i.Proc)))
             {
+                // then we collect the layers of local variables in implementations
                 foreach (Variable v in impl.LocVars)
                 {
                     var layer = FindLocalVariableLayer(impl, v, procToYieldingProc[impl.Proc].upperLayer);
-                    localVarToLocalVariableInfo[v] = new LocalVariableInfo(layer);
+                    if (layer != int.MinValue)
+                        localVarToIntroLayer[v] = layer;
                 }
+                // and finally just copy the layer information from procedure parameters to their corresponding implementation parameter
+                // (i.e., layer declarations are only taken from procedures, not implementations)
                 for (int i = 0; i < impl.Proc.InParams.Count; i++)
                 {
                     Variable v = impl.Proc.InParams[i];
-                    var layer = localVarToLocalVariableInfo[v].layer;
-                    localVarToLocalVariableInfo[impl.InParams[i]] = new LocalVariableInfo(layer);
+                    if (localVarToIntroLayer.ContainsKey(v))
+                        localVarToIntroLayer[impl.InParams[i]] = localVarToIntroLayer[v];
                 }
                 for (int i = 0; i < impl.Proc.OutParams.Count; i++)
                 {
                     Variable v = impl.Proc.OutParams[i];
-                    var layer = localVarToLocalVariableInfo[v].layer;
-                    localVarToLocalVariableInfo[impl.OutParams[i]] = new LocalVariableInfo(layer);
+                    if (localVarToIntroLayer.ContainsKey(v))
+                        localVarToIntroLayer[impl.OutParams[i]] = localVarToIntroLayer[v];
                 }
             }
+        }
+
+        public int LocalVariableIntroLayer(Variable l)
+        {
+            if (localVarToIntroLayer.ContainsKey(l))
+                return localVarToIntroLayer[l];
+            return int.MinValue;
         }
 
         private int FindLocalVariableLayer(Declaration decl, Variable v, int enclosingProcLayerNum)
@@ -674,14 +698,6 @@ namespace Microsoft.Boogie
                 return int.MinValue;
             }
             return layers[0];
-        }
-
-        private static List<int> RemoveDuplicatesAndSort(List<int> attrs)
-        {
-            HashSet<int> layerSet = new HashSet<int>(attrs);
-            List<int> layers = new List<int>(layerSet);
-            layers.Sort();
-            return layers;
         }
 
         public void Error(Absy node, string message)
@@ -720,7 +736,7 @@ namespace Microsoft.Boogie
             {
                 if (node.Decl is GlobalVariable)
                 {
-                    var sharedVarLayerRange = ctc.globalVarToSharedVarInfo[node.Decl].layerRange;
+                    var sharedVarLayerRange = ctc.GlobalVariableLayerRange(node.Decl);
                     if (!sharedVarLayerRange.Subset(atomicAction.layerRange) || sharedVarLayerRange.lowerLayerNum == atomicAction.layerRange.lowerLayerNum) 
                         // a shared variable introduced at layer n is visible to an atomic action only at layer n+1 or higher
                         // thus, a shared variable with layer range [n,n] is not accessible by an atomic action
@@ -733,7 +749,7 @@ namespace Microsoft.Boogie
 
             public override Cmd VisitHavocCmd(HavocCmd node)
             {
-                ctc.Error(node, "Havoc command not allowed inside an atomic actions");
+                ctc.Error(node, "Havoc command not allowed inside an atomic action");
                 return base.VisitHavocCmd(node);
             }
 
@@ -744,7 +760,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        private class InstrumentationProcedureVisitor : StandardVisitor
+        private class InstrumentationProcedureVisitor : ReadOnlyVisitor
         {
             private CivlTypeChecker ctc;
             private InstrumentationProc instrumentationProc;
@@ -767,8 +783,8 @@ namespace Microsoft.Boogie
                     ctc.Error(callCmd, "Instrumentation procedure can only call an instrumentation procedure");
                     return base.VisitCallCmd(callCmd);
                 }
-                var calleeInfo = ctc.procToInstrumentationProc[callCmd.Proc];
-                if (!instrumentationProc.layerRange.Subset(calleeInfo.layerRange))
+                InstrumentationProc calleeProc = ctc.procToInstrumentationProc[callCmd.Proc];
+                if (!instrumentationProc.layerRange.Subset(calleeProc.layerRange))
                 {
                     ctc.Error(callCmd, "Caller layers must be subset of callee layers");
                 }
@@ -779,7 +795,7 @@ namespace Microsoft.Boogie
             {
                 if (node.Decl is GlobalVariable)
                 {
-                    LayerRange layerRange = ctc.globalVarToSharedVarInfo[node.Decl].layerRange;
+                    LayerRange layerRange = ctc.globalVarToLayerRange[node.Decl];
                     if (!instrumentationProc.layerRange.Subset(layerRange))
                     {
                         ctc.Error(node, "Shared variable is not accessible in instrumentation procedure");
@@ -793,15 +809,19 @@ namespace Microsoft.Boogie
         {
             CivlTypeChecker ctc;
             YieldingProc yieldingProc;
-            bool insideSpec;
-            LayerRange specLayerRange;
-            int introducedLocalVarsUpperBound;
+            List<IdentifierExpr> sharedVaribableAccesses;
+            List<IdentifierExpr> localVariableAccesses;
+
+            Implementation enclosingImpl;
 
             public YieldingProcVisitor(CivlTypeChecker ctc)
             {
                 this.ctc = ctc;
-                this.insideSpec = false;
-                introducedLocalVarsUpperBound = int.MaxValue;
+
+                sharedVaribableAccesses = null;
+                localVariableAccesses = null;
+
+                enclosingImpl = null;
             }
 
             public override Implementation VisitImplementation(Implementation node)
@@ -831,24 +851,20 @@ namespace Microsoft.Boogie
             {
                 if (node.Decl is GlobalVariable)
                 {
-                    if (insideSpec)
+                    if (sharedVaribableAccesses != null)
                     {
-                        if (!specLayerRange.Subset(ctc.globalVarToSharedVarInfo[node.Decl].layerRange))
-                        {
-                            ctc.Error(node, "Shared variable is not available on all layers");
-                        }
+                        sharedVaribableAccesses.Add(node);
                     }
                     else
                     {
                         ctc.Error(node, "Shared variable can be accessed only in instrumentation procedures, atomic actions, and specifications");
                     }
                 }
-                else if ((node.Decl is Formal || node.Decl is Variable) && ctc.localVarToLocalVariableInfo.ContainsKey(node.Decl))
+                else
                 {
-                    var localVariableInfo = ctc.localVarToLocalVariableInfo[node.Decl];
-                    if (introducedLocalVarsUpperBound < localVariableInfo.layer)
+                    if (localVariableAccesses != null)
                     {
-                        ctc.Error(node, "Introduced local variable is not accessible");
+                        localVariableAccesses.Add(node);
                     }
                 }
                 return base.VisitIdentifierExpr(node);
@@ -875,221 +891,188 @@ namespace Microsoft.Boogie
             public void VisitSpec<T>(T node)
                 where T : Absy, ICarriesAttributes
             {
-                insideSpec = true;
-                CheckAndAddLayers(node);
-                introducedLocalVarsUpperBound = specLayerRange.lowerLayerNum;
-                base.Visit(node);
-                introducedLocalVarsUpperBound = int.MaxValue;
-                insideSpec = false;
-            }
-
-            private void CheckAndAddLayers<T>(T node)
-                where T : Absy, ICarriesAttributes
-            {
-                var layers = RemoveDuplicatesAndSort(ctc.FindLayers(node.Attributes));
-                if (layers.Count == 0)
+                var specLayers = ctc.FindLayers(node.Attributes).Distinct().OrderBy(l => l).ToList();
+                if (specLayers.Count == 0)
                 {
-                    specLayerRange = new LayerRange(int.MinValue, int.MaxValue);
                     ctc.Error(node, "Specification layer(s) not present");
                     return;
                 }
 
-                specLayerRange = new LayerRange(layers.Min(), layers.Max());
-                ctc.absyToLayerNums[node] = new HashSet<int>(layers);
+                ctc.absyToLayerNums[node] = new HashSet<int>(specLayers);
 
-                if (specLayerRange.upperLayerNum > yieldingProc.upperLayer)
-                {
-                    ctc.Error(node, "Specification layer cannot be greater than the layer of enclosing procedure");
+                // Collect accessed shared and local variables
+                sharedVaribableAccesses = new List<IdentifierExpr>();
+                localVariableAccesses = new List<IdentifierExpr>();
+                base.Visit(node);
+
+                foreach (var layer in specLayers) {
+                    if (layer > yieldingProc.upperLayer)
+                    {
+                        ctc.Error(node, string.Format("Specification layer {0} is greater than enclosing procedure layer {1}", layer, yieldingProc.upperLayer));
+                    }
+                    foreach (var ie in sharedVaribableAccesses)
+                    {
+                        if (!ctc.GlobalVariableLayerRange(ie.Decl).Contains(layer))
+                        {
+                            ctc.Error(ie, string.Format("Global variable {0} is not available at layer {1}", ie.Name, layer));
+                        }
+                    }
+                    foreach (var ie in localVariableAccesses)
+                    {
+                        if (layer < ctc.LocalVariableIntroLayer(ie.Decl))
+                        {
+                            ctc.Error(ie, string.Format("Local variable {0} is not available at layer {1}", ie.Name, layer));
+                        }
+                    }
+
                 }
+
+                sharedVaribableAccesses = null;
+                localVariableAccesses = null;
             }
 
             public override Cmd VisitCallCmd(CallCmd call)
             {
-                var callerAction = procToActionInfo[enclosingImpl.Proc];
-                int callerLayerNum = procToActionInfo[enclosingImpl.Proc].createdAtLayerNum;
+                YieldingProc callerProc = yieldingProc;
 
-                if (procToActionInfo.ContainsKey(call.Proc))
+                if (ctc.procToYieldingProc.ContainsKey(call.Proc))
                 {
-                    ActionInfo calleeAction = procToActionInfo[call.Proc];
-                    int calleeLayerNum = calleeAction.createdAtLayerNum;
-
-                    // Check that callee layer is "lower" then caller layer
-                    if (calleeAction is AtomicActionInfo || (calleeAction is SkipActionInfo && callerAction is MoverActionInfo))
-                    {
-                        if (callerLayerNum <= calleeLayerNum)
-                        {
-                            ctc.Error(call, "The layer of the caller must be greater than the layer of the callee");
-                        }
-                    }
-                    else if (calleeAction is SkipActionInfo)
-                    {
-                        /*if (callerAction is MoverActionInfo)
-                        {
-                            ctc.Error(call, "A mover procedure cannot call a skip procedure");
-                        }
-                        else*/
-                        if (callerLayerNum < calleeLayerNum)
-                        {
-                            ctc.Error(call, "The layer of the caller must be greater than or equal to the layer of the callee");
-                        }
-                        else if (callerLayerNum == calleeLayerNum && enclosingImpl.OutParams.Count > 0)
-                        {
-                            HashSet<Variable> callerOutParams = new HashSet<Variable>(enclosingImpl.OutParams);
-                            foreach (var x in call.Outs)
-                            {
-                                // For refinement checking, skip procedures are just empty procedures that immediately return.
-                                // Thus, the effect on output variables is havoc, which would propagate to the callers output.
-                                if (callerOutParams.Contains(x.Decl))
-                                {
-                                    ctc.Error(call, "An output variable of the enclosing implementation cannot be used as output argument for this call");
-                                }
-                            }
-                        }
-                    }
-                    else if (calleeAction is MoverActionInfo)
-                    {
-                        if (callerLayerNum != calleeLayerNum)
-                        {
-                            ctc.Error(call, "The layer of the caller must be equal to the layer of the callee");
-                        }
-                    }
-
-                    // check that callee is available
-                    if (calleeAction.availableUptoLayerNum < callerLayerNum && !(calleeAction is MoverActionInfo)) // for mover procedures we already have a tighter check above
-                    {
-                        ctc.Error(call, "The callee is not available in the caller procedure");
-                    }
-
-                    if (call.IsAsync && !calleeAction.IsLeftMover)
-                    {
-                        ctc.Error(call, "Target of async call must be a left mover");
-                    }
-
-                    for (int i = 0; i < call.Ins.Count; i++)
-                    {
-                        var formal = call.Proc.InParams[i];
-                        if (ctc.localVarToLocalVariableInfo.ContainsKey(formal))
-                            introducedLocalVarsUpperBound = ctc.localVarToLocalVariableInfo[formal].layer;
-                        else
-                            introducedLocalVarsUpperBound = int.MaxValue;
-
-                        // Visitor checks for global variable accesses and introduced local variables
-                        Visit(call.Ins[i]);
-
-                        introducedLocalVarsUpperBound = int.MaxValue;
-                    }
-
-                    for (int i = 0; i < call.Outs.Count; i++)
-                    {
-                        var formal = call.Proc.OutParams[i];
-                        var actual = call.Outs[i].Decl;
-
-                        // Visitor only called to check for global variable accesses
-                        introducedLocalVarsUpperBound = int.MaxValue;
-                        Visit(call.Outs[i]);
-
-                        if (ctc.localVarToLocalVariableInfo.ContainsKey(formal) &&
-                            (!ctc.localVarToLocalVariableInfo.ContainsKey(actual) ||
-                              ctc.localVarToLocalVariableInfo[actual].layer < ctc.localVarToLocalVariableInfo[formal].layer))
-                        {
-                            ctc.Error(call, "Formal return parameter of call must be introduced no later than the actual parameter");
-                        }
-                    }
-
-                    return call;
+                    VisitYieldingProcCallCmd(call, callerProc, ctc.procToYieldingProc[call.Proc]);
                 }
-                else if (procToAtomicProcedureInfo.ContainsKey(call.Proc))
+                else if (ctc.procToInstrumentationProc.ContainsKey(call.Proc))
                 {
-                    var atomicProcedureInfo = procToAtomicProcedureInfo[call.Proc];
-                    if (atomicProcedureInfo.isPure)
-                    { // pure procedure
-                        if (call.Outs.Count > 0)
-                        {
-                            int inferredLayer = int.MinValue;
-                            foreach (var ie in call.Outs)
-                            {
-                                if (!localVarToLocalVariableInfo.ContainsKey(ie.Decl)) continue;
-                                if (inferredLayer < localVarToLocalVariableInfo[ie.Decl].layer)
-                                {
-                                    inferredLayer = localVarToLocalVariableInfo[ie.Decl].layer;
-                                }
-                            }
-                            pureCallToLayer[call] = inferredLayer;
-                            if (inferredLayer != int.MinValue)
-                            {
-                                foreach (var ie in call.Outs)
-                                {
-                                    if (!localVarToLocalVariableInfo.ContainsKey(ie.Decl))
-                                    {
-                                        ctc.Error(call, "Output variable must be introduced");
-                                    }
-                                    else if (inferredLayer != localVarToLocalVariableInfo[ie.Decl].layer)
-                                    {
-                                        ctc.Error(call, "All output variables must be introduced at the same layer");
-                                    }
-                                }
-                            }
-                            Debug.Assert(introducedLocalVarsUpperBound == int.MinValue);
-                            foreach (var e in call.Ins)
-                            {
-                                Visit(e);
-                                if (inferredLayer < introducedLocalVarsUpperBound)
-                                {
-                                    ctc.Error(call, "An introduced local variable is not accessible");
-                                }
-                                introducedLocalVarsUpperBound = int.MinValue;
-                            }
-                        }
-                        else
-                        {
-                            Debug.Assert(introducedLocalVarsUpperBound == int.MinValue);
-                            int inferredLayer = int.MinValue;
-                            foreach (var e in call.Ins)
-                            {
-                                Visit(e);
-                                if (inferredLayer < introducedLocalVarsUpperBound)
-                                {
-                                    inferredLayer = introducedLocalVarsUpperBound;
-                                }
-                                introducedLocalVarsUpperBound = int.MinValue;
-                            }
-                            pureCallToLayer[call] = inferredLayer;
-                        }
-                    }
-                    else
-                    { // atomic procedure
-                        if (callerLayerNum != atomicProcedureInfo.layerRange.upperLayerNum)
-                        {
-                            ctc.Error(call, "Creation layer of caller must be the upper bound of the layer range of callee");
-                        }
-                        foreach (var ie in call.Proc.Modifies)
-                        {
-                            if (callerLayerNum != globalVarToSharedVarInfo[ie.Decl].introLayerNum)
-                            {
-                                ctc.Error(call, "Creation layer of caller must be identical to the introduction layer of modified variable");
-                            }
-                        }
-                        foreach (var ie in call.Outs)
-                        {
-                            if (localVarToLocalVariableInfo.ContainsKey(ie.Decl) &&
-                                callerLayerNum == localVarToLocalVariableInfo[ie.Decl].layer)
-                                continue;
-                            ctc.Error(call, "Output variable must be introduced at the creation layer of caller");
-                        }
-                    }
-                    return call;
+                    VisitInstrumentationProcCallCmd(call, callerProc, ctc.procToInstrumentationProc[call.Proc]);
+
                 }
                 else
                 {
                     ctc.Error(call, "A yielding procedure can call only atomic or yielding procedures");
-                    return call;
+                }
+                return call;
+            }
+
+            private void VisitYieldingProcCallCmd (CallCmd call, YieldingProc callerProc, YieldingProc calleeProc)
+            {
+                if (calleeProc is ActionProc)
+                {
+                    if (callerProc.upperLayer <= calleeProc.upperLayer)
+                    {
+                        ctc.Error(call, "The layer of the caller must be greater than the layer of the callee");
+                    }
+                    if (((ActionProc)calleeProc).refinedAction.layerRange.upperLayerNum < callerProc.upperLayer)
+                    {
+                        ctc.Error(call, "The callee is not available in the caller procedure");
+                    }
+                }
+                else if (calleeProc is SkipProc)
+                {
+                    if (callerProc is MoverProc && callerProc.upperLayer <= calleeProc.upperLayer)
+                    {
+                        ctc.Error(call, "The layer of the caller must be greater than the layer of the callee");
+                    }
+                    else if (callerProc.upperLayer < calleeProc.upperLayer)
+                    {
+                        ctc.Error(call, "The layer of the caller must be greater than or equal to the layer of the callee");
+                    }
+                    else if (callerProc.upperLayer == calleeProc.upperLayer && enclosingImpl.OutParams.Count > 0)
+                    {
+                        HashSet<Variable> callerOutParams = new HashSet<Variable>(enclosingImpl.OutParams);
+                        foreach (var x in call.Outs)
+                        {
+                            // For refinement checking, skip procedures are just empty procedures that immediately return.
+                            // Thus, the effect on output variables is havoc, which would propagate to the callers output.
+                            if (callerOutParams.Contains(x.Decl))
+                            {
+                                ctc.Error(call, "An output variable of the enclosing implementation cannot be used as output argument for this call");
+                            }
+                        }
+                    }
+                }
+                else if (calleeProc is MoverProc)
+                {
+                    if (callerProc.upperLayer != calleeProc.upperLayer)
+                    {
+                        ctc.Error(call, "The layer of the caller must be equal to the layer of the callee");
+                    }
+                }
+
+                if (call.IsAsync && !calleeProc.IsLeftMover)
+                {
+                    ctc.Error(call, "Target of async call must be a left mover");
+                }
+
+                for (int i = 0; i < call.Ins.Count; i++)
+                {
+                    // Visitor checks for global variable accesses and collects accessed local variables
+                    localVariableAccesses = new List<IdentifierExpr>();
+                    Visit(call.Ins[i]);
+
+                    var formalIntroLayer = ctc.LocalVariableIntroLayer(call.Proc.InParams[i]);
+                    foreach (var ie in localVariableAccesses)
+                    {
+                        var actualIntroLayer = ctc.LocalVariableIntroLayer(ie.Decl);
+                        if (ctc.LocalVariableIntroLayer(ie.Decl) > formalIntroLayer)
+                        {
+                            ctc.Error(ie, string.Format("Variable {0} introduced on layer {1} can not be passed to formal parameter introduced on layer {2}", ie.Decl.Name, actualIntroLayer, formalIntroLayer));
+                        }
+                    }
+
+                    localVariableAccesses = null;
+                }
+
+                for (int i = 0; i < call.Outs.Count; i++)
+                {
+                    var formal = call.Proc.OutParams[i];
+                    var actual = call.Outs[i].Decl;
+                    var formalIntroLayer = ctc.LocalVariableIntroLayer(formal);
+                    var actualIntroLayer = ctc.LocalVariableIntroLayer(actual);
+
+                    // Visitor only called to check for global variable accesses
+                    Visit(call.Outs[i]);
+
+                    if (actualIntroLayer < formalIntroLayer)
+                    {
+                        ctc.Error(actual, "Formal return parameter of call must be introduced no later than the actual parameter");
+                    }
+                }
+            }
+
+            private void VisitInstrumentationProcCallCmd(CallCmd call, YieldingProc callerProc, InstrumentationProc calleeProc)
+            {
+                if (!calleeProc.layerRange.Contains(callerProc.upperLayer))
+                {
+                    ctc.Error(call, string.Format("Called instrumentation procedure {0} is not available at layer {1}", callerProc.proc.Name, callerProc.upperLayer));
+                    return;
+                }
+
+                if (calleeProc.isLeaky)
+                {
+                    // Call to leaky instrumentation procedure only exists at the upper layer of caller yielding procedure.
+                    // Thus, all local variables are already introduced and we only have to check output variables.
+                    foreach (var ie in call.Outs)
+                    {
+                        if (ctc.LocalVariableIntroLayer(ie.Decl) != callerProc.upperLayer)
+                        {
+                            ctc.Error(ie, string.Format("Output variable {0} must be introduced at layer {1}", ie.Decl.Name, callerProc.upperLayer));
+                        }
+                    }
+                }
+                else
+                {
+                    // Call to non-leaky instrumentation procedure exists as soon as all local variables used as input are available.
+                    // I.e., we compute the maximum introduction layer of all local variables used as input.
+                    foreach (var e in call.Ins)
+                    {
+                        localVariableAccesses = new List<IdentifierExpr>();
+                        Visit(e);
+                        ctc.instrumentationCallToLayer[call] = localVariableAccesses.Max(ie => ctc.LocalVariableIntroLayer(ie.Decl));
+                        localVariableAccesses = null;
+                    }
                 }
             }
 
             public override Cmd VisitParCallCmd(ParCallCmd parCall)
             {
-                // TODO: rewrite to handle mover procedures!
-                int enclosingProcLayerNum = procToActionInfo[enclosingImpl.Proc].createdAtLayerNum;
                 bool allLeftMover = true;
                 bool allRightMover = true;
                 int maxCalleeLayerNum = int.MinValue;
@@ -1097,30 +1080,30 @@ namespace Microsoft.Boogie
                 int numAtomicActions = 0;
                 foreach (CallCmd iter in parCall.CallCmds)
                 {
-                    ActionInfo actionInfo = procToActionInfo[iter.Proc];
-                    allLeftMover = allLeftMover && actionInfo.IsLeftMover;
-                    allRightMover = allRightMover && actionInfo.IsRightMover;
+                    YieldingProc callee = ctc.procToYieldingProc[iter.Proc];
+                    allLeftMover = allLeftMover && callee.IsLeftMover;
+                    allRightMover = allRightMover && callee.IsRightMover;
 
-                    if (actionInfo is MoverActionInfo)
+                    if (callee is MoverProc)
                     {
                         ctc.Error(parCall, "Mover procedure cannot be part of a parallel call");
                     }
-                    else if (actionInfo is AtomicActionInfo)
+                    else if (callee is ActionProc)
                     {
                         numAtomicActions++;
                         if (atomicActionCalleeLayerNum == int.MinValue)
                         {
-                            atomicActionCalleeLayerNum = actionInfo.createdAtLayerNum;
+                            atomicActionCalleeLayerNum = callee.upperLayer;
                         }
-                        else if (atomicActionCalleeLayerNum != actionInfo.createdAtLayerNum)
+                        else if (atomicActionCalleeLayerNum != callee.upperLayer)
                         {
                             ctc.Error(parCall, "All atomic actions must be introduced at the same layer");
                         }
                     }
 
-                    if (actionInfo.createdAtLayerNum > maxCalleeLayerNum)
+                    if (callee.upperLayer > maxCalleeLayerNum)
                     {
-                        maxCalleeLayerNum = actionInfo.createdAtLayerNum;
+                        maxCalleeLayerNum = callee.upperLayer;
                     }
                 }
                 if (numAtomicActions > 1 && !allLeftMover && !allRightMover)
