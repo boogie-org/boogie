@@ -24,24 +24,24 @@ namespace Microsoft.Boogie
         public MoverType moverType;
         public LayerRange layerRange;
 
-        private List<AssertCmd> gate;
+        public List<AssertCmd> gate;
 
-        private CodeExpr thisAction;
-        private List<AssertCmd> thisGate;
-        private List<Variable> thisInParams;
-        private List<Variable> thisOutParams;
-        private Dictionary<Variable, Expr> thisMap;
+        public CodeExpr thisAction;
+        public List<AssertCmd> thisGate;
+        public List<Variable> thisInParams;
+        public List<Variable> thisOutParams;
+        public Dictionary<Variable, Expr> thisMap;
 
-        private CodeExpr thatAction;
-        private List<AssertCmd> thatGate;
-        private List<Variable> thatInParams;
-        private List<Variable> thatOutParams;
-        private Dictionary<Variable, Expr> thatMap;
+        public CodeExpr thatAction;
+        public List<AssertCmd> thatGate;
+        public List<Variable> thatInParams;
+        public List<Variable> thatOutParams;
+        public Dictionary<Variable, Expr> thatMap;
 
-        private Dictionary<Variable, Function> triggerFuns;
-        private HashSet<Variable> usedGlobalVars;
-        private HashSet<Variable> modifiedGlobalVars;
-        private HashSet<Variable> gateUsedGlobalVars;
+        public Dictionary<Variable, Function> triggerFuns;
+        public HashSet<Variable> usedGlobalVars;
+        public HashSet<Variable> modifiedGlobalVars;
+        public HashSet<Variable> gateUsedGlobalVars;
 
         public AtomicAction(Procedure proc, Implementation impl, MoverType moverType, LayerRange layerRange)
         {
@@ -64,7 +64,7 @@ namespace Microsoft.Boogie
 
             this.triggerFuns = new Dictionary<Variable, Function>();
             
-            // The gate of an atomic action is represented as asserts at the beginning of the procedure body
+            // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
             // Calls to atomic actions are inlined and for most calls the gate is assumed, so we rewrite the asserts to assumes.
             // Only at specific calls the gate has to be asserted and thus we keep the asserts on the side.
             var cmds = impl.Blocks[0].Cmds;
@@ -73,7 +73,7 @@ namespace Microsoft.Boogie
                 AssertCmd assertCmd = cmds[i] as AssertCmd;
                 if (assertCmd == null) break;
                 gate.Add(assertCmd);
-                cmds[i] = new AssumeCmd(assertCmd.tok, Expr.True);
+                cmds[i] = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
             }
 
             SetupCopy(ref thisAction, ref thisGate, ref thisInParams, ref thisOutParams, ref thisMap, "_this");
@@ -268,9 +268,9 @@ namespace Microsoft.Boogie
             return lowerLayerNum <= layerNum && layerNum <= upperLayerNum;
         }
 
-        public bool Subset(LayerRange info)
+        public bool Subset(LayerRange other)
         {
-            return info.lowerLayerNum <= lowerLayerNum && upperLayerNum <= info.upperLayerNum;
+            return other.lowerLayerNum <= lowerLayerNum && upperLayerNum <= other.upperLayerNum;
         }
     }
 

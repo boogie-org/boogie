@@ -12,50 +12,50 @@ namespace Microsoft.Boogie
         LinearTypeChecker linearTypeChecker;
         CivlTypeChecker civlTypeChecker;
         List<Declaration> decls;
-        HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>> commutativityCheckerCache;
-        HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>> gatePreservationCheckerCache;
-        HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>> failurePreservationCheckerCache;
+        HashSet<Tuple<AtomicAction, AtomicAction>> commutativityCheckerCache;
+        HashSet<Tuple<AtomicAction, AtomicAction>> gatePreservationCheckerCache;
+        HashSet<Tuple<AtomicAction, AtomicAction>> failurePreservationCheckerCache;
 
         private MoverCheck(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
             this.linearTypeChecker = linearTypeChecker;
             this.civlTypeChecker = civlTypeChecker;
             this.decls = decls;
-            this.commutativityCheckerCache = new HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>>();
-            this.gatePreservationCheckerCache = new HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>>();
-            this.failurePreservationCheckerCache = new HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>>();
+            this.commutativityCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
+            this.gatePreservationCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
+            this.failurePreservationCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
         }
 
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
-            if (civlTypeChecker.procToActionInfo.Count == 0)
+            if (civlTypeChecker.procToYieldingProc.Count == 0)
                 return;
 
-            List<ActionInfo> sortedByCreatedLayerNum = new List<ActionInfo>(civlTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo && !x.isExtern));
-            sortedByCreatedLayerNum.Sort((x, y) => { return (x.createdAtLayerNum == y.createdAtLayerNum) ? 0 : (x.createdAtLayerNum < y.createdAtLayerNum) ? -1 : 1; });
-            List<ActionInfo> sortedByAvailableUptoLayerNum = new List<ActionInfo>(civlTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo && !x.isExtern));
-            sortedByAvailableUptoLayerNum.Sort((x, y) => { return (x.availableUptoLayerNum == y.availableUptoLayerNum) ? 0 : (x.availableUptoLayerNum < y.availableUptoLayerNum) ? -1 : 1; });
+            List<AtomicAction> sortedByCreatedLayerNum = civlTypeChecker.procToAtomicAction.Values
+                .OrderBy(a => a.layerRange.lowerLayerNum).ToList();
+            List<AtomicAction> sortedByAvailableUptoLayerNum = civlTypeChecker.procToAtomicAction.Values
+                .OrderBy(a => a.layerRange.upperLayerNum).ToList().ToList();
 
-            Dictionary<int, HashSet<AtomicActionInfo>> pools = new Dictionary<int, HashSet<AtomicActionInfo>>();
+            Dictionary<int, HashSet<AtomicAction>> pools = new Dictionary<int, HashSet<AtomicAction>>();
             int indexIntoSortedByCreatedLayerNum = 0;
             int indexIntoSortedByAvailableUptoLayerNum = 0;
-            HashSet<AtomicActionInfo> currPool = new HashSet<AtomicActionInfo>();
+            HashSet<AtomicAction> currPool = new HashSet<AtomicAction>();
             while (indexIntoSortedByCreatedLayerNum < sortedByCreatedLayerNum.Count)
             {
-                var currLayerNum = sortedByCreatedLayerNum[indexIntoSortedByCreatedLayerNum].createdAtLayerNum;
-                pools[currLayerNum] = new HashSet<AtomicActionInfo>(currPool);
+                var currLayerNum = sortedByCreatedLayerNum[indexIntoSortedByCreatedLayerNum].layerRange.lowerLayerNum;
+                pools[currLayerNum] = new HashSet<AtomicAction>(currPool);
                 while (indexIntoSortedByCreatedLayerNum < sortedByCreatedLayerNum.Count)
                 {
-                    var actionInfo = sortedByCreatedLayerNum[indexIntoSortedByCreatedLayerNum] as AtomicActionInfo;
-                    if (actionInfo.createdAtLayerNum > currLayerNum) break;
-                    pools[currLayerNum].Add(actionInfo);
+                    var action = sortedByCreatedLayerNum[indexIntoSortedByCreatedLayerNum];
+                    if (action.layerRange.lowerLayerNum > currLayerNum) break;
+                    pools[currLayerNum].Add(action);
                     indexIntoSortedByCreatedLayerNum++;
                 }
                 while (indexIntoSortedByAvailableUptoLayerNum < sortedByAvailableUptoLayerNum.Count)
                 {
-                    var actionInfo = sortedByAvailableUptoLayerNum[indexIntoSortedByAvailableUptoLayerNum] as AtomicActionInfo;
-                    if (actionInfo.availableUptoLayerNum > currLayerNum) break;
-                    pools[currLayerNum].Remove(actionInfo);
+                    var action = sortedByAvailableUptoLayerNum[indexIntoSortedByAvailableUptoLayerNum];
+                    if (action.layerRange.upperLayerNum > currLayerNum) break;
+                    pools[currLayerNum].Remove(action);
                     indexIntoSortedByAvailableUptoLayerNum++;
                 }
                 currPool = pools[currLayerNum];
@@ -88,11 +88,11 @@ namespace Microsoft.Boogie
                     moverChecking.CreateFailurePreservationChecker(program, second, first);
                 }
             }
-            foreach (AtomicActionInfo atomicActionInfo in sortedByCreatedLayerNum)
+            foreach (AtomicAction atomicAction in sortedByCreatedLayerNum)
             {
-                if (atomicActionInfo.IsLeftMover && atomicActionInfo.hasAssumeCmd)
+                if (atomicAction.IsLeftMover && atomicAction.HasAssumeCmd)
                 {
-                    moverChecking.CreateNonBlockingChecker(program, atomicActionInfo);
+                    moverChecking.CreateNonBlockingChecker(program, atomicAction);
                 }
             }
         }
@@ -155,13 +155,13 @@ namespace Microsoft.Boogie
             return new Requires(false, Expr.And(DisjointnessExpr(program, paramVars, frame)));
         }
 
-        private void CreateCommutativityChecker(Program program, AtomicActionInfo first, AtomicActionInfo second)
+        private void CreateCommutativityChecker(Program program, AtomicAction first, AtomicAction second)
         {
             if (first == second && first.thatInParams.Count == 0 && first.thatOutParams.Count == 0)
                 return;
             if (first.TriviallyCommutesWith(second))
                 return;
-            if (!commutativityCheckerCache.Add(new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second)))
+            if (!commutativityCheckerCache.Add(new Tuple<AtomicAction, AtomicAction>(first, second)))
                 return;
 
             List<Variable> inputs  = Enumerable.Union(first.thatInParams, second.thisInParams).ToList();
@@ -178,9 +178,9 @@ namespace Microsoft.Boogie
             List<Block> blocks = Enumerable.Union(firstBlocks, secondBlocks).ToList();
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
-            frame.UnionWith(first.actionUsedGlobalVars);
+            frame.UnionWith(first.usedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
-            frame.UnionWith(second.actionUsedGlobalVars);
+            frame.UnionWith(second.usedGlobalVars);
             
             List<Requires> requires = new List<Requires>();
             requires.Add(DisjointnessRequires(program, first.thatInParams.Union(second.thisInParams), frame));
@@ -214,11 +214,11 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateGatePreservationChecker(Program program, AtomicActionInfo first, AtomicActionInfo second)
+        private void CreateGatePreservationChecker(Program program, AtomicAction first, AtomicAction second)
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
-            if (!gatePreservationCheckerCache.Add(new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second)))
+            if (!gatePreservationCheckerCache.Add(new Tuple<AtomicAction, AtomicAction>(first, second)))
                 return;
 
             List<Variable> inputs = Enumerable.Union(first.thatInParams, second.thisInParams).ToList();
@@ -228,7 +228,7 @@ namespace Microsoft.Boogie
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
-            frame.UnionWith(second.actionUsedGlobalVars);
+            frame.UnionWith(second.usedGlobalVars);
 
             List<Requires> requires = new List<Requires>();
             List<Ensures> ensures = new List<Ensures>();
@@ -253,11 +253,11 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateFailurePreservationChecker(Program program, AtomicActionInfo first, AtomicActionInfo second)
+        private void CreateFailurePreservationChecker(Program program, AtomicAction first, AtomicAction second)
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
-            if (!failurePreservationCheckerCache.Add(new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second)))
+            if (!failurePreservationCheckerCache.Add(new Tuple<AtomicAction, AtomicAction>(first, second)))
                 return;
 
             List<Variable> inputs = Enumerable.Union(first.thatInParams, second.thisInParams).ToList();
@@ -267,7 +267,7 @@ namespace Microsoft.Boogie
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
-            frame.UnionWith(second.actionUsedGlobalVars);
+            frame.UnionWith(second.usedGlobalVars);
 
             List<Requires> requires = new List<Requires>();
             requires.Add(DisjointnessRequires(program, first.thatInParams.Union(second.thisInParams), frame));
@@ -291,14 +291,14 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateNonBlockingChecker(Program program, AtomicActionInfo second)
+        private void CreateNonBlockingChecker(Program program, AtomicAction second)
         {
             List<Variable> inputs = new List<Variable>();
             inputs.AddRange(second.thisInParams);
 
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(second.gateUsedGlobalVars);
-            frame.UnionWith(second.actionUsedGlobalVars);
+            frame.UnionWith(second.usedGlobalVars);
             
             List<Requires> requires = new List<Requires>();
             requires.Add(DisjointnessRequires(program, second.thisInParams, frame));

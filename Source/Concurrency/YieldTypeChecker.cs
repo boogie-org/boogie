@@ -65,13 +65,13 @@ namespace Microsoft.Boogie
 
         CivlTypeChecker civlTypeChecker;
         public CheckingContext checkingContext;
-        private Graph<MoverActionInfo> moverProcedureCallGraph;
+        private Graph<MoverProc> moverProcedureCallGraph;
 
         public YieldTypeChecker(CivlTypeChecker civlTypeChecker)
         {
             this.civlTypeChecker = civlTypeChecker;
             this.checkingContext = new CheckingContext(null);
-            this.moverProcedureCallGraph = new Graph<MoverActionInfo>();
+            this.moverProcedureCallGraph = new Graph<MoverProc>();
         }
 
         public void TypeCheck()
@@ -79,35 +79,35 @@ namespace Microsoft.Boogie
             // Mover procedures can only call other mover procedures on the same layer.
             // Thus, the constructed call graph naturally forms disconnected components w.r.t. layers and we
             // can keep a single graph instead of one for each layer;
-            foreach (var impl in civlTypeChecker.program.Implementations.Where(impl => civlTypeChecker.procToActionInfo.ContainsKey(impl.Proc)))
+            foreach (var impl in civlTypeChecker.program.Implementations.Where(impl => civlTypeChecker.procToYieldingProc.ContainsKey(impl.Proc)))
             {
-                MoverActionInfo callerActionInfo = civlTypeChecker.procToActionInfo[impl.Proc] as MoverActionInfo;
-                if (callerActionInfo == null) continue;
+                MoverProc callerProc = civlTypeChecker.procToYieldingProc[impl.Proc] as MoverProc;
+                if (callerProc == null) continue;
 
                 foreach (var callCmd in impl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
                 {
-                    if (civlTypeChecker.procToActionInfo.ContainsKey(callCmd.Proc))
+                    if (civlTypeChecker.procToYieldingProc.ContainsKey(callCmd.Proc))
                     {
-                        MoverActionInfo calleeActionInfo = civlTypeChecker.procToActionInfo[callCmd.Proc] as MoverActionInfo;
-                        if (calleeActionInfo == null) continue;
+                        MoverProc calleeProc = civlTypeChecker.procToYieldingProc[callCmd.Proc] as MoverProc;
+                        if (calleeProc == null) continue;
 
-                        Debug.Assert(callerActionInfo.createdAtLayerNum == calleeActionInfo.createdAtLayerNum);
-                        moverProcedureCallGraph.AddEdge(callerActionInfo, calleeActionInfo);
+                        Debug.Assert(callerProc.upperLayer == calleeProc.upperLayer);
+                        moverProcedureCallGraph.AddEdge(callerProc, calleeProc);
                     }
                 }
             }
 
-            foreach (var impl in civlTypeChecker.program.Implementations.Where(impl => civlTypeChecker.procToActionInfo.ContainsKey(impl.Proc)))
+            foreach (var impl in civlTypeChecker.program.Implementations.Where(impl => civlTypeChecker.procToYieldingProc.ContainsKey(impl.Proc)))
             {
-                var actionInfo = civlTypeChecker.procToActionInfo[impl.Proc];
+                var yieldingProc = civlTypeChecker.procToYieldingProc[impl.Proc];
 
                 impl.PruneUnreachableBlocks();
                 Graph<Block> implGraph = Program.GraphFromImpl(impl);
                 implGraph.ComputeLoops();
 
-                foreach (int layerNum in civlTypeChecker.allLayerNums.Where(l => l <= actionInfo.createdAtLayerNum))
+                foreach (int layerNum in civlTypeChecker.allLayerNums.Where(l => l <= yieldingProc.upperLayer))
                 {
-                    PerLayerYieldTypeChecker perLayerTypeChecker = new PerLayerYieldTypeChecker(this, actionInfo, impl, layerNum, implGraph);
+                    PerLayerYieldTypeChecker perLayerTypeChecker = new PerLayerYieldTypeChecker(this, yieldingProc, impl, layerNum, implGraph);
                     perLayerTypeChecker.TypeCheckLayer();
                 }
             }
@@ -122,7 +122,7 @@ namespace Microsoft.Boogie
         {
             int stateCounter;
             YieldTypeChecker @base;
-            ActionInfo actionInfo;
+            YieldingProc yieldingProc;
             Implementation impl;
             int currLayerNum;
             Dictionary<Absy, int> absyToNode;
@@ -132,10 +132,10 @@ namespace Microsoft.Boogie
             Dictionary<Tuple<int, int>, int> edgeLabels;
             Graph<Block> implGraph;
 
-            public PerLayerYieldTypeChecker(YieldTypeChecker @base, ActionInfo actionInfo, Implementation impl, int currLayerNum, Graph<Block> implGraph)
+            public PerLayerYieldTypeChecker(YieldTypeChecker @base, YieldingProc yieldingProc, Implementation impl, int currLayerNum, Graph<Block> implGraph)
             {
                 this.@base = @base;
-                this.actionInfo = actionInfo;
+                this.yieldingProc = yieldingProc;
                 this.impl = impl;
                 this.currLayerNum = currLayerNum;
                 this.implGraph = implGraph;
@@ -240,7 +240,7 @@ namespace Microsoft.Boogie
                 }
             }
 
-            private bool IsMoverProcedure { get { return actionInfo is MoverActionInfo && actionInfo.createdAtLayerNum == currLayerNum; } }
+            private bool IsMoverProcedure { get { return yieldingProc is MoverProc && yieldingProc.upperLayer == currLayerNum; } }
 
             private static bool IsTerminating(ICarriesAttributes x)
             {
@@ -254,23 +254,24 @@ namespace Microsoft.Boogie
 
             private bool CheckAtomicity(Dictionary<int, HashSet<int>> simulationRelation)
             {
-                if (actionInfo.moverType == MoverType.Atomic && simulationRelation[initialState].Count == 0) return false;
-                if (actionInfo.IsRightMover && (!simulationRelation[initialState].Contains(RM) || finalStates.Any(f => !simulationRelation[f].Contains(RM)))) return false;
-                if (actionInfo.IsLeftMover && !simulationRelation[initialState].Contains(LM)) return false;
+                if (yieldingProc.moverType == MoverType.Atomic && simulationRelation[initialState].Count == 0) return false;
+                if (yieldingProc.IsRightMover && (!simulationRelation[initialState].Contains(RM) || finalStates.Any(f => !simulationRelation[f].Contains(RM)))) return false;
+                if (yieldingProc.IsLeftMover && !simulationRelation[initialState].Contains(LM)) return false;
                 return true;
             }
-            
+
             private bool IsRecursiveMoverProcedureCall(CallCmd call)
             {
-                MoverActionInfo target = (MoverActionInfo)actionInfo;
-                MoverActionInfo source = null;
-                if (@base.civlTypeChecker.procToActionInfo.ContainsKey(call.Proc))
-                    source = @base.civlTypeChecker.procToActionInfo[call.Proc] as MoverActionInfo;
+                MoverProc source = null;
+                if (@base.civlTypeChecker.procToYieldingProc.ContainsKey(call.Proc))
+                    source = @base.civlTypeChecker.procToYieldingProc[call.Proc] as MoverProc;
                 if (source == null)
                     return false;
 
-                HashSet<MoverActionInfo> frontier = new HashSet<MoverActionInfo> { source };
-                HashSet<MoverActionInfo> visited = new HashSet<MoverActionInfo>();
+                MoverProc target = (MoverProc)yieldingProc;
+
+                HashSet<MoverProc> frontier = new HashSet<MoverProc> { source };
+                HashSet<MoverProc> visited = new HashSet<MoverProc>();
 
                 while (frontier.Count > 0)
                 {
@@ -331,17 +332,17 @@ namespace Microsoft.Boogie
                         if (cmd is CallCmd)
                         {
                             CallCmd callCmd = cmd as CallCmd;
-                            if (!@base.civlTypeChecker.procToActionInfo.ContainsKey(callCmd.Proc))
+                            if (!@base.civlTypeChecker.procToYieldingProc.ContainsKey(callCmd.Proc))
                             {
                                 edgeLabels[edge] = P;
                             }
                             else
                             {
-                                ActionInfo calledAction = @base.civlTypeChecker.procToActionInfo[callCmd.Proc];
+                                YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];
                                 // TODO: double check that label assignment is correct
                                 if (callCmd.IsAsync)
                                 {
-                                    if (currLayerNum <= calledAction.createdAtLayerNum)
+                                    if (currLayerNum <= callee.upperLayer)
                                         edgeLabels[edge] = L;
                                     else
                                         edgeLabels[edge] = B;
@@ -349,9 +350,9 @@ namespace Microsoft.Boogie
                                 else
                                 {
                                     MoverType? moverType = null;
-                                    if (calledAction.createdAtLayerNum < currLayerNum || (calledAction.createdAtLayerNum == currLayerNum && calledAction is MoverActionInfo))
+                                    if (callee.upperLayer < currLayerNum || (callee.upperLayer == currLayerNum && callee is MoverProc))
                                     {
-                                        moverType = calledAction.moverType;
+                                        moverType = callee.moverType;
                                     }
 
                                     switch (moverType)
@@ -379,7 +380,7 @@ namespace Microsoft.Boogie
                             bool isLeftMover = true;
                             foreach (CallCmd callCmd in parCallCmd.CallCmds)
                             {
-                                if (@base.civlTypeChecker.procToActionInfo[callCmd.Proc].createdAtLayerNum >= currLayerNum)
+                                if (@base.civlTypeChecker.procToYieldingProc[callCmd.Proc].upperLayer >= currLayerNum)
                                 {
                                     isYield = true;
                                 }
@@ -393,10 +394,10 @@ namespace Microsoft.Boogie
                                 int numAtomicActions = 0;
                                 foreach (CallCmd callCmd in parCallCmd.CallCmds)
                                 {
-                                    ActionInfo actionInfo = @base.civlTypeChecker.procToActionInfo[callCmd.Proc];
-                                    isRightMover = isRightMover && actionInfo.IsRightMover;
-                                    isLeftMover = isLeftMover && actionInfo.IsLeftMover;
-                                    if (actionInfo is AtomicActionInfo)
+                                    YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];
+                                    isRightMover = isRightMover && callee.IsRightMover;
+                                    isLeftMover = isLeftMover && callee.IsLeftMover;
+                                    if (callee is ActionProc)
                                     {
                                         numAtomicActions++;
                                     }

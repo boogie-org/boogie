@@ -11,97 +11,52 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
-    public class MyDuplicator : Duplicator
+    public class YieldingProcDuplicator : Duplicator
     {
         CivlTypeChecker civlTypeChecker;
         public int layerNum;
-        Procedure enclosingProc;
         Implementation enclosingImpl;
         public Dictionary<Procedure, Procedure> procMap; /* Original -> Duplicate */
         public Dictionary<Absy, Absy> absyMap; /* Duplicate -> Original */
         public Dictionary<Implementation, Implementation> implMap; /* Duplicate -> Original */
         public HashSet<Procedure> yieldingProcs;
-        public List<Implementation> impls;
 
-        public MyDuplicator(CivlTypeChecker civlTypeChecker, int layerNum)
+        public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, int layerNum)
         {
             this.civlTypeChecker = civlTypeChecker;
             this.layerNum = layerNum;
-            this.enclosingProc = null;
             this.enclosingImpl = null;
             this.procMap = new Dictionary<Procedure, Procedure>();
             this.absyMap = new Dictionary<Absy, Absy>();
             this.implMap = new Dictionary<Implementation, Implementation>();
             this.yieldingProcs = new HashSet<Procedure>();
-            this.impls = new List<Implementation>();
         }
 
         public override Procedure VisitProcedure(Procedure node)
         {
-            if (!civlTypeChecker.procToActionInfo.ContainsKey(node))
+            if (!civlTypeChecker.procToYieldingProc.ContainsKey(node))
                 return node;
             if (!procMap.ContainsKey(node))
             {
-                enclosingProc = node;
-                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[node];
-                
+                YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[node];
+
                 Procedure proc = (Procedure)node.Clone();
                 proc.Name = string.Format("{0}_{1}", node.Name, layerNum);
                 proc.InParams = this.VisitVariableSeq(node.InParams);
                 proc.OutParams = this.VisitVariableSeq(node.OutParams);
-
-                procMap[node] = proc;
-                
-                if (actionInfo.createdAtLayerNum < layerNum)
+                proc.Requires = this.VisitRequiresSeq(node.Requires);
+                proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
+                if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum)
                 {
-                    proc.Requires = new List<Requires>();
-                    proc.Ensures = new List<Ensures>();
-
-                    Implementation impl;
-                    AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
-                    if (atomicActionInfo != null)
-                    {
-                        proc.Modifies = atomicActionInfo.modifiedGlobalVars.Select(g => Expr.Ident(g)).ToList();
-                        CodeExpr action = (CodeExpr)VisitCodeExpr(atomicActionInfo.action);
-                        List<Cmd> cmds = new List<Cmd>();
-                        foreach (AssertCmd assertCmd in atomicActionInfo.gate)
-                        {
-                            cmds.Add(new AssumeCmd(Token.NoToken, (Expr)Visit(assertCmd.Expr)));
-                        }
-                        Block newInitBlock = new Block(Token.NoToken, "_init", cmds,
-                            new GotoCmd(Token.NoToken, new List<string> { action.Blocks[0].Label },
-                                                       new List<Block> { action.Blocks[0] }));
-                        List<Block> newBlocks = new List<Block>();
-                        newBlocks.Add(newInitBlock);
-                        newBlocks.AddRange(action.Blocks);
-                        impl = new Implementation(Token.NoToken, proc.Name, node.TypeParameters, node.InParams, node.OutParams, action.LocVars, newBlocks);
-                    }
-                    else
-                    {
-                        proc.Modifies = new List<IdentifierExpr>();
-                        Block newInitBlock = new Block(Token.NoToken, "_init", new List<Cmd>(), new ReturnCmd(Token.NoToken));
-                        List<Block> newBlocks = new List<Block> { newInitBlock };
-                        impl = new Implementation(Token.NoToken, proc.Name, node.TypeParameters, node.InParams, node.OutParams, new List<Variable>(), newBlocks);
-                    }
-                    impl.Proc = proc;
-                    impl.Proc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-                    impl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-                    impls.Add(impl);
+                    proc.Modifies = ((MoverProc)yieldingProc).modifiedGlobalVars.Select(g => Expr.Ident(g)).ToList();
                 }
                 else
                 {
-                    proc.Requires = this.VisitRequiresSeq(node.Requires);
-                    proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
-                    if (actionInfo is MoverActionInfo && actionInfo.createdAtLayerNum == layerNum)
-                    {
-                        proc.Modifies = ((MoverActionInfo)actionInfo).modifiedGlobalVars.Select(g => Expr.Ident(g)).ToList();
-                    }
-                    else
-                    {
-                        proc.Modifies = civlTypeChecker.sharedVariableIdentifiers;
-                        yieldingProcs.Add(proc);
-                    }
+                    proc.Modifies = civlTypeChecker.sharedVariableIdentifiers;
+                    yieldingProcs.Add(proc);
                 }
+
+                procMap[node] = proc;
             }
             return procMap[node];
         }
@@ -163,11 +118,11 @@ namespace Microsoft.Boogie
         public override Cmd VisitCallCmd(CallCmd call)
         {
             CallCmd newCall = (CallCmd)base.VisitCallCmd(call);
-            if (newCall.IsAsync && civlTypeChecker.procToActionInfo.ContainsKey(call.Proc))
+            if (newCall.IsAsync && civlTypeChecker.procToYieldingProc.ContainsKey(call.Proc))
             {
-                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[call.Proc];
-                Debug.Assert(actionInfo.IsLeftMover);
-                if (actionInfo.createdAtLayerNum < layerNum || (actionInfo is MoverActionInfo && actionInfo.createdAtLayerNum == layerNum))
+                YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[call.Proc];
+                Debug.Assert(yieldingProc.IsLeftMover);
+                if (yieldingProc.upperLayer < layerNum || (yieldingProc is MoverProc && yieldingProc.upperLayer== layerNum))
                 {
                     newCall.IsAsync = false;
                 }
@@ -292,7 +247,7 @@ namespace Microsoft.Boogie
         Expr beta;
         HashSet<Variable> frame;
 
-        private CivlRefinement(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, MyDuplicator duplicator)
+        private CivlRefinement(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, YieldingProcDuplicator duplicator)
         {
             this.linearTypeChecker = linearTypeChecker;
             this.civlTypeChecker = civlTypeChecker;
@@ -343,17 +298,17 @@ namespace Microsoft.Boogie
         private IEnumerable<Variable> AvailableLinearVars(Absy absy)
         {
             HashSet<Variable> availableVars = new HashSet<Variable>(linearTypeChecker.AvailableLinearVars(absyMap[absy]));
-            foreach (var g in civlTypeChecker.globalVarToSharedVarInfo.Keys)
+            foreach (var g in civlTypeChecker.globalVarToLayerRange.Keys)
             {
-                SharedVariableInfo info = civlTypeChecker.globalVarToSharedVarInfo[g];
+                SharedVariableInfo info = civlTypeChecker.globalVarToLayerRange[g];
                 if (!(info.introLayerNum <= layerNum && layerNum <= info.hideLayerNum))
                 {
                     availableVars.Remove(g);
                 }
             }
-            foreach (var v in civlTypeChecker.localVarToLocalVariableInfo.Keys)
+            foreach (var v in civlTypeChecker.localVarToIntroLayer.Keys)
             {
-                LocalVariableInfo info = civlTypeChecker.localVarToLocalVariableInfo[v];
+                LocalVariableInfo info = civlTypeChecker.localVarToIntroLayer[v];
                 if (layerNum < info.layer)
                 {
                     availableVars.Remove(v);
@@ -467,9 +422,11 @@ namespace Microsoft.Boogie
             return false;
         }
 
-        private void SetupRefinementCheck(Implementation impl,
+        private void SetupRefinementCheck(
+            Implementation impl,
             out List<Variable> newLocalVars,
-            out Dictionary<string, Variable> domainNameToLocalVar, out Dictionary<Variable, Variable> ogOldGlobalMap)
+            out Dictionary<string, Variable> domainNameToLocalVar,
+            out Dictionary<Variable, Variable> ogOldGlobalMap)
         {
             pc = null;
             ok = null;
@@ -513,8 +470,8 @@ namespace Microsoft.Boogie
                 frame = new HashSet<Variable>(civlTypeChecker.sharedVariables);
                 foreach (Variable v in civlTypeChecker.sharedVariables)
                 {
-                    if (civlTypeChecker.globalVarToSharedVarInfo[v].hideLayerNum <= actionInfo.createdAtLayerNum ||
-                        civlTypeChecker.globalVarToSharedVarInfo[v].introLayerNum > actionInfo.createdAtLayerNum)
+                    if (civlTypeChecker.globalVarToLayerRange[v].hideLayerNum <= actionInfo.createdAtLayerNum ||
+                        civlTypeChecker.globalVarToLayerRange[v].introLayerNum > actionInfo.createdAtLayerNum)
                     {
                         frame.Remove(v);
                     }
@@ -1205,25 +1162,24 @@ namespace Microsoft.Boogie
             {
                 if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum || layerNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
 
-                MyDuplicator duplicator = new MyDuplicator(civlTypeChecker, layerNum);
-                foreach (var proc in program.Procedures.Where(proc => civlTypeChecker.procToActionInfo.ContainsKey(proc)))
+                YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum);
+                foreach (var yieldingProc in civlTypeChecker.procToYieldingProc.Values)
                 {
-                    if (layerNum <= civlTypeChecker.procToActionInfo[proc].availableUptoLayerNum)
+                    if (layerNum <= yieldingProc.upperLayer)
                     {
-                        Procedure duplicateProc = duplicator.VisitProcedure(proc);
+                        Procedure duplicateProc = duplicator.VisitProcedure(yieldingProc.proc);
                         decls.Add(duplicateProc);
                     }
                 }
-                decls.AddRange(duplicator.impls);
 
                 CivlRefinement civlTransform = new CivlRefinement(linearTypeChecker, civlTypeChecker, duplicator);
-                foreach (var impl in program.Implementations.Where(impl => civlTypeChecker.procToActionInfo.ContainsKey(impl.Proc)))
+                foreach (var impl in program.Implementations.Where(impl => civlTypeChecker.procToYieldingProc.ContainsKey(impl.Proc)))
                 {
-                    var actionInfo = civlTypeChecker.procToActionInfo[impl.Proc];
-                    if (layerNum <= actionInfo.createdAtLayerNum)
+                    var yieldingProc = civlTypeChecker.procToYieldingProc[impl.Proc];
+                    if (layerNum <= yieldingProc.upperLayer)
                     {
                         Implementation duplicateImpl = duplicator.VisitImplementation(impl);
-                        if (!(actionInfo is MoverActionInfo && actionInfo.createdAtLayerNum == layerNum))
+                        if (!(yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum))
                         {
                             civlTransform.TransformImpl(duplicateImpl);
                         }
