@@ -487,12 +487,18 @@ namespace Microsoft.Boogie
                     Error(proc, "Atomic action can not have preconditions or postconditions");
                 }
 
-                Implementation impl = program.FindImplementation(proc.Name);
-                if (impl == null)
+                var actionImpls = program.Implementations.Where(i => i.Name == proc.Name).ToList();
+                if (actionImpls.Count == 0)
                 {
                     Error(proc, "Atomic action specification missing");
                     continue;
                 }
+                else if (actionImpls.Count > 1)
+                {
+                    Error(proc, "More then one atomic action specification provided");
+                    continue;
+                }
+                Implementation impl = actionImpls[0];
 
                 impl.PruneUnreachableBlocks();
                 Graph<Block> cfg = Program.GraphFromImpl(impl);
