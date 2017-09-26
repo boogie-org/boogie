@@ -15,6 +15,7 @@ namespace Microsoft.Boogie
     {
         CivlTypeChecker civlTypeChecker;
         public int layerNum;
+        private Dictionary<Procedure, Procedure> procToSkipProcDummy;
 
         public Dictionary<Procedure, Procedure> procMap; /* Original -> Duplicate */
         public Dictionary<Absy, Absy> absyMap; /* Duplicate -> Original */
@@ -25,10 +26,12 @@ namespace Microsoft.Boogie
 
         private YieldingProc enclosingYieldingProc;
 
-        public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, int layerNum)
+        public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, int layerNum, Dictionary<Procedure, Procedure> procToSkipProcDummy)
         {
             this.civlTypeChecker = civlTypeChecker;
             this.layerNum = layerNum;
+            this.procToSkipProcDummy = procToSkipProcDummy;
+
             this.enclosingYieldingProc = null;
             this.procMap = new Dictionary<Procedure, Procedure>();
             this.absyMap = new Dictionary<Absy, Absy>();
@@ -54,7 +57,7 @@ namespace Microsoft.Boogie
                     else if (yieldingProc is SkipProc)
                     {
                         // (calls to) skip procedures do not completely disappear because of output variables
-                        return null; // TODO: return dummy skip proc
+                        return procToSkipProcDummy[yieldingProc.proc];
                     }
                     else if (yieldingProc is MoverProc)
                     {
@@ -697,7 +700,7 @@ namespace Microsoft.Boogie
                     inputs.Add(OgOldGlobalFormal(g));
                 }
                 yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", layerNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
-                yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+                AddInlineAttribute(yieldProc);
             }
             CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
             yieldCallCmd.Proc = yieldProc;
@@ -1086,13 +1089,13 @@ namespace Microsoft.Boogie
             // Create the yield checker procedure
             var yieldCheckerName = string.Format("Impl_YieldChecker_{0}", impl.Name);
             var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, impl.TypeParameters, inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
-            yieldCheckerProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+            AddInlineAttribute(yieldCheckerProc);
             yieldCheckerProcs.Add(yieldCheckerProc);
 
             // Create the yield checker implementation
             var yieldCheckerImpl = new Implementation(Token.NoToken, yieldCheckerName, impl.TypeParameters, inputs, new List<Variable>(), locals, yieldCheckerBlocks);
             yieldCheckerImpl.Proc = yieldCheckerProc;
-            yieldCheckerImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+            AddInlineAttribute(yieldCheckerImpl);
             yieldCheckerImpls.Add(yieldCheckerImpl);
         }
 
@@ -1170,7 +1173,7 @@ namespace Microsoft.Boogie
 
             var yieldImpl = new Implementation(Token.NoToken, yieldProc.Name, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             yieldImpl.Proc = yieldProc;
-            yieldImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+            AddInlineAttribute(yieldImpl);
             decls.Add(yieldProc);
             decls.Add(yieldImpl);
         }
@@ -1192,16 +1195,41 @@ namespace Microsoft.Boogie
             }
             AddYieldProcAndImpl(decls);
             return decls;
-        }  
+        }
+
+        public static void AddInlineAttribute(Declaration decl)
+        {
+            decl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+        }
 
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
             Program program = linearTypeChecker.program;
+
+            Dictionary<Procedure, Procedure> procToSkipProcDummy = new Dictionary<Procedure, Procedure>();
+            foreach(SkipProc skipProc in civlTypeChecker.procToYieldingProc.OfType<SkipProc>())
+            {
+                Procedure proc = (Procedure)skipProc.proc.Clone();
+                proc.Name = string.Format("skip_dummy_{0}", proc.Name);
+                proc.Requires = new List<Requires>();
+                proc.Ensures = new List<Ensures>();
+                proc.Modifies = new List<IdentifierExpr>();
+                Block newInitBlock = new Block(Token.NoToken, "_init", new List<Cmd>(), new ReturnCmd(Token.NoToken));
+                List<Block> newBlocks = new List<Block> { newInitBlock };
+                Implementation impl = new Implementation(Token.NoToken, proc.Name, proc.TypeParameters, proc.InParams, proc.OutParams, new List<Variable>(), newBlocks);
+                impl.Proc = proc;
+                AddInlineAttribute(proc);
+                AddInlineAttribute(impl);
+                decls.Add(proc);
+                decls.Add(impl);
+                procToSkipProcDummy.Add(skipProc.proc, proc);
+            }
+
             foreach (int layerNum in civlTypeChecker.allLayerNums)
             {
                 if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum || layerNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
 
-                YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum);
+                YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum, procToSkipProcDummy);
                 CivlRefinement implTransformer = new CivlRefinement(linearTypeChecker, civlTypeChecker, duplicator);
                 duplicator.implTransformer = implTransformer;
 
