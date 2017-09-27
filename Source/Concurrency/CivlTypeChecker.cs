@@ -444,8 +444,9 @@ namespace Microsoft.Boogie
                     }
                 }
             }
-            
-            sharedVariables = globalVarToLayerRange.Keys.ToList();
+
+            //sharedVariables = globalVarToLayerRange.Keys.ToList();
+            sharedVariables = program.GlobalVariables.ToList<Variable>();
             sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
 
             new AttributeEraser().VisitProgram(program);
@@ -801,8 +802,8 @@ namespace Microsoft.Boogie
             {
                 if (node.Decl is GlobalVariable)
                 {
-                    LayerRange layerRange = ctc.globalVarToLayerRange[node.Decl];
-                    if (!instrumentationProc.layerRange.Subset(layerRange))
+                    LayerRange globalVarLayerRange = ctc.GlobalVariableLayerRange(node.Decl);
+                    if (!instrumentationProc.layerRange.Subset(globalVarLayerRange))
                     {
                         ctc.Error(node, "Shared variable is not accessible in instrumentation procedure");
                     }
@@ -1040,17 +1041,18 @@ namespace Microsoft.Boogie
 
                 for (int i = 0; i < call.Outs.Count; i++)
                 {
-                    var formal = call.Proc.OutParams[i];
-                    var actual = call.Outs[i].Decl;
-                    var formalIntroLayer = ctc.LocalVariableIntroLayer(formal);
-                    var actualIntroLayer = ctc.LocalVariableIntroLayer(actual);
+                    Variable formal = call.Proc.OutParams[i];
+                    IdentifierExpr actualIdentifierExpr = call.Outs[i];
+                    Variable actual = actualIdentifierExpr.Decl;
+                    int formalIntroLayer = ctc.LocalVariableIntroLayer(formal);
+                    int actualIntroLayer = ctc.LocalVariableIntroLayer(actual);
 
                     // Visitor only called to check for global variable accesses
-                    Visit(call.Outs[i]);
+                    Visit(actualIdentifierExpr);
 
                     if (actualIntroLayer < formalIntroLayer)
                     {
-                        ctc.Error(actual, "Formal return parameter of call must be introduced no later than the actual parameter");
+                        ctc.Error(actualIdentifierExpr, "Formal return parameter of call must be introduced no later than the actual parameter");
                     }
                 }
             }
