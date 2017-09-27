@@ -520,7 +520,7 @@ namespace Microsoft.Boogie
             // * no {:yield}
             // * no mover type
             // layer range
-            foreach (var proc in program.Procedures.Where(proc => !proc.IsYield()))
+            foreach (var proc in program.Procedures.Where(proc => !proc.IsYield() && !GetMoverType(proc.Attributes).HasValue))
             {
                 LayerRange layerRange = ToLayerRange(FindLayers(proc.Attributes), proc);
                 bool isLeaky = proc.Modifies.Count + proc.OutParams.Count > 0;
@@ -743,11 +743,11 @@ namespace Microsoft.Boogie
                 if (node.Decl is GlobalVariable)
                 {
                     var sharedVarLayerRange = ctc.GlobalVariableLayerRange(node.Decl);
-                    if (!sharedVarLayerRange.Subset(atomicAction.layerRange) || sharedVarLayerRange.lowerLayerNum == atomicAction.layerRange.lowerLayerNum) 
+                    if (!atomicAction.layerRange.Subset(sharedVarLayerRange) || sharedVarLayerRange.lowerLayerNum == atomicAction.layerRange.lowerLayerNum) 
                         // a shared variable introduced at layer n is visible to an atomic action only at layer n+1 or higher
                         // thus, a shared variable with layer range [n,n] is not accessible by an atomic action
                     {
-                        ctc.Error(node, "Shared variable is not available in atomic action specification");
+                        ctc.Error(node, string.Format("Shared variable {0} is not available in atomic action specification", node.Decl.Name));
                     }
                 }
                 return base.VisitIdentifierExpr(node);
@@ -815,7 +815,7 @@ namespace Microsoft.Boogie
         {
             CivlTypeChecker ctc;
             YieldingProc yieldingProc;
-            List<IdentifierExpr> sharedVaribableAccesses;
+            List<IdentifierExpr> sharedVariableAccesses;
             List<IdentifierExpr> localVariableAccesses;
 
             Implementation enclosingImpl;
@@ -824,7 +824,7 @@ namespace Microsoft.Boogie
             {
                 this.ctc = ctc;
 
-                sharedVaribableAccesses = null;
+                sharedVariableAccesses = null;
                 localVariableAccesses = null;
 
                 enclosingImpl = null;
@@ -857,9 +857,9 @@ namespace Microsoft.Boogie
             {
                 if (node.Decl is GlobalVariable)
                 {
-                    if (sharedVaribableAccesses != null)
+                    if (sharedVariableAccesses != null)
                     {
-                        sharedVaribableAccesses.Add(node);
+                        sharedVariableAccesses.Add(node);
                     }
                     else
                     {
@@ -876,25 +876,42 @@ namespace Microsoft.Boogie
                 return base.VisitIdentifierExpr(node);
             }
 
+            // All preconditions, postconditions, and assertions are treated similarly:
+            // * VisitSpecPre activates collection of accessed global and local variables
+            // * Call to base visitor actually does the collection
+            // * VisitSpecPost checks the consistency of layer annotations
+
             public override Ensures VisitEnsures(Ensures ensures)
             {
-                VisitSpec(ensures);
+                VisitSpecPre();
+                base.VisitEnsures(ensures);
+                VisitSpecPost(ensures);
                 return ensures;
             }
 
             public override Requires VisitRequires(Requires requires)
             {
-                VisitSpec(requires);
+                VisitSpecPre();
+                base.VisitRequires(requires);
+                VisitSpecPost(requires);
                 return requires;
             }
 
             public override Cmd VisitAssertCmd(AssertCmd assert)
             {
-                VisitSpec(assert);
+                VisitSpecPre();
+                base.VisitAssertCmd(assert);
+                VisitSpecPost(assert);
                 return assert;
             }
 
-            public void VisitSpec<T>(T node)
+            public void VisitSpecPre()
+            {
+                sharedVariableAccesses = new List<IdentifierExpr>();
+                localVariableAccesses = new List<IdentifierExpr>();
+            }
+
+            public void VisitSpecPost<T>(T node)
                 where T : Absy, ICarriesAttributes
             {
                 var specLayers = ctc.FindLayers(node.Attributes).Distinct().OrderBy(l => l).ToList();
@@ -906,17 +923,13 @@ namespace Microsoft.Boogie
 
                 ctc.absyToLayerNums[node] = new HashSet<int>(specLayers);
 
-                // Collect accessed shared and local variables
-                sharedVaribableAccesses = new List<IdentifierExpr>();
-                localVariableAccesses = new List<IdentifierExpr>();
-                base.Visit(node);
-
-                foreach (var layer in specLayers) {
+                foreach (var layer in specLayers)
+                {
                     if (layer > yieldingProc.upperLayer)
                     {
                         ctc.Error(node, string.Format("Specification layer {0} is greater than enclosing procedure layer {1}", layer, yieldingProc.upperLayer));
                     }
-                    foreach (var ie in sharedVaribableAccesses)
+                    foreach (var ie in sharedVariableAccesses)
                     {
                         if (!ctc.GlobalVariableLayerRange(ie.Decl).Contains(layer))
                         {
@@ -930,10 +943,9 @@ namespace Microsoft.Boogie
                             ctc.Error(ie, string.Format("Local variable {0} is not available at layer {1}", ie.Name, layer));
                         }
                     }
-
                 }
 
-                sharedVaribableAccesses = null;
+                sharedVariableAccesses = null;
                 localVariableAccesses = null;
             }
 
