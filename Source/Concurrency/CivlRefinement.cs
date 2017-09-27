@@ -17,8 +17,8 @@ namespace Microsoft.Boogie
         public int layerNum;
         private Dictionary<Procedure, Procedure> procToSkipProcDummy;
 
-        public Dictionary<Procedure, Procedure> procMap; /* Original -> Duplicate */
-        public Dictionary<Absy, Absy> absyMap; /* Duplicate -> Original */
+        public Dictionary<Procedure, Procedure> procMap;           /* Original -> Duplicate */
+        public Dictionary<Absy, Absy> absyMap;                     /* Duplicate -> Original */
         public Dictionary<Implementation, Implementation> implMap; /* Duplicate -> Original */
         public HashSet<Procedure> yieldingProcs;
 
@@ -1206,6 +1206,15 @@ namespace Microsoft.Boogie
         {
             Program program = linearTypeChecker.program;
 
+            // Atomic actions should be inlined
+            foreach (AtomicAction atomicAction in civlTypeChecker.procToAtomicAction.Values)
+            {
+                AddInlineAttribute(atomicAction.proc);
+                AddInlineAttribute(atomicAction.impl);
+            }
+
+            // Skip procedures do not completely disapper (because of ouput paramters).
+            // We create dummy implementations with empty body.
             Dictionary<Procedure, Procedure> procToSkipProcDummy = new Dictionary<Procedure, Procedure>();
             foreach(SkipProc skipProc in civlTypeChecker.procToYieldingProc.OfType<SkipProc>())
             {
@@ -1225,18 +1234,33 @@ namespace Microsoft.Boogie
                 procToSkipProcDummy.Add(skipProc.proc, proc);
             }
 
+            // Generate the refinement checks for every layer
             foreach (int layerNum in civlTypeChecker.allLayerNums)
             {
                 if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum || layerNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
 
+                // TODO: The clarity of this could be improved. Right now there is a circular dependence between
+                // YieldingProcDuplicator and CivlRefinement.
+                // YieldingProcDuplicator generates the basic per-layer version (procedure and implementation)
+                // of every action procedure. In VisitImplementation, CivlRefinement is called to modify
+                // the generated implementation by injecting the refinement and noninterference checks.
                 YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum, procToSkipProcDummy);
                 CivlRefinement implTransformer = new CivlRefinement(linearTypeChecker, civlTypeChecker, duplicator);
                 duplicator.implTransformer = implTransformer;
 
-                duplicator.VisitProgram(program);
+                // We can not simply call VisitProgram, because it does some resolving of calls
+                // that is not necessary here (and actually fails).
+                foreach (Procedure proc in program.Procedures)
+                {
+                    duplicator.VisitProcedure(proc);
+                }
+                foreach (Implementation impl in program.Implementations)
+                {
+                    duplicator.VisitImplementation(impl);
+                }
 
                 decls.AddRange(duplicator.procMap.Values);
-                decls.AddRange(duplicator.implMap.Values);
+                decls.AddRange(duplicator.implMap.Keys);
                 decls.AddRange(implTransformer.Collect());
             }
         }
