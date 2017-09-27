@@ -834,8 +834,10 @@ namespace Microsoft.Boogie
             public override Implementation VisitImplementation(Implementation node)
             {
                 Debug.Assert(yieldingProc == null);
+                enclosingImpl = node;
                 yieldingProc = ctc.procToYieldingProc[node.Proc];
                 var ret = base.VisitImplementation(node);
+                enclosingImpl = null;
                 yieldingProc = null;
                 return ret;
             }
@@ -995,6 +997,7 @@ namespace Microsoft.Boogie
                     }
                     else if (callerProc.upperLayer == calleeProc.upperLayer && enclosingImpl.OutParams.Count > 0)
                     {
+                        // TODO: Is this condition really necessary? If not, enclosingImpl can be eliminated.
                         HashSet<Variable> callerOutParams = new HashSet<Variable>(enclosingImpl.OutParams);
                         foreach (var x in call.Outs)
                         {
