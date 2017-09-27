@@ -492,16 +492,6 @@ namespace Microsoft.Boogie
                 ok = OgOkLocal();
                 newLocalVars.Add(pc);
                 newLocalVars.Add(ok);
-                Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
-                for (int i = 0; i < originalProc.InParams.Count; i++)
-                {
-                    alwaysMap[originalProc.InParams[i]] = Expr.Ident(impl.InParams[i]);
-                }
-                for (int i = 0; i < originalProc.OutParams.Count; i++)
-                {
-                    alwaysMap[originalProc.OutParams[i]] = Expr.Ident(impl.OutParams[i]);
-                }
-                Substitution always = Substituter.SubstitutionFromHashtable(alwaysMap);
                 Dictionary<Variable, Expr> foroldMap = new Dictionary<Variable, Expr>();
                 foreach (Variable g in civlTypeChecker.sharedVariables)
                 {
@@ -530,6 +520,21 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
+                    // The parameters of an atomic action come from the implementation that denotes the atomic action specification.
+                    // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
+                    // we need to substitute the parameters.
+                    Implementation atomicActionImpl = actionProc.refinedAction.impl;
+                    Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
+                    for (int i = 0; i < atomicActionImpl.InParams.Count; i++)
+                    {
+                        alwaysMap[atomicActionImpl.InParams[i]] = Expr.Ident(impl.InParams[i]);
+                    }
+                    for (int i = 0; i < atomicActionImpl.OutParams.Count; i++)
+                    {
+                        alwaysMap[atomicActionImpl.OutParams[i]] = Expr.Ident(impl.OutParams[i]);
+                    }
+                    Substitution always = Substituter.SubstitutionFromHashtable(alwaysMap);
+
                     Expr betaExpr = (new TransitionRelationComputation(civlTypeChecker.program, actionProc.refinedAction, frame, new HashSet<Variable>())).TransitionRelationCompute(true);
                     beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
                     Expr alphaExpr = Expr.And(actionProc.refinedAction.gate.Select(g => g.Expr));
