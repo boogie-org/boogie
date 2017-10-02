@@ -105,13 +105,13 @@ namespace Microsoft.Boogie
 
         private void SetupCopy(ref CodeExpr actionCopy, ref List<AssertCmd> gateCopy, ref List<Variable> inParamsCopy, ref List<Variable> outParamsCopy, ref Dictionary<Variable, Expr> varMap, string prefix)
         {
-            foreach (Variable x in proc.InParams)
+            foreach (Variable x in impl.InParams)
             {
                 Variable xCopy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), true, x.Attributes);
                 inParamsCopy.Add(xCopy);
                 varMap[x] = Expr.Ident(xCopy);
             }
-            foreach (Variable x in proc.OutParams)
+            foreach (Variable x in impl.OutParams)
             {
                 Variable xCopy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), false, x.Attributes);
                 outParamsCopy.Add(xCopy);
