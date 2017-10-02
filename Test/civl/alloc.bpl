@@ -51,8 +51,7 @@ requires {:layer 2} dom(local_in)[i];
     var {:layer 1} {:linear "mem"} l: lmap;
 
     par YieldMem(local_in, i) | Dummy();
-    call local := Copy(local_in);
-    call local := Write(local, i, 42);
+    call local := Write(local_in, i, 42);
     call o := Read(local, i);
     assert {:layer 2} o == 42;
     while (*)
@@ -66,11 +65,6 @@ requires {:layer 2} dom(local_in)[i];
 	par Yield() | Dummy();
     }
     par Yield() | Dummy();
-}
-
-procedure {:pure} {:inline 1} Copy({:linear_in "mem"} l: lmap) returns ({:linear "mem"} l': lmap)
-{
-    l' := l;
 }
 
 procedure {:yields} {:layer 1,2} Alloc() returns ({:layer 1} {:linear "mem"} l: lmap, i: int)
