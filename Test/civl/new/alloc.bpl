@@ -7,14 +7,15 @@ function {:linear "mem"} dom(lmap) : [int]bool;
 function map(lmap) : [int]int;
 function cons([int]bool, [int]int) : lmap;
 axiom (forall x:[int]bool, y:[int]int :: {cons(x,y)} dom(cons(x, y)) == x && map(cons(x,y)) == y);
+axiom (forall x: lmap :: {dom(x)} {map(x)} cons(dom(x), map(x)) == x);
 
-function EmptyLmap() : (lmap);
-axiom (dom(EmptyLmap()) == MapConstBool(false));
+function Empty(m:[int]int) : lmap;
+axiom (forall m: [int]int :: Empty(m) == cons(MapConstBool(false), m));
 
-function Add(x:lmap, i:int): (lmap);
+function Add(x:lmap, i:int): lmap;
 axiom (forall x:lmap, i:int :: dom(Add(x, i)) == dom(x)[i:=true] && map(Add(x, i)) == map(x));
 
-function Remove(x:lmap, i:int): (lmap);
+function Remove(x:lmap, i:int): lmap;
 axiom (forall x:lmap, i:int :: dom(Remove(x, i)) == dom(x)[i:=false] && map(Remove(x, i)) == map(x));
 
 function {:inline} PoolInv(unallocated:[int]bool, pool:lmap) : (bool)
@@ -67,7 +68,13 @@ requires {:layer 2} dom(local_in)[i];
 }
 
 procedure {:right} {:layer 2} atomic_Alloc() returns ({:linear "mem"} l:lmap, i:int)
-{ assume dom(l)[i]; }
+modifies pool;
+{
+  var m:[int]int;
+  assume dom(pool)[i];
+  pool := Remove(pool, i);
+  l := Add(Empty(m), i);
+}
 
 procedure {:yields} {:layer 1} {:refines "atomic_Alloc"} Alloc() returns ({:layer 1} {:linear "mem"} l:lmap, i:int)
 requires {:layer 1} PoolInv(unallocated, pool);
@@ -80,11 +87,17 @@ ensures  {:layer 1} dom(l)[i] && map(l)[i] == mem[i];
   call YieldMem(l, i);
 }
 
-procedure {:yields} {:layer 1} Free({:layer 1} {:linear_in "mem"} l:lmap, i:int)
+procedure {:left} {:layer 2} atomic_Free({:linear_in "mem"} l:lmap, i:int)
+modifies pool;
+{
+  assert dom(l)[i];
+  pool := Add(pool, i);
+}
+
+procedure {:yields} {:layer 1} {:refines "atomic_Free"} Free({:layer 1} {:linear_in "mem"} l:lmap, i:int)
 requires {:layer 1} PoolInv(unallocated, pool);
 ensures  {:layer 1} PoolInv(unallocated, pool);
 requires {:layer 1} dom(l)[i];
-//ensures {:both} |{ A: return true; }|;
 {
   call Yield();
   call FreeLinear(l, i);
@@ -129,7 +142,7 @@ ensures  {:layer 1} dom(l')[i] && map(l')[i] == mem[i];
 procedure {:layer 1} AllocLinear (i:int) returns ({:linear "mem"} l:lmap);
 modifies pool;
 requires dom(pool)[i];
-ensures  pool == Remove(old(pool), i) && dom(l)[i] && map(l)[i] == mem[i];
+ensures  pool == Remove(old(pool), i) && l == Add(Empty(mem), i);
 
 procedure {:layer 1} FreeLinear ({:linear_in "mem"} l:lmap, i:int);
 modifies pool;
@@ -164,7 +177,7 @@ procedure {:yields} {:layer 2} Dummy()
   yield;
 }
 
-var {:layer 1, 1} {:linear "mem"} pool:lmap;
+var {:layer 1, 2} {:linear "mem"} pool:lmap;
 var {:layer 0, 1} mem:[int]int;
 var {:layer 0, 1} unallocated:[int]bool;
 
