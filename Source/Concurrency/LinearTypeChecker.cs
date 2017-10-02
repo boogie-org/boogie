@@ -189,6 +189,7 @@ namespace Microsoft.Boogie
     public class LinearTypeChecker : ReadOnlyVisitor
     {
         public Program program;
+        public CivlTypeChecker ctc;
         public CheckingContext checkingContext;
         public Dictionary<string, Dictionary<Type, Function>> domainNameToCollectors;
         private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
@@ -198,9 +199,10 @@ namespace Microsoft.Boogie
         public Dictionary<Variable, string> globalVarToDomainName;
         public Dictionary<string, LinearDomain> linearDomains;
 
-        public LinearTypeChecker(Program program)
+        public LinearTypeChecker(Program program, CivlTypeChecker ctc)
         {
             this.program = program;
+            this.ctc = ctc;
             this.checkingContext = new CheckingContext(null);
             this.domainNameToCollectors = new Dictionary<string, Dictionary<Type, Function>>();
             this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
@@ -363,6 +365,9 @@ namespace Microsoft.Boogie
         }
         public override Implementation VisitImplementation(Implementation node)
         {
+            if (ctc.procToAtomicAction.ContainsKey(node.Proc))
+                return node;
+            
             node.PruneUnreachableBlocks();
             node.ComputePredecessorsForBlocks();
             GraphUtil.Graph<Block> graph = Program.GraphFromImpl(node);

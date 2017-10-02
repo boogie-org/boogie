@@ -28,13 +28,13 @@ namespace Microsoft.Boogie
 
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
-            if (civlTypeChecker.procToYieldingProc.Count == 0)
+            if (civlTypeChecker.procToAtomicAction.Count == 0)
                 return;
 
             List<AtomicAction> sortedByCreatedLayerNum = civlTypeChecker.procToAtomicAction.Values
                 .OrderBy(a => a.layerRange.lowerLayerNum).ToList();
             List<AtomicAction> sortedByAvailableUptoLayerNum = civlTypeChecker.procToAtomicAction.Values
-                .OrderBy(a => a.layerRange.upperLayerNum).ToList().ToList();
+                .OrderBy(a => a.layerRange.upperLayerNum).ToList();
 
             Dictionary<int, HashSet<AtomicAction>> pools = new Dictionary<int, HashSet<AtomicAction>>();
             int indexIntoSortedByCreatedLayerNum = 0;

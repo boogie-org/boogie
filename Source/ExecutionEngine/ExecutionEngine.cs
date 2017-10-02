@@ -761,7 +761,7 @@ namespace Microsoft.Boogie
           return PipelineOutcome.TypeCheckingError;
       }
 
-      linearTypeChecker = new LinearTypeChecker(program);
+      linearTypeChecker = new LinearTypeChecker(program, civlTypeChecker);
       linearTypeChecker.TypeCheck();
       if (linearTypeChecker.checkingContext.ErrorCount == 0)
       {

@@ -224,7 +224,8 @@ namespace Microsoft.Boogie
                     Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
                     for (int i = 0; i < originalProc.InParams.Count; i++)
                     {
-                        map[originalProc.InParams[i]] = callCmd.Ins[i];
+                        // Parameters come from the implementation that defines the atomic action
+                        map[atomicAction.impl.InParams[i]] = callCmd.Ins[i];
                     }
                     Substitution subst = Substituter.SubstitutionFromHashtable(map);
                     foreach (AssertCmd assertCmd in atomicAction.gate)
@@ -1221,7 +1222,7 @@ namespace Microsoft.Boogie
             // Skip procedures do not completely disapper (because of ouput paramters).
             // We create dummy implementations with empty body.
             Dictionary<Procedure, Procedure> procToSkipProcDummy = new Dictionary<Procedure, Procedure>();
-            foreach(SkipProc skipProc in civlTypeChecker.procToYieldingProc.OfType<SkipProc>())
+            foreach(SkipProc skipProc in civlTypeChecker.procToYieldingProc.Values.OfType<SkipProc>())
             {
                 Procedure proc = (Procedure)skipProc.proc.Clone();
                 proc.Name = string.Format("skip_dummy_{0}", proc.Name);

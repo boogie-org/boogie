@@ -43,6 +43,8 @@ namespace Microsoft.Boogie
         public HashSet<Variable> modifiedGlobalVars;
         public HashSet<Variable> gateUsedGlobalVars;
 
+        private bool hasAssumeCmd;
+
         public AtomicAction(Procedure proc, Implementation impl, MoverType moverType, LayerRange layerRange)
         {
             this.proc = proc;
@@ -63,7 +65,9 @@ namespace Microsoft.Boogie
             this.thatMap = new Dictionary<Variable, Expr>();
 
             this.triggerFuns = new Dictionary<Variable, Function>();
-            
+
+            hasAssumeCmd = impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
+
             // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
             // Calls to atomic actions are inlined and for most calls the gate is assumed, so we rewrite the asserts to assumes.
             // Only at specific calls the gate has to be asserted and thus we keep the asserts on the side.
@@ -170,7 +174,7 @@ namespace Microsoft.Boogie
         public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
         public bool IsLeftMover { get { return moverType == MoverType.Left || moverType == MoverType.Both; } }
 
-        public bool HasAssumeCmd { get { return impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd)); } }
+        public bool HasAssumeCmd { get { return hasAssumeCmd; } }
 
         public bool TriviallyCommutesWith(AtomicAction other)
         {
