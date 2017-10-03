@@ -54,7 +54,7 @@ namespace Microsoft.Boogie
                 while (indexIntoSortedByAvailableUptoLayerNum < sortedByAvailableUptoLayerNum.Count)
                 {
                     var action = sortedByAvailableUptoLayerNum[indexIntoSortedByAvailableUptoLayerNum];
-                    if (action.layerRange.upperLayerNum > currLayerNum) break;
+                    if (action.layerRange.upperLayerNum >= currLayerNum) break;
                     pools[currLayerNum].Remove(action);
                     indexIntoSortedByAvailableUptoLayerNum++;
                 }
