@@ -80,8 +80,20 @@ namespace Microsoft.Boogie
                 cmds[i] = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
             }
 
-            SetupCopy(ref thisAction, ref thisGate, ref thisInParams, ref thisOutParams, ref thisMap, "_this");
-            SetupCopy(ref thatAction, ref thatGate, ref thatInParams, ref thatOutParams, ref thatMap, "_that");
+            // We usually declare the Boogie procedure and implementation of an atomic action together.
+            // Since Boogie only stores the supplied attributes (in particular linearity) in the procedure parameters,
+            // we copy them into the implementation parameters here.
+            for (int i = 0; i < proc.InParams.Count; i++)
+            {
+                impl.InParams[i].Attributes = proc.InParams[i].Attributes;
+            }
+            for (int i = 0; i < proc.OutParams.Count; i++)
+            {
+                impl.OutParams[i].Attributes = proc.OutParams[i].Attributes;
+            }
+
+            SetupCopy(ref thisAction, ref thisGate, ref thisInParams, ref thisOutParams, ref thisMap, "this_");
+            SetupCopy(ref thatAction, ref thatGate, ref thatInParams, ref thatOutParams, ref thatMap, "that_");
 
             {
                 VariableCollector collector = new VariableCollector();
@@ -125,12 +137,12 @@ namespace Microsoft.Boogie
                 thisLocVars.Add(xCopy);
             }
             Contract.Assume(proc.TypeParameters.Count == 0);
-            Substitution thisSubst = Substituter.SubstitutionFromHashtable(varMap);
+            Substitution subst = Substituter.SubstitutionFromHashtable(varMap);
             foreach (AssertCmd assertCmd in gate)
             {
-                gateCopy.Add((AssertCmd)Substituter.Apply(thisSubst, assertCmd));
+                gateCopy.Add((AssertCmd)Substituter.Apply(subst, assertCmd));
             }
-            actionCopy = new CodeExpr(thisLocVars, SubstituteBlocks(impl.Blocks, thisSubst, prefix));
+            actionCopy = new CodeExpr(thisLocVars, SubstituteBlocks(impl.Blocks, subst, prefix));
         }
 
         private List<Block> SubstituteBlocks(List<Block> blocks, Substitution subst, string blockLabelPrefix)
