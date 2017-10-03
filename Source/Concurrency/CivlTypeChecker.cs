@@ -39,7 +39,7 @@ namespace Microsoft.Boogie
         public Dictionary<Variable, Expr> thatMap;
 
         public Dictionary<Variable, Function> triggerFuns;
-        public HashSet<Variable> usedGlobalVars;
+        public HashSet<Variable> actionUsedGlobalVars;
         public HashSet<Variable> modifiedGlobalVars;
         public HashSet<Variable> gateUsedGlobalVars;
 
@@ -68,16 +68,30 @@ namespace Microsoft.Boogie
 
             hasAssumeCmd = impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
 
-            // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
-            // Calls to atomic actions are inlined and for most calls the gate is assumed, so we rewrite the asserts to assumes.
-            // Only at specific calls the gate has to be asserted and thus we keep the asserts on the side.
-            var cmds = impl.Blocks[0].Cmds;
-            for (int i = 0; i < cmds.Count; i++)
             {
-                AssertCmd assertCmd = cmds[i] as AssertCmd;
-                if (assertCmd == null) break;
-                gate.Add(assertCmd);
-                cmds[i] = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
+                // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
+                // Calls to atomic actions are inlined and for most calls the gate is assumed, so we rewrite the asserts to assumes.
+                // Only at specific calls the gate has to be asserted and thus we keep the asserts on the side.
+                VariableCollector actionUsedVars = new VariableCollector();
+                var cmds = impl.Blocks[0].Cmds;
+                int i;
+                for (i = 0; i < cmds.Count; i++)
+                {
+                    AssertCmd assertCmd = cmds[i] as AssertCmd;
+                    if (assertCmd == null)
+                        break;
+                    gate.Add(assertCmd);
+                    cmds[i] = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
+                }
+                for (; i < cmds.Count; i++)
+                {
+                    actionUsedVars.Visit(cmds[i]);
+                }
+                for (i = 1; i < impl.Blocks.Count; i++)
+                {
+                    actionUsedVars.Visit(impl.Blocks[i]);
+                }
+                actionUsedGlobalVars = new HashSet<Variable>(actionUsedVars.usedVars.Where(x => x is GlobalVariable));
             }
 
             // We usually declare the Boogie procedure and implementation of an atomic action together.
@@ -94,12 +108,6 @@ namespace Microsoft.Boogie
 
             SetupCopy(ref thisAction, ref thisGate, ref thisInParams, ref thisOutParams, ref thisMap, "this_");
             SetupCopy(ref thatAction, ref thatGate, ref thatInParams, ref thatOutParams, ref thatMap, "that_");
-
-            {
-                VariableCollector collector = new VariableCollector();
-                collector.Visit(impl);
-                usedGlobalVars = new HashSet<Variable>(collector.usedVars.Where(x => x is GlobalVariable));
-            }
 
             List<Variable> modifiedVars = new List<Variable>();
             foreach (Cmd cmd in impl.Blocks.SelectMany(b => b.Cmds))
@@ -190,8 +198,8 @@ namespace Microsoft.Boogie
 
         public bool TriviallyCommutesWith(AtomicAction other)
         {
-            return this.modifiedGlobalVars.Intersect(other.usedGlobalVars).Count() == 0 &&
-                   this.usedGlobalVars.Intersect(other.modifiedGlobalVars).Count() == 0;
+            return this.modifiedGlobalVars.Intersect(other.actionUsedGlobalVars).Count() == 0 &&
+                   this.actionUsedGlobalVars.Intersect(other.modifiedGlobalVars).Count() == 0;
         }
 
         public Function TriggerFunction(Variable v)

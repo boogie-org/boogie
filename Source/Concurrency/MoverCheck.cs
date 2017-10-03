@@ -178,9 +178,9 @@ namespace Microsoft.Boogie
             List<Block> blocks = Enumerable.Union(firstBlocks, secondBlocks).ToList();
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
-            frame.UnionWith(first.usedGlobalVars);
+            frame.UnionWith(first.actionUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
-            frame.UnionWith(second.usedGlobalVars);
+            frame.UnionWith(second.actionUsedGlobalVars);
             
             List<Requires> requires = new List<Requires>();
             requires.Add(DisjointnessRequires(program, first.thatInParams.Union(second.thisInParams), frame));
@@ -228,7 +228,7 @@ namespace Microsoft.Boogie
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
-            frame.UnionWith(second.usedGlobalVars);
+            frame.UnionWith(second.actionUsedGlobalVars);
 
             List<Requires> requires = new List<Requires>();
             List<Ensures> ensures = new List<Ensures>();
@@ -267,7 +267,7 @@ namespace Microsoft.Boogie
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
-            frame.UnionWith(second.usedGlobalVars);
+            frame.UnionWith(second.actionUsedGlobalVars);
 
             List<Requires> requires = new List<Requires>();
             requires.Add(DisjointnessRequires(program, first.thatInParams.Union(second.thisInParams), frame));
@@ -298,7 +298,7 @@ namespace Microsoft.Boogie
 
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(second.gateUsedGlobalVars);
-            frame.UnionWith(second.usedGlobalVars);
+            frame.UnionWith(second.actionUsedGlobalVars);
             
             List<Requires> requires = new List<Requires>();
             requires.Add(DisjointnessRequires(program, second.thisInParams, frame));
