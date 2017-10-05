@@ -570,6 +570,8 @@ namespace Microsoft.Boogie
 
         private void TypeCheckYieldingProcedures()
         {
+            YieldingProcVisitor visitor = new YieldingProcVisitor(this);
+
             foreach (var proc in program.Procedures.Where(proc => proc.IsYield()))
             {
                 int upperLayer;  // must be initialized by the following code, otherwise it is an error
@@ -613,15 +615,15 @@ namespace Microsoft.Boogie
                 {
                     procToYieldingProc[proc] = new SkipProc(proc, upperLayer);
                 }
+
+                visitor.VisitProcedure(proc);
             }
             if (checkingContext.ErrorCount > 0) return;
             TypeCheckLocalVariables();
             if (checkingContext.ErrorCount > 0) return;
 
-            YieldingProcVisitor visitor = new YieldingProcVisitor(this);
             foreach (var impl in program.Implementations.Where(impl => procToYieldingProc.ContainsKey(impl.Proc)))
             {
-                visitor.VisitProcedure(impl.Proc);
                 visitor.VisitImplementation(impl);
 
                 // TODO: Check the modifies clause of mover procedures.
