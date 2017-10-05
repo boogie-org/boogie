@@ -70,8 +70,12 @@ procedure {:atomic} {:layer 1,3} AtomicAssertB({:linear "tid"} tid: X)
 
 procedure {:yields} {:layer 0} {:refines "AtomicAssertB"} AssertB({:linear "tid"} tid: X);
 
-procedure {:yields} {:layer 3} AllocTid() returns ({:linear "tid"} tid: X);
-ensures {:layer 3} tid != nil;
+procedure {:right} {:layer 1,3} AtomicAllocTid() returns ({:linear "tid"} tid: X)
+{
+  assume tid != nil;
+}
+
+procedure {:yields} {:layer 0} {:refines "AtomicAllocTid"} AllocTid() returns ({:linear "tid"} tid: X);
 
 procedure {:right} {:layer 2} AtomicAbsDecrB({:linear "tid"} tid: X)
 modifies counter;
@@ -151,9 +155,11 @@ requires {:layer 3} tid != nil && counter == 0;
             call cid := AllocTid();
             async call TA(cid);
         }
+        yield;
+        assert {:layer 3} counter == 0;
         if (*) {
             call cid := AllocTid();
-            async call AbsTB(cid);
+	    async call AbsTB(cid);
         }
         yield;
         assert {:layer 3} counter == 0;
