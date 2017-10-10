@@ -603,7 +603,7 @@ namespace Microsoft.Boogie
                         continue;
                     }
 
-                    // TODO: Check that layers and parameters of proc and action match!
+                    CheckSignatures(proc, refinedAction.proc);
 
                     procToYieldingProc[proc] = new ActionProc(proc, refinedAction, upperLayer);
                 }
@@ -665,6 +665,68 @@ namespace Microsoft.Boogie
                 //        }
                 //    }
                 //}
+            }
+        }
+
+        // Check that an action procedure has the same interface as the refined atomic action.
+        // CheckSignatures and MatchFormals are adapted from type checking implementations in Absy.cs,
+        // i.e., that implementations have the same interface as the corresponding procedure.
+        private void CheckSignatures(Procedure proc, Procedure action)
+        {
+            if (proc.TypeParameters.Count != action.TypeParameters.Count)
+            {
+                checkingContext.Error(proc, "mismatched number of type parameters in refinement procedure: {0}", proc.Name);
+            }
+            else
+            {
+                // if the numbers of type parameters are different, it is
+                // difficult to compare the argument types
+                MatchFormals(proc, action, proc.InParams, action.InParams, "in");
+                MatchFormals(proc, action, proc.OutParams, action.OutParams, "out");
+            }
+        }
+
+        void MatchFormals(Procedure proc, Procedure action, List<Variable> procFormals, List<Variable> actionFormals, string inout)
+        {
+            if (procFormals.Count != actionFormals.Count)
+            {
+                checkingContext.Error(proc, "mismatched number of {0}-parameters in refinement procedure: {1}", inout, proc.Name);
+            }
+            else
+            {
+                // unify the type parameters so that types can be compared
+                IDictionary<TypeVariable, Type> subst1 = new Dictionary<TypeVariable, Type>();
+                IDictionary<TypeVariable, Type> subst2 = new Dictionary<TypeVariable, Type>();
+
+                for (int i = 0; i < proc.TypeParameters.Count; ++i)
+                {
+                    TypeVariable newVar = new TypeVariable(Token.NoToken, action.TypeParameters[i].Name);
+                    subst1.Add(action.TypeParameters[i], newVar);
+                    subst2.Add(proc.TypeParameters[i], newVar);
+                }
+
+                for (int i = 0; i < procFormals.Count; i++)
+                {
+                    // the names of the formals are allowed to change from the proc to the impl
+                    // but types must be identical
+                    Type t = procFormals[i].TypedIdent.Type.Substitute(subst2);
+                    Type u = actionFormals[i].TypedIdent.Type.Substitute(subst1);
+                    if (!t.Equals(u))
+                    {
+                        string procName = procFormals[i].Name;
+                        string actionName = actionFormals[i].Name;
+                        string msg;
+                        if (procName == actionName)
+                        {
+                            msg = procName;
+                        }
+                        else
+                        {
+                            msg = String.Format("{0} (named {1} in atomic action)", procName, actionName);
+                        }
+                        checkingContext.Error(proc, "mismatched type of {0}-parameter in refinement procedure {1}: {2}", inout, proc.Name, msg);
+                    }
+                }
             }
         }
 
