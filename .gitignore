@@ -5,7 +5,7 @@ Source/packages/*
 Source/UnitTests/TestResult.xml
 Source/UnitTests/*/bin
 Source/UnitTests/*/obj
-Test/*/Output
+Test/**/Output
 TestResult.xml
 
 # Binaries
