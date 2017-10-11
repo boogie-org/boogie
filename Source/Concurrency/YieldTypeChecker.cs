@@ -182,7 +182,7 @@ namespace Microsoft.Boogie
                 var simulationRelation = new SimulationRelation<int, int, int>(implEdges, ASpec, initialConstraints).ComputeSimulationRelation();
                 if (simulationRelation[initialState].Count == 0)
                 {
-                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check A at layer {1}. An action must be preceded by a yield.\n", impl.Name, currLayerNum));
+                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check A at layer {1}. An action must be preceded by a yield.", impl.Name, currLayerNum));
                 }
             }
 
@@ -198,7 +198,7 @@ namespace Microsoft.Boogie
                 var simulationRelation = new SimulationRelation<int, int, int>(implEdges, BSpec, initialConstraints).ComputeSimulationRelation();
                 if (simulationRelation[initialState].Count == 0)
                 {
-                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check B at layer {1}. An action must be succeeded by a yield.\n", impl.Name, currLayerNum));
+                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check B at layer {1}. An action must be succeeded by a yield.", impl.Name, currLayerNum));
                 }
             }
 
@@ -206,22 +206,21 @@ namespace Microsoft.Boogie
             {
                 var initialConstraints = new Dictionary<int, HashSet<int>>();
 
-                if (IsMoverProcedure)
+                foreach (Block header in implGraph.Headers)
                 {
-                    foreach (Block header in implGraph.Headers.Where(h => !IsTerminatingLoopHeader(h)))
+                    if (!IsTerminatingLoopHeader(header))
                     {
                         initialConstraints[absyToNode[header]] = new HashSet<int> { RM };
-                    }
-                    foreach (var call in impl.Blocks.SelectMany(b => b.cmds).OfType<CallCmd>().Where(c => IsRecursiveMoverProcedureCall(c) && !IsTerminating(c.Proc)))
-                    {
-                        initialConstraints[absyToNode[call]] = new HashSet<int> { RM };
                     }
                 }
-                else
+                if (IsMoverProcedure)
                 {
-                    foreach (Block header in implGraph.Headers)
+                    foreach (var call in impl.Blocks.SelectMany(b => b.cmds).OfType<CallCmd>())
                     {
-                        initialConstraints[absyToNode[header]] = new HashSet<int> { RM };
+                        if (!IsTerminatingCall(call))
+                        {
+                            initialConstraints[absyToNode[call]] = new HashSet<int> { RM };
+                        }
                     }
                 }
 
@@ -236,20 +235,19 @@ namespace Microsoft.Boogie
                 }
                 else if (simulationRelation[initialState].Count == 0)
                 {
-                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check C at layer {1}. Transactions must be separated by a yield.\n", impl.Name, currLayerNum));
+                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check C at layer {1}. Transactions must be separated by a yield.", impl.Name, currLayerNum));
                 }
             }
 
             private bool IsMoverProcedure { get { return yieldingProc is MoverProc && yieldingProc.upperLayer == currLayerNum; } }
 
-            private static bool IsTerminating(ICarriesAttributes x)
-            {
-                return x.HasAttribute(CivlAttributes.TERMINATES);
-            }
-
             private bool IsTerminatingLoopHeader(Block block)
             {
-                return block.cmds.OfType<AssertCmd>().Any(c => IsTerminating(c));
+                return block.cmds.OfType<AssertCmd>().Any(c => c.HasAttribute(CivlAttributes.TERMINATES) && @base.civlTypeChecker.absyToLayerNums[c].Contains(currLayerNum));
+            }
+
+            private bool IsTerminatingCall(CallCmd call){
+                return !IsRecursiveMoverProcedureCall(call) || call.Proc.HasAttribute(CivlAttributes.TERMINATES);
             }
 
             private bool CheckAtomicity(Dictionary<int, HashSet<int>> simulationRelation)
