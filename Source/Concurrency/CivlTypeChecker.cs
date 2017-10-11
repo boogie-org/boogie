@@ -632,42 +632,49 @@ namespace Microsoft.Boogie
                 // TODO: Check the modifies clause of mover procedures.
                 // Calls to instrumentation procedures!
 
-                //if (actionInfo is MoverActionInfo)
-                //{
-                //    var declaredModifiedVars = ((MoverActionInfo)actionInfo).modifiedGlobalVars;
-                //    foreach (var callCmd in impl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
-                //    {
-                //        if (!procToActionInfo.ContainsKey(callCmd.Proc))
-                //        {
-                //            throw new NotSupportedException("Modset check for mover procedures only supports calls to yielding procedures");
-                //        }
-                //        else
-                //        {
-                //            var calledAction = procToActionInfo[callCmd.Proc];
-                //            HashSet<Variable> mods = null;
-                //            if (calledAction is AtomicActionInfo)
-                //            {
-                //                mods = ((AtomicActionInfo)calledAction).modifiedGlobalVars;
-                //            }
-                //            else if (calledAction is MoverActionInfo)
-                //            {
-                //                mods = ((MoverActionInfo)calledAction).modifiedGlobalVars;
-                //            }
-                //            else
-                //            {
-                //                Debug.Assert(calledAction is SkipActionInfo);
-                //                mods = new HashSet<Variable>();
-                //            }
-                //            foreach(var mod in mods)
-                //            {
-                //                if (!declaredModifiedVars.Contains(mod))
-                //                {
-                //                    Error(callCmd, string.Format("Modified variable {0} does not appear in modifies clause of mover procedure.", mod.Name));
-                //                }
-                //            }
-                //        }
-                //    }
-                //}
+                YieldingProc yieldingProc = procToYieldingProc[impl.Proc];
+
+                if (yieldingProc is MoverProc)
+                {
+                    var declaredModifiedVars = ((MoverProc)yieldingProc).modifiedGlobalVars;
+                    HashSet<Variable> mods = null;
+                    foreach (var callCmd in impl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
+                    {
+                        if (procToYieldingProc.ContainsKey(callCmd.Proc))
+                        {
+                            var calledProc = procToYieldingProc[callCmd.Proc];
+                            if (calledProc is ActionProc)
+                            {
+                                mods = ((ActionProc)calledProc).refinedAction.modifiedGlobalVars;
+                            }
+                            else if (calledProc is MoverProc)
+                            {
+                                mods = ((MoverProc)calledProc).modifiedGlobalVars;
+                            }
+                            else
+                            {
+                                Debug.Assert(calledProc is SkipProc);
+                                mods = new HashSet<Variable>();
+                            }
+                        }
+                        else if (procToInstrumentationProc.ContainsKey(callCmd.Proc))
+                        {
+                            mods = new HashSet<Variable>(callCmd.Proc.Modifies.Select(ie => ie.Decl));
+                        }
+                        else
+                        {
+                            Debug.Assert(false);
+                        }
+
+                        foreach (var mod in mods)
+                        {
+                            if (!declaredModifiedVars.Contains(mod))
+                            {
+                                Error(callCmd, string.Format("Modified variable {0} does not appear in modifies clause of mover procedure.", mod.Name));
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -910,6 +917,7 @@ namespace Microsoft.Boogie
             List<IdentifierExpr> sharedVariableAccesses;
             List<IdentifierExpr> localVariableAccesses;
 
+            Procedure enclosingProc;
             Implementation enclosingImpl;
 
             public YieldingProcVisitor(CivlTypeChecker ctc)
@@ -941,8 +949,10 @@ namespace Microsoft.Boogie
                     // otherwise the procedure would be visited twice, causing duplicate error messages.
                     return node;
                 }
+                enclosingProc = node;
                 yieldingProc = ctc.procToYieldingProc[node];
                 var ret = base.VisitProcedure(node);
+                enclosingProc = null;
                 yieldingProc = null;
                 return ret;
             }
@@ -954,6 +964,10 @@ namespace Microsoft.Boogie
                     if (sharedVariableAccesses != null)
                     {
                         sharedVariableAccesses.Add(node);
+                    }
+                    else if (enclosingProc != null)
+                    {
+                        // Modifies clauses of mover procedures need access to global variables.
                     }
                     else
                     {
