@@ -24,6 +24,7 @@ namespace Microsoft.Boogie
         public MoverType moverType;
         public LayerRange layerRange;
 
+        public CodeExpr action;
         public List<AssertCmd> gate;
 
         public CodeExpr thisAction;
@@ -68,31 +69,27 @@ namespace Microsoft.Boogie
 
             hasAssumeCmd = impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
 
+
+            // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
+            // Calls to atomic actions are inlined and for most calls the gate is assumed, so we rewrite the asserts to assumes.
+            // Only at specific calls the gate has to be asserted and thus we keep the asserts on the side.
+            var firstBlock = impl.Blocks[0];
+            for (int i = 0; i < firstBlock.cmds.Count; i++)
             {
-                // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
-                // Calls to atomic actions are inlined and for most calls the gate is assumed, so we rewrite the asserts to assumes.
-                // Only at specific calls the gate has to be asserted and thus we keep the asserts on the side.
-                VariableCollector actionUsedVars = new VariableCollector();
-                var cmds = impl.Blocks[0].Cmds;
-                int i;
-                for (i = 0; i < cmds.Count; i++)
-                {
-                    AssertCmd assertCmd = cmds[i] as AssertCmd;
-                    if (assertCmd == null)
-                        break;
-                    gate.Add(assertCmd);
-                    cmds[i] = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
-                }
-                for (; i < cmds.Count; i++)
-                {
-                    actionUsedVars.Visit(cmds[i]);
-                }
-                for (i = 1; i < impl.Blocks.Count; i++)
-                {
-                    actionUsedVars.Visit(impl.Blocks[i]);
-                }
-                actionUsedGlobalVars = new HashSet<Variable>(actionUsedVars.usedVars.Where(x => x is GlobalVariable));
+                AssertCmd assertCmd = firstBlock.cmds[i] as AssertCmd;
+                if (assertCmd == null)
+                    break;
+                gate.Add(assertCmd);
+                firstBlock.cmds[i] = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
             }
+
+            // On the other hand, for commutativity checks we need the action (i.e., transition relation) without the gate.
+            // Thus we create a copy of the code blocks with the leading assertions removed.
+            List<Cmd> newFirstBlockCmds = new List<Cmd>(firstBlock.cmds);
+            newFirstBlockCmds.RemoveRange(0, gate.Count);
+            List<Block> actionBlocks = new List<Block>(impl.Blocks);
+            actionBlocks[0] = new Block(firstBlock.tok, firstBlock.Label, newFirstBlockCmds, firstBlock.TransferCmd);
+            this.action = new CodeExpr(impl.LocVars, actionBlocks);
 
             // We usually declare the Boogie procedure and implementation of an atomic action together.
             // Since Boogie only stores the supplied attributes (in particular linearity) in the procedure parameters,
@@ -120,6 +117,12 @@ namespace Microsoft.Boogie
                 VariableCollector collector = new VariableCollector();
                 gate.ForEach(assertCmd => collector.Visit(assertCmd));
                 gateUsedGlobalVars = new HashSet<Variable>(collector.usedVars.Where(x => x is GlobalVariable));
+            }
+
+            {
+                VariableCollector collector = new VariableCollector();
+                collector.Visit(this.action);
+                this.actionUsedGlobalVars = new HashSet<Variable>(collector.usedVars.Where(x => x is GlobalVariable));
             }
         }
 
@@ -150,7 +153,7 @@ namespace Microsoft.Boogie
             {
                 gateCopy.Add((AssertCmd)Substituter.Apply(subst, assertCmd));
             }
-            actionCopy = new CodeExpr(thisLocVars, SubstituteBlocks(impl.Blocks, subst, prefix));
+            actionCopy = new CodeExpr(thisLocVars, SubstituteBlocks(action.Blocks, subst, prefix));
         }
 
         private List<Block> SubstituteBlocks(List<Block> blocks, Substitution subst, string blockLabelPrefix)
