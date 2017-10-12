@@ -1,23 +1,23 @@
-const N : int;
-axiom N > 0;
-
 // ###########################################################################
 // Global shared variables
 
-var {:layer 0,1} x : int;
+var {:layer 0,2} x : int;
 
 // ###########################################################################
 // Main
 
-procedure {:yields} {:layer 1} main ()
+procedure {:yields} {:layer 1} main (N: int)
+requires {:layer 1} N >= 0;
 {
   yield;
-  async call inc_by_N();
-  async call dec_by_N();
+  async call inc_by_N(N);
+  async call dec_by_N(N);
   yield;
 }
 
-procedure {:yields} {:layer 1} {:left} inc_by_N ()
+procedure {:yields} {:layer 1} {:left} inc_by_N (N: int)
+modifies x;
+requires {:layer 1} N >= 0;
 ensures {:layer 1} x == old(x) + N;
 {
   var i : int;
@@ -37,7 +37,9 @@ ensures {:layer 1} x == old(x) + N;
   call dummy();
 }
 
-procedure {:yields} {:layer 1} {:left} dec_by_N ()
+procedure {:yields} {:layer 1} {:left} dec_by_N (N: int)
+modifies x;
+requires {:layer 1} N >= 0;
 ensures {:layer 1} x == old(x) - N;
 {
   var i : int;
