@@ -87,6 +87,20 @@ namespace Microsoft.Boogie
             return procMap[node];
         }
 
+        public override List<Requires> VisitRequiresSeq(List<Requires> requiresSeq)
+        {
+            requiresSeq = base.VisitRequiresSeq(requiresSeq);
+            requiresSeq.RemoveAll(req => req.Condition.Equals(Expr.True));
+            return requiresSeq;
+        }
+
+        public override List<Ensures> VisitEnsuresSeq(List<Ensures> ensuresSeq)
+        {
+            ensuresSeq = base.VisitEnsuresSeq(ensuresSeq);
+            ensuresSeq.RemoveAll(ens => ens.Condition.Equals(Expr.True));
+            return ensuresSeq;
+        }
+
         public override Requires VisitRequires(Requires node)
         {
             Requires requires = base.VisitRequires(node);
@@ -201,6 +215,8 @@ namespace Microsoft.Boogie
                     newCmds.Add(cmd);
                 }
             }
+            newCmds.RemoveAll(cmd => (cmd is AssertCmd && ((AssertCmd)cmd).Expr.Equals(Expr.True)) ||
+                                     (cmd is AssumeCmd && ((AssumeCmd)cmd).Expr.Equals(Expr.True)));
             return newCmds;
         }
 

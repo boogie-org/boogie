@@ -877,9 +877,13 @@ namespace Microsoft.Boogie
                 //       This should still be sound and strengthen the generated postcondition.
                 foreach (var domainName in linearDomains.Keys)
                 {
-                    proc.Requires.Add(new Requires(true, DisjointnessExpr(domainName, domainNameToInputScope[domainName])));
                     proc.InParams.Add(LinearDomainInFormal(domainName));
-                    proc.Ensures.Add(new Ensures(true, DisjointnessExpr(domainName, domainNameToOutputScope[domainName])));
+                    Expr req = DisjointnessExpr(domainName, domainNameToInputScope[domainName]);
+                    Expr ens = DisjointnessExpr(domainName, domainNameToOutputScope[domainName]);
+                    if (!req.Equals(Expr.True))
+                        proc.Requires.Add(new Requires(true, req));
+                    if (!ens.Equals(Expr.True))
+                        proc.Ensures.Add(new Ensures(true, ens));
                 }
             }
             
@@ -933,7 +937,9 @@ namespace Microsoft.Boogie
             }
             foreach (string domainName in linearDomains.Keys)
             {
-                newCmds.Add(new AssumeCmd(Token.NoToken, DisjointnessExpr(domainName, domainNameToInputVar[domainName], domainNameToScope[domainName])));
+                Expr expr = DisjointnessExpr(domainName, domainNameToInputVar[domainName], domainNameToScope[domainName]);
+                if (!expr.Equals(Expr.True))
+                    newCmds.Add(new AssumeCmd(Token.NoToken, expr));
             }
         }
 
