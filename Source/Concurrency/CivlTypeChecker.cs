@@ -1193,7 +1193,9 @@ namespace Microsoft.Boogie
                     {
                         localVariableAccesses = new List<IdentifierExpr>();
                         Visit(e);
-                        ctc.instrumentationCallToLayer[call] = localVariableAccesses.Max(ie => ctc.LocalVariableIntroLayer(ie.Decl));
+                        ctc.instrumentationCallToLayer[call] = 
+                            Math.Max(localVariableAccesses.Max(ie => ctc.LocalVariableIntroLayer(ie.Decl)),
+                                     calleeProc.layerRange.lowerLayerNum);
                         localVariableAccesses = null;
                     }
                 }
