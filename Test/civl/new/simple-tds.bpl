@@ -25,7 +25,7 @@ modifies x;
 { assert tid == r; assume x == 2; x := 3; }
 
 procedure {:yields} {:layer 1} {:refines "AtomicP1"} P1({:linear_in "tid"} tid: int) { yield; async call P0(tid); yield; }
-procedure {:atomic} {:layer 2,3} AtomicP1({:linear "tid"} tid: int)
+procedure {:atomic} {:layer 2,3} AtomicP1({:linear_in "tid"} tid: int)
 modifies x;
 { assert tid == p; assert x == 0; x := 1; }
 
