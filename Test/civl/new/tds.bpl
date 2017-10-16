@@ -1,3 +1,14 @@
+function {:builtin "MapConst"} MapConstBool(bool): [int]bool;
+function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
+{
+  MapConstBool(false)[x := true]
+}
+
+type{:datatype} Pid;
+function{:constructor} Client(id:int):Pid;
+function{:constructor} Server(id:int):Pid;
+function{:constructor} Master(id:int):Pid;
+
 type{:datatype} Msg;
 function{:constructor} Request(cid:int):Msg;
 function{:constructor} None():Msg;
@@ -11,8 +22,130 @@ const unique FINISHED: int;
 
 var status:[int]int;
 
-procedure AllocTid() returns (id: int);
+procedure {:atomic}  {:layer 5} atomic_main({:linear "tid"} id: int, n: int)
+modifies status;
+{
+    var newStatus:[int]int;
+    assert id == c;
+    assert (forall i: int :: 0 <= i && i < n ==> status[i] == DEFAULT);
+    assume (forall i: int :: 0 <= i && i < n ==> newStatus[i] == FINISHED);
+    assume (forall i: int :: (0 <= i && i < n) || newStatus[i] == status[i]);    
+    status := newStatus;
+//    status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);
+}
 
+procedure {:left}  {:layer 4} atomic_server({:linear "tid"} id: int, sid: int, n: int)
+modifies status;
+{
+    var newStatus:[int]int;
+    assert id == c;
+    assert (forall i: int :: 0 <= i && i < n ==> status[i] == DEFAULT);
+    assume (forall i: int :: 0 <= i && i < n ==> newStatus[i] == CREATED);
+    assume (forall i: int :: (0 <= i && i < n) || newStatus[i] == status[i]);
+    status := newStatus;
+//    status := (lambda j: int :: if (0 <= j && j < n) then CREATED else status[j]);
+}
+
+procedure {:left}  {:layer 4} atomic_client({:linear "tid"} id: int, sid: int, mid: int, n: int)
+modifies status;
+{
+    var newStatus:[int]int;
+    assert id == c;
+    assert (forall i: int :: 0 <= i && i < n ==> status[i] == CREATED);
+    assume (forall i: int :: 0 <= i && i < n ==> newStatus[i] == PROCESSED);
+    assume (forall i: int :: (0 <= i && i < n) || newStatus[i] == status[i]);
+    status := newStatus;
+//    status := (lambda j: int :: if (0 <= j && j < n) then PROCESSED else status[j]);
+}
+
+procedure {:left}  {:layer 4} atomic_master({:linear "tid"} id: int, mid: int, n: int)
+modifies status;
+{
+    var newStatus:[int]int;
+    assert id == c;
+    assert (forall i: int :: 0 <= i && i < n ==> status[i] == PROCESSED);
+    assume (forall i: int :: 0 <= i && i < n ==> newStatus[i] == FINISHED);
+    assume (forall i: int :: (0 <= i && i < n) || newStatus[i] == status[i]);
+    status := newStatus;
+//    status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);
+}
+
+const c: int;
+
+procedure {:yields} {:layer 4} {:refines "atomic_main"} main({:linear "tid"} id: int, n: int)
+{
+    var i: int;
+    var m: Msg;
+    var sid: int;
+    var mid: int;
+    var cid: int;
+
+    yield;
+    call server3(id, 0, n);
+    call client3(id, 0, 0, n);
+    call master3(id, 0, n);
+    yield;
+}
+
+procedure {:yields} {:layer 3} {:refines "atomic_server"} server3({:linear "tid"} id: int, sid: int, n: int)
+{
+    var i: int;
+    yield;
+    i := 0;
+    while (i < n)
+    invariant {:terminates} {:layer 2,3} true;
+    {
+        async call server2(sid, i);
+        i := i + 1;
+    }
+    yield;
+}
+
+procedure {:left} {:layer 3} atomic_server2(sid: int, i: int)
+modifies status;
+{
+    assert status[i] == DEFAULT;
+    status[i] := CREATED;
+}
+procedure {:yields} {:layer 2} {:refines "atomic_server2"} server2(sid: int, i: int);
+
+procedure {:yields} {:layer 3} {:refines "atomic_client"} client3({:linear "tid"} id: int, sid: int, mid: int, n: int)
+{
+    yield;
+    call client2(sid, mid, n);
+    yield;
+}
+
+procedure {:atomic} {:layer 3} atomic_client2(sid: int, mid: int, n: int)
+modifies status;
+{
+    var newStatus:[int]int;
+    assert (forall i: int :: 0 <= i && i < n ==> status[i] == CREATED);
+    assume (forall i: int :: 0 <= i && i < n ==> newStatus[i] == PROCESSED);
+    assume (forall i: int :: (0 <= i && i < n) || newStatus[i] == status[i]);
+    status := newStatus;
+}
+procedure {:yields} {:layer 2} {:refines "atomic_client2"} client2(sid: int, mid: int, n: int);
+
+procedure {:yields} {:layer 3} {:refines "atomic_master"} master3({:linear "tid"} id: int, mid: int, n: int)
+{
+    yield;
+    call master2(mid, n);
+    yield;
+}
+
+procedure {:atomic} {:layer 3} atomic_master2(mid: int, n: int)
+modifies status;
+{
+    var newStatus:[int]int;
+    assert (forall i: int :: 0 <= i && i < n ==> status[i] == PROCESSED);
+    assume (forall i: int :: 0 <= i && i < n ==> newStatus[i] == FINISHED);
+    assume (forall i: int :: (0 <= i && i < n) || newStatus[i] == status[i]);
+    status := newStatus;
+}
+procedure {:yields} {:layer 2} {:refines "atomic_master2"} master2(mid: int, n: int);
+
+/*
 procedure {:inline} CreateTask(cid: int)
 {
     assert status[cid] == DEFAULT;
@@ -32,28 +165,17 @@ procedure {:inline} FinishTask(cid: int)
 }
 
 procedure Send(id: int, m: Msg);
-procedure ServerReceive() returns (m: Msg);
-procedure ClientReceive() returns (m: Msg);
-procedure MasterReceive() returns (m: Msg);
+procedure ServerReceive(sid: int) returns (m: Msg);
+procedure ClientReceive(cid: int) returns (m: Msg);
+procedure MasterReceive(mid: int) returns (m: Msg);
 
-procedure main(sid: int, n: int)
+procedure server(sid: int, n: int)
 {
     var i: int;
     var m: Msg;
-    var mid: int;
-    var cid: int;
-    
-    call mid := AllocTid();
-    async call master(mid, n);
     i := 0;
     while (i < n) {
-    	call cid := AllocTid();
-        async call client(cid, sid, mid);
-	i := i + 1;
-    }
-    i := 0;
-    while (i < n) {
-        call m := ServerReceive();
+        call m := ServerReceive(sid);
 	assert is#Request(m);
 	call CreateTask(cid#Request(m)); // DEFAULT -> CREATED	
 	call Send(cid#Request(m), Task());
@@ -65,7 +187,7 @@ procedure client(cid: int, sid: int, mid: int)
 {
     var m: Msg;
     call Send(sid, Request(cid));
-    call m := ClientReceive();
+    call m := ClientReceive(cid);
     assert is#Task(m);
     call ProcessTask(cid); // CREATED -> PROCESSED
     call Send(mid, Ack(cid));
@@ -76,9 +198,10 @@ procedure master(mid: int, n: int) {
     var i: int;
     i := 0;
     while (i < n) { 
-        call m := MasterReceive();
+        call m := MasterReceive(mid);
 	assert is#Ack(m);
 	call FinishTask(cid#Ack(m)); // PROCESSED -> FINISHED
 	i := i + 1;
     }
 }
+*/
