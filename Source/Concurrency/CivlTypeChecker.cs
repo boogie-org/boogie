@@ -717,24 +717,34 @@ namespace Microsoft.Boogie
 
                 for (int i = 0; i < procFormals.Count; i++)
                 {
+                    // For error messages below
+                    string procName = procFormals[i].Name;
+                    string actionName = actionFormals[i].Name;
+                    string msg;
+                    if (procName == actionName)
+                    {
+                        msg = procName;
+                    }
+                    else
+                    {
+                        msg = String.Format("{0} (named {1} in atomic action)", procName, actionName);
+                    }
+
                     // the names of the formals are allowed to change from the proc to the impl
                     // but types must be identical
                     Type t = procFormals[i].TypedIdent.Type.Substitute(subst2);
                     Type u = actionFormals[i].TypedIdent.Type.Substitute(subst1);
                     if (!t.Equals(u))
                     {
-                        string procName = procFormals[i].Name;
-                        string actionName = actionFormals[i].Name;
-                        string msg;
-                        if (procName == actionName)
-                        {
-                            msg = procName;
-                        }
-                        else
-                        {
-                            msg = String.Format("{0} (named {1} in atomic action)", procName, actionName);
-                        }
+                        
                         checkingContext.Error(proc, "mismatched type of {0}-parameter in refinement procedure {1}: {2}", inout, proc.Name, msg);
+                    }
+
+                    if (QKeyValue.FindStringAttribute(procFormals[i].Attributes, CivlAttributes.LINEAR) != QKeyValue.FindStringAttribute(actionFormals[i].Attributes, CivlAttributes.LINEAR) ||
+                        QKeyValue.FindStringAttribute(procFormals[i].Attributes, CivlAttributes.LINEAR_IN) != QKeyValue.FindStringAttribute(actionFormals[i].Attributes, CivlAttributes.LINEAR_IN) ||
+                        QKeyValue.FindStringAttribute(procFormals[i].Attributes, CivlAttributes.LINEAR_OUT) != QKeyValue.FindStringAttribute(actionFormals[i].Attributes, CivlAttributes.LINEAR_OUT))
+                    {
+                        checkingContext.Error(proc, "mismatched linearity type of {0}-parameter in refinement procedure {1}: {2}", inout, proc.Name, msg);
                     }
                 }
             }
