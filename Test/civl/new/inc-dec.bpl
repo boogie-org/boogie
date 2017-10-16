@@ -1,3 +1,6 @@
+// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
 // ###########################################################################
 // Global shared variables
 

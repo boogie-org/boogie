@@ -1,13 +1,14 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-procedure{:yields}{:layer 94} H()
+
+procedure{:atomic}{:layer 95} skip() { }
+
+procedure{:yields}{:layer 94} {:refines "skip"} H()
 {
   yield;
 }
-
-procedure{:atomic}{:layer 95} atomic_A() { }
   
-procedure{:yields}{:layer 94} {:refines "atomic_A"} A()
+procedure{:yields}{:layer 94} {:refines "skip"} A()
 {
   yield;
 }
