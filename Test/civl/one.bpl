@@ -2,11 +2,11 @@
 // RUN: %diff "%s.expect" "%t"
 var {:layer 0,1} x:int;
 
-procedure {:yields} {:layer 0,1} Set(v: int);
-ensures {:atomic}
-|{A:
-  x := v; return true;
-}|;
+procedure {:atomic} {:layer 1} AtomicSet(v: int)
+modifies x;
+{ x := v; }
+
+procedure {:yields} {:layer 0} {:refines "AtomicSet"} Set(v: int);
 
 procedure {:yields} {:layer 1} B()
 {

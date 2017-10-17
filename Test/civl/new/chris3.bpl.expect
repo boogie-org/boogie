@@ -1,2 +1,0 @@
-chris3.bpl(19,2): Error: The atomic actions in the parallel call must be all right movers or all left movers
-1 type checking errors detected in chris3.bpl

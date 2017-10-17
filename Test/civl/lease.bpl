@@ -39,50 +39,52 @@ function nextNode(me:int):int;
 
 ////// primitive actions //////
 
-procedure{:yields}{:layer 1,2} GetNode({:linear "me"} me:int) returns(n:node);
-  ensures{:both}
-  |{  A:
+procedure{:both}{:layer 2} AtomicGetNode({:linear "me"} me:int) returns(n:node)
+{
         n := nodes[me];
-        return true;
-  }|;
+}
 
-procedure{:yields}{:layer 1,2} SetNode({:linear "me"} me:int, n:node);
-  ensures{:both}
-  |{  A:
+procedure{:yields}{:layer 1} {:refines "AtomicGetNode"} GetNode({:linear "me"} me:int) returns(n:node);
+
+procedure{:both}{:layer 2} AtomicSetNode({:linear "me"} me:int, n:node)
+modifies nodes;
+{
         nodes := nodes[me := n];
-        return true;
-  }|;
+}
 
-procedure{:yields}{:layer 1,2} Recv({:linear "me"} me:int) returns(m:msg);
-  ensures{:right}
-  |{  A:
+procedure{:yields}{:layer 1} {:refines "AtomicSetNode"} SetNode({:linear "me"} me:int, n:node);
+
+procedure{:right}{:layer 2} AtomicRecv({:linear "me"} me:int) returns(m:msg)
+{
         assume network[m] && dst#msg(m) == me;
-        return true;
-  }|;
+}
 
-procedure{:yields}{:layer 1,2} SendInternal({:linear "me"} me:int, dst:int, payload:lockMsg);
-  ensures{:left}
-  |{  A:
+procedure{:yields}{:layer 1} {:refines "AtomicRecv"} Recv({:linear "me"} me:int) returns(m:msg);  
+
+procedure{:left}{:layer 2} AtomicSendInternal({:linear "me"} me:int, dst:int, payload:lockMsg)
+modifies network;
+{
         network := network[msg(me, dst, payload) := true];
-        return true;
-  }|;
+}
 
-procedure{:yields}{:layer 1,2} SendExternal({:linear "me"} me:int, dst:int, payload:lockMsg);
-  ensures{:left}
-  |{  A:
+procedure{:yields}{:layer 1} {:refines "AtomicSendInternal"} SendInternal({:linear "me"} me:int, dst:int, payload:lockMsg);
+
+procedure{:left}{:layer 2} AtomicSendExternal({:linear "me"} me:int, dst:int, payload:lockMsg)
+modifies network, external;
+{
         network  := network [msg(me, dst, payload) := true];
         external := external[msg(me, dst, payload) := true];
-        return true;
-  }|;
+}
 
-procedure{:yields}{:layer 1,2} AddHistory(l:int);
-  ensures{:atomic}
-  |{  A:
+procedure{:yields}{:layer 1} {:refines "AtomicSendExternal"} SendExternal({:linear "me"} me:int, dst:int, payload:lockMsg);
+
+procedure{:atomic}{:layer 2} AtomicAddHistory(l:int)
+modifies history;
+{
         history  := addHistory(history, l);
-        return true;
-  }|;
+}
 
-
+procedure{:yields}{:layer 1} {:refines "AtomicAddHistory"} AddHistory(l:int);
 ////// composite actions //////
 
 function EpochInHistory(epoch:int, history:history):bool
@@ -118,15 +120,16 @@ function Inv(network:[msg]bool, nodes:[int]node, history:history):bool
 && (forall m:msg :: network[m] ==> InvMsg(network, nodes, history, m))
 }
 
-procedure{:yields}{:layer 2,3} Grant({:linear "me"} me:int) returns(dst:int, epoch:int)
+procedure{:atomic}{:layer 3} AtomicGrant({:linear "me"} me:int) returns(dst:int, epoch:int)
+modifies history;
+{
+        history := addHistory(history, dst);
+}
+
+procedure{:yields}{:layer 2} {:refines "AtomicGrant"} Grant({:linear "me"} me:int) returns(dst:int, epoch:int)
   requires{:layer 2} held#node(nodes[me]);
   requires{:layer 2} Inv(network, nodes, history);
   ensures {:layer 2} Inv(network, nodes, history);
-  ensures{:atomic}
-  |{  A:
-        history := addHistory(history, dst);
-        return true;
-  }|;
 {
   var node:node;
   yield; assert{:layer 2} Inv(network, nodes, history) && held#node(nodes[me]);
@@ -141,18 +144,19 @@ procedure{:yields}{:layer 2,3} Grant({:linear "me"} me:int) returns(dst:int, epo
   yield; assert{:layer 2} Inv(network, nodes, history);
 }
 
-procedure{:yields}{:layer 2,3} Accept({:linear "me"} me:int, dst:int) returns(epoch:int)
-  requires{:layer 2} Inv(network, nodes, history);
-  ensures {:layer 2} Inv(network, nodes, history);
-  ensures{:atomic}
-  |{  A:
+procedure{:atomic}{:layer 3} AtomicAccept({:linear "me"} me:int, dst:int) returns(epoch:int)
+modifies external;
+{
         // specify that the message source (me) must appear at right epoch in history:
         assume EpochInHistory(epoch - 1, history);
         assume me == locks#history(history)[epoch - 1];
 
         external := external[msg(me, dst, locked(epoch)) := true];
-        return true;
-  }|;
+}
+
+procedure{:yields}{:layer 2} {:refines "AtomicAccept"} Accept({:linear "me"} me:int, dst:int) returns(epoch:int)
+  requires{:layer 2} Inv(network, nodes, history);
+  ensures {:layer 2} Inv(network, nodes, history);
 {
   var node:node;
   var m:msg;

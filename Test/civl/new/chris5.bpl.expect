@@ -1,7 +1,0 @@
-chris5.bpl(15,3): Error BP5002: A precondition for this call might not hold.
-chris5.bpl(6,3): Related location: This is the precondition that might not hold.
-Execution trace:
-    chris5.bpl(13,3): anon0
-    (0,0): anon00
-
-Boogie program verifier finished with 1 verified, 1 error

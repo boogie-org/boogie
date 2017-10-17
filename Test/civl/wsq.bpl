@@ -14,7 +14,7 @@ function {:inline} {:linear "tid"} TidCollector(x: Tid) : [Tid]bool
 var {:layer 0,3} H: int;
 var {:layer 0,3} T: int;
 var {:layer 0,3} items: [int]int;
-var {:layer 0} status: [int]bool;
+var {:layer 0,4} status: [int]bool;
 var {:layer 0,3} take_in_cs: bool;
 var {:layer 0,3} put_in_cs: bool;
 var {:layer 0,3} steal_in_cs: [Tid]bool;
@@ -79,14 +79,21 @@ function {:inline} takeInv(items:[int]int, status: [int]bool, H:int, T:int, t:in
    )
 }
 
-procedure {:yields} {:layer 3} put({:linear "tid"} tid:Tid, task: int)
+procedure {:atomic} {:layer 4} atomic_put({:linear "tid"} tid:Tid, task: int)
+modifies status;
+{
+  var i: int;
+  assume status[i] == NOT_IN_Q;
+  status[i] := IN_Q;
+}
+
+procedure {:yields} {:layer 3} {:refines "atomic_put"} put({:linear "tid"} tid:Tid, task: int)
 requires {:layer 3} {:expand} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && task != EMPTY && !take_in_cs && !put_in_cs;
 requires {:layer 3} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
 requires {:layer 3} {:expand} emptyInv(put_in_cs, take_in_cs, items,status,T);
 ensures {:layer 3} {:expand} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs;
 ensures {:layer 3} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
 ensures {:layer 3} {:expand} emptyInv(put_in_cs, take_in_cs, items,status,T);
-ensures {:atomic} |{ var i: int; A: assume status[i] == NOT_IN_Q; status[i] := IN_Q; return true; }|;
 {
   var t: int;
   var {:layer 3} oldH:int;
@@ -133,12 +140,21 @@ ensures {:atomic} |{ var i: int; A: assume status[i] == NOT_IN_Q; status[i] := I
   assert {:layer 3} {:expand} emptyInv(put_in_cs, take_in_cs, items,status,T);
 }
 
-procedure {:yields} {:layer 3} take({:linear "tid"} tid:Tid) returns (task: int, taskstatus: bool)
+procedure {:atomic} {:layer 4} atomic_take({:linear "tid"} tid:Tid) returns (task: int, taskstatus: bool)
+modifies status;
+{
+  var i: int;
+  if (*) {
+    assume status[i] == IN_Q;
+    status[i] := NOT_IN_Q;
+  }
+}
+
+procedure {:yields} {:layer 3} {:refines "atomic_take"} take({:linear "tid"} tid:Tid) returns (task: int, taskstatus: bool)
 requires {:layer 3} {:expand} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs;
 requires {:layer 3} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
 ensures {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs && (task != EMPTY ==> taskstatus == IN_Q);
 ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
-ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; status[i] := NOT_IN_Q; return true; C: return true;}|;
 {
   var h, t: int;
   var chk: bool;
@@ -287,15 +303,23 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
   assert {:layer 3} oldH <= H && oldT == T;
 }
 
+procedure {:atomic} {:layer 4} atomic_steal({:linear "tid"} tid:Tid) returns (task: int, taskstatus: bool)
+modifies status;
+{
+  var i: int;
+  if (*) {
+    assume status[i] == IN_Q;
+    status[i] := NOT_IN_Q;
+  }
+}
 
-procedure {:yields}{:layer 3} steal({:linear "tid"} tid:Tid) returns (task: int, taskstatus: bool)
+procedure {:yields} {:layer 3} {:refines "atomic_steal"} steal({:linear "tid"} tid:Tid) returns (task: int, taskstatus: bool)
 requires {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && stealerTid(tid) &&
                    !steal_in_cs[tid];
 requires {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
 ensures {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) &&
                    !steal_in_cs[tid] && (task != EMPTY ==> taskstatus == IN_Q);
 ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
-ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; status[i] := NOT_IN_Q; return true; C: return true;}|;
 {
   var h, t: int;
   var chk: bool;
@@ -419,120 +443,118 @@ procedure {:layer 3} {:inline 1} GhostReadStatus() returns (oldStatus: bool)
   oldStatus := status[T];
 }
 
-procedure {:yields}{:layer 0,3} readH_take({:linear "tid"} tid:Tid) returns (y: int);
-ensures {:atomic} |{A: assert tid == ptTid;
-                       y := H;
-                       take_in_cs := true;
-                       h_ss[tid] := H;
-                       return true;}|;
+procedure {:atomic} {:layer 1,3} atomic_readH_take({:linear "tid"} tid:Tid) returns (y: int)
+modifies take_in_cs, h_ss;
+{ assert tid == ptTid; y := H; take_in_cs := true; h_ss[tid] := H; }
 
-procedure {:yields}{:layer 0,3} readH_steal({:linear "tid"} tid:Tid) returns (y: int);
-ensures {:atomic} |{A: assert stealerTid(tid);
-                       assert !steal_in_cs[tid];
-                       y := H;
-                       h_ss[tid] := H;
-                       return true;}|;
+procedure {:yields} {:layer 0} {:refines "atomic_readH_take"} readH_take({:linear "tid"} tid:Tid) returns (y: int);
 
-procedure {:yields}{:layer 0,3} readT_take_init({:linear "tid"} tid:Tid) returns (y: int);
-ensures {:atomic} |{A: assert tid != NIL; assert tid == ptTid; y := T; return true;}|;
+procedure {:atomic} {:layer 1,3} atomic_readH_steal({:linear "tid"} tid:Tid) returns (y: int)
+modifies h_ss;
+{ assert stealerTid(tid); assert !steal_in_cs[tid]; y := H; h_ss[tid] := H; }
 
-procedure {:yields}{:layer 0,3} readT_put({:linear "tid"} tid:Tid) returns (y: int);
-ensures {:atomic} |{A: assert tid != NIL;
-                       assert tid == ptTid;
-                       put_in_cs := true;
-                       y := T;
-                       return true;}|;
+procedure {:yields} {:layer 0} {:refines "atomic_readH_steal"} readH_steal({:linear "tid"} tid:Tid) returns (y: int);
 
-procedure {:yields}{:layer 0,3} readT_steal({:linear "tid"} tid:Tid) returns (y: int);
-ensures {:atomic} |{A: assert tid != NIL;
-                       assert stealerTid(tid);
-                       assert !steal_in_cs[tid];
-                       y := T;
-                       t_ss[tid] := T;
-                       steal_in_cs[tid] := true;
-                       return true;}|;
+procedure {:atomic} {:layer 1,3} atomic_readT_take_init({:linear "tid"} tid:Tid) returns (y: int)
+{ assert tid != NIL; assert tid == ptTid; y := T; }
 
-procedure {:yields}{:layer 0,3} readItems({:linear "tid"} tid:Tid, ind: int) returns (y: int, b:bool);
-ensures {:atomic} |{A: y := items[ind]; b := status[ind]; return true; }|;
+procedure {:yields} {:layer 0} {:refines "atomic_readT_take_init"} readT_take_init({:linear "tid"} tid:Tid) returns (y: int);
 
-procedure {:yields}{:layer 0,3} writeT_put({:linear "tid"} tid:Tid, val: int);
-ensures {:atomic} |{A: assert tid == ptTid;
-                       T := T+1;
-                       put_in_cs := false;
-                       return true; }|;
+procedure {:atomic} {:layer 1,3} atomic_readT_put({:linear "tid"} tid:Tid) returns (y: int)
+modifies put_in_cs;
+{ assert tid != NIL; assert tid == ptTid; put_in_cs := true; y := T; }
 
-procedure {:yields}{:layer 0,3} writeT_take({:linear "tid"} tid:Tid, val: int);
-ensures {:atomic} |{A: assert tid == ptTid;
-                       T := val;
-                       t_ss[tid] := val;
-                       return true; }|;
+procedure {:yields} {:layer 0} {:refines "atomic_readT_put"} readT_put({:linear "tid"} tid:Tid) returns (y: int);
 
-procedure {:yields}{:layer 0,3} writeT_take_abort({:linear "tid"} tid:Tid, val: int);
-ensures {:atomic} |{A: assert tid == ptTid;
-                       assert take_in_cs;
-                       T := val;
-                       take_in_cs := false;
-                       return true; }|;
+procedure {:atomic} {:layer 1,3} atomic_readT_steal({:linear "tid"} tid:Tid) returns (y: int)
+modifies t_ss, steal_in_cs;
+{ assert tid != NIL; assert stealerTid(tid); assert !steal_in_cs[tid]; y := T; t_ss[tid] := T; steal_in_cs[tid] := true; }
 
-procedure {:yields}{:layer 0,3} writeT_take_eq({:linear "tid"} tid:Tid, val: int);
-ensures {:atomic} |{A: assert tid == ptTid;
-                       T := val;
-                       return true; }|;
+procedure {:yields} {:layer 0} {:refines "atomic_readT_steal"} readT_steal({:linear "tid"} tid:Tid) returns (y: int);
 
-procedure {:yields}{:layer 0,3} takeExitCS({:linear "tid"} tid:Tid);
-ensures {:atomic} |{A: assert tid == ptTid;
-                       take_in_cs := false;
-                       return true; }|;
+procedure {:atomic} {:layer 1,3} atomic_readItems({:linear "tid"} tid:Tid, ind: int) returns (y: int, b:bool)
+{ y := items[ind]; b := status[ind]; }
 
-procedure {:yields}{:layer 0,3} stealExitCS({:linear "tid"} tid:Tid);
-ensures {:atomic} |{A: assert stealerTid(tid);
-                       assert steal_in_cs[tid];
-                       steal_in_cs[tid] := false;
-                       return true; }|;
+procedure {:yields} {:layer 0} {:refines "atomic_readItems"} readItems({:linear "tid"} tid:Tid, ind: int) returns (y: int, b:bool);
 
+procedure {:atomic} {:layer 1,3} atomic_writeT_put({:linear "tid"} tid:Tid, val: int)
+modifies T, put_in_cs;
+{ assert tid == ptTid; T := T+1; put_in_cs := false; }
 
-procedure {:yields}{:layer 0,3} writeItems({:linear "tid"} tid:Tid, idx: int, val: int);
-ensures {:atomic} |{A: assert tid == ptTid;
-                       assert val != EMPTY;
-                       items[idx] := val;
-                       status[idx] := IN_Q;
-                       return true; }|;
+procedure {:yields} {:layer 0} {:refines "atomic_writeT_put"} writeT_put({:linear "tid"} tid:Tid, val: int);
 
+procedure {:atomic} {:layer 1,3} atomic_writeT_take({:linear "tid"} tid:Tid, val: int)
+modifies T, t_ss;
+{ assert tid == ptTid; T := val; t_ss[tid] := val; }
 
-procedure {:yields}{:layer 0,3} writeItems_put({:linear "tid"} tid:Tid, idx: int, val: int);
-ensures {:atomic} |{A: assert tid == ptTid;
-                       assert val != EMPTY;
-                       items[idx] := val;
-                       status[idx] := IN_Q;
-                       return true; }|;
+procedure {:yields} {:layer 0} {:refines "atomic_writeT_take"} writeT_take({:linear "tid"} tid:Tid, val: int);
 
-procedure {:yields}{:layer 0,3} CAS_H_take({:linear "tid"} tid:Tid, prevVal :int, val: int)
-                                          returns (result: bool);
-ensures {:atomic} |{A: assert tid == ptTid;
-                       goto B, C;
-                    B: assume H == prevVal;
-                       take_in_cs := false;
-                       status[H] := NOT_IN_Q;
-                       H := H+1;
-                       result := true;
-                       return true;
-                    C: assume H != prevVal; result := false;
-                       take_in_cs := false;
-                       return true;
-}|;
+procedure {:atomic} {:layer 1,3} atomic_writeT_take_abort({:linear "tid"} tid:Tid, val: int)
+modifies T, take_in_cs;
+{ assert tid == ptTid; assert take_in_cs; T := val; take_in_cs := false; }
 
-procedure {:yields}{:layer 0,3} CAS_H_steal({:linear "tid"} tid:Tid, prevVal :int, val: int)
-                                           returns (result: bool);
-ensures {:atomic} |{A: assert stealerTid(tid);
-                       goto B, C;
-                    B: assume H == prevVal;
-                       status[H] := NOT_IN_Q;
-                       H := H+1;
-                       result := true;
-                       steal_in_cs[tid] := false;
-                       return true;
-                    C: assume H != prevVal;
-                       result := false;
-                       steal_in_cs[tid] := false;
-                       return true;
-}|;
+procedure {:yields} {:layer 0} {:refines "atomic_writeT_take_abort"} writeT_take_abort({:linear "tid"} tid:Tid, val: int);
+
+procedure {:atomic} {:layer 1,3} atomic_writeT_take_eq({:linear "tid"} tid:Tid, val: int)
+modifies T;
+{ assert tid == ptTid; T := val; }
+
+procedure {:yields} {:layer 0} {:refines "atomic_writeT_take_eq"} writeT_take_eq({:linear "tid"} tid:Tid, val: int);
+
+procedure {:atomic} {:layer 1,3} atomic_takeExitCS({:linear "tid"} tid:Tid)
+modifies take_in_cs;
+{ assert tid == ptTid; take_in_cs := false; }
+
+procedure {:yields} {:layer 0} {:refines "atomic_takeExitCS"} takeExitCS({:linear "tid"} tid:Tid);
+
+procedure {:atomic} {:layer 1,3} atomic_stealExitCS({:linear "tid"} tid:Tid)
+modifies steal_in_cs;
+{ assert stealerTid(tid); assert steal_in_cs[tid]; steal_in_cs[tid] := false; }
+
+procedure {:yields} {:layer 0} {:refines "atomic_stealExitCS"} stealExitCS({:linear "tid"} tid:Tid);
+
+procedure {:atomic} {:layer 1,3} atomic_writeItems({:linear "tid"} tid:Tid, idx: int, val: int)
+modifies items, status;
+{ assert tid == ptTid; assert val != EMPTY; items[idx] := val; status[idx] := IN_Q; }
+
+procedure {:yields} {:layer 0} {:refines "atomic_writeItems"} writeItems({:linear "tid"} tid:Tid, idx: int, val: int);
+
+procedure {:atomic} {:layer 1,3} atomic_writeItems_put({:linear "tid"} tid:Tid, idx: int, val: int)
+modifies items, status;
+{ assert tid == ptTid; assert val != EMPTY; items[idx] := val; status[idx] := IN_Q; }
+
+procedure {:yields} {:layer 0} {:refines "atomic_writeItems_put"} writeItems_put({:linear "tid"} tid:Tid, idx: int, val: int);
+
+procedure {:atomic} {:layer 1,3} atomic_CAS_H_take({:linear "tid"} tid:Tid, prevVal :int, val: int) returns (result: bool)
+modifies status, H, take_in_cs;
+{
+  assert tid == ptTid;
+  if (H == prevVal) {
+    status[H] := NOT_IN_Q;
+    H := H+1;
+    result := true;
+    take_in_cs := false;
+  } else {
+    result := false;
+    take_in_cs := false;
+  }
+}
+
+procedure {:yields} {:layer 0} {:refines "atomic_CAS_H_take"} CAS_H_take({:linear "tid"} tid:Tid, prevVal :int, val: int) returns (result: bool);
+
+procedure {:atomic} {:layer 1,3} atomic_CAS_H_steal({:linear "tid"} tid:Tid, prevVal :int, val: int) returns (result: bool)
+modifies status, H, steal_in_cs;
+{
+  assert stealerTid(tid);
+  if (H == prevVal) {
+    status[H] := NOT_IN_Q;
+    H := H+1;
+    result := true;
+    steal_in_cs[tid] := false;
+  } else {
+    result := false;
+    steal_in_cs[tid] := false;
+  }
+}
+
+procedure {:yields} {:layer 0} {:refines "atomic_CAS_H_steal"} CAS_H_steal({:linear "tid"} tid:Tid, prevVal :int, val: int) returns (result: bool);

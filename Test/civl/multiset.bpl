@@ -6,10 +6,10 @@ const unique null : int;
 const unique nil: X;
 const unique done: X;
 
-var {:layer 0} elt : [int]int;
-var {:layer 0} valid : [int]bool;
-var {:layer 0} lock : [int]X;
-var {:layer 0} owner : [int]X;
+var {:layer 0,3} elt : [int]int;
+var {:layer 0,3} valid : [int]bool;
+var {:layer 0,3} lock : [int]X;
+var {:layer 0,3} owner : [int]X;
 const max : int;
 
 function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
@@ -20,96 +20,66 @@ function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
 
 axiom (max > 0);
 
-procedure {:yields} {:layer 0} acquire(i : int, {:linear "tid"} tid: X);
-ensures {:right} |{ A:
-                      assert 0 <= i && i < max;
-                      assert tid != nil && tid != done;
-                      assume lock[i] == nil;
-                      lock[i] := tid;
-                      return true;
-                    }|;
+procedure {:right} {:layer 1,2} atomic_acquire(i : int, {:linear "tid"} tid: X)
+modifies lock;
+{ assert 0 <= i && i < max; assert tid != nil && tid != done; assume lock[i] == nil; lock[i] := tid; }
 
+procedure {:yields} {:layer 0} {:refines "atomic_acquire"} acquire(i : int, {:linear "tid"} tid: X);
 
-procedure {:yields} {:layer 0} release(i : int, {:linear "tid"} tid: X);
-ensures {:left} |{ A:
-                     assert 0 <= i && i < max;
-                     assert lock[i] == tid;
-                     assert tid != nil && tid != done;
-                     lock[i] := nil;
-                     return true;
-                    }|;
+procedure {:left} {:layer 1,2} atomic_release(i : int, {:linear "tid"} tid: X)
+modifies lock;
+{ assert 0 <= i && i < max; assert lock[i] == tid; assert tid != nil && tid != done; lock[i] := nil; }
 
+procedure {:yields} {:layer 0} {:refines "atomic_release"} release(i : int, {:linear "tid"} tid: X);		    
 
-procedure {:yields} {:layer 0,1} getElt(j : int, {:linear "tid"} tid: X) returns (elt_j:int);
-ensures {:both} |{ A:
-                     assert 0 <= j && j < max;
-                     assert lock[j] == tid;
-                     assert tid != nil && tid != done;
-                     elt_j := elt[j];
-                     return true;
-                    }|;
+procedure {:both} {:layer 1} atomic_getElt(j : int, {:linear "tid"} tid: X) returns (elt_j:int)
+{ assert 0 <= j && j < max; assert tid != nil && tid != done; assert lock[j] == tid; elt_j := elt[j]; }
 
+procedure {:yields} {:layer 0} {:refines "atomic_getElt"} getElt(j : int, {:linear "tid"} tid: X) returns (elt_j:int);
 
-procedure {:yields} {:layer 0,1} setElt(j : int, x : int, {:linear "tid"} tid: X);
-ensures {:both} |{ A:
-                     assert x != null;
-                     assert owner[j] == nil;
-                     assert 0 <= j && j < max;
-                     assert lock[j] == tid;
-                     assert tid != nil && tid != done;
-                     elt[j] := x;
-                     owner[j] := tid;
-                     return true;
-                    }|;
+procedure {:both} {:layer 1} atomic_setElt(j : int, x : int, {:linear "tid"} tid: X)
+modifies elt, owner;
+{ assert x != null && owner[j] == nil; assert 0 <= j && j < max; assert lock[j] == tid; assert tid != nil && tid != done; elt[j] := x; owner[j] := tid; }
 
+procedure {:yields} {:layer 0} {:refines "atomic_setElt"} setElt(j : int, x : int, {:linear "tid"} tid: X);
 
-procedure {:yields} {:layer 0,2} setEltToNull(j : int, {:linear "tid"} tid: X);
-ensures {:left} |{ A:
-                     assert owner[j] == tid;
-                     assert 0 <= j && j < max;
-                     assert lock[j] == tid;
-                     assert !valid[j];
-                     assert tid != nil  && tid != done;
-                     elt[j] := null;
-                     owner[j] := nil;
-                     return true;
-                    }|;
+procedure {:left} {:layer 1,2} atomic_setEltToNull(j : int, {:linear "tid"} tid: X)
+modifies elt, owner;
+{ assert owner[j] == tid && lock[j] == tid; assert 0 <= j && j < max; assert !valid[j]; assert tid != nil  && tid != done; elt[j] := null; owner[j] := nil; }
+		    
+procedure {:yields} {:layer 0} {:refines "atomic_setEltToNull"} setEltToNull(j : int, {:linear "tid"} tid: X);		    
 
-procedure {:yields} {:layer 0,2} setValid(j : int, {:linear "tid"} tid: X);
-ensures {:both} |{ A:
-                     assert 0 <= j && j < max;
-                     assert lock[j] == tid;
-                     assert tid != nil && tid != done;
-                     assert owner[j] == tid;
-                     valid[j] := true;
-                     owner[j] := done;
-                     return true;
-                    }|;
+procedure {:both} {:layer 1,2} atomic_setValid(j : int, {:linear "tid"} tid: X)
+modifies valid, owner;
+{ assert 0 <= j && j < max; assert lock[j] == tid; assert tid != nil && tid != done; assert owner[j] == tid; valid[j] := true; owner[j] := done; }
 
-procedure {:yields} {:layer 0,2} isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool);
-ensures {:both} |{ A:
-                       assert 0 <= j && j < max;
-                       assert lock[j] == tid;
-                       assert tid != nil && tid != done;
-                       fnd := (elt[j] == x) && valid[j];
-                       return true;
-                    }|;
+procedure {:yields} {:layer 0} {:refines "atomic_setValid"} setValid(j : int, {:linear "tid"} tid: X);
 
-procedure {:yields} {:layer 1,2} FindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
+procedure {:both} {:layer 1,2} atomic_isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool)
+{ assert 0 <= j && j < max; assert lock[j] == tid; assert tid != nil && tid != done; fnd := (elt[j] == x) && valid[j]; }
+
+procedure {:yields} {:layer 0} {:refines "atomic_isEltThereAndValid"} isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool);
+
+procedure {:right} {:layer 2} AtomicFindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
+modifies elt, owner;
+{
+  assert tid != nil && tid != done;
+  assert x != null;
+  if (*) {
+    assume (0 <= r && r < max);
+    assume elt[r] == null;
+    assume owner[r] == nil;
+    assume !valid[r];
+    elt[r] := x;
+    owner[r] := tid;
+  } else {
+    assume (r == -1);
+  }
+}
+
+procedure {:yields} {:layer 1} {:refines "AtomicFindSlot"} FindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
 requires {:layer 1} Inv(valid, elt, owner) && x != null && tid != nil && tid != done;
 ensures {:layer 1} Inv(valid, elt, owner);
-ensures {:right}  |{   A: assert tid != nil && tid != done;
-                          assert x != null;
-                          goto B, C;
-                       B: assume (0 <= r && r < max);
-                                            assume elt[r] == null;
-                                            assume owner[r] == nil;
-                                            assume !valid[r];
-                                            elt[r] := x;
-                                            owner[r] := tid;
-                                            return true;
-                       C: assume (r == -1); return true;
-                   }|;
 {
   var j : int;
   var elt_j : int;
@@ -144,21 +114,29 @@ ensures {:right}  |{   A: assert tid != nil && tid != done;
   return;
 }
 
-procedure {:yields} {:layer 2} Insert(x : int, {:linear "tid"} tid: X) returns (result : bool)
+procedure {:atomic} {:layer 3} AtomicInsert(x : int, {:linear "tid"} tid: X) returns (result : bool)
+modifies elt, valid, owner;
+{
+  var r:int;
+  if (*) {
+    assume (0 <= r && r < max);
+    assume valid[r] == false;
+    assume elt[r] == null;
+    assume owner[r] == nil;
+    elt[r] := x;
+    valid[r] := true;
+    owner[r] := done;
+    result := true;
+  } else {
+    result := false;
+  }
+}
+
+procedure {:yields} {:layer 2} {:refines "AtomicInsert"} Insert(x : int, {:linear "tid"} tid: X) returns (result : bool)
 requires {:layer 1} Inv(valid, elt, owner) && x != null && tid != nil && tid != done;
 ensures {:layer 1} Inv(valid, elt, owner);
 requires {:layer 2} Inv(valid, elt, owner) && x != null && tid != nil && tid != done;
 ensures {:layer 2} Inv(valid, elt, owner);
-ensures {:atomic}  |{ var r:int;
-                        A: goto B, C;
-                        B: assume (0 <= r && r < max);
-                           assume valid[r] == false;
-                           assume elt[r] == null;
-                           assume owner[r] == nil;
-                           elt[r] := x; valid[r] := true; owner[r] := done;
-                           result := true; return true;
-                        C: result := false; return true;
-                      }|;
 {
   var i: int;
   par Yield12();
@@ -183,28 +161,34 @@ ensures {:atomic}  |{ var r:int;
   return;
 }
 
-procedure {:yields} {:layer 2} InsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
+procedure {:atomic} {:layer 3} AtomicInsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
+modifies elt, valid, owner;
+{
+  var rx:int;
+  var ry:int;
+  if (*) {
+    assume (0 <= rx && rx < max && 0 <= ry && ry < max && rx != ry);
+    assume valid[rx] == false;
+    assume valid[ry] == false;
+    assume elt[rx] == null;
+    assume elt[rx] == null;
+    elt[rx] := x;
+    elt[ry] := y;
+    valid[rx] := true;
+    valid[ry] := true;
+    owner[rx] := done;
+    owner[ry] := done;
+    result := true;
+  } else {
+    result := false;
+  }
+}
+
+procedure {:yields} {:layer 2} {:refines "AtomicInsertPair"} InsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
 requires {:layer 1} Inv(valid, elt, owner) && x != null && y != null && tid != nil && tid != done;
 ensures {:layer 1} Inv(valid, elt, owner);
 requires {:layer 2} Inv(valid, elt, owner) && x != null && y != null && tid != nil && tid != done;
 ensures {:layer 2} Inv(valid, elt, owner);
-ensures {:atomic}  |{ var rx:int;
-                        var ry:int;
-                        A: goto B, C;
-                        B: assume (0 <= rx && rx < max && 0 <= ry && ry < max && rx != ry);
-                           assume valid[rx] == false;
-                           assume valid[ry] == false;
-                           assume elt[rx] == null;
-                           assume elt[rx] == null;
-                           elt[rx] := x;
-                           elt[ry] := y;
-                           valid[rx] := true;
-                           valid[ry] := true;
-                           owner[rx] := done;
-                           owner[ry] := done;
-                           result := true; return true;
-                        C: result := false; return true;
-                      }|;
 {
   var i : int;
   var j : int;
@@ -250,17 +234,19 @@ ensures {:atomic}  |{ var rx:int;
   return;
 }
 
-procedure {:yields} {:layer 2} LookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
+procedure {:atomic} {:layer 3} AtomicLookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
+{
+  assert tid != nil && tid != done;
+  assert x != null;
+  assume found ==> (exists ii:int :: 0 <= ii && ii < max && valid[ii] && elt[ii] == x);
+  assume !found ==> (forall ii:int :: 0 <= ii && ii < max ==> !(old_valid[ii] && old_elt[ii] == x));
+}
+
+procedure {:yields} {:layer 2} {:refines "AtomicLookUp"} LookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
 requires {:layer 1} {:layer 2} old_valid == valid && old_elt == elt;
 requires {:layer 1} {:layer 2} Inv(valid, elt, owner);
 requires {:layer 1} {:layer 2} (tid != nil && tid != done);
 ensures {:layer 1} {:layer 2} Inv(valid, elt, owner);
-ensures {:atomic}  |{ A: assert tid != nil && tid != done;
-                          assert x != null;
-                          assume found ==> (exists ii:int :: 0 <= ii && ii < max && valid[ii] && elt[ii] == x);
-                          assume !found ==> (forall ii:int :: 0 <= ii && ii < max ==> !(old_valid[ii] && old_elt[ii] == x));
-                          return true;
-                    }|;
 {
   var j : int;
   var isThere : bool;

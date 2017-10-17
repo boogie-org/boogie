@@ -39,20 +39,30 @@ procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xls: [X]bool)
   yield;
 }
 
-procedure {:yields} {:layer 0,1} Set(v: int);
-ensures {:atomic} |{A: x := v; return true; }|;
+procedure {:atomic} {:layer 1} AtomicSet(v: int)
+modifies x;
+{ x := v; }
 
-procedure {:yields} {:layer 0,1} Lock(tidls: [X]bool);
-ensures {:atomic} |{A: assume l == None(); l := tidls; return true; }|;
+procedure {:yields} {:layer 0} {:refines "AtomicSet"} Set(v: int);
 
-procedure {:yields} {:layer 0,1} Unlock();
-ensures {:atomic} |{A: l := None(); return true; }|;
+procedure {:atomic} {:layer 1} AtomicLock(tidls: [X]bool)
+modifies l;
+{ assume l == None(); l := tidls; }
 
-procedure {:yields} {:layer 0,1} SplitLow({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool);
-ensures {:atomic} |{ A: assume xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None(); return true; }|;
+procedure {:yields} {:layer 0} {:refines "AtomicLock"} Lock(tidls: [X]bool);
 
-procedure {:yields} {:layer 0,1} AllocateLow() returns ({:linear "tid"} xls: [X]bool);
-ensures {:atomic} |{ A: return true; }|;
+procedure {:atomic} {:layer 1} AtomicUnlock()
+modifies l;
+{ l := None(); }
+
+procedure {:yields} {:layer 0} {:refines "AtomicUnlock"} Unlock();
+
+procedure {:atomic} {:layer 1} AtomicSplitLow({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool)
+{ assume xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None(); }
+
+procedure {:yields} {:layer 0} {:refines "AtomicSplitLow"} SplitLow({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool);
+
+procedure {:yields} {:layer 0} AllocateLow() returns ({:linear "tid"} xls: [X]bool);
 
 procedure {:yields} {:layer 1} main({:linear_in "tid"} tidls': [X]bool, {:linear_in "x"} xls': [X]bool)
 requires {:layer 1} tidls' != None() && xls' == All();

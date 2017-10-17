@@ -45,5 +45,8 @@ procedure {:yields} {:layer 1} foo({:linear_in "Perm"} permVar_in: [int]bool)
   assert {:layer 1} x == 1;
 }
 
-procedure {:yields} {:layer 0,1} Incr();
-ensures {:atomic} |{A: x := x + 1; return true; }|;
+procedure {:atomic} {:layer 1} AtomicIncr()
+modifies x;
+{ x := x + 1; }
+
+procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();

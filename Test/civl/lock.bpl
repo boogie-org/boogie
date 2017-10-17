@@ -26,8 +26,11 @@ procedure {:yields} {:layer 2} Customer()
     yield;
 }
 
-procedure {:yields} {:layer 1,2} Enter()
-ensures {:atomic} |{ A: assume !b; b := true; return true; }|;
+procedure {:atomic} {:layer 2} AtomicEnter()
+modifies b;
+{ assume !b; b := true; }
+
+procedure {:yields} {:layer 1} {:refines "AtomicEnter"} Enter()
 {
     var status: bool;
     yield;
@@ -46,12 +49,21 @@ ensures {:atomic} |{ A: assume !b; b := true; return true; }|;
         goto L;
 }
 
-procedure {:yields} {:layer 0,2} CAS(prev: bool, next: bool) returns (status: bool);
-ensures {:atomic} |{
-A: goto B, C;
-B: assume b == prev; b := next; status := true;  return true;
-C: assume b != prev;            status := false; return true;
-}|;
+procedure {:atomic} {:layer 1,2} AtomicCAS(prev: bool, next: bool) returns (status: bool)
+modifies b;
+{
+  if (b == prev) {
+    b := next;
+    status := true;
+  } else {
+    status := false;
+  }
+}
 
-procedure {:yields} {:layer 0,2} Leave();
-ensures {:atomic} |{ A: b := false; return true; }|;
+procedure {:yields} {:layer 0} {:refines "AtomicCAS"} CAS(prev: bool, next: bool) returns (status: bool);
+
+procedure {:atomic} {:layer 1,2} AtomicLeave()
+modifies b;
+{ b := false; }
+
+procedure {:yields} {:layer 0} {:refines "AtomicLeave"} Leave();

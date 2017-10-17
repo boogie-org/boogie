@@ -15,8 +15,11 @@ procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} tid: int)
     yield;
 }
 
-procedure {:yields} {:layer 0,1} Write(idx: int, val: int);
-ensures {:atomic} |{A: a[idx] := val; return true; }|;
+procedure {:atomic} {:layer 1} AtomicWrite(idx: int, val: int)
+modifies a;
+{ a[idx] := val; }
+
+procedure {:yields} {:layer 0} {:refines "AtomicWrite"} Write(idx: int, val: int);
 
 procedure {:yields} {:layer 1} main()
 {
@@ -55,5 +58,5 @@ ensures {:layer 1} old(a)[i] == a[i];
     assert {:layer 1} old(a)[i] == a[i];
 }
 
-procedure {:yields} {:layer 0,1} AllocateLow() returns ({:linear "tid"} tid: int);
-ensures {:atomic} |{ A: return true; }|;
+procedure {:yields} {:layer 0} AllocateLow() returns ({:linear "tid"} tid: int);
+

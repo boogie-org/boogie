@@ -29,8 +29,10 @@ procedure {:yields} {:layer 1} q()
     yield;
 }
 
-procedure {:yields} {:layer 0,1} Incr(val: int);
-ensures {:atomic}
-|{A:
-  x := x + val; return true;
-}|;
+procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr(val: int);
+
+procedure {:atomic} {:layer 1,1} AtomicIncr(val: int)
+modifies x;
+{
+  x := x + val;
+}
