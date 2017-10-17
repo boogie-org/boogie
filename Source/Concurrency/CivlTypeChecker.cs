@@ -467,7 +467,7 @@ namespace Microsoft.Boogie
                 {
                     if (!allLayerNums.Contains(layer))
                     {
-                        Error(kv.Key, "No refinement on layer {0}");
+                        checkingContext.Error(kv.Key, "No refinement on layer {0}", layer);
                     }
                 }
             }
