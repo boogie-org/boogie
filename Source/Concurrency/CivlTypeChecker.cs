@@ -439,7 +439,7 @@ namespace Microsoft.Boogie
                     if (x.HasValue)
                     {
                         if (moverType.HasValue)
-                            checkingContext.Warning(kv, string.Format("Ignoring duplicate mover type declaration ({0}).", kv.Key));
+                            checkingContext.Warning(kv, "Ignoring duplicate mover type declaration ({0}).", kv.Key);
                         else
                             moverType = x;
                     }
@@ -670,7 +670,7 @@ namespace Microsoft.Boogie
                         {
                             if (!declaredModifiedVars.Contains(mod))
                             {
-                                Error(callCmd, string.Format("Modified variable {0} does not appear in modifies clause of mover procedure.", mod.Name));
+                                checkingContext.Error(callCmd, "Modified variable {0} does not appear in modifies clause of mover procedure.", mod.Name);
                             }
                         }
                     }
@@ -856,7 +856,7 @@ namespace Microsoft.Boogie
                         // a shared variable introduced at layer n is visible to an atomic action only at layer n+1 or higher
                         // thus, a shared variable with layer range [n,n] is not accessible by an atomic action
                     {
-                        ctc.Error(node, string.Format("Shared variable {0} is not available in atomic action specification", node.Decl.Name));
+                        ctc.checkingContext.Error(node, "Shared variable {0} is not available in atomic action specification", node.Decl.Name);
                     }
                 }
                 return base.VisitIdentifierExpr(node);
@@ -1045,20 +1045,20 @@ namespace Microsoft.Boogie
                 {
                     if (layer > yieldingProc.upperLayer)
                     {
-                        ctc.Error(node, string.Format("Specification layer {0} is greater than enclosing procedure layer {1}", layer, yieldingProc.upperLayer));
+                        ctc.checkingContext.Error(node, "Specification layer {0} is greater than enclosing procedure layer {1}", layer, yieldingProc.upperLayer);
                     }
                     foreach (var ie in sharedVariableAccesses)
                     {
                         if (!ctc.GlobalVariableLayerRange(ie.Decl).Contains(layer))
                         {
-                            ctc.Error(ie, string.Format("Global variable {0} is not available at layer {1}", ie.Name, layer));
+                            ctc.checkingContext.Error(ie, "Global variable {0} is not available at layer {1}", ie.Name, layer);
                         }
                     }
                     foreach (var ie in localVariableAccesses)
                     {
                         if (layer < ctc.LocalVariableIntroLayer(ie.Decl))
                         {
-                            ctc.Error(ie, string.Format("Local variable {0} is not available at layer {1}", ie.Name, layer));
+                            ctc.checkingContext.Error(ie, "Local variable {0} is not available at layer {1}", ie.Name, layer);
                         }
                     }
                 }
@@ -1150,7 +1150,7 @@ namespace Microsoft.Boogie
                         var actualIntroLayer = ctc.LocalVariableIntroLayer(ie.Decl);
                         if (ctc.LocalVariableIntroLayer(ie.Decl) > formalIntroLayer)
                         {
-                            ctc.Error(ie, string.Format("Variable {0} introduced on layer {1} can not be passed to formal parameter introduced on layer {2}", ie.Decl.Name, actualIntroLayer, formalIntroLayer));
+                            ctc.checkingContext.Error(ie, "Variable {0} introduced on layer {1} can not be passed to formal parameter introduced on layer {2}", ie.Decl.Name, actualIntroLayer, formalIntroLayer);
                         }
                     }
 
@@ -1179,7 +1179,7 @@ namespace Microsoft.Boogie
             {
                 if (!calleeProc.layerRange.Contains(callerProc.upperLayer))
                 {
-                    ctc.Error(call, string.Format("Called instrumentation procedure {0} is not available at layer {1}", callerProc.proc.Name, callerProc.upperLayer));
+                    ctc.checkingContext.Error(call, "Called instrumentation procedure {0} is not available at layer {1}", callerProc.proc.Name, callerProc.upperLayer);
                     return;
                 }
 
@@ -1191,7 +1191,7 @@ namespace Microsoft.Boogie
                     {
                         if (ctc.LocalVariableIntroLayer(ie.Decl) != callerProc.upperLayer)
                         {
-                            ctc.Error(ie, string.Format("Output variable {0} must be introduced at layer {1}", ie.Decl.Name, callerProc.upperLayer));
+                            ctc.checkingContext.Error(ie, "Output variable {0} must be introduced at layer {1}", ie.Decl.Name, callerProc.upperLayer);
                         }
                     }
                 }
