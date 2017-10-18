@@ -148,15 +148,15 @@ namespace Microsoft.Boogie
                 thisLocVars.Add(xCopy);
             }
             Contract.Assume(proc.TypeParameters.Count == 0);
-            Substitution subst = Substituter.SubstitutionFromHashtable(varMap);
+            AtomicActionDuplicator aad = new AtomicActionDuplicator(prefix, varMap);
             foreach (AssertCmd assertCmd in gate)
             {
-                gateCopy.Add((AssertCmd)Substituter.Apply(subst, assertCmd));
+                gateCopy.Add((AssertCmd)aad.Visit(assertCmd));
             }
-            actionCopy = new CodeExpr(thisLocVars, SubstituteBlocks(action.Blocks, subst, prefix));
+            actionCopy = new CodeExpr(thisLocVars, SubstituteBlocks(action.Blocks, aad));
         }
 
-        private List<Block> SubstituteBlocks(List<Block> blocks, Substitution subst, string blockLabelPrefix)
+        private List<Block> SubstituteBlocks(List<Block> blocks, AtomicActionDuplicator aad)
         {
             Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
             List<Block> otherBlocks = new List<Block>();
@@ -165,11 +165,11 @@ namespace Microsoft.Boogie
                 List<Cmd> otherCmds = new List<Cmd>();
                 foreach (Cmd cmd in block.Cmds)
                 {
-                    otherCmds.Add(Substituter.Apply(subst, cmd));
+                    otherCmds.Add((Cmd)aad.Visit(cmd));
                 }
                 Block otherBlock = new Block();
                 otherBlock.Cmds = otherCmds;
-                otherBlock.Label = blockLabelPrefix + block.Label;
+                otherBlock.Label = aad.prefix + block.Label;
                 otherBlocks.Add(otherBlock);
                 blockMap[block] = otherBlock;
             }
@@ -214,6 +214,59 @@ namespace Microsoft.Boogie
                 triggerFuns[v] = new Function(v.tok, string.Format("Trigger_{0}_{1}", proc.Name, v.Name), args, result);
             }
             return triggerFuns[v];
+        }
+    }
+
+    /// <summary>
+    /// Renames variables (this_ and that_ prefix) in atomic action copies.
+    /// We do not use standard substitution, because we also need to rename bound variables
+    /// (because of potential substitution in commutativity checkers).
+    /// A substitution for regular variables is supplied from the outside, replacements for
+    /// bound variables are created on the fly.
+    /// </summary>
+    class AtomicActionDuplicator : Duplicator
+    {
+        public string prefix;
+        public Dictionary<Variable,Expr> subst;
+        private Dictionary<Variable,Expr> bound;
+
+        public AtomicActionDuplicator(string prefix, Dictionary<Variable,Expr> subst) {
+            this.prefix = prefix;
+            this.subst = subst;
+            this.bound = new Dictionary<Variable, Expr>();
+        }
+
+        public override Expr VisitIdentifierExpr(IdentifierExpr node)
+        {
+            if (subst.ContainsKey(node.Decl))
+            {
+                return subst[node.Decl];
+            }
+            else if (bound.ContainsKey(node.Decl))
+            {
+                return bound[node.Decl];
+            }
+            return base.VisitIdentifierExpr(node);
+        }
+
+        public override BinderExpr VisitBinderExpr(BinderExpr node)
+        {
+            var oldToNew = node.Dummies.ToDictionary(x => x, x => new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), x.Attributes));
+
+            foreach (var x in node.Dummies)
+            {
+                bound.Add(x, Expr.Ident(oldToNew[x]));
+            }
+
+            BinderExpr expr = base.VisitBinderExpr(node);
+            expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
+
+            foreach (var x in node.Dummies)
+            {
+                bound.Remove(x);
+            }
+
+            return expr;
         }
     }
 
@@ -872,6 +925,12 @@ namespace Microsoft.Boogie
             {
                 ctc.Error(node, "Call command not allowed inside an atomic actions");
                 return base.VisitCallCmd(node);
+            }
+
+            public override Expr VisitOldExpr(OldExpr node)
+            {
+                ctc.Error(node, "Old expression not allowed inside an aotmic action");
+                return base.VisitOldExpr(node);
             }
         }
 
