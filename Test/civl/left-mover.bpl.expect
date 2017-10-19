@@ -1,0 +1,14 @@
+(0,0): Error BP5003: A postcondition might not hold on this return path.
+(0,0): Related location: Gate failure of ass_eq_1 not preserved by inc
+Execution trace:
+    (0,0): this_anon0
+(0,0): Error BP5003: A postcondition might not hold on this return path.
+(0,0): Related location: Commutativity check between init and inc failed
+Execution trace:
+    (0,0): init_inc_init
+(0,0): Error BP5003: A postcondition might not hold on this return path.
+(0,0): Related location: block is blocking
+Execution trace:
+    (0,0): L
+
+Boogie program verifier finished with 1 verified, 3 errors
