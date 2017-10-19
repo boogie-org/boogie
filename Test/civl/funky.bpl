@@ -159,7 +159,7 @@ requires {:layer 3} tid != nil && counter == 0;
         assert {:layer 3} counter == 0;
         if (*) {
             call cid := AllocTid();
-	    async call AbsTB(cid);
+            async call AbsTB(cid);
         }
         yield;
         assert {:layer 3} counter == 0;

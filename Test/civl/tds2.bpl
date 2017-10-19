@@ -76,7 +76,7 @@ procedure {:yields} {:layer 1} {:refines "AtomicMain"} Main({:linear_in "tid"} t
     {
         call tid, tids' := Alloc(i, tids');
         async call StartClient(tid);
-	i := i + 1;
+        i := i + 1;
     }
     yield;
 }

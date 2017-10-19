@@ -1173,7 +1173,7 @@ modifies Color;
     assert tid == GcTid && rootScanOn && mutatorsInRootScanBarrier == Mutators && memAddr(memLocal);
     if (White(Color[memLocal])) {
         Color[memLocal] := GRAY();
-    }		  
+    }
 }
 
 procedure {:yields} {:layer 98} {:refines "AtomicInsertIntoSetIfWhiteInRootScanBarrier"} InsertIntoSetIfWhiteInRootScanBarrier({:linear "tid"} tid:Tid, memLocal:int)
@@ -2089,7 +2089,7 @@ procedure {:atomic} {:layer 96,98} AtomicReadColorByMutator3({:linear "tid"} tid
 {
     assert mutatorTidWhole(tid) && memAddr(i) && MarkPhase(mutatorPhase[i#Tid(tid)]);
     assume White(Color[i]) ==> White(val);
-}			
+}
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadColorByMutator3"} ReadColorByMutator3({:linear "tid"} tid:Tid, i: int) returns (val: int)
 {
@@ -2305,12 +2305,12 @@ procedure {:yields} {:layer 0} {:refines "AtomicPrimitiveAddRootScanBarrier"} Pr
 procedure {:atomic} {:layer 1,95} AtomicPrimitiveMutatorsInRootScanBarrierAdd({:linear_in "tid"} tid_right: Tid)
 modifies mutatorsInRootScanBarrier;
 { assert mutatorTidRight(tid_right); mutatorsInRootScanBarrier[i#Tid(tid_right)] := true; }
-procedure {:yields} {:layer 0} {:refines "AtomicPrimitiveMutatorsInRootScanBarrierAdd"} PrimitiveMutatorsInRootScanBarrierAdd({:linear_in "tid"} tid_right: Tid);		  
+procedure {:yields} {:layer 0} {:refines "AtomicPrimitiveMutatorsInRootScanBarrierAdd"} PrimitiveMutatorsInRootScanBarrierAdd({:linear_in "tid"} tid_right: Tid);
 
 procedure {:atomic} {:layer 1,95} AtomicPrimitiveMutatorsInRootScanBarrierRemove({:linear "tid"} tid_left: Tid) returns({:linear "tid"} tid_right: Tid)
 modifies mutatorsInRootScanBarrier;
 { assert mutatorTidLeft(tid_left) && mutatorsInRootScanBarrier[i#Tid(tid_left)]; mutatorsInRootScanBarrier[i#Tid(tid_left)] := false; tid_right := Tid(i#Tid(tid_left), false, true); }
-procedure {:yields} {:layer 0} {:refines "AtomicPrimitiveMutatorsInRootScanBarrierRemove"} PrimitiveMutatorsInRootScanBarrierRemove({:linear "tid"} tid_left: Tid) returns({:linear "tid"} tid_right: Tid);		  
+procedure {:yields} {:layer 0} {:refines "AtomicPrimitiveMutatorsInRootScanBarrierRemove"} PrimitiveMutatorsInRootScanBarrierRemove({:linear "tid"} tid_left: Tid) returns({:linear "tid"} tid_right: Tid);
 
 procedure {:atomic} {:layer 1,95} AtomicPrimitiveWriteRoot(i: idx, val: int)
 modifies root;

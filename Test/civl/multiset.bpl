@@ -30,7 +30,7 @@ procedure {:left} {:layer 1,2} atomic_release(i : int, {:linear "tid"} tid: X)
 modifies lock;
 { assert 0 <= i && i < max; assert lock[i] == tid; assert tid != nil && tid != done; lock[i] := nil; }
 
-procedure {:yields} {:layer 0} {:refines "atomic_release"} release(i : int, {:linear "tid"} tid: X);		    
+procedure {:yields} {:layer 0} {:refines "atomic_release"} release(i : int, {:linear "tid"} tid: X);
 
 procedure {:both} {:layer 1} atomic_getElt(j : int, {:linear "tid"} tid: X) returns (elt_j:int)
 { assert 0 <= j && j < max; assert tid != nil && tid != done; assert lock[j] == tid; elt_j := elt[j]; }
@@ -46,8 +46,8 @@ procedure {:yields} {:layer 0} {:refines "atomic_setElt"} setElt(j : int, x : in
 procedure {:left} {:layer 1,2} atomic_setEltToNull(j : int, {:linear "tid"} tid: X)
 modifies elt, owner;
 { assert owner[j] == tid && lock[j] == tid; assert 0 <= j && j < max; assert !valid[j]; assert tid != nil  && tid != done; elt[j] := null; owner[j] := nil; }
-		    
-procedure {:yields} {:layer 0} {:refines "atomic_setEltToNull"} setEltToNull(j : int, {:linear "tid"} tid: X);		    
+
+procedure {:yields} {:layer 0} {:refines "atomic_setEltToNull"} setEltToNull(j : int, {:linear "tid"} tid: X);
 
 procedure {:both} {:layer 1,2} atomic_setValid(j : int, {:linear "tid"} tid: X)
 modifies valid, owner;
