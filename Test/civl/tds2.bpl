@@ -18,7 +18,6 @@ const n: int;
 axiom 0 <= n;
 
 procedure {:yields} {:layer 0} Yield();
-//procedure {:layer 0} Yield();
 
 procedure {:left} {:layer 1} AtomicCreateTask({:linear "tid"} tid: int)
 modifies status;
