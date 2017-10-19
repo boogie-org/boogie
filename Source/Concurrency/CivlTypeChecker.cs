@@ -317,11 +317,13 @@ namespace Microsoft.Boogie
 
     public class InstrumentationProc
     {
+        public Procedure proc;
         public LayerRange layerRange;
         public bool isLeaky;
 
-        public InstrumentationProc(LayerRange layerRange, bool isLeaking)
+        public InstrumentationProc(Procedure proc, LayerRange layerRange, bool isLeaking)
         {
+            this.proc = proc;
             this.isLeaky = isLeaking;
             this.layerRange = layerRange;
         }
@@ -613,7 +615,7 @@ namespace Microsoft.Boogie
                     }
                 }
 
-                procToInstrumentationProc[proc] = new InstrumentationProc(layerRange, isLeaky);
+                procToInstrumentationProc[proc] = new InstrumentationProc(proc, layerRange, isLeaky);
             }
             if (checkingContext.ErrorCount > 0) return;
 
@@ -1238,7 +1240,7 @@ namespace Microsoft.Boogie
             {
                 if (!calleeProc.layerRange.Contains(callerProc.upperLayer))
                 {
-                    ctc.checkingContext.Error(call, "Called instrumentation procedure {0} is not available at layer {1}", callerProc.proc.Name, callerProc.upperLayer);
+                    ctc.checkingContext.Error(call, "Called instrumentation procedure {0} is not available at layer {1}", calleeProc.proc.Name, callerProc.upperLayer);
                     return;
                 }
 
