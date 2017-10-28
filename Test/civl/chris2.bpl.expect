@@ -1,5 +1,5 @@
 (0,0): Error BP5003: A postcondition might not hold on this return path.
-chris2.bpl(23,3): Related location: Gate not preserved by atomic_p_gt1_lower
+chris2.bpl(23,3): Related location: Gate of atomic_p_gt2 not preserved by atomic_p_gt1_lower
 Execution trace:
     (0,0): second_anon0
 (0,0): Error BP5003: A postcondition might not hold on this return path.
@@ -7,7 +7,7 @@ Execution trace:
 Execution trace:
     (0,0): second_anon0
 (0,0): Error BP5003: A postcondition might not hold on this return path.
-chris2.bpl(23,3): Related location: Gate not preserved by atomic_p_gt1
+chris2.bpl(23,3): Related location: Gate of atomic_p_gt2 not preserved by atomic_p_gt1
 Execution trace:
     (0,0): second_anon0
 (0,0): Error BP5003: A postcondition might not hold on this return path.

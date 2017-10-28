@@ -182,7 +182,7 @@ namespace Microsoft.Boogie
             frame.UnionWith(second.actionUsedGlobalVars);
             
             List<Requires> requires = new List<Requires>();
-            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams), frame));
+            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams).Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
             foreach (AssertCmd assertCmd in Enumerable.Union(first.firstGate, second.secondGate))
                 requires.Add(new Requires(false, assertCmd.Expr));
             
@@ -231,7 +231,7 @@ namespace Microsoft.Boogie
 
             List<Requires> requires = new List<Requires>();
             List<Ensures> ensures = new List<Ensures>();
-            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams), frame));
+            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams).Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
             foreach (AssertCmd assertCmd in second.secondGate)
                 requires.Add(new Requires(false, assertCmd.Expr));
             
@@ -240,7 +240,7 @@ namespace Microsoft.Boogie
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
                 Ensures ensureCheck = new Ensures(assertCmd.tok, false, Expr.Imp(Expr.And(linearityAssumes), assertCmd.Expr), null);
-                ensureCheck.ErrorData = string.Format("Gate not preserved by {0}", second.proc.Name);
+                ensureCheck.ErrorData = string.Format("Gate of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
                 ensures.Add(ensureCheck);
             }
             string checkerName = string.Format("GatePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
@@ -269,7 +269,7 @@ namespace Microsoft.Boogie
             frame.UnionWith(second.actionUsedGlobalVars);
 
             List<Requires> requires = new List<Requires>();
-            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams), frame));
+            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams).Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
             Expr gateExpr = Expr.Not(Expr.And(first.firstGate.Select(a => a.Expr)));
             gateExpr.Type = Type.Bool; // necessary?
             requires.Add(new Requires(false, gateExpr));
@@ -300,7 +300,7 @@ namespace Microsoft.Boogie
             frame.UnionWith(second.actionUsedGlobalVars);
             
             List<Requires> requires = new List<Requires>();
-            requires.Add(DisjointnessRequires(second.secondInParams, frame));
+            requires.Add(DisjointnessRequires(second.secondInParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
             foreach (AssertCmd assertCmd in second.secondGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
