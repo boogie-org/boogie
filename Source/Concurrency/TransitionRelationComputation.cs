@@ -34,9 +34,9 @@ namespace Microsoft.Boogie
 
             this.existsVars = new Dictionary<Variable, Variable>();
             this.firstExistsVars = new HashSet<Variable>(
-                first != null ? first.thatOutParams.Union(first.thatAction.LocVars)
+                first != null ? first.firstOutParams.Union(first.firstAction.LocVars)
                               : Enumerable.Empty<Variable>());
-            this.secondExistsVars = new HashSet<Variable>(second.thisOutParams.Union(second.thisAction.LocVars));
+            this.secondExistsVars = new HashSet<Variable>(second.secondOutParams.Union(second.secondAction.LocVars));
 
             this.cmdStack = new Stack<Cmd>();
             this.paths = new List<PathInfo>();
@@ -130,8 +130,8 @@ namespace Microsoft.Boogie
         {
             Dictionary<Variable, Expr> varToExpr =
                 frame
-                .Concat(first != null ? first.thatOutParams : Enumerable.Empty<Variable>())
-                .Concat(second.thisOutParams)
+                .Concat(first != null ? first.firstOutParams : Enumerable.Empty<Variable>())
+                .Concat(second.secondOutParams)
                 .ToDictionary(v => v, v => Expr.Ident(v) as Expr);
 
             List<Expr> pathExprs = new List<Expr>();
@@ -345,14 +345,14 @@ namespace Microsoft.Boogie
                 Dictionary<Variable, Expr> invertedMap = new Dictionary<Variable, Expr>();
                 if (first != null)
                 {
-                    foreach (var x in first.thatMap)
+                    foreach (var x in first.firstMap)
                     {
                         invertedMap[((IdentifierExpr)x.Value).Decl] = Expr.Ident(x.Key);
                     }
                 }
                 if (second != null)
                 {
-                    foreach (var x in second.thisMap)
+                    foreach (var x in second.secondMap)
                     {
                         invertedMap[((IdentifierExpr)x.Value).Decl] = Expr.Ident(x.Key);
                     }
@@ -368,7 +368,7 @@ namespace Microsoft.Boogie
 
         private void EnumeratePaths()
         {
-            EnumeratePathsRec(this.second.thisAction.Blocks[0], false);
+            EnumeratePathsRec(this.second.secondAction.Blocks[0], false);
         }
 
         private void EnumeratePathsRec(Block b, bool inFirst)
@@ -386,7 +386,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    EnumeratePathsRec(first.thatAction.Blocks[0], true);
+                    EnumeratePathsRec(first.firstAction.Blocks[0], true);
                 }
             }
             else

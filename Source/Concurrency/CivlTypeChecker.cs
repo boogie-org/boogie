@@ -27,17 +27,17 @@ namespace Microsoft.Boogie
         public CodeExpr action;
         public List<AssertCmd> gate;
 
-        public CodeExpr thisAction;
-        public List<AssertCmd> thisGate;
-        public List<Variable> thisInParams;
-        public List<Variable> thisOutParams;
-        public Dictionary<Variable, Expr> thisMap;
+        public CodeExpr firstAction;
+        public List<AssertCmd> firstGate;
+        public List<Variable> firstInParams;
+        public List<Variable> firstOutParams;
+        public Dictionary<Variable, Expr> firstMap;
 
-        public CodeExpr thatAction;
-        public List<AssertCmd> thatGate;
-        public List<Variable> thatInParams;
-        public List<Variable> thatOutParams;
-        public Dictionary<Variable, Expr> thatMap;
+        public CodeExpr secondAction;
+        public List<AssertCmd> secondGate;
+        public List<Variable> secondInParams;
+        public List<Variable> secondOutParams;
+        public Dictionary<Variable, Expr> secondMap;
 
         public Dictionary<Variable, Function> triggerFuns;
         public HashSet<Variable> actionUsedGlobalVars;
@@ -55,15 +55,15 @@ namespace Microsoft.Boogie
 
             this.gate = new List<AssertCmd>();
 
-            this.thisGate = new List<AssertCmd>();
-            this.thisInParams = new List<Variable>();
-            this.thisOutParams = new List<Variable>();
-            this.thisMap = new Dictionary<Variable, Expr>();
+            this.firstGate = new List<AssertCmd>();
+            this.firstInParams = new List<Variable>();
+            this.firstOutParams = new List<Variable>();
+            this.firstMap = new Dictionary<Variable, Expr>();
 
-            this.thatGate = new List<AssertCmd>();
-            this.thatInParams = new List<Variable>();
-            this.thatOutParams = new List<Variable>();
-            this.thatMap = new Dictionary<Variable, Expr>();
+            this.secondGate = new List<AssertCmd>();
+            this.secondInParams = new List<Variable>();
+            this.secondOutParams = new List<Variable>();
+            this.secondMap = new Dictionary<Variable, Expr>();
 
             this.triggerFuns = new Dictionary<Variable, Function>();
 
@@ -103,8 +103,8 @@ namespace Microsoft.Boogie
                 impl.OutParams[i].Attributes = proc.OutParams[i].Attributes;
             }
 
-            SetupCopy(ref thisAction, ref thisGate, ref thisInParams, ref thisOutParams, ref thisMap, "this_");
-            SetupCopy(ref thatAction, ref thatGate, ref thatInParams, ref thatOutParams, ref thatMap, "that_");
+            SetupCopy(ref firstAction, ref firstGate, ref firstInParams, ref firstOutParams, ref firstMap, "first_");
+            SetupCopy(ref secondAction, ref secondGate, ref secondInParams, ref secondOutParams, ref secondMap, "second_");
 
             List<Variable> modifiedVars = new List<Variable>();
             foreach (Cmd cmd in impl.Blocks.SelectMany(b => b.Cmds))
@@ -218,7 +218,7 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Renames variables (this_ and that_ prefix) in atomic action copies.
+    /// Renames variables (first_ and second_ prefix) in atomic action copies.
     /// We do not use standard substitution, because we also need to rename bound variables
     /// (because of potential substitution in commutativity checkers).
     /// A substitution for regular variables is supplied from the outside, replacements for
