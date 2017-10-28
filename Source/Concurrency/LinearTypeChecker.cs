@@ -49,7 +49,7 @@ namespace Microsoft.Boogie
             this.mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.elementType }, Type.Int);
             this.mapOrBool = new Function(Token.NoToken, "linear_" + domainName + "_MapOr",
                                           new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
-                                                          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true) },
+                                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true) },
                                           new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
             if (CommandLineOptions.Clo.UseArrayTheory)
             {
@@ -75,9 +75,9 @@ namespace Microsoft.Boogie
             }
 
             this.mapImpBool = new Function(Token.NoToken, "linear_" + domainName + "_MapImp",
-                                              new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
-                                                              new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true) },
-                                              new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
+                                           new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
+                                                                new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true) },
+                                           new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
             if (CommandLineOptions.Clo.UseArrayTheory)
             {
                 this.mapImpBool.AddAttribute("builtin", "MapImp");
@@ -182,7 +182,7 @@ namespace Microsoft.Boogie
     /// Type checker for linear type annotations.
     /// 
     /// The functionality is basically grouped into three parts.
-    /// 1) The TypeCheck procedure collects all linear type attributes in the program and set up the data structures.
+    /// 1) The TypeCheck procedure collects all linear type attributes in the program and sets up the data structures.
     /// 2) A program transformation that injects logical disjointness annotations.
     /// 3) An eraser procedure that removes all linearity attributes (invoked after all other CIVL transformations).
     /// </summary>
