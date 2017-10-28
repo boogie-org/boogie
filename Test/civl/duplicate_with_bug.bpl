@@ -11,7 +11,7 @@ function {:inline} {:linear "addr"} AddrsCollector(xs: [int]bool) : [int]bool
 
 var {:layer 0,1} done: [int]bool;
 var {:layer 0,1} x:[int]int;
-var {:layer 0,1} {:linear} Addrs:[int]bool;
+var {:layer 0,1} {:linear "addr"} Addrs:[int]bool;
 
 procedure {:yields} {:layer 0} {:refines "AtomicDoneUpdate"} DoneUpdate(i: int) returns (status: bool);
 procedure {:atomic} {:layer 1} AtomicDoneUpdate(i: int) returns (status: bool)

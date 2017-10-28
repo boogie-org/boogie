@@ -107,7 +107,6 @@ requires {:layer 2} done[i];
     yield;
     assert {:layer 2} done[i];
     call RemoteIncrementBody(i);
-    async call DuplicateRemoteIncrement(i);
     yield;
 }
 
@@ -115,7 +114,11 @@ procedure {:yields} {:layer 2} {:refines "AtomicRemoteIncrement"} RemoteIncremen
 {
     yield;
     call RemoteIncrementBody(i1);
-    async call DuplicateRemoteIncrement(i1);
+    while (*)
+    invariant {:terminates} {:layer 0,1,2} true;
+    {
+        async call DuplicateRemoteIncrement(i1);
+    }
     yield;
 }
 procedure {:left} {:layer 3} AtomicRemoteIncrement(i1: int, {:linear_in "addr2"} i2: int)
