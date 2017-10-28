@@ -51,33 +51,3 @@ modifies Addrs;
     assert Addrs[i];
     Addrs[i] := false;
 }
-
-/*
-procedure RemoteIncrementBody(i: int)
-{
-    var status: bool;
-    call status := DoneUpdate(i);
-    if (status) {
-        call RemoveAddr(i);
-        call Increment(i);
-    }
-}
-
-procedure DuplicateRemoteIncrement(i: int)
-{
-    call RemoteIncrementBody(i);
-    async call DuplicateRemoteIncrement(i);
-}
-
-procedure RemoteIncrement(i: int)
-{
-    call RemoteIncrementBody(i);
-    async call DuplicateRemoteIncrement(i);
-}
-
-procedure Main({:linear_in "addr"} i: int)
-{
-    call AddAddr(i);
-    async call RemoteIncrement(i);
-}
-*/
