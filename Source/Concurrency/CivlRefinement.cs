@@ -552,7 +552,7 @@ namespace Microsoft.Boogie
                     }
                     Substitution always = Substituter.SubstitutionFromHashtable(alwaysMap);
 
-                    Expr betaExpr = (new TransitionRelationComputation(civlTypeChecker.program, actionProc.refinedAction, frame, new HashSet<Variable>())).TransitionRelationCompute(true);
+                    Expr betaExpr = (new TransitionRelationComputation(actionProc.refinedAction, frame, new HashSet<Variable>())).TransitionRelationCompute(true);
                     beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
                     Expr alphaExpr = Expr.And(actionProc.refinedAction.gate.Select(g => g.Expr));
                     alphaExpr.Type = Type.Bool;

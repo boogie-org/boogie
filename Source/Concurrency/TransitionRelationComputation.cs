@@ -9,7 +9,6 @@ namespace Microsoft.Boogie
 
     public class TransitionRelationComputation
     {
-        private Program program;
         private AtomicAction first;  // corresponds to that*
         private AtomicAction second; // corresponds to this*
         private Stack<Cmd> cmdStack;
@@ -21,12 +20,11 @@ namespace Microsoft.Boogie
         private HashSet<Variable> firstExistsVars;
         private HashSet<Variable> secondExistsVars;
 
-        public TransitionRelationComputation(Program program, AtomicAction second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
-            : this(program, null, second, frame, postExistVars) { }
+        public TransitionRelationComputation(AtomicAction second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
+            : this(null, second, frame, postExistVars) { }
 
-        public TransitionRelationComputation(Program program, AtomicAction first, AtomicAction second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
+        public TransitionRelationComputation(AtomicAction first, AtomicAction second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
         {
-            this.program = program;
             this.first = first;
             this.second = second;
             this.postExistVars = postExistVars;

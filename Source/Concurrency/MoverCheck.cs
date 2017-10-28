@@ -61,7 +61,6 @@ namespace Microsoft.Boogie
                 currPool = pools[currLayerNum];
             }
 
-            Program program = civlTypeChecker.program;
             MoverCheck moverChecking = new MoverCheck(linearTypeChecker, civlTypeChecker, decls);
 
             var moverChecks =
@@ -78,21 +77,21 @@ namespace Microsoft.Boogie
 
                 if (first.IsRightMover)
                 {
-                    moverChecking.CreateCommutativityChecker(program, first, second);
-                    moverChecking.CreateGatePreservationChecker(program, second, first);
+                    moverChecking.CreateCommutativityChecker(first, second);
+                    moverChecking.CreateGatePreservationChecker(second, first);
                 }
                 if (first.IsLeftMover)
                 {
-                    moverChecking.CreateCommutativityChecker(program, second, first);
-                    moverChecking.CreateGatePreservationChecker(program, first, second);
-                    moverChecking.CreateFailurePreservationChecker(program, second, first);
+                    moverChecking.CreateCommutativityChecker(second, first);
+                    moverChecking.CreateGatePreservationChecker(first, second);
+                    moverChecking.CreateFailurePreservationChecker(second, first);
                 }
             }
             foreach (AtomicAction atomicAction in sortedByCreatedLayerNum)
             {
                 if (atomicAction.IsLeftMover && atomicAction.HasAssumeCmd)
                 {
-                    moverChecking.CreateNonBlockingChecker(program, atomicAction);
+                    moverChecking.CreateNonBlockingChecker(atomicAction);
                 }
             }
         }
@@ -130,7 +129,7 @@ namespace Microsoft.Boogie
             return otherBlocks;
         }
 
-        private IEnumerable<Expr> DisjointnessExpr(Program program, IEnumerable<Variable> paramVars, HashSet<Variable> frame)
+        private IEnumerable<Expr> DisjointnessExpr(IEnumerable<Variable> paramVars, HashSet<Variable> frame)
         {
             Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
             foreach (var domainName in linearTypeChecker.linearDomains.Keys)
@@ -150,12 +149,12 @@ namespace Microsoft.Boogie
             }
         }
 
-        private Requires DisjointnessRequires(Program program, IEnumerable<Variable> paramVars, HashSet<Variable> frame)
+        private Requires DisjointnessRequires(IEnumerable<Variable> paramVars, HashSet<Variable> frame)
         {
-            return new Requires(false, Expr.And(DisjointnessExpr(program, paramVars, frame)));
+            return new Requires(false, Expr.And(DisjointnessExpr(paramVars, frame)));
         }
 
-        private void CreateCommutativityChecker(Program program, AtomicAction first, AtomicAction second)
+        private void CreateCommutativityChecker(AtomicAction first, AtomicAction second)
         {
             if (first == second && first.firstInParams.Count == 0 && first.firstOutParams.Count == 0)
                 return;
@@ -183,11 +182,11 @@ namespace Microsoft.Boogie
             frame.UnionWith(second.actionUsedGlobalVars);
             
             List<Requires> requires = new List<Requires>();
-            requires.Add(DisjointnessRequires(program, first.firstInParams.Union(second.secondInParams), frame));
+            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams), frame));
             foreach (AssertCmd assertCmd in Enumerable.Union(first.firstGate, second.secondGate))
                 requires.Add(new Requires(false, assertCmd.Expr));
             
-            var transitionRelationComputation = new TransitionRelationComputation(program, first, second, frame, new HashSet<Variable>());
+            var transitionRelationComputation = new TransitionRelationComputation(first, second, frame, new HashSet<Variable>());
             Expr transitionRelation = transitionRelationComputation.TransitionRelationCompute();
             {
                 List<Block> bs = new List<Block> { blocks[0] };
@@ -198,8 +197,8 @@ namespace Microsoft.Boogie
 
             var secondInParamsFiltered = second.secondInParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_IN);
             IEnumerable<Expr> linearityAssumes = Enumerable.Union(
-                DisjointnessExpr(program, first.firstOutParams.Union(secondInParamsFiltered), frame),
-                DisjointnessExpr(program, first.firstOutParams.Union(second.secondOutParams), frame));
+                DisjointnessExpr(first.firstOutParams.Union(secondInParamsFiltered), frame),
+                DisjointnessExpr(first.firstOutParams.Union(second.secondOutParams), frame));
             // TODO: add further disjointness expressions?
             Ensures ensureCheck = new Ensures(false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation));
             ensureCheck.ErrorData = string.Format("Commutativity check between {0} and {1} failed", first.proc.Name, second.proc.Name);
@@ -214,7 +213,7 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateGatePreservationChecker(Program program, AtomicAction first, AtomicAction second)
+        private void CreateGatePreservationChecker(AtomicAction first, AtomicAction second)
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
@@ -232,11 +231,11 @@ namespace Microsoft.Boogie
 
             List<Requires> requires = new List<Requires>();
             List<Ensures> ensures = new List<Ensures>();
-            requires.Add(DisjointnessRequires(program, first.firstInParams.Union(second.secondInParams), frame));
+            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams), frame));
             foreach (AssertCmd assertCmd in second.secondGate)
                 requires.Add(new Requires(false, assertCmd.Expr));
             
-            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(program, first.firstInParams.Union(second.secondOutParams), frame);
+            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(first.firstInParams.Union(second.secondOutParams), frame);
             foreach (AssertCmd assertCmd in first.firstGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
@@ -253,7 +252,7 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateFailurePreservationChecker(Program program, AtomicAction first, AtomicAction second)
+        private void CreateFailurePreservationChecker(AtomicAction first, AtomicAction second)
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
@@ -270,14 +269,14 @@ namespace Microsoft.Boogie
             frame.UnionWith(second.actionUsedGlobalVars);
 
             List<Requires> requires = new List<Requires>();
-            requires.Add(DisjointnessRequires(program, first.firstInParams.Union(second.secondInParams), frame));
+            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams), frame));
             Expr gateExpr = Expr.Not(Expr.And(first.firstGate.Select(a => a.Expr)));
             gateExpr.Type = Type.Bool; // necessary?
             requires.Add(new Requires(false, gateExpr));
             foreach (AssertCmd assertCmd in second.secondGate)
                 requires.Add(new Requires(false, assertCmd.Expr));
 
-            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(program, first.firstInParams.Union(second.secondOutParams), frame);
+            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(first.firstInParams.Union(second.secondOutParams), frame);
             Ensures ensureCheck = new Ensures(false, Expr.Imp(Expr.And(linearityAssumes), gateExpr));
             ensureCheck.ErrorData = string.Format("Gate failure of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
@@ -291,7 +290,7 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateNonBlockingChecker(Program program, AtomicAction second)
+        private void CreateNonBlockingChecker(AtomicAction second)
         {
             List<Variable> inputs = new List<Variable>();
             inputs.AddRange(second.secondInParams);
@@ -301,7 +300,7 @@ namespace Microsoft.Boogie
             frame.UnionWith(second.actionUsedGlobalVars);
             
             List<Requires> requires = new List<Requires>();
-            requires.Add(DisjointnessRequires(program, second.secondInParams, frame));
+            requires.Add(DisjointnessRequires(second.secondInParams, frame));
             foreach (AssertCmd assertCmd in second.secondGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
@@ -310,7 +309,7 @@ namespace Microsoft.Boogie
             HashSet<Variable> postExistVars = new HashSet<Variable>();
             postExistVars.UnionWith(frame);
             postExistVars.UnionWith(second.secondOutParams);
-            Expr ensuresExpr = (new TransitionRelationComputation(program, second, frame, postExistVars)).TransitionRelationCompute();
+            Expr ensuresExpr = (new TransitionRelationComputation(second, frame, postExistVars)).TransitionRelationCompute();
             Ensures ensureCheck = new Ensures(false, ensuresExpr);
             ensureCheck.ErrorData = string.Format("{0} is blocking", second.proc.Name);
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
