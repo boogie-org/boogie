@@ -126,7 +126,6 @@ namespace Microsoft.Boogie
             Implementation impl;
             int currLayerNum;
             Dictionary<Absy, int> absyToNode;
-            Dictionary<int, Absy> nodeToAbsy;
             int initialState;
             HashSet<int> finalStates;
             Dictionary<Tuple<int, int>, int> edgeLabels;
@@ -312,9 +311,6 @@ namespace Microsoft.Boogie
                         edgeLabels[new Tuple<int, int>(absyToNode[gotoCmd], absyToNode[successor])] = P;
                     }
                 }
-
-                // reverse mapping
-                this.nodeToAbsy = absyToNode.ToDictionary(x => x.Value, x => x.Key);
             }
 
             private void ComputeEdges()

@@ -848,7 +848,6 @@ namespace Microsoft.Boogie
 
         public void DesugarParallelCallCmd(List<Cmd> newCmds, ParCallCmd parCallCmd)
         {
-            List<string> parallelCalleeNames = new List<string>();
             List<Expr> ins = new List<Expr>();
             List<IdentifierExpr> outs = new List<IdentifierExpr>();
             string procName = "og";
@@ -1157,7 +1156,6 @@ namespace Microsoft.Boogie
         {
             if (yieldProc == null) return;
 
-            Program program = linearTypeChecker.program;
             List<Variable> inputs = new List<Variable>();
             foreach (string domainName in linearTypeChecker.linearDomains.Keys)
             {
