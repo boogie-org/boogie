@@ -129,6 +129,19 @@ namespace Microsoft.Boogie
             return otherBlocks;
         }
 
+        private static List<Block> ComposeBlocks(AtomicAction first, AtomicAction second)
+        {
+            List<Block> firstBlocks = CloneBlocks(first.firstAction.Blocks);
+            List<Block> secondBlocks = CloneBlocks(second.secondAction.Blocks);
+            foreach (Block b in firstBlocks.Where(b => b.TransferCmd is ReturnCmd))
+            {
+                List<Block>  bs = new List<Block>  { secondBlocks[0] };
+                List<string> ls = new List<string> { secondBlocks[0].Label };
+                b.TransferCmd = new GotoCmd(Token.NoToken, ls, bs);
+            }
+            return Enumerable.Union(firstBlocks, secondBlocks).ToList();
+        }
+
         private IEnumerable<Expr> DisjointnessExpr(IEnumerable<Variable> paramVars, HashSet<Variable> frame)
         {
             Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
@@ -154,6 +167,15 @@ namespace Microsoft.Boogie
             return new Requires(false, Expr.And(DisjointnessExpr(paramVars, frame)));
         }
 
+        private void AddChecker(string checkerName, List<Variable> inputs, List<Variable> outputs, List<Variable> locals, List<Requires> requires, List<Ensures> ensures, List<Block> blocks)
+        {
+            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
+            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, blocks);
+            impl.Proc = proc;
+            this.decls.Add(impl);
+            this.decls.Add(proc);
+        }
+
         private void CreateCommutativityChecker(AtomicAction first, AtomicAction second)
         {
             if (first == second && first.firstInParams.Count == 0 && first.firstOutParams.Count == 0)
@@ -166,15 +188,7 @@ namespace Microsoft.Boogie
             List<Variable> inputs  = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
             List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
             List<Variable> locals  = Enumerable.Union(first.firstAction.LocVars, second.secondAction.LocVars).ToList();
-            List<Block> firstBlocks = CloneBlocks(first.firstAction.Blocks);
-            List<Block> secondBlocks = CloneBlocks(second.secondAction.Blocks);
-            foreach (Block b in firstBlocks.Where(b => b.TransferCmd is ReturnCmd))
-            {
-                List<Block>  bs = new List<Block>  { secondBlocks[0] };
-                List<string> ls = new List<string> { secondBlocks[0].Label };
-                b.TransferCmd = new GotoCmd(Token.NoToken, ls, bs);
-            }
-            List<Block> blocks = Enumerable.Union(firstBlocks, secondBlocks).ToList();
+            List<Block> blocks = ComposeBlocks(first, second);
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(first.actionUsedGlobalVars);
@@ -206,11 +220,7 @@ namespace Microsoft.Boogie
             
             string checkerName = string.Format("CommutativityChecker_{0}_{1}", first.proc.Name, second.proc.Name);
 
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
-            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, blocks);
-            impl.Proc = proc;
-            this.decls.Add(impl);
-            this.decls.Add(proc);
+            AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
 
         private void CreateGatePreservationChecker(AtomicAction first, AtomicAction second)
@@ -223,7 +233,7 @@ namespace Microsoft.Boogie
             List<Variable> inputs = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
             List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
             List<Variable> locals = new List<Variable>(second.secondAction.LocVars);
-            List<Block> secondBlocks = CloneBlocks(second.secondAction.Blocks);
+            List<Block> blocks = CloneBlocks(second.secondAction.Blocks);
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
@@ -245,11 +255,7 @@ namespace Microsoft.Boogie
             }
             string checkerName = string.Format("GatePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
-            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
-            impl.Proc = proc;
-            this.decls.Add(impl);
-            this.decls.Add(proc);
+            AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
 
         private void CreateFailurePreservationChecker(AtomicAction first, AtomicAction second)
@@ -262,7 +268,7 @@ namespace Microsoft.Boogie
             List<Variable> inputs = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
             List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
             List<Variable> locals = new List<Variable>(second.secondAction.LocVars);
-            List<Block> secondBlocks = CloneBlocks(second.secondAction.Blocks);
+            List<Block> blocks = CloneBlocks(second.secondAction.Blocks);
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
@@ -283,18 +289,15 @@ namespace Microsoft.Boogie
             
             string checkerName = string.Format("FailurePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
 
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
-            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
-            impl.Proc = proc;
-            this.decls.Add(impl);
-            this.decls.Add(proc);
+            AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
 
         private void CreateNonBlockingChecker(AtomicAction second)
         {
-            List<Variable> inputs = new List<Variable>();
-            inputs.AddRange(second.secondInParams);
-
+            List<Variable> inputs = new List<Variable>(second.secondInParams);
+            List<Variable> outputs = new List<Variable>();
+            List<Variable> locals = new List<Variable>();
+            List<Block> blocks = new List<Block> { new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)) };
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(second.gateUsedGlobalVars);
             frame.UnionWith(second.actionUsedGlobalVars);
@@ -314,14 +317,9 @@ namespace Microsoft.Boogie
             ensureCheck.ErrorData = string.Format("{0} is blocking", second.proc.Name);
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
 
-            List<Block> blocks = new List<Block> { new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)) };
             string checkerName = string.Format("NonBlockingChecker_{0}", second.proc.Name);
             
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
-            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
-            impl.Proc = proc;
-            this.decls.Add(impl);
-            this.decls.Add(proc);
+            AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
     }
 }
