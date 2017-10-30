@@ -19,6 +19,11 @@ var {:layer 0,3} {:linear "addr"} Addrs:[int]bool;  // ghost
 var {:layer 0,3} done: [int]int;
 var {:layer 0,4} x:[int]int;
 
+const IncrementPhase: int;
+const MultiplyPhase: int;
+axiom 1 < IncrementPhase;
+axiom IncrementPhase + 1 < MultiplyPhase;
+
 procedure {:yields} {:layer 0} {:refines "AtomicDoneUpdate"} DoneUpdate(i: int, {:linear_in "addr"} l: Addr, phase: int) returns ({:linear "addr"} l': Addr, b: bool);
 procedure {:atomic} {:layer 1} AtomicDoneUpdate(i: int,  {:linear_in "addr"} l: Addr, phase: int) returns ({:linear "addr"} l': Addr, b: bool)
 modifies done, Addrs;
@@ -66,47 +71,47 @@ modifies x;
     x[i] := 2*x[i];
 }
 
-procedure {:yields} {:layer 1} {:refines "AtomicRemoteIncrementBody"} RemoteIncrementBody(i: int, {:linear_in "addr"} l: Addr, phase: int)
+procedure {:yields} {:layer 1} {:refines "AtomicRemoteIncrementBody"} RemoteIncrementBody(i: int, {:linear_in "addr"} l: Addr)
 {
     var {:linear "addr"} l': Addr;
     var b: bool;
     yield;
-    call l', b := DoneUpdate(i, l, phase);
+    call l', b := DoneUpdate(i, l, IncrementPhase);
     if (b) {
         call Increment(i, l');
 	// linear l' is available for making a async call to IncrementCallback
     }
     yield;
 }
-procedure {:atomic} {:layer 2} AtomicRemoteIncrementBody(i: int, {:linear_in "addr"} l: Addr, phase: int)
+procedure {:atomic} {:layer 2} AtomicRemoteIncrementBody(i: int, {:linear_in "addr"} l: Addr)
 modifies done, x, Addrs;
 {
-    assert done[i] >= phase || (Addrs[i] && isAddrLeft(i, l));
-    if (done[i] < phase) {
-        done[i] := phase;
+    assert done[i] >= IncrementPhase || (Addrs[i] && isAddrLeft(i, l));
+    if (done[i] < IncrementPhase) {
+        done[i] := IncrementPhase;
 	x[i] := x[i] + 1;
 	Addrs[i] := false;
     }
 }
 
-procedure {:yields} {:layer 1} {:refines "AtomicRemoteMultiplyBody"} RemoteMultiplyBody(i: int, {:linear_in "addr"} l: Addr, phase: int)
+procedure {:yields} {:layer 1} {:refines "AtomicRemoteMultiplyBody"} RemoteMultiplyBody(i: int, {:linear_in "addr"} l: Addr)
 {
     var {:linear "addr"} l': Addr;
     var b: bool;    
     yield;
-    call l', b := DoneUpdate(i, l, phase);
+    call l', b := DoneUpdate(i, l, MultiplyPhase);
     if (b) {
         call Multiply(i, l');
 	// linear l' is available for making a async call to MultiplyCallback	
     }
     yield;
 }
-procedure {:atomic} {:layer 2} AtomicRemoteMultiplyBody(i: int, {:linear_in "addr"} l: Addr, phase: int)
+procedure {:atomic} {:layer 2} AtomicRemoteMultiplyBody(i: int, {:linear_in "addr"} l: Addr)
 modifies done, x, Addrs;
 {
-    assert done[i] >= phase || (Addrs[i] && isAddrLeft(i, l));
-    if (done[i] < phase) {
-        done[i] := phase;
+    assert done[i] >= MultiplyPhase || (Addrs[i] && isAddrLeft(i, l));
+    if (done[i] < MultiplyPhase) {
+        done[i] := MultiplyPhase;
 	x[i] := 2*x[i];
 	Addrs[i] := false;
     }
@@ -116,89 +121,96 @@ type Op;
 const unique INCREMENT: Op;
 const unique MULTIPLY: Op;
 
-procedure {:yields} {:layer 2} DuplicateRemote(i: int, op: Op, phase: int)
-requires {:layer 2} done[i] >= phase;
+procedure {:yields} {:layer 2} DuplicateIncrementRemote(i: int)
+requires {:layer 2} done[i] >= IncrementPhase;
 {
     var {:linear "addr"} l: Addr;
     yield;
-    assert {:layer 2} done[i] >= phase;
+    assert {:layer 2} done[i] >= IncrementPhase;
     call l := EmptyAddr(i);
-    if (op == INCREMENT) {
-        call RemoteIncrementBody(i, l, phase);
-    } else if (op == MULTIPLY) {
-        call RemoteMultiplyBody(i, l, phase);
-    }
+    call RemoteIncrementBody(i, l);
     yield;
 }
 
-procedure {:yields} {:layer 2} {:refines "AtomicRemoteIncrement"} RemoteIncrement(i: int, {:linear_in "addr"} l: Addr, phase: int)
+procedure {:yields} {:layer 2} DuplicateMultiplyRemote(i: int)
+requires {:layer 2} done[i] >= MultiplyPhase;
+{
+    var {:linear "addr"} l: Addr;
+    yield;
+    assert {:layer 2} done[i] >= MultiplyPhase;
+    call l := EmptyAddr(i);
+    call RemoteMultiplyBody(i, l);
+    yield;
+}
+
+procedure {:yields} {:layer 2} {:refines "AtomicRemoteIncrement"} RemoteIncrement(i: int, {:linear_in "addr"} l: Addr)
 {
     yield;
-    call RemoteIncrementBody(i, l, phase);
+    call RemoteIncrementBody(i, l);
     while (*)
     invariant {:terminates} {:layer 0,1,2} true;
     {
-        async call DuplicateRemote(i, INCREMENT, phase);
+        async call DuplicateIncrementRemote(i);
     }
     yield;
 }
-procedure {:left} {:layer 3} AtomicRemoteIncrement(i: int, {:linear_in "addr"} l: Addr, phase: int)
+procedure {:left} {:layer 3} AtomicRemoteIncrement(i: int, {:linear_in "addr"} l: Addr)
 modifies done, x, Addrs;
 {
-    assert done[i] < phase && Addrs[i] && isAddrLeft(i, l);
-    done[i] := phase;
+    assert done[i] < IncrementPhase && Addrs[i] && isAddrLeft(i, l);
+    done[i] := IncrementPhase;
     x[i] := x[i] + 1;
     Addrs[i] := false;
 }
 
-procedure {:yields} {:layer 2} {:refines "AtomicRemoteMultiply"} RemoteMultiply(i: int, {:linear_in "addr"} l: Addr, phase: int)
+procedure {:yields} {:layer 2} {:refines "AtomicRemoteMultiply"} RemoteMultiply(i: int, {:linear_in "addr"} l: Addr)
 {
     yield;
-    call RemoteMultiplyBody(i, l, phase);
+    call RemoteMultiplyBody(i, l);
     while (*)
     invariant {:terminates} {:layer 0,1,2} true;
     {
-        async call DuplicateRemote(i, MULTIPLY, phase);
+        async call DuplicateMultiplyRemote(i);
     }
     yield;
 }
-procedure {:left} {:layer 3} AtomicRemoteMultiply(i: int, {:linear_in "addr"} l: Addr, phase: int)
+procedure {:left} {:layer 3} AtomicRemoteMultiply(i: int, {:linear_in "addr"} l: Addr)
 modifies done, x, Addrs;
 {
-    assert done[i] < phase && Addrs[i] && isAddrLeft(i, l);
-    done[i] := phase;
+    assert done[i] < MultiplyPhase && Addrs[i] && isAddrLeft(i, l);
+    done[i] :=  MultiplyPhase;
     x[i] := 2*x[i];
     Addrs[i] := false;
 }
 
-procedure {:yields} {:layer 3} {:refines "AtomicLocalIncrement"} LocalIncrement(i: int, {:linear_in "addr"} l: Addr, phase: int)
-requires {:layer 3} done[i] < phase && isAddrWhole(i, l);
+procedure {:yields} {:layer 3} {:refines "AtomicLocalIncrement"} LocalIncrement(i: int, {:linear_in "addr"} l: Addr)
+requires {:layer 3} done[i] < IncrementPhase && isAddrWhole(i, l);
 {
     var {:linear "addr"} l': Addr;
     yield;
-    assert {:layer 3} done[i] < phase && isAddrWhole(i, l);
-    call l' := AddAddr(i, l, phase);
-    async call RemoteIncrement(i, l', phase);
+    assert {:layer 3} done[i] < IncrementPhase && isAddrWhole(i, l);
+    call l' := AddAddr(i, l, IncrementPhase);
+    async call RemoteIncrement(i, l');
     yield;
 }
-procedure {:atomic} {:layer 4} AtomicLocalIncrement(i: int, {:linear_in "addr"} l: Addr, phase: int)
+procedure {:atomic} {:layer 4} AtomicLocalIncrement(i: int, {:linear_in "addr"} l: Addr)
 modifies x;
 {
     assert isAddrWhole(i, l);
     x[i] := x[i] + 1;
 }
 
-procedure {:yields} {:layer 3} {:refines "AtomicLocalMultiply"} LocalMultiply(i: int, {:linear_in "addr"} l: Addr, phase: int)
-requires {:layer 3} done[i] < phase && isAddrWhole(i, l);
+procedure {:yields} {:layer 3} {:refines "AtomicLocalMultiply"} LocalMultiply(i: int, {:linear_in "addr"} l: Addr)
+requires {:layer 3} done[i] < MultiplyPhase && isAddrWhole(i, l);
 {
     var {:linear "addr"} l': Addr;
     yield;
-    assert {:layer 3} done[i] < phase && isAddrWhole(i, l);
-    call l' := AddAddr(i, l, phase);
-    async call RemoteMultiply(i, l', phase);
+    assert {:layer 3} done[i] < MultiplyPhase && isAddrWhole(i, l);
+    call l' := AddAddr(i, l, MultiplyPhase);
+    async call RemoteMultiply(i, l');
     yield;
 }
-procedure {:atomic} {:layer 4} AtomicLocalMultiply(i: int, {:linear_in "addr"} l: Addr, phase: int)
+procedure {:atomic} {:layer 4} AtomicLocalMultiply(i: int, {:linear_in "addr"} l: Addr)
 modifies x;
 {
     assert isAddrWhole(i, l);
