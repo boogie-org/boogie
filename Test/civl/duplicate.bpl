@@ -26,12 +26,12 @@ modifies done, Addrs;
     assert done[i] >= phase || (Addrs[i] && isAddrLeft(i, l));
     if (done[i] >= phase) {
         l' := l;
-	b := false;
+        b := false;
     } else {
         done[i] := phase;
-	Addrs[i] := false;
-	l' := Addr(i, true, true);
-	b := true;
+        Addrs[i] := false;
+        l' := Addr(i, true, true);
+        b := true;
     }
 }
 
@@ -74,7 +74,7 @@ procedure {:yields} {:layer 1} {:refines "AtomicRemoteIncrementBody"} RemoteIncr
     call l', b := DoneUpdate(i, l, phase);
     if (b) {
         call Increment(i, l');
-	// linear l' is available for making a async call to IncrementCallback
+        // linear l' is available for making a async call to IncrementCallback
     }
     yield;
 }
@@ -84,20 +84,20 @@ modifies done, x, Addrs;
     assert done[i] >= phase || (Addrs[i] && isAddrLeft(i, l));
     if (done[i] < phase) {
         done[i] := phase;
-	x[i] := x[i] + 1;
-	Addrs[i] := false;
+        x[i] := x[i] + 1;
+        Addrs[i] := false;
     }
 }
 
 procedure {:yields} {:layer 1} {:refines "AtomicRemoteMultiplyBody"} RemoteMultiplyBody(i: int, {:linear_in "addr"} l: Addr, phase: int)
 {
     var {:linear "addr"} l': Addr;
-    var b: bool;    
+    var b: bool;
     yield;
     call l', b := DoneUpdate(i, l, phase);
     if (b) {
         call Multiply(i, l');
-	// linear l' is available for making a async call to MultiplyCallback	
+        // linear l' is available for making a async call to MultiplyCallback
     }
     yield;
 }
@@ -107,8 +107,8 @@ modifies done, x, Addrs;
     assert done[i] >= phase || (Addrs[i] && isAddrLeft(i, l));
     if (done[i] < phase) {
         done[i] := phase;
-	x[i] := 2*x[i];
-	Addrs[i] := false;
+        x[i] := 2*x[i];
+        Addrs[i] := false;
     }
 }
 
