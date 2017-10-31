@@ -660,6 +660,13 @@ namespace Microsoft.Boogie
                         Error(proc, "Could not find refined atomic action");
                         continue;
                     }
+                    if (upperLayer + 1 < refinedAction.layerRange.lowerLayerNum)
+                    {
+                        // Strictly speaking, there could be a layer gap if some layer is not used
+                        // for refinement. However, at this point we do not know the refinement layers,
+                        // so we use this conservative check which seems reasonable in practice.
+                        checkingContext.Error(proc, "Refined atomic action must be available at layer {0}", upperLayer + 1);
+                    }
 
                     CheckSignatures(proc, refinedAction.proc);
 
