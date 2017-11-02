@@ -6,19 +6,31 @@ using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
-
+    /// <summary>
+    /// Computes a transition relation as disjunction (i.e., enumeration) of paths through atomic action(s).
+    /// There are three slightly different use cases:
+    ///   * Commutativity check (sequentially composes two atomic actions)
+    ///   * Nonblocking check (single atomic action)
+    ///   * Refinement check (single atomic action)
+    /// </summary>
     public class TransitionRelationComputation
     {
-        private AtomicAction first;  // corresponds to that*
-        private AtomicAction second; // corresponds to this*
-        private Stack<Cmd> cmdStack;
-        private List<PathInfo> paths;
+        // IMPORTANT NOTE:
+        // If a transition relation is computed for a single atomic action, it is placed in "second" ("first" is null).
+        // If a transition relation is computed for two atomic actions, the one placed in "second" executes first, followed by "first".
+        // This is slightly confusing, but has to do with the disjoint sets of ins/outs/locals and reversing the executin order for commutativity checks.
+        private AtomicAction first;
+        private AtomicAction second;
+
         private HashSet<Variable> frame;
         private HashSet<Variable> postExistVars;
 
         private Dictionary<Variable, Variable> existsVars;
         private HashSet<Variable> firstExistsVars;
         private HashSet<Variable> secondExistsVars;
+
+        private Stack<Cmd> cmdStack;
+        private List<PathInfo> paths;
 
         public TransitionRelationComputation(AtomicAction second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
             : this(null, second, frame, postExistVars) { }
@@ -366,7 +378,9 @@ namespace Microsoft.Boogie
 
         private void EnumeratePaths()
         {
+            Debug.Assert(cmdStack.Count == 0);
             EnumeratePathsRec(this.second.secondAction.Blocks[0], false);
+            Debug.Assert(cmdStack.Count == 0);
         }
 
         private void EnumeratePathsRec(Block b, bool inFirst)
