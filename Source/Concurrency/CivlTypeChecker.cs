@@ -140,12 +140,12 @@ namespace Microsoft.Boogie
                 outParamsCopy.Add(xCopy);
                 varMap[x] = Expr.Ident(xCopy);
             }
-            List<Variable> thisLocVars = new List<Variable>();
+            List<Variable> localsCopy = new List<Variable>();
             foreach (Variable x in impl.LocVars)
             {
                 Variable xCopy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), false);
                 varMap[x] = Expr.Ident(xCopy);
-                thisLocVars.Add(xCopy);
+                localsCopy.Add(xCopy);
             }
             Contract.Assume(proc.TypeParameters.Count == 0);
             AtomicActionDuplicator aad = new AtomicActionDuplicator(prefix, varMap);
@@ -153,7 +153,7 @@ namespace Microsoft.Boogie
             {
                 gateCopy.Add((AssertCmd)aad.Visit(assertCmd));
             }
-            actionCopy = new CodeExpr(thisLocVars, SubstituteBlocks(action.Blocks, aad));
+            actionCopy = new CodeExpr(localsCopy, SubstituteBlocks(action.Blocks, aad));
         }
 
         private List<Block> SubstituteBlocks(List<Block> blocks, AtomicActionDuplicator aad)
