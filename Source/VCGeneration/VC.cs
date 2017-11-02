@@ -21,7 +21,6 @@ namespace VC {
   using System.Threading.Tasks;
 
   public class VCGen : ConditionGeneration {
-      private const bool _print_time = false;
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
@@ -291,7 +290,7 @@ namespace VC {
         ModelViewInfo mvInfo;
         parent.PassifyImpl(impl, out mvInfo);
         Dictionary<int, Absy> label2Absy;
-        Checker ch = parent.FindCheckerFor(CommandLineOptions.Clo.SmokeTimeout);
+        Checker ch = parent.FindCheckerFor(CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.Resourcelimit);
         Contract.Assert(ch != null);
 
         ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
@@ -1352,6 +1351,11 @@ namespace VC {
             if (cur_outcome != Outcome.Errors && cur_outcome != Outcome.Inconclusive)
               cur_outcome = Outcome.TimedOut;
             return;
+          case ProverInterface.Outcome.OutOfResource:
+            prover_failed = true;
+            if (cur_outcome != Outcome.Errors && cur_outcome != Outcome.Inconclusive)
+              cur_outcome = Outcome.OutOfResource;
+            return;
           case ProverInterface.Outcome.Undetermined:
             if (cur_outcome != Outcome.Errors)
               cur_outcome = Outcome.Inconclusive;
@@ -1598,12 +1602,11 @@ namespace VC {
       callback.OnProgress("VCgen", 0, 0, 0.0);
       
       Stopwatch watch = new Stopwatch();
-      if (_print_time)
-      {
-          Console.WriteLine("Checking function {0}", impl.Name);
-          watch.Reset();
-          watch.Start();
-      }
+#if PRINT_TIME
+      Console.WriteLine("Checking function {0}", impl.Name);
+      watch.Reset();
+      watch.Start();
+#endif
 
       ConvertCFG2DAG(impl);
 
@@ -1768,7 +1771,7 @@ namespace VC {
               callback.OnCounterexample(oldCex, null);
             } else {
               // If possible, we use the old counterexample, but with the location information of "a"
-              var cex = AssertCmdToCloneCounterexample(a, oldCex);
+              var cex = AssertCmdToCloneCounterexample(a, oldCex, impl.Blocks[0], gotoCmdOrigins);
               callback.OnCounterexample(cex, null);
               // OnCounterexample may have had side effects on the RequestId and OriginalRequestId fields.  We make
               // any such updates available in oldCex. (Is this really a good design? --KRML)
@@ -1824,7 +1827,7 @@ namespace VC {
                   keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
                   impl.TimeLimit;
 
-            var checker = s.parent.FindCheckerFor(timeout, false);            
+            var checker = s.parent.FindCheckerFor(timeout, impl.ResourceLimit, false);            
             try
             {
               if (checker == null)
@@ -1965,6 +1968,14 @@ namespace VC {
                 msg = s.reporter.resourceExceededMessage;
               }
               callback.OnOutOfMemory(msg);
+            } 
+            else if (outcome == Outcome.OutOfResource) 
+            {
+              string msg = "out of resource";
+              if (s.reporter != null && s.reporter.resourceExceededMessage != null) {
+                msg = s.reporter.resourceExceededMessage;
+              }
+              callback.OnOutOfResource(msg);
             }
 
             break;
@@ -1978,11 +1989,10 @@ namespace VC {
 
       callback.OnProgress("done", 0, 0, 1.0);
 
-      if (_print_time)
-      {
-          watch.Stop();
-          Console.WriteLine("Total time for this method: {0}", watch.Elapsed.ToString());
-      }
+#if PRINT_TIME
+      watch.Stop();
+      Console.WriteLine("Total time for this method: {0}", watch.Elapsed.ToString());
+#endif
 
       return outcome;
     }
@@ -2068,6 +2078,9 @@ namespace VC {
           model.Write(ErrorReporter.ModelWriter);
           ErrorReporter.ModelWriter.Flush();
         }
+
+        // no counter examples reported.
+        if (labels.Count == 0) return;
 
         Hashtable traceNodes = new Hashtable();
         foreach (string s in labels) {
@@ -3348,9 +3361,11 @@ namespace VC {
     /// <summary>
     /// Returns a clone of "cex", but with the location stored in "cex" replaced by those from "assrt".
     /// </summary>
-    public static Counterexample AssertCmdToCloneCounterexample(AssertCmd assrt, Counterexample cex) {
+    public static Counterexample AssertCmdToCloneCounterexample(AssertCmd assrt, Counterexample cex, Block implEntryBlock, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins) {
       Contract.Requires(assrt != null);
       Contract.Requires(cex != null);
+      Contract.Requires(implEntryBlock != null);
+      Contract.Requires(gotoCmdOrigins != null);
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       List<string> relatedInformation = new List<string>();
@@ -3362,7 +3377,61 @@ namespace VC {
       } else if (assrt is AssertEnsuresCmd && cex is ReturnCounterexample) {
         var aa = (AssertEnsuresCmd)assrt;
         var oldCex = (ReturnCounterexample)cex;
-        cc = new ReturnCounterexample(cex.Trace, oldCex.FailingReturn, aa.Ensures, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
+        // The first three parameters of ReturnCounterexample are: List<Block> trace, TransferCmd failingReturn, Ensures failingEnsures.
+        // We have the "aa" version of failingEnsures, namely aa.Ensures.  The first two parameters take more work to reconstruct.
+        // (The code here assumes the labels of blocks remain the same. If that's not the case, then it is possible that the trace
+        // computed does not lead to where the error is, but at least the error will not be masked.)
+        List<Block> reconstructedTrace = null;
+        Block prevBlock = null;
+        foreach (var blk in cex.Trace) {
+          if (reconstructedTrace == null) {
+            if (implEntryBlock.Label != blk.Label) {
+              // labels have changed somehow; unable to reconstruct trace
+              break;
+            }
+            reconstructedTrace = new List<Block>();
+            reconstructedTrace.Add(implEntryBlock);
+            prevBlock = implEntryBlock;
+          } else if (prevBlock.TransferCmd is GotoCmd) {
+            var gto = (GotoCmd)prevBlock.TransferCmd;
+            Block nb = null;
+            Contract.Assert(gto.labelNames.Count == gto.labelTargets.Count);  // follows from GotoCmd invariant and the fact that resolution should have made both lists non-null
+            for (int i = 0; i < gto.labelNames.Count; i++) {
+              if (gto.labelNames[i] == blk.Label) {
+                nb = gto.labelTargets[i];
+                break;
+              }
+            }
+            if (nb == null) {
+              // labels have changed somehow; unable to reconstruct trace
+              reconstructedTrace = null;
+              break;
+            }
+            reconstructedTrace.Add(nb);
+            prevBlock = nb;
+          } else {
+            // old trace is longer somehow; unable to reconstruct trace
+            reconstructedTrace = null;
+            break;
+          }
+        }
+        ReturnCmd returnCmd = null;
+        if (reconstructedTrace != null) {
+          // The reconstructed trace ends with a "return;" in the passive command, so we now try to convert it to the original (non-passive) "return;"
+          foreach (Block b in reconstructedTrace) {
+            Contract.Assert(b != null);
+            Contract.Assume(b.TransferCmd != null);
+            returnCmd = gotoCmdOrigins.ContainsKey(b.TransferCmd) ? gotoCmdOrigins[b.TransferCmd] : null;
+            if (returnCmd != null) {
+              break;
+            }
+          }
+          if (returnCmd == null) {
+            // As one last recourse, take the transfer command of the last block in the trace, if any
+            returnCmd = reconstructedTrace.Last().TransferCmd as ReturnCmd;
+          }
+        }
+        cc = new ReturnCounterexample(reconstructedTrace ?? cex.Trace, returnCmd ?? oldCex.FailingReturn, aa.Ensures, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
       } else {
         cc = new AssertCounterexample(cex.Trace, assrt, cex.Model, cex.MvInfo, cex.Context);
       }

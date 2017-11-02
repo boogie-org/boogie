@@ -1138,7 +1138,6 @@ namespace VC {
 
     public override Outcome VerifyImplementation(Implementation/*!*/ impl, VerifierCallback/*!*/ callback) {
       Debug.Assert(QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"));
-      Debug.Assert(this.program == program);
 
       // Record current time
       var startTime = DateTime.UtcNow;
@@ -2360,6 +2359,42 @@ namespace VC {
         return newCounterexample;
       }
 
+      private String GenerateTraceValue(Model.Element element) {
+        var str = new StringWriter();
+        if (element is Model.DatatypeValue) {
+          var val = (Model.DatatypeValue) element;
+          if (val.ConstructorName == "_" && val.Arguments[0].ToString() == "(as-array)") {
+            var parens = val.Arguments[1].ToString();
+            var func = element.Model.TryGetFunc(parens.Substring(1, parens.Length - 2));
+            if (func != null) {
+              str.Write("{");
+              var appCount = 0;
+              foreach (var app in func.Apps) {
+                if (appCount++ > 0)
+                  str.Write(",");
+                str.Write("\"");
+                var argCount = 0;
+                foreach (var arg in app.Args) {
+                  if (argCount++ > 0)
+                    str.Write(",");
+                  str.Write(GenerateTraceValue(arg));
+                }
+                str.Write("\":{0}", GenerateTraceValue(app.Result));
+              }
+              if (func.Else != null) {
+                if (func.AppCount > 0)
+                  str.Write(",");
+                str.Write("\"*\":{0}", GenerateTraceValue(func.Else));
+              }
+              str.Write("}");
+            }
+          }
+        }
+        if (str.ToString() == "")
+          str.Write(element.ToString().Replace(" ","").Replace("(","").Replace(")",""));
+        return str.ToString();
+      }
+
       private Counterexample GenerateTraceRec(
                             IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo,
                             int candidateId,
@@ -2448,7 +2483,7 @@ namespace VC {
                       Model.Func f = errModel.TryGetFunc(name);
                       if (f != null)
                       {
-                          args.Add(f.GetConstant());
+                          args.Add(GenerateTraceValue(f.GetConstant()));
                       }
                   }
                   else
@@ -2876,8 +2911,6 @@ namespace VC {
 
       public override Outcome VerifyImplementation(Implementation/*!*/ impl, VerifierCallback/*!*/ callback)
       {
-          Debug.Assert(this.program == program);
-
           // Record current time
           var startTime = DateTime.UtcNow;
 

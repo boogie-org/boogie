@@ -1,20 +1,22 @@
 # vim: set sw=2 ts=2 softtabstop=2 expandtab:
 language: csharp
+dist: trusty
 sudo: true
 solution: "Source/Boogie.sln"
 env:
-  - BOOGIE_CONFIG=Debug
-  - BOOGIE_CONFIG=Release
+  global:
+    - Z3URL=https://github.com/Z3Prover/z3/releases/download/z3-4.5.0/z3-4.5.0-x64-ubuntu-14.04.zip
+  matrix:
+    - BOOGIE_CONFIG=Debug
+    - BOOGIE_CONFIG=Release
 install:
   - wget http://download.opensuse.org/repositories/home:delcypher:z3/xUbuntu_12.04/Release.key
   - sudo apt-key add - < Release.key
-  # Use Z3 package built by the OpenSUSE build service https://build.opensuse.org/package/show/home:delcypher:z3/z3
-  - sudo sh -c "echo 'deb http://download.opensuse.org/repositories/home:/delcypher:/z3/xUbuntu_12.04/ /' >> /etc/apt/sources.list.d/z3.list"
-  - sudo apt-get update
+  # Download a Z3 release
+  - wget ${Z3URL}
+  - unzip z3*.zip
   # NuGet is a little flakey in legacy TravisCI, use travis_retry command to retry the command if it fails
   - travis_retry nuget restore ${TRAVIS_SOLUTION}
-  # Install Z3 executable
-  - sudo apt-get -y install 'z3=4.4.1-*'
   # Install needed python tools
   - sudo pip install lit OutputCheck pyyaml
   - mkdir -p Source/packages && cd Source/packages && travis_retry nuget install NUnit.Runners -Version 2.6.3
@@ -24,5 +26,5 @@ script:
   # Run unit tests
   - python Source/UnitTests/run-unittests.py ${BOOGIE_CONFIG}
   # Run driver tests
-  - ln -s /usr/bin/z3 Binaries/z3.exe
+  - ln -s $(find $PWD/z3* -name z3 -type f) Binaries/z3.exe
   - lit -v Test/

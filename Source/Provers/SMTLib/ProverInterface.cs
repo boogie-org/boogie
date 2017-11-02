@@ -27,7 +27,7 @@ namespace Microsoft.Boogie.SMTLib
   {
     private readonly SMTLibProverContext ctx;
     private VCExpressionGenerator gen;
-    private readonly SMTLibProverOptions options;
+    protected readonly SMTLibProverOptions options;
     private bool usingUnsatCore;
     private RPFP rpfp = null;
 
@@ -168,12 +168,15 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     internal TypeAxiomBuilder AxBuilder { get; private set; }
-    internal readonly UniqueNamer Namer;
+    private TypeAxiomBuilder CachedAxBuilder;
+    private UniqueNamer CachedNamer;
+    internal UniqueNamer Namer { get; private set; }
     readonly TypeDeclCollector DeclCollector;
     protected SMTLibProcess Process;
     readonly List<string> proverErrors = new List<string>();
     readonly List<string> proverWarnings = new List<string>();
-    readonly StringBuilder common = new StringBuilder();
+    StringBuilder common = new StringBuilder();
+    private string CachedCommon = null;
     protected TextWriter currentLogFile;
     protected volatile ErrorHandler currentErrorHandler;
 
@@ -354,6 +357,8 @@ namespace Microsoft.Boogie.SMTLib
         else
           AddAxiom(VCExpr2String(axioms, -1));
         AxiomsAreSetup = true;
+        CachedAxBuilder = AxBuilder;
+        CachedNamer = Namer;
       }
     }
 
@@ -361,6 +366,14 @@ namespace Microsoft.Boogie.SMTLib
     {
       // we feed the axioms when begincheck is called.
       return 0;
+    }
+
+    private void FlushAndCacheCommons()
+    {
+      FlushAxioms();
+      if (CachedCommon == null) {
+        CachedCommon = common.ToString();
+      }
     }
 
     private void FlushAxioms()
@@ -415,6 +428,15 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       PrepareCommon();
+      FlushAndCacheCommons();
+
+      if (HasReset) {
+        AxBuilder = (TypeAxiomBuilder)CachedAxBuilder.Clone();
+        Namer = (SMTLibNamer)CachedNamer.Clone();
+        Namer.ResetLabelCount();
+        DeclCollector.SetNamer(Namer);
+        DeclCollector.Push();
+      }
 
       OptimizationRequests.Clear();
 
@@ -439,6 +461,11 @@ namespace Microsoft.Boogie.SMTLib
           Process.Inspector.NewProblem(descriptiveName, vc, handler);
       }
 
+      if (HasReset) {
+        DeclCollector.Pop();
+        common = new StringBuilder(CachedCommon);
+        HasReset = false;
+      }
       SendCheckSat();
       FlushLogFile();
     }
@@ -470,6 +497,7 @@ namespace Microsoft.Boogie.SMTLib
             currentLogFile.WriteLine(c);
           }
         }
+        HasReset = true;
       }
     }
 
@@ -1444,7 +1472,7 @@ namespace Microsoft.Boogie.SMTLib
             if (globalResult == Outcome.Undetermined)
               globalResult = result;
             
-            if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory) {
+            if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory || result == Outcome.OutOfResource) {
               IList<string> xlabels;
               if (CommandLineOptions.Clo.UseLabels) {
                 labels = GetLabelsInfo();
@@ -1464,7 +1492,7 @@ namespace Microsoft.Boogie.SMTLib
                 labels = CalculatePath(handler.StartingProcId());
                 xlabels = labels;
               }
-                Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory) ? null :
+                Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory || result == Outcome.OutOfResource) ? null :
                     GetErrorModel();
               handler.OnModel(xlabels, model, result);
             }
@@ -1480,7 +1508,7 @@ namespace Microsoft.Boogie.SMTLib
           if (CommandLineOptions.Clo.UseLabels) {
             var negLabels = labels.Where(l => l.StartsWith("@")).ToArray();
             var posLabels = labels.Where(l => !l.StartsWith("@"));
-            Func<string, string> lbl = (s) => SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(s));
+            Func<string, string> lbl = (s) => SMTLibNamer.QuoteId(Namer.LabelVar(s));
             if (!options.MultiTraces)
               posLabels = Enumerable.Empty<string>();
             var conjuncts = posLabels.Select(s => "(not " + lbl(s) + ")").Concat(negLabels.Select(lbl)).ToArray();
@@ -1945,8 +1973,8 @@ namespace Microsoft.Boogie.SMTLib
           break;
         if (res != null)
           HandleProverError("Expecting only one sequence of labels but got many");
-        if (resp.Name == "labels" && resp.ArgCount >= 1) {
-          res = resp.Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
+        if (resp.Name == "labels") {
+          res = resp.Arguments.Select(a => Namer.AbsyLabel(a.Name.Replace("|", ""))).ToArray();
         }
         else {
           HandleProverError("Unexpected prover response getting labels: " + resp.ToString());
@@ -1981,6 +2009,15 @@ namespace Microsoft.Boogie.SMTLib
           case "objectives":
             // We ignore this.
             break;
+          case "error":
+            if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId &&
+                resp.Arguments[0].Name.Contains("max. resource limit exceeded")) {
+              currentErrorHandler.OnResourceExceeded("max resource limit");
+              result = Outcome.OutOfResource;
+            } else {
+              HandleProverError("Unexpected prover response: " + resp.ToString());
+            }
+            break;
           default:
             HandleProverError("Unexpected prover response: " + resp.ToString());
             break;
@@ -2002,9 +2039,24 @@ namespace Microsoft.Boogie.SMTLib
                 result = Outcome.OutOfMemory;
                 Process.NeedsRestart = true;
                 break;
-                case "timeout": case "canceled":
+                case "timeout":
                 currentErrorHandler.OnResourceExceeded("timeout");
                 result = Outcome.TimeOut;
+                break;
+                case "canceled":
+                // both timeout and max resource limit are reported as
+                // canceled in version 4.4.1 
+                if (this.options.TimeLimit > 0) {
+                  currentErrorHandler.OnResourceExceeded("timeout");
+                  result = Outcome.TimeOut;
+                } else {
+                  currentErrorHandler.OnResourceExceeded("max resource limit");
+                  result = Outcome.OutOfResource;
+                }
+                break;
+                case "max. resource limit exceeded":
+                currentErrorHandler.OnResourceExceeded("max resource limit");
+                result = Outcome.OutOfResource;
                 break;
               default:
                 break;
@@ -2079,8 +2131,7 @@ namespace Microsoft.Boogie.SMTLib
     // verification condition
     private readonly List<string/*!>!*/> Axioms = new List<string/*!*/>();
     private bool AxiomsAreSetup = false;
-
-
+    private bool HasReset = false;
 
 
     // similarly, a list of function/predicate declarations
@@ -2220,6 +2271,86 @@ namespace Microsoft.Boogie.SMTLib
       options.TimeLimit = ms;
     }
 
+    public override void SetRlimit(int limit)
+    {
+      if (options.Solver == SolverKind.Z3) {
+        var name = Z3.SetRlimitOption();
+        if (name != "") {
+          var value = limit.ToString();
+          options.ResourceLimit = limit;
+          options.SmtOptions.RemoveAll(ov => ov.Option == name);
+          options.AddSmtOption(name, value);
+          SendThisVC(string.Format("(set-option :{0} {1})", name, value));
+        }
+      }
+    }
+
+    object ParseValueFromProver(SExpr expr) {
+      return expr.ToString().Replace(" ","").Replace("(","").Replace(")","");
+    }
+
+    SExpr ReduceLet(SExpr expr) {
+      if (expr.Name != "let")
+        return expr;
+
+      var bindings = expr.Arguments[0].Arguments;
+      var subexpr = expr.Arguments[1];
+
+      var dict = new Dictionary<string, SExpr>();
+      foreach (var binding in bindings) {
+        Contract.Assert(binding.ArgCount == 1);
+        dict.Add(binding.Name, binding.Arguments[0]);
+      }
+
+      Contract.Assert(!dict.ContainsKey(subexpr.Name));
+
+      var workList = new Stack<SExpr>();
+      workList.Push(subexpr);
+      while (workList.Count > 0) {
+        var curr = workList.Pop();
+        for (int i = 0; i < curr.ArgCount; i++) {
+          var arg = curr.Arguments[i];
+          if (dict.ContainsKey(arg.Name))
+            curr.Arguments[i] = dict[arg.Name];
+          else
+            workList.Push(arg);
+        }
+      }
+      return subexpr;
+    }
+
+    object GetArrayFromProverResponse(SExpr resp) {
+      resp = ReduceLet(resp);
+      var dict = new Dictionary<string, object>();
+      var curr = resp;
+      while (curr != null) {
+        if (curr.Name == "store") {
+          var ary = curr.Arguments[0];
+          var indices = curr.Arguments.Skip(1).Take(curr.ArgCount - 2).Select(ParseValueFromProver).ToArray();
+          var val = curr.Arguments[curr.ArgCount - 1];
+          dict.Add(String.Join(",", indices), ParseValueFromProver(val));
+          curr = ary;
+
+        } else if (curr.Name == "" && curr.ArgCount == 2 && curr.Arguments[0].Name == "as") {
+          var val = curr.Arguments[1];
+          dict.Add("*", ParseValueFromProver(val));
+          curr = null;
+
+        } else {
+          return null;
+        }
+      }
+      var str = new StringWriter();
+      str.Write("{");
+      foreach (var entry in dict)
+        if (entry.Key != "*")
+          str.Write("\"{0}\":{1},", entry.Key, entry.Value);
+      if (dict.ContainsKey("*"))
+        str.Write("\"*\":{0}", dict["*"]);
+      str.Write("}");
+      return str.ToString();
+    }
+
     public override object Evaluate(VCExpr expr)
     {
         string vcString = VCExpr2String(expr, 1);
@@ -2249,6 +2380,9 @@ namespace Microsoft.Boogie.SMTLib
         if (resp.Name == "_" && resp.ArgCount == 2 && resp.Arguments[0].Name.StartsWith("bv")) // bitvector
             return new BvConst(Microsoft.Basetypes.BigNum.FromString(resp.Arguments[0].Name.Substring("bv".Length)),
                 int.Parse(resp.Arguments[1].Name));
+        var ary = GetArrayFromProverResponse(resp);
+        if (ary != null)
+            return ary;
         if (resp.ArgCount != 0)
             throw new VCExprEvaluationException();
         if (expr.Type.Equals(Boogie.Type.Bool))
@@ -2483,9 +2617,23 @@ namespace Microsoft.Boogie.SMTLib
                               Process.NeedsRestart = true;
                               break;
                           case "timeout":
-                          case "canceled":
                               currentErrorHandler.OnResourceExceeded("timeout");
                               result = Outcome.TimeOut;
+                              break;
+                          case "canceled":
+                              // both timeout and max resource limit are reported as
+                              // canceled in version 4.4.1 
+                              if (this.options.TimeLimit > 0) {
+                                currentErrorHandler.OnResourceExceeded("timeout");
+                                result = Outcome.TimeOut;
+                              } else {
+                                currentErrorHandler.OnResourceExceeded("max resource limit");
+                                result = Outcome.OutOfResource;
+                              }
+                          break;
+                          case "max. resource limit exceeded":
+                              currentErrorHandler.OnResourceExceeded("max resource limit");
+                              result = Outcome.OutOfResource;
                               break;
                           default:
                               break;

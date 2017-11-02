@@ -1646,6 +1646,16 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public int ResourceLimit
+    {
+      get
+      {
+        int rl = CommandLineOptions.Clo.Resourcelimit;
+        CheckIntAttribute("rlimit", ref rl);
+        return rl;
+      }
+    }
+
     public NamedDeclaration(IToken/*!*/ tok, string/*!*/ name)
       : base(tok) {
       Contract.Requires(tok != null);

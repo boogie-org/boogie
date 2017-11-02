@@ -392,6 +392,7 @@ namespace Microsoft.Boogie.VCExprAST {
     internal const string floatGeqName = "floatGeq";
     internal const string floatGtName = "floatGt";
     internal const string floatEqName = "floatEq";
+    internal const string floatNeqName = "floatNeq";
     internal const string realPowName = "realPow";
     internal const string toIntName = "toIntCoercion";
     internal const string toRealName = "toRealCoercion";
@@ -989,6 +990,13 @@ namespace Microsoft.Boogie.VCExprAST {
         //Contract.Requires(options != null);
         //Contract.Requires(node != null);
         WriteTermApplication(floatEqName, node, options);
+        return true;
+      }
+
+      public bool VisitFloatNeqOp(VCExprNAry node, LineariserOptions options) {
+        //Contract.Requires(options != null);
+        //Contract.Requires(node != null);
+        WriteTermApplication(floatNeqName, node, options);
         return true;
       }
 

@@ -1136,6 +1136,8 @@ namespace Microsoft.Boogie.VCExprAST {
             return Gen.Function(Gen.BinaryFloatOp(t.FloatSignificand, t.FloatExponent, "=="), args);
           return Gen.Function(VCExpressionGenerator.EqOp, args);
         case BinaryOperator.Opcode.Neq:
+          if (t.IsFloat)
+            return Gen.Function(Gen.BinaryFloatOp(t.FloatSignificand, t.FloatExponent, "!="), args);
           return Gen.Function(VCExpressionGenerator.NeqOp, args);
         case BinaryOperator.Opcode.Lt:
           if (t.IsFloat)

@@ -126,6 +126,9 @@ namespace Microsoft.Boogie
       {
         Console.Write(", {0} out of memory", stats.OutOfMemoryCount);
       }
+      if (stats.OutOfResourceCount != 0) {
+        Console.Write(", {0} out of resource", stats.OutOfResourceCount);
+      }
       Console.WriteLine();
       Console.Out.Flush();
     }
@@ -192,12 +195,14 @@ namespace Microsoft.Boogie
     public int VerifiedCount;
     public int InconclusiveCount;
     public int TimeoutCount;
+    public int OutOfResourceCount;
     public int OutOfMemoryCount;
     public long[] CachingActionCounts;
     public int CachedErrorCount;
     public int CachedVerifiedCount;
     public int CachedInconclusiveCount;
     public int CachedTimeoutCount;
+    public int CachedOutOfResourceCount;
     public int CachedOutOfMemoryCount;
   }
 
@@ -1561,6 +1566,11 @@ namespace Microsoft.Boogie
             }
           }
           break;
+        case VCGen.Outcome.OutOfResource:
+          if (implName != null && implTok != null) {
+            errorInfo = errorInformationFactory.CreateErrorInformation(implTok, "Verification out of resource (" + implName + ")", requestId);
+          }
+          break;
         case VCGen.Outcome.OutOfMemory:
           if (implName != null && implTok != null)
           {
@@ -1610,6 +1620,9 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.TimedOut:
           traceOutput = "timed out";
           break;
+        case VCGen.Outcome.OutOfResource:
+          traceOutput = "out of resource";
+          break;
         case VCGen.Outcome.OutOfMemory:
           traceOutput = "out of memory";
           break;
@@ -1645,6 +1658,10 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.TimedOut:
           Interlocked.Increment(ref stats.TimeoutCount);
           if (wasCached) { Interlocked.Increment(ref stats.CachedTimeoutCount); }
+          break;
+        case VCGen.Outcome.OutOfResource:
+          Interlocked.Increment(ref stats.OutOfResourceCount);
+          if (wasCached) { Interlocked.Increment(ref stats.CachedOutOfResourceCount); }
           break;
         case VCGen.Outcome.OutOfMemory:
           Interlocked.Increment(ref stats.OutOfMemoryCount);
@@ -1741,6 +1758,9 @@ namespace Microsoft.Boogie
       else if (outcome == VCGen.Outcome.OutOfMemory)
       {
         cause = "Out of memory on";
+      }
+      else if (outcome == VCGen.Outcome.OutOfResource) {
+        cause = "Out of resource on";
       }
 
       var callError = error as CallCounterexample;

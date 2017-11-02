@@ -1,7 +1,7 @@
 *** MODEL
-%lbl%@47 -> false
-%lbl%+24 -> true
-%lbl%+37 -> true
+%lbl%@1 -> false
+%lbl%+0 -> true
+%lbl%+2 -> true
 null -> T@ref!val!0
 s -> T@ref!val!0
 tickleBool -> {

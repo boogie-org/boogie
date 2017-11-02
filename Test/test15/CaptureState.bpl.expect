@@ -6,11 +6,11 @@ Execution trace:
     CaptureState.bpl(26,5): anon3
 *** MODEL
 $mv_state_const -> 3
-%lbl%@293 -> false
-%lbl%+112 -> true
-%lbl%+114 -> true
-%lbl%+118 -> true
-%lbl%+148 -> true
+%lbl%@1 -> false
+%lbl%+0 -> true
+%lbl%+3 -> true
+%lbl%+4 -> true
+%lbl%+5 -> true
 F -> T@FieldName!val!0
 Heap -> |T@[Ref,FieldName]Int!val!0|
 m -> **m
