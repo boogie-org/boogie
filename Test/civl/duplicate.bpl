@@ -1,3 +1,7 @@
+// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// XFAIL: *
+
 function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
 
 type{:datatype} Addr;

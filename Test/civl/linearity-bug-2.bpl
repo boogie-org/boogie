@@ -1,8 +1,10 @@
-
+// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// XFAIL: *
 
 // The linearity annotation of foo is not valid, since the value of i has to be
 // available upon return, but the action adds the value to set.
-// TODO: Implement at check! Otherwise the injected linearity assumption for foo
+// TODO: Implement a check! Otherwise the injected linearity assumption for foo
 // is inconsistent and allows us to prove false in main.
 
 var {:linear "lin"} {:layer 1,2} set : [int]bool;
