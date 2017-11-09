@@ -496,8 +496,7 @@ namespace Microsoft.Boogie
 
         LinearTypeChecker linearTypeChecker;
         CivlTypeChecker civlTypeChecker;
-        YieldTypeChecker yieldTypeChecker;
-        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypeChecker, out civlTypeChecker, out yieldTypeChecker);
+        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypeChecker, out civlTypeChecker);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
           return;
 
@@ -706,14 +705,14 @@ namespace Microsoft.Boogie
     ///  - TypeCheckingError if a type checking error occurred
     ///  - ResolvedAndTypeChecked if both resolution and type checking succeeded
     /// </summary>
-    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypeChecker linearTypeChecker, out CivlTypeChecker civlTypeChecker, out YieldTypeChecker yieldTypeChecker)
+    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypeChecker linearTypeChecker, out CivlTypeChecker civlTypeChecker)
     {
       Contract.Requires(program != null);
       Contract.Requires(bplFileName != null);
 
       linearTypeChecker = null;
       civlTypeChecker = null;
-      yieldTypeChecker = null;
+      YieldTypeChecker yieldTypeChecker = null;
 
       // ---------- Resolve ------------------------------------------------------------
 
@@ -1387,8 +1386,7 @@ namespace Microsoft.Boogie
       System.Diagnostics.Debug.Assert(p != null);
       LinearTypeChecker linearTypeChecker;
       CivlTypeChecker civlTypeChecker;
-      YieldTypeChecker yieldTypeChecker;
-      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out linearTypeChecker, out civlTypeChecker, out yieldTypeChecker);
+      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out linearTypeChecker, out civlTypeChecker);
       System.Diagnostics.Debug.Assert(oc == PipelineOutcome.ResolvedAndTypeChecked);
       return p;
     }
