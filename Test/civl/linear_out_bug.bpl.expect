@@ -1,10 +1,10 @@
-(0,0): Error BP5003: A postcondition might not hold on this return path.
+linear_out_bug.bpl(22,1): Error BP5003: A postcondition might not hold on this return path.
 linear_out_bug.bpl(20,5): Related location: Gate of RemoveAddr_1 not preserved by RemoveAddr_1
 Execution trace:
-    (0,0): second_anon0
-(0,0): Error BP5003: A postcondition might not hold on this return path.
-(0,0): Related location: Commutativity check between AddAddr and RemoveAddr_2 failed
+    linear_out_bug.bpl(20,5): second_anon0
+linear_out_bug.bpl(29,1): Error BP5003: A postcondition might not hold on this return path.
+linear_out_bug.bpl(10,34): Related location: Commutativity check between AddAddr and RemoveAddr_2 failed
 Execution trace:
-    (0,0): AddAddr_RemoveAddr_2_init
+    linear_out_bug.bpl(13,14): first_anon0
 
 Boogie program verifier finished with 5 verified, 2 errors

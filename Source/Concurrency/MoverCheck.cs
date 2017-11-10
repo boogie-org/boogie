@@ -108,6 +108,7 @@ namespace Microsoft.Boogie
                     otherCmds.Add(cmd);
                 }
                 Block otherBlock = new Block();
+                otherBlock.tok = block.tok;
                 otherBlock.Cmds = otherCmds;
                 otherBlock.Label = block.Label;
                 otherBlocks.Add(otherBlock);
@@ -115,7 +116,11 @@ namespace Microsoft.Boogie
             }
             foreach (Block block in blocks)
             {
-                if (block.TransferCmd is ReturnCmd) continue;
+                if (block.TransferCmd is ReturnCmd)
+                {
+                    blockMap[block].TransferCmd = new ReturnCmd(block.TransferCmd.tok);
+                    continue;
+                }
                 List<Block> otherGotoCmdLabelTargets = new List<Block>();
                 List<string> otherGotoCmdLabelNames = new List<string>();
                 GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
@@ -137,7 +142,7 @@ namespace Microsoft.Boogie
             {
                 List<Block>  bs = new List<Block>  { secondBlocks[0] };
                 List<string> ls = new List<string> { secondBlocks[0].Label };
-                b.TransferCmd = new GotoCmd(Token.NoToken, ls, bs);
+                b.TransferCmd = new GotoCmd(b.tok, ls, bs);
             }
             return Enumerable.Union(firstBlocks, secondBlocks).ToList();
         }
@@ -214,7 +219,7 @@ namespace Microsoft.Boogie
                 DisjointnessExpr(first.firstOutParams.Union(secondInParamsFiltered), frame),
                 DisjointnessExpr(first.firstOutParams.Union(second.secondOutParams), frame));
             // TODO: add further disjointness expressions?
-            Ensures ensureCheck = new Ensures(false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation));
+            Ensures ensureCheck = new Ensures(first.proc.tok, false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation), null);
             ensureCheck.ErrorData = string.Format("Commutativity check between {0} and {1} failed", first.proc.Name, second.proc.Name);
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
             
@@ -276,14 +281,14 @@ namespace Microsoft.Boogie
 
             List<Requires> requires = new List<Requires>();
             requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams).Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
-            Expr gateExpr = Expr.Not(Expr.And(first.firstGate.Select(a => a.Expr)));
-            gateExpr.Type = Type.Bool; // necessary?
-            requires.Add(new Requires(false, gateExpr));
+            Expr firstNegatedGate = Expr.Not(Expr.And(first.firstGate.Select(a => a.Expr)));
+            firstNegatedGate.Type = Type.Bool; // necessary?
+            requires.Add(new Requires(false, firstNegatedGate));
             foreach (AssertCmd assertCmd in second.secondGate)
                 requires.Add(new Requires(false, assertCmd.Expr));
 
             IEnumerable<Expr> linearityAssumes = DisjointnessExpr(first.firstInParams.Union(second.secondOutParams), frame);
-            Ensures ensureCheck = new Ensures(false, Expr.Imp(Expr.And(linearityAssumes), gateExpr));
+            Ensures ensureCheck = new Ensures(first.proc.tok, false, Expr.Imp(Expr.And(linearityAssumes), firstNegatedGate), null);
             ensureCheck.ErrorData = string.Format("Gate failure of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
             
@@ -297,7 +302,6 @@ namespace Microsoft.Boogie
             List<Variable> inputs = new List<Variable>(second.secondInParams);
             List<Variable> outputs = new List<Variable>();
             List<Variable> locals = new List<Variable>();
-            List<Block> blocks = new List<Block> { new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)) };
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(second.gateUsedGlobalVars);
             frame.UnionWith(second.actionUsedGlobalVars);
@@ -308,14 +312,15 @@ namespace Microsoft.Boogie
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
             }
+            List<Ensures> ensures = new List<Ensures>();
 
             HashSet<Variable> postExistVars = new HashSet<Variable>();
             postExistVars.UnionWith(frame);
             postExistVars.UnionWith(second.secondOutParams);
-            Expr ensuresExpr = (new TransitionRelationComputation(second, frame, postExistVars)).TransitionRelationCompute();
-            Ensures ensureCheck = new Ensures(false, ensuresExpr);
-            ensureCheck.ErrorData = string.Format("{0} is blocking", second.proc.Name);
-            List<Ensures> ensures = new List<Ensures> { ensureCheck };
+            Expr nonBlockingExpr = (new TransitionRelationComputation(second, frame, postExistVars)).TransitionRelationCompute();
+            AssertCmd nonBlockingAssert = new AssertCmd(second.proc.tok, nonBlockingExpr);
+            nonBlockingAssert.ErrorData = string.Format("Non-blocking check for {0} failed", second.proc.Name);
+            List<Block> blocks = new List<Block>{ new Block(second.proc.tok, "L", new List<Cmd>() { nonBlockingAssert }, new ReturnCmd(Token.NoToken)) };
 
             string checkerName = string.Format("NonBlockingChecker_{0}", second.proc.Name);
             

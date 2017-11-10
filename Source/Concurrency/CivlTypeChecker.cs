@@ -168,6 +168,7 @@ namespace Microsoft.Boogie
                     otherCmds.Add((Cmd)aad.Visit(cmd));
                 }
                 Block otherBlock = new Block();
+                otherBlock.tok = block.tok;
                 otherBlock.Cmds = otherCmds;
                 otherBlock.Label = aad.prefix + block.Label;
                 otherBlocks.Add(otherBlock);
