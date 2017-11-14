@@ -1786,12 +1786,18 @@ namespace Microsoft.Boogie
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, "This loop invariant might not hold on entry.", assertError.RequestId, assertError.OriginalRequestId, cause);
           errorInfo.BoogieErrorCode = "BP5004";
           errorInfo.Kind = ErrorKind.InvariantEntry;
+          if ((assertError.FailingAssert.ErrorData as string) != null) {
+            errorInfo.AddAuxInfo(assertError.FailingAssert.tok, assertError.FailingAssert.ErrorData as string, "Related message");
+          }
         }
         else if (assertError.FailingAssert is LoopInvMaintainedAssertCmd)
         {
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, "This loop invariant might not be maintained by the loop.", assertError.RequestId, assertError.OriginalRequestId, cause);
           errorInfo.BoogieErrorCode = "BP5005";
           errorInfo.Kind = ErrorKind.InvariantMaintainance;
+          if ((assertError.FailingAssert.ErrorData as string) != null) {
+            errorInfo.AddAuxInfo(assertError.FailingAssert.tok, assertError.FailingAssert.ErrorData as string, "Related message");
+          }
         }
         else
         {
