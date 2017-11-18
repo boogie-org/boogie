@@ -41,7 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * Proof of VerifiedFT correctness in CIVL.
  */
 
-// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory -CivlDesugaredFile:log.bpl
+// RUN: %boogie -noinfer -useArrayTheory
 
 /*
  * Tid 
@@ -389,7 +389,7 @@ modifies shadow.VC;
         shadow.VC[v1] := Vnew;
     	assume VCRepOk(Vnew);
     	assume VCArrayLen(shadow.VC[v1]) == max(VCArrayLen(shadow.VC[v1]),VCArrayLen(shadow.VC[v2]));
-    	assume (forall j: int :: {f(j)} 0 <= j && f(j) ==> VCArrayGet(shadow.VC[v1], j) == VCArrayGet(shadow.VC[v2], j));
+    	assume (forall j: int :: 0 <= j ==> VCArrayGet(shadow.VC[v1], j) == VCArrayGet(shadow.VC[v2], j));
     } else {
         shadow.VC[v1] := shadow.VC[v2];
     }
@@ -733,12 +733,12 @@ modifies shadow.VC;
     shadow.VC[v1] := vcNew;    
     assume VCRepOk(shadow.VC[v1]);
     assume VCArrayLen(vcNew) == max(VCArrayLen(shadow.VC.old[v1]),VCArrayLen(shadow.VC.old[v2]));
-    assume (forall j: int :: {f(j)} 0 <= j && f(j) ==> VCArrayGet(shadow.VC[v1], j) == EpochMax(VCArrayGet(shadow.VC.old[v1], j), VCArrayGet(shadow.VC.old[v2], j)));
+    assume (forall j: int :: 0 <= j ==> VCArrayGet(shadow.VC[v1], j) == EpochMax(VCArrayGet(shadow.VC.old[v1], j), VCArrayGet(shadow.VC.old[v2], j)));
 
     shadow.VC[v2] := vcNew2;
     assume VCRepOk(vcNew2);
     assume VCArrayLen(vcNew2) == max(VCArrayLen(shadow.VC[v2]), tid+1);
-    assume (forall j: int :: {f(j)} 0 <= j && f(j) && j != tid ==> VCArrayGet(shadow.VC[v2], j) == VCArrayGet(shadow.VC.old[v2], j));
+    assume (forall j: int :: 0 <= j && j != tid ==> VCArrayGet(shadow.VC[v2], j) == VCArrayGet(shadow.VC.old[v2], j));
     assume VCArrayGet(shadow.VC[v2], tid) == EpochInc(VCArrayGet(shadow.VC.old[v2], tid));
 }
 
