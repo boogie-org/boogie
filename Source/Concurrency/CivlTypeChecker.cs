@@ -262,12 +262,29 @@ namespace Microsoft.Boogie
             BinderExpr expr = base.VisitBinderExpr(node);
             expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
 
+            if (!(node is QuantifierExpr))
+            {
+                foreach (var x in node.Dummies)
+                {
+                    bound.Remove(x);
+                }
+            }
+
+            return expr;
+        }
+
+        public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
+        {
+            node = (QuantifierExpr)this.VisitBinderExpr(node);
+            if (node.Triggers != null)
+            {
+                node.Triggers = this.VisitTrigger(node.Triggers);
+            }
             foreach (var x in node.Dummies)
             {
                 bound.Remove(x);
             }
-
-            return expr;
+            return node;
         }
     }
 
@@ -939,7 +956,7 @@ namespace Microsoft.Boogie
 
             public override Expr VisitOldExpr(OldExpr node)
             {
-                ctc.Error(node, "Old expression not allowed inside an aotmic action");
+                ctc.Error(node, "Old expression not allowed inside an atomic action");
                 return base.VisitOldExpr(node);
             }
         }
