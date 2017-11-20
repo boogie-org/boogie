@@ -375,6 +375,7 @@ procedure {:both} {:layer 11,20} AtomicVC.Copy({:linear "tid"} tid: Tid, v1: Sha
 modifies shadow.VC;
 {
     var Vnew: VC;
+    var shadow.VC.old : [Shadowable]VC; 
 
     assert ValidTid(tid);
     assert v1 != v2;
@@ -386,9 +387,10 @@ modifies shadow.VC;
     assert VCRepOk(shadow.VC[v2]);
     assert VCRepOk(shadow.VC[v1]);
     if (*) {
+        shadow.VC.old := shadow.VC; // save old state now
         shadow.VC[v1] := Vnew;
     	assume VCRepOk(Vnew);
-    	assume VCArrayLen(shadow.VC[v1]) == max(VCArrayLen(shadow.VC[v1]),VCArrayLen(shadow.VC[v2]));
+    	assume VCArrayLen(shadow.VC[v1]) == max(VCArrayLen(shadow.VC.old[v1]),VCArrayLen(shadow.VC[v2]));
     	assume (forall j: int :: 0 <= j ==> VCArrayGet(shadow.VC[v1], j) == VCArrayGet(shadow.VC[v2], j));
     } else {
         shadow.VC[v1] := shadow.VC[v2];
@@ -730,10 +732,16 @@ modifies shadow.VC;
     v2 := ShadowableTid(tid);
 
     shadow.VC.old := shadow.VC;
-    shadow.VC[v1] := vcNew;    
-    assume VCRepOk(shadow.VC[v1]);
-    assume VCArrayLen(vcNew) == max(VCArrayLen(shadow.VC.old[v1]),VCArrayLen(shadow.VC.old[v2]));
-    assume (forall j: int :: 0 <= j ==> VCArrayGet(shadow.VC[v1], j) == EpochMax(VCArrayGet(shadow.VC.old[v1], j), VCArrayGet(shadow.VC.old[v2], j)));
+
+    // Use the same strategy as in Copy's atomic spec.  
+    if (*) {
+        shadow.VC[v1] := vcNew;
+    	assume VCRepOk(vcNew);
+    	assume VCArrayLen(shadow.VC[v1]) == max(VCArrayLen(shadow.VC.old[v1]),VCArrayLen(shadow.VC[v2]));
+    	assume (forall j: int :: 0 <= j ==> VCArrayGet(shadow.VC[v1], j) == VCArrayGet(shadow.VC[v2], j));
+    } else {
+        shadow.VC[v1] := shadow.VC[v2];
+    }
 
     shadow.VC[v2] := vcNew2;
     assume VCRepOk(vcNew2);
