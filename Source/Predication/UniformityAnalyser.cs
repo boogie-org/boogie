@@ -204,6 +204,10 @@ namespace Microsoft.Boogie
                     {
                         newIns.Add(s);
                     }
+                    foreach (string s in outParameters[Proc.Name])
+                    {
+                        newIns.Add("_V" + s);
+                    }
                     inParameters[Proc.Name] = newIns;
                 }
             }
@@ -236,7 +240,7 @@ namespace Microsoft.Boogie
                 foreach (Block b in Impl.Blocks) {
                   Analyse(Impl, b.Cmds, false);
                 }
-                        
+
                 return;
             }
 

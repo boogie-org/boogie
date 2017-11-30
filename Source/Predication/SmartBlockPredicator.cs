@@ -75,6 +75,9 @@ public class SmartBlockPredicator {
     if (cmd is CallCmd) {
       var cCmd = (CallCmd)cmd;
       Debug.Assert(useProcedurePredicates(cCmd.Proc));
+      foreach (IdentifierExpr e in cCmd.Outs) {
+        cCmd.Ins.Add(e);
+      }
       cCmd.Ins.Insert(0, p != null ? p : Expr.True);
       cmdSeq.Add(cCmd);
     } else if (p == null) {
@@ -554,16 +557,40 @@ public class SmartBlockPredicator {
         bool upp = useProcedurePredicates(proc);
         if (upp) {
           var dwf = (DeclWithFormals)decl;
+          // Copy InParams, as the list is shared between impl and proc
+          var inParams = new List<Variable>(dwf.InParams);
+
           var fpVar = new Formal(Token.NoToken,
                                  new TypedIdent(Token.NoToken, "_P",
                                                 Microsoft.Boogie.Type.Bool),
                                  /*incoming=*/true);
-          dwf.InParams = new List<Variable>(
-            (new Variable[] {fpVar}.Concat(dwf.InParams.Cast<Variable>()))
-              .ToArray());
+          inParams.Insert(0, fpVar);
+          var fpIdentifierExpr = new IdentifierExpr(Token.NoToken, fpVar);
+
+          // Add in-parameters for all out-parameters. These new in-parameters
+          // are used to ensure we preserve the value of the variable assigned
+          // to when the passed predicate value is false.
+          var newEqParamExprs = new List<Expr>();
+          var newAssignCmds = new List<Cmd>();
+          foreach (Variable outV in dwf.OutParams) {
+            var inV = new Formal(Token.NoToken,
+                                 new TypedIdent(Token.NoToken, "_V" + outV.TypedIdent.Name,
+                                     outV.TypedIdent.Type),
+                                 /*incoming=*/true);
+            inParams.Add(inV);
+
+            var inVExpr = new IdentifierExpr(Token.NoToken, inV);
+            var outVExpr = new IdentifierExpr(Token.NoToken, outV);
+            newEqParamExprs.Add(Expr.Imp(Expr.Not(fpIdentifierExpr), Expr.Eq(inVExpr, outVExpr)));
+            newAssignCmds.Add(new AssignCmd(Token.NoToken,
+                                            new List<AssignLhs> { new SimpleAssignLhs(Token.NoToken, outVExpr) },
+                                            new List<Expr> { new NAryExpr(Token.NoToken,
+                                                             new IfThenElse(Token.NoToken),
+                                                             new List<Expr> { fpIdentifierExpr, outVExpr, inVExpr })}));
+          }
+          dwf.InParams = inParams;
 
           if (impl == null) {
-            var fpIdentifierExpr = new IdentifierExpr(Token.NoToken, fpVar);
             foreach (Requires r in proc.Requires) {
               new EnabledReplacementVisitor(fpIdentifierExpr, Expr.True).VisitExpr(r.Condition);
               if (!QKeyValue.FindBoolAttribute(r.Attributes, "do_not_predicate")) {
@@ -576,6 +603,16 @@ public class SmartBlockPredicator {
                 e.Condition = Expr.Imp(fpIdentifierExpr, e.Condition);
               }
             }
+            foreach (Expr e in newEqParamExprs) {
+              proc.Ensures.Add(new Ensures(false, e));
+            }
+          } else {
+            try {
+              new SmartBlockPredicator(p, impl, useProcedurePredicates, uni).PredicateImplementation();
+              foreach (AssignCmd c in newAssignCmds) {
+                impl.Blocks.First().Cmds.Insert(0, c);
+              }
+            } catch (Program.IrreducibleLoopException) { }
           }
         } else {
           if (impl == null) {
@@ -585,13 +622,11 @@ public class SmartBlockPredicator {
             foreach (Ensures e in proc.Ensures) {
               new EnabledReplacementVisitor(Expr.True, Expr.True).VisitExpr(e.Condition);
             }
+          } else {
+            try {
+              new SmartBlockPredicator(p, impl, useProcedurePredicates, uni).PredicateImplementation();
+            } catch (Program.IrreducibleLoopException) { }
           }
-        }
-
-        if (impl != null) {
-          try {
-            new SmartBlockPredicator(p, impl, useProcedurePredicates, uni).PredicateImplementation();
-          } catch (Program.IrreducibleLoopException) { }
         }
       }
     }
