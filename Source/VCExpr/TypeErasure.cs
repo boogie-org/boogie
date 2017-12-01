@@ -277,7 +277,7 @@ namespace Microsoft.Boogie.TypeErasure {
 
     private VCExpr GetBasicTypeRepr(Type type) {
       Contract.Requires(type != null);
-      Contract.Requires(type.IsBasic || type.IsBv);
+      Contract.Requires(type.IsBasic || type.IsBv || type.IsFloat);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       VCExpr res;
       if (!BasicTypeReprs.TryGetValue(type, out res)) {
@@ -397,7 +397,7 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Requires(cce.NonNullDictionaryAndValues(varMapping));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       //
-      if (type.IsBasic || type.IsBv) {
+      if (type.IsBasic || type.IsBv || type.IsFloat) {
         //
         return GetBasicTypeRepr(type);
         //
@@ -684,7 +684,7 @@ namespace Microsoft.Boogie.TypeErasure {
     [Pure]
     public override bool UnchangedType(Type type) {
       //Contract.Requires(type != null);
-      return type.IsInt || type.IsReal || type.IsBool || type.IsBv || (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays);
+      return type.IsInt || type.IsReal || type.IsBool || type.IsBv || type.IsFloat || (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays);
     }
 
     public VCExpr Cast(VCExpr expr, Type toType) {
