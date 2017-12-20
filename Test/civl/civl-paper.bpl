@@ -135,21 +135,19 @@ ensures {:layer 1} InvLock(lock, b);
     var status: bool;
     var tmp: X;
 
-    par Yield1();
-    L:
-        assert {:layer 1} InvLock(lock, b);
+    call Yield1();
+    
+    while (true)
+    invariant {:layer 1} InvLock(lock, b);
+    {
         call status := CAS(tid, false, true);
-        par Yield1();
-        goto A, B;
-
-    A:
-        assume status;
-        par Yield1();
-        return;
-
-    B:
-        assume !status;
-        goto L;
+        if (status) {
+            call Yield1();
+            return;
+        }
+        call Yield1();
+    }
+    yield;
 }
 
 procedure {:atomic} {:layer 2} AtomicRelease({:linear "tid"} tid: X)
@@ -160,9 +158,9 @@ procedure {:yields} {:layer 1} {:refines "AtomicRelease"} Release({:linear "tid"
 requires {:layer 1} InvLock(lock, b);
 ensures {:layer 1} InvLock(lock, b);
 {
-    par Yield1();
+    call Yield1();
     call CLEAR(tid, false);
-    par Yield1();
+    call Yield1();
 }
 
 procedure {:atomic} {:layer 1,2} AtomicTransferToGlobal({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap)

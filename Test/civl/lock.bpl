@@ -34,19 +34,15 @@ procedure {:yields} {:layer 1} {:refines "AtomicEnter"} Enter()
 {
     var status: bool;
     yield;
-    L:
+    while (true) {
         call status := CAS(false, true);
+        if (status) {
+            yield;
+            return;
+        }
         yield;
-        goto A, B;
-
-    A:
-        assume status;
-        yield;
-        return;
-
-    B:
-        assume !status;
-        goto L;
+    }
+    yield;
 }
 
 procedure {:atomic} {:layer 1,2} AtomicCAS(prev: bool, next: bool) returns (status: bool)

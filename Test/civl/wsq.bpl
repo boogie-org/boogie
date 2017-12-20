@@ -167,8 +167,6 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
   assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
   assert {:layer 3} oldH <= H && oldT == T;
   
-  LOOP_ENTRY_1:
-
   while(true)
   invariant {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs;
   invariant {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
@@ -275,15 +273,14 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
     assert {:layer 3} !put_in_cs;
     assert {:layer 3} oldH <= H && oldT == T;
 
-    if(!chk) {
+    if (chk) {
       call oldH, oldT := GhostRead();
       yield;
       assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && h_ss[tid] == h && t_ss[tid] == t;
       assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
       assert {:layer 3} h+1 == T && task == items[t] && !take_in_cs && !put_in_cs;
-      assert {:layer 3} oldH <= H && oldT == T;
-      
-      goto LOOP_ENTRY_1;
+      assert {:layer 3} oldH <= H && oldT == T && task != EMPTY && taskstatus == IN_Q;
+      return;
     }
 
     call oldH, oldT := GhostRead();
@@ -291,9 +288,7 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
     assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && h_ss[tid] == h && t_ss[tid] == t;
     assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
     assert {:layer 3} h+1 == T && task == items[t] && !take_in_cs && !put_in_cs;
-    assert {:layer 3} oldH <= H && oldT == T && task != EMPTY && taskstatus == IN_Q;
-
-    return;
+    assert {:layer 3} oldH <= H && oldT == T;
   }
   
   call oldH, oldT := GhostRead();
@@ -334,7 +329,6 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
   assert {:layer 3} oldH <= H;
   assert {:layer 3} !steal_in_cs[tid];
 
-  LOOP_ENTRY_2:
   while(true)
   invariant {:layer 3} stealerTid(tid);
   invariant {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1);
@@ -412,17 +406,15 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
     assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1);
     assert {:layer 3} oldH <= H;
 
-    if(!chk) {
-      goto LOOP_ENTRY_2;
+    if(chk) {
+      call oldH, oldT := GhostRead();
+      yield;
+      assert {:layer 3} stealerTid(tid) && !steal_in_cs[tid];
+      assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1);
+      assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
+      assert {:layer 3} oldH <= H && task != EMPTY;
+      return;
     }
-
-    call oldH, oldT := GhostRead();
-    yield;
-    assert {:layer 3} stealerTid(tid) && !steal_in_cs[tid];
-    assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1);
-    assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
-    assert {:layer 3} oldH <= H && task != EMPTY;
-    return;
   }
    
   call oldH, oldT := GhostRead();
