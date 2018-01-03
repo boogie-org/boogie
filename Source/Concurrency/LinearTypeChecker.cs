@@ -198,6 +198,7 @@ namespace Microsoft.Boogie
         public Dictionary<Variable, string> varToDomainName;
         public Dictionary<Variable, string> globalVarToDomainName;
         public Dictionary<string, LinearDomain> linearDomains;
+        public Dictionary<string, Variable> domainNameToHoleVar;
 
         public LinearTypeChecker(Program program, CivlTypeChecker ctc)
         {
@@ -211,6 +212,7 @@ namespace Microsoft.Boogie
             this.varToDomainName = new Dictionary<Variable, string>();
             this.globalVarToDomainName = new Dictionary<Variable, string>();
             this.linearDomains = new Dictionary<string, LinearDomain>();
+            this.domainNameToHoleVar = new Dictionary<string, Variable>();
         }
 
         private void Error(Absy node, string message)
@@ -265,8 +267,11 @@ namespace Microsoft.Boogie
         public Formal LinearDomainInFormal(string domainName)
         { return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", linearDomains[domainName].mapTypeBool), true); }
 
-        public LocalVariable LinearDomainInLocal(string domainName)
-        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in_local", linearDomains[domainName].mapTypeBool)); }
+        public LocalVariable LinearDomainAvailableLocal(string domainName)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_available", linearDomains[domainName].mapTypeBool)); }
+
+        private GlobalVariable LinearDomainHoleGlobal(string domainName)
+        { return new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_hole", linearDomains[domainName].mapTypeBool)); }
 
         public void TypeCheck()
         {
@@ -770,16 +775,17 @@ namespace Microsoft.Boogie
         #region Program Transformation
         public void Transform()
         {
+            // The disjointness expressions injected below include an additional placeholder variable (a "hole")
+            // which is substituted in yield checker implementations.
+            foreach (string domainName in linearDomains.Keys)
+            {
+                GlobalVariable g = LinearDomainHoleGlobal(domainName);
+                program.AddTopLevelDeclaration(g);
+                domainNameToHoleVar[domainName] = g;
+            }
+
             foreach (var impl in program.Implementations)
             {
-                Dictionary<string, Variable> domainNameToInputVar = new Dictionary<string, Variable>();
-                foreach (string domainName in linearDomains.Keys)
-                {
-                    Formal f = LinearDomainInFormal(domainName);
-                    impl.InParams.Add(f);
-                    domainNameToInputVar[domainName] = f;
-                }
-
                 foreach (Block b in impl.Blocks)
                 {
                     List<Cmd> newCmds = new List<Cmd>();
@@ -787,38 +793,9 @@ namespace Microsoft.Boogie
                     {
                         Cmd cmd = b.Cmds[i];
                         newCmds.Add(cmd);
-                        if (cmd is CallCmd)
+                        if (cmd is CallCmd || cmd is ParCallCmd || cmd is YieldCmd)
                         {
-                            CallCmd callCmd = cmd as CallCmd;
-                            foreach (var domainName in linearDomains.Keys)
-                            {
-                                var domain = linearDomains[domainName];
-                                var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.False });
-                                expr.Resolve(new ResolutionContext(null));
-                                expr.Typecheck(new TypecheckingContext(null));
-                                callCmd.Ins.Add(expr);
-                            }
-                            AddDisjointnessExpr(newCmds, cmd, domainNameToInputVar);
-                        }
-                        else if (cmd is ParCallCmd)
-                        {
-                            ParCallCmd parCallCmd = (ParCallCmd)cmd;
-                            foreach (CallCmd callCmd in parCallCmd.CallCmds)
-                            {
-                                foreach (var domainName in linearDomains.Keys)
-                                {
-                                    var domain = linearDomains[domainName];
-                                    var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.False });
-                                    expr.Resolve(new ResolutionContext(null));
-                                    expr.Typecheck(new TypecheckingContext(null));
-                                    callCmd.Ins.Add(expr);
-                                }
-                            }
-                            AddDisjointnessExpr(newCmds, cmd, domainNameToInputVar);
-                        }
-                        else if (cmd is YieldCmd)
-                        {
-                            AddDisjointnessExpr(newCmds, cmd, domainNameToInputVar);
+                            AddDisjointnessExpr(newCmds, cmd);
                         }
                     }
                     b.Cmds = newCmds;
@@ -835,7 +812,7 @@ namespace Microsoft.Boogie
                         foreach (Block header in g.Headers)
                         {
                             List<Cmd> newCmds = new List<Cmd>();
-                            AddDisjointnessExpr(newCmds, header, domainNameToInputVar);
+                            AddDisjointnessExpr(newCmds, header);
                             newCmds.AddRange(header.Cmds);
                             header.Cmds = newCmds;
                         }
@@ -877,7 +854,6 @@ namespace Microsoft.Boogie
                 //       This should still be sound and strengthen the generated postcondition.
                 foreach (var domainName in linearDomains.Keys)
                 {
-                    proc.InParams.Add(LinearDomainInFormal(domainName));
                     Expr req = DisjointnessExpr(domainName, domainNameToInputScope[domainName]);
                     Expr ens = DisjointnessExpr(domainName, domainNameToOutputScope[domainName]);
                     if (!req.Equals(Expr.True))
@@ -918,7 +894,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        private void AddDisjointnessExpr(List<Cmd> newCmds, Absy absy, Dictionary<string, Variable> domainNameToInputVar)
+        private void AddDisjointnessExpr(List<Cmd> newCmds, Absy absy)
         {
             Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
             foreach (var domainName in linearDomains.Keys)
@@ -937,7 +913,7 @@ namespace Microsoft.Boogie
             }
             foreach (string domainName in linearDomains.Keys)
             {
-                Expr expr = DisjointnessExpr(domainName, domainNameToInputVar[domainName], domainNameToScope[domainName]);
+                Expr expr = DisjointnessExpr(domainName, domainNameToHoleVar[domainName], domainNameToScope[domainName]);
                 if (!expr.Equals(Expr.True))
                     newCmds.Add(new AssumeCmd(Token.NoToken, expr));
             }
@@ -952,12 +928,12 @@ namespace Microsoft.Boogie
             return e;
         }
 
-        private Expr DisjointnessExpr(string domainName, Variable inputVar, HashSet<Variable> scope)
+        private Expr DisjointnessExpr(string domainName, Variable holeVar, HashSet<Variable> scope)
         {
             int count = 0;
             List<Expr> subsetExprs = new List<Expr>();
             
-            if (scope.Count == 0 || (inputVar == null && scope.Count == 1))
+            if (scope.Count == 0 || (holeVar == null && scope.Count == 1))
             {
                 return Expr.True;
             }
@@ -969,9 +945,9 @@ namespace Microsoft.Boogie
                              string.Format("partition_{0}", domainName),
                              domain.mapTypeInt));
 
-            if (inputVar != null)
+            if (holeVar != null)
             {
-                subsetExprs.Add(SubsetExpr(domain, Expr.Ident(inputVar), partition, count));
+                subsetExprs.Add(SubsetExpr(domain, Expr.Ident(holeVar), partition, count));
                 count++;
             }
             

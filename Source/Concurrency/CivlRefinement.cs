@@ -570,7 +570,7 @@ namespace Microsoft.Boogie
             {
                 foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
-                    Variable l = linearTypeChecker.LinearDomainInLocal(domainName);
+                    Variable l = linearTypeChecker.LinearDomainAvailableLocal(domainName);
                     domainNameToLocalVar[domainName] = l;
                     newLocalVars.Add(l);
                 }
@@ -987,15 +987,14 @@ namespace Microsoft.Boogie
                 var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new Expr[] { Expr.False });
                 domainNameToExpr[domainName] = expr;
             }
-            for (int i = 0; i < impl.InParams.Count - linearTypeChecker.linearDomains.Count; i++)
+            foreach (var inParam in impl.InParams)
             {
-                Variable v = impl.InParams[i];
-                var domainName = linearTypeChecker.FindDomainName(v);
+                var domainName = linearTypeChecker.FindDomainName(inParam);
                 if (domainName == null) continue;
                 if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
                 var domain = linearTypeChecker.linearDomains[domainName];
-                if (!domain.collectors.ContainsKey(v.TypedIdent.Type)) continue;
-                Expr ie = new NAryExpr(Token.NoToken, new FunctionCall(domain.collectors[v.TypedIdent.Type]), new List<Expr> { Expr.Ident(v) });
+                if (!domain.collectors.ContainsKey(inParam.TypedIdent.Type)) continue;
+                Expr ie = new NAryExpr(Token.NoToken, new FunctionCall(domain.collectors[inParam.TypedIdent.Type]), new List<Expr> { Expr.Ident(inParam) });
                 domainNameToExpr[domainName] = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { ie, domainNameToExpr[domainName] });
             }
             foreach (string domainName in linearTypeChecker.linearDomains.Keys)
@@ -1023,34 +1022,17 @@ namespace Microsoft.Boogie
             List<Variable> locals = new List<Variable>();
             List<Variable> inputs = new List<Variable>();
 
-            foreach (Variable local in impl.LocVars)
+            foreach (Variable local in impl.LocVars.Union(impl.InParams).Union(impl.OutParams))
             {
                 var copy = CopyLocal(local);
                 locals.Add(copy);
                 map[local] = Expr.Ident(copy);
             }
-            for (int i = 0; i < impl.InParams.Count; i++)
+            foreach (var domainName in linearTypeChecker.linearDomains.Keys)
             {
-                Variable inParam = impl.InParams[i];
-                Variable copy;
-                if (i < impl.InParams.Count - linearTypeChecker.linearDomains.Count)
-                {
-                    copy = CopyLocal(inParam);
-                    locals.Add(copy);
-                }
-                else
-                {
-                    copy = CopyIn(inParam);
-                    inputs.Add(copy);
-                }
-                map[impl.InParams[i]] = Expr.Ident(copy);
-            }
-            for (int i = 0; i < impl.OutParams.Count; i++)
-            {
-                Variable outParam = impl.OutParams[i];
-                var copy = CopyLocal(outParam);
-                locals.Add(copy);
-                map[impl.OutParams[i]] = Expr.Ident(copy);
+                var inParam = linearTypeChecker.LinearDomainInFormal(domainName);
+                inputs.Add(inParam);
+                map[linearTypeChecker.domainNameToHoleVar[domainName]] = Expr.Ident(inParam);
             }
             Dictionary<Variable, Expr> ogOldLocalMap = new Dictionary<Variable, Expr>();
             Dictionary<Variable, Expr> assumeMap = new Dictionary<Variable, Expr>(map);
@@ -1081,14 +1063,15 @@ namespace Microsoft.Boogie
                 foreach (Cmd cmd in cs)
                 {
                     PredicateCmd predCmd = (PredicateCmd)cmd;
-                    newCmds.Add(new AssumeCmd(Token.NoToken, Substituter.ApplyReplacingOldExprs(assumeSubst, oldSubst, predCmd.Expr)));
+                    var newExpr = Substituter.ApplyReplacingOldExprs(assumeSubst, oldSubst, predCmd.Expr);
+                    newCmds.Add(new AssumeCmd(Token.NoToken, newExpr));
                 }
                 foreach (Cmd cmd in cs)
                 {
                     PredicateCmd predCmd = (PredicateCmd)cmd;
-                    var newExpr = Substituter.ApplyReplacingOldExprs(subst, oldSubst, predCmd.Expr);
                     if (predCmd is AssertCmd)
                     {
+                        var newExpr = Substituter.ApplyReplacingOldExprs(subst, oldSubst, predCmd.Expr);
                         AssertCmd assertCmd = new AssertCmd(predCmd.tok, newExpr, predCmd.Attributes);
                         assertCmd.ErrorData = "Non-interference check failed";
                         newCmds.Add(assertCmd);
