@@ -812,7 +812,7 @@ ensures {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrie
 
     i := 0;
     while (i < numRoots)
-    invariant {:terminates} {:layer 95,96,97,98,99} true;
+    invariant {:terminates} {:layer 96,97,98,99} true;
     invariant {:layer 99} Mutators == mutatorsInRootScanBarrier && rootScanOn;
     invariant {:layer 99} 0 <= i && i <= numRoots;
     invariant {:layer 99} Color == (lambda u: int :: if memAddr(u) && White(snapColor[u]) && (exists k: int :: 0 <= k && k < i && root[k] == u) then GRAY() else snapColor[u]);
@@ -924,7 +924,7 @@ ensures {:layer 98,100} SweepPhase(collectorPhase) && PhaseConsistent(collectorP
 
   call snapColor := GhostReadColor100();
   while (localSweepPtr < memHi)
-  invariant {:terminates} {:layer 95,96,97,98,99,100} true;
+  invariant {:terminates} {:layer 97,98,99,100} true;
   invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
   invariant {:layer 98,100} SweepPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
   invariant {:layer 100} localSweepPtr == sweepPtr && memLo <= sweepPtr && sweepPtr <= memHi;
