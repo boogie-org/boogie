@@ -120,16 +120,15 @@ namespace Microsoft.Boogie
 
         private class PerLayerYieldTypeChecker
         {
-            int stateCounter;
             YieldTypeChecker @base;
             YieldingProc yieldingProc;
             Implementation impl;
             int currLayerNum;
-            Dictionary<Absy, int> absyToNode;
-            int initialState;
-            HashSet<int> finalStates;
-            Dictionary<Tuple<int, int>, int> edgeLabels;
             Graph<Block> implGraph;
+
+            List<Tuple<Absy, int, Absy>> implEdges;
+            Absy initialState;
+            HashSet<Absy> finalStates;
 
             public PerLayerYieldTypeChecker(YieldTypeChecker @base, YieldingProc yieldingProc, Implementation impl, int currLayerNum, Graph<Block> implGraph)
             {
@@ -138,78 +137,65 @@ namespace Microsoft.Boogie
                 this.impl = impl;
                 this.currLayerNum = currLayerNum;
                 this.implGraph = implGraph;
-                this.stateCounter = 0;
-                this.absyToNode = new Dictionary<Absy, int>();
-                this.initialState = 0;
-                this.finalStates = new HashSet<int>();
-                this.edgeLabels = new Dictionary<Tuple<int, int>, int>();
+                this.initialState = impl.Blocks[0];
+                this.finalStates = new HashSet<Absy>();
+                this.implEdges = new List<Tuple<Absy, int, Absy>>();
             }
 
             public void TypeCheckLayer()
             {
-                ComputeStates();
-                ComputeEdges();
-                IsYieldTypeSafe();
-            }
-
-            private void IsYieldTypeSafe()
-            {
-                List<Tuple<int, int, int>> implEdges = new List<Tuple<int, int, int>>();
-                foreach (Tuple<int, int> e in edgeLabels.Keys)
-                {
-                    implEdges.Add(new Tuple<int, int, int>(e.Item1, edgeLabels[e], e.Item2));
-                }
-                //Console.WriteLine(PrintGraph(impl, implEdges, initialState, finalStates));
+                ComputeGraph();
+                // Console.WriteLine(PrintGraph(impl, implEdges, initialState, finalStates));
 
                 if (!IsMoverProcedure)
                 {
-                    ASpecCheck(implEdges);
-                    BSpecCheck(implEdges);
+                    ASpecCheck();
+                    BSpecCheck();
                 }
-                CSpecCheck(implEdges);
+                CSpecCheck();
             }
 
-            private void ASpecCheck(List<Tuple<int, int, int>> implEdges)
+            private void ASpecCheck()
             {
-                var initialConstraints = new Dictionary<int, HashSet<int>>();
+                var initialConstraints = new Dictionary<Absy, HashSet<int>>();
                 initialConstraints[initialState] = new HashSet<int> { RM };
                 foreach (var finalState in finalStates)
                 {
                     initialConstraints[finalState] = new HashSet<int> { LM };
                 }
 
-                var simulationRelation = new SimulationRelation<int, int, int>(implEdges, ASpec, initialConstraints).ComputeSimulationRelation();
+                var simulationRelation = new SimulationRelation<Absy, int, int>(implEdges, ASpec, initialConstraints).ComputeSimulationRelation();
                 if (simulationRelation[initialState].Count == 0)
                 {
                     @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check A at layer {1}. An action must be preceded by a yield.", impl.Name, currLayerNum));
                 }
             }
 
-            private void BSpecCheck(List<Tuple<int, int, int>> implEdges)
+            private void BSpecCheck()
             {
-                var initialConstraints = new Dictionary<int, HashSet<int>>();
+                var initialConstraints = new Dictionary<Absy, HashSet<int>>();
                 initialConstraints[initialState] = new HashSet<int> { LM };
                 foreach (var finalState in finalStates)
                 {
                     initialConstraints[finalState] = new HashSet<int> { RM };
                 }
 
-                var simulationRelation = new SimulationRelation<int, int, int>(implEdges, BSpec, initialConstraints).ComputeSimulationRelation();
+                var simulationRelation = new SimulationRelation<Absy, int, int>(implEdges, BSpec, initialConstraints).ComputeSimulationRelation();
                 if (simulationRelation[initialState].Count == 0)
                 {
                     @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check B at layer {1}. An action must be succeeded by a yield.", impl.Name, currLayerNum));
                 }
             }
 
-            private void CSpecCheck(List<Tuple<int, int, int>> implEdges)
+            private void CSpecCheck()
             {
-                var initialConstraints = new Dictionary<int, HashSet<int>>();
+                var initialConstraints = new Dictionary<Absy, HashSet<int>>();
 
                 foreach (Block header in implGraph.Headers)
                 {
                     if (!IsTerminatingLoopHeader(header))
                     {
-                        initialConstraints[absyToNode[header]] = new HashSet<int> { RM };
+                        initialConstraints[header] = new HashSet<int> { RM };
                     }
                 }
                 if (IsMoverProcedure)
@@ -218,12 +204,12 @@ namespace Microsoft.Boogie
                     {
                         if (!IsTerminatingCall(call))
                         {
-                            initialConstraints[absyToNode[call]] = new HashSet<int> { RM };
+                            initialConstraints[call] = new HashSet<int> { RM };
                         }
                     }
                 }
 
-                var simulationRelation = new SimulationRelation<int, int, int>(implEdges, CSpec, initialConstraints).ComputeSimulationRelation();
+                var simulationRelation = new SimulationRelation<Absy, int, int>(implEdges, CSpec, initialConstraints).ComputeSimulationRelation();
 
                 if (IsMoverProcedure)
                 {
@@ -249,7 +235,7 @@ namespace Microsoft.Boogie
                 return !IsRecursiveMoverProcedureCall(call) || call.Proc.HasAttribute(CivlAttributes.TERMINATES);
             }
 
-            private bool CheckAtomicity(Dictionary<int, HashSet<int>> simulationRelation)
+            private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)
             {
                 if (yieldingProc.moverType == MoverType.Atomic && simulationRelation[initialState].Count == 0) return false;
                 if (yieldingProc.IsRightMover && (!simulationRelation[initialState].Contains(RM) || finalStates.Any(f => !simulationRelation[f].Contains(RM)))) return false;
@@ -284,45 +270,37 @@ namespace Microsoft.Boogie
                 return false;
             }
 
-            private void ComputeStates()
+            private void ComputeGraph()
             {
+                // Internal representation
+                // At the end of the method, we translate to List<Tuple<Absy, int, Absy>>
+                Dictionary<Tuple<Absy, Absy>, int> edgeLabels = new Dictionary<Tuple<Absy, Absy>, int>();
+
                 foreach (Block block in impl.Blocks)
                 {
-                    absyToNode[block] = stateCounter++;
-                    foreach (Cmd cmd in block.Cmds)
-                    {
-                        absyToNode[cmd] = stateCounter++;
-                    }
-                    absyToNode[block.TransferCmd] = stateCounter++;
-                    if (block.TransferCmd is ReturnCmd)
-                    {
-                        finalStates.Add(absyToNode[block.TransferCmd]);
-                    }
-                }
-                foreach (Block block in impl.Blocks)
-                {
+                    // Block entry edge
                     Absy blockEntry = block.Cmds.Count == 0 ? (Absy)block.TransferCmd : (Absy)block.Cmds[0];
-                    edgeLabels[new Tuple<int, int>(absyToNode[block], absyToNode[blockEntry])] = P;
+                    edgeLabels[new Tuple<Absy, Absy>(block, blockEntry)] = P;
 
-                    GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
-                    if (gotoCmd == null) continue;
-                    foreach (Block successor in gotoCmd.labelTargets)
+                    // Block exit edges
+                    if (block.TransferCmd is GotoCmd)
                     {
-                        edgeLabels[new Tuple<int, int>(absyToNode[gotoCmd], absyToNode[successor])] = P;
+                        foreach (Block successor in ((GotoCmd)block.TransferCmd).labelTargets)
+                        {
+                            edgeLabels[new Tuple<Absy, Absy>(block.TransferCmd, successor)] = P;
+                        }
                     }
-                }
-            }
+                    else if (block.TransferCmd is ReturnCmd)
+                    {
+                        finalStates.Add(block.TransferCmd);
+                    }
 
-            private void ComputeEdges()
-            {
-                foreach (Block block in impl.Blocks)
-                {
+                    // Block internal edges
                     for (int i = 0; i < block.Cmds.Count; i++)
                     {
                         Cmd cmd = block.Cmds[i];
-                        int curr = absyToNode[cmd];
-                        int next = (i + 1 == block.Cmds.Count) ? absyToNode[block.TransferCmd] : absyToNode[block.Cmds[i + 1]];
-                        Tuple<int, int> edge = new Tuple<int, int>(curr, next);
+                        Absy next = (i + 1 == block.Cmds.Count) ? (Absy)block.TransferCmd : block.Cmds[i + 1];
+                        Tuple<Absy, Absy> edge = new Tuple<Absy, Absy>(cmd, next);
                         if (cmd is CallCmd)
                         {
                             CallCmd callCmd = cmd as CallCmd;
@@ -425,23 +403,36 @@ namespace Microsoft.Boogie
                         }
                     }
                 }
+
+                foreach (Tuple<Absy, Absy> e in edgeLabels.Keys)
+                {
+                    implEdges.Add(new Tuple<Absy, int, Absy>(e.Item1, edgeLabels[e], e.Item2));
+                }
             }
 
-            private static string PrintGraph(Implementation impl, List<Tuple<int, int, int>> edges, int initialState, HashSet<int> finalStates)
+            private static string PrintGraph(Implementation impl, List<Tuple<Absy, int, Absy>> edges, Absy initialState, HashSet<Absy> finalStates)
             {
+                Dictionary<Absy, int> map = new Dictionary<Absy, int>();
+                int cnt = 0;
+                foreach (var e in edges)
+                {
+                    if (!map.ContainsKey(e.Item1)) map[e.Item1] = cnt++;
+                    if (!map.ContainsKey(e.Item3)) map[e.Item3] = cnt++;
+                }
+
                 var s = new StringBuilder();
                 s.AppendLine("\nImplementation " + impl.Proc.Name + " digraph G {");
                 foreach (var e in edges)
                 {
-                    s.AppendLine("  \"" + e.Item1.ToString() + "\" -- " + (char)e.Item2 + " --> " + "  \"" + e.Item3.ToString() + "\";");
+                    s.AppendLine("  \"" + map[e.Item1] + "\" -- " + e.Item2 + " --> " + "  \"" + map[e.Item3] + "\";");
                 }
                 s.AppendLine("}");
-                s.AppendLine("Initial state: " + initialState);
+                s.AppendLine("Initial state: " + map[initialState]);
                 s.Append("Final states: ");
                 bool first = true;
-                foreach (int finalState in finalStates)
+                foreach (var finalState in finalStates)
                 {
-                    s.Append((first ? "" : ", ") + finalState);
+                    s.Append((first ? "" : ", ") + map[finalState]);
                     first = false;
                 }
                 s.AppendLine();
