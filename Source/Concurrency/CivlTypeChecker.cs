@@ -27,6 +27,8 @@ namespace Microsoft.Boogie
         public CodeExpr action;
         public List<AssertCmd> gate;
 
+        public int asyncFreeLayer;
+
         public CodeExpr firstAction;
         public List<AssertCmd> firstGate;
         public List<Variable> firstInParams;
@@ -216,6 +218,10 @@ namespace Microsoft.Boogie
             }
             return triggerFuns[v];
         }
+    }
+
+    public class AtomicActionCopy
+    {
     }
 
     /// <summary>
@@ -525,11 +531,16 @@ namespace Microsoft.Boogie
         public void TypeCheck()
         {
             TypeCheckGlobalVariables();
-            TypeCheckAtomicActions();
             TypeCheckInstrumentationProcedures();
-            if (checkingContext.ErrorCount > 0) return;
-            TypeCheckYieldingProcedures();
-            if (checkingContext.ErrorCount > 0) return;
+
+            TypeCheckAtomicActionDecls();
+            TypeCheckYieldingProcedureDecls();
+
+            TypeCheckLocalVariables();
+
+            TypeCheckAtomicActionImpls();
+            ComputeAsyncFreeLayers();
+            TypeCheckYieldingProcedureImpls();
 
             // Store a list of all layers
             allLayerNums = procToYieldingProc.Values.Select(a => a.upperLayer).OrderBy(l => l).Distinct().ToList();
@@ -544,6 +555,8 @@ namespace Microsoft.Boogie
                     }
                 }
             }
+
+            CheckAtomicActionAcyclicity();
 
             //sharedVariables = globalVarToLayerRange.Keys.ToList();
             sharedVariables = program.GlobalVariables.ToList<Variable>();
@@ -569,9 +582,8 @@ namespace Microsoft.Boogie
             return LayerRange.MinMax;
         }
 
-        private void TypeCheckAtomicActions()
+        private void TypeCheckAtomicActionDecls()
         {
-            AtomicActionVisitor atomicActionVisitor = new AtomicActionVisitor(this);
             // Atomic action:
             // * no {:yield}
             // * mover type
@@ -610,8 +622,15 @@ namespace Microsoft.Boogie
                 }
 
                 procToAtomicAction[proc] = new AtomicAction(proc, impl, moverType.Value, layerRange);
+            }
+        }
 
-                atomicActionVisitor.VisitAction(procToAtomicAction[proc]);
+        private void TypeCheckAtomicActionImpls()
+        {
+            AtomicActionVisitor atomicActionVisitor = new AtomicActionVisitor(this);
+            foreach (var action in procToAtomicAction.Values)
+            {
+                atomicActionVisitor.VisitAction(action);
             }
         }
 
@@ -644,7 +663,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        private void TypeCheckYieldingProcedures()
+        private void TypeCheckYieldingProcedureDecls()
         {
             YieldingProcVisitor visitor = new YieldingProcVisitor(this);
 
@@ -701,9 +720,11 @@ namespace Microsoft.Boogie
 
                 visitor.VisitProcedure(proc);
             }
-            if (checkingContext.ErrorCount > 0) return;
-            TypeCheckLocalVariables();
-            if (checkingContext.ErrorCount > 0) return;
+        }
+
+        private void TypeCheckYieldingProcedureImpls()
+        {
+            YieldingProcVisitor visitor = new YieldingProcVisitor(this);
 
             foreach (var impl in program.Implementations.Where(impl => procToYieldingProc.ContainsKey(impl.Proc)))
             {
@@ -895,6 +916,69 @@ namespace Microsoft.Boogie
             return layers[0];
         }
 
+        /// <summary>
+        /// Fixpoint computation to determine for each atomic action the least layer at which it becomes async free.
+        /// </summary>
+        private void ComputeAsyncFreeLayers()
+        {
+            foreach (var a in procToAtomicAction.Values)
+            {
+                a.asyncFreeLayer = a.layerRange.lowerLayerNum;
+            }
+
+            bool proceed = true;
+            while (proceed)
+            {
+                proceed = false;
+                foreach (var a in procToAtomicAction.Values)
+                {
+                    foreach (var call in a.action.Blocks.SelectMany(b => b.cmds.OfType<CallCmd>()))
+                    {
+                        var target = procToYieldingProc[call.Proc];
+                        int x = target.upperLayer + 1;
+                        if (target is ActionProc)
+                        {
+                            x = Math.Max(x, ((ActionProc)target).refinedAction.asyncFreeLayer);
+                        }
+                        if (x > a.asyncFreeLayer)
+                        {
+                            a.asyncFreeLayer = x;
+                            proceed = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // TODO: Is it necessary to construct a graph for every layer independently?
+        /// <summary>
+        /// Check (for each layer individually), if atomic actions have a cyclic dependency through pending asyncs.
+        /// </summary>
+        private void CheckAtomicActionAcyclicity()
+        {
+            foreach (var layer in allLayerNums)
+            {
+                Graph<AtomicAction> graph = new Graph<AtomicAction>();
+
+                foreach (var action in procToAtomicAction.Values.Where(a => a.layerRange.Contains(layer)))
+                {
+                    foreach (var callCmd in action.impl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
+                    {
+                        Debug.Assert(callCmd.IsAsync);
+
+                        ActionProc calleeProc = procToYieldingProc[callCmd.Proc] as ActionProc;
+                        if (calleeProc != null && layer > calleeProc.upperLayer)
+                        {
+                            graph.AddEdge(action, calleeProc.refinedAction);
+                        }
+                    }
+                }
+
+                if (!Graph<AtomicAction>.Acyclic(graph, null))
+                    checkingContext.Error(Token.NoToken, "Atomic actions have cyclic dependency at layer " + layer);
+            }
+        }
+
         public void Error(Absy node, string message)
         {
             checkingContext.Error(node, message);
@@ -950,7 +1034,33 @@ namespace Microsoft.Boogie
 
             public override Cmd VisitCallCmd(CallCmd node)
             {
-                ctc.Error(node, "Call command not allowed inside an atomic actions");
+                if (node.IsAsync)
+                {
+                    if (atomicAction.moverType != MoverType.Atomic || atomicAction.moverType != MoverType.Left)
+                    {
+                        ctc.Error(node, "Atomic action with pending async must have mover type atomic or left");
+                    }
+                    if (!ctc.procToYieldingProc.ContainsKey(node.Proc) || !(ctc.procToYieldingProc[node.Proc] is ActionProc))
+                    {
+                        ctc.Error(node, "Target of a pending async must be an action procedure");
+                    }
+                    else
+                    {
+                        ActionProc target = (ActionProc)ctc.procToYieldingProc[node.Proc];
+                        if (!target.IsLeftMover)
+                        {
+                            ctc.Error(node, "Target of async call must be a left mover");
+                        }
+                        if (target.refinedAction.layerRange.upperLayerNum < atomicAction.layerRange.upperLayerNum)
+                        {
+                            ctc.Error(node, "Callee disappears before caller");
+                        }
+                    }
+                }
+                else
+                {
+                    ctc.Error(node, "Call command not allowed inside an atomic action");
+                }
                 return base.VisitCallCmd(node);
             }
 
@@ -1164,20 +1274,40 @@ namespace Microsoft.Boogie
                 else if (ctc.procToInstrumentationProc.ContainsKey(call.Proc))
                 {
                     VisitInstrumentationProcCallCmd(call, callerProc, ctc.procToInstrumentationProc[call.Proc]);
-
                 }
                 else
                 {
-                    ctc.Error(call, "A yielding procedure can call only atomic or yielding procedures");
+                    ctc.Error(call, "A yielding procedure can only call yielding or instrumentation procedures");
                 }
                 return call;
             }
 
             private void VisitYieldingProcCallCmd (CallCmd call, YieldingProc callerProc, YieldingProc calleeProc)
             {
+                // Skip and mover procedures have to be async-free at their upper layer
+                if (callerProc is SkipProc || callerProc is MoverProc)
+                {
+                    if (call.IsAsync && calleeProc.upperLayer > callerProc.upperLayer)
+                    {
+                        ctc.Error(call, "Disappearing layer of caller cannot be lower than that of callee");
+                    }
+                    else
+                    {
+                        var actionProc = calleeProc as ActionProc;
+                        if (actionProc != null && actionProc.refinedAction.asyncFreeLayer > callerProc.upperLayer)
+                        {
+                            ctc.Error(call, "Disappearing layer of caller cannot be lower than async-free layer of callee");
+                        }
+                    }
+                }
+
                 if (calleeProc is ActionProc)
                 {
-                    if (callerProc.upperLayer <= calleeProc.upperLayer)
+                    if (callerProc.upperLayer == calleeProc.upperLayer)
+                    {
+                        ctc.Error(call, "The layer of the caller must be greater than the layer of the callee");
+                    }
+                    else if (callerProc.upperLayer < calleeProc.upperLayer && !call.IsAsync)
                     {
                         ctc.Error(call, "The layer of the caller must be greater than the layer of the callee");
                     }
@@ -1198,12 +1328,12 @@ namespace Microsoft.Boogie
                     }
                     else if (callerProc.upperLayer == calleeProc.upperLayer && enclosingImpl.OutParams.Count > 0)
                     {
-                        // TODO: Is this condition really necessary? If not, enclosingImpl can be eliminated.
+                        // Skip procedures have the effect of havocing their output variables.
+                        // Currently, the snapshotting during refinement checking does not account for that,
+                        // so we forbit propagation to the callers output variables.
                         HashSet<Variable> callerOutParams = new HashSet<Variable>(enclosingImpl.OutParams);
                         foreach (var x in call.Outs)
                         {
-                            // For refinement checking, skip procedures are just empty procedures that immediately return.
-                            // Thus, the effect on output variables is havoc, which would propagate to the callers output.
                             if (callerOutParams.Contains(x.Decl))
                             {
                                 ctc.Error(call, "An output variable of the enclosing implementation cannot be used as output argument for this call");
