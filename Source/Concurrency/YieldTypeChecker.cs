@@ -303,95 +303,11 @@ namespace Microsoft.Boogie
                         Tuple<Absy, Absy> edge = new Tuple<Absy, Absy>(cmd, next);
                         if (cmd is CallCmd)
                         {
-                            CallCmd callCmd = cmd as CallCmd;
-                            if (!@base.civlTypeChecker.procToYieldingProc.ContainsKey(callCmd.Proc))
-                            {
-                                edgeLabels[edge] = P;
-                            }
-                            else
-                            {
-                                YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];
-                                // TODO: double check that label assignment is correct
-                                if (callCmd.IsAsync)
-                                {
-                                    if (currLayerNum <= callee.upperLayer)
-                                        edgeLabels[edge] = L;
-                                    else
-                                        edgeLabels[edge] = B;
-                                }
-                                else
-                                {
-                                    MoverType? moverType = null;
-                                    if (callee.upperLayer < currLayerNum || (callee.upperLayer == currLayerNum && callee is MoverProc))
-                                    {
-                                        moverType = callee.moverType;
-                                    }
-
-                                    switch (moverType)
-                                    {
-                                        case MoverType.Atomic:
-                                            edgeLabels[edge] = A; break;
-                                        case MoverType.Both:
-                                            edgeLabels[edge] = B; break;
-                                        case MoverType.Left:
-                                            edgeLabels[edge] = L; break;
-                                        case MoverType.Right:
-                                            edgeLabels[edge] = R; break;
-                                        case null:
-                                            edgeLabels[edge] = Y; break;
-                                    }
-                                }
-                            }
+                            edgeLabels[edge] = CallCmdLabel((CallCmd)cmd);
                         }
                         else if (cmd is ParCallCmd)
                         {
-                            // TODO: handle mover procedures!
-                            ParCallCmd parCallCmd = cmd as ParCallCmd;
-                            bool isYield = false;
-                            bool isRightMover = true;
-                            bool isLeftMover = true;
-                            foreach (CallCmd callCmd in parCallCmd.CallCmds)
-                            {
-                                if (@base.civlTypeChecker.procToYieldingProc[callCmd.Proc].upperLayer >= currLayerNum)
-                                {
-                                    isYield = true;
-                                }
-                            }
-                            if (isYield)
-                            {
-                                edgeLabels[edge] = Y;
-                            }
-                            else
-                            {
-                                int numAtomicActions = 0;
-                                foreach (CallCmd callCmd in parCallCmd.CallCmds)
-                                {
-                                    YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];
-                                    isRightMover = isRightMover && callee.IsRightMover;
-                                    isLeftMover = isLeftMover && callee.IsLeftMover;
-                                    if (callee is ActionProc)
-                                    {
-                                        numAtomicActions++;
-                                    }
-                                }
-                                if (isLeftMover && isRightMover)
-                                {
-                                    edgeLabels[edge] = B;
-                                }
-                                else if (isLeftMover)
-                                {
-                                    edgeLabels[edge] = L;
-                                }
-                                else if (isRightMover)
-                                {
-                                    edgeLabels[edge] = R;
-                                }
-                                else
-                                {
-                                    Debug.Assert(numAtomicActions == 1);
-                                    edgeLabels[edge] = A;
-                                }
-                            }
+                            edgeLabels[edge] = ParCallCmdLabel((ParCallCmd)cmd);
                         }
                         else if (cmd is YieldCmd)
                         {
@@ -407,6 +323,90 @@ namespace Microsoft.Boogie
                 foreach (Tuple<Absy, Absy> e in edgeLabels.Keys)
                 {
                     implEdges.Add(new Tuple<Absy, int, Absy>(e.Item1, edgeLabels[e], e.Item2));
+                }
+            }
+
+            private int CallCmdLabel(CallCmd callCmd)
+            {
+                if (!@base.civlTypeChecker.procToYieldingProc.ContainsKey(callCmd.Proc))
+                    return P;
+
+                YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];
+                // TODO: double check that label assignment is correct
+                if (callCmd.IsAsync)
+                {
+                    if (currLayerNum <= callee.upperLayer)
+                        return L;
+                    else
+                        return B;
+                }
+                else
+                {
+                    if (callee.upperLayer < currLayerNum || (callee.upperLayer == currLayerNum && callee is MoverProc))
+                    {
+                        switch (callee.moverType)
+                        {
+                            case MoverType.Atomic:
+                                return A;
+                            case MoverType.Both:
+                                return B;
+                            case MoverType.Left:
+                                return L;
+                            case MoverType.Right:
+                                return R;
+                        }
+                    }
+                    return Y;
+                }
+            }
+
+            private int ParCallCmdLabel(ParCallCmd parCallCmd)
+            {
+                // TODO: handle mover procedures!
+                bool isYield = false;
+                bool isRightMover = true;
+                bool isLeftMover = true;
+                foreach (CallCmd callCmd in parCallCmd.CallCmds)
+                {
+                    if (@base.civlTypeChecker.procToYieldingProc[callCmd.Proc].upperLayer >= currLayerNum)
+                    {
+                        isYield = true;
+                    }
+                }
+                if (isYield)
+                {
+                    return Y;
+                }
+                else
+                {
+                    int numAtomicActions = 0;
+                    foreach (CallCmd callCmd in parCallCmd.CallCmds)
+                    {
+                        YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];
+                        isRightMover = isRightMover && callee.IsRightMover;
+                        isLeftMover = isLeftMover && callee.IsLeftMover;
+                        if (callee is ActionProc)
+                        {
+                            numAtomicActions++;
+                        }
+                    }
+                    if (isLeftMover && isRightMover)
+                    {
+                        return B;
+                    }
+                    else if (isLeftMover)
+                    {
+                        return L;
+                    }
+                    else if (isRightMover)
+                    {
+                        return R;
+                    }
+                    else
+                    {
+                        Debug.Assert(numAtomicActions == 1);
+                        return A;
+                    }
                 }
             }
 
