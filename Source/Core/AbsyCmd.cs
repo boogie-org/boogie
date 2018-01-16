@@ -2430,7 +2430,7 @@ namespace Microsoft.Boogie {
       }
       if (IsAsync) {
         if (Proc.OutParams.Count > 0) {
-          rc.Error(this.tok, "a procedure called asynchronously can have no output parameters");
+          rc.Error(this.tok, "a procedure called asynchronously cannot have output parameters");
           return;
         }
       }
