@@ -1089,6 +1089,10 @@ namespace Microsoft.Boogie
                         {
                             ctc.Error(node, "Callee disappears before caller");
                         }
+                        if (target.proc.InParams.Select(inParam => ctc.LocalVariableIntroLayer(inParam)).Max() > atomicAction.layerRange.lowerLayerNum)
+                        {
+                            ctc.Error(node, "Target of a pending async must have all input variables introduced");
+                        }
                     }
                 }
                 else
@@ -1316,7 +1320,7 @@ namespace Microsoft.Boogie
                 return call;
             }
 
-            private void VisitYieldingProcCallCmd (CallCmd call, YieldingProc callerProc, YieldingProc calleeProc)
+            private void VisitYieldingProcCallCmd(CallCmd call, YieldingProc callerProc, YieldingProc calleeProc)
             {
                 // Skip and mover procedures have to be async-free at their upper layer
                 if (callerProc is SkipProc || callerProc is MoverProc)
@@ -1341,9 +1345,16 @@ namespace Microsoft.Boogie
                     {
                         ctc.Error(call, "The layer of the caller must be greater than the layer of the callee");
                     }
-                    else if (callerProc.upperLayer < calleeProc.upperLayer && !call.IsAsync)
+                    else if (callerProc.upperLayer < calleeProc.upperLayer)
                     {
-                        ctc.Error(call, "The layer of the caller must be greater than the layer of the callee");
+                        if (!call.IsAsync)
+                        {
+                            ctc.Error(call, "The layer of the caller must be greater than the layer of the callee");
+                        }
+                        else if (calleeProc.proc.InParams.Select(inParam => ctc.LocalVariableIntroLayer(inParam)).Max() > callerProc.upperLayer)
+                        {
+                            ctc.Error(call, "Target of a pending async must have all input variables introduced");
+                        }
                     }
                     if (((ActionProc)calleeProc).refinedAction.layerRange.upperLayerNum < callerProc.upperLayer)
                     {
