@@ -411,7 +411,9 @@ namespace Microsoft.Boogie
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
         Dictionary<CallCmd, int> instrumentationCallToLayer;
 
+        // TODO: Perhaps we do not need the type available as a field. Check if it can be made local when implementation is done!
         public CtorType pendingAsyncType;
+        public GlobalVariable pendingAsyncMultiset;
 
         // This collections are for convenience in later phases and are only initialized at the end of type checking.
         public List<int> allLayerNums;
@@ -1006,6 +1008,10 @@ namespace Microsoft.Boogie
                 actionProc.pendingAsyncConstructor = c;
                 program.AddTopLevelDeclaration(c);
             }
+
+            MapType pendingAsyncMultisetType = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type>{ pendingAsyncType }, Type.Int);
+            this.pendingAsyncMultiset = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "pendingAsyncMultiset", pendingAsyncMultisetType));
+            program.AddTopLevelDeclaration(pendingAsyncMultiset);
         }
 
         public void Error(Absy node, string message)
