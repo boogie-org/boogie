@@ -332,13 +332,24 @@ namespace Microsoft.Boogie
                     return P;
 
                 YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];
-                // TODO: double check that label assignment is correct
                 if (callCmd.IsAsync)
                 {
-                    if (currLayerNum <= callee.upperLayer)
-                        return L;
-                    else
-                        return B;
+                    if ((currLayerNum < yieldingProc.upperLayer && currLayerNum > callee.upperLayer) ||
+                        (currLayerNum == yieldingProc.upperLayer && callee.upperLayer < yieldingProc.upperLayer))
+                    {
+                        switch (callee.moverType)
+                        {
+                            case MoverType.Atomic:
+                                return A;
+                            case MoverType.Both:
+                                return B;
+                            case MoverType.Left:
+                                return L;
+                            case MoverType.Right:
+                                return R;
+                        }
+                    }
+                    return L;
                 }
                 else
                 {
