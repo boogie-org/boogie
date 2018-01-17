@@ -1071,7 +1071,7 @@ namespace Microsoft.Boogie
             {
                 if (node.IsAsync)
                 {
-                    if (atomicAction.moverType != MoverType.Atomic || atomicAction.moverType != MoverType.Left)
+                    if (atomicAction.moverType != MoverType.Atomic && atomicAction.moverType != MoverType.Left)
                     {
                         ctc.Error(node, "Atomic action with pending async must have mover type atomic or left");
                     }
