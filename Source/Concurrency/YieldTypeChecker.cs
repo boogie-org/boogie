@@ -362,52 +362,35 @@ namespace Microsoft.Boogie
 
             private int ParCallCmdLabel(ParCallCmd parCallCmd)
             {
-                // TODO: handle mover procedures!
-                bool isYield = false;
-                bool isRightMover = true;
-                bool isLeftMover = true;
                 foreach (CallCmd callCmd in parCallCmd.CallCmds)
                 {
                     if (@base.civlTypeChecker.procToYieldingProc[callCmd.Proc].upperLayer >= currLayerNum)
-                    {
-                        isYield = true;
-                    }
+                        return Y;
                 }
-                if (isYield)
+
+                bool isRightMover = true;
+                bool isLeftMover = true;
+                int numAtomicActions = 0;
+                foreach (CallCmd callCmd in parCallCmd.CallCmds)
                 {
-                    return Y;
-                }
-                else
-                {
-                    int numAtomicActions = 0;
-                    foreach (CallCmd callCmd in parCallCmd.CallCmds)
+                    YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];
+                    isRightMover = isRightMover && callee.IsRightMover;
+                    isLeftMover = isLeftMover && callee.IsLeftMover;
+                    if (callee is ActionProc)
                     {
-                        YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];
-                        isRightMover = isRightMover && callee.IsRightMover;
-                        isLeftMover = isLeftMover && callee.IsLeftMover;
-                        if (callee is ActionProc)
-                        {
-                            numAtomicActions++;
-                        }
-                    }
-                    if (isLeftMover && isRightMover)
-                    {
-                        return B;
-                    }
-                    else if (isLeftMover)
-                    {
-                        return L;
-                    }
-                    else if (isRightMover)
-                    {
-                        return R;
-                    }
-                    else
-                    {
-                        Debug.Assert(numAtomicActions == 1);
-                        return A;
+                        numAtomicActions++;
                     }
                 }
+
+                if (isLeftMover && isRightMover)
+                    return B;
+                else if (isLeftMover)
+                    return L;
+                else if (isRightMover)
+                    return R;
+
+                Debug.Assert(numAtomicActions == 1);
+                return A;
             }
 
             private static string PrintGraph(Implementation impl, List<Tuple<Absy, int, Absy>> edges, Absy initialState, HashSet<Absy> finalStates)
