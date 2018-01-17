@@ -416,7 +416,7 @@ namespace Microsoft.Boogie
                 s.AppendLine("\nImplementation " + impl.Proc.Name + " digraph G {");
                 foreach (var e in edges)
                 {
-                    s.AppendLine("  \"" + map[e.Item1] + "\" -- " + e.Item2 + " --> " + "  \"" + map[e.Item3] + "\";");
+                    s.AppendLine("  \"" + map[e.Item1] + "\" -- " + (char)e.Item2 + " --> \"" + map[e.Item3] + "\";");
                 }
                 s.AppendLine("}");
                 s.AppendLine("Initial state: " + map[initialState]);
