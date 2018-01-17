@@ -331,6 +331,7 @@ namespace Microsoft.Boogie
     public class ActionProc : YieldingProc
     {
         public AtomicAction refinedAction;
+        public DatatypeConstructor pendingAsyncConstructor;
 
         public ActionProc(Procedure proc, AtomicAction refinedAction, int upperLayer)
             : base(proc, refinedAction.moverType, upperLayer)
@@ -409,6 +410,8 @@ namespace Microsoft.Boogie
 
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
         Dictionary<CallCmd, int> instrumentationCallToLayer;
+
+        public CtorType pendingAsyncType;
 
         // This collections are for convenience in later phases and are only initialized at the end of type checking.
         public List<int> allLayerNums;
@@ -561,6 +564,8 @@ namespace Microsoft.Boogie
             //sharedVariables = globalVarToLayerRange.Keys.ToList();
             sharedVariables = program.GlobalVariables.ToList<Variable>();
             sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
+
+            AddPendingAsyncType();
 
             new AttributeEraser().VisitProgram(program);
         }
@@ -976,6 +981,30 @@ namespace Microsoft.Boogie
 
                 if (!Graph<AtomicAction>.Acyclic(graph, null))
                     checkingContext.Error(Token.NoToken, "Atomic actions have cyclic dependency at layer " + layer);
+            }
+        }
+
+        private void AddPendingAsyncType()
+        {
+            // datatype
+            this.pendingAsyncType = new CtorType(Token.NoToken, new TypeCtorDecl(Token.NoToken, "PendingAsync", 0, new QKeyValue(Token.NoToken, "datatype", new List<object>(), null)), new List<Type>());
+            program.AddTopLevelDeclaration(pendingAsyncType.Decl);
+
+            // constructor functions
+            foreach (var actionProc in procToYieldingProc.Values.OfType<ActionProc>())
+            {
+                Function f = new Function(
+                                 Token.NoToken,
+                                 "PendingAsync_" + actionProc.proc.Name,
+                                 new List<TypeVariable>(),
+                                 actionProc.proc.InParams.Select(v => new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true)).ToList<Variable>(),
+                                 new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", pendingAsyncType), false),
+                                 null,
+                                 new QKeyValue(Token.NoToken, "constructor", new List<object>(), null)
+                             );
+                DatatypeConstructor c = new DatatypeConstructor(f);
+                actionProc.pendingAsyncConstructor = c;
+                program.AddTopLevelDeclaration(c);
             }
         }
 
