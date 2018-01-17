@@ -25,6 +25,21 @@ namespace Microsoft.Boogie
         static char A = 'A';
         static char P = 'P';
 
+        private static int MoverTypeToLabel(MoverType moverType)
+        {
+            switch (moverType)
+            {
+                case MoverType.Atomic:
+                    return A;
+                case MoverType.Both:
+                    return B;
+                case MoverType.Left:
+                    return L;
+                case MoverType.Right:
+                    return R;
+            }
+        }
+
         static List<Tuple<int, int, int>> ASpec = new List<Tuple<int, int, int>>
         { // initial: RM, final: LM
             new Tuple<int, int, int>(RM, Y, LM),
@@ -337,17 +352,7 @@ namespace Microsoft.Boogie
                     if ((currLayerNum < yieldingProc.upperLayer && currLayerNum > callee.upperLayer) ||
                         (currLayerNum == yieldingProc.upperLayer && callee.upperLayer < yieldingProc.upperLayer))
                     {
-                        switch (callee.moverType)
-                        {
-                            case MoverType.Atomic:
-                                return A;
-                            case MoverType.Both:
-                                return B;
-                            case MoverType.Left:
-                                return L;
-                            case MoverType.Right:
-                                return R;
-                        }
+                        return MoverTypeToLabel(callee.moverType);
                     }
                     return L;
                 }
@@ -355,17 +360,7 @@ namespace Microsoft.Boogie
                 {
                     if (callee.upperLayer < currLayerNum || (callee.upperLayer == currLayerNum && callee is MoverProc))
                     {
-                        switch (callee.moverType)
-                        {
-                            case MoverType.Atomic:
-                                return A;
-                            case MoverType.Both:
-                                return B;
-                            case MoverType.Left:
-                                return L;
-                            case MoverType.Right:
-                                return R;
-                        }
+                        return MoverTypeToLabel(callee.moverType);
                     }
                     return Y;
                 }
