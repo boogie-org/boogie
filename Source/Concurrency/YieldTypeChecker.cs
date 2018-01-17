@@ -8,6 +8,7 @@ using System.Diagnostics.Contracts;
 using Microsoft.Boogie.AbstractInterpretation;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics;
+using System.ComponentModel;
 
 namespace Microsoft.Boogie
 {
@@ -37,6 +38,8 @@ namespace Microsoft.Boogie
                     return L;
                 case MoverType.Right:
                     return R;
+                default:
+                    throw new InvalidEnumArgumentException();
             }
         }
 
