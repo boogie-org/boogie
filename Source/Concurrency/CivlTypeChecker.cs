@@ -563,7 +563,6 @@ namespace Microsoft.Boogie
 
             CheckAtomicActionAcyclicity();
 
-            //sharedVariables = globalVarToLayerRange.Keys.ToList();
             sharedVariables = program.GlobalVariables.ToList<Variable>();
             sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
 
