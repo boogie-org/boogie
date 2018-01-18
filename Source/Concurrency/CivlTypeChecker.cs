@@ -332,6 +332,7 @@ namespace Microsoft.Boogie
     {
         public AtomicAction refinedAction;
         public DatatypeConstructor pendingAsyncConstructor;
+        public Procedure addPendingAsyncProc;
 
         public ActionProc(Procedure proc, AtomicAction refinedAction, int upperLayer)
             : base(proc, refinedAction.moverType, upperLayer)
@@ -566,7 +567,7 @@ namespace Microsoft.Boogie
             sharedVariables = program.GlobalVariables.ToList<Variable>();
             sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
 
-            AddPendingAsyncType();
+            AddPendingAsyncMachinery();
 
             new AttributeEraser().VisitProgram(program);
         }
@@ -985,15 +986,24 @@ namespace Microsoft.Boogie
             }
         }
 
-        private void AddPendingAsyncType()
+        private void AddPendingAsyncMachinery()
         {
-            // datatype
-            this.pendingAsyncType = new CtorType(Token.NoToken, new TypeCtorDecl(Token.NoToken, "PendingAsync", 0, new QKeyValue(Token.NoToken, "datatype", new List<object>(), null)), new List<Type>());
-            program.AddTopLevelDeclaration(pendingAsyncType.Decl);
+            // We do not want to disturb non-CIVL programs
+            if (procToYieldingProc.Count != 0)
+            {
+                // datatype
+                this.pendingAsyncType = new CtorType(Token.NoToken, new TypeCtorDecl(Token.NoToken, "PendingAsync", 0, new QKeyValue(Token.NoToken, "datatype", new List<object>(), null)), new List<Type>());
+                program.AddTopLevelDeclaration(pendingAsyncType.Decl);
 
-            // constructor functions
+                // global multiset variable
+                MapType pendingAsyncMultisetType = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type>{ pendingAsyncType }, Type.Int);
+                this.pendingAsyncMultiset = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "pendingAsyncMultiset", pendingAsyncMultisetType));
+                program.AddTopLevelDeclaration(pendingAsyncMultiset);
+            }
+
             foreach (var actionProc in procToYieldingProc.Values.OfType<ActionProc>())
             {
+                // constructor function
                 Function f = new Function(
                                  Token.NoToken,
                                  "PendingAsync_" + actionProc.proc.Name,
@@ -1006,11 +1016,48 @@ namespace Microsoft.Boogie
                 DatatypeConstructor c = new DatatypeConstructor(f);
                 actionProc.pendingAsyncConstructor = c;
                 program.AddTopLevelDeclaration(c);
-            }
 
-            MapType pendingAsyncMultisetType = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type>{ pendingAsyncType }, Type.Int);
-            this.pendingAsyncMultiset = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "pendingAsyncMultiset", pendingAsyncMultisetType));
-            program.AddTopLevelDeclaration(pendingAsyncMultiset);
+                // pending async adder procedure & implementation
+                string name = "AddPendingAsync_" + actionProc.proc.Name;
+                Procedure p = new Procedure(
+                                  Token.NoToken,
+                                  name,
+                                  new List<TypeVariable>(),
+                                  actionProc.proc.InParams.Select(v => (Variable)v.Clone()).ToList(),
+                                  new List<Variable>(),
+                                  new List<Requires>(),
+                                  new List<IdentifierExpr> { Expr.Ident(pendingAsyncMultiset) },
+                                  new List<Ensures>()
+                              );
+                CivlRefinement.AddInlineAttribute(p);
+                p.Typecheck(new TypecheckingContext(null));
+                actionProc.addPendingAsyncProc = p;
+                program.AddTopLevelDeclaration(p);
+
+                var inParams = actionProc.proc.InParams.Select(v => (Variable)v.Clone()).ToList();
+                Expr idx = new NAryExpr(
+                               Token.NoToken,
+                               new FunctionCall(actionProc.pendingAsyncConstructor),
+                               inParams.Select(v => Expr.Ident(v)).ToList<Expr>());
+                
+                MapAssignLhs lhs = new MapAssignLhs(Token.NoToken, new SimpleAssignLhs(Token.NoToken, Expr.Ident(pendingAsyncMultiset)), new List<Expr> { idx });
+                Expr sel = Expr.Select(Expr.Ident(pendingAsyncMultiset), new List<Expr>{ idx });
+                Expr plusOne = Expr.Add(sel, new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+                AssignCmd cmd = new AssignCmd(Token.NoToken, new List<AssignLhs>{ lhs }, new List<Expr> { plusOne });
+
+                Implementation i = new Implementation(
+                                       Token.NoToken,
+                                       name,
+                                       new List<TypeVariable>(),
+                                       inParams,
+                                       new List<Variable>(),
+                                       new List<Variable>(),
+                                       new List<Block> { new Block(Token.NoToken, "L", new List<Cmd> { cmd }, new ReturnCmd(Token.NoToken)) });
+                i.Proc = p;
+                CivlRefinement.AddInlineAttribute(i);
+                i.Typecheck(new TypecheckingContext(null));
+                program.AddTopLevelDeclaration(i);
+            }
         }
 
         public void Error(Absy node, string message)
