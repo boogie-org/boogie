@@ -1272,14 +1272,7 @@ namespace Microsoft.Boogie {
             }
             else if (!CommandLineOptions.Clo.DoModSetAnalysis && v is GlobalVariable)
             {
-                if (tc.Yields) {
-                    // a yielding procedure is allowed to modify any global variable
-                }
-                else if (tc.Frame == null)
-                {
-                    tc.Error(this, "update to a global variable allowed only inside an atomic action of a yielding procedure");
-                }
-                else if (!tc.InFrame(v))
+                if (!tc.Yields && !tc.InFrame(v))
                 {
                     tc.Error(this, "command assigns to a global variable that is not in the enclosing procedure's modifies clause: {0}", v.Name);
                 }
