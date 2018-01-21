@@ -3,7 +3,7 @@
 
 // ###########################################################################
 
-var {:layer 0,1} x : int;
+var {:layer 0,2} x : int;
 
 // ###########################################################################
 
@@ -31,7 +31,7 @@ ensures {:layer 1} x == old(x) + i;
 
 procedure {:yields} {:layer 0} dummy ();
 
-procedure {:both} {:layer 1} atomic_inc_x (n: int)
+procedure {:both} {:layer 1,2} atomic_inc_x (n: int)
 modifies x;
 { x := x + n; }
 
