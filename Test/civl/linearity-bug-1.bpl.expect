@@ -1,5 +1,5 @@
 linearity-bug-1.bpl(15,43): Error BP5003: A postcondition might not hold on this return path.
-linearity-bug-1.bpl(19,31): Related location: Commutativity check between atomic_read_n and atomic_inc_n failed
+linearity-bug-1.bpl(19,31): Related location: Commutativity check between atomic_read_n_1 and atomic_inc_n_1 failed
 Execution trace:
     linearity-bug-1.bpl(20,7): first_anon0
 
