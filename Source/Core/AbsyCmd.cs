@@ -2532,12 +2532,18 @@ namespace Microsoft.Boogie {
         Contract.Assert(cce.NonNullElements(actualTypeParams));
         TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
                                                            actualTypeParams);
-
+        
         if (!CommandLineOptions.Clo.DoModSetAnalysis && IsAsync)
         {
+            
             if (!tc.Yields)
             {
-                tc.Error(this, "enclosing procedure of an async call must yield");
+                // TODO: Fix this (and related) checks.
+                // We now allow pending asyncs in atomic actions.
+                // Maybe we should not support "yields inference" ala modset analysis anymore.
+                // In particular, we need to check if it would even make sense with the new design of CIVL.
+
+                // tc.Error(this, "enclosing procedure of an async call must yield");
             }
             if (!QKeyValue.FindBoolAttribute(Proc.Attributes, CivlAttributes.YIELDS))
             {
