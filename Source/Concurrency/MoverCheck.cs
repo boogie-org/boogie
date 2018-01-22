@@ -12,18 +12,19 @@ namespace Microsoft.Boogie
         LinearTypeChecker linearTypeChecker;
         CivlTypeChecker civlTypeChecker;
         List<Declaration> decls;
-        HashSet<Tuple<AtomicAction, AtomicAction>> commutativityCheckerCache;
-        HashSet<Tuple<AtomicAction, AtomicAction>> gatePreservationCheckerCache;
-        HashSet<Tuple<AtomicAction, AtomicAction>> failurePreservationCheckerCache;
+
+        HashSet<Tuple<AtomicActionCopy, AtomicActionCopy>> commutativityCheckerCache;
+        HashSet<Tuple<AtomicActionCopy, AtomicActionCopy>> gatePreservationCheckerCache;
+        HashSet<Tuple<AtomicActionCopy, AtomicActionCopy>> failurePreservationCheckerCache;
 
         private MoverCheck(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
             this.linearTypeChecker = linearTypeChecker;
             this.civlTypeChecker = civlTypeChecker;
             this.decls = decls;
-            this.commutativityCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
-            this.gatePreservationCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
-            this.failurePreservationCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
+            this.commutativityCheckerCache = new HashSet<Tuple<AtomicActionCopy, AtomicActionCopy>>();
+            this.gatePreservationCheckerCache = new HashSet<Tuple<AtomicActionCopy, AtomicActionCopy>>();
+            this.failurePreservationCheckerCache = new HashSet<Tuple<AtomicActionCopy, AtomicActionCopy>>();
         }
 
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
@@ -31,67 +32,38 @@ namespace Microsoft.Boogie
             if (civlTypeChecker.procToAtomicAction.Count == 0)
                 return;
 
-            List<AtomicAction> sortedByCreatedLayerNum = civlTypeChecker.procToAtomicAction.Values
-                .OrderBy(a => a.layerRange.lowerLayerNum).ToList();
-            List<AtomicAction> sortedByAvailableUptoLayerNum = civlTypeChecker.procToAtomicAction.Values
-                .OrderBy(a => a.layerRange.upperLayerNum).ToList();
-
-            Dictionary<int, HashSet<AtomicAction>> pools = new Dictionary<int, HashSet<AtomicAction>>();
-            int indexIntoSortedByCreatedLayerNum = 0;
-            int indexIntoSortedByAvailableUptoLayerNum = 0;
-            HashSet<AtomicAction> currPool = new HashSet<AtomicAction>();
-            while (indexIntoSortedByCreatedLayerNum < sortedByCreatedLayerNum.Count)
-            {
-                var currLayerNum = sortedByCreatedLayerNum[indexIntoSortedByCreatedLayerNum].layerRange.lowerLayerNum;
-                pools[currLayerNum] = new HashSet<AtomicAction>(currPool);
-                while (indexIntoSortedByCreatedLayerNum < sortedByCreatedLayerNum.Count)
-                {
-                    var action = sortedByCreatedLayerNum[indexIntoSortedByCreatedLayerNum];
-                    if (action.layerRange.lowerLayerNum > currLayerNum) break;
-                    pools[currLayerNum].Add(action);
-                    indexIntoSortedByCreatedLayerNum++;
-                }
-                while (indexIntoSortedByAvailableUptoLayerNum < sortedByAvailableUptoLayerNum.Count)
-                {
-                    var action = sortedByAvailableUptoLayerNum[indexIntoSortedByAvailableUptoLayerNum];
-                    if (action.layerRange.upperLayerNum >= currLayerNum) break;
-                    pools[currLayerNum].Remove(action);
-                    indexIntoSortedByAvailableUptoLayerNum++;
-                }
-                currPool = pools[currLayerNum];
-            }
-
             MoverCheck moverChecking = new MoverCheck(linearTypeChecker, civlTypeChecker, decls);
 
-            var moverChecks =
-            from layer in pools.Keys
-            from first in pools[layer]
-            from second in pools[layer]
-            where first.moverType != MoverType.Atomic
-            select new { First = first, Second = second };
-
-            foreach (var moverCheck in moverChecks)
+            foreach (int layer in civlTypeChecker.allAtomicActionLayers)
             {
-                var first = moverCheck.First;
-                var second = moverCheck.Second;
+                var pool = civlTypeChecker.procToAtomicAction.Values.Where(a => a.layerRange.Contains(layer));
 
-                if (first.IsRightMover)
+                var moverChecks =
+                    from first in pool
+                    from second in pool
+                    where first.moverType != MoverType.Atomic
+                    select new { First = first, Second = second };
+
+                foreach (var moverCheck in moverChecks)
                 {
-                    moverChecking.CreateCommutativityChecker(first, second);
-                    moverChecking.CreateGatePreservationChecker(second, first);
+                    var first = moverCheck.First.layerToActionCopy[layer];
+                    var second = moverCheck.Second.layerToActionCopy[layer];
+
+                    if (moverCheck.First.IsRightMover)
+                    {
+                        moverChecking.CreateCommutativityChecker(first, second);
+                        moverChecking.CreateGatePreservationChecker(second, first);
+                    }
+                    if (moverCheck.First.IsLeftMover)
+                    {
+                        moverChecking.CreateCommutativityChecker(second, first);
+                        moverChecking.CreateGatePreservationChecker(first, second);
+                        moverChecking.CreateFailurePreservationChecker(second, first);
+                    }
                 }
-                if (first.IsLeftMover)
+                foreach (AtomicAction atomicAction in pool.Where(a => a.IsLeftMover))
                 {
-                    moverChecking.CreateCommutativityChecker(second, first);
-                    moverChecking.CreateGatePreservationChecker(first, second);
-                    moverChecking.CreateFailurePreservationChecker(second, first);
-                }
-            }
-            foreach (AtomicAction atomicAction in sortedByCreatedLayerNum)
-            {
-                if (atomicAction.IsLeftMover && atomicAction.HasAssumeCmd)
-                {
-                    moverChecking.CreateNonBlockingChecker(atomicAction);
+                    moverChecking.CreateNonBlockingChecker(atomicAction.layerToActionCopy[layer]);
                 }
             }
         }
@@ -134,7 +106,7 @@ namespace Microsoft.Boogie
             return otherBlocks;
         }
 
-        private static List<Block> ComposeBlocks(AtomicAction first, AtomicAction second)
+        private static List<Block> ComposeBlocks(AtomicActionCopy first, AtomicActionCopy second)
         {
             List<Block> firstBlocks = CloneBlocks(first.firstAction.Blocks);
             List<Block> secondBlocks = CloneBlocks(second.secondAction.Blocks);
@@ -181,13 +153,13 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateCommutativityChecker(AtomicAction first, AtomicAction second)
+        private void CreateCommutativityChecker(AtomicActionCopy first, AtomicActionCopy second)
         {
             if (first == second && first.firstInParams.Count == 0 && first.firstOutParams.Count == 0)
                 return;
             if (first.TriviallyCommutesWith(second))
                 return;
-            if (!commutativityCheckerCache.Add(new Tuple<AtomicAction, AtomicAction>(first, second)))
+            if (!commutativityCheckerCache.Add(Tuple.Create(first, second)))
                 return;
 
             List<Variable> inputs  = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
@@ -228,11 +200,11 @@ namespace Microsoft.Boogie
             AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
 
-        private void CreateGatePreservationChecker(AtomicAction first, AtomicAction second)
+        private void CreateGatePreservationChecker(AtomicActionCopy first, AtomicActionCopy second)
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
-            if (!gatePreservationCheckerCache.Add(new Tuple<AtomicAction, AtomicAction>(first, second)))
+            if (!gatePreservationCheckerCache.Add(Tuple.Create(first, second)))
                 return;
 
             List<Variable> inputs = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
@@ -263,11 +235,11 @@ namespace Microsoft.Boogie
             AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
 
-        private void CreateFailurePreservationChecker(AtomicAction first, AtomicAction second)
+        private void CreateFailurePreservationChecker(AtomicActionCopy first, AtomicActionCopy second)
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
-            if (!failurePreservationCheckerCache.Add(new Tuple<AtomicAction, AtomicAction>(first, second)))
+            if (!failurePreservationCheckerCache.Add(Tuple.Create(first, second)))
                 return;
 
             List<Variable> inputs = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
@@ -297,8 +269,10 @@ namespace Microsoft.Boogie
             AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
 
-        private void CreateNonBlockingChecker(AtomicAction second)
+        private void CreateNonBlockingChecker(AtomicActionCopy second)
         {
+            if (!second.HasAssumeCmd) return;
+
             List<Variable> inputs = new List<Variable>(second.secondInParams);
             List<Variable> outputs = new List<Variable>();
             List<Variable> locals = new List<Variable>();

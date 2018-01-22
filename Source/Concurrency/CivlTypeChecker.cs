@@ -24,29 +24,8 @@ namespace Microsoft.Boogie
         public MoverType moverType;
         public LayerRange layerRange;
 
-        public CodeExpr action;
-        public List<AssertCmd> gate;
-
+        public Dictionary<int, AtomicActionCopy> layerToActionCopy;
         public int asyncFreeLayer;
-
-        public CodeExpr firstAction;
-        public List<AssertCmd> firstGate;
-        public List<Variable> firstInParams;
-        public List<Variable> firstOutParams;
-        public Dictionary<Variable, Expr> firstMap;
-
-        public CodeExpr secondAction;
-        public List<AssertCmd> secondGate;
-        public List<Variable> secondInParams;
-        public List<Variable> secondOutParams;
-        public Dictionary<Variable, Expr> secondMap;
-
-        public Dictionary<Variable, Function> triggerFuns;
-        public HashSet<Variable> actionUsedGlobalVars;
-        public HashSet<Variable> modifiedGlobalVars;
-        public HashSet<Variable> gateUsedGlobalVars;
-
-        private bool hasAssumeCmd;
 
         public AtomicAction(Procedure proc, Implementation impl, MoverType moverType, LayerRange layerRange)
         {
@@ -55,43 +34,7 @@ namespace Microsoft.Boogie
             this.moverType = moverType;
             this.layerRange = layerRange;
 
-            this.gate = new List<AssertCmd>();
-
-            this.firstGate = new List<AssertCmd>();
-            this.firstInParams = new List<Variable>();
-            this.firstOutParams = new List<Variable>();
-            this.firstMap = new Dictionary<Variable, Expr>();
-
-            this.secondGate = new List<AssertCmd>();
-            this.secondInParams = new List<Variable>();
-            this.secondOutParams = new List<Variable>();
-            this.secondMap = new Dictionary<Variable, Expr>();
-
-            this.triggerFuns = new Dictionary<Variable, Function>();
-
-            hasAssumeCmd = impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
-
-
-            // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
-            // Calls to atomic actions are inlined and for most calls the gate is assumed, so we rewrite the asserts to assumes.
-            // Only at specific calls the gate has to be asserted and thus we keep the asserts on the side.
-            var firstBlock = impl.Blocks[0];
-            for (int i = 0; i < firstBlock.cmds.Count; i++)
-            {
-                AssertCmd assertCmd = firstBlock.cmds[i] as AssertCmd;
-                if (assertCmd == null)
-                    break;
-                gate.Add(assertCmd);
-                firstBlock.cmds[i] = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
-            }
-
-            // On the other hand, for commutativity checks we need the action (i.e., transition relation) without the gate.
-            // Thus we create a copy of the code blocks with the leading assertions removed.
-            List<Cmd> newFirstBlockCmds = new List<Cmd>(firstBlock.cmds);
-            newFirstBlockCmds.RemoveRange(0, gate.Count);
-            List<Block> actionBlocks = new List<Block>(impl.Blocks);
-            actionBlocks[0] = new Block(firstBlock.tok, firstBlock.Label, newFirstBlockCmds, firstBlock.TransferCmd);
-            this.action = new CodeExpr(impl.LocVars, actionBlocks);
+            this.layerToActionCopy = new Dictionary<int, AtomicActionCopy>();
 
             // We usually declare the Boogie procedure and implementation of an atomic action together.
             // Since Boogie only stores the supplied attributes (in particular linearity) in the procedure parameters,
@@ -104,9 +47,55 @@ namespace Microsoft.Boogie
             {
                 impl.OutParams[i].Attributes = proc.OutParams[i].Attributes;
             }
+        }
 
-            SetupCopy(ref firstAction, ref firstGate, ref firstInParams, ref firstOutParams, ref firstMap, "first_");
-            SetupCopy(ref secondAction, ref secondGate, ref secondInParams, ref secondOutParams, ref secondMap, "second_");
+        // TODO: Check usage!
+        public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
+        public bool IsLeftMover { get { return moverType == MoverType.Left || moverType == MoverType.Both; } }
+    }
+
+    public class AtomicActionCopy
+    {
+        public Procedure proc;
+        public Implementation impl;
+
+        // Strictly speaking the gate is the same on every layer, but for easier parameter substitution
+        // we keep the per-layer version of gates.
+        public List<AssertCmd> gate;
+
+        public List<AssertCmd> firstGate;
+        public CodeExpr firstAction;
+        public List<Variable> firstInParams;
+        public List<Variable> firstOutParams;
+        public Dictionary<Variable, Expr> firstMap;
+
+        public List<AssertCmd> secondGate;
+        public CodeExpr secondAction;
+        public List<Variable> secondInParams;
+        public List<Variable> secondOutParams;
+        public Dictionary<Variable, Expr> secondMap;
+
+        public Dictionary<Variable, Function> triggerFuns;
+        public HashSet<Variable> actionUsedGlobalVars;
+        public HashSet<Variable> modifiedGlobalVars;
+        public HashSet<Variable> gateUsedGlobalVars;
+
+        public AtomicActionCopy(Procedure proc, Implementation impl)
+        {
+            this.proc = proc;
+            this.impl = impl;
+
+            this.triggerFuns = new Dictionary<Variable, Function>();
+
+            // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
+            this.gate = impl.Blocks[0].cmds.TakeWhile((c, i) => c is AssertCmd).Cast<AssertCmd>().ToList();
+            impl.Blocks[0].cmds.RemoveRange(0, gate.Count);
+        }
+
+        public void Setup()
+        {
+            SetupCopy(ref firstGate, ref firstAction, ref firstInParams, ref firstOutParams, ref firstMap, "first_");
+            SetupCopy(ref secondGate, ref secondAction, ref secondInParams, ref secondOutParams, ref secondMap, "second_");
 
             List<Variable> modifiedVars = new List<Variable>();
             foreach (Cmd cmd in impl.Blocks.SelectMany(b => b.Cmds))
@@ -123,13 +112,18 @@ namespace Microsoft.Boogie
 
             {
                 VariableCollector collector = new VariableCollector();
-                collector.Visit(this.action);
+                collector.Visit(this.impl);
                 this.actionUsedGlobalVars = new HashSet<Variable>(collector.usedVars.Where(x => x is GlobalVariable));
             }
         }
 
-        private void SetupCopy(ref CodeExpr actionCopy, ref List<AssertCmd> gateCopy, ref List<Variable> inParamsCopy, ref List<Variable> outParamsCopy, ref Dictionary<Variable, Expr> varMap, string prefix)
+        private void SetupCopy(ref List<AssertCmd> gateCopy, ref CodeExpr actionCopy, ref List<Variable> inParamsCopy, ref List<Variable> outParamsCopy, ref Dictionary<Variable, Expr> varMap, string prefix)
         {
+            gateCopy = new List<AssertCmd>();
+            inParamsCopy = new List<Variable>();
+            outParamsCopy = new List<Variable>();
+            varMap = new Dictionary<Variable, Expr>();
+
             foreach (Variable x in impl.InParams)
             {
                 Variable xCopy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), true, x.Attributes);
@@ -155,7 +149,7 @@ namespace Microsoft.Boogie
             {
                 gateCopy.Add((AssertCmd)aad.Visit(assertCmd));
             }
-            actionCopy = new CodeExpr(localsCopy, SubstituteBlocks(action.Blocks, aad));
+            actionCopy = new CodeExpr(localsCopy, SubstituteBlocks(impl.Blocks, aad));
         }
 
         private List<Block> SubstituteBlocks(List<Block> blocks, AtomicActionDuplicator aad)
@@ -196,13 +190,9 @@ namespace Microsoft.Boogie
             return otherBlocks;
         }
 
-        // TODO: Check usage!
-        public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
-        public bool IsLeftMover { get { return moverType == MoverType.Left || moverType == MoverType.Both; } }
+        public bool HasAssumeCmd { get { return impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd)); } }
 
-        public bool HasAssumeCmd { get { return hasAssumeCmd; } }
-
-        public bool TriviallyCommutesWith(AtomicAction other)
+        public bool TriviallyCommutesWith(AtomicActionCopy other)
         {
             return this.modifiedGlobalVars.Intersect(other.actionUsedGlobalVars).Count() == 0 &&
                    this.actionUsedGlobalVars.Intersect(other.modifiedGlobalVars).Count() == 0;
@@ -218,10 +208,6 @@ namespace Microsoft.Boogie
             }
             return triggerFuns[v];
         }
-    }
-
-    public class AtomicActionCopy
-    {
     }
 
     /// <summary>
@@ -331,7 +317,6 @@ namespace Microsoft.Boogie
     public class ActionProc : YieldingProc
     {
         public AtomicAction refinedAction;
-        public DatatypeConstructor pendingAsyncConstructor;
         public Procedure addPendingAsyncProc;
 
         public ActionProc(Procedure proc, AtomicAction refinedAction, int upperLayer)
@@ -412,12 +397,11 @@ namespace Microsoft.Boogie
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
         Dictionary<CallCmd, int> instrumentationCallToLayer;
 
-        // TODO: Perhaps we do not need the type available as a field. Check if it can be made local when implementation is done!
-        public CtorType pendingAsyncType;
         public GlobalVariable pendingAsyncMultiset;
 
         // This collections are for convenience in later phases and are only initialized at the end of type checking.
-        public List<int> allLayerNums;
+        public List<int> allRefinementLayers;
+        public List<int> allAtomicActionLayers;
         public List<Variable> sharedVariables;
         public List<IdentifierExpr> sharedVariableIdentifiers;
 
@@ -546,16 +530,21 @@ namespace Microsoft.Boogie
 
             TypeCheckAtomicActionImpls();
             ComputeAsyncFreeLayers();
-            TypeCheckYieldingProcedureImpls();
 
-            // Store a list of all layers
-            allLayerNums = procToYieldingProc.Values.Select(a => a.upperLayer).OrderBy(l => l).Distinct().ToList();
+            // List of all layers where refinement happens
+            allRefinementLayers = procToYieldingProc.Values.Select(a => a.upperLayer).OrderBy(l => l).Distinct().ToList();
+
+            // List of all layers where the set of available atomic actions changes (through availability or refinement)
+            allAtomicActionLayers = allRefinementLayers.ToList();
+            allAtomicActionLayers.AddRange(procToAtomicAction.Values.Select(a => a.layerRange.lowerLayerNum));
+            allAtomicActionLayers.AddRange(procToAtomicAction.Values.Select(a => a.layerRange.upperLayerNum));
+            allAtomicActionLayers =  allAtomicActionLayers.Distinct().OrderBy(l => l).ToList();
 
             foreach (var kv in absyToLayerNums)
             {
                 foreach (var layer in kv.Value)
                 {
-                    if (!allLayerNums.Contains(layer))
+                    if (!allRefinementLayers.Contains(layer))
                     {
                         checkingContext.Error(kv.Key, "No refinement on layer {0}", layer);
                     }
@@ -568,6 +557,8 @@ namespace Microsoft.Boogie
             sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
 
             AddPendingAsyncMachinery();
+            GenerateAtomicActionCopies();
+            TypeCheckYieldingProcedureImpls();
 
             new AttributeEraser().VisitProgram(program);
         }
@@ -626,6 +617,23 @@ namespace Microsoft.Boogie
                 {
                     Error(proc, "Atomic action specification can not have loops");
                     continue;
+                }
+
+                bool inGate = true;
+                foreach (var cmd in impl.Blocks[0].cmds)
+                {
+                    if (inGate && !(cmd is AssertCmd))
+                    {
+                        inGate = false;
+                    }
+                    else if (!inGate && cmd is AssertCmd)
+                    {
+                        Error(cmd, "Assert is only allowed in the gate of an atomic action");
+                    }
+                }
+                foreach (var cmd in impl.Blocks.Skip(1).SelectMany(b => b.cmds).OfType<AssertCmd>())
+                {
+                    Error(cmd, "Assert is only allowed in the gate of an atomic action");
                 }
 
                 procToAtomicAction[proc] = new AtomicAction(proc, impl, moverType.Value, layerRange);
@@ -704,7 +712,7 @@ namespace Microsoft.Boogie
                         Error(proc, "Could not find refined atomic action");
                         continue;
                     }
-                    if (upperLayer + 1 < refinedAction.layerRange.lowerLayerNum)
+                    if (!refinedAction.layerRange.Contains(upperLayer + 1))
                     {
                         // Strictly speaking, there could be a layer gap if some layer is not used
                         // for refinement. However, at this point we do not know the refinement layers,
@@ -753,7 +761,7 @@ namespace Microsoft.Boogie
                             var calledProc = procToYieldingProc[callCmd.Proc];
                             if (calledProc is ActionProc)
                             {
-                                mods = ((ActionProc)calledProc).refinedAction.modifiedGlobalVars;
+                                mods = ((ActionProc)calledProc).refinedAction.layerToActionCopy[yieldingProc.upperLayer].modifiedGlobalVars;
                             }
                             else if (calledProc is MoverProc)
                             {
@@ -906,6 +914,11 @@ namespace Microsoft.Boogie
             return int.MinValue;
         }
 
+        public int AllInParamsIntroducedLayer(Procedure proc)
+        {
+            return proc.InParams.Select(inParam => LocalVariableIntroLayer(inParam)).DefaultIfEmpty(int.MinValue).Max();
+        }
+
         private int FindLocalVariableLayer(Declaration decl, Variable v, int enclosingProcLayerNum)
         {
             var layers = FindLayers(v.Attributes);
@@ -939,7 +952,7 @@ namespace Microsoft.Boogie
                 proceed = false;
                 foreach (var a in procToAtomicAction.Values)
                 {
-                    foreach (var call in a.action.Blocks.SelectMany(b => b.cmds.OfType<CallCmd>()))
+                    foreach (var call in a.impl.Blocks.SelectMany(b => b.cmds.OfType<CallCmd>()))
                     {
                         var target = procToYieldingProc[call.Proc];
                         int x = target.upperLayer + 1;
@@ -963,7 +976,7 @@ namespace Microsoft.Boogie
         /// </summary>
         private void CheckAtomicActionAcyclicity()
         {
-            foreach (var layer in allLayerNums)
+            foreach (var layer in allAtomicActionLayers)
             {
                 Graph<AtomicAction> graph = new Graph<AtomicAction>();
 
@@ -988,11 +1001,13 @@ namespace Microsoft.Boogie
 
         private void AddPendingAsyncMachinery()
         {
+            CtorType pendingAsyncType = null;
+
             // We do not want to disturb non-CIVL programs
             if (procToYieldingProc.Count != 0)
             {
                 // datatype
-                this.pendingAsyncType = new CtorType(Token.NoToken, new TypeCtorDecl(Token.NoToken, "PendingAsync", 0, new QKeyValue(Token.NoToken, "datatype", new List<object>(), null)), new List<Type>());
+                pendingAsyncType = new CtorType(Token.NoToken, new TypeCtorDecl(Token.NoToken, "PendingAsync", 0, new QKeyValue(Token.NoToken, "datatype", new List<object>(), null)), new List<Type>());
                 program.AddTopLevelDeclaration(pendingAsyncType.Decl);
 
                 // global multiset variable
@@ -1003,6 +1018,8 @@ namespace Microsoft.Boogie
 
             foreach (var actionProc in procToYieldingProc.Values.OfType<ActionProc>())
             {
+                Debug.Assert(pendingAsyncType != null);
+
                 // constructor function
                 Function f = new Function(
                                  Token.NoToken,
@@ -1014,7 +1031,6 @@ namespace Microsoft.Boogie
                                  new QKeyValue(Token.NoToken, "constructor", new List<object>(), null)
                              );
                 DatatypeConstructor c = new DatatypeConstructor(f);
-                actionProc.pendingAsyncConstructor = c;
                 program.AddTopLevelDeclaration(c);
 
                 // pending async adder procedure & implementation
@@ -1029,7 +1045,7 @@ namespace Microsoft.Boogie
                                   new List<IdentifierExpr> { Expr.Ident(pendingAsyncMultiset) },
                                   new List<Ensures>()
                               );
-                CivlRefinement.AddInlineAttribute(p);
+                CivlUtil.AddInlineAttribute(p);
                 p.Typecheck(new TypecheckingContext(null));
                 actionProc.addPendingAsyncProc = p;
                 program.AddTopLevelDeclaration(p);
@@ -1037,7 +1053,7 @@ namespace Microsoft.Boogie
                 var inParams = actionProc.proc.InParams.Select(v => (Variable)v.Clone()).ToList();
                 Expr idx = new NAryExpr(
                                Token.NoToken,
-                               new FunctionCall(actionProc.pendingAsyncConstructor),
+                               new FunctionCall(c),
                                inParams.Select(v => Expr.Ident(v)).ToList<Expr>());
                 
                 MapAssignLhs lhs = new MapAssignLhs(Token.NoToken, new SimpleAssignLhs(Token.NoToken, Expr.Ident(pendingAsyncMultiset)), new List<Expr> { idx });
@@ -1054,9 +1070,123 @@ namespace Microsoft.Boogie
                                        new List<Variable>(),
                                        new List<Block> { new Block(Token.NoToken, "L", new List<Cmd> { cmd }, new ReturnCmd(Token.NoToken)) });
                 i.Proc = p;
-                CivlRefinement.AddInlineAttribute(i);
+                i.OriginalBlocks = i.Blocks;
+                i.OriginalLocVars = i.LocVars;
+                CivlUtil.AddInlineAttribute(i);
                 i.Typecheck(new TypecheckingContext(null));
                 program.AddTopLevelDeclaration(i);
+            }
+        }
+
+        private void GenerateAtomicActionCopies()
+        {
+            foreach (var layer in allAtomicActionLayers)
+            {
+                // Generate layer specific versions of atomic actions (i.e., resolve pending async calls)
+                AtomicActionCopier copier = new AtomicActionCopier(layer, this);
+                copier.GenerateCopies();
+
+                // AtomicActionCopy constructur removes gate from atomic action implementation
+                foreach (var action in copier.actions)
+                {
+                    action.layerToActionCopy[layer] = new AtomicActionCopy(copier.procMap[action.proc], copier.implMap[action.impl]);
+                }
+
+                program.AddTopLevelDeclarations(copier.procMap.Values);
+                program.AddTopLevelDeclarations(copier.implMap.Values);
+
+                // Fully inline atomic action implementations
+                foreach (var impl in copier.implMap.Values)
+                {
+                    impl.OriginalBlocks = impl.Blocks;
+                    impl.OriginalLocVars = impl.LocVars;
+                }
+                foreach (var impl in copier.implMap.Values)
+                {
+                    Inliner.ProcessImplementation(program, impl);
+                }
+                foreach (var impl in copier.implMap.Values)
+                {
+                    impl.OriginalBlocks = null;
+                    impl.OriginalLocVars = null;
+                }
+
+                // Generate first/second versions of atomic actions (used in transition relation computation)
+                // and initialize used/modified variable infos.
+                foreach (var action in copier.actions)
+                {
+                    action.layerToActionCopy[layer].Setup();
+                }
+            }
+        }
+
+        public class AtomicActionCopier : Duplicator
+        {
+            private int layer;
+            private CivlTypeChecker ctc;
+
+            public List<AtomicAction> actions;
+            public Dictionary<Procedure,Procedure> procMap;
+            public Dictionary<Implementation, Implementation> implMap;
+
+            public AtomicActionCopier(int layer, CivlTypeChecker ctc)
+            {
+                this.layer = layer;
+                this.ctc = ctc;
+                this.actions = ctc.procToAtomicAction.Values.Where(a => a.layerRange.Contains(layer)).ToList();
+                this.procMap = new Dictionary<Procedure, Procedure>();
+                this.implMap = new Dictionary<Implementation, Implementation>();
+            }
+
+            public void GenerateCopies()
+            {
+                foreach (var action in actions)
+                {
+                    VisitProcedure(action.proc);
+                }
+                foreach (var action in actions)
+                {
+                    VisitImplementation(action.impl);
+                }
+            }
+
+            public override Procedure VisitProcedure(Procedure node)
+            {
+                if (procMap.ContainsKey(node))
+                    return procMap[node];
+                
+                Procedure proc = base.VisitProcedure(node);
+                proc.Name = string.Format("{0}_{1}", node.Name, layer);
+                procMap[node] = proc;
+                CivlUtil.AddInlineAttribute(proc);
+                return proc;
+            }
+
+            public override Implementation VisitImplementation(Implementation node)
+            {
+                if (implMap.ContainsKey(node))
+                    return implMap[node];
+                
+                Procedure proc = procMap[node.Proc];
+                Implementation impl = base.VisitImplementation(node);
+                impl.Proc = proc;
+                impl.Name = proc.Name;
+                implMap[node] = impl;
+                CivlUtil.AddInlineAttribute(impl);
+                return impl;
+            }
+
+            public override Cmd VisitCallCmd(CallCmd node)
+            {
+                CallCmd call = (CallCmd)base.VisitCallCmd(node);
+                call.IsAsync = false;
+                ActionProc target = ctc.procToYieldingProc[node.Proc] as ActionProc;
+                if (target.upperLayer >= layer)
+                    call.Proc = target.addPendingAsyncProc;
+                else
+                    call.Proc = procMap[target.refinedAction.proc];
+                call.callee = call.Proc.Name;
+                return call;
             }
         }
 
@@ -1136,7 +1266,7 @@ namespace Microsoft.Boogie
                         {
                             ctc.Error(node, "Callee disappears before caller");
                         }
-                        if (target.proc.InParams.Select(inParam => ctc.LocalVariableIntroLayer(inParam)).Max() > atomicAction.layerRange.lowerLayerNum)
+                        if (ctc.AllInParamsIntroducedLayer(target.proc) > atomicAction.layerRange.lowerLayerNum)
                         {
                             ctc.Error(node, "Target of a pending async must have all input variables introduced");
                         }
@@ -1398,7 +1528,7 @@ namespace Microsoft.Boogie
                         {
                             ctc.Error(call, "The layer of the caller must be greater than the layer of the callee");
                         }
-                        else if (calleeProc.proc.InParams.Select(inParam => ctc.LocalVariableIntroLayer(inParam)).Max() > callerProc.upperLayer)
+                        else if (ctc.AllInParamsIntroducedLayer(calleeProc.proc) > callerProc.upperLayer)
                         {
                             ctc.Error(call, "Target of a pending async must have all input variables introduced");
                         }

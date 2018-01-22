@@ -27,11 +27,17 @@ namespace Microsoft.Boogie
             CivlRefinement.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
 
             // Trigger functions for existential vairables in transition relations
-            decls.AddRange(civlTypeChecker.procToAtomicAction.Values.SelectMany(a => a.triggerFuns.Values));
+            decls.AddRange(civlTypeChecker.procToAtomicAction.Values.SelectMany(a => a.layerToActionCopy.Values.SelectMany(ac => ac.triggerFuns.Values)));
             
             // Remove original declarations and add new checkers generated above
             program.RemoveTopLevelDeclarations(x => originalDecls.Contains(x));
             program.AddTopLevelDeclarations(decls);
+
+            foreach (AtomicAction atomicAction in civlTypeChecker.procToAtomicAction.Values)
+            {
+                program.RemoveTopLevelDeclaration(atomicAction.proc);
+                program.RemoveTopLevelDeclaration(atomicAction.impl);
+            }
         }
     }
 }

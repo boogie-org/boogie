@@ -372,6 +372,8 @@ namespace Microsoft.Boogie
         {
             if (ctc.procToAtomicAction.ContainsKey(node.Proc))
                 return node;
+            if (ctc.procToAtomicAction.Values.SelectMany(a => a.layerToActionCopy.Values).Select(a => a.impl).Contains(node))
+                return node;
             
             node.PruneUnreachableBlocks();
             node.ComputePredecessorsForBlocks();

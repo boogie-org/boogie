@@ -123,7 +123,7 @@ namespace Microsoft.Boogie
                 Graph<Block> implGraph = Program.GraphFromImpl(impl);
                 implGraph.ComputeLoops();
 
-                foreach (int layerNum in civlTypeChecker.allLayerNums.Where(l => l <= yieldingProc.upperLayer))
+                foreach (int layerNum in civlTypeChecker.allRefinementLayers.Where(l => l <= yieldingProc.upperLayer))
                 {
                     PerLayerYieldTypeChecker perLayerTypeChecker = new PerLayerYieldTypeChecker(this, yieldingProc, impl, layerNum, implGraph);
                     perLayerTypeChecker.TypeCheckLayer();

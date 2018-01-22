@@ -19,8 +19,8 @@ namespace Microsoft.Boogie
         // If a transition relation is computed for a single atomic action, it is placed in "second" ("first" is null).
         // If a transition relation is computed for two atomic actions, the one placed in "second" executes first, followed by "first".
         // This is slightly confusing, but has to do with the disjoint sets of ins/outs/locals and reversing the executin order for commutativity checks.
-        private AtomicAction first;
-        private AtomicAction second;
+        private AtomicActionCopy first;
+        private AtomicActionCopy second;
 
         private HashSet<Variable> frame;
         private HashSet<Variable> postExistVars;
@@ -32,10 +32,10 @@ namespace Microsoft.Boogie
         private Stack<Cmd> cmdStack;
         private List<PathInfo> paths;
 
-        public TransitionRelationComputation(AtomicAction second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
+        public TransitionRelationComputation(AtomicActionCopy second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
             : this(null, second, frame, postExistVars) { }
 
-        public TransitionRelationComputation(AtomicAction first, AtomicAction second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
+        public TransitionRelationComputation(AtomicActionCopy first, AtomicActionCopy second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
         {
             this.first = first;
             this.second = second;

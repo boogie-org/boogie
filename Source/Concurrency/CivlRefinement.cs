@@ -52,7 +52,11 @@ namespace Microsoft.Boogie
                     if (yieldingProc is ActionProc)
                     {
                         // yielding procedure already transformed to atomic action
-                        return ((ActionProc)yieldingProc).refinedAction.proc;
+                        var action = ((ActionProc)yieldingProc).refinedAction;
+                        if (action.layerRange.Contains(layerNum))
+                            return action.layerToActionCopy[layerNum].proc;
+                        else
+                            return node;
                     }
                     else if (yieldingProc is SkipProc)
                     {
@@ -171,11 +175,12 @@ namespace Microsoft.Boogie
         public override Cmd VisitCallCmd(CallCmd call)
         {
             CallCmd newCall = (CallCmd)base.VisitCallCmd(call);
-            if (newCall.IsAsync && civlTypeChecker.procToYieldingProc.ContainsKey(call.Proc))
+            if (newCall.IsAsync)
             {
+                Debug.Assert(civlTypeChecker.procToYieldingProc.ContainsKey(call.Proc));
                 YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[call.Proc];
                 Debug.Assert(yieldingProc.IsLeftMover);
-                if (yieldingProc.upperLayer < layerNum || (yieldingProc is MoverProc && yieldingProc.upperLayer== layerNum))
+                if (yieldingProc.upperLayer < layerNum || (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum))
                 {
                     newCall.IsAsync = false;
                 }
@@ -195,29 +200,58 @@ namespace Microsoft.Boogie
 
         public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
         {
-            List<Cmd> cmds = base.VisitCmdSeq(cmdSeq);
-            List<Cmd> newCmds = new List<Cmd>();
-            for (int i = 0; i < cmds.Count; i++)
+            List<Cmd> visitedCmdSeq = base.VisitCmdSeq(cmdSeq);
+            List<Cmd> newCmdSeq = new List<Cmd>();
+            for (int i = 0; i < visitedCmdSeq.Count; i++)
             {
                 Cmd originalCmd = cmdSeq[i];
-                Cmd cmd = cmds[i];
+                Cmd visitedCmd = visitedCmdSeq[i];
 
                 if (originalCmd is CallCmd)
                 {
-                    ProcessCallCmd((CallCmd)originalCmd, (CallCmd)cmd, newCmds);
+                    ProcessCallCmd((CallCmd)originalCmd, (CallCmd)visitedCmd, newCmdSeq);
                 }
                 else if (originalCmd is ParCallCmd)
                 {
-                    ProcessParCallCmd((ParCallCmd)originalCmd, (ParCallCmd)cmd, newCmds);
+                    ProcessParCallCmd((ParCallCmd)originalCmd, (ParCallCmd)visitedCmd, newCmdSeq);
                 }
                 else
                 {
-                    newCmds.Add(cmd);
+                    newCmdSeq.Add(visitedCmd);
                 }
             }
-            newCmds.RemoveAll(cmd => (cmd is AssertCmd && ((AssertCmd)cmd).Expr.Equals(Expr.True)) ||
-                                     (cmd is AssumeCmd && ((AssumeCmd)cmd).Expr.Equals(Expr.True)));
-            return newCmds;
+            newCmdSeq.RemoveAll(cmd => (cmd is AssertCmd && ((AssertCmd)cmd).Expr.Equals(Expr.True)) ||
+                                       (cmd is AssumeCmd && ((AssumeCmd)cmd).Expr.Equals(Expr.True)));
+            return newCmdSeq;
+        }
+
+        // We only have to check the gate of a called atomic action (via an assert) at the creation layer of the caller.
+        // In all layers below we just establish invariants which do not require the gates to be checked and we can inject is as an assume.
+        private void InjectGate(ActionProc calledActionProc, CallCmd callCmd, List<Cmd> newCmds)
+        {
+            if (calledActionProc.upperLayer >= layerNum) return;
+            AtomicActionCopy atomicActionCopy = calledActionProc.refinedAction.layerToActionCopy[layerNum];
+            if (atomicActionCopy.gate.Count == 0) return;
+
+            newCmds.Add(new HavocCmd(Token.NoToken, new List<IdentifierExpr> { Expr.Ident(dummyLocalVar) }));
+            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+            for (int i = 0; i < calledActionProc.proc.InParams.Count; i++)
+            {
+                // Parameters come from the implementation that defines the atomic action
+                map[atomicActionCopy.impl.InParams[i]] = callCmd.Ins[i];
+            }
+            Substitution subst = Substituter.SubstitutionFromHashtable(map);
+            foreach (AssertCmd assertCmd in atomicActionCopy.gate)
+            {
+                PredicateCmd injectedGate;
+                if (layerNum == enclosingYieldingProc.upperLayer)
+                    injectedGate = (AssertCmd)Substituter.Apply(subst, assertCmd);
+                else
+                    injectedGate = new AssumeCmd(assertCmd.tok, Substituter.Apply(subst, assertCmd.Expr));
+                //injectedGate.Attributes = new QKeyValue(Token.NoToken, "gate", new List<object>(), null);
+                newCmds.Add(new CommentCmd("injected gate"));
+                newCmds.Add(injectedGate);
+            }
         }
 
         private void ProcessCallCmd(CallCmd originalCallCmd, CallCmd callCmd, List<Cmd> newCmds)
@@ -229,28 +263,11 @@ namespace Microsoft.Boogie
                 if (!civlTypeChecker.CallExists(originalCallCmd, enclosingYieldingProc.upperLayer, layerNum))
                     return;
             }
-            else if (layerNum == enclosingYieldingProc.upperLayer && civlTypeChecker.procToYieldingProc[originalProc] is ActionProc)
+            else if (civlTypeChecker.procToYieldingProc[originalProc] is ActionProc)
             {
-                AtomicAction atomicAction = ((ActionProc)civlTypeChecker.procToYieldingProc[originalProc]).refinedAction;
-                // We only have to check the gate of a called atomic action (via an assert) at the creation layer of the caller.
-                // In all layers below we just establish invariants which do not require the gates to be checked.
-                if (atomicAction.gate.Count > 0)
-                {
-                    newCmds.Add(new HavocCmd(Token.NoToken, new List<IdentifierExpr> { Expr.Ident(dummyLocalVar) }));
-                    Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-                    for (int i = 0; i < originalProc.InParams.Count; i++)
-                    {
-                        // Parameters come from the implementation that defines the atomic action
-                        map[atomicAction.impl.InParams[i]] = callCmd.Ins[i];
-                    }
-                    Substitution subst = Substituter.SubstitutionFromHashtable(map);
-                    foreach (AssertCmd assertCmd in atomicAction.gate)
-                    {
-                        newCmds.Add(Substituter.Apply(subst, assertCmd));
-                    }
-                }
+                Debug.Assert(layerNum <= enclosingYieldingProc.upperLayer);
+                InjectGate((ActionProc)civlTypeChecker.procToYieldingProc[originalProc], callCmd, newCmds);
             }
-
             newCmds.Add(callCmd);
         }
 
@@ -540,7 +557,8 @@ namespace Microsoft.Boogie
                     // The parameters of an atomic action come from the implementation that denotes the atomic action specification.
                     // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
                     // we need to substitute the parameters.
-                    Implementation atomicActionImpl = actionProc.refinedAction.impl;
+                    AtomicActionCopy atomicActionCopy = actionProc.refinedAction.layerToActionCopy[layerNum + 1];
+                    Implementation atomicActionImpl = atomicActionCopy.impl;
                     Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
                     for (int i = 0; i < atomicActionImpl.InParams.Count; i++)
                     {
@@ -552,9 +570,9 @@ namespace Microsoft.Boogie
                     }
                     Substitution always = Substituter.SubstitutionFromHashtable(alwaysMap);
 
-                    Expr betaExpr = (new TransitionRelationComputation(actionProc.refinedAction, frame, new HashSet<Variable>())).TransitionRelationCompute(true);
+                    Expr betaExpr = (new TransitionRelationComputation(atomicActionCopy, frame, new HashSet<Variable>())).TransitionRelationCompute(true);
                     beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
-                    Expr alphaExpr = Expr.And(actionProc.refinedAction.gate.Select(g => g.Expr));
+                    Expr alphaExpr = Expr.And(atomicActionCopy.gate.Select(g => g.Expr));
                     alphaExpr.Type = Type.Bool;
                     alpha = Substituter.Apply(always, alphaExpr);
                 }
@@ -722,7 +740,7 @@ namespace Microsoft.Boogie
                     inputs.Add(OgOldGlobalFormal(g));
                 }
                 yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", layerNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
-                AddInlineAttribute(yieldProc);
+                CivlUtil.AddInlineAttribute(yieldProc);
             }
             CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
             yieldCallCmd.Proc = yieldProc;
@@ -1093,13 +1111,13 @@ namespace Microsoft.Boogie
             // Create the yield checker procedure
             var yieldCheckerName = string.Format("Impl_YieldChecker_{0}", impl.Name);
             var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, impl.TypeParameters, inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
-            AddInlineAttribute(yieldCheckerProc);
+            CivlUtil.AddInlineAttribute(yieldCheckerProc);
             yieldCheckerProcs.Add(yieldCheckerProc);
 
             // Create the yield checker implementation
             var yieldCheckerImpl = new Implementation(Token.NoToken, yieldCheckerName, impl.TypeParameters, inputs, new List<Variable>(), locals, yieldCheckerBlocks);
             yieldCheckerImpl.Proc = yieldCheckerProc;
-            AddInlineAttribute(yieldCheckerImpl);
+            CivlUtil.AddInlineAttribute(yieldCheckerImpl);
             yieldCheckerImpls.Add(yieldCheckerImpl);
         }
 
@@ -1176,7 +1194,7 @@ namespace Microsoft.Boogie
 
             var yieldImpl = new Implementation(Token.NoToken, yieldProc.Name, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             yieldImpl.Proc = yieldProc;
-            AddInlineAttribute(yieldImpl);
+            CivlUtil.AddInlineAttribute(yieldImpl);
             decls.Add(yieldProc);
             decls.Add(yieldImpl);
         }
@@ -1200,21 +1218,9 @@ namespace Microsoft.Boogie
             return decls;
         }
 
-        public static void AddInlineAttribute(Declaration decl)
-        {
-            decl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-        }
-
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
             Program program = linearTypeChecker.program;
-
-            // Atomic actions should be inlined
-            foreach (AtomicAction atomicAction in civlTypeChecker.procToAtomicAction.Values)
-            {
-                AddInlineAttribute(atomicAction.proc);
-                AddInlineAttribute(atomicAction.impl);
-            }
 
             // Skip procedures do not completely disapper (because of ouput paramters).
             // We create dummy implementations with empty body.
@@ -1230,15 +1236,15 @@ namespace Microsoft.Boogie
                 List<Block> newBlocks = new List<Block> { newInitBlock };
                 Implementation impl = new Implementation(Token.NoToken, proc.Name, proc.TypeParameters, proc.InParams, proc.OutParams, new List<Variable>(), newBlocks);
                 impl.Proc = proc;
-                AddInlineAttribute(proc);
-                AddInlineAttribute(impl);
+                CivlUtil.AddInlineAttribute(proc);
+                CivlUtil.AddInlineAttribute(impl);
                 decls.Add(proc);
                 decls.Add(impl);
                 procToSkipProcDummy.Add(skipProc.proc, proc);
             }
 
             // Generate the refinement checks for every layer
-            foreach (int layerNum in civlTypeChecker.allLayerNums)
+            foreach (int layerNum in civlTypeChecker.allRefinementLayers)
             {
                 if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum || layerNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
 
