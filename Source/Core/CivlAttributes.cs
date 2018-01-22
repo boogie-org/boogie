@@ -76,6 +76,11 @@ namespace Microsoft.Boogie
                 kv => kv.Key == LINEAR || kv.Key == LINEAR_IN || kv.Key == LINEAR_OUT);
         }
 
+        public static void RemoveRefinesAttribute(ICarriesAttributes obj)
+        {
+            RemoveAttribute(obj, kv => kv.Key == REFINES);
+        }
+
         public static void DesugarYieldAssert(Program program)
         {
             foreach (var proc in program.Procedures)

@@ -1713,6 +1713,7 @@ namespace Microsoft.Boogie
                 CivlAttributes.RemoveYieldsAttribute(node);
                 CivlAttributes.RemoveMoverAttribute(node);
                 CivlAttributes.RemoveLayerAttribute(node);
+                CivlAttributes.RemoveRefinesAttribute(node);
                 return base.VisitProcedure(node);
             }
 
@@ -1721,6 +1722,7 @@ namespace Microsoft.Boogie
                 CivlAttributes.RemoveYieldsAttribute(node);
                 CivlAttributes.RemoveMoverAttribute(node);
                 CivlAttributes.RemoveLayerAttribute(node);
+                CivlAttributes.RemoveRefinesAttribute(node);
                 return base.VisitImplementation(node);
             }
 
