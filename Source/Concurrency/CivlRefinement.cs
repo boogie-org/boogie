@@ -11,9 +11,15 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
+    // YieldingProcDuplicator is roughly divided into two phases (see regions below):
+    // 1. The visitor pass generates the basic per-layer version (procedure and implementation)
+    //    of every yielding procedure.
+    // 2. VisitImplementation finally calls TransformImpl which modifies the generated implementation
+    //    by injecting the refinement and noninterference checks.
     public class YieldingProcDuplicator : Duplicator
     {
         CivlTypeChecker civlTypeChecker;
+        LinearTypeChecker linearTypeChecker;
         public int layerNum;
         private Dictionary<Procedure, Procedure> procToSkipProcDummy;
 
@@ -22,23 +28,38 @@ namespace Microsoft.Boogie
         public Dictionary<Implementation, Implementation> implMap; /* Duplicate -> Original */
         public HashSet<Procedure> yieldingProcs;
 
-        public CivlRefinement implTransformer;
-
         private YieldingProc enclosingYieldingProc;
 
-        public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, int layerNum, Dictionary<Procedure, Procedure> procToSkipProcDummy)
+        Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
+        List<Procedure> yieldCheckerProcs;
+        List<Implementation> yieldCheckerImpls;
+        Procedure yieldProc;
+
+        Variable pc;
+        Variable ok;
+        Expr alpha;
+        Expr beta;
+        HashSet<Variable> frame;
+
+        public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, LinearTypeChecker linearTypeChecker, int layerNum, Dictionary<Procedure, Procedure> procToSkipProcDummy)
         {
             this.civlTypeChecker = civlTypeChecker;
+            this.linearTypeChecker = linearTypeChecker;
             this.layerNum = layerNum;
             this.procToSkipProcDummy = procToSkipProcDummy;
 
-            this.enclosingYieldingProc = null;
             this.procMap = new Dictionary<Procedure, Procedure>();
             this.absyMap = new Dictionary<Absy, Absy>();
             this.implMap = new Dictionary<Implementation, Implementation>();
             this.yieldingProcs = new HashSet<Procedure>();
+
+            asyncAndParallelCallDesugarings = new Dictionary<string, Procedure>();
+            yieldCheckerProcs = new List<Procedure>();
+            yieldCheckerImpls = new List<Implementation>();
+            yieldProc = null;
         }
 
+        #region Visitor implementation
         public override Procedure VisitProcedure(Procedure node)
         {
             if (!civlTypeChecker.procToYieldingProc.ContainsKey(node))
@@ -140,7 +161,7 @@ namespace Microsoft.Boogie
 
             if (!(enclosingYieldingProc is MoverProc && enclosingYieldingProc.upperLayer == layerNum))
             {
-                implTransformer.TransformImpl(newImpl);
+                TransformImpl(newImpl);
             }
 
             return newImpl;
@@ -289,42 +310,9 @@ namespace Microsoft.Boogie
                 newCmds.Add(parCallCmd);
             }
         }
-    }
+        #endregion
 
-    public class CivlRefinement
-    {
-        LinearTypeChecker linearTypeChecker;
-        CivlTypeChecker civlTypeChecker;
-        Dictionary<Absy, Absy> absyMap;
-        Dictionary<Implementation, Implementation> implMap;
-        HashSet<Procedure> yieldingProcs;
-        int layerNum;
-        Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
-        List<Procedure> yieldCheckerProcs;
-        List<Implementation> yieldCheckerImpls;
-        Procedure yieldProc;
-
-        Variable pc;
-        Variable ok;
-        Expr alpha;
-        Expr beta;
-        HashSet<Variable> frame;
-
-        private CivlRefinement(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, YieldingProcDuplicator duplicator)
-        {
-            this.linearTypeChecker = linearTypeChecker;
-            this.civlTypeChecker = civlTypeChecker;
-            this.absyMap = duplicator.absyMap;
-            this.layerNum = duplicator.layerNum;
-            this.implMap = duplicator.implMap;
-            this.yieldingProcs = duplicator.yieldingProcs;
-
-            asyncAndParallelCallDesugarings = new Dictionary<string, Procedure>();
-            yieldCheckerProcs = new List<Procedure>();
-            yieldCheckerImpls = new List<Implementation>();
-            yieldProc = null;
-        }
-
+        #region Yielding proc transformation
         private Formal OgOldGlobalFormal(Variable v)
         { return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", v.Name), v.TypedIdent.Type), true); }
 
@@ -1173,7 +1161,7 @@ namespace Microsoft.Boogie
             decls.Add(yieldImpl);
         }
 
-        private List<Declaration> Collect()
+        public List<Declaration> Collect()
         {
             List<Declaration> decls = new List<Declaration>();
             foreach (Procedure proc in yieldCheckerProcs)
@@ -1191,7 +1179,11 @@ namespace Microsoft.Boogie
             AddYieldProcAndImpl(decls);
             return decls;
         }
+        #endregion
+    }
 
+    public class CivlRefinement
+    {
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
             Program program = linearTypeChecker.program;
@@ -1222,14 +1214,7 @@ namespace Microsoft.Boogie
             {
                 if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum || layerNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
 
-                // TODO: The clarity of this could be improved. Right now there is a circular dependence between
-                // YieldingProcDuplicator and CivlRefinement.
-                // YieldingProcDuplicator generates the basic per-layer version (procedure and implementation)
-                // of every action procedure. In VisitImplementation, CivlRefinement is called to modify
-                // the generated implementation by injecting the refinement and noninterference checks.
-                YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum, procToSkipProcDummy);
-                CivlRefinement implTransformer = new CivlRefinement(linearTypeChecker, civlTypeChecker, duplicator);
-                duplicator.implTransformer = implTransformer;
+                YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, linearTypeChecker, layerNum, procToSkipProcDummy);
 
                 // We can not simply call VisitProgram, because it does some resolving of calls
                 // that is not necessary here (and actually fails).
@@ -1244,7 +1229,7 @@ namespace Microsoft.Boogie
 
                 decls.AddRange(duplicator.procMap.Values);
                 decls.AddRange(duplicator.implMap.Keys);
-                decls.AddRange(implTransformer.Collect());
+                decls.AddRange(duplicator.Collect());
             }
         }
     }
