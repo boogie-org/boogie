@@ -192,6 +192,8 @@ namespace Microsoft.Boogie
         public override Cmd VisitCallCmd(CallCmd call)
         {
             CallCmd newCall = (CallCmd)base.VisitCallCmd(call);
+            newCall.Proc = VisitProcedure(newCall.Proc);
+
             if (newCall.IsAsync)
             {
                 Debug.Assert(civlTypeChecker.procToYieldingProc.ContainsKey(call.Proc));
@@ -201,8 +203,14 @@ namespace Microsoft.Boogie
                 {
                     newCall.IsAsync = false;
                 }
+                if (enclosingYieldingProc.upperLayer == layerNum && yieldingProc.upperLayer > layerNum)
+                {
+                    ActionProc actionProc = (ActionProc)yieldingProc;
+                    newCall.Proc = actionProc.addPendingAsyncProc;
+                    newCall.IsAsync = false;
+                }
             }
-            newCall.Proc = VisitProcedure(newCall.Proc);
+
             newCall.callee = newCall.Proc.Name;
             absyMap[newCall] = call;
             return newCall;

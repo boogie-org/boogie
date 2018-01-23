@@ -553,12 +553,12 @@ namespace Microsoft.Boogie
 
             CheckAtomicActionAcyclicity();
 
-            sharedVariables = program.GlobalVariables.ToList<Variable>();
-            sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
-
             AddPendingAsyncMachinery();
             GenerateAtomicActionCopies();
             TypeCheckYieldingProcedureImpls();
+
+            sharedVariables = program.GlobalVariables.ToList<Variable>();
+            sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
 
             new AttributeEraser().VisitProgram(program);
         }
@@ -1004,7 +1004,7 @@ namespace Microsoft.Boogie
             CtorType pendingAsyncType = null;
 
             // We do not want to disturb non-CIVL programs
-            if (procToYieldingProc.Count != 0)
+            if (procToAtomicAction.Count != 0)
             {
                 // datatype
                 pendingAsyncType = new CtorType(Token.NoToken, new TypeCtorDecl(Token.NoToken, "PendingAsync", 0, new QKeyValue(Token.NoToken, "datatype", new List<object>(), null)), new List<Type>());
