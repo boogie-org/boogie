@@ -854,12 +854,7 @@ namespace Microsoft.Boogie
                 ins.AddRange(callCmd.Ins);
                 outs.AddRange(callCmd.Outs);
             }
-            Procedure proc;
-            if (asyncAndParallelCallDesugarings.ContainsKey(procName))
-            {
-                proc = asyncAndParallelCallDesugarings[procName];
-            }
-            else
+            if (!asyncAndParallelCallDesugarings.ContainsKey(procName))
             {
                 List<Variable> inParams = new List<Variable>();
                 List<Variable> outParams = new List<Variable>();
@@ -893,9 +888,9 @@ namespace Microsoft.Boogie
                     }
                     count++;
                 }
-                proc = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, civlTypeChecker.sharedVariableIdentifiers, ensuresSeq);
-                asyncAndParallelCallDesugarings[procName] = proc;
+                asyncAndParallelCallDesugarings[procName] = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, civlTypeChecker.sharedVariableIdentifiers, ensuresSeq);
             }
+            Procedure proc = asyncAndParallelCallDesugarings[procName];
             CallCmd dummyCallCmd = new CallCmd(parCallCmd.tok, proc.Name, ins, outs, parCallCmd.Attributes);
             dummyCallCmd.Proc = proc;
             newCmds.Add(dummyCallCmd);
