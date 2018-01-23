@@ -589,9 +589,8 @@ namespace Microsoft.Boogie
             {
                 YieldCmd yieldCmd = null;
                 List<Cmd> newCmds = new List<Cmd>();
-                for (int i = 0; i < b.Cmds.Count; i++)
+                foreach (Cmd cmd in b.Cmds)
                 {
-                    Cmd cmd = b.Cmds[i];
                     if (cmd is YieldCmd)
                     {
                         yieldCmd = (YieldCmd)cmd;
