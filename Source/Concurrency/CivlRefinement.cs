@@ -125,8 +125,6 @@ namespace Microsoft.Boogie
             return ensures;
         }
 
-        private Variable dummyLocalVar; // TODO: document purpose of dummy var
-
         public override Implementation VisitImplementation(Implementation impl)
         {
             if (!civlTypeChecker.procToYieldingProc.ContainsKey(impl.Proc))
@@ -136,9 +134,7 @@ namespace Microsoft.Boogie
             if (layerNum > enclosingYieldingProc.upperLayer)
                 return impl;
 
-            dummyLocalVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_dummy", Type.Bool));
             Implementation newImpl = base.VisitImplementation(impl);
-            newImpl.LocVars.Add(dummyLocalVar);
             newImpl.Name = newImpl.Proc.Name;
             implMap[newImpl] = impl;
 
@@ -233,7 +229,6 @@ namespace Microsoft.Boogie
             AtomicActionCopy atomicActionCopy = calledActionProc.refinedAction.layerToActionCopy[layerNum];
             if (atomicActionCopy.gate.Count == 0) return;
 
-            newCmds.Add(new HavocCmd(Token.NoToken, new List<IdentifierExpr> { Expr.Ident(dummyLocalVar) }));
             Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
             for (int i = 0; i < calledActionProc.proc.InParams.Count; i++)
             {
@@ -241,17 +236,18 @@ namespace Microsoft.Boogie
                 map[atomicActionCopy.impl.InParams[i]] = callCmd.Ins[i];
             }
             Substitution subst = Substituter.SubstitutionFromHashtable(map);
+
+            // Important: Do not remove CommentCmd!
+            // It separates the injected gate from yield assertions in CollectAndDesugarYields.
+            newCmds.Add(new CommentCmd("<<< injected gate"));
             foreach (AssertCmd assertCmd in atomicActionCopy.gate)
             {
-                PredicateCmd injectedGate;
                 if (layerNum == enclosingYieldingProc.upperLayer)
-                    injectedGate = (AssertCmd)Substituter.Apply(subst, assertCmd);
+                    newCmds.Add((AssertCmd)Substituter.Apply(subst, assertCmd));
                 else
-                    injectedGate = new AssumeCmd(assertCmd.tok, Substituter.Apply(subst, assertCmd.Expr));
-                //injectedGate.Attributes = new QKeyValue(Token.NoToken, "gate", new List<object>(), null);
-                newCmds.Add(new CommentCmd("injected gate"));
-                newCmds.Add(injectedGate);
+                    newCmds.Add(new AssumeCmd(assertCmd.tok, Substituter.Apply(subst, assertCmd.Expr)));
             }
+            newCmds.Add(new CommentCmd("injected gate >>>"));
         }
 
         private void ProcessCallCmd(CallCmd originalCallCmd, CallCmd callCmd, List<Cmd> newCmds)
