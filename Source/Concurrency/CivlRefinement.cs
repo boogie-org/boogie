@@ -372,23 +372,7 @@ namespace Microsoft.Boogie
                 !civlTypeChecker.GlobalVariableLayerRange(v).Contains(layerNum) ||
                 layerNum < civlTypeChecker.LocalVariableIntroLayer(v)
             );
-            
-            //foreach (var g in civlTypeChecker.globalVarToLayerRange.Keys)
-            //{
-            //    SharedVariableInfo info = civlTypeChecker.globalVarToLayerRange[g];
-            //    if (!(info.introLayerNum <= layerNum && layerNum <= info.hideLayerNum))
-            //    {
-            //        availableVars.Remove(g);
-            //    }
-            //}
-            //foreach (var v in civlTypeChecker.localVarToIntroLayer.Keys)
-            //{
-            //    LocalVariableInfo info = civlTypeChecker.localVarToIntroLayer[v];
-            //    if (layerNum < info.layer)
-            //    {
-            //        availableVars.Remove(v);
-            //    }
-            //}
+
             return availableVars;
         }
 
