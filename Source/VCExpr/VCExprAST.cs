@@ -1712,7 +1712,27 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(cce.NonNullElements(typeArgs));
       //Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
-      return Type.GetFloatType(Significand, Exponent);
+      switch (op)
+      {
+        case ("+"):
+        case ("-"):
+        case ("*"):
+        case ("/"):
+        case ("rem"):
+          return Type.GetFloatType(Significand, Exponent);
+        case ("min"):
+        case ("max"):
+        case ("<="):
+        case ("<"):
+        case (">="):
+        case (">"):
+        case ("=="):
+        case ("!="):
+          return Type.Bool;
+        default:
+          Contract.Assert(false);
+          throw new cce.UnreachableException();
+      }
     }
 
     [Pure]
