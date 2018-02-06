@@ -1718,10 +1718,7 @@ namespace Microsoft.Boogie.VCExprAST {
         case ("-"):
         case ("*"):
         case ("/"):
-        case ("rem"):
           return Type.GetFloatType(Significand, Exponent);
-        case ("min"):
-        case ("max"):
         case ("<="):
         case ("<"):
         case (">="):
@@ -1767,12 +1764,6 @@ namespace Microsoft.Boogie.VCExprAST {
         return visitor.VisitFloatMulOp(expr, arg);
       case ("/"):
         return visitor.VisitFloatDivOp(expr, arg);
-      case ("rem"):
-        return visitor.VisitFloatRemOp(expr, arg);
-      case ("min"):
-        return visitor.VisitFloatMinOp(expr, arg);
-      case ("max"):
-        return visitor.VisitFloatMaxOp(expr, arg);
       case ("<="):
         return visitor.VisitFloatLeqOp(expr, arg);
       case ("<"):

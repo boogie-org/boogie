@@ -661,24 +661,6 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      public bool VisitFloatRemOp(VCExprNAry node, LineariserOptions options)
-      {
-        WriteApplication("fp.rem RNE", node, options);
-        return true;
-      }
-
-      public bool VisitFloatMinOp(VCExprNAry node, LineariserOptions options)
-      {
-        WriteApplication("fp.min", node, options);
-        return true;
-      }
-
-      public bool VisitFloatMaxOp(VCExprNAry node, LineariserOptions options)
-      {
-        WriteApplication("fp.max", node, options);
-        return true;
-      }
-
       public bool VisitFloatLeqOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("fp.leq", node, options);

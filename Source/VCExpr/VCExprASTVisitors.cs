@@ -72,9 +72,6 @@ namespace Microsoft.Boogie.VCExprAST {
     Result VisitFloatSubOp(VCExprNAry node, Arg arg);
     Result VisitFloatMulOp(VCExprNAry node, Arg arg);
     Result VisitFloatDivOp(VCExprNAry node, Arg arg);
-    Result VisitFloatRemOp(VCExprNAry node, Arg arg);
-    Result VisitFloatMinOp(VCExprNAry node, Arg arg);
-    Result VisitFloatMaxOp(VCExprNAry node, Arg arg);
     Result VisitFloatLeqOp(VCExprNAry node, Arg arg);
     Result VisitFloatLtOp(VCExprNAry node, Arg arg);
     Result VisitFloatGeqOp(VCExprNAry node, Arg arg);
@@ -176,24 +173,6 @@ namespace Microsoft.Boogie.VCExprAST {
     }
 
     public Result VisitFloatDivOp(VCExprNAry node, Arg arg)
-    {
-      Contract.Requires(node != null);
-      throw new NotImplementedException();
-    }
-
-    public Result VisitFloatRemOp(VCExprNAry node, Arg arg)
-    {
-      Contract.Requires(node != null);
-      throw new NotImplementedException();
-    }
-
-    public Result VisitFloatMinOp(VCExprNAry node, Arg arg)
-    {
-      Contract.Requires(node != null);
-      throw new NotImplementedException();
-    }
-
-    public Result VisitFloatMaxOp(VCExprNAry node, Arg arg)
     {
       Contract.Requires(node != null);
       throw new NotImplementedException();
@@ -1549,21 +1528,6 @@ namespace Microsoft.Boogie.VCExprAST {
       return StandardResult(node, arg);
     }
     public virtual Result VisitFloatDivOp(VCExprNAry node, Arg arg)
-    {
-      //Contract.Requires(node != null);
-      return StandardResult(node, arg);
-    }
-    public virtual Result VisitFloatRemOp(VCExprNAry node, Arg arg)
-    {
-      //Contract.Requires(node != null);
-      return StandardResult(node, arg);
-    }
-    public virtual Result VisitFloatMinOp(VCExprNAry node, Arg arg)
-    {
-      //Contract.Requires(node != null);
-      return StandardResult(node, arg);
-    }
-    public virtual Result VisitFloatMaxOp(VCExprNAry node, Arg arg)
     {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
