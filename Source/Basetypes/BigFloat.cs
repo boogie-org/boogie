@@ -210,7 +210,7 @@ namespace Microsoft.Basetypes
     [Pure]
     public override string/*!*/ ToString() {
       Contract.Ensures(Contract.Result<string>() != null);
-      return value=="" ? String.Format("{0}x2^{1}", significand.ToString(), Exponent.ToString()) : value;
+      return value == "" ? String.Format("{0}{1}e{2}f{3}e{4}", isNeg ? "-" : "", significand.ToString(), exponent.ToString(), significandSize.ToString(), exponentSize.ToString()) : value;
     }
 
 
