@@ -326,13 +326,10 @@ namespace Microsoft.Boogie {
     public static readonly VCExprOp AddROp = new VCExprNAryOp(2, Type.Real);
     public static readonly VCExprOp SubIOp = new VCExprNAryOp(2, Type.Int);
     public static readonly VCExprOp SubROp = new VCExprNAryOp(2, Type.Real);
-   // public static readonly VCExprOp SubFOp = new VCExprNAryOp(2, Type.Float);
     public static readonly VCExprOp MulIOp = new VCExprNAryOp(2, Type.Int);
     public static readonly VCExprOp MulROp = new VCExprNAryOp(2, Type.Real);
-    //public static readonly VCExprOp MulFOp = new VCExprNAryOp(2, Type.Float);
     public static readonly VCExprOp DivIOp = new VCExprNAryOp(2, Type.Int);
     public static readonly VCExprOp DivROp = new VCExprNAryOp(2, Type.Real);
-    //public static readonly VCExprOp DivFOp = new VCExprNAryOp(2, Type.Float);
     public static readonly VCExprOp ModOp = new VCExprNAryOp(2, Type.Int);
     public static readonly VCExprOp PowOp = new VCExprNAryOp(2, Type.Real);
     public static readonly VCExprOp LtOp = new VCExprNAryOp(2, Type.Bool);
@@ -346,7 +343,6 @@ namespace Microsoft.Boogie {
     public static readonly VCExprOp IfThenElseOp = new VCExprIfThenElseOp();
     public static readonly VCExprOp ToIntOp = new VCExprNAryOp(1, Type.Int);
     public static readonly VCExprOp ToRealOp = new VCExprNAryOp(1, Type.Real);
-    //public static readonly VCExprOp ToFloatOp = new VCExprNAryOp(1, Type.Float);
 
     public static readonly VCExprOp TickleBoolOp = new VCExprCustomOp("tickleBool", 1, Type.Bool);
 
@@ -450,13 +446,10 @@ namespace Microsoft.Boogie {
       SingletonOpDict.Add(AddROp, SingletonOp.AddOp);
       SingletonOpDict.Add(SubIOp, SingletonOp.SubOp);
       SingletonOpDict.Add(SubROp, SingletonOp.SubOp);
-      //SingletonOpDict.Add(SubFOp, SingletonOp.SubOp);
       SingletonOpDict.Add(MulIOp, SingletonOp.MulOp);
       SingletonOpDict.Add(MulROp, SingletonOp.MulOp);
-      //SingletonOpDict.Add(MulFOp, SingletonOp.MulOp);
       SingletonOpDict.Add(DivIOp, SingletonOp.DivOp);
       SingletonOpDict.Add(DivROp, SingletonOp.RealDivOp);
-      //SingletonOpDict.Add(DivFOp, SingletonOp.FloatDivOp);
       SingletonOpDict.Add(ModOp, SingletonOp.ModOp);
       SingletonOpDict.Add(PowOp, SingletonOp.PowOp);
       SingletonOpDict.Add(LtOp, SingletonOp.LtOp);
@@ -467,7 +460,6 @@ namespace Microsoft.Boogie {
       SingletonOpDict.Add(Subtype3Op, SingletonOp.Subtype3Op);
       SingletonOpDict.Add(ToIntOp, SingletonOp.ToIntOp);
       SingletonOpDict.Add(ToRealOp, SingletonOp.ToRealOp);
-      //SingletonOpDict.Add(ToFloatOp, SingletonOp.ToFloatOp);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
