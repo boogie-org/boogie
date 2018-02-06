@@ -5,13 +5,18 @@ function {:builtin "(_ to_fp 8 24) RNE"} TO_FLOAT32_INT(int) returns (float24e8)
 function {:builtin "(_ to_fp 8 24) RNE"} TO_FLOAT32_REAL(real) returns (float24e8);
 
 procedure main() returns () {
-	var x : float24e8;
-	var y : float24e8;
-	var z : float24e8;
-	var r : float24e8;
-	x := TO_FLOAT32_REAL(1e7);
-	y := x + TO_FLOAT32_INT(1);
-	z := x - TO_FLOAT32_INT(1);
-	r := y - z;
-	assert r == TO_FLOAT32_INT(2);
+  var tick : float24e8;
+  var time : float24e8;
+  var i: int;
+  
+  tick := TO_FLOAT32_INT(1)/TO_FLOAT32_INT(10);
+  time := TO_FLOAT32_INT(0);
+  
+  i := 0;
+  while (i < 10)
+  {
+    time := time + tick;
+    i := i + 1;
+  }
+  assert time == TO_FLOAT32_INT(1);
 }

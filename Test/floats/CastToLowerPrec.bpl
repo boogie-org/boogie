@@ -7,10 +7,10 @@ function {:builtin "(_ to_fp 11 53) RNE"} TO_FLOAT64_INT(int) returns (float53e1
 function {:builtin "(_ to_fp 11 53) RNE"} TO_FLOAT64_REAL(real) returns (float53e11);
 
 procedure main() returns () {
-	var x : float53e11;
-	var y : float24e8;
-	
-	x := TO_FLOAT64_REAL(1e20)+TO_FLOAT64_INT(1);
-	y := TO_FLOAT32_FLOAT64(x);
-	assert x != TO_FLOAT64_FLOAT32(y);
+  var x : float53e11;
+  var y : float24e8;
+  
+  x := TO_FLOAT64_REAL(1e20)+TO_FLOAT64_INT(1);
+  y := TO_FLOAT32_FLOAT64(x);
+  assert x != TO_FLOAT64_FLOAT32(y);
 }

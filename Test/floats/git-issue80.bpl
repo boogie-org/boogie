@@ -1,4 +1,4 @@
-// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %boogie -noVerify "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type Ref;
