@@ -76,9 +76,9 @@ namespace Microsoft.Boogie
         public Dictionary<Variable, Expr> secondMap;
 
         public Dictionary<Variable, Function> triggerFuns;
+        public HashSet<Variable> gateUsedGlobalVars;
         public HashSet<Variable> actionUsedGlobalVars;
         public HashSet<Variable> modifiedGlobalVars;
-        public HashSet<Variable> gateUsedGlobalVars;
 
         public AtomicActionCopy(Procedure proc, Implementation impl)
         {
@@ -97,24 +97,9 @@ namespace Microsoft.Boogie
             SetupCopy(ref firstGate, ref firstAction, ref firstInParams, ref firstOutParams, ref firstMap, "first_");
             SetupCopy(ref secondGate, ref secondAction, ref secondInParams, ref secondOutParams, ref secondMap, "second_");
 
-            List<Variable> modifiedVars = new List<Variable>();
-            foreach (Cmd cmd in impl.Blocks.SelectMany(b => b.Cmds))
-            {
-                cmd.AddAssignedVariables(modifiedVars);
-            }
-            modifiedGlobalVars = new HashSet<Variable>(modifiedVars.Where(x => x is GlobalVariable));
-
-            {
-                VariableCollector collector = new VariableCollector();
-                gate.ForEach(assertCmd => collector.Visit(assertCmd));
-                gateUsedGlobalVars = new HashSet<Variable>(collector.usedVars.Where(x => x is GlobalVariable));
-            }
-
-            {
-                VariableCollector collector = new VariableCollector();
-                collector.Visit(this.impl);
-                this.actionUsedGlobalVars = new HashSet<Variable>(collector.usedVars.Where(x => x is GlobalVariable));
-            }
+            gateUsedGlobalVars   = new HashSet<Variable>(VariableCollector.Collect(gate).Where(x => x is GlobalVariable));
+            actionUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(impl).Where(x => x is GlobalVariable));
+            modifiedGlobalVars   = new HashSet<Variable>(AssignedVariables().Where(x => x is GlobalVariable));
         }
 
         private void SetupCopy(ref List<AssertCmd> gateCopy, ref CodeExpr actionCopy, ref List<Variable> inParamsCopy, ref List<Variable> outParamsCopy, ref Dictionary<Variable, Expr> varMap, string prefix)
@@ -188,6 +173,16 @@ namespace Microsoft.Boogie
                 blockMap[block].TransferCmd = new GotoCmd(block.TransferCmd.tok, otherGotoCmdLabelNames, otherGotoCmdLabelTargets);
             }
             return otherBlocks;
+        }
+
+        private List<Variable> AssignedVariables()
+        {
+            List<Variable> modifiedVars = new List<Variable>();
+            foreach (Cmd cmd in impl.Blocks.SelectMany(b => b.Cmds))
+            {
+                cmd.AddAssignedVariables(modifiedVars);
+            }
+            return modifiedVars;
         }
 
         public bool HasAssumeCmd { get { return impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd)); } }
