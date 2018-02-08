@@ -1547,7 +1547,7 @@ namespace Microsoft.Boogie
                     {
                         // Skip procedures have the effect of havocing their output variables.
                         // Currently, the snapshotting during refinement checking does not account for that,
-                        // so we forbit propagation to the callers output variables.
+                        // so we forbid propagation to the callers output variables.
                         HashSet<Variable> callerOutParams = new HashSet<Variable>(enclosingImpl.OutParams);
                         foreach (var x in call.Outs)
                         {
