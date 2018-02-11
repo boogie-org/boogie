@@ -2380,6 +2380,8 @@ namespace Microsoft.Boogie.SMTLib
         if (resp.Name == "_" && resp.ArgCount == 2 && resp.Arguments[0].Name.StartsWith("bv")) // bitvector
             return new BvConst(Microsoft.Basetypes.BigNum.FromString(resp.Arguments[0].Name.Substring("bv".Length)),
                 int.Parse(resp.Arguments[1].Name));
+        if ((resp.Name == "_" || resp.Name == "fp") && resp.ArgCount == 3) //float
+            return Microsoft.Basetypes.BigFloat.FromBVString(resp.ToString());
         var ary = GetArrayFromProverResponse(resp);
         if (ary != null)
             return ary;
