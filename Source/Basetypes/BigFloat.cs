@@ -157,57 +157,6 @@ namespace Microsoft.Basetypes
       return new BigFloat(isNeg, sig, exp, sigSize, expSize);
     }
 
-    [Pure]
-    public static BigFloat FromBVString(String s)
-    {
-      /*
-       * String must be either of the format (fp (_ bv* *) (_ bv* *) (_ bv* *))
-       * or of the special value format: (_ val * *)
-       * Where * indicates an integer value
-       * and val is one of the special values: NaN, +oo, -oo, zero, -zero
-       */
-
-      if (s.IndexOf('_') == 1)
-      {
-        s = s.Substring(0, s.Length - 1);
-        String[] args = s.Split(' ');
-        int sigSize = int.Parse(args[3]);
-        int expSize = int.Parse(args[2]);
-        if (sigSize <= 0 || expSize <= 0)
-          throw new FormatException("Significand and Exponent sizes must be greater than 0");
-        return new BigFloat(args[1], sigSize, expSize);
-      }
-      else
-      {
-        String[] args = s.Split('_');
-
-        int expIndex = args[2].IndexOf(' ', args[2].IndexOf(' ') + 1);
-        int sigIndex = args[3].IndexOf(' ', args[3].IndexOf(' ') + 1);
-
-        bool isNeg = args[1][3] == '1';
-        BIM exp = BIM.Parse(args[2].Substring(3, expIndex - 3));
-        int expSize = int.Parse(args[2].Substring(expIndex + 1, args[2].Length - expIndex - 4));
-        BIM sig = BIM.Parse(args[3].Substring(3, sigIndex - 3));
-        int sigSize = int.Parse(args[3].Substring(sigIndex + 1, args[3].Length - sigIndex - 3));
-        if (sigSize <= 0 || expSize <= 0)
-          throw new FormatException("Significand and Exponent sizes must be greater than 0");
-
-        if (sig < 0)
-          throw new FormatException("Significand must be greater than 0");
-
-        if (exp < 0)
-          throw new FormatException("Exponent must be greater than 0");
-
-        if (exp >= BIM.Pow(new BIM(2), expSize))
-          throw new FormatException("The given exponent " + exp + " cannot fit in the bit size " + expSize);
-
-        if (sig >= BIM.Pow(new BIM(2), sigSize))
-          throw new FormatException("The given significand " + sig + " cannot fit in the bit size " + (sigSize + 1));
-
-        return new BigFloat(isNeg, sig, exp, sigSize, expSize);
-      }
-    }
-
     public BigFloat(bool isNeg, BIM significand, BIM exponent, int significandSize, int exponentSize) {
       this.exponentSize = exponentSize;
       this.exponent = exponent;

@@ -18,6 +18,7 @@ using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.Clustering;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
+using System.Numerics;
 
 using RPFP = Microsoft.Boogie.RPFP;
 
@@ -2380,8 +2381,24 @@ namespace Microsoft.Boogie.SMTLib
         if (resp.Name == "_" && resp.ArgCount == 2 && resp.Arguments[0].Name.StartsWith("bv")) // bitvector
             return new BvConst(Microsoft.Basetypes.BigNum.FromString(resp.Arguments[0].Name.Substring("bv".Length)),
                 int.Parse(resp.Arguments[1].Name));
-        if ((resp.Name == "_" || resp.Name == "fp") && resp.ArgCount == 3) //float
-            return Microsoft.Basetypes.BigFloat.FromBVString(resp.ToString());
+        if (resp.Name == "fp" && resp.ArgCount == 3) 
+        {
+            bool isNeg = int.Parse(resp.Arguments[0].Arguments[1].Name) == 1;
+            var expExpr = resp.Arguments[1];
+            var sigExpr = resp.Arguments[2];
+            BigInteger exp = BigInteger.Parse(expExpr.Arguments[0].Name.Substring("bv".Length));
+            int expSize = int.Parse(expExpr.Arguments[1].ToString());
+            BigInteger sig = BigInteger.Parse(sigExpr.Arguments[0].Name.Substring("bv".Length));
+            int sigSize = int.Parse(sigExpr.Arguments[1].ToString());
+            return new Basetypes.BigFloat(isNeg, sig, exp, sigSize, expSize);
+        }
+        if (resp.Name == "_" && resp.ArgCount == 3)
+        {
+            String specialValue = resp.Arguments[0].ToString();
+            int expSize = int.Parse(resp.Arguments[1].ToString());
+            int sigSize = int.Parse(resp.Arguments[2].ToString());
+            return new Basetypes.BigFloat(specialValue, sigSize, expSize);
+        }
         var ary = GetArrayFromProverResponse(resp);
         if (ary != null)
             return ary;
