@@ -1,5 +1,5 @@
-float10.bpl(17,2): Error BP5001: This assertion might not hold.
+Havoc.bpl(17,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    float10.bpl(16,2): anon0
+    Havoc.bpl(16,3): anon0
 
 Boogie program verifier finished with 1 verified, 1 error
