@@ -1,0 +1,4 @@
+TypeMismatch2.bpl(14,2): Error: mismatched types in assignment command (cannot assign double to float)
+TypeMismatch2.bpl(15,9): Error: invalid argument types (double and float24e8) to binary operator *
+TypeMismatch2.bpl(16,9): Error: invalid argument types (double and float24e8) to binary operator +
+3 type checking errors detected in TypeMismatch2.bpl

@@ -1,0 +1,7 @@
+TypeMismatch1.bpl(7,2): Error: mismatched types in assignment command (cannot assign float11e5 to float24e8)
+TypeMismatch1.bpl(8,2): Error: mismatched types in assignment command (cannot assign float53e11 to float24e8)
+TypeMismatch1.bpl(9,2): Error: mismatched types in assignment command (cannot assign float113e15 to float24e8)
+TypeMismatch1.bpl(10,2): Error: mismatched types in assignment command (cannot assign float11e5 to float53e11)
+TypeMismatch1.bpl(11,2): Error: mismatched types in assignment command (cannot assign float113e15 to float53e11)
+TypeMismatch1.bpl(12,2): Error: mismatched types in assignment command (cannot assign float11e5 to float113e15)
+6 type checking errors detected in TypeMismatch1.bpl

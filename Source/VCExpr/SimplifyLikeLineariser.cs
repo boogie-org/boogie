@@ -384,9 +384,6 @@ namespace Microsoft.Boogie.VCExprAST {
     internal const string floatSubName = "floatSub";
     internal const string floatMulName = "floatMul";
     internal const string floatDivName = "floatDiv";
-    internal const string floatRemName = "floatRem";
-    internal const string floatMinName = "floatMin";
-    internal const string floatMaxName = "floatMax";
     internal const string floatLeqName = "floatLeq";
     internal const string floatLtName = "floatLt";
     internal const string floatGeqName = "floatGeq";
@@ -926,30 +923,6 @@ namespace Microsoft.Boogie.VCExprAST {
         //Contract.Requires(options != null);
         //Contract.Requires(node != null);
         WriteTermApplication(floatDivName, node, options);
-        return true;
-      }
-
-      public bool VisitFloatRemOp(VCExprNAry node, LineariserOptions options)
-      {
-        //Contract.Requires(options != null);
-        //Contract.Requires(node != null);
-        WriteTermApplication(floatRemName, node, options);
-        return true;
-      }
-
-      public bool VisitFloatMinOp(VCExprNAry node, LineariserOptions options)
-      {
-        //Contract.Requires(options != null);
-        //Contract.Requires(node != null);
-        WriteTermApplication(floatMinName, node, options);
-        return true;
-      }
-
-      public bool VisitFloatMaxOp(VCExprNAry node, LineariserOptions options)
-      {
-        //Contract.Requires(options != null);
-        //Contract.Requires(node != null);
-        WriteTermApplication(floatMaxName, node, options);
         return true;
       }
 

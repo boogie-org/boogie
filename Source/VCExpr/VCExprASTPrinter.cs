@@ -266,24 +266,6 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(node != null);
       return PrintNAry("fp.div", node, wr);
     }
-    public bool VisitFloatRemOp(VCExprNAry node, TextWriter wr)
-    {
-      //Contract.Requires(wr != null);
-      //Contract.Requires(node != null);
-      return PrintNAry("fp.rem", node, wr);
-    }
-    public bool VisitFloatMinOp(VCExprNAry node, TextWriter wr)
-    {
-      //Contract.Requires(wr != null);
-      //Contract.Requires(node != null);
-      return PrintNAry("fp.min", node, wr);
-    }
-    public bool VisitFloatMaxOp(VCExprNAry node, TextWriter wr)
-    {
-      //Contract.Requires(wr != null);
-      //Contract.Requires(node != null);
-      return PrintNAry("fp.max", node, wr);
-    }
     public bool VisitFloatLeqOp(VCExprNAry node, TextWriter wr)
     {
       //Contract.Requires(wr != null);

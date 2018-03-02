@@ -1,0 +1,6 @@
+IncorrectTypeConv.bpl(12,2): Error: mismatched types in assignment command (cannot assign float23e8 to float24e8)
+IncorrectTypeConv.bpl(13,2): Error: mismatched types in assignment command (cannot assign float23e8 to float24e8)
+IncorrectTypeConv.bpl(14,2): Error: mismatched types in assignment command (cannot assign float23e8 to float24e8)
+IncorrectTypeConv.bpl(15,2): Error: mismatched types in assignment command (cannot assign float23e8 to float24e8)
+IncorrectTypeConv.bpl(20,28): Error: invalid type for argument 0 in application of TO_FLOAT824_FLOAT823: float24e8 (expected: float23e8)
+5 type checking errors detected in IncorrectTypeConv.bpl

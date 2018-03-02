@@ -1,0 +1,7 @@
+RoundoffError.bpl(21,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    RoundoffError.bpl(12,8): anon0
+    RoundoffError.bpl(16,3): anon3_LoopHead
+    RoundoffError.bpl(16,3): anon3_LoopDone
+
+Boogie program verifier finished with 0 verified, 1 error
