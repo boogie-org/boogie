@@ -2383,13 +2383,15 @@ namespace Microsoft.Boogie.SMTLib
                 int.Parse(resp.Arguments[1].Name));
         if (resp.Name == "fp" && resp.ArgCount == 3) 
         {
-            bool isNeg = int.Parse(resp.Arguments[0].Arguments[1].Name) == 1;
+            Func<SExpr,BigInteger> getBvVal = e => BigInteger.Parse(e.Arguments[0].Name.Substring("bv".Length));
+            Func<SExpr,int> getBvSize = e => int.Parse(e.Arguments[1].ToString());
+            bool isNeg = getBvVal(resp.Arguments[0]).IsOne;
             var expExpr = resp.Arguments[1];
             var sigExpr = resp.Arguments[2];
-            BigInteger exp = BigInteger.Parse(expExpr.Arguments[0].Name.Substring("bv".Length));
-            int expSize = int.Parse(expExpr.Arguments[1].ToString());
-            BigInteger sig = BigInteger.Parse(sigExpr.Arguments[0].Name.Substring("bv".Length));
-            int sigSize = int.Parse(sigExpr.Arguments[1].ToString());
+            BigInteger exp = getBvVal(expExpr);
+            int expSize = getBvSize(expExpr);
+            BigInteger sig = getBvVal(sigExpr);
+            int sigSize = getBvSize(expExpr);
             return new Basetypes.BigFloat(isNeg, sig, exp, sigSize, expSize);
         }
         if (resp.Name == "_" && resp.ArgCount == 3)
