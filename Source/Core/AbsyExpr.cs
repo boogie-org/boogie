@@ -368,6 +368,11 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       return new LiteralExpr(Token.NoToken, value);
     }
+    public static LiteralExpr Literal(RoundingMode value)
+    {
+      Contract.Ensures(Contract.Result<LiteralExpr>() != null);
+      return new LiteralExpr(Token.NoToken, value);
+    }
 
     private static LiteralExpr/*!*/ true_ = Literal(true);
     public static LiteralExpr/*!*/ True {
@@ -549,7 +554,7 @@ namespace Microsoft.Boogie {
   }
 
   public class LiteralExpr : Expr {
-    public readonly object/*!*/ Val;  // false, true, a BigNum, a BigDec, a BigFloat, or a BvConst
+    public readonly object/*!*/ Val;  // false, true, a BigNum, a BigDec, a BigFloat, a BvConst, or a RoundingMode
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Val != null);
@@ -625,6 +630,21 @@ namespace Microsoft.Boogie {
         CachedHashCode = ComputeHashCode();
     }
 
+    /// <summary>
+    /// Creates a literal expression for the rounding mode value "v".
+    /// </summary>
+    /// <param name="tok"></param>
+    /// <param name="v"></param>
+    public LiteralExpr(IToken/*!*/ tok, RoundingMode v, bool immutable = false)
+      : base(tok, immutable)
+    {
+      Contract.Requires(tok != null);
+      Val = v;
+      Type = Type.RMode;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
+    }
+
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
     public override bool Equals(object obj) {
@@ -688,6 +708,8 @@ namespace Microsoft.Boogie {
           return Type.GetFloatType(temp.SignificandSize, temp.ExponentSize);
         } else if (Val is BvConst) {
           return Type.GetBvType(((BvConst)Val).Bits);
+        } else if (Val is RoundingMode) {
+          return Type.RMode;
         } else {
           {
             Contract.Assert(false);
@@ -779,6 +801,23 @@ namespace Microsoft.Boogie {
       get {
         Contract.Assert(isBvConst);
         return (BvConst)cce.NonNull(Val);
+      }
+    }
+
+    public bool isRoundingMode
+    {
+      get
+      {
+        return Val is RoundingMode;
+      }
+    }
+
+    public RoundingMode asRoundingMode
+    {
+      get
+      {
+        Contract.Assert(isRoundingMode);
+        return (RoundingMode)cce.NonNull(Val);
       }
     }
 

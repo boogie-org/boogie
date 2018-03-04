@@ -62,6 +62,13 @@ namespace Microsoft.Boogie {
       return new VCExprFloatLit(x);
     }
 
+    public VCExpr/*!*/ RMode(RoundingMode x)
+    {
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+      return new VCExprRModeLit(x);
+    }
+
     public VCExpr/*!*/ Function(VCExprOp/*!*/ op,
                             List<VCExpr/*!*/>/*!*/ arguments,
                             List<Type/*!*/>/*!*/ typeArguments) {
@@ -897,6 +904,31 @@ namespace Microsoft.Boogie.VCExprAST {
         return true;
       if (that is VCExprFloatLit)
         return Val == ((VCExprFloatLit)that).Val;
+      return false;
+    }
+    [Pure]
+    public override int GetHashCode()
+    {
+      return Val.GetHashCode() * 72321;
+    }
+  }
+
+  public class VCExprRModeLit : VCExprLiteral
+  {
+    public readonly RoundingMode Val;
+    internal VCExprRModeLit(RoundingMode val)
+      : base(Type.RMode)
+    {
+      this.Val = val;
+    }
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object that)
+    {
+      if (Object.ReferenceEquals(this, that))
+        return true;
+      if (that is VCExprRModeLit)
+        return Val == ((VCExprRModeLit)that).Val;
       return false;
     }
     [Pure]

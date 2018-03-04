@@ -52,12 +52,14 @@ namespace Microsoft.Boogie.SMTLib
       "real_pow", "UOrdering2", "UOrdering3", 
       // Floating point (final draft SMTLIB-v2.5)
       "NaN",
-      "roundNearestTiesToEven", "roundNearestTiesToAway", "roundTowardPositive", "roundTowardNegative", "roundTowardZero", 
-      "RNE", "RNA", "RTP", "RTN", "RTZ",
       "fp.abs", "fp.neg", "fp.add", "fp.sub", "fp.mul", "fp.div", "fp.fma", "fp.sqrt", "fp.rem", "fp.roundToIntegral",
       "fp.min", "fp.max", "fp.leq", "fp.lt", "fp.geq", "fp.gt", "fp.eq",
       "fp.isNormal", "fp.isSubnormal", "fp.isZero", "fp.isInfinite", "fp.isNaN", "fp.isNegative", "fp.isPositive",
       "fp", "fp.to_ubv", "fp.to_sbv", "to_fp",
+      // Rounding mode
+      "rmode",
+      "roundNearestTiesToEven", "roundNearestTiesToAway", "roundTowardPositive", "roundTowardNegative", "roundTowardZero",
+      "RNE", "RNA", "RTP", "RTN", "RTZ",
     };
 
     static HashSet<string> reservedSmtWords;
