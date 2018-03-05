@@ -43,12 +43,8 @@ namespace Microsoft.Basetypes
     [Reads(ReadsAttribute.Reads.Nothing)]
     public override bool Equals(object obj)
     {
-      if (obj == null)
-        return false;
-      if (!(obj is RoundingMode))
-        return false;
-
-      return (this == (RoundingMode)obj);
+      RoundingMode rm = obj as RoundingMode;
+      return rm != null && this == rm;
     }
 
     [Pure]
