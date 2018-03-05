@@ -1,34 +1,31 @@
 // RUN: %boogie -proverWarnings:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-function {:builtin "fp.add"} ADD(rmode, float53e11, float53e11) returns (float53e11);
-function {:builtin "fp.sub"} SUB(rmode, float53e11, float53e11) returns (float53e11);
+function {:builtin "fp.add"} ADD(rmode, float24e8, float24e8) returns (float24e8);
+function {:builtin "fp.sub"} SUB(rmode, float24e8, float24e8) returns (float24e8);
+function {:builtin "fp.mul"} MUL(rmode, float24e8, float24e8) returns (float24e8);
+function {:builtin "fp.div"} DIV(rmode, float24e8, float24e8) returns (float24e8);
 
-procedure foo(a : float53e11, b : float53e11)
+procedure foo(a : float24e8, b : float24e8)
+requires b != 0e0f24e8;
 {
-  var c : float53e11;
-  var d : float53e11;
-  var e : float53e11;
-  var f : float53e11;
-  var g : float53e11;
+  var c : float24e8;
+  var d : float24e8;
 
-  c := ADD(RTZ, a, b);
+  c := a + b;
   d := ADD(RNE, a, b);
-  e := ADD(RNA, a, b);
-  f := ADD(RTP, a, b);
-  g := ADD(RTN, a, b);
   assert (c == d);
-  assert (c == e);
-  assert (c == f);
-  assert (c == g);
 
-  c := SUB(RTZ, a, b);
+  c := a - b;
   d := SUB(RNE, a, b);
-  e := SUB(RNA, a, b);
-  f := SUB(RTP, a, b);
-  g := SUB(RTN, a, b);
   assert (c == d);
-  assert (c == e);
-  assert (c == f);
-  assert (c == g);
+
+  c := a * b;
+  d := MUL(RNE, a, b);
+  assert (c == d);
+
+  c := a / b;
+  d := DIV(RNE, a, b);
+  assert (c == d);
+
 }
