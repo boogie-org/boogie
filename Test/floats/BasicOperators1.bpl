@@ -8,7 +8,7 @@ procedure main() returns () {
   z := x + y;
   z := x - y;
   z := x * y;
-  assume(y != 0e0f24e8);
+  assume(!FEQ(y,0e0f24e8));
   z := x / y;
   
   z := (0e127f24e8 + 0e127f24e8 + 0e0f24e8);
@@ -25,3 +25,5 @@ procedure main() returns () {
   
   return;
 }
+
+function {:builtin "fp.eq"} FEQ(float24e8,float24e8) returns (bool);
