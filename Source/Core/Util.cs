@@ -122,6 +122,7 @@ namespace Microsoft.Boogie {
                 "requires",
                 "return",
                 "returns",
+                "rmode",
                 "true",
                 "type",
                 "unique",

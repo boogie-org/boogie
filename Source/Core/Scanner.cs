@@ -211,8 +211,8 @@ public class UTF8Buffer: Buffer {
 public class Scanner {
 	const char EOL = '\n';
 	const int eofSym = 0; /* pdt */
-	const int maxT = 97;
-	const int noSym = 97;
+	const int maxT = 107;
+	const int noSym = 107;
 
 
 	[ContractInvariantMethod]
@@ -541,11 +541,21 @@ public class Scanner {
 			case "mod": t.kind = 78; break;
 			case "false": t.kind = 83; break;
 			case "true": t.kind = 84; break;
-			case "old": t.kind = 85; break;
-			case "then": t.kind = 88; break;
-			case "forall": t.kind = 89; break;
-			case "exists": t.kind = 91; break;
-			case "lambda": t.kind = 93; break;
+			case "roundNearestTiesToEven": t.kind = 85; break;
+			case "RNE": t.kind = 86; break;
+			case "roundNearestTiesToAway": t.kind = 87; break;
+			case "RNA": t.kind = 88; break;
+			case "roundTowardPositive": t.kind = 89; break;
+			case "RTP": t.kind = 90; break;
+			case "roundTowardNegative": t.kind = 91; break;
+			case "RTN": t.kind = 92; break;
+			case "roundTowardZero": t.kind = 93; break;
+			case "RTZ": t.kind = 94; break;
+			case "old": t.kind = 95; break;
+			case "then": t.kind = 98; break;
+			case "forall": t.kind = 99; break;
+			case "exists": t.kind = 101; break;
+			case "lambda": t.kind = 103; break;
 			default: break;
 		}
 	}
@@ -829,19 +839,19 @@ public class Scanner {
 			case 79:
 				{t.kind = 82; break;}
 			case 80:
-				{t.kind = 86; break;}
-			case 81:
-				{t.kind = 87; break;}
-			case 82:
-				{t.kind = 90; break;}
-			case 83:
-				{t.kind = 92; break;}
-			case 84:
-				{t.kind = 94; break;}
-			case 85:
-				{t.kind = 95; break;}
-			case 86:
 				{t.kind = 96; break;}
+			case 81:
+				{t.kind = 97; break;}
+			case 82:
+				{t.kind = 100; break;}
+			case 83:
+				{t.kind = 102; break;}
+			case 84:
+				{t.kind = 104; break;}
+			case 85:
+				{t.kind = 105; break;}
+			case 86:
+				{t.kind = 106; break;}
 			case 87:
 				recEnd = pos; recKind = 76;
 				if (ch >= '0' && ch <= '9') {AddCh(); goto case 13;}

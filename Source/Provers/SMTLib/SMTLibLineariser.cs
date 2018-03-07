@@ -121,7 +121,7 @@ namespace Microsoft.Boogie.SMTLib
           }
           sb.Append(']');
           TypeToStringHelper(m.Result, sb);
-        } else if (t.IsBool || t.IsInt || t.IsReal || t.IsFloat || t.IsBv) {
+        } else if (t.IsBool || t.IsInt || t.IsReal || t.IsFloat || t.IsBv || t.IsRMode) {
           sb.Append(TypeToString(t));
         } else {
           System.IO.StringWriter buffer = new System.IO.StringWriter();
@@ -147,8 +147,10 @@ namespace Microsoft.Boogie.SMTLib
         return "Real";
       else if (t.IsFloat)
         return "(_ FloatingPoint " + t.FloatExponent + " " + t.FloatSignificand + ")";
-      else if (t.IsBv) {
+      else if (t.IsBv)
         return "(_ BitVec " + t.BvBits + ")";
+      else if (t.IsRMode) {
+        return "RoundingMode";
       } else {
         StringBuilder sb = new StringBuilder();        
         TypeToStringHelper(t, sb);
@@ -210,6 +212,11 @@ namespace Microsoft.Boogie.SMTLib
       {
         BigFloat lit = ((VCExprFloatLit)node).Val;
         wr.Write("(" + lit.ToBVString() + ")");
+      }
+      else if (node is VCExprRModeLit)
+      {
+        RoundingMode lit = ((VCExprRModeLit)node).Val;
+        wr.Write(lit.ToString());
       }
       else {
         Contract.Assert(false);

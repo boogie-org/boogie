@@ -32,6 +32,10 @@ namespace CoreTests
 
             var literal5 = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigFloat.FromInt(0), /*immutable=*/true);
             Assert.AreEqual(literal5.ComputeHashCode(), literal5.GetHashCode());
+
+            var literal6 = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.RoundingMode.RNE, /*immutable=*/true);
+            Assert.AreEqual(literal6.ComputeHashCode(), literal6.GetHashCode());
+
         }
 
         [Test()]

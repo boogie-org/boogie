@@ -1,0 +1,13 @@
+InvalidOperators.bpl(13,9): Error: invalid argument types (rmode and rmode) to binary operator +
+InvalidOperators.bpl(14,9): Error: invalid argument types (rmode and rmode) to binary operator -
+InvalidOperators.bpl(15,9): Error: invalid argument types (rmode and rmode) to binary operator *
+InvalidOperators.bpl(16,9): Error: invalid argument types (rmode and rmode) to binary operator /
+InvalidOperators.bpl(18,8): Error: invalid argument types (rmode and rmode) to binary operator <=
+(0,-1): Error: invalid argument types (rmode and rmode) to binary operator <
+InvalidOperators.bpl(20,15): Error: invalid argument types (rmode and rmode) to binary operator >=
+(0,-1): Error: invalid argument types (rmode and rmode) to binary operator >
+InvalidOperators.bpl(24,8): Error: invalid argument types (rmode and rmode) to binary operator <
+(0,-1): Error: invalid argument types (rmode and rmode) to binary operator <=
+InvalidOperators.bpl(26,15): Error: invalid argument types (rmode and rmode) to binary operator >
+(0,-1): Error: invalid argument types (rmode and rmode) to binary operator >=
+12 type checking errors detected in InvalidOperators.bpl

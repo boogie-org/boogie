@@ -462,6 +462,7 @@ namespace Microsoft.Boogie.TypeErasure {
       GetBasicTypeRepr(Type.Int);
       GetBasicTypeRepr(Type.Real);
       GetBasicTypeRepr(Type.Bool);
+      GetBasicTypeRepr(Type.RMode);
     }
 
     // constructor to allow cloning
@@ -564,6 +565,8 @@ namespace Microsoft.Boogie.TypeErasure {
       GetTypeCasts(Type.Int);
       GetTypeCasts(Type.Real);
       GetTypeCasts(Type.Bool);
+      GetTypeCasts(Type.RMode);
+
     }
 
     // generate inverse axioms for casts (castToU(castFromU(x)) = x, under certain premisses)
@@ -668,7 +671,7 @@ namespace Microsoft.Boogie.TypeErasure {
     ////////////////////////////////////////////////////////////////////////////
 
     // the only types that we allow in "untyped" expressions are U,
-    // Type.Int, Type.Real, and Type.Bool
+    // Type.Int, Type.Real, Type.Bool, and Type.RMode
 
     public override Type TypeAfterErasure(Type type) {
       //Contract.Requires(type != null);
@@ -684,7 +687,7 @@ namespace Microsoft.Boogie.TypeErasure {
     [Pure]
     public override bool UnchangedType(Type type) {
       //Contract.Requires(type != null);
-      return type.IsInt || type.IsReal || type.IsBool || type.IsBv || type.IsFloat || (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays);
+      return type.IsInt || type.IsReal || type.IsBool || type.IsBv || type.IsFloat || type.IsRMode || (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays);
     }
 
     public VCExpr Cast(VCExpr expr, Type toType) {
@@ -1081,7 +1084,7 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Requires(bindings != null);
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      Contract.Assume(node.Type == Type.Bool || node.Type == Type.Int || node.Type == Type.Real);
+      Contract.Assume(node.Type == Type.Bool || node.Type == Type.Int || node.Type == Type.Real || node.Type == Type.RMode);
       return node;
     }
 

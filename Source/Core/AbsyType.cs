@@ -254,6 +254,11 @@ namespace Microsoft.Boogie {
         return false;
       }
     }
+    public virtual bool IsRMode {
+      get {
+        return false;
+      }
+    }
 
     public virtual bool IsVariable {
       get {
@@ -365,6 +370,7 @@ namespace Microsoft.Boogie {
     public static readonly Type/*!*/ Int = new BasicType(SimpleType.Int);
     public static readonly Type/*!*/ Real = new BasicType(SimpleType.Real);
     public static readonly Type/*!*/ Bool = new BasicType(SimpleType.Bool);
+    public static readonly Type/*!*/ RMode = new BasicType(SimpleType.RMode);
     private static BvType[] bvtypeCache;
 
     static public BvType GetBvType(int sz) {
@@ -909,6 +915,8 @@ namespace Microsoft.Boogie {
           return "real";
         case SimpleType.Bool:
           return "bool";
+        case SimpleType.RMode:
+          return "rmode";
       }
       Debug.Assert(false, "bad type " + T);
       {
@@ -1032,6 +1040,13 @@ namespace Microsoft.Boogie {
     public override bool IsBool {
       get {
         return this.T == SimpleType.Bool;
+      }
+    }
+    public override bool IsRMode
+    {
+      get
+      {
+        return this.T == SimpleType.RMode;
       }
     }
 
@@ -1481,7 +1496,8 @@ Contract.Requires(that != null);
     public override Type ResolveType(ResolutionContext rc) {
       //Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
-      // first case: the type name denotes a bitvector-type or float-type
+      // first case: the type name denotes a bitvector-type, float-type, or rmode-type
+
       if (Name.StartsWith("bv") && Name.Length > 2) {
         bool is_bv = true;
         for (int i = 2; i < Name.Length; ++i) {
@@ -1520,6 +1536,17 @@ Contract.Requires(that != null);
           }
           return new FloatType(tok, int.Parse(Name.Substring(5, mid-5)), int.Parse(Name.Substring(mid+1)));
         }
+      }
+
+      if (Name.Equals("rmode"))
+      {
+        if (Arguments.Count > 0)
+        {
+          rc.Error(this,
+                   "rounding mode type must not be applied to arguments: {0}",
+                   Name);
+        }
+        return Type.RMode;
       }
 
       // second case: the identifier is resolved to a type variable
@@ -2143,6 +2170,15 @@ Contract.Requires(that != null);
       get {
         Type p = ProxyFor;
         return p != null && p.IsBool;
+      }
+    }
+
+    public override bool IsRMode
+    {
+      get
+      {
+        Type p = ProxyFor;
+        return p != null && p.IsRMode;
       }
     }
 
@@ -3022,6 +3058,11 @@ Contract.Requires(that != null);
         return ExpandedType.IsBool;
       }
     }
+    public override bool IsRMode {
+      get {
+        return ExpandedType.IsRMode;
+      }
+    }
 
     public override bool IsVariable {
       get {
@@ -3791,7 +3832,8 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
   public enum SimpleType {
     Int,
     Real,
-    Bool
+    Bool,
+    RMode
   };
 
 
