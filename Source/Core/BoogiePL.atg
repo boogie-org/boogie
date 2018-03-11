@@ -149,7 +149,9 @@ TOKENS
 										| '0' 'N' 'a' 'N' digit {digit} 'e' digit {digit}
 										| '0' 'n' 'a' 'n' digit {digit} 'e' digit {digit}
 										| '0' '+' 'o' 'o' digit {digit} 'e' digit {digit}
-										| '0' '-' 'o' 'o' digit {digit} 'e' digit {digit} .
+										| '0' '-' 'o' 'o' digit {digit} 'e' digit {digit}
+										| '0' '+' 'z' 'e' 'r' 'o' digit {digit} 'e' digit {digit}
+										| '0' '-' 'z' 'e' 'r' 'o' digit {digit} 'e' digit {digit} .
 
 COMMENTS FROM "/*" TO "*/" NESTED
 COMMENTS FROM "//" TO lf

@@ -118,7 +118,7 @@ namespace Microsoft.Basetypes
     public static BigFloat FromString(String s) {
       /*
        * String must be either of the format *e*f*e*
-       * or of the special value formats: 0NaN*e* 0nan*e* 0+oo*e* 0-oo*e*
+       * or of the special value formats: 0NaN*e* 0nan*e* 0+oo*e* 0-oo*e* 0+zero*e* 0-zero*e*
        * Where * indicates an integer value (digit)
        */
       BIM sig, exp;
@@ -126,9 +126,19 @@ namespace Microsoft.Basetypes
       bool isNeg;
 
       if (s.IndexOf('f') == -1) {
-        String val = s.Substring(1, 3);
-        sigSize = int.Parse(s.Substring(4, s.IndexOf('e')-4));
-        expSize = int.Parse(s.Substring(s.IndexOf('e') + 1));
+        String val;
+        int expIndex = s.IndexOf('e');
+        if (s[2] == 'z') //+zero, -zero
+        {
+          val = s.Substring(1, 5);
+          expIndex = s.IndexOf('e', expIndex + 1);
+        }
+        else //NaN, nan, +oo, -oo
+        {
+          val = s.Substring(1, 3);
+        }
+        sigSize = int.Parse(s.Substring(val.Length + 1, expIndex - (val.Length + 1)));
+        expSize = int.Parse(s.Substring(expIndex + 1));
         if (sigSize <= 0 || expSize <= 0)
           throw new FormatException("Significand and Exponent sizes must be greater than 0");
         return new BigFloat(val, sigSize, expSize);
@@ -451,7 +461,7 @@ namespace Microsoft.Basetypes
       get {
         if (value == "")
           return false;
-        return (value.Equals("NaN") || value.Equals("+oo") || value.Equals("-oo") || value.Equals("zero") || value.Equals("-zero"));
+        return (value.Equals("NaN") || value.Equals("+oo") || value.Equals("-oo") || value.Equals("+zero") || value.Equals("-zero"));
       }
     }
 

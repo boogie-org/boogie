@@ -21,6 +21,12 @@ procedure foo() returns (r : float24e8) {
   assert DEQ(d,-0e2047f53e11);
   d := -200e2000f53e11;
 
+  d := 0+zero53e11;
+  assert d == 0e0f53e11;
+  d := 0-zero53e11;
+  assert d == -0e0f53e11;
+  assert DEQ(0+zero53e11, 0-zero53e11);
+
   return;
 }
 
