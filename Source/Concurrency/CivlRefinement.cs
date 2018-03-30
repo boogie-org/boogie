@@ -321,33 +321,42 @@ namespace Microsoft.Boogie
         #endregion
 
         #region Yielding proc transformation
-        private Formal OgOldGlobalFormal(Variable v)
-        { return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", v.Name), v.TypedIdent.Type), true); }
-
+        // Snapshot variables for global variables
         private LocalVariable OgOldGlobalLocal(Variable v)
         { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", v.Name), v.TypedIdent.Type)); }
 
-        private LocalVariable OgOldLocalLocal(Variable v)
-        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_local_old_{0}", v.Name), v.TypedIdent.Type)); }
+        // ... and parameters for passing them around
+        private Formal OgOldGlobalFormal(Variable v)
+        { return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", v.Name), v.TypedIdent.Type), true); }
 
+        // Snapshot variables for return variables
         private LocalVariable OgOldLocal(Variable v)
         { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_old_{0}", v.Name), v.TypedIdent.Type)); }
 
+        // Used to desugar "old" expressions
+        // TODO: Check if this is done correctly (or could be simplified).
+        private LocalVariable OgOldLocalLocal(Variable v)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_local_old_{0}", v.Name), v.TypedIdent.Type)); }
+
+        // PC and OK variables for checking refinement
         private LocalVariable OgPcLocal()
         { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_pc", Type.Bool)); }
-
-        private LocalVariable OgPcLabelLocal(string label)
-        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_pc_{0}", label), Type.Bool)); }
 
         private LocalVariable OgOkLocal()
         { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_ok", Type.Bool)); }
 
+        // Versions of PC and OK for desugaring loops
+        private LocalVariable OgPcLabelLocal(string label)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_pc_{0}", label), Type.Bool)); }
+
         private LocalVariable OgOkLabelLocal(string label)
         { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_ok_{0}", label), Type.Bool)); }
 
+        // Disambiguated parameters of parallel call (when multiple arms are combined into a single procedure)
         private Formal OgParCallDesugarFormal(Variable v, int count, bool incoming)
         { return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_{0}_{1}", count, v.Name), v.TypedIdent.Type), incoming); }
 
+        // Plain copy
         private LocalVariable CopyLocal(Variable v)
         { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)); }
 
