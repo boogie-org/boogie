@@ -11,229 +11,119 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
-    public class MyDuplicator : Duplicator
+    // YieldingProcDuplicator is roughly divided into two phases (see regions below):
+    // 1. The visitor pass generates the basic per-layer version (procedure and implementation)
+    //    of every yielding procedure.
+    // 2. VisitImplementation finally calls TransformImpl which modifies the generated implementation
+    //    by injecting the refinement and noninterference checks.
+    public class YieldingProcDuplicator : Duplicator
     {
         CivlTypeChecker civlTypeChecker;
+        LinearTypeChecker linearTypeChecker;
         public int layerNum;
-        Procedure enclosingProc;
-        Implementation enclosingImpl;
-        public Dictionary<Procedure, Procedure> procMap; /* Original -> Duplicate */
-        public Dictionary<Absy, Absy> absyMap; /* Duplicate -> Original */
+        private Dictionary<Procedure, Procedure> procToSkipProcDummy;
+
+        public Dictionary<Procedure, Procedure> procMap;           /* Original -> Duplicate */
+        public Dictionary<Absy, Absy> absyMap;                     /* Duplicate -> Original */
         public Dictionary<Implementation, Implementation> implMap; /* Duplicate -> Original */
         public HashSet<Procedure> yieldingProcs;
-        public List<Implementation> impls;
 
-        public MyDuplicator(CivlTypeChecker civlTypeChecker, int layerNum)
+        private YieldingProc enclosingYieldingProc;
+
+        Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
+        List<Procedure> yieldCheckerProcs;
+        List<Implementation> yieldCheckerImpls;
+        Procedure yieldProc;
+
+        Variable pc;
+        Variable ok;
+        Expr alpha;
+        Expr beta;
+        HashSet<Variable> frame;
+
+        public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, LinearTypeChecker linearTypeChecker, int layerNum, Dictionary<Procedure, Procedure> procToSkipProcDummy)
         {
             this.civlTypeChecker = civlTypeChecker;
+            this.linearTypeChecker = linearTypeChecker;
             this.layerNum = layerNum;
-            this.enclosingProc = null;
-            this.enclosingImpl = null;
+            this.procToSkipProcDummy = procToSkipProcDummy;
+
             this.procMap = new Dictionary<Procedure, Procedure>();
             this.absyMap = new Dictionary<Absy, Absy>();
             this.implMap = new Dictionary<Implementation, Implementation>();
             this.yieldingProcs = new HashSet<Procedure>();
-            this.impls = new List<Implementation>();
+
+            asyncAndParallelCallDesugarings = new Dictionary<string, Procedure>();
+            yieldCheckerProcs = new List<Procedure>();
+            yieldCheckerImpls = new List<Implementation>();
+            yieldProc = null;
         }
 
-        private void ProcessCallCmd(CallCmd originalCallCmd, CallCmd callCmd, List<Cmd> newCmds)
-        {
-            int enclosingProcLayerNum = civlTypeChecker.procToActionInfo[enclosingImpl.Proc].createdAtLayerNum;
-            Procedure originalProc = originalCallCmd.Proc;
-            
-            if (civlTypeChecker.procToAtomicProcedureInfo.ContainsKey(originalProc))
-            {
-                if (civlTypeChecker.CallExists(originalCallCmd, enclosingProcLayerNum, layerNum))
-                {
-                    newCmds.Add(callCmd);
-                }
-            }
-            else if (civlTypeChecker.procToActionInfo.ContainsKey(originalProc))
-            {
-                AtomicActionInfo atomicActionInfo = civlTypeChecker.procToActionInfo[originalProc] as AtomicActionInfo;
-                if (atomicActionInfo != null && atomicActionInfo.gate.Count > 0 && layerNum == enclosingProcLayerNum)
-                {
-                    newCmds.Add(new HavocCmd(Token.NoToken, new List<IdentifierExpr>(new IdentifierExpr[] { Expr.Ident(dummyLocalVar) })));
-                    Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-                    for (int i = 0; i < originalProc.InParams.Count; i++)
-                    {
-                        map[originalProc.InParams[i]] = callCmd.Ins[i];
-                    }
-                    Substitution subst = Substituter.SubstitutionFromHashtable(map);
-                    foreach (AssertCmd assertCmd in atomicActionInfo.gate)
-                    {
-                        newCmds.Add(Substituter.Apply(subst, assertCmd));
-                    }
-                }
-                newCmds.Add(callCmd);
-            }
-            else
-            {
-                Debug.Assert(false);
-            }
-        }
-
-        private void ProcessParCallCmd(ParCallCmd originalParCallCmd, ParCallCmd parCallCmd, List<Cmd> newCmds)
-        {
-            int maxCalleeLayerNum = 0;
-            foreach (CallCmd iter in originalParCallCmd.CallCmds)
-            {
-                int calleeLayerNum = civlTypeChecker.procToActionInfo[iter.Proc].createdAtLayerNum;
-                if (calleeLayerNum > maxCalleeLayerNum)
-                    maxCalleeLayerNum = calleeLayerNum;
-            }
-            if (layerNum > maxCalleeLayerNum)
-            {
-                for (int i = 0; i < parCallCmd.CallCmds.Count; i++) 
-                {
-                    ProcessCallCmd(originalParCallCmd.CallCmds[i], parCallCmd.CallCmds[i], newCmds);
-                    absyMap[parCallCmd.CallCmds[i]] = originalParCallCmd;
-                }
-            }
-            else
-            {
-                newCmds.Add(parCallCmd);
-            }
-        }
-
-        public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
-        {
-            List<Cmd> cmds = base.VisitCmdSeq(cmdSeq);
-            List<Cmd> newCmds = new List<Cmd>();
-            for (int i = 0; i < cmds.Count; i++)
-            {
-                Cmd originalCmd = cmdSeq[i];
-                Cmd cmd = cmds[i];
-
-                CallCmd originalCallCmd = originalCmd as CallCmd;
-                if (originalCallCmd != null)
-                {
-                    ProcessCallCmd(originalCallCmd, cmd as CallCmd, newCmds);
-                    continue;
-                }
-
-                ParCallCmd originalParCallCmd = originalCmd as ParCallCmd;
-                if (originalParCallCmd != null)
-                {
-                    ProcessParCallCmd(originalParCallCmd, cmd as ParCallCmd, newCmds);
-                    continue;
-                }
-             
-                newCmds.Add(cmd);
-            }
-            return newCmds;
-        }
-
-        public override YieldCmd VisitYieldCmd(YieldCmd node)
-        {
-            YieldCmd yieldCmd = base.VisitYieldCmd(node);
-            absyMap[yieldCmd] = node;
-            return yieldCmd;
-        }
-        
-        public override Block VisitBlock(Block node)
-        {
-            Block block = base.VisitBlock(node);
-            absyMap[block] = node;
-            return block;
-        }
-        
-        public override Cmd VisitCallCmd(CallCmd node)
-        {
-            CallCmd callCmd = (CallCmd) base.VisitCallCmd(node);
-            if (callCmd.IsAsync && civlTypeChecker.procToActionInfo.ContainsKey(node.Proc))
-            {
-                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[node.Proc];
-                Debug.Assert(actionInfo.IsLeftMover);
-                if (actionInfo.createdAtLayerNum < layerNum)
-                {
-                    callCmd.IsAsync = false;
-                }
-            }
-            callCmd.Proc = VisitProcedure(callCmd.Proc);
-            callCmd.callee = callCmd.Proc.Name;
-            absyMap[callCmd] = node;
-            return callCmd;
-        }
-
-        public override Cmd VisitParCallCmd(ParCallCmd node)
-        {
-            ParCallCmd parCallCmd = (ParCallCmd) base.VisitParCallCmd(node);
-            absyMap[parCallCmd] = node;
-            return parCallCmd;
-        }
-
+        #region Visitor implementation
         public override Procedure VisitProcedure(Procedure node)
         {
-            if (!civlTypeChecker.procToActionInfo.ContainsKey(node))
+            if (!civlTypeChecker.procToYieldingProc.ContainsKey(node))
                 return node;
             if (!procMap.ContainsKey(node))
             {
-                enclosingProc = node;
+                YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[node];
+
+                if (layerNum > yieldingProc.upperLayer)
+                {
+                    if (yieldingProc is ActionProc)
+                    {
+                        // yielding procedure already transformed to atomic action
+                        var action = ((ActionProc)yieldingProc).refinedAction;
+                        if (action.layerRange.Contains(layerNum))
+                            return action.layerToActionCopy[layerNum].proc;
+                        else
+                            return node;
+                    }
+                    else if (yieldingProc is SkipProc)
+                    {
+                        // (calls to) skip procedures do not completely disappear because of output variables
+                        return procToSkipProcDummy[yieldingProc.proc];
+                    }
+                    else if (yieldingProc is MoverProc)
+                    {
+                        // mover procedure does not exist on this layer any more
+                        return node;
+                    }
+                }
+
                 Procedure proc = (Procedure)node.Clone();
                 proc.Name = string.Format("{0}_{1}", node.Name, layerNum);
                 proc.InParams = this.VisitVariableSeq(node.InParams);
-                proc.Modifies = this.VisitIdentifierExprSeq(node.Modifies);
                 proc.OutParams = this.VisitVariableSeq(node.OutParams);
-
-                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[node];
-                if (actionInfo.createdAtLayerNum < layerNum)
+                proc.Requires = this.VisitRequiresSeq(node.Requires);
+                proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
+                if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum)
                 {
-                    proc.Requires = new List<Requires>();
-                    proc.Ensures = new List<Ensures>();
-                    Implementation impl;
-                    AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
-                    if (atomicActionInfo != null)
-                    {
-                        CodeExpr action = (CodeExpr)VisitCodeExpr(atomicActionInfo.action);
-                        List<Cmd> cmds = new List<Cmd>();
-                        foreach (AssertCmd assertCmd in atomicActionInfo.gate)
-                        {
-                            cmds.Add(new AssumeCmd(Token.NoToken, (Expr)Visit(assertCmd.Expr)));
-                        }
-                        Block newInitBlock = new Block(Token.NoToken, "_init", cmds,
-                            new GotoCmd(Token.NoToken, new List<string>(new string[] { action.Blocks[0].Label }),
-                                                       new List<Block>(new Block[] { action.Blocks[0] })));
-                        List<Block> newBlocks = new List<Block>();
-                        newBlocks.Add(newInitBlock);
-                        newBlocks.AddRange(action.Blocks);
-                        impl = new Implementation(Token.NoToken, proc.Name, node.TypeParameters, node.InParams, node.OutParams, action.LocVars, newBlocks);
-                    }
-                    else
-                    {
-                        Block newInitBlock = new Block(Token.NoToken, "_init", new List<Cmd>(), new ReturnCmd(Token.NoToken));
-                        List<Block> newBlocks = new List<Block>();
-                        newBlocks.Add(newInitBlock);
-                        impl = new Implementation(Token.NoToken, proc.Name, node.TypeParameters, node.InParams, node.OutParams, new List<Variable>(), newBlocks);
-                    }
-                    impl.Proc = proc;
-                    impl.Proc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-                    impl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-                    impls.Add(impl);
+                    proc.Modifies = ((MoverProc)yieldingProc).modifiedGlobalVars.Select(g => Expr.Ident(g)).ToList();
                 }
                 else
                 {
+                    proc.Modifies = civlTypeChecker.sharedVariableIdentifiers;
                     yieldingProcs.Add(proc);
-                    proc.Requires = this.VisitRequiresSeq(node.Requires);
-                    proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
                 }
+
                 procMap[node] = proc;
-                proc.Modifies = new List<IdentifierExpr>();
-                civlTypeChecker.SharedVariables.Iter(x => proc.Modifies.Add(Expr.Ident(x)));
             }
             return procMap[node];
         }
 
-        private Variable dummyLocalVar;
-        public override Implementation VisitImplementation(Implementation node)
+        public override List<Requires> VisitRequiresSeq(List<Requires> requiresSeq)
         {
-            enclosingImpl = node;
-            dummyLocalVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_dummy", Type.Bool));
-            Implementation impl = base.VisitImplementation(node);
-            implMap[impl] = node;
-            impl.LocVars.Add(dummyLocalVar);
-            impl.Name = impl.Proc.Name;
-            return impl;
+            requiresSeq = base.VisitRequiresSeq(requiresSeq);
+            requiresSeq.RemoveAll(req => req.Condition.Equals(Expr.True));
+            return requiresSeq;
+        }
+
+        public override List<Ensures> VisitEnsuresSeq(List<Ensures> ensuresSeq)
+        {
+            ensuresSeq = base.VisitEnsuresSeq(ensuresSeq);
+            ensuresSeq.RemoveAll(ens => ens.Condition.Equals(Expr.True));
+            return ensuresSeq;
         }
 
         public override Requires VisitRequires(Requires node)
@@ -251,164 +141,240 @@ namespace Microsoft.Boogie
             Ensures ensures = base.VisitEnsures(node);
             if (node.Free)
                 return ensures;
-            AtomicActionInfo atomicActionInfo =  civlTypeChecker.procToActionInfo[enclosingProc] as AtomicActionInfo;
-            bool isAtomicSpecification = atomicActionInfo != null && atomicActionInfo.ensures == node;
-            if (isAtomicSpecification || !civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
-            {
+            if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
                 ensures.Condition = Expr.True;
-                CivlAttributes.RemoveMoverAttribute(ensures);
-            }
             return ensures;
+        }
+
+        public override Implementation VisitImplementation(Implementation impl)
+        {
+            if (!civlTypeChecker.procToYieldingProc.ContainsKey(impl.Proc))
+                return impl;
+
+            enclosingYieldingProc = civlTypeChecker.procToYieldingProc[impl.Proc];
+            if (layerNum > enclosingYieldingProc.upperLayer)
+                return impl;
+
+            Implementation newImpl = base.VisitImplementation(impl);
+            newImpl.Name = newImpl.Proc.Name;
+            implMap[newImpl] = impl;
+
+            if (!(enclosingYieldingProc is MoverProc && enclosingYieldingProc.upperLayer == layerNum))
+            {
+                TransformImpl(newImpl);
+            }
+
+            return newImpl;
+        }
+
+        public override YieldCmd VisitYieldCmd(YieldCmd node)
+        {
+            YieldCmd yieldCmd = base.VisitYieldCmd(node);
+            absyMap[yieldCmd] = node;
+            return yieldCmd;
+        }
+
+        public override Block VisitBlock(Block node)
+        {
+            Block block = base.VisitBlock(node);
+            absyMap[block] = node;
+            return block;
         }
 
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
-            AssertCmd assertCmd = (AssertCmd) base.VisitAssertCmd(node);
+            AssertCmd assertCmd = (AssertCmd)base.VisitAssertCmd(node);
             if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
                 assertCmd.Expr = Expr.True;
             return assertCmd;
         }
-    }
 
-    public class CivlRefinement
-    {
-        LinearTypeChecker linearTypeChecker;
-        CivlTypeChecker civlTypeChecker;
-        Dictionary<Absy, Absy> absyMap;
-        Dictionary<Implementation, Implementation> implMap;
-        HashSet<Procedure> yieldingProcs;
-        int layerNum;
-        List<IdentifierExpr> globalMods;
-        Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
-        List<Procedure> yieldCheckerProcs;
-        List<Implementation> yieldCheckerImpls;
-        Procedure yieldProc;
-
-        Variable pc;
-        Variable ok;
-        Expr alpha;
-        Expr beta;
-        HashSet<Variable> frame;
-
-        private CivlRefinement(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, MyDuplicator duplicator)
+        public override Cmd VisitCallCmd(CallCmd call)
         {
-            this.linearTypeChecker = linearTypeChecker;
-            this.civlTypeChecker = civlTypeChecker;
-            this.absyMap = duplicator.absyMap;
-            this.layerNum = duplicator.layerNum;
-            this.implMap = duplicator.implMap;
-            this.yieldingProcs = duplicator.yieldingProcs;
-            Program program = linearTypeChecker.program;
-            globalMods = new List<IdentifierExpr>();
-            foreach (Variable g in civlTypeChecker.SharedVariables)
+            CallCmd newCall = (CallCmd)base.VisitCallCmd(call);
+            newCall.Proc = VisitProcedure(newCall.Proc);
+
+            if (newCall.IsAsync)
             {
-                globalMods.Add(Expr.Ident(g));
+                Debug.Assert(civlTypeChecker.procToYieldingProc.ContainsKey(call.Proc));
+                YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[call.Proc];
+                Debug.Assert(yieldingProc.IsLeftMover);
+                if (yieldingProc.upperLayer < layerNum || (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum))
+                {
+                    newCall.IsAsync = false;
+                }
+                if (enclosingYieldingProc.upperLayer == layerNum && yieldingProc.upperLayer > layerNum)
+                {
+                    ActionProc actionProc = (ActionProc)yieldingProc;
+                    newCall.Proc = actionProc.addPendingAsyncProc;
+                    newCall.IsAsync = false;
+                }
             }
-            asyncAndParallelCallDesugarings = new Dictionary<string, Procedure>();
-            yieldCheckerProcs = new List<Procedure>();
-            yieldCheckerImpls = new List<Implementation>();
-            yieldProc = null;
+
+            newCall.callee = newCall.Proc.Name;
+            absyMap[newCall] = call;
+            return newCall;
         }
+
+        public override Cmd VisitParCallCmd(ParCallCmd node)
+        {
+            ParCallCmd parCallCmd = (ParCallCmd)base.VisitParCallCmd(node);
+            absyMap[parCallCmd] = node;
+            return parCallCmd;
+        }
+
+        public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
+        {
+            List<Cmd> visitedCmdSeq = base.VisitCmdSeq(cmdSeq);
+            List<Cmd> newCmdSeq = new List<Cmd>();
+            for (int i = 0; i < visitedCmdSeq.Count; i++)
+            {
+                Cmd originalCmd = cmdSeq[i];
+                Cmd visitedCmd = visitedCmdSeq[i];
+
+                if (originalCmd is CallCmd)
+                {
+                    ProcessCallCmd((CallCmd)originalCmd, (CallCmd)visitedCmd, newCmdSeq);
+                }
+                else if (originalCmd is ParCallCmd)
+                {
+                    ProcessParCallCmd((ParCallCmd)originalCmd, (ParCallCmd)visitedCmd, newCmdSeq);
+                }
+                else
+                {
+                    newCmdSeq.Add(visitedCmd);
+                }
+            }
+            newCmdSeq.RemoveAll(cmd => (cmd is AssertCmd && ((AssertCmd)cmd).Expr.Equals(Expr.True)) ||
+                                       (cmd is AssumeCmd && ((AssumeCmd)cmd).Expr.Equals(Expr.True)));
+            return newCmdSeq;
+        }
+
+        // We only have to check the gate of a called atomic action (via an assert) at the creation layer of the caller.
+        // In all layers below we just establish invariants which do not require the gates to be checked and we can inject is as an assume.
+        private void InjectGate(ActionProc calledActionProc, CallCmd callCmd, List<Cmd> newCmds)
+        {
+            if (calledActionProc.upperLayer >= layerNum) return;
+            AtomicActionCopy atomicActionCopy = calledActionProc.refinedAction.layerToActionCopy[layerNum];
+            if (atomicActionCopy.gate.Count == 0) return;
+
+            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+            for (int i = 0; i < calledActionProc.proc.InParams.Count; i++)
+            {
+                // Parameters come from the implementation that defines the atomic action
+                map[atomicActionCopy.impl.InParams[i]] = callCmd.Ins[i];
+            }
+            Substitution subst = Substituter.SubstitutionFromHashtable(map);
+
+            // Important: Do not remove CommentCmd!
+            // It separates the injected gate from yield assertions in CollectAndDesugarYields.
+            newCmds.Add(new CommentCmd("<<< injected gate"));
+            foreach (AssertCmd assertCmd in atomicActionCopy.gate)
+            {
+                if (layerNum == enclosingYieldingProc.upperLayer)
+                    newCmds.Add((AssertCmd)Substituter.Apply(subst, assertCmd));
+                else
+                    newCmds.Add(new AssumeCmd(assertCmd.tok, Substituter.Apply(subst, assertCmd.Expr)));
+            }
+            newCmds.Add(new CommentCmd("injected gate >>>"));
+        }
+
+        private void ProcessCallCmd(CallCmd originalCallCmd, CallCmd callCmd, List<Cmd> newCmds)
+        {
+            Procedure originalProc = originalCallCmd.Proc;
+
+            if (civlTypeChecker.procToInstrumentationProc.ContainsKey(originalProc))
+            {
+                if (!civlTypeChecker.CallExists(originalCallCmd, enclosingYieldingProc.upperLayer, layerNum))
+                    return;
+            }
+            else if (civlTypeChecker.procToYieldingProc[originalProc] is ActionProc)
+            {
+                Debug.Assert(layerNum <= enclosingYieldingProc.upperLayer);
+                InjectGate((ActionProc)civlTypeChecker.procToYieldingProc[originalProc], callCmd, newCmds);
+            }
+            newCmds.Add(callCmd);
+        }
+
+        private void ProcessParCallCmd(ParCallCmd originalParCallCmd, ParCallCmd parCallCmd, List<Cmd> newCmds)
+        {
+            int maxCalleeLayerNum = 0;
+            foreach (CallCmd iter in originalParCallCmd.CallCmds)
+            {
+                int calleeLayerNum = civlTypeChecker.procToYieldingProc[iter.Proc].upperLayer;
+                if (calleeLayerNum > maxCalleeLayerNum)
+                    maxCalleeLayerNum = calleeLayerNum;
+            }
+            if (layerNum > maxCalleeLayerNum)
+            {
+                for (int i = 0; i < parCallCmd.CallCmds.Count; i++)
+                {
+                    ProcessCallCmd(originalParCallCmd.CallCmds[i], parCallCmd.CallCmds[i], newCmds);
+                    absyMap[parCallCmd.CallCmds[i]] = originalParCallCmd;
+                }
+            }
+            else
+            {
+                newCmds.Add(parCallCmd);
+            }
+        }
+        #endregion
+
+        #region Yielding proc transformation
+        // Snapshot variables for global variables
+        private LocalVariable OgOldGlobalLocal(Variable v)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", v.Name), v.TypedIdent.Type)); }
+
+        // ... and parameters for passing them around
+        private Formal OgOldGlobalFormal(Variable v)
+        { return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", v.Name), v.TypedIdent.Type), true); }
+
+        // Snapshot variables for return variables
+        private LocalVariable OgOldLocal(Variable v)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_old_{0}", v.Name), v.TypedIdent.Type)); }
+
+        // Used to desugar "old" expressions
+        // TODO: Check if this is done correctly (or could be simplified).
+        private LocalVariable OgOldLocalLocal(Variable v)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_local_old_{0}", v.Name), v.TypedIdent.Type)); }
+
+        // PC and OK variables for checking refinement
+        private LocalVariable OgPcLocal()
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_pc", Type.Bool)); }
+
+        private LocalVariable OgOkLocal()
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_ok", Type.Bool)); }
+
+        // Versions of PC and OK for desugaring loops
+        private LocalVariable OgPcLabelLocal(string label)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_pc_{0}", label), Type.Bool)); }
+
+        private LocalVariable OgOkLabelLocal(string label)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_ok_{0}", label), Type.Bool)); }
+
+        // Disambiguated parameters of parallel call (when multiple arms are combined into a single procedure)
+        private Formal OgParCallDesugarFormal(Variable v, int count, bool incoming)
+        { return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_{0}_{1}", count, v.Name), v.TypedIdent.Type), incoming); }
+
+        // Plain copy
+        private LocalVariable CopyLocal(Variable v)
+        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)); }
+
+        private Formal CopyIn(Variable v)
+        { return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true); }
 
         private IEnumerable<Variable> AvailableLinearVars(Absy absy)
         {
             HashSet<Variable> availableVars = new HashSet<Variable>(linearTypeChecker.AvailableLinearVars(absyMap[absy]));
-            foreach (var g in civlTypeChecker.globalVarToSharedVarInfo.Keys)
-            {
-                SharedVariableInfo info = civlTypeChecker.globalVarToSharedVarInfo[g];
-                if (!(info.introLayerNum <= layerNum && layerNum <= info.hideLayerNum))
-                {
-                    availableVars.Remove(g);
-                }
-            }
-            foreach (var v in civlTypeChecker.localVarToLocalVariableInfo.Keys)
-            {
-                LocalVariableInfo info = civlTypeChecker.localVarToLocalVariableInfo[v];
-                if (layerNum < info.layer)
-                {
-                    availableVars.Remove(v);
-                }
-            }
+
+            // A bit hackish, since GlobalVariableLayerRange and LocalVariableIntroLayer return maximum layer range
+            // respectively minimum layer if called on non-global respectively non-local variable.
+            availableVars.RemoveWhere(v =>
+                !civlTypeChecker.GlobalVariableLayerRange(v).Contains(layerNum) ||
+                layerNum < civlTypeChecker.LocalVariableIntroLayer(v)
+            );
+
             return availableVars;
-        }
-
-        private CallCmd CallToYieldProc(IToken tok, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
-        {
-            List<Expr> exprSeq = new List<Expr>();
-            foreach (string domainName in linearTypeChecker.linearDomains.Keys)
-            {
-                exprSeq.Add(Expr.Ident(domainNameToLocalVar[domainName]));
-            }
-            foreach (IdentifierExpr ie in globalMods)
-            {
-                exprSeq.Add(Expr.Ident(ogOldGlobalMap[ie.Decl]));
-            }
-            if (yieldProc == null)
-            {
-                List<Variable> inputs = new List<Variable>();
-                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
-                {
-                    var domain = linearTypeChecker.linearDomains[domainName];
-                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
-                    inputs.Add(f);
-                }
-                foreach (IdentifierExpr ie in globalMods)
-                {
-                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
-                    inputs.Add(f);
-                }
-                yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", layerNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
-                yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-            }
-            CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
-            yieldCallCmd.Proc = yieldProc;
-            return yieldCallCmd;
-        }
-
-        private void AddCallToYieldProc(IToken tok, List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
-        {
-            if (!CommandLineOptions.Clo.TrustNonInterference)
-            {
-                CallCmd yieldCallCmd = CallToYieldProc(tok, ogOldGlobalMap, domainNameToLocalVar);
-                newCmds.Add(yieldCallCmd);
-            }
-
-            if (pc != null)
-            {
-                Expr aa = OldEqualityExprForGlobals(ogOldGlobalMap);
-                Expr bb = OldEqualityExpr(ogOldGlobalMap);
-
-                // assert pc || g_old == g || beta(i, g_old, o, g);
-                Expr assertExpr = Expr.Or(Expr.Ident(pc), Expr.Or(aa, beta));
-                assertExpr.Typecheck(new TypecheckingContext(null));
-                AssertCmd skipOrBetaAssertCmd = new AssertCmd(tok, assertExpr);
-                skipOrBetaAssertCmd.ErrorData = "Transition invariant in initial state violated";
-                newCmds.Add(skipOrBetaAssertCmd);
-
-                // assert pc ==> o_old == o && g_old == g;
-                assertExpr = Expr.Imp(Expr.Ident(pc), bb);
-                assertExpr.Typecheck(new TypecheckingContext(null));
-                AssertCmd skipAssertCmd = new AssertCmd(tok, assertExpr);
-                skipAssertCmd.ErrorData = "Transition invariant in final state violated"; ;
-                newCmds.Add(skipAssertCmd);
-
-                // pc, ok := g_old == g ==> pc, ok || beta(i, g_old, o, g);
-                List<AssignLhs> pcUpdateLHS = new List<AssignLhs>(
-                    new AssignLhs[] { 
-                        new SimpleAssignLhs(Token.NoToken, Expr.Ident(pc)), 
-                        new SimpleAssignLhs(Token.NoToken, Expr.Ident(ok))
-                    });
-                List<Expr> pcUpdateRHS = new List<Expr>(
-                    new Expr[] { 
-                        Expr.Imp(aa, Expr.Ident(pc)),
-                        Expr.Or(Expr.Ident(ok), beta)
-                    });
-                foreach (Expr e in pcUpdateRHS)
-                {
-                    e.Typecheck(new TypecheckingContext(null));
-                }
-                newCmds.Add(new AssignCmd(Token.NoToken, pcUpdateLHS, pcUpdateRHS));
-            }
         }
 
         private Dictionary<string, Expr> ComputeAvailableExprs(IEnumerable<Variable> availableLinearVars)
@@ -437,274 +403,35 @@ namespace Microsoft.Boogie
             return domainNameToExpr;
         }
 
-        private void AddUpdatesToOldGlobalVars(List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar, Dictionary<string, Expr> domainNameToExpr)
+        public void TransformImpl(Implementation impl)
         {
-            List<AssignLhs> lhss = new List<AssignLhs>();
-            List<Expr> rhss = new List<Expr>();
-            foreach (var domainName in linearTypeChecker.linearDomains.Keys)
-            {
-                lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(domainNameToLocalVar[domainName])));
-                rhss.Add(domainNameToExpr[domainName]);
-            }
-            foreach (Variable g in ogOldGlobalMap.Keys)
-            {
-                lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(ogOldGlobalMap[g])));
-                rhss.Add(Expr.Ident(g));
-            }
-            if (lhss.Count > 0)
-            {
-                newCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
-            }
-        }
+            HashSet<Block> yieldingHeaders;
+            Graph<Block> graph = ComputeYieldingLoopHeaders(impl, out yieldingHeaders);
 
-        private Expr OldEqualityExpr(Dictionary<Variable, Variable> ogOldGlobalMap)
-        {
-            Expr bb = Expr.True;
-            foreach (Variable o in ogOldGlobalMap.Keys)
-            {
-                if (o is GlobalVariable && !frame.Contains(o)) continue;
-                bb = Expr.And(bb, Expr.Eq(Expr.Ident(o), Expr.Ident(ogOldGlobalMap[o])));
-                bb.Type = Type.Bool;
-            }
-            return bb;
-        }
+            List<Variable> newLocalVars;
+            Dictionary<string, Variable> domainNameToLocalVar;
+            Dictionary<Variable, Variable> ogOldGlobalMap;
+            SetupRefinementCheck(impl, out newLocalVars, out domainNameToLocalVar, out ogOldGlobalMap);
 
-        private Expr OldEqualityExprForGlobals(Dictionary<Variable, Variable> ogOldGlobalMap)
-        {
-            Expr bb = Expr.True;
-            foreach (Variable o in ogOldGlobalMap.Keys)
-            {
-                if (o is GlobalVariable && frame.Contains(o))
-                {
-                    bb = Expr.And(bb, Expr.Eq(Expr.Ident(o), Expr.Ident(ogOldGlobalMap[o])));
-                    bb.Type = Type.Bool;
-                }
-            }
-            return bb;
-        }
+            List<List<Cmd>> yields = CollectAndDesugarYields(impl, domainNameToLocalVar, ogOldGlobalMap);
 
-        private void DesugarYield(YieldCmd yieldCmd, List<Cmd> cmds, List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
-        {
-            AddCallToYieldProc(yieldCmd.tok, newCmds, ogOldGlobalMap, domainNameToLocalVar);
+            List<Variable> oldPcs, oldOks;
+            ProcessLoopHeaders(impl, graph, yieldingHeaders, domainNameToLocalVar, ogOldGlobalMap, out oldPcs, out oldOks);
 
-            if (globalMods.Count > 0)
-            {
-                newCmds.Add(new HavocCmd(Token.NoToken, globalMods));
-                if (pc != null)
-                {
-                    // assume pc || alpha(i, g);
-                    Expr assumeExpr = Expr.Or(Expr.Ident(pc), alpha);
-                    assumeExpr.Type = Type.Bool;
-                    newCmds.Add(new AssumeCmd(Token.NoToken, assumeExpr));
-                }
-            }
+            AddInitialBlock(impl, oldPcs, oldOks, domainNameToLocalVar, ogOldGlobalMap);
 
-            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(AvailableLinearVars(yieldCmd));
-            AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
+            CreateYieldCheckerImpl(impl, yields);
 
-            for (int j = 0; j < cmds.Count; j++)
-            {
-                PredicateCmd predCmd = (PredicateCmd)cmds[j];
-                newCmds.Add(new AssumeCmd(Token.NoToken, predCmd.Expr));
-            }
-        }
+            impl.LocVars.AddRange(newLocalVars);
+            impl.LocVars.AddRange(oldPcs);
+            impl.LocVars.AddRange(oldOks);
 
-        public void DesugarParallelCallCmd(List<Cmd> newCmds, ParCallCmd parCallCmd)
-        {
-            List<string> parallelCalleeNames = new List<string>();
-            List<Expr> ins = new List<Expr>();
-            List<IdentifierExpr> outs = new List<IdentifierExpr>();
-            string procName = "og";
-            foreach (CallCmd callCmd in parCallCmd.CallCmds)
-            {
-                procName = procName + "_" + callCmd.Proc.Name;
-                ins.AddRange(callCmd.Ins);
-                outs.AddRange(callCmd.Outs);
-            }
-            Procedure proc;
-            if (asyncAndParallelCallDesugarings.ContainsKey(procName))
-            {
-                proc = asyncAndParallelCallDesugarings[procName];
-            }
-            else
-            {
-                List<Variable> inParams = new List<Variable>();
-                List<Variable> outParams = new List<Variable>();
-                List<Requires> requiresSeq = new List<Requires>();
-                List<Ensures> ensuresSeq = new List<Ensures>();
-                int count = 0;
-                foreach (CallCmd callCmd in parCallCmd.CallCmds)
-                {
-                    Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-                    foreach (Variable x in callCmd.Proc.InParams)
-                    {
-                        Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_{0}_{1}", count, x.Name), x.TypedIdent.Type), true);
-                        inParams.Add(y);
-                        map[x] = Expr.Ident(y);
-                    }
-                    foreach (Variable x in callCmd.Proc.OutParams)
-                    {
-                        Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_{0}_{1}", count, x.Name), x.TypedIdent.Type), false);
-                        outParams.Add(y);
-                        map[x] = Expr.Ident(y);
-                    }
-                    Contract.Assume(callCmd.Proc.TypeParameters.Count == 0);
-                    Substitution subst = Substituter.SubstitutionFromHashtable(map);
-                    foreach (Requires req in callCmd.Proc.Requires)
-                    {
-                        requiresSeq.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition), null, req.Attributes));
-                    }
-                    foreach (Ensures ens in callCmd.Proc.Ensures)
-                    {
-                        ensuresSeq.Add(new Ensures(ens.tok, ens.Free, Substituter.Apply(subst, ens.Condition), null, ens.Attributes));
-                    }
-                    count++;
-                }
-                proc = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, globalMods, ensuresSeq);
-                asyncAndParallelCallDesugarings[procName] = proc;
-            }
-            CallCmd dummyCallCmd = new CallCmd(parCallCmd.tok, proc.Name, ins, outs, parCallCmd.Attributes);
-            dummyCallCmd.Proc = proc;
-            newCmds.Add(dummyCallCmd);
-        }
-
-        private void CreateYieldCheckerImpl(Implementation impl, List<List<Cmd>> yields)
-        {
-            if (yields.Count == 0) return;
-
-            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-            foreach (Variable local in impl.LocVars)
-            {
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, local.Name, local.TypedIdent.Type));
-                map[local] = Expr.Ident(copy);
-            }
-
-            Program program = linearTypeChecker.program;
-            List<Variable> locals = new List<Variable>();
-            List<Variable> inputs = new List<Variable>();
-            foreach (IdentifierExpr ie in map.Values)
-            {
-                locals.Add(ie.Decl);
-            }
-            for (int i = 0; i < impl.InParams.Count - linearTypeChecker.linearDomains.Count; i++)
-            {
-                Variable inParam = impl.InParams[i];
-                Variable copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type));
-                locals.Add(copy);
-                map[impl.InParams[i]] = Expr.Ident(copy);
-            }
-            {
-                int i = impl.InParams.Count - linearTypeChecker.linearDomains.Count;
-                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
-                {
-                    Variable inParam = impl.InParams[i];
-                    Variable copy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type), true);
-                    inputs.Add(copy);
-                    map[impl.InParams[i]] = Expr.Ident(copy);
-                    i++;
-                }
-            }
-            for (int i = 0; i < impl.OutParams.Count; i++)
-            {
-                Variable outParam = impl.OutParams[i];
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, outParam.Name, outParam.TypedIdent.Type));
-                locals.Add(copy);
-                map[impl.OutParams[i]] = Expr.Ident(copy);
-            }
-            Dictionary<Variable, Expr> ogOldLocalMap = new Dictionary<Variable, Expr>();
-            Dictionary<Variable, Expr> assumeMap = new Dictionary<Variable, Expr>(map);
-            foreach (IdentifierExpr ie in globalMods)
-            {
-                Variable g = ie.Decl;
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_local_old_{0}", g.Name), g.TypedIdent.Type));
-                locals.Add(copy);
-                ogOldLocalMap[g] = Expr.Ident(copy);
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type), true);
-                inputs.Add(f);
-                assumeMap[g] = Expr.Ident(f);
-            }
-            
-            Substitution assumeSubst = Substituter.SubstitutionFromHashtable(assumeMap);
-            Substitution oldSubst = Substituter.SubstitutionFromHashtable(ogOldLocalMap);
-            Substitution subst = Substituter.SubstitutionFromHashtable(map);
-            List<Block> yieldCheckerBlocks = new List<Block>();
-            List<String> labels = new List<String>();
-            List<Block> labelTargets = new List<Block>();
-            Block yieldCheckerBlock = new Block(Token.NoToken, "exit", new List<Cmd>(), new ReturnCmd(Token.NoToken));
-            labels.Add(yieldCheckerBlock.Label);
-            labelTargets.Add(yieldCheckerBlock);
-            yieldCheckerBlocks.Add(yieldCheckerBlock);
-            int yieldCount = 0;
-            foreach (List<Cmd> cs in yields)
-            {
-                List<Cmd> newCmds = new List<Cmd>();
-                foreach (Cmd cmd in cs)
-                {
-                    PredicateCmd predCmd = (PredicateCmd)cmd;
-                    newCmds.Add(new AssumeCmd(Token.NoToken, Substituter.ApplyReplacingOldExprs(assumeSubst, oldSubst, predCmd.Expr)));
-                }
-                foreach (Cmd cmd in cs)
-                {
-                    PredicateCmd predCmd = (PredicateCmd)cmd;
-                    var newExpr = Substituter.ApplyReplacingOldExprs(subst, oldSubst, predCmd.Expr);
-                    if (predCmd is AssertCmd)
-                    {
-                        AssertCmd assertCmd = new AssertCmd(predCmd.tok, newExpr, predCmd.Attributes);
-                        assertCmd.ErrorData = "Non-interference check failed";
-                        newCmds.Add(assertCmd);
-                    }
-                    /*
-                    Disjointness assumes injected by LinearSets.cs are dropped now because the 
-                    previous loop has already subsituted the old global state in these assumes.
-                    It would be unsound to have these assumes on the current global state.
-                    */
-                }
-                newCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
-                yieldCheckerBlock = new Block(Token.NoToken, "L" + yieldCount++, newCmds, new ReturnCmd(Token.NoToken));
-                labels.Add(yieldCheckerBlock.Label);
-                labelTargets.Add(yieldCheckerBlock);
-                yieldCheckerBlocks.Add(yieldCheckerBlock);
-            }
-            yieldCheckerBlocks.Insert(0, new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
-
-            // Create the yield checker procedure
-            var yieldCheckerName = string.Format("{0}_YieldChecker_{1}", "Impl", impl.Name);
-            var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, impl.TypeParameters, inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
-            yieldCheckerProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-            yieldCheckerProcs.Add(yieldCheckerProc);
-
-            // Create the yield checker implementation
-            var yieldCheckerImpl = new Implementation(Token.NoToken, yieldCheckerName, impl.TypeParameters, inputs, new List<Variable>(), locals, yieldCheckerBlocks);
-            yieldCheckerImpl.Proc = yieldCheckerProc;
-            yieldCheckerImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-            yieldCheckerImpls.Add(yieldCheckerImpl);
-        }
-
-        private bool IsYieldingHeader(Graph<Block> graph, Block header)
-        {
-            foreach (Block backEdgeNode in graph.BackEdgeNodes(header))
-            {
-                foreach (Block x in graph.NaturalLoops(header, backEdgeNode))
-                {
-                    foreach (Cmd cmd in x.Cmds)
-                    {
-                        if (cmd is YieldCmd)
-                            return true;
-                        if (cmd is ParCallCmd)
-                            return true;
-                        CallCmd callCmd = cmd as CallCmd;
-                        if (callCmd == null) continue;
-                        if (yieldingProcs.Contains(callCmd.Proc))
-                            return true;
-                    }
-                }
-            }
-            return false;
+            UnifyCallsToYieldProc(impl, ogOldGlobalMap, domainNameToLocalVar);
         }
 
         private Graph<Block> ComputeYieldingLoopHeaders(Implementation impl, out HashSet<Block> yieldingHeaders)
         {
-            Graph<Block> graph; 
+            Graph<Block> graph;
             impl.PruneUnreachableBlocks();
             impl.ComputePredecessorsForBlocks();
             graph = Program.GraphFromImpl(impl);
@@ -733,62 +460,75 @@ namespace Microsoft.Boogie
             return graph;
         }
 
-        private void SetupRefinementCheck(Implementation impl, 
+        private bool IsYieldingHeader(Graph<Block> graph, Block header)
+        {
+            foreach (Block backEdgeNode in graph.BackEdgeNodes(header))
+            {
+                foreach (Block x in graph.NaturalLoops(header, backEdgeNode))
+                {
+                    foreach (Cmd cmd in x.Cmds)
+                    {
+                        if (cmd is YieldCmd)
+                            return true;
+                        if (cmd is ParCallCmd)
+                            return true;
+                        CallCmd callCmd = cmd as CallCmd;
+                        if (callCmd == null) continue;
+                        if (yieldingProcs.Contains(callCmd.Proc))
+                            return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private void SetupRefinementCheck(
+            Implementation impl,
             out List<Variable> newLocalVars,
-            out Dictionary<string, Variable> domainNameToLocalVar, out Dictionary<Variable, Variable> ogOldGlobalMap)
+            out Dictionary<string, Variable> domainNameToLocalVar,
+            out Dictionary<Variable, Variable> ogOldGlobalMap)
         {
             pc = null;
             ok = null;
             alpha = null;
             beta = null;
             frame = null;
-            
+
             newLocalVars = new List<Variable>();
-            Program program = linearTypeChecker.program;
             ogOldGlobalMap = new Dictionary<Variable, Variable>();
-            foreach (IdentifierExpr ie in globalMods)
+            foreach (Variable g in civlTypeChecker.sharedVariables)
             {
-                Variable g = ie.Decl;
-                LocalVariable l = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type));
+                LocalVariable l = OgOldGlobalLocal(g);
                 ogOldGlobalMap[g] = l;
                 newLocalVars.Add(l);
             }
-
+            
             Procedure originalProc = implMap[impl].Proc;
-            ActionInfo actionInfo = civlTypeChecker.procToActionInfo[originalProc];
-            if (actionInfo.createdAtLayerNum == this.layerNum)
+            YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[originalProc];
+            if (yieldingProc.upperLayer == this.layerNum)
             {
-                pc = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_pc", Type.Bool));
+                pc = OgPcLocal();
+                ok = OgOkLocal();
                 newLocalVars.Add(pc);
-                ok = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_ok", Type.Bool));
                 newLocalVars.Add(ok);
-                Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
-                for (int i = 0; i < originalProc.InParams.Count; i++)
-                {
-                    alwaysMap[originalProc.InParams[i]] = Expr.Ident(impl.InParams[i]);
-                }
-                for (int i = 0; i < originalProc.OutParams.Count; i++)
-                {
-                    alwaysMap[originalProc.OutParams[i]] = Expr.Ident(impl.OutParams[i]);
-                }
-                Substitution always = Substituter.SubstitutionFromHashtable(alwaysMap);
                 Dictionary<Variable, Expr> foroldMap = new Dictionary<Variable, Expr>();
-                foreach (IdentifierExpr ie in globalMods)
+                foreach (Variable g in civlTypeChecker.sharedVariables)
                 {
-                    foroldMap[ie.Decl] = Expr.Ident(ogOldGlobalMap[ie.Decl]);
+                    foroldMap[g] = Expr.Ident(ogOldGlobalMap[g]);
                 }
                 Substitution forold = Substituter.SubstitutionFromHashtable(foroldMap);
-                frame = new HashSet<Variable>(civlTypeChecker.SharedVariables);
-                foreach (Variable v in civlTypeChecker.SharedVariables)
+                frame = new HashSet<Variable>(civlTypeChecker.sharedVariables);
+                foreach (Variable v in civlTypeChecker.sharedVariables)
                 {
-                    if (civlTypeChecker.globalVarToSharedVarInfo[v].hideLayerNum <= actionInfo.createdAtLayerNum || 
-                        civlTypeChecker.globalVarToSharedVarInfo[v].introLayerNum > actionInfo.createdAtLayerNum)
+                    var layerRange = civlTypeChecker.GlobalVariableLayerRange(v);
+                    if (layerRange.upperLayerNum <= yieldingProc.upperLayer ||
+                        layerRange.lowerLayerNum > yieldingProc.upperLayer)
                     {
                         frame.Remove(v);
                     }
                 }
-                AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
-                if (atomicActionInfo == null)
+                ActionProc actionProc = yieldingProc as ActionProc;
+                if (actionProc == null)
                 {
                     beta = Expr.True;
                     foreach (var v in frame)
@@ -799,19 +539,31 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    Expr betaExpr = (new TransitionRelationComputation(civlTypeChecker.program, atomicActionInfo, frame, new HashSet<Variable>())).TransitionRelationCompute(true);
-                    beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
-                    Expr alphaExpr = Expr.True;
-                    foreach (AssertCmd assertCmd in atomicActionInfo.gate)
+                    // The parameters of an atomic action come from the implementation that denotes the atomic action specification.
+                    // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
+                    // we need to substitute the parameters.
+                    AtomicActionCopy atomicActionCopy = actionProc.refinedAction.layerToActionCopy[layerNum + 1];
+                    Implementation atomicActionImpl = atomicActionCopy.impl;
+                    Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
+                    for (int i = 0; i < atomicActionImpl.InParams.Count; i++)
                     {
-                        alphaExpr = Expr.And(alphaExpr, assertCmd.Expr);
-                        alphaExpr.Type = Type.Bool;
+                        alwaysMap[atomicActionImpl.InParams[i]] = Expr.Ident(impl.InParams[i]);
                     }
+                    for (int i = 0; i < atomicActionImpl.OutParams.Count; i++)
+                    {
+                        alwaysMap[atomicActionImpl.OutParams[i]] = Expr.Ident(impl.OutParams[i]);
+                    }
+                    Substitution always = Substituter.SubstitutionFromHashtable(alwaysMap);
+
+                    Expr betaExpr = (new TransitionRelationComputation(atomicActionCopy, frame, new HashSet<Variable>())).TransitionRelationCompute(true);
+                    beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
+                    Expr alphaExpr = Expr.And(atomicActionCopy.gate.Select(g => g.Expr));
+                    alphaExpr.Type = Type.Bool;
                     alpha = Substituter.Apply(always, alphaExpr);
                 }
                 foreach (Variable f in impl.OutParams)
                 {
-                    LocalVariable copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_old_{0}", f.Name), f.TypedIdent.Type));
+                    LocalVariable copy = OgOldLocal(f);
                     newLocalVars.Add(copy);
                     ogOldGlobalMap[f] = copy;
                 }
@@ -819,74 +571,13 @@ namespace Microsoft.Boogie
 
             domainNameToLocalVar = new Dictionary<string, Variable>();
             {
-                int i = impl.InParams.Count - linearTypeChecker.linearDomains.Count;
                 foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
-                    Variable inParam = impl.InParams[i];
-                    Variable l = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name + "_local", inParam.TypedIdent.Type));
+                    Variable l = linearTypeChecker.LinearDomainAvailableLocal(domainName);
                     domainNameToLocalVar[domainName] = l;
                     newLocalVars.Add(l);
-                    i++;
                 }
             }
-        }
-
-        private void TransformImpl(Implementation impl)
-        {
-            HashSet<Block> yieldingHeaders;
-            Graph<Block> graph = ComputeYieldingLoopHeaders(impl, out yieldingHeaders);
-
-            List<Variable> newLocalVars;
-            Dictionary<string, Variable> domainNameToLocalVar;
-            Dictionary<Variable, Variable> ogOldGlobalMap;
-            SetupRefinementCheck(impl, out newLocalVars, out domainNameToLocalVar, out ogOldGlobalMap);
-
-            List<List<Cmd>> yields = CollectAndDesugarYields(impl, domainNameToLocalVar, ogOldGlobalMap);
-
-            List<Variable> oldPcs, oldOks;
-            ProcessLoopHeaders(impl, graph, yieldingHeaders, domainNameToLocalVar, ogOldGlobalMap, out oldPcs, out oldOks);
-
-            AddInitialBlock(impl, oldPcs, oldOks, domainNameToLocalVar, ogOldGlobalMap);
-
-            CreateYieldCheckerImpl(impl, yields);
-            
-            impl.LocVars.AddRange(newLocalVars);
-            impl.LocVars.AddRange(oldPcs);
-            impl.LocVars.AddRange(oldOks);
-
-            UnifyCallsToYieldProc(impl, ogOldGlobalMap, domainNameToLocalVar);
-        }
-
-        private void UnifyCallsToYieldProc(Implementation impl, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
-        {
-            CallCmd yieldCallCmd = CallToYieldProc(Token.NoToken, ogOldGlobalMap, domainNameToLocalVar);
-            Block yieldCheckBlock = new Block(Token.NoToken, "CallToYieldProc", new List<Cmd>(new Cmd[] { yieldCallCmd, new AssumeCmd(Token.NoToken, Expr.False) }), new ReturnCmd(Token.NoToken));
-            List<Block> newBlocks = new List<Block>();
-            foreach (Block b in impl.Blocks)
-            {
-                TransferCmd transferCmd = b.TransferCmd;
-                List<Cmd> newCmds = new List<Cmd>();
-                for (int i = b.Cmds.Count-1; i >= 0; i--)
-                {
-                    CallCmd callCmd = b.Cmds[i] as CallCmd;
-                    if (callCmd == null || callCmd.Proc != yieldProc)
-                    {
-                        newCmds.Insert(0, b.Cmds[i]);
-                    }
-                    else
-                    {
-                        Block newBlock = new Block(Token.NoToken, b.Label + i, newCmds, transferCmd);
-                        newCmds = new List<Cmd>();
-                        transferCmd = new GotoCmd(Token.NoToken, new List<string>(new string[] { newBlock.Label, yieldCheckBlock.Label }), 
-                                                                 new List<Block>(new Block[] { newBlock, yieldCheckBlock }));
-                        newBlocks.Add(newBlock);
-                    }
-                }
-                b.Cmds = newCmds;
-                b.TransferCmd = transferCmd;
-            }
-            impl.Blocks.AddRange(newBlocks);
-            impl.Blocks.Add(yieldCheckBlock);
         }
 
         private List<List<Cmd>> CollectAndDesugarYields(Implementation impl,
@@ -899,9 +590,8 @@ namespace Microsoft.Boogie
             {
                 YieldCmd yieldCmd = null;
                 List<Cmd> newCmds = new List<Cmd>();
-                for (int i = 0; i < b.Cmds.Count; i++)
+                foreach (Cmd cmd in b.Cmds)
                 {
-                    Cmd cmd = b.Cmds[i];
                     if (cmd is YieldCmd)
                     {
                         yieldCmd = (YieldCmd)cmd;
@@ -952,7 +642,7 @@ namespace Microsoft.Boogie
                         {
                             HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(callCmd));
 
-                            if (!callCmd.IsAsync && globalMods.Count > 0 && pc != null)
+                            if (!callCmd.IsAsync && civlTypeChecker.sharedVariables.Count > 0 && pc != null)
                             {
                                 // assume pc || alpha(i, g);
                                 Expr assumeExpr = Expr.Or(Expr.Ident(pc), alpha);
@@ -971,7 +661,7 @@ namespace Microsoft.Boogie
                         DesugarParallelCallCmd(newCmds, parCallCmd);
                         HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(parCallCmd));
 
-                        if (globalMods.Count > 0 && pc != null)
+                        if (civlTypeChecker.sharedVariables.Count > 0 && pc != null)
                         {
                             // assume pc || alpha(i, g);
                             Expr assumeExpr = Expr.Or(Expr.Ident(pc), alpha);
@@ -1011,7 +701,207 @@ namespace Microsoft.Boogie
             return yields;
         }
 
-        private void ProcessLoopHeaders(Implementation impl, Graph<Block> graph, HashSet<Block> yieldingHeaders, 
+        private CallCmd CallToYieldProc(IToken tok, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
+        {
+            List<Expr> exprSeq = new List<Expr>();
+            foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+            {
+                exprSeq.Add(Expr.Ident(domainNameToLocalVar[domainName]));
+            }
+            foreach (Variable g in civlTypeChecker.sharedVariables)
+            {
+                exprSeq.Add(Expr.Ident(ogOldGlobalMap[g]));
+            }
+            if (yieldProc == null)
+            {
+                List<Variable> inputs = new List<Variable>();
+                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+                {
+                    inputs.Add(linearTypeChecker.LinearDomainInFormal(domainName));
+                }
+                foreach (Variable g in civlTypeChecker.sharedVariables)
+                {
+                    inputs.Add(OgOldGlobalFormal(g));
+                }
+                yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", layerNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+                CivlUtil.AddInlineAttribute(yieldProc);
+            }
+            CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
+            yieldCallCmd.Proc = yieldProc;
+            return yieldCallCmd;
+        }
+
+        private void AddCallToYieldProc(IToken tok, List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
+        {
+            if (!CommandLineOptions.Clo.TrustNonInterference)
+            {
+                CallCmd yieldCallCmd = CallToYieldProc(tok, ogOldGlobalMap, domainNameToLocalVar);
+                newCmds.Add(yieldCallCmd);
+            }
+
+            if (pc != null)
+            {
+                Expr aa = OldEqualityExprForGlobals(ogOldGlobalMap);
+                Expr bb = OldEqualityExpr(ogOldGlobalMap);
+
+                // assert pc || g_old == g || beta(i, g_old, o, g);
+                Expr assertExpr = Expr.Or(Expr.Ident(pc), Expr.Or(aa, beta));
+                assertExpr.Typecheck(new TypecheckingContext(null));
+                AssertCmd skipOrBetaAssertCmd = new AssertCmd(tok, assertExpr);
+                skipOrBetaAssertCmd.ErrorData = "Transition invariant in initial state violated";
+                newCmds.Add(skipOrBetaAssertCmd);
+
+                // assert pc ==> o_old == o && g_old == g;
+                assertExpr = Expr.Imp(Expr.Ident(pc), bb);
+                assertExpr.Typecheck(new TypecheckingContext(null));
+                AssertCmd skipAssertCmd = new AssertCmd(tok, assertExpr);
+                skipAssertCmd.ErrorData = "Transition invariant in final state violated";
+                newCmds.Add(skipAssertCmd);
+
+                // pc, ok := g_old == g ==> pc, ok || beta(i, g_old, o, g);
+                List<AssignLhs> pcUpdateLHS = new List<AssignLhs> {
+                        new SimpleAssignLhs(Token.NoToken, Expr.Ident(pc)),
+                        new SimpleAssignLhs(Token.NoToken, Expr.Ident(ok))
+                    };
+                List<Expr> pcUpdateRHS = new List<Expr>(
+                    new Expr[] {
+                        Expr.Imp(aa, Expr.Ident(pc)),
+                        Expr.Or(Expr.Ident(ok), beta)
+                    });
+                foreach (Expr e in pcUpdateRHS)
+                {
+                    e.Typecheck(new TypecheckingContext(null));
+                }
+                newCmds.Add(new AssignCmd(Token.NoToken, pcUpdateLHS, pcUpdateRHS));
+            }
+        }
+
+        private Expr OldEqualityExpr(Dictionary<Variable, Variable> ogOldGlobalMap)
+        {
+            Expr bb = Expr.True;
+            foreach (Variable o in ogOldGlobalMap.Keys)
+            {
+                if (o is GlobalVariable && !frame.Contains(o)) continue;
+                bb = Expr.And(bb, Expr.Eq(Expr.Ident(o), Expr.Ident(ogOldGlobalMap[o])));
+                bb.Type = Type.Bool;
+            }
+            return bb;
+        }
+
+        private Expr OldEqualityExprForGlobals(Dictionary<Variable, Variable> ogOldGlobalMap)
+        {
+            Expr bb = Expr.True;
+            foreach (Variable o in ogOldGlobalMap.Keys)
+            {
+                if (o is GlobalVariable && frame.Contains(o))
+                {
+                    bb = Expr.And(bb, Expr.Eq(Expr.Ident(o), Expr.Ident(ogOldGlobalMap[o])));
+                    bb.Type = Type.Bool;
+                }
+            }
+            return bb;
+        }
+
+        private void DesugarYield(YieldCmd yieldCmd, List<Cmd> cmds, List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
+        {
+            AddCallToYieldProc(yieldCmd.tok, newCmds, ogOldGlobalMap, domainNameToLocalVar);
+
+            if (civlTypeChecker.sharedVariableIdentifiers.Count > 0)
+            {
+                newCmds.Add(new HavocCmd(Token.NoToken, civlTypeChecker.sharedVariableIdentifiers));
+                if (pc != null)
+                {
+                    // assume pc || alpha(i, g);
+                    Expr assumeExpr = Expr.Or(Expr.Ident(pc), alpha);
+                    assumeExpr.Type = Type.Bool;
+                    newCmds.Add(new AssumeCmd(Token.NoToken, assumeExpr));
+                }
+            }
+
+            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(AvailableLinearVars(yieldCmd));
+            AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
+
+            for (int j = 0; j < cmds.Count; j++)
+            {
+                PredicateCmd predCmd = (PredicateCmd)cmds[j];
+                newCmds.Add(new AssumeCmd(Token.NoToken, predCmd.Expr));
+            }
+        }
+
+        private void AddUpdatesToOldGlobalVars(List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar, Dictionary<string, Expr> domainNameToExpr)
+        {
+            List<AssignLhs> lhss = new List<AssignLhs>();
+            List<Expr> rhss = new List<Expr>();
+            foreach (var domainName in linearTypeChecker.linearDomains.Keys)
+            {
+                lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(domainNameToLocalVar[domainName])));
+                rhss.Add(domainNameToExpr[domainName]);
+            }
+            foreach (Variable g in ogOldGlobalMap.Keys)
+            {
+                lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(ogOldGlobalMap[g])));
+                rhss.Add(Expr.Ident(g));
+            }
+            if (lhss.Count > 0)
+            {
+                newCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
+            }
+        }
+
+        public void DesugarParallelCallCmd(List<Cmd> newCmds, ParCallCmd parCallCmd)
+        {
+            List<Expr> ins = new List<Expr>();
+            List<IdentifierExpr> outs = new List<IdentifierExpr>();
+            string procName = "og";
+            foreach (CallCmd callCmd in parCallCmd.CallCmds)
+            {
+                procName = procName + "_" + callCmd.Proc.Name;
+                ins.AddRange(callCmd.Ins);
+                outs.AddRange(callCmd.Outs);
+            }
+            if (!asyncAndParallelCallDesugarings.ContainsKey(procName))
+            {
+                List<Variable> inParams = new List<Variable>();
+                List<Variable> outParams = new List<Variable>();
+                List<Requires> requiresSeq = new List<Requires>();
+                List<Ensures> ensuresSeq = new List<Ensures>();
+                int count = 0;
+                foreach (CallCmd callCmd in parCallCmd.CallCmds)
+                {
+                    Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+                    foreach (Variable x in callCmd.Proc.InParams)
+                    {
+                        Variable y = OgParCallDesugarFormal(x, count, true);
+                        inParams.Add(y);
+                        map[x] = Expr.Ident(y);
+                    }
+                    foreach (Variable x in callCmd.Proc.OutParams)
+                    {
+                        Variable y = OgParCallDesugarFormal(x, count, false);
+                        outParams.Add(y);
+                        map[x] = Expr.Ident(y);
+                    }
+                    Contract.Assume(callCmd.Proc.TypeParameters.Count == 0);
+                    Substitution subst = Substituter.SubstitutionFromHashtable(map);
+                    foreach (Requires req in callCmd.Proc.Requires)
+                    {
+                        requiresSeq.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition), null, req.Attributes));
+                    }
+                    foreach (Ensures ens in callCmd.Proc.Ensures)
+                    {
+                        ensuresSeq.Add(new Ensures(ens.tok, ens.Free, Substituter.Apply(subst, ens.Condition), null, ens.Attributes));
+                    }
+                    count++;
+                }
+                asyncAndParallelCallDesugarings[procName] = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, civlTypeChecker.sharedVariableIdentifiers, ensuresSeq);
+            }
+            Procedure proc = asyncAndParallelCallDesugarings[procName];
+            CallCmd dummyCallCmd = new CallCmd(parCallCmd.tok, proc.Name, ins, outs, parCallCmd.Attributes);
+            dummyCallCmd.Proc = proc;
+            newCmds.Add(dummyCallCmd);
+        }
+
+        private void ProcessLoopHeaders(Implementation impl, Graph<Block> graph, HashSet<Block> yieldingHeaders,
             Dictionary<string, Variable> domainNameToLocalVar, Dictionary<Variable, Variable> ogOldGlobalMap,
             out List<Variable> oldPcs, out List<Variable> oldOks)
         {
@@ -1023,9 +913,9 @@ namespace Microsoft.Boogie
                 LocalVariable oldOk = null;
                 if (pc != null)
                 {
-                    oldPc = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("{0}_{1}", pc.Name, header.Label), Type.Bool));
+                    oldPc = OgPcLabelLocal(header.Label);
+                    oldOk = OgOkLabelLocal(header.Label);
                     oldPcs.Add(oldPc);
-                    oldOk = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("{0}_{1}", ok.Name, header.Label), Type.Bool));
                     oldOks.Add(oldOk);
                 }
                 Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(AvailableLinearVars(header));
@@ -1034,9 +924,9 @@ namespace Microsoft.Boogie
                     AddCallToYieldProc(header.tok, pred.Cmds, ogOldGlobalMap, domainNameToLocalVar);
                     if (pc != null && !graph.BackEdgeNodes(header).Contains(pred))
                     {
-                        pred.Cmds.Add(new AssignCmd(Token.NoToken, new List<AssignLhs>(
-                            new AssignLhs[] { new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldPc)), new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldOk)) }),
-                            new List<Expr>(new Expr[] { Expr.Ident(pc), Expr.Ident(ok) })));
+                        pred.Cmds.Add(new AssignCmd(Token.NoToken,
+                            new List<AssignLhs> { new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldPc)), new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldOk)) },
+                            new List<Expr> { Expr.Ident(pc), Expr.Ident(ok) }));
                     }
                     AddUpdatesToOldGlobalVars(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                 }
@@ -1094,15 +984,14 @@ namespace Microsoft.Boogie
                 var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new Expr[] { Expr.False });
                 domainNameToExpr[domainName] = expr;
             }
-            for (int i = 0; i < impl.InParams.Count - linearTypeChecker.linearDomains.Count; i++)
+            foreach (var inParam in impl.InParams)
             {
-                Variable v = impl.InParams[i];
-                var domainName = linearTypeChecker.FindDomainName(v);
+                var domainName = linearTypeChecker.FindDomainName(inParam);
                 if (domainName == null) continue;
                 if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
                 var domain = linearTypeChecker.linearDomains[domainName];
-                if (!domain.collectors.ContainsKey(v.TypedIdent.Type)) continue;
-                Expr ie = new NAryExpr(Token.NoToken, new FunctionCall(domain.collectors[v.TypedIdent.Type]), new List<Expr> { Expr.Ident(v) });
+                if (!domain.collectors.ContainsKey(inParam.TypedIdent.Type)) continue;
+                Expr ie = new NAryExpr(Token.NoToken, new FunctionCall(domain.collectors[inParam.TypedIdent.Type]), new List<Expr> { Expr.Ident(inParam) });
                 domainNameToExpr[domainName] = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { ie, domainNameToExpr[domainName] });
             }
             foreach (string domainName in linearTypeChecker.linearDomains.Keys)
@@ -1122,23 +1011,140 @@ namespace Microsoft.Boogie
             }
         }
 
-        private void AddYieldProcAndImpl(List<Declaration> decls) 
+        private void CreateYieldCheckerImpl(Implementation impl, List<List<Cmd>> yields)
+        {
+            if (yields.Count == 0) return;
+
+            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+            List<Variable> locals = new List<Variable>();
+            List<Variable> inputs = new List<Variable>();
+
+            foreach (Variable local in impl.LocVars.Union(impl.InParams).Union(impl.OutParams))
+            {
+                var copy = CopyLocal(local);
+                locals.Add(copy);
+                map[local] = Expr.Ident(copy);
+            }
+            foreach (var domainName in linearTypeChecker.linearDomains.Keys)
+            {
+                var inParam = linearTypeChecker.LinearDomainInFormal(domainName);
+                inputs.Add(inParam);
+                map[linearTypeChecker.domainNameToHoleVar[domainName]] = Expr.Ident(inParam);
+            }
+            Dictionary<Variable, Expr> ogOldLocalMap = new Dictionary<Variable, Expr>();
+            Dictionary<Variable, Expr> assumeMap = new Dictionary<Variable, Expr>(map);
+            foreach (Variable g in civlTypeChecker.sharedVariables)
+            {
+                var copy = OgOldLocalLocal(g);
+                locals.Add(copy);
+                ogOldLocalMap[g] = Expr.Ident(copy);
+                Formal f = OgOldGlobalFormal(g);
+                inputs.Add(f);
+                assumeMap[g] = Expr.Ident(f);
+            }
+
+            Substitution assumeSubst = Substituter.SubstitutionFromHashtable(assumeMap);
+            Substitution oldSubst = Substituter.SubstitutionFromHashtable(ogOldLocalMap);
+            Substitution subst = Substituter.SubstitutionFromHashtable(map);
+            List<Block> yieldCheckerBlocks = new List<Block>();
+            List<String> labels = new List<String>();
+            List<Block> labelTargets = new List<Block>();
+            Block yieldCheckerBlock = new Block(Token.NoToken, "exit", new List<Cmd>(), new ReturnCmd(Token.NoToken));
+            labels.Add(yieldCheckerBlock.Label);
+            labelTargets.Add(yieldCheckerBlock);
+            yieldCheckerBlocks.Add(yieldCheckerBlock);
+            int yieldCount = 0;
+            foreach (List<Cmd> cs in yields)
+            {
+                List<Cmd> newCmds = new List<Cmd>();
+                foreach (Cmd cmd in cs)
+                {
+                    PredicateCmd predCmd = (PredicateCmd)cmd;
+                    var newExpr = Substituter.ApplyReplacingOldExprs(assumeSubst, oldSubst, predCmd.Expr);
+                    newCmds.Add(new AssumeCmd(Token.NoToken, newExpr));
+                }
+                foreach (Cmd cmd in cs)
+                {
+                    PredicateCmd predCmd = (PredicateCmd)cmd;
+                    if (predCmd is AssertCmd)
+                    {
+                        var newExpr = Substituter.ApplyReplacingOldExprs(subst, oldSubst, predCmd.Expr);
+                        AssertCmd assertCmd = new AssertCmd(predCmd.tok, newExpr, predCmd.Attributes);
+                        assertCmd.ErrorData = "Non-interference check failed";
+                        newCmds.Add(assertCmd);
+                    }
+                    /*
+                    Disjointness assumes injected by LinearTypeChecker are dropped now because the 
+                    previous loop has already subsituted the old global state in these assumes.
+                    It would be unsound to have these assumes on the current global state.
+                    */
+                }
+                newCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
+                yieldCheckerBlock = new Block(Token.NoToken, "L" + yieldCount++, newCmds, new ReturnCmd(Token.NoToken));
+                labels.Add(yieldCheckerBlock.Label);
+                labelTargets.Add(yieldCheckerBlock);
+                yieldCheckerBlocks.Add(yieldCheckerBlock);
+            }
+            yieldCheckerBlocks.Insert(0, new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
+
+            // Create the yield checker procedure
+            var yieldCheckerName = string.Format("Impl_YieldChecker_{0}", impl.Name);
+            var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, impl.TypeParameters, inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+            CivlUtil.AddInlineAttribute(yieldCheckerProc);
+            yieldCheckerProcs.Add(yieldCheckerProc);
+
+            // Create the yield checker implementation
+            var yieldCheckerImpl = new Implementation(Token.NoToken, yieldCheckerName, impl.TypeParameters, inputs, new List<Variable>(), locals, yieldCheckerBlocks);
+            yieldCheckerImpl.Proc = yieldCheckerProc;
+            CivlUtil.AddInlineAttribute(yieldCheckerImpl);
+            yieldCheckerImpls.Add(yieldCheckerImpl);
+        }
+
+        private void UnifyCallsToYieldProc(Implementation impl, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
+        {
+            CallCmd yieldCallCmd = CallToYieldProc(Token.NoToken, ogOldGlobalMap, domainNameToLocalVar);
+            Block yieldCheckBlock = new Block(Token.NoToken, "CallToYieldProc", new List<Cmd> { yieldCallCmd, new AssumeCmd(Token.NoToken, Expr.False) }, new ReturnCmd(Token.NoToken));
+            List<Block> newBlocks = new List<Block>();
+            foreach (Block b in impl.Blocks)
+            {
+                TransferCmd transferCmd = b.TransferCmd;
+                List<Cmd> newCmds = new List<Cmd>();
+                for (int i = b.Cmds.Count - 1; i >= 0; i--)
+                {
+                    CallCmd callCmd = b.Cmds[i] as CallCmd;
+                    if (callCmd == null || callCmd.Proc != yieldProc)
+                    {
+                        newCmds.Insert(0, b.Cmds[i]);
+                    }
+                    else
+                    {
+                        Block newBlock = new Block(Token.NoToken, b.Label + i, newCmds, transferCmd);
+                        newCmds = new List<Cmd>();
+                        transferCmd = new GotoCmd(Token.NoToken, new List<string> { newBlock.Label, yieldCheckBlock.Label },
+                                                                 new List<Block> { newBlock, yieldCheckBlock });
+                        newBlocks.Add(newBlock);
+                    }
+                }
+                b.Cmds = newCmds;
+                b.TransferCmd = transferCmd;
+            }
+            impl.Blocks.AddRange(newBlocks);
+            impl.Blocks.Add(yieldCheckBlock);
+        }
+
+        private void AddYieldProcAndImpl(List<Declaration> decls)
         {
             if (yieldProc == null) return;
 
-            Program program = linearTypeChecker.program;
             List<Variable> inputs = new List<Variable>();
             foreach (string domainName in linearTypeChecker.linearDomains.Keys)
             {
-                var domain = linearTypeChecker.linearDomains[domainName];
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
-                inputs.Add(f);
+                inputs.Add(linearTypeChecker.LinearDomainInFormal(domainName));
             }
-            foreach (IdentifierExpr ie in globalMods)
+            foreach (Variable g in civlTypeChecker.sharedVariables)
             {
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
-                inputs.Add(f);
-            } 
+                inputs.Add(OgOldGlobalFormal(g));
+            }
             List<Block> blocks = new List<Block>();
             TransferCmd transferCmd = new ReturnCmd(Token.NoToken);
             if (yieldCheckerProcs.Count > 0)
@@ -1164,15 +1170,15 @@ namespace Microsoft.Boogie
                 transferCmd = new GotoCmd(Token.NoToken, labelTargets, blockTargets);
             }
             blocks.Insert(0, new Block(Token.NoToken, "enter", new List<Cmd>(), transferCmd));
-            
+
             var yieldImpl = new Implementation(Token.NoToken, yieldProc.Name, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             yieldImpl.Proc = yieldProc;
-            yieldImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+            CivlUtil.AddInlineAttribute(yieldImpl);
             decls.Add(yieldProc);
             decls.Add(yieldImpl);
         }
 
-        private List<Declaration> Collect()
+        public List<Declaration> Collect()
         {
             List<Declaration> decls = new List<Declaration>();
             foreach (Procedure proc in yieldCheckerProcs)
@@ -1190,32 +1196,57 @@ namespace Microsoft.Boogie
             AddYieldProcAndImpl(decls);
             return decls;
         }
+        #endregion
+    }
 
+    public class CivlRefinement
+    {
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
             Program program = linearTypeChecker.program;
-            foreach (int layerNum in civlTypeChecker.AllLayerNums)
+
+            // Skip procedures do not completely disapper (because of ouput paramters).
+            // We create dummy implementations with empty body.
+            Dictionary<Procedure, Procedure> procToSkipProcDummy = new Dictionary<Procedure, Procedure>();
+            foreach(SkipProc skipProc in civlTypeChecker.procToYieldingProc.Values.OfType<SkipProc>())
+            {
+                Procedure proc = (Procedure)skipProc.proc.Clone();
+                proc.Name = string.Format("skip_dummy_{0}", proc.Name);
+                proc.Requires = new List<Requires>();
+                proc.Ensures = new List<Ensures>();
+                proc.Modifies = new List<IdentifierExpr>();
+                Block newInitBlock = new Block(Token.NoToken, "_init", new List<Cmd>(), new ReturnCmd(Token.NoToken));
+                List<Block> newBlocks = new List<Block> { newInitBlock };
+                Implementation impl = new Implementation(Token.NoToken, proc.Name, proc.TypeParameters, proc.InParams, proc.OutParams, new List<Variable>(), newBlocks);
+                impl.Proc = proc;
+                CivlUtil.AddInlineAttribute(proc);
+                CivlUtil.AddInlineAttribute(impl);
+                decls.Add(proc);
+                decls.Add(impl);
+                procToSkipProcDummy.Add(skipProc.proc, proc);
+            }
+
+            // Generate the refinement checks for every layer
+            foreach (int layerNum in civlTypeChecker.allRefinementLayers)
             {
                 if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum || layerNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
 
-                MyDuplicator duplicator = new MyDuplicator(civlTypeChecker, layerNum);
-                foreach (var proc in program.Procedures)
+                YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, linearTypeChecker, layerNum, procToSkipProcDummy);
+
+                // We can not simply call VisitProgram, because it does some resolving of calls
+                // that is not necessary here (and actually fails).
+                foreach (Procedure proc in program.Procedures)
                 {
-                    if (!civlTypeChecker.procToActionInfo.ContainsKey(proc)) continue;
-                    Procedure duplicateProc = duplicator.VisitProcedure(proc);
-                    decls.Add(duplicateProc);
+                    duplicator.VisitProcedure(proc);
                 }
-                decls.AddRange(duplicator.impls);
-                CivlRefinement civlTransform = new CivlRefinement(linearTypeChecker, civlTypeChecker, duplicator);
-                foreach (var impl in program.Implementations)
+                foreach (Implementation impl in program.Implementations)
                 {
-                    if (!civlTypeChecker.procToActionInfo.ContainsKey(impl.Proc) || civlTypeChecker.procToActionInfo[impl.Proc].createdAtLayerNum < layerNum)
-                        continue;
-                    Implementation duplicateImpl = duplicator.VisitImplementation(impl);
-                    civlTransform.TransformImpl(duplicateImpl);
-                    decls.Add(duplicateImpl);
+                    duplicator.VisitImplementation(impl);
                 }
-                decls.AddRange(civlTransform.Collect());
+
+                decls.AddRange(duplicator.procMap.Values);
+                decls.AddRange(duplicator.implMap.Keys);
+                decls.AddRange(duplicator.Collect());
             }
         }
     }

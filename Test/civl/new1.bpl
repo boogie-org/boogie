@@ -35,8 +35,14 @@ requires {:layer 1} Permissions == mapconstbool(true);
   yield;
 }
 
-procedure {:yields} {:layer 0,1} SetG(val:int);
-ensures {:atomic} |{A: g := val; return true; }|;
+procedure {:atomic} {:layer 1} AtomicSetG(val:int)
+modifies g;
+{ g := val; }
 
-procedure {:yields} {:layer 0,1} IncrG();
-ensures {:atomic} |{A: g := g + 1; return true; }|;
+procedure {:yields} {:layer 0} {:refines "AtomicSetG"} SetG(val:int);
+
+procedure {:atomic} {:layer 1} AtomicIncrG()
+modifies g;
+{ g := g + 1; }
+
+procedure {:yields} {:layer 0} {:refines "AtomicIncrG"} IncrG();

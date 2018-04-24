@@ -15,10 +15,13 @@ function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
   MapConstBool(false)[x := true]
 }
 
-procedure {:yields} {:layer 0,1} Write(idx: int, val: int);
-ensures {:atomic} |{A: a[idx] := val; return true; }|;
+procedure {:atomic} {:layer 1} AtomicWrite(idx: int, val: int)
+modifies a;
+{ a[idx] := val; }
 
-procedure {:yields} {:layer 1} main() 
+procedure {:yields} {:layer 0} {:refines "AtomicWrite"} Write(idx: int, val: int);
+
+procedure {:yields} {:layer 1} main()
 {
     var {:linear "tid"} i: int;
     var {:linear "tid"} j: int;
@@ -38,7 +41,7 @@ procedure {:yields} {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "
     assert {:layer 1} a[i] == 42;
 }
 
-procedure {:yields} {:layer 1} u({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int) 
+procedure {:yields} {:layer 1} u({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
 {
     i := i';
 
@@ -55,5 +58,4 @@ ensures {:layer 1} old(a)[i] == a[i];
     assert {:layer 1} old(a)[i] == a[i];
 }
 
-procedure {:yields} {:layer 0,1} AllocateLow() returns ({:linear "tid"} tid: int);
-ensures {:atomic} |{ A: return true; }|;
+procedure {:yields} {:layer 0} AllocateLow() returns ({:linear "tid"} tid: int);

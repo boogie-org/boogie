@@ -12,7 +12,7 @@ procedure {:yields} {:layer 1} Proc ({:linear "x"} i: int)
 procedure {:yields} {:layer 0} Yield0 () { yield; }
 procedure {:yields} {:layer 1} Yield1 () { yield; }
 
-procedure {:pure} Lemma (i: int);
+procedure Lemma (i: int);
 requires !A[i];
 
 // Collectors for linear domains

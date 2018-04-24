@@ -1272,14 +1272,7 @@ namespace Microsoft.Boogie {
             }
             else if (!CommandLineOptions.Clo.DoModSetAnalysis && v is GlobalVariable)
             {
-                if (tc.Yields) {
-                    // a yielding procedure is allowed to modify any global variable
-                }
-                else if (tc.Frame == null)
-                {
-                    tc.Error(this, "update to a global variable allowed only inside an atomic action of a yielding procedure");
-                }
-                else if (!tc.InFrame(v))
+                if (!tc.Yields && !tc.InFrame(v))
                 {
                     tc.Error(this, "command assigns to a global variable that is not in the enclosing procedure's modifies clause: {0}", v.Name);
                 }
@@ -2430,7 +2423,7 @@ namespace Microsoft.Boogie {
       }
       if (IsAsync) {
         if (Proc.OutParams.Count > 0) {
-          rc.Error(this.tok, "a procedure called asynchronously can have no output parameters");
+          rc.Error(this.tok, "a procedure called asynchronously cannot have output parameters");
           return;
         }
       }
@@ -2539,12 +2532,18 @@ namespace Microsoft.Boogie {
         Contract.Assert(cce.NonNullElements(actualTypeParams));
         TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
                                                            actualTypeParams);
-
+        
         if (!CommandLineOptions.Clo.DoModSetAnalysis && IsAsync)
         {
+            
             if (!tc.Yields)
             {
-                tc.Error(this, "enclosing procedure of an async call must yield");
+                // TODO: Fix this (and related) checks.
+                // We now allow pending asyncs in atomic actions.
+                // Maybe we should not support "yields inference" ala modset analysis anymore.
+                // In particular, we need to check if it would even make sense with the new design of CIVL.
+
+                // tc.Error(this, "enclosing procedure of an async call must yield");
             }
             if (!QKeyValue.FindBoolAttribute(Proc.Attributes, CivlAttributes.YIELDS))
             {

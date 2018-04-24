@@ -33,6 +33,7 @@ namespace Microsoft.Boogie {
 
     public CheckingContext(IErrorSink errorSink) {
       this.errorSink = errorSink;
+      this.errors = 0;
     }
 
     public int ErrorCount {

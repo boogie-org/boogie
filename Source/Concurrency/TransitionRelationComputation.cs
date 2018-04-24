@@ -6,14 +6,22 @@ using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
-
+    /// <summary>
+    /// Computes a transition relation as disjunction (i.e., enumeration) of paths through atomic action(s).
+    /// There are three slightly different use cases:
+    ///   * Commutativity check (sequentially composes two atomic actions)
+    ///   * Nonblocking check (single atomic action)
+    ///   * Refinement check (single atomic action)
+    /// </summary>
     public class TransitionRelationComputation
     {
-        private Program program;
-        private AtomicActionInfo first;  // corresponds to that*
-        private AtomicActionInfo second; // corresponds to this*
-        private Stack<Cmd> cmdStack;
-        private List<PathInfo> paths;
+        // IMPORTANT NOTE:
+        // If a transition relation is computed for a single atomic action, it is placed in "second" ("first" is null).
+        // If a transition relation is computed for two atomic actions, the one placed in "second" executes first, followed by "first".
+        // This is slightly confusing, but has to do with the disjoint sets of ins/outs/locals and reversing the executin order for commutativity checks.
+        private AtomicActionCopy first;
+        private AtomicActionCopy second;
+
         private HashSet<Variable> frame;
         private HashSet<Variable> postExistVars;
 
@@ -21,12 +29,14 @@ namespace Microsoft.Boogie
         private HashSet<Variable> firstExistsVars;
         private HashSet<Variable> secondExistsVars;
 
-        public TransitionRelationComputation(Program program, AtomicActionInfo second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
-            : this(program, null, second, frame, postExistVars) { }
+        private Stack<Cmd> cmdStack;
+        private List<PathInfo> paths;
 
-        public TransitionRelationComputation(Program program, AtomicActionInfo first, AtomicActionInfo second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
+        public TransitionRelationComputation(AtomicActionCopy second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
+            : this(null, second, frame, postExistVars) { }
+
+        public TransitionRelationComputation(AtomicActionCopy first, AtomicActionCopy second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
         {
-            this.program = program;
             this.first = first;
             this.second = second;
             this.postExistVars = postExistVars;
@@ -34,9 +44,9 @@ namespace Microsoft.Boogie
 
             this.existsVars = new Dictionary<Variable, Variable>();
             this.firstExistsVars = new HashSet<Variable>(
-                first != null ? first.thatOutParams.Union(first.thatAction.LocVars)
+                first != null ? first.firstOutParams.Union(first.firstAction.LocVars)
                               : Enumerable.Empty<Variable>());
-            this.secondExistsVars = new HashSet<Variable>(second.thisOutParams.Union(second.thisAction.LocVars));
+            this.secondExistsVars = new HashSet<Variable>(second.secondOutParams.Union(second.secondAction.LocVars));
 
             this.cmdStack = new Stack<Cmd>();
             this.paths = new List<PathInfo>();
@@ -130,8 +140,8 @@ namespace Microsoft.Boogie
         {
             Dictionary<Variable, Expr> varToExpr =
                 frame
-                .Concat(first != null ? first.thatOutParams : Enumerable.Empty<Variable>())
-                .Concat(second.thisOutParams)
+                .Concat(first != null ? first.firstOutParams : Enumerable.Empty<Variable>())
+                .Concat(second.secondOutParams)
                 .ToDictionary(v => v, v => Expr.Ident(v) as Expr);
 
             List<Expr> pathExprs = new List<Expr>();
@@ -345,14 +355,14 @@ namespace Microsoft.Boogie
                 Dictionary<Variable, Expr> invertedMap = new Dictionary<Variable, Expr>();
                 if (first != null)
                 {
-                    foreach (var x in first.thatMap)
+                    foreach (var x in first.firstMap)
                     {
                         invertedMap[((IdentifierExpr)x.Value).Decl] = Expr.Ident(x.Key);
                     }
                 }
                 if (second != null)
                 {
-                    foreach (var x in second.thisMap)
+                    foreach (var x in second.secondMap)
                     {
                         invertedMap[((IdentifierExpr)x.Value).Decl] = Expr.Ident(x.Key);
                     }
@@ -368,7 +378,9 @@ namespace Microsoft.Boogie
 
         private void EnumeratePaths()
         {
-            EnumeratePathsRec(this.second.thisAction.Blocks[0], false);
+            Debug.Assert(cmdStack.Count == 0);
+            EnumeratePathsRec(this.second.secondAction.Blocks[0], false);
+            Debug.Assert(cmdStack.Count == 0);
         }
 
         private void EnumeratePathsRec(Block b, bool inFirst)
@@ -386,7 +398,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    EnumeratePathsRec(first.thatAction.Blocks[0], true);
+                    EnumeratePathsRec(first.firstAction.Blocks[0], true);
                 }
             }
             else

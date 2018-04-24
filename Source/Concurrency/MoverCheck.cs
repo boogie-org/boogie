@@ -12,90 +12,58 @@ namespace Microsoft.Boogie
         LinearTypeChecker linearTypeChecker;
         CivlTypeChecker civlTypeChecker;
         List<Declaration> decls;
-        HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>> commutativityCheckerCache;
-        HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>> gatePreservationCheckerCache;
-        HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>> failurePreservationCheckerCache;
+
+        HashSet<Tuple<AtomicActionCopy, AtomicActionCopy>> commutativityCheckerCache;
+        HashSet<Tuple<AtomicActionCopy, AtomicActionCopy>> gatePreservationCheckerCache;
+        HashSet<Tuple<AtomicActionCopy, AtomicActionCopy>> failurePreservationCheckerCache;
 
         private MoverCheck(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
             this.linearTypeChecker = linearTypeChecker;
             this.civlTypeChecker = civlTypeChecker;
             this.decls = decls;
-            this.commutativityCheckerCache = new HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>>();
-            this.gatePreservationCheckerCache = new HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>>();
-            this.failurePreservationCheckerCache = new HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>>();
+            this.commutativityCheckerCache = new HashSet<Tuple<AtomicActionCopy, AtomicActionCopy>>();
+            this.gatePreservationCheckerCache = new HashSet<Tuple<AtomicActionCopy, AtomicActionCopy>>();
+            this.failurePreservationCheckerCache = new HashSet<Tuple<AtomicActionCopy, AtomicActionCopy>>();
         }
 
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
-            if (civlTypeChecker.procToActionInfo.Count == 0)
+            if (civlTypeChecker.procToAtomicAction.Count == 0)
                 return;
 
-            List<ActionInfo> sortedByCreatedLayerNum = new List<ActionInfo>(civlTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo && !x.isExtern));
-            sortedByCreatedLayerNum.Sort((x, y) => { return (x.createdAtLayerNum == y.createdAtLayerNum) ? 0 : (x.createdAtLayerNum < y.createdAtLayerNum) ? -1 : 1; });
-            List<ActionInfo> sortedByAvailableUptoLayerNum = new List<ActionInfo>(civlTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo && !x.isExtern));
-            sortedByAvailableUptoLayerNum.Sort((x, y) => { return (x.availableUptoLayerNum == y.availableUptoLayerNum) ? 0 : (x.availableUptoLayerNum < y.availableUptoLayerNum) ? -1 : 1; });
-
-            Dictionary<int, HashSet<AtomicActionInfo>> pools = new Dictionary<int, HashSet<AtomicActionInfo>>();
-            int indexIntoSortedByCreatedLayerNum = 0;
-            int indexIntoSortedByAvailableUptoLayerNum = 0;
-            HashSet<AtomicActionInfo> currPool = new HashSet<AtomicActionInfo>();
-            while (indexIntoSortedByCreatedLayerNum < sortedByCreatedLayerNum.Count)
-            {
-                var currLayerNum = sortedByCreatedLayerNum[indexIntoSortedByCreatedLayerNum].createdAtLayerNum;
-                pools[currLayerNum] = new HashSet<AtomicActionInfo>(currPool);
-                while (indexIntoSortedByCreatedLayerNum < sortedByCreatedLayerNum.Count)
-                {
-                    var actionInfo = sortedByCreatedLayerNum[indexIntoSortedByCreatedLayerNum] as AtomicActionInfo;
-                    if (actionInfo.createdAtLayerNum > currLayerNum) break;
-                    pools[currLayerNum].Add(actionInfo);
-                    indexIntoSortedByCreatedLayerNum++;
-                }
-                while (indexIntoSortedByAvailableUptoLayerNum < sortedByAvailableUptoLayerNum.Count)
-                {
-                    var actionInfo = sortedByAvailableUptoLayerNum[indexIntoSortedByAvailableUptoLayerNum] as AtomicActionInfo;
-                    if (actionInfo.availableUptoLayerNum > currLayerNum) break;
-                    pools[currLayerNum].Remove(actionInfo);
-                    indexIntoSortedByAvailableUptoLayerNum++;
-                }
-                currPool = pools[currLayerNum];
-            }
-
-            // No atomic action has mover type Top
-            Debug.Assert(pools.All(l => l.Value.All(a => a.moverType != MoverType.Top)));
-
-            Program program = civlTypeChecker.program;
             MoverCheck moverChecking = new MoverCheck(linearTypeChecker, civlTypeChecker, decls);
 
-            var moverChecks =
-            from layer in pools.Keys
-            from first in pools[layer]
-            from second in pools[layer]
-            where first.moverType != MoverType.Atomic
-            select new { First = first, Second = second };
-
-            foreach (var moverCheck in moverChecks)
+            foreach (int layer in civlTypeChecker.allAtomicActionLayers)
             {
-                var first = moverCheck.First;
-                var second = moverCheck.Second;
+                var pool = civlTypeChecker.procToAtomicAction.Values.Where(a => a.layerRange.Contains(layer));
 
-                if (first.IsRightMover)
+                var moverChecks =
+                    from first in pool
+                    from second in pool
+                    where first.moverType != MoverType.Atomic
+                    select new { First = first, Second = second };
+
+                foreach (var moverCheck in moverChecks)
                 {
-                    moverChecking.CreateCommutativityChecker(program, first, second);
-                    moverChecking.CreateGatePreservationChecker(program, second, first);
+                    var first = moverCheck.First.layerToActionCopy[layer];
+                    var second = moverCheck.Second.layerToActionCopy[layer];
+
+                    if (moverCheck.First.IsRightMover)
+                    {
+                        moverChecking.CreateCommutativityChecker(first, second);
+                        moverChecking.CreateGatePreservationChecker(second, first);
+                    }
+                    if (moverCheck.First.IsLeftMover)
+                    {
+                        moverChecking.CreateCommutativityChecker(second, first);
+                        moverChecking.CreateGatePreservationChecker(first, second);
+                        moverChecking.CreateFailurePreservationChecker(second, first);
+                    }
                 }
-                if (first.IsLeftMover)
+                foreach (AtomicAction atomicAction in pool.Where(a => a.IsLeftMover))
                 {
-                    moverChecking.CreateCommutativityChecker(program, second, first);
-                    moverChecking.CreateGatePreservationChecker(program, first, second);
-                    moverChecking.CreateFailurePreservationChecker(program, second, first);
-                }
-            }
-            foreach (AtomicActionInfo atomicActionInfo in sortedByCreatedLayerNum)
-            {
-                if (atomicActionInfo.IsLeftMover && atomicActionInfo.hasAssumeCmd)
-                {
-                    moverChecking.CreateNonBlockingChecker(program, atomicActionInfo);
+                    moverChecking.CreateNonBlockingChecker(atomicAction.layerToActionCopy[layer]);
                 }
             }
         }
@@ -112,6 +80,7 @@ namespace Microsoft.Boogie
                     otherCmds.Add(cmd);
                 }
                 Block otherBlock = new Block();
+                otherBlock.tok = block.tok;
                 otherBlock.Cmds = otherCmds;
                 otherBlock.Label = block.Label;
                 otherBlocks.Add(otherBlock);
@@ -119,7 +88,11 @@ namespace Microsoft.Boogie
             }
             foreach (Block block in blocks)
             {
-                if (block.TransferCmd is ReturnCmd) continue;
+                if (block.TransferCmd is ReturnCmd)
+                {
+                    blockMap[block].TransferCmd = new ReturnCmd(block.TransferCmd.tok);
+                    continue;
+                }
                 List<Block> otherGotoCmdLabelTargets = new List<Block>();
                 List<string> otherGotoCmdLabelNames = new List<string>();
                 GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
@@ -133,7 +106,20 @@ namespace Microsoft.Boogie
             return otherBlocks;
         }
 
-        private IEnumerable<Expr> DisjointnessExpr(Program program, IEnumerable<Variable> paramVars, HashSet<Variable> frame)
+        private static List<Block> ComposeBlocks(AtomicActionCopy first, AtomicActionCopy second)
+        {
+            List<Block> firstBlocks = CloneBlocks(first.firstAction.Blocks);
+            List<Block> secondBlocks = CloneBlocks(second.secondAction.Blocks);
+            foreach (Block b in firstBlocks.Where(b => b.TransferCmd is ReturnCmd))
+            {
+                List<Block>  bs = new List<Block>  { secondBlocks[0] };
+                List<string> ls = new List<string> { secondBlocks[0].Label };
+                b.TransferCmd = new GotoCmd(b.tok, ls, bs);
+            }
+            return Enumerable.Union(firstBlocks, secondBlocks).ToList();
+        }
+
+        private IEnumerable<Expr> DisjointnessExpr(IEnumerable<Variable> paramVars, HashSet<Variable> frame)
         {
             Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
             foreach (var domainName in linearTypeChecker.linearDomains.Keys)
@@ -153,32 +139,33 @@ namespace Microsoft.Boogie
             }
         }
 
-        private Requires DisjointnessRequires(Program program, IEnumerable<Variable> paramVars, HashSet<Variable> frame)
+        private Requires DisjointnessRequires(IEnumerable<Variable> paramVars, HashSet<Variable> frame)
         {
-            return new Requires(false, Expr.And(DisjointnessExpr(program, paramVars, frame)));
+            return new Requires(false, Expr.And(DisjointnessExpr(paramVars, frame)));
         }
 
-        private void CreateCommutativityChecker(Program program, AtomicActionInfo first, AtomicActionInfo second)
+        private void AddChecker(string checkerName, List<Variable> inputs, List<Variable> outputs, List<Variable> locals, List<Requires> requires, List<Ensures> ensures, List<Block> blocks)
         {
-            if (first == second && first.thatInParams.Count == 0 && first.thatOutParams.Count == 0)
+            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
+            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, blocks);
+            impl.Proc = proc;
+            this.decls.Add(impl);
+            this.decls.Add(proc);
+        }
+
+        private void CreateCommutativityChecker(AtomicActionCopy first, AtomicActionCopy second)
+        {
+            if (first == second && first.firstInParams.Count == 0 && first.firstOutParams.Count == 0)
                 return;
-            if (first.CommutesWith(second))
+            if (first.TriviallyCommutesWith(second))
                 return;
-            if (!commutativityCheckerCache.Add(new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second)))
+            if (!commutativityCheckerCache.Add(Tuple.Create(first, second)))
                 return;
 
-            List<Variable> inputs  = Enumerable.Union(first.thatInParams, second.thisInParams).ToList();
-            List<Variable> outputs = Enumerable.Union(first.thatOutParams, second.thisOutParams).ToList();
-            List<Variable> locals  = Enumerable.Union(first.thatAction.LocVars, second.thisAction.LocVars).ToList();
-            List<Block> firstBlocks = CloneBlocks(first.thatAction.Blocks);
-            List<Block> secondBlocks = CloneBlocks(second.thisAction.Blocks);
-            foreach (Block b in firstBlocks.Where(b => b.TransferCmd is ReturnCmd))
-            {
-                List<Block>  bs = new List<Block>  { secondBlocks[0] };
-                List<string> ls = new List<string> { secondBlocks[0].Label };
-                b.TransferCmd = new GotoCmd(Token.NoToken, ls, bs);
-            }
-            List<Block> blocks = Enumerable.Union(firstBlocks, secondBlocks).ToList();
+            List<Variable> inputs  = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
+            List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
+            List<Variable> locals  = Enumerable.Union(first.firstAction.LocVars, second.secondAction.LocVars).ToList();
+            List<Block> blocks = ComposeBlocks(first, second);
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(first.actionUsedGlobalVars);
@@ -186,11 +173,11 @@ namespace Microsoft.Boogie
             frame.UnionWith(second.actionUsedGlobalVars);
             
             List<Requires> requires = new List<Requires>();
-            requires.Add(DisjointnessRequires(program, first.thatInParams.Union(second.thisInParams), frame));
-            foreach (AssertCmd assertCmd in Enumerable.Union(first.thatGate, second.thisGate))
+            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams).Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
+            foreach (AssertCmd assertCmd in Enumerable.Union(first.firstGate, second.secondGate))
                 requires.Add(new Requires(false, assertCmd.Expr));
-
-            var transitionRelationComputation = new TransitionRelationComputation(program, first, second, frame, new HashSet<Variable>());
+            
+            var transitionRelationComputation = new TransitionRelationComputation(first, second, frame, new HashSet<Variable>());
             Expr transitionRelation = transitionRelationComputation.TransitionRelationCompute();
             {
                 List<Block> bs = new List<Block> { blocks[0] };
@@ -199,36 +186,31 @@ namespace Microsoft.Boogie
                 blocks.Insert(0, initBlock);
             }
 
-            var thisInParamsFiltered = second.thisInParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_IN);
+            var secondInParamsFiltered = second.secondInParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_IN);
             IEnumerable<Expr> linearityAssumes = Enumerable.Union(
-                DisjointnessExpr(program, first.thatOutParams.Union(thisInParamsFiltered), frame),
-                DisjointnessExpr(program, first.thatOutParams.Union(second.thisOutParams), frame));
+                DisjointnessExpr(first.firstOutParams.Union(secondInParamsFiltered), frame),
+                DisjointnessExpr(first.firstOutParams.Union(second.secondOutParams), frame));
             // TODO: add further disjointness expressions?
-            Ensures ensureCheck = new Ensures(false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation));
+            Ensures ensureCheck = new Ensures(first.proc.tok, false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation), null);
             ensureCheck.ErrorData = string.Format("Commutativity check between {0} and {1} failed", first.proc.Name, second.proc.Name);
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
             
             string checkerName = string.Format("CommutativityChecker_{0}_{1}", first.proc.Name, second.proc.Name);
-            List<IdentifierExpr> globalVars = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
 
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
-            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, blocks);
-            impl.Proc = proc;
-            this.decls.Add(impl);
-            this.decls.Add(proc);
+            AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
 
-        private void CreateGatePreservationChecker(Program program, AtomicActionInfo first, AtomicActionInfo second)
+        private void CreateGatePreservationChecker(AtomicActionCopy first, AtomicActionCopy second)
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
-            if (!gatePreservationCheckerCache.Add(new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second)))
+            if (!gatePreservationCheckerCache.Add(Tuple.Create(first, second)))
                 return;
 
-            List<Variable> inputs = Enumerable.Union(first.thatInParams, second.thisInParams).ToList();
-            List<Variable> outputs = Enumerable.Union(first.thatOutParams, second.thisOutParams).ToList();
-            List<Variable> locals = new List<Variable>(second.thisAction.LocVars);
-            List<Block> secondBlocks = CloneBlocks(second.thisAction.Blocks);
+            List<Variable> inputs = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
+            List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
+            List<Variable> locals = new List<Variable>(second.secondAction.LocVars);
+            List<Block> blocks = CloneBlocks(second.secondAction.Blocks);
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
@@ -236,100 +218,87 @@ namespace Microsoft.Boogie
 
             List<Requires> requires = new List<Requires>();
             List<Ensures> ensures = new List<Ensures>();
-            requires.Add(DisjointnessRequires(program, first.thatInParams.Union(second.thisInParams), frame));
-            foreach (AssertCmd assertCmd in second.thisGate)
+            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams).Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
+            foreach (AssertCmd assertCmd in second.secondGate)
                 requires.Add(new Requires(false, assertCmd.Expr));
             
-            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(program, first.thatInParams.Union(second.thisOutParams), frame);
-            foreach (AssertCmd assertCmd in first.thatGate)
+            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(first.firstInParams.Union(second.secondOutParams), frame);
+            foreach (AssertCmd assertCmd in first.firstGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
                 Ensures ensureCheck = new Ensures(assertCmd.tok, false, Expr.Imp(Expr.And(linearityAssumes), assertCmd.Expr), null);
-                ensureCheck.ErrorData = string.Format("Gate not preserved by {0}", second.proc.Name);
+                ensureCheck.ErrorData = string.Format("Gate of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
                 ensures.Add(ensureCheck);
             }
             string checkerName = string.Format("GatePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
-            List<IdentifierExpr> globalVars = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
-
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
-            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
-            impl.Proc = proc;
-            this.decls.Add(impl);
-            this.decls.Add(proc);
+            
+            AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
 
-        private void CreateFailurePreservationChecker(Program program, AtomicActionInfo first, AtomicActionInfo second)
+        private void CreateFailurePreservationChecker(AtomicActionCopy first, AtomicActionCopy second)
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
-            if (!failurePreservationCheckerCache.Add(new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second)))
+            if (!failurePreservationCheckerCache.Add(Tuple.Create(first, second)))
                 return;
 
-            List<Variable> inputs = Enumerable.Union(first.thatInParams, second.thisInParams).ToList();
-            List<Variable> outputs = Enumerable.Union(first.thatOutParams, second.thisOutParams).ToList();
-            List<Variable> locals = new List<Variable>(second.thisAction.LocVars);
-            List<Block> secondBlocks = CloneBlocks(second.thisAction.Blocks);
+            List<Variable> inputs = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
+            List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
+            List<Variable> locals = new List<Variable>(second.secondAction.LocVars);
+            List<Block> blocks = CloneBlocks(second.secondAction.Blocks);
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
             frame.UnionWith(second.actionUsedGlobalVars);
 
             List<Requires> requires = new List<Requires>();
-            requires.Add(DisjointnessRequires(program, first.thatInParams.Union(second.thisInParams), frame));
-            Expr gateExpr = Expr.Not(Expr.And(first.thatGate.Select(a => a.Expr)));
-            gateExpr.Type = Type.Bool; // necessary?
-            requires.Add(new Requires(false, gateExpr));
-            foreach (AssertCmd assertCmd in second.thisGate)
+            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams).Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
+            Expr firstNegatedGate = Expr.Not(Expr.And(first.firstGate.Select(a => a.Expr)));
+            firstNegatedGate.Type = Type.Bool; // necessary?
+            requires.Add(new Requires(false, firstNegatedGate));
+            foreach (AssertCmd assertCmd in second.secondGate)
                 requires.Add(new Requires(false, assertCmd.Expr));
 
-            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(program, first.thatInParams.Union(second.thisOutParams), frame);
-            Ensures ensureCheck = new Ensures(false, Expr.Imp(Expr.And(linearityAssumes), gateExpr));
+            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(first.firstInParams.Union(second.secondOutParams), frame);
+            Ensures ensureCheck = new Ensures(first.proc.tok, false, Expr.Imp(Expr.And(linearityAssumes), firstNegatedGate), null);
             ensureCheck.ErrorData = string.Format("Gate failure of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
             
             string checkerName = string.Format("FailurePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
-            List<IdentifierExpr> globalVars = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
 
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
-            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
-            impl.Proc = proc;
-            this.decls.Add(impl);
-            this.decls.Add(proc);
+            AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
 
-        private void CreateNonBlockingChecker(Program program, AtomicActionInfo second)
+        private void CreateNonBlockingChecker(AtomicActionCopy second)
         {
-            List<Variable> inputs = new List<Variable>();
-            inputs.AddRange(second.thisInParams);
+            if (!second.HasAssumeCmd) return;
 
+            List<Variable> inputs = new List<Variable>(second.secondInParams);
+            List<Variable> outputs = new List<Variable>();
+            List<Variable> locals = new List<Variable>();
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(second.gateUsedGlobalVars);
             frame.UnionWith(second.actionUsedGlobalVars);
             
             List<Requires> requires = new List<Requires>();
-            requires.Add(DisjointnessRequires(program, second.thisInParams, frame));
-            foreach (AssertCmd assertCmd in second.thisGate)
+            requires.Add(DisjointnessRequires(second.secondInParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
+            foreach (AssertCmd assertCmd in second.secondGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
             }
+            List<Ensures> ensures = new List<Ensures>();
 
             HashSet<Variable> postExistVars = new HashSet<Variable>();
             postExistVars.UnionWith(frame);
-            postExistVars.UnionWith(second.thisOutParams);
-            Expr ensuresExpr = (new TransitionRelationComputation(program, second, frame, postExistVars)).TransitionRelationCompute();
-            Ensures ensureCheck = new Ensures(false, ensuresExpr);
-            ensureCheck.ErrorData = string.Format("{0} is blocking", second.proc.Name);
-            List<Ensures> ensures = new List<Ensures> { ensureCheck };
+            postExistVars.UnionWith(second.secondOutParams);
+            Expr nonBlockingExpr = (new TransitionRelationComputation(second, frame, postExistVars)).TransitionRelationCompute();
+            AssertCmd nonBlockingAssert = new AssertCmd(second.proc.tok, nonBlockingExpr);
+            nonBlockingAssert.ErrorData = string.Format("Non-blocking check for {0} failed", second.proc.Name);
+            List<Block> blocks = new List<Block>{ new Block(second.proc.tok, "L", new List<Cmd>() { nonBlockingAssert }, new ReturnCmd(Token.NoToken)) };
 
-            List<Block> blocks = new List<Block> { new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)) };
             string checkerName = string.Format("NonBlockingChecker_{0}", second.proc.Name);
-            List<IdentifierExpr> globalVars = civlTypeChecker.SharedVariables.Select(x => Expr.Ident(x)).ToList();
             
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), requires, globalVars, ensures);
-            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
-            impl.Proc = proc;
-            this.decls.Add(impl);
-            this.decls.Add(proc);
+            AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
     }
 }

@@ -5,7 +5,7 @@ Source/packages/*
 Source/UnitTests/TestResult.xml
 Source/UnitTests/*/bin
 Source/UnitTests/*/obj
-Test/*/Output
+Test/**/Output
 TestResult.xml
 
 # Binaries
@@ -31,6 +31,8 @@ Source/*.user
 Source/*.suo
 Source/*.cache
 Source/.vs/
+
+.vscode
 
 # MonoDevelop files
 Source/*.userprefs

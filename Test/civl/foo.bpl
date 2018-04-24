@@ -9,17 +9,17 @@ procedure {:yields} {:layer 1} PB()
   yield;
 }
 
-procedure {:yields} {:layer 0,1} Incr();
-ensures {:atomic}
-|{A:
-  g := g + 1; return true;
-}|;
+procedure {:atomic} {:layer 1} AtomicIncr()
+modifies g;
+{ g := g + 1; }
 
-procedure {:yields} {:layer 0,1} Set(v: int);
-ensures {:atomic}
-|{A:
-  g := v; return true;
-}|;
+procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();
+
+procedure {:atomic} {:layer 1} AtomicSet(v: int)
+modifies g;
+{ g := v; }
+
+procedure {:yields} {:layer 0} {:refines "AtomicSet"} Set(v: int);
 
 procedure {:yields} {:layer 1} PC()
 ensures {:layer 1} g == 3;

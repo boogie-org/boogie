@@ -7,8 +7,8 @@ procedure{:layer 1} P(x:int)
 {
 }
 
-procedure{:yields}{:layer 1,2} Y(x:int)
-  ensures{:atomic} |{ A: return true; }|;
+
+procedure{:yields}{:layer 1} Y(x:int)
 {
   yield;
   

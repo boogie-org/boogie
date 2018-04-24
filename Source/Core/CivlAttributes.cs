@@ -18,6 +18,10 @@ namespace Microsoft.Boogie
         public const string RIGHT = "right";
         public const string BOTH = "both";
 
+        public static string REFINES = "refines";
+
+        public const string TERMINATES = "terminates";
+
         public const string LINEAR = "linear";
         public const string LINEAR_IN = "linear_in";
         public const string LINEAR_OUT = "linear_out";
@@ -72,6 +76,11 @@ namespace Microsoft.Boogie
                 kv => kv.Key == LINEAR || kv.Key == LINEAR_IN || kv.Key == LINEAR_OUT);
         }
 
+        public static void RemoveRefinesAttribute(ICarriesAttributes obj)
+        {
+            RemoveAttribute(obj, kv => kv.Key == REFINES);
+        }
+
         public static void DesugarYieldAssert(Program program)
         {
             foreach (var proc in program.Procedures)
@@ -86,6 +95,11 @@ namespace Microsoft.Boogie
                         proc.Ensures.Add(ensures);
                     }
                 }
+            }
+
+            foreach (var impl in program.Implementations)
+            {
+                RemoveAttribute(impl, kv => kv.Key == YIELD_ASSERT);
             }
         }
     }

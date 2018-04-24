@@ -1,19 +1,25 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-var {:layer 0} x: int;
+var {:layer 0,2} x: int;
 
-procedure {:yields} {:layer 0,1} Incr();
-ensures {:right} |{ A: x := x + 1; return true; }|;
+procedure {:right} {:layer 1} AtomicIncr()
+modifies x;
+{ x := x + 1; }
 
-procedure {:pure} ghost(y: int) returns (z: int)
+procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();
+
+procedure ghost(y: int) returns (z: int)
 requires y == 1;
 ensures z == 2;
 {
   z := y + 1;
 }
 
-procedure {:yields} {:layer 1,2} Incr2() 
-ensures {:right} |{ A: x := x + 2; return true; }|;
+procedure {:right} {:layer 2} AtomicIncr2()
+modifies x;
+{ x := x + 2; }
+
+procedure {:yields} {:layer 1} {:refines "AtomicIncr2"} Incr2()
 {
   var {:layer 1} a: int;
 
@@ -30,8 +36,7 @@ ensures z == x;
   z := x;
 }
 
-procedure {:yields} {:layer 1,2} Incr2_0() 
-ensures {:right} |{ A: x := x + 2; return true; }|;
+procedure {:yields} {:layer 1} {:refines "AtomicIncr2"} Incr2_0()
 {
   var {:layer 1} a: int;
   var {:layer 1} b: int;

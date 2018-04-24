@@ -12,20 +12,20 @@ var {:layer 0,2} b: bool;
 var {:layer 1,3} lock: X;
 
 procedure {:yields} {:layer 3} Customer({:linear "tid"} tid: X)
-requires {:layer 2} tid != nil; 
+requires {:layer 2} tid != nil;
 requires {:layer 2} InvLock(lock, b);
 ensures {:layer 2} InvLock(lock, b);
 {
     yield;
     assert {:layer 2} InvLock(lock, b);
-    while (*) 
+    while (*)
     invariant {:layer 2} InvLock(lock, b);
     {
         call Enter(tid);
-    	call Leave(tid);
+        call Leave(tid);
         yield;
-	assert {:layer 2} InvLock(lock, b);
-    }    
+        assert {:layer 2} InvLock(lock, b);
+    }
     yield;
     assert {:layer 2} InvLock(lock, b);
 }
@@ -35,11 +35,14 @@ function {:inline} InvLock(lock: X, b: bool) : bool
     lock != nil <==> b
 }
 
-procedure {:yields} {:layer 2,3} Enter({:linear "tid"} tid: X)
-requires {:layer 2} tid != nil; 
+procedure {:right} {:layer 3} AtomicEnter({:linear "tid"} tid: X)
+modifies lock;
+{ assume lock == nil && tid != nil; lock := tid; }
+
+procedure {:yields} {:layer 2} {:refines "AtomicEnter"} Enter({:linear "tid"} tid: X)
+requires {:layer 2} tid != nil;
 requires {:layer 2} InvLock(lock, b);
 ensures {:layer 2} InvLock(lock, b);
-ensures {:right} |{ A: assume lock == nil && tid != nil; lock := tid; return true; }|;
 {
     yield;
     assert {:layer 2} InvLock(lock, b);
@@ -48,10 +51,13 @@ ensures {:right} |{ A: assume lock == nil && tid != nil; lock := tid; return tru
     assert {:layer 2} InvLock(lock, b);
 }
 
-procedure {:yields} {:layer 2,3} Leave({:linear "tid"} tid:X)
+procedure {:atomic} {:layer 3} AtomicLeave({:linear "tid"} tid:X)
+modifies lock;
+{ assert lock == tid && tid != nil; lock := nil; }
+
+procedure {:yields} {:layer 2} {:refines "AtomicLeave"} Leave({:linear "tid"} tid:X)
 requires {:layer 2} InvLock(lock, b);
 ensures {:layer 2} InvLock(lock, b);
-ensures {:atomic} |{ A: assert lock == tid && tid != nil; lock := nil; return true; }|;
 {
     yield;
     assert {:layer 2} InvLock(lock, b);
@@ -60,31 +66,31 @@ ensures {:atomic} |{ A: assert lock == tid && tid != nil; lock := nil; return tr
     assert {:layer 2} InvLock(lock, b);
 }
 
-procedure {:yields} {:layer 1,2} LowerEnter({:linear "tid"} tid: X) 
-ensures {:atomic} |{ A: assume !b; b := true; lock := tid; return true; }|;
+procedure {:atomic} {:layer 2} AtomicLowerEnter({:linear "tid"} tid: X)
+modifies b, lock;
+{ assume !b; b := true; lock := tid; }
+
+procedure {:yields} {:layer 1} {:refines "AtomicLowerEnter"} LowerEnter({:linear "tid"} tid: X)
 {
     var status: bool;
     yield;
-    L: 
+    while (true) {
         call status := CAS(false, true);
         if (status) {
-	    call SetLock(tid);
-	}
-	yield;
-        goto A, B;
-
-    A: 
-        assume status;
-	yield;
-	return;
-
-    B:
-        assume !status;
-	goto L;
+            call SetLock(tid);
+            yield;
+            return;
+        }
+        yield;
+    }
+    yield;
 }
 
-procedure {:yields} {:layer 1,2} LowerLeave()
-ensures {:atomic} |{ A: b := false; lock := nil; return true; }|;
+procedure {:atomic} {:layer 2} AtomicLowerLeave()
+modifies b, lock;
+{ b := false; lock := nil; }
+
+procedure {:yields} {:layer 1} {:refines "AtomicLowerLeave"} LowerLeave()
 {
     yield;
     call SET(false);
@@ -98,13 +104,21 @@ modifies lock;
     lock := v;
 }
 
-procedure {:yields} {:layer 0,1} CAS(prev: bool, next: bool) returns (status: bool);
-ensures {:atomic} |{ 
-A: goto B, C; 
-B: assume b == prev; b := next; status := true; return true; 
-C: status := false; return true; 
-}|;
+procedure {:atomic} {:layer 1} AtomicCAS(prev: bool, next: bool) returns (status: bool)
+modifies b;
+{
+  if (b == prev) {
+    b := next;
+    status := true;
+  } else {
+    status := false;
+  }
+}
 
-procedure {:yields} {:layer 0,1} SET(next: bool);
-ensures {:atomic} |{ A: b := next; return true; }|;
+procedure {:yields} {:layer 0} {:refines "AtomicCAS"} CAS(prev: bool, next: bool) returns (status: bool);
 
+procedure {:atomic} {:layer 1} AtomicSET(next: bool)
+modifies b;
+{ b := next; }
+
+procedure {:yields} {:layer 0} {:refines "AtomicSET"} SET(next: bool);

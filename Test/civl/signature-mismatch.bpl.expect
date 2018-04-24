@@ -1,0 +1,4 @@
+signature-mismatch.bpl(19,61): Error: mismatched type of in-parameter in refinement procedure write_x_1: y' (named x' in atomic action)
+signature-mismatch.bpl(27,61): Error: mismatched number of in-parameters in refinement procedure: write_x_2
+signature-mismatch.bpl(36,61): Error: mismatched linearity type of in-parameter in refinement procedure write_x_3: x'
+3 type checking errors detected in signature-mismatch.bpl

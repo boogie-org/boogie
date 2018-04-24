@@ -6,6 +6,15 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
+    /// <summary>
+    /// Implements the simulation relation algorithm from the paper:
+    ///   Monika Rauch Henzinger, Thomas A. Henzinger, Peter W. Kopke
+    ///   Computing Simulations on Finite and Infinite Graphs
+    ///   FOCS 1995
+    /// </summary>
+    /// <typeparam name="A">node type of graph A</typeparam>
+    /// <typeparam name="B">node type of graph B</typeparam>
+    /// <typeparam name="L">type of edge labels</typeparam>
     public class SimulationRelation<A, B, L>
     {
         class Graph<T>

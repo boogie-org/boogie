@@ -513,8 +513,8 @@ namespace Microsoft.Boogie
 
         if (CommandLineOptions.Clo.StratifiedInlining == 0)
         {
-          Concurrency.Transform(linearTypeChecker, civlTypeChecker);
-          (new LinearEraser()).VisitProgram(program);
+          CivlVCGeneration.Transform(linearTypeChecker, civlTypeChecker);
+          linearTypeChecker.EraseLinearAnnotations();
           if (CommandLineOptions.Clo.CivlDesugaredFile != null)
           {
               int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
@@ -712,6 +712,7 @@ namespace Microsoft.Boogie
 
       linearTypeChecker = null;
       civlTypeChecker = null;
+      YieldTypeChecker yieldTypeChecker = null;
 
       // ---------- Resolve ------------------------------------------------------------
 
@@ -750,21 +751,29 @@ namespace Microsoft.Boogie
 
       civlTypeChecker = new CivlTypeChecker(program);
       civlTypeChecker.TypeCheck();
-      if (civlTypeChecker.errorCount != 0)
+      if (civlTypeChecker.checkingContext.ErrorCount != 0)
       {
-          Console.WriteLine("{0} type checking errors detected in {1}", civlTypeChecker.errorCount, GetFileNameForConsole(bplFileName));
+          Console.WriteLine("{0} type checking errors detected in {1}", civlTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(bplFileName));
           return PipelineOutcome.TypeCheckingError;
       }
 
-      linearTypeChecker = new LinearTypeChecker(program);
+      yieldTypeChecker = new YieldTypeChecker(civlTypeChecker);
+      yieldTypeChecker.TypeCheck();
+      if (yieldTypeChecker.checkingContext.ErrorCount != 0)
+      {
+          Console.WriteLine("{0} type checking errors detected in {1}", yieldTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(bplFileName));
+          return PipelineOutcome.TypeCheckingError;
+      }
+
+      linearTypeChecker = new LinearTypeChecker(program, civlTypeChecker);
       linearTypeChecker.TypeCheck();
-      if (linearTypeChecker.errorCount == 0)
+      if (linearTypeChecker.checkingContext.ErrorCount == 0)
       {
         linearTypeChecker.Transform();
       }
       else
       {
-        Console.WriteLine("{0} type checking errors detected in {1}", linearTypeChecker.errorCount, GetFileNameForConsole(bplFileName));
+        Console.WriteLine("{0} type checking errors detected in {1}", linearTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(bplFileName));
         return PipelineOutcome.TypeCheckingError;
       }
 

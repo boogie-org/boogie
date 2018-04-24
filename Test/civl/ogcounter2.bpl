@@ -3,24 +3,40 @@
 var {:layer 2,5} x: int;
 var {:layer 2,3} lock: X;
 
-procedure {:yields} {:layer 2} AllocTid() returns ({:linear "tid"} tid: X);
-ensures {:right} |{L: assume tid != Nil; return true; }|;
+procedure {:right} {:layer 2,4} AtomicAllocTid() returns ({:linear "tid"} tid: X)
+{ assume tid != Nil; }
 
-procedure {:yields} {:layer 2,3} acq({:linear "tid"} tid: X);
-ensures {:right} |{ L: assert tid != Nil; assume lock == Nil; lock := tid; return true; }|;
+procedure {:yields} {:layer 1} {:refines "AtomicAllocTid"} AllocTid() returns ({:linear "tid"} tid: X);
 
-procedure {:yields} {:layer 2,3} rel({:linear "tid"} tid: X);
-ensures {:left} |{ L: assert tid != Nil && lock == tid; lock := Nil; return true; }|;
+procedure {:right} {:layer 3} atomic_acq({:linear "tid"} tid: X)
+modifies lock;
+{ assert tid != Nil; assume lock == Nil; lock := tid; }
 
-procedure {:yields} {:layer 2,3} read({:linear "tid"} tid: X) returns (v: int);
-ensures {:both} |{ L: assert tid != Nil && lock == tid; v := x; return true; }|;
+procedure {:yields} {:layer 2} {:refines "atomic_acq"} acq({:linear "tid"} tid: X);
 
-procedure {:yields} {:layer 2,3} write({:linear "tid"} tid: X, v: int);
-ensures {:both} |{ L: assert tid != Nil && lock == tid; x := v; return true; }|;
+procedure {:left} {:layer 3} atomic_rel({:linear "tid"} tid: X)
+modifies lock;
+{ assert tid != Nil && lock == tid; lock := Nil; }
 
-procedure {:yields} {:layer 3,4} Incr({:linear "tid"} tid: X)
+procedure {:yields} {:layer 2} {:refines "atomic_rel"} rel({:linear "tid"} tid: X);
+
+procedure {:both} {:layer 3} atomic_read({:linear "tid"} tid: X) returns (v: int)
+{ assert tid != Nil && lock == tid; v := x; }
+
+procedure {:yields} {:layer 2} {:refines "atomic_read"} read({:linear "tid"} tid: X) returns (v: int);
+
+procedure {:both} {:layer 3} atomic_write({:linear "tid"} tid: X, v: int)
+modifies x;
+{ assert tid != Nil && lock == tid; x := v; }
+
+procedure {:yields} {:layer 2} {:refines "atomic_write"} write({:linear "tid"} tid: X, v: int);
+
+procedure {:left} {:layer 4} AtomicIncr({:linear "tid"} tid: X)
+modifies x;
+{ x := x + 1; }
+
+procedure {:yields} {:layer 3} {:refines "AtomicIncr"} Incr({:linear "tid"} tid: X)
 requires {:layer 3} tid != Nil;
-ensures {:left} |{ L: x := x + 1; return true; }|;
 {
   var t: int;
   
@@ -32,8 +48,11 @@ ensures {:left} |{ L: x := x + 1; return true; }|;
   yield;
 }
 
-procedure {:yields} {:layer 4,5} IncrBy2()
-ensures {:left} |{ L: x := x + 2; return true; }|;
+procedure {:left} {:layer 5} AtomicIncrBy2()
+modifies x;
+{ x := x + 2; }
+
+procedure {:yields} {:layer 4} {:refines "AtomicIncrBy2"} IncrBy2()
 {
   var {:linear "tid"} tid1: X;
   var {:linear "tid"} tid2: X;

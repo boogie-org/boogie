@@ -55,7 +55,6 @@ namespace Microsoft.Boogie
 
   sealed class CachedVerificationResultInjector : StandardVisitor
   {
-    readonly IEnumerable<Implementation> Implementations;
     readonly Program Program;
     // TODO(wuestholz): We should probably increase the threshold to something like 2 seconds.
     static readonly double TimeThreshold = -1.0d;
@@ -82,9 +81,8 @@ namespace Microsoft.Boogie
       }
     }
 
-    CachedVerificationResultInjector(Program program, IEnumerable<Implementation> implementations)
+    CachedVerificationResultInjector(Program program)
     {
-      Implementations = implementations;
       Program = program;
     }
 
@@ -162,7 +160,7 @@ namespace Microsoft.Boogie
 
     public static void Inject(Program program, IEnumerable<Implementation> implementations, string requestId, string programId, out long[] cachingActionCounts)
     {
-      var eai = new CachedVerificationResultInjector(program, implementations);
+      var eai = new CachedVerificationResultInjector(program);
 
       cachingActionCounts = new long[Enum.GetNames(typeof(VC.ConditionGeneration.CachingAction)).Length];
       var run = new CachedVerificationResultInjectorRun { Start = DateTime.UtcNow, ImplementationCount = implementations.Count(), CachingActionCounts = cachingActionCounts };
