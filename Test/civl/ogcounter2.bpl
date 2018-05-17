@@ -1,5 +1,10 @@
 // RUN: %boogie -noinfer -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+
+type X;
+const unique MainTid: X;
+const unique Nil: X;
+
 var {:layer 2,5} x: int;
 var {:layer 2,3} lock: X;
 
@@ -73,9 +78,6 @@ requires {:layer 5} tid == MainTid && x == 0;
   assert {:layer 5} x == 2;
 }
 
-type X;
-const unique MainTid: X;
-const unique Nil: X;
 function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
 function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
 {

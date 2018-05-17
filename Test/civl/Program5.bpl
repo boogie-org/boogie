@@ -1,7 +1,11 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+
 type Tid;
 const unique nil: Tid;
+
+var {:layer 0,3} Color:int;
+var {:layer 0,1} lock:Tid;
 
 function {:inline} UNALLOC():int { 0 }
 function {:inline} WHITE():int   { 1 }
@@ -91,20 +95,13 @@ procedure {:atomic} {:layer 1,2} AtomicGetColorNoLock() returns (col:int)
 }
 
 procedure {:yields} {:layer 0} {:refines "AtomicAcquireLock"} AcquireLock({:linear "tid"} tid: Tid);
-
 procedure {:yields} {:layer 0} {:refines "AtomicReleaseLock"} ReleaseLock({:linear "tid"} tid: Tid);
-
 procedure {:yields} {:layer 0} {:refines "AtomicSetColorLocked"} SetColorLocked({:linear "tid"} tid:Tid, newCol:int);
-
 procedure {:yields} {:layer 0} {:refines "AtomicGetColorLocked"} GetColorLocked({:linear "tid"} tid:Tid) returns (col:int);
-
 procedure {:yields} {:layer 0} {:refines "AtomicGetColorNoLock"} GetColorNoLock() returns (col:int);
 
 function {:builtin "MapConst"} MapConstBool(bool): [Tid]bool;
 function {:builtin "MapOr"} MapOr([Tid]bool, [Tid]bool) : [Tid]bool;
-
-var {:layer 0,3} Color:int;
-var {:layer 0,1} lock:Tid;
 
 function {:inline} {:linear "tid"} TidCollector(x: Tid) : [Tid]bool
 {
