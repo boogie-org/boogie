@@ -1040,12 +1040,14 @@ namespace Microsoft.Boogie
                                   new List<IdentifierExpr> { Expr.Ident(pendingAsyncMultiset) },
                                   new List<Ensures>()
                               );
+                p.InParams.ForEach(inParam => inParam.Attributes = null);
                 CivlUtil.AddInlineAttribute(p);
                 p.Typecheck(new TypecheckingContext(null));
                 actionProc.addPendingAsyncProc = p;
                 program.AddTopLevelDeclaration(p);
 
                 var inParams = actionProc.proc.InParams.Select(v => (Variable)v.Clone()).ToList();
+                inParams.ForEach(inParam => inParam.Attributes = null);
                 Expr idx = new NAryExpr(
                                Token.NoToken,
                                new FunctionCall(c),
