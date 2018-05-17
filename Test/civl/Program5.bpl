@@ -36,13 +36,13 @@ ensures  {:layer 2} Color >= GRAY();
 
 procedure {:yields} {:layer 1} {:refines "AtomicWriteBarrier"} WriteBarrierSlow({:linear "tid"} tid:Tid)
 {
-       var colorLocal:int;
-       yield;
-       call AcquireLock(tid);
-       call colorLocal := GetColorLocked(tid);
-       if (WhiteOrLighter(colorLocal)) { call SetColorLocked(tid, GRAY()); }
-       call ReleaseLock(tid);
-       yield;
+  var colorLocal:int;
+  yield;
+  call AcquireLock(tid);
+  call colorLocal := GetColorLocked(tid);
+  if (WhiteOrLighter(colorLocal)) { call SetColorLocked(tid, GRAY()); }
+  call ReleaseLock(tid);
+  yield;
 }
 
 procedure {:atomic} {:layer 2,3} AtomicWriteBarrier({:linear "tid"} tid:Tid)
