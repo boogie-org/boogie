@@ -126,7 +126,7 @@ procedure {:yields} {:layer 0} {:refines "AtomicWriteLow"} WriteLow(i: int, val:
 procedure {:yields} {:layer 0} {:refines "AtomicAllocateLow"} AllocateLow() returns (i: int);
 
 // We can prove that this primitive procedure preserves the permission invariant locally.
-// We only need to using its specification and the definitions of TidCollector and TidSetCollector.
+// We only need to use its specification and the definitions of TidCollector and TidSetCollector.
 procedure {:layer 1} MakeLinear(i: int) returns ({:linear "tid"} tid: int);
 modifies unallocated;
 requires unallocated[i];
