@@ -2391,7 +2391,7 @@ namespace Microsoft.Boogie.SMTLib
             BigInteger exp = getBvVal(expExpr);
             int expSize = getBvSize(expExpr);
             BigInteger sig = getBvVal(sigExpr);
-            int sigSize = getBvSize(expExpr);
+            int sigSize = getBvSize(sigExpr);
             return new Basetypes.BigFloat(isNeg, sig, exp, sigSize, expSize);
         }
         if (resp.Name == "_" && resp.ArgCount == 3)
