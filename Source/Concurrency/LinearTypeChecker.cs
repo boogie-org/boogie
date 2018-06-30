@@ -983,7 +983,7 @@ namespace Microsoft.Boogie
         }
     }
 
-    class LinearTypeEraser : ReadOnlyVisitor
+    public class LinearTypeEraser : ReadOnlyVisitor
     {
         public override Variable VisitVariable(Variable node)
         {
