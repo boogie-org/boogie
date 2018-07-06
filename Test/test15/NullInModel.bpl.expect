@@ -5,8 +5,8 @@
 null -> T@ref!val!0
 s -> T@ref!val!0
 tickleBool -> {
-  true -> true
   false -> true
+  true -> true
   else -> true
 }
 *** END_MODEL

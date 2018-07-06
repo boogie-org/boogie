@@ -663,29 +663,40 @@ namespace Microsoft.Boogie
     public void Write(System.IO.TextWriter wr)
     {
       wr.WriteLine("*** MODEL");
-      foreach (var f in Functions.OrderBy(f => f.Name))
+      foreach (var f in Functions.OrderBy(f => f.Name)) {
         if (f.Arity == 0) {
           wr.WriteLine("{0} -> {1}", f.Name, f.GetConstant());
         }
-      foreach (var f in Functions)
+      }
+      foreach (var f in Functions.OrderBy(f => f.Name)) {
         if (f.Arity != 0) {
-          wr.WriteLine("{0} -> {1}", f.Name, "{");
+          wr.WriteLine("{0} -> {{", f.Name);
+          // first, add the entries to a list, so that they can be sorted before printing
+          List<Tuple<string, Element>> entries = new List<Tuple<string, Element>>();
           foreach (var app in f.Apps) {
-            wr.Write("  ");
-            foreach (var a in app.Args)
-              wr.Write("{0} ", a);
-            wr.WriteLine("-> {0}", app.Result);
+            var args = "";
+            foreach (var a in app.Args) {
+              args += a + " ";
+            }
+            entries.Add(new Tuple<string, Element>(args, app.Result));
           }
-          if (f.Else != null)
+          foreach (var entry in entries.OrderBy(pair => pair.Item1)) {
+            wr.WriteLine("  {0}-> {1}", entry.Item1, entry.Item2);
+          }
+          if (f.Else != null) {
             wr.WriteLine("  else -> {0}", f.Else);
+          }
           wr.WriteLine("}");
         }
+      }
       foreach (var s in States) {
-        if (s == InitialState && s.VariableCount == 0)
+        if (s == InitialState && s.VariableCount == 0) {
           continue;
+        }
         wr.WriteLine("*** STATE {0}", s.Name);
-        foreach (var v in s.Variables)
+        foreach (var v in s.Variables.OrderBy(nm => nm)) {
           wr.WriteLine("  {0} -> {1}", v, s.TryGet(v));
+        }
         wr.WriteLine("*** END_STATE", s.Name);
       }
       wr.WriteLine("*** END_MODEL");

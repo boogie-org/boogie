@@ -4,8 +4,8 @@
 %lbl%+2 -> true
 i -> 0
 tickleBool -> {
-  true -> true
   false -> true
+  true -> true
   else -> true
 }
 *** END_MODEL

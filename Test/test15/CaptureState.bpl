@@ -7,6 +7,7 @@ var Heap: [Ref,FieldName]int;
 const unique F: FieldName;
 
 procedure P(this: Ref, x: int, y: int) returns (r: int)
+  requires 118 <= 3 * x && 4 * x < 163 && Heap[this, F] * 5 == -x;  // make output deterministic
   ensures 0 <= r;
 {
   var m: int;

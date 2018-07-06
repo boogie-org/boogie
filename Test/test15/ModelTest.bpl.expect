@@ -7,8 +7,8 @@ j@0 -> 2
 j@1 -> 3
 j@2 -> 4
 tickleBool -> {
-  true -> true
   false -> true
+  true -> true
   else -> true
 }
 *** END_MODEL
