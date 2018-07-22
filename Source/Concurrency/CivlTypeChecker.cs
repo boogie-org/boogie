@@ -1634,15 +1634,13 @@ namespace Microsoft.Boogie
                 {
                     // Call to non-leaky instrumentation procedure exists as soon as all local variables used as input are available.
                     // I.e., we compute the maximum introduction layer of all local variables used as input.
-                    foreach (var e in call.Ins)
-                    {
-                        localVariableAccesses = new List<IdentifierExpr>();
-                        Visit(e);
-                        ctc.instrumentationCallToLayer[call] = 
-                            Math.Max(localVariableAccesses.Max(ie => ctc.LocalVariableIntroLayer(ie.Decl)),
-                                     calleeProc.layerRange.lowerLayerNum);
-                        localVariableAccesses = null;
-                    }
+                    localVariableAccesses = new List<IdentifierExpr>();
+                    foreach (var e in call.Ins) { Visit(e); }
+                    ctc.instrumentationCallToLayer[call] = localVariableAccesses
+                                                           .Select(ie => ctc.LocalVariableIntroLayer(ie.Decl))
+                                                           .Concat1(calleeProc.layerRange.lowerLayerNum)
+                                                           .Max(); 
+                    localVariableAccesses = null;
                 }
             }
 
