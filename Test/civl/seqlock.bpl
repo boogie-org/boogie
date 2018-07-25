@@ -91,20 +91,14 @@ procedure {:atomic}{:layer 1} READ_SEQ () returns (r:int)
 
 procedure {:atomic}{:layer 1} READ_X () returns (r:int)
 {
-  var foo:int;
-  if (isOdd(seq)) {
-    r := foo;
-  } else {
+  if (isEven(seq)) {
     r := x;
   }
 }
 
 procedure {:atomic}{:layer 1} READ_Y () returns (r:int)
 {
-  var foo:int;
-  if (isOdd(seq)) {
-    r := foo;
-  } else {
+  if (isEven(seq)) {
     r := y;
   }
 }
