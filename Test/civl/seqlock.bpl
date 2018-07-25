@@ -40,18 +40,16 @@ procedure {:layer 1}{:yields}{:refines "READ"} read () returns (v:int, w:int)
   var {:layer 1} _y:int;
   
   yield;
-  while (true)
-  {
+  while (true) {
     yield;
     call seq1 := read_seq();
     call _x, _y := Snapshot();
-    yield;
-    assert {:layer 1} seq >= seq1 && ((isEven(seq1) && seq1 == seq) ==> (x == _x && y == _y));
     if (isEven(seq1)) {
+      yield; assert {:layer 1} seq >= seq1 && (seq1 == seq ==> x == _x && y == _y);
       call v := read_x();
-      yield; assert {:layer 1} seq >= seq1 && ((isEven(seq1) && seq1 == seq) ==> (x == _x && y == _y && v == x));
+      yield; assert {:layer 1} seq >= seq1 && (seq1 == seq ==> x == _x && y == _y && v == x);
       call w := read_y();
-      yield; assert {:layer 1} seq >= seq1 && ((isEven(seq1) && seq1 == seq) ==> (x == _x && y == _y && v == x && w == y));
+      yield; assert {:layer 1} seq >= seq1 && (seq1 == seq ==> x == _x && y == _y && v == x && w == y);
       call seq2 := read_seq();
       if (seq1 == seq2) {
         yield;
