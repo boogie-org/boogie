@@ -45,11 +45,9 @@ procedure {:layer 1}{:yields}{:refines "READ"} read () returns (v:int, w:int)
     call seq1 := read_seq();
     call _x, _y := Snapshot();
     if (isEven(seq1)) {
-      yield; assert {:layer 1} seq >= seq1 && (seq1 == seq ==> x == _x && y == _y);
-      call v := read_x();
-      yield; assert {:layer 1} seq >= seq1 && (seq1 == seq ==> x == _x && y == _y && v == x);
-      call w := read_y();
-      yield; assert {:layer 1} seq >= seq1 && (seq1 == seq ==> x == _x && y == _y && v == x && w == y);
+      yield; assert {:layer 1} seq >= seq1;
+      call v := read_x(seq1);
+      call w := read_y(seq1);
       call seq2 := read_seq();
       if (seq1 == seq2) {
         yield;
@@ -87,16 +85,18 @@ procedure {:atomic}{:layer 1} READ_SEQ () returns (r:int)
   r := seq;
 }
 
-procedure {:atomic}{:layer 1} READ_X () returns (r:int)
+procedure {:right}{:layer 1} READ_X (seq1:int) returns (r:int)
 {
-  if (isEven(seq)) {
+  assert seq >= seq1;
+  if (isEven(seq) && seq == seq1) {
     r := x;
   }
 }
 
-procedure {:atomic}{:layer 1} READ_Y () returns (r:int)
+procedure {:right}{:layer 1} READ_Y (seq1:int) returns (r:int)
 {
-  if (isEven(seq)) {
+  assert seq >= seq1;
+  if (isEven(seq) && seq == seq1) {
     r := y;
   }
 }
@@ -140,8 +140,8 @@ modifies y;
 }
 
 procedure {:yields}{:layer 0}{:refines "READ_SEQ"} read_seq () returns (r:int);
-procedure {:yields}{:layer 0}{:refines "READ_X"} read_x () returns (r:int);
-procedure {:yields}{:layer 0}{:refines "READ_Y"} read_y () returns (r:int);
+procedure {:yields}{:layer 0}{:refines "READ_X"} read_x (seq1:int) returns (r:int);
+procedure {:yields}{:layer 0}{:refines "READ_Y"} read_y (seq1:int) returns (r:int);
 
 procedure {:yields}{:layer 0}{:refines "ACQUIRE"} acquire ({:linear "tid"} tid:Tid);
 procedure {:yields}{:layer 0}{:refines "RELEASE"} release ({:linear "tid"} tid:Tid);
