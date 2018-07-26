@@ -25,25 +25,14 @@ modifies x, y;
   y := w;
 }
 
-procedure {:layer 1}{:inline 1} Snapshot() returns (_x:int, _y:int)
-{
-   _x := x;
-   _y := y;
-}
-
 procedure {:layer 1}{:yields}{:refines "READ"} read () returns (v:int, w:int)
 {
   var seq1:int;
   var seq2:int;
-
-  var {:layer 1} _x:int;
-  var {:layer 1} _y:int;
-  
   yield;
   while (true) {
     yield;
     call seq1 := read_seq();
-    call _x, _y := Snapshot();
     if (isEven(seq1)) {
       yield; assert {:layer 1} seq >= seq1;
       call v := read_x(seq1);
