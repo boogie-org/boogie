@@ -176,6 +176,7 @@
     <Compile Include="TypeDeclCollector.cs" />
     <Compile Include="..\..\version.cs" />
     <Compile Include="Z3.cs" />
+    <Compile Include="Yices2.cs" />
     <Compile Include="CVC4.cs" />
   </ItemGroup>
   <ItemGroup>

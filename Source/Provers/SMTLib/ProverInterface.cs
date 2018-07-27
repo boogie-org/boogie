@@ -132,6 +132,10 @@ namespace Microsoft.Boogie.SMTLib
           if (path == null)
             path = CVC4.ExecutablePath();
           return SMTLibProcess.ComputerProcessStartInfo(path, "--lang=smt --no-strict-parsing --no-condense-function-values --incremental");
+        case SolverKind.YICES2:
+          if (path == null) 
+            path = Yices2.ExecutablePath();
+          return SMTLibProcess.ComputerProcessStartInfo(path, "--incremental");
         default:
           Debug.Assert(false);
           return null;
