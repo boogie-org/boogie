@@ -1585,7 +1585,11 @@ namespace Microsoft.Boogie {
 				CVC4ExecutablePath = args[ps.i];
 			}
 			return true;
-
+        case "yices2exe":
+			if (ps.ConfirmArgumentCount(1)) {
+				Yices2ExecutablePath = args[ps.i];
+			}
+			return true;
         case "kInductionDepth":
           ps.GetNumericArgument(ref KInductionDepth);
           return true;
