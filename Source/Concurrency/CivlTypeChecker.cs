@@ -249,12 +249,20 @@ namespace Microsoft.Boogie
             BinderExpr expr = base.VisitBinderExpr(node);
             expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
 
-            if (!(node is QuantifierExpr))
+            // We process triggers of quantifer expressions here, because otherwise the
+            // substitutions for bound variables have to be leaked outside this procedure.
+            if (node is QuantifierExpr)
             {
-                foreach (var x in node.Dummies)
+                QuantifierExpr quantifierExpr = (QuantifierExpr)node;
+                if (quantifierExpr.Triggers != null)
                 {
-                    bound.Remove(x);
+                    ((QuantifierExpr)expr).Triggers = this.VisitTrigger(quantifierExpr.Triggers);
                 }
+            }
+
+            foreach (var x in node.Dummies)
+            {
+                bound.Remove(x);
             }
 
             return expr;
@@ -262,16 +270,8 @@ namespace Microsoft.Boogie
 
         public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
         {
-            node = (QuantifierExpr)this.VisitBinderExpr(node);
-            if (node.Triggers != null)
-            {
-                node.Triggers = this.VisitTrigger(node.Triggers);
-            }
-            foreach (var x in node.Dummies)
-            {
-                bound.Remove(x);
-            }
-            return node;
+            // Don't remove this implementation! Triggers should be duplicated in VisitBinderExpr.
+            return (QuantifierExpr)this.VisitBinderExpr(node);
         }
     }
 
