@@ -124,8 +124,7 @@ namespace Microsoft.Boogie
 
         private void FlattenAnd(Expr x, List<Expr> xs)
         {
-            NAryExpr naryExpr = x as NAryExpr;
-            if (naryExpr != null && naryExpr.Fun.FunctionName == "&&")
+            if (x is NAryExpr naryExpr && naryExpr.Fun.FunctionName == "&&")
             {
                 FlattenAnd(naryExpr.Args[0], xs);
                 FlattenAnd(naryExpr.Args[1], xs);
@@ -147,14 +146,13 @@ namespace Microsoft.Boogie
             List<Expr> pathExprs = new List<Expr>();
             foreach (Cmd cmd in cmdStack)
             {
-                if (cmd is AssumeCmd)
+                if (cmd is AssumeCmd assumeCmd)
                 {
-                    AssumeCmd assumeCmd = cmd as AssumeCmd;
                     FlattenAnd(assumeCmd.Expr, pathExprs);
                 }
                 else if (cmd is AssignCmd)
                 {
-                    AssignCmd assignCmd = (cmd as AssignCmd).AsSimpleAssignCmd;
+                    AssignCmd assignCmd = ((AssignCmd)cmd).AsSimpleAssignCmd;
                     Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
                     for (int k = 0; k < assignCmd.Lhss.Count; k++)
                     {
@@ -180,8 +178,7 @@ namespace Microsoft.Boogie
             {
                 var expr = path.varToExpr[v];
                 usedExistsVars.UnionWith(VariableCollector.Collect(expr).Intersect(allExistsVars));
-                IdentifierExpr ie = expr as IdentifierExpr;
-                if (ie != null && IsExistsVar(ie.Decl) && !existsSubstitutionMap.ContainsKey(ie.Decl))
+                if (expr is IdentifierExpr ie && IsExistsVar(ie.Decl) && !existsSubstitutionMap.ContainsKey(ie.Decl))
                 {
                     existsSubstitutionMap[ie.Decl] = Expr.Ident(v);
                 }
@@ -261,12 +258,7 @@ namespace Microsoft.Boogie
 
         private bool IsMapStoreExpr(Expr expr)
         {
-            NAryExpr naryExpr = expr as NAryExpr;
-            if (naryExpr == null)
-            {
-                return false;
-            }
-            return naryExpr.Fun is MapStore;
+            return (expr is NAryExpr naryExpr && naryExpr.Fun is MapStore);
         }
 
         private IEnumerable<NAryExpr> FilterEqualities(IEnumerable<Expr> exprs)
@@ -295,14 +287,12 @@ namespace Microsoft.Boogie
             {
                 Variable eVar = null;
                 Expr eVarSubstExpr = null;
-                IdentifierExpr arg0 = eqExpr.Args[0] as IdentifierExpr;
-                IdentifierExpr arg1 = eqExpr.Args[1] as IdentifierExpr;
-                if (arg0 != null && IsExistsVar(arg0.Decl))
+                if (eqExpr.Args[0] is IdentifierExpr arg0 && IsExistsVar(arg0.Decl))
                 {
                     eVar = arg0.Decl;
                     eVarSubstExpr = eqExpr.Args[1];
                 }
-                else if (arg1 != null && IsExistsVar(arg1.Decl))
+                else if (eqExpr.Args[1] is IdentifierExpr arg1 && IsExistsVar(arg1.Decl))
                 {
                     eVar = arg1.Decl;
                     eVarSubstExpr = eqExpr.Args[0];
