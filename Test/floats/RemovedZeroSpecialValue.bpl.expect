@@ -1,0 +1,3 @@
+RemovedZeroSpecialValue.bpl(6,9): Error: undeclared identifier: zero53e11
+RemovedZeroSpecialValue.bpl(7,9): Error: undeclared identifier: zero53e11
+2 name resolution errors detected in RemovedZeroSpecialValue.bpl

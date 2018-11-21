@@ -14,7 +14,7 @@ using System.Diagnostics;
 namespace Microsoft.Basetypes
 {
   using BIM = System.Numerics.BigInteger;
-    
+
   /// <summary>
   /// A representation of a 32-bit floating point value
   /// Note that this value has a 1-bit sign, 8-bit exponent, and 24-bit significand
@@ -117,61 +117,100 @@ namespace Microsoft.Basetypes
     [Pure]
     public static BigFloat FromString(String s) {
       /*
-       * String must be either of the format *e*f*e*
-       * or of the special value formats: 0NaN*e* 0nan*e* 0+oo*e* 0-oo*e* 0+zero*e* 0-zero*e*
-       * Where * indicates an integer value (digit)
-       */
-      BIM sig, exp;
-      int sigSize, expSize;
-      bool isNeg;
+      * String must be either of the format [-]0x^.^e*f*e*
+      * or of the special value formats: 0NaN*e* 0nan*e* 0+oo*e* 0-oo*e*
+      * Where ^ indicates a hexadecimal value and * indicates an integer value
+      */
 
-      if (s.IndexOf('f') == -1) {
-        String val;
-        int expIndex = s.IndexOf('e');
-        if (s[2] == 'z') //+zero, -zero
-        {
-          val = s.Substring(1, 5);
-          expIndex = s.IndexOf('e', expIndex + 1);
-        }
-        else //NaN, nan, +oo, -oo
-        {
-          val = s.Substring(1, 3);
-        }
-        sigSize = int.Parse(s.Substring(val.Length + 1, expIndex - (val.Length + 1)));
-        expSize = int.Parse(s.Substring(expIndex + 1));
-        if (sigSize <= 0 || expSize <= 0)
-          throw new FormatException("Significand and Exponent sizes must be greater than 0");
-        return new BigFloat(val, sigSize, expSize);
+      int posLastE = s.LastIndexOf('e');
+
+      int expSize = int.Parse(s.Substring(posLastE + 1));
+      if (expSize <= 1) {
+        throw new FormatException("Exponent size must be greater than 1");
       }
 
-      sig = BIM.Parse(s.Substring(0, s.IndexOf('e')));
-      exp = BIM.Parse(s.Substring(s.IndexOf('e') + 1, s.IndexOf('f') - s.IndexOf('e') - 1));
-      sigSize = int.Parse(s.Substring(s.IndexOf('f') + 1, s.IndexOf('e', s.IndexOf('e') + 1) - s.IndexOf('f') - 1));
-      expSize = int.Parse(s.Substring(s.IndexOf('e', s.IndexOf('e') + 1) + 1));
-      isNeg = s[0] == '-'; //We do this so that -0 is parsed correctly
-      
-      if (sigSize <= 0 || expSize <= 0)
-        throw new FormatException("Significand and Exponent sizes must be greater than 0");
+      int posLastF = s.LastIndexOf('f');
+      int posSig = posLastF + 1;
+      if (posLastF == -1) {//NaN, +oo, -oo
+        posSig = 4;
+      }
 
-      sigSize = sigSize - 1; //Get rid of sign bit
-      sig = BIM.Abs(sig); //sig must be positive
-      //Uncomment if you want to shift the exponent for the user (i.e. 0e-1f24e8 --> 0e126f24e8)
-      //exp = exp + BIM.Pow(new BIM(2), expSize-1) - BIM.One;
+      int sigSize = int.Parse(s.Substring(posSig, posLastE - posSig));
+      if (sigSize <= 1) {
+        throw new FormatException("Significand size must be greater than 1");
+      }
 
-      if (exp < 0 || exp >= BIM.Pow(new BIM(2), expSize))
-        throw new FormatException("The given exponent " + exp + " cannot fit in the bit size " + expSize);
+      if (posLastF == -1) {//NaN, +oo, -oo
+        return new BigFloat(s.Substring(1, 3), sigSize, expSize);
+      }
 
-      if (sig >= BIM.Pow(new BIM(2), sigSize))
-        throw new FormatException("The given significand " + sig + " cannot fit in the bit size " + (sigSize+1));
+      bool isNeg = s[0] == '-';
 
-      return new BigFloat(isNeg, sig, exp, sigSize, expSize);
+      int posX = s.IndexOf('x');
+      int posSecondLastE = s.LastIndexOf('e', posLastE - 1);
+
+      string hexSig = s.Substring(posX + 1, posSecondLastE - (posX + 1));
+      BIM oldExp = BIM.Parse(s.Substring(posSecondLastE + 1, posLastF - (posSecondLastE + 1)));
+
+      string binSig = string.Join(string.Empty,
+        hexSig.Select(
+          c => (c == '.' ? "." : Convert.ToString(Convert.ToInt32(c.ToString(), 16), 2).PadLeft(4, '0'))
+        )
+      );
+
+      int posDec = binSig.IndexOf('.');
+
+      binSig = binSig.Remove(posDec, 1);
+
+      int posFirstOne = binSig.IndexOf('1');
+      int posLastOne = binSig.LastIndexOf('1');
+
+      if (posFirstOne == -1) {
+        return new BigFloat(isNeg, 0, 0, sigSize, expSize);
+      }
+
+      binSig = binSig.Substring(posFirstOne, posLastOne - posFirstOne + 1);
+
+      BIM bias = two_n(expSize - 1) - 1;
+      BIM upperBound = 2 * bias + 1;
+
+      BIM newExp = 4 * oldExp + bias + (posDec - posFirstOne - 1);
+
+      if (newExp <= 0) {
+        if (-newExp <= (sigSize - 1) - binSig.Length) {
+          binSig = new string('0', (int)-newExp) + binSig;
+          newExp = 0;
+        }
+      } else {
+        binSig = binSig.Substring(1);
+      }
+
+      if (newExp < 0 || newExp >= upperBound) {
+        throw new FormatException("The given exponent cannot fit in the bit size " + expSize);
+      }
+
+      binSig = binSig.PadRight(sigSize - 1, '0');
+
+      if (binSig.Length > sigSize - 1) {
+        throw new FormatException("The given significand cannot fit in the bit size " + (sigSize - 1));
+      }
+
+      BIM newSig = 0;
+      foreach (char b in binSig) {
+        if (b != '.') {
+          newSig <<= 1;
+          newSig += b - '0';
+        }
+      }
+
+      return new BigFloat(isNeg, newSig, newExp, sigSize, expSize);
     }
 
     public BigFloat(bool isNeg, BIM significand, BIM exponent, int significandSize, int exponentSize) {
       this.exponentSize = exponentSize;
       this.exponent = exponent;
       this.significand = significand;
-      this.significandSize = significandSize+1;
+      this.significandSize = significandSize;
       this.isNeg = isNeg;
       this.value = "";
     }
@@ -220,15 +259,51 @@ namespace Microsoft.Basetypes
     [Pure]
     public override string/*!*/ ToString() {
       Contract.Ensures(Contract.Result<string>() != null);
-      String sigSize = significandSize.ToString();
-      String expSize = exponentSize.ToString();
-      if (value == "")
-      {
-        String sig = significand.ToString();
-        String exp = exponent.ToString();
-        return String.Format("{0}{1}e{2}f{3}e{4}", isNeg ? "-" : "", sig, exp, sigSize, expSize);
+      if (value == "") {
+        byte[] sigBytes = significand.ToByteArray();
+        StringBuilder binSig = new StringBuilder();
+
+        if (exponent == 0) {
+          binSig.Append('0');
+        } else {
+          binSig.Append('1'); //hidden bit
+        }
+
+        for (int i = significandSize - 2; i >= 0; --i) { //little endian
+         if (i / 8 < sigBytes.Length) {
+            binSig.Append((char) ('0' + ((sigBytes[i / 8] >> (i % 8)) & 1)));
+          } else {
+            binSig.Append('0');
+          }
+        }
+
+        BIM bias = two_n(exponentSize - 1) - 1;
+        if (exponent == 0) {
+          --bias;
+        }
+
+        int moveDec = ((int)((exponent - bias) % 4) + 4) % 4;
+        BIM finalExp = (exponent - bias - moveDec) / 4;
+
+        string leftBinSig = binSig.ToString().Substring(0, moveDec + 1);
+        string rightBinSig = binSig.ToString().Substring(moveDec + 1);
+
+        leftBinSig = new string('0', 4 - leftBinSig.Length % 4) + leftBinSig;
+        rightBinSig = rightBinSig + new string('0', 4 - rightBinSig.Length % 4);
+
+        StringBuilder leftHexSig = new StringBuilder();
+        StringBuilder rightHexSig = new StringBuilder();
+
+        for (int i = 0; i < leftBinSig.Length / 4; ++i) {
+          leftHexSig.AppendFormat("{0:X}", Convert.ToByte(leftBinSig.Substring(i * 4, 4), 2));
+        }
+        for (int i = 0; i < rightBinSig.Length / 4; ++i) {
+          rightHexSig.AppendFormat("{0:X}", Convert.ToByte(rightBinSig.Substring(i * 4, 4), 2));
+        }
+
+        return String.Format("{0}0x{1}.{2}e{3}f{4}e{5}", isNeg ? "-" : "", leftHexSig, rightHexSig, finalExp, significandSize, exponentSize);
       }
-      return String.Format("0{0}{1}e{2}", value, sigSize, expSize);
+      return String.Format("0{0}{1}e{2}", value, significandSize, exponentSize);
     }
 
 
@@ -461,7 +536,7 @@ namespace Microsoft.Basetypes
       get {
         if (value == "")
           return false;
-        return (value.Equals("NaN") || value.Equals("+oo") || value.Equals("-oo") || value.Equals("+zero") || value.Equals("-zero"));
+        return (value.Equals("NaN") || value.Equals("+oo") || value.Equals("-oo"));
       }
     }
 
