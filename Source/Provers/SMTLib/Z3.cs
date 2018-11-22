@@ -272,7 +272,10 @@ namespace Microsoft.Boogie.SMTLib
             if (options.TimeLimit > 0)
             {
               options.AddWeakSmtOption("TIMEOUT", options.TimeLimit.ToString());
-                    options.AddWeakSmtOption("fixedpoint.TIMEOUT", options.TimeLimit.ToString());
+              if (major == 4 && minor < 8)
+              {
+                 options.AddWeakSmtOption("fixedpoint.TIMEOUT", options.TimeLimit.ToString());
+              }
               // This kills the Z3 *instance* after the specified time, not a particular query, so we cannot use it.
               // options.AddSolverArgument("/T:" + (options.TimeLimit + 1000) / 1000);
             }
@@ -291,7 +294,7 @@ namespace Microsoft.Boogie.SMTLib
               options.AddWeakSmtOption("smt.array.extensional", "false");
             }
 
-            if (CommandLineOptions.Clo.PrintConjectures != null)
+            if (CommandLineOptions.Clo.PrintConjectures != null && major == 4 && minor < 8)
             {
                 options.AddWeakSmtOption("fixedpoint.conjecture_file", CommandLineOptions.Clo.PrintConjectures + ".tmp");
             }
