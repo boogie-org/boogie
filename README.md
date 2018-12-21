@@ -108,7 +108,19 @@ Finally make sure there is a symlink to Z3 in the Binaries directory
 $ ln -s /usr/bin/z3 Binaries/z3.exe
 ```
 
-You're now ready to run Boogie!
+## Running
+
+On a Windows system call the Boogie binary:
+
+```
+$ Binaries\Boogie.exe
+```
+
+On a non-Windows system use the wrapper script:
+
+```
+$ Binaries/boogie
+```
 
 ## Testing
 
