@@ -301,9 +301,9 @@ namespace Microsoft.Boogie
                     edgeLabels[new Tuple<Absy, Absy>(block, blockEntry)] = P;
 
                     // Block exit edges
-                    if (block.TransferCmd is GotoCmd)
+                    if (block.TransferCmd is GotoCmd gotoCmd)
                     {
-                        foreach (Block successor in ((GotoCmd)block.TransferCmd).labelTargets)
+                        foreach (Block successor in gotoCmd.labelTargets)
                         {
                             edgeLabels[new Tuple<Absy, Absy>(block.TransferCmd, successor)] = P;
                         }
@@ -319,13 +319,13 @@ namespace Microsoft.Boogie
                         Cmd cmd = block.Cmds[i];
                         Absy next = (i + 1 == block.Cmds.Count) ? (Absy)block.TransferCmd : block.Cmds[i + 1];
                         Tuple<Absy, Absy> edge = new Tuple<Absy, Absy>(cmd, next);
-                        if (cmd is CallCmd)
+                        if (cmd is CallCmd callCmd)
                         {
-                            edgeLabels[edge] = CallCmdLabel((CallCmd)cmd);
+                            edgeLabels[edge] = CallCmdLabel(callCmd);
                         }
-                        else if (cmd is ParCallCmd)
+                        else if (cmd is ParCallCmd parCallCmd)
                         {
-                            edgeLabels[edge] = ParCallCmdLabel((ParCallCmd)cmd);
+                            edgeLabels[edge] = ParCallCmdLabel(parCallCmd);
                         }
                         else if (cmd is YieldCmd)
                         {
