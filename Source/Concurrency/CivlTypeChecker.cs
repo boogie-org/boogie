@@ -1098,6 +1098,12 @@ namespace Microsoft.Boogie
                 foreach (var impl in copier.implMap.Values)
                 {
                     Inliner.ProcessImplementation(program, impl);
+
+                    // Havoc commands are not allowed in atomic actions. However, the
+                    // inliner above introduces havocs for uninitialized local variables
+                    // in case an inlined procedure is called in a loop. Since loops are
+                    // also not allowed in atomic actions, we can remove the havocs here.
+                    impl.Blocks.ForEach(b => b.Cmds.RemoveAll(c => c is HavocCmd));
                 }
                 foreach (var impl in copier.implMap.Values)
                 {
