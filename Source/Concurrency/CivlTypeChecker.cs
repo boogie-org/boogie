@@ -513,6 +513,13 @@ namespace Microsoft.Boogie
 
         public void TypeCheck()
         {
+            // TODO: eliminate early returns
+            // Can we make later phases resilient to errors in previous phases,
+            // such that as much feedback as possible is generated for the user?
+            // For example, by creating "invalid" objects like an ActionProc with
+            // null refinedAction in TypeCheckYieldingProcedureDecls, such that
+            // later checks can work with them but also do not cash.
+
             TypeCheckGlobalVariables();
             TypeCheckInstrumentationProcedures();
 
@@ -522,6 +529,10 @@ namespace Microsoft.Boogie
             TypeCheckLocalVariables();
 
             TypeCheckAtomicActionImpls();
+
+            if (checkingContext.ErrorCount != 0)
+                return;
+
             ComputeAsyncFreeLayers();
 
             // List of all layers where refinement happens
@@ -531,7 +542,7 @@ namespace Microsoft.Boogie
             allAtomicActionLayers = allRefinementLayers.ToList();
             allAtomicActionLayers.AddRange(procToAtomicAction.Values.Select(a => a.layerRange.lowerLayerNum));
             allAtomicActionLayers.AddRange(procToAtomicAction.Values.Select(a => a.layerRange.upperLayerNum));
-            allAtomicActionLayers =  allAtomicActionLayers.Distinct().OrderBy(l => l).ToList();
+            allAtomicActionLayers = allAtomicActionLayers.Distinct().OrderBy(l => l).ToList();
 
             foreach (var kv in absyToLayerNums)
             {
@@ -545,6 +556,9 @@ namespace Microsoft.Boogie
             }
 
             CheckAtomicActionAcyclicity();
+
+            if (checkingContext.ErrorCount != 0)
+                return;
 
             AddPendingAsyncMachinery();
             GenerateAtomicActionCopies();
@@ -1180,7 +1194,8 @@ namespace Microsoft.Boogie
             {
                 CallCmd call = (CallCmd)base.VisitCallCmd(node);
                 call.IsAsync = false;
-                ActionProc target = ctc.procToYieldingProc[node.Proc] as ActionProc;
+                Debug.Assert(ctc.procToYieldingProc[node.Proc] is ActionProc);
+                ActionProc target = (ActionProc)ctc.procToYieldingProc[node.Proc];
                 if (target.upperLayer >= layer)
                     call.Proc = target.addPendingAsyncProc;
                 else
