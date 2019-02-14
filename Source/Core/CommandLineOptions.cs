@@ -490,6 +490,7 @@ namespace Microsoft.Boogie {
     public string Z3ExecutableName = null;
     public string CVC4ExecutablePath = null;
     public int KInductionDepth = -1;
+    public int EnableUnSatCoreExtract = 0;
 
     private string/*!*/ _logPrefix = "";
 
@@ -1352,6 +1353,12 @@ namespace Microsoft.Boogie {
             RecursionBound = Int32.Parse(cce.NonNull(args[ps.i]));
           }
           return true;
+        case "enableUnSatCoreExtraction":
+            if (ps.ConfirmArgumentCount(1))
+            {
+                EnableUnSatCoreExtract = Int32.Parse(cce.NonNull(args[ps.i]));
+            }
+            return true;
         case "stackDepthBound":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1531,8 +1538,7 @@ namespace Microsoft.Boogie {
 			UseSmtOutputFormat = true;
 		  }
 	      return true;
-		}
-		
+		}        
         case "z3opt":
           if (ps.ConfirmArgumentCount(1)) {
             AddZ3Option(cce.NonNull(args[ps.i]));
