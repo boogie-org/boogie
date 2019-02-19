@@ -9,7 +9,7 @@ procedure foo()
   var a : float24e8;
   var b : float24e8;
 
-  a := 0e127f24e8;
+  a := 0x1.0e0f24e8;
 
   r := RTN;
   b := SQRT(r, a);

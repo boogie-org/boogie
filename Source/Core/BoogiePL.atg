@@ -118,6 +118,7 @@ private class BvBounds : Expr {
 CHARACTERS
   letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".
   digit = "0123456789".
+  hexdigit = "0123456789ABCDEFabcdef".
   special = "'~#$^_.?`".
   glyph = "`~!@#$%^&*()-_=+[{]}|;:',<.>/?\\".
 
@@ -145,13 +146,11 @@ TOKENS
 
   decimal = digit {digit} 'e' [ '-' ] digit {digit} .
   dec_float = digit {digit} '.' digit {digit} [ 'e' [ '-' ] digit {digit} ] .
-		float = [ '-' ] digit {digit} 'e' [ '-' ] digit {digit} 'f' digit {digit} 'e' digit {digit} 
+	float = [ '-' ] '0' 'x' hexdigit {hexdigit} '.' hexdigit {hexdigit} 'e' [ '-' ] digit {digit} 'f' digit {digit} 'e' digit {digit} 
 										| '0' 'N' 'a' 'N' digit {digit} 'e' digit {digit}
 										| '0' 'n' 'a' 'n' digit {digit} 'e' digit {digit}
 										| '0' '+' 'o' 'o' digit {digit} 'e' digit {digit}
-										| '0' '-' 'o' 'o' digit {digit} 'e' digit {digit}
-										| '0' '+' 'z' 'e' 'r' 'o' digit {digit} 'e' digit {digit}
-										| '0' '-' 'z' 'e' 'r' 'o' digit {digit} 'e' digit {digit} .
+										| '0' '-' 'o' 'o' digit {digit} 'e' digit {digit} .
 
 COMMENTS FROM "/*" TO "*/" NESTED
 COMMENTS FROM "//" TO lf
