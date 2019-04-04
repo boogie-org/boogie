@@ -308,6 +308,14 @@ namespace Microsoft.Boogie {
       node = (LambdaExpr)this.VisitBinderExpr(node);
       return node;
     }
+    public virtual Expr VisitLetExpr(LetExpr node) {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
+      node.Body = this.VisitExpr(node.Body);
+      node.Dummies = this.VisitVariableSeq(node.Dummies);
+      node.Rhss = this.VisitExprSeq(node.Rhss);
+      return node;
+    }
     public virtual Formal VisitFormal(Formal node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Formal>() != null);
@@ -866,8 +874,14 @@ namespace Microsoft.Boogie {
           return (ForallExpr)this.VisitQuantifierExpr(node);
       }
       public override Expr VisitLambdaExpr(LambdaExpr node) {
-        Contract.Ensures(Contract.Result<Expr>() == node);
-        return this.VisitBinderExpr(node);
+          Contract.Ensures(Contract.Result<Expr>() == node);
+          return this.VisitBinderExpr(node);
+      }
+      public override Expr VisitLetExpr(LetExpr node) {
+          this.VisitExpr(node.Body);
+          this.VisitVariableSeq(node.Dummies);
+          this.VisitExprSeq(node.Rhss);
+          return node;
       }
       public override Formal VisitFormal(Formal node)
       {

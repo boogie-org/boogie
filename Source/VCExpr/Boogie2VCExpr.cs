@@ -560,6 +560,33 @@ namespace Microsoft.Boogie.VCExprAST {
       return qid;
     }
 
+    public override Expr VisitLetExpr(LetExpr node) {
+      Contract.Ensures(Contract.Result<Expr>() != null);
+
+      var rhss = new List<VCExpr>();
+      foreach (var e in node.Rhss) {
+        rhss.Add(Translate(e));
+      }
+
+      PushBoundVariableScope();
+      var boundVars = new List<VCExprVar>();
+      foreach (var v in node.Dummies) {
+        boundVars.Add(BindVariable(v));
+      }
+      var body = Translate(node.Body);
+      PopBoundVariableScope();
+
+      Contract.Assert(boundVars.Count == rhss.Count);
+      var bindings = new List<VCExprLetBinding>();
+      for (var i = 0; i < boundVars.Count; i++) {
+        var b = new VCExprLetBinding(boundVars[i], rhss[i]);
+        bindings.Add(b);
+      }
+      var let = Gen.Let(bindings, body);
+      Push(let);
+      return node;
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////
 
     public override Expr VisitBvExtractExpr(BvExtractExpr node) {
