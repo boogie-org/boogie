@@ -7,7 +7,7 @@ function {:builtin "fp.mul"} MUL(rmode, float24e8, float24e8) returns (float24e8
 function {:builtin "fp.div"} DIV(rmode, float24e8, float24e8) returns (float24e8);
 
 procedure foo(a : float24e8, b : float24e8)
-requires b != 0e0f24e8;
+requires b != 0x0.0e0f24e8;
 {
   var c : float24e8;
   var d : float24e8;

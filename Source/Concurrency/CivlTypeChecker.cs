@@ -249,12 +249,19 @@ namespace Microsoft.Boogie
             BinderExpr expr = base.VisitBinderExpr(node);
             expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
 
-            if (!(node is QuantifierExpr))
+            // We process triggers of quantifer expressions here, because otherwise the
+            // substitutions for bound variables have to be leaked outside this procedure.
+            if (node is QuantifierExpr quantifierExpr)
             {
-                foreach (var x in node.Dummies)
+                if (quantifierExpr.Triggers != null)
                 {
-                    bound.Remove(x);
+                    ((QuantifierExpr)expr).Triggers = this.VisitTrigger(quantifierExpr.Triggers);
                 }
+            }
+
+            foreach (var x in node.Dummies)
+            {
+                bound.Remove(x);
             }
 
             return expr;
@@ -262,16 +269,8 @@ namespace Microsoft.Boogie
 
         public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
         {
-            node = (QuantifierExpr)this.VisitBinderExpr(node);
-            if (node.Triggers != null)
-            {
-                node.Triggers = this.VisitTrigger(node.Triggers);
-            }
-            foreach (var x in node.Dummies)
-            {
-                bound.Remove(x);
-            }
-            return node;
+            // Don't remove this implementation! Triggers should be duplicated in VisitBinderExpr.
+            return (QuantifierExpr)this.VisitBinderExpr(node);
         }
     }
 
@@ -436,8 +435,7 @@ namespace Microsoft.Boogie
                 if (kv.Key != CivlAttributes.LAYER) continue;
                 foreach (var o in kv.Params)
                 {
-                    LiteralExpr l = o as LiteralExpr;
-                    if (l != null && l.isBigNum)
+                    if (o is LiteralExpr l && l.isBigNum)
                     {
                         layers.Add(l.asBigNum.ToIntSafe);
                     }
@@ -951,9 +949,9 @@ namespace Microsoft.Boogie
                     {
                         var target = procToYieldingProc[call.Proc];
                         int x = target.upperLayer + 1;
-                        if (target is ActionProc)
+                        if (target is ActionProc actionProc)
                         {
-                            x = Math.Max(x, ((ActionProc)target).refinedAction.asyncFreeLayer);
+                            x = Math.Max(x, actionProc.refinedAction.asyncFreeLayer);
                         }
                         if (x > a.asyncFreeLayer)
                         {
@@ -981,8 +979,7 @@ namespace Microsoft.Boogie
                     {
                         Debug.Assert(callCmd.IsAsync);
 
-                        ActionProc calleeProc = procToYieldingProc[callCmd.Proc] as ActionProc;
-                        if (calleeProc != null && layer > calleeProc.upperLayer)
+                        if (procToYieldingProc[callCmd.Proc] is ActionProc calleeProc && layer > calleeProc.upperLayer)
                         {
                             graph.AddEdge(action, calleeProc.refinedAction);
                         }
@@ -1505,8 +1502,7 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        var actionProc = calleeProc as ActionProc;
-                        if (actionProc != null && actionProc.refinedAction.asyncFreeLayer > callerProc.upperLayer)
+                        if (calleeProc is ActionProc actionProc && actionProc.refinedAction.asyncFreeLayer > callerProc.upperLayer)
                         {
                             ctc.Error(call, "Disappearing layer of caller cannot be lower than async-free layer of callee");
                         }

@@ -4,5 +4,5 @@ ConstSyntax1.bpl(7,2): Error: mismatched types in assignment command (cannot ass
 ConstSyntax1.bpl(8,2): Error: mismatched types in assignment command (cannot assign float23e8 to float8e24)
 ConstSyntax1.bpl(9,2): Error: mismatched types in assignment command (cannot assign real to float8e24)
 ConstSyntax1.bpl(10,2): Error: mismatched types in assignment command (cannot assign float23e8 to float8e24)
-ConstSyntax1.bpl(11,16): Error: invalid argument types (float24e8 and float23e8) to binary operator +
+ConstSyntax1.bpl(11,27): Error: invalid argument types (float24e8 and float23e8) to binary operator +
 7 type checking errors detected in ConstSyntax1.bpl

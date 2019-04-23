@@ -70,10 +70,10 @@ namespace Microsoft.Boogie
 
                 if (layerNum > yieldingProc.upperLayer)
                 {
-                    if (yieldingProc is ActionProc)
+                    if (yieldingProc is ActionProc actionProc)
                     {
                         // yielding procedure already transformed to atomic action
-                        var action = ((ActionProc)yieldingProc).refinedAction;
+                        var action = actionProc.refinedAction;
                         if (action.layerRange.Contains(layerNum))
                             return action.layerToActionCopy[layerNum].proc;
                         else
@@ -97,9 +97,9 @@ namespace Microsoft.Boogie
                 proc.OutParams = this.VisitVariableSeq(node.OutParams);
                 proc.Requires = this.VisitRequiresSeq(node.Requires);
                 proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
-                if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum)
+                if (yieldingProc is MoverProc moverProc && yieldingProc.upperLayer == layerNum)
                 {
-                    proc.Modifies = ((MoverProc)yieldingProc).modifiedGlobalVars.Select(g => Expr.Ident(g)).ToList();
+                    proc.Modifies = moverProc.modifiedGlobalVars.Select(g => Expr.Ident(g)).ToList();
                 }
                 else
                 {
@@ -245,8 +245,8 @@ namespace Microsoft.Boogie
                     newCmdSeq.Add(visitedCmd);
                 }
             }
-            newCmdSeq.RemoveAll(cmd => (cmd is AssertCmd && ((AssertCmd)cmd).Expr.Equals(Expr.True)) ||
-                                       (cmd is AssumeCmd && ((AssumeCmd)cmd).Expr.Equals(Expr.True)));
+            newCmdSeq.RemoveAll(cmd => (cmd is AssertCmd assertCmd && assertCmd.Expr.Equals(Expr.True)) ||
+                                       (cmd is AssumeCmd assumeCmd && assumeCmd.Expr.Equals(Expr.True)));
             return newCmdSeq;
         }
 
@@ -288,10 +288,10 @@ namespace Microsoft.Boogie
                 if (!civlTypeChecker.CallExists(originalCallCmd, enclosingYieldingProc.upperLayer, layerNum))
                     return;
             }
-            else if (civlTypeChecker.procToYieldingProc[originalProc] is ActionProc)
+            else if (civlTypeChecker.procToYieldingProc[originalProc] is ActionProc actionProc)
             {
                 Debug.Assert(layerNum <= enclosingYieldingProc.upperLayer);
-                InjectGate((ActionProc)civlTypeChecker.procToYieldingProc[originalProc], callCmd, newCmds);
+                InjectGate(actionProc, callCmd, newCmds);
             }
             newCmds.Add(callCmd);
         }
@@ -472,9 +472,7 @@ namespace Microsoft.Boogie
                             return true;
                         if (cmd is ParCallCmd)
                             return true;
-                        CallCmd callCmd = cmd as CallCmd;
-                        if (callCmd == null) continue;
-                        if (yieldingProcs.Contains(callCmd.Proc))
+                        if (cmd is CallCmd callCmd && yieldingProcs.Contains(callCmd.Proc))
                             return true;
                     }
                 }
@@ -527,17 +525,7 @@ namespace Microsoft.Boogie
                         frame.Remove(v);
                     }
                 }
-                ActionProc actionProc = yieldingProc as ActionProc;
-                if (actionProc == null)
-                {
-                    beta = Expr.True;
-                    foreach (var v in frame)
-                    {
-                        beta = Expr.And(beta, Expr.Eq(Expr.Ident(v), foroldMap[v]));
-                    }
-                    alpha = Expr.True;
-                }
-                else
+                if (yieldingProc is ActionProc actionProc)
                 {
                     // The parameters of an atomic action come from the implementation that denotes the atomic action specification.
                     // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
@@ -560,6 +548,11 @@ namespace Microsoft.Boogie
                     Expr alphaExpr = Expr.And(atomicActionCopy.gate.Select(g => g.Expr));
                     alphaExpr.Type = Type.Bool;
                     alpha = Substituter.Apply(always, alphaExpr);
+                }
+                else
+                {
+                    beta = Expr.And(frame.Select(v => Expr.Eq(Expr.Ident(v), foroldMap[v])));
+                    alpha = Expr.True;
                 }
                 foreach (Variable f in impl.OutParams)
                 {
@@ -592,15 +585,18 @@ namespace Microsoft.Boogie
                 List<Cmd> newCmds = new List<Cmd>();
                 foreach (Cmd cmd in b.Cmds)
                 {
-                    if (cmd is YieldCmd)
+                    if (cmd is YieldCmd ycmd)
                     {
-                        yieldCmd = (YieldCmd)cmd;
+                        yieldCmd = ycmd;
                         continue;
                     }
                     if (yieldCmd != null)
                     {
-                        PredicateCmd pcmd = cmd as PredicateCmd;
-                        if (pcmd == null)
+                        if (cmd is PredicateCmd)
+                        {
+                            cmds.Add(cmd);
+                        }
+                        else
                         {
                             DesugarYield(yieldCmd, cmds, newCmds, ogOldGlobalMap, domainNameToLocalVar);
                             if (cmds.Count > 0)
@@ -610,15 +606,10 @@ namespace Microsoft.Boogie
                             }
                             yieldCmd = null;
                         }
-                        else
-                        {
-                            cmds.Add(pcmd);
-                        }
                     }
 
-                    if (cmd is CallCmd)
+                    if (cmd is CallCmd callCmd)
                     {
-                        CallCmd callCmd = cmd as CallCmd;
                         if (yieldingProcs.Contains(callCmd.Proc))
                         {
                             AddCallToYieldProc(callCmd.tok, newCmds, ogOldGlobalMap, domainNameToLocalVar);
@@ -654,9 +645,8 @@ namespace Microsoft.Boogie
                             AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                         }
                     }
-                    else if (cmd is ParCallCmd)
+                    else if (cmd is ParCallCmd parCallCmd)
                     {
-                        ParCallCmd parCallCmd = cmd as ParCallCmd;
                         AddCallToYieldProc(parCallCmd.tok, newCmds, ogOldGlobalMap, domainNameToLocalVar);
                         DesugarParallelCallCmd(newCmds, parCallCmd);
                         HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(parCallCmd));
@@ -1111,18 +1101,17 @@ namespace Microsoft.Boogie
                 List<Cmd> newCmds = new List<Cmd>();
                 for (int i = b.Cmds.Count - 1; i >= 0; i--)
                 {
-                    CallCmd callCmd = b.Cmds[i] as CallCmd;
-                    if (callCmd == null || callCmd.Proc != yieldProc)
-                    {
-                        newCmds.Insert(0, b.Cmds[i]);
-                    }
-                    else
+                    if (b.Cmds[i] is CallCmd callCmd && callCmd.Proc == yieldProc)
                     {
                         Block newBlock = new Block(Token.NoToken, b.Label + i, newCmds, transferCmd);
                         newCmds = new List<Cmd>();
                         transferCmd = new GotoCmd(Token.NoToken, new List<string> { newBlock.Label, yieldCheckBlock.Label },
                                                                  new List<Block> { newBlock, yieldCheckBlock });
                         newBlocks.Add(newBlock);
+                    }
+                    else
+                    {
+                        newCmds.Insert(0, b.Cmds[i]);
                     }
                 }
                 b.Cmds = newCmds;

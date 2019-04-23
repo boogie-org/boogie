@@ -480,13 +480,14 @@ namespace Microsoft.Boogie
             }
             for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
             {
-                IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
-                if (ie == null) continue;
-                Variable v = callCmd.Proc.InParams[i];
-                if (FindDomainName(v) == null) continue;
-                if (FindLinearKind(v) == LinearKind.LINEAR_OUT)
+                if (callCmd.Ins[i] is IdentifierExpr ie)
                 {
-                    start.Add(ie.Decl);
+                    Variable v = callCmd.Proc.InParams[i];
+                    if (FindDomainName(v) == null) continue;
+                    if (FindLinearKind(v) == LinearKind.LINEAR_OUT)
+                    {
+                        start.Add(ie.Decl);
+                    }
                 }
             }
         }
@@ -501,9 +502,8 @@ namespace Microsoft.Boogie
             HashSet<Variable> start = new HashSet<Variable>(availableLinearVars[b]);
             foreach (Cmd cmd in b.Cmds)
             {
-                if (cmd is AssignCmd)
+                if (cmd is AssignCmd assignCmd)
                 {
-                    AssignCmd assignCmd = (AssignCmd)cmd;
                     for (int i = 0; i < assignCmd.Lhss.Count; i++)
                     {
                         if (FindDomainName(assignCmd.Lhss[i].DeepAssignedVariable) == null) continue;
@@ -523,13 +523,12 @@ namespace Microsoft.Boogie
                         start.Add(assignLhs.DeepAssignedVariable);
                     }
                 }
-                else if (cmd is CallCmd)
+                else if (cmd is CallCmd callCmd)
                 {
                     foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
                     {
                         Error(cmd, string.Format("Global variable {0} must be available at a call", g.Name));
                     }
-                    CallCmd callCmd = (CallCmd)cmd;
                     for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
                     {
                         Variable param = callCmd.Proc.InParams[i];
@@ -558,20 +557,19 @@ namespace Microsoft.Boogie
                     AddAvailableVars(callCmd, start);
                     availableLinearVars[callCmd] = new HashSet<Variable>(start);
                 }
-                else if (cmd is ParCallCmd)
+                else if (cmd is ParCallCmd parCallCmd)
                 {
                     foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
                     {
                         Error(cmd, string.Format("Global variable {0} must be available at a call", g.Name));
                     }
-                    ParCallCmd parCallCmd = (ParCallCmd)cmd;
-                    foreach (CallCmd callCmd in parCallCmd.CallCmds)
+                    foreach (CallCmd parCallCallCmd in parCallCmd.CallCmds)
                     {
-                        for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
+                        for (int i = 0; i < parCallCallCmd.Proc.InParams.Count; i++)
                         {
-                            Variable param = callCmd.Proc.InParams[i];
+                            Variable param = parCallCallCmd.Proc.InParams[i];
                             if (FindDomainName(param) == null) continue;
-                            IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
+                            IdentifierExpr ie = parCallCallCmd.Ins[i] as IdentifierExpr;
                             LinearKind paramKind = FindLinearKind(param);
                             if (start.Contains(ie.Decl))
                             {
@@ -596,9 +594,8 @@ namespace Microsoft.Boogie
                     AddAvailableVars(parCallCmd, start);
                     availableLinearVars[parCallCmd] = new HashSet<Variable>(start);
                 }
-                else if (cmd is HavocCmd)
+                else if (cmd is HavocCmd havocCmd)
                 {
-                    HavocCmd havocCmd = (HavocCmd)cmd;
                     foreach (IdentifierExpr ie in havocCmd.Vars)
                     {
                         if (FindDomainName(ie.Decl) == null) continue;
@@ -628,7 +625,7 @@ namespace Microsoft.Boogie
                 LinearKind kind = FindLinearKind(node);
                 if (kind != LinearKind.LINEAR)
                 {
-                    if (node is GlobalVariable || node is LocalVariable || (node is Formal && !(node as Formal).InComing))
+                    if (node is GlobalVariable || node is LocalVariable || (node is Formal formal && !formal.InComing))
                     {
                         Error(node, "Variable must be declared linear (as opposed to linear_in or linear_out)");
                     }
@@ -645,8 +642,7 @@ namespace Microsoft.Boogie
                 Variable lhsVar = lhs.DeepAssignedVariable;
                 string domainName = FindDomainName(lhsVar);
                 if (domainName == null) continue;
-                SimpleAssignLhs salhs = lhs as SimpleAssignLhs;
-                if (salhs == null)
+                if (!(lhs is SimpleAssignLhs))
                 {
                     Error(node, string.Format("Only simple assignment allowed on linear variable {0}", lhsVar.Name));
                     continue;

@@ -45,7 +45,7 @@ ensures {:layer 2} InvLock(lock, b);
   assert {:layer 2} InvLock(lock, b);
 }
 
-procedure {:atomic} {:layer 3} AtomicLeave({:linear "tid"} tid:X)
+procedure {:left} {:layer 3} AtomicLeave({:linear "tid"} tid:X)
 modifies lock;
 { assert lock == tid && tid != nil; lock := nil; }
 

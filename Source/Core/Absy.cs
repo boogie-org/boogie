@@ -1947,7 +1947,7 @@ namespace Microsoft.Boogie {
       EmitVitals(stream, level, true);
       stream.WriteLine(";");
     }
-    public void EmitVitals(TokenTextWriter stream, int level, bool emitAttributes) {
+    public void EmitVitals(TokenTextWriter stream, int level, bool emitAttributes, bool emitType = true) {
       Contract.Requires(stream != null);
       if (emitAttributes) {
         EmitAttributes(stream);
@@ -1955,7 +1955,7 @@ namespace Microsoft.Boogie {
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds && this.TypedIdent.HasName) {
         stream.Write("h{0}^^", this.GetHashCode());  // the idea is that this will prepend the name printed by TypedIdent.Emit
       }
-      this.TypedIdent.Emit(stream);
+      this.TypedIdent.Emit(stream, emitType);
     }
     public override void Resolve(ResolutionContext rc) {
       //Contract.Requires(rc != null);
@@ -4160,14 +4160,21 @@ namespace Microsoft.Boogie {
         return this.Name != NoName;
       }
     }
-    public void Emit(TokenTextWriter stream) {
+    /// <summary>
+    /// An "emitType" value of "false" is ignored if "this.Name" is "NoName".
+    /// </summary>
+    public void Emit(TokenTextWriter stream, bool emitType) {
       Contract.Requires(stream != null);
       stream.SetToken(this);
       stream.push();
-      if (this.Name != NoName) {
+      if (this.Name != NoName && emitType) {
         stream.Write("{0}: ", TokenTextWriter.SanitizeIdentifier(this.Name));
+        this.Type.Emit(stream);
+      } else if (this.Name != NoName) {
+        stream.Write("{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
+      } else {
+        this.Type.Emit(stream);
       }
-      this.Type.Emit(stream);
       if (this.WhereExpr != null) {
         stream.sep();
         stream.Write(" where ");

@@ -269,7 +269,7 @@ namespace Microsoft.Boogie.SMTLib
 
         // Set produce-unsat-cores last. It seems there's a bug in Z3 where if we set it earlier its value
         // gets reset by other set-option commands ( https://z3.codeplex.com/workitem/188 )
-        if (CommandLineOptions.Clo.PrintNecessaryAssumes || (CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini)))
+                if (CommandLineOptions.Clo.PrintNecessaryAssumes || CommandLineOptions.Clo.EnableUnSatCoreExtract == 1 ||(CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini)))
         {
           SendCommon("(set-option :produce-unsat-cores true)");
           this.usingUnsatCore = true;
@@ -2016,7 +2016,8 @@ namespace Microsoft.Boogie.SMTLib
             break;
           case "error":
             if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId &&
-                resp.Arguments[0].Name.Contains("max. resource limit exceeded")) {
+                (  resp.Arguments[0].Name.Contains("max. resource limit exceeded")
+                || resp.Arguments[0].Name.Contains("resource limits reached"))) {
               currentErrorHandler.OnResourceExceeded("max resource limit");
               result = Outcome.OutOfResource;
             } else {
@@ -2060,6 +2061,7 @@ namespace Microsoft.Boogie.SMTLib
                 }
                 break;
                 case "max. resource limit exceeded":
+                case "resource limits reached":
                 currentErrorHandler.OnResourceExceeded("max resource limit");
                 result = Outcome.OutOfResource;
                 break;
@@ -2225,20 +2227,38 @@ namespace Microsoft.Boogie.SMTLib
         throw new NotImplementedException();
     }
 
-    public override void Assert(VCExpr vc, bool polarity, bool isSoft = false, int weight = 1)
+    public override void Assert(VCExpr vc, bool polarity, bool isSoft = false, int weight = 1, string name = null)
     {
         OptimizationRequests.Clear();
         string assert = "assert";
-        if (options.Solver == SolverKind.Z3 && isSoft) {
+        if (options.Solver == SolverKind.Z3 && isSoft)
+        {
             assert += "-soft";
         }
         var expr = polarity ? VCExpr2String(vc, 1) : "(not\n" + VCExpr2String(vc, 1) + "\n)";
-        if (options.Solver == SolverKind.Z3 && isSoft) {
+        if (options.Solver == SolverKind.Z3 && isSoft)
+        {
             expr += " :weight " + weight;
+        }
+        if (name != null)
+        {
+            expr = "(! " + expr + ":named " + name + ")";
         }
         AssertAxioms();
         SendThisVC("(" + assert + " " + expr + ")");
         SendOptimizationRequests();
+    }
+
+    public override List<string> UnsatCore()
+    {
+        SendThisVC("(get-unsat-core)");
+        var resp = Process.GetProverResponse().ToString();
+        if (resp == "" || resp == "()")
+            return null;
+        if (resp[0] == '(')
+            resp = resp.Substring(1, resp.Length - 2);
+        var ucore = resp.Split(' ').ToList();
+        return ucore;
     }
 
     public override void DefineMacro(Macro f, VCExpr vc) {
@@ -2657,6 +2677,7 @@ namespace Microsoft.Boogie.SMTLib
                               }
                           break;
                           case "max. resource limit exceeded":
+                          case "resource limits reached":
                               currentErrorHandler.OnResourceExceeded("max resource limit");
                               result = Outcome.OutOfResource;
                               break;

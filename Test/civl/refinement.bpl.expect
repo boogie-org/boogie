@@ -1,0 +1,16 @@
+refinement.bpl(12,3): Error: Transition invariant in final state violated
+Execution trace:
+    refinement.bpl(8,3): anon0
+    (0,0): anon00
+    refinement.bpl(43,5): inline$INCR_1$1$anon0
+    (0,0): anon08
+    refinement.bpl(43,5): inline$INCR_1$0$anon0
+    (0,0): anon016
+refinement.bpl(19,3): Error: Transition invariant in initial state violated
+Execution trace:
+    refinement.bpl(17,3): anon0
+    (0,0): anon00
+    refinement.bpl(50,5): inline$DECR_1$0$anon0
+    (0,0): anon08
+
+Boogie program verifier finished with 8 verified, 2 errors
