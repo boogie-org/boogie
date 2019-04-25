@@ -117,8 +117,15 @@ namespace Microsoft.Boogie
 
             public PathInfo(Dictionary<Variable, Expr> varToExpr, List<Expr> pathExprs)
             {
-                this.varToExpr = varToExpr;
-                this.pathExprs = pathExprs;
+                this.varToExpr = new Dictionary<Variable, Expr>();
+                foreach (var v in varToExpr.Keys) {
+                    this.varToExpr[v] = MyDuplicator.Duplicate(varToExpr[v]);
+                }
+                this.pathExprs = new List<Expr>();
+                foreach (var e in pathExprs)
+                {
+                    this.pathExprs.Add(MyDuplicator.Duplicate(e));
+                }
             }
         }
 
@@ -213,16 +220,14 @@ namespace Microsoft.Boogie
 
             foreach (Variable v in path.varToExpr.Keys.Except(postExistVars))
             {
-                Expr withOldExpr = MyDuplicator.Duplicate(path.varToExpr[v]);
-                var substExpr = Expr.Eq(Expr.Ident(v), Substituter.Apply(subst, withOldExpr));
+                var substExpr = Expr.Eq(Expr.Ident(v), Substituter.Apply(subst, path.varToExpr[v]));
                 substExpr.Type = Type.Bool;
                 returnExprs.Add(substExpr);
             }
 
             foreach (Expr x in path.pathExprs)
-            {
-                var withOldExpr = MyDuplicator.Duplicate(x);
-                returnExprs.Add(Substituter.Apply(subst, withOldExpr));
+            { 
+                returnExprs.Add(Substituter.Apply(subst, x));
             }
 
             var returnExpr = Expr.And(returnExprs);
@@ -252,7 +257,9 @@ namespace Microsoft.Boogie
                 args.Add(mapStoreExpr.Args[i]);
             }
             Expr expr = Expr.Eq(mapStoreExpr.Args[i], Expr.Select(otherExpr, args));
-            expr.Resolve(new ResolutionContext(null));
+            ResolutionContext rc = new ResolutionContext(null);
+            rc.StateMode = ResolutionContext.State.Two;
+            expr.Resolve(rc);
             return expr;
         }
 
