@@ -618,6 +618,7 @@ namespace Microsoft.Boogie
     public IEnumerable<CapturedState> States { get { return states; } }
     public readonly Element True, False;
     public readonly CapturedState InitialState;
+    public bool ModelHasStatesAlready = false;
 
     public bool HasFunc(string name)
     {
