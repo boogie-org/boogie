@@ -28,10 +28,10 @@ procedure Main()
   rm := RNA;
   assert D2I(rm,R2D(RNE,2.3)) == 2bv64;
   assert D2I(rm,R2D(RNE,2.5)) == 3bv64;
-  assert D2I(rm,R2D(RNE,3.5)) == 3bv64;
+  assert D2I(rm,R2D(RNE,3.5)) == 4bv64;
   assert D2I(rm,R2D(RNE,-2.3)) == 18446744073709551614bv64;
   assert D2I(rm,R2D(RNE,-2.5)) == 18446744073709551613bv64;
-  assert D2I(rm,R2D(RNE,-3.5)) == 18446744073709551613bv64;
+  assert D2I(rm,R2D(RNE,-3.5)) == 18446744073709551612bv64;
 
   rm := RTP;
   assert D2I(rm,R2D(RNE,2.3)) == 3bv64;
