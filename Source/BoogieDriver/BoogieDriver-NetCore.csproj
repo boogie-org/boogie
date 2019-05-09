@@ -1,14 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <PackageId>Boogie</PackageId>
+    <VersionPrefix>2.4.1</VersionPrefix>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+    <RepositoryUrl>https://github.com/boogie-org/boogie</RepositoryUrl>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <OutputType>Exe</OutputType>
     <AssemblyName>BoogieDriver</AssemblyName>
     <TargetFramework>netcoreapp2.2</TargetFramework>
-    <PackAsTool>true</PackAsTool>
-    <ToolCommandName>boogie</ToolCommandName>
-    <PackageOutputPath>./nupkg</PackageOutputPath>
     <DefineConstants>COREFX_SUBSET</DefineConstants>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageOutputPath>nupkg</PackageOutputPath>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>boogie</ToolCommandName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,6 +43,10 @@
     <Compile Include="..\version.cs" />
     <Compile Include="**\*.cs" />
     <Compile Remove="**\cce.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+      <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt"/>
   </ItemGroup>
 
 </Project>
