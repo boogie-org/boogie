@@ -5,6 +5,7 @@
     <AssemblyName>BoogieCodeContractsExtender</AssemblyName>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <DefineConstants>COREFX_SUBSET</DefineConstants>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
 </Project>

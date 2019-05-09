@@ -8,6 +8,7 @@
     <ToolCommandName>boogie</ToolCommandName>
     <PackageOutputPath>./nupkg</PackageOutputPath>
     <DefineConstants>COREFX_SUBSET</DefineConstants>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,8 +32,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="**/*.cs" />
-    <Compile Remove="**/cce.cs" />
+    <Compile Include="..\version.cs" />
+    <Compile Include="**\*.cs" />
+    <Compile Remove="**\cce.cs" />
   </ItemGroup>
 
 </Project>

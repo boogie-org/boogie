@@ -5,6 +5,7 @@
     <AssemblyName>AIFramework</AssemblyName>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <DefineConstants>COREFX_SUBSET</DefineConstants>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,8 +18,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="**/*.cs" />
-    <Compile Remove="**/cce.cs" />
+    <Compile Include="..\version.cs" />
+    <Compile Include="**\*.cs" />
+    <Compile Remove="**\cce.cs" />
   </ItemGroup>
 
 </Project>

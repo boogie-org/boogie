@@ -5,6 +5,7 @@
     <AssemblyName>BoogieAbsInt</AssemblyName>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <DefineConstants>COREFX_SUBSET</DefineConstants>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,8 +20,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="**/*.cs" />
-    <Compile Remove="**/cce.cs" />
+    <Compile Include="..\version.cs">
+      <Link>version.cs</Link>
+    </Compile>
+    <Compile Include="**\*.cs" />
+    <Compile Remove="**\cce.cs" />
   </ItemGroup>
 
 </Project>
