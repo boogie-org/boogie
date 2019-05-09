@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <AssemblyName>Provers.SMTLib</AssemblyName>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <DefineConstants>COREFX_SUBSET</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Boogie-Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Provers/SMTLib/**/*.cs" />
+    <Compile Remove="**/AssemblyInfo.cs" />
+    <Compile Remove="**/cce.cs" />
+  </ItemGroup>
+
+</Project>
