@@ -2,23 +2,23 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>Provers.SMTLib</AssemblyName>
+    <AssemblyName>BoogieModel</AssemblyName>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <DefineConstants>COREFX_SUBSET</DefineConstants>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
+  </ItemGroup>
 
   <PropertyGroup>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="Boogie-Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="Provers/SMTLib/**/*.cs" />
-    <Compile Remove="**/AssemblyInfo.cs" />
+    <Compile Include="**/*.cs" />
     <Compile Remove="**/cce.cs" />
+    <Compile Remove="**/AssemblyInfo.cs" />
   </ItemGroup>
 
 </Project>
