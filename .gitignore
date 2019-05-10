@@ -1,5 +1,6 @@
 # Nuget
 Source/packages/*
+Source/**/nupkg
 
 # Tests
 Source/UnitTests/TestResult.xml
