@@ -1791,8 +1791,8 @@ namespace Microsoft.Boogie {
        With /inline:assume call is replaced with ""assume false"" once inlining depth is reached.
        With /inline:assert call is replaced with ""assert false"" once inlining depth is reached.
        With /inline:spec call is left as is once inlining depth is reached.
-       With the above three options, methods with the attribute {:inline N} are not verified.
        With /inline:none the entire attribute is ignored.
+       With /inline:assume and /inline:assert options, methods with the attribute {:inline N} are not verified.
 
      {:verify false}
        Skip verification of an implementation.
