@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <AssemblyName>BoogieGraph</AssemblyName>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <DefineConstants>COREFX_SUBSET</DefineConstants>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\version.cs">
+      <Link>version.cs</Link>
+    </Compile>
+    <Compile Include="**\*.cs" />
+    <Compile Remove="**\cce.cs" />
+  </ItemGroup>
+
+</Project>
