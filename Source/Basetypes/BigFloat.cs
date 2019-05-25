@@ -500,6 +500,12 @@ namespace Microsoft.Basetypes
       }
     }
 
+    /// <summary>
+    /// This method follows the specification for C#'s Single.CompareTo method.
+    /// As a result, it handles NaNs differently than how the ==, !=, <, >, <=, and >= operators do.
+    /// For example, the expression (0.0f / 0.0f).CompareTo(0.0f / 0.0f) should return 0,
+    /// whereas the expression (0.0f / 0.0f) == (0.0f / 0.0f) should return false.
+    /// </summary>
     [Pure]
     public int CompareTo(BigFloat that) {
       Contract.Requires(exponentSize == that.exponentSize);
