@@ -6,8 +6,8 @@ procedure {:atomic} {:layer 2} MAIN ()
 modifies x;
 {
   var c:int;
-  assume c > 0 && c mod 6 == 0;
-  x := x + c;
+  assume c > x && (c - x) mod 6 == 0;
+  x := c;
 }
 
 
