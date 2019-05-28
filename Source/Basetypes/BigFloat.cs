@@ -317,27 +317,20 @@ namespace Microsoft.Basetypes
     // Basic arithmetic operations
 
     [Pure]
-    public BigFloat Negate {
-      get {
-        if (value != "") {
-          if (value[0] == '-') {
-            return new BigFloat("+oo", significandSize, exponentSize);
-          }
-
-          if (value[0] == '+') {
-            return new BigFloat("-oo", significandSize, exponentSize);
-          }
-
-          return new BigFloat("NaN", significandSize, exponentSize);
+    public static BigFloat operator -(BigFloat x) {
+      if (x.value != "") {
+        if (x.value[0] == '-') {
+          return new BigFloat("+oo", x.significandSize, x.exponentSize);
         }
 
-        return new BigFloat(!isSignBitSet, significand, exponent, significandSize, exponentSize);
-      }
-    }
+        if (x.value[0] == '+') {
+          return new BigFloat("-oo", x.significandSize, x.exponentSize);
+        }
 
-    [Pure]
-    public static BigFloat operator -(BigFloat x) {
-      return x.Negate;
+        return new BigFloat("NaN", x.significandSize, x.exponentSize);
+      }
+
+      return new BigFloat(!x.isSignBitSet, x.significand, x.exponent, x.significandSize, x.exponentSize);
     }
 
     [Pure]
@@ -429,7 +422,7 @@ namespace Microsoft.Basetypes
 
     [Pure]
     public static BigFloat operator -(BigFloat x, BigFloat y) {
-      return x + y.Negate;
+      return x + -y;
     }
 
     [Pure]
