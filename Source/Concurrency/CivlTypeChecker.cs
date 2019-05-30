@@ -1254,6 +1254,9 @@ namespace Microsoft.Boogie
 
             public override Cmd VisitHavocCmd(HavocCmd node)
             {
+                // Note: Inlining in GenerateAtomicActionCopies generates havocs that are
+                // manually removed again (see explanation there). If havocs were to be
+                // allowed in atomic actions in the future, this has to be addressed.
                 ctc.Error(node, "Havoc command not allowed inside an atomic action");
                 return base.VisitHavocCmd(node);
             }
