@@ -259,6 +259,11 @@ namespace Microsoft.Boogie {
         return false;
       }
     }
+    public virtual bool IsString {
+      get {
+        return false;
+      }
+    }
 
     public virtual bool IsVariable {
       get {
@@ -371,6 +376,7 @@ namespace Microsoft.Boogie {
     public static readonly Type/*!*/ Real = new BasicType(SimpleType.Real);
     public static readonly Type/*!*/ Bool = new BasicType(SimpleType.Bool);
     public static readonly Type/*!*/ RMode = new BasicType(SimpleType.RMode);
+    public static readonly Type/*!*/ String = new BasicType(SimpleType.String);
     private static BvType[] bvtypeCache;
 
     static public BvType GetBvType(int sz) {
@@ -917,6 +923,8 @@ namespace Microsoft.Boogie {
           return "bool";
         case SimpleType.RMode:
           return "rmode";
+        case SimpleType.String:
+          return "string";
       }
       Debug.Assert(false, "bad type " + T);
       {
@@ -1047,6 +1055,13 @@ namespace Microsoft.Boogie {
       get
       {
         return this.T == SimpleType.RMode;
+      }
+    }
+    public override bool IsString
+    {
+      get
+      {
+        return this.T == SimpleType.String;
       }
     }
 
@@ -1496,7 +1511,7 @@ Contract.Requires(that != null);
     public override Type ResolveType(ResolutionContext rc) {
       //Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
-      // first case: the type name denotes a bitvector-type, float-type, or rmode-type
+      // first case: the type name denotes a bitvector-type, float-type, rmode-type, or string-type
 
       if (Name.StartsWith("bv") && Name.Length > 2) {
         bool is_bv = true;
@@ -1547,6 +1562,17 @@ Contract.Requires(that != null);
                    Name);
         }
         return Type.RMode;
+      }
+
+      if (Name.Equals("string"))
+      {
+        if (Arguments.Count > 0)
+        {
+          rc.Error(this,
+                   "string type must not be applied to arguments: {0}",
+                   Name);
+        }
+        return Type.String;
       }
 
       // second case: the identifier is resolved to a type variable
@@ -2179,6 +2205,14 @@ Contract.Requires(that != null);
       {
         Type p = ProxyFor;
         return p != null && p.IsRMode;
+      }
+    }
+    public override bool IsString
+    {
+      get
+      {
+        Type p = ProxyFor;
+        return p != null && p.IsString;
       }
     }
 
@@ -3063,6 +3097,11 @@ Contract.Requires(that != null);
         return ExpandedType.IsRMode;
       }
     }
+    public override bool IsString {
+      get {
+        return ExpandedType.IsString;
+      }
+    }
 
     public override bool IsVariable {
       get {
@@ -3833,7 +3872,8 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
     Int,
     Real,
     Bool,
-    RMode
+    RMode,
+    String
   };
 
 

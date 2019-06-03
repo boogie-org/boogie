@@ -121,7 +121,7 @@ namespace Microsoft.Boogie.SMTLib
           }
           sb.Append(']');
           TypeToStringHelper(m.Result, sb);
-        } else if (t.IsBool || t.IsInt || t.IsReal || t.IsFloat || t.IsBv || t.IsRMode) {
+        } else if (t.IsBool || t.IsInt || t.IsReal || t.IsFloat || t.IsBv || t.IsRMode || t.IsString) {
           sb.Append(TypeToString(t));
         } else {
           System.IO.StringWriter buffer = new System.IO.StringWriter();
@@ -149,8 +149,10 @@ namespace Microsoft.Boogie.SMTLib
         return "(_ FloatingPoint " + t.FloatExponent + " " + t.FloatSignificand + ")";
       else if (t.IsBv)
         return "(_ BitVec " + t.BvBits + ")";
-      else if (t.IsRMode) {
+      else if (t.IsRMode)
         return "RoundingMode";
+      else if (t.IsString) {
+        return "String";
       } else {
         StringBuilder sb = new StringBuilder();        
         TypeToStringHelper(t, sb);
