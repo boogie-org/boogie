@@ -220,6 +220,11 @@ namespace Microsoft.Boogie.SMTLib
         RoundingMode lit = ((VCExprRModeLit)node).Val;
         wr.Write(lit.ToString());
       }
+      else if (node is VCExprStringLit)
+      {
+        String lit = ((VCExprStringLit)node).Val;
+        wr.Write("\"" + lit.ToString() + "\"");
+      }
       else {
         Contract.Assert(false);
         throw new cce.UnreachableException();

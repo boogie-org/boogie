@@ -338,6 +338,8 @@ namespace Microsoft.Boogie.VCExprAST {
         return Gen.Float(node.asBigFloat);
       } else if (node.Val is RoundingMode) {
         return Gen.RMode(node.asRoundingMode);
+      } else if (node.Val is String) {
+        return Gen.String(node.asString);
       }
       else if (node.Val is BvConst) {
         return Gen.Bitvector((BvConst)node.Val);
