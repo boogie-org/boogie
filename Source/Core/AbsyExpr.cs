@@ -730,6 +730,8 @@ namespace Microsoft.Boogie {
           return Type.GetBvType(((BvConst)Val).Bits);
         } else if (Val is RoundingMode) {
           return Type.RMode;
+        } else if (Val is String) {
+          return Type.String;
         } else {
           {
             Contract.Assert(false);
