@@ -16,18 +16,27 @@ function {:builtin "re.inter"} intersection(regex, regex): regex;
 
 procedure main() {
     var s1: string;
+    var r1: regex;
 
-    /// needs a concrete instance of s1
-    // assert stringInRegEx(s1, stringToRegEx(s1));
+    s1 := "abcd";
+    r1 := stringToRegEx(s1);
+
+    assert stringInRegEx(s1, stringToRegEx(s1));
+    assert !stringInRegEx(s1, stringToRegEx("ABCD"));
 
     assert stringInRegEx(s1, star(allChar()));
+
     assert !stringInRegEx(s1, noString());
+
     assert !stringInRegEx(s1, concat(noString(), noString()));
+
     assert stringInRegEx(s1, option(plus(allChar())));
+
+    assert !stringInRegEx(s1, loop(noString(), 0, 5));
+    assert stringInRegEx(s1, loop(allChar(), 0, 5));
+
     assert !stringInRegEx(s1, union(noString(), noString()));
     assert stringInRegEx(s1, intersection(star(allChar()), star(allChar())));
 
-    /// not clear when this will work
-    // assert !stringInRegEx(s1, loop(noString(), 0, 3));
 }
 
