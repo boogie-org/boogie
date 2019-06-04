@@ -151,8 +151,10 @@ namespace Microsoft.Boogie.SMTLib
         return "(_ BitVec " + t.BvBits + ")";
       else if (t.IsRMode)
         return "RoundingMode";
-      else if (t.IsString) {
+      else if (t.IsString)
         return "String";
+      else if (t.IsRegEx) {
+        return "(RegEx String)";
       } else {
         StringBuilder sb = new StringBuilder();        
         TypeToStringHelper(t, sb);
