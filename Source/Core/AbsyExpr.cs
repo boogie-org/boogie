@@ -695,6 +695,8 @@ namespace Microsoft.Boogie {
       stream.SetToken(this);
       if (this.Val is bool) {
         stream.Write((bool)this.Val ? "true" : "false"); // correct capitalization
+      } else if (Type.IsString) {
+        stream.Write("\"" + cce.NonNull(this.Val.ToString()) + "\"");
       } else {
         stream.Write(cce.NonNull(this.Val.ToString()));
       }
