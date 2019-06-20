@@ -315,20 +315,13 @@ namespace Microsoft.Boogie.SMTLib
               foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
               {
                 string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
-                if (f.InParams.Count == 0)
+                datatypeString += "(" + quotedConstructorName + " ";
+                foreach (Variable v in f.InParams) 
                 {
-                  datatypeString += quotedConstructorName + " ";
+                  string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
+                  datatypeString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
                 }
-                else
-                {
-                  datatypeString += "(" + quotedConstructorName + " ";
-                  foreach (Variable v in f.InParams)
-                  {
-                    string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
-                    datatypeString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
-                  }
-                  datatypeString += ") ";
-                }
+                datatypeString += ") ";
               }
               datatypeString += ") ";
             }
