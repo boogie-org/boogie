@@ -308,29 +308,31 @@ namespace Microsoft.Boogie.SMTLib
           sccs.Compute();
           foreach (GraphUtil.SCC<CtorType> scc in sccs)
           {
-            string datatypeString = "";
+            string datatypesString = "";
+            string datatypeConstructorsString = "";
             foreach (CtorType datatype in scc)
             {
-              datatypeString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " ";
+              datatypesString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " 0)";
+              string datatypeConstructorString = "";
               foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
               {
                 string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
-                datatypeString += "(" + quotedConstructorName + " ";
+                datatypeConstructorString += "(" + quotedConstructorName + " ";
                 foreach (Variable v in f.InParams) 
                 {
                   string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
-                  datatypeString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
+                  datatypeConstructorString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
                 }
-                datatypeString += ") ";
+                datatypeConstructorString += ") ";
               }
-              datatypeString += ") ";
+              datatypeConstructorsString += "(" + datatypeConstructorString + ") ";
             }
             List<string> decls = DeclCollector.GetNewDeclarations();
             foreach (string decl in decls)
             {
               SendCommon(decl);
             }
-            SendCommon("(declare-datatypes () (" + datatypeString + "))");
+            SendCommon("(declare-datatypes (" + datatypesString + ") (" + datatypeConstructorsString + "))");
           }
         }
         if (CommandLineOptions.Clo.ProverPreamble != null)
