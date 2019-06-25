@@ -2337,6 +2337,64 @@ namespace Microsoft.Boogie.SMTLib
 
     object GetArrayFromProverResponse(SExpr resp) {
       resp = ReduceLet(resp);
+      var dict = GetArrayFromArrayExpr(resp);
+      if (dict == null) dict = GetArrayFromProverLambdaExpr(resp);
+      if (dict == null) return null;
+      var str = new StringWriter();
+      str.Write("{");
+      foreach (var entry in dict)
+        if (entry.Key != "*")
+          str.Write("\"{0}\":{1},", entry.Key, entry.Value);
+      if (dict.ContainsKey("*"))
+        str.Write("\"*\":{0}", dict["*"]);
+      str.Write("}");
+      return str.ToString();
+    }
+
+    Dictionary<string, object> GetArrayFromProverLambdaExpr(SExpr resp) {
+      var dict = new Dictionary<string, object>();
+      if (resp.Name == "lambda" && resp.ArgCount == 2) {
+
+        // TODO: multiple indices, as (lambda (() (x!1 Int) (x!2 Int)) ...)
+        var indexVar = resp.Arguments[0].Arguments[0].Name;
+
+        var cases = resp.Arguments[1];
+        while (cases != null) {
+          if (cases.Name == "ite") {
+            var condition = cases.Arguments[0];
+            var positive = cases.Arguments[1];
+            var negative = cases.Arguments[2];
+
+            // TODO: multiple index conditions, as (and (= x!1 5) (= x!2 3))
+            // TODO: nested arrays, as (ite (...) (_ as-array k!5) (_ as-array k!3))
+
+            if (condition.Name != "=")
+              throw new VCExprEvaluationException();
+
+            if (condition.Arguments[0].Name != indexVar)
+              throw new VCExprEvaluationException();
+
+            var index = ParseValueFromProver(condition.Arguments[1]);
+            var value = ParseValueFromProver(positive);
+
+            dict.Add(index.ToString(), value);
+
+            cases = negative;
+
+          } else if (cases.IsId) {
+            var value = ParseValueFromProver(cases);
+            dict.Add("*", value);
+            cases = null;
+
+          } else {
+            throw new VCExprEvaluationException();
+          }
+        }
+      }
+      return dict.Count > 0 ? dict : null;
+    }
+
+    Dictionary<string, object> GetArrayFromArrayExpr(SExpr resp) {
       var dict = new Dictionary<string, object>();
       var curr = resp;
       while (curr != null) {
@@ -2356,15 +2414,7 @@ namespace Microsoft.Boogie.SMTLib
           return null;
         }
       }
-      var str = new StringWriter();
-      str.Write("{");
-      foreach (var entry in dict)
-        if (entry.Key != "*")
-          str.Write("\"{0}\":{1},", entry.Key, entry.Value);
-      if (dict.ContainsKey("*"))
-        str.Write("\"*\":{0}", dict["*"]);
-      str.Write("}");
-      return str.ToString();
+      return dict.Count > 0 ? dict : null;
     }
 
     public override object Evaluate(VCExpr expr)
