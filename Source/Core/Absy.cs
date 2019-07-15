@@ -349,7 +349,7 @@ namespace Microsoft.Boogie {
       this.topLevelDeclarations.Emit(stream);
     }
 
-    public void ProcessDatatypeConstructors() {
+    public void ProcessDatatypeConstructors(Errors errors) {
       Dictionary<string, DatatypeConstructor> constructors = new Dictionary<string, DatatypeConstructor>();
       List<Declaration> prunedTopLevelDeclarations = new List<Declaration>();
       foreach (Declaration decl in TopLevelDeclarations) {
@@ -358,14 +358,22 @@ namespace Microsoft.Boogie {
           prunedTopLevelDeclarations.Add(decl);
           continue;
         }
-        if (constructors.ContainsKey(func.Name)) continue;
+        if (constructors.ContainsKey(func.Name))
+        {
+          errors.SemErr(func.tok, string.Format("more than one declaration of datatype constructor name: {0}", func.Name));
+          continue;
+        }
         DatatypeConstructor constructor = new DatatypeConstructor(func);
         constructors.Add(func.Name, constructor);
         prunedTopLevelDeclarations.Add(constructor);
       }
+      if (errors.count > 0)
+      {
+        return;
+      }
+
       ClearTopLevelDeclarations();
       AddTopLevelDeclarations(prunedTopLevelDeclarations);
-    
       foreach (DatatypeConstructor f in constructors.Values) {
         for (int i = 0; i < f.InParams.Count; i++) {
           DatatypeSelector selector = new DatatypeSelector(f, i);
