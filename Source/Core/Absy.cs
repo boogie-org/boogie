@@ -3414,7 +3414,7 @@ namespace Microsoft.Boogie {
           Expr inl = this.FindExprAttribute("inline");
           if (inl == null)
             inl = this.Proc.FindExprAttribute("inline");
-          if (inl != null && inl is LiteralExpr && ((LiteralExpr)inl).isBigNum && ((LiteralExpr)inl).asBigNum.Signum > 0) {
+          if (inl != null) {
             return true;
           }
         }
