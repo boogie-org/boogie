@@ -84,17 +84,18 @@ public static int Parse (string s, string/*!*/ filename, out /*maybe null*/ Prog
 
   Parser parser = new Parser(scanner, errors, false);
   parser.Parse();
-  if (parser.errors.count == 0)
+  if (errors.count == 0)
+  {
+    parser.Pgm.ProcessDatatypeConstructors(errors);
+  }
+  if (errors.count == 0)
   {
     program = parser.Pgm;
-    program.ProcessDatatypeConstructors();
-    return 0;
-  }
-  else
+  } else
   {
     program = null;
-    return parser.errors.count;
   }
+  return errors.count;
 }
 
 public Parser(Scanner/*!*/ scanner, Errors/*!*/ errors, bool disambiguation)
