@@ -575,8 +575,15 @@ namespace Microsoft.Boogie {
       }
     }
 
+    // todo (MR) this was implemented to throw an error; is this bad?
     public override int GetHashCode() {
-      throw new NotImplementedException();
+      int hash = 17;
+      hash = hash * 23 + tr.GetHashCode();
+      hash = hash * 23 + Pos.GetHashCode();
+      if (Next != null) {
+        hash = hash * 23 + Next.GetHashCode();
+      }
+      return hash;
     }
   }
 
