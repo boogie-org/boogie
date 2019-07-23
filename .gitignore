@@ -37,3 +37,6 @@ Source/.vs/
 
 # MonoDevelop files
 Source/*.userprefs
+
+# Rider files
+.idea/
