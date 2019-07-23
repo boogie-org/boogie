@@ -67,9 +67,6 @@ procedure Quantifiers() {
 }
 
 procedure FreeVariables() {
-  var m : [bool,bool,bool]bool;
-  var k : [bool,bool]bool;
-
   var f : [bool]bool;
   var g : [bool]bool;
 
@@ -83,6 +80,16 @@ procedure FreeVariables() {
   } else {
     assert f == g; // should fail
   }
+}
+
+procedure FreeVariables2() {
+  var k : [bool,bool]bool;
+
+  var f : [bool]bool;
+  var g : [bool]bool;
+
+  var a : bool;
+  var b : bool;
 
   f := (lambda r: bool :: k[a,b]);
   g := (lambda s: bool :: k[b,a]);
@@ -91,11 +98,21 @@ procedure FreeVariables() {
   } else {
     assert f == g; // should fail
   }
+}
+
+procedure FreeVariables3() {
+  var m : [bool,bool,bool]bool;
+
+  var f : [bool]bool;
+  var g : [bool]bool;
+
+  var a : bool;
+  var b : bool;
 
   f := (lambda r: bool :: m[a,a,b]);
   g := (lambda s: bool :: m[a,b,b]);
   if (a == b) {
-    assert f == g; // should fail because they are different lambda
+    assert f == g; // should be OK
   } else {
     assert f == g; // should fail because they are different lambda
   }

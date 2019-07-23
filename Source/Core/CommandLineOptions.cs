@@ -416,6 +416,8 @@ namespace Microsoft.Boogie {
     public int DoomStrategy = -1;
     public bool DoomRestartTP = false;
     public bool PrintDesugarings = false;
+    public bool PrintLambdaLifting = false;
+    public bool FreeVarLambdaLifting = false;
     public string SimplifyLogFilePath = null;
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
@@ -1603,6 +1605,7 @@ namespace Microsoft.Boogie {
           }
 
           if (ps.CheckBooleanFlag("printDesugared", ref PrintDesugarings) ||
+              ps.CheckBooleanFlag("printLambdaLifting", ref PrintLambdaLifting) ||
               ps.CheckBooleanFlag("printInstrumented", ref PrintInstrumented) ||
               ps.CheckBooleanFlag("printWithUniqueIds", ref PrintWithUniqueASTIds) ||
               ps.CheckBooleanFlag("wait", ref Wait) ||
@@ -1650,7 +1653,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
               ps.CheckBooleanFlag("trustAtomicityTypes", ref TrustAtomicityTypes) ||
               ps.CheckBooleanFlag("trustNonInterference", ref TrustNonInterference) ||
-              ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName)
+              ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
+              ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting)
               ) {
             // one of the boolean flags matched
             return true;
@@ -1910,6 +1914,14 @@ namespace Microsoft.Boogie {
                    identifies variables
   /printUnstructured : with /print option, desugars all structured statements
   /printDesugared : with /print option, desugars calls
+  /printLambdaLifting : with /print option, desugars lambda lifting
+
+  /freeVarLambdaLifting : Boogie's lambda lifting transforms the bodies of lambda
+                         expressions into templates with holes. By default, holes
+                         are maximally large subexpressions that do not contain
+                         bound variables (see Section 8 of Boogie 3 paper).
+                         This option performs a form of lambda lifting
+                         in which holes are the lambda's free variables. 
 
   /overlookTypeErrors : skip any implementation with resolution or type
                         checking errors
