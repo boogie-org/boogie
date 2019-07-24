@@ -47,7 +47,7 @@ namespace Microsoft.Boogie {
         }
         
         public List<Expr> GetReplacements() {
-            return llReplacements; // todo (MR) make this readonly somewhere?
+            return llReplacements;
         }
 
         public abstract bool ContainsBoundVariables();

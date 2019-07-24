@@ -84,7 +84,6 @@ namespace Microsoft.Boogie {
     }
 
     private class LambdaVisitor : StandardVisitor {
-      // todo (MR) why are we not using this map as a cache for lifted lambdas? why are we recomputing them?
       private readonly Dictionary<Expr, FunctionCall> liftedLambdas = 
         new Dictionary<Expr, FunctionCall>(new AlphaEquality());
 
@@ -118,7 +117,7 @@ namespace Microsoft.Boogie {
       /// free variables with bound ones.
       /// </summary>
       /// <param name="lambda">A lambda expression
-      ///   <code>(lambda x1: T1 ... x_n: T_n => t)</code>
+      ///   <code>(lambda x1: T1 ... x_n: T_n :: t)</code>
       /// where <c>t</c> contains the free variables <c>y1</c>, ..., <c>y_m</c>.
       /// </param>
       /// <returns>
@@ -284,7 +283,7 @@ namespace Microsoft.Boogie {
       /// maximally large subexpressions of a lambda that do not contain any of the lambda's bound variables.
       /// </summary>
       /// <param name="lambda">A lambda expression
-      ///   <code>(lambda x1: T1 ... x_n: T_n => t)</code>
+      ///   <code>(lambda x1: T1 ... x_n: T_n :: t)</code>
       /// where <c>t</c> contains the subexpressions <c>e1</c>, ..., <c>e_m</c>. These are maximally large
       /// subexpressions that do not contain the lambda's bound variables.
       /// </param>
@@ -301,8 +300,6 @@ namespace Microsoft.Boogie {
       ///   </item>
       /// </list>
       /// </returns>
-      // todo (MR) move old handling into MaxHolesLambdaLifter? Maybe try merging MaxHolesLambdaLifter with LambdaVisitor
-      // todo (MR) do I need to handle a more general temporal modifier (e.g. labels)?
       private Expr LiftLambdaMaxHoles(LambdaExpr lambda) {
         
         // We start by getting rid of `old` expressions. Instead, we replace the free variables `x_i` that are

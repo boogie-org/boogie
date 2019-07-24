@@ -7,7 +7,7 @@ namespace Core {
 /// Traverses an expression, replacing all holes with bound variables taken from the <see cref="_replDummies"/>
 /// queue.
 /// </summary>
-class LambdaLiftingMaxHolesFiller : Duplicator {
+class LambdaLiftingMaxHolesFiller : StandardVisitor {
         private readonly List<Absy> _holes;
         private readonly Queue<Variable> _replDummies;
 
