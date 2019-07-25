@@ -186,7 +186,7 @@ namespace Microsoft.Boogie {
 
         // compute the free variables of the lambda expression, but with lambdaBody instead of lambda.Body
         Set freeVars = new Set();
-        BinderExpr.ComputeBinderFreeVariables(lambda.TypeParameters, lambda.Dummies, lambdaBody, lambdaAttrs, freeVars);
+        BinderExpr.ComputeBinderFreeVariables(lambda.TypeParameters, lambda.Dummies, lambdaBody, null, lambdaAttrs, freeVars);
 
         foreach (object o in freeVars) {
           // 'o' is either a Variable or a TypeVariable.

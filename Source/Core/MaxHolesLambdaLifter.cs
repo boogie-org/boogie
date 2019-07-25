@@ -119,6 +119,7 @@ class MaxHolesLambdaLifter : StandardVisitor {
     public override Expr VisitLetExpr(LetExpr node) {
         Contract.Requires(node != null);
         if (_templates.ContainsKey(node)) return node;
+        _nestedBoundVariables.AddRange(node.Dummies);
         base.VisitLetExpr(node);
         var bodyTemplate = _templates[node.Body];
         var varBodies = node.Rhss;
@@ -223,11 +224,14 @@ class MaxHolesLambdaLifter : StandardVisitor {
         base.VisitTrigger(node);
         var templates = (from e in node.Tr select _templates[e]).ToList();
         var replacements = new List<Expr>();
+        if (node.Next != null) {
+            // the replacements for .Next must be added first, since the standard visitor visits them first
+            replacements.AddRange(_templates[node.Next].GetReplacements());
+        }
         foreach (LambdaLiftingTemplate llt in templates) {
             replacements.AddRange(llt.GetReplacements());
         }
 
-        replacements.AddRange(node.Next == null ? new List<Expr>() : _templates[node.Next].GetReplacements());
         var nextNoBounds = node.Next == null || !_templates[node.Next].ContainsBoundVariables();
         if (nextNoBounds && templates.All(r => !r.ContainsBoundVariables())) {
             _templates[node] = new TemplateNoBoundVariablesTriggerOrKv(replacements);
@@ -264,7 +268,7 @@ class MaxHolesLambdaLifter : StandardVisitor {
         dummies.AddRange(replDummies);
 
         Set freeVars = new Set();
-        BinderExpr.ComputeBinderFreeVariables(_lambda.TypeParameters, _lambda.Dummies, _lambda.Body, _lambda.Attributes,
+        BinderExpr.ComputeBinderFreeVariables(_lambda.TypeParameters, _lambda.Dummies, _lambda.Body, null, _lambda.Attributes,
             freeVars);
         var freeTypeVars = freeVars.OfType<TypeVariable>().ToList();
         var freeVarActuals = freeVars.OfType<Type>().ToList();

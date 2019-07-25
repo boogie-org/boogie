@@ -228,10 +228,10 @@ namespace Microsoft.Boogie {
 
     public override void ComputeFreeVariables(Set freeVars) {
       //Contract.Requires(freeVars != null);
-      ComputeBinderFreeVariables(TypeParameters, Dummies, Body, Attributes, freeVars);
+      ComputeBinderFreeVariables(TypeParameters, Dummies, Body, null, Attributes, freeVars);
     }
 
-    public static void ComputeBinderFreeVariables(List<TypeVariable> typeParameters, List<Variable> dummies, Expr body, QKeyValue attributes, Set freeVars) {
+    public static void ComputeBinderFreeVariables(List<TypeVariable> typeParameters, List<Variable> dummies, Expr body, Trigger triggers, QKeyValue attributes, Set freeVars) {
       Contract.Requires(dummies != null);
       Contract.Requires(body != null);
 
@@ -240,6 +240,11 @@ namespace Microsoft.Boogie {
         Contract.Assert(!freeVars[v]);
       }
       body.ComputeFreeVariables(freeVars);
+      for (var trig = triggers; trig != null; trig = trig.Next) {
+        foreach (var e in trig.Tr) {
+          e.ComputeFreeVariables(freeVars);
+        }
+      }
       for (var a = attributes; a != null; a = a.Next) {
         foreach (var o in a.Params) {
           var e = o as Expr;
@@ -821,6 +826,10 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public override void ComputeFreeVariables(Set freeVars) {
+      //Contract.Requires(freeVars != null);
+      ComputeBinderFreeVariables(TypeParameters, Dummies, Body, Triggers, Attributes, freeVars);
+    }
 
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);

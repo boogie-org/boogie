@@ -1,42 +1,100 @@
-LambdaExt.bpl(10,3): Error BP5001: This assertion might not hold.
+LambdaExt.bpl(11,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaExt.bpl(6,7): anon0
-LambdaExt.bpl(26,3): Error BP5001: This assertion might not hold.
+    LambdaExt.bpl(7,7): anon0
+LambdaExt.bpl(27,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaExt.bpl(17,5): anon0
-LambdaExt.bpl(30,3): Error BP5001: This assertion might not hold.
+    LambdaExt.bpl(18,5): anon0
+LambdaExt.bpl(31,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaExt.bpl(17,5): anon0
-LambdaExt.bpl(34,3): Error BP5001: This assertion might not hold.
+    LambdaExt.bpl(18,5): anon0
+LambdaExt.bpl(35,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaExt.bpl(34,3): anon0
-LambdaExt.bpl(81,5): Error BP5001: This assertion might not hold.
+    LambdaExt.bpl(35,3): anon0
+LambdaExt.bpl(82,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaExt.bpl(76,5): anon0
-    LambdaExt.bpl(81,5): anon3_Else
-LambdaExt.bpl(99,5): Error BP5001: This assertion might not hold.
+    LambdaExt.bpl(77,5): anon0
+    LambdaExt.bpl(82,5): anon3_Else
+LambdaExt.bpl(100,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaExt.bpl(94,5): anon0
-    LambdaExt.bpl(99,5): anon3_Else
-LambdaExt.bpl(117,5): Error BP5001: This assertion might not hold.
+    LambdaExt.bpl(95,5): anon0
+    LambdaExt.bpl(100,5): anon3_Else
+LambdaExt.bpl(118,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaExt.bpl(112,5): anon0
-    LambdaExt.bpl(117,5): anon3_Else
-LambdaExt.bpl(129,3): Error BP5001: This assertion might not hold.
+    LambdaExt.bpl(113,5): anon0
+    LambdaExt.bpl(118,5): anon3_Else
+LambdaExt.bpl(130,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaExt.bpl(125,5): anon0
-LambdaExt.bpl(136,3): Error BP5001: This assertion might not hold.
+    LambdaExt.bpl(126,5): anon0
+LambdaExt.bpl(137,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaExt.bpl(134,5): anon0
-LambdaExt.bpl(138,3): Error BP5001: This assertion might not hold.
+    LambdaExt.bpl(135,5): anon0
+LambdaExt.bpl(139,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaExt.bpl(134,5): anon0
-LambdaExt.bpl(140,3): Error BP5001: This assertion might not hold.
+    LambdaExt.bpl(135,5): anon0
+LambdaExt.bpl(141,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaExt.bpl(134,5): anon0
-LambdaExt.bpl(151,5): Error BP5001: This assertion might not hold.
+    LambdaExt.bpl(135,5): anon0
+LambdaExt.bpl(152,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaExt.bpl(146,5): anon0
-    LambdaExt.bpl(151,5): anon3_Else
+    LambdaExt.bpl(147,5): anon0
+    LambdaExt.bpl(152,5): anon3_Else
+LambdaExt.bpl(171,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(171,3): anon0
+LambdaExt.bpl(181,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(181,3): anon0
 
-Boogie program verifier finished with 4 verified, 12 errors
+Boogie program verifier finished with 5 verified, 14 errors
+LambdaExt.bpl(11,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(7,7): anon0
+LambdaExt.bpl(27,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(18,5): anon0
+LambdaExt.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(18,5): anon0
+LambdaExt.bpl(35,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(35,3): anon0
+LambdaExt.bpl(82,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(77,5): anon0
+    LambdaExt.bpl(82,5): anon3_Else
+LambdaExt.bpl(100,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(95,5): anon0
+    LambdaExt.bpl(100,5): anon3_Else
+LambdaExt.bpl(116,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(113,5): anon0
+    LambdaExt.bpl(116,5): anon3_Then
+LambdaExt.bpl(118,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(113,5): anon0
+    LambdaExt.bpl(118,5): anon3_Else
+LambdaExt.bpl(130,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(126,5): anon0
+LambdaExt.bpl(137,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(135,5): anon0
+LambdaExt.bpl(139,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(135,5): anon0
+LambdaExt.bpl(141,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(135,5): anon0
+LambdaExt.bpl(152,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(147,5): anon0
+    LambdaExt.bpl(152,5): anon3_Else
+LambdaExt.bpl(171,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(171,3): anon0
+LambdaExt.bpl(181,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(181,3): anon0
+
+Boogie program verifier finished with 5 verified, 15 errors
