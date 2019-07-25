@@ -575,7 +575,6 @@ namespace Microsoft.Boogie {
       }
     }
 
-    // todo (MR) this was implemented to throw an error; is this bad?
     public override int GetHashCode() {
       int hash = 17;
       hash = hash * 23 + tr.GetHashCode();

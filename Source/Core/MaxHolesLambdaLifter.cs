@@ -9,16 +9,6 @@ using Type = Microsoft.Boogie.Type;
 namespace Core {
 using Set = GSet<object>;
 
-// todo (MR) It would be better if this class were a private class within LambdaHelper because
-//           this class relies on the lambda not having old expressions any more (only old free variables).
-//           But this makes LambdaHelper very long so I'm leaving this class in a separate file for now.
-
-// todo (MR) test nested lambdas, triggers that need replacements, assert, assume, multiple triggers,
-// todo (MR)      multiple expressions in triggers, multiple bound vars, more complicated repl expressions,
-// todo (MR)      type parameters, global variables
-
-// todo (MR) do I need to handle AsgnLhs? MapAsgnLhs? Assert/Assume?
-
 /// <summary>
 /// This visitor performs the first phase of the MaxHoles lambda lifting (see <see cref="LambdaHelper.ExpandLambdas"/>),
 /// after which it invokes the second phase in the <see cref="VisitLambdaExpr"/> method.
@@ -93,7 +83,6 @@ class MaxHolesLambdaLifter : StandardVisitor {
 
             _templates[node] = new TemplateWithBoundVariables(replacements);
         } else {
-            // todo (MR) Could we avoid the casting? Could we encode in type system that all children of hole nodes are holes?
             var newArgs = from arg in nodeArgs select ((TemplateNoBoundVariables) _templates[arg]).GetReplacement();
             var llReplacementExpr =
                 new NAryExpr(node.tok, node.Fun, newArgs.ToList(), node.Immutable) {
@@ -146,11 +135,10 @@ class MaxHolesLambdaLifter : StandardVisitor {
             var newRhss = from arg in varBodies select ((TemplateNoBoundVariables) _templates[arg]).GetReplacement();
             LambdaLiftingTemplate template = new TemplateNoBoundVariables(
                 new LetExpr(node.tok, node.Dummies, newRhss.ToList(),
-                    node.Attributes, // todo (MR) document says attributes should be dropped?
+                    node.Attributes,
                     ((TemplateNoBoundVariables) _templates[node.Body])
-                    .GetReplacement()));
+                    .GetReplacement()) {Type = node.Type});
             _templates[node] = template;
-            // todo (MR) explicitly set type of let expr here?
         }
 
         return node;
@@ -169,9 +157,8 @@ class MaxHolesLambdaLifter : StandardVisitor {
             var newBody = bt.GetReplacement();
             var newTrigger = ReplacementTrigger(trigger);
             _templates[node] = new TemplateNoBoundVariables(
-                new ForallExpr(node.tok, node.TypeParameters, node.Dummies, node.Attributes, newTrigger, newBody,
-                    node.Immutable));
-            // todo (MR) explicitly set type of binder expr here?
+                new ForallExpr(node.tok, node.TypeParameters, node.Dummies, node.Attributes, newTrigger,
+                    newBody, node.Immutable) {Type = node.Type});
         } else {
             var replacements = bodyTemplate.GetReplacements();
             if (trigger != null) {
@@ -198,8 +185,7 @@ class MaxHolesLambdaLifter : StandardVisitor {
             var newTrigger = ReplacementTrigger(trigger);
             _templates[node] = new TemplateNoBoundVariables(
                 new ExistsExpr(node.tok, node.TypeParameters, node.Dummies, node.Attributes, newTrigger, newBody,
-                    node.Immutable));
-            // todo (MR) explicitly set type of binder expr here?
+                    node.Immutable) {Type = node.Type});
         } else {
             var replacements = bodyTemplate.GetReplacements();
             if (trigger != null) {
@@ -259,10 +245,7 @@ class MaxHolesLambdaLifter : StandardVisitor {
             VisitQKeyValue(node.Attributes);
         }
 
-        // Phase II of the lambda lifting. 
-        // todo (MR) this code should not be in a visitlambdaexpr but in a separate function I think so that we don't confuse Phase I and Phase II.
-        
-        // todo (MR) more efficient to do in loop but I find this more clear
+        // Phase II of the lambda lifting.
         var attribReplacementExprs =
             node.Attributes == null ? new List<Expr>() : QKeyValueReplacements(node.Attributes);
         var llReplacementExprs = _templates[node.Body].GetReplacements();
@@ -270,7 +253,7 @@ class MaxHolesLambdaLifter : StandardVisitor {
         allReplacementExprs.AddRange(llReplacementExprs);
         var typedIdents = (from replExpr in allReplacementExprs
                 select new TypedIdent(replExpr.tok, FreshVarNameGen(new List<string>()),
-                    replExpr.Type ?? replExpr.ShallowType)) // todo (MR) what's the difference between Type and ShallowType?
+                    replExpr.Type ?? replExpr.ShallowType))
             .ToList(); 
         var formals = allReplacementExprs.Zip(typedIdents,
             (replExpr, typedIdent) => (Variable) new Formal(replExpr.tok, typedIdent, true));
@@ -359,9 +342,6 @@ class MaxHolesLambdaLifter : StandardVisitor {
         return call;
     }
 
-    // todo (MR) will this take care of all types of variables?
-    // todo (MR) will this take care of constants?
-    // todo (MR) do I need to do something special for global variables?
     public override Variable VisitVariable(Variable node) {
         Contract.Requires(node != null);
         if (_templates.ContainsKey(node)) return node;

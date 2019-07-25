@@ -1919,9 +1919,8 @@ namespace Microsoft.Boogie {
   /freeVarLambdaLifting : Boogie's lambda lifting transforms the bodies of lambda
                          expressions into templates with holes. By default, holes
                          are maximally large subexpressions that do not contain
-                         bound variables (see Section 8 of Boogie 3 paper).
-                         This option performs a form of lambda lifting
-                         in which holes are the lambda's free variables. 
+                         bound variables. This option performs a form of lambda
+                         lifting in which holes are the lambda's free variables. 
 
   /overlookTypeErrors : skip any implementation with resolution or type
                         checking errors
