@@ -430,7 +430,7 @@ namespace Microsoft.Boogie
       if (name.StartsWith("bv") && name.Length > 4 && Char.IsDigit(name[2]))
         name = name.Substring(2);
 
-      if (Char.IsDigit(name[0]) || name[0] == '-') {
+      if (Char.IsDigit(name[0]) || (name[0] == '-' && name.Length > 1 && Char.IsDigit(name[1]))) {
         int col = name.IndexOf("bv");
         int szi = -1;
 
