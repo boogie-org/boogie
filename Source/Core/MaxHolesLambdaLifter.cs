@@ -267,8 +267,20 @@ class MaxHolesLambdaLifter : StandardVisitor {
         var dummies = new List<Variable>(_lambda.Dummies);
         dummies.AddRange(replDummies);
 
+        
+        var lambdaAttrs = _lambda.Attributes;
+        if (0 < CommandLineOptions.Clo.VerifySnapshots && QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null) {
+            // Attach a dummy checksum to avoid issues in the dependency analysis.
+            var checksumAttr = new QKeyValue(_lambda.tok, "checksum", new List<object> { "lambda expression" }, null);
+            if (lambdaAttrs == null) {
+                lambdaAttrs = checksumAttr;
+            } else {
+                lambdaAttrs.AddLast(checksumAttr);
+            }
+        }
+        
         Set freeVars = new Set();
-        BinderExpr.ComputeBinderFreeVariables(_lambda.TypeParameters, _lambda.Dummies, _lambda.Body, null, _lambda.Attributes,
+        BinderExpr.ComputeBinderFreeVariables(_lambda.TypeParameters, _lambda.Dummies, _lambda.Body, null, lambdaAttrs,
             freeVars);
         var freeTypeVars = freeVars.OfType<TypeVariable>().ToList();
         var freeVarActuals = freeVars.OfType<Type>().ToList();
@@ -283,7 +295,9 @@ class MaxHolesLambdaLifter : StandardVisitor {
         IToken tok = _lambda.tok;
         Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, cce.NonNull(_lambda.Type)), false);
 
-        var liftedLambda = (LambdaExpr) LambdaLiftingMaxHolesFiller.Fill((from kvp in _templates where !kvp.Value.ContainsBoundVariables() select kvp.Key).ToList(), replDummies, _lambda);
+        var liftedLambda = (LambdaExpr) LambdaLiftingMaxHolesFiller.Fill(
+            (from kvp in _templates where !kvp.Value.ContainsBoundVariables() select kvp.Key).ToList(), 
+            replDummies, _lambda, lambdaAttrs);
         
         if (_liftedLambdas.TryGetValue(liftedLambda, out fcall)) {
             if (CommandLineOptions.Clo.TraceVerify) {
