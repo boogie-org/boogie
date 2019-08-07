@@ -9,19 +9,19 @@ namespace Core {
 /// </summary>
 class LambdaLiftingMaxHolesFiller : StandardVisitor {
         private readonly List<Absy> _holes;
+        private readonly QKeyValue _lambdaAttrs;
         private readonly Queue<Variable> _replDummies;
 
-        private LambdaLiftingMaxHolesFiller(List<Absy> holes, IEnumerable<Variable> replDummies) {
+        private LambdaLiftingMaxHolesFiller(List<Absy> holes, IEnumerable<Variable> replDummies, QKeyValue lambdaAttrs) {
           _holes = holes;
+          _lambdaAttrs = lambdaAttrs;
           _replDummies = new Queue<Variable>(replDummies);
         }
 
-        public static Expr Fill(
-          List<Absy> holes,
+        public static Expr Fill(List<Absy> holes,
           List<Variable> replDummies,
-          Expr expr
-        ) {
-          return new LambdaLiftingMaxHolesFiller(holes, replDummies).VisitExpr(expr);
+          Expr expr, QKeyValue lambdaAttrs) {
+          return new LambdaLiftingMaxHolesFiller(holes, replDummies, lambdaAttrs).VisitExpr(expr);
         }
 
         private bool ShouldBeReplaced(Absy node) {
@@ -38,7 +38,7 @@ class LambdaLiftingMaxHolesFiller : StandardVisitor {
         }
 
         public override Expr VisitLambdaExpr(LambdaExpr node) {
-          var attributes = node.Attributes == null ? null : VisitQKeyValue(node.Attributes);
+          var attributes =_lambdaAttrs == null ? null : VisitQKeyValue(_lambdaAttrs);
           var body = VisitExpr(node.Body);
           return new LambdaExpr(node.tok, node.TypeParameters, node.Dummies, attributes, body);
         }
