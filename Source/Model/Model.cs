@@ -1,4 +1,4 @@
-﻿//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 //
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
@@ -45,6 +45,7 @@ namespace Microsoft.Boogie
     public enum ElementKind
     {
       Integer,
+      Real,
       BitVector,
       Boolean,
       Uninterpreted,
@@ -105,6 +106,13 @@ namespace Microsoft.Boogie
     {
       internal Integer(Model p, string n) : base(p, n) { }
       public override ElementKind Kind { get { return ElementKind.Integer; } }
+      public override string ToString() { return Numeral.ToString(); }
+    }
+
+    public class Real : Number
+    {
+      internal Real(Model p, string n) : base(p, n) { }
+      public override ElementKind Kind { get { return ElementKind.Real; } }
       public override string ToString() { return Numeral.ToString(); }
     }
 
@@ -422,7 +430,7 @@ namespace Microsoft.Boogie
       if (name.StartsWith("bv") && name.Length > 4 && Char.IsDigit(name[2]))
         name = name.Substring(2);
 
-      if (Char.IsDigit(name[0]) || name[0] == '-') {
+      if (Char.IsDigit(name[0]) || (name[0] == '-' && name.Length > 1 && Char.IsDigit(name[1]))) {
         int col = name.IndexOf("bv");
         int szi = -1;
 
@@ -444,14 +452,18 @@ namespace Microsoft.Boogie
           }
         }
 
-        for (int i = 1; i < name.Length; ++i)
-          if (!Char.IsDigit(name[i]))
-            return null;
-
-        if (szi > 0)
-          return new BitVector(this, name, szi);
-        else
-          return new Integer(this, name);
+        var allDigits = new Regex(@"^-?[0-9]*$");
+        var real = new Regex(@"^-?[0-9]+\.[0-9]+$");
+        if (allDigits.IsMatch(name)) {
+          if (szi > 0)
+            return new BitVector(this, name, szi);
+          else
+            return new Integer(this, name);
+        } else if (real.IsMatch(name)) {
+          return new Real(this, name);
+        } else {
+          return null;
+        }
       } else if (name[0] == '*' || name.StartsWith("val!") || name.Contains("!val!")) {
         return new Uninterpreted(this, name);
       } else if (name.StartsWith("as-array[") && name.EndsWith("]")) {
@@ -716,3 +728,4 @@ namespace Microsoft.Boogie
     }
   }
 }
+
