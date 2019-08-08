@@ -911,13 +911,9 @@ namespace Microsoft.Boogie {
 
 
     /// <summary>
-    /// Creates an unresolved identifier expression.  This constructor is intended to be called
-    /// only from within the parser; for use inside the translation, use another constructor, which
-    /// specifies the type of the expression.
+    /// Creates an unresolved identifier expression.
     /// </summary>
-    /// <param name="tok"></param>
-    /// <param name="name"></param>
-    internal IdentifierExpr(IToken/*!*/ tok, string/*!*/ name, bool immutable=false)
+    public IdentifierExpr(IToken/*!*/ tok, string/*!*/ name, bool immutable=false)
       : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
