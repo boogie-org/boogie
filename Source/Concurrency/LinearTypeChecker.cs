@@ -8,7 +8,8 @@ using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
-    public enum LinearKind {
+    public enum LinearKind
+    {
         ORDINARY,
         LINEAR,
         LINEAR_IN,
@@ -33,6 +34,9 @@ namespace Microsoft.Boogie
         public Function mapOrBool;
         public Function mapImpBool;
         public Function mapConstBool;
+        public Function mapAddInt;
+        public Function mapIteInt;
+        public Function mapLeInt;
         public List<Axiom> axioms;
         public Type elementType;
         public MapType mapTypeBool;
@@ -170,6 +174,46 @@ namespace Microsoft.Boogie
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
             }
 
+            this.mapAddInt = new Function(Token.NoToken, "linear_" + domainName + "_MapAdd",
+                                          new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt), true),
+                                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true) },
+                                          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeInt), false));
+            if (CommandLineOptions.Clo.UseArrayTheory)
+            {
+                this.mapAddInt.AddAttribute("builtin", "MapAdd");
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+
+            this.mapIteInt = new Function(Token.NoToken, "linear_" + domainName + "_MapIteInt",
+                                          new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
+                                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true),
+                                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeInt), true) },
+                                          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "d", mapTypeInt), false));
+            if (CommandLineOptions.Clo.UseArrayTheory)
+            {
+                this.mapIteInt.AddAttribute("builtin", "MapIte");
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+
+            this.mapLeInt = new Function(Token.NoToken, "linear_" + domainName + "_MapLe",
+                                          new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt), true),
+                                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true) },
+                                          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
+            if (CommandLineOptions.Clo.UseArrayTheory)
+            {
+                this.mapLeInt.AddAttribute("builtin", "MapLe");
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+
             foreach (var axiom in axioms)
             {
                 axiom.Expr.Resolve(new ResolutionContext(null));
@@ -235,6 +279,11 @@ namespace Microsoft.Boogie
             if (domainName != null)
                 return domainName;
             return QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT);
+        }
+
+        public LinearDomain FindDomain(Variable v)
+        {
+            return linearDomains[FindDomainName(v)];
         }
 
         public LinearKind FindLinearKind(Variable v)
@@ -498,7 +547,8 @@ namespace Microsoft.Boogie
                 AddAvailableVars(callCmd, start);
             }
         }
-        private HashSet<Variable> PropagateAvailableLinearVarsAcrossBlock(Block b) {
+        private HashSet<Variable> PropagateAvailableLinearVarsAcrossBlock(Block b)
+        {
             HashSet<Variable> start = new HashSet<Variable>(availableLinearVars[b]);
             foreach (Cmd cmd in b.Cmds)
             {
@@ -826,7 +876,7 @@ namespace Microsoft.Boogie
                 {
                     domainNameToInputScope[domainName] = new HashSet<Variable>();
                     domainNameToOutputScope[domainName] = new HashSet<Variable>();
-                    
+
                 }
                 foreach (Variable v in globalVarToDomainName.Keys)
                 {
@@ -860,7 +910,7 @@ namespace Microsoft.Boogie
                         proc.Ensures.Add(new Ensures(true, ens));
                 }
             }
-            
+
             foreach (LinearDomain domain in linearDomains.Values)
             {
                 program.AddTopLevelDeclaration(domain.mapConstBool);
@@ -868,6 +918,9 @@ namespace Microsoft.Boogie
                 program.AddTopLevelDeclaration(domain.mapEqInt);
                 program.AddTopLevelDeclaration(domain.mapImpBool);
                 program.AddTopLevelDeclaration(domain.mapOrBool);
+                program.AddTopLevelDeclaration(domain.mapAddInt);
+                program.AddTopLevelDeclaration(domain.mapLeInt);
+                program.AddTopLevelDeclaration(domain.mapIteInt);
                 foreach (Axiom axiom in domain.axioms)
                 {
                     program.AddTopLevelDeclaration(axiom);
@@ -930,12 +983,12 @@ namespace Microsoft.Boogie
         {
             int count = 0;
             List<Expr> subsetExprs = new List<Expr>();
-            
+
             if (scope.Count == 0 || (holeVar == null && scope.Count == 1))
             {
                 return Expr.True;
             }
-		
+
             LinearDomain domain = linearDomains[domainName];
             BoundVariable partition = new BoundVariable(
               Token.NoToken,
@@ -948,7 +1001,7 @@ namespace Microsoft.Boogie
                 subsetExprs.Add(SubsetExpr(domain, Expr.Ident(holeVar), partition, count));
                 count++;
             }
-            
+
             foreach (Variable v in scope)
             {
                 if (!domain.collectors.ContainsKey(v.TypedIdent.Type)) continue;
@@ -963,7 +1016,7 @@ namespace Microsoft.Boogie
                                       Expr.And(subsetExprs));
             expr.Resolve(new ResolutionContext(null));
             expr.Typecheck(new TypecheckingContext(null));
-            
+
             return expr;
         }
 
@@ -976,6 +1029,143 @@ namespace Microsoft.Boogie
         public void EraseLinearAnnotations()
         {
             new LinearTypeEraser().VisitProgram(program);
+        }
+
+        public bool modifiesLinearType(AtomicActionCopy action)
+        {
+            return action.firstInParams.
+                Union(action.firstOutParams).
+                Union(action.modifiedGlobalVars).
+                Any(x => FindLinearKind(x) != LinearKind.ORDINARY);
+        }
+
+        public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
+        {
+            if (civlTypeChecker.procToAtomicAction.Count == 0)
+                return;
+
+            foreach (int layer in civlTypeChecker.allAtomicActionLayers)
+            {
+                var pool = civlTypeChecker.procToAtomicAction.Values.Where(a => a.layerRange.Contains(layer));
+                foreach (var x in pool)
+                {
+                    var action = x.layerToActionCopy[layer];
+                    if (linearTypeChecker.modifiesLinearType(action))
+                    {
+                        AddLinearTypeChecker(action, linearTypeChecker, civlTypeChecker, decls);
+                    }
+                }
+            }
+        }
+
+        internal Expr CollectedLinearVariable(Variable v, bool useOldExpr=false)
+        {
+            if (FindLinearKind(v) == LinearKind.ORDINARY)
+                throw new Exception("Variable is not linear.");
+
+            var collectors = domainNameToCollectors[FindDomainName(v)];
+            var vType = v.TypedIdent.Type;
+            if (!collectors.ContainsKey(vType))
+                throw new Exception("Collector missing");
+
+            return new NAryExpr(Token.NoToken,
+                new FunctionCall(collectors[vType]),
+                new List<Expr> {useOldExpr ?
+                        (Expr) new OldExpr(Token.NoToken, Expr.Ident(v))
+                        : Expr.Ident(v) });
+        }
+
+        private static void AddLinearTypeChecker(AtomicActionCopy action, LinearTypeChecker linearTypeChecker,
+            CivlTypeChecker civlTypeChecker, List<Declaration> decls)
+        {
+            List<Variable> inputs = new List<Variable>(action.firstInParams);
+            List<Variable> outputs = new List<Variable>(action.firstOutParams);
+            List<Variable> locals = new List<Variable>(action.firstAction.LocVars);
+            HashSet<Variable> frame = new HashSet<Variable>();
+            frame.UnionWith(action.gateUsedGlobalVars);
+            frame.UnionWith(action.actionUsedGlobalVars);
+
+            List<Requires> requires = new List<Requires>();
+            List<Ensures> ensures = new List<Ensures>();
+
+            // linear out vars
+            IEnumerable<Variable> outVars;
+            {
+                LinearKind[] validKinds = { LinearKind.LINEAR, LinearKind.LINEAR_OUT };
+                outVars = action.firstInParams.
+                    Union(action.firstOutParams).
+                    Union(action.modifiedGlobalVars).
+                    Where(x => validKinds.Contains(linearTypeChecker.FindLinearKind(x)));
+            }
+
+            // linear in vars
+            IEnumerable<Variable> inVars;
+            {
+                LinearKind[] validKinds = { LinearKind.LINEAR, LinearKind.LINEAR_IN };
+                inVars = action.firstInParams.
+                    Union(action.modifiedGlobalVars).
+                    Where(x => validKinds.Contains(linearTypeChecker.FindLinearKind(x)));
+            }
+
+            IEnumerable<string> domainNames = outVars.
+                Select(linearTypeChecker.FindDomainName).Distinct();
+            foreach (var domainName in domainNames)
+            {
+                LinearDomain domain = linearTypeChecker.linearDomains[domainName];
+                Expr inMultiset = linearTypeChecker.linearSumOfVariables(domainName, inVars, true);
+                Expr outMultiset = linearTypeChecker.linearSumOfVariables(domainName, outVars);
+                Expr subsetExpr = new NAryExpr(Token.NoToken,
+                        new FunctionCall(domain.mapLeInt),
+                        new List<Expr> { outMultiset, inMultiset });
+
+                Ensures ensureCheck = new Ensures(false,
+                    Expr.Eq(subsetExpr, new NAryExpr(Token.NoToken,
+                        new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.True })));
+                ensureCheck.ErrorData = string.Format("Linearity invariant for domain {0} is not preserved by {1}.",
+                    domainName, action.proc.Name);
+                ResolutionContext rc = new ResolutionContext(null);
+                rc.StateMode = ResolutionContext.State.Two;
+                ensureCheck.Resolve(rc);
+                ensureCheck.Typecheck(new TypecheckingContext(null));
+                ensures.Add(ensureCheck);
+            }
+
+            string checkerName = string.Format("LinearityChecker_{0}", action.proc.Name);
+            List<Block> blocks = MoverCheck.CloneBlocks(action.firstAction.Blocks);
+
+            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), 
+                inputs, outputs, requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
+            Implementation impl = new Implementation(Token.NoToken, checkerName,
+                new List<TypeVariable>(), inputs, outputs, locals, blocks);
+            impl.Proc = proc;
+            decls.Add(impl);
+            decls.Add(proc);
+        }
+
+        private Expr linearSumOfVariables(string domainName, IEnumerable<Variable> vars, bool useOldExpr=false)
+        {
+            LinearDomain domain = linearDomains[domainName];
+            Expr mapConstInt0 = new NAryExpr(Token.NoToken,
+                        new FunctionCall(domain.mapConstInt),
+                        new List<Expr> { Expr.Literal(0) });
+            Expr mapConstInt1 = new NAryExpr(Token.NoToken,
+                        new FunctionCall(domain.mapConstInt),
+                        new List<Expr> { Expr.Literal(1) });
+            return linearSum(domainName,
+                vars.
+                    Where(x => FindDomainName(x) == domainName).
+                    Select(x => CollectedLinearVariable(x, useOldExpr)).
+                    Select(x => (Expr) new NAryExpr(Token.NoToken,
+                        new FunctionCall(domain.mapIteInt),
+                        new List<Expr> { x, mapConstInt1, mapConstInt0 })).ToList());
+        }
+
+        private Expr linearSum(string domainName, List<Expr> exprs)
+        {
+            LinearDomain domain = linearDomains[domainName];
+            return exprs.Aggregate((x, y) => new NAryExpr(Token.NoToken,
+                new FunctionCall(domain.mapAddInt),
+                new List<Expr> { x, y }));
         }
     }
 

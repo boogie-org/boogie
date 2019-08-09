@@ -68,7 +68,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        private static List<Block> CloneBlocks(List<Block> blocks)
+        public static List<Block> CloneBlocks(List<Block> blocks)
         {
             Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
             List<Block> otherBlocks = new List<Block>();
