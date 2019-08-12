@@ -1086,6 +1086,9 @@ namespace Microsoft.Boogie
             frame.UnionWith(action.actionUsedGlobalVars);
 
             List<Requires> requires = new List<Requires>();
+            foreach (AssertCmd assertCmd in action.firstGate)
+                requires.Add(new Requires(false, assertCmd.Expr));
+
             List<Ensures> ensures = new List<Ensures>();
 
             // linear out vars
