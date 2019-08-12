@@ -1114,13 +1114,11 @@ namespace Microsoft.Boogie
                 LinearDomain domain = linearTypeChecker.linearDomains[domainName];
                 Expr inMultiset = linearTypeChecker.linearSumOfVariables(domainName, inVars, true);
                 Expr outMultiset = linearTypeChecker.linearSumOfVariables(domainName, outVars);
-                Expr subsetExpr = new NAryExpr(Token.NoToken,
-                        new FunctionCall(domain.mapLeInt),
+                Expr subsetExpr = functionCallExpr(domain.mapLeInt,
                         new List<Expr> { outMultiset, inMultiset });
 
                 Ensures ensureCheck = new Ensures(false,
-                    Expr.Eq(subsetExpr, new NAryExpr(Token.NoToken,
-                        new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.True })));
+                    Expr.Eq(subsetExpr, functionCallExpr(domain.mapConstBool, new List<Expr> { Expr.True })));
                 ensureCheck.ErrorData = string.Format("Linearity invariant for domain {0} is not preserved by {1}.",
                     domainName, action.proc.Name);
                 ResolutionContext rc = new ResolutionContext(null);
@@ -1145,27 +1143,34 @@ namespace Microsoft.Boogie
         private Expr linearSumOfVariables(string domainName, IEnumerable<Variable> vars, bool useOldExpr=false)
         {
             LinearDomain domain = linearDomains[domainName];
-            Expr mapConstInt0 = new NAryExpr(Token.NoToken,
-                        new FunctionCall(domain.mapConstInt),
-                        new List<Expr> { Expr.Literal(0) });
-            Expr mapConstInt1 = new NAryExpr(Token.NoToken,
-                        new FunctionCall(domain.mapConstInt),
-                        new List<Expr> { Expr.Literal(1) });
+            Expr mapConstInt0 = functionCallExpr(domain.mapConstInt,
+                new List<Expr> { Expr.Literal(0) });
+            Expr mapConstInt1 = functionCallExpr(domain.mapConstInt,
+                new List<Expr> { Expr.Literal(1) });
             return linearSum(domainName,
                 vars.
                     Where(x => FindDomainName(x) == domainName).
                     Select(x => CollectedLinearVariable(x, useOldExpr)).
-                    Select(x => (Expr) new NAryExpr(Token.NoToken,
-                        new FunctionCall(domain.mapIteInt),
-                        new List<Expr> { x, mapConstInt1, mapConstInt0 })).ToList());
+                    Select(x => (Expr) functionCallExpr(domain.mapIteInt,
+                        new List<Expr> { x, mapConstInt1, mapConstInt0 })).
+                    ToList());
         }
 
         private Expr linearSum(string domainName, List<Expr> exprs)
         {
             LinearDomain domain = linearDomains[domainName];
-            return exprs.Aggregate((x, y) => new NAryExpr(Token.NoToken,
-                new FunctionCall(domain.mapAddInt),
-                new List<Expr> { x, y }));
+            if (exprs.Count.Equals(0))
+                return functionCallExpr(domain.mapConstInt,
+                    new List<Expr> { Expr.Literal(0) });
+            return exprs.Aggregate((x, y) => functionCallExpr(
+                domain.mapAddInt, new List<Expr> { x, y }));
+        }
+
+        private static NAryExpr functionCallExpr(Function f, List<Expr> operands)
+        {
+            return new NAryExpr(Token.NoToken,
+                new FunctionCall(f),
+                operands);
         }
     }
 
