@@ -1078,25 +1078,24 @@ namespace Microsoft.Boogie
         private static void AddLinearTypeChecker(AtomicActionCopy action, LinearTypeChecker linearTypeChecker,
             CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
-            List<Variable> inputs = new List<Variable>(action.firstInParams);
-            List<Variable> outputs = new List<Variable>(action.firstOutParams);
-            List<Variable> locals = new List<Variable>(action.firstAction.LocVars);
+            Implementation impl = action.impl;
+            List<Variable> inputs = impl.InParams;
+            List<Variable> outputs = impl.OutParams;
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(action.gateUsedGlobalVars);
             frame.UnionWith(action.actionUsedGlobalVars);
 
             List<Requires> requires = new List<Requires>();
-            foreach (AssertCmd assertCmd in action.firstGate)
+            foreach (AssertCmd assertCmd in action.gate)
                 requires.Add(new Requires(false, assertCmd.Expr));
-
             List<Ensures> ensures = new List<Ensures>();
 
             // linear out vars
             IEnumerable<Variable> outVars;
             {
                 LinearKind[] validKinds = { LinearKind.LINEAR, LinearKind.LINEAR_OUT };
-                outVars = action.firstInParams.
-                    Union(action.firstOutParams).
+                outVars = inputs.
+                    Union(outputs).
                     Union(action.modifiedGlobalVars).
                     Where(x => validKinds.Contains(linearTypeChecker.FindLinearKind(x)));
             }
@@ -1105,7 +1104,7 @@ namespace Microsoft.Boogie
             IEnumerable<Variable> inVars;
             {
                 LinearKind[] validKinds = { LinearKind.LINEAR, LinearKind.LINEAR_IN };
-                inVars = action.firstInParams.
+                inVars = inputs.
                     Union(action.modifiedGlobalVars).
                     Where(x => validKinds.Contains(linearTypeChecker.FindLinearKind(x)));
             }
@@ -1132,15 +1131,24 @@ namespace Microsoft.Boogie
             }
 
             string checkerName = string.Format("LinearityChecker_{0}", action.proc.Name);
-            List<Block> blocks = MoverCheck.CloneBlocks(action.firstAction.Blocks);
 
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), 
+            List<Block> blocks = new List<Block>();
+            {
+                CallCmd cmd = new CallCmd(Token.NoToken, impl.Name,
+                    inputs.Select(x => (Expr)Expr.Ident(x)).ToList(),
+                    outputs.Select(Expr.Ident).ToList());
+                cmd.Proc = action.proc;
+                Block block = new Block(Token.NoToken, "entry", new List<Cmd> { cmd }, new ReturnCmd(Token.NoToken));
+                blocks.Add(block);
+            }
+
+            Procedure linCheckerProc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(),
                 inputs, outputs, requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
-            Implementation impl = new Implementation(Token.NoToken, checkerName,
-                new List<TypeVariable>(), inputs, outputs, locals, blocks);
-            impl.Proc = proc;
-            decls.Add(impl);
-            decls.Add(proc);
+            Implementation linCheckImpl = new Implementation(Token.NoToken, checkerName,
+                new List<TypeVariable>(), inputs, outputs, new List<Variable> { }, blocks);
+            linCheckImpl.Proc = linCheckerProc;
+            decls.Add(linCheckImpl);
+            decls.Add(linCheckerProc);
         }
 
         private Expr linearSumOfVariables(string domainName, IEnumerable<Variable> vars, bool useOldExpr=false)
