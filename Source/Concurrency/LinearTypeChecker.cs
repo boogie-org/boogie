@@ -1078,6 +1078,8 @@ namespace Microsoft.Boogie
         private static void AddLinearTypeChecker(AtomicActionCopy action, LinearTypeChecker linearTypeChecker,
             CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
+            // Note: The implementation should be used as the variables in the
+            //       gate are bound to implementation and not to the procedure.
             Implementation impl = action.impl;
             List<Variable> inputs = impl.InParams;
             List<Variable> outputs = impl.OutParams;
@@ -1090,7 +1092,7 @@ namespace Microsoft.Boogie
                 requires.Add(new Requires(false, assertCmd.Expr));
             List<Ensures> ensures = new List<Ensures>();
 
-            // linear out vars
+            // Linear out vars
             IEnumerable<Variable> outVars;
             {
                 LinearKind[] validKinds = { LinearKind.LINEAR, LinearKind.LINEAR_OUT };
@@ -1100,7 +1102,7 @@ namespace Microsoft.Boogie
                     Where(x => validKinds.Contains(linearTypeChecker.FindLinearKind(x)));
             }
 
-            // linear in vars
+            // Linear in vars
             IEnumerable<Variable> inVars;
             {
                 LinearKind[] validKinds = { LinearKind.LINEAR, LinearKind.LINEAR_IN };
@@ -1109,6 +1111,7 @@ namespace Microsoft.Boogie
                     Where(x => validKinds.Contains(linearTypeChecker.FindLinearKind(x)));
             }
 
+            // Generate linearity checks
             IEnumerable<string> domainNames = outVars.
                 Select(linearTypeChecker.FindDomainName).Distinct();
             foreach (var domainName in domainNames)
@@ -1130,8 +1133,7 @@ namespace Microsoft.Boogie
                 ensures.Add(ensureCheck);
             }
 
-            string checkerName = string.Format("LinearityChecker_{0}", action.proc.Name);
-
+            // Create blocks
             List<Block> blocks = new List<Block>();
             {
                 CallCmd cmd = new CallCmd(Token.NoToken, impl.Name,
@@ -1142,6 +1144,8 @@ namespace Microsoft.Boogie
                 blocks.Add(block);
             }
 
+            // Create the whole check procedure
+            string checkerName = string.Format("LinearityChecker_{0}", action.proc.Name);
             Procedure linCheckerProc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(),
                 inputs, outputs, requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
             Implementation linCheckImpl = new Implementation(Token.NoToken, checkerName,
