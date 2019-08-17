@@ -1712,7 +1712,7 @@ namespace Microsoft.Boogie.SMTLib
             }
 
             if (SortSet.ContainsKey(type.Name) && SortSet[type.Name] == 0) {
-                var prefix = "@uc_T_" + type.Name.Substring(2) + "_";
+                var prefix = "@uc_T@" + type.Name.Substring(2) + "_";
                 if (element.Name.StartsWith(prefix)) {
                     m.Append(type.Name + "!val!" + element.Name.Substring(prefix.Length));
                     return;
@@ -1746,10 +1746,13 @@ namespace Microsoft.Boogie.SMTLib
                 ConstructFunctionArguments(arguments[0], argTypes, argValues);
                 ConstructFunctionArguments(arguments[1], argTypes, argValues);
             } else if (arguments.Name == "=" &&
-                       (arguments[0].Name.StartsWith("_ufmt_") || arguments[0].Name.StartsWith("x!"))) {
+                       (arguments[0].Name.StartsWith("_ufmt_") || arguments[0].Name.StartsWith("x!") ||
+	                arguments[0].Name.StartsWith("_arg_"))) {
                 int argNum;
                 if (arguments[0].Name.StartsWith("_ufmt_"))
                     argNum = System.Convert.ToInt32(arguments[0].Name.Substring("_uftm_".Length)) - 1;
+                else if (arguments[0].Name.StartsWith("_arg_"))
+		    argNum = System.Convert.ToInt32(arguments[0].Name.Substring("_arg_".Length)) - 1;
                 else /* if (arguments[0].Name.StartsWith("x!")) */
                     argNum = System.Convert.ToInt32(arguments[0].Name.Substring("x!".Length)) - 1;
                 if (argNum < 0 || argNum >= argTypes.Count) {
@@ -1790,7 +1793,7 @@ namespace Microsoft.Boogie.SMTLib
 
             for (int i = 0; i < inType.ArgCount; ++i) {
                 if (inType[i].Name != "_ufmt_" + (i + 1) && inType[i].Name != "x!" + (i + 1) &&
-                    !inType[i].Name.StartsWith("BOUND_VARIABLE_")) {
+                    !inType[i].Name.StartsWith("BOUND_VARIABLE_") && inType[i].Name != "_arg_" + (i + 1)) {
                     Parent.HandleProverError("Unexpected function argument: " + inType[i].Name);
                     throw new BadExprFromProver ();
                 }
@@ -1850,7 +1853,7 @@ namespace Microsoft.Boogie.SMTLib
                 dt.Types.Add(typeDef[0][i][0]);
             }
 
-            DataTypes[typeDef.Name] = dt;
+            DataTypes[datatypes[0][0].Name] = dt;
         }
 
         private void ConvertErrorModel(StringBuilder m) {
