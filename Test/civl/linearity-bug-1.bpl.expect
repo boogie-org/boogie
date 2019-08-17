@@ -3,4 +3,4 @@ linearity-bug-1.bpl(19,31): Related location: Commutativity check between atomic
 Execution trace:
     linearity-bug-1.bpl(20,7): first_anon0
 
-Boogie program verifier finished with 0 verified, 1 error
+Boogie program verifier finished with 1 verified, 1 error

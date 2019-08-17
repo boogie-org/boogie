@@ -6,5 +6,11 @@ linear_out_bug.bpl(29,1): Error BP5003: A postcondition might not hold on this r
 linear_out_bug.bpl(10,34): Related location: Commutativity check between AddAddr_2 and RemoveAddr_2_2 failed
 Execution trace:
     linear_out_bug.bpl(13,14): first_anon0
+(0,0): Error BP5003: A postcondition might not hold on this return path.
+linear_out_bug.bpl(25,30): Related location: Linearity invariant for domain addr is not preserved by RemoveAddr_2_2.
+Execution trace:
+    linear_out_bug.bpl(25,30): inline$RemoveAddr_2_2$0$Entry
+    linear_out_bug.bpl(28,14): inline$RemoveAddr_2_2$0$anon0
+    linear_out_bug.bpl(25,30): inline$RemoveAddr_2_2$0$Return
 
-Boogie program verifier finished with 5 verified, 2 errors
+Boogie program verifier finished with 8 verified, 3 errors

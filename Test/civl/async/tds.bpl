@@ -6,6 +6,10 @@ function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
 {
   MapConstBool(false)[x := true]
 }
+function {:inline} {:linear "tid"} TidSetCollector(x: [int]bool) : [int]bool
+{
+  x
+}
 
 const unique DEFAULT: int;
 const unique CREATED: int;

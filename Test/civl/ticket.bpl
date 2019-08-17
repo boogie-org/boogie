@@ -178,7 +178,7 @@ modifies cs, s;
 procedure {:yields} {:layer 0} {:refines "AtomicLeave"} Leave ({:linear "tid"} tid: X);
 
 procedure {:atomic} {:layer 1,2} AtomicAllocateLow ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X)
-{ assume xl != nil; }
+{ assume xl != nil && xls'[xl]; xls := xls'[xl := false]; }
 
 procedure {:yields} {:layer 0} {:refines "AtomicAllocateLow"} AllocateLow ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
 

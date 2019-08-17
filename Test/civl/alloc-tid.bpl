@@ -47,6 +47,7 @@ ensures  {:layer 2} a[tid] == old(a)[tid] + 1;
 procedure {:atomic} {:layer 2,2} AtomicAllocate() returns ({:linear "tid"} tid: int, i: int)
 modifies unallocated;
 {
+  assume unallocated[tid];
   unallocated := unallocated[tid := false];
 }
 

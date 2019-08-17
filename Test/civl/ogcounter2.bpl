@@ -8,8 +8,11 @@ const unique Nil: X;
 var {:layer 2,5} x: int;
 var {:layer 2,3} lock: X;
 
+var {:layer 1,4}{:linear "tid"} unallocated:[X]bool;
+
 procedure {:right} {:layer 2,4} AtomicAllocTid() returns ({:linear "tid"} tid: X)
-{ assume tid != Nil; }
+modifies unallocated;
+{ assume tid != Nil && unallocated[tid]; unallocated[tid] := false; }
 
 procedure {:yields} {:layer 1} {:refines "AtomicAllocTid"} AllocTid() returns ({:linear "tid"} tid: X);
 
@@ -83,4 +86,7 @@ function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
 {
   MapConstBool(false)[x := true]
 }
-
+function {:inline} {:linear "tid"} TidSetCollector(x: [X]bool) : [X]bool
+{
+  x
+}
