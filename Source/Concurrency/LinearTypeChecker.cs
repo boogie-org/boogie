@@ -29,11 +29,12 @@ namespace Microsoft.Boogie
 
     public class LinearDomain
     {
-        public Function mapEqInt;
+        public string domainName;
+        public Function mapConstBool;
         public Function mapConstInt;
         public Function mapOrBool;
         public Function mapImpBool;
-        public Function mapConstBool;
+        public Function mapEqInt;
         public Function mapAddInt;
         public Function mapIteInt;
         public Function mapLeInt;
@@ -45,12 +46,81 @@ namespace Microsoft.Boogie
 
         public LinearDomain(Program program, string domainName, Dictionary<Type, Function> collectors)
         {
-            this.axioms = new List<Axiom>();
+            this.domainName = domainName;
             this.collectors = collectors;
+            this.axioms = new List<Axiom>();
+
             MapType setType = (MapType)collectors.First().Value.OutParams[0].TypedIdent.Type;
             this.elementType = setType.Arguments[0];
             this.mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.elementType }, Type.Bool);
             this.mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.elementType }, Type.Int);
+
+            MapConstBool();
+            MapConstInt();
+            MapOrBool();
+            MapImpBool();
+            MapEqInt();
+            MapAddInt();
+            MapIteInt();
+            MapLeInt();
+
+            foreach (var axiom in axioms)
+            {
+                axiom.Expr.Resolve(new ResolutionContext(null));
+                axiom.Expr.Typecheck(new TypecheckingContext(null));
+            }
+        }
+
+        private void MapConstBool()
+        {
+            this.mapConstBool = new Function(Token.NoToken, "linear_" + domainName + "_MapConstBool",
+                                              new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", Type.Bool), true) },
+                                              new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
+            if (CommandLineOptions.Clo.UseArrayTheory)
+            {
+                this.mapConstBool.AddAttribute("builtin", "MapConst");
+            }
+            else
+            {
+                BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
+                IdentifierExpr xie = Expr.Ident(x);
+                var trueTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1),
+                                           new List<Expr> { new NAryExpr(Token.NoToken, new FunctionCall(mapConstBool), new List<Expr> { Expr.True }), xie });
+                var trueAxiomExpr = new ForallExpr(Token.NoToken, new List<Variable> { x }, trueTerm);
+                trueAxiomExpr.Typecheck(new TypecheckingContext(null));
+                axioms.Add(new Axiom(Token.NoToken, trueAxiomExpr));
+                var falseTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1),
+                                           new List<Expr> { new NAryExpr(Token.NoToken, new FunctionCall(mapConstBool), new List<Expr> { Expr.False }), xie });
+                var falseAxiomExpr = new ForallExpr(Token.NoToken, new List<Variable> { x }, Expr.Unary(Token.NoToken, UnaryOperator.Opcode.Not, falseTerm));
+                falseAxiomExpr.Typecheck(new TypecheckingContext(null));
+                axioms.Add(new Axiom(Token.NoToken, falseAxiomExpr));
+            }
+        }
+
+        private void MapConstInt()
+        {
+            this.mapConstInt = new Function(Token.NoToken, "linear_" + domainName + "_MapConstInt",
+                                                      new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", Type.Int), true) },
+                                                      new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeInt), false));
+            if (CommandLineOptions.Clo.UseArrayTheory)
+            {
+                this.mapConstInt.AddAttribute("builtin", "MapConst");
+            }
+            else
+            {
+                BoundVariable a = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "a", Type.Int));
+                IdentifierExpr aie = Expr.Ident(a);
+                BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
+                IdentifierExpr xie = Expr.Ident(x);
+                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { new NAryExpr(Token.NoToken, new FunctionCall(mapConstInt), new List<Expr> { aie }), xie });
+                var axiomExpr = new ForallExpr(Token.NoToken, new List<Variable> { a, x }, Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, aie));
+                axiomExpr.Typecheck(new TypecheckingContext(null));
+                axioms.Add(new Axiom(Token.NoToken, axiomExpr));
+            }
+        }
+
+        private void MapOrBool()
+        {
             this.mapOrBool = new Function(Token.NoToken, "linear_" + domainName + "_MapOr",
                                           new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
                                                                new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true) },
@@ -77,11 +147,14 @@ namespace Microsoft.Boogie
                 axiomExpr.Typecheck(new TypecheckingContext(null));
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
             }
+        }
 
+        private void MapImpBool()
+        {
             this.mapImpBool = new Function(Token.NoToken, "linear_" + domainName + "_MapImp",
-                                           new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
+                                                       new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
                                                                 new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true) },
-                                           new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
+                                                       new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
             if (CommandLineOptions.Clo.UseArrayTheory)
             {
                 this.mapImpBool.AddAttribute("builtin", "MapImp");
@@ -104,30 +177,10 @@ namespace Microsoft.Boogie
                 axiomExpr.Typecheck(new TypecheckingContext(null));
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
             }
+        }
 
-            this.mapConstBool = new Function(Token.NoToken, "linear_" + domainName + "_MapConstBool",
-                                              new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", Type.Bool), true) },
-                                              new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
-            if (CommandLineOptions.Clo.UseArrayTheory)
-            {
-                this.mapConstBool.AddAttribute("builtin", "MapConst");
-            }
-            else
-            {
-                BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
-                IdentifierExpr xie = Expr.Ident(x);
-                var trueTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1),
-                                           new List<Expr> { new NAryExpr(Token.NoToken, new FunctionCall(mapConstBool), new List<Expr> { Expr.True }), xie });
-                var trueAxiomExpr = new ForallExpr(Token.NoToken, new List<Variable> { x }, trueTerm);
-                trueAxiomExpr.Typecheck(new TypecheckingContext(null));
-                axioms.Add(new Axiom(Token.NoToken, trueAxiomExpr));
-                var falseTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1),
-                                           new List<Expr> { new NAryExpr(Token.NoToken, new FunctionCall(mapConstBool), new List<Expr> { Expr.False }), xie });
-                var falseAxiomExpr = new ForallExpr(Token.NoToken, new List<Variable> { x }, Expr.Unary(Token.NoToken, UnaryOperator.Opcode.Not, falseTerm));
-                falseAxiomExpr.Typecheck(new TypecheckingContext(null));
-                axioms.Add(new Axiom(Token.NoToken, falseAxiomExpr));
-            }
-
+        private void MapEqInt()
+        {
             this.mapEqInt = new Function(Token.NoToken, "linear_" + domainName + "_MapEq",
                                               new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt), true),
                                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true) },
@@ -154,30 +207,14 @@ namespace Microsoft.Boogie
                 axiomExpr.Typecheck(new TypecheckingContext(null));
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
             }
+        }
 
-            this.mapConstInt = new Function(Token.NoToken, "linear_" + domainName + "_MapConstInt",
-                                          new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", Type.Int), true) },
-                                          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeInt), false));
-            if (CommandLineOptions.Clo.UseArrayTheory)
-            {
-                this.mapConstInt.AddAttribute("builtin", "MapConst");
-            }
-            else
-            {
-                BoundVariable a = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "a", Type.Int));
-                IdentifierExpr aie = Expr.Ident(a);
-                BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
-                IdentifierExpr xie = Expr.Ident(x);
-                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { new NAryExpr(Token.NoToken, new FunctionCall(mapConstInt), new List<Expr> { aie }), xie });
-                var axiomExpr = new ForallExpr(Token.NoToken, new List<Variable> { a, x }, Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, aie));
-                axiomExpr.Typecheck(new TypecheckingContext(null));
-                axioms.Add(new Axiom(Token.NoToken, axiomExpr));
-            }
-
+        private void MapAddInt()
+        {
             this.mapAddInt = new Function(Token.NoToken, "linear_" + domainName + "_MapAdd",
-                                          new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt), true),
+                                                      new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt), true),
                                                                new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true) },
-                                          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeInt), false));
+                                                      new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeInt), false));
             if (CommandLineOptions.Clo.UseArrayTheory)
             {
                 this.mapAddInt.AddAttribute("builtin", "MapAdd");
@@ -186,12 +223,15 @@ namespace Microsoft.Boogie
             {
                 throw new NotImplementedException();
             }
+        }
 
+        private void MapIteInt()
+        {
             this.mapIteInt = new Function(Token.NoToken, "linear_" + domainName + "_MapIteInt",
-                                          new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
+                                                      new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
                                                                new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true),
                                                                new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeInt), true) },
-                                          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "d", mapTypeInt), false));
+                                                      new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "d", mapTypeInt), false));
             if (CommandLineOptions.Clo.UseArrayTheory)
             {
                 this.mapIteInt.AddAttribute("builtin", "MapIte");
@@ -200,11 +240,14 @@ namespace Microsoft.Boogie
             {
                 throw new NotImplementedException();
             }
+        }
 
+        private void MapLeInt()
+        {
             this.mapLeInt = new Function(Token.NoToken, "linear_" + domainName + "_MapLe",
-                                          new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt), true),
+                                                      new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt), true),
                                                                new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true) },
-                                          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
+                                                      new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
             if (CommandLineOptions.Clo.UseArrayTheory)
             {
                 this.mapLeInt.AddAttribute("builtin", "MapLe");
@@ -212,12 +255,6 @@ namespace Microsoft.Boogie
             else
             {
                 throw new NotImplementedException();
-            }
-
-            foreach (var axiom in axioms)
-            {
-                axiom.Expr.Resolve(new ResolutionContext(null));
-                axiom.Expr.Typecheck(new TypecheckingContext(null));
             }
         }
     }
@@ -233,16 +270,20 @@ namespace Microsoft.Boogie
     public class LinearTypeChecker : ReadOnlyVisitor
     {
         public Program program;
-        public CivlTypeChecker ctc;
         public CheckingContext checkingContext;
-        public Dictionary<string, Dictionary<Type, Function>> domainNameToCollectors;
-        private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
-        public Dictionary<Variable, LinearQualifier> inParamToLinearQualifier;
-        public Dictionary<Variable, string> outParamToDomainName;
-        public Dictionary<Variable, string> varToDomainName;
-        public Dictionary<Variable, string> globalVarToDomainName;
         public Dictionary<string, LinearDomain> linearDomains;
         public Dictionary<string, Variable> domainNameToHoleVar;
+
+        private CivlTypeChecker ctc;
+
+        private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
+        private Dictionary<Variable, LinearQualifier> inParamToLinearQualifier;
+        private Dictionary<Variable, string> outParamToDomainName;
+        private Dictionary<Variable, string> globalVarToDomainName;
+
+        // Only used in visitor implementation
+        private Dictionary<string, Dictionary<Type, Function>> domainNameToCollectors;
+        private Dictionary<Variable, string> varToDomainName;
 
         public LinearTypeChecker(Program program, CivlTypeChecker ctc)
         {
@@ -253,10 +294,10 @@ namespace Microsoft.Boogie
             this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
             this.inParamToLinearQualifier = new Dictionary<Variable, LinearQualifier>();
             this.outParamToDomainName = new Dictionary<Variable, string>();
-            this.varToDomainName = new Dictionary<Variable, string>();
             this.globalVarToDomainName = new Dictionary<Variable, string>();
             this.linearDomains = new Dictionary<string, LinearDomain>();
             this.domainNameToHoleVar = new Dictionary<string, Variable>();
+            this.varToDomainName = new Dictionary<Variable, string>();
         }
 
         private void Error(Absy node, string message)
@@ -279,11 +320,6 @@ namespace Microsoft.Boogie
             if (domainName != null)
                 return domainName;
             return QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT);
-        }
-
-        public LinearDomain FindDomain(Variable v)
-        {
-            return linearDomains[FindDomainName(v)];
         }
 
         public LinearKind FindLinearKind(Variable v)
@@ -325,49 +361,25 @@ namespace Microsoft.Boogie
         public void TypeCheck()
         {
             this.VisitProgram(program);
+            foreach(var variable in varToDomainName.Keys)
+            {
+                string domainName = FindDomainName(variable);
+                if(!domainNameToCollectors.ContainsKey(domainName) ||
+                   !domainNameToCollectors[domainName].ContainsKey(variable.TypedIdent.Type))
+                {
+                    Error(variable, "Missing collector for linear variable " + variable.Name);
+                }
+            }
             foreach (string domainName in domainNameToCollectors.Keys)
             {
                 var collectors = domainNameToCollectors[domainName];
                 if (collectors.Count == 0) continue;
                 this.linearDomains[domainName] = new LinearDomain(program, domainName, collectors);
             }
-            Dictionary<Absy, HashSet<Variable>> newAvailableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
             foreach (Absy absy in this.availableLinearVars.Keys)
             {
-                HashSet<Variable> vars = new HashSet<Variable>();
-                foreach (Variable var in this.availableLinearVars[absy])
-                {
-                    if (var is GlobalVariable) continue;
-                    string domainName = FindDomainName(var);
-                    if (this.linearDomains.ContainsKey(domainName))
-                    {
-                        vars.Add(var);
-                    }
-                }
-                newAvailableLinearVars[absy] = vars;
+                availableLinearVars[absy].RemoveWhere(v => v is GlobalVariable);
             }
-            this.availableLinearVars = newAvailableLinearVars;
-            var temp = new Dictionary<Variable, string>();
-            foreach (Variable v in outParamToDomainName.Keys)
-            {
-                if (linearDomains.ContainsKey(outParamToDomainName[v]))
-                    temp[v] = outParamToDomainName[v];
-            }
-            this.outParamToDomainName = temp;
-            temp = new Dictionary<Variable, string>();
-            foreach (Variable v in varToDomainName.Keys)
-            {
-                if (linearDomains.ContainsKey(varToDomainName[v]))
-                    temp[v] = varToDomainName[v];
-            }
-            this.varToDomainName = temp;
-            temp = new Dictionary<Variable, string>();
-            foreach (Variable v in globalVarToDomainName.Keys)
-            {
-                if (linearDomains.ContainsKey(globalVarToDomainName[v]))
-                    temp[v] = globalVarToDomainName[v];
-            }
-            this.globalVarToDomainName = temp;
         }
 
         #region Visitor Implementation
@@ -520,7 +532,7 @@ namespace Microsoft.Boogie
             }
             return impl;
         }
-        public void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
+        private void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
         {
             foreach (IdentifierExpr ie in callCmd.Outs)
             {
@@ -540,7 +552,7 @@ namespace Microsoft.Boogie
                 }
             }
         }
-        public void AddAvailableVars(ParCallCmd parCallCmd, HashSet<Variable> start)
+        private void AddAvailableVars(ParCallCmd parCallCmd, HashSet<Variable> start)
         {
             foreach (CallCmd callCmd in parCallCmd.CallCmds)
             {
@@ -668,10 +680,7 @@ namespace Microsoft.Boogie
             string domainName = FindDomainName(node);
             if (domainName != null)
             {
-                if (!domainNameToCollectors.ContainsKey(domainName))
-                {
-                    domainNameToCollectors[domainName] = new Dictionary<Type,Function>();
-                }
+                varToDomainName[node] = domainName;
                 LinearKind kind = FindLinearKind(node);
                 if (kind != LinearKind.LINEAR)
                 {
@@ -876,7 +885,6 @@ namespace Microsoft.Boogie
                 {
                     domainNameToInputScope[domainName] = new HashSet<Variable>();
                     domainNameToOutputScope[domainName] = new HashSet<Variable>();
-
                 }
                 foreach (Variable v in globalVarToDomainName.Keys)
                 {
@@ -1004,7 +1012,6 @@ namespace Microsoft.Boogie
 
             foreach (Variable v in scope)
             {
-                if (!domain.collectors.ContainsKey(v.TypedIdent.Type)) continue;
                 Expr ie = new NAryExpr(Token.NoToken,
                                        new FunctionCall(domain.collectors[v.TypedIdent.Type]),
                                        new List<Expr> { Expr.Ident(v) });
@@ -1031,7 +1038,7 @@ namespace Microsoft.Boogie
             new LinearTypeEraser().VisitProgram(program);
         }
 
-        public bool modifiesLinearType(AtomicActionCopy action)
+        private bool modifiesLinearType(AtomicActionCopy action)
         {
             return action.firstInParams.
                 Union(action.firstOutParams).
@@ -1058,18 +1065,13 @@ namespace Microsoft.Boogie
             }
         }
 
-        internal Expr CollectedLinearVariable(Variable v, bool useOldExpr=false)
+        private Expr CollectedLinearVariable(Variable v, bool useOldExpr=false)
         {
-            if (FindLinearKind(v) == LinearKind.ORDINARY)
-                throw new Exception("Variable is not linear.");
+            Debug.Assert(FindLinearKind(v) != LinearKind.ORDINARY);
 
-            var collectors = domainNameToCollectors[FindDomainName(v)];
-            var vType = v.TypedIdent.Type;
-            if (!collectors.ContainsKey(vType))
-                throw new Exception("Collector missing");
+            var collector = linearDomains[FindDomainName(v)].collectors[v.TypedIdent.Type];
 
-            return new NAryExpr(Token.NoToken,
-                new FunctionCall(collectors[vType]),
+            return functionCallExpr(collector,
                 new List<Expr> {useOldExpr ?
                         (Expr) new OldExpr(Token.NoToken, Expr.Ident(v))
                         : Expr.Ident(v) });
@@ -1122,8 +1124,8 @@ namespace Microsoft.Boogie
                 Expr subsetExpr = functionCallExpr(domain.mapLeInt,
                         new List<Expr> { outMultiset, inMultiset });
 
-                Ensures ensureCheck = new Ensures(false,
-                    Expr.Eq(subsetExpr, functionCallExpr(domain.mapConstBool, new List<Expr> { Expr.True })));
+                Ensures ensureCheck = new Ensures(action.proc.tok, false,
+                    Expr.Eq(subsetExpr, functionCallExpr(domain.mapConstBool, new List<Expr> { Expr.True })), null);
                 ensureCheck.ErrorData = string.Format("Linearity invariant for domain {0} is not preserved by {1}.",
                     domainName, action.proc.Name);
                 ResolutionContext rc = new ResolutionContext(null);

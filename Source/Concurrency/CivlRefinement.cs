@@ -391,9 +391,7 @@ namespace Microsoft.Boogie
             foreach (Variable v in availableLinearVars)
             {
                 var domainName = linearTypeChecker.FindDomainName(v);
-                if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
                 var domain = linearTypeChecker.linearDomains[domainName];
-                if (!domain.collectors.ContainsKey(v.TypedIdent.Type)) continue;
                 Expr ie = new NAryExpr(Token.NoToken, new FunctionCall(domain.collectors[v.TypedIdent.Type]), new List<Expr> { Expr.Ident(v) });
                 var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { ie, domainNameToExpr[domainName] });
                 expr.Resolve(new ResolutionContext(null));
@@ -978,9 +976,7 @@ namespace Microsoft.Boogie
             {
                 var domainName = linearTypeChecker.FindDomainName(inParam);
                 if (domainName == null) continue;
-                if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
                 var domain = linearTypeChecker.linearDomains[domainName];
-                if (!domain.collectors.ContainsKey(inParam.TypedIdent.Type)) continue;
                 Expr ie = new NAryExpr(Token.NoToken, new FunctionCall(domain.collectors[inParam.TypedIdent.Type]), new List<Expr> { Expr.Ident(inParam) });
                 domainNameToExpr[domainName] = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { ie, domainNameToExpr[domainName] });
             }
