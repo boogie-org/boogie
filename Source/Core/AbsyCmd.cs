@@ -1460,7 +1460,9 @@ namespace Microsoft.Boogie {
 
   // class for parallel assignments, which subsumes both the old
   // SimpleAssignCmd and the old MapAssignCmd
-  public class AssignCmd : Cmd {
+  public class AssignCmd : Cmd, ICarriesAttributes {
+    public QKeyValue Attributes { get; set; }
+
     private List<AssignLhs/*!*/>/*!*/ _lhss;
 
     public IList<AssignLhs/*!*/>/*!*/ Lhss {
@@ -1512,13 +1514,25 @@ namespace Microsoft.Boogie {
     }
 
 
-    public AssignCmd(IToken tok, IList<AssignLhs/*!*/>/*!*/ lhss, IList<Expr/*!*/>/*!*/ rhss)
+    public AssignCmd(IToken tok, IList<AssignLhs/*!*/>/*!*/ lhss,
+        IList<Expr/*!*/>/*!*/ rhss, QKeyValue kv)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(cce.NonNullElements(rhss));
       Contract.Requires(cce.NonNullElements(lhss));
       this._lhss = new List<AssignLhs>(lhss);
       this._rhss = new List<Expr>(rhss);
+      this.Attributes = kv;
+    }
+
+    public AssignCmd(IToken tok, IList<AssignLhs/*!*/>/*!*/ lhss, IList<Expr/*!*/>/*!*/ rhss)
+      : base(tok)
+    {
+        Contract.Requires(tok != null);
+        Contract.Requires(cce.NonNullElements(rhss));
+        Contract.Requires(cce.NonNullElements(lhss));
+        this._lhss = new List<AssignLhs>(lhss);
+        this._rhss = new List<Expr>(rhss);
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
@@ -1651,7 +1665,7 @@ namespace Microsoft.Boogie {
           newRhss.Add(newRhs);
         }
 
-        return new AssignCmd(Token.NoToken, newLhss, newRhss);
+        return new AssignCmd(Token.NoToken, newLhss, newRhss, Attributes);
       }
     }
 

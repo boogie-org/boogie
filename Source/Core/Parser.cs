@@ -1222,7 +1222,12 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				lhss.Add(lhs); 
 			}
 			Expect(51);
-			x = t; /* use location of := */ 
+			x = t; /* use location of := */
+			QKeyValue kv = null;
+			while (la.kind == 28)
+			{
+				Attribute(ref kv);
+			}
 			Expression(out e0);
 			rhss = new List<Expr/*!*/> ();
 			rhss.Add(e0); 
@@ -1232,7 +1237,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				rhss.Add(e0); 
 			}
 			Expect(9);
-			c = new AssignCmd(x, lhss, rhss); 
+			c = new AssignCmd(x, lhss, rhss, kv);
 		} else SynErr(121);
 	}
 
