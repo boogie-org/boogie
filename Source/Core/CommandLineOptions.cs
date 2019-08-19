@@ -97,7 +97,7 @@ namespace Microsoft.Boogie {
       if (pattern != null) {
         pattern = pattern.Replace("@PREFIX@", logPrefix).Replace("@TIME@", fileTimestamp);
         string fn = Files.Count == 0 ? "" : Files[Files.Count - 1];
-        fn = fn.Replace('/', '-').Replace('\\', '-');
+        fn = fn.Replace(':', '-').Replace('/', '-').Replace('\\', '-');
         pattern = pattern.Replace("@FILE@", fn);
       }
     }
@@ -416,6 +416,8 @@ namespace Microsoft.Boogie {
     public int DoomStrategy = -1;
     public bool DoomRestartTP = false;
     public bool PrintDesugarings = false;
+    public bool PrintLambdaLifting = false;
+    public bool FreeVarLambdaLifting = false;
     public string SimplifyLogFilePath = null;
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
@@ -490,6 +492,7 @@ namespace Microsoft.Boogie {
     public string Z3ExecutableName = null;
     public string CVC4ExecutablePath = null;
     public int KInductionDepth = -1;
+    public int EnableUnSatCoreExtract = 0;
 
     private string/*!*/ _logPrefix = "";
 
@@ -801,10 +804,12 @@ namespace Microsoft.Boogie {
     // Static constructor
     static CommandLineOptions() {
       if (System.Type.GetType("Mono.Runtime") == null) {  // MONO
+#if !COREFX_SUBSET
         TraceListenerCollection/*!*/ dbl = Debug.Listeners;
         Contract.Assert(dbl != null);
         Contract.Assume(cce.IsPeerConsistent(dbl));  // hangs off static field
         dbl.Add(new DefaultTraceListener());
+#endif
       }
     }
 
@@ -1352,6 +1357,12 @@ namespace Microsoft.Boogie {
             RecursionBound = Int32.Parse(cce.NonNull(args[ps.i]));
           }
           return true;
+        case "enableUnSatCoreExtraction":
+            if (ps.ConfirmArgumentCount(1))
+            {
+                EnableUnSatCoreExtract = Int32.Parse(cce.NonNull(args[ps.i]));
+            }
+            return true;
         case "stackDepthBound":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1531,8 +1542,7 @@ namespace Microsoft.Boogie {
 			UseSmtOutputFormat = true;
 		  }
 	      return true;
-		}
-		
+		}        
         case "z3opt":
           if (ps.ConfirmArgumentCount(1)) {
             AddZ3Option(cce.NonNull(args[ps.i]));
@@ -1595,6 +1605,7 @@ namespace Microsoft.Boogie {
           }
 
           if (ps.CheckBooleanFlag("printDesugared", ref PrintDesugarings) ||
+              ps.CheckBooleanFlag("printLambdaLifting", ref PrintLambdaLifting) ||
               ps.CheckBooleanFlag("printInstrumented", ref PrintInstrumented) ||
               ps.CheckBooleanFlag("printWithUniqueIds", ref PrintWithUniqueASTIds) ||
               ps.CheckBooleanFlag("wait", ref Wait) ||
@@ -1642,7 +1653,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
               ps.CheckBooleanFlag("trustAtomicityTypes", ref TrustAtomicityTypes) ||
               ps.CheckBooleanFlag("trustNonInterference", ref TrustNonInterference) ||
-              ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName)
+              ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
+              ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting)
               ) {
             // one of the boolean flags matched
             return true;
@@ -1783,8 +1795,8 @@ namespace Microsoft.Boogie {
        With /inline:assume call is replaced with ""assume false"" once inlining depth is reached.
        With /inline:assert call is replaced with ""assert false"" once inlining depth is reached.
        With /inline:spec call is left as is once inlining depth is reached.
-       With the above three options, methods with the attribute {:inline N} are not verified.
        With /inline:none the entire attribute is ignored.
+       With /inline:assume and /inline:assert options, methods with the attribute {:inline N} are not verified.
 
      {:verify false}
        Skip verification of an implementation.
@@ -1902,6 +1914,13 @@ namespace Microsoft.Boogie {
                    identifies variables
   /printUnstructured : with /print option, desugars all structured statements
   /printDesugared : with /print option, desugars calls
+  /printLambdaLifting : with /print option, desugars lambda lifting
+
+  /freeVarLambdaLifting : Boogie's lambda lifting transforms the bodies of lambda
+                         expressions into templates with holes. By default, holes
+                         are maximally large subexpressions that do not contain
+                         bound variables. This option performs a form of lambda
+                         lifting in which holes are the lambda's free variables. 
 
   /overlookTypeErrors : skip any implementation with resolution or type
                         checking errors

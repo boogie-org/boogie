@@ -228,10 +228,10 @@ namespace Microsoft.Boogie {
 
     public override void ComputeFreeVariables(Set freeVars) {
       //Contract.Requires(freeVars != null);
-      ComputeBinderFreeVariables(TypeParameters, Dummies, Body, Attributes, freeVars);
+      ComputeBinderFreeVariables(TypeParameters, Dummies, Body, null, Attributes, freeVars);
     }
 
-    public static void ComputeBinderFreeVariables(List<TypeVariable> typeParameters, List<Variable> dummies, Expr body, QKeyValue attributes, Set freeVars) {
+    public static void ComputeBinderFreeVariables(List<TypeVariable> typeParameters, List<Variable> dummies, Expr body, Trigger triggers, QKeyValue attributes, Set freeVars) {
       Contract.Requires(dummies != null);
       Contract.Requires(body != null);
 
@@ -240,6 +240,11 @@ namespace Microsoft.Boogie {
         Contract.Assert(!freeVars[v]);
       }
       body.ComputeFreeVariables(freeVars);
+      for (var trig = triggers; trig != null; trig = trig.Next) {
+        foreach (var e in trig.Tr) {
+          e.ComputeFreeVariables(freeVars);
+        }
+      }
       for (var a = attributes; a != null; a = a.Next) {
         foreach (var o in a.Params) {
           var e = o as Expr;
@@ -576,7 +581,13 @@ namespace Microsoft.Boogie {
     }
 
     public override int GetHashCode() {
-      throw new NotImplementedException();
+      int hash = 17;
+      hash = hash * 23 + tr.GetHashCode();
+      hash = hash * 23 + Pos.GetHashCode();
+      if (Next != null) {
+        hash = hash * 23 + Next.GetHashCode();
+      }
+      return hash;
     }
   }
 
@@ -815,6 +826,10 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public override void ComputeFreeVariables(Set freeVars) {
+      //Contract.Requires(freeVars != null);
+      ComputeBinderFreeVariables(TypeParameters, Dummies, Body, Triggers, Attributes, freeVars);
+    }
 
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
@@ -949,5 +964,177 @@ namespace Microsoft.Boogie {
       return visitor.VisitLambdaExpr(this);
     }
 
+  }
+
+  public class LetExpr : Expr, ICarriesAttributes {
+    public LetExpr(IToken/*!*/ tok, List<Variable>/*!*/ dummies, List<Expr> rhss, QKeyValue kv, Expr/*!*/ body)
+      : base(tok, false) {
+      Contract.Requires(tok != null);
+      Contract.Requires(dummies != null);
+      Contract.Requires(rhss != null);
+      Contract.Requires(body != null);
+      Contract.Requires(dummies.Count > 0);
+      Contract.Requires(rhss.Count > 0);
+      Dummies = dummies;
+      Rhss = rhss;
+      Attributes = kv;
+      Body = body;
+    }
+
+    public override void Resolve(ResolutionContext rc) {
+      //Contract.Requires(rc != null);
+      
+      if (Dummies.Count != Rhss.Count) {
+        rc.Error(this.tok, "number of left-hand sides does not match number of right-hand sides");
+      }
+
+      foreach (var e in Rhss) {
+        e.Resolve(rc);
+      }
+
+      rc.PushVarContext();
+      foreach (var v in Dummies) {
+        Contract.Assert(v != null);
+        v.Register(rc);
+        v.Resolve(rc);
+      }
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next) {
+        kv.Resolve(rc);
+      }
+      Body.Resolve(rc);
+      rc.PopVarContext();
+    }
+
+    public override void Typecheck(TypecheckingContext tc) {
+      //Contract.Requires(tc != null);
+      foreach (var e in Rhss) {
+        e.Typecheck(tc);
+      }
+      Contract.Assert(Dummies.Count == Rhss.Count);  // enforced by resolution
+      for (var i = 0; i < Dummies.Count; i++) {
+        var lhs = Dummies[i];
+        var rhs = Rhss[i];
+        lhs.TypedIdent.Type = rhs.Type;
+      }
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next) {
+        kv.Typecheck(tc);
+      }
+      Body.Typecheck(tc);
+      Contract.Assert(Body.Type != null);  // follows from postcondition of Expr.Typecheck
+      this.Type = Body.Type;
+    }
+
+    public override Type/*!*/ ShallowType {
+      get {
+        Contract.Ensures(Contract.Result<Type>() != null);
+        return Body.ShallowType;
+      }
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor) {
+      return visitor.VisitLetExpr(this);
+    }
+    public List<Variable>/*!*/ Dummies;
+    public IList<Expr>/*!*/ Rhss;
+    public QKeyValue Attributes { get; set; }
+    public Expr Body;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(Dummies != null);
+      Contract.Invariant(Rhss != null);
+      Contract.Invariant(Body != null);
+    }
+
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj) {
+      if (!(obj is LetExpr)) {
+        return false;
+      }
+
+      var other = (LetExpr) obj;
+
+      return this.Dummies.SequenceEqual(other.Dummies)
+             && this.Rhss.SequenceEqual(other.Rhss)
+             && object.Equals(this.Attributes, other.Attributes)
+             && object.Equals(this.Body, other.Body);
+    }
+
+    [Pure]
+    public override int GetHashCode() {
+      return ComputeHashCode();
+    }
+
+    [Pure]
+    public override int ComputeHashCode() {
+      // Note, we don't hash triggers and attributes
+
+      // DO NOT USE Dummies.GetHashCode() because we want structurally
+      // identical Expr to have the same hash code **not** identical references
+      // to have the same hash code.
+      int h = 0;
+      foreach (var dummyVar in this.Dummies) {
+        h = ( 53 * h ) + dummyVar.GetHashCode();
+      }
+
+      h ^= this.Body.GetHashCode();
+
+      return h;
+    }
+
+    public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+      //Contract.Requires(stream != null);
+      stream.push();
+      stream.Write(this, "(var ");
+
+      string sep = "";
+      stream.push();
+      foreach (var v in Dummies) {
+        stream.Write("{0}", sep);
+        v.EmitVitals(stream, 0, true, false);
+        sep = ", ";
+        stream.sep();
+      }
+      stream.pop();
+
+      stream.Write(" := ");
+      this.Rhss.Emit(stream);
+      stream.Write("; ");
+      stream.sep();
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next) {
+        kv.Emit(stream);
+        stream.Write(" ");
+      }
+      stream.sep();
+
+      this.Body.Emit(stream);
+      stream.Write(")");
+      stream.pop();
+    }
+
+    public override void ComputeFreeVariables(Set freeVars) {
+      //Contract.Requires(freeVars != null);
+
+      foreach (var v in Dummies) {
+        Contract.Assert(v != null);
+        Contract.Assert(!freeVars[v]);
+      }
+      Body.ComputeFreeVariables(freeVars);
+      for (var a = Attributes; a != null; a = a.Next) {
+        foreach (var o in a.Params) {
+          var e = o as Expr;
+          if (e != null) {
+            e.ComputeFreeVariables(freeVars);
+          }
+        }
+      }
+      foreach (var v in Dummies) {
+        freeVars.AddRange(v.TypedIdent.Type.FreeVariables);
+      }
+      freeVars.RemoveRange(Dummies);
+      foreach (var e in Rhss) {
+        e.ComputeFreeVariables(freeVars);
+      }
+    }
   }
 }

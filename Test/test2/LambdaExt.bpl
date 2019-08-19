@@ -1,4 +1,5 @@
 // RUN: %boogie -noinfer "%s" > "%t"
+// RUN: %boogie -noinfer -freeVarLambdaLifting "%s" >> "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure Simplest() {
@@ -67,9 +68,6 @@ procedure Quantifiers() {
 }
 
 procedure FreeVariables() {
-  var m : [bool,bool,bool]bool;
-  var k : [bool,bool]bool;
-
   var f : [bool]bool;
   var g : [bool]bool;
 
@@ -83,6 +81,16 @@ procedure FreeVariables() {
   } else {
     assert f == g; // should fail
   }
+}
+
+procedure FreeVariables2() {
+  var k : [bool,bool]bool;
+
+  var f : [bool]bool;
+  var g : [bool]bool;
+
+  var a : bool;
+  var b : bool;
 
   f := (lambda r: bool :: k[a,b]);
   g := (lambda s: bool :: k[b,a]);
@@ -91,11 +99,21 @@ procedure FreeVariables() {
   } else {
     assert f == g; // should fail
   }
+}
+
+procedure FreeVariables3() {
+  var m : [bool,bool,bool]bool;
+
+  var f : [bool]bool;
+  var g : [bool]bool;
+
+  var a : bool;
+  var b : bool;
 
   f := (lambda r: bool :: m[a,a,b]);
   g := (lambda s: bool :: m[a,b,b]);
   if (a == b) {
-    assert f == g; // should fail because they are different lambda
+    assert f == g; // should fail for /freeVarLambdaLifting; OK for max-hole lambda lifting
   } else {
     assert f == g; // should fail because they are different lambda
   }
@@ -144,3 +162,29 @@ procedure Coercion() {
       == (lambda y: Box :: $Box($Unbox(y): int));
 }
 
+
+function F(int,int): int;
+const n: [int]bool;
+procedure FreeVarOnlyInTrigger() {
+  // The following once used to crash, because trigger expressions were not
+  // visited while computing free variables.
+  assert (forall m: int ::  // error
+    n == (lambda x: int :: (exists y: int :: { F(m,y) } true)));
+}
+
+type TA;
+type TB;
+function G(TA, TB): int;
+procedure MultipleTriggers() {
+  // The following once used to crash, because max holes for triggers were
+  // replaced in the wrong order.
+  assert (forall a: TA, m: [TB]bool ::  // error
+    m == (lambda y: TB :: (exists x: TB :: { G(a, x) } { m[x] } G(a, x) == 10)));
+}
+
+procedure LetBinder() {
+  var m: [bool]bool;
+  // The following once used to crash, because let-bound variables were not
+  // considered local.
+  m := (lambda b: bool :: (var u := b; u));
+}

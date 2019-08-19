@@ -265,7 +265,7 @@ namespace Microsoft.Boogie.SMTLib
 
         // Set produce-unsat-cores last. It seems there's a bug in Z3 where if we set it earlier its value
         // gets reset by other set-option commands ( https://z3.codeplex.com/workitem/188 )
-        if (CommandLineOptions.Clo.PrintNecessaryAssumes || (CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini)))
+                if (CommandLineOptions.Clo.PrintNecessaryAssumes || CommandLineOptions.Clo.EnableUnSatCoreExtract == 1 ||(CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini)))
         {
           SendCommon("(set-option :produce-unsat-cores true)");
           this.usingUnsatCore = true;
@@ -308,36 +308,31 @@ namespace Microsoft.Boogie.SMTLib
           sccs.Compute();
           foreach (GraphUtil.SCC<CtorType> scc in sccs)
           {
-            string datatypeString = "";
+            string datatypesString = "";
+            string datatypeConstructorsString = "";
             foreach (CtorType datatype in scc)
             {
-              datatypeString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " ";
+              datatypesString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " 0)";
+              string datatypeConstructorString = "";
               foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
               {
                 string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
-                if (f.InParams.Count == 0)
+                datatypeConstructorString += "(" + quotedConstructorName + " ";
+                foreach (Variable v in f.InParams) 
                 {
-                  datatypeString += quotedConstructorName + " ";
+                  string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
+                  datatypeConstructorString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
                 }
-                else
-                {
-                  datatypeString += "(" + quotedConstructorName + " ";
-                  foreach (Variable v in f.InParams)
-                  {
-                    string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
-                    datatypeString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
-                  }
-                  datatypeString += ") ";
-                }
+                datatypeConstructorString += ") ";
               }
-              datatypeString += ") ";
+              datatypeConstructorsString += "(" + datatypeConstructorString + ") ";
             }
             List<string> decls = DeclCollector.GetNewDeclarations();
             foreach (string decl in decls)
             {
               SendCommon(decl);
             }
-            SendCommon("(declare-datatypes () (" + datatypeString + "))");
+            SendCommon("(declare-datatypes (" + datatypesString + ") (" + datatypeConstructorsString + "))");
           }
         }
         if (CommandLineOptions.Clo.ProverPreamble != null)
@@ -1717,7 +1712,7 @@ namespace Microsoft.Boogie.SMTLib
             }
 
             if (SortSet.ContainsKey(type.Name) && SortSet[type.Name] == 0) {
-                var prefix = "@uc_T_" + type.Name.Substring(2) + "_";
+                var prefix = "@uc_T@" + type.Name.Substring(2) + "_";
                 if (element.Name.StartsWith(prefix)) {
                     m.Append(type.Name + "!val!" + element.Name.Substring(prefix.Length));
                     return;
@@ -1751,10 +1746,13 @@ namespace Microsoft.Boogie.SMTLib
                 ConstructFunctionArguments(arguments[0], argTypes, argValues);
                 ConstructFunctionArguments(arguments[1], argTypes, argValues);
             } else if (arguments.Name == "=" &&
-                       (arguments[0].Name.StartsWith("_ufmt_") || arguments[0].Name.StartsWith("x!"))) {
+                       (arguments[0].Name.StartsWith("_ufmt_") || arguments[0].Name.StartsWith("x!") ||
+	                arguments[0].Name.StartsWith("_arg_"))) {
                 int argNum;
                 if (arguments[0].Name.StartsWith("_ufmt_"))
                     argNum = System.Convert.ToInt32(arguments[0].Name.Substring("_uftm_".Length)) - 1;
+                else if (arguments[0].Name.StartsWith("_arg_"))
+		    argNum = System.Convert.ToInt32(arguments[0].Name.Substring("_arg_".Length)) - 1;
                 else /* if (arguments[0].Name.StartsWith("x!")) */
                     argNum = System.Convert.ToInt32(arguments[0].Name.Substring("x!".Length)) - 1;
                 if (argNum < 0 || argNum >= argTypes.Count) {
@@ -1795,7 +1793,7 @@ namespace Microsoft.Boogie.SMTLib
 
             for (int i = 0; i < inType.ArgCount; ++i) {
                 if (inType[i].Name != "_ufmt_" + (i + 1) && inType[i].Name != "x!" + (i + 1) &&
-                    !inType[i].Name.StartsWith("BOUND_VARIABLE_")) {
+                    !inType[i].Name.StartsWith("BOUND_VARIABLE_") && inType[i].Name != "_arg_" + (i + 1)) {
                     Parent.HandleProverError("Unexpected function argument: " + inType[i].Name);
                     throw new BadExprFromProver ();
                 }
@@ -1855,7 +1853,7 @@ namespace Microsoft.Boogie.SMTLib
                 dt.Types.Add(typeDef[0][i][0]);
             }
 
-            DataTypes[typeDef.Name] = dt;
+            DataTypes[datatypes[0][0].Name] = dt;
         }
 
         private void ConvertErrorModel(StringBuilder m) {
@@ -2223,20 +2221,38 @@ namespace Microsoft.Boogie.SMTLib
         throw new NotImplementedException();
     }
 
-    public override void Assert(VCExpr vc, bool polarity, bool isSoft = false, int weight = 1)
+    public override void Assert(VCExpr vc, bool polarity, bool isSoft = false, int weight = 1, string name = null)
     {
         OptimizationRequests.Clear();
         string assert = "assert";
-        if (options.Solver == SolverKind.Z3 && isSoft) {
+        if (options.Solver == SolverKind.Z3 && isSoft)
+        {
             assert += "-soft";
         }
         var expr = polarity ? VCExpr2String(vc, 1) : "(not\n" + VCExpr2String(vc, 1) + "\n)";
-        if (options.Solver == SolverKind.Z3 && isSoft) {
+        if (options.Solver == SolverKind.Z3 && isSoft)
+        {
             expr += " :weight " + weight;
+        }
+        if (name != null)
+        {
+            expr = "(! " + expr + ":named " + name + ")";
         }
         AssertAxioms();
         SendThisVC("(" + assert + " " + expr + ")");
         SendOptimizationRequests();
+    }
+
+    public override List<string> UnsatCore()
+    {
+        SendThisVC("(get-unsat-core)");
+        var resp = Process.GetProverResponse().ToString();
+        if (resp == "" || resp == "()")
+            return null;
+        if (resp[0] == '(')
+            resp = resp.Substring(1, resp.Length - 2);
+        var ucore = resp.Split(' ').ToList();
+        return ucore;
     }
 
     public override void DefineMacro(Macro f, VCExpr vc) {
@@ -2324,6 +2340,64 @@ namespace Microsoft.Boogie.SMTLib
 
     object GetArrayFromProverResponse(SExpr resp) {
       resp = ReduceLet(resp);
+      var dict = GetArrayFromArrayExpr(resp);
+      if (dict == null) dict = GetArrayFromProverLambdaExpr(resp);
+      if (dict == null) return null;
+      var str = new StringWriter();
+      str.Write("{");
+      foreach (var entry in dict)
+        if (entry.Key != "*")
+          str.Write("\"{0}\":{1},", entry.Key, entry.Value);
+      if (dict.ContainsKey("*"))
+        str.Write("\"*\":{0}", dict["*"]);
+      str.Write("}");
+      return str.ToString();
+    }
+
+    Dictionary<string, object> GetArrayFromProverLambdaExpr(SExpr resp) {
+      var dict = new Dictionary<string, object>();
+      if (resp.Name == "lambda" && resp.ArgCount == 2) {
+
+        // TODO: multiple indices, as (lambda (() (x!1 Int) (x!2 Int)) ...)
+        var indexVar = resp.Arguments[0].Arguments[0].Name;
+
+        var cases = resp.Arguments[1];
+        while (cases != null) {
+          if (cases.Name == "ite") {
+            var condition = cases.Arguments[0];
+            var positive = cases.Arguments[1];
+            var negative = cases.Arguments[2];
+
+            // TODO: multiple index conditions, as (and (= x!1 5) (= x!2 3))
+            // TODO: nested arrays, as (ite (...) (_ as-array k!5) (_ as-array k!3))
+
+            if (condition.Name != "=")
+              throw new VCExprEvaluationException();
+
+            if (condition.Arguments[0].Name != indexVar)
+              throw new VCExprEvaluationException();
+
+            var index = ParseValueFromProver(condition.Arguments[1]);
+            var value = ParseValueFromProver(positive);
+
+            dict.Add(index.ToString(), value);
+
+            cases = negative;
+
+          } else if (cases.IsId) {
+            var value = ParseValueFromProver(cases);
+            dict.Add("*", value);
+            cases = null;
+
+          } else {
+            throw new VCExprEvaluationException();
+          }
+        }
+      }
+      return dict.Count > 0 ? dict : null;
+    }
+
+    Dictionary<string, object> GetArrayFromArrayExpr(SExpr resp) {
       var dict = new Dictionary<string, object>();
       var curr = resp;
       while (curr != null) {
@@ -2343,15 +2417,7 @@ namespace Microsoft.Boogie.SMTLib
           return null;
         }
       }
-      var str = new StringWriter();
-      str.Write("{");
-      foreach (var entry in dict)
-        if (entry.Key != "*")
-          str.Write("\"{0}\":{1},", entry.Key, entry.Value);
-      if (dict.ContainsKey("*"))
-        str.Write("\"*\":{0}", dict["*"]);
-      str.Write("}");
-      return str.ToString();
+      return dict.Count > 0 ? dict : null;
     }
 
     public override object Evaluate(VCExpr expr)
@@ -2393,7 +2459,7 @@ namespace Microsoft.Boogie.SMTLib
             BigInteger exp = getBvVal(expExpr);
             int expSize = getBvSize(expExpr);
             BigInteger sig = getBvVal(sigExpr);
-            int sigSize = getBvSize(sigExpr);
+            int sigSize = getBvSize(sigExpr)+1;
             return new Basetypes.BigFloat(isNeg, sig, exp, sigSize, expSize);
         }
         if (resp.Name == "_" && resp.ArgCount == 3)

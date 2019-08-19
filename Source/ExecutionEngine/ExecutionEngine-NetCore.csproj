@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <AssemblyName>BoogieExecutionEngine</AssemblyName>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <DefineConstants>COREFX_SUBSET</DefineConstants>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Runtime.Caching" Version="4.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AbsInt\AbsInt-NetCore.csproj" />
+    <ProjectReference Include="..\Basetypes\Basetypes-NetCore.csproj" />
+    <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
+    <ProjectReference Include="..\Concurrency\Concurrency-NetCore.csproj" />
+    <ProjectReference Include="..\Core\Core-NetCore.csproj" />
+    <ProjectReference Include="..\Doomed\Doomed-NetCore.csproj" />
+    <ProjectReference Include="..\Graph\Graph-NetCore.csproj" />
+    <ProjectReference Include="..\Houdini\Houdini-NetCore.csproj" />
+    <ProjectReference Include="..\Model\Model-NetCore.csproj" />
+    <ProjectReference Include="..\ParserHelper\ParserHelper-NetCore.csproj" />
+    <ProjectReference Include="..\Predication\Predication-NetCore.csproj" />
+    <ProjectReference Include="..\VCGeneration\VCGeneration-NetCore.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\version.cs">
+      <Link>version.cs</Link>
+    </Compile>
+    <Compile Include="**\*.cs" />
+    <Compile Remove="**\cce.cs" />
+    <Compile Remove="**\AssemblyInfo.cs" />
+  </ItemGroup>
+
+</Project>

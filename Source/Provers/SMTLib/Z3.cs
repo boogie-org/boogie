@@ -26,6 +26,7 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         public static string ExecutablePath()
+        // throws ProverException, System.IO.FileNotFoundException;
         {
             if (_proverPath == null)
                 FindExecutable();
@@ -202,6 +203,7 @@ namespace Microsoft.Boogie.SMTLib
 
 
         public static void SetupOptions(SMTLibProverOptions options)
+        // throws ProverException, System.IO.FileNotFoundException;
         {
           FindExecutable();
           int major, minor;
@@ -209,7 +211,7 @@ namespace Microsoft.Boogie.SMTLib
           if (major > 4 || major == 4 && minor >= 3)
           {
 
-              bool fp = false; // CommandLineOptions.Clo.FixedPointEngine != null;
+            bool fp = false; // CommandLineOptions.Clo.FixedPointEngine != null;
 
             // don't bother with auto-config - it would disable explicit settings for eager threshold and so on
             if(!fp) options.AddWeakSmtOption("AUTO_CONFIG", "false");
@@ -268,6 +270,11 @@ namespace Microsoft.Boogie.SMTLib
 
             options.AddWeakSmtOption("TYPE_CHECK", "true");
             options.AddWeakSmtOption("smt.BV.REFLECT", "true");
+
+            if (major > 4 || (major == 4 && minor >= 8)) {
+              // {:captureState} does not work with compressed models
+              options.AddWeakSmtOption("model_compress", "false");
+            }
 
             if (options.TimeLimit > 0)
             {
@@ -378,8 +385,8 @@ namespace Microsoft.Boogie.SMTLib
 
           }
 
-	  // KLM: don't add Z3 options here. The options are different in different Z3 versions.
-	  // Add options in the above condition for the appropriate version.
+          // KLM: don't add Z3 options here. The options are different in different Z3 versions.
+          // Add options in the above condition for the appropriate version.
 
           // legacy option handling
           if (!CommandLineOptions.Clo.z3AtFlag)

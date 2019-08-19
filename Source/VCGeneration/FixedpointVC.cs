@@ -1742,7 +1742,6 @@ namespace Microsoft.Boogie
                 GetModelWithStates(m, root, implName2StratifiedInliningInfo[mainImpl.Name],
                                    orderedStateIds, varSubst);
                 newCounterexample.Model = m;
-                newCounterexample.ModelHasStatesAlready = true;
             }
             return newCounterexample;
         }

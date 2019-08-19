@@ -3,13 +3,13 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
+
+using Core;
+
 namespace Microsoft.Boogie {
 
   using System;
-  using System.IO;
-  using System.Collections;
   using System.Collections.Generic;
-  using System.Diagnostics;
   using System.Diagnostics.Contracts;
   using Set = GSet<object>;  // for the purposes here, "object" really means "either Variable or TypeVariable"
 
@@ -37,6 +37,38 @@ namespace Microsoft.Boogie {
       return program;
     }
 
+    /// <summary>
+    /// Performs lambda lifting on all anonymous functions in a program.
+    /// Lambda lifting transforms a lambda abstraction <c>(lambda x : T :: t)</c> of type <c>T -> U</c>
+    /// into a Boogie map of type <c>[T] U</c> as follows:
+    /// <list type="number">
+    /// <item>
+    ///   Certain subexpressions <c>e1</c>, ..., <c>e_n</c> (which have types <c>T1</c>, ..., <c>T_n</c>)
+    ///   of the lambda body [t] are replaced with bound variables <c>b1</c>, ..., <c>b_n</c> of the same types,
+    ///   yielding a new lambda body [u], which represents a lifted lambda <c>(lambda x : T :: u)</c>.
+    /// </item>
+    /// <item>
+    ///   The original lambda is replaced with a function call <c>f(e1, ..., en)</c> where <c>f</c> is a function
+    ///   with <c>n</c> parameters and return type <c>[T] U</c> (i.e. the function returns a map).
+    /// </item>
+    /// <item>
+    ///   The implementation of the lambda is defined through an axiom that states that
+    ///   <c>f(b1, ..., b_n)[x] == u</c>.
+    /// </item>
+    /// </list>
+    /// Lambda lifting algorithms differ based on what kind of subexpressions <c>E_i</c> are "lifted" out
+    /// of the lambda:
+    /// <list type="bullet"></list>
+    /// <item>
+    ///   <see cref="LambdaVisitor.LambdaLiftingFreeVars"/> lifts all free variables of a lambda;
+    /// </item>
+    /// <item>
+    ///   <c>LambdaVisitor.LambdaLifterMaxHoles()</c> lifts a lambda's maximally large subexpressions that are
+    ///   free of bound variables.
+    /// </item>
+    /// <see cref="LambdaVisitor.LambdaLifterMaxHoles"/> is used by default whereas <c>LambdaLiftingFreeVars</c>
+    /// is used with the command-line option <c>/freeVarLambdaLifting</c>.
+    /// </summary>
     public static void ExpandLambdas(Program prog) {
       Contract.Requires(prog != null);
       List<Expr/*!*/>/*!*/ axioms;
@@ -76,6 +108,32 @@ namespace Microsoft.Boogie {
         if (lambda == null) {
           return baseResult;  // apparently, the base visitor already turned the lambda into something else
         }
+
+        return CommandLineOptions.Clo.FreeVarLambdaLifting ? LiftLambdaFreeVars(lambda) : LiftLambdaMaxHoles(lambda);
+      }
+      
+      /// <summary>
+      /// Performs lambda lifting (see <see cref="LambdaHelper.ExpandLambdas"/>) by replacing the lambda's
+      /// free variables with bound ones.
+      /// </summary>
+      /// <param name="lambda">A lambda expression
+      ///   <code>(lambda x1: T1 ... x_n: T_n :: t)</code>
+      /// where <c>t</c> contains the free variables <c>y1</c>, ..., <c>y_m</c>.
+      /// </param>
+      /// <returns>
+      /// <list type="bullet">
+      ///   <item>
+      ///     A function application <c>f(y1, ..., y_m)</c> where <c>f</c>'s body is defined to be the result of
+      ///     replacing the free variables <c>y1</c>, ..., <c>y_m</c> in <c>t</c> with bound variables
+      ///     <c>b1</c>, ..., <c>b_m</c>.
+      ///   </item>
+      ///   <item>
+      ///     Adds a definition and axiom for <c>f</c> to <see cref="lambdaFunctions"/> and <see cref="lambdaAxioms"/>.
+      ///     Memoizes <c>f</c> as the lifted lambda for <para>lambda</para>.
+      ///   </item>
+      /// </list>
+      /// </returns>
+      private Expr LiftLambdaFreeVars(LambdaExpr lambda) {
 
         // We start by getting rid of any use of "old" inside the lambda.  This is done as follows.
         // For each variable "g" occurring inside lambda as "old(... g ...)", create a new name "og".
@@ -128,7 +186,7 @@ namespace Microsoft.Boogie {
 
         // compute the free variables of the lambda expression, but with lambdaBody instead of lambda.Body
         Set freeVars = new Set();
-        BinderExpr.ComputeBinderFreeVariables(lambda.TypeParameters, lambda.Dummies, lambdaBody, lambdaAttrs, freeVars);
+        BinderExpr.ComputeBinderFreeVariables(lambda.TypeParameters, lambda.Dummies, lambdaBody, null, lambdaAttrs, freeVars);
 
         foreach (object o in freeVars) {
           // 'o' is either a Variable or a TypeVariable.
@@ -219,6 +277,58 @@ namespace Microsoft.Boogie {
 
         return call;
       }
+      
+      /// <summary>
+      /// Performs lambda lifting (see <see cref="LambdaHelper.ExpandLambdas"/>) by replacing with bound variables
+      /// maximally large subexpressions of a lambda that do not contain any of the lambda's bound variables.
+      /// </summary>
+      /// <param name="lambda">A lambda expression
+      ///   <code>(lambda x1: T1 ... x_n: T_n :: t)</code>
+      /// where <c>t</c> contains the subexpressions <c>e1</c>, ..., <c>e_m</c>. These are maximally large
+      /// subexpressions that do not contain the lambda's bound variables.
+      /// </param>
+      /// <returns>
+      /// <list type="bullet">
+      ///   <item>
+      ///     A function application <c>f(y1, ..., y_m)</c> where <c>f</c>'s body is defined to be the result of
+      ///     replacing the expressions <c>e1</c>, ..., <c>e_m</c> in <c>t</c> with bound variables
+      ///     <c>b1</c>, ..., <c>b_m</c>.
+      ///   </item>
+      ///   <item>
+      ///     Adds a definition and axiom for <c>f</c> to <see cref="lambdaFunctions"/> and <see cref="lambdaAxioms"/>.
+      ///     Memoizes <c>f</c> as the lifted lambda for <para>lambda</para>.
+      ///   </item>
+      /// </list>
+      /// </returns>
+      private Expr LiftLambdaMaxHoles(LambdaExpr lambda) {
+        
+        // We start by getting rid of `old` expressions. Instead, we replace the free variables `x_i` that are
+        // nested inside of `old` expressions with `old(x_i)` expressions.
+        var oldFinder = new OldFinder();
+        oldFinder.Visit(lambda);
+        var oldSubst = new Dictionary<Variable, Expr>();
+        foreach (var v in oldFinder.FreeOldVars) if (v is GlobalVariable g) {
+          oldSubst.Add(g, new OldExpr(g.tok, new IdentifierExpr(g.tok, g)) {Type = g.TypedIdent.Type});
+        }
+        var lambdaBody = Substituter.ApplyReplacingOldExprs(
+          Substituter.SubstitutionFromHashtable(new Dictionary<Variable,Expr>()),
+          Substituter.SubstitutionFromHashtable(oldSubst),
+          lambda.Body);
+        var lambdaAttrs = Substituter.ApplyReplacingOldExprs(
+          Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>()),
+          Substituter.SubstitutionFromHashtable(oldSubst),
+          lambda.Attributes);
+        var newLambda =
+          new LambdaExpr(lambda.tok, lambda.TypeParameters, lambda.Dummies, lambdaAttrs, lambdaBody) {
+            Type = lambda.Type
+          };
+        
+        // We perform lambda lifting on the resulting lambda which now contains only `old` expressions of the form
+        // `old(x)` where `x` is a variable that is free in the lambda.
+        return new MaxHolesLambdaLifter(
+          newLambda, liftedLambdas, FreshLambdaFunctionName(), lambdaFunctions, lambdaAxioms).VisitLambdaExpr(newLambda);
+      }
+
       public override Cmd VisitCallCmd(CallCmd node) {
         var baseResult = base.VisitCallCmd(node);
         node = baseResult as CallCmd;

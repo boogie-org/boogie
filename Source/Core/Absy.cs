@@ -349,7 +349,7 @@ namespace Microsoft.Boogie {
       this.topLevelDeclarations.Emit(stream);
     }
 
-    public void ProcessDatatypeConstructors() {
+    public void ProcessDatatypeConstructors(Errors errors) {
       Dictionary<string, DatatypeConstructor> constructors = new Dictionary<string, DatatypeConstructor>();
       List<Declaration> prunedTopLevelDeclarations = new List<Declaration>();
       foreach (Declaration decl in TopLevelDeclarations) {
@@ -358,14 +358,22 @@ namespace Microsoft.Boogie {
           prunedTopLevelDeclarations.Add(decl);
           continue;
         }
-        if (constructors.ContainsKey(func.Name)) continue;
+        if (constructors.ContainsKey(func.Name))
+        {
+          errors.SemErr(func.tok, string.Format("more than one declaration of datatype constructor name: {0}", func.Name));
+          continue;
+        }
         DatatypeConstructor constructor = new DatatypeConstructor(func);
         constructors.Add(func.Name, constructor);
         prunedTopLevelDeclarations.Add(constructor);
       }
+      if (errors.count > 0)
+      {
+        return;
+      }
+
       ClearTopLevelDeclarations();
       AddTopLevelDeclarations(prunedTopLevelDeclarations);
-    
       foreach (DatatypeConstructor f in constructors.Values) {
         for (int i = 0; i < f.InParams.Count; i++) {
           DatatypeSelector selector = new DatatypeSelector(f, i);
@@ -1947,7 +1955,7 @@ namespace Microsoft.Boogie {
       EmitVitals(stream, level, true);
       stream.WriteLine(";");
     }
-    public void EmitVitals(TokenTextWriter stream, int level, bool emitAttributes) {
+    public void EmitVitals(TokenTextWriter stream, int level, bool emitAttributes, bool emitType = true) {
       Contract.Requires(stream != null);
       if (emitAttributes) {
         EmitAttributes(stream);
@@ -1955,7 +1963,7 @@ namespace Microsoft.Boogie {
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds && this.TypedIdent.HasName) {
         stream.Write("h{0}^^", this.GetHashCode());  // the idea is that this will prepend the name printed by TypedIdent.Emit
       }
-      this.TypedIdent.Emit(stream);
+      this.TypedIdent.Emit(stream, emitType);
     }
     public override void Resolve(ResolutionContext rc) {
       //Contract.Requires(rc != null);
@@ -3414,7 +3422,7 @@ namespace Microsoft.Boogie {
           Expr inl = this.FindExprAttribute("inline");
           if (inl == null)
             inl = this.Proc.FindExprAttribute("inline");
-          if (inl != null && inl is LiteralExpr && ((LiteralExpr)inl).isBigNum && ((LiteralExpr)inl).asBigNum.Signum > 0) {
+          if (inl != null) {
             return true;
           }
         }
@@ -4160,14 +4168,21 @@ namespace Microsoft.Boogie {
         return this.Name != NoName;
       }
     }
-    public void Emit(TokenTextWriter stream) {
+    /// <summary>
+    /// An "emitType" value of "false" is ignored if "this.Name" is "NoName".
+    /// </summary>
+    public void Emit(TokenTextWriter stream, bool emitType) {
       Contract.Requires(stream != null);
       stream.SetToken(this);
       stream.push();
-      if (this.Name != NoName) {
+      if (this.Name != NoName && emitType) {
         stream.Write("{0}: ", TokenTextWriter.SanitizeIdentifier(this.Name));
+        this.Type.Emit(stream);
+      } else if (this.Name != NoName) {
+        stream.Write("{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
+      } else {
+        this.Type.Emit(stream);
       }
-      this.Type.Emit(stream);
       if (this.WhereExpr != null) {
         stream.sep();
         stream.Write(" where ");

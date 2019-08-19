@@ -97,7 +97,7 @@ private class BvBounds : Expr {
   public BigNum Lower;
   public BigNum Upper;
   public BvBounds(IToken/*!*/ tok, BigNum lower, BigNum upper)
-    : base(tok) {
+    : base(tok, /*immutable=*/ false) {
     Contract.Requires(tok != null);
     this.Lower = lower;
     this.Upper = upper;
@@ -112,12 +112,17 @@ private class BvBounds : Expr {
     Contract.Assert(false);throw new cce.UnreachableException();
   }
   public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) { Contract.Assert(false);throw new cce.UnreachableException(); }
+  public override int ComputeHashCode()
+  {
+    return base.GetHashCode();
+  }
 }
 
 /*--------------------------------------------------------------------------*/
 CHARACTERS
   letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".
   digit = "0123456789".
+  hexdigit = "0123456789ABCDEFabcdef".
   special = "'~#$^_.?`".
   glyph = "`~!@#$%^&*()-_=+[{]}|;:',<.>/?\\".
 
@@ -145,13 +150,11 @@ TOKENS
 
   decimal = digit {digit} 'e' [ '-' ] digit {digit} .
   dec_float = digit {digit} '.' digit {digit} [ 'e' [ '-' ] digit {digit} ] .
-		float = [ '-' ] digit {digit} 'e' [ '-' ] digit {digit} 'f' digit {digit} 'e' digit {digit} 
+	float = [ '-' ] '0' 'x' hexdigit {hexdigit} '.' hexdigit {hexdigit} 'e' [ '-' ] digit {digit} 'f' digit {digit} 'e' digit {digit} 
 										| '0' 'N' 'a' 'N' digit {digit} 'e' digit {digit}
 										| '0' 'n' 'a' 'n' digit {digit} 'e' digit {digit}
 										| '0' '+' 'o' 'o' digit {digit} 'e' digit {digit}
-										| '0' '-' 'o' 'o' digit {digit} 'e' digit {digit}
-										| '0' '+' 'z' 'e' 'r' 'o' digit {digit} 'e' digit {digit}
-										| '0' '-' 'z' 'e' 'r' 'o' digit {digit} 'e' digit {digit} .
+										| '0' '-' 'o' 'o' digit {digit} 'e' digit {digit} .
 
 COMMENTS FROM "/*" TO "*/" NESTED
 COMMENTS FROM "//" TO lf
@@ -239,9 +242,8 @@ ProcFormals<.bool incoming, bool allowWhereClauses, out List<Variable>/*!*/ ds.>
   ")"
   .
 
-BoundVars<.IToken/*!*/ x, out List<Variable>/*!*/ ds.>
+BoundVars<.out List<Variable>/*!*/ ds.>
 = (.
-    Contract.Requires(x != null);
     Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
     List<TypedIdent>/*!*/ tyds = new List<TypedIdent>();
     ds = new List<Variable>();
@@ -1320,6 +1322,7 @@ AtomExpression<out Expr/*!*/ e>
                                                  SemErr("triggers not allowed in lambda expressions");
                                                if (typeParams.Count + ds.Count > 0)
                                                  e = new LambdaExpr(x, typeParams, ds, kv, e); .)
+        | LetExpr<out e>
         )
     ")"
   | IfThenElseExpression<out e>
@@ -1450,9 +1453,9 @@ QuantifierBody<.IToken/*!*/ q, out List<TypeVariable>/*!*/ typeParams, out List<
   .)
   (
      TypeParams<out tok, out typeParams>
-     [ BoundVars<q, out ds> ]
+     [ BoundVars<out ds> ]
   |
-     BoundVars<q, out ds>
+     BoundVars<out ds>
   )
   QSep
   { AttributeOrTrigger<ref kv, ref trig> }
@@ -1463,6 +1466,42 @@ Forall = "forall" | '\u2200'.
 Exists = "exists" | '\u2203'.
 Lambda = "lambda" | '\u03bb'.
 QSep = "::" | '\u2022'.
+
+LetExpr<.out Expr/*!*/ letexpr.>
+= (. IToken tok;
+     Variable v;
+     var ds = new List<Variable>();
+     Expr e0;
+     var rhss = new List<Expr>();
+     QKeyValue kv = null;
+     Expr body;
+  .)
+  "var"                    (. tok = t; .)
+  LetVar<out v>            (. ds.Add(v); .)
+  { ","
+    LetVar<out v>          (. ds.Add(v); .)
+  }
+  ":="
+  Expression<out e0>       (. rhss.Add(e0); .)
+  { ","
+    Expression<out e0>     (. rhss.Add(e0); .)
+  }
+  ";"
+  { Attribute<ref kv> }
+  Expression<out body>     (. letexpr = new LetExpr(tok, ds, rhss, kv, body); .)
+  .
+
+LetVar<.out Variable/*!*/ v.>
+= (. QKeyValue kv = null;
+     IToken id;
+  .)
+  { Attribute<ref kv> }
+  Ident<out id>
+  (.
+    var tyd = new TypedIdent(id, id.val, dummyType/*will be replaced during type checking*/, null);
+    v = new BoundVariable(tyd.tok, tyd, kv);
+  .)
+  .
 
 /*------------------------------------------------------------------------*/
 Ident<out IToken/*!*/ x>

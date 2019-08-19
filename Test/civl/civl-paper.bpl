@@ -180,7 +180,7 @@ procedure {:both} {:layer 1,3} AtomicLoad({:linear "mem"} l: lmap, a: int) retur
 procedure {:yields} {:layer 0} {:refines "AtomicLoad"} Load({:linear "mem"} l: lmap, a: int) returns (v: int);
 
 procedure {:both} {:layer 1,3} AtomicStore({:linear_in "mem"} l_in: lmap, a: int, v: int) returns ({:linear "mem"} l_out: lmap)
-{ assume l_out == cons(dom(l_in), map(l_in)[a := v]); }
+{ l_out := cons(dom(l_in), map(l_in)[a := v]); }
 
 procedure {:yields} {:layer 0} {:refines "AtomicStore"} Store({:linear_in "mem"} l_in: lmap, a: int, v: int) returns ({:linear "mem"} l_out: lmap);
 

@@ -858,10 +858,12 @@ namespace Microsoft.Boogie
       #region Do some pre-abstract-interpretation preprocessing on the program
       // Doing lambda expansion before abstract interpretation means that the abstract interpreter
       // never needs to see any lambda expressions.  (On the other hand, if it were useful for it
-      // to see lambdas, then it would be better to more lambda expansion until after infererence.)
+      // to see lambdas, then it would be better to more lambda expansion until after inference.)
       if (CommandLineOptions.Clo.ExpandLambdas) {
         LambdaHelper.ExpandLambdas(program);
-        //PrintBplFile ("-", program, true);
+        if (CommandLineOptions.Clo.PrintFile != null && CommandLineOptions.Clo.PrintLambdaLifting) {
+          PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
+        }
       }
       #endregion
 

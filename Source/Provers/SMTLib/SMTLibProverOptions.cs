@@ -43,7 +43,7 @@ namespace Microsoft.Boogie.SMTLib
     // Z3 specific (at the moment; some of them make sense also for other provers)
     public string Inspector = null;
     public bool OptimizeForBv = false;
-	public bool SMTLib2Model = false;
+    public bool SMTLib2Model = false;
 
     public bool ProduceModel() {
       return !CommandLineOptions.Clo.UseLabels || CommandLineOptions.Clo.ExplainHoudini || CommandLineOptions.Clo.UseProverEvaluate ||
@@ -94,7 +94,7 @@ namespace Microsoft.Boogie.SMTLib
           case "CVC4":
           case "cvc4":
             Solver = SolverKind.CVC4;
-			      if (Logic.Equals("")) Logic = "ALL_SUPPORTED";
+            if (Logic.Equals("")) Logic = "ALL_SUPPORTED";
             break;
           default:
             ReportError("Invalid SOLVER value; must be 'Z3' or 'CVC4'");
@@ -118,7 +118,7 @@ namespace Microsoft.Boogie.SMTLib
         ParseBool(opt, "USE_WEIGHTS", ref UseWeights) ||
         ParseString(opt, "INSPECTOR", ref Inspector) ||
         ParseBool(opt, "OPTIMIZE_FOR_BV", ref OptimizeForBv) ||
-		ParseBool(opt, "SMTLIB2_MODEL", ref SMTLib2Model) ||
+        ParseBool(opt, "SMTLIB2_MODEL", ref SMTLib2Model) ||
         ParseString(opt, "LOGIC", ref Logic) ||
         base.Parse(opt);
     }

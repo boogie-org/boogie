@@ -1,4 +1,4 @@
-// RUN: %boogie -rlimit:8000 "%s" | %OutputCheck "%s"
+// RUN: %boogie -rlimit:100 "%s" | %OutputCheck "%s"
 
 procedure TestRlimit0(in: [int]int, len: int) returns (out: [int]int);
   requires in[0] == 0 && (forall i: int :: 0 <= i ==> in[i + 1] == in[i] + 1);
@@ -62,9 +62,9 @@ procedure TestRlimit2(in: [int]int, len: int) returns (out: [int]int);
   requires 0 < len;
   ensures (forall j: int :: 0 <= j && j < len ==> out[j] == in[j]);
 
-implementation {:rlimit 2000} TestRlimit2(in: [int]int, len: int) returns (out: [int]int)
+implementation {:rlimit 200} TestRlimit2(in: [int]int, len: int) returns (out: [int]int)
 {
-    // CHECK-L: ${CHECKFILE_NAME}(${LINE:-2},31): Verification out of resource (TestRlimit2)
+    // CHECK-L: ${CHECKFILE_NAME}(${LINE:-2},30): Verification out of resource (TestRlimit2)
     var i : int;
 
     i := 0;

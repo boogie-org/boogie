@@ -19,6 +19,7 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         public static string ExecutablePath()
+        // throws ProverException, System.IO.FileNotFoundException;
         {
             if (_proverPath == null)
                 FindExecutable();

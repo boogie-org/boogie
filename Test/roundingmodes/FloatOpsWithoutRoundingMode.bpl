@@ -9,8 +9,8 @@ procedure foo()
   var a : float24e8;
   var b : float24e8;
 
-  a := 0e127f24e8;
-  b := 0e127f24e8;
+  a := 0x1.0e0f24e8;
+  b := 0x1.0e0f24e8;
 
   // CHECK: Prover error: line \d+ column \d+: invalid number of arguments to floating point operator
   a := ABS(a);
