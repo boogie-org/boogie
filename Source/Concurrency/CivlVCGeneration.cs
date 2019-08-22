@@ -26,6 +26,17 @@ namespace Microsoft.Boogie
             // Desugaring of yielding procedures
             CivlRefinement.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
 
+            // TODO: remove this temp code
+            foreach (int layer in civlTypeChecker.allAtomicActionLayers)
+            {
+                var pool = civlTypeChecker.procToAtomicAction.Values.Where(a => a.layerRange.Contains(layer));
+                foreach (var x in pool)
+                {
+                    var action = x.layerToActionCopy[layer];
+                    var translator = new NewTransitionRelatinComputation(action);
+                }
+            }
+
             // Trigger functions for existential vairables in transition relations
             decls.AddRange(civlTypeChecker.procToAtomicAction.Values.SelectMany(a => a.layerToActionCopy.Values.SelectMany(ac => ac.triggerFuns.Values)));
             
