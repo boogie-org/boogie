@@ -84,6 +84,7 @@
     <Compile Include="TransitionRelationComputation.cs" />
     <Compile Include="YieldTypeChecker.cs" />
     <Compile Include="CivlUtil.cs" />
+    <Compile Include="NewTransitionRelationComputation.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
