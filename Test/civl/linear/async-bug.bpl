@@ -2,6 +2,12 @@
 // RUN: %diff "%s.expect" "%t"
 const GcTid:int;
 
+function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
+function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
+{
+  MapConstBool(false)[x := true]
+}
+
 procedure {:yields} {:layer 100} Initialize({:linear "tid"} tid:int)
 requires{:layer 100} tid == GcTid;
 {
