@@ -5,7 +5,6 @@ function {:builtin "MapConst"} MapConstInt(int) : [X]int;
 function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
 function {:builtin "MapOr"} MapOr([X]bool, [X]bool) : [X]bool;
 function {:builtin "MapAnd"} MapAnd([X]bool, [X]bool) : [X]bool;
-function {:builtin "MapNot"} MapNot([X]bool) : [X]bool;
 
 function {:inline} None() : [X]bool
 {
