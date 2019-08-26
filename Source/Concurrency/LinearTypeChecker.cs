@@ -215,7 +215,17 @@ namespace Microsoft.Boogie
             }
             else
             {
-                throw new NotImplementedException();
+                AxiomVariable a = new AxiomVariable("a", mapTypeInt);
+                AxiomVariable b = new AxiomVariable("b", mapTypeInt);
+                AxiomVariable x = new AxiomVariable("x", elementType);
+                var mapApplTerm = ExprHelper.FunctionCall(mapAddInt, a.Ident, b.Ident);
+                var lhsTerm = Expr.Select(mapApplTerm, x.Ident);
+                var rhsTerm = Expr.Add(Expr.Select(a.Ident, x.Ident), Expr.Select(b.Ident, x.Ident));
+                var axiomExpr = new ForallExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable> { a.Bound, b.Bound }, null,
+                                               new Trigger(Token.NoToken, true, new List<Expr> { mapApplTerm }),
+                                               new ForallExpr(Token.NoToken, new List<Variable> { x.Bound }, Expr.Eq(lhsTerm, rhsTerm)));
+                axiomExpr.Typecheck(new TypecheckingContext(null));
+                axioms.Add(new Axiom(Token.NoToken, axiomExpr));
             }
         }
 
@@ -232,7 +242,18 @@ namespace Microsoft.Boogie
             }
             else
             {
-                throw new NotImplementedException();
+                AxiomVariable a = new AxiomVariable("a", mapTypeBool);
+                AxiomVariable b = new AxiomVariable("b", mapTypeInt);
+                AxiomVariable c = new AxiomVariable("c", mapTypeInt);
+                AxiomVariable x = new AxiomVariable("x", elementType);
+                var mapApplTerm = ExprHelper.FunctionCall(mapIteInt, a.Ident, b.Ident, c.Ident);
+                var lhsTerm = Expr.Select(mapApplTerm, x.Ident);
+                var rhsTerm = ExprHelper.IfThenElse(Expr.Select(a.Ident, x.Ident), Expr.Select(b.Ident, x.Ident), Expr.Select(c.Ident, x.Ident));
+                var axiomExpr = new ForallExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable> { a.Bound, b.Bound, c.Bound }, null,
+                                               new Trigger(Token.NoToken, true, new List<Expr> { mapApplTerm }),
+                                               new ForallExpr(Token.NoToken, new List<Variable> { x.Bound }, Expr.Eq(lhsTerm, rhsTerm)));
+                axiomExpr.Typecheck(new TypecheckingContext(null));
+                axioms.Add(new Axiom(Token.NoToken, axiomExpr));
             }
         }
 
@@ -248,7 +269,17 @@ namespace Microsoft.Boogie
             }
             else
             {
-                throw new NotImplementedException();
+                AxiomVariable a = new AxiomVariable("a", mapTypeInt);
+                AxiomVariable b = new AxiomVariable("b", mapTypeInt);
+                AxiomVariable x = new AxiomVariable("x", elementType);
+                var mapApplTerm = ExprHelper.FunctionCall(mapLeInt, a.Ident, b.Ident);
+                var lhsTerm = Expr.Select(mapApplTerm, x.Ident);
+                var rhsTerm = Expr.Le(Expr.Select(a.Ident, x.Ident), Expr.Select(b.Ident, x.Ident));
+                var axiomExpr = new ForallExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable> { a.Bound, b.Bound }, null,
+                                               new Trigger(Token.NoToken, true, new List<Expr> { mapApplTerm }),
+                                               new ForallExpr(Token.NoToken, new List<Variable> { x.Bound }, Expr.Eq(lhsTerm, rhsTerm)));
+                axiomExpr.Typecheck(new TypecheckingContext(null));
+                axioms.Add(new Axiom(Token.NoToken, axiomExpr));
             }
         }
     }

@@ -20,6 +20,12 @@ namespace Microsoft.Boogie
             return new NAryExpr(Token.NoToken, new FunctionCall(f), args);
         }
 
+        public static NAryExpr IfThenElse(Expr ifExpr, Expr thenExpr, Expr elseExpr)
+        {
+            return new NAryExpr(Token.NoToken, new IfThenElse(Token.NoToken),
+                new Expr[] { ifExpr, thenExpr, elseExpr });
+        }
+
         public static OldExpr Old(Expr expr)
         {
             return new OldExpr(Token.NoToken, expr);
