@@ -1519,7 +1519,7 @@ modifies rootScanBarrier, mutatorsInRootScanBarrier;
                         assert mutatorTidWhole(tid);
                         rootScanBarrier := rootScanBarrier - 1;
                         mutatorsInRootScanBarrier[i#Tid(tid)] := true;
-                        assume i#Tid(tid_left) == i#Tid(tid) && left#Tid(tid_left);
+                        tid_left := Tid(i#Tid(tid), true, false);
 }
 
 procedure {:yields} {:layer 96} {:refines "AtomicMutatorRootScanBarrierEnter"} MutatorRootScanBarrierEnter({:linear_in "tid"} tid: Tid) returns({:linear "tid"} tid_left: Tid)
@@ -1544,7 +1544,7 @@ modifies rootScanBarrier, mutatorsInRootScanBarrier;
                         assume !rootScanOn;
                         rootScanBarrier := rootScanBarrier + 1;
                         mutatorsInRootScanBarrier[i#Tid(tid_left)] := false;
-                        assume i#Tid(tid) == i#Tid(tid_left) && left#Tid(tid) && right#Tid(tid);
+                        tid := Tid(i#Tid(tid_left), true, true);
 }
 
 procedure {:yields} {:layer 96} {:refines "AtomicMutatorRootScanBarrierWait"} MutatorRootScanBarrierWait({:linear_in "tid"} tid_left: Tid) returns({:linear "tid"} tid: Tid)
