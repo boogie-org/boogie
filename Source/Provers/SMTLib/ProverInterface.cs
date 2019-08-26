@@ -1600,22 +1600,17 @@ namespace Microsoft.Boogie.SMTLib
 
 
     private class SMTErrorModelConverter {
-        private struct SMTDataType {
-            public string Constructor;
-            public List<SExpr> Types;
-        }
-
         private List<SExpr> ErrorModelTodo;
         private SMTLibProcessTheoremProver Parent;
         private StringBuilder ErrorModel = new StringBuilder();
         private HashSet<SExpr> TopLevelProcessed = new HashSet<SExpr>();
         private int NumNewArrays = 0;
         private Dictionary<string, int> SortSet = new Dictionary<string, int>();
-        private Dictionary<string, SMTDataType> DataTypes = new Dictionary<string, SMTDataType>();
+        private Dictionary<string, Dictionary<string, List<SExpr>>> DataTypes = new Dictionary<string, Dictionary<string, List<SExpr>>>();
         private Dictionary<string, SExpr> Functions = new Dictionary<string, SExpr>();
 
         public SMTErrorModelConverter(SExpr _ErrorModel, SMTLibProcessTheoremProver _Parent) {
-            ErrorModelTodo = _ErrorModel.Arguments.ToList();;
+            ErrorModelTodo = _ErrorModel.Arguments.ToList();
             Parent = _Parent;
         }
 
@@ -1726,12 +1721,12 @@ namespace Microsoft.Boogie.SMTLib
             }
 
             if (DataTypes.ContainsKey(type.Name) &&
-                DataTypes[type.Name].Constructor == element.Name &&
-                element.ArgCount == DataTypes[type.Name].Types.Count) {
+                DataTypes[type.Name].ContainsKey(element.Name) &&
+                element.ArgCount == DataTypes[type.Name][element.Name].Count) {
                 m.Append("(" + element.Name);
                 for (int i = 0; i < element.ArgCount; ++i) {
                     m.Append(" ");
-                    ConstructComplexValue(element[i], DataTypes[type.Name].Types[i], m);
+                    ConstructComplexValue(element[i], DataTypes[type.Name][element.Name][i], m);
                 }
                 m.Append(")");
                 return;
@@ -1833,27 +1828,20 @@ namespace Microsoft.Boogie.SMTLib
                 Parent.HandleProverError("Unexpected datatype: " + datatypes);
                 throw new BadExprFromProver ();
             }
-
-            SMTDataType dt = new SMTDataType();
             SExpr typeDef = datatypes[1][0];
-
-            if (typeDef.ArgCount != 1) {
-                Parent.HandleProverError("Unexpected datatype: " + datatypes);
-                throw new BadExprFromProver ();
-            }
-
-            dt.Constructor = typeDef[0].Name;
-            dt.Types = new List<SExpr>();
-
-            for (int i = 0; i < typeDef[0].ArgCount; ++i) {
-                if (typeDef[0][i].ArgCount != 1) {
-                    Parent.HandleProverError("Unexpected datatype constructor: " + typeDef[0]);
-                    throw new BadExprFromProver ();
+            Dictionary<string, List<SExpr>> dataTypeConstructors = new Dictionary<string, List<SExpr>>();
+            for (int j = 0; j < typeDef.ArgCount; ++j) {
+                var argumentTypes = new List<SExpr>();
+                for (int i = 0; i < typeDef[j].ArgCount; ++i) {
+                    if (typeDef[j][i].ArgCount != 1) {
+                        Parent.HandleProverError("Unexpected datatype constructor: " + typeDef[j]);
+                        throw new BadExprFromProver();
+                    }
+                    argumentTypes.Add(typeDef[j][i][0]);
                 }
-                dt.Types.Add(typeDef[0][i][0]);
+                dataTypeConstructors[typeDef[j].Name] = argumentTypes;
             }
-
-            DataTypes[datatypes[0][0].Name] = dt;
+            DataTypes[datatypes[0][0].Name] = dataTypeConstructors;
         }
 
         private void ConvertErrorModel(StringBuilder m) {
