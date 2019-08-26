@@ -1,0 +1,16 @@
+typecheck.bpl(46,9): Error: Only simple assignment allowed on linear variable b
+typecheck.bpl(48,6): Error: Only variable can be assigned to linear variable a
+typecheck.bpl(50,6): Error: Only linear variable can be assigned to linear variable a
+typecheck.bpl(54,6): Error: Linear variable of domain D2 cannot be assigned to linear variable of domain D
+typecheck.bpl(60,9): Error: Linear variable x can occur only once in the right-hand-side of an assignment
+typecheck.bpl(64,4): Error: Linear variable a can occur only once as an input parameter
+typecheck.bpl(66,4): Error: Only variable can be passed to linear parameter b
+typecheck.bpl(68,4): Error: The domains of formal and actual parameters must be the same
+typecheck.bpl(70,4): Error: The domains of formal and actual parameters must be the same
+typecheck.bpl(72,4): Error: Only a linear argument can be passed to linear parameter a
+typecheck.bpl(77,4): Error: Linear variable a can occur only once as an input parameter of a parallel call
+typecheck.bpl(86,0): Error: Output variable d must be available at a return
+typecheck.bpl(95,0): Error: Global variable g must be available at a return
+typecheck.bpl(100,7): Error: unavailable source for a linear read
+typecheck.bpl(101,0): Error: Output variable r must be available at a return
+15 type checking errors detected in typecheck.bpl

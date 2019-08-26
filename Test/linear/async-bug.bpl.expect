@@ -1,3 +1,0 @@
-async-bug.bpl(21,30): Error: unavailable source for a linear read
-async-bug.bpl(28,0): Error: Input variable tid must be available at a return
-2 type checking errors detected in async-bug.bpl

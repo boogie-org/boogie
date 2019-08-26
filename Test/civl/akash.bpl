@@ -7,6 +7,10 @@ function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
 {
   MapConstBool(false)[x := true]
 }
+function {:inline} {:linear "tid"} TidSetCollector(x: [int]bool) : [int]bool
+{
+  x
+}
 
 function {:inline} {:linear "1"} SetCollector1(x: [int]bool) : [int]bool
 {
@@ -20,6 +24,7 @@ function {:inline} {:linear "2"} SetCollector2(x: [int]bool) : [int]bool
 
 var {:layer 0,1} g: int;
 var {:layer 0,1} h: int;
+var {:layer 0,1}{:linear "tid"} unallocated:[int]bool;
 
 procedure {:atomic} {:layer 1} AtomicSetG(val:int)
 modifies g;
@@ -42,7 +47,8 @@ ensures {:layer 1} xl != 0;
 }
 
 procedure {:atomic} {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} xls: int)
-{ assume xls != 0; }
+modifies unallocated;
+{ assume xls != 0; assume unallocated[xls]; unallocated[xls] := false; }
 
 procedure {:yields} {:layer 0} {:refines "AtomicAllocateLow"} AllocateLow() returns ({:linear "tid"} xls: int);
 
