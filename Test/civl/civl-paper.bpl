@@ -15,6 +15,9 @@ function map(lmap): [int]int;
 function cons([int]bool, [int]int) : lmap;
 axiom (forall x: [int]bool, y: [int]int :: {cons(x,y)} dom(cons(x, y)) == x && map(cons(x,y)) == y);
 
+function emptyDom(l:lmap) : lmap
+{ cons((lambda x:int :: false), map(l)) }
+
 var {:layer 0,3} {:linear "mem"} g: lmap;
 var {:layer 0,3} lock: X;
 var {:layer 0,1} b: bool;
@@ -87,7 +90,8 @@ ensures {:layer 1} InvLock(lock, b);
 }
 
 procedure {:both} {:layer 3} AtomicTransferFromGlobalProtected({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap)
-{ assert tid != nil && lock == tid; l := g; }
+modifies g;
+{ assert tid != nil && lock == tid; l := g; g := emptyDom(g); }
 
 procedure {:yields} {:layer 2} {:refines "AtomicTransferFromGlobalProtected"} TransferFromGlobalProtected({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap)
 requires {:layer 1} InvLock(lock, b);
@@ -170,7 +174,8 @@ modifies g;
 procedure {:yields} {:layer 0} {:refines "AtomicTransferToGlobal"} TransferToGlobal({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap);
 
 procedure {:atomic} {:layer 1,2} AtomicTransferFromGlobal({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap)
-{ l := g; }
+modifies g;
+{ l := g; g := emptyDom(g); }
 
 procedure {:yields} {:layer 0} {:refines "AtomicTransferFromGlobal"} TransferFromGlobal({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap);
 

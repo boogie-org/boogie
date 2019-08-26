@@ -7,10 +7,15 @@ function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
 {
   MapConstBool(false)[x := true]
 }
+function {:inline} {:linear "tid"} TidSetCollector(x: [X]bool) : [X]bool
+{
+  x
+}
 
 var {:layer 0,3} A: X;
 var {:layer 0,3} B: X;
 var {:layer 0,3} counter: int;
+var {:layer 0,3}{:linear "tid"} unallocated:[X]bool;
 
 procedure {:right} {:layer 1,3} AtomicLockA({:linear "tid"} tid: X)
 modifies A;
@@ -71,8 +76,11 @@ procedure {:atomic} {:layer 1,3} AtomicAssertB({:linear "tid"} tid: X)
 procedure {:yields} {:layer 0} {:refines "AtomicAssertB"} AssertB({:linear "tid"} tid: X);
 
 procedure {:right} {:layer 1,3} AtomicAllocTid() returns ({:linear "tid"} tid: X)
+modifies unallocated;
 {
   assume tid != nil;
+  assume unallocated[tid];
+  unallocated[tid] := false;
 }
 
 procedure {:yields} {:layer 0} {:refines "AtomicAllocTid"} AllocTid() returns ({:linear "tid"} tid: X);

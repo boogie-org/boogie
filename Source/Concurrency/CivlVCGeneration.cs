@@ -29,6 +29,9 @@ namespace Microsoft.Boogie
             // Trigger functions for existential vairables in transition relations
             decls.AddRange(civlTypeChecker.procToAtomicAction.Values.SelectMany(a => a.layerToActionCopy.Values.SelectMany(ac => ac.triggerFuns.Values)));
             
+            // Linear type checks
+            LinearTypeChecker.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
+
             // Remove original declarations and add new checkers generated above
             program.RemoveTopLevelDeclarations(x => originalDecls.Contains(x));
             program.AddTopLevelDeclarations(decls);

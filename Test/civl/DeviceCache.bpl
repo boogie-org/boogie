@@ -7,6 +7,7 @@ var {:layer 0,1} ghostLock: X;
 var {:layer 0,1} lock: X;
 var {:layer 0,1} currsize: int;
 var {:layer 0,1} newsize: int;
+var {:layer 0,1}{:linear "tid"} unallocated:[X]bool;
 
 function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
 function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
@@ -230,6 +231,7 @@ modifies lock;
 procedure {:yields} {:layer 0} {:refines "atomic_release"} release({:linear "tid"} tid: X);
 
 procedure {:atomic} {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} tid: X)
-{ assume tid != nil; }
+modifies unallocated;
+{ assume tid != nil; assume unallocated[tid]; unallocated[tid] := false; }
 
 procedure {:yields} {:layer 0} {:refines "AtomicAllocateLow"} AllocateLow() returns ({:linear "tid"} tid: X);

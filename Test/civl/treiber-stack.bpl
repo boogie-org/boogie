@@ -56,6 +56,8 @@ procedure {:yields} {:layer 0} {:refines "AtomicTransferToStack"} TransferToStac
 procedure {:atomic} {:layer 1} AtomicTransferFromStack(oldVal: int, newVal: int) returns (r: bool)
 modifies TopOfStack, Used, Stack;
 {
+  assert oldVal != null;
+  assert Inv(TopOfStack, Stack);
   if (oldVal == TopOfStack) {
     TopOfStack := newVal;
     Used[oldVal] := true;
@@ -92,7 +94,7 @@ function {:inline} {:linear "Node"} NodeSetCollector(x: [int]bool) : [int]bool
 
 procedure {:atomic} {:layer 2} atomic_push(x: int, {:linear_in "Node"} x_lmap: lmap)
 modifies Stack, TopOfStack;
-{ Stack := Add(Stack, x, TopOfStack); TopOfStack := x; }
+{ assert dom(x_lmap)[x]; Stack := Add(Stack, x, TopOfStack); TopOfStack := x; }
 
 procedure {:yields} {:layer 1} {:refines "atomic_push"} push(x: int, {:linear_in "Node"} x_lmap: lmap)
 requires {:layer 1} dom(x_lmap)[x];
@@ -126,7 +128,7 @@ ensures {:layer 1} Inv(TopOfStack, Stack);
 
 procedure {:atomic} {:layer 2} atomic_pop() returns (t: int)
 modifies Used, TopOfStack, Stack;
-{ assume TopOfStack != null; t := TopOfStack; Used[t] := true; TopOfStack := map(Stack)[t]; Stack := Remove(Stack, t); }
+{ assert Inv(TopOfStack, Stack); assume TopOfStack != null; t := TopOfStack; Used[t] := true; TopOfStack := map(Stack)[t]; Stack := Remove(Stack, t); }
 
 procedure {:yields} {:layer 1} {:refines "atomic_pop"} pop() returns (t: int)
 requires {:layer 1} Inv(TopOfStack, Stack);
