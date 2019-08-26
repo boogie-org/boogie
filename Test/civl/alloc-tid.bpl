@@ -48,7 +48,7 @@ procedure {:atomic} {:layer 2,2} AtomicAllocate() returns ({:linear "tid"} tid: 
 modifies unallocated;
 {
   assume unallocated[tid];
-  unallocated := unallocated[tid := false];
+  unallocated[tid] := false;
 }
 
 procedure {:yields} {:layer 1} {:refines "AtomicAllocate"} Allocate() returns ({:layer 1} {:linear "tid"} tid: int, i: int)

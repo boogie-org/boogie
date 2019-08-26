@@ -71,7 +71,7 @@ procedure {:atomic} {:layer 1} AtomicSplitLow({:linear_in "x"} xls: [X]bool) ret
 {
   // xls == xls1 ⊎ xls2
   assume xls == MapOr(xls1, xls2);
-  assume MapAnd(MapOr(xls1, xls2), MapNot(MapAnd(xls1, xls2))) == All();
+  assume MapAnd(xls1, xls2) == None();
   assume xls1 != None();
   assume xls2 != None();
 }
