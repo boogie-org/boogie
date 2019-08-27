@@ -106,10 +106,10 @@ namespace Microsoft.Boogie
             return otherBlocks;
         }
 
-        private static List<Block> ComposeBlocks(AtomicActionCopy first, AtomicActionCopy second)
+        private static List<Block> ComposeBlocks(List<Block> blocks1, List<Block> blocks2)
         {
-            List<Block> firstBlocks = CloneBlocks(first.firstAction.Blocks);
-            List<Block> secondBlocks = CloneBlocks(second.secondAction.Blocks);
+            List<Block> firstBlocks = CloneBlocks(blocks1);
+            List<Block> secondBlocks = CloneBlocks(blocks2);
             foreach (Block b in firstBlocks.Where(b => b.TransferCmd is ReturnCmd))
             {
                 List<Block>  bs = new List<Block>  { secondBlocks[0] };
@@ -164,7 +164,7 @@ namespace Microsoft.Boogie
             List<Variable> inputs  = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
             List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
             List<Variable> locals  = Enumerable.Union(first.firstAction.LocVars, second.secondAction.LocVars).ToList();
-            List<Block> blocks = ComposeBlocks(first, second);
+            List<Block> blocks = ComposeBlocks(first.firstAction.Blocks, second.secondAction.Blocks);
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(first.actionUsedGlobalVars);
@@ -177,7 +177,10 @@ namespace Microsoft.Boogie
                 requires.Add(new Requires(false, assertCmd.Expr));
             
             var transitionRelationComputation = new TransitionRelationComputation(first, second, frame, new HashSet<Variable>());
-            Expr transitionRelation = transitionRelationComputation.TransitionRelationCompute();
+            var transitionRelation = Expr.Or(transitionRelationComputation.TransitionRelationCompute(),
+                NewTransitionRelationComputation.ComputeTransitionRelation(
+                    ComposeBlocks(second.secondAction.Blocks, first.firstAction.Blocks),
+                    inputs, outputs, locals, frame));
             {
                 List<Block> bs = new List<Block> { blocks[0] };
                 List<string> ls = new List<string> { blocks[0].Label };
