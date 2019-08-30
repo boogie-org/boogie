@@ -115,12 +115,15 @@ namespace Microsoft.Boogie
 
             private const string copierFormat = "{0}#{1}";
 
-            private IEnumerable<Variable> UsedVariables()
+            private IEnumerable<Variable> UsedVariables
             {
-                return programData.InVars.
-                    Union(programData.OutVars).
-                    Union(programData.LocalVars).
-                    Union(programData.Frame).Distinct();
+                get
+                {
+                    return programData.InVars.
+                        Union(programData.OutVars).
+                        Union(programData.LocalVars).
+                        Union(programData.Frame).Distinct();
+                }
             }
 
             internal PathTranslation(List<Cmd> cmds, ProgramData programData)
@@ -132,7 +135,7 @@ namespace Microsoft.Boogie
                     this.varCopies[i] = new Dictionary<Variable, Variable>();
 
                 this.varLastCopyId = new Dictionary<Variable, int>();
-                foreach (var v in UsedVariables())
+                foreach (var v in UsedVariables)
                 {
                     MakeNewCopy(v);
                 }
@@ -374,6 +377,7 @@ namespace Microsoft.Boogie
         }
     }
 
+    // TODO: Remove or use this visitor
     public class FooCollector : ReadOnlyVisitor
     {
         HashSet<Variable> usedVars;
