@@ -543,7 +543,7 @@ namespace Microsoft.Boogie
 
                     Expr betaExpr = new TransitionRelationComputation(atomicActionCopy, frame, new HashSet<Variable>()).TransitionRelationCompute(true);
                     betaExpr = Expr.Or(betaExpr,
-                        NewTransitionRelationComputation.ComputeTransitionRelation(atomicActionCopy.impl, frame));
+                        NewTransitionRelationComputation.ComputeTransitionRelation(atomicActionCopy, frame));
 
                     beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
                     Expr alphaExpr = Expr.And(atomicActionCopy.gate.Select(g => g.Expr));

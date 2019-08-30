@@ -5,26 +5,102 @@ using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
+    public enum AtomicActionCopyKind
+    {
+        FIRST, SECOND, NORMAL
+    }
+
+    public class AtomicActionCopyAdapter
+    {
+        public readonly AtomicActionCopy action;
+        public readonly AtomicActionCopyKind copyType;
+
+        public AtomicActionCopyAdapter(AtomicActionCopy action, AtomicActionCopyKind copyType)
+        {
+            this.action = action;
+            this.copyType = copyType;
+        }
+
+        private T PassByKind<T>(T normalValue, T firstValue, T secondValue)
+        {
+            switch (copyType)
+            {
+                case AtomicActionCopyKind.FIRST:
+                    return firstValue;
+                case AtomicActionCopyKind.SECOND:
+                    return secondValue;
+                case AtomicActionCopyKind.NORMAL:
+                    return normalValue;
+                default:
+                    throw new Exception();
+            }
+        }
+
+        public List<AssertCmd> Gate
+        {
+            get
+            {
+                return PassByKind(action.gate, action.firstGate, action.secondGate);
+            }
+        }
+
+        public List<Block> Blocks
+        {
+            get
+            {
+                return PassByKind(action.impl.Blocks, action.firstAction.Blocks,
+                    action.secondAction.Blocks);
+            }
+        }
+
+        public List<Variable> InParams
+        {
+            get
+            {
+                return PassByKind(action.impl.InParams, action.firstInParams,
+                    action.secondInParams);
+            }
+        }
+
+        public List<Variable> OutParams
+        {
+            get
+            {
+                return PassByKind(action.impl.OutParams, action.firstOutParams,
+                    action.secondOutParams);
+            }
+        }
+
+        public List<Variable> LocVars
+        {
+            get
+            {
+                return PassByKind(action.impl.LocVars, action.firstAction.LocVars,
+                    action.secondAction.LocVars);
+            }
+        }
+    }
+
     public class NewTransitionRelationComputation
     {
-        private readonly ProgramData programData;
+        private readonly AtomicActionCopyAdapter first, second;
+        private readonly HashSet<Variable> frame;
         private Stack<Cmd> cmdStack;
         private List<PathTranslation> pathTranslations;
 
-        private NewTransitionRelationComputation(List<Block> blocks, IEnumerable<Variable> inVars,
-            IEnumerable<Variable> outVars, IEnumerable<Variable> localVars, IEnumerable<Variable> frame)
-            : this(new ProgramData(blocks, inVars, outVars, localVars, frame)) { }
-
-        private NewTransitionRelationComputation(ProgramData programData)
+        private NewTransitionRelationComputation(AtomicActionCopyAdapter first,
+            AtomicActionCopyAdapter second, IEnumerable<Variable> frame)
         {
-            this.programData = programData;
+            this.first = first;
+            this.second = second;
+            this.frame = new HashSet<Variable>(frame);
             EnumeratePaths();
         }
 
-        public static Expr ComputeTransitionRelation(List<Block> blocks, IEnumerable<Variable> inVars,
-            IEnumerable<Variable> outVars, IEnumerable<Variable> localVars, IEnumerable<Variable> frame)
+        public static Expr ComputeTransitionRelation(AtomicActionCopyAdapter first,
+            AtomicActionCopyAdapter second, IEnumerable<Variable> frame)
         {
-            var transitionRelationComputation = new NewTransitionRelationComputation(blocks, inVars, outVars, localVars, frame);
+            var transitionRelationComputation = new NewTransitionRelationComputation(first, second, frame);
             var transitionRelation = Expr.Or(transitionRelationComputation.pathTranslations.Select(x => x.TransitionRelationExpr));
 
             ResolutionContext rc = new ResolutionContext(null);
@@ -35,10 +111,22 @@ namespace Microsoft.Boogie
             return transitionRelation;
         }
 
-        public static Expr ComputeTransitionRelation(Implementation impl, HashSet<Variable> frame)
+        public static Expr ComputeTransitionRelation(AtomicActionCopy first,
+            AtomicActionCopy second, HashSet<Variable> frame,
+            AtomicActionCopyKind firstKind = AtomicActionCopyKind.SECOND,
+            AtomicActionCopyKind secondKind = AtomicActionCopyKind.FIRST)
         {
-            return ComputeTransitionRelation(impl.Blocks,
-                impl.InParams, impl.OutParams, impl.LocVars, frame);
+            return ComputeTransitionRelation(
+                new AtomicActionCopyAdapter(first, firstKind),
+                new AtomicActionCopyAdapter(second, secondKind),
+                frame);
+        }
+
+
+        public static Expr ComputeTransitionRelation(AtomicActionCopy action, HashSet<Variable> frame,
+            AtomicActionCopyKind kind = AtomicActionCopyKind.NORMAL)
+        {
+            return ComputeTransitionRelation(new AtomicActionCopyAdapter(action, kind), null, frame);
         }
 
         private void EnumeratePaths()
@@ -46,11 +134,11 @@ namespace Microsoft.Boogie
             cmdStack = new Stack<Cmd>();
             this.pathTranslations = new List<PathTranslation>();
             Debug.Assert(cmdStack.Count == 0);
-            EnumeratePathsRec(programData.Blocks[0]);
+            EnumeratePathsRec(first.Blocks[0], true);
             Debug.Assert(cmdStack.Count == 0);
         }
 
-        private void EnumeratePathsRec(Block b)
+        private void EnumeratePathsRec(Block b, bool inFirst)
         {
             int pathSizeAtEntry = cmdStack.Count;
 
@@ -60,14 +148,21 @@ namespace Microsoft.Boogie
             }
             if (b.TransferCmd is ReturnCmd)
             {
-                AddPath();
+                if (inFirst && second != null)
+                {
+                    EnumeratePathsRec(second.Blocks[0], false);
+                }
+                else
+                {
+                    AddPath();
+                }
             }
             else
             {
                 GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
                 foreach (Block target in gotoCmd.labelTargets)
                 {
-                    EnumeratePathsRec(target);
+                    EnumeratePathsRec(target, inFirst);
                 }
             }
 
@@ -82,29 +177,14 @@ namespace Microsoft.Boogie
         {
             List<Cmd> cmds = new List<Cmd>(cmdStack);
             cmds.Reverse();
-            pathTranslations.Add(new PathTranslation(cmds, programData));
-        }
-
-        internal class ProgramData
-        {
-            internal readonly List<Block> Blocks;
-            internal HashSet<Variable> InVars, OutVars, LocalVars, Frame;
-
-            internal ProgramData(List<Block> blocks, IEnumerable<Variable> inVars, IEnumerable<Variable> outVars,
-                IEnumerable<Variable> localVars, IEnumerable<Variable> frame)
-            {
-                this.Blocks = blocks;
-                this.InVars = new HashSet<Variable>(inVars);
-                this.OutVars = new HashSet<Variable>(outVars);
-                this.LocalVars = new HashSet<Variable>(localVars);
-                this.Frame = new HashSet<Variable>(frame);
-            }
+            pathTranslations.Add(new PathTranslation(cmds, first, second, frame));
         }
 
         internal class PathTranslation
         {
             private readonly List<Cmd> cmds;
-            private readonly ProgramData programData;
+            private readonly AtomicActionCopyAdapter first, second;
+            private readonly HashSet<Variable> allInParams, allOutParams, allLocVars, frame;
             private List<Cmd> newCmds;
             private Dictionary<Variable, Variable>[] varCopies;
             private Dictionary<Variable, int> varLastCopyId;
@@ -115,33 +195,52 @@ namespace Microsoft.Boogie
 
             private const string copierFormat = "{0}#{1}";
 
+            internal PathTranslation(List<Cmd> cmds, AtomicActionCopyAdapter first,
+                AtomicActionCopyAdapter second, HashSet<Variable> frame)
+            {
+                this.cmds = cmds;
+                this.first = first;
+                this.second = second;
+                this.frame = frame;
+
+                allInParams = new HashSet<Variable>(first.InParams);
+                allOutParams = new HashSet<Variable>(first.OutParams);
+                allLocVars = new HashSet<Variable>(first.LocVars);
+                if (second != null)
+                {
+                    allInParams.UnionWith(second.InParams);
+                    allOutParams.UnionWith(second.OutParams);
+                    allLocVars.UnionWith(second.LocVars);
+                }
+
+                SetupVarCopies();
+                IntroduceIntermediateVars();
+                EliminateIntermediateVariables();
+                ComputeTransitionRelationExpr();
+            }
+
             private IEnumerable<Variable> UsedVariables
             {
                 get
                 {
-                    return programData.InVars.
-                        Union(programData.OutVars).
-                        Union(programData.LocalVars).
-                        Union(programData.Frame).Distinct();
+                    return allInParams.
+                        Union(allOutParams).
+                        Union(allLocVars).
+                        Union(frame).Distinct();
                 }
             }
 
-            internal PathTranslation(List<Cmd> cmds, ProgramData programData)
+            private void SetupVarCopies()
             {
-                this.cmds = cmds;
-                this.programData = programData;
-                this.varCopies = new Dictionary<Variable, Variable>[cmds.Count + 1];
+                varCopies = new Dictionary<Variable, Variable>[cmds.Count + 1];
                 foreach (int i in Enumerable.Range(0, cmds.Count + 1))
-                    this.varCopies[i] = new Dictionary<Variable, Variable>();
+                    varCopies[i] = new Dictionary<Variable, Variable>();
 
-                this.varLastCopyId = new Dictionary<Variable, int>();
+                varLastCopyId = new Dictionary<Variable, int>();
                 foreach (var v in UsedVariables)
                 {
                     MakeNewCopy(v);
                 }
-                IntroduceIntermediateVars();
-                EliminateIntermediateVariables();
-                ComputeTransitionRelationExpr();
             }
 
             private Dictionary<Variable, Variable> GetVarCopiesFromIds(Dictionary<Variable, int> varCopyId)
@@ -223,12 +322,12 @@ namespace Microsoft.Boogie
 
             private IEnumerable<Variable> GetPostStateVars()
             {
-                return programData.Frame.Union(programData.OutVars).Distinct();
+                return frame.Union(allOutParams).Distinct();
             }
 
             private IEnumerable<Variable> GetPreStateVars()
             {
-                return programData.Frame.Union(programData.InVars).Distinct();
+                return frame.Union(allInParams).Distinct();
             }
 
             private static Cmd ApplyOnRhss(Substitution sub, Cmd cmd)
@@ -301,8 +400,7 @@ namespace Microsoft.Boogie
             private void ComputeTransitionRelationExpr()
             {
                 CalculatePathExpression();
-                Dictionary<Variable, Variable> existsVarMap;
-                AddBoundVariablesForRemainingVars(out existsVarMap);
+                AddBoundVariablesForRemainingVars(out Dictionary<Variable, Variable> existsVarMap);
                 ReplacePreOrPostStateVars();
                 TransitionRelationExpr = Expr.And(pathExprs);
                 if (existsVarMap.Any())

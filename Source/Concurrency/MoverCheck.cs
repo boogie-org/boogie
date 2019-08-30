@@ -178,9 +178,7 @@ namespace Microsoft.Boogie
             
             var transitionRelationComputation = new TransitionRelationComputation(first, second, frame, new HashSet<Variable>());
             var transitionRelation = Expr.Or(transitionRelationComputation.TransitionRelationCompute(),
-                NewTransitionRelationComputation.ComputeTransitionRelation(
-                    ComposeBlocks(second.secondAction.Blocks, first.firstAction.Blocks),
-                    inputs, outputs, locals, frame));
+                NewTransitionRelationComputation.ComputeTransitionRelation(second, first, frame));
             {
                 List<Block> bs = new List<Block> { blocks[0] };
                 List<string> ls = new List<string> { blocks[0].Label };
