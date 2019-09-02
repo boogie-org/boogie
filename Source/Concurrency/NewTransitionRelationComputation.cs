@@ -83,43 +83,65 @@ namespace Microsoft.Boogie
 
     public class NewTransitionRelationComputation
     {
-        private readonly AtomicActionCopyAdapter first, second;
-        private readonly HashSet<Variable> frame;
+        internal readonly AtomicActionCopyAdapter first, second;
+        internal readonly HashSet<Variable> frame;
+        internal readonly Dictionary<GlobalVariable, List<WitnessFunction>> globalVarToWitnesses;
         private Stack<Cmd> cmdStack;
         private List<PathTranslation> pathTranslations;
 
+        private int transferStackIndex;
+
         private NewTransitionRelationComputation(AtomicActionCopyAdapter first,
-            AtomicActionCopyAdapter second, IEnumerable<Variable> frame)
+            AtomicActionCopyAdapter second, IEnumerable<Variable> frame,
+            List<WitnessFunction> witnesses)
         {
             this.first = first;
             this.second = second;
             this.frame = new HashSet<Variable>(frame);
+
+            this.globalVarToWitnesses = new Dictionary<GlobalVariable, List<WitnessFunction>>();
+            if (witnesses != null)
+            {
+                foreach (var witness in witnesses)
+                {
+                    var gVar = witness.globalVar;
+                    if (!globalVarToWitnesses.ContainsKey(gVar))
+                    {
+                        globalVarToWitnesses[gVar] = new List<WitnessFunction>();
+                    }
+                    globalVarToWitnesses[gVar].Add(witness);
+                }
+            }
+
             EnumeratePaths();
         }
 
-        public static Expr ComputeTransitionRelation(AtomicActionCopyAdapter first,
-            AtomicActionCopyAdapter second, IEnumerable<Variable> frame)
+        private static Expr ComputeTransitionRelation(AtomicActionCopyAdapter first,
+            AtomicActionCopyAdapter second, IEnumerable<Variable> frame,
+            List<WitnessFunction> witnesses = null)
         {
-            var transitionRelationComputation = new NewTransitionRelationComputation(first, second, frame);
+            var transitionRelationComputation = new NewTransitionRelationComputation(first, second, frame, witnesses);
             var transitionRelation = Expr.Or(transitionRelationComputation.pathTranslations.Select(x => x.TransitionRelationExpr));
 
-            ResolutionContext rc = new ResolutionContext(null);
-            rc.StateMode = ResolutionContext.State.Two;
+            ResolutionContext rc = new ResolutionContext(null)
+            {
+                StateMode = ResolutionContext.State.Two
+            };
             transitionRelation.Resolve(rc);
             transitionRelation.Typecheck(new TypecheckingContext(null));
 
             return transitionRelation;
         }
 
-        public static Expr ComputeTransitionRelation(AtomicActionCopy first,
-            AtomicActionCopy second, HashSet<Variable> frame,
+        public static Expr ComputeTransitionRelation(AtomicActionCopy first, AtomicActionCopy second,
+            HashSet<Variable> frame, List<WitnessFunction> witnesses,
             AtomicActionCopyKind firstKind = AtomicActionCopyKind.SECOND,
             AtomicActionCopyKind secondKind = AtomicActionCopyKind.FIRST)
         {
             return ComputeTransitionRelation(
                 new AtomicActionCopyAdapter(first, firstKind),
                 new AtomicActionCopyAdapter(second, secondKind),
-                frame);
+                frame, witnesses);
         }
 
 
@@ -150,6 +172,7 @@ namespace Microsoft.Boogie
             {
                 if (inFirst && second != null)
                 {
+                    transferStackIndex = cmdStack.Count;
                     EnumeratePathsRec(second.Blocks[0], false);
                 }
                 else
@@ -177,36 +200,48 @@ namespace Microsoft.Boogie
         {
             List<Cmd> cmds = new List<Cmd>(cmdStack);
             cmds.Reverse();
-            pathTranslations.Add(new PathTranslation(cmds, first, second, frame));
+            int transferIndex = cmds.Count - transferStackIndex;
+            pathTranslations.Add(new PathTranslation(this, cmds, transferIndex));
         }
 
         internal class PathTranslation
         {
             private readonly List<Cmd> cmds;
-            private readonly AtomicActionCopyAdapter first, second;
+            private readonly NewTransitionRelationComputation transitionRelationComputer;
             private readonly HashSet<Variable> allInParams, allOutParams, allLocVars, frame;
+            private readonly AtomicActionCopyAdapter first, second;
+
+            // Used when second != null
+            // TODO: Add some comments
+            private readonly int intermediateStateIndex;
+            private Dictionary<Variable, Variable> frameIntermediateCopy;
+
             private List<Cmd> newCmds;
             private Dictionary<Variable, Variable>[] varCopies;
             private Dictionary<Variable, int> varLastCopyId;
             private HashSet<Variable> definedVariables;
             private Dictionary<Variable, Expr> varToExpr;
             private List<Expr> pathExprs;
+
             internal Expr TransitionRelationExpr;
 
             private const string copierFormat = "{0}#{1}";
 
-            internal PathTranslation(List<Cmd> cmds, AtomicActionCopyAdapter first,
-                AtomicActionCopyAdapter second, HashSet<Variable> frame)
+            internal PathTranslation(NewTransitionRelationComputation transitionRelationComputer,
+                List<Cmd> cmds, int intermediateStateIndex)
             {
                 this.cmds = cmds;
-                this.first = first;
-                this.second = second;
-                this.frame = frame;
+                this.transitionRelationComputer = transitionRelationComputer;
+                this.intermediateStateIndex = intermediateStateIndex;
+                this.frame = transitionRelationComputer.frame;
+                this.first = transitionRelationComputer.first;
+                this.second = transitionRelationComputer.second;
 
                 allInParams = new HashSet<Variable>(first.InParams);
                 allOutParams = new HashSet<Variable>(first.OutParams);
                 allLocVars = new HashSet<Variable>(first.LocVars);
-                if (second != null)
+                frameIntermediateCopy = new Dictionary<Variable, Variable>();
+                if (IsJoint())
                 {
                     allInParams.UnionWith(second.InParams);
                     allOutParams.UnionWith(second.OutParams);
@@ -216,7 +251,22 @@ namespace Microsoft.Boogie
                 SetupVarCopies();
                 IntroduceIntermediateVars();
                 EliminateIntermediateVariables();
+                if (IsJoint())
+                {
+                    var remainingIntermediateFrame = frameIntermediateCopy.
+                        Where(kvp => !varToExpr.ContainsKey(kvp.Value)).
+                        Select(kvp => kvp.Value);
+                    while (TryElimination(remainingIntermediateFrame)) { }
+
+                    while (TryElimination(remainingIntermediateFrame.
+                        Intersect(FrameWithWitnesses))) { }
+                }
                 ComputeTransitionRelationExpr();
+            }
+
+            private bool IsJoint()
+            {
+                return second != null;
             }
 
             private IEnumerable<Variable> UsedVariables
@@ -227,6 +277,15 @@ namespace Microsoft.Boogie
                         Union(allOutParams).
                         Union(allLocVars).
                         Union(frame).Distinct();
+                }
+            }
+
+            private IEnumerable<Variable> FrameWithWitnesses
+            {
+                get
+                {
+                    return frame.Intersect(transitionRelationComputer.
+                        globalVarToWitnesses.Keys);
                 }
             }
 
@@ -251,8 +310,9 @@ namespace Microsoft.Boogie
             private void IntroduceIntermediateVars()
             {
                 newCmds = new List<Cmd>();
-                foreach (var cmd in cmds)
+                for (int k = 0; k < cmds.Count; k++)
                 {
+                    Cmd cmd = cmds[k];
                     if (cmd is AssignCmd)
                     {
                         AssignCmd assignCmd = ((AssignCmd)cmd).AsSimpleAssignCmd;
@@ -294,6 +354,12 @@ namespace Microsoft.Boogie
                     {
                         Debug.Assert(false);
                     }
+                    if (IsJoint() && k == intermediateStateIndex)
+                    {
+                        frameIntermediateCopy = GetVarCopiesFromIds(varLastCopyId).
+                            Where(kvp => frame.Contains(kvp.Key)).
+                            ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                    }
                 }
             }
 
@@ -332,9 +398,8 @@ namespace Microsoft.Boogie
 
             private static Cmd ApplyOnRhss(Substitution sub, Cmd cmd)
             {
-                if (cmd is AssignCmd)
+                if (cmd is AssignCmd assignCmd)
                 {
-                    var assignCmd = (AssignCmd)cmd;
                     return new AssignCmd(cmd.tok,
                         assignCmd.Lhss,
                         assignCmd.Rhss.Select(x => Substituter.Apply(sub, x)).ToList(),
@@ -352,49 +417,52 @@ namespace Microsoft.Boogie
                     varToExpr[v] = Expr.Ident(v);
                 }
 
-                bool done = false;
-                while (!done)
-                {
-                    done = true;
-                    var remainingCmds = new List<Cmd>();
-                    foreach (var cmd in newCmds)
-                    {
-                        if (cmd is AssignCmd)
-                        {
-                            AssignCmd assignCmd = (AssignCmd)cmd;
+                while (TryElimination(new HashSet<Variable>())) { }
+            }
 
-                            var lhss = new List<AssignLhs>();
-                            var rhss = new List<Expr>();
-                            for (int k = 0; k < assignCmd.Lhss.Count; k++)
+            private bool TryElimination(IEnumerable<Variable> extraDefinedVariables)
+            {
+                bool changed = false;
+                var remainingCmds = new List<Cmd>();
+                foreach (var cmd in newCmds)
+                {
+                    if (cmd is AssignCmd assignCmd)
+                    {
+                        var lhss = new List<AssignLhs>();
+                        var rhss = new List<Expr>();
+                        for (int k = 0; k < assignCmd.Lhss.Count; k++)
+                        {
+                            var lhs = assignCmd.Lhss[k];
+                            var rhs = assignCmd.Rhss[k];
+                            Variable assignedVar = lhs.DeepAssignedVariable;
+
+                            var allDefinedVars = varToExpr.Keys.Union(extraDefinedVariables);
+                            if (!allDefinedVars.Contains(assignedVar) &&
+                                !VariableCollector.Collect(rhs).Where(x => !(x is BoundVariable)).
+                                    Except(allDefinedVars).Any())
                             {
-                                var lhs = assignCmd.Lhss[k];
-                                var rhs = assignCmd.Rhss[k];
-                                Variable assignedVar = lhs.DeepAssignedVariable;
-                                if (!varToExpr.ContainsKey(assignedVar) &&
-                                    !VariableCollector.Collect(rhs).Where(x => !(x is BoundVariable)).
-                                        Except(varToExpr.Keys).Any())
-                                {
-                                    varToExpr[assignedVar] = rhs;
-                                }
-                                else
-                                {
-                                    lhss.Add(lhs);
-                                    rhss.Add(rhs);
-                                }
+                                varToExpr[assignedVar] = rhs;
+                                changed = true;
                             }
-                            if (lhss.Any())
+                            else
                             {
-                                remainingCmds.Add(new AssignCmd(cmd.tok, lhss, rhss, assignCmd.Attributes));
+                                lhss.Add(lhs);
+                                rhss.Add(rhs);
                             }
                         }
-                        else if (cmd is AssumeCmd)
+                        if (lhss.Any())
                         {
-                            remainingCmds.Add(cmd);
+                            remainingCmds.Add(new AssignCmd(cmd.tok, lhss, rhss, assignCmd.Attributes));
                         }
                     }
-                    Substitution sub = Substituter.SubstitutionFromHashtable(varToExpr);
-                    newCmds = remainingCmds.Select(cmd => ApplyOnRhss(sub, cmd)).ToList();
+                    else if (cmd is AssumeCmd)
+                    {
+                        remainingCmds.Add(cmd);
+                    }
                 }
+                Substitution sub = Substituter.SubstitutionFromHashtable(varToExpr);
+                newCmds = remainingCmds.Select(cmd => ApplyOnRhss(sub, cmd)).ToList();
+                return changed;
             }
 
             private void ComputeTransitionRelationExpr()

@@ -51,12 +51,23 @@ namespace Microsoft.Boogie
 
                     if (moverCheck.First.IsRightMover)
                     {
-                        moverChecking.CreateCommutativityChecker(first, second);
+                        // TODO: Refactor
+                        civlTypeChecker.atomicActionPairToWitnessFunctions.TryGetValue(Tuple.Create(
+                                moverCheck.Second,
+                                moverCheck.First,
+                                layer
+                            ), out List<WitnessFunction> witnesses);
+                        moverChecking.CreateCommutativityChecker(first, second, witnesses);
                         moverChecking.CreateGatePreservationChecker(second, first);
                     }
                     if (moverCheck.First.IsLeftMover)
                     {
-                        moverChecking.CreateCommutativityChecker(second, first);
+                        civlTypeChecker.atomicActionPairToWitnessFunctions.TryGetValue(Tuple.Create(
+                                moverCheck.First,
+                                moverCheck.Second,
+                                layer
+                            ), out List<WitnessFunction> witnesses);
+                        moverChecking.CreateCommutativityChecker(second, first, witnesses);
                         moverChecking.CreateGatePreservationChecker(first, second);
                         moverChecking.CreateFailurePreservationChecker(second, first);
                     }
@@ -152,7 +163,7 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateCommutativityChecker(AtomicActionCopy first, AtomicActionCopy second)
+        private void CreateCommutativityChecker(AtomicActionCopy first, AtomicActionCopy second, List<WitnessFunction> witnesses)
         {
             if (first == second && first.firstInParams.Count == 0 && first.firstOutParams.Count == 0)
                 return;
@@ -178,7 +189,7 @@ namespace Microsoft.Boogie
             
             var transitionRelationComputation = new TransitionRelationComputation(first, second, frame, new HashSet<Variable>());
             var transitionRelation = Expr.Or(transitionRelationComputation.TransitionRelationCompute(),
-                NewTransitionRelationComputation.ComputeTransitionRelation(second, first, frame));
+                NewTransitionRelationComputation.ComputeTransitionRelation(second, first, frame, witnesses));
             {
                 List<Block> bs = new List<Block> { blocks[0] };
                 List<string> ls = new List<string> { blocks[0].Label };

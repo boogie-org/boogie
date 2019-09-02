@@ -399,7 +399,7 @@ namespace Microsoft.Boogie
         public readonly AtomicAction firstAction;
         public readonly AtomicAction secondAction;
         public readonly List<int> layers;
-        public List<InputArgumentMap> inputArgsMap { get; private set; }
+        public List<InputArgumentMap> InputArgsMap { get; private set; }
 
         public WitnessFunction(Function function, GlobalVariable globalVar,
             AtomicAction firstAction, AtomicAction secondAction, List<int> layers)
@@ -409,12 +409,12 @@ namespace Microsoft.Boogie
             this.firstAction = firstAction;
             this.secondAction = secondAction;
             this.layers = layers;
-            this.inputArgsMap = new List<InputArgumentMap>();
+            this.InputArgsMap = new List<InputArgumentMap>();
         }
 
         internal void AddInputMap(InputArgumentKind argumentKind, string name)
         {
-            inputArgsMap.Add(new InputArgumentMap(argumentKind, name));
+            InputArgsMap.Add(new InputArgumentMap(argumentKind, name));
         }
     }
 
@@ -433,6 +433,8 @@ namespace Microsoft.Boogie
         public Dictionary<Procedure, AtomicAction> procToAtomicAction;
         public Dictionary<Procedure, YieldingProc> procToYieldingProc;
         public Dictionary<Procedure, InstrumentationProc> procToInstrumentationProc;
+        public Dictionary<Tuple<AtomicAction, AtomicAction, int>,
+            List<WitnessFunction>> atomicActionPairToWitnessFunctions;
 
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
         Dictionary<CallCmd, int> instrumentationCallToLayer;
@@ -457,6 +459,8 @@ namespace Microsoft.Boogie
             this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
             this.procToInstrumentationProc = new Dictionary<Procedure, InstrumentationProc>();
             this.instrumentationCallToLayer = new Dictionary<CallCmd, int>();
+            this.atomicActionPairToWitnessFunctions = new Dictionary<Tuple<AtomicAction, AtomicAction, int>,
+                List<WitnessFunction>>();
         }
 
         public bool CallExists(CallCmd callCmd, int enclosingProcLayerNum, int layerNum)
@@ -623,6 +627,21 @@ namespace Microsoft.Boogie
             foreach (var f in program.Functions)
             {
                 wfv.VisitFunction(f);
+            }
+            foreach (var witnessFunction in wfv.allWitnessFunctions)
+            {
+                foreach (var layer in witnessFunction.layers)
+                {
+                    var key = Tuple.Create(
+                        witnessFunction.firstAction,
+                        witnessFunction.secondAction,
+                        layer);
+                    if (!atomicActionPairToWitnessFunctions.ContainsKey(key))
+                    {
+                        atomicActionPairToWitnessFunctions[key] = new List<WitnessFunction>();
+                    }
+                    atomicActionPairToWitnessFunctions[key].Add(witnessFunction);
+                }
             }
         }
 
@@ -1825,15 +1844,12 @@ namespace Microsoft.Boogie
         private class WitnessFunctionVisitor : ReadOnlyVisitor
         {
             private readonly CivlTypeChecker ctc;
+            internal List<WitnessFunction> allWitnessFunctions;
 
             public WitnessFunctionVisitor(CivlTypeChecker ctc)
             {
                 this.ctc = ctc;
-            }
-
-            private void Error(Function node, string msg)
-            {
-                ctc.Error(node, msg);
+                allWitnessFunctions = new List<WitnessFunction>();
             }
 
             public override Function VisitFunction(Function node)
@@ -1843,9 +1859,10 @@ namespace Microsoft.Boogie
                 {
                     int parserErrorCount = WitnessAttributeParser.Parse(ctc, node, witnessAttribute,
                         out WitnessFunction witnessFunction);
-                    if (parserErrorCount == 0)
+                    if (parserErrorCount == 0 &&
+                        WitnessFunctionChecker.Check(node, ctc, witnessFunction) == 0)
                     {
-                        WitnessFunctionChecker.Check(node, ctc, witnessFunction);
+                        allWitnessFunctions.Add(witnessFunction);
                     }
                 }
                 return base.VisitFunction(node);
@@ -1853,6 +1870,7 @@ namespace Microsoft.Boogie
 
             private class WitnessFunctionChecker
             {
+                // TODO: Move these to a better place
                 private const string FirstProcInputPrefix = "first_";
                 private const string SecondProcInputPrefix = "second_";
                 private const string PostStateSuffix = "'";
