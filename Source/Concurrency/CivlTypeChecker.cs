@@ -1839,6 +1839,12 @@ namespace Microsoft.Boogie
                 CivlAttributes.RemoveLayerAttribute(node);
                 return base.VisitVariable(node);
             }
+
+            public override Function VisitFunction(Function node)
+            {
+                CivlAttributes.RemoveWitnessAttribute(node);
+                return base.VisitFunction(node);
+            }
         }
 
         private class WitnessFunctionVisitor : ReadOnlyVisitor
@@ -1854,7 +1860,7 @@ namespace Microsoft.Boogie
 
             public override Function VisitFunction(Function node)
             {
-                string witnessAttribute = QKeyValue.FindStringAttribute(node.Attributes, "witness");
+                string witnessAttribute = QKeyValue.FindStringAttribute(node.Attributes, CivlAttributes.WITNESS);
                 if (witnessAttribute != null)
                 {
                     int parserErrorCount = WitnessAttributeParser.Parse(ctc, node, witnessAttribute,
