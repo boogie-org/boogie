@@ -53,8 +53,8 @@ namespace Microsoft.Boogie
                     {
                         // TODO: Refactor
                         civlTypeChecker.atomicActionPairToWitnessFunctions.TryGetValue(Tuple.Create(
-                                moverCheck.Second,
                                 moverCheck.First,
+                                moverCheck.Second,
                                 layer
                             ), out List<WitnessFunction> witnesses);
                         moverChecking.CreateCommutativityChecker(first, second, witnesses);
@@ -63,8 +63,8 @@ namespace Microsoft.Boogie
                     if (moverCheck.First.IsLeftMover)
                     {
                         civlTypeChecker.atomicActionPairToWitnessFunctions.TryGetValue(Tuple.Create(
-                                moverCheck.First,
                                 moverCheck.Second,
+                                moverCheck.First,
                                 layer
                             ), out List<WitnessFunction> witnesses);
                         moverChecking.CreateCommutativityChecker(second, first, witnesses);

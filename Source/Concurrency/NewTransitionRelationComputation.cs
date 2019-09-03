@@ -79,6 +79,14 @@ namespace Microsoft.Boogie
                     action.secondAction.LocVars);
             }
         }
+
+        public string Prefix
+        {
+            get
+            {
+                return PassByKind("", "first_", "second_");
+            }
+        }
     }
 
     public class NewTransitionRelationComputation
@@ -222,6 +230,7 @@ namespace Microsoft.Boogie
             private HashSet<Variable> definedVariables;
             private Dictionary<Variable, Expr> varToExpr;
             private List<Expr> pathExprs;
+            private List<Expr> witnessedTransitionRelations;
 
             internal Expr TransitionRelationExpr;
 
@@ -253,15 +262,24 @@ namespace Microsoft.Boogie
                 EliminateIntermediateVariables();
                 if (IsJoint())
                 {
-                    var remainingIntermediateFrame = frameIntermediateCopy.
-                        Where(kvp => !varToExpr.ContainsKey(kvp.Value)).
-                        Select(kvp => kvp.Value);
-                    while (TryElimination(remainingIntermediateFrame)) { }
-
-                    while (TryElimination(remainingIntermediateFrame.
-                        Intersect(FrameWithWitnesses))) { }
+                    EliminateWithIntermediateState();
                 }
+                // TODO: Generate warning for not eliminated variables
                 ComputeTransitionRelationExpr();
+            }
+
+            private void EliminateWithIntermediateState()
+            {
+                Debug.Assert(IsJoint());
+
+                var remainingIntermediateFrame = frameIntermediateCopy.
+                    Where(kvp => !varToExpr.ContainsKey(kvp.Value)).
+                    Select(kvp => kvp.Value);
+                while (TryElimination(remainingIntermediateFrame)) { }
+
+                while (TryElimination(remainingIntermediateFrame.
+                    Intersect(IntermediateFrameWithWitnesses))) { }
+                // TODO: Generate warning for variables without any witness functions
             }
 
             private bool IsJoint()
@@ -282,10 +300,18 @@ namespace Microsoft.Boogie
 
             private IEnumerable<Variable> FrameWithWitnesses
             {
+                get {
+                    return frame.Intersect(
+                        transitionRelationComputer.globalVarToWitnesses.Keys);
+                }
+            }
+
+            private IEnumerable<Variable> IntermediateFrameWithWitnesses
+            {
                 get
                 {
-                    return frame.Intersect(transitionRelationComputer.
-                        globalVarToWitnesses.Keys);
+                    return FrameWithWitnesses.
+                        Select(v => frameIntermediateCopy[v]);
                 }
             }
 
@@ -307,11 +333,22 @@ namespace Microsoft.Boogie
                 return varCopyId.ToDictionary(kvp => kvp.Key, kvp => varCopies[kvp.Value][kvp.Key]);
             }
 
+            private void PopulateIntermediateFrameCopy()
+            {
+                frameIntermediateCopy = GetVarCopiesFromIds(varLastCopyId).
+                    Where(kvp => frame.Contains(kvp.Key)).
+                    ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            }
+
             private void IntroduceIntermediateVars()
             {
                 newCmds = new List<Cmd>();
                 for (int k = 0; k < cmds.Count; k++)
                 {
+                    if (IsJoint() && k == intermediateStateIndex)
+                    {
+                        PopulateIntermediateFrameCopy();
+                    }
                     Cmd cmd = cmds[k];
                     if (cmd is AssignCmd)
                     {
@@ -354,13 +391,10 @@ namespace Microsoft.Boogie
                     {
                         Debug.Assert(false);
                     }
-                    if (IsJoint() && k == intermediateStateIndex)
-                    {
-                        frameIntermediateCopy = GetVarCopiesFromIds(varLastCopyId).
-                            Where(kvp => frame.Contains(kvp.Key)).
-                            ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                    }
                 }
+                // TODO: Add note on this
+                if (!IsJoint() || cmds.Count == intermediateStateIndex)
+                    PopulateIntermediateFrameCopy();
             }
 
             private void MakeNewCopy(Variable v)
@@ -471,9 +505,69 @@ namespace Microsoft.Boogie
                 AddBoundVariablesForRemainingVars(out Dictionary<Variable, Variable> existsVarMap);
                 ReplacePreOrPostStateVars();
                 TransitionRelationExpr = Expr.And(pathExprs);
+                if (IsJoint())
+                {
+                    ComputeWitnessedTransitionRelationExprs();
+                    if (witnessedTransitionRelations.Count > 0)
+                    {
+                        TransitionRelationExpr = Expr.Or(witnessedTransitionRelations);
+                    }
+                }
                 if (existsVarMap.Any())
                 {
                     TransitionRelationExpr = new ExistsExpr(Token.NoToken, existsVarMap.Values.ToList(), TransitionRelationExpr);
+                }
+            }
+
+            private void ComputeWitnessedTransitionRelationExprs()
+            {
+                witnessedTransitionRelations = new List<Expr>();
+                Dictionary<Variable, List<WitnessFunction>> varToWitnesses = FrameWithWitnesses.
+                    Where(x => NotEliminatedVars.Contains(frameIntermediateCopy[x])).
+                    ToDictionary(
+                        x => frameIntermediateCopy[x],
+                        x => transitionRelationComputer.globalVarToWitnesses[(GlobalVariable)x]);
+                foreach (var witnessSet in Extensions.CartesianProduct(varToWitnesses.Values))
+                {
+                    Dictionary<Variable, Expr> witnessSubst = new Dictionary<Variable, Expr>();
+                    foreach (Tuple<Variable, WitnessFunction> pair in
+                        Enumerable.Zip(varToWitnesses.Keys, witnessSet, Tuple.Create))
+                    {
+                        WitnessFunction witnessFunction = pair.Item2;
+                        List<Expr> args = new List<Expr>();
+                        foreach (var arg in witnessFunction.InputArgsMap)
+                        {
+                            Expr expr = null;
+                            switch (arg.kind)
+                            {
+                                case WitnessFunction.InputArgumentKind.FIRST_IN:
+                                    expr = Expr.Ident(first.InParams.
+                                        First(x => x.Name == first.Prefix + arg.name));
+                                    break;
+                                case WitnessFunction.InputArgumentKind.SECOND_IN:
+                                    expr = Expr.Ident(second.InParams.
+                                        First(x => x.Name == second.Prefix + arg.name));
+                                    break;
+                                case WitnessFunction.InputArgumentKind.PRE_STATE:
+                                    expr = ExprHelper.Old(Expr.Ident(
+                                        frame.First(x => x.Name == arg.name)));
+                                    break;
+                                case WitnessFunction.InputArgumentKind.POST_STATE:
+                                    expr = Expr.Ident(frame.First(x => x.Name == arg.name));
+                                    break;
+                                default:
+                                    Debug.Assert(false);
+                                    break;
+                            }
+                            args.Add(expr);
+                        }
+                        witnessSubst[pair.Item1] = ExprHelper.FunctionCall(
+                                witnessFunction.function, args.ToArray()
+                            );
+                    }
+                    var subst = Substituter.SubstitutionFromHashtable(witnessSubst);
+                    witnessedTransitionRelations.Add(
+                        Substituter.Apply(subst, TransitionRelationExpr));
                 }
             }
 
@@ -497,9 +591,20 @@ namespace Microsoft.Boogie
                 pathExprs = pathExprs.Select(x => Substituter.Apply(finalSub, x)).ToList();
             }
 
+            private IEnumerable<Variable> NotEliminatedVars
+            {
+                get
+                {
+                    return newCmds.
+                    // TODO: Add note about bound variables in here
+                        SelectMany(cmd => VariableCollector.Collect(cmd).Where(x => !(x is BoundVariable))).
+                        Except(varToExpr.Keys);
+                }
+            }
+
             private void AddBoundVariablesForRemainingVars(out Dictionary<Variable, Variable> existsVars)
             {
-                var remainingVars = newCmds.SelectMany(cmd => VariableCollector.Collect(cmd).Where(x => !(x is BoundVariable))).Except(varToExpr.Keys);
+                var remainingVars = NotEliminatedVars.Except(IntermediateFrameWithWitnesses);
                 existsVars = new Dictionary<Variable, Variable>();
                 foreach (var v in remainingVars)
                 {
@@ -567,6 +672,21 @@ namespace Microsoft.Boogie
         {
             usedVars.Add(node.Decl);
             return base.VisitIdentifierExpr(node);
+        }
+    }
+
+    // TODO: Move this to a proper place
+    public static class Extensions
+    {
+        public static IEnumerable<IEnumerable<T>> CartesianProduct<T>(this IEnumerable<IEnumerable<T>> sequences)
+        {
+            IEnumerable<IEnumerable<T>> emptyProduct = new[] { Enumerable.Empty<T>() };
+            return sequences.Aggregate(
+                emptyProduct,
+                (accumulator, sequence) =>
+                from acc in accumulator
+                from item in sequence
+                select acc.Concat(new[] { item }));
         }
     }
 }
