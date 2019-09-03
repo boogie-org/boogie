@@ -208,8 +208,7 @@ namespace Microsoft.Boogie
         {
             List<Cmd> cmds = new List<Cmd>(cmdStack);
             cmds.Reverse();
-            int transferIndex = cmds.Count - transferStackIndex;
-            pathTranslations.Add(new PathTranslation(this, cmds, transferIndex));
+            pathTranslations.Add(new PathTranslation(this, cmds));
         }
 
         internal class PathTranslation
@@ -221,7 +220,6 @@ namespace Microsoft.Boogie
 
             // Used when second != null
             // TODO: Add some comments
-            private readonly int intermediateStateIndex;
             private Dictionary<Variable, Variable> frameIntermediateCopy;
 
             private List<Cmd> newCmds;
@@ -237,11 +235,10 @@ namespace Microsoft.Boogie
             private const string copierFormat = "{0}#{1}";
 
             internal PathTranslation(NewTransitionRelationComputation transitionRelationComputer,
-                List<Cmd> cmds, int intermediateStateIndex)
+                List<Cmd> cmds)
             {
                 this.cmds = cmds;
                 this.transitionRelationComputer = transitionRelationComputer;
-                this.intermediateStateIndex = intermediateStateIndex;
                 this.frame = transitionRelationComputer.frame;
                 this.first = transitionRelationComputer.first;
                 this.second = transitionRelationComputer.second;
@@ -345,7 +342,7 @@ namespace Microsoft.Boogie
                 newCmds = new List<Cmd>();
                 for (int k = 0; k < cmds.Count; k++)
                 {
-                    if (IsJoint() && k == intermediateStateIndex)
+                    if (IsJoint() && k == transitionRelationComputer.transferStackIndex)
                     {
                         PopulateIntermediateFrameCopy();
                     }
@@ -393,7 +390,7 @@ namespace Microsoft.Boogie
                     }
                 }
                 // TODO: Add note on this
-                if (!IsJoint() || cmds.Count == intermediateStateIndex)
+                if (!IsJoint() || cmds.Count == transitionRelationComputer.transferStackIndex)
                     PopulateIntermediateFrameCopy();
             }
 
@@ -541,12 +538,13 @@ namespace Microsoft.Boogie
                             switch (arg.kind)
                             {
                                 case WitnessFunction.InputArgumentKind.FIRST_IN:
-                                    expr = Expr.Ident(first.InParams.
-                                        First(x => x.Name == first.Prefix + arg.name));
-                                    break;
-                                case WitnessFunction.InputArgumentKind.SECOND_IN:
+                                    // TODO: Add note on the reason of using second
                                     expr = Expr.Ident(second.InParams.
                                         First(x => x.Name == second.Prefix + arg.name));
+                                    break;
+                                case WitnessFunction.InputArgumentKind.SECOND_IN:
+                                    expr = Expr.Ident(first.InParams.
+                                        First(x => x.Name == first.Prefix + arg.name));
                                     break;
                                 case WitnessFunction.InputArgumentKind.PRE_STATE:
                                     expr = ExprHelper.Old(Expr.Ident(

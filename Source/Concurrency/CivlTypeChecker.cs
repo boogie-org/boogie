@@ -1944,14 +1944,13 @@ namespace Microsoft.Boogie
                         if (name.StartsWith(FirstProcInputPrefix, StringComparison.Ordinal))
                         {
                             name = name.Substring(FirstProcInputPrefix.Length);
-                            // TODO: Add comment about second or first
-                            argumentKind = WitnessFunction.InputArgumentKind.SECOND_IN;
+                            argumentKind = WitnessFunction.InputArgumentKind.FIRST_IN;
                             CheckInputArg(witnessFunction.firstAction, type, name);
                         }
                         else if (name.StartsWith(SecondProcInputPrefix, StringComparison.Ordinal))
                         {
                             name = name.Substring(SecondProcInputPrefix.Length);
-                            argumentKind = WitnessFunction.InputArgumentKind.FIRST_IN;
+                            argumentKind = WitnessFunction.InputArgumentKind.SECOND_IN;
                             CheckInputArg(witnessFunction.secondAction, type, name);
                         }
                         else
