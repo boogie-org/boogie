@@ -80,6 +80,14 @@ namespace Microsoft.Boogie
             }
         }
 
+        public IEnumerable<Variable> Params
+        {
+            get
+            {
+                return InParams.Union(OutParams);
+            }
+        }
+
         public string Prefix
         {
             get
@@ -537,13 +545,13 @@ namespace Microsoft.Boogie
                             Expr expr = null;
                             switch (arg.kind)
                             {
-                                case WitnessFunction.InputArgumentKind.FIRST_IN:
+                                case WitnessFunction.InputArgumentKind.FIRST_ARG:
                                     // TODO: Add note on the reason of using second
-                                    expr = Expr.Ident(second.InParams.
+                                    expr = Expr.Ident(second.Params.
                                         First(x => x.Name == second.Prefix + arg.name));
                                     break;
-                                case WitnessFunction.InputArgumentKind.SECOND_IN:
-                                    expr = Expr.Ident(first.InParams.
+                                case WitnessFunction.InputArgumentKind.SECOND_ARG:
+                                    expr = Expr.Ident(first.Params.
                                         First(x => x.Name == first.Prefix + arg.name));
                                     break;
                                 case WitnessFunction.InputArgumentKind.PRE_STATE:

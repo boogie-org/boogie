@@ -378,19 +378,19 @@ namespace Microsoft.Boogie
         {
             PRE_STATE,
             POST_STATE,
-            FIRST_IN,
-            SECOND_IN
+            FIRST_ARG,
+            SECOND_ARG
         }
 
-        public struct InputArgumentMap
+        public struct InputArgument
         {
-            public readonly InputArgumentKind kind;
-            public readonly string name;
+            public readonly InputArgumentKind Kind;
+            public readonly string Name;
 
-            public InputArgumentMap(InputArgumentKind kind, string name)
+            public InputArgument(InputArgumentKind kind, string name)
             {
-                this.kind = kind;
-                this.name = name;
+                this.Kind = kind;
+                this.Name = name;
             }
         }
 
@@ -399,7 +399,7 @@ namespace Microsoft.Boogie
         public readonly AtomicAction firstAction;
         public readonly AtomicAction secondAction;
         public readonly List<int> layers;
-        public List<InputArgumentMap> InputArgsMap { get; private set; }
+        public List<InputArgument> InputArgsMap { get; private set; }
 
         public WitnessFunction(Function function, GlobalVariable globalVar,
             AtomicAction firstAction, AtomicAction secondAction, List<int> layers)
@@ -409,12 +409,12 @@ namespace Microsoft.Boogie
             this.firstAction = firstAction;
             this.secondAction = secondAction;
             this.layers = layers;
-            this.InputArgsMap = new List<InputArgumentMap>();
+            this.InputArgsMap = new List<InputArgument>();
         }
 
         internal void AddInputMap(InputArgumentKind argumentKind, string name)
         {
-            InputArgsMap.Add(new InputArgumentMap(argumentKind, name));
+            InputArgsMap.Add(new InputArgument(argumentKind, name));
         }
     }
 
@@ -1950,14 +1950,14 @@ namespace Microsoft.Boogie
                         if (name.StartsWith(FirstProcInputPrefix, StringComparison.Ordinal))
                         {
                             name = name.Substring(FirstProcInputPrefix.Length);
-                            argumentKind = WitnessFunction.InputArgumentKind.FIRST_IN;
-                            CheckInputArg(witnessFunction.firstAction, type, name);
+                            argumentKind = WitnessFunction.InputArgumentKind.FIRST_ARG;
+                            CheckArg(witnessFunction.firstAction, type, name);
                         }
                         else if (name.StartsWith(SecondProcInputPrefix, StringComparison.Ordinal))
                         {
                             name = name.Substring(SecondProcInputPrefix.Length);
-                            argumentKind = WitnessFunction.InputArgumentKind.SECOND_IN;
-                            CheckInputArg(witnessFunction.secondAction, type, name);
+                            argumentKind = WitnessFunction.InputArgumentKind.SECOND_ARG;
+                            CheckArg(witnessFunction.secondAction, type, name);
                         }
                         else
                         {
@@ -1997,13 +1997,14 @@ namespace Microsoft.Boogie
                         CheckLayerExistence(globalVarToLayerRange[globalVar], globalVar.Name);
                 }
 
-                private void CheckInputArg(AtomicAction action, Type type, string name)
+                private void CheckArg(AtomicAction action, Type type, string name)
                 {
-                    var v = action.proc.InParams.FirstOrDefault(i => i.Name == name &&
-                        i.TypedIdent.Type.Equals(type));
+                    var proc = action.proc;
+                    var v = proc.InParams.Union(proc.OutParams).
+                        FirstOrDefault(i => i.Name == name && i.TypedIdent.Type.Equals(type));
                     if (v is null)
                     {
-                        Error(string.Format("No input parameter {0}:{1} found in {2}",
+                        Error(string.Format("No parameter {0}:{1} found in {2}",
                             name, type, action.proc.Name));
                     }
                 }
