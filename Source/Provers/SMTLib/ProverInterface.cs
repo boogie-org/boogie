@@ -2054,6 +2054,7 @@ namespace Microsoft.Boogie.SMTLib
                 break;
                 case "max. resource limit exceeded":
                 case "resource limits reached":
+                case "(resource limits reached)":
                 currentErrorHandler.OnResourceExceeded("max resource limit");
                 result = Outcome.OutOfResource;
                 break;
@@ -2720,6 +2721,7 @@ namespace Microsoft.Boogie.SMTLib
                           break;
                           case "max. resource limit exceeded":
                           case "resource limits reached":
+                          case "(resource limits reached)":
                               currentErrorHandler.OnResourceExceeded("max resource limit");
                               result = Outcome.OutOfResource;
                               break;
