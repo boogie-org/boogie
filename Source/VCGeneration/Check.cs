@@ -514,6 +514,12 @@ namespace Microsoft.Boogie {
         }
       }
 
+      public virtual void OnProverError(string message)
+      {
+            // no-op by default. 
+            //Errors are always printed to console by the prover
+      }
+
       public virtual Absy Label2Absy(string label) {
         Contract.Requires(label != null);
         Contract.Ensures(Contract.Result<Absy>() != null);

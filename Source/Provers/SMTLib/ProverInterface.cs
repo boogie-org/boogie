@@ -1245,6 +1245,15 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    private void ReportProverError(string err)
+    {
+        var handler = currentErrorHandler;
+        if (handler != null)
+        {
+            handler.OnProverError(err);
+        }
+    }
+
     protected void HandleProverError(string s)
     {
       s = s.Replace("\r", "");
@@ -1271,6 +1280,7 @@ namespace Microsoft.Boogie.SMTLib
         proverErrors.Add(s);
         Console.WriteLine("Prover error: " + s);
       }
+      ReportProverError(s);
     }
 
     [NoDefaultContract]
