@@ -126,11 +126,10 @@ namespace Microsoft.Boogie
             foreach (AssertCmd assertCmd in Enumerable.Union(first.firstGate, second.secondGate))
                 requires.Add(new Requires(false, assertCmd.Expr));
 
-            var transitionRelationComputation = new TransitionRelationComputation(first, second, frame, new HashSet<Variable>());
             civlTypeChecker.atomicActionPairToWitnessFunctions.TryGetValue(
                 Tuple.Create(first, second), out List<WitnessFunction> witnesses);
-            var transitionRelation = Expr.Or(transitionRelationComputation.TransitionRelationCompute(),
-                NewTransitionRelationComputation.ComputeTransitionRelation(second, first, frame, witnesses));
+            var transitionRelation = NewTransitionRelationComputation.
+                ComputeTransitionRelation(second, first, frame, witnesses);
 
             List<Cmd> cmds = new List<Cmd>
             {
@@ -260,36 +259,38 @@ namespace Microsoft.Boogie
             AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, ensures, new List<Block> { block });
         }
 
-        private void CreateNonBlockingChecker(AtomicActionCopy second)
+        private void CreateNonBlockingChecker(AtomicActionCopy action)
         {
-            if (!second.HasAssumeCmd) return;
+            if (!action.HasAssumeCmd) return;
 
-            List<Variable> inputs = new List<Variable>(second.secondInParams);
-            List<Variable> outputs = new List<Variable>();
-            List<Variable> locals = new List<Variable>();
+            Implementation impl = action.impl;
             HashSet<Variable> frame = new HashSet<Variable>();
-            frame.UnionWith(second.gateUsedGlobalVars);
-            frame.UnionWith(second.actionUsedGlobalVars);
-            
-            List<Requires> requires = new List<Requires>();
-            requires.Add(DisjointnessRequires(second.secondInParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
-            foreach (AssertCmd assertCmd in second.secondGate)
+            frame.UnionWith(action.gateUsedGlobalVars);
+            frame.UnionWith(action.actionUsedGlobalVars);
+
+            List<Requires> requires = new List<Requires>
+            {
+                DisjointnessRequires(impl.InParams.
+                    Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame)
+            };
+            foreach (AssertCmd assertCmd in action.secondGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
             }
-            List<Ensures> ensures = new List<Ensures>();
 
-            HashSet<Variable> postExistVars = new HashSet<Variable>();
-            postExistVars.UnionWith(frame);
-            postExistVars.UnionWith(second.secondOutParams);
-            Expr nonBlockingExpr = (new TransitionRelationComputation(second, frame, postExistVars)).TransitionRelationCompute();
-            AssertCmd nonBlockingAssert = new AssertCmd(second.proc.tok, nonBlockingExpr);
-            nonBlockingAssert.ErrorData = string.Format("Non-blocking check for {0} failed", second.proc.Name);
-            List<Block> blocks = new List<Block>{ new Block(second.proc.tok, "L", new List<Cmd>() { nonBlockingAssert }, new ReturnCmd(Token.NoToken)) };
+            Expr nonBlockingExpr = NewTransitionRelationComputation.
+                ComputeTransitionRelation(action, frame, true);
+            AssertCmd nonBlockingAssert = new AssertCmd(action.proc.tok, nonBlockingExpr)
+            {
+                ErrorData = string.Format("Non-blocking check for {0} failed", action.proc.Name)
+            };
 
-            string checkerName = string.Format("NonBlockingChecker_{0}", second.proc.Name);
-            
-            AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
+            Block block = new Block(action.proc.tok, "L", new List<Cmd> { nonBlockingAssert },
+                new ReturnCmd(Token.NoToken));
+
+            string checkerName = string.Format("NonBlockingChecker_{0}", action.proc.Name);
+            AddChecker(checkerName, new List<Variable>(impl.InParams), new List<Variable>(),
+                new List<Variable>(), requires, new List<Ensures>(), new List<Block> { block });
         }
     }
 }

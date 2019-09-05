@@ -1225,12 +1225,6 @@ namespace Microsoft.Boogie
                 foreach (var impl in copier.implMap.Values)
                 {
                     Inliner.ProcessImplementation(program, impl);
-
-                    // Havoc commands are not allowed in atomic actions. However, the
-                    // inliner above introduces havocs for uninitialized local variables
-                    // in case an inlined procedure is called in a loop. Since loops are
-                    // also not allowed in atomic actions, we can remove the havocs here.
-                    impl.Blocks.ForEach(b => b.Cmds.RemoveAll(c => c is HavocCmd));
                 }
                 foreach (var impl in copier.implMap.Values)
                 {
@@ -1363,15 +1357,6 @@ namespace Microsoft.Boogie
                     }
                 }
                 return base.VisitIdentifierExpr(node);
-            }
-
-            public override Cmd VisitHavocCmd(HavocCmd node)
-            {
-                // Note: Inlining in GenerateAtomicActionCopies generates havocs that are
-                // manually removed again (see explanation there). If havocs were to be
-                // allowed in atomic actions in the future, this has to be addressed.
-                ctc.Error(node, "Havoc command not allowed inside an atomic action");
-                return base.VisitHavocCmd(node);
             }
 
             public override Cmd VisitCallCmd(CallCmd node)

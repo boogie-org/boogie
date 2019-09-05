@@ -102,6 +102,7 @@ namespace Microsoft.Boogie
         internal readonly AtomicActionCopyAdapter first, second;
         internal readonly HashSet<Variable> frame;
         internal readonly Dictionary<GlobalVariable, List<WitnessFunction>> globalVarToWitnesses;
+        internal readonly bool ignorePostState;
         private Stack<Cmd> cmdStack;
         private List<PathTranslation> pathTranslations;
 
@@ -109,11 +110,12 @@ namespace Microsoft.Boogie
 
         private NewTransitionRelationComputation(AtomicActionCopyAdapter first,
             AtomicActionCopyAdapter second, IEnumerable<Variable> frame,
-            List<WitnessFunction> witnesses)
+            List<WitnessFunction> witnesses, bool ignorePostState)
         {
             this.first = first;
             this.second = second;
             this.frame = new HashSet<Variable>(frame);
+            this.ignorePostState = ignorePostState;
 
             this.globalVarToWitnesses = new Dictionary<GlobalVariable, List<WitnessFunction>>();
             if (witnesses != null)
@@ -134,9 +136,9 @@ namespace Microsoft.Boogie
 
         private static Expr ComputeTransitionRelation(AtomicActionCopyAdapter first,
             AtomicActionCopyAdapter second, IEnumerable<Variable> frame,
-            List<WitnessFunction> witnesses = null)
+            List<WitnessFunction> witnesses, bool ignorePostState = false)
         {
-            var transitionRelationComputation = new NewTransitionRelationComputation(first, second, frame, witnesses);
+            var transitionRelationComputation = new NewTransitionRelationComputation(first, second, frame, witnesses, ignorePostState);
             var transitionRelation = Expr.Or(transitionRelationComputation.pathTranslations.Select(x => x.TransitionRelationExpr));
 
             ResolutionContext rc = new ResolutionContext(null)
@@ -162,9 +164,10 @@ namespace Microsoft.Boogie
 
 
         public static Expr ComputeTransitionRelation(AtomicActionCopy action, HashSet<Variable> frame,
-            AtomicActionCopyKind kind = AtomicActionCopyKind.NORMAL)
+            bool ignorePostState = true, AtomicActionCopyKind kind = AtomicActionCopyKind.NORMAL)
         {
-            return ComputeTransitionRelation(new AtomicActionCopyAdapter(action, kind), null, frame);
+            return ComputeTransitionRelation(new AtomicActionCopyAdapter(action, kind),
+                null, frame, null, ignorePostState);
         }
 
         private void EnumeratePaths()
@@ -268,6 +271,10 @@ namespace Microsoft.Boogie
                 if (IsJoint())
                 {
                     EliminateWithIntermediateState();
+                }
+                if (IgnorePostState)
+                {
+                    while (TryElimination(GetPostStateVars())) { }
                 }
                 // TODO: Generate warning for not eliminated variables
                 ComputeTransitionRelationExpr();
@@ -392,6 +399,13 @@ namespace Microsoft.Boogie
                         newCmds.Add(new AssumeCmd(cmd.tok,
                             Substituter.Apply(sub, ((AssumeCmd)cmd).Expr)));
                     }
+                    else if (cmd is HavocCmd havocCmd)
+                    {
+                        foreach (var v in havocCmd.Vars)
+                        {
+                            MakeNewCopy(v.Decl);
+                        }
+                    }
                     else
                     {
                         Debug.Assert(false);
@@ -419,9 +433,12 @@ namespace Microsoft.Boogie
                 {
                     definedVariables.Add(varCopies[0][v]);
                 }
-                foreach (var v in GetPostStateVars())
+                if (!IgnorePostState)
                 {
-                    definedVariables.Add(varCopies[varLastCopyId[v]][v]);
+                    foreach (var v in GetPostStateVars())
+                    {
+                        definedVariables.Add(varCopies[varLastCopyId[v]][v]);
+                    }
                 }
             }
 
@@ -582,19 +599,33 @@ namespace Microsoft.Boogie
                 var preStateSub = GetPreStateVars().
                     ToDictionary<Variable, Variable, Expr>(v => varCopies[0][v],
                         v => new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
-                var postStateSub = GetPostStateVars().
-                    ToDictionary<Variable, Variable, Expr>(v => varCopies[varLastCopyId[v]][v], v => Expr.Ident(v));
 
-                var notModifiedVars = new HashSet<Variable>(preStateSub.Keys.Intersect(postStateSub.Keys));
-                foreach (var v in notModifiedVars)
+                var frameCopiesSub = preStateSub;
+                if (!IgnorePostState)
                 {
-                    pathExprs.Add(Expr.Eq(preStateSub[v], postStateSub[v]));
-                    postStateSub.Remove(v);
+                    var postStateSub = GetPostStateVars().
+                       ToDictionary<Variable, Variable, Expr>(v => varCopies[varLastCopyId[v]][v], v => Expr.Ident(v));
+
+                    var notModifiedVars = new HashSet<Variable>(preStateSub.Keys.Intersect(postStateSub.Keys));
+                    foreach (var v in notModifiedVars)
+                    {
+                        pathExprs.Add(Expr.Eq(preStateSub[v], postStateSub[v]));
+                        postStateSub.Remove(v);
+                    }
+
+                    frameCopiesSub = frameCopiesSub.Union(postStateSub).ToDictionary(k => k.Key, v => v.Value);
                 }
 
-                var finalSub = Substituter.SubstitutionFromHashtable(
-                    Enumerable.Union(postStateSub, preStateSub).ToDictionary(k => k.Key, v => v.Value));
+                var finalSub = Substituter.SubstitutionFromHashtable(frameCopiesSub);
                 pathExprs = pathExprs.Select(x => Substituter.Apply(finalSub, x)).ToList();
+            }
+
+            private bool IgnorePostState
+            {
+                get
+                {
+                    return transitionRelationComputer.ignorePostState;
+                }
             }
 
             private IEnumerable<Variable> NotEliminatedVars
