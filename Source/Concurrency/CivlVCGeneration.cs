@@ -26,9 +26,6 @@ namespace Microsoft.Boogie
             // Desugaring of yielding procedures
             CivlRefinement.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
 
-            // Trigger functions for existential vairables in transition relations
-            decls.AddRange(civlTypeChecker.procToAtomicAction.Values.SelectMany(a => a.layerToActionCopy.Values.SelectMany(ac => ac.triggerFuns.Values)));
-            
             // Linear type checks
             LinearTypeChecker.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
 

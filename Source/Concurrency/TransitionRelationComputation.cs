@@ -59,38 +59,14 @@ namespace Microsoft.Boogie
             return firstExistsVars.Concat(secondExistsVars).Contains(v);
         }
 
-        private void PopulateExistsVars(Variable v)
+        private Variable GetExistsVar(Variable v)
         {
-            if (existsVars.ContainsKey(v)) return;
-            existsVars[v] = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "#tmp_" + existsVars.Count, v.TypedIdent.Type));
-        }
-
-        private Function TriggerFunction(Variable v)
-        {
-            PopulateExistsVars(v);
-            if (firstExistsVars.Contains(v))
+            if (!existsVars.ContainsKey(v))
             {
-                return first.TriggerFunction(v);
+                existsVars[v] = new BoundVariable(Token.NoToken,
+                     new TypedIdent(Token.NoToken, "#tmp_" + existsVars.Count + "_" + v.Name, v.TypedIdent.Type));
             }
-            else if (secondExistsVars.Contains(v))
-            {
-                return second.TriggerFunction(v);
-            }
-            else
-            {
-                Debug.Assert(false);
-                return null;
-            }
-        }
-
-        public List<Cmd> TriggerAssumes()
-        {
-            return existsVars.Keys.Select(v =>
-                new AssumeCmd(Token.NoToken,
-                    new NAryExpr(Token.NoToken,
-                        new FunctionCall(TriggerFunction(v)),
-                        new Expr[] { Expr.Ident(v) })))
-                .ToList<Cmd>();
+            return existsVars[v];
         }
 
         private void Substitute(Dictionary<Variable, Expr> map, ref List<Expr> pathExprs, ref Dictionary<Variable, Expr> varToExpr)
@@ -201,16 +177,10 @@ namespace Microsoft.Boogie
             }
             InferSubstitution(allExistsVars, existsSubstitutionMap, path.pathExprs, inferredSelectEqualities);
 
-            List<Expr> triggerExprs = new List<Expr>();
             List<Variable> quantifiedVars = new List<Variable>();
             foreach (var v in usedExistsVars.Except(existsSubstitutionMap.Keys))
             {
-                var triggerFun = TriggerFunction(v); // this call populates existsVars[v]
-                var quantifiedVar = existsVars[v];
-                triggerExprs.Add(
-                    new NAryExpr(Token.NoToken, 
-                        new FunctionCall(triggerFun), 
-                        new Expr[] { Expr.Ident(quantifiedVar) }));
+                var quantifiedVar = GetExistsVar(v);
                 quantifiedVars.Add(quantifiedVar);
                 existsSubstitutionMap[v] = Expr.Ident(quantifiedVar);
             }
@@ -233,17 +203,7 @@ namespace Microsoft.Boogie
             var returnExpr = Expr.And(returnExprs);
             if (quantifiedVars.Count > 0)
             {
-                if (first == null)
-                {
-                    returnExpr = new ExistsExpr(Token.NoToken, quantifiedVars, returnExpr);
-                }
-                else
-                {
-                    returnExpr = new ExistsExpr(Token.NoToken, 
-                                    quantifiedVars, 
-                                    new Trigger(Token.NoToken, true, triggerExprs), 
-                                    returnExpr);
-                }
+                returnExpr = new ExistsExpr(Token.NoToken, quantifiedVars, returnExpr);
             }
             return returnExpr;
         }

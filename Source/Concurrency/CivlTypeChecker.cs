@@ -75,7 +75,6 @@ namespace Microsoft.Boogie
         public List<Variable> secondOutParams;
         public Dictionary<Variable, Expr> secondMap;
 
-        public Dictionary<Variable, Function> triggerFuns;
         public HashSet<Variable> gateUsedGlobalVars;
         public HashSet<Variable> actionUsedGlobalVars;
         public HashSet<Variable> modifiedGlobalVars;
@@ -84,8 +83,6 @@ namespace Microsoft.Boogie
         {
             this.proc = proc;
             this.impl = impl;
-
-            this.triggerFuns = new Dictionary<Variable, Function>();
 
             // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
             this.gate = impl.Blocks[0].cmds.TakeWhile((c, i) => c is AssertCmd).Cast<AssertCmd>().ToList();
@@ -191,17 +188,6 @@ namespace Microsoft.Boogie
         {
             return this.modifiedGlobalVars.Intersect(other.actionUsedGlobalVars).Count() == 0 &&
                    this.actionUsedGlobalVars.Intersect(other.modifiedGlobalVars).Count() == 0;
-        }
-
-        public Function TriggerFunction(Variable v)
-        {
-            if (!triggerFuns.ContainsKey(v))
-            {
-                List<Variable> args = new List<Variable> { new Formal(v.tok, new TypedIdent(v.tok, "v", v.TypedIdent.Type), true) };
-                Variable result = new Formal(v.tok, new TypedIdent(v.tok, "r", Type.Bool), false);
-                triggerFuns[v] = new Function(v.tok, string.Format("Trigger_{0}_{1}", proc.Name, v.Name), args, result);
-            }
-            return triggerFuns[v];
         }
     }
 
