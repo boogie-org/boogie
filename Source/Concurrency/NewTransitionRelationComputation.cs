@@ -367,7 +367,7 @@ namespace Microsoft.Boogie
 
                         Dictionary<Variable, Variable> lhsMap = postState, rhsMap = preState;
                         // TODO: clean up "backward" usages
-                        if (QKeyValue.FindBoolAttribute(assignCmd.Attributes, "backward"))
+                        if (QKeyValue.FindBoolAttribute(assignCmd.Attributes, CivlAttributes.BACKWARD))
                         {
                             lhsMap = preState;
                             rhsMap = postState;
@@ -540,26 +540,26 @@ namespace Microsoft.Boogie
                     {
                         WitnessFunction witnessFunction = pair.Item2;
                         List<Expr> args = new List<Expr>();
-                        foreach (var arg in witnessFunction.InputArgsMap)
+                        foreach (var arg in witnessFunction.InputArgs)
                         {
                             Expr expr = null;
-                            switch (arg.kind)
+                            switch (arg.Kind)
                             {
                                 case WitnessFunction.InputArgumentKind.FIRST_ARG:
                                     // TODO: Add note on the reason of using second
                                     expr = Expr.Ident(second.Params.
-                                        First(x => x.Name == second.Prefix + arg.name));
+                                        First(x => x.Name == second.Prefix + arg.Name));
                                     break;
                                 case WitnessFunction.InputArgumentKind.SECOND_ARG:
                                     expr = Expr.Ident(first.Params.
-                                        First(x => x.Name == first.Prefix + arg.name));
+                                        First(x => x.Name == first.Prefix + arg.Name));
                                     break;
                                 case WitnessFunction.InputArgumentKind.PRE_STATE:
                                     expr = ExprHelper.Old(Expr.Ident(
-                                        frame.First(x => x.Name == arg.name)));
+                                        frame.First(x => x.Name == arg.Name)));
                                     break;
                                 case WitnessFunction.InputArgumentKind.POST_STATE:
-                                    expr = Expr.Ident(frame.First(x => x.Name == arg.name));
+                                    expr = Expr.Ident(frame.First(x => x.Name == arg.Name));
                                     break;
                                 default:
                                     Debug.Assert(false);

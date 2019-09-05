@@ -28,7 +28,7 @@ namespace Microsoft.Boogie
 
         public const string PURE = "pure";
 
-        public const string BACKWARD = "backwards";
+        public const string BACKWARD = "backward";
         public const string WITNESS = "witness";
 
         public static bool RemoveAttribute(ICarriesAttributes obj, Func<QKeyValue, bool> cond)

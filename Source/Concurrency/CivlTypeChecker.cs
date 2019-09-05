@@ -399,7 +399,7 @@ namespace Microsoft.Boogie
         public readonly AtomicAction firstAction;
         public readonly AtomicAction secondAction;
         public readonly List<int> layers;
-        public List<InputArgument> InputArgsMap { get; private set; }
+        public List<InputArgument> InputArgs { get; private set; }
 
         public WitnessFunction(Function function, GlobalVariable globalVar,
             AtomicAction firstAction, AtomicAction secondAction, List<int> layers)
@@ -409,12 +409,12 @@ namespace Microsoft.Boogie
             this.firstAction = firstAction;
             this.secondAction = secondAction;
             this.layers = layers;
-            this.InputArgsMap = new List<InputArgument>();
+            this.InputArgs = new List<InputArgument>();
         }
 
         internal void AddInputMap(InputArgumentKind argumentKind, string name)
         {
-            InputArgsMap.Add(new InputArgument(argumentKind, name));
+            InputArgs.Add(new InputArgument(argumentKind, name));
         }
     }
 
@@ -433,7 +433,7 @@ namespace Microsoft.Boogie
         public Dictionary<Procedure, AtomicAction> procToAtomicAction;
         public Dictionary<Procedure, YieldingProc> procToYieldingProc;
         public Dictionary<Procedure, InstrumentationProc> procToInstrumentationProc;
-        public Dictionary<Tuple<AtomicAction, AtomicAction, int>,
+        public Dictionary<Tuple<AtomicActionCopy, AtomicActionCopy>,
             List<WitnessFunction>> atomicActionPairToWitnessFunctions;
 
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
@@ -459,7 +459,7 @@ namespace Microsoft.Boogie
             this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
             this.procToInstrumentationProc = new Dictionary<Procedure, InstrumentationProc>();
             this.instrumentationCallToLayer = new Dictionary<CallCmd, int>();
-            this.atomicActionPairToWitnessFunctions = new Dictionary<Tuple<AtomicAction, AtomicAction, int>,
+            this.atomicActionPairToWitnessFunctions = new Dictionary<Tuple<AtomicActionCopy, AtomicActionCopy>,
                 List<WitnessFunction>>();
         }
 
@@ -606,19 +606,72 @@ namespace Microsoft.Boogie
             }
 
             CheckAtomicActionAcyclicity();
-            TypeCheckWitnessFunctions();
 
             if (checkingContext.ErrorCount != 0)
                 return;
 
             AddPendingAsyncMachinery();
             GenerateAtomicActionCopies();
+            TypeCheckWitnessFunctions();
             TypeCheckYieldingProcedureImpls();
 
             sharedVariables = program.GlobalVariables.ToList<Variable>();
             sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
 
+            SubstituteBackwardsAssignments();
+
             new AttributeEraser().VisitProgram(program);
+        }
+
+        private void SubstituteBackwardsAssignments()
+        {
+            foreach (var action in procToAtomicAction.Values)
+            {
+                foreach (var actionCopy in action.layerToActionCopy.Values)
+                {
+                    SubstituteBackwardsAssignments(actionCopy);
+                }
+            }
+        }
+
+        private void SubstituteBackwardsAssignments(AtomicActionCopy action)
+        {
+            foreach (Block block in action.impl.Blocks)
+            {
+                List<Cmd> cmds = new List<Cmd>();
+                foreach (Cmd cmd in block.cmds)
+                {
+                    if (cmd is AssignCmd _assignCmd &&
+                        QKeyValue.FindBoolAttribute(_assignCmd.Attributes, CivlAttributes.BACKWARD))
+                    {
+                        AssignCmd assignCmd = _assignCmd.AsSimpleAssignCmd;
+                        var lhss = assignCmd.Lhss;
+                        var rhss = assignCmd.Rhss;
+                        var rhssVars = rhss.SelectMany(x => VariableCollector.Collect(x));
+                        var lhssVars = lhss.SelectMany(x => VariableCollector.Collect(x));
+                        if (rhssVars.Intersect(lhssVars).Any())
+                        {
+                            // TODO
+                            Console.WriteLine("WARNING: Backward assignment translation is not implemented");
+                        }
+                        else
+                        {
+                            List<Expr> assumeExprs = new List<Expr>();
+                            for (int k = 0; k < lhss.Count; k++)
+                            {
+                                assumeExprs.Add(Expr.Eq(lhss[k].AsExpr, rhss[k]));
+                            }
+                            cmds.Add(new AssumeCmd(Token.NoToken, Expr.And(assumeExprs)));
+                            cmds.Add(new HavocCmd(Token.NoToken, lhss.Select(x => x.DeepAssignedIdentifier).ToList()));
+                        }
+                    }
+                    else
+                    {
+                        cmds.Add(cmd);
+                    }
+                }
+                block.cmds = cmds;
+            }
         }
 
         private void TypeCheckWitnessFunctions()
@@ -633,9 +686,8 @@ namespace Microsoft.Boogie
                 foreach (var layer in witnessFunction.layers)
                 {
                     var key = Tuple.Create(
-                        witnessFunction.firstAction,
-                        witnessFunction.secondAction,
-                        layer);
+                        witnessFunction.firstAction.layerToActionCopy[layer],
+                        witnessFunction.secondAction.layerToActionCopy[layer]);
                     if (!atomicActionPairToWitnessFunctions.ContainsKey(key))
                     {
                         atomicActionPairToWitnessFunctions[key] = new List<WitnessFunction>();
@@ -1964,11 +2016,11 @@ namespace Microsoft.Boogie
                             if (name.EndsWith(PostStateSuffix, StringComparison.Ordinal))
                             {
                                 name = name.Substring(0, name.Length - 1);
-                                argumentKind = WitnessFunction.InputArgumentKind.PRE_STATE;
+                                argumentKind = WitnessFunction.InputArgumentKind.POST_STATE;
                             }
                             else
                             {
-                                argumentKind = WitnessFunction.InputArgumentKind.POST_STATE;
+                                argumentKind = WitnessFunction.InputArgumentKind.PRE_STATE;
                             }
                             CheckGlobalArg(type, name);
                         }
