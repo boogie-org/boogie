@@ -354,12 +354,16 @@ namespace Microsoft.Boogie
 
             private void IntroduceIntermediateVars()
             {
+                var oldSub = Substituter.SubstitutionFromHashtable(GetPreStateVars().
+                    ToDictionary<Variable, Variable, Expr>(v => v, v => Expr.Ident(varCopies[0][v])));
                 newCmds = new List<Cmd>();
                 for (int k = 0; k < cmds.Count; k++)
                 {
                     if (IsJoint() && k == transitionRelationComputer.transferStackIndex)
                     {
                         PopulateIntermediateFrameCopy();
+                        oldSub = Substituter.SubstitutionFromHashtable(GetPreStateVars().
+                            ToDictionary<Variable, Variable, Expr>(v => v, v => Expr.Ident(varCopies[varLastCopyId[v]][v])));
                     }
                     Cmd cmd = cmds[k];
                     if (cmd is AssignCmd)
@@ -387,7 +391,9 @@ namespace Microsoft.Boogie
 
                         List<AssignLhs> lhss = assignCmd.Lhss.Select(x => (AssignLhs)new SimpleAssignLhs(Token.NoToken,
                             new IdentifierExpr(Token.NoToken, lhsMap[x.DeepAssignedVariable]))).ToList();
-                        List<Expr> rhss = assignCmd.Rhss.Select(x => Substituter.Apply(rhsSub, x)).ToList();
+                        List<Expr> rhss = assignCmd.Rhss.Select(x =>
+                            Substituter.ApplyReplacingOldExprs(rhsSub, oldSub, x)).ToList();
+
                         newCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss, assignCmd.Attributes));
                     }
                     else if (cmd is AssumeCmd)
@@ -397,7 +403,7 @@ namespace Microsoft.Boogie
                                 kvp => kvp.Key, kvp => Expr.Ident(kvp.Value) as Expr
                             ));
                         newCmds.Add(new AssumeCmd(cmd.tok,
-                            Substituter.Apply(sub, ((AssumeCmd)cmd).Expr)));
+                            Substituter.ApplyReplacingOldExprs(sub, oldSub, ((AssumeCmd)cmd).Expr)));
                     }
                     else if (cmd is HavocCmd havocCmd)
                     {

@@ -1394,12 +1394,6 @@ namespace Microsoft.Boogie
                 }
                 return base.VisitCallCmd(node);
             }
-
-            public override Expr VisitOldExpr(OldExpr node)
-            {
-                ctc.Error(node, "Old expression not allowed inside an atomic action");
-                return base.VisitOldExpr(node);
-            }
         }
 
         private class InstrumentationProcedureVisitor : ReadOnlyVisitor
