@@ -136,7 +136,7 @@ namespace Microsoft.Boogie
 
         private static Expr ComputeTransitionRelation(AtomicActionCopyAdapter first,
             AtomicActionCopyAdapter second, IEnumerable<Variable> frame,
-            List<WitnessFunction> witnesses, bool ignorePostState = false)
+            List<WitnessFunction> witnesses, bool ignorePostState)
         {
             var transitionRelationComputation = new NewTransitionRelationComputation(first, second, frame, witnesses, ignorePostState);
             var transitionRelation = Expr.Or(transitionRelationComputation.pathTranslations.Select(x => x.TransitionRelationExpr));
@@ -152,21 +152,20 @@ namespace Microsoft.Boogie
         }
 
         public static Expr ComputeTransitionRelation(AtomicActionCopy first, AtomicActionCopy second,
-            HashSet<Variable> frame, List<WitnessFunction> witnesses,
-            AtomicActionCopyKind firstKind = AtomicActionCopyKind.SECOND,
-            AtomicActionCopyKind secondKind = AtomicActionCopyKind.FIRST)
+            HashSet<Variable> frame, List<WitnessFunction> witnesses)
         {
             return ComputeTransitionRelation(
-                new AtomicActionCopyAdapter(first, firstKind),
-                new AtomicActionCopyAdapter(second, secondKind),
-                frame, witnesses);
+                new AtomicActionCopyAdapter(first, AtomicActionCopyKind.SECOND),
+                new AtomicActionCopyAdapter(second, AtomicActionCopyKind.FIRST),
+                frame, witnesses, false);
         }
 
 
         public static Expr ComputeTransitionRelation(AtomicActionCopy action, HashSet<Variable> frame,
-            bool ignorePostState = true, AtomicActionCopyKind kind = AtomicActionCopyKind.NORMAL)
+            bool ignorePostState = false)
         {
-            return ComputeTransitionRelation(new AtomicActionCopyAdapter(action, kind),
+            return ComputeTransitionRelation(
+                new AtomicActionCopyAdapter(action, AtomicActionCopyKind.NORMAL),
                 null, frame, null, ignorePostState);
         }
 
@@ -500,7 +499,7 @@ namespace Microsoft.Boogie
 
                             var allDefinedVars = varToExpr.Keys.Union(extraDefinedVariables);
                             if (!allDefinedVars.Contains(assignedVar) &&
-                                !VariableCollector.Collect(rhs).Where(x => !(x is BoundVariable)).
+                                !VariableCollector.Collect(rhs).Intersect(UsedVariables).
                                     Except(allDefinedVars).Any())
                             {
                                 varToExpr[assignedVar] = rhs;
@@ -639,8 +638,8 @@ namespace Microsoft.Boogie
                 get
                 {
                     return newCmds.
-                    // TODO: Add note about bound variables in here
-                        SelectMany(cmd => VariableCollector.Collect(cmd).Where(x => !(x is BoundVariable))).
+                        SelectMany(cmd => VariableCollector.Collect(cmd)).
+                        Intersect(varCopies.SelectMany(x => x.Values)). // all introduced variables
                         Except(varToExpr.Keys);
                 }
             }

@@ -604,12 +604,10 @@ namespace Microsoft.Boogie
             sharedVariables = program.GlobalVariables.ToList<Variable>();
             sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
 
-            SubstituteBackwardsAssignments();
-
             new AttributeEraser().VisitProgram(program);
         }
 
-        private void SubstituteBackwardsAssignments()
+        public void SubstituteBackwardsAssignments()
         {
             foreach (var action in procToAtomicAction.Values)
             {

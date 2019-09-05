@@ -41,6 +41,8 @@ namespace Microsoft.Boogie
         Expr beta;
         HashSet<Variable> frame;
 
+        private Dictionary<AtomicActionCopy, Expr> transitionRelationCache;
+
         public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, LinearTypeChecker linearTypeChecker, int layerNum, Dictionary<Procedure, Procedure> procToSkipProcDummy)
         {
             this.civlTypeChecker = civlTypeChecker;
@@ -57,6 +59,8 @@ namespace Microsoft.Boogie
             yieldCheckerProcs = new List<Procedure>();
             yieldCheckerImpls = new List<Implementation>();
             yieldProc = null;
+
+            this.transitionRelationCache = new Dictionary<AtomicActionCopy, Expr>();
         }
 
         #region Visitor implementation
@@ -541,8 +545,13 @@ namespace Microsoft.Boogie
                     }
                     Substitution always = Substituter.SubstitutionFromHashtable(alwaysMap);
 
-                    Expr betaExpr = NewTransitionRelationComputation.
-                        ComputeTransitionRelation(atomicActionCopy, frame);
+                    if (!transitionRelationCache.ContainsKey(atomicActionCopy))
+                    {
+                        transitionRelationCache[atomicActionCopy] =
+                            NewTransitionRelationComputation.
+                                ComputeTransitionRelation(atomicActionCopy, frame);
+                    }
+                    Expr betaExpr = transitionRelationCache[atomicActionCopy];
 
                     beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
                     Expr alphaExpr = Expr.And(atomicActionCopy.gate.Select(g => g.Expr));
