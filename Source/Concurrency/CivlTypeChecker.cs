@@ -1875,15 +1875,26 @@ namespace Microsoft.Boogie
 
             public override Function VisitFunction(Function node)
             {
-                string witnessAttribute = QKeyValue.FindStringAttribute(node.Attributes, CivlAttributes.WITNESS);
-                if (witnessAttribute != null)
+                for (QKeyValue kv = node.Attributes; kv != null; kv = kv.Next)
                 {
-                    int parserErrorCount = WitnessAttributeParser.Parse(ctc, node, witnessAttribute,
-                        out WitnessFunction witnessFunction);
-                    if (parserErrorCount == 0 &&
-                        WitnessFunctionChecker.Check(node, ctc, witnessFunction) == 0)
+                    if (kv.Key != CivlAttributes.WITNESS)
+                        continue;
+                    if (kv.Params.Count == 1 && kv.Params[0] is string witnessAttribute)
                     {
-                        allWitnessFunctions.Add(witnessFunction);
+                        if (witnessAttribute != null)
+                        {
+                            int parserErrorCount = WitnessAttributeParser.Parse(ctc, node, witnessAttribute,
+                                out WitnessFunction witnessFunction);
+                            if (parserErrorCount == 0 &&
+                                WitnessFunctionChecker.Check(node, ctc, witnessFunction) == 0)
+                            {
+                                allWitnessFunctions.Add(witnessFunction);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        ctc.Error(node, "Witness attribute has to be a string.");
                     }
                 }
                 return base.VisitFunction(node);
