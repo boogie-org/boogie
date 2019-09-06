@@ -271,10 +271,6 @@ namespace Microsoft.Boogie
                 {
                     EliminateWithIntermediateState();
                 }
-                if (IgnorePostState)
-                {
-                    while (TryElimination(GetPostStateVars())) { }
-                }
                 // TODO: Generate warning for not eliminated variables
                 ComputeTransitionRelationExpr();
             }
@@ -479,6 +475,13 @@ namespace Microsoft.Boogie
                 }
 
                 while (TryElimination(new HashSet<Variable>())) { }
+
+                if (IgnorePostState)
+                {
+                    while (TryElimination(GetPostStateVars())) { }
+                }
+
+                while (TryElimination(allLocVars.Select(v => varCopies[0][v]))) { }
             }
 
             private bool TryElimination(IEnumerable<Variable> extraDefinedVariables)
