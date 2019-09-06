@@ -422,6 +422,7 @@ namespace Microsoft.Boogie {
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
     public string ProverPreamble = null;
+    public bool WarnNotEliminatedVars = false;
 
     public enum InstrumentationPlaces {
       LoopHeaders,
@@ -1654,7 +1655,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("trustAtomicityTypes", ref TrustAtomicityTypes) ||
               ps.CheckBooleanFlag("trustNonInterference", ref TrustNonInterference) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
-              ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting)
+              ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting) ||
+              ps.CheckBooleanFlag("warnNotEliminatedVars", ref WarnNotEliminatedVars)
               ) {
             // one of the boolean flags matched
             return true;

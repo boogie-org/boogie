@@ -103,6 +103,8 @@ namespace Microsoft.Boogie
         internal readonly HashSet<Variable> frame;
         internal readonly Dictionary<GlobalVariable, List<WitnessFunction>> globalVarToWitnesses;
         internal readonly bool ignorePostState;
+        internal readonly CheckingContext checkingContext;
+        private readonly string token;
         private Stack<Cmd> cmdStack;
         private List<PathTranslation> pathTranslations;
 
@@ -110,8 +112,10 @@ namespace Microsoft.Boogie
 
         private NewTransitionRelationComputation(AtomicActionCopyAdapter first,
             AtomicActionCopyAdapter second, IEnumerable<Variable> frame,
-            List<WitnessFunction> witnesses, bool ignorePostState)
+            List<WitnessFunction> witnesses, string token, bool ignorePostState)
         {
+            this.checkingContext = new CheckingContext(null);
+            this.token = token;
             this.first = first;
             this.second = second;
             this.frame = new HashSet<Variable>(frame);
@@ -136,9 +140,9 @@ namespace Microsoft.Boogie
 
         private static Expr ComputeTransitionRelation(AtomicActionCopyAdapter first,
             AtomicActionCopyAdapter second, IEnumerable<Variable> frame,
-            List<WitnessFunction> witnesses, bool ignorePostState)
+            List<WitnessFunction> witnesses, string token, bool ignorePostState)
         {
-            var transitionRelationComputation = new NewTransitionRelationComputation(first, second, frame, witnesses, ignorePostState);
+            var transitionRelationComputation = new NewTransitionRelationComputation(first, second, frame, witnesses, token, ignorePostState);
             var transitionRelation = Expr.Or(transitionRelationComputation.pathTranslations.Select(x => x.TransitionRelationExpr));
 
             ResolutionContext rc = new ResolutionContext(null)
@@ -152,21 +156,22 @@ namespace Microsoft.Boogie
         }
 
         public static Expr ComputeTransitionRelation(AtomicActionCopy first, AtomicActionCopy second,
-            HashSet<Variable> frame, List<WitnessFunction> witnesses)
+            HashSet<Variable> frame, List<WitnessFunction> witnesses,
+            string token)
         {
             return ComputeTransitionRelation(
                 new AtomicActionCopyAdapter(first, AtomicActionCopyKind.SECOND),
                 new AtomicActionCopyAdapter(second, AtomicActionCopyKind.FIRST),
-                frame, witnesses, false);
+                frame, witnesses, token, false);
         }
 
 
         public static Expr ComputeTransitionRelation(AtomicActionCopy action, HashSet<Variable> frame,
-            bool ignorePostState = false)
+            string token, bool ignorePostState = false)
         {
             return ComputeTransitionRelation(
                 new AtomicActionCopyAdapter(action, AtomicActionCopyKind.NORMAL),
-                null, frame, null, ignorePostState);
+                null, frame, null, token, ignorePostState);
         }
 
         private void EnumeratePaths()
@@ -176,6 +181,12 @@ namespace Microsoft.Boogie
             Debug.Assert(cmdStack.Count == 0);
             EnumeratePathsRec(first.Blocks[0], true);
             Debug.Assert(cmdStack.Count == 0);
+        }
+
+        private void Warn(string msg)
+        {
+            checkingContext.Warning(Token.NoToken,
+                "TransitionRelation(" + token + "): " + msg);
         }
 
         private void EnumeratePathsRec(Block b, bool inFirst)
@@ -218,7 +229,17 @@ namespace Microsoft.Boogie
         {
             List<Cmd> cmds = new List<Cmd>(cmdStack);
             cmds.Reverse();
-            pathTranslations.Add(new PathTranslation(this, cmds));
+            var pathTranslation = new PathTranslation(this, cmds);
+            pathTranslations.Add(pathTranslation);
+
+            if (CommandLineOptions.Clo.WarnNotEliminatedVars)
+            {
+                var quantifiedVars = pathTranslation.GetQuantifiedOriginalVariables();
+                if (quantifiedVars.Any())
+                {
+                    Warn("Variables {" + string.Join(", ", quantifiedVars) + "} could not be eliminated for some path.");
+                }
+            }
         }
 
         internal class PathTranslation
@@ -234,11 +255,14 @@ namespace Microsoft.Boogie
 
             private List<Cmd> newCmds;
             private Dictionary<Variable, Variable>[] varCopies;
+            private Dictionary<Variable, Variable> copyToOriginalVar;
             private Dictionary<Variable, int> varLastCopyId;
             private HashSet<Variable> definedVariables;
             private Dictionary<Variable, Expr> varToExpr;
             private List<Expr> pathExprs;
             private List<Expr> witnessedTransitionRelations;
+
+            private Dictionary<Variable, BoundVariable> existsVarMap;
 
             internal Expr TransitionRelationExpr;
 
@@ -271,7 +295,6 @@ namespace Microsoft.Boogie
                 {
                     EliminateWithIntermediateState();
                 }
-                // TODO: Generate warning for not eliminated variables
                 ComputeTransitionRelationExpr();
             }
 
@@ -328,6 +351,8 @@ namespace Microsoft.Boogie
                 foreach (int i in Enumerable.Range(0, cmds.Count + 1))
                     varCopies[i] = new Dictionary<Variable, Variable>();
 
+                copyToOriginalVar = new Dictionary<Variable, Variable>();
+
                 varLastCopyId = new Dictionary<Variable, int>();
                 foreach (var v in UsedVariables)
                 {
@@ -372,7 +397,6 @@ namespace Microsoft.Boogie
                         var postState = GetVarCopiesFromIds(varLastCopyId);
 
                         Dictionary<Variable, Variable> lhsMap = postState, rhsMap = preState;
-                        // TODO: clean up "backward" usages
                         if (QKeyValue.FindBoolAttribute(assignCmd.Attributes, CivlAttributes.BACKWARD))
                         {
                             lhsMap = preState;
@@ -421,10 +445,12 @@ namespace Microsoft.Boogie
             {
                 varLastCopyId[v] = varLastCopyId.ContainsKey(v) ? varLastCopyId[v] + 1 : 0;
                 int id = varLastCopyId[v];
-                varCopies[id][v] = new Formal(
+                var copyVar = new Formal(
                     Token.NoToken,
                     new TypedIdent(Token.NoToken, string.Format(copierFormat, v.Name, id), v.TypedIdent.Type),
                     false, null);
+                varCopies[id][v] = copyVar;
+                copyToOriginalVar[copyVar] = v;
             }
 
             private void SetDefinedVariables()
@@ -476,12 +502,12 @@ namespace Microsoft.Boogie
 
                 while (TryElimination(new HashSet<Variable>())) { }
 
+                while (TryElimination(allLocVars.Select(v => varCopies[0][v]))) { }
+
                 if (IgnorePostState)
                 {
                     while (TryElimination(GetPostStateVars())) { }
                 }
-
-                while (TryElimination(allLocVars.Select(v => varCopies[0][v]))) { }
             }
 
             private bool TryElimination(IEnumerable<Variable> extraDefinedVariables)
@@ -532,7 +558,7 @@ namespace Microsoft.Boogie
             private void ComputeTransitionRelationExpr()
             {
                 CalculatePathExpression();
-                AddBoundVariablesForRemainingVars(out Dictionary<Variable, Variable> existsVarMap);
+                AddBoundVariablesForRemainingVars();
                 ReplacePreOrPostStateVars();
                 TransitionRelationExpr = Expr.And(pathExprs);
                 if (IsJoint())
@@ -545,7 +571,8 @@ namespace Microsoft.Boogie
                 }
                 if (existsVarMap.Any())
                 {
-                    TransitionRelationExpr = new ExistsExpr(Token.NoToken, existsVarMap.Values.ToList(), TransitionRelationExpr);
+                    TransitionRelationExpr = new ExistsExpr(Token.NoToken,
+                        existsVarMap.Values.ToList<Variable>(), TransitionRelationExpr);
                 }
             }
 
@@ -655,16 +682,16 @@ namespace Microsoft.Boogie
                 }
             }
 
-            private void AddBoundVariablesForRemainingVars(out Dictionary<Variable, Variable> existsVars)
+            private void AddBoundVariablesForRemainingVars()
             {
                 var remainingVars = NotEliminatedVars.Except(IntermediateFrameWithWitnesses);
-                existsVars = new Dictionary<Variable, Variable>();
+                existsVarMap = new Dictionary<Variable, BoundVariable>();
                 foreach (var v in remainingVars)
                 {
-                    existsVars[v] = new BoundVariable(Token.NoToken,
+                    existsVarMap[v] = new BoundVariable(Token.NoToken,
                         new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type));
                 }
-                var varMap = existsVars.ToDictionary(kvp => kvp.Key, kvp => Expr.Ident(kvp.Value) as Expr);
+                var varMap = existsVarMap.ToDictionary(kvp => kvp.Key, kvp => Expr.Ident(kvp.Value) as Expr);
                 var varSubst = Substituter.SubstitutionFromHashtable(varMap);
                 pathExprs = pathExprs.Select(x => Substituter.Apply(varSubst, x)).ToList();
             }
@@ -697,6 +724,11 @@ namespace Microsoft.Boogie
                     FlattenAnd(naryExpr.Args[1], xs);
                 }
                 else { xs.Add(x); }
+            }
+
+            internal IEnumerable<Variable> GetQuantifiedOriginalVariables()
+            {
+                return existsVarMap.Keys.Select(x => copyToOriginalVar[x]).Distinct();
             }
         }
     }

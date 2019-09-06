@@ -110,6 +110,8 @@ namespace Microsoft.Boogie
             if (!commutativityCheckerCache.Add(Tuple.Create(first, second)))
                 return;
 
+            string checkerName = string.Format("CommutativityChecker_{0}_{1}", first.proc.Name, second.proc.Name);
+
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(first.actionUsedGlobalVars);
@@ -129,7 +131,7 @@ namespace Microsoft.Boogie
             civlTypeChecker.atomicActionPairToWitnessFunctions.TryGetValue(
                 Tuple.Create(first, second), out List<WitnessFunction> witnesses);
             var transitionRelation = NewTransitionRelationComputation.
-                ComputeTransitionRelation(second, first, frame, witnesses);
+                ComputeTransitionRelation(second, first, frame, witnesses, checkerName);
 
             List<Cmd> cmds = new List<Cmd>
             {
@@ -157,7 +159,6 @@ namespace Microsoft.Boogie
             };
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
 
-            string checkerName = string.Format("CommutativityChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             List<Variable> inputs = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
             List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
 
@@ -263,6 +264,8 @@ namespace Microsoft.Boogie
         {
             if (!action.HasAssumeCmd) return;
 
+            string checkerName = string.Format("NonBlockingChecker_{0}", action.proc.Name);
+
             Implementation impl = action.impl;
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(action.gateUsedGlobalVars);
@@ -279,7 +282,7 @@ namespace Microsoft.Boogie
             }
 
             Expr nonBlockingExpr = NewTransitionRelationComputation.
-                ComputeTransitionRelation(action, frame, true);
+                ComputeTransitionRelation(action, frame, checkerName, true);
             AssertCmd nonBlockingAssert = new AssertCmd(action.proc.tok, nonBlockingExpr)
             {
                 ErrorData = string.Format("Non-blocking check for {0} failed", action.proc.Name)
@@ -288,7 +291,6 @@ namespace Microsoft.Boogie
             Block block = new Block(action.proc.tok, "L", new List<Cmd> { nonBlockingAssert },
                 new ReturnCmd(Token.NoToken));
 
-            string checkerName = string.Format("NonBlockingChecker_{0}", action.proc.Name);
             AddChecker(checkerName, new List<Variable>(impl.InParams), new List<Variable>(),
                 new List<Variable>(), requires, new List<Ensures>(), new List<Block> { block });
         }
