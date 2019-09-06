@@ -273,7 +273,7 @@ namespace Microsoft.Boogie
                 DisjointnessRequires(impl.InParams.
                     Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame)
             };
-            foreach (AssertCmd assertCmd in action.secondGate)
+            foreach (AssertCmd assertCmd in action.gate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
             }
