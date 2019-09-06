@@ -499,7 +499,7 @@ namespace Microsoft.Boogie
 
                             var allDefinedVars = varToExpr.Keys.Union(extraDefinedVariables);
                             if (!allDefinedVars.Contains(assignedVar) &&
-                                !VariableCollector.Collect(rhs).Intersect(UsedVariables).
+                                !VariableCollector.Collect(rhs).Intersect(AllIntroducedVariables).
                                     Except(allDefinedVars).Any())
                             {
                                 varToExpr[assignedVar] = rhs;
@@ -639,8 +639,16 @@ namespace Microsoft.Boogie
                 {
                     return newCmds.
                         SelectMany(cmd => VariableCollector.Collect(cmd)).
-                        Intersect(varCopies.SelectMany(x => x.Values)). // all introduced variables
+                        Intersect(AllIntroducedVariables). // all introduced variables
                         Except(varToExpr.Keys);
+                }
+            }
+
+            private IEnumerable<Variable> AllIntroducedVariables
+            {
+                get
+                {
+                    return varCopies.SelectMany(x => x.Values);
                 }
             }
 
