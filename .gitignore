@@ -21,6 +21,10 @@ Binaries/*.pdb
 Binaries/*.config
 Binaries/*.vshost.exe.manifest
 
+# Coco/R
+Scanner.cs.old
+Parser.cs.old
+
 # Editor temporary files
 .*.swp
 

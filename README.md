@@ -133,3 +133,9 @@ See the [Driver test documentation](Test/README.md)
 ### Unit tests
 
 See the [Unit test documentation](Source/UnitTests/README.md)
+
+## License
+
+Boogie itself is licensed under the MIT License (see [LICENSE.txt](LICENSE.txt)).
+The subdirectory [ThirdParty](ThirdParty) contains third-party material that is
+distributed under its own terms (see [NOTICES.md](NOTICES.md)).
