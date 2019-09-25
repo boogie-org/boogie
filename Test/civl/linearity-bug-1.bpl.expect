@@ -1,6 +1,9 @@
-linearity-bug-1.bpl(15,43): Error BP5003: A postcondition might not hold on this return path.
+(0,0): Error BP5003: A postcondition might not hold on this return path.
 linearity-bug-1.bpl(19,31): Related location: Commutativity check between atomic_read_n_1 and atomic_inc_n_1 failed
 Execution trace:
-    linearity-bug-1.bpl(20,7): first_anon0
+    linearity-bug-1.bpl(19,31): inline$atomic_read_n_1$0$Entry
+    linearity-bug-1.bpl(13,32): inline$atomic_inc_n_1$0$Entry
+    linearity-bug-1.bpl(15,3): inline$atomic_inc_n_1$0$anon0
+    linearity-bug-1.bpl(13,32): inline$atomic_inc_n_1$0$Return
 
 Boogie program verifier finished with 1 verified, 1 error

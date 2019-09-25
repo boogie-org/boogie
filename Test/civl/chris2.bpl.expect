@@ -1,34 +1,50 @@
-chris2.bpl(7,15): Error BP5003: A postcondition might not hold on this return path.
+(0,0): Error BP5003: A postcondition might not hold on this return path.
 chris2.bpl(23,3): Related location: Gate of atomic_p_gt2_21 not preserved by atomic_p_gt1_lower_21
 Execution trace:
-    chris2.bpl(7,5): second_anon0
-chris2.bpl(7,15): Error BP5003: A postcondition might not hold on this return path.
+    chris2.bpl(5,32): inline$atomic_p_gt1_lower_21$0$Entry
+    chris2.bpl(7,5): inline$atomic_p_gt1_lower_21$0$anon0
+    chris2.bpl(5,32): inline$atomic_p_gt1_lower_21$0$Return
+(0,0): Error BP5003: A postcondition might not hold on this return path.
 chris2.bpl(22,32): Related location: Gate failure of atomic_p_gt2_21 not preserved by atomic_p_gt1_lower_21
 Execution trace:
-    chris2.bpl(7,5): second_anon0
-chris2.bpl(7,15): Error BP5003: A postcondition might not hold on this return path.
+    chris2.bpl(5,32): inline$atomic_p_gt1_lower_21$0$Entry
+    chris2.bpl(7,5): inline$atomic_p_gt1_lower_21$0$anon0
+    chris2.bpl(5,32): inline$atomic_p_gt1_lower_21$0$Return
+(0,0): Error BP5003: A postcondition might not hold on this return path.
 chris2.bpl(23,3): Related location: Gate of atomic_p_gt2_25 not preserved by atomic_p_gt1_lower_25
 Execution trace:
-    chris2.bpl(7,5): second_anon0
-chris2.bpl(7,15): Error BP5003: A postcondition might not hold on this return path.
+    chris2.bpl(5,32): inline$atomic_p_gt1_lower_25$0$Entry
+    chris2.bpl(7,5): inline$atomic_p_gt1_lower_25$0$anon0
+    chris2.bpl(5,32): inline$atomic_p_gt1_lower_25$0$Return
+(0,0): Error BP5003: A postcondition might not hold on this return path.
 chris2.bpl(22,32): Related location: Gate failure of atomic_p_gt2_25 not preserved by atomic_p_gt1_lower_25
 Execution trace:
-    chris2.bpl(7,5): second_anon0
-chris2.bpl(13,15): Error BP5003: A postcondition might not hold on this return path.
+    chris2.bpl(5,32): inline$atomic_p_gt1_lower_25$0$Entry
+    chris2.bpl(7,5): inline$atomic_p_gt1_lower_25$0$anon0
+    chris2.bpl(5,32): inline$atomic_p_gt1_lower_25$0$Return
+(0,0): Error BP5003: A postcondition might not hold on this return path.
 chris2.bpl(23,3): Related location: Gate of atomic_p_gt2_26 not preserved by atomic_p_gt1_26
 Execution trace:
-    chris2.bpl(13,5): second_anon0
-chris2.bpl(13,15): Error BP5003: A postcondition might not hold on this return path.
+    chris2.bpl(11,32): inline$atomic_p_gt1_26$0$Entry
+    chris2.bpl(13,5): inline$atomic_p_gt1_26$0$anon0
+    chris2.bpl(11,32): inline$atomic_p_gt1_26$0$Return
+(0,0): Error BP5003: A postcondition might not hold on this return path.
 chris2.bpl(22,32): Related location: Gate failure of atomic_p_gt2_26 not preserved by atomic_p_gt1_26
 Execution trace:
-    chris2.bpl(13,5): second_anon0
-chris2.bpl(13,15): Error BP5003: A postcondition might not hold on this return path.
+    chris2.bpl(11,32): inline$atomic_p_gt1_26$0$Entry
+    chris2.bpl(13,5): inline$atomic_p_gt1_26$0$anon0
+    chris2.bpl(11,32): inline$atomic_p_gt1_26$0$Return
+(0,0): Error BP5003: A postcondition might not hold on this return path.
 chris2.bpl(23,3): Related location: Gate of atomic_p_gt2_40 not preserved by atomic_p_gt1_40
 Execution trace:
-    chris2.bpl(13,5): second_anon0
-chris2.bpl(13,15): Error BP5003: A postcondition might not hold on this return path.
+    chris2.bpl(11,32): inline$atomic_p_gt1_40$0$Entry
+    chris2.bpl(13,5): inline$atomic_p_gt1_40$0$anon0
+    chris2.bpl(11,32): inline$atomic_p_gt1_40$0$Return
+(0,0): Error BP5003: A postcondition might not hold on this return path.
 chris2.bpl(22,32): Related location: Gate failure of atomic_p_gt2_40 not preserved by atomic_p_gt1_40
 Execution trace:
-    chris2.bpl(13,5): second_anon0
+    chris2.bpl(11,32): inline$atomic_p_gt1_40$0$Entry
+    chris2.bpl(13,5): inline$atomic_p_gt1_40$0$anon0
+    chris2.bpl(11,32): inline$atomic_p_gt1_40$0$Return
 
 Boogie program verifier finished with 2 verified, 8 errors
