@@ -216,17 +216,9 @@ ensures {:layer 100} Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
 procedure {:atomic} {:layer 97,100} AtomicInitVars100({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
 modifies mutatorPhase, root, toAbs, Color, mem, collectorPhase, sweepPtr;
 {
-    var memNew:[int][fld]int;
-    var rootNew:[idx]int;
-    var ColorNew:[int]int;
-    var mutatorPhaseNew:[X]int;
-
     assert tid == GcTid;
     assert (forall i:int :: mutatorId(i) ==> mutatorTids[i] && mutatorTids[-i]);
-    mem := memNew;
-    root := rootNew;
-    Color := ColorNew;
-    mutatorPhase := mutatorPhaseNew;
+    havoc mem, root, Color, mutatorPhase;
     assume (forall x: int, f: fld :: memAddr(x) && fieldAddr(f) ==> mem[x][f] == x);
     assume (forall x: idx :: rootAddr(x) ==> root[x] == 0);
     assume (forall i:int :: memAddr(i) ==> Color[i] == UNALLOC());
@@ -776,11 +768,9 @@ ensures {:layer 100} MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet)
 procedure {:atomic} {:layer 100} AtomicCanMarkStop({:linear "tid"} tid:Tid) returns (canStop: bool)
 modifies Color;
 {
-    var oldColor, newColor: [int]int;
     assert tid == GcTid;
-    oldColor := Color;
-    Color := newColor;
-    assume (forall u: int :: if memAddr(u) && White(oldColor[u]) && (exists k: int :: rootAddr(k) && root[k] == u) then Color[u] == GRAY() else Color[u] == oldColor[u]);
+    havoc Color;
+    assume (forall u: int :: if memAddr(u) && White(old(Color)[u]) && (exists k: int :: rootAddr(k) && root[k] == u) then Color[u] == GRAY() else Color[u] == old(Color)[u]);
     canStop := (forall v: int :: memAddr(v) ==> !Gray(Color[v]));
 }
 
