@@ -30,7 +30,7 @@ modifies A, count;
   assume (forall i:int :: i < idx ==> A[i] == old(A)[i]);
   assume (forall i:int :: idx < i && i < count ==> A[i+1] == old(A)[i]);
   assume (forall i:int :: count < i ==> A[i] == old(A)[i]);
-  A[idx] := v;
+  assume A[idx] == v;
 
   count := count + 1;
 }
