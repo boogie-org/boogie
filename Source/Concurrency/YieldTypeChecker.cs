@@ -14,17 +14,57 @@ namespace Microsoft.Boogie
 {
     public class YieldTypeChecker
     {
-        // States of Yield Sufficiency Automaton (YSA)
-        static int RM = 0;
-        static int LM = 1;
-
-        // Edge labels of YSA
-        static char Y = 'Y';
-        static char B = 'B';
-        static char L = 'L';
-        static char R = 'R';
-        static char A = 'A';
-        static char P = 'P';
+        // Edge labels of the automaton that abstracts the code of a procedure
+        private const char Y = 'Y';  // yield
+        private const char B = 'B';  // both mover action
+        private const char L = 'L';  // left mover action
+        private const char R = 'R';  // right mover action
+        private const char A = 'A';  // atomic (non mover) action
+        private const char P = 'P';  // private (local variable) access
+        private const char I = 'I';  // introduction action
+        
+        // States of Bracket Automaton (check that all accesses to global variables are bracketed by yields)
+        private const int BEFORE = 0;
+        private const int INSIDE = 1;
+        private const int AFTER = 2;
+        
+        // Transitions of Bracket Automaton
+        static List<Tuple<int, int, int>> BracketSpec = new List<Tuple<int, int, int>>
+        { // initial: BEFORE, final: AFTER
+            new Tuple<int, int, int>(BEFORE, P, BEFORE),
+            new Tuple<int, int, int>(BEFORE, Y, INSIDE),
+            new Tuple<int, int, int>(BEFORE, Y, AFTER),
+            new Tuple<int, int, int>(INSIDE, Y, INSIDE),
+            new Tuple<int, int, int>(INSIDE, B, INSIDE),
+            new Tuple<int, int, int>(INSIDE, R, INSIDE),
+            new Tuple<int, int, int>(INSIDE, L, INSIDE),
+            new Tuple<int, int, int>(INSIDE, A, INSIDE),
+            new Tuple<int, int, int>(INSIDE, P, INSIDE),
+            new Tuple<int, int, int>(INSIDE, I, INSIDE),
+            new Tuple<int, int, int>(INSIDE, Y, AFTER),
+            new Tuple<int, int, int>(AFTER, P, AFTER),
+        };
+        
+        // States of Atomicity Automaton (check that transactions are separated by yields)
+        private const int RM = 0;
+        private const int LM = 1;
+        
+        // Transitions of Atomicity Automaton
+        static List<Tuple<int, int, int>> AtomicitySpec = new List<Tuple<int, int, int>>
+        { // initial: {RM, LM}, final: {RM, LM}
+            new Tuple<int, int, int>(RM, P, RM),
+            new Tuple<int, int, int>(RM, I, RM),
+            new Tuple<int, int, int>(RM, B, RM),
+            new Tuple<int, int, int>(RM, R, RM),
+            new Tuple<int, int, int>(RM, Y, RM),
+            new Tuple<int, int, int>(RM, L, LM),
+            new Tuple<int, int, int>(RM, A, LM),
+            new Tuple<int, int, int>(LM, P, LM),
+            new Tuple<int, int, int>(LM, I, LM),
+            new Tuple<int, int, int>(LM, B, LM),
+            new Tuple<int, int, int>(LM, L, LM),
+            new Tuple<int, int, int>(LM, Y, RM),
+        };
 
         private static int MoverTypeToLabel(MoverType moverType)
         {
@@ -42,44 +82,6 @@ namespace Microsoft.Boogie
                     throw new InvalidEnumArgumentException();
             }
         }
-
-        static List<Tuple<int, int, int>> ASpec = new List<Tuple<int, int, int>>
-        { // initial: RM, final: LM
-            new Tuple<int, int, int>(RM, Y, LM),
-            new Tuple<int, int, int>(LM, Y, LM),
-            new Tuple<int, int, int>(LM, B, LM),
-            new Tuple<int, int, int>(LM, R, LM),
-            new Tuple<int, int, int>(LM, L, LM),
-            new Tuple<int, int, int>(LM, A, LM),
-            new Tuple<int, int, int>(RM, P, RM),
-            new Tuple<int, int, int>(LM, P, LM)
-        };
-        static List<Tuple<int, int, int>> BSpec = new List<Tuple<int, int, int>>
-        { // initial: LM, final: RM
-            new Tuple<int, int, int>(LM, Y, RM),
-            new Tuple<int, int, int>(LM, Y, LM),
-            new Tuple<int, int, int>(LM, B, LM),
-            new Tuple<int, int, int>(LM, R, LM),
-            new Tuple<int, int, int>(LM, L, LM),
-            new Tuple<int, int, int>(LM, A, LM),
-            new Tuple<int, int, int>(RM, P, RM),
-            new Tuple<int, int, int>(LM, P, LM)
-        };
-        static List<Tuple<int, int, int>> CSpec = new List<Tuple<int, int, int>>
-        { // initial: {RM, LM}, final: {RM, LM}
-            new Tuple<int, int, int>(RM, B, RM),
-            new Tuple<int, int, int>(RM, R, RM),
-            new Tuple<int, int, int>(RM, Y, RM),
-            new Tuple<int, int, int>(RM, B, LM),
-            new Tuple<int, int, int>(RM, R, LM),
-            new Tuple<int, int, int>(RM, L, LM),
-            new Tuple<int, int, int>(RM, A, LM),
-            new Tuple<int, int, int>(LM, B, LM),
-            new Tuple<int, int, int>(LM, L, LM),
-            new Tuple<int, int, int>(LM, Y, RM),
-            new Tuple<int, int, int>(RM, P, RM),
-            new Tuple<int, int, int>(LM, P, LM)
-        };
 
         CivlTypeChecker civlTypeChecker;
         public CheckingContext checkingContext;
@@ -167,45 +169,28 @@ namespace Microsoft.Boogie
 
                 if (!IsMoverProcedure)
                 {
-                    ASpecCheck();
-                    BSpecCheck();
+                    BracketCheck();
                 }
-                CSpecCheck();
+                AtomicityCheck();
             }
 
-            private void ASpecCheck()
+            private void BracketCheck()
             {
                 var initialConstraints = new Dictionary<Absy, HashSet<int>>();
-                initialConstraints[initialState] = new HashSet<int> { RM };
+                initialConstraints[initialState] = new HashSet<int> { BEFORE };
                 foreach (var finalState in finalStates)
                 {
-                    initialConstraints[finalState] = new HashSet<int> { LM };
+                    initialConstraints[finalState] = new HashSet<int> { AFTER };
                 }
 
-                var simulationRelation = new SimulationRelation<Absy, int, int>(implEdges, ASpec, initialConstraints).ComputeSimulationRelation();
+                var simulationRelation = new SimulationRelation<Absy, int, int>(implEdges, BracketSpec, initialConstraints).ComputeSimulationRelation();
                 if (simulationRelation[initialState].Count == 0)
                 {
-                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check A at layer {1}. An action must be preceded by a yield.", impl.Name, currLayerNum));
+                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails bracket check at layer {1}. All code that accesses global variables must be bracketed by yields.", impl.Name, currLayerNum));
                 }
             }
 
-            private void BSpecCheck()
-            {
-                var initialConstraints = new Dictionary<Absy, HashSet<int>>();
-                initialConstraints[initialState] = new HashSet<int> { LM };
-                foreach (var finalState in finalStates)
-                {
-                    initialConstraints[finalState] = new HashSet<int> { RM };
-                }
-
-                var simulationRelation = new SimulationRelation<Absy, int, int>(implEdges, BSpec, initialConstraints).ComputeSimulationRelation();
-                if (simulationRelation[initialState].Count == 0)
-                {
-                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check B at layer {1}. An action must be succeeded by a yield.", impl.Name, currLayerNum));
-                }
-            }
-
-            private void CSpecCheck()
+            private void AtomicityCheck()
             {
                 var initialConstraints = new Dictionary<Absy, HashSet<int>>();
 
@@ -227,7 +212,7 @@ namespace Microsoft.Boogie
                     }
                 }
 
-                var simulationRelation = new SimulationRelation<Absy, int, int>(implEdges, CSpec, initialConstraints).ComputeSimulationRelation();
+                var simulationRelation = new SimulationRelation<Absy, int, int>(implEdges, AtomicitySpec, initialConstraints).ComputeSimulationRelation();
 
                 if (IsMoverProcedure)
                 {
@@ -238,7 +223,7 @@ namespace Microsoft.Boogie
                 }
                 else if (simulationRelation[initialState].Count == 0)
                 {
-                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails simulation check C at layer {1}. Transactions must be separated by a yield.", impl.Name, currLayerNum));
+                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails atomicity check at layer {1}. Transactions must be separated by yields.", impl.Name, currLayerNum));
                 }
             }
 
@@ -346,8 +331,8 @@ namespace Microsoft.Boogie
 
             private int CallCmdLabel(CallCmd callCmd)
             {
-                if (!@base.civlTypeChecker.procToYieldingProc.ContainsKey(callCmd.Proc))
-                    return P;
+                if (@base.civlTypeChecker.procToIntroductionProc.ContainsKey(callCmd.Proc))
+                    return I;
 
                 YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];
                 if (callCmd.IsAsync)

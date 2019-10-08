@@ -46,12 +46,14 @@ procedure {:yields} {:layer 0} {:refines "atomic_read_x"} read_x () returns ({:l
 {
   yield;
   call v := intro_read_x();
+  yield;
 }
 
 procedure {:yields} {:layer 0} {:refines "atomic_write_x"} write_x (x':int)
 {
   yield;
   call intro_write_x(x');
+  yield;
 }
 
 procedure {:layer 0} intro_read_x () returns (v:int)

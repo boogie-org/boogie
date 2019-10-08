@@ -283,7 +283,7 @@ namespace Microsoft.Boogie
         {
             Procedure originalProc = originalCallCmd.Proc;
 
-            if (civlTypeChecker.procToInstrumentationProc.ContainsKey(originalProc))
+            if (civlTypeChecker.procToIntroductionProc.ContainsKey(originalProc))
             {
                 if (!civlTypeChecker.CallExists(originalCallCmd, enclosingYieldingProc.upperLayer, layerNum))
                     return;
