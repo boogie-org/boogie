@@ -1,0 +1,8 @@
+(0,0): Error BP5003: A postcondition might not hold on this return path.
+linearity-bug-2.bpl(6,32): Related location: Linearity invariant for domain lin is not preserved by atomic_foo_2.
+Execution trace:
+    linearity-bug-2.bpl(6,32): inline$atomic_foo_2$0$Entry
+    linearity-bug-2.bpl(8,10): inline$atomic_foo_2$0$anon0
+    linearity-bug-2.bpl(6,32): inline$atomic_foo_2$0$Return
+
+Boogie program verifier finished with 2 verified, 1 error
