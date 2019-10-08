@@ -320,13 +320,13 @@ namespace Microsoft.Boogie
         }
     }
 
-    public class InstrumentationProc
+    public class IntroductionProc
     {
         public Procedure proc;
         public LayerRange layerRange;
         public bool isLeaky;
 
-        public InstrumentationProc(Procedure proc, LayerRange layerRange, bool isLeaking)
+        public IntroductionProc(Procedure proc, LayerRange layerRange, bool isLeaking)
         {
             this.proc = proc;
             this.isLeaky = isLeaking;
@@ -378,18 +378,18 @@ namespace Microsoft.Boogie
         public Program program;
 
         // Don't access directly!
-        // TypeCheckLocalVariables initializes globalVarToLayerRange such that variables with min-max layer range are not explicitely stored.
-        // Similarly for localVartoIntroLayer / TypeCheckLocalVariables.
+        // TypeCheckLocalVariables initializes globalVarToLayerRange such that variables with min-max layer range are not explicitly stored.
+        // Similarly for localVarToIntroLayer / TypeCheckLocalVariables.
         // Use public access methods.
         private Dictionary<Variable, LayerRange> globalVarToLayerRange;
         private Dictionary<Variable, int> localVarToIntroLayer;
 
         public Dictionary<Procedure, AtomicAction> procToAtomicAction;
         public Dictionary<Procedure, YieldingProc> procToYieldingProc;
-        public Dictionary<Procedure, InstrumentationProc> procToInstrumentationProc;
+        public Dictionary<Procedure, IntroductionProc> procToIntroductionProc;
 
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
-        Dictionary<CallCmd, int> instrumentationCallToLayer;
+        Dictionary<CallCmd, int> introductionCallToLayer;
 
         public GlobalVariable pendingAsyncMultiset;
 
@@ -409,21 +409,21 @@ namespace Microsoft.Boogie
             this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
             this.procToAtomicAction = new Dictionary<Procedure, AtomicAction>();
             this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
-            this.procToInstrumentationProc = new Dictionary<Procedure, InstrumentationProc>();
-            this.instrumentationCallToLayer = new Dictionary<CallCmd, int>();
+            this.procToIntroductionProc = new Dictionary<Procedure, IntroductionProc>();
+            this.introductionCallToLayer = new Dictionary<CallCmd, int>();
         }
 
         public bool CallExists(CallCmd callCmd, int enclosingProcLayerNum, int layerNum)
         {
-            Debug.Assert(procToInstrumentationProc.ContainsKey(callCmd.Proc));
-            var instrumentationProc = procToInstrumentationProc[callCmd.Proc];
-            if (instrumentationProc.isLeaky)
+            Debug.Assert(procToIntroductionProc.ContainsKey(callCmd.Proc));
+            var introductionProc = procToIntroductionProc[callCmd.Proc];
+            if (introductionProc.isLeaky)
             {
                 return enclosingProcLayerNum == layerNum;
             }
             else
             {
-                return instrumentationCallToLayer[callCmd] <= layerNum;
+                return introductionCallToLayer[callCmd] <= layerNum;
             }
         }
 
@@ -521,7 +521,7 @@ namespace Microsoft.Boogie
             // later checks can work with them but also do not cash.
 
             TypeCheckGlobalVariables();
-            TypeCheckInstrumentationProcedures();
+            TypeCheckIntroductionProcedures();
 
             TypeCheckAtomicActionDecls();
             TypeCheckYieldingProcedureDecls();
@@ -656,9 +656,9 @@ namespace Microsoft.Boogie
             }
         }
 
-        private void TypeCheckInstrumentationProcedures()
+        private void TypeCheckIntroductionProcedures()
         {
-            // Instrumentation procedure:
+            // Introduction procedure:
             // * no {:yield}
             // * no mover type
             // layer range
@@ -670,16 +670,16 @@ namespace Microsoft.Boogie
                 {
                     if (GlobalVariableLayerRange(ie.Decl).lowerLayerNum != layerRange.lowerLayerNum)
                     {
-                        Error(ie, "Instrumentation procedures can modify shared variables only on their introduction layer");
+                        Error(ie, "Introduction procedures can modify shared variables only on their introduction layer");
                     }
                 }
 
-                procToInstrumentationProc[proc] = new InstrumentationProc(proc, layerRange, isLeaky);
+                procToIntroductionProc[proc] = new IntroductionProc(proc, layerRange, isLeaky);
             }
             if (checkingContext.ErrorCount > 0) return;
 
-            InstrumentationProcedureVisitor visitor = new InstrumentationProcedureVisitor(this);
-            foreach (Implementation impl in program.Implementations.Where(impl => procToInstrumentationProc.ContainsKey(impl.Proc)))
+            IntroductionProcedureVisitor visitor = new IntroductionProcedureVisitor(this);
+            foreach (Implementation impl in program.Implementations.Where(impl => procToIntroductionProc.ContainsKey(impl.Proc)))
             {
                 visitor.VisitImplementation(impl);
             }
@@ -753,7 +753,7 @@ namespace Microsoft.Boogie
                 visitor.VisitImplementation(impl);
 
                 // TODO: Check the modifies clause of mover procedures.
-                // Calls to instrumentation procedures!
+                // Calls to introduction procedures!
 
                 YieldingProc yieldingProc = procToYieldingProc[impl.Proc];
 
@@ -780,7 +780,7 @@ namespace Microsoft.Boogie
                                 mods = new HashSet<Variable>();
                             }
                         }
-                        else if (procToInstrumentationProc.ContainsKey(callCmd.Proc))
+                        else if (procToIntroductionProc.ContainsKey(callCmd.Proc))
                         {
                             mods = new HashSet<Variable>(callCmd.Proc.Modifies.Select(ie => ie.Decl));
                         }
@@ -1304,31 +1304,31 @@ namespace Microsoft.Boogie
             }
         }
 
-        private class InstrumentationProcedureVisitor : ReadOnlyVisitor
+        private class IntroductionProcedureVisitor : ReadOnlyVisitor
         {
             private CivlTypeChecker ctc;
-            private InstrumentationProc instrumentationProc;
+            private IntroductionProc introductionProc;
 
-            public InstrumentationProcedureVisitor(CivlTypeChecker civlTypeChecker)
+            public IntroductionProcedureVisitor(CivlTypeChecker civlTypeChecker)
             {
                 this.ctc = civlTypeChecker;
             }
 
             public override Implementation VisitImplementation(Implementation node)
             {
-                instrumentationProc = ctc.procToInstrumentationProc[node.Proc];
+                introductionProc = ctc.procToIntroductionProc[node.Proc];
                 return base.VisitImplementation(node);
             }
 
             public override Cmd VisitCallCmd(CallCmd callCmd)
             {
-                if (!ctc.procToInstrumentationProc.ContainsKey(callCmd.Proc))
+                if (!ctc.procToIntroductionProc.ContainsKey(callCmd.Proc))
                 {
-                    ctc.Error(callCmd, "Instrumentation procedure can only call an instrumentation procedure");
+                    ctc.Error(callCmd, "Introduction procedure can only call an introduction procedure");
                     return base.VisitCallCmd(callCmd);
                 }
-                InstrumentationProc calleeProc = ctc.procToInstrumentationProc[callCmd.Proc];
-                if (!instrumentationProc.layerRange.Subset(calleeProc.layerRange))
+                IntroductionProc calleeProc = ctc.procToIntroductionProc[callCmd.Proc];
+                if (!introductionProc.layerRange.Subset(calleeProc.layerRange))
                 {
                     ctc.Error(callCmd, "Caller layers must be subset of callee layers");
                 }
@@ -1340,9 +1340,9 @@ namespace Microsoft.Boogie
                 if (node.Decl is GlobalVariable)
                 {
                     LayerRange globalVarLayerRange = ctc.GlobalVariableLayerRange(node.Decl);
-                    if (!instrumentationProc.layerRange.Subset(globalVarLayerRange))
+                    if (!introductionProc.layerRange.Subset(globalVarLayerRange))
                     {
-                        ctc.Error(node, "Shared variable is not accessible in instrumentation procedure");
+                        ctc.Error(node, "Shared variable is not accessible in introduction procedure");
                     }
                 }
                 return node;
@@ -1410,7 +1410,7 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        ctc.Error(node, "Shared variable can be accessed only in instrumentation procedures, atomic actions, and specifications");
+                        ctc.Error(node, "Shared variable can be accessed only in introduction procedures, atomic actions, and specifications");
                     }
                 }
                 else
@@ -1504,13 +1504,13 @@ namespace Microsoft.Boogie
                 {
                     VisitYieldingProcCallCmd(call, callerProc, ctc.procToYieldingProc[call.Proc]);
                 }
-                else if (ctc.procToInstrumentationProc.ContainsKey(call.Proc))
+                else if (ctc.procToIntroductionProc.ContainsKey(call.Proc))
                 {
-                    VisitInstrumentationProcCallCmd(call, callerProc, ctc.procToInstrumentationProc[call.Proc]);
+                    VisitIntroductionProcCallCmd(call, callerProc, ctc.procToIntroductionProc[call.Proc]);
                 }
                 else
                 {
-                    ctc.Error(call, "A yielding procedure can only call yielding or instrumentation procedures");
+                    ctc.Error(call, "A yielding procedure can only call yielding or introduction procedures");
                 }
                 return call;
             }
@@ -1630,17 +1630,17 @@ namespace Microsoft.Boogie
                 }
             }
 
-            private void VisitInstrumentationProcCallCmd(CallCmd call, YieldingProc callerProc, InstrumentationProc calleeProc)
+            private void VisitIntroductionProcCallCmd(CallCmd call, YieldingProc callerProc, IntroductionProc calleeProc)
             {
                 if (!calleeProc.layerRange.Contains(callerProc.upperLayer))
                 {
-                    ctc.checkingContext.Error(call, "Called instrumentation procedure {0} is not available at layer {1}", calleeProc.proc.Name, callerProc.upperLayer);
+                    ctc.checkingContext.Error(call, "Called introduction procedure {0} is not available at layer {1}", calleeProc.proc.Name, callerProc.upperLayer);
                     return;
                 }
 
                 if (calleeProc.isLeaky)
                 {
-                    // Call to leaky instrumentation procedure only exists at the upper layer of caller yielding procedure.
+                    // Call to leaky introduction procedure only exists at the upper layer of caller yielding procedure.
                     // Thus, all local variables are already introduced and we only have to check output variables.
                     foreach (var ie in call.Outs)
                     {
@@ -1652,11 +1652,11 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    // Call to non-leaky instrumentation procedure exists as soon as all local variables used as input are available.
+                    // Call to non-leaky introduction procedure exists as soon as all local variables used as input are available.
                     // I.e., we compute the maximum introduction layer of all local variables used as input.
                     localVariableAccesses = new List<IdentifierExpr>();
                     foreach (var e in call.Ins) { Visit(e); }
-                    ctc.instrumentationCallToLayer[call] = localVariableAccesses
+                    ctc.introductionCallToLayer[call] = localVariableAccesses
                                                            .Select(ie => ctc.LocalVariableIntroLayer(ie.Decl))
                                                            .Concat1(calleeProc.layerRange.lowerLayerNum)
                                                            .Max(); 

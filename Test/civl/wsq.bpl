@@ -100,11 +100,9 @@ ensures {:layer 3} {:expand} emptyInv(put_in_cs, take_in_cs, items,status,T);
   var {:layer 3} oldT:int;
   var {:layer 3} oldStatusT:bool;
   
-  call oldH, oldT := GhostRead();
   yield;
   assert {:layer 3} {:expand} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs;
   assert {:layer 3} {:expand} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
-  assert {:layer 3} oldH <= H && oldT == T;
   assert {:layer 3} {:expand} emptyInv(put_in_cs, take_in_cs, items,status,T);
 
   call t := readT_put(tid);
@@ -161,11 +159,9 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
   var {:layer 3} oldH:int;
   var {:layer 3} oldT:int;
 
-  call oldH, oldT := GhostRead();
   yield;
   assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs;
   assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
-  assert {:layer 3} oldH <= H && oldT == T;
   
   while(true)
   invariant {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs;
@@ -321,12 +317,10 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
   var {:layer 3} oldH:int;
   var {:layer 3} oldT:int;
 
-  call oldH, oldT := GhostRead();
   yield;
   assert {:layer 3} stealerTid(tid);
   assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1);
   assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
-  assert {:layer 3} oldH <= H;
   assert {:layer 3} !steal_in_cs[tid];
 
   while(true)
