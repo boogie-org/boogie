@@ -1190,7 +1190,7 @@ namespace Microsoft.Boogie
         {
             Program program = linearTypeChecker.program;
 
-            // Skip procedures do not completely disapper (because of ouput paramters).
+            // Skip procedures do not completely disappear (because of output parameters).
             // We create dummy implementations with empty body.
             Dictionary<Procedure, Procedure> procToSkipProcDummy = new Dictionary<Procedure, Procedure>();
             foreach(SkipProc skipProc in civlTypeChecker.procToYieldingProc.Values.OfType<SkipProc>())
