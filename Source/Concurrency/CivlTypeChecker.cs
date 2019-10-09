@@ -518,7 +518,7 @@ namespace Microsoft.Boogie
             // such that as much feedback as possible is generated for the user?
             // For example, by creating "invalid" objects like an ActionProc with
             // null refinedAction in TypeCheckYieldingProcedureDecls, such that
-            // later checks can work with them but also do not cash.
+            // later checks can work with them but also do not crash.
 
             TypeCheckGlobalVariables();
             TypeCheckIntroductionProcedures();
