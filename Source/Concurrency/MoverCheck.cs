@@ -131,7 +131,7 @@ namespace Microsoft.Boogie
             civlTypeChecker.atomicActionPairToWitnessFunctions.TryGetValue(
                 Tuple.Create(first, second), out List<WitnessFunction> witnesses);
             var transitionRelation = NewTransitionRelationComputation.
-                ComputeTransitionRelation(second, first, frame, witnesses, checkerName);
+                Commutativity(second, first, frame, witnesses);
 
             List<Cmd> cmds = new List<Cmd>
             {
@@ -282,7 +282,7 @@ namespace Microsoft.Boogie
             }
 
             Expr nonBlockingExpr = NewTransitionRelationComputation.
-                ComputeTransitionRelation(action, frame, checkerName, true);
+                Nonblocking(action, frame);
             AssertCmd nonBlockingAssert = new AssertCmd(action.proc.tok, nonBlockingExpr)
             {
                 ErrorData = string.Format("Non-blocking check for {0} failed", action.proc.Name)

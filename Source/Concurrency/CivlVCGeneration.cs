@@ -33,7 +33,7 @@ namespace Microsoft.Boogie
             program.RemoveTopLevelDeclarations(x => originalDecls.Contains(x));
             program.AddTopLevelDeclarations(decls);
 
-            civlTypeChecker.SubstituteBackwardsAssignments();
+            civlTypeChecker.SubstituteBackwardAssignments();
 
             foreach (AtomicAction atomicAction in civlTypeChecker.procToAtomicAction.Values)
             {

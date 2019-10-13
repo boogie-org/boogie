@@ -103,24 +103,29 @@ namespace Microsoft.Boogie
         internal readonly HashSet<Variable> frame;
         internal readonly Dictionary<GlobalVariable, List<WitnessFunction>> globalVarToWitnesses;
         internal readonly bool ignorePostState;
+
+        internal readonly string messagePrefix;
         internal readonly CheckingContext checkingContext;
-        private readonly string token;
-        private Stack<Cmd> cmdStack;
-        private List<PathTranslation> pathTranslations;
 
-        private int transferStackIndex;
+        private List<Cmd> path;
+        private int transferIndex; // from first to second action
 
-        private NewTransitionRelationComputation(AtomicActionCopyAdapter first,
-            AtomicActionCopyAdapter second, IEnumerable<Variable> frame,
-            List<WitnessFunction> witnesses, string token, bool ignorePostState)
+        private List<Expr> pathTranslations;
+
+        private NewTransitionRelationComputation(
+            AtomicActionCopyAdapter first, AtomicActionCopyAdapter second,
+            IEnumerable<Variable> frame, List<WitnessFunction> witnesses, bool ignorePostState,
+            string messagePrefix)
         {
-            this.checkingContext = new CheckingContext(null);
-            this.token = token;
             this.first = first;
             this.second = second;
             this.frame = new HashSet<Variable>(frame);
             this.ignorePostState = ignorePostState;
 
+            this.messagePrefix = messagePrefix;
+            this.checkingContext = new CheckingContext(null);
+
+            this.pathTranslations = new List<Expr>();
             this.globalVarToWitnesses = new Dictionary<GlobalVariable, List<WitnessFunction>>();
             if (witnesses != null)
             {
@@ -134,16 +139,16 @@ namespace Microsoft.Boogie
                     globalVarToWitnesses[gVar].Add(witness);
                 }
             }
-
-            EnumeratePaths();
         }
 
-        private static Expr ComputeTransitionRelation(AtomicActionCopyAdapter first,
-            AtomicActionCopyAdapter second, IEnumerable<Variable> frame,
-            List<WitnessFunction> witnesses, string token, bool ignorePostState)
+        private static Expr ComputeTransitionRelation(
+            AtomicActionCopyAdapter first, AtomicActionCopyAdapter second,
+            IEnumerable<Variable> frame, List<WitnessFunction> witnesses, bool ignorePostState,
+            string messagePrefix)
         {
-            var transitionRelationComputation = new NewTransitionRelationComputation(first, second, frame, witnesses, token, ignorePostState);
-            var transitionRelation = Expr.Or(transitionRelationComputation.pathTranslations.Select(x => x.TransitionRelationExpr));
+            var trc = new NewTransitionRelationComputation(first, second, frame, witnesses, ignorePostState, messagePrefix);
+            trc.EnumeratePaths();
+            var transitionRelation = Expr.Or(trc.pathTranslations);
 
             ResolutionContext rc = new ResolutionContext(null)
             {
@@ -155,53 +160,53 @@ namespace Microsoft.Boogie
             return transitionRelation;
         }
 
-        public static Expr ComputeTransitionRelation(AtomicActionCopy first, AtomicActionCopy second,
-            HashSet<Variable> frame, List<WitnessFunction> witnesses,
-            string token)
+        public static Expr Commutativity(AtomicActionCopy first, AtomicActionCopy second,
+            HashSet<Variable> frame, List<WitnessFunction> witnesses)
         {
             return ComputeTransitionRelation(
                 new AtomicActionCopyAdapter(first, AtomicActionCopyKind.SECOND),
                 new AtomicActionCopyAdapter(second, AtomicActionCopyKind.FIRST),
-                frame, witnesses, token, false);
+                frame, witnesses, false,
+                string.Format("Transition relation of {0} ∘ {1}", first.proc.Name, second.proc.Name));
         }
 
-
-        public static Expr ComputeTransitionRelation(AtomicActionCopy action, HashSet<Variable> frame,
-            string token, bool ignorePostState = false)
+        public static Expr Refinement(AtomicActionCopy action, HashSet<Variable> frame)
         {
             return ComputeTransitionRelation(
                 new AtomicActionCopyAdapter(action, AtomicActionCopyKind.NORMAL),
-                null, frame, null, token, ignorePostState);
+                null, frame, null, false,
+                string.Format("Transition relation of {0}", action.proc.Name));
+        }
+
+        public static Expr Nonblocking(AtomicActionCopy action, HashSet<Variable> frame)
+        {
+            return ComputeTransitionRelation(
+                new AtomicActionCopyAdapter(action, AtomicActionCopyKind.NORMAL),
+                null, frame, null, true,
+                string.Format("Nonblocking expression of {0}", action.proc.Name));
         }
 
         private void EnumeratePaths()
         {
-            cmdStack = new Stack<Cmd>();
-            this.pathTranslations = new List<PathTranslation>();
-            Debug.Assert(cmdStack.Count == 0);
+            path = new List<Cmd>();
+            Debug.Assert(path.Count == 0);
             EnumeratePathsRec(first.Blocks[0], true);
-            Debug.Assert(cmdStack.Count == 0);
-        }
-
-        private void Warn(string msg)
-        {
-            checkingContext.Warning(Token.NoToken,
-                "TransitionRelation(" + token + "): " + msg);
+            Debug.Assert(path.Count == 0);
         }
 
         private void EnumeratePathsRec(Block b, bool inFirst)
         {
-            int pathSizeAtEntry = cmdStack.Count;
+            int pathSizeAtEntry = path.Count;
 
             foreach (Cmd cmd in b.Cmds)
             {
-                cmdStack.Push(cmd);
+                path.Add(cmd);
             }
             if (b.TransferCmd is ReturnCmd)
             {
                 if (inFirst && second != null)
                 {
-                    transferStackIndex = cmdStack.Count;
+                    transferIndex = path.Count;
                     EnumeratePathsRec(second.Blocks[0], false);
                 }
                 else
@@ -218,26 +223,23 @@ namespace Microsoft.Boogie
                 }
             }
 
-            Debug.Assert(cmdStack.Count >= pathSizeAtEntry);
-            while (cmdStack.Count > pathSizeAtEntry)
-            {
-                cmdStack.Pop();
-            }
+            Debug.Assert(path.Count >= pathSizeAtEntry);
+            path.RemoveRange(pathSizeAtEntry, path.Count - pathSizeAtEntry);
         }
 
         private void AddPath()
         {
-            List<Cmd> cmds = new List<Cmd>(cmdStack);
-            cmds.Reverse();
-            var pathTranslation = new PathTranslation(this, cmds);
-            pathTranslations.Add(pathTranslation);
+            var pathTranslation = new PathTranslation(this, path);
+            pathTranslations.Add(pathTranslation.TransitionRelationExpr);
 
             if (CommandLineOptions.Clo.WarnNotEliminatedVars)
             {
                 var quantifiedVars = pathTranslation.GetQuantifiedOriginalVariables();
                 if (quantifiedVars.Any())
                 {
-                    Warn("Variables {" + string.Join(", ", quantifiedVars) + "} could not be eliminated for some path.");
+                    checkingContext.Warning(Token.NoToken,
+                        string.Format("{0}: could not eliminate variables {{{1}}} on some path",
+                            messagePrefix, string.Join(", ", quantifiedVars)));
                 }
             }
         }
@@ -302,9 +304,7 @@ namespace Microsoft.Boogie
             {
                 Debug.Assert(IsJoint());
 
-                var remainingIntermediateFrame = frameIntermediateCopy.
-                    Where(kvp => !varToExpr.ContainsKey(kvp.Value)).
-                    Select(kvp => kvp.Value);
+                var remainingIntermediateFrame = frameIntermediateCopy.Values.Except(varToExpr.Keys);
                 while (TryElimination(remainingIntermediateFrame)) { }
 
                 while (TryElimination(remainingIntermediateFrame.
@@ -379,7 +379,7 @@ namespace Microsoft.Boogie
                 newCmds = new List<Cmd>();
                 for (int k = 0; k < cmds.Count; k++)
                 {
-                    if (IsJoint() && k == transitionRelationComputer.transferStackIndex)
+                    if (IsJoint() && k == transitionRelationComputer.transferIndex)
                     {
                         PopulateIntermediateFrameCopy();
                         oldSub = Substituter.SubstitutionFromHashtable(GetPreStateVars().
@@ -437,7 +437,7 @@ namespace Microsoft.Boogie
                     }
                 }
                 // TODO: Add note on this
-                if (!IsJoint() || cmds.Count == transitionRelationComputer.transferStackIndex)
+                if (!IsJoint() || cmds.Count == transitionRelationComputer.transferIndex)
                     PopulateIntermediateFrameCopy();
             }
 
@@ -669,7 +669,7 @@ namespace Microsoft.Boogie
                 {
                     return newCmds.
                         SelectMany(cmd => VariableCollector.Collect(cmd)).
-                        Intersect(AllIntroducedVariables). // all introduced variables
+                        Intersect(AllIntroducedVariables).
                         Except(varToExpr.Keys);
                 }
             }
@@ -730,33 +730,6 @@ namespace Microsoft.Boogie
             {
                 return existsVarMap.Keys.Select(x => copyToOriginalVar[x]).Distinct();
             }
-        }
-    }
-
-    // TODO: Remove or use this visitor
-    public class FooCollector : ReadOnlyVisitor
-    {
-        HashSet<Variable> usedVars;
-        HashSet<Variable> boundVars;
-
-        public FooCollector()
-        {
-            usedVars = new HashSet<Variable>();
-            boundVars = new HashSet<Variable>();
-        }
-
-        public override BinderExpr VisitBinderExpr(BinderExpr node)
-        {
-            boundVars.UnionWith(node.Dummies);
-            var ret = base.VisitBinderExpr(node);
-            boundVars.ExceptWith(node.Dummies);
-            return ret;
-        }
-
-        public override Expr VisitIdentifierExpr(IdentifierExpr node)
-        {
-            usedVars.Add(node.Decl);
-            return base.VisitIdentifierExpr(node);
         }
     }
 

@@ -549,7 +549,7 @@ namespace Microsoft.Boogie
                     {
                         transitionRelationCache[atomicActionCopy] =
                             NewTransitionRelationComputation.
-                                ComputeTransitionRelation(atomicActionCopy, frame, atomicActionCopy.proc.Name);
+                                Refinement(atomicActionCopy, frame);
                     }
                     Expr betaExpr = transitionRelationCache[atomicActionCopy];
 

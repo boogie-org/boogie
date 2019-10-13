@@ -709,21 +709,6 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public GlobalVariable FindGlobalVariable(string id)
-    {
-      Func<GlobalVariable, bool> findFunc = gVar => gVar.Name == id;
-      GlobalVariable result = null;
-      if (globalVariablesCache != null &&
-          (result = globalVariablesCache.FirstOrDefault(findFunc)) != null)
-      {
-        return result;
-      }
-      else
-      {
-        return GlobalVariables.FirstOrDefault(findFunc);
-      }
-    }
-
     public readonly ISet<string> NecessaryAssumes = new HashSet<string>();
 
     public IEnumerable<Block> Blocks()

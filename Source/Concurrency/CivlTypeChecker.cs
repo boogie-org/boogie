@@ -430,7 +430,7 @@ namespace Microsoft.Boogie
         // This collections are for convenience in later phases and are only initialized at the end of type checking.
         public List<int> allRefinementLayers;
         public List<int> allAtomicActionLayers;
-        public List<Variable> sharedVariables;
+        public List<GlobalVariable> sharedVariables;
         public List<IdentifierExpr> sharedVariableIdentifiers;
 
         public CivlTypeChecker(Program program)
@@ -598,27 +598,28 @@ namespace Microsoft.Boogie
 
             AddPendingAsyncMachinery();
             GenerateAtomicActionCopies();
-            TypeCheckWitnessFunctions();
             TypeCheckYieldingProcedureImpls();
 
-            sharedVariables = program.GlobalVariables.ToList<Variable>();
+            sharedVariables = program.GlobalVariables.ToList();
             sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
+
+            TypeCheckWitnessFunctions();
 
             new AttributeEraser().VisitProgram(program);
         }
 
-        public void SubstituteBackwardsAssignments()
+        public void SubstituteBackwardAssignments()
         {
             foreach (var action in procToAtomicAction.Values)
             {
                 foreach (var actionCopy in action.layerToActionCopy.Values)
                 {
-                    SubstituteBackwardsAssignments(actionCopy);
+                    SubstituteBackwardAssignments(actionCopy);
                 }
             }
         }
 
-        private void SubstituteBackwardsAssignments(AtomicActionCopy action)
+        private void SubstituteBackwardAssignments(AtomicActionCopy action)
         {
             foreach (Block block in action.impl.Blocks)
             {
@@ -636,7 +637,7 @@ namespace Microsoft.Boogie
                         if (rhssVars.Intersect(lhssVars).Any())
                         {
                             // TODO
-                            Console.WriteLine("WARNING: Backward assignment translation is not implemented");
+                            throw new NotImplementedException("Substitution of backward assignment where lhs appears on rhs");
                         }
                         else
                         {
@@ -1881,15 +1882,12 @@ namespace Microsoft.Boogie
                         continue;
                     if (kv.Params.Count == 1 && kv.Params[0] is string witnessAttribute)
                     {
-                        if (witnessAttribute != null)
+                        int parserErrorCount = WitnessAttributeParser.Parse(ctc, node, witnessAttribute,
+                            out WitnessFunction witnessFunction);
+                        if (parserErrorCount == 0 &&
+                            WitnessFunctionChecker.Check(node, ctc, witnessFunction) == 0)
                         {
-                            int parserErrorCount = WitnessAttributeParser.Parse(ctc, node, witnessAttribute,
-                                out WitnessFunction witnessFunction);
-                            if (parserErrorCount == 0 &&
-                                WitnessFunctionChecker.Check(node, ctc, witnessFunction) == 0)
-                            {
-                                allWitnessFunctions.Add(witnessFunction);
-                            }
+                            allWitnessFunctions.Add(witnessFunction);
                         }
                     }
                     else
@@ -2004,7 +2002,7 @@ namespace Microsoft.Boogie
 
                 private void CheckGlobalArg(Type type, string name)
                 {
-                    GlobalVariable globalVar = ctc.program.FindGlobalVariable(name);
+                    GlobalVariable globalVar = ctc.sharedVariables.Find(v => v.Name == name);
                     if (globalVar is null)
                     {
                         Error("No matching global variable named " + name);
@@ -2153,7 +2151,7 @@ namespace Microsoft.Boogie
                 private void ParseGlobalVar()
                 {
                     TryNext("Expected global variable name");
-                    globalVar = ctc.program.FindGlobalVariable(ld);
+                    globalVar = ctc.sharedVariables.Find(v => v.Name == ld);
                     if (globalVar is null)
                     {
                         Error("No global variable found with name of " + ld);
