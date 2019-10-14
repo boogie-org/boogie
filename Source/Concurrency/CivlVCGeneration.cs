@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace Microsoft.Boogie
 {
@@ -24,7 +22,7 @@ namespace Microsoft.Boogie
             }
 
             // Desugaring of yielding procedures
-            CivlRefinement.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
+            YieldingProcChecker.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
 
             // Trigger functions for existential vairables in transition relations
             decls.AddRange(civlTypeChecker.procToAtomicAction.Values.SelectMany(a => a.layerToActionCopy.Values.SelectMany(ac => ac.triggerFuns.Values)));
