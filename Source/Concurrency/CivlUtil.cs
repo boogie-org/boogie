@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.Boogie;
-
-namespace Microsoft.Boogie
+﻿namespace Microsoft.Boogie
 {
     public class CivlUtil
     {
