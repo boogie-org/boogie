@@ -1,67 +1,207 @@
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
-    class RefinementInstrumentation
+    interface RefinementInstrumentation
     {
-        private Dictionary<Variable, Variable> ogOldGlobalMap;
+        List<Variable> NewLocalVars { get; }
+        List<Cmd> CreateAssumeCmds();
+        List<Cmd> CreateFinalAssertCmds();
+        List<Cmd> CreateAssertCmds();
+        List<Cmd> CreateUpdateCmds();
+        List<Cmd> CreateUpdatesToOldOutputVars();
+        List<Cmd> CreateInitCmds();
+        List<Cmd> CreateYieldingLoopHeaderInitCmds(Block header);
+        List<Cmd> CreateYieldingLoopHeaderAssertCmds(Block header);
+    }
+    
+    class NoneRefinementInstrumentation : RefinementInstrumentation
+    {
+        public List<Variable> NewLocalVars => new List<Variable>();
+
+        public List<Cmd> CreateAssumeCmds()
+        {
+            return new List<Cmd>();
+        }
+
+        public List<Cmd> CreateFinalAssertCmds()
+        {
+            return new List<Cmd>();
+        }
+
+        public List<Cmd> CreateAssertCmds()
+        {
+            return new List<Cmd>();
+        }
+
+        public List<Cmd> CreateUpdateCmds()
+        {
+            return new List<Cmd>();
+        }
+
+        public List<Cmd> CreateUpdatesToOldOutputVars()
+        {
+            return new List<Cmd>();
+        }
+
+        public List<Cmd> CreateInitCmds()
+        {
+            return new List<Cmd>();
+        }
+
+        public List<Cmd> CreateYieldingLoopHeaderInitCmds(Block header)
+        {
+            return new List<Cmd>();
+        }
+
+        public List<Cmd> CreateYieldingLoopHeaderAssertCmds(Block header)
+        {
+            return new List<Cmd>();
+        }
+    }
+    
+    class SomeRefinementInstrumentation : RefinementInstrumentation
+    {
+        private Dictionary<Variable, Variable> oldGlobalMap;
+        private Dictionary<Variable, Variable> oldOutputMap;
+        private List<Variable> newLocalVars;
         private Variable pc;
         private Variable ok;
         private Expr alpha;
         private Expr beta;
-        private HashSet<Variable> frame;
+        private Dictionary<Block, Variable> pcsForYieldingLoopsHeaders;
+        private Dictionary<Block, Variable> oksForYieldingLoopHeaders;
 
-        public RefinementInstrumentation(Dictionary<Variable, Variable> ogOldGlobalMap, Variable pc, Variable ok, Expr alpha,
-            Expr beta, HashSet<Variable> frame)
+        public SomeRefinementInstrumentation(
+            CivlTypeChecker civlTypeChecker, 
+            Implementation impl, 
+            Procedure originalProc, 
+            Dictionary<Variable, Variable> oldGlobalMap,
+            HashSet<Block> yieldingLoopHeaders)
         {
-            this.ogOldGlobalMap = ogOldGlobalMap;
-            this.pc = pc;
-            this.ok = ok;
-            this.alpha = alpha;
-            this.beta = beta;
-            this.frame = frame;
+            newLocalVars = new List<Variable>();
+            YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[originalProc];
+            int layerNum = yieldingProc.upperLayer;
+            pc = Pc();
+            newLocalVars.Add(pc);
+            ok = Ok();
+            newLocalVars.Add(ok);
+            
+            this.oldGlobalMap = new Dictionary<Variable, Variable>();
+            foreach (Variable v in civlTypeChecker.sharedVariables)
+            {
+                var layerRange = civlTypeChecker.GlobalVariableLayerRange(v);
+                if (layerRange.lowerLayerNum <= yieldingProc.upperLayer && yieldingProc.upperLayer < layerRange.upperLayerNum)
+                {
+                    this.oldGlobalMap[v] = oldGlobalMap[v];
+                }
+            }
+
+            Dictionary<Variable, Expr> foroldMap = new Dictionary<Variable, Expr>();
+            foreach (Variable g in civlTypeChecker.sharedVariables)
+            {
+                foroldMap[g] = Expr.Ident(oldGlobalMap[g]);
+            }
+            if (yieldingProc is ActionProc actionProc)
+            {
+                // The parameters of an atomic action come from the implementation that denotes the atomic action specification.
+                // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
+                // we need to substitute the parameters.
+                AtomicActionCopy atomicActionCopy = actionProc.refinedAction.layerToActionCopy[layerNum + 1];
+                Implementation atomicActionImpl = atomicActionCopy.impl;
+                Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
+                for (int i = 0; i < atomicActionImpl.InParams.Count; i++)
+                {
+                    alwaysMap[atomicActionImpl.InParams[i]] = Expr.Ident(impl.InParams[i]);
+                }
+
+                for (int i = 0; i < atomicActionImpl.OutParams.Count; i++)
+                {
+                    alwaysMap[atomicActionImpl.OutParams[i]] = Expr.Ident(impl.OutParams[i]);
+                }
+
+                Substitution always = Substituter.SubstitutionFromHashtable(alwaysMap);
+                Substitution forold = Substituter.SubstitutionFromHashtable(foroldMap);
+                Expr betaExpr =
+                    (new TransitionRelationComputation(atomicActionCopy, new HashSet<Variable>(this.oldGlobalMap.Keys), new HashSet<Variable>()))
+                    .TransitionRelationCompute(true);
+                beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
+                Expr alphaExpr = Expr.And(atomicActionCopy.gate.Select(g => g.Expr));
+                alphaExpr.Type = Type.Bool;
+                alpha = Substituter.Apply(always, alphaExpr);
+            }
+            else
+            {
+                beta = Expr.And(this.oldGlobalMap.Keys.Select(v => Expr.Eq(Expr.Ident(v), foroldMap[v])));
+                alpha = Expr.True;
+            }
+
+            oldOutputMap = new Dictionary<Variable, Variable>();
+            foreach (Variable f in impl.OutParams)
+            {
+                LocalVariable copy = Old(f);
+                newLocalVars.Add(copy);
+                this.oldOutputMap[f] = copy;
+            }
+            
+            pcsForYieldingLoopsHeaders = new Dictionary<Block, Variable>();
+            oksForYieldingLoopHeaders = new Dictionary<Block, Variable>();
+            foreach (Block header in yieldingLoopHeaders)
+            {
+                var pcForYieldingLoopHeader = PcForYieldingLoopHeader(header);
+                newLocalVars.Add(pcForYieldingLoopHeader);
+                pcsForYieldingLoopsHeaders[header] = pcForYieldingLoopHeader;
+                var okForYieldingLoopHeader = OkForYieldingLoopHeader(header);
+                newLocalVars.Add(okForYieldingLoopHeader);
+                oksForYieldingLoopHeaders[header] = okForYieldingLoopHeader;
+            }
         }
+        
+        public List<Variable> NewLocalVars => newLocalVars;
 
-        public AssumeCmd CreateAssumeCmd()
+        public List<Cmd> CreateAssumeCmds()
         {
+            var cmds = new List<Cmd>();
             // assume pc || alpha(i, g);
             Expr assumeExpr = Expr.Or(Expr.Ident(pc), alpha);
             assumeExpr.Type = Type.Bool;
-            return new AssumeCmd(Token.NoToken, assumeExpr);
+            cmds.Add(new AssumeCmd(Token.NoToken, assumeExpr));
+            return cmds;
         }
 
-        public AssertCmd CreateFinalAssertCmd(IToken tok)
+        public List<Cmd> CreateFinalAssertCmds()
         {
-            AssertCmd assertCmd = new AssertCmd(tok, Expr.Ident(ok));
+            var cmds = CreateAssertCmds();
+            AssertCmd assertCmd = new AssertCmd(Token.NoToken, Expr.Ident(ok));
             assertCmd.ErrorData = "Failed to execute atomic action before procedure return";
-            return assertCmd;
+            cmds.Add(assertCmd);
+            return cmds;
         }
 
-        public AssertCmd CreateSkipOrBetaAssertCmd(IToken tok)
+        public List<Cmd> CreateAssertCmds()
         {
-            // assert pc || g_old == g || beta(i, g_old, o, g);
-            var aa = OldEqualityExprForGlobals();
-            var assertExpr = Expr.Or(Expr.Ident(pc), Expr.Or(aa, beta));
-            assertExpr.Typecheck(new TypecheckingContext(null));
-            var skipOrBetaAssertCmd = new AssertCmd(tok, assertExpr);
-            skipOrBetaAssertCmd.ErrorData = "Transition invariant in initial state violated";
-            return skipOrBetaAssertCmd;
+            var cmds = new List<Cmd>();
+            cmds.Add(CreateSkipOrBetaAssertCmd());
+            cmds.Add(CreateSkipAssertCmd());
+            return cmds;
         }
 
-        public AssertCmd CreateSkipAssertCmd(IToken tok)
+        public List<Cmd> CreateInitCmds()
         {
-            // assert pc ==> o_old == o && g_old == g;
-            Expr bb = OldEqualityExpr();
-            var assertExpr = Expr.Imp(Expr.Ident(pc), bb);
-            assertExpr.Typecheck(new TypecheckingContext(null));
-            AssertCmd skipAssertCmd = new AssertCmd(tok, assertExpr);
-            skipAssertCmd.ErrorData = "Transition invariant in final state violated";
-            return skipAssertCmd;
+            var cmds = new List<Cmd>();
+            List<AssignLhs> lhss = new List<AssignLhs>();
+            List<Expr> rhss = new List<Expr>();
+            lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(pc)));
+            rhss.Add(Expr.False);
+            lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(ok)));
+            rhss.Add(Expr.False);
+            cmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
+            cmds.AddRange(CreateUpdatesToOldOutputVars());
+            return cmds;
         }
-
-        public AssignCmd CreatePcOkUpdateCmd()
+        
+        public List<Cmd> CreateUpdateCmds()
         {
             // pc, ok := g_old == g ==> pc, ok || beta(i, g_old, o, g);
             Expr aa = OldEqualityExprForGlobals();
@@ -80,96 +220,126 @@ namespace Microsoft.Boogie
             {
                 e.Typecheck(new TypecheckingContext(null));
             }
-
-            return new AssignCmd(Token.NoToken, pcUpdateLHS, pcUpdateRHS);
+            return new List<Cmd> {new AssignCmd(Token.NoToken, pcUpdateLHS, pcUpdateRHS)};
         }
 
-        public AssignCmd CreateInitCmd()
+        public List<Cmd> CreateUpdatesToOldOutputVars()
         {
             List<AssignLhs> lhss = new List<AssignLhs>();
             List<Expr> rhss = new List<Expr>();
-            lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(pc)));
-            rhss.Add(Expr.False);
-            lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(ok)));
-            rhss.Add(Expr.False);
-            return new AssignCmd(Token.NoToken, lhss, rhss);
-        }
-
-        public List<Variable> ProcessLoopHeaders(
-            Graph<Block> graph,
-            HashSet<Block> yieldingHeaders)
-        {
-            var newLocalVars = new List<Variable>();
-            foreach (Block header in yieldingHeaders)
+            foreach (Variable o in oldOutputMap.Keys)
             {
-                LocalVariable oldPc = OgPcLabelLocal(header.Label);
-                LocalVariable oldOk = OgOkLabelLocal(header.Label);
-                newLocalVars.Add(oldPc);
-                newLocalVars.Add(oldOk);
-
-                foreach (Block pred in header.Predecessors)
-                {
-                    if (!graph.BackEdgeNodes(header).Contains(pred))
-                    {
-                        pred.Cmds.Add(new AssignCmd(Token.NoToken,
-                            new List<AssignLhs>
-                            {
-                                new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldPc)),
-                                new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldOk))
-                            },
-                            new List<Expr> {Expr.Ident(pc), Expr.Ident(ok)}));
-                    }
-                }
-
-                var pcAssertCmd = new AssertCmd(header.tok, Expr.Eq(Expr.Ident(oldPc), Expr.Ident(pc)));
-                pcAssertCmd.ErrorData = "Specification state must not change for transitions ending in loop headers";
-                header.cmds.Insert(0, pcAssertCmd);
-                var okAssertCmd = new AssertCmd(header.tok, Expr.Imp(Expr.Ident(oldOk), Expr.Ident(ok)));
-                okAssertCmd.ErrorData = "Specification state must not change for transitions ending in loop headers";
-                header.cmds.Insert(1, okAssertCmd);
+                lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldOutputMap[o])));
+                rhss.Add(Expr.Ident(o));
             }
-            return newLocalVars;
+            var cmds = new List<Cmd>();
+            if (lhss.Count > 0)
+            {
+                cmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
+            }
+            return cmds;
         }
 
-        // Versions of PC and OK for desugaring loops
-        private LocalVariable OgPcLabelLocal(string label)
+        public List<Cmd> CreateYieldingLoopHeaderInitCmds(Block header)
         {
-            return new LocalVariable(Token.NoToken,
-                new TypedIdent(Token.NoToken, string.Format("og_pc_{0}", label), Type.Bool));
+            var newCmds = new List<Cmd>();
+            var pcForYieldingLoopHeader = pcsForYieldingLoopsHeaders[header];
+            var okForYieldingLoopHeader = oksForYieldingLoopHeaders[header];
+            var assignCmd =  new AssignCmd(Token.NoToken,
+                new List<AssignLhs>
+                {
+                    new SimpleAssignLhs(Token.NoToken, Expr.Ident(pcForYieldingLoopHeader)),
+                    new SimpleAssignLhs(Token.NoToken, Expr.Ident(okForYieldingLoopHeader))
+                },
+                new List<Expr> {Expr.Ident(pc), Expr.Ident(ok)});
+            newCmds.Add(assignCmd);
+            return newCmds;
         }
 
-        private LocalVariable OgOkLabelLocal(string label)
+        public List<Cmd> CreateYieldingLoopHeaderAssertCmds(Block header)
         {
-            return new LocalVariable(Token.NoToken,
-                new TypedIdent(Token.NoToken, string.Format("og_ok_{0}", label), Type.Bool));
+            var newCmds = new List<Cmd>();
+            var pcForYieldingLoopHeader = pcsForYieldingLoopsHeaders[header];
+            var pcAssertCmd = new AssertCmd(header.tok, Expr.Eq(Expr.Ident(pcForYieldingLoopHeader), Expr.Ident(pc)));
+            pcAssertCmd.ErrorData = "Specification state must not change for transitions ending in loop headers";
+            newCmds.Add(pcAssertCmd);
+            var okForYieldingLoopHeader = oksForYieldingLoopHeaders[header];
+            var okAssertCmd = new AssertCmd(header.tok, Expr.Imp(Expr.Ident(okForYieldingLoopHeader), Expr.Ident(ok)));
+            okAssertCmd.ErrorData = "Specification state must not change for transitions ending in loop headers";
+            newCmds.Add(okAssertCmd);
+            return newCmds;
+        }
+
+        private AssertCmd CreateSkipOrBetaAssertCmd()
+        {
+            // assert pc || g_old == g || beta(i, g_old, o, g);
+            var aa = OldEqualityExprForGlobals();
+            var assertExpr = Expr.Or(Expr.Ident(pc), Expr.Or(aa, beta));
+            assertExpr.Typecheck(new TypecheckingContext(null));
+            var skipOrBetaAssertCmd = new AssertCmd(Token.NoToken, assertExpr);
+            skipOrBetaAssertCmd.ErrorData = "Transition invariant violated in initial state";
+            return skipOrBetaAssertCmd;
+        }
+
+        private AssertCmd CreateSkipAssertCmd()
+        {
+            // assert pc ==> o_old == o && g_old == g;
+            Expr bb = OldEqualityExpr();
+            var assertExpr = Expr.Imp(Expr.Ident(pc), bb);
+            assertExpr.Typecheck(new TypecheckingContext(null));
+            AssertCmd skipAssertCmd = new AssertCmd(Token.NoToken, assertExpr);
+            skipAssertCmd.ErrorData = "Transition invariant violated in final state";
+            return skipAssertCmd;
         }
 
         private Expr OldEqualityExpr()
         {
-            Expr bb = Expr.True;
-            foreach (Variable o in ogOldGlobalMap.Keys)
+            Expr bb = OldEqualityExprForGlobals();
+            foreach (Variable o in oldOutputMap.Keys)
             {
-                if (o is GlobalVariable && !frame.Contains(o)) continue;
-                bb = Expr.And(bb, Expr.Eq(Expr.Ident(o), Expr.Ident(ogOldGlobalMap[o])));
+                bb = Expr.And(bb, Expr.Eq(Expr.Ident(o), Expr.Ident(oldOutputMap[o])));
                 bb.Type = Type.Bool;
             }
-
             return bb;
         }
 
         private Expr OldEqualityExprForGlobals()
         {
             Expr bb = Expr.True;
-            foreach (Variable o in ogOldGlobalMap.Keys)
+            foreach (Variable g in oldGlobalMap.Keys)
             {
-                if (o is GlobalVariable && frame.Contains(o))
-                {
-                    bb = Expr.And(bb, Expr.Eq(Expr.Ident(o), Expr.Ident(ogOldGlobalMap[o])));
-                    bb.Type = Type.Bool;
-                }
+                bb = Expr.And(bb, Expr.Eq(Expr.Ident(g), Expr.Ident(oldGlobalMap[g])));
+                bb.Type = Type.Bool;
             }
-
             return bb;
+        }
+
+        private LocalVariable Old(Variable v)
+        {
+            return new LocalVariable(Token.NoToken,
+                new TypedIdent(Token.NoToken, string.Format("og_old_{0}", v.Name), v.TypedIdent.Type));
+        }
+
+        private LocalVariable Pc()
+        {
+            return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_pc", Type.Bool));
+        }
+
+        private LocalVariable Ok()
+        {
+            return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_ok", Type.Bool));
+        }
+        
+        private LocalVariable PcForYieldingLoopHeader(Block header)
+        {
+            return new LocalVariable(Token.NoToken,
+                new TypedIdent(Token.NoToken, string.Format("og_pc_{0}", header.Label), Type.Bool));
+        }
+
+        private LocalVariable OkForYieldingLoopHeader(Block header)
+        {
+            return new LocalVariable(Token.NoToken,
+                new TypedIdent(Token.NoToken, string.Format("og_ok_{0}", header.Label), Type.Bool));
         }
     }
 }
