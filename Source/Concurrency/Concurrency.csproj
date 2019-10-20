@@ -74,6 +74,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GlobalSnapshotInstrumentation.cs" />
     <Compile Include="YieldingProcInstrumentation.cs" />
     <Compile Include="LinearTypeChecker.cs" />
     <Compile Include="MoverCheck.cs" />
