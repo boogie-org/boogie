@@ -182,7 +182,7 @@ namespace Microsoft.Boogie
                 var simulationRelation = new SimulationRelation<Absy, int, int>(implEdges, BracketSpec, initialConstraints).ComputeSimulationRelation();
                 if (simulationRelation[initialState].Count == 0)
                 {
-                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails bracket check at layer {1}. All code that accesses global variables must be bracketed by yields.", impl.Name, currLayerNum));
+                    @base.checkingContext.Error(impl, $"Implementation {impl.Name} fails bracket check at layer {currLayerNum}. All code that accesses global variables must be bracketed by yields.");
                 }
             }
 
@@ -219,7 +219,7 @@ namespace Microsoft.Boogie
                 }
                 else if (simulationRelation[initialState].Count == 0)
                 {
-                    @base.checkingContext.Error(impl, string.Format("Implementation {0} fails atomicity check at layer {1}. Transactions must be separated by yields.", impl.Name, currLayerNum));
+                    @base.checkingContext.Error(impl, $"Implementation {impl.Name} fails atomicity check at layer {currLayerNum}. Transactions must be separated by yields.");
                 }
             }
 

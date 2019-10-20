@@ -178,7 +178,7 @@ namespace Microsoft.Boogie
             {
                 List<Block> bs = new List<Block> { blocks[0] };
                 List<string> ls = new List<string> { blocks[0].Label };
-                var initBlock = new Block(Token.NoToken, string.Format("{0}_{1}_init", first.proc.Name, second.proc.Name), transitionRelationComputation.TriggerAssumes(), new GotoCmd(Token.NoToken, ls, bs));
+                var initBlock = new Block(Token.NoToken, $"{first.proc.Name}_{second.proc.Name}_init", transitionRelationComputation.TriggerAssumes(), new GotoCmd(Token.NoToken, ls, bs));
                 blocks.Insert(0, initBlock);
             }
 
@@ -188,10 +188,10 @@ namespace Microsoft.Boogie
                 DisjointnessExpr(first.firstOutParams.Union(second.secondOutParams), frame));
             // TODO: add further disjointness expressions?
             Ensures ensureCheck = new Ensures(first.proc.tok, false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation), null);
-            ensureCheck.ErrorData = string.Format("Commutativity check between {0} and {1} failed", first.proc.Name, second.proc.Name);
+            ensureCheck.ErrorData = $"Commutativity check between {first.proc.Name} and {second.proc.Name} failed";
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
             
-            string checkerName = string.Format("CommutativityChecker_{0}_{1}", first.proc.Name, second.proc.Name);
+            string checkerName = $"CommutativityChecker_{first.proc.Name}_{second.proc.Name}";
 
             AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
@@ -223,10 +223,10 @@ namespace Microsoft.Boogie
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
                 Ensures ensureCheck = new Ensures(assertCmd.tok, false, Expr.Imp(Expr.And(linearityAssumes), assertCmd.Expr), null);
-                ensureCheck.ErrorData = string.Format("Gate of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
+                ensureCheck.ErrorData = $"Gate of {first.proc.Name} not preserved by {second.proc.Name}";
                 ensures.Add(ensureCheck);
             }
-            string checkerName = string.Format("GatePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
+            string checkerName = $"GatePreservationChecker_{first.proc.Name}_{second.proc.Name}";
             
             AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
@@ -257,10 +257,10 @@ namespace Microsoft.Boogie
 
             IEnumerable<Expr> linearityAssumes = DisjointnessExpr(first.firstInParams.Union(second.secondOutParams), frame);
             Ensures ensureCheck = new Ensures(first.proc.tok, false, Expr.Imp(Expr.And(linearityAssumes), firstNegatedGate), null);
-            ensureCheck.ErrorData = string.Format("Gate failure of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
+            ensureCheck.ErrorData = $"Gate failure of {first.proc.Name} not preserved by {second.proc.Name}";
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
             
-            string checkerName = string.Format("FailurePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
+            string checkerName = $"FailurePreservationChecker_{first.proc.Name}_{second.proc.Name}";
 
             AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }
@@ -289,10 +289,10 @@ namespace Microsoft.Boogie
             postExistVars.UnionWith(second.secondOutParams);
             Expr nonBlockingExpr = (new TransitionRelationComputation(second, frame, postExistVars)).TransitionRelationCompute();
             AssertCmd nonBlockingAssert = new AssertCmd(second.proc.tok, nonBlockingExpr);
-            nonBlockingAssert.ErrorData = string.Format("Non-blocking check for {0} failed", second.proc.Name);
+            nonBlockingAssert.ErrorData = $"Non-blocking check for {second.proc.Name} failed";
             List<Block> blocks = new List<Block>{ new Block(second.proc.tok, "L", new List<Cmd>() { nonBlockingAssert }, new ReturnCmd(Token.NoToken)) };
 
-            string checkerName = string.Format("NonBlockingChecker_{0}", second.proc.Name);
+            string checkerName = $"NonBlockingChecker_{second.proc.Name}";
             
             AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
         }

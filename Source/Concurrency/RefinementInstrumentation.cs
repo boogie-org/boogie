@@ -317,7 +317,7 @@ namespace Microsoft.Boogie
         private LocalVariable Old(Variable v)
         {
             return new LocalVariable(Token.NoToken,
-                new TypedIdent(Token.NoToken, string.Format("og_old_{0}", v.Name), v.TypedIdent.Type));
+                new TypedIdent(Token.NoToken, $"og_old_{v.Name}", v.TypedIdent.Type));
         }
 
         private LocalVariable Pc()
@@ -333,13 +333,13 @@ namespace Microsoft.Boogie
         private LocalVariable PcForYieldingLoopHeader(Block header)
         {
             return new LocalVariable(Token.NoToken,
-                new TypedIdent(Token.NoToken, string.Format("og_pc_{0}", header.Label), Type.Bool));
+                new TypedIdent(Token.NoToken, $"og_pc_{header.Label}", Type.Bool));
         }
 
         private LocalVariable OkForYieldingLoopHeader(Block header)
         {
             return new LocalVariable(Token.NoToken,
-                new TypedIdent(Token.NoToken, string.Format("og_ok_{0}", header.Label), Type.Bool));
+                new TypedIdent(Token.NoToken, $"og_ok_{header.Label}", Type.Bool));
         }
     }
 }

@@ -197,7 +197,7 @@ namespace Microsoft.Boogie
             {
                 List<Variable> args = new List<Variable> { new Formal(v.tok, new TypedIdent(v.tok, "v", v.TypedIdent.Type), true) };
                 Variable result = new Formal(v.tok, new TypedIdent(v.tok, "r", Type.Bool), false);
-                triggerFuns[v] = new Function(v.tok, string.Format("Trigger_{0}_{1}", proc.Name, v.Name), args, result);
+                triggerFuns[v] = new Function(v.tok, $"Trigger_{proc.Name}_{v.Name}", args, result);
             }
             return triggerFuns[v];
         }
@@ -848,7 +848,7 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        msg = String.Format("{0} (named {1} in atomic action)", procName, actionName);
+                        msg = $"{procName} (named {actionName} in atomic action)";
                     }
 
                     // the names of the formals are allowed to change from the proc to the impl
@@ -1168,7 +1168,7 @@ namespace Microsoft.Boogie
                     return procMap[node];
                 
                 Procedure proc = base.VisitProcedure(node);
-                proc.Name = string.Format("{0}_{1}", node.Name, layer);
+                proc.Name = $"{node.Name}_{layer}";
                 procMap[node] = proc;
                 CivlUtil.AddInlineAttribute(proc);
                 return proc;
@@ -1635,7 +1635,6 @@ namespace Microsoft.Boogie
                     ctc.checkingContext.Error(call, "Called introduction procedure {0} is not available at layer {1}", calleeProc.proc.Name, callerProc.upperLayer);
                     return;
                 }
-
                 if (calleeProc.isLeaky)
                 {
                     // Call to leaky introduction procedure only exists at the upper layer of caller yielding procedure.

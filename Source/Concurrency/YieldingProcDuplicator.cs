@@ -63,7 +63,7 @@ namespace Microsoft.Boogie
                 }
 
                 Procedure proc = (Procedure) node.Clone();
-                proc.Name = string.Format("{0}_{1}", node.Name, layerNum);
+                proc.Name = $"{node.Name}_{layerNum}";
                 proc.InParams = this.VisitVariableSeq(node.InParams);
                 proc.OutParams = this.VisitVariableSeq(node.OutParams);
                 proc.Requires = this.VisitRequiresSeq(node.Requires);

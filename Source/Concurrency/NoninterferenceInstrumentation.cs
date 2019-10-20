@@ -213,7 +213,7 @@ namespace Microsoft.Boogie
                 new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
 
             // Create the yield checker procedure
-            var yieldCheckerName = string.Format("Impl_YieldChecker_{0}", impl.Name);
+            var yieldCheckerName = $"Impl_YieldChecker_{impl.Name}";
             var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, impl.TypeParameters, inputs,
                 new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
             CivlUtil.AddInlineAttribute(yieldCheckerProc);
@@ -290,13 +290,13 @@ namespace Microsoft.Boogie
         private Formal OldGlobalFormal(Variable v)
         {
             return new Formal(Token.NoToken,
-                new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", v.Name), v.TypedIdent.Type), true);
+                new TypedIdent(Token.NoToken, $"og_global_old_{v.Name}", v.TypedIdent.Type), true);
         }
 
         private LocalVariable OldLocalLocal(Variable v)
         {
             return new LocalVariable(Token.NoToken,
-                new TypedIdent(Token.NoToken, string.Format("og_local_old_{0}", v.Name), v.TypedIdent.Type));
+                new TypedIdent(Token.NoToken, $"og_local_old_{v.Name}", v.TypedIdent.Type));
         }
 
         private LocalVariable CopyLocal(Variable v)

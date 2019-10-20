@@ -434,7 +434,7 @@ namespace Microsoft.Boogie
                     MapType outType = node.OutParams[0].TypedIdent.Type as MapType;
                     if (domainNameToCollectors[domainName].ContainsKey(inType))
                     {
-                        Error(node, string.Format("A collector for domain for input type has already been defined"));
+                        Error(node, "A collector for domain for input type has already been defined");
                     }
                     else if (outType == null || outType.Arguments.Count != 1 || !outType.Result.Equals(Type.Bool))
                     {
@@ -507,17 +507,17 @@ namespace Microsoft.Boogie
                 {
                     foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(end))
                     {
-                        Error(b.TransferCmd, string.Format("Global variable {0} must be available at a return", g.Name));
+                        Error(b.TransferCmd, $"Global variable {g.Name} must be available at a return");
                     }
                     foreach (Variable v in node.InParams)
                     {
                         if (FindDomainName(v) == null || FindLinearKind(v) == LinearKind.LINEAR_IN || end.Contains(v)) continue;
-                        Error(b.TransferCmd, string.Format("Input variable {0} must be available at a return", v.Name));
+                        Error(b.TransferCmd, $"Input variable {v.Name} must be available at a return");
                     }
                     foreach (Variable v in node.OutParams)
                     {
                         if (FindDomainName(v) == null || end.Contains(v)) continue;
-                        Error(b.TransferCmd, string.Format("Output variable {0} must be available at a return", v.Name));
+                        Error(b.TransferCmd, $"Output variable {v.Name} must be available at a return");
                     }
                     continue;
                 }
@@ -549,7 +549,7 @@ namespace Microsoft.Boogie
                 {
                     foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(availableLinearVars[header]))
                     {
-                        Error(header, string.Format("Global variable {0} must be available at a loop head", g.Name));
+                        Error(header, $"Global variable {g.Name} must be available at a loop head");
                     }
                 }
             }
@@ -612,7 +612,7 @@ namespace Microsoft.Boogie
                 {
                     foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
                     {
-                        Error(cmd, string.Format("Global variable {0} must be available at a call", g.Name));
+                        Error(cmd, $"Global variable {g.Name} must be available at a call");
                     }
                     for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
                     {
@@ -646,7 +646,7 @@ namespace Microsoft.Boogie
                 {
                     foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
                     {
-                        Error(cmd, string.Format("Global variable {0} must be available at a call", g.Name));
+                        Error(cmd, $"Global variable {g.Name} must be available at a call");
                     }
                     foreach (CallCmd parCallCallCmd in parCallCmd.CallCmds)
                     {
@@ -691,7 +691,7 @@ namespace Microsoft.Boogie
                 {
                     foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
                     {
-                        Error(cmd, string.Format("Global variable {0} must be available at a yield", g.Name));
+                        Error(cmd, $"Global variable {g.Name} must be available at a yield");
                     }
                     availableLinearVars[cmd] = new HashSet<Variable>(start);
                 }
@@ -726,29 +726,29 @@ namespace Microsoft.Boogie
                 if (domainName == null) continue;
                 if (!(lhs is SimpleAssignLhs))
                 {
-                    Error(node, string.Format("Only simple assignment allowed on linear variable {0}", lhsVar.Name));
+                    Error(node, $"Only simple assignment allowed on linear variable {lhsVar.Name}");
                     continue;
                 }
                 IdentifierExpr rhs = node.Rhss[i] as IdentifierExpr;
                 if (rhs == null)
                 {
-                    Error(node, string.Format("Only variable can be assigned to linear variable {0}", lhsVar.Name));
+                    Error(node, $"Only variable can be assigned to linear variable {lhsVar.Name}");
                     continue;
                 }
                 string rhsDomainName = FindDomainName(rhs.Decl);
                 if (rhsDomainName == null)
                 {
-                    Error(node, string.Format("Only linear variable can be assigned to linear variable {0}", lhsVar.Name));
+                    Error(node, $"Only linear variable can be assigned to linear variable {lhsVar.Name}");
                     continue;
                 }
                 if (domainName != rhsDomainName)
                 {
-                    Error(node, string.Format("Linear variable of domain {0} cannot be assigned to linear variable of domain {1}", rhsDomainName, domainName));
+                    Error(node, $"Linear variable of domain {rhsDomainName} cannot be assigned to linear variable of domain {domainName}");
                     continue;
                 }
                 if (rhsVars.Contains(rhs.Decl))
                 {
-                    Error(node, string.Format("Linear variable {0} can occur only once in the right-hand-side of an assignment", rhs.Decl.Name));
+                    Error(node, $"Linear variable {rhs.Decl.Name} can occur only once in the right-hand-side of an assignment");
                     continue;
                 }
                 rhsVars.Add(rhs.Decl);
@@ -766,13 +766,13 @@ namespace Microsoft.Boogie
                 IdentifierExpr actual = node.Ins[i] as IdentifierExpr;
                 if (actual == null)
                 {
-                    Error(node, string.Format("Only variable can be passed to linear parameter {0}", formal.Name));
+                    Error(node, $"Only variable can be passed to linear parameter {formal.Name}");
                     continue;
                 }
                 string actualDomainName = FindDomainName(actual.Decl);
                 if (actualDomainName == null)
                 {
-                    Error(node, string.Format("Only a linear argument can be passed to linear parameter {0}", formal.Name));
+                    Error(node, $"Only a linear argument can be passed to linear parameter {formal.Name}");
                     continue;
                 }
                 if (domainName != actualDomainName)
@@ -787,7 +787,7 @@ namespace Microsoft.Boogie
                 }
                 if (inVars.Contains(actual.Decl))
                 {
-                    Error(node, string.Format("Linear variable {0} can occur only once as an input parameter", actual.Decl.Name));
+                    Error(node, $"Linear variable {actual.Decl.Name} can occur only once as an input parameter");
                     continue;
                 }
                 inVars.Add(actual.Decl);
@@ -830,7 +830,7 @@ namespace Microsoft.Boogie
                     IdentifierExpr actual = callCmd.Ins[i] as IdentifierExpr;
                     if (parallelCallInvars.Contains(actual.Decl))
                     {
-                        Error(node, string.Format("Linear variable {0} can occur only once as an input parameter of a parallel call", actual.Decl.Name));
+                        Error(node, $"Linear variable {actual.Decl.Name} can occur only once as an input parameter of a parallel call");
                     }
                     else
                     {
@@ -1024,7 +1024,7 @@ namespace Microsoft.Boogie
             BoundVariable partition = new BoundVariable(
               Token.NoToken,
               new TypedIdent(Token.NoToken,
-                             string.Format("partition_{0}", domainName),
+                             $"partition_{domainName}",
                              domain.mapTypeInt));
 
             if (holeVar != null)
@@ -1113,8 +1113,7 @@ namespace Microsoft.Boogie
                 Expr eqExpr = Expr.Eq(subsetExpr, ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
 
                 Ensures ensureCheck = new Ensures(action.proc.tok, false, eqExpr, null);
-                ensureCheck.ErrorData = string.Format("Linearity invariant for domain {0} is not preserved by {1}.",
-                    domainName, action.proc.Name);
+                ensureCheck.ErrorData = $"Linearity invariant for domain {domainName} is not preserved by {action.proc.Name}.";
                 ResolutionContext rc = new ResolutionContext(null);
                 rc.StateMode = ResolutionContext.State.Two;
                 ensureCheck.Resolve(rc);
@@ -1134,7 +1133,7 @@ namespace Microsoft.Boogie
             }
 
             // Create the whole check procedure
-            string checkerName = string.Format("LinearityChecker_{0}", action.proc.Name);
+            string checkerName = $"LinearityChecker_{action.proc.Name}";
             Procedure linCheckerProc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(),
                 inputs, outputs, requires, action.proc.Modifies, ensures);
             Implementation linCheckImpl = new Implementation(Token.NoToken, checkerName,

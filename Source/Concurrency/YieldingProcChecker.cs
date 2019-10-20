@@ -15,7 +15,7 @@ namespace Microsoft.Boogie
             foreach(SkipProc skipProc in civlTypeChecker.procToYieldingProc.Values.OfType<SkipProc>())
             {
                 Procedure proc = (Procedure)skipProc.proc.Clone();
-                proc.Name = string.Format("skip_dummy_{0}", proc.Name);
+                proc.Name = $"skip_dummy_{proc.Name}";
                 proc.Requires = new List<Requires>();
                 proc.Ensures = new List<Ensures>();
                 proc.Modifies = new List<IdentifierExpr>();

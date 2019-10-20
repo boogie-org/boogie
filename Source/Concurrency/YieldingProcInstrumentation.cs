@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics.Contracts;
-using System.Runtime.CompilerServices;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
@@ -68,7 +67,7 @@ namespace Microsoft.Boogie
                 inputs.Add(OldGlobalFormal(g));
             }
 
-            yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", layerNum), new List<TypeVariable>(),
+            yieldProc = new Procedure(Token.NoToken, $"og_yield_{layerNum}", new List<TypeVariable>(),
                 inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
             CivlUtil.AddInlineAttribute(yieldProc);
         }
@@ -118,7 +117,7 @@ namespace Microsoft.Boogie
 
                     CallCmd callCmd = new CallCmd(Token.NoToken, proc.Name, exprSeq, new List<IdentifierExpr>());
                     callCmd.Proc = proc;
-                    string label = string.Format("L_{0}", labelCount++);
+                    string label = $"L_{labelCount++}";
                     Block block = new Block(Token.NoToken, label, new List<Cmd> {callCmd},
                         new ReturnCmd(Token.NoToken));
                     labelTargets.Add(label);
@@ -141,7 +140,7 @@ namespace Microsoft.Boogie
         private Formal OldGlobalFormal(Variable v)
         {
             return new Formal(Token.NoToken,
-                new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", v.Name), v.TypedIdent.Type), true);
+                new TypedIdent(Token.NoToken, $"og_global_old_{v.Name}", v.TypedIdent.Type), true);
         }
 
         private void TransformImpl(Implementation impl)
@@ -333,7 +332,7 @@ namespace Microsoft.Boogie
                             if (!asyncAndParallelCallDesugarings.ContainsKey(callCmd.Proc.Name))
                             {
                                 asyncAndParallelCallDesugarings[callCmd.Proc.Name] = new Procedure(Token.NoToken,
-                                    string.Format("DummyAsyncTarget_{0}", callCmd.Proc.Name),
+                                    $"DummyAsyncTarget_{callCmd.Proc.Name}",
                                     callCmd.Proc.TypeParameters, callCmd.Proc.InParams, callCmd.Proc.OutParams,
                                     callCmd.Proc.Requires, new List<IdentifierExpr>(), new List<Ensures>());
                             }
@@ -563,7 +562,7 @@ namespace Microsoft.Boogie
         private Formal ParCallDesugarFormal(Variable v, int count, bool incoming)
         {
             return new Formal(Token.NoToken,
-                new TypedIdent(Token.NoToken, string.Format("og_{0}_{1}", count, v.Name), v.TypedIdent.Type), incoming);
+                new TypedIdent(Token.NoToken, $"og_{count}_{v.Name}", v.TypedIdent.Type), incoming);
         }
 
         private List<Block> InstrumentYieldingLoopHeaders(Graph<Block> graph, HashSet<Block> yieldingLoopHeaders)
