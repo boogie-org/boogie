@@ -548,7 +548,7 @@ namespace Microsoft.Boogie
                     if (!transitionRelationCache.ContainsKey(atomicActionCopy))
                     {
                         transitionRelationCache[atomicActionCopy] =
-                            NewTransitionRelationComputation.
+                            TransitionRelationComputation.
                                 Refinement(atomicActionCopy, frame);
                     }
                     Expr betaExpr = transitionRelationCache[atomicActionCopy];
