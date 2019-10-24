@@ -84,6 +84,11 @@ namespace Microsoft.Boogie
             RemoveAttribute(obj, kv => kv.Key == REFINES);
         }
 
+        public static void RemoveWitnessAttribute(ICarriesAttributes obj)
+        {
+            RemoveAttribute(obj, kv => kv.Key == WITNESS);
+        }
+
         public static void DesugarYieldAssert(Program program)
         {
             foreach (var proc in program.Procedures)
@@ -104,11 +109,6 @@ namespace Microsoft.Boogie
             {
                 RemoveAttribute(impl, kv => kv.Key == YIELD_ASSERT);
             }
-        }
-
-        public static void RemoveWitnessAttribute(ICarriesAttributes obj)
-        {
-            RemoveAttribute(obj, kv => kv.Key == WITNESS);
         }
     }
 }

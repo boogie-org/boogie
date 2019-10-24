@@ -584,7 +584,7 @@ namespace Microsoft.Boogie
                     ToDictionary(
                         x => frameIntermediateCopy[x],
                         x => transitionRelationComputer.globalVarToWitnesses[(GlobalVariable)x]);
-                foreach (var witnessSet in Extensions.CartesianProduct(varToWitnesses.Values))
+                foreach (var witnessSet in varToWitnesses.Values.CartesianProduct())
                 {
                     Dictionary<Variable, Expr> witnessSubst = new Dictionary<Variable, Expr>();
                     foreach (Tuple<Variable, WitnessFunction> pair in
@@ -730,21 +730,6 @@ namespace Microsoft.Boogie
             {
                 return existsVarMap.Keys.Select(x => copyToOriginalVar[x]).Distinct();
             }
-        }
-    }
-
-    // TODO: Move this to a proper place
-    public static class Extensions
-    {
-        public static IEnumerable<IEnumerable<T>> CartesianProduct<T>(this IEnumerable<IEnumerable<T>> sequences)
-        {
-            IEnumerable<IEnumerable<T>> emptyProduct = new[] { Enumerable.Empty<T>() };
-            return sequences.Aggregate(
-                emptyProduct,
-                (accumulator, sequence) =>
-                from acc in accumulator
-                from item in sequence
-                select acc.Concat(new[] { item }));
         }
     }
 }
