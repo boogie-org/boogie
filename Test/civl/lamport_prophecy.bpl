@@ -12,6 +12,7 @@
 
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+// XFAIL: *
 
 // Number of processes in the algorithm. There needs to be at least one.
 const N : int;
@@ -90,11 +91,11 @@ modifies p;
 procedure {:layer 2}{:left} atomic_update_y_abs(i: int)
 modifies y;
 {
-  var v: int;
-  if (i == (c+1) mod N) { 
-	  y[i] := 1; 
+  if (i == (c+1) mod N) {
+	  y[i] := 1;
   } else {
-    y[i] := v;
+    havoc y;
+    assume y == old(y)[i := y[i]];
   }
 }
 

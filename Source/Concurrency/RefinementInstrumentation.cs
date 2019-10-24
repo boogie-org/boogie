@@ -73,10 +73,12 @@ namespace Microsoft.Boogie
         private Dictionary<Block, Variable> pcsForYieldingLoopsHeaders;
         private Dictionary<Block, Variable> oksForYieldingLoopHeaders;
 
+        private Dictionary<AtomicActionCopy, Expr> transitionRelationCache;
+
         public SomeRefinementInstrumentation(
-            CivlTypeChecker civlTypeChecker, 
-            Implementation impl, 
-            Procedure originalProc, 
+            CivlTypeChecker civlTypeChecker,
+            Implementation impl,
+            Procedure originalProc,
             Dictionary<Variable, Variable> oldGlobalMap,
             HashSet<Block> yieldingLoopHeaders)
         {
@@ -87,7 +89,9 @@ namespace Microsoft.Boogie
             newLocalVars.Add(pc);
             ok = Ok();
             newLocalVars.Add(ok);
-            
+
+            this.transitionRelationCache = new Dictionary<AtomicActionCopy, Expr>();
+
             this.oldGlobalMap = new Dictionary<Variable, Variable>();
             foreach (Variable v in civlTypeChecker.sharedVariables)
             {
@@ -123,9 +127,7 @@ namespace Microsoft.Boogie
 
                 Substitution always = Substituter.SubstitutionFromHashtable(alwaysMap);
                 Substitution forold = Substituter.SubstitutionFromHashtable(foroldMap);
-                Expr betaExpr =
-                    (new TransitionRelationComputation(atomicActionCopy, new HashSet<Variable>(this.oldGlobalMap.Keys), new HashSet<Variable>()))
-                    .TransitionRelationCompute(true);
+                Expr betaExpr = GetTransitionRelation(atomicActionCopy);
                 beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
                 Expr alphaExpr = Expr.And(atomicActionCopy.gate.Select(g => g.Expr));
                 alphaExpr.Type = Type.Bool;
@@ -157,7 +159,18 @@ namespace Microsoft.Boogie
                 oksForYieldingLoopHeaders[header] = okForYieldingLoopHeader;
             }
         }
-        
+
+        private Expr GetTransitionRelation(AtomicActionCopy atomicActionCopy)
+        {
+            if (!transitionRelationCache.ContainsKey(atomicActionCopy))
+            {
+                transitionRelationCache[atomicActionCopy] =
+                    TransitionRelationComputation.
+                        Refinement(atomicActionCopy, new HashSet<Variable>(this.oldGlobalMap.Keys));
+            }
+            return transitionRelationCache[atomicActionCopy];
+        }
+
         public List<Variable> NewLocalVars => newLocalVars;
 
         public List<Cmd> CreateAssumeCmds()

@@ -5,9 +5,8 @@ var {:layer 0,2} x : int;
 procedure {:atomic} {:layer 2} MAIN ()
 modifies x;
 {
-  var x':int;
-  assume x' > x && (x' - x) mod 6 == 0;
-  x := x';
+  havoc x;
+  assume x > old(x) && (x - old(x)) mod 6 == 0;
 }
 
 

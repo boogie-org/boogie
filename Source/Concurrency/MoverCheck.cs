@@ -65,57 +65,6 @@ namespace Microsoft.Boogie
             }
         }
 
-        private static List<Block> CloneBlocks(List<Block> blocks)
-        {
-            Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
-            List<Block> otherBlocks = new List<Block>();
-            foreach (Block block in blocks)
-            {
-                List<Cmd> otherCmds = new List<Cmd>();
-                foreach (Cmd cmd in block.Cmds)
-                {
-                    otherCmds.Add(cmd);
-                }
-                Block otherBlock = new Block();
-                otherBlock.tok = block.tok;
-                otherBlock.Cmds = otherCmds;
-                otherBlock.Label = block.Label;
-                otherBlocks.Add(otherBlock);
-                blockMap[block] = otherBlock;
-            }
-            foreach (Block block in blocks)
-            {
-                if (block.TransferCmd is ReturnCmd)
-                {
-                    blockMap[block].TransferCmd = new ReturnCmd(block.TransferCmd.tok);
-                    continue;
-                }
-                List<Block> otherGotoCmdLabelTargets = new List<Block>();
-                List<string> otherGotoCmdLabelNames = new List<string>();
-                GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
-                foreach (Block target in gotoCmd.labelTargets)
-                {
-                    otherGotoCmdLabelTargets.Add(blockMap[target]);
-                    otherGotoCmdLabelNames.Add(blockMap[target].Label);
-                }
-                blockMap[block].TransferCmd = new GotoCmd(block.TransferCmd.tok, otherGotoCmdLabelNames, otherGotoCmdLabelTargets);
-            }
-            return otherBlocks;
-        }
-
-        private static List<Block> ComposeBlocks(AtomicActionCopy first, AtomicActionCopy second)
-        {
-            List<Block> firstBlocks = CloneBlocks(first.firstAction.Blocks);
-            List<Block> secondBlocks = CloneBlocks(second.secondAction.Blocks);
-            foreach (Block b in firstBlocks.Where(b => b.TransferCmd is ReturnCmd))
-            {
-                List<Block>  bs = new List<Block>  { secondBlocks[0] };
-                List<string> ls = new List<string> { secondBlocks[0].Label };
-                b.TransferCmd = new GotoCmd(b.tok, ls, bs);
-            }
-            return Enumerable.Union(firstBlocks, secondBlocks).ToList();
-        }
-
         private IEnumerable<Expr> DisjointnessExpr(IEnumerable<Variable> paramVars, HashSet<Variable> frame)
         {
             Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
@@ -158,97 +107,125 @@ namespace Microsoft.Boogie
             if (!commutativityCheckerCache.Add(Tuple.Create(first, second)))
                 return;
 
-            List<Variable> inputs  = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
-            List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
-            List<Variable> locals  = Enumerable.Union(first.firstAction.LocVars, second.secondAction.LocVars).ToList();
-            List<Block> blocks = ComposeBlocks(first, second);
+            string checkerName = $"CommutativityChecker_{first.proc.Name}_{second.proc.Name}";
+
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(first.actionUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
             frame.UnionWith(second.actionUsedGlobalVars);
-            
-            List<Requires> requires = new List<Requires>();
-            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams).Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
+
+            List<Requires> requires = new List<Requires> {
+                DisjointnessRequires(
+                    first.firstInParams.
+                        Union(second.secondInParams).
+                        Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT),
+                    frame)
+            };
             foreach (AssertCmd assertCmd in Enumerable.Union(first.firstGate, second.secondGate))
                 requires.Add(new Requires(false, assertCmd.Expr));
-            
-            var transitionRelationComputation = new TransitionRelationComputation(first, second, frame, new HashSet<Variable>());
-            Expr transitionRelation = transitionRelationComputation.TransitionRelationCompute();
+
+            civlTypeChecker.atomicActionPairToWitnessFunctions.TryGetValue(
+                Tuple.Create(first, second), out List<WitnessFunction> witnesses);
+            var transitionRelation = TransitionRelationComputation.
+                Commutativity(second, first, frame, witnesses);
+
+            List<Cmd> cmds = new List<Cmd>
             {
-                List<Block> bs = new List<Block> { blocks[0] };
-                List<string> ls = new List<string> { blocks[0].Label };
-                var initBlock = new Block(Token.NoToken, $"{first.proc.Name}_{second.proc.Name}_init", transitionRelationComputation.TriggerAssumes(), new GotoCmd(Token.NoToken, ls, bs));
-                blocks.Insert(0, initBlock);
-            }
+                new CallCmd(Token.NoToken,
+                        first.proc.Name,
+                        first.firstInParams.Select(Expr.Ident).ToList<Expr>(),
+                        first.firstOutParams.Select(Expr.Ident).ToList()
+                    ) { Proc = first.proc },
+                new CallCmd(Token.NoToken,
+                        second.proc.Name,
+                        second.secondInParams.Select(Expr.Ident).ToList<Expr>(),
+                        second.secondOutParams.Select(Expr.Ident).ToList()
+                    ) { Proc = second.proc }
+            };
+            var block = new Block(Token.NoToken, "init", cmds, new ReturnCmd(Token.NoToken));
 
             var secondInParamsFiltered = second.secondInParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_IN);
             IEnumerable<Expr> linearityAssumes = Enumerable.Union(
                 DisjointnessExpr(first.firstOutParams.Union(secondInParamsFiltered), frame),
                 DisjointnessExpr(first.firstOutParams.Union(second.secondOutParams), frame));
             // TODO: add further disjointness expressions?
-            Ensures ensureCheck = new Ensures(first.proc.tok, false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation), null);
-            ensureCheck.ErrorData = $"Commutativity check between {first.proc.Name} and {second.proc.Name} failed";
+            Ensures ensureCheck = new Ensures(first.proc.tok, false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation), null)
+            {
+                ErrorData = $"Commutativity check between {first.proc.Name} and {second.proc.Name} failed"
+            };
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
-            
-            string checkerName = $"CommutativityChecker_{first.proc.Name}_{second.proc.Name}";
 
-            AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
+            List<Variable> inputs = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
+            List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
+
+            AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, ensures, new List<Block> { block });
         }
 
         private void CreateGatePreservationChecker(AtomicActionCopy first, AtomicActionCopy second)
         {
-            if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
+            if (!first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Any())
                 return;
             if (!gatePreservationCheckerCache.Add(Tuple.Create(first, second)))
                 return;
 
-            List<Variable> inputs = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
-            List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
-            List<Variable> locals = new List<Variable>(second.secondAction.LocVars);
-            List<Block> blocks = CloneBlocks(second.secondAction.Blocks);
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
             frame.UnionWith(second.actionUsedGlobalVars);
 
-            List<Requires> requires = new List<Requires>();
+            List<Requires> requires = new List<Requires>
+            {
+                DisjointnessRequires(first.firstInParams.Union(second.secondInParams).Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame)
+            };
             List<Ensures> ensures = new List<Ensures>();
-            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams).Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
             foreach (AssertCmd assertCmd in second.secondGate)
                 requires.Add(new Requires(false, assertCmd.Expr));
-            
+
             IEnumerable<Expr> linearityAssumes = DisjointnessExpr(first.firstInParams.Union(second.secondOutParams), frame);
             foreach (AssertCmd assertCmd in first.firstGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
-                Ensures ensureCheck = new Ensures(assertCmd.tok, false, Expr.Imp(Expr.And(linearityAssumes), assertCmd.Expr), null);
-                ensureCheck.ErrorData = $"Gate of {first.proc.Name} not preserved by {second.proc.Name}";
+                Ensures ensureCheck = new Ensures(assertCmd.tok, false, Expr.Imp(Expr.And(linearityAssumes), assertCmd.Expr), null)
+                {
+                    ErrorData = $"Gate of {first.proc.Name} not preserved by {second.proc.Name}"
+                };
                 ensures.Add(ensureCheck);
             }
             string checkerName = $"GatePreservationChecker_{first.proc.Name}_{second.proc.Name}";
-            
-            AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
+
+            List<Variable> inputs = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
+            List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
+            var block = new Block(Token.NoToken, "init",
+                new List<Cmd>
+                {
+                    new CallCmd(Token.NoToken,
+                            second.proc.Name,
+                            second.secondInParams.Select(Expr.Ident).ToList<Expr>(),
+                            second.secondOutParams.Select(Expr.Ident).ToList()
+                        ) { Proc = second.proc }
+                },
+                new ReturnCmd(Token.NoToken));
+
+            AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, ensures, new List<Block> { block });
         }
 
         private void CreateFailurePreservationChecker(AtomicActionCopy first, AtomicActionCopy second)
         {
-            if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
+            if (!first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Any())
                 return;
             if (!failurePreservationCheckerCache.Add(Tuple.Create(first, second)))
                 return;
 
-            List<Variable> inputs = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
-            List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
-            List<Variable> locals = new List<Variable>(second.secondAction.LocVars);
-            List<Block> blocks = CloneBlocks(second.secondAction.Blocks);
             HashSet<Variable> frame = new HashSet<Variable>();
             frame.UnionWith(first.gateUsedGlobalVars);
             frame.UnionWith(second.gateUsedGlobalVars);
             frame.UnionWith(second.actionUsedGlobalVars);
 
-            List<Requires> requires = new List<Requires>();
-            requires.Add(DisjointnessRequires(first.firstInParams.Union(second.secondInParams).Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
+            List<Requires> requires = new List<Requires>
+            {
+                DisjointnessRequires(first.firstInParams.Union(second.secondInParams).Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame)
+            };
             Expr firstNegatedGate = Expr.Not(Expr.And(first.firstGate.Select(a => a.Expr)));
             firstNegatedGate.Type = Type.Bool; // necessary?
             requires.Add(new Requires(false, firstNegatedGate));
@@ -256,45 +233,63 @@ namespace Microsoft.Boogie
                 requires.Add(new Requires(false, assertCmd.Expr));
 
             IEnumerable<Expr> linearityAssumes = DisjointnessExpr(first.firstInParams.Union(second.secondOutParams), frame);
-            Ensures ensureCheck = new Ensures(first.proc.tok, false, Expr.Imp(Expr.And(linearityAssumes), firstNegatedGate), null);
-            ensureCheck.ErrorData = $"Gate failure of {first.proc.Name} not preserved by {second.proc.Name}";
+            Ensures ensureCheck = new Ensures(first.proc.tok, false, Expr.Imp(Expr.And(linearityAssumes), firstNegatedGate), null)
+            {
+                ErrorData = $"Gate failure of {first.proc.Name} not preserved by {second.proc.Name}"
+            };
             List<Ensures> ensures = new List<Ensures> { ensureCheck };
             
             string checkerName = $"FailurePreservationChecker_{first.proc.Name}_{second.proc.Name}";
 
-            AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
+            List<Variable> inputs = Enumerable.Union(first.firstInParams, second.secondInParams).ToList();
+            List<Variable> outputs = Enumerable.Union(first.firstOutParams, second.secondOutParams).ToList();
+            var block = new Block(Token.NoToken, "init",
+                new List<Cmd>
+                {
+                    new CallCmd(Token.NoToken,
+                            second.proc.Name,
+                            second.secondInParams.Select(Expr.Ident).ToList<Expr>(),
+                            second.secondOutParams.Select(Expr.Ident).ToList()
+                        ) { Proc = second.proc }
+                },
+                new ReturnCmd(Token.NoToken));
+
+            AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, ensures, new List<Block> { block });
         }
 
-        private void CreateNonBlockingChecker(AtomicActionCopy second)
+        private void CreateNonBlockingChecker(AtomicActionCopy action)
         {
-            if (!second.HasAssumeCmd) return;
+            if (!action.HasAssumeCmd) return;
 
-            List<Variable> inputs = new List<Variable>(second.secondInParams);
-            List<Variable> outputs = new List<Variable>();
-            List<Variable> locals = new List<Variable>();
+            string checkerName = $"NonBlockingChecker_{action.proc.Name}";
+
+            Implementation impl = action.impl;
             HashSet<Variable> frame = new HashSet<Variable>();
-            frame.UnionWith(second.gateUsedGlobalVars);
-            frame.UnionWith(second.actionUsedGlobalVars);
-            
-            List<Requires> requires = new List<Requires>();
-            requires.Add(DisjointnessRequires(second.secondInParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame));
-            foreach (AssertCmd assertCmd in second.secondGate)
+            frame.UnionWith(action.gateUsedGlobalVars);
+            frame.UnionWith(action.actionUsedGlobalVars);
+
+            List<Requires> requires = new List<Requires>
+            {
+                DisjointnessRequires(impl.InParams.
+                    Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame)
+            };
+            foreach (AssertCmd assertCmd in action.gate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
             }
-            List<Ensures> ensures = new List<Ensures>();
 
-            HashSet<Variable> postExistVars = new HashSet<Variable>();
-            postExistVars.UnionWith(frame);
-            postExistVars.UnionWith(second.secondOutParams);
-            Expr nonBlockingExpr = (new TransitionRelationComputation(second, frame, postExistVars)).TransitionRelationCompute();
-            AssertCmd nonBlockingAssert = new AssertCmd(second.proc.tok, nonBlockingExpr);
-            nonBlockingAssert.ErrorData = $"Non-blocking check for {second.proc.Name} failed";
-            List<Block> blocks = new List<Block>{ new Block(second.proc.tok, "L", new List<Cmd>() { nonBlockingAssert }, new ReturnCmd(Token.NoToken)) };
+            Expr nonBlockingExpr = TransitionRelationComputation.
+                Nonblocking(action, frame);
+            AssertCmd nonBlockingAssert = new AssertCmd(action.proc.tok, nonBlockingExpr)
+            {
+                ErrorData = $"Non-blocking check for {action.proc.Name} failed"
+            };
 
-            string checkerName = $"NonBlockingChecker_{second.proc.Name}";
-            
-            AddChecker(checkerName, inputs, outputs, locals, requires, ensures, blocks);
+            Block block = new Block(action.proc.tok, "L", new List<Cmd> { nonBlockingAssert },
+                new ReturnCmd(Token.NoToken));
+
+            AddChecker(checkerName, new List<Variable>(impl.InParams), new List<Variable>(),
+                new List<Variable>(), requires, new List<Ensures>(), new List<Block> { block });
         }
     }
 }

@@ -890,6 +890,7 @@ LabelOrAssign<out Cmd c, out IToken label>
      List<AssignLhs/*!*/>/*!*/ lhss;
      List<Expr/*!*/>/*!*/ rhss;
      List<Expr/*!*/>/*!*/ indexes;
+     QKeyValue kv = null;
   .)
   Ident<out id>              (. x = t; .)
   ( ":"                      (. c = null;  label = x; .)
@@ -908,12 +909,13 @@ LabelOrAssign<out Cmd c, out IToken label>
     }
 
     ":="                     (. x = t; /* use location of := */ .)
+    { Attribute<ref kv> }
     Expression<out e0>       (. rhss = new List<Expr/*!*/> ();
                                 rhss.Add(e0); .)
     { ","
       Expression<out e0>     (. rhss.Add(e0); .)
     }
-    ";"                      (. c = new AssignCmd(x, lhss, rhss); .)
+    ";"                      (. c = new AssignCmd(x, lhss, rhss, kv); .)
   )
   .
 

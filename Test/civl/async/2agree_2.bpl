@@ -23,11 +23,8 @@ function {:inline} perm (p : int) : bool
 procedure {:atomic} {:layer 3} atomic_agree ({:linear_in "lin"} p : int)
 modifies val_a, val_b, done_a, done_b;
 {
-  var val_a_new : int;
-  var val_b_new : int;
-  assume val_a_new == val_b_new;
-  val_a := val_a_new;
-  val_b := val_b_new;
+  havoc val_a, val_b;
+  assume val_a == val_b;
   done_a := true;
   done_b := true;
 }

@@ -24,15 +24,14 @@ namespace Microsoft.Boogie
             // Desugaring of yielding procedures
             YieldingProcChecker.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
 
-            // Trigger functions for existential vairables in transition relations
-            decls.AddRange(civlTypeChecker.procToAtomicAction.Values.SelectMany(a => a.layerToActionCopy.Values.SelectMany(ac => ac.triggerFuns.Values)));
-            
             // Linear type checks
             LinearTypeChecker.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
 
             // Remove original declarations and add new checkers generated above
             program.RemoveTopLevelDeclarations(x => originalDecls.Contains(x));
             program.AddTopLevelDeclarations(decls);
+
+            civlTypeChecker.SubstituteBackwardAssignments();
 
             foreach (AtomicAction atomicAction in civlTypeChecker.procToAtomicAction.Values)
             {

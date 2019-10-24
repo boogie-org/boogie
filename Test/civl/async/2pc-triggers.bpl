@@ -163,6 +163,21 @@ procedure {:yield_assert} {:layer 11} YieldConsistent_11 ()
 { yield; assert {:layer 11} gConsistent(state); }
 
 // ###########################################################################
+
+function
+{:witness "state atomic_Coordinator_VoteNo atomic_Coordinator_VoteNo 9"}
+{:witness "state atomic_Coordinator_VoteYes atomic_Coordinator_VoteNo 9"}
+{:witness "state atomic_Coordinator_VoteNo atomic_Coordinator_VoteYes 9"}
+{:witness "state atomic_Coordinator_VoteYes atomic_Coordinator_VoteYes 9"}
+{:witness "state atomic_SetParticipantAborted atomic_Coordinator_VoteYes 9"}
+{:witness "state atomic_SetParticipantAborted atomic_Coordinator_VoteNo 9"}
+{:witness "state atomic_Participant_VoteReq atomic_Participant_VoteReq 10"}
+witness (state:GState, state':GState, second_xid:Xid) : GState
+{
+   state[second_xid := state'[second_xid]]
+}
+
+// ###########################################################################
 // Main
 
 procedure {:yields} {:layer 11} main ()
@@ -195,9 +210,9 @@ procedure {:layer 0,10} {:inline 1} GhostRead() returns (snapshot: GState)
 procedure {:atomic} {:layer 11} atomic_Coordinator_TransactionReq () returns (xid: Xid)
 modifies state;
 {
-  var newState: XState;
-  assume xConsistent(newState);
-  state[xid]:= newState;
+  havoc state;
+  assume xConsistent(state[xid]);
+  assume state == old(state)[xid := state[xid]];
 } 
   
 procedure {:yields} {:layer 10} {:refines "atomic_Coordinator_TransactionReq"} Coordinator_TransactionReq () returns (xid: Xid)
@@ -240,13 +255,12 @@ ensures  {:layer 9,10} gConsistent(state);
 procedure {:left} {:layer 10} atomic_Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state;
 {
-  var oldState, newState: XState;
   assert !UnallocatedXids[xid];
   assert pair(xid, mid, pair);
   assert xConsistent(state[xid]);
-  oldState := state[xid];
-  assume xConsistentExtension(oldState, newState);
-  state[xid] := newState;
+  havoc state;
+  assume xConsistentExtension(old(state)[xid], state[xid]);
+  assume state == old(state)[xid := state[xid]];
 }          
 
 procedure {:yields} {:layer 9} {:refines "atomic_Participant_VoteReq"} Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
@@ -290,16 +304,15 @@ function {:inline} Inv_8 (state: GState, B: [Pair]bool, votes: [Xid]int) : bool
 procedure {:left} {:layer 9} atomic_Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state, B;
 {
-  var oldState, newState: XState;
   assert !UnallocatedXids[xid];
   assert pair(xid, mid, pair);
   assert xConsistent(state[xid]);
   B[pair] := true;
-  oldState := state[xid];
   if (*) {
+    havoc state;
     assume xAllParticipantsInB(xid, B);
-    assume xConsistentExtension(oldState, newState);
-    state[xid] := newState;
+    assume xConsistentExtension(old(state)[xid], state[xid]);
+    assume state == old(state)[xid := state[xid]];
   } 
 }
 
@@ -345,14 +358,13 @@ requires {:layer 8} Inv_8(state, B, votes) && pair(xid, mid, pair) && (votes[xid
 procedure {:left} {:layer 9} atomic_Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state;
 {
-  var oldState, newState: XState;
   assert !UnallocatedXids[xid];
   assert pair(xid, mid, pair);
   assert xUndecidedOrAborted(state[xid]);
-  oldState := state[xid];
-  assume xUndecidedOrAborted(newState);
-  assume xConsistentExtension(oldState, newState);
-  state[xid] := newState;
+  havoc state;
+  assume xUndecidedOrAborted(state[xid]);
+  assume xConsistentExtension(old(state)[xid], state[xid]);
+  assume state == old(state)[xid := state[xid]];
 }
 
 procedure {:yields} {:layer 8} {:refines "atomic_Coordinator_VoteNo"} Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)

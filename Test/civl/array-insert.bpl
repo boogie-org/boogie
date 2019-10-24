@@ -17,7 +17,6 @@ procedure {:atomic}{:layer 2} INSERT ({:linear "tid"} tid:Tid, v:int)
 modifies A, count;
 {
   var idx:int; // index at which v is written
-  var A_new:[int]int;
 
   assert count >= 0;
   assert sorted(A, count);
@@ -26,12 +25,13 @@ modifies A, count;
   assume (forall i:int :: 0 <= i && i < idx ==> A[i] < v);
   assume (forall i:int :: idx <= i && i < count ==> A[i] >= v);
 
-  assume (forall i:int :: i < idx ==> A_new[i] == A[i]);
-  assume (forall i:int :: idx < i && i < count ==> A_new[i+1] == A[i]);
-  assume (forall i:int :: count < i ==> A_new[i] == A[i]);
-  A_new[idx] := v;
+  havoc A;
 
-  A := A_new;
+  assume (forall i:int :: i < idx ==> A[i] == old(A)[i]);
+  assume (forall i:int :: idx < i && i < count ==> A[i+1] == old(A)[i]);
+  assume (forall i:int :: count < i ==> A[i] == old(A)[i]);
+  assume A[idx] == v;
+
   count := count + 1;
 }
 

@@ -30,15 +30,8 @@ function {:inline} Consistent (val_a: int, val_b: int, done_a: bool, done_b: boo
 procedure {:atomic} {:layer 3} atomic_agree ({:linear_in "lin"} p : int)
 modifies val_a, val_b, done_a, done_b;
 {
-  var val_a_new : int;
-  var val_b_new : int;
-  var done_a_new : bool;
-  var done_b_new : bool;
-  assume Consistent(val_a_new, val_b_new, done_a_new, done_b_new);
-  val_a := val_a_new;
-  val_b := val_b_new;
-  done_a := done_a_new;
-  done_b := done_b_new;
+  havoc val_a, val_b, done_a, done_b;
+  assume Consistent(val_a, val_b, done_a, done_b);
 }
 
 procedure {:yields} {:layer 2} {:refines "atomic_agree"} main ({:linear_in "lin"} p : int)

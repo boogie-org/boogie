@@ -28,6 +28,9 @@ namespace Microsoft.Boogie
 
         public const string PURE = "pure";
 
+        public const string BACKWARD = "backward";
+        public const string WITNESS = "witness";
+
         public static bool RemoveAttribute(ICarriesAttributes obj, Func<QKeyValue, bool> cond)
         {
             QKeyValue curr = obj.Attributes;
@@ -79,6 +82,11 @@ namespace Microsoft.Boogie
         public static void RemoveRefinesAttribute(ICarriesAttributes obj)
         {
             RemoveAttribute(obj, kv => kv.Key == REFINES);
+        }
+
+        public static void RemoveWitnessAttribute(ICarriesAttributes obj)
+        {
+            RemoveAttribute(obj, kv => kv.Key == WITNESS);
         }
 
         public static void DesugarYieldAssert(Program program)

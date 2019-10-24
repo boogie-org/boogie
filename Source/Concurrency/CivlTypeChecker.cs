@@ -73,7 +73,6 @@ namespace Microsoft.Boogie
         public List<Variable> secondOutParams;
         public Dictionary<Variable, Expr> secondMap;
 
-        public Dictionary<Variable, Function> triggerFuns;
         public HashSet<Variable> gateUsedGlobalVars;
         public HashSet<Variable> actionUsedGlobalVars;
         public HashSet<Variable> modifiedGlobalVars;
@@ -82,8 +81,6 @@ namespace Microsoft.Boogie
         {
             this.proc = proc;
             this.impl = impl;
-
-            this.triggerFuns = new Dictionary<Variable, Function>();
 
             // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
             this.gate = impl.Blocks[0].cmds.TakeWhile((c, i) => c is AssertCmd).Cast<AssertCmd>().ToList();
@@ -189,17 +186,6 @@ namespace Microsoft.Boogie
         {
             return this.modifiedGlobalVars.Intersect(other.actionUsedGlobalVars).Count() == 0 &&
                    this.actionUsedGlobalVars.Intersect(other.modifiedGlobalVars).Count() == 0;
-        }
-
-        public Function TriggerFunction(Variable v)
-        {
-            if (!triggerFuns.ContainsKey(v))
-            {
-                List<Variable> args = new List<Variable> { new Formal(v.tok, new TypedIdent(v.tok, "v", v.TypedIdent.Type), true) };
-                Variable result = new Formal(v.tok, new TypedIdent(v.tok, "r", Type.Bool), false);
-                triggerFuns[v] = new Function(v.tok, $"Trigger_{proc.Name}_{v.Name}", args, result);
-            }
-            return triggerFuns[v];
         }
     }
 
@@ -385,6 +371,8 @@ namespace Microsoft.Boogie
         public Dictionary<Procedure, AtomicAction> procToAtomicAction;
         public Dictionary<Procedure, YieldingProc> procToYieldingProc;
         public Dictionary<Procedure, IntroductionProc> procToIntroductionProc;
+        public Dictionary<Tuple<AtomicActionCopy, AtomicActionCopy>,
+            List<WitnessFunction>> atomicActionPairToWitnessFunctions;
 
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
         Dictionary<CallCmd, int> introductionCallToLayer;
@@ -394,7 +382,7 @@ namespace Microsoft.Boogie
         // This collections are for convenience in later phases and are only initialized at the end of type checking.
         public List<int> allRefinementLayers;
         public List<int> allAtomicActionLayers;
-        public List<Variable> sharedVariables;
+        public List<GlobalVariable> sharedVariables;
         public List<IdentifierExpr> sharedVariableIdentifiers;
 
         public CivlTypeChecker(Program program)
@@ -409,6 +397,8 @@ namespace Microsoft.Boogie
             this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
             this.procToIntroductionProc = new Dictionary<Procedure, IntroductionProc>();
             this.introductionCallToLayer = new Dictionary<CallCmd, int>();
+            this.atomicActionPairToWitnessFunctions = new Dictionary<Tuple<AtomicActionCopy, AtomicActionCopy>,
+                List<WitnessFunction>>();
         }
 
         public bool CallExists(CallCmd callCmd, int enclosingProcLayerNum, int layerNum)
@@ -562,10 +552,86 @@ namespace Microsoft.Boogie
             GenerateAtomicActionCopies();
             TypeCheckYieldingProcedureImpls();
 
-            sharedVariables = program.GlobalVariables.ToList<Variable>();
+            sharedVariables = program.GlobalVariables.ToList();
             sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
 
+            TypeCheckWitnessFunctions();
+
             new AttributeEraser().VisitProgram(program);
+        }
+
+        public void SubstituteBackwardAssignments()
+        {
+            foreach (var action in procToAtomicAction.Values)
+            {
+                foreach (var actionCopy in action.layerToActionCopy.Values)
+                {
+                    SubstituteBackwardAssignments(actionCopy);
+                }
+            }
+        }
+
+        private void SubstituteBackwardAssignments(AtomicActionCopy action)
+        {
+            foreach (Block block in action.impl.Blocks)
+            {
+                List<Cmd> cmds = new List<Cmd>();
+                foreach (Cmd cmd in block.cmds)
+                {
+                    if (cmd is AssignCmd _assignCmd &&
+                        QKeyValue.FindBoolAttribute(_assignCmd.Attributes, CivlAttributes.BACKWARD))
+                    {
+                        AssignCmd assignCmd = _assignCmd.AsSimpleAssignCmd;
+                        var lhss = assignCmd.Lhss;
+                        var rhss = assignCmd.Rhss;
+                        var rhssVars = rhss.SelectMany(x => VariableCollector.Collect(x));
+                        var lhssVars = lhss.SelectMany(x => VariableCollector.Collect(x));
+                        if (rhssVars.Intersect(lhssVars).Any())
+                        {
+                            // TODO
+                            throw new NotImplementedException("Substitution of backward assignment where lhs appears on rhs");
+                        }
+                        else
+                        {
+                            List<Expr> assumeExprs = new List<Expr>();
+                            for (int k = 0; k < lhss.Count; k++)
+                            {
+                                assumeExprs.Add(Expr.Eq(lhss[k].AsExpr, rhss[k]));
+                            }
+                            cmds.Add(new AssumeCmd(Token.NoToken, Expr.And(assumeExprs)));
+                            cmds.Add(new HavocCmd(Token.NoToken, lhss.Select(x => x.DeepAssignedIdentifier).ToList()));
+                        }
+                    }
+                    else
+                    {
+                        cmds.Add(cmd);
+                    }
+                }
+                block.cmds = cmds;
+            }
+        }
+
+        private void TypeCheckWitnessFunctions()
+        {
+            WitnessFunctionVisitor wfv = new WitnessFunctionVisitor(this);
+            foreach (var f in program.Functions)
+            {
+                wfv.VisitFunction(f);
+            }
+            foreach (var witnessFunction in wfv.allWitnessFunctions)
+            {
+                foreach (var layer in witnessFunction.layers)
+                {
+                    var key = Tuple.Create(
+                        witnessFunction.firstAction.layerToActionCopy[layer],
+                        witnessFunction.secondAction.layerToActionCopy[layer]);
+                    if (!atomicActionPairToWitnessFunctions.ContainsKey(key))
+                    {
+                        atomicActionPairToWitnessFunctions[key] = new List<WitnessFunction>();
+                    }
+                    atomicActionPairToWitnessFunctions[key].Add(witnessFunction);
+                }
+            }
         }
 
         private void TypeCheckGlobalVariables()
@@ -1110,12 +1176,6 @@ namespace Microsoft.Boogie
                 foreach (var impl in copier.implMap.Values)
                 {
                     Inliner.ProcessImplementation(program, impl);
-
-                    // Havoc commands are not allowed in atomic actions. However, the
-                    // inliner above introduces havocs for uninitialized local variables
-                    // in case an inlined procedure is called in a loop. Since loops are
-                    // also not allowed in atomic actions, we can remove the havocs here.
-                    impl.Blocks.ForEach(b => b.Cmds.RemoveAll(c => c is HavocCmd));
                 }
                 foreach (var impl in copier.implMap.Values)
                 {
@@ -1250,15 +1310,6 @@ namespace Microsoft.Boogie
                 return base.VisitIdentifierExpr(node);
             }
 
-            public override Cmd VisitHavocCmd(HavocCmd node)
-            {
-                // Note: Inlining in GenerateAtomicActionCopies generates havocs that are
-                // manually removed again (see explanation there). If havocs were to be
-                // allowed in atomic actions in the future, this has to be addressed.
-                ctc.Error(node, "Havoc command not allowed inside an atomic action");
-                return base.VisitHavocCmd(node);
-            }
-
             public override Cmd VisitCallCmd(CallCmd node)
             {
                 if (node.IsAsync)
@@ -1293,12 +1344,6 @@ namespace Microsoft.Boogie
                     ctc.Error(node, "Call command not allowed inside an atomic action");
                 }
                 return base.VisitCallCmd(node);
-            }
-
-            public override Expr VisitOldExpr(OldExpr node)
-            {
-                ctc.Error(node, "Old expression not allowed inside an atomic action");
-                return base.VisitOldExpr(node);
             }
         }
 
@@ -1760,6 +1805,12 @@ namespace Microsoft.Boogie
             {
                 CivlAttributes.RemoveLayerAttribute(node);
                 return base.VisitVariable(node);
+            }
+
+            public override Function VisitFunction(Function node)
+            {
+                CivlAttributes.RemoveWitnessAttribute(node);
+                return base.VisitFunction(node);
             }
         }
     }

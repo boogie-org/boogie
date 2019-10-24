@@ -1,4 +1,9 @@
-﻿namespace Microsoft.Boogie
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Boogie;
+
+namespace Microsoft.Boogie
 {
     public class CivlUtil
     {
@@ -25,6 +30,20 @@
         public static OldExpr Old(Expr expr)
         {
             return new OldExpr(Token.NoToken, expr);
+        }
+    }
+
+    public static class LinqExtensions
+    {
+        public static IEnumerable<IEnumerable<T>> CartesianProduct<T>(this IEnumerable<IEnumerable<T>> sequences)
+        {
+            IEnumerable<IEnumerable<T>> emptyProduct = new[] { Enumerable.Empty<T>() };
+            return sequences.Aggregate(
+                emptyProduct,
+                (accumulator, sequence) =>
+                from acc in accumulator
+                from item in sequence
+                select acc.Concat(new[] { item }));
         }
     }
 }
