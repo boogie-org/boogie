@@ -155,13 +155,13 @@ procedure {:yield_assert} {:layer 11} YieldConsistent_11 ()
 // ###########################################################################
 
 function
-{:witness "state atomic_Coordinator_VoteNo atomic_Coordinator_VoteNo 9"}
-{:witness "state atomic_Coordinator_VoteYes atomic_Coordinator_VoteNo 9"}
-{:witness "state atomic_Coordinator_VoteNo atomic_Coordinator_VoteYes 9"}
-{:witness "state atomic_Coordinator_VoteYes atomic_Coordinator_VoteYes 9"}
-{:witness "state atomic_SetParticipantAborted atomic_Coordinator_VoteYes 9"}
-{:witness "state atomic_SetParticipantAborted atomic_Coordinator_VoteNo 9"}
-{:witness "state atomic_Participant_VoteReq atomic_Participant_VoteReq 10"}
+{:witness "state","atomic_Coordinator_VoteNo","atomic_Coordinator_VoteNo"}
+{:witness "state","atomic_Coordinator_VoteYes","atomic_Coordinator_VoteNo"}
+{:witness "state","atomic_Coordinator_VoteNo","atomic_Coordinator_VoteYes"}
+{:witness "state","atomic_Coordinator_VoteYes","atomic_Coordinator_VoteYes"}
+{:witness "state","atomic_SetParticipantAborted","atomic_Coordinator_VoteYes"}
+{:witness "state","atomic_SetParticipantAborted","atomic_Coordinator_VoteNo"}
+{:witness "state","atomic_Participant_VoteReq","atomic_Participant_VoteReq"}
 witness (state:GState, state':GState, second_xid:Xid) : GState
 {
    state[second_xid := state'[second_xid]]

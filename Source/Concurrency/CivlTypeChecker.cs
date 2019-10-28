@@ -7,355 +7,6 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
-    public enum MoverType
-    {
-        Atomic,
-        Right,
-        Left,
-        Both
-    }
-
-    public class AtomicAction
-    {
-        public Procedure proc;
-        public Implementation impl;
-        public MoverType moverType;
-        public LayerRange layerRange;
-
-        public Dictionary<int, AtomicActionCopy> layerToActionCopy;
-        public int asyncFreeLayer;
-
-        public AtomicAction(Procedure proc, Implementation impl, MoverType moverType, LayerRange layerRange)
-        {
-            this.proc = proc;
-            this.impl = impl;
-            this.moverType = moverType;
-            this.layerRange = layerRange;
-
-            this.layerToActionCopy = new Dictionary<int, AtomicActionCopy>();
-
-            // We usually declare the Boogie procedure and implementation of an atomic action together.
-            // Since Boogie only stores the supplied attributes (in particular linearity) in the procedure parameters,
-            // we copy them into the implementation parameters here.
-            for (int i = 0; i < proc.InParams.Count; i++)
-            {
-                impl.InParams[i].Attributes = proc.InParams[i].Attributes;
-            }
-            for (int i = 0; i < proc.OutParams.Count; i++)
-            {
-                impl.OutParams[i].Attributes = proc.OutParams[i].Attributes;
-            }
-        }
-
-        // TODO: Check usage!
-        public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
-        public bool IsLeftMover { get { return moverType == MoverType.Left || moverType == MoverType.Both; } }
-    }
-
-    public class AtomicActionCopy
-    {
-        public Procedure proc;
-        public Implementation impl;
-
-        // Strictly speaking the gate is the same on every layer, but for easier parameter substitution
-        // we keep the per-layer version of gates.
-        public List<AssertCmd> gate;
-
-        public List<AssertCmd> firstGate;
-        public CodeExpr firstAction;
-        public List<Variable> firstInParams;
-        public List<Variable> firstOutParams;
-        public Dictionary<Variable, Expr> firstMap;
-
-        public List<AssertCmd> secondGate;
-        public CodeExpr secondAction;
-        public List<Variable> secondInParams;
-        public List<Variable> secondOutParams;
-        public Dictionary<Variable, Expr> secondMap;
-
-        public HashSet<Variable> gateUsedGlobalVars;
-        public HashSet<Variable> actionUsedGlobalVars;
-        public HashSet<Variable> modifiedGlobalVars;
-
-        public AtomicActionCopy(Procedure proc, Implementation impl)
-        {
-            this.proc = proc;
-            this.impl = impl;
-
-            // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
-            this.gate = impl.Blocks[0].cmds.TakeWhile((c, i) => c is AssertCmd).Cast<AssertCmd>().ToList();
-            impl.Blocks[0].cmds.RemoveRange(0, gate.Count);
-        }
-
-        public void Setup()
-        {
-            SetupCopy(ref firstGate, ref firstAction, ref firstInParams, ref firstOutParams, ref firstMap, "first_");
-            SetupCopy(ref secondGate, ref secondAction, ref secondInParams, ref secondOutParams, ref secondMap, "second_");
-
-            gateUsedGlobalVars   = new HashSet<Variable>(VariableCollector.Collect(gate).Where(x => x is GlobalVariable));
-            actionUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(impl).Where(x => x is GlobalVariable));
-            modifiedGlobalVars   = new HashSet<Variable>(AssignedVariables().Where(x => x is GlobalVariable));
-        }
-
-        private void SetupCopy(ref List<AssertCmd> gateCopy, ref CodeExpr actionCopy, ref List<Variable> inParamsCopy, ref List<Variable> outParamsCopy, ref Dictionary<Variable, Expr> varMap, string prefix)
-        {
-            gateCopy = new List<AssertCmd>();
-            inParamsCopy = new List<Variable>();
-            outParamsCopy = new List<Variable>();
-            varMap = new Dictionary<Variable, Expr>();
-
-            foreach (Variable x in impl.InParams)
-            {
-                Variable xCopy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), true, x.Attributes);
-                inParamsCopy.Add(xCopy);
-                varMap[x] = Expr.Ident(xCopy);
-            }
-            foreach (Variable x in impl.OutParams)
-            {
-                Variable xCopy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), false, x.Attributes);
-                outParamsCopy.Add(xCopy);
-                varMap[x] = Expr.Ident(xCopy);
-            }
-            List<Variable> localsCopy = new List<Variable>();
-            foreach (Variable x in impl.LocVars)
-            {
-                Variable xCopy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), false);
-                varMap[x] = Expr.Ident(xCopy);
-                localsCopy.Add(xCopy);
-            }
-            Contract.Assume(proc.TypeParameters.Count == 0);
-            AtomicActionDuplicator aad = new AtomicActionDuplicator(prefix, varMap);
-            foreach (AssertCmd assertCmd in gate)
-            {
-                gateCopy.Add((AssertCmd)aad.Visit(assertCmd));
-            }
-            actionCopy = new CodeExpr(localsCopy, SubstituteBlocks(impl.Blocks, aad));
-        }
-
-        private List<Block> SubstituteBlocks(List<Block> blocks, AtomicActionDuplicator aad)
-        {
-            Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
-            List<Block> otherBlocks = new List<Block>();
-            foreach (Block block in blocks)
-            {
-                List<Cmd> otherCmds = new List<Cmd>();
-                foreach (Cmd cmd in block.Cmds)
-                {
-                    otherCmds.Add((Cmd)aad.Visit(cmd));
-                }
-                Block otherBlock = new Block();
-                otherBlock.tok = block.tok;
-                otherBlock.Cmds = otherCmds;
-                otherBlock.Label = aad.prefix + block.Label;
-                otherBlocks.Add(otherBlock);
-                blockMap[block] = otherBlock;
-            }
-            foreach (Block block in blocks)
-            {
-                if (block.TransferCmd is ReturnCmd)
-                {
-                    blockMap[block].TransferCmd = new ReturnCmd(block.TransferCmd.tok);
-                    continue;
-                }
-                List<Block> otherGotoCmdLabelTargets = new List<Block>();
-                List<string> otherGotoCmdLabelNames = new List<string>();
-                GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
-                foreach (Block target in gotoCmd.labelTargets)
-                {
-                    otherGotoCmdLabelTargets.Add(blockMap[target]);
-                    otherGotoCmdLabelNames.Add(blockMap[target].Label);
-                }
-                blockMap[block].TransferCmd = new GotoCmd(block.TransferCmd.tok, otherGotoCmdLabelNames, otherGotoCmdLabelTargets);
-            }
-            return otherBlocks;
-        }
-
-        private List<Variable> AssignedVariables()
-        {
-            List<Variable> modifiedVars = new List<Variable>();
-            foreach (Cmd cmd in impl.Blocks.SelectMany(b => b.Cmds))
-            {
-                cmd.AddAssignedVariables(modifiedVars);
-            }
-            return modifiedVars;
-        }
-
-        public bool HasAssumeCmd { get { return impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd)); } }
-
-        public bool TriviallyCommutesWith(AtomicActionCopy other)
-        {
-            return this.modifiedGlobalVars.Intersect(other.actionUsedGlobalVars).Count() == 0 &&
-                   this.actionUsedGlobalVars.Intersect(other.modifiedGlobalVars).Count() == 0;
-        }
-    }
-
-    /// <summary>
-    /// Renames variables (first_ and second_ prefix) in atomic action copies.
-    /// We do not use standard substitution, because we also need to rename bound variables
-    /// (because of potential substitution in commutativity checkers).
-    /// A substitution for regular variables is supplied from the outside, replacements for
-    /// bound variables are created on the fly.
-    /// </summary>
-    class AtomicActionDuplicator : Duplicator
-    {
-        public string prefix;
-        public Dictionary<Variable,Expr> subst;
-        private Dictionary<Variable,Expr> bound;
-
-        public AtomicActionDuplicator(string prefix, Dictionary<Variable,Expr> subst) {
-            this.prefix = prefix;
-            this.subst = subst;
-            this.bound = new Dictionary<Variable, Expr>();
-        }
-
-        public override Expr VisitIdentifierExpr(IdentifierExpr node)
-        {
-            if (subst.ContainsKey(node.Decl))
-            {
-                return subst[node.Decl];
-            }
-            else if (bound.ContainsKey(node.Decl))
-            {
-                return bound[node.Decl];
-            }
-            return base.VisitIdentifierExpr(node);
-        }
-
-        public override BinderExpr VisitBinderExpr(BinderExpr node)
-        {
-            var oldToNew = node.Dummies.ToDictionary(x => x, x => new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), x.Attributes));
-
-            foreach (var x in node.Dummies)
-            {
-                bound.Add(x, Expr.Ident(oldToNew[x]));
-            }
-
-            BinderExpr expr = base.VisitBinderExpr(node);
-            expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
-
-            // We process triggers of quantifer expressions here, because otherwise the
-            // substitutions for bound variables have to be leaked outside this procedure.
-            if (node is QuantifierExpr quantifierExpr)
-            {
-                if (quantifierExpr.Triggers != null)
-                {
-                    ((QuantifierExpr)expr).Triggers = this.VisitTrigger(quantifierExpr.Triggers);
-                }
-            }
-
-            foreach (var x in node.Dummies)
-            {
-                bound.Remove(x);
-            }
-
-            return expr;
-        }
-
-        public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
-        {
-            // Don't remove this implementation! Triggers should be duplicated in VisitBinderExpr.
-            return (QuantifierExpr)this.VisitBinderExpr(node);
-        }
-    }
-
-    public abstract class YieldingProc
-    {
-        public Procedure proc;
-        public MoverType moverType;
-        public int upperLayer;
-
-        public YieldingProc(Procedure proc, MoverType moverType, int upperLayer)
-        {
-            this.proc = proc;
-            this.moverType = moverType;
-            this.upperLayer = upperLayer;
-        }
-
-        public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
-        public bool IsLeftMover { get { return moverType == MoverType.Left || moverType == MoverType.Both; } }
-    }
-
-    public class SkipProc : YieldingProc
-    {
-        public SkipProc(Procedure proc, int upperLayer)
-            : base(proc, MoverType.Both, upperLayer) { }
-    }
-
-    public class MoverProc : YieldingProc
-    {
-        public HashSet<Variable> modifiedGlobalVars;
-
-        public MoverProc(Procedure proc, MoverType moverType, int upperLayer)
-            : base(proc, moverType, upperLayer)
-        {
-            modifiedGlobalVars = new HashSet<Variable>(proc.Modifies.Select(ie => ie.Decl));
-        }
-    }
-
-    public class ActionProc : YieldingProc
-    {
-        public AtomicAction refinedAction;
-        public Procedure addPendingAsyncProc;
-
-        public ActionProc(Procedure proc, AtomicAction refinedAction, int upperLayer)
-            : base(proc, refinedAction.moverType, upperLayer)
-        {
-            this.refinedAction = refinedAction;
-        }
-    }
-
-    public class IntroductionProc
-    {
-        public Procedure proc;
-        public LayerRange layerRange;
-        public bool isLeaky;
-
-        public IntroductionProc(Procedure proc, LayerRange layerRange, bool isLeaking)
-        {
-            this.proc = proc;
-            this.isLeaky = isLeaking;
-            this.layerRange = layerRange;
-        }
-    }
-
-    public class LayerRange
-    {
-        public int lowerLayerNum;
-        public int upperLayerNum;
-
-        public static LayerRange MinMax = new LayerRange(int.MinValue, int.MaxValue);
-
-        public LayerRange(int layer) : this(layer, layer) { }
-
-        public LayerRange(int lower, int upper)
-        {
-            Debug.Assert(lower <= upper);
-            this.lowerLayerNum = lower;
-            this.upperLayerNum = upper;
-        }
-
-        public bool Contains(int layerNum)
-        {
-            return lowerLayerNum <= layerNum && layerNum <= upperLayerNum;
-        }
-
-        public bool Subset(LayerRange other)
-        {
-            return other.lowerLayerNum <= lowerLayerNum && upperLayerNum <= other.upperLayerNum;
-        }
-    }
-
-    public static class AttributeQueryExtensionMethods
-    {
-        public static bool HasAttribute(this ICarriesAttributes obj, string attribute)
-        { return QKeyValue.FindBoolAttribute(obj.Attributes, attribute); }
-
-        public static bool IsPure (this Declaration decl) { return decl.HasAttribute(CivlAttributes.PURE); }
-        public static bool IsYield(this Declaration decl) { return decl.HasAttribute(CivlAttributes.YIELDS); }
-
-        public static bool IsExtern(this Declaration decl) { return decl.HasAttribute("extern"); }
-    }
-
     public class CivlTypeChecker
     {
         public CheckingContext checkingContext;
@@ -371,17 +22,16 @@ namespace Microsoft.Boogie
         public Dictionary<Procedure, AtomicAction> procToAtomicAction;
         public Dictionary<Procedure, YieldingProc> procToYieldingProc;
         public Dictionary<Procedure, IntroductionProc> procToIntroductionProc;
-        public Dictionary<Tuple<AtomicActionCopy, AtomicActionCopy>,
+        public Dictionary<Tuple<AtomicAction, AtomicAction>,
             List<WitnessFunction>> atomicActionPairToWitnessFunctions;
 
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
         Dictionary<CallCmd, int> introductionCallToLayer;
 
-        public GlobalVariable pendingAsyncMultiset;
+        public TypeCtorDecl pendingAsyncType;
 
         // This collections are for convenience in later phases and are only initialized at the end of type checking.
         public List<int> allRefinementLayers;
-        public List<int> allAtomicActionLayers;
         public List<GlobalVariable> sharedVariables;
         public List<IdentifierExpr> sharedVariableIdentifiers;
 
@@ -397,7 +47,7 @@ namespace Microsoft.Boogie
             this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
             this.procToIntroductionProc = new Dictionary<Procedure, IntroductionProc>();
             this.introductionCallToLayer = new Dictionary<CallCmd, int>();
-            this.atomicActionPairToWitnessFunctions = new Dictionary<Tuple<AtomicActionCopy, AtomicActionCopy>,
+            this.atomicActionPairToWitnessFunctions = new Dictionary<Tuple<AtomicAction, AtomicAction>,
                 List<WitnessFunction>>();
         }
 
@@ -471,7 +121,7 @@ namespace Microsoft.Boogie
         private MoverType? GetMoverType(QKeyValue kv)
         {
             MoverType? moverType = null;
-            
+
             for (; kv != null; kv = kv.Next)
             {
                 if (kv.Params.Count == 0)
@@ -512,6 +162,7 @@ namespace Microsoft.Boogie
             TypeCheckIntroductionProcedures();
 
             TypeCheckAtomicActionDecls();
+            TypeCheckPendingAsyncType();
             TypeCheckYieldingProcedureDecls();
 
             TypeCheckLocalVariables();
@@ -521,16 +172,8 @@ namespace Microsoft.Boogie
             if (checkingContext.ErrorCount != 0)
                 return;
 
-            ComputeAsyncFreeLayers();
-
             // List of all layers where refinement happens
             allRefinementLayers = procToYieldingProc.Values.Select(a => a.upperLayer).OrderBy(l => l).Distinct().ToList();
-
-            // List of all layers where the set of available atomic actions changes (through availability or refinement)
-            allAtomicActionLayers = allRefinementLayers.ToList();
-            allAtomicActionLayers.AddRange(procToAtomicAction.Values.Select(a => a.layerRange.lowerLayerNum));
-            allAtomicActionLayers.AddRange(procToAtomicAction.Values.Select(a => a.layerRange.upperLayerNum));
-            allAtomicActionLayers = allAtomicActionLayers.Distinct().OrderBy(l => l).ToList();
 
             foreach (var kv in absyToLayerNums)
             {
@@ -543,13 +186,9 @@ namespace Microsoft.Boogie
                 }
             }
 
-            CheckAtomicActionAcyclicity();
-
             if (checkingContext.ErrorCount != 0)
                 return;
 
-            AddPendingAsyncMachinery();
-            GenerateAtomicActionCopies();
             TypeCheckYieldingProcedureImpls();
 
             sharedVariables = program.GlobalVariables.ToList();
@@ -564,14 +203,11 @@ namespace Microsoft.Boogie
         {
             foreach (var action in procToAtomicAction.Values)
             {
-                foreach (var actionCopy in action.layerToActionCopy.Values)
-                {
-                    SubstituteBackwardAssignments(actionCopy);
-                }
+                SubstituteBackwardAssignments(action);
             }
         }
 
-        private void SubstituteBackwardAssignments(AtomicActionCopy action)
+        private void SubstituteBackwardAssignments(AtomicAction action)
         {
             foreach (Block block in action.impl.Blocks)
             {
@@ -614,23 +250,17 @@ namespace Microsoft.Boogie
         private void TypeCheckWitnessFunctions()
         {
             WitnessFunctionVisitor wfv = new WitnessFunctionVisitor(this);
-            foreach (var f in program.Functions)
-            {
-                wfv.VisitFunction(f);
-            }
+            wfv.VisitFunctions();
             foreach (var witnessFunction in wfv.allWitnessFunctions)
             {
-                foreach (var layer in witnessFunction.layers)
+                var key = Tuple.Create(
+                    witnessFunction.firstAction,
+                    witnessFunction.secondAction);
+                if (!atomicActionPairToWitnessFunctions.ContainsKey(key))
                 {
-                    var key = Tuple.Create(
-                        witnessFunction.firstAction.layerToActionCopy[layer],
-                        witnessFunction.secondAction.layerToActionCopy[layer]);
-                    if (!atomicActionPairToWitnessFunctions.ContainsKey(key))
-                    {
-                        atomicActionPairToWitnessFunctions[key] = new List<WitnessFunction>();
-                    }
-                    atomicActionPairToWitnessFunctions[key].Add(witnessFunction);
+                    atomicActionPairToWitnessFunctions[key] = new List<WitnessFunction>();
                 }
+                atomicActionPairToWitnessFunctions[key].Add(witnessFunction);
             }
         }
 
@@ -686,7 +316,7 @@ namespace Microsoft.Boogie
                 Graph<Block> cfg = Program.GraphFromImpl(impl);
                 if (!Graph<Block>.Acyclic(cfg, impl.Blocks[0]))
                 {
-                    Error(proc, "Atomic action specification can not have loops");
+                    Error(proc, "Atomic action specification cannot have loops");
                     continue;
                 }
 
@@ -777,7 +407,7 @@ namespace Microsoft.Boogie
 
                 if (refinesName != null) // proc is an action procedure
                 {
-                    AtomicAction refinedAction = procToAtomicAction.Values.Where(a => a.proc.Name == refinesName).FirstOrDefault();
+                    AtomicAction refinedAction = FindAtomicAction(refinesName);
                     if (refinedAction == null)
                     {
                         Error(proc, "Could not find refined atomic action");
@@ -832,7 +462,7 @@ namespace Microsoft.Boogie
                             var calledProc = procToYieldingProc[callCmd.Proc];
                             if (calledProc is ActionProc)
                             {
-                                mods = ((ActionProc)calledProc).refinedAction.layerToActionCopy[yieldingProc.upperLayer].modifiedGlobalVars;
+                                mods = ((ActionProc)calledProc).refinedAction.modifiedGlobalVars;
                             }
                             else if (calledProc is MoverProc)
                             {
@@ -923,7 +553,6 @@ namespace Microsoft.Boogie
                     Type u = actionFormals[i].TypedIdent.Type.Substitute(subst1);
                     if (!t.Equals(u))
                     {
-                        
                         checkingContext.Error(proc, "mismatched type of {0}-parameter in refinement procedure {1}: {2}", inout, proc.Name, msg);
                     }
 
@@ -1007,260 +636,40 @@ namespace Microsoft.Boogie
             return layers[0];
         }
 
-        /// <summary>
-        /// Fixpoint computation to determine for each atomic action the least layer at which it becomes async free.
-        /// </summary>
-        private void ComputeAsyncFreeLayers()
+        private void TypeCheckPendingAsyncType()
         {
-            foreach (var a in procToAtomicAction.Values)
+            foreach (var typeCtorDecl in program.TopLevelDeclarations.OfType<TypeCtorDecl>())
             {
-                a.asyncFreeLayer = a.layerRange.lowerLayerNum;
+                if (typeCtorDecl.HasPendingAsync())
+                {
+                    if (pendingAsyncType == null)
+                        pendingAsyncType = typeCtorDecl;
+                    else
+                        Error(typeCtorDecl, $"Duplicate pending async type {typeCtorDecl.Name}");
+                }
             }
 
-            bool proceed = true;
-            while (proceed)
+            foreach (var ctor in program.TopLevelDeclarations.OfType<DatatypeConstructor>())
             {
-                proceed = false;
-                foreach (var a in procToAtomicAction.Values)
+                string actionName = QKeyValue.FindStringAttribute(ctor.Attributes, CivlAttributes.PENDING_ASYNC);
+                if (actionName != null)
                 {
-                    foreach (var call in a.impl.Blocks.SelectMany(b => b.cmds.OfType<CallCmd>()))
+                    AtomicAction action = FindAtomicAction(actionName);
+                    if (action == null)
                     {
-                        var target = procToYieldingProc[call.Proc];
-                        int x = target.upperLayer + 1;
-                        if (target is ActionProc actionProc)
-                        {
-                            x = Math.Max(x, actionProc.refinedAction.asyncFreeLayer);
-                        }
-                        if (x > a.asyncFreeLayer)
-                        {
-                            a.asyncFreeLayer = x;
-                            proceed = true;
-                        }
+                        Error(ctor, $"{actionName} is not an atomic action");
+                        continue;
                     }
+                    action.pendingAsyncCtor = ctor;
+                    // TODO: check that action and ctor have the same inputs
+                    // TODO: check that output of ctor is of pendingAsyncType}
                 }
             }
         }
 
-        // TODO: Is it necessary to construct a graph for every layer independently?
-        /// <summary>
-        /// Check (for each layer individually), if atomic actions have a cyclic dependency through pending asyncs.
-        /// </summary>
-        private void CheckAtomicActionAcyclicity()
+        public AtomicAction FindAtomicAction(string name)
         {
-            foreach (var layer in allAtomicActionLayers)
-            {
-                Graph<AtomicAction> graph = new Graph<AtomicAction>();
-
-                foreach (var action in procToAtomicAction.Values.Where(a => a.layerRange.Contains(layer)))
-                {
-                    foreach (var callCmd in action.impl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
-                    {
-                        Debug.Assert(callCmd.IsAsync);
-
-                        if (procToYieldingProc[callCmd.Proc] is ActionProc calleeProc && layer > calleeProc.upperLayer)
-                        {
-                            graph.AddEdge(action, calleeProc.refinedAction);
-                        }
-                    }
-                }
-
-                if (!Graph<AtomicAction>.Acyclic(graph, null))
-                    checkingContext.Error(Token.NoToken, "Atomic actions have cyclic dependency at layer " + layer);
-            }
-        }
-
-        private void AddPendingAsyncMachinery()
-        {
-            CtorType pendingAsyncType = null;
-
-            // We do not want to disturb non-CIVL programs
-            if (procToAtomicAction.Count != 0)
-            {
-                // datatype
-                pendingAsyncType = new CtorType(Token.NoToken, new TypeCtorDecl(Token.NoToken, "PendingAsync", 0, new QKeyValue(Token.NoToken, "datatype", new List<object>(), null)), new List<Type>());
-                program.AddTopLevelDeclaration(pendingAsyncType.Decl);
-
-                // global multiset variable
-                MapType pendingAsyncMultisetType = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type>{ pendingAsyncType }, Type.Int);
-                this.pendingAsyncMultiset = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "pendingAsyncMultiset", pendingAsyncMultisetType));
-                program.AddTopLevelDeclaration(pendingAsyncMultiset);
-            }
-
-            foreach (var actionProc in procToYieldingProc.Values.OfType<ActionProc>())
-            {
-                Debug.Assert(pendingAsyncType != null);
-
-                // constructor function
-                Function f = new Function(
-                                 Token.NoToken,
-                                 "PendingAsync_" + actionProc.proc.Name,
-                                 new List<TypeVariable>(),
-                                 actionProc.proc.InParams.Select(v => new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true)).ToList<Variable>(),
-                                 new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", pendingAsyncType), false),
-                                 null,
-                                 new QKeyValue(Token.NoToken, "constructor", new List<object>(), null)
-                             );
-                DatatypeConstructor c = new DatatypeConstructor(f);
-                program.AddTopLevelDeclaration(c);
-
-                // pending async adder procedure & implementation
-                string name = "AddPendingAsync_" + actionProc.proc.Name;
-                Procedure p = new Procedure(
-                                  Token.NoToken,
-                                  name,
-                                  new List<TypeVariable>(),
-                                  actionProc.proc.InParams.Select(v => (Variable)v.Clone()).ToList(),
-                                  new List<Variable>(),
-                                  new List<Requires>(),
-                                  new List<IdentifierExpr> { Expr.Ident(pendingAsyncMultiset) },
-                                  new List<Ensures>()
-                              );
-                p.InParams.ForEach(inParam => inParam.Attributes = null);
-                CivlUtil.AddInlineAttribute(p);
-                p.Typecheck(new TypecheckingContext(null));
-                actionProc.addPendingAsyncProc = p;
-                program.AddTopLevelDeclaration(p);
-
-                var inParams = actionProc.proc.InParams.Select(v => (Variable)v.Clone()).ToList();
-                inParams.ForEach(inParam => inParam.Attributes = null);
-                Expr idx = new NAryExpr(
-                               Token.NoToken,
-                               new FunctionCall(c),
-                               inParams.Select(v => Expr.Ident(v)).ToList<Expr>());
-                
-                MapAssignLhs lhs = new MapAssignLhs(Token.NoToken, new SimpleAssignLhs(Token.NoToken, Expr.Ident(pendingAsyncMultiset)), new List<Expr> { idx });
-                Expr sel = Expr.Select(Expr.Ident(pendingAsyncMultiset), new List<Expr>{ idx });
-                Expr plusOne = Expr.Add(sel, new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-                AssignCmd cmd = new AssignCmd(Token.NoToken, new List<AssignLhs>{ lhs }, new List<Expr> { plusOne });
-
-                Implementation i = new Implementation(
-                                       Token.NoToken,
-                                       name,
-                                       new List<TypeVariable>(),
-                                       inParams,
-                                       new List<Variable>(),
-                                       new List<Variable>(),
-                                       new List<Block> { new Block(Token.NoToken, "L", new List<Cmd> { cmd }, new ReturnCmd(Token.NoToken)) });
-                i.Proc = p;
-                i.OriginalBlocks = i.Blocks;
-                i.OriginalLocVars = i.LocVars;
-                CivlUtil.AddInlineAttribute(i);
-                i.Typecheck(new TypecheckingContext(null));
-                program.AddTopLevelDeclaration(i);
-            }
-        }
-
-        private void GenerateAtomicActionCopies()
-        {
-            foreach (var layer in allAtomicActionLayers)
-            {
-                // Generate layer specific versions of atomic actions (i.e., resolve pending async calls)
-                AtomicActionCopier copier = new AtomicActionCopier(layer, this);
-                copier.GenerateCopies();
-
-                // AtomicActionCopy constructur removes gate from atomic action implementation
-                foreach (var action in copier.actions)
-                {
-                    action.layerToActionCopy[layer] = new AtomicActionCopy(copier.procMap[action.proc], copier.implMap[action.impl]);
-                }
-
-                program.AddTopLevelDeclarations(copier.procMap.Values);
-                program.AddTopLevelDeclarations(copier.implMap.Values);
-
-                // Fully inline atomic action implementations
-                foreach (var impl in copier.implMap.Values)
-                {
-                    impl.OriginalBlocks = impl.Blocks;
-                    impl.OriginalLocVars = impl.LocVars;
-                }
-                foreach (var impl in copier.implMap.Values)
-                {
-                    Inliner.ProcessImplementation(program, impl);
-                }
-                foreach (var impl in copier.implMap.Values)
-                {
-                    impl.OriginalBlocks = null;
-                    impl.OriginalLocVars = null;
-                }
-
-                // Generate first/second versions of atomic actions (used in transition relation computation)
-                // and initialize used/modified variable infos.
-                foreach (var action in copier.actions)
-                {
-                    action.layerToActionCopy[layer].Setup();
-                }
-            }
-        }
-
-        public class AtomicActionCopier : Duplicator
-        {
-            private int layer;
-            private CivlTypeChecker ctc;
-
-            public List<AtomicAction> actions;
-            public Dictionary<Procedure,Procedure> procMap;
-            public Dictionary<Implementation, Implementation> implMap;
-
-            public AtomicActionCopier(int layer, CivlTypeChecker ctc)
-            {
-                this.layer = layer;
-                this.ctc = ctc;
-                this.actions = ctc.procToAtomicAction.Values.Where(a => a.layerRange.Contains(layer)).ToList();
-                this.procMap = new Dictionary<Procedure, Procedure>();
-                this.implMap = new Dictionary<Implementation, Implementation>();
-            }
-
-            public void GenerateCopies()
-            {
-                foreach (var action in actions)
-                {
-                    VisitProcedure(action.proc);
-                }
-                foreach (var action in actions)
-                {
-                    VisitImplementation(action.impl);
-                }
-            }
-
-            public override Procedure VisitProcedure(Procedure node)
-            {
-                if (procMap.ContainsKey(node))
-                    return procMap[node];
-                
-                Procedure proc = base.VisitProcedure(node);
-                proc.Name = $"{node.Name}_{layer}";
-                procMap[node] = proc;
-                CivlUtil.AddInlineAttribute(proc);
-                return proc;
-            }
-
-            public override Implementation VisitImplementation(Implementation node)
-            {
-                if (implMap.ContainsKey(node))
-                    return implMap[node];
-                
-                Procedure proc = procMap[node.Proc];
-                Implementation impl = base.VisitImplementation(node);
-                impl.Proc = proc;
-                impl.Name = proc.Name;
-                implMap[node] = impl;
-                CivlUtil.AddInlineAttribute(impl);
-                return impl;
-            }
-
-            public override Cmd VisitCallCmd(CallCmd node)
-            {
-                CallCmd call = (CallCmd)base.VisitCallCmd(node);
-                call.IsAsync = false;
-                Debug.Assert(ctc.procToYieldingProc[node.Proc] is ActionProc);
-                ActionProc target = (ActionProc)ctc.procToYieldingProc[node.Proc];
-                if (target.upperLayer >= layer)
-                    call.Proc = target.addPendingAsyncProc;
-                else
-                    call.Proc = procMap[target.refinedAction.proc];
-                call.callee = call.Proc.Name;
-                return call;
-            }
+            return procToAtomicAction.Values.FirstOrDefault(a => a.proc.Name == name);
         }
 
         public void Error(Absy node, string message)
@@ -1300,9 +709,9 @@ namespace Microsoft.Boogie
                 if (node.Decl is GlobalVariable)
                 {
                     var sharedVarLayerRange = ctc.GlobalVariableLayerRange(node.Decl);
-                    if (!atomicAction.layerRange.Subset(sharedVarLayerRange) || sharedVarLayerRange.lowerLayerNum == atomicAction.layerRange.lowerLayerNum) 
-                        // a shared variable introduced at layer n is visible to an atomic action only at layer n+1 or higher
-                        // thus, a shared variable with layer range [n,n] is not accessible by an atomic action
+                    if (!atomicAction.layerRange.Subset(sharedVarLayerRange) || sharedVarLayerRange.lowerLayerNum == atomicAction.layerRange.lowerLayerNum)
+                    // a shared variable introduced at layer n is visible to an atomic action only at layer n+1 or higher
+                    // thus, a shared variable with layer range [n,n] is not accessible by an atomic action
                     {
                         ctc.checkingContext.Error(node, "Shared variable {0} is not available in atomic action specification", node.Decl.Name);
                     }
@@ -1312,37 +721,7 @@ namespace Microsoft.Boogie
 
             public override Cmd VisitCallCmd(CallCmd node)
             {
-                if (node.IsAsync)
-                {
-                    if (atomicAction.moverType != MoverType.Atomic && atomicAction.moverType != MoverType.Left)
-                    {
-                        ctc.Error(node, "Atomic action with pending async must have mover type atomic or left");
-                    }
-                    if (!ctc.procToYieldingProc.ContainsKey(node.Proc) || !(ctc.procToYieldingProc[node.Proc] is ActionProc))
-                    {
-                        ctc.Error(node, "Target of a pending async must be an action procedure");
-                    }
-                    else
-                    {
-                        ActionProc target = (ActionProc)ctc.procToYieldingProc[node.Proc];
-                        if (!target.IsLeftMover)
-                        {
-                            ctc.Error(node, "Target of async call must be a left mover");
-                        }
-                        if (target.refinedAction.layerRange.upperLayerNum < atomicAction.layerRange.upperLayerNum)
-                        {
-                            ctc.Error(node, "Callee disappears before caller");
-                        }
-                        if (ctc.AllInParamsIntroducedLayer(target.proc) > atomicAction.layerRange.lowerLayerNum)
-                        {
-                            ctc.Error(node, "Target of a pending async must have all input variables introduced");
-                        }
-                    }
-                }
-                else
-                {
-                    ctc.Error(node, "Call command not allowed inside an atomic action");
-                }
+                ctc.Error(node, "Call command not allowed inside an atomic action");
                 return base.VisitCallCmd(node);
             }
         }
@@ -1569,29 +948,19 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        if (calleeProc is ActionProc actionProc && actionProc.refinedAction.asyncFreeLayer > callerProc.upperLayer)
-                        {
-                            ctc.Error(call, "Disappearing layer of caller cannot be lower than async-free layer of callee");
-                        }
+                        // TODO: IS
+                        // if (calleeProc is ActionProc actionProc && actionProc.refinedAction.asyncFreeLayer > callerProc.upperLayer)
+                        // {
+                        //     ctc.Error(call, "Disappearing layer of caller cannot be lower than async-free layer of callee");
+                        // }
                     }
                 }
 
                 if (calleeProc is ActionProc)
                 {
-                    if (callerProc.upperLayer == calleeProc.upperLayer)
+                    if (callerProc.upperLayer <= calleeProc.upperLayer)
                     {
                         ctc.Error(call, "The layer of the caller must be greater than the layer of the callee");
-                    }
-                    else if (callerProc.upperLayer < calleeProc.upperLayer)
-                    {
-                        if (!call.IsAsync)
-                        {
-                            ctc.Error(call, "The layer of the caller must be greater than the layer of the callee");
-                        }
-                        else if (ctc.AllInParamsIntroducedLayer(calleeProc.proc) > callerProc.upperLayer)
-                        {
-                            ctc.Error(call, "Target of a pending async must have all input variables introduced");
-                        }
                     }
                     if (((ActionProc)calleeProc).refinedAction.layerRange.upperLayerNum < callerProc.upperLayer)
                     {
@@ -1701,7 +1070,7 @@ namespace Microsoft.Boogie
                     ctc.introductionCallToLayer[call] = localVariableAccesses
                                                            .Select(ie => ctc.LocalVariableIntroLayer(ie.Decl))
                                                            .Concat1(calleeProc.layerRange.lowerLayerNum)
-                                                           .Max(); 
+                                                           .Max();
                     localVariableAccesses = null;
                 }
             }

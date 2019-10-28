@@ -6,103 +6,11 @@ using System;
 
 namespace Microsoft.Boogie
 {
-    public enum AtomicActionCopyKind
-    {
-        FIRST, SECOND, NORMAL
-    }
-
-    public class AtomicActionCopyAdapter
-    {
-        public readonly AtomicActionCopy action;
-        public readonly AtomicActionCopyKind copyType;
-
-        public AtomicActionCopyAdapter(AtomicActionCopy action, AtomicActionCopyKind copyType)
-        {
-            this.action = action;
-            this.copyType = copyType;
-        }
-
-        private T PassByKind<T>(T normalValue, T firstValue, T secondValue)
-        {
-            switch (copyType)
-            {
-                case AtomicActionCopyKind.FIRST:
-                    return firstValue;
-                case AtomicActionCopyKind.SECOND:
-                    return secondValue;
-                case AtomicActionCopyKind.NORMAL:
-                    return normalValue;
-                default:
-                    throw new InvalidEnumArgumentException();
-            }
-        }
-
-        public List<AssertCmd> Gate
-        {
-            get
-            {
-                return PassByKind(action.gate, action.firstGate, action.secondGate);
-            }
-        }
-
-        public List<Block> Blocks
-        {
-            get
-            {
-                return PassByKind(action.impl.Blocks, action.firstAction.Blocks,
-                    action.secondAction.Blocks);
-            }
-        }
-
-        public List<Variable> InParams
-        {
-            get
-            {
-                return PassByKind(action.impl.InParams, action.firstInParams,
-                    action.secondInParams);
-            }
-        }
-
-        public List<Variable> OutParams
-        {
-            get
-            {
-                return PassByKind(action.impl.OutParams, action.firstOutParams,
-                    action.secondOutParams);
-            }
-        }
-
-        public List<Variable> LocVars
-        {
-            get
-            {
-                return PassByKind(action.impl.LocVars, action.firstAction.LocVars,
-                    action.secondAction.LocVars);
-            }
-        }
-
-        public IEnumerable<Variable> Params
-        {
-            get
-            {
-                return InParams.Union(OutParams);
-            }
-        }
-
-        public string Prefix
-        {
-            get
-            {
-                return PassByKind("", "first_", "second_");
-            }
-        }
-    }
-
     public class TransitionRelationComputation
     {
-        internal readonly AtomicActionCopyAdapter first, second;
+        internal readonly Implementation first, second;
         internal readonly HashSet<Variable> frame;
-        internal readonly Dictionary<GlobalVariable, List<WitnessFunction>> globalVarToWitnesses;
+        internal readonly Dictionary<Variable, List<WitnessFunction>> globalVarToWitnesses;
         internal readonly bool ignorePostState;
 
         internal readonly string messagePrefix;
@@ -114,7 +22,7 @@ namespace Microsoft.Boogie
         private List<Expr> pathTranslations;
 
         private TransitionRelationComputation(
-            AtomicActionCopyAdapter first, AtomicActionCopyAdapter second,
+            Implementation first, Implementation second,
             IEnumerable<Variable> frame, List<WitnessFunction> witnesses, bool ignorePostState,
             string messagePrefix)
         {
@@ -127,12 +35,12 @@ namespace Microsoft.Boogie
             this.checkingContext = new CheckingContext(null);
 
             this.pathTranslations = new List<Expr>();
-            this.globalVarToWitnesses = new Dictionary<GlobalVariable, List<WitnessFunction>>();
+            this.globalVarToWitnesses = new Dictionary<Variable, List<WitnessFunction>>();
             if (witnesses != null)
             {
                 foreach (var witness in witnesses)
                 {
-                    var gVar = witness.globalVar;
+                    var gVar = witness.witnessedVariable;
                     if (!globalVarToWitnesses.ContainsKey(gVar))
                     {
                         globalVarToWitnesses[gVar] = new List<WitnessFunction>();
@@ -143,7 +51,7 @@ namespace Microsoft.Boogie
         }
 
         private static Expr ComputeTransitionRelation(
-            AtomicActionCopyAdapter first, AtomicActionCopyAdapter second,
+            Implementation first, Implementation second,
             IEnumerable<Variable> frame, List<WitnessFunction> witnesses, bool ignorePostState,
             string messagePrefix)
         {
@@ -161,28 +69,28 @@ namespace Microsoft.Boogie
             return transitionRelation;
         }
 
-        public static Expr Commutativity(AtomicActionCopy first, AtomicActionCopy second,
+        public static Expr Commutativity(AtomicAction first, AtomicAction second,
             HashSet<Variable> frame, List<WitnessFunction> witnesses)
         {
             return ComputeTransitionRelation(
-                new AtomicActionCopyAdapter(first, AtomicActionCopyKind.SECOND),
-                new AtomicActionCopyAdapter(second, AtomicActionCopyKind.FIRST),
+                first.secondImpl,
+                second.firstImpl,
                 frame, witnesses, false,
                 string.Format("Transition relation of {0} ∘ {1}", first.proc.Name, second.proc.Name));
         }
 
-        public static Expr Refinement(AtomicActionCopy action, HashSet<Variable> frame)
+        public static Expr Refinement(AtomicAction action, HashSet<Variable> frame)
         {
             return ComputeTransitionRelation(
-                new AtomicActionCopyAdapter(action, AtomicActionCopyKind.NORMAL),
+                action.impl,
                 null, frame, null, false,
                 string.Format("Transition relation of {0}", action.proc.Name));
         }
 
-        public static Expr Nonblocking(AtomicActionCopy action, HashSet<Variable> frame)
+        public static Expr Nonblocking(AtomicAction action, HashSet<Variable> frame)
         {
             return ComputeTransitionRelation(
-                new AtomicActionCopyAdapter(action, AtomicActionCopyKind.NORMAL),
+                action.impl,
                 null, frame, null, true,
                 string.Format("Nonblocking expression of {0}", action.proc.Name));
         }
@@ -250,7 +158,7 @@ namespace Microsoft.Boogie
             private readonly List<Cmd> cmds;
             private readonly TransitionRelationComputation transitionRelationComputer;
             private readonly HashSet<Variable> allInParams, allOutParams, allLocVars, frame;
-            private readonly AtomicActionCopyAdapter first, second;
+            private readonly Implementation first, second;
 
             // Used when second != null
             // TODO: Add some comments
@@ -592,36 +500,8 @@ namespace Microsoft.Boogie
                         Enumerable.Zip(varToWitnesses.Keys, witnessSet, Tuple.Create))
                     {
                         WitnessFunction witnessFunction = pair.Item2;
-                        List<Expr> args = new List<Expr>();
-                        foreach (var arg in witnessFunction.InputArgs)
-                        {
-                            Expr expr = null;
-                            switch (arg.Kind)
-                            {
-                                case WitnessFunction.InputArgumentKind.FIRST_ARG:
-                                    // TODO: Add note on the reason of using second
-                                    expr = Expr.Ident(second.Params.
-                                        First(x => x.Name == second.Prefix + arg.Name));
-                                    break;
-                                case WitnessFunction.InputArgumentKind.SECOND_ARG:
-                                    expr = Expr.Ident(first.Params.
-                                        First(x => x.Name == first.Prefix + arg.Name));
-                                    break;
-                                case WitnessFunction.InputArgumentKind.PRE_STATE:
-                                    expr = ExprHelper.Old(Expr.Ident(
-                                        frame.First(x => x.Name == arg.Name)));
-                                    break;
-                                case WitnessFunction.InputArgumentKind.POST_STATE:
-                                    expr = Expr.Ident(frame.First(x => x.Name == arg.Name));
-                                    break;
-                                default:
-                                    Debug.Assert(false);
-                                    break;
-                            }
-                            args.Add(expr);
-                        }
                         witnessSubst[pair.Item1] = ExprHelper.FunctionCall(
-                                witnessFunction.function, args.ToArray()
+                                witnessFunction.function, witnessFunction.args.ToArray()
                             );
                     }
                     var subst = Substituter.SubstitutionFromHashtable(witnessSubst);

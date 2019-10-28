@@ -32,12 +32,6 @@ namespace Microsoft.Boogie
             program.AddTopLevelDeclarations(decls);
 
             civlTypeChecker.SubstituteBackwardAssignments();
-
-            foreach (AtomicAction atomicAction in civlTypeChecker.procToAtomicAction.Values)
-            {
-                program.RemoveTopLevelDeclaration(atomicAction.proc);
-                program.RemoveTopLevelDeclaration(atomicAction.impl);
-            }
         }
     }
 }

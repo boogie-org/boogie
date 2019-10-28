@@ -44,11 +44,7 @@ namespace Microsoft.Boogie
                     if (yieldingProc is ActionProc actionProc)
                     {
                         // yielding procedure already transformed to atomic action
-                        var action = actionProc.refinedAction;
-                        if (action.layerRange.Contains(layerNum))
-                            return action.layerToActionCopy[layerNum].proc;
-                        else
-                            return node;
+                        return actionProc.refinedAction.proc;
                     }
                     else if (yieldingProc is SkipProc)
                     {
@@ -174,7 +170,8 @@ namespace Microsoft.Boogie
                 if (enclosingYieldingProc.upperLayer == layerNum && yieldingProc.upperLayer > layerNum)
                 {
                     ActionProc actionProc = (ActionProc) yieldingProc;
-                    newCall.Proc = actionProc.addPendingAsyncProc;
+                    // TODO: IS
+                    // newCall.Proc = actionProc.addPendingAsyncProc;
                     newCall.IsAsync = false;
                 }
             }
@@ -224,14 +221,14 @@ namespace Microsoft.Boogie
         private void InjectGate(ActionProc calledActionProc, CallCmd callCmd, List<Cmd> newCmds)
         {
             if (calledActionProc.upperLayer >= layerNum) return;
-            AtomicActionCopy atomicActionCopy = calledActionProc.refinedAction.layerToActionCopy[layerNum];
-            if (atomicActionCopy.gate.Count == 0) return;
+            AtomicAction atomicAction = calledActionProc.refinedAction;
+            if (atomicAction.gate.Count == 0) return;
 
             Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
             for (int i = 0; i < calledActionProc.proc.InParams.Count; i++)
             {
                 // Parameters come from the implementation that defines the atomic action
-                map[atomicActionCopy.impl.InParams[i]] = callCmd.Ins[i];
+                map[atomicAction.impl.InParams[i]] = callCmd.Ins[i];
             }
 
             Substitution subst = Substituter.SubstitutionFromHashtable(map);
@@ -239,7 +236,7 @@ namespace Microsoft.Boogie
             // Important: Do not remove CommentCmd!
             // It separates the injected gate from yield assertions in CollectAndDesugarYields.
             newCmds.Add(new CommentCmd("<<< injected gate"));
-            foreach (AssertCmd assertCmd in atomicActionCopy.gate)
+            foreach (AssertCmd assertCmd in atomicAction.gate)
             {
                 if (layerNum == enclosingYieldingProc.upperLayer)
                     newCmds.Add((AssertCmd) Substituter.Apply(subst, assertCmd));

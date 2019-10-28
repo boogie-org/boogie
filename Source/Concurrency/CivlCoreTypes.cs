@@ -1,0 +1,296 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.Contracts;
+using System.Linq;
+
+namespace Microsoft.Boogie
+{
+    public enum MoverType
+    {
+        Atomic,
+        Right,
+        Left,
+        Both
+    }
+
+    public class LayerRange
+    {
+        public int lowerLayerNum;
+        public int upperLayerNum;
+
+        public static LayerRange MinMax = new LayerRange(int.MinValue, int.MaxValue);
+
+        public LayerRange(int layer) : this(layer, layer) { }
+
+        public LayerRange(int lower, int upper)
+        {
+            Debug.Assert(lower <= upper);
+            this.lowerLayerNum = lower;
+            this.upperLayerNum = upper;
+        }
+
+        public bool Contains(int layerNum)
+        {
+            return lowerLayerNum <= layerNum && layerNum <= upperLayerNum;
+        }
+
+        public bool Subset(LayerRange other)
+        {
+            return other.lowerLayerNum <= lowerLayerNum && upperLayerNum <= other.upperLayerNum;
+        }
+    }
+
+    public class AtomicAction
+    {
+        public Procedure proc;
+        public Implementation impl;
+        public MoverType moverType;
+        public LayerRange layerRange;
+        public DatatypeConstructor pendingAsyncCtor;
+
+        public List<AssertCmd> gate;
+
+        public List<AssertCmd> firstGate;
+        public Implementation firstImpl;
+
+        public List<AssertCmd> secondGate;
+        public Implementation secondImpl;
+
+        public HashSet<Variable> gateUsedGlobalVars;
+        public HashSet<Variable> actionUsedGlobalVars;
+        public HashSet<Variable> modifiedGlobalVars;
+
+        public AtomicAction(Procedure proc, Implementation impl, MoverType moverType, LayerRange layerRange)
+        {
+            this.proc = proc;
+            this.impl = impl;
+            this.moverType = moverType;
+            this.layerRange = layerRange;
+
+            CivlUtil.AddInlineAttribute(proc);
+            CivlUtil.AddInlineAttribute(impl);
+
+            // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
+            this.gate = impl.Blocks[0].cmds.TakeWhile((c, i) => c is AssertCmd).Cast<AssertCmd>().ToList();
+            impl.Blocks[0].cmds.RemoveRange(0, gate.Count);
+
+            gateUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(gate).Where(x => x is GlobalVariable));
+            actionUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(impl).Where(x => x is GlobalVariable));
+            modifiedGlobalVars = new HashSet<Variable>(AssignedVariables().Where(x => x is GlobalVariable));
+
+            // We usually declare the Boogie procedure and implementation of an atomic action together.
+            // Since Boogie only stores the supplied attributes (in particular linearity) in the procedure parameters,
+            // we copy them into the implementation parameters here.
+            for (int i = 0; i < proc.InParams.Count; i++)
+            {
+                impl.InParams[i].Attributes = proc.InParams[i].Attributes;
+            }
+            for (int i = 0; i < proc.OutParams.Count; i++)
+            {
+                impl.OutParams[i].Attributes = proc.OutParams[i].Attributes;
+            }
+
+            AtomicActionDuplicator.SetupCopy(this, ref firstGate, ref firstImpl, "first_");
+            AtomicActionDuplicator.SetupCopy(this, ref secondGate, ref secondImpl, "second_");
+        }
+
+        public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
+        public bool IsLeftMover { get { return moverType == MoverType.Left || moverType == MoverType.Both; } }
+
+        private List<Variable> AssignedVariables()
+        {
+            List<Variable> modifiedVars = new List<Variable>();
+            foreach (Cmd cmd in impl.Blocks.SelectMany(b => b.Cmds))
+            {
+                cmd.AddAssignedVariables(modifiedVars);
+            }
+            return modifiedVars;
+        }
+
+        public bool HasAssumeCmd { get { return impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd)); } }
+
+        public bool TriviallyCommutesWith(AtomicAction other)
+        {
+            return this.modifiedGlobalVars.Intersect(other.actionUsedGlobalVars).Count() == 0 &&
+                   this.actionUsedGlobalVars.Intersect(other.modifiedGlobalVars).Count() == 0;
+        }
+    }
+
+    public abstract class YieldingProc
+    {
+        public Procedure proc;
+        public MoverType moverType;
+        public int upperLayer;
+
+        public YieldingProc(Procedure proc, MoverType moverType, int upperLayer)
+        {
+            this.proc = proc;
+            this.moverType = moverType;
+            this.upperLayer = upperLayer;
+        }
+
+        public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
+        public bool IsLeftMover { get { return moverType == MoverType.Left || moverType == MoverType.Both; } }
+    }
+
+    public class SkipProc : YieldingProc
+    {
+        public SkipProc(Procedure proc, int upperLayer)
+            : base(proc, MoverType.Both, upperLayer) { }
+    }
+
+    public class MoverProc : YieldingProc
+    {
+        public HashSet<Variable> modifiedGlobalVars;
+
+        public MoverProc(Procedure proc, MoverType moverType, int upperLayer)
+            : base(proc, moverType, upperLayer)
+        {
+            modifiedGlobalVars = new HashSet<Variable>(proc.Modifies.Select(ie => ie.Decl));
+        }
+    }
+
+    public class ActionProc : YieldingProc
+    {
+        public AtomicAction refinedAction;
+
+        public ActionProc(Procedure proc, AtomicAction refinedAction, int upperLayer)
+            : base(proc, refinedAction.moverType, upperLayer)
+        {
+            this.refinedAction = refinedAction;
+        }
+    }
+
+    public class IntroductionProc
+    {
+        public Procedure proc;
+        public LayerRange layerRange;
+        public bool isLeaky;
+
+        public IntroductionProc(Procedure proc, LayerRange layerRange, bool isLeaking)
+        {
+            this.proc = proc;
+            this.isLeaky = isLeaking;
+            this.layerRange = layerRange;
+        }
+    }
+
+    /// <summary>
+    /// Creates first/second copies of atomic actions used in commutativity checks
+    /// (i.e., all non-global variables are prefixed with first_ resp. second_).
+    /// Note that we also rename bound variables.
+    /// </summary>
+    class AtomicActionDuplicator : Duplicator
+    {
+        private readonly string prefix;
+        private Dictionary<Variable, Expr> subst;
+        private Dictionary<Variable, Expr> bound;
+        private List<Variable> inParamsCopy;
+        private List<Variable> outParamsCopy;
+        private List<Variable> localsCopy;
+
+        public static void SetupCopy(AtomicAction action, ref List<AssertCmd> gateCopy, ref Implementation implCopy, string prefix)
+        {
+            var aad = new AtomicActionDuplicator(prefix, action);
+
+            gateCopy = new List<AssertCmd>();
+            foreach (AssertCmd assertCmd in action.gate)
+            {
+                gateCopy.Add((AssertCmd)aad.Visit(assertCmd));
+            }
+
+            implCopy = aad.VisitImplementation(action.impl);
+        }
+
+        private AtomicActionDuplicator(string prefix, AtomicAction action)
+        {
+            this.prefix = prefix;
+            subst = new Dictionary<Variable, Expr>();
+            bound = new Dictionary<Variable, Expr>();
+
+            inParamsCopy = new List<Variable>();
+            outParamsCopy = new List<Variable>();
+            localsCopy = new List<Variable>();
+
+
+            foreach (Variable x in action.impl.InParams)
+            {
+                Variable xCopy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), true, x.Attributes);
+                inParamsCopy.Add(xCopy);
+                subst[x] = Expr.Ident(xCopy);
+            }
+            foreach (Variable x in action.impl.OutParams)
+            {
+                Variable xCopy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), false, x.Attributes);
+                outParamsCopy.Add(xCopy);
+                subst[x] = Expr.Ident(xCopy);
+            }
+
+            foreach (Variable x in action.impl.LocVars)
+            {
+                Variable xCopy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), false);
+                subst[x] = Expr.Ident(xCopy);
+                localsCopy.Add(xCopy);
+            }
+        }
+
+        public override Implementation VisitImplementation(Implementation node)
+        {
+            node = base.VisitImplementation(node);
+            node.InParams = inParamsCopy;
+            node.OutParams = outParamsCopy;
+            node.LocVars = localsCopy;
+            return node;
+        }
+
+        public override Expr VisitIdentifierExpr(IdentifierExpr node)
+        {
+            if (subst.ContainsKey(node.Decl))
+            {
+                return subst[node.Decl];
+            }
+            else if (bound.ContainsKey(node.Decl))
+            {
+                return bound[node.Decl];
+            }
+            return base.VisitIdentifierExpr(node);
+        }
+
+        public override BinderExpr VisitBinderExpr(BinderExpr node)
+        {
+            var oldToNew = node.Dummies.ToDictionary(x => x, x => new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), x.Attributes));
+
+            foreach (var x in node.Dummies)
+            {
+                bound.Add(x, Expr.Ident(oldToNew[x]));
+            }
+
+            BinderExpr expr = base.VisitBinderExpr(node);
+            expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
+
+            // We process triggers of quantifer expressions here, because otherwise the
+            // substitutions for bound variables have to be leaked outside this procedure.
+            if (node is QuantifierExpr quantifierExpr)
+            {
+                if (quantifierExpr.Triggers != null)
+                {
+                    ((QuantifierExpr)expr).Triggers = this.VisitTrigger(quantifierExpr.Triggers);
+                }
+            }
+
+            foreach (var x in node.Dummies)
+            {
+                bound.Remove(x);
+            }
+
+            return expr;
+        }
+
+        public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
+        {
+            // Don't remove this implementation! Triggers should be duplicated in VisitBinderExpr.
+            return (QuantifierExpr)this.VisitBinderExpr(node);
+        }
+    }
+}

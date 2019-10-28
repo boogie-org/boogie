@@ -90,6 +90,7 @@
     <Compile Include="YieldTypeChecker.cs" />
     <Compile Include="CivlUtil.cs" />
     <Compile Include="Witnesses.cs" />
+    <Compile Include="CivlCoreTypes.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

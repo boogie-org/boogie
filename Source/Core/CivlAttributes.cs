@@ -26,10 +26,16 @@ namespace Microsoft.Boogie
         public const string LINEAR_IN = "linear_in";
         public const string LINEAR_OUT = "linear_out";
 
-        public const string PURE = "pure";
-
         public const string BACKWARD = "backward";
         public const string WITNESS = "witness";
+
+        public const string PENDING_ASYNC = "pending_async";
+
+        public static bool HasAttribute(this ICarriesAttributes obj, string attribute)
+        { return QKeyValue.FindBoolAttribute(obj.Attributes, attribute); }
+
+        public static bool IsYield(this Declaration decl) { return decl.HasAttribute(CivlAttributes.YIELDS); }
+        public static bool HasPendingAsync(this Declaration decl) { return decl.HasAttribute(CivlAttributes.PENDING_ASYNC); }
 
         public static bool RemoveAttribute(ICarriesAttributes obj, Func<QKeyValue, bool> cond)
         {
