@@ -492,8 +492,6 @@ namespace Microsoft.Boogie
           PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
         }
 
-        CivlAttributes.DesugarYieldAssert(program);
-
         LinearTypeChecker linearTypeChecker;
         CivlTypeChecker civlTypeChecker;
         PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypeChecker, out civlTypeChecker);
