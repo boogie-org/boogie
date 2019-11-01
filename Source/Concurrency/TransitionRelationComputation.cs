@@ -192,7 +192,7 @@ namespace Microsoft.Boogie
                 allOutParams = new HashSet<Variable>(first.OutParams);
                 allLocVars = new HashSet<Variable>(first.LocVars);
                 frameIntermediateCopy = new Dictionary<Variable, Variable>();
-                if (IsJoint())
+                if (IsJoint)
                 {
                     allInParams.UnionWith(second.InParams);
                     allOutParams.UnionWith(second.OutParams);
@@ -202,7 +202,7 @@ namespace Microsoft.Boogie
                 SetupVarCopies();
                 IntroduceIntermediateVars();
                 EliminateIntermediateVariables();
-                if (IsJoint())
+                if (IsJoint)
                 {
                     EliminateWithIntermediateState();
                 }
@@ -211,7 +211,7 @@ namespace Microsoft.Boogie
 
             private void EliminateWithIntermediateState()
             {
-                Debug.Assert(IsJoint());
+                Debug.Assert(IsJoint);
 
                 var remainingIntermediateFrame = frameIntermediateCopy.Values.Except(varToExpr.Keys);
                 while (TryElimination(remainingIntermediateFrame)) { }
@@ -221,38 +221,19 @@ namespace Microsoft.Boogie
                 // TODO: Generate warning for variables without any witness functions
             }
 
-            private bool IsJoint()
-            {
-                return second != null;
-            }
+            private bool IsJoint => second != null;
 
-            private IEnumerable<Variable> UsedVariables
-            {
-                get
-                {
-                    return allInParams.
-                        Union(allOutParams).
-                        Union(allLocVars).
-                        Union(frame).Distinct();
-                }
-            }
+            private IEnumerable<Variable> UsedVariables =>
+                allInParams.
+                    Union(allOutParams).
+                    Union(allLocVars).
+                    Union(frame).Distinct();
 
-            private IEnumerable<Variable> FrameWithWitnesses
-            {
-                get {
-                    return frame.Intersect(
-                        transitionRelationComputer.globalVarToWitnesses.Keys);
-                }
-            }
+            private IEnumerable<Variable> FrameWithWitnesses =>
+                frame.Intersect(transitionRelationComputer.globalVarToWitnesses.Keys);
 
-            private IEnumerable<Variable> IntermediateFrameWithWitnesses
-            {
-                get
-                {
-                    return FrameWithWitnesses.
-                        Select(v => frameIntermediateCopy[v]);
-                }
-            }
+            private IEnumerable<Variable> IntermediateFrameWithWitnesses =>
+                FrameWithWitnesses.Select(v => frameIntermediateCopy[v]);
 
             private void SetupVarCopies()
             {
@@ -288,7 +269,7 @@ namespace Microsoft.Boogie
                 newCmds = new List<Cmd>();
                 for (int k = 0; k < cmds.Count; k++)
                 {
-                    if (IsJoint() && k == transitionRelationComputer.transferIndex)
+                    if (IsJoint && k == transitionRelationComputer.transferIndex)
                     {
                         PopulateIntermediateFrameCopy();
                         oldSub = Substituter.SubstitutionFromHashtable(GetPreStateVars().
@@ -346,7 +327,7 @@ namespace Microsoft.Boogie
                     }
                 }
                 // TODO: Add note on this
-                if (!IsJoint() || cmds.Count == transitionRelationComputer.transferIndex)
+                if (!IsJoint || cmds.Count == transitionRelationComputer.transferIndex)
                     PopulateIntermediateFrameCopy();
             }
 
@@ -470,7 +451,7 @@ namespace Microsoft.Boogie
                 AddBoundVariablesForRemainingVars();
                 ReplacePreOrPostStateVars();
                 TransitionRelationExpr = Expr.And(pathExprs);
-                if (IsJoint())
+                if (IsJoint)
                 {
                     ComputeWitnessedTransitionRelationExprs();
                     if (witnessedTransitionRelations.Count > 0)
