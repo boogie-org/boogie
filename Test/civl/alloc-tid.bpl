@@ -81,7 +81,7 @@ ensures  {:layer 1} AllocInv(count, unallocated);
   assert {:layer 1} AllocInv(count, unallocated);
 }
 
-procedure {:atomic} {:layer 2,2} {:refines "AtomicWrite"} AtomicWrite({:linear "tid"} tid: int, i: int, val: int)
+procedure {:atomic} {:layer 2,2} AtomicWrite({:linear "tid"} tid: int, i: int, val: int)
 modifies a;
 {
   a[tid] := val;
