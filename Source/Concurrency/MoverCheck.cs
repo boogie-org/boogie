@@ -38,9 +38,10 @@ namespace Microsoft.Boogie
             foreach (int layer in Enumerable.Range(min, max))
             {
                 var pool = civlTypeChecker.procToAtomicAction.Values.Where(a => a.layerRange.Contains(layer));
+                var absPool = civlTypeChecker.procToIsAbstraction.Values.Where(a => a.layerRange.Contains(layer));
 
                 var moverChecks =
-                    from first in pool
+                    from first in pool.Union(absPool)
                     from second in pool
                     where first.moverType != MoverType.Atomic
                     select new { First = first, Second = second };

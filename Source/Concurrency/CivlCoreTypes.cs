@@ -47,7 +47,6 @@ namespace Microsoft.Boogie
         public Implementation impl;
         public MoverType moverType;
         public LayerRange layerRange;
-        public DatatypeConstructor pendingAsyncCtor;
 
         public List<AssertCmd> gate;
 
@@ -60,6 +59,9 @@ namespace Microsoft.Boogie
         public HashSet<Variable> gateUsedGlobalVars;
         public HashSet<Variable> actionUsedGlobalVars;
         public HashSet<Variable> modifiedGlobalVars;
+
+        public DatatypeConstructor pendingAsyncCtor;
+        public HashSet<AtomicAction> pendingAsyncs;
 
         public AtomicAction(Procedure proc, Implementation impl, MoverType moverType, LayerRange layerRange)
         {

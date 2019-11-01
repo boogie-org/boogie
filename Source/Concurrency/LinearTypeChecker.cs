@@ -1055,9 +1055,6 @@ namespace Microsoft.Boogie
         #region Linearity Invariant Checker
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
-            if (civlTypeChecker.procToAtomicAction.Count == 0)
-                return;
-
             foreach (var action in civlTypeChecker.procToAtomicAction.Values)
             {
                 AddChecker(action, linearTypeChecker, decls);
@@ -1177,13 +1174,13 @@ namespace Microsoft.Boogie
         {
             public override Variable VisitVariable(Variable node)
             {
-                CivlAttributes.RemoveLinearAttribute(node);
+                CivlAttributes.RemoveLinearAttributes(node);
                 return base.VisitVariable(node);
             }
 
             public override Function VisitFunction(Function node)
             {
-                CivlAttributes.RemoveLinearAttribute(node);
+                CivlAttributes.RemoveLinearAttributes(node);
                 return base.VisitFunction(node);
             }
         }

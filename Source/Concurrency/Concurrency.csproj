@@ -91,6 +91,7 @@
     <Compile Include="CivlUtil.cs" />
     <Compile Include="Witnesses.cs" />
     <Compile Include="CivlCoreTypes.cs" />
+    <Compile Include="InductiveSequentialization.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

@@ -33,6 +33,40 @@ namespace Microsoft.Boogie
         }
     }
 
+    public static class CmdHelper
+    {
+        public static ReturnCmd ReturnCmd => new ReturnCmd(Token.NoToken);
+
+        public static CallCmd CallCmd(Procedure callee, List<Expr> ins, List<IdentifierExpr> outs)
+        {
+            return new CallCmd(Token.NoToken, callee.Name, ins, outs)
+            { Proc = callee };
+        }
+
+        public static AssumeCmd AssumeCmd(Expr expr)
+        {
+            return new AssumeCmd(Token.NoToken, expr);
+        }
+    }
+
+    public static class VarHelper
+    {
+        public static LocalVariable LocalVariable(string name, Type type)
+        {
+            return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, name, type));
+        }
+
+        public static BoundVariable BoundVariable(string name, Type type)
+        {
+            return new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, name, type));
+        }
+
+        public static Formal Formal(string name, Type type, bool incoming)
+        {
+            return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, name, type), incoming);
+        }
+    }
+
     public static class LinqExtensions
     {
         public static IEnumerable<IEnumerable<T>> CartesianProduct<T>(this IEnumerable<IEnumerable<T>> sequences)
