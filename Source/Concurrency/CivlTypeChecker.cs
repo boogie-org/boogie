@@ -30,7 +30,7 @@ namespace Microsoft.Boogie
         public List<InductiveSequentialization> inductiveSequentializations;
 
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
-        Dictionary<CallCmd, int> introductionCallToLayer;
+        private Dictionary<CallCmd, int> introductionCallToLayer;
 
         public CtorType pendingAsyncType;
         public MapType pendingAsyncMultisetType;
@@ -58,104 +58,6 @@ namespace Microsoft.Boogie
             this.atomicActionPairToWitnessFunctions = new Dictionary<Tuple<AtomicAction, AtomicAction>,
                 List<WitnessFunction>>();
             this.inductiveSequentializations = new List<InductiveSequentialization>();
-        }
-
-        public bool CallExists(CallCmd callCmd, int enclosingProcLayerNum, int layerNum)
-        {
-            Debug.Assert(procToIntroductionProc.ContainsKey(callCmd.Proc));
-            var introductionProc = procToIntroductionProc[callCmd.Proc];
-            if (introductionProc.isLeaky)
-            {
-                return enclosingProcLayerNum == layerNum;
-            }
-            else
-            {
-                return introductionCallToLayer[callCmd] <= layerNum;
-            }
-        }
-
-        private List<int> FindLayers(QKeyValue kv)
-        {
-            List<int> layers = new List<int>();
-            for (; kv != null; kv = kv.Next)
-            {
-                if (kv.Key != CivlAttributes.LAYER) continue;
-                foreach (var o in kv.Params)
-                {
-                    if (o is LiteralExpr l && l.isBigNum)
-                    {
-                        layers.Add(l.asBigNum.ToIntSafe);
-                    }
-                    else
-                    {
-                        checkingContext.Error(kv, "Layer has to be an integer.");
-                    }
-                }
-            }
-            return layers;
-        }
-
-        private LayerRange ToLayerRange(List<int> layerNums, Absy absy)
-        {
-            // We return min-max range for invalid declarations in order to proceed with type checking.
-            if (layerNums.Count == 0)
-            {
-                return LayerRange.MinMax;
-            }
-            else if (layerNums.Count == 1)
-            {
-                return new LayerRange(layerNums[0], layerNums[0]);
-            }
-            else if (layerNums.Count == 2)
-            {
-                if (layerNums[0] <= layerNums[1])
-                {
-                    return new LayerRange(layerNums[0], layerNums[1]);
-                }
-                else
-                {
-                    Error(absy, "Invalid layer range");
-                    return LayerRange.MinMax;
-                }
-            }
-            else
-            {
-                Error(absy, "Invalid layer range");
-                return LayerRange.MinMax;
-            }
-        }
-
-        /// Parses attributes for mover type declarations.
-        /// Returns the first mover type found (or null if none is found) and issues warnings if multiple mover types are found.
-        private MoverType? GetMoverType(ICarriesAttributes absy)
-        {
-            MoverType? moverType = null;
-
-            for (QKeyValue kv = absy.Attributes; kv != null; kv = kv.Next)
-            {
-                if (kv.Params.Count == 0)
-                {
-                    MoverType? x = null;
-                    if (kv.Key == CivlAttributes.ATOMIC)
-                        x = MoverType.Atomic;
-                    else if (kv.Key == CivlAttributes.RIGHT)
-                        x = MoverType.Right;
-                    else if (kv.Key == CivlAttributes.LEFT)
-                        x = MoverType.Left;
-                    else if (kv.Key == CivlAttributes.BOTH)
-                        x = MoverType.Both;
-
-                    if (x.HasValue)
-                    {
-                        if (moverType.HasValue)
-                            checkingContext.Warning(kv, "Ignoring duplicate mover type declaration ({0}).", kv.Key);
-                        else
-                            moverType = x;
-                    }
-                }
-            }
-
-            return moverType;
         }
 
         public void TypeCheck()
@@ -223,54 +125,6 @@ namespace Microsoft.Boogie
 
         }
 
-        public void SubstituteBackwardAssignments()
-        {
-            foreach (var action in procToAtomicAction.Values)
-            {
-                SubstituteBackwardAssignments(action);
-            }
-        }
-
-        private void SubstituteBackwardAssignments(AtomicAction action)
-        {
-            foreach (Block block in action.impl.Blocks)
-            {
-                List<Cmd> cmds = new List<Cmd>();
-                foreach (Cmd cmd in block.cmds)
-                {
-                    if (cmd is AssignCmd _assignCmd &&
-                        QKeyValue.FindBoolAttribute(_assignCmd.Attributes, CivlAttributes.BACKWARD))
-                    {
-                        AssignCmd assignCmd = _assignCmd.AsSimpleAssignCmd;
-                        var lhss = assignCmd.Lhss;
-                        var rhss = assignCmd.Rhss;
-                        var rhssVars = rhss.SelectMany(x => VariableCollector.Collect(x));
-                        var lhssVars = lhss.SelectMany(x => VariableCollector.Collect(x));
-                        if (rhssVars.Intersect(lhssVars).Any())
-                        {
-                            // TODO
-                            throw new NotImplementedException("Substitution of backward assignment where lhs appears on rhs");
-                        }
-                        else
-                        {
-                            List<Expr> assumeExprs = new List<Expr>();
-                            for (int k = 0; k < lhss.Count; k++)
-                            {
-                                assumeExprs.Add(Expr.Eq(lhss[k].AsExpr, rhss[k]));
-                            }
-                            cmds.Add(new AssumeCmd(Token.NoToken, Expr.And(assumeExprs)));
-                            cmds.Add(new HavocCmd(Token.NoToken, lhss.Select(x => x.DeepAssignedIdentifier).ToList()));
-                        }
-                    }
-                    else
-                    {
-                        cmds.Add(cmd);
-                    }
-                }
-                block.cmds = cmds;
-            }
-        }
-
         private void TypeCheckWitnessFunctions()
         {
             WitnessFunctionVisitor wfv = new WitnessFunctionVisitor(this);
@@ -298,41 +152,6 @@ namespace Microsoft.Boogie
             }
             sharedVariables = program.GlobalVariables.ToList();
             sharedVariableIdentifiers = sharedVariables.Select(v => Expr.Ident(v)).ToList();
-        }
-
-        public LayerRange GlobalVariableLayerRange(Variable g)
-        {
-            if (globalVarToLayerRange.ContainsKey(g))
-                return globalVarToLayerRange[g];
-            return LayerRange.MinMax;
-        }
-
-        private bool IsYieldingProcedure(Procedure proc)
-        {
-            return proc.HasAttribute(CivlAttributes.YIELDS);
-        }
-
-        private bool IsAtomicAction(Procedure proc)
-        {
-            return !IsYieldingProcedure(proc) &&
-                (GetMoverType(proc) != null ||
-                 proc.HasAttribute(CivlAttributes.IS_INVARIANT) ||
-                 proc.HasAttribute(CivlAttributes.IS_ABSTRACTION));
-        }
-
-        private bool IsIntroductionProcedure(Procedure proc)
-        {
-            return !IsYieldingProcedure(proc) && !IsAtomicAction(proc);
-        }
-
-        private MoverType GetActionMoverType(Procedure proc)
-        {
-            if (proc.HasAttribute(CivlAttributes.IS_INVARIANT))
-                return MoverType.Atomic;
-            else if (proc.HasAttribute(CivlAttributes.IS_ABSTRACTION))
-                return MoverType.Left;
-            else
-                return GetMoverType(proc).Value;
         }
 
         private void TypeCheckAtomicActionDecls()
@@ -649,7 +468,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        void MatchFormals(Procedure proc, Procedure action, List<Variable> procFormals, List<Variable> actionFormals, string inout)
+        private void MatchFormals(Procedure proc, Procedure action, List<Variable> procFormals, List<Variable> actionFormals, string inout)
         {
             if (procFormals.Count != actionFormals.Count)
             {
@@ -741,35 +560,6 @@ namespace Microsoft.Boogie
                         localVarToIntroLayer[impl.OutParams[i]] = localVarToIntroLayer[v];
                 }
             }
-        }
-
-        public int LocalVariableIntroLayer(Variable l)
-        {
-            if (localVarToIntroLayer.ContainsKey(l))
-                return localVarToIntroLayer[l];
-            return int.MinValue;
-        }
-
-        public int AllInParamsIntroducedLayer(Procedure proc)
-        {
-            return proc.InParams.Select(inParam => LocalVariableIntroLayer(inParam)).DefaultIfEmpty(int.MinValue).Max();
-        }
-
-        private int FindLocalVariableLayer(Declaration decl, Variable v, int enclosingProcLayerNum)
-        {
-            var layers = FindLayers(v.Attributes);
-            if (layers.Count == 0) return int.MinValue;
-            if (layers.Count > 1)
-            {
-                Error(decl, "Incorrect number of layers");
-                return int.MinValue;
-            }
-            if (layers[0] > enclosingProcLayerNum)
-            {
-                Error(decl, "Layer of local variable cannot be greater than the creation layer of enclosing procedure");
-                return int.MinValue;
-            }
-            return layers[0];
         }
 
         private void TypeCheckPendingAsyncMachinery()
@@ -906,6 +696,171 @@ namespace Microsoft.Boogie
                 Error(outParam, "Pending aync choice is of incorrect type");
         }
 
+        #region Helpers for attribute parsing
+        private bool IsYieldingProcedure(Procedure proc)
+        {
+            return proc.HasAttribute(CivlAttributes.YIELDS);
+        }
+
+        private bool IsAtomicAction(Procedure proc)
+        {
+            return !IsYieldingProcedure(proc) &&
+                (GetMoverType(proc) != null ||
+                 proc.HasAttribute(CivlAttributes.IS_INVARIANT) ||
+                 proc.HasAttribute(CivlAttributes.IS_ABSTRACTION));
+        }
+
+        private bool IsIntroductionProcedure(Procedure proc)
+        {
+            return !IsYieldingProcedure(proc) && !IsAtomicAction(proc);
+        }
+
+        private MoverType GetActionMoverType(Procedure proc)
+        {
+            if (proc.HasAttribute(CivlAttributes.IS_INVARIANT))
+                return MoverType.Atomic;
+            else if (proc.HasAttribute(CivlAttributes.IS_ABSTRACTION))
+                return MoverType.Left;
+            else
+                return GetMoverType(proc).Value;
+        }
+
+        /// Parses attributes for mover type declarations.
+        /// Returns the first mover type found (or null if none is found) and issues warnings if multiple mover types are found.
+        private MoverType? GetMoverType(ICarriesAttributes absy)
+        {
+            MoverType? moverType = null;
+
+            for (QKeyValue kv = absy.Attributes; kv != null; kv = kv.Next)
+            {
+                if (kv.Params.Count == 0)
+                {
+                    MoverType? x = null;
+                    if (kv.Key == CivlAttributes.ATOMIC)
+                        x = MoverType.Atomic;
+                    else if (kv.Key == CivlAttributes.RIGHT)
+                        x = MoverType.Right;
+                    else if (kv.Key == CivlAttributes.LEFT)
+                        x = MoverType.Left;
+                    else if (kv.Key == CivlAttributes.BOTH)
+                        x = MoverType.Both;
+
+                    if (x.HasValue)
+                    {
+                        if (moverType.HasValue)
+                            checkingContext.Warning(kv, "Ignoring duplicate mover type declaration ({0}).", kv.Key);
+                        else
+                            moverType = x;
+                    }
+                }
+            }
+
+            return moverType;
+        }
+
+        private List<int> FindLayers(QKeyValue kv)
+        {
+            List<int> layers = new List<int>();
+            for (; kv != null; kv = kv.Next)
+            {
+                if (kv.Key != CivlAttributes.LAYER) continue;
+                foreach (var o in kv.Params)
+                {
+                    if (o is LiteralExpr l && l.isBigNum)
+                    {
+                        layers.Add(l.asBigNum.ToIntSafe);
+                    }
+                    else
+                    {
+                        checkingContext.Error(kv, "Layer has to be an integer.");
+                    }
+                }
+            }
+            return layers;
+        }
+
+        private LayerRange ToLayerRange(List<int> layerNums, Absy absy)
+        {
+            // We return min-max range for invalid declarations in order to proceed with type checking.
+            if (layerNums.Count == 0)
+            {
+                return LayerRange.MinMax;
+            }
+            else if (layerNums.Count == 1)
+            {
+                return new LayerRange(layerNums[0], layerNums[0]);
+            }
+            else if (layerNums.Count == 2)
+            {
+                if (layerNums[0] <= layerNums[1])
+                {
+                    return new LayerRange(layerNums[0], layerNums[1]);
+                }
+                else
+                {
+                    Error(absy, "Invalid layer range");
+                    return LayerRange.MinMax;
+                }
+            }
+            else
+            {
+                Error(absy, "Invalid layer range");
+                return LayerRange.MinMax;
+            }
+        }
+
+        private int FindLocalVariableLayer(Declaration decl, Variable v, int enclosingProcLayerNum)
+        {
+            var layers = FindLayers(v.Attributes);
+            if (layers.Count == 0) return int.MinValue;
+            if (layers.Count > 1)
+            {
+                Error(decl, "Incorrect number of layers");
+                return int.MinValue;
+            }
+            if (layers[0] > enclosingProcLayerNum)
+            {
+                Error(decl, "Layer of local variable cannot be greater than the creation layer of enclosing procedure");
+                return int.MinValue;
+            }
+            return layers[0];
+        }
+        #endregion
+
+        #region Public access methods
+        public LayerRange GlobalVariableLayerRange(Variable g)
+        {
+            if (globalVarToLayerRange.ContainsKey(g))
+                return globalVarToLayerRange[g];
+            return LayerRange.MinMax;
+        }
+
+        public int LocalVariableIntroLayer(Variable l)
+        {
+            if (localVarToIntroLayer.ContainsKey(l))
+                return localVarToIntroLayer[l];
+            return int.MinValue;
+        }
+
+        public int AllInParamsIntroducedLayer(Procedure proc)
+        {
+            return proc.InParams.Select(inParam => LocalVariableIntroLayer(inParam)).DefaultIfEmpty(int.MinValue).Max();
+        }
+
+        public bool CallExists(CallCmd callCmd, int enclosingProcLayerNum, int layerNum)
+        {
+            Debug.Assert(procToIntroductionProc.ContainsKey(callCmd.Proc));
+            var introductionProc = procToIntroductionProc[callCmd.Proc];
+            if (introductionProc.isLeaky)
+            {
+                return enclosingProcLayerNum == layerNum;
+            }
+            else
+            {
+                return introductionCallToLayer[callCmd] <= layerNum;
+            }
+        }
+
         public AtomicAction FindAtomicAction(string name)
         {
             return procToAtomicAction.Values.FirstOrDefault(a => a.proc.Name == name);
@@ -925,6 +880,7 @@ namespace Microsoft.Boogie
         {
             checkingContext.Error(node, message);
         }
+        #endregion
 
         private class AtomicActionVisitor : ReadOnlyVisitor
         {

@@ -594,4 +594,55 @@ namespace Microsoft.Boogie
             }
         }
     }
+
+    public static class BackwardAssignmentSubstituter
+    {
+        public static void SubstituteBackwardAssignments(IEnumerable<AtomicAction> actions)
+        {
+            foreach (var action in actions)
+            {
+                SubstituteBackwardAssignments(action);
+            }
+        }
+
+        private static void SubstituteBackwardAssignments(AtomicAction action)
+        {
+            foreach (Block block in action.impl.Blocks)
+            {
+                List<Cmd> cmds = new List<Cmd>();
+                foreach (Cmd cmd in block.cmds)
+                {
+                    if (cmd is AssignCmd _assignCmd &&
+                        QKeyValue.FindBoolAttribute(_assignCmd.Attributes, CivlAttributes.BACKWARD))
+                    {
+                        AssignCmd assignCmd = _assignCmd.AsSimpleAssignCmd;
+                        var lhss = assignCmd.Lhss;
+                        var rhss = assignCmd.Rhss;
+                        var rhssVars = rhss.SelectMany(x => VariableCollector.Collect(x));
+                        var lhssVars = lhss.SelectMany(x => VariableCollector.Collect(x));
+                        if (rhssVars.Intersect(lhssVars).Any())
+                        {
+                            // TODO
+                            throw new NotImplementedException("Substitution of backward assignment where lhs appears on rhs");
+                        }
+                        else
+                        {
+                            List<Expr> assumeExprs = new List<Expr>();
+                            for (int k = 0; k < lhss.Count; k++)
+                            {
+                                assumeExprs.Add(Expr.Eq(lhss[k].AsExpr, rhss[k]));
+                            }
+                            cmds.Add(new AssumeCmd(Token.NoToken, Expr.And(assumeExprs)));
+                            cmds.Add(new HavocCmd(Token.NoToken, lhss.Select(x => x.DeepAssignedIdentifier).ToList()));
+                        }
+                    }
+                    else
+                    {
+                        cmds.Add(cmd);
+                    }
+                }
+                block.cmds = cmds;
+            }
+        }
+    }
 }
