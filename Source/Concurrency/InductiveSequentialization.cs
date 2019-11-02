@@ -53,8 +53,6 @@ namespace Microsoft.Boogie
             return GetCheckerTuple(requires, ensures, new List<Variable>(), blocks);
         }
 
-
-
         public Tuple<Procedure, Implementation> GenerateConclusionChecker()
         {
             this.checkName = "conclusion";
@@ -63,7 +61,7 @@ namespace Microsoft.Boogie
             var ensures = new List<Ensures> {
                 GetEnsures(Substituter.Apply(subst, GetTransitionRelation(outputAction)))
             };
-            if (!OutputHasPendingAsyncs)
+            if (!outputAction.HasPendingAsyncs)
                 ensures.Add(new Ensures(false, NoPendingAsyncs));
 
             List<Cmd> cmds = GetGateAsserts(invariantAction, null).ToList<Cmd>();
@@ -80,7 +78,7 @@ namespace Microsoft.Boogie
             var requires = invariantAction.gate.Select(g => new Requires(false, g.Expr)).ToList();
             var ensures = new List<Ensures> { GetEnsures(GetInvariantTransitionRelation()) };
             var locals = new List<Variable>();
-            if (elim.Keys.Any(a => a.pendingAsyncs != null))
+            if (elim.Keys.Any(a => a.HasPendingAsyncs))
             {
                 locals.Add(newPAs.Decl);
             }
@@ -102,7 +100,7 @@ namespace Microsoft.Boogie
                 }
                 var subst = Substituter.SubstitutionFromHashtable(map);
                 List<IdentifierExpr> outputVars = new List<IdentifierExpr>();
-                if (pendingAsync.pendingAsyncs != null)
+                if (pendingAsync.HasPendingAsyncs)
                 {
                     outputVars.Add(newPAs);
                 }
@@ -111,7 +109,7 @@ namespace Microsoft.Boogie
                 cmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, choice)));
                 cmds.AddRange(GetGateAsserts(abs, subst));
                 cmds.Add(CmdHelper.CallCmd(abs.proc, inputExprs, outputVars));
-                if (pendingAsync.pendingAsyncs != null)
+                if (pendingAsync.HasPendingAsyncs)
                 {
                     cmds.Add(AddNewPAs(pendingAsyncAdd));
                 }
@@ -196,8 +194,6 @@ namespace Microsoft.Boogie
         private Type PendingAsyncType => PendingAsyncMultisetType.Arguments[0];
 
         private bool HasChoice => invariantAction.impl.OutParams.Count > inputAction.impl.OutParams.Count;
-
-        private bool OutputHasPendingAsyncs => outputAction.pendingAsyncs != null;
 
         private IdentifierExpr PAs => Expr.Ident(HasChoice ? invariantAction.impl.OutParams[invariantAction.impl.OutParams.Count - 2] : invariantAction.impl.OutParams.Last());
 

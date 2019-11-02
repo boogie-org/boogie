@@ -876,6 +876,10 @@ namespace Microsoft.Boogie
             return procToIsAbstraction.Values.FirstOrDefault(a => a.proc.Name == name);
         }
 
+        public IEnumerable<AtomicAction> AllActions =>
+            procToAtomicAction.Union(procToIsInvariant).Union(procToIsAbstraction)
+            .Select(x => x.Value);
+
         public void Error(Absy node, string message)
         {
             checkingContext.Error(node, message);
@@ -1347,12 +1351,7 @@ namespace Microsoft.Boogie
             {
                 var attributeEraser = new AttributeEraser();
                 attributeEraser.VisitProgram(ctc.program);
-                var allActions =
-                    ctc.procToAtomicAction
-                    .Union(ctc.procToIsInvariant)
-                    .Union(ctc.procToIsAbstraction)
-                    .Select(x => x.Value);
-                foreach (var action in allActions)
+                foreach (var action in ctc.AllActions)
                 {
                     attributeEraser.VisitAtomicAction(action);
                 }

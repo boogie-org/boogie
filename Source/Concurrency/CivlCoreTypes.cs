@@ -110,7 +110,9 @@ namespace Microsoft.Boogie
             return modifiedVars;
         }
 
-        public bool HasAssumeCmd { get { return impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd)); } }
+        public bool HasAssumeCmd => impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
+
+        public bool HasPendingAsyncs => pendingAsyncs != null;
 
         public bool TriviallyCommutesWith(AtomicAction other)
         {
