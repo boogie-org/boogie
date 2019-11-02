@@ -264,8 +264,9 @@ namespace Microsoft.Boogie
                     }
                     if (kv.Key == CivlAttributes.ELIM)
                     {
-                        if (kv.Params.Count >= 1 && kv.Params.Count <= 2 && kv.Params[0] is string actionName)
+                        if (kv.Params.Count >= 1 && kv.Params.Count <= 2 && kv.Params.All(p => p is string))
                         {
+                            string actionName = (string)kv.Params[0];
                             AtomicAction elimAction = FindAtomicAction(actionName);
                             AtomicAction absAction = null;
                             if (elimAction == null)
@@ -278,9 +279,12 @@ namespace Microsoft.Boogie
                                     Error(kv, $"No pending async constructor for atomic action {actionName}");
                                 if (!elimAction.layerRange.Contains(layer)) 
                                     Error(kv, $"Elim action does not exist at layer {layer}");
+                                if (kv.Params.Count == 1 && !elimAction.IsLeftMover)
+                                    Error(kv, "Elim action must be a left mover");
                             }
-                            if (kv.Params.Count == 2 && kv.Params[1] is string abstractionName)
+                            if (kv.Params.Count == 2)
                             {
+                                string abstractionName = (string)kv.Params[1];
                                 absAction = FindIsAbstraction(abstractionName);
                                 if (absAction == null)
                                     Error(kv, "Could not find abstraction action");
