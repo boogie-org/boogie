@@ -11,6 +11,18 @@ namespace Microsoft.Boogie
         {
             decl.AddAttribute("inline", Expr.Literal(1));
         }
+
+        public static void ResolveAndTypecheck(Absy absy)
+        {
+            absy.Resolve(new ResolutionContext(null));
+            absy.Typecheck(new TypecheckingContext(null));
+        }
+
+        public static void ResolveAndTypecheck(IEnumerable<Absy> absys)
+        {
+            foreach (var absy in absys)
+                ResolveAndTypecheck(absy);
+        }
     }
 
     // Handy syntactic suggar missing in Expr

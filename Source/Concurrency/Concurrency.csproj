@@ -92,6 +92,7 @@
     <Compile Include="Witnesses.cs" />
     <Compile Include="CivlCoreTypes.cs" />
     <Compile Include="InductiveSequentialization.cs" />
+    <Compile Include="PendingAsyncChecker.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

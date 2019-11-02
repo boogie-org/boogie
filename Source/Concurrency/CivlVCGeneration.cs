@@ -28,6 +28,7 @@ namespace Microsoft.Boogie
             LinearTypeChecker.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
 
             InductiveSequentializationChecker.AddChecks(civlTypeChecker);
+            PendingAsyncChecker.AddCheckers(civlTypeChecker);
 
             // Remove original declarations and add new checkers generated above
             program.RemoveTopLevelDeclarations(x => originalDecls.Contains(x));
