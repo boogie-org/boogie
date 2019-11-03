@@ -64,7 +64,7 @@ namespace Microsoft.Boogie
                     }
                 }
             }
-            foreach (AtomicAction atomicAction in civlTypeChecker.procToAtomicAction.Values.Where(a => a.IsLeftMover))
+            foreach (AtomicAction atomicAction in civlTypeChecker.AllActions.Where(a => a.IsLeftMover))
             {
                 moverChecking.CreateNonBlockingChecker(atomicAction);
             }
