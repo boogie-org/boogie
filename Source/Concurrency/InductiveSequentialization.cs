@@ -11,6 +11,7 @@ namespace Microsoft.Boogie
         public AtomicAction invariantAction;
         public Dictionary<AtomicAction, AtomicAction> elim;
 
+        private HashSet<Variable> frame;
         private List<IdentifierExpr> modifies;
         private IdentifierExpr choice;
         private IdentifierExpr newPAs;
@@ -24,9 +25,14 @@ namespace Microsoft.Boogie
             this.invariantAction = invariantAction;
             this.elim = elim;
 
-            this.modifies = new List<AtomicAction> { invariantAction, outputAction, inputAction }
-                .Union(elim.Values.Where(a => a != null))
-                .SelectMany(a => a.proc.Modifies).Distinct().ToList();
+            // TODO: check frame computation
+            // We could compute a tighter frame per check. For example, base/conclusion checkers
+            // don't have to take the eliminated actions into account.
+            var frameVars = new List<AtomicAction> { invariantAction, outputAction, inputAction }
+                .Union(elim.Select(kv => kv.Value ?? kv.Key))
+                .SelectMany(a => a.gateUsedGlobalVars.Union(a.modifiedGlobalVars)).Distinct();
+            this.frame = new HashSet<Variable>(frameVars);
+            this.modifies = frame.Select(Expr.Ident).ToList();
 
             newPAs = Expr.Ident(VarHelper.LocalVariable("newPAs", PendingAsyncMultisetType));
             if (HasChoice)
@@ -43,7 +49,7 @@ namespace Microsoft.Boogie
         {
             this.checkName = "base";
             var requires = invariantAction.gate.Select(g => new Requires(false, g.Expr)).ToList();
-            var ensures = new List<Ensures> { GetEnsures(GetInvariantTransitionRelation()) };
+            var ensures = new List<Ensures> { GetEnsures(GetTransitionRelation(invariantAction)) };
 
             var subst = GetSubstitution(inputAction, invariantAction);
             List<Cmd> cmds = GetGateAsserts(inputAction, subst).ToList<Cmd>();
@@ -76,7 +82,7 @@ namespace Microsoft.Boogie
         {
             this.checkName = "step";
             var requires = invariantAction.gate.Select(g => new Requires(false, g.Expr)).ToList();
-            var ensures = new List<Ensures> { GetEnsures(GetInvariantTransitionRelation()) };
+            var ensures = new List<Ensures> { GetEnsures(GetTransitionRelation(invariantAction)) };
             var locals = new List<Variable>();
             if (elim.Keys.Any(a => a.HasPendingAsyncs))
             {
@@ -272,16 +278,10 @@ namespace Microsoft.Boogie
             return Substituter.SubstitutionFromHashtable(map);
         }
 
-        public static Expr GetTransitionRelation(AtomicAction action)
+        private Expr GetTransitionRelation(AtomicAction action)
         {
-            return TransitionRelationComputation.Refinement(action,
-                new HashSet<Variable>(action.gateUsedGlobalVars.Union(action.actionUsedGlobalVars)));
-        }
-
-        private Expr GetInvariantTransitionRelation()
-        {
-            var tr = GetTransitionRelation(invariantAction);
-            if (HasChoice)
+            var tr = TransitionRelationComputation.Refinement(action, frame);
+            if (action == invariantAction && HasChoice)
             {
                 return new ChoiceEraser(invariantAction.impl.OutParams.Last()).VisitExpr(tr);
             }
@@ -335,7 +335,9 @@ namespace Microsoft.Boogie
                 var abs = absCheck.Value;
 
                 var requires = abs.gate.Select(g => new Requires(false, g.Expr)).ToList();
-                var tr = InductiveSequentialization.GetTransitionRelation(abs);
+                // TODO: check frame computation
+                var frame = new HashSet<Variable>(action.modifiedGlobalVars.Union(action.gateUsedGlobalVars).Union(abs.modifiedGlobalVars).Union(abs.gateUsedGlobalVars));
+                var tr = TransitionRelationComputation.Refinement(abs, frame);
                 var ensures = new List<Ensures> { new Ensures(false, tr)
                     {ErrorData = $"Abstraction {abs.proc.Name} does not summarize {action.proc.Name}" } };
 
