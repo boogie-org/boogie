@@ -210,10 +210,6 @@ namespace Microsoft.Boogie
             IntroduceIntermediateVars();
             SetDefinedVariables();
             EliminateIntermediateVariables();
-            if (trc.IsJoint)
-            {
-                EliminateWithIntermediateState();
-            }
             ComputeTransitionRelationExpr();
         }
 
@@ -344,71 +340,68 @@ namespace Microsoft.Boogie
                 varToExpr[v] = Expr.Ident(v);
             }
 
-            while (TryElimination(new HashSet<Variable>())) { }
-
-            while (TryElimination(trc.allLocVars.Select(v => varCopies[v][0]))) { }
+            TryElimination(Enumerable.Empty<Variable>());
+            TryElimination(trc.allLocVars.Select(v => varCopies[v][0]));
 
             if (trc.ignorePostState)
             {
-                while (TryElimination(trc.PostStateVars)) { }
+                TryElimination(trc.PostStateVars);
             }
-        }
-
-        private void EliminateWithIntermediateState()
-        {
-            Debug.Assert(trc.IsJoint);
-
-            var remainingIntermediateFrame = frameIntermediateCopy.Values.Except(varToExpr.Keys);
-            while (TryElimination(remainingIntermediateFrame)) { }
-
-            while (TryElimination(remainingIntermediateFrame.
-                Intersect(IntermediateFrameWithWitnesses))) { }
-            // TODO: Generate warning for variables without any witness functions
-        }
-
-        private bool TryElimination(IEnumerable<Variable> extraDefinedVariables)
-        {
-            bool changed = false;
-            var remainingCmds = new List<Cmd>();
-            foreach (var cmd in path)
+            else if (trc.IsJoint)
             {
-                if (cmd is AssignCmd assignCmd)
-                {
-                    var lhss = new List<AssignLhs>();
-                    var rhss = new List<Expr>();
-                    for (int k = 0; k < assignCmd.Lhss.Count; k++)
-                    {
-                        var lhs = assignCmd.Lhss[k];
-                        var rhs = assignCmd.Rhss[k];
-                        Variable assignedVar = lhs.DeepAssignedVariable;
-
-                        var allDefinedVars = varToExpr.Keys.Union(extraDefinedVariables);
-                        if (!allDefinedVars.Contains(assignedVar) &&
-                            !VariableCollector.Collect(rhs).Intersect(AllIntroducedVariables).
-                                Except(allDefinedVars).Any())
-                        {
-                            varToExpr[assignedVar] = rhs;
-                            changed = true;
-                        }
-                        else
-                        {
-                            lhss.Add(lhs);
-                            rhss.Add(rhs);
-                        }
-                    }
-                    if (lhss.Any())
-                    {
-                        remainingCmds.Add(new AssignCmd(cmd.tok, lhss, rhss, assignCmd.Attributes));
-                    }
-                }
-                else if (cmd is AssumeCmd)
-                {
-                    remainingCmds.Add(cmd);
-                }
+                var remainingIntermediateFrame = frameIntermediateCopy.Values.Except(varToExpr.Keys);
+                TryElimination(remainingIntermediateFrame);
+                TryElimination(remainingIntermediateFrame.Intersect(IntermediateFrameWithWitnesses));
+                // TODO: Generate warning for variables without any witness functions
             }
-            Substitution sub = Substituter.SubstitutionFromHashtable(varToExpr);
-            path = remainingCmds.Select(cmd => ApplyOnRhss(sub, cmd)).ToList();
-            return changed;
+        }
+
+        private void TryElimination(IEnumerable<Variable> extraDefinedVariables)
+        {
+            bool changed;
+            do
+            {
+                changed = false;
+                var remainingCmds = new List<Cmd>();
+                foreach (var cmd in path)
+                {
+                    if (cmd is AssignCmd assignCmd)
+                    {
+                        var lhss = new List<AssignLhs>();
+                        var rhss = new List<Expr>();
+                        for (int k = 0; k < assignCmd.Lhss.Count; k++)
+                        {
+                            var lhs = assignCmd.Lhss[k];
+                            var rhs = assignCmd.Rhss[k];
+                            Variable assignedVar = lhs.DeepAssignedVariable;
+
+                            var allDefinedVars = varToExpr.Keys.Union(extraDefinedVariables);
+                            if (!allDefinedVars.Contains(assignedVar) &&
+                                !VariableCollector.Collect(rhs).Intersect(AllIntroducedVariables).
+                                    Except(allDefinedVars).Any())
+                            {
+                                varToExpr[assignedVar] = rhs;
+                                changed = true;
+                            }
+                            else
+                            {
+                                lhss.Add(lhs);
+                                rhss.Add(rhs);
+                            }
+                        }
+                        if (lhss.Any())
+                        {
+                            remainingCmds.Add(new AssignCmd(cmd.tok, lhss, rhss, assignCmd.Attributes));
+                        }
+                    }
+                    else if (cmd is AssumeCmd)
+                    {
+                        remainingCmds.Add(cmd);
+                    }
+                }
+                Substitution sub = Substituter.SubstitutionFromHashtable(varToExpr);
+                path = remainingCmds.Select(cmd => ApplyOnRhss(sub, cmd)).ToList();
+            } while (changed);
         }
 
         private static Cmd ApplyOnRhss(Substitution sub, Cmd cmd)
