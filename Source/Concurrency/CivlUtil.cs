@@ -43,6 +43,16 @@ namespace Microsoft.Boogie
         {
             return new OldExpr(Token.NoToken, expr);
         }
+
+        public static void FlattenAnd(Expr x, List<Expr> xs)
+        {
+            if (x is NAryExpr naryExpr && naryExpr.Fun.FunctionName == "&&")
+            {
+                FlattenAnd(naryExpr.Args[0], xs);
+                FlattenAnd(naryExpr.Args[1], xs);
+            }
+            else { xs.Add(x); }
+        }
     }
 
     public static class CmdHelper
@@ -79,6 +89,14 @@ namespace Microsoft.Boogie
         }
     }
 
+    public static class SubstitutionHelper
+    {
+        public static Substitution FromVariableMap(Dictionary<Variable, Variable> map)
+        {
+            return Substituter.SubstitutionFromHashtable(map.ToDictionary(kv => kv.Key, kv => (Expr)Expr.Ident(kv.Value)));
+        }
+    }
+
     public static class LinqExtensions
     {
         public static IEnumerable<IEnumerable<T>> CartesianProduct<T>(this IEnumerable<IEnumerable<T>> sequences)
@@ -90,6 +108,11 @@ namespace Microsoft.Boogie
                 from acc in accumulator
                 from item in sequence
                 select acc.Concat(new[] { item }));
+        }
+
+        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<TKey> keys, Func<TKey, TValue> f)
+        {
+            return keys.ToDictionary(k => k, k => f(k));
         }
     }
 }
