@@ -410,7 +410,7 @@ namespace Microsoft.Boogie
             {
                 return new AssignCmd(cmd.tok,
                     assignCmd.Lhss,
-                    assignCmd.Rhss.Select(x => Substituter.Apply(sub, x)).ToList(),
+                    SubstitutionHelper.Apply(sub, assignCmd.Rhss).ToList(),
                     assignCmd.Attributes);
             }
             return Substituter.Apply(sub, cmd);
@@ -468,8 +468,7 @@ namespace Microsoft.Boogie
         {
             var remainingVars = NotEliminatedVars.Except(IntermediateFrameWithWitnesses);
             existsVarMap = remainingVars.ToDictionary(v => (Variable)VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
-            var varSubst = SubstitutionHelper.FromVariableMap(existsVarMap);
-            pathExprs = pathExprs.Select(x => Substituter.Apply(varSubst, x)).ToList();
+            pathExprs = SubstitutionHelper.Apply(existsVarMap, pathExprs).ToList();
         }
 
         private void ReplacePreOrPostStateVars()
@@ -495,8 +494,7 @@ namespace Microsoft.Boogie
                 frameCopiesSub = frameCopiesSub.Union(postStateSub).ToDictionary(k => k.Key, v => v.Value);
             }
 
-            var finalSub = Substituter.SubstitutionFromHashtable(frameCopiesSub);
-            pathExprs = pathExprs.Select(x => Substituter.Apply(finalSub, x)).ToList();
+            pathExprs = SubstitutionHelper.Apply(frameCopiesSub, pathExprs).ToList();
         }
 
         private void ComputeWitnessedTransitionRelationExprs()
@@ -518,9 +516,8 @@ namespace Microsoft.Boogie
                             witnessFunction.function, witnessFunction.args.ToArray()
                         );
                 }
-                var subst = Substituter.SubstitutionFromHashtable(witnessSubst);
                 witnessedTransitionRelations.Add(
-                    Substituter.Apply(subst, TransitionRelationExpr));
+                    SubstitutionHelper.Apply(witnessSubst, TransitionRelationExpr));
             }
         }
 

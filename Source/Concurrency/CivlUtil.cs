@@ -115,6 +115,40 @@ namespace Microsoft.Boogie
         {
             return Substituter.Apply(FromVariableMap(map), cmd);
         }
+
+        public static IEnumerable<Expr> Apply(Substitution subst, IEnumerable<Expr> exprs)
+        {
+            return exprs.Select(x => Substituter.Apply(subst, x));
+        }
+
+        public static IEnumerable<Expr> Apply(Dictionary<Variable, Expr> map, IEnumerable<Expr> exprs)
+        {
+            var subst = Substituter.SubstitutionFromHashtable(map);
+            return Apply(subst, exprs);
+        }
+
+        public static IEnumerable<Expr> Apply(Dictionary<Variable, Variable> map, IEnumerable<Expr> exprs)
+        {
+            var subst = FromVariableMap(map);
+            return Apply(subst, exprs);
+        }
+
+        public static IEnumerable<Cmd> Apply(Substitution subst, IEnumerable<Cmd> cmds)
+        {
+            return cmds.Select(x => Substituter.Apply(subst, x));
+        }
+
+        public static IEnumerable<Cmd> Apply(Dictionary<Variable, Expr> map, IEnumerable<Cmd> cmds)
+        {
+            var subst = Substituter.SubstitutionFromHashtable(map);
+            return Apply(subst, cmds);
+        }
+
+        public static IEnumerable<Cmd> Apply(Dictionary<Variable, Variable> map, IEnumerable<Cmd> cmds)
+        {
+            var subst = FromVariableMap(map);
+            return Apply(subst, cmds);
+        }
     }
 
     public static class LinqExtensions
