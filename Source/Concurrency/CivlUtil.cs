@@ -95,6 +95,26 @@ namespace Microsoft.Boogie
         {
             return Substituter.SubstitutionFromHashtable(map.ToDictionary(kv => kv.Key, kv => (Expr)Expr.Ident(kv.Value)));
         }
+
+        public static Expr Apply(Dictionary<Variable, Expr> map, Expr expr)
+        {
+            return Substituter.Apply(Substituter.SubstitutionFromHashtable(map), expr);
+        }
+
+        public static Expr Apply(Dictionary<Variable, Variable> map, Expr expr)
+        {
+            return Substituter.Apply(FromVariableMap(map), expr);
+        }
+
+        public static Cmd Apply(Dictionary<Variable, Expr> map, Cmd cmd)
+        {
+            return Substituter.Apply(Substituter.SubstitutionFromHashtable(map), cmd);
+        }
+
+        public static Cmd Apply(Dictionary<Variable, Variable> map, Cmd cmd)
+        {
+            return Substituter.Apply(FromVariableMap(map), cmd);
+        }
     }
 
     public static class LinqExtensions

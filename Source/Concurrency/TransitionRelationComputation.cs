@@ -376,7 +376,7 @@ namespace Microsoft.Boogie
                                 !VariableCollector.Collect(rhs).Intersect(AllIntroducedVariables).
                                     Except(allDefinedVars).Any())
                             {
-                                varToExpr[assignedVar] = rhs;
+                                varToExpr[assignedVar] = SubstitutionHelper.Apply(varToExpr, rhs);
                                 changed = true;
                             }
                             else
@@ -413,7 +413,7 @@ namespace Microsoft.Boogie
                     assignCmd.Rhss.Select(x => Substituter.Apply(sub, x)).ToList(),
                     assignCmd.Attributes);
             }
-            else { return Substituter.Apply(sub, cmd); }
+            return Substituter.Apply(sub, cmd);
         }
 
         private void ComputeTransitionRelationExpr()
@@ -448,17 +448,19 @@ namespace Microsoft.Boogie
             {
                 for (int k = 0; k < cmd.Lhss.Count; k++)
                 {
-                    pathExprs.Add(Expr.Eq(Expr.Ident(cmd.Lhss[k].DeepAssignedVariable), cmd.Rhss[k]));
+                    // If a variable is forward and backward assigned, we might
+                    // have a substitution for the lhs here.
+                    var assignedVar = cmd.Lhss[k].DeepAssignedVariable;
+                    if (!varToExpr.TryGetValue(assignedVar, out Expr x))
+                        x = Expr.Ident(assignedVar);
+                    pathExprs.Add(Expr.Eq(x, cmd.Rhss[k]));
                 }
             }
-
-            var varSubst = Substituter.SubstitutionFromHashtable(varToExpr);
-            pathExprs = pathExprs.Select(x => Substituter.Apply(varSubst, x)).ToList();
         }
 
         private IEnumerable<Variable> NotEliminatedVars =>
-            path.
-                SelectMany(cmd => VariableCollector.Collect(cmd)).
+            pathExprs.
+                SelectMany(x => VariableCollector.Collect(x)).
                 Intersect(AllIntroducedVariables).
                 Except(varToExpr.Keys);
 
@@ -472,15 +474,16 @@ namespace Microsoft.Boogie
 
         private void ReplacePreOrPostStateVars()
         {
-            var preStateSub = trc.PreStateVars.
-                ToDictionary<Variable, Variable, Expr>(v => varCopies[v][0],
-                    v => new OldExpr(Token.NoToken, Expr.Ident(v)));
+            var preStateSub = trc.PreStateVars.ToDictionary<Variable, Variable, Expr>(
+                v => varCopies[v][0],
+                v => ExprHelper.Old(Expr.Ident(v)));
 
             var frameCopiesSub = preStateSub;
             if (!trc.ignorePostState)
             {
-                var postStateSub = trc.PostStateVars.
-                   ToDictionary<Variable, Variable, Expr>(v => varCopies[v].Last(), v => Expr.Ident(v));
+                var postStateSub = trc.PostStateVars.ToDictionary<Variable, Variable, Expr>(
+                    v => varCopies[v].Last(),
+                    v => Expr.Ident(v));
 
                 var notModifiedVars = new HashSet<Variable>(preStateSub.Keys.Intersect(postStateSub.Keys));
                 foreach (var v in notModifiedVars)
