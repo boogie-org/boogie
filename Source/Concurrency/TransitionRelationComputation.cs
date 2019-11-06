@@ -228,10 +228,7 @@ namespace Microsoft.Boogie
         private void MakeNewCopy(Variable v)
         {
             int id = varCopies[v].Count;
-            var copyVar = new Formal(
-                Token.NoToken,
-                new TypedIdent(Token.NoToken, string.Format(copierFormat, v.Name, id), v.TypedIdent.Type),
-                false, null);
+            var copyVar = VarHelper.LocalVariable(string.Format(copierFormat, v.Name, id), v.TypedIdent.Type);
             varCopies[v].Add(copyVar);
             copyToOriginalVar[copyVar] = v;
         }
@@ -266,9 +263,9 @@ namespace Microsoft.Boogie
                     oldSub = SubstitutionHelper.FromVariableMap(LatestCopies(trc.PreStateVars));
                 }
                 Cmd cmd = path[k];
-                if (cmd is AssignCmd)
+                if (cmd is AssignCmd assignCmd)
                 {
-                    AssignCmd assignCmd = ((AssignCmd)cmd).AsSimpleAssignCmd;
+                    assignCmd = assignCmd.AsSimpleAssignCmd;
                     var preState = LatestCopies();
                     foreach (var v in assignCmd.Lhss)
                     {
@@ -285,18 +282,17 @@ namespace Microsoft.Boogie
 
                     var rhsSub = SubstitutionHelper.FromVariableMap(preState);
 
-                    List<AssignLhs> lhss = assignCmd.Lhss.Select(x => (AssignLhs)new SimpleAssignLhs(Token.NoToken,
-                        Expr.Ident(postState[x.DeepAssignedVariable]))).ToList();
+                    List<AssignLhs> lhss = assignCmd.Lhss.Select(x => new SimpleAssignLhs(Token.NoToken,
+                        Expr.Ident(postState[x.DeepAssignedVariable]))).ToList<AssignLhs>();
                     List<Expr> rhss = assignCmd.Rhss.Select(x =>
                         Substituter.ApplyReplacingOldExprs(rhsSub, oldSub, x)).ToList();
 
                     newPath.Add(new AssignCmd(Token.NoToken, lhss, rhss, assignCmd.Attributes));
                 }
-                else if (cmd is AssumeCmd)
+                else if (cmd is AssumeCmd assumeCmd)
                 {
                     var sub = SubstitutionHelper.FromVariableMap(LatestCopies());
-                    newPath.Add(new AssumeCmd(cmd.tok,
-                        Substituter.ApplyReplacingOldExprs(sub, oldSub, ((AssumeCmd)cmd).Expr)));
+                    newPath.Add(Substituter.ApplyReplacingOldExprs(sub, oldSub, assumeCmd));
                 }
                 else if (cmd is HavocCmd havocCmd)
                 {
@@ -397,6 +393,10 @@ namespace Microsoft.Boogie
                     else if (cmd is AssumeCmd)
                     {
                         remainingCmds.Add(cmd);
+                    }
+                    else
+                    {
+                        Debug.Assert(false);
                     }
                 }
                 Substitution sub = Substituter.SubstitutionFromHashtable(varToExpr);
