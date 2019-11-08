@@ -279,19 +279,23 @@ namespace Microsoft.Boogie
                                     Error(kv, $"No pending async constructor for atomic action {actionName}");
                                 if (!elimAction.layerRange.Contains(layer)) 
                                     Error(kv, $"Elim action does not exist at layer {layer}");
-                                if (kv.Params.Count == 1 && !elimAction.IsLeftMover)
-                                    Error(kv, "Elim action must be a left mover");
                             }
                             if (kv.Params.Count == 2)
                             {
                                 string abstractionName = (string)kv.Params[1];
-                                absAction = FindIsAbstraction(abstractionName);
+                                absAction = FindAtomicAction(abstractionName);
+                                if (absAction == null)
+                                    absAction = FindIsAbstraction(abstractionName);
                                 if (absAction == null)
                                     Error(kv, "Could not find abstraction action");
                                 else if (!absAction.layerRange.Contains(layer))
                                     Error(kv, "Abstraction action does not exist at layer {layer}");
                             }
-                            if (elimAction != null)
+                            else
+                            {
+                                absAction = elimAction;
+                            }
+                            if (elimAction != null && absAction != null)
                                 elim[elimAction] = absAction;
                         }
                         else

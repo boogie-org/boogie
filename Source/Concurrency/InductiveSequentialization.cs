@@ -29,7 +29,7 @@ namespace Microsoft.Boogie
             // We could compute a tighter frame per check. For example, base/conclusion checkers
             // don't have to take the eliminated actions into account.
             var frameVars = new List<AtomicAction> { invariantAction, outputAction, inputAction }
-                .Union(elim.Select(kv => kv.Value ?? kv.Key))
+                .Union(elim.Select(kv => kv.Value))
                 .SelectMany(a => a.gateUsedGlobalVars.Union(a.modifiedGlobalVars)).Distinct();
             this.frame = new HashSet<Variable>(frameVars);
             this.modifies = frame.Select(Expr.Ident).ToList();
@@ -84,7 +84,7 @@ namespace Microsoft.Boogie
             var requires = invariantAction.gate.Select(g => new Requires(false, g.Expr)).ToList();
             var ensures = new List<Ensures> { GetEnsures(GetTransitionRelation(invariantAction)) };
             var locals = new List<Variable>();
-            if (elim.Keys.Any(a => a.HasPendingAsyncs))
+            if (elim.Values.Any(a => a.HasPendingAsyncs))
             {
                 locals.Add(newPAs.Decl);
             }
@@ -93,8 +93,6 @@ namespace Microsoft.Boogie
             foreach (var pendingAsync in elim.Keys)
             {
                 AtomicAction abs = elim[pendingAsync];
-                if (abs == null)
-                    abs = pendingAsync;
 
                 Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
                 List<Expr> inputExprs = new List<Expr>();
@@ -106,7 +104,7 @@ namespace Microsoft.Boogie
                 }
                 var subst = Substituter.SubstitutionFromHashtable(map);
                 List<IdentifierExpr> outputVars = new List<IdentifierExpr>();
-                if (pendingAsync.HasPendingAsyncs)
+                if (abs.HasPendingAsyncs)
                 {
                     outputVars.Add(newPAs);
                 }
@@ -115,7 +113,7 @@ namespace Microsoft.Boogie
                 cmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, choice)));
                 cmds.AddRange(GetGateAsserts(abs, subst));
                 cmds.Add(CmdHelper.CallCmd(abs.proc, inputExprs, outputVars));
-                if (pendingAsync.HasPendingAsyncs)
+                if (abs.HasPendingAsyncs)
                 {
                     cmds.Add(AddNewPAs(pendingAsyncAdd));
                 }
@@ -328,7 +326,7 @@ namespace Microsoft.Boogie
                 ctc.program.AddTopLevelDeclaration(t.Item2);
             }
 
-            var absChecks = ctc.inductiveSequentializations.SelectMany(x => x.elim.Where(kv => kv.Value != null)).Distinct();
+            var absChecks = ctc.inductiveSequentializations.SelectMany(x => x.elim).Where(kv => kv.Key != kv.Value).Distinct();
             foreach (var absCheck in absChecks)
             {
                 var action = absCheck.Key;

@@ -39,6 +39,11 @@ namespace Microsoft.Boogie
         {
             return other.lowerLayerNum <= lowerLayerNum && upperLayerNum <= other.upperLayerNum;
         }
+
+        internal bool OverlapsWith(LayerRange other)
+        {
+            return lowerLayerNum <= other.upperLayerNum && other.lowerLayerNum <= upperLayerNum;
+        }
     }
 
     public class AtomicAction

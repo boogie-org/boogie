@@ -31,40 +31,44 @@ namespace Microsoft.Boogie
 
             MoverCheck moverChecking = new MoverCheck(linearTypeChecker, civlTypeChecker, decls);
 
-            // TODO: make enumeration of mover checks more efficient
-            var min = civlTypeChecker.procToAtomicAction.Values.Select(a => a.layerRange.lowerLayerNum).Min();
-            var max = civlTypeChecker.procToAtomicAction.Values.Select(a => a.layerRange.upperLayerNum).Max();
+            // TODO: make enumeration of mover checks more efficient / elegant
 
-            foreach (int layer in Enumerable.Range(min, max))
+            var regularMoverChecks =
+                from first in civlTypeChecker.procToAtomicAction.Values
+                from second in civlTypeChecker.procToAtomicAction.Values
+                where first.layerRange.OverlapsWith(second.layerRange)
+                where first.IsRightMover || second.IsLeftMover
+                select new { first, second };
+
+            foreach (var moverCheck in regularMoverChecks)
             {
-                var pool = civlTypeChecker.procToAtomicAction.Values.Where(a => a.layerRange.Contains(layer));
-                var absPool = civlTypeChecker.procToIsAbstraction.Values.Where(a => a.layerRange.Contains(layer));
-
-                var moverChecks =
-                    from first in pool.Union(absPool)
-                    from second in pool
-                    where first.moverType != MoverType.Atomic
-                    select new { First = first, Second = second };
-
-                foreach (var moverCheck in moverChecks)
-                {
-                    var first = moverCheck.First;
-                    var second = moverCheck.Second;
-
-                    if (moverCheck.First.IsRightMover)
-                    {
-                        moverChecking.CreateCommutativityChecker(first, second);
-                        moverChecking.CreateGatePreservationChecker(second, first);
-                    }
-                    if (moverCheck.First.IsLeftMover)
-                    {
-                        moverChecking.CreateCommutativityChecker(second, first);
-                        moverChecking.CreateGatePreservationChecker(first, second);
-                        moverChecking.CreateFailurePreservationChecker(second, first);
-                    }
-                }
+                if (moverCheck.first.IsRightMover)
+                    moverChecking.CreateRightMoverCheckers(moverCheck.first, moverCheck.second);
+                if (moverCheck.second.IsLeftMover)
+                    moverChecking.CreateLeftMoverCheckers(moverCheck.first, moverCheck.second);
             }
+
+            var inductiveSequentializationMoverChecks =
+                from IS in civlTypeChecker.inductiveSequentializations
+                from leftMover in IS.elim.Values
+                from action in civlTypeChecker.procToAtomicAction.Values
+                where action.layerRange.Contains(IS.inputAction.layerRange.upperLayerNum)
+                select new { action, leftMover };
+
+            foreach (var moverCheck in inductiveSequentializationMoverChecks)
+            {
+                moverChecking.CreateLeftMoverCheckers(moverCheck.action, moverCheck.leftMover);
+            }
+
+            // Here we include IS abstractions
             foreach (AtomicAction atomicAction in civlTypeChecker.AllActions.Where(a => a.IsLeftMover))
+            {
+                moverChecking.CreateNonBlockingChecker(atomicAction);
+            }
+
+            // IS abstractions are marked left movers, so here we select regular atomic actions
+            // that are not marked left mover but used as abstraction in IS.
+            foreach (AtomicAction atomicAction in civlTypeChecker.inductiveSequentializations.SelectMany(IS => IS.elim.Values).Where(a => !a.IsLeftMover).Distinct())
             {
                 moverChecking.CreateNonBlockingChecker(atomicAction);
             }
@@ -101,6 +105,19 @@ namespace Microsoft.Boogie
             impl.Proc = proc;
             this.decls.Add(impl);
             this.decls.Add(proc);
+        }
+
+        private void CreateRightMoverCheckers(AtomicAction rightMover, AtomicAction action)
+        {
+            CreateCommutativityChecker(rightMover, action);
+            CreateGatePreservationChecker(action, rightMover);
+        }
+
+        private void CreateLeftMoverCheckers(AtomicAction action, AtomicAction leftMover)
+        {
+            CreateCommutativityChecker(action, leftMover);
+            CreateGatePreservationChecker(leftMover, action);
+            CreateFailurePreservationChecker(action, leftMover);
         }
 
         private void CreateCommutativityChecker(AtomicAction first, AtomicAction second)
