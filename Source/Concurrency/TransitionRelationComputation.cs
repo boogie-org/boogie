@@ -182,9 +182,11 @@ namespace Microsoft.Boogie
         private List<Cmd> path;
         private readonly int transferIndex;
 
+        private List<Assignment> assignments;
+        private List<Expr> assumes;
+
         private Dictionary<Variable, List<Variable>> varCopies;
         private Dictionary<Variable, Variable> copyToOriginalVar;
-        private HashSet<Variable> definedVariables;
         private Dictionary<Variable, Expr> varToExpr;
         private List<Expr> pathExprs;
         private List<Expr> witnessedTransitionRelations;
@@ -199,6 +201,18 @@ namespace Microsoft.Boogie
 
         private IEnumerable<Variable> IntermediateFrameWithWitnesses =>
             trc.FrameWithWitnesses.Select(v => frameIntermediateCopy[v]);
+
+        class Assignment
+        {
+            public Variable Var { get; set; }
+            public Expr Expr { get; set; }
+
+            public Assignment(Variable var, Expr expr)
+            {
+                Var = var;
+                Expr = expr;
+            }
+        }
 
         public PathTranslation(TransitionRelationComputation trc, List<Cmd> path, int transferIndex)
         {
@@ -254,7 +268,8 @@ namespace Microsoft.Boogie
         private void IntroduceIntermediateVars()
         {
             var oldSub = SubstitutionHelper.FromVariableMap(LatestCopies(trc.PreStateVars));
-            var newPath = new List<Cmd>();
+            assignments = new List<Assignment>();
+            assumes = new List<Expr>();
             for (int k = 0; k < path.Count; k++)
             {
                 if (trc.IsJoint && k == transferIndex)
@@ -282,17 +297,17 @@ namespace Microsoft.Boogie
 
                     var rhsSub = SubstitutionHelper.FromVariableMap(preState);
 
-                    List<AssignLhs> lhss = assignCmd.Lhss.Select(x => new SimpleAssignLhs(Token.NoToken,
-                        Expr.Ident(postState[x.DeepAssignedVariable]))).ToList<AssignLhs>();
-                    List<Expr> rhss = assignCmd.Rhss.Select(x =>
-                        Substituter.ApplyReplacingOldExprs(rhsSub, oldSub, x)).ToList();
-
-                    newPath.Add(new AssignCmd(Token.NoToken, lhss, rhss, assignCmd.Attributes));
+                    for (int i = 0; i < assignCmd.Lhss.Count; i++)
+                    {
+                        var var = postState[assignCmd.Lhss[i].DeepAssignedVariable];
+                        var expr = Substituter.ApplyReplacingOldExprs(rhsSub, oldSub, assignCmd.Rhss[i]);
+                        assignments.Add(new Assignment(var, expr));
+                    }
                 }
                 else if (cmd is AssumeCmd assumeCmd)
                 {
                     var sub = SubstitutionHelper.FromVariableMap(LatestCopies());
-                    newPath.Add(Substituter.ApplyReplacingOldExprs(sub, oldSub, assumeCmd));
+                    assumes.Add(Substituter.ApplyReplacingOldExprs(sub, oldSub, assumeCmd.Expr));
                 }
                 else if (cmd is HavocCmd havocCmd)
                 {
@@ -309,33 +324,28 @@ namespace Microsoft.Boogie
             // In case there were no commands from the second action
             if (trc.IsJoint && path.Count == transferIndex)
                 PopulateIntermediateFrameCopy();
-            path = newPath;
         }
 
         private void SetDefinedVariables()
         {
-            definedVariables = new HashSet<Variable>();
+            varToExpr = new Dictionary<Variable, Expr>();
             foreach (var v in trc.PreStateVars)
             {
-                definedVariables.Add(varCopies[v][0]);
+                var vFirst = varCopies[v][0];
+                varToExpr[vFirst] = Expr.Ident(vFirst);
             }
             if (!trc.ignorePostState)
             {
                 foreach (var v in trc.PostStateVars)
                 {
-                    definedVariables.Add(varCopies[v].Last());
+                    var vLast = varCopies[v].Last();
+                    varToExpr[vLast] = Expr.Ident(vLast);
                 }
             }
         }
 
         private void EliminateIntermediateVariables()
         {
-            varToExpr = new Dictionary<Variable, Expr>();
-            foreach (var v in definedVariables)
-            {
-                varToExpr[v] = Expr.Ident(v);
-            }
-
             TryElimination(Enumerable.Empty<Variable>());
             TryElimination(trc.allLocVars.Select(v => varCopies[v][0]));
 
@@ -354,66 +364,34 @@ namespace Microsoft.Boogie
 
         private void TryElimination(IEnumerable<Variable> extraDefinedVariables)
         {
+            bool Defined(Variable v) => varToExpr.ContainsKey(v) || extraDefinedVariables.Contains(v); 
             bool changed;
             do
             {
                 changed = false;
-                var remainingCmds = new List<Cmd>();
-                foreach (var cmd in path)
+                var remainingAssignments = new List<Assignment>();
+                foreach (var assignment in assignments)
                 {
-                    if (cmd is AssignCmd assignCmd)
+                    if (!Defined(assignment.Var) &&
+                        VariableCollector.Collect(assignment.Expr).
+                            Intersect(AllIntroducedVariables).All(Defined))
                     {
-                        var lhss = new List<AssignLhs>();
-                        var rhss = new List<Expr>();
-                        for (int k = 0; k < assignCmd.Lhss.Count; k++)
-                        {
-                            var lhs = assignCmd.Lhss[k];
-                            var rhs = assignCmd.Rhss[k];
-                            Variable assignedVar = lhs.DeepAssignedVariable;
-
-                            var allDefinedVars = varToExpr.Keys.Union(extraDefinedVariables);
-                            if (!allDefinedVars.Contains(assignedVar) &&
-                                !VariableCollector.Collect(rhs).Intersect(AllIntroducedVariables).
-                                    Except(allDefinedVars).Any())
-                            {
-                                varToExpr[assignedVar] = SubstitutionHelper.Apply(varToExpr, rhs);
-                                changed = true;
-                            }
-                            else
-                            {
-                                lhss.Add(lhs);
-                                rhss.Add(rhs);
-                            }
-                        }
-                        if (lhss.Any())
-                        {
-                            remainingCmds.Add(new AssignCmd(cmd.tok, lhss, rhss, assignCmd.Attributes));
-                        }
-                    }
-                    else if (cmd is AssumeCmd)
-                    {
-                        remainingCmds.Add(cmd);
+                        varToExpr[assignment.Var] = SubstitutionHelper.Apply(varToExpr, assignment.Expr);
+                        changed = true;
                     }
                     else
                     {
-                        Debug.Assert(false);
+                        remainingAssignments.Add(assignment);
                     }
                 }
                 Substitution sub = Substituter.SubstitutionFromHashtable(varToExpr);
-                path = remainingCmds.Select(cmd => ApplyOnRhss(sub, cmd)).ToList();
+                foreach (var assignment in remainingAssignments)
+                {
+                    assignment.Expr = Substituter.Apply(sub, assignment.Expr);
+                }
+                assignments = remainingAssignments;
+                assumes = SubstitutionHelper.Apply(sub, assumes).ToList();
             } while (changed);
-        }
-
-        private static Cmd ApplyOnRhss(Substitution sub, Cmd cmd)
-        {
-            if (cmd is AssignCmd assignCmd)
-            {
-                return new AssignCmd(cmd.tok,
-                    assignCmd.Lhss,
-                    SubstitutionHelper.Apply(sub, assignCmd.Rhss).ToList(),
-                    assignCmd.Attributes);
-            }
-            return Substituter.Apply(sub, cmd);
         }
 
         private void ComputeTransitionRelationExpr()
@@ -440,21 +418,17 @@ namespace Microsoft.Boogie
         private void CalculatePathExpression()
         {
             pathExprs = new List<Expr>();
-            foreach (var cmd in path.OfType<AssumeCmd>())
+            foreach (var expr in assumes)
             {
-                ExprHelper.FlattenAnd(cmd.Expr, pathExprs);
+                ExprHelper.FlattenAnd(expr, pathExprs);
             }
-            foreach (AssignCmd cmd in path.OfType<AssignCmd>())
+            foreach (var assignment in assignments)
             {
-                for (int k = 0; k < cmd.Lhss.Count; k++)
-                {
-                    // If a variable is forward and backward assigned, we might
-                    // have a substitution for the lhs here.
-                    var assignedVar = cmd.Lhss[k].DeepAssignedVariable;
-                    if (!varToExpr.TryGetValue(assignedVar, out Expr x))
-                        x = Expr.Ident(assignedVar);
-                    pathExprs.Add(Expr.Eq(x, cmd.Rhss[k]));
-                }
+                // If a variable is forward and backward assigned, we might
+                // have a substitution for the lhs here.
+                if (!varToExpr.TryGetValue(assignment.Var, out Expr x))
+                    x = Expr.Ident(assignment.Var);
+                pathExprs.Add(Expr.Eq(x, assignment.Expr));
             }
         }
 
@@ -473,28 +447,29 @@ namespace Microsoft.Boogie
 
         private void ReplacePreOrPostStateVars()
         {
-            var preStateSub = trc.PreStateVars.ToDictionary<Variable, Variable, Expr>(
-                v => varCopies[v][0],
-                v => ExprHelper.Old(Expr.Ident(v)));
+            var sub = new Dictionary<Variable, Expr>();
 
-            var frameCopiesSub = preStateSub;
+            foreach (var v in trc.allInParams)
+                sub[varCopies[v][0]] = Expr.Ident(v);
+            foreach (var v in trc.frame)
+                sub[varCopies[v][0]] = ExprHelper.Old(Expr.Ident(v));
+
             if (!trc.ignorePostState)
             {
-                var postStateSub = trc.PostStateVars.ToDictionary<Variable, Variable, Expr>(
-                    v => varCopies[v].Last(),
-                    v => Expr.Ident(v));
-
-                var notModifiedVars = new HashSet<Variable>(preStateSub.Keys.Intersect(postStateSub.Keys));
-                foreach (var v in notModifiedVars)
+                foreach (var v in trc.PostStateVars)
                 {
-                    pathExprs.Add(Expr.Eq(preStateSub[v], postStateSub[v]));
-                    postStateSub.Remove(v);
+                    var lastCopy = varCopies[v].Last();
+                    if (sub.ContainsKey(lastCopy))
+                    {
+                        Debug.Assert(trc.frame.Contains(v) && lastCopy == varCopies[v][0]);
+                        pathExprs.Add(Expr.Eq(Expr.Ident(v), sub[lastCopy]));
+                    }
+                    // In case of conflict we prefer "v" instead of "old(v)"
+                    sub[lastCopy] = Expr.Ident(v);
                 }
-
-                frameCopiesSub = frameCopiesSub.Union(postStateSub).ToDictionary(k => k.Key, v => v.Value);
             }
 
-            pathExprs = SubstitutionHelper.Apply(frameCopiesSub, pathExprs).ToList();
+            pathExprs = SubstitutionHelper.Apply(sub, pathExprs).ToList();
         }
 
         private void ComputeWitnessedTransitionRelationExprs()
