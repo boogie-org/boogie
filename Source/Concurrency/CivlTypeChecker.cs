@@ -408,53 +408,6 @@ namespace Microsoft.Boogie
             foreach (var impl in program.Implementations.Where(impl => procToYieldingProc.ContainsKey(impl.Proc)))
             {
                 visitor.VisitImplementation(impl);
-
-                // TODO: Check the modifies clause of mover procedures.
-                // Calls to introduction procedures!
-
-                YieldingProc yieldingProc = procToYieldingProc[impl.Proc];
-
-                if (yieldingProc is MoverProc)
-                {
-                    var declaredModifiedVars = ((MoverProc)yieldingProc).modifiedGlobalVars;
-                    HashSet<Variable> mods = null;
-                    foreach (var callCmd in impl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
-                    {
-                        if (procToYieldingProc.ContainsKey(callCmd.Proc))
-                        {
-                            var calledProc = procToYieldingProc[callCmd.Proc];
-                            if (calledProc is ActionProc)
-                            {
-                                mods = ((ActionProc)calledProc).refinedAction.modifiedGlobalVars;
-                            }
-                            else if (calledProc is MoverProc)
-                            {
-                                mods = ((MoverProc)calledProc).modifiedGlobalVars;
-                            }
-                            else
-                            {
-                                Debug.Assert(calledProc is SkipProc);
-                                mods = new HashSet<Variable>();
-                            }
-                        }
-                        else if (procToIntroductionProc.ContainsKey(callCmd.Proc))
-                        {
-                            mods = new HashSet<Variable>(callCmd.Proc.Modifies.Select(ie => ie.Decl));
-                        }
-                        else
-                        {
-                            Debug.Assert(false);
-                        }
-
-                        foreach (var mod in mods)
-                        {
-                            if (!declaredModifiedVars.Contains(mod))
-                            {
-                                checkingContext.Error(callCmd, "Modified variable {0} does not appear in modifies clause of mover procedure.", mod.Name);
-                            }
-                        }
-                    }
-                }
             }
         }
 
@@ -1018,6 +971,7 @@ namespace Microsoft.Boogie
                 enclosingImpl = node;
                 yieldingProc = ctc.procToYieldingProc[node.Proc];
                 var ret = base.VisitImplementation(node);
+                CheckMoverProcModifiesClause();
                 enclosingImpl = null;
                 yieldingProc = null;
                 return ret;
@@ -1350,6 +1304,53 @@ namespace Microsoft.Boogie
                     ctc.Error(node, "A mover procedure cannot contain explicit yield statements");
                 }
                 return base.VisitYieldCmd(node);
+            }
+
+            private void CheckMoverProcModifiesClause()
+            {
+                // TODO: Check the modifies clause of mover procedures.
+                // Calls to introduction procedures!
+
+                if (yieldingProc is MoverProc caller)
+                {
+                    var declaredModifiedVars = caller.modifiedGlobalVars;
+                    HashSet<Variable> mods = null;
+                    foreach (var callCmd in enclosingImpl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
+                    {
+                        if (ctc.procToYieldingProc.TryGetValue(callCmd.Proc, out YieldingProc callee))
+                        {
+                            if (callee is ActionProc actionProc)
+                            {
+                                mods = actionProc.refinedAction.modifiedGlobalVars;
+                            }
+                            else if (callee is MoverProc moverProc)
+                            {
+                                mods = moverProc.modifiedGlobalVars;
+                            }
+                            else
+                            {
+                                Debug.Assert(callee is SkipProc);
+                                mods = new HashSet<Variable>();
+                            }
+                        }
+                        else if (ctc.procToIntroductionProc.ContainsKey(callCmd.Proc))
+                        {
+                            mods = new HashSet<Variable>(callCmd.Proc.Modifies.Select(ie => ie.Decl));
+                        }
+                        else
+                        {
+                            Debug.Assert(false);
+                        }
+
+                        foreach (var mod in mods)
+                        {
+                            if (!declaredModifiedVars.Contains(mod))
+                            {
+                                ctc.Error(callCmd, $"Modified variable {mod.Name} does not appear in modifies clause of mover procedure.");
+                            }
+                        }
+                    }
+                }
             }
         }
 
