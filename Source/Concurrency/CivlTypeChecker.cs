@@ -1134,8 +1134,8 @@ namespace Microsoft.Boogie
                 {
                     if (callerProc.upperLayer > calleeProc.upperLayer)
                     {
-                        var calledAction = calleeActionProc.RefinedActionAtLayer(callerProc.upperLayer);
-                        if (calledAction == null)
+                        var highestRefinedAction = calleeActionProc.RefinedActionAtLayer(callerProc.upperLayer);
+                        if (highestRefinedAction == null)
                         {
                             ctc.Error(call, $"Called action is not available at layer {callerProc.upperLayer}");
                         }
@@ -1143,11 +1143,11 @@ namespace Microsoft.Boogie
                         {
                             if (call.IsAsync && call.HasAttribute(CivlAttributes.SYNC))
                             {
-                                Require(calledAction.IsLeftMover, call, "Synchronized call must be a left mover");
+                                Require(calleeActionProc.refinedAction.IsLeftMover, call, "Synchronized call must be a left mover");
                             }
                             if (!(callerProc is ActionProc))
                             {
-                                Require(!calledAction.HasPendingAsyncs && (!call.IsAsync || call.HasAttribute(CivlAttributes.SYNC)),
+                                Require(!highestRefinedAction.HasPendingAsyncs && (!call.IsAsync || call.HasAttribute(CivlAttributes.SYNC)),
                                     call, "Only action procedures can summarize pending asyncs");
                             }
                         }
