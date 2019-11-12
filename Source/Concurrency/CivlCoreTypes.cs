@@ -52,6 +52,7 @@ namespace Microsoft.Boogie
         public Implementation impl;
         public MoverType moverType;
         public LayerRange layerRange;
+        public AtomicAction refinedAction;
 
         public List<AssertCmd> gate;
 
@@ -168,6 +169,19 @@ namespace Microsoft.Boogie
             : base(proc, refinedAction.moverType, upperLayer)
         {
             this.refinedAction = refinedAction;
+        }
+
+        public AtomicAction RefinedActionAtLayer(int layer)
+        {
+            if (layer <= upperLayer) return null;
+            var action = refinedAction;
+            while (action != null)
+            {
+                if (layer <= action.layerRange.upperLayerNum)
+                    return action;
+                action = action.refinedAction;
+            }
+            return null;
         }
     }
 

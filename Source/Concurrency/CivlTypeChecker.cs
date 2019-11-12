@@ -233,25 +233,30 @@ namespace Microsoft.Boogie
             {
                 var layer = action.layerRange.upperLayerNum;
                 AtomicAction invariantAction = null;
-                AtomicAction refinedAction = null;
                 Dictionary<AtomicAction, AtomicAction> elim = new Dictionary<AtomicAction, AtomicAction>();
 
                 for (QKeyValue kv = action.proc.Attributes; kv != null; kv = kv.Next)
                 {
                     if (kv.Key == CivlAttributes.IS)
                     {
-                        if (refinedAction != null || invariantAction != null)
+                        if (action.refinedAction != null || invariantAction != null)
                             Error(kv, "Duplicate inductive sequentialization");
                         if (kv.Params.Count == 2 &&
                             kv.Params[0] is string refinedActionName &&
                             kv.Params[1] is string invariantActionName)
                         {
-                            refinedAction = FindAtomicAction(refinedActionName);
+                            action.refinedAction = FindAtomicAction(refinedActionName);
                             invariantAction = FindIsInvariant(invariantActionName);
-                            if (refinedAction == null)
+                            if (action.refinedAction == null)
                                 Error(kv, "Could not find refined atomic action");
-                            else if (!refinedAction.layerRange.Contains(layer + 1))
-                                Error(action.proc, $"IS target does not exist at layer {layer + 1}");
+                            else
+                            {
+                                if (!action.refinedAction.layerRange.Contains(layer + 1))
+                                    Error(action.proc, $"IS target does not exist at layer {layer + 1}");
+                                if (action.IsLeftMover && action.refinedAction.IsLeftMover)
+                                    Error(action.proc, "IS output must preserve left moverness");
+                            }
+
                             if (invariantAction == null)
                                 Error(kv, "Could not find invariant action");
                             else if (!invariantAction.layerRange.Contains(layer))
@@ -305,10 +310,10 @@ namespace Microsoft.Boogie
                     }
                 }
 
-                if (invariantAction != null && refinedAction != null)
+                if (invariantAction != null && action.refinedAction != null)
                 {
                     inductiveSequentializations.Add(
-                        new InductiveSequentialization(action, refinedAction, invariantAction, elim));
+                        new InductiveSequentialization(action, action.refinedAction, invariantAction, elim));
                 }
             }
         }
@@ -588,7 +593,11 @@ namespace Microsoft.Boogie
             foreach (var action in procToAtomicAction.Values.Union(procToIsAbstraction.Values))
             {
                 if (action.impl.OutParams.Count >= 1)
+                {
                     CheckPendingAsyncOutput(action, action.impl.OutParams.Last());
+                    if (action.HasPendingAsyncs && action.IsRightMover)
+                        Error(action.proc, "Action with pending async cannot be a right mover");
+                }
             }
             foreach (var action in procToIsInvariant.Values)
             {
@@ -709,7 +718,7 @@ namespace Microsoft.Boogie
                     if (x.HasValue)
                     {
                         if (moverType.HasValue)
-                            checkingContext.Warning(kv, "Ignoring duplicate mover type declaration ({0}).", kv.Key);
+                            checkingContext.Warning(kv, "Ignoring duplicate mover type declaration ({0})", kv.Key);
                         else
                             moverType = x;
                     }
@@ -733,7 +742,7 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        checkingContext.Error(kv, "Layer has to be an integer.");
+                        checkingContext.Error(kv, "Layer has to be an integer");
                     }
                 }
             }
@@ -1112,47 +1121,64 @@ namespace Microsoft.Boogie
                 return call;
             }
 
+            private bool Require(bool condition, Absy absy, string errorMessage)
+            {
+                if (!condition)
+                    ctc.Error(absy, errorMessage);
+                return condition;
+            }
+
             private void VisitYieldingProcCallCmd(CallCmd call, YieldingProc callerProc, YieldingProc calleeProc)
             {
-                // Skip and mover procedures have to be async-free at their upper layer
-                if (callerProc is SkipProc || callerProc is MoverProc)
+                if (calleeProc is ActionProc calleeActionProc)
                 {
-                    if (call.IsAsync && calleeProc.upperLayer > callerProc.upperLayer)
+                    if (callerProc.upperLayer > calleeProc.upperLayer)
                     {
-                        ctc.Error(call, "Disappearing layer of caller cannot be lower than that of callee");
+                        var calledAction = calleeActionProc.RefinedActionAtLayer(callerProc.upperLayer);
+                        if (calledAction == null)
+                        {
+                            ctc.Error(call, $"Called action is not available at layer {callerProc.upperLayer}");
+                        }
+                        else
+                        {
+                            if (call.IsAsync && call.HasAttribute(CivlAttributes.SYNC))
+                            {
+                                Require(calledAction.IsLeftMover, call, "Synchronized call must be a left mover");
+                            }
+                            if (!(callerProc is ActionProc))
+                            {
+                                Require(!calledAction.HasPendingAsyncs && (!call.IsAsync || call.HasAttribute(CivlAttributes.SYNC)),
+                                    call, "Only action procedures can summarize pending asyncs");
+                            }
+                        }
+                    }
+                    else if (callerProc.upperLayer == calleeProc.upperLayer)
+                    {
+                        // Calling an action procedure with the same disappearing layer as the caller is only possible if
+                        // (1) the call is a non-synchronized asynchronous call (i.e., results in a pending async), and
+                        // (2) the caller is an action procedure (that can summarize the pending async).
+                        Require(callerProc is ActionProc && call.IsAsync && !call.HasAttribute(CivlAttributes.SYNC),
+                            call, "");
                     }
                     else
                     {
-                        // TODO: IS
-                        // if (calleeProc is ActionProc actionProc && actionProc.refinedAction.asyncFreeLayer > callerProc.upperLayer)
-                        // {
-                        //     ctc.Error(call, "Disappearing layer of caller cannot be lower than async-free layer of callee");
-                        // }
-                    }
-                }
-
-                if (calleeProc is ActionProc)
-                {
-                    if (callerProc.upperLayer <= calleeProc.upperLayer)
-                    {
-                        ctc.Error(call, "The layer of the caller must be greater than the layer of the callee");
-                    }
-                    if (((ActionProc)calleeProc).refinedAction.layerRange.upperLayerNum < callerProc.upperLayer)
-                    {
-                        ctc.Error(call, "The callee is not available in the caller procedure");
+                        ctc.Error(call, "This call cannot have a callee with higher layer than the caller");
                     }
                 }
                 else if (calleeProc is SkipProc)
                 {
-                    if (callerProc is MoverProc && callerProc.upperLayer <= calleeProc.upperLayer)
+                    if (callerProc is MoverProc)
                     {
-                        ctc.Error(call, "The layer of the caller must be greater than the layer of the callee");
+                        Require(callerProc.upperLayer > calleeProc.upperLayer, call,
+                            "The layer of the caller must be greater than the layer of the callee");
                     }
-                    else if (callerProc.upperLayer < calleeProc.upperLayer)
+                    else
                     {
-                        ctc.Error(call, "The layer of the caller must be greater than or equal to the layer of the callee");
+                        Require(callerProc.upperLayer >= calleeProc.upperLayer, call,
+                            "The layer of the caller must be greater than or equal to the layer of the callee");
                     }
-                    else if (callerProc.upperLayer == calleeProc.upperLayer && enclosingImpl.OutParams.Count > 0)
+
+                    if (callerProc.upperLayer == calleeProc.upperLayer && enclosingImpl.OutParams.Count > 0)
                     {
                         // Skip procedures have the effect of havocing their output variables.
                         // Currently, the snapshotting during refinement checking does not account for that,
@@ -1162,22 +1188,19 @@ namespace Microsoft.Boogie
                         {
                             if (callerOutParams.Contains(x.Decl))
                             {
-                                ctc.Error(call, "An output variable of the enclosing implementation cannot be used as output argument for this call");
+                                ctc.Error(x, "An output variable of the enclosing implementation cannot be used as output argument for this call");
                             }
                         }
                     }
                 }
                 else if (calleeProc is MoverProc)
                 {
-                    if (callerProc.upperLayer != calleeProc.upperLayer)
+                    Require(callerProc.upperLayer == calleeProc.upperLayer, call,
+                        "The layer of the caller must be equal to the layer of the callee");
+                    if (call.IsAsync)
                     {
-                        ctc.Error(call, "The layer of the caller must be equal to the layer of the callee");
+                        Require(calleeProc.IsLeftMover, call, "Synchronized call must be a left mover");
                     }
-                }
-
-                if (call.IsAsync && !calleeProc.IsLeftMover)
-                {
-                    ctc.Error(call, "Target of async call must be a left mover");
                 }
 
                 for (int i = 0; i < call.Ins.Count; i++)
@@ -1346,7 +1369,7 @@ namespace Microsoft.Boogie
                         {
                             if (!declaredModifiedVars.Contains(mod))
                             {
-                                ctc.Error(callCmd, $"Modified variable {mod.Name} does not appear in modifies clause of mover procedure.");
+                                ctc.Error(callCmd, $"Modified variable {mod.Name} does not appear in modifies clause of mover procedure");
                             }
                         }
                     }

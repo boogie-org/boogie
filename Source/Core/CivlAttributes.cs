@@ -30,6 +30,7 @@ namespace Microsoft.Boogie
         public const string WITNESS = "witness";
 
         public const string PENDING_ASYNC = "pending_async";
+        public const string SYNC = "sync";
 
         public const string IS = "IS";
         public const string IS_INVARIANT = "IS_invariant";
