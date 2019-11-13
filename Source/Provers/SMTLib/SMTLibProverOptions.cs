@@ -27,7 +27,7 @@ namespace Microsoft.Boogie.SMTLib
     }
   }
 
-  public enum SolverKind { Z3, CVC4 };
+  public enum SolverKind { Z3, CVC4, YICES2 };
 
   public class SMTLibProverOptions : ProverOptions
   {
@@ -96,8 +96,13 @@ namespace Microsoft.Boogie.SMTLib
             Solver = SolverKind.CVC4;
             if (Logic.Equals("")) Logic = "ALL_SUPPORTED";
             break;
+          case "Yices2":
+          case "yices2":
+            Solver = SolverKind.YICES2;
+            if (Logic.Equals("")) Logic = "ALL";
+            break;
           default:
-            ReportError("Invalid SOLVER value; must be 'Z3' or 'CVC4'");
+            ReportError("Invalid SOLVER value; must be 'Z3' or 'CVC4' or 'Yices2'");
             return false;
         }
         return true;
