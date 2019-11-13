@@ -585,6 +585,8 @@ namespace Microsoft.Boogie
                     else
                     {
                         action.pendingAsyncCtor = ctor;
+                        if (action.proc.HasAttribute(CivlAttributes.IS))
+                            Error(ctor, "Actions transformed by IS cannot be pending asyncs");
                         // TODO: check that action and ctor have the same inputs
                     }
                 }
@@ -1141,9 +1143,12 @@ namespace Microsoft.Boogie
                         }
                         else
                         {
-                            if (call.IsAsync && call.HasAttribute(CivlAttributes.SYNC))
+                            if (call.IsAsync)
                             {
-                                Require(calleeActionProc.refinedAction.IsLeftMover, call, "Synchronized call must be a left mover");
+                                if (call.HasAttribute(CivlAttributes.SYNC))
+                                    Require(calleeActionProc.refinedAction.IsLeftMover, call, "Synchronized call must be a left mover");
+                                else
+                                    Require(highestRefinedAction.pendingAsyncCtor != null, call, "No pending-async constructor available for this call");
                             }
                             if (!(callerProc is ActionProc))
                             {
