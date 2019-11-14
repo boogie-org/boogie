@@ -22,7 +22,7 @@ install:
   - mkdir -p Source/packages && cd Source/packages && travis_retry nuget install NUnit.Runners -Version 2.6.3
   - cd ../../
 script:
-  - xbuild /p:Configuration=${BOOGIE_CONFIG} ${TRAVIS_SOLUTION}
+  - msbuild /p:Configuration=${BOOGIE_CONFIG} ${TRAVIS_SOLUTION}
   # Run unit tests
   - python Source/UnitTests/run-unittests.py ${BOOGIE_CONFIG}
   # Run driver tests

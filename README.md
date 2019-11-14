@@ -98,7 +98,7 @@ $ mozroots --import --sync
 then you can build by running
 
 ```
-$ xbuild Source/Boogie.sln
+$ msbuild Source/Boogie.sln
 ```
 
 Finally make sure there is a symlink to Z3 in the Binaries directory
