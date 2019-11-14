@@ -10,8 +10,6 @@ env:
     - BOOGIE_CONFIG=Debug
     - BOOGIE_CONFIG=Release
 install:
-  - wget http://download.opensuse.org/repositories/home:delcypher:z3/xUbuntu_12.04/Release.key
-  - sudo apt-key add - < Release.key
   # Download a Z3 release
   - wget ${Z3URL}
   - unzip z3*.zip
