@@ -27,7 +27,7 @@ procedure {:atomic} {:layer 1,3} AtomicR0({:linear "tid"} tid: int)
 modifies x;
 { assert tid == r; assume x == 2; x := 3; }
 
-procedure {:yields} {:layer 1} {:refines "AtomicP1"} P1({:linear_in "tid"} tid: int) { yield; async call P0(tid); yield; }
+procedure {:yields} {:layer 1} {:refines "AtomicP1"} P1({:linear_in "tid"} tid: int) { yield; async call {:sync} P0(tid); yield; }
 procedure {:atomic} {:layer 2,3} AtomicP1({:linear_in "tid"} tid: int)
 modifies x;
 { assert tid == p; assert x == 0; x := 1; }
@@ -45,7 +45,7 @@ modifies x;
 procedure {:yields} {:layer 3} {:refines "AtomicMain3"} Main3({:linear_in "tid"} tidp: int, {:linear_in "tid"} tidq: int) {
     yield;
     call P1(tidp);
-    async call Q1(tidq);
+    async call {:sync} Q1(tidq);
     yield;
 }
 procedure {:atomic} {:layer 4} AtomicMain3({:linear_in "tid"} tidp: int, {:linear_in "tid"} tidq: int)
@@ -55,7 +55,7 @@ modifies x;
 procedure {:yields} {:layer 4} {:refines "AtomicMain4"} Main4({:linear_in "tid"} tidp: int, {:linear_in "tid"} tidq: int, {:linear_in "tid"} tidr: int) {
     yield;
     call Main3(tidp, tidq);
-    async call R3(tidr);
+    async call {:sync} R3(tidr);
     yield;
 }
 procedure {:atomic} {:layer 5} AtomicMain4({:linear_in "tid"} tidp: int, {:linear_in "tid"} tidq: int, {:linear_in "tid"} tidr: int)

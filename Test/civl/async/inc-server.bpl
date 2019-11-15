@@ -25,7 +25,7 @@ procedure {:yields}{:layer 11} main ({:linear_in "lin"} p : int)
 requires {:layer 9} perm(p) && x == y;
 {
   yield; assert {:layer 9} perm(p) && x == y;
-  async call Server_Inc(p);
+  async call {:sync} Server_Inc(p);
   yield;
 }
 
@@ -40,7 +40,7 @@ procedure {:yields}{:layer 10}{:refines "inc_x_high_atomic"} Server_Inc ({:linea
 requires {:layer 9} perm(p) && x == y;
 {
   yield; assert {:layer 9} perm(p) && x == y;
-  async call AsyncInc(p);
+  async call {:sync} AsyncInc(p);
   yield;
 }
 
@@ -49,7 +49,7 @@ requires {:layer 9} perm(p) && x == y;
 {
   yield; assert {:layer 9} perm(p) && x == y;
   call inc_x_perm(p);
-  async call Client_IncDone(p);
+  async call {:sync} Client_IncDone(p);
   yield;
 }
 

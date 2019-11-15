@@ -77,7 +77,7 @@ requires {:layer 1} col_dom == (lambda i:int :: (lambda j:int :: false));
   invariant {:layer 1} s > N ==> all_decided(init_val, dec_dom, dec_val);
   {
     call perms',perms'' := split_perms_sender(s, perms');
-    async call P(s, perms'');
+    async call {:sync} P(s, perms'');
     s := s + 1;
   }
   yield; assert {:layer 1} all_decided(init_val, dec_dom, dec_val);
@@ -105,7 +105,7 @@ modifies col_dom, col_val, dec_dom, dec_val;
   invariant {:layer 1} s == N ==> all_decided'(r, init_val, dec_dom, dec_val);
   {
     call perms',p := split_perms_receiver(s,r,perms');
-    async call Q(r, s, v, p);
+    async call {:sync} Q(r, s, v, p);
     r := r + 1;
   }
   call dummy();

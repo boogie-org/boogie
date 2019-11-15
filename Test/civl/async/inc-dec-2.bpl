@@ -25,8 +25,8 @@ procedure {:yields} {:layer 1} {:refines "skip"} Main ()
   invariant {:layer 1} x == old(x);
   invariant {:layer 1} {:terminates} true;    
   {
-    async call inc();
-    async call dec();
+    async call {:sync} inc();
+    async call {:sync} dec();
     i := i + 1;
     yield; assert {:layer 1} x == old(x);
   }

@@ -250,7 +250,7 @@ ensures  {:layer 9,10} gConsistent(state);
   invariant {:layer 8,10} 1 <= i && i <= numParticipants + 1;
   {
     call pairs, pair := TransferPair(xid, i, pairs);
-    async call Participant_VoteReq(xid, i, pair);
+    async call {:sync} Participant_VoteReq(xid, i, pair);
     i := i + 1;
     par YieldPairs_8(xid, pairs) | YieldInv_9(xid);
     assert {:layer 10} NextStateTrigger(state[xid]);
@@ -278,10 +278,10 @@ requires {:layer 9} Inv_9(state, B, xid);
   par YieldUndecidedOrCommitted_8(xid, mid, pair) | YieldInv_9(xid);
 
   if (*) {
-    async call Coordinator_VoteYes(xid, mid, pair);
+    async call {:sync} Coordinator_VoteYes(xid, mid, pair);
   } else {
     call SetParticipantAborted(xid, mid, pair);
-    async call Coordinator_VoteNo(xid, mid, pair);
+    async call {:sync} Coordinator_VoteNo(xid, mid, pair);
   }
 
   yield;
@@ -352,7 +352,7 @@ requires {:layer 8} Inv_8(state, B, votes) && pair(xid, mid, pair) && (votes[xid
     invariant {:layer 8} Inv_8(state, B, votes);
     invariant {:layer 8} ExistsMonotoneExtension(snapshot, state, xid);
     {
-      async call Participant_Commit(xid, i);
+      async call {:sync} Participant_Commit(xid, i);
       i := i + 1;
       assert {:layer 8} XidTrigger(xid);
       assert {:layer 8} NextStateTrigger(state[xid]);
@@ -399,7 +399,7 @@ requires {:layer 8} Inv_8(state, B, votes) && pair(xid, mid, pair) && Aborted(st
     invariant {:layer 8} Inv_8(state, B, votes);
     invariant {:layer 8} ExistsMonotoneExtension(snapshot, state, xid);
     {
-      async call Participant_Abort(xid, i);
+      async call {:sync} Participant_Abort(xid, i);
       i := i + 1;
       assert {:layer 8} XidTrigger(xid);
       assert {:layer 8} NextStateTrigger(state[xid]);

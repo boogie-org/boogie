@@ -15,8 +15,8 @@ var {:layer 0,1} x : int;
 procedure {:yields} {:layer 1} main ()
 {
   yield;
-  async call inc_by_N();
-  async call dec_by_N();
+  async call {:sync} inc_by_N();
+  async call {:sync} dec_by_N();
   yield;
 }
 
@@ -34,7 +34,7 @@ ensures {:layer 1} x == old(x) + N;
   invariant {:layer 1} {:terminates} true;    
   {
     i := i + 1;
-    async call inc();
+    async call {:sync} inc();
     call dummy();
   }
 
@@ -55,7 +55,7 @@ ensures {:layer 1} x == old(x) - N;
   invariant {:layer 1} {:terminates} true;
   {
     i := i + 1;
-    async call dec();
+    async call {:sync} dec();
     call dummy();
   }
 
