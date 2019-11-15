@@ -45,7 +45,12 @@ namespace Microsoft.Boogie
                     if (yieldingProc is ActionProc actionProc)
                     {
                         // yielding procedure already transformed to atomic action
-                        return actionProc.RefinedActionAtLayer(layerNum).proc;
+                        var refinedAction = actionProc.RefinedActionAtLayer(layerNum);
+                        if (refinedAction == null)
+                            // TODO: This can only happen because YieldingProcChecker.AddCheckers calls
+                            // VisitProcedure on every layer. Do this "call redirection" somewhere else?
+                            return node;
+                        return refinedAction.proc;
                     }
                     else if (yieldingProc is SkipProc)
                     {
