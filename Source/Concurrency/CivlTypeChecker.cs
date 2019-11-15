@@ -35,6 +35,7 @@ namespace Microsoft.Boogie
         public CtorType pendingAsyncType;
         public MapType pendingAsyncMultisetType;
         public Function pendingAsyncAdd;
+        public Dictionary<Implementation, Variable> implToPendingAsyncCollector;
 
         // This collections are for convenience in later phases and are only initialized at the end of type checking.
         public List<int> allRefinementLayers;
@@ -55,6 +56,7 @@ namespace Microsoft.Boogie
             this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
             this.procToIntroductionProc = new Dictionary<Procedure, IntroductionProc>();
             this.introductionCallToLayer = new Dictionary<CallCmd, int>();
+            this.implToPendingAsyncCollector = new Dictionary<Implementation, Variable>();
             this.atomicActionPairToWitnessFunctions = new Dictionary<Tuple<AtomicAction, AtomicAction>,
                 List<WitnessFunction>>();
             this.inductiveSequentializations = new List<InductiveSequentialization>();
@@ -389,7 +391,7 @@ namespace Microsoft.Boogie
                         checkingContext.Error(proc, "Refined atomic action must be available at layer {0}", upperLayer + 1);
                     }
 
-                    CheckSignatures(proc, refinedAction.proc);
+                    CheckSignatures(proc, refinedAction.proc, refinedAction.HasPendingAsyncs ? 1 : 0);
 
                     procToYieldingProc[proc] = new ActionProc(proc, refinedAction, upperLayer);
                 }
@@ -419,26 +421,26 @@ namespace Microsoft.Boogie
         // Check that an action procedure has the same interface as the refined atomic action.
         // CheckSignatures and MatchFormals are adapted from type checking implementations in Absy.cs,
         // i.e., that implementations have the same interface as the corresponding procedure.
-        private void CheckSignatures(Procedure proc, Procedure action)
+        private void CheckSignatures(Procedure proc, Procedure action, int extraOutputs = 0)
         {
             if (proc.TypeParameters.Count != action.TypeParameters.Count)
             {
-                checkingContext.Error(proc, "mismatched number of type parameters in refinement procedure: {0}", proc.Name);
+                checkingContext.Error(proc, $"mismatched number of type parameters in refinement procedure: {proc.Name}");
             }
             else
             {
                 // if the numbers of type parameters are different, it is
                 // difficult to compare the argument types
                 MatchFormals(proc, action, proc.InParams, action.InParams, "in");
-                MatchFormals(proc, action, proc.OutParams, action.OutParams, "out");
+                MatchFormals(proc, action, proc.OutParams, action.OutParams, "out", extraOutputs);
             }
         }
 
-        private void MatchFormals(Procedure proc, Procedure action, List<Variable> procFormals, List<Variable> actionFormals, string inout)
+        private void MatchFormals(Procedure proc, Procedure action, List<Variable> procFormals, List<Variable> actionFormals, string inout, int extraParams = 0)
         {
-            if (procFormals.Count != actionFormals.Count)
+            if (procFormals.Count != actionFormals.Count - extraParams)
             {
-                checkingContext.Error(proc, "mismatched number of {0}-parameters in refinement procedure: {1}", inout, proc.Name);
+                checkingContext.Error(proc, $"mismatched number of {inout}-parameters in refinement procedure: {proc.Name}");
             }
             else
             {
@@ -507,7 +509,18 @@ namespace Microsoft.Boogie
                 // then we collect the layers of local variables in implementations
                 foreach (Variable v in impl.LocVars)
                 {
-                    var layer = FindLocalVariableLayer(impl, v, procToYieldingProc[impl.Proc].upperLayer);
+                    int upperLayer = procToYieldingProc[impl.Proc].upperLayer;
+                    int layer = FindLocalVariableLayer(impl, v, upperLayer);
+                    if (v.HasAttribute(CivlAttributes.PENDING_ASYNC))
+                    {
+                        if (implToPendingAsyncCollector.ContainsKey(impl))
+                            Error(v, "Duplicate pending async collector");
+                        if (!v.TypedIdent.Type.Equals(pendingAsyncMultisetType))
+                            Error(v, "Pending async collector is of incorrect type");
+                        if (layer != int.MinValue && layer != upperLayer)
+                            Error(v, "Pending async collector must be introduced at the disappearing layer of the enclosing procedure");
+                        implToPendingAsyncCollector[impl] = v;
+                    }
                     if (layer != int.MinValue)
                         localVarToIntroLayer[v] = layer;
                 }
@@ -584,10 +597,12 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        action.pendingAsyncCtor = ctor;
+                        if (action.pendingAsyncCtor != null)
+                            Error(ctor, $"Duplicate pending async constructor for action {actionName}");
                         if (action.proc.HasAttribute(CivlAttributes.IS))
                             Error(ctor, "Actions transformed by IS cannot be pending asyncs");
                         // TODO: check that action and ctor have the same inputs
+                        action.pendingAsyncCtor = ctor;
                     }
                 }
             }
@@ -600,6 +615,9 @@ namespace Microsoft.Boogie
                     if (action.HasPendingAsyncs && action.IsRightMover)
                         Error(action.proc, "Action with pending async cannot be a right mover");
                 }
+                if (action.pendingAsyncCtor != null && action.impl.OutParams.Count > (action.HasPendingAsyncs ? 1 : 0))
+                    Error(action.proc, $"Action declared as pending async cannot have output parameters");
+
             }
             foreach (var action in procToIsInvariant.Values)
             {
@@ -1164,6 +1182,7 @@ namespace Microsoft.Boogie
                         // (2) the caller is an action procedure (that can summarize the pending async).
                         Require(callerProc is ActionProc && call.IsAsync && !call.HasAttribute(CivlAttributes.SYNC),
                             call, "");
+                        Require(calleeActionProc.refinedAction.pendingAsyncCtor != null, call, "No pending-async constructor available for this call");
                     }
                     else
                     {

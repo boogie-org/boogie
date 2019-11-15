@@ -69,6 +69,12 @@ namespace Microsoft.Boogie
         {
             return new AssumeCmd(Token.NoToken, expr);
         }
+
+        public static AssignCmd AssignCmd(Variable v, Expr x)
+        {
+            var lhs = new SimpleAssignLhs(Token.NoToken, Expr.Ident(v));
+            return new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { x });
+        }
     }
 
     public static class VarHelper

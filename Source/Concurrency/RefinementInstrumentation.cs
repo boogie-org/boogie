@@ -78,12 +78,12 @@ namespace Microsoft.Boogie
         public SomeRefinementInstrumentation(
             CivlTypeChecker civlTypeChecker,
             Implementation impl,
-            Procedure originalProc,
+            Implementation originalImpl,
             Dictionary<Variable, Variable> oldGlobalMap,
             HashSet<Block> yieldingLoopHeaders)
         {
             newLocalVars = new List<Variable>();
-            YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[originalProc];
+            YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc];
             int layerNum = yieldingProc.upperLayer;
             pc = Pc();
             newLocalVars.Add(pc);
@@ -102,6 +102,14 @@ namespace Microsoft.Boogie
                 }
             }
 
+            oldOutputMap = new Dictionary<Variable, Variable>();
+            foreach (Variable f in impl.OutParams)
+            {
+                LocalVariable copy = Old(f);
+                newLocalVars.Add(copy);
+                oldOutputMap[f] = copy;
+            }
+
             Dictionary<Variable, Expr> foroldMap = new Dictionary<Variable, Expr>();
             foreach (Variable g in civlTypeChecker.sharedVariables)
             {
@@ -115,14 +123,22 @@ namespace Microsoft.Boogie
                 AtomicAction atomicAction = actionProc.refinedAction;
                 Implementation atomicActionImpl = atomicAction.impl;
                 Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
-                for (int i = 0; i < atomicActionImpl.InParams.Count; i++)
+                for (int i = 0; i < impl.InParams.Count; i++)
                 {
                     alwaysMap[atomicActionImpl.InParams[i]] = Expr.Ident(impl.InParams[i]);
                 }
 
-                for (int i = 0; i < atomicActionImpl.OutParams.Count; i++)
+                for (int i = 0; i < impl.OutParams.Count; i++)
                 {
                     alwaysMap[atomicActionImpl.OutParams[i]] = Expr.Ident(impl.OutParams[i]);
+                }
+                if (atomicAction.HasPendingAsyncs)
+                {
+                    Variable collectedPAs = civlTypeChecker.implToPendingAsyncCollector[originalImpl];
+                    alwaysMap[atomicActionImpl.OutParams.Last()] = Expr.Ident(collectedPAs);
+                    LocalVariable copy = Old(collectedPAs);
+                    newLocalVars.Add(copy);
+                    oldOutputMap[collectedPAs] = copy;
                 }
 
                 Substitution always = Substituter.SubstitutionFromHashtable(alwaysMap);
@@ -139,14 +155,6 @@ namespace Microsoft.Boogie
                 alpha = Expr.True;
             }
 
-            oldOutputMap = new Dictionary<Variable, Variable>();
-            foreach (Variable f in impl.OutParams)
-            {
-                LocalVariable copy = Old(f);
-                newLocalVars.Add(copy);
-                this.oldOutputMap[f] = copy;
-            }
-            
             pcsForYieldingLoopsHeaders = new Dictionary<Block, Variable>();
             oksForYieldingLoopHeaders = new Dictionary<Block, Variable>();
             foreach (Block header in yieldingLoopHeaders)
