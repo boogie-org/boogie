@@ -333,19 +333,16 @@ namespace Microsoft.Boogie
                 YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];
                 if (callCmd.IsAsync)
                 {
-                    if ((currLayerNum < yieldingProc.upperLayer && currLayerNum > callee.upperLayer) ||
-                        (currLayerNum == yieldingProc.upperLayer && callee.upperLayer < yieldingProc.upperLayer))
-                    {
+                    if (callee is ActionProc && !callCmd.HasAttribute(CivlAttributes.SYNC))
+                        return L;
+                    if (callee.upperLayer < currLayerNum || (callee.upperLayer == currLayerNum && callee is MoverProc))
                         return MoverTypeToLabel(callee.moverType);
-                    }
                     return L;
                 }
                 else
                 {
                     if (callee.upperLayer < currLayerNum || (callee.upperLayer == currLayerNum && callee is MoverProc))
-                    {
                         return MoverTypeToLabel(callee.moverType);
-                    }
                     return Y;
                 }
             }
