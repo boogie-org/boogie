@@ -1181,7 +1181,7 @@ namespace Microsoft.Boogie
                         // (1) the call is a non-synchronized asynchronous call (i.e., results in a pending async), and
                         // (2) the caller is an action procedure (that can summarize the pending async).
                         Require(callerProc is ActionProc && call.IsAsync && !call.HasAttribute(CivlAttributes.SYNC),
-                            call, "");
+                            call, "Call to an action procedure on the same layer must be asynchronous (and turn into a pending async)");
                         Require(calleeActionProc.refinedAction.pendingAsyncCtor != null, call, "No pending-async constructor available for this call");
                     }
                     else
