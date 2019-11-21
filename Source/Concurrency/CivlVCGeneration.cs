@@ -30,6 +30,11 @@ namespace Microsoft.Boogie
             InductiveSequentializationChecker.AddChecks(civlTypeChecker);
             PendingAsyncChecker.AddCheckers(civlTypeChecker);
 
+            foreach(AtomicAction action in civlTypeChecker.procToAtomicAction.Values.Union(civlTypeChecker.procToIsAbstraction.Values))
+            {
+                action.AddTriggerAssumes(program);
+            }
+
             // Remove original declarations and add new checkers generated above
             program.RemoveTopLevelDeclarations(x => originalDecls.Contains(x));
             program.AddTopLevelDeclarations(decls);

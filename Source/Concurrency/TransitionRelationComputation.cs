@@ -9,6 +9,7 @@ namespace Microsoft.Boogie
     public class TransitionRelationComputation
     {
         public readonly Implementation first, second;
+        public readonly Dictionary<Variable, Function> triggers;
         public readonly HashSet<Variable> frame;
         public readonly HashSet<Variable> allInParams, allOutParams, allLocVars;
         public readonly Dictionary<Variable, List<WitnessFunction>> globalVarToWitnesses;
@@ -35,11 +36,12 @@ namespace Microsoft.Boogie
 
         private TransitionRelationComputation(
             Implementation first, Implementation second,
-            IEnumerable<Variable> frame, List<WitnessFunction> witnesses, bool ignorePostState,
+            IEnumerable<Variable> frame, List<WitnessFunction> witnesses, Dictionary<Variable, Function> triggers, bool ignorePostState,
             string messagePrefix)
         {
             this.first = first;
             this.second = second;
+            this.triggers = triggers;
             this.frame = new HashSet<Variable>(frame);
             this.ignorePostState = ignorePostState;
 
@@ -74,46 +76,40 @@ namespace Microsoft.Boogie
 
         private static Expr ComputeTransitionRelation(
             Implementation first, Implementation second,
-            IEnumerable<Variable> frame, List<WitnessFunction> witnesses, bool ignorePostState,
+            IEnumerable<Variable> frame, Dictionary<Variable, Function> triggers, List<WitnessFunction> witnesses, bool ignorePostState,
             string messagePrefix)
         {
-            var trc = new TransitionRelationComputation(first, second, frame, witnesses, ignorePostState, messagePrefix);
+            var trc = new TransitionRelationComputation(first, second, frame, witnesses, triggers, ignorePostState, messagePrefix);
             trc.EnumeratePaths();
             var transitionRelation = Expr.Or(trc.pathTranslations);
-
-            ResolutionContext rc = new ResolutionContext(null)
-            {
-                StateMode = ResolutionContext.State.Two
-            };
-            transitionRelation.Resolve(rc);
+            transitionRelation.Resolve(new ResolutionContext(null) { StateMode = ResolutionContext.State.Two});
             transitionRelation.Typecheck(new TypecheckingContext(null));
-
             return transitionRelation;
         }
 
         public static Expr Commutativity(AtomicAction first, AtomicAction second,
             HashSet<Variable> frame, List<WitnessFunction> witnesses)
         {
+            var triggers = first.triggerFunctions.Union(second.triggerFunctions).ToDictionary(kv => kv.Key, kv => kv.Value);
             return ComputeTransitionRelation(
-                first.secondImpl,
-                second.firstImpl,
-                frame, witnesses, false,
+                first.secondImpl, second.firstImpl,
+                frame, triggers, witnesses, false,
                 string.Format("Transition relation of {0} ∘ {1}", first.proc.Name, second.proc.Name));
         }
 
         public static Expr Refinement(AtomicAction action, HashSet<Variable> frame)
         {
             return ComputeTransitionRelation(
-                action.impl,
-                null, frame, null, false,
+                action.impl, null,
+                frame, null, null, false,
                 string.Format("Transition relation of {0}", action.proc.Name));
         }
 
         public static Expr Nonblocking(AtomicAction action, HashSet<Variable> frame)
         {
             return ComputeTransitionRelation(
-                action.impl,
-                null, frame, null, true,
+                action.impl, null,
+                frame, null, null, true,
                 string.Format("Nonblocking expression of {0}", action.proc.Name));
         }
 
@@ -410,8 +406,26 @@ namespace Microsoft.Boogie
             }
             if (existsVarMap.Any())
             {
+                Trigger trigger = null;
+                if (trc.IsJoint)
+                {
+                    var exprs = new List<Expr>();
+                    foreach (var v in existsVarMap.Keys)
+                    {
+                        var orig = copyToOriginalVar[v];
+                        if(v == varCopies[orig].First() && trc.triggers.ContainsKey(orig))
+                        {
+                            var f = trc.triggers[orig];
+                            exprs.Add(ExprHelper.FunctionCall(f, Expr.Ident(existsVarMap[v])));
+                        }
+                    }
+                    if (exprs.Count == existsVarMap.Count)
+                    {
+                        trigger = new Trigger(Token.NoToken, true, exprs);
+                    }
+                }
                 TransitionRelationExpr = new ExistsExpr(Token.NoToken,
-                    existsVarMap.Values.ToList<Variable>(), TransitionRelationExpr);
+                    existsVarMap.Values.ToList<Variable>(), trigger, TransitionRelationExpr);
             }
         }
 

@@ -69,6 +69,8 @@ namespace Microsoft.Boogie
         public DatatypeConstructor pendingAsyncCtor;
         public HashSet<AtomicAction> pendingAsyncs;
 
+        public Dictionary<Variable, Function> triggerFunctions;
+
         public AtomicAction(Procedure proc, Implementation impl, MoverType moverType, LayerRange layerRange)
         {
             this.proc = proc;
@@ -101,6 +103,8 @@ namespace Microsoft.Boogie
 
             AtomicActionDuplicator.SetupCopy(this, ref firstGate, ref firstImpl, "first_");
             AtomicActionDuplicator.SetupCopy(this, ref secondGate, ref secondImpl, "second_");
+
+            DeclareTriggerFunctions();
         }
 
         public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
@@ -124,6 +128,33 @@ namespace Microsoft.Boogie
         {
             return this.modifiedGlobalVars.Intersect(other.actionUsedGlobalVars).Count() == 0 &&
                    this.actionUsedGlobalVars.Intersect(other.modifiedGlobalVars).Count() == 0;
+        }
+
+        private void DeclareTriggerFunctions()
+        {
+            triggerFunctions = new Dictionary<Variable, Function>();
+            foreach(var v in impl.LocVars)
+            {
+                List<Variable> args = new List<Variable> { VarHelper.Formal(v.Name, v.TypedIdent.Type, true) };
+                Variable result = VarHelper.Formal("r", Type.Bool, false);
+                triggerFunctions[v] = new Function(Token.NoToken, $"Trigger_{impl.Name}_{v.Name}", args, result);
+            }
+            for (int i = 0; i < impl.LocVars.Count; i++)
+            {
+                triggerFunctions[firstImpl.LocVars[i]] = triggerFunctions[impl.LocVars[i]];
+                triggerFunctions[secondImpl.LocVars[i]] = triggerFunctions[impl.LocVars[i]];
+            }
+        }
+
+        public void AddTriggerAssumes(Program program)
+        {
+            foreach (Variable v in impl.LocVars)
+            {
+                var f = triggerFunctions[v];
+                program.AddTopLevelDeclaration(f);
+                var assume = CmdHelper.AssumeCmd(ExprHelper.FunctionCall(f, Expr.Ident(v)));
+                impl.Blocks[0].Cmds.Insert(0, assume);
+            }
         }
     }
 
@@ -252,7 +283,7 @@ namespace Microsoft.Boogie
 
             foreach (Variable x in action.impl.LocVars)
             {
-                Variable xCopy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type), false);
+                Variable xCopy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type));
                 subst[x] = Expr.Ident(xCopy);
                 localsCopy.Add(xCopy);
             }
