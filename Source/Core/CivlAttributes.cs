@@ -40,7 +40,7 @@ namespace Microsoft.Boogie
 
         private static string[] CIVL_ATTRIBUTES =
             {LAYER, YIELDS, ATOMIC, LEFT, RIGHT, BOTH, REFINES, WITNESS,
-             PENDING_ASYNC, IS_INVARIANT, IS_ABSTRACTION, ELIM, CHOICE };
+             PENDING_ASYNC, IS, IS_INVARIANT, IS_ABSTRACTION, ELIM, CHOICE };
 
         private static string[] LINEAR_ATTRIBUTES =
             {LINEAR, LINEAR_IN, LINEAR_OUT };
