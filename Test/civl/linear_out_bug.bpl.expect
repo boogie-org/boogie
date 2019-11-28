@@ -1,22 +1,22 @@
 (0,0): Error BP5003: A postcondition might not hold on this return path.
-linear_out_bug.bpl(20,5): Related location: Gate of RemoveAddr_1_1 not preserved by RemoveAddr_1_1
+linear_out_bug.bpl(10,34): Related location: Commutativity check between AddAddr and RemoveAddr_2 failed
 Execution trace:
-    linear_out_bug.bpl(17,30): inline$RemoveAddr_1_1$0$Entry
-    linear_out_bug.bpl(20,5): inline$RemoveAddr_1_1$0$anon0
-    linear_out_bug.bpl(17,30): inline$RemoveAddr_1_1$0$Return
+    linear_out_bug.bpl(10,34): inline$AddAddr$0$Entry
+    linear_out_bug.bpl(13,14): inline$AddAddr$0$anon0
+    linear_out_bug.bpl(25,30): inline$RemoveAddr_2$0$Entry
+    linear_out_bug.bpl(28,14): inline$RemoveAddr_2$0$anon0
+    linear_out_bug.bpl(25,30): inline$RemoveAddr_2$0$Return
 (0,0): Error BP5003: A postcondition might not hold on this return path.
-linear_out_bug.bpl(10,34): Related location: Commutativity check between AddAddr_2 and RemoveAddr_2_2 failed
+linear_out_bug.bpl(20,5): Related location: Gate of RemoveAddr_1 not preserved by RemoveAddr_1
 Execution trace:
-    linear_out_bug.bpl(10,34): inline$AddAddr_2$0$Entry
-    linear_out_bug.bpl(13,14): inline$AddAddr_2$0$anon0
-    linear_out_bug.bpl(25,30): inline$RemoveAddr_2_2$0$Entry
-    linear_out_bug.bpl(28,14): inline$RemoveAddr_2_2$0$anon0
-    linear_out_bug.bpl(25,30): inline$RemoveAddr_2_2$0$Return
+    linear_out_bug.bpl(17,30): inline$RemoveAddr_1$0$Entry
+    linear_out_bug.bpl(20,5): inline$RemoveAddr_1$0$anon0
+    linear_out_bug.bpl(17,30): inline$RemoveAddr_1$0$Return
 (0,0): Error BP5003: A postcondition might not hold on this return path.
-linear_out_bug.bpl(25,30): Related location: Linearity invariant for domain addr is not preserved by RemoveAddr_2_2.
+linear_out_bug.bpl(25,30): Related location: Linearity invariant for domain addr is not preserved by RemoveAddr_2.
 Execution trace:
-    linear_out_bug.bpl(25,30): inline$RemoveAddr_2_2$0$Entry
-    linear_out_bug.bpl(28,14): inline$RemoveAddr_2_2$0$anon0
-    linear_out_bug.bpl(25,30): inline$RemoveAddr_2_2$0$Return
+    linear_out_bug.bpl(25,30): inline$RemoveAddr_2$0$Entry
+    linear_out_bug.bpl(28,14): inline$RemoveAddr_2$0$anon0
+    linear_out_bug.bpl(25,30): inline$RemoveAddr_2$0$Return
 
-Boogie program verifier finished with 8 verified, 3 errors
+Boogie program verifier finished with 7 verified, 3 errors

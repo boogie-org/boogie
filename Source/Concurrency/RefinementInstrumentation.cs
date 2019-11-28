@@ -73,24 +73,24 @@ namespace Microsoft.Boogie
         private Dictionary<Block, Variable> pcsForYieldingLoopsHeaders;
         private Dictionary<Block, Variable> oksForYieldingLoopHeaders;
 
-        private Dictionary<AtomicActionCopy, Expr> transitionRelationCache;
+        private Dictionary<AtomicAction, Expr> transitionRelationCache;
 
         public SomeRefinementInstrumentation(
             CivlTypeChecker civlTypeChecker,
             Implementation impl,
-            Procedure originalProc,
+            Implementation originalImpl,
             Dictionary<Variable, Variable> oldGlobalMap,
             HashSet<Block> yieldingLoopHeaders)
         {
             newLocalVars = new List<Variable>();
-            YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[originalProc];
+            YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc];
             int layerNum = yieldingProc.upperLayer;
             pc = Pc();
             newLocalVars.Add(pc);
             ok = Ok();
             newLocalVars.Add(ok);
 
-            this.transitionRelationCache = new Dictionary<AtomicActionCopy, Expr>();
+            this.transitionRelationCache = new Dictionary<AtomicAction, Expr>();
 
             this.oldGlobalMap = new Dictionary<Variable, Variable>();
             foreach (Variable v in civlTypeChecker.sharedVariables)
@@ -100,6 +100,14 @@ namespace Microsoft.Boogie
                 {
                     this.oldGlobalMap[v] = oldGlobalMap[v];
                 }
+            }
+
+            oldOutputMap = new Dictionary<Variable, Variable>();
+            foreach (Variable f in impl.OutParams)
+            {
+                LocalVariable copy = Old(f);
+                newLocalVars.Add(copy);
+                oldOutputMap[f] = copy;
             }
 
             Dictionary<Variable, Expr> foroldMap = new Dictionary<Variable, Expr>();
@@ -112,24 +120,32 @@ namespace Microsoft.Boogie
                 // The parameters of an atomic action come from the implementation that denotes the atomic action specification.
                 // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
                 // we need to substitute the parameters.
-                AtomicActionCopy atomicActionCopy = actionProc.refinedAction.layerToActionCopy[layerNum + 1];
-                Implementation atomicActionImpl = atomicActionCopy.impl;
+                AtomicAction atomicAction = actionProc.refinedAction;
+                Implementation atomicActionImpl = atomicAction.impl;
                 Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
-                for (int i = 0; i < atomicActionImpl.InParams.Count; i++)
+                for (int i = 0; i < impl.InParams.Count; i++)
                 {
                     alwaysMap[atomicActionImpl.InParams[i]] = Expr.Ident(impl.InParams[i]);
                 }
 
-                for (int i = 0; i < atomicActionImpl.OutParams.Count; i++)
+                for (int i = 0; i < impl.OutParams.Count; i++)
                 {
                     alwaysMap[atomicActionImpl.OutParams[i]] = Expr.Ident(impl.OutParams[i]);
+                }
+                if (atomicAction.HasPendingAsyncs)
+                {
+                    Variable collectedPAs = civlTypeChecker.implToPendingAsyncCollector[originalImpl];
+                    alwaysMap[atomicActionImpl.OutParams.Last()] = Expr.Ident(collectedPAs);
+                    LocalVariable copy = Old(collectedPAs);
+                    newLocalVars.Add(copy);
+                    oldOutputMap[collectedPAs] = copy;
                 }
 
                 Substitution always = Substituter.SubstitutionFromHashtable(alwaysMap);
                 Substitution forold = Substituter.SubstitutionFromHashtable(foroldMap);
-                Expr betaExpr = GetTransitionRelation(atomicActionCopy);
+                Expr betaExpr = GetTransitionRelation(atomicAction);
                 beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
-                Expr alphaExpr = Expr.And(atomicActionCopy.gate.Select(g => g.Expr));
+                Expr alphaExpr = Expr.And(atomicAction.gate.Select(g => g.Expr));
                 alphaExpr.Type = Type.Bool;
                 alpha = Substituter.Apply(always, alphaExpr);
             }
@@ -139,14 +155,6 @@ namespace Microsoft.Boogie
                 alpha = Expr.True;
             }
 
-            oldOutputMap = new Dictionary<Variable, Variable>();
-            foreach (Variable f in impl.OutParams)
-            {
-                LocalVariable copy = Old(f);
-                newLocalVars.Add(copy);
-                this.oldOutputMap[f] = copy;
-            }
-            
             pcsForYieldingLoopsHeaders = new Dictionary<Block, Variable>();
             oksForYieldingLoopHeaders = new Dictionary<Block, Variable>();
             foreach (Block header in yieldingLoopHeaders)
@@ -160,15 +168,15 @@ namespace Microsoft.Boogie
             }
         }
 
-        private Expr GetTransitionRelation(AtomicActionCopy atomicActionCopy)
+        private Expr GetTransitionRelation(AtomicAction atomicAction)
         {
-            if (!transitionRelationCache.ContainsKey(atomicActionCopy))
+            if (!transitionRelationCache.ContainsKey(atomicAction))
             {
-                transitionRelationCache[atomicActionCopy] =
+                transitionRelationCache[atomicAction] =
                     TransitionRelationComputation.
-                        Refinement(atomicActionCopy, new HashSet<Variable>(this.oldGlobalMap.Keys));
+                        Refinement(atomicAction, new HashSet<Variable>(this.oldGlobalMap.Keys));
             }
-            return transitionRelationCache[atomicActionCopy];
+            return transitionRelationCache[atomicAction];
         }
 
         public List<Variable> NewLocalVars => newLocalVars;

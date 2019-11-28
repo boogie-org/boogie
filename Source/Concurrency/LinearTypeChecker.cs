@@ -456,8 +456,6 @@ namespace Microsoft.Boogie
         {
             if (ctc.procToAtomicAction.ContainsKey(node.Proc))
                 return node;
-            if (ctc.procToAtomicAction.Values.SelectMany(a => a.layerToActionCopy.Values).Select(a => a.impl).Contains(node))
-                return node;
 
             node.PruneUnreachableBlocks();
             node.ComputePredecessorsForBlocks();
@@ -1057,17 +1055,13 @@ namespace Microsoft.Boogie
         #region Linearity Invariant Checker
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
-            if (civlTypeChecker.procToAtomicAction.Count == 0)
-                return;
-
-            foreach (var action in civlTypeChecker.procToAtomicAction.Values
-                .SelectMany(a => a.layerToActionCopy.Values))
+            foreach (var action in civlTypeChecker.procToAtomicAction.Values)
             {
                 AddChecker(action, linearTypeChecker, decls);
             }
         }
 
-        private static void AddChecker(AtomicActionCopy action, LinearTypeChecker linearTypeChecker, List<Declaration> decls)
+        private static void AddChecker(AtomicAction action, LinearTypeChecker linearTypeChecker, List<Declaration> decls)
         {
             // Note: The implementation should be used as the variables in the
             //       gate are bound to implementation and not to the procedure.
@@ -1180,13 +1174,13 @@ namespace Microsoft.Boogie
         {
             public override Variable VisitVariable(Variable node)
             {
-                CivlAttributes.RemoveLinearAttribute(node);
+                CivlAttributes.RemoveLinearAttributes(node);
                 return base.VisitVariable(node);
             }
 
             public override Function VisitFunction(Function node)
             {
-                CivlAttributes.RemoveLinearAttribute(node);
+                CivlAttributes.RemoveLinearAttributes(node);
                 return base.VisitFunction(node);
             }
         }

@@ -27,17 +27,19 @@ namespace Microsoft.Boogie
             // Linear type checks
             LinearTypeChecker.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
 
+            InductiveSequentializationChecker.AddChecks(civlTypeChecker);
+            PendingAsyncChecker.AddCheckers(civlTypeChecker);
+
+            foreach(AtomicAction action in civlTypeChecker.procToAtomicAction.Values.Union(civlTypeChecker.procToIsAbstraction.Values))
+            {
+                action.AddTriggerAssumes(program);
+            }
+
             // Remove original declarations and add new checkers generated above
             program.RemoveTopLevelDeclarations(x => originalDecls.Contains(x));
             program.AddTopLevelDeclarations(decls);
 
-            civlTypeChecker.SubstituteBackwardAssignments();
-
-            foreach (AtomicAction atomicAction in civlTypeChecker.procToAtomicAction.Values)
-            {
-                program.RemoveTopLevelDeclaration(atomicAction.proc);
-                program.RemoveTopLevelDeclaration(atomicAction.impl);
-            }
+            BackwardAssignmentSubstituter.SubstituteBackwardAssignments(civlTypeChecker.procToAtomicAction.Values);
         }
     }
 }

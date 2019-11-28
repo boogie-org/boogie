@@ -26,12 +26,29 @@ namespace Microsoft.Boogie
         public const string LINEAR_IN = "linear_in";
         public const string LINEAR_OUT = "linear_out";
 
-        public const string PURE = "pure";
-
         public const string BACKWARD = "backward";
         public const string WITNESS = "witness";
 
-        public static bool RemoveAttribute(ICarriesAttributes obj, Func<QKeyValue, bool> cond)
+        public const string PENDING_ASYNC = "pending_async";
+        public const string SYNC = "sync";
+
+        public const string IS = "IS";
+        public const string IS_INVARIANT = "IS_invariant";
+        public const string IS_ABSTRACTION = "IS_abstraction";
+        public const string ELIM = "elim";
+        public const string CHOICE = "choice";
+
+        private static string[] CIVL_ATTRIBUTES =
+            {LAYER, YIELDS, ATOMIC, LEFT, RIGHT, BOTH, REFINES, WITNESS,
+             PENDING_ASYNC, IS, IS_INVARIANT, IS_ABSTRACTION, ELIM, CHOICE };
+
+        private static string[] LINEAR_ATTRIBUTES =
+            {LINEAR, LINEAR_IN, LINEAR_OUT };
+
+        public static bool HasAttribute(this ICarriesAttributes obj, string attribute)
+        { return QKeyValue.FindBoolAttribute(obj.Attributes, attribute); }
+
+        public static bool RemoveAttributes(ICarriesAttributes obj, Func<QKeyValue, bool> cond)
         {
             QKeyValue curr = obj.Attributes;
             bool removed = false;
@@ -57,58 +74,19 @@ namespace Microsoft.Boogie
             return removed;
         }
 
-        public static void RemoveYieldsAttribute(ICarriesAttributes obj)
+        public static void RemoveAttributes(ICarriesAttributes obj, ICollection<string> keys)
         {
-            RemoveAttribute(obj, kv => kv.Key == YIELDS);
+            RemoveAttributes(obj, kv => keys.Contains(kv.Key));
         }
 
-        public static void RemoveMoverAttribute(ICarriesAttributes obj)
+        public static void RemoveCivlAttributes(ICarriesAttributes obj)
         {
-            RemoveAttribute(obj,
-                kv => kv.Key == ATOMIC || kv.Key == LEFT || kv.Key == RIGHT || kv.Key == BOTH);
+            RemoveAttributes(obj, CIVL_ATTRIBUTES);
         }
 
-        public static void RemoveLayerAttribute(ICarriesAttributes obj)
+        public static void RemoveLinearAttributes(ICarriesAttributes obj)
         {
-            RemoveAttribute(obj, kv => kv.Key == LAYER);
-        }
-
-        public static void RemoveLinearAttribute(ICarriesAttributes obj)
-        {
-            RemoveAttribute(obj,
-                kv => kv.Key == LINEAR || kv.Key == LINEAR_IN || kv.Key == LINEAR_OUT);
-        }
-
-        public static void RemoveRefinesAttribute(ICarriesAttributes obj)
-        {
-            RemoveAttribute(obj, kv => kv.Key == REFINES);
-        }
-
-        public static void RemoveWitnessAttribute(ICarriesAttributes obj)
-        {
-            RemoveAttribute(obj, kv => kv.Key == WITNESS);
-        }
-
-        public static void DesugarYieldAssert(Program program)
-        {
-            foreach (var proc in program.Procedures)
-            {
-                if (RemoveAttribute(proc, kv => kv.Key == YIELD_ASSERT))
-                {
-                    proc.AddAttribute(YIELDS);
-                    foreach (var requires in proc.Requires)
-                    {
-                        var ensures = new Ensures(false, requires.Condition);
-                        ensures.Attributes = requires.Attributes;
-                        proc.Ensures.Add(ensures);
-                    }
-                }
-            }
-
-            foreach (var impl in program.Implementations)
-            {
-                RemoveAttribute(impl, kv => kv.Key == YIELD_ASSERT);
-            }
+            RemoveAttributes(obj, LINEAR_ATTRIBUTES);
         }
     }
 }

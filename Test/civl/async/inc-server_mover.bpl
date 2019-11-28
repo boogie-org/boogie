@@ -49,7 +49,7 @@ modifies x;
 {
   call Yield_8();
   call inc_x_perm(p);
-  async call Client_IncDone(p);
+  async call {:sync} Client_IncDone(p);
   call Yield_8();
 }
 

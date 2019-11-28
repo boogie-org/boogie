@@ -1197,30 +1197,18 @@ function {:inline false} f(i: int): bool {  true  }
 
 
 function
-{:witness "shadow.VC AtomicVC.Inc AtomicVC.Copy 11"}
-{:witness "shadow.VC AtomicVC.Inc AtomicVC.Join 11"}
-{:witness "shadow.VC AtomicVCSetElem AtomicVC.Copy 11"}
-{:witness "shadow.VC AtomicVCSetElem AtomicVC.Join 11"}
-{:witness "shadow.VC AtomicVCSetElemShared AtomicVC.Copy 11"}
-{:witness "shadow.VC AtomicVCSetElemShared AtomicVC.Join 11"}
-{:witness "shadow.VC AtomicVCInit AtomicVC.Copy 11"}
-{:witness "shadow.VC AtomicVCInit AtomicVC.Join 11"}
-{:witness "shadow.VC AtomicVC.Copy AtomicVC.Copy 11"}
-{:witness "shadow.VC AtomicVC.Copy AtomicVC.Join 11"}
-{:witness "shadow.VC AtomicVC.Join AtomicVC.Copy 11"}
-{:witness "shadow.VC AtomicVC.Join AtomicVC.Join 11"}
-{:witness "shadow.VC AtomicVC.Inc AtomicVC.Copy 20"}
-{:witness "shadow.VC AtomicVC.Inc AtomicVC.Join 20"}
-{:witness "shadow.VC AtomicVCSetElem AtomicVC.Copy 20"}
-{:witness "shadow.VC AtomicVCSetElem AtomicVC.Join 20"}
-{:witness "shadow.VC AtomicVCSetElemShared AtomicVC.Copy 20"}
-{:witness "shadow.VC AtomicVCSetElemShared AtomicVC.Join 20"}
-{:witness "shadow.VC AtomicVCInit AtomicVC.Copy 20"}
-{:witness "shadow.VC AtomicVCInit AtomicVC.Join 20"}
-{:witness "shadow.VC AtomicVC.Copy AtomicVC.Copy 20"}
-{:witness "shadow.VC AtomicVC.Copy AtomicVC.Join 20"}
-{:witness "shadow.VC AtomicVC.Join AtomicVC.Copy 20"}
-{:witness "shadow.VC AtomicVC.Join AtomicVC.Join 20"}
+{:witness "shadow.VC","AtomicVC.Inc","AtomicVC.Copy"}
+{:witness "shadow.VC","AtomicVC.Inc","AtomicVC.Join"}
+{:witness "shadow.VC","AtomicVCSetElem","AtomicVC.Copy"}
+{:witness "shadow.VC","AtomicVCSetElem","AtomicVC.Join"}
+{:witness "shadow.VC","AtomicVCSetElemShared","AtomicVC.Copy"}
+{:witness "shadow.VC","AtomicVCSetElemShared","AtomicVC.Join"}
+{:witness "shadow.VC","AtomicVCInit","AtomicVC.Copy"}
+{:witness "shadow.VC","AtomicVCInit","AtomicVC.Join"}
+{:witness "shadow.VC","AtomicVC.Copy","AtomicVC.Copy"}
+{:witness "shadow.VC","AtomicVC.Copy","AtomicVC.Join"}
+{:witness "shadow.VC","AtomicVC.Join","AtomicVC.Copy"}
+{:witness "shadow.VC","AtomicVC.Join","AtomicVC.Join"}
 witness (shadow.VC:[Shadowable]VC, shadow.VC':[Shadowable]VC, second_v1:Shadowable) : [Shadowable]VC
 {
    shadow.VC[second_v1 := shadow.VC'[second_v1]]

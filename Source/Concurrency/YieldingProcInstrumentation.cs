@@ -150,16 +150,16 @@ namespace Microsoft.Boogie
 
             // initialize globalSnapshotInstrumentation
             globalSnapshotInstrumentation = new GlobalSnapshotInstrumentation(civlTypeChecker);
-            
+
             // initialize refinementInstrumentation
-            Procedure originalProc = implMap[impl].Proc;
-            YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[originalProc];
+            Implementation originalImpl = implMap[impl];
+            YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc];
             if (yieldingProc.upperLayer == this.layerNum)
             {
                 refinementInstrumentation = new SomeRefinementInstrumentation(
                     civlTypeChecker, 
                     impl, 
-                    originalProc,
+                    originalImpl,
                     globalSnapshotInstrumentation.OldGlobalMap, 
                     yieldingLoopHeaders);
             }
