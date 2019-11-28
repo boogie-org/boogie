@@ -68,6 +68,7 @@ namespace Microsoft.Boogie
 
         public DatatypeConstructor pendingAsyncCtor;
         public HashSet<AtomicAction> pendingAsyncs;
+        public bool hasChoice; // only relevant for invariant actions
 
         public Dictionary<Variable, Function> triggerFunctions;
 

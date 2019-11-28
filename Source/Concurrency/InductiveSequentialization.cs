@@ -197,7 +197,7 @@ namespace Microsoft.Boogie
 
         private Type PendingAsyncType => PendingAsyncMultisetType.Arguments[0];
 
-        private bool HasChoice => invariantAction.impl.OutParams.Count > inputAction.impl.OutParams.Count;
+        private bool HasChoice => invariantAction.hasChoice;
 
         private IdentifierExpr PAs => Expr.Ident(HasChoice ? invariantAction.impl.OutParams[invariantAction.impl.OutParams.Count - 2] : invariantAction.impl.OutParams.Last());
 

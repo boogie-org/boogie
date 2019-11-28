@@ -76,6 +76,10 @@ namespace Microsoft.Boogie
 
             TypeCheckAtomicActionDecls();
             TypeCheckPendingAsyncMachinery();
+
+            if (checkingContext.ErrorCount > 0)
+                return;
+
             TypeCheckInductiveSequentializations();
             TypeCheckYieldingProcedureDecls();
 
@@ -303,7 +307,10 @@ namespace Microsoft.Boogie
                                 absAction = elimAction;
                             }
                             if (elimAction != null && absAction != null)
+                            {
+                                CheckSignatures(elimAction.proc, absAction.proc);
                                 elim[elimAction] = absAction;
+                            }
                         }
                         else
                         {
@@ -314,6 +321,10 @@ namespace Microsoft.Boogie
 
                 if (invariantAction != null && action.refinedAction != null)
                 {
+                    // Invariant action can have extra choice parameter and
+                    // IS output might not have pending async parameter.
+                    CheckSignatures(action.proc, invariantAction.proc, invariantAction.hasChoice ? 1 : 0);
+                    CheckSignatures(action.refinedAction.proc, action.proc, action.HasPendingAsyncs && !action.refinedAction.HasPendingAsyncs ? 1 : 0);
                     inductiveSequentializations.Add(
                         new InductiveSequentialization(action, action.refinedAction, invariantAction, elim));
                 }
@@ -418,29 +429,43 @@ namespace Microsoft.Boogie
             }
         }
 
-        // Check that an action procedure has the same interface as the refined atomic action.
         // CheckSignatures and MatchFormals are adapted from type checking implementations in Absy.cs,
         // i.e., that implementations have the same interface as the corresponding procedure.
-        private void CheckSignatures(Procedure proc, Procedure action, int extraOutputs = 0)
+        private void CheckSignatures(DeclWithFormals decl1, DeclWithFormals decl2, int extraOutputs = 0)
         {
-            if (proc.TypeParameters.Count != action.TypeParameters.Count)
-            {
-                checkingContext.Error(proc, $"mismatched number of type parameters in refinement procedure: {proc.Name}");
-            }
-            else
+            if (decl1.TypeParameters.Count != decl2.TypeParameters.Count)
             {
                 // if the numbers of type parameters are different, it is
                 // difficult to compare the argument types
-                MatchFormals(proc, action, proc.InParams, action.InParams, "in");
-                MatchFormals(proc, action, proc.OutParams, action.OutParams, "out", extraOutputs);
+                checkingContext.Error(decl1, $"mismatched number of type parameters in {decl2.Name}");
+            }
+            else
+            {
+                // In some cases there can be extra output parameters related to pending asyncs
+                MatchFormals(decl1, decl2, decl1.InParams, decl2.InParams, "in");
+                MatchFormals(decl1, decl2, decl1.OutParams, decl2.OutParams, "out", extraOutputs);
             }
         }
 
-        private void MatchFormals(Procedure proc, Procedure action, List<Variable> procFormals, List<Variable> actionFormals, string inout, int extraParams = 0)
+        private void CheckInputSignature(DeclWithFormals decl1, DeclWithFormals decl2)
         {
-            if (procFormals.Count != actionFormals.Count - extraParams)
+            if (decl1.TypeParameters.Count != decl2.TypeParameters.Count)
             {
-                checkingContext.Error(proc, $"mismatched number of {inout}-parameters in refinement procedure: {proc.Name}");
+                checkingContext.Error(decl1, $"mismatched number of type parameters in {decl2.Name}");
+            }
+            else
+            {
+                MatchFormals(decl1, decl2, decl1.InParams, decl2.InParams, "in", 0, false);
+            }
+        }
+
+        private void MatchFormals(DeclWithFormals decl1, DeclWithFormals decl2,
+            List<Variable> formals1, List<Variable> formals2, string inout,
+            int extraParams = 0, bool checkLinearity = true)
+        {
+            if (formals1.Count < formals2.Count - extraParams || formals1.Count > formals2.Count)
+            {
+                checkingContext.Error(decl1, $"mismatched number of {inout}-parameters in {decl2.Name}");
             }
             else
             {
@@ -448,42 +473,35 @@ namespace Microsoft.Boogie
                 IDictionary<TypeVariable, Type> subst1 = new Dictionary<TypeVariable, Type>();
                 IDictionary<TypeVariable, Type> subst2 = new Dictionary<TypeVariable, Type>();
 
-                for (int i = 0; i < proc.TypeParameters.Count; ++i)
+                for (int i = 0; i < decl1.TypeParameters.Count; ++i)
                 {
-                    TypeVariable newVar = new TypeVariable(Token.NoToken, action.TypeParameters[i].Name);
-                    subst1.Add(action.TypeParameters[i], newVar);
-                    subst2.Add(proc.TypeParameters[i], newVar);
+                    TypeVariable newVar = new TypeVariable(Token.NoToken, decl1.TypeParameters[i].Name);
+                    subst1.Add(decl1.TypeParameters[i], newVar);
+                    subst2.Add(decl2.TypeParameters[i], newVar);
                 }
 
-                for (int i = 0; i < procFormals.Count; i++)
+                for (int i = 0; i < formals1.Count; i++)
                 {
                     // For error messages below
-                    string procName = procFormals[i].Name;
-                    string actionName = actionFormals[i].Name;
-                    string msg;
-                    if (procName == actionName)
-                    {
-                        msg = procName;
-                    }
-                    else
-                    {
-                        msg = $"{procName} (named {actionName} in atomic action)";
-                    }
+                    string name1 = formals1[i].Name;
+                    string name2 = formals2[i].Name;
+                    string msg = (name1 == name2)? name1 : $"{name1} (named {name2} in {decl2.Name})";
 
                     // the names of the formals are allowed to change from the proc to the impl
                     // but types must be identical
-                    Type t = procFormals[i].TypedIdent.Type.Substitute(subst2);
-                    Type u = actionFormals[i].TypedIdent.Type.Substitute(subst1);
-                    if (!t.Equals(u))
+                    Type t1 = formals1[i].TypedIdent.Type.Substitute(subst1);
+                    Type t2 = formals2[i].TypedIdent.Type.Substitute(subst2);
+                    if (!t1.Equals(t2))
                     {
-                        checkingContext.Error(proc, "mismatched type of {0}-parameter in refinement procedure {1}: {2}", inout, proc.Name, msg);
+                        checkingContext.Error(decl1, $"mismatched type of {inout}-parameter in {decl2.Name}: {msg}");
                     }
 
-                    if (QKeyValue.FindStringAttribute(procFormals[i].Attributes, CivlAttributes.LINEAR) != QKeyValue.FindStringAttribute(actionFormals[i].Attributes, CivlAttributes.LINEAR) ||
-                        QKeyValue.FindStringAttribute(procFormals[i].Attributes, CivlAttributes.LINEAR_IN) != QKeyValue.FindStringAttribute(actionFormals[i].Attributes, CivlAttributes.LINEAR_IN) ||
-                        QKeyValue.FindStringAttribute(procFormals[i].Attributes, CivlAttributes.LINEAR_OUT) != QKeyValue.FindStringAttribute(actionFormals[i].Attributes, CivlAttributes.LINEAR_OUT))
+                    if (checkLinearity &&
+                       (QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR) != QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR) ||
+                        QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_IN) != QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_IN) ||
+                        QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_OUT) != QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_OUT)))
                     {
-                        checkingContext.Error(proc, "mismatched linearity type of {0}-parameter in refinement procedure {1}: {2}", inout, proc.Name, msg);
+                        checkingContext.Error(decl1, $"mismatched linearity type of {inout}-parameter in {decl2.Name}: {msg}");
                     }
                 }
             }
@@ -549,7 +567,6 @@ namespace Microsoft.Boogie
                 {
                     if (pendingAsyncType == null)
                     {
-                        // TODO: check this type stuff
                         pendingAsyncType = new CtorType(typeCtorDecl.tok, typeCtorDecl, new List<Type>());
                         pendingAsyncMultisetType = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { pendingAsyncType }, Type.Int);
                     }
@@ -559,7 +576,6 @@ namespace Microsoft.Boogie
                     }
                 }
             }
-
 
             if(pendingAsyncType != null)
             {
@@ -601,7 +617,7 @@ namespace Microsoft.Boogie
                             Error(ctor, $"Duplicate pending async constructor for action {actionName}");
                         if (action.proc.HasAttribute(CivlAttributes.IS))
                             Error(ctor, "Actions transformed by IS cannot be pending asyncs");
-                        // TODO: check that action and ctor have the same inputs
+                        CheckInputSignature(action.proc, ctor);
                         action.pendingAsyncCtor = ctor;
                     }
                 }
@@ -625,6 +641,7 @@ namespace Microsoft.Boogie
                 if (count >= 2 &&
                     action.impl.OutParams[count - 1].HasAttribute(CivlAttributes.CHOICE))
                 {
+                    action.hasChoice = true;
                     CheckPendingAsyncOutput(action, action.impl.OutParams[count - 2]);
                     CheckPendingAsyncChoice(action, action.impl.OutParams[count - 1]);
                 }
@@ -632,6 +649,8 @@ namespace Microsoft.Boogie
                 {
                     CheckPendingAsyncOutput(action, action.impl.OutParams[count - 1]);
                 }
+                if(!action.HasPendingAsyncs)
+                    Error(action.proc, "Invariant action must have pending async output");
             }
         }
 
