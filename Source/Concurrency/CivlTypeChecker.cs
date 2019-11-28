@@ -670,7 +670,8 @@ namespace Microsoft.Boogie
                             var pendingAsync = FindAtomicAction(actionName);
                             if (pendingAsync != null)
                             {
-                                // TODO: check layers
+                                if (!action.layerRange.Subset(pendingAsync.layerRange))
+                                    Error(kv, $"Pending async {actionName} is not available on all layers of {action.proc.Name}");
                                 if (pendingAsync.pendingAsyncCtor != null)
                                     pendingAsyncs.Add(pendingAsync);
                                 else
