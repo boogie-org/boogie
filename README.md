@@ -51,7 +51,7 @@ You can also report issues on our [issue tracker](https://github.com/boogie-org/
 
 ### Requirements
 
-- [NuGet](https://www.nuget.org/)
+- [NuGet](https://www.nuget.org/) executable (note that executables are not directly provided on Windows with Visual Studio, but can be separately downloaded)
 - [Z3](https://github.com/Z3Prover/z3) 4.8.4 (earlier versions may also work, but the test suite assumes 4.8.4 to produce the expected output) or [CVC4](http://cvc4.cs.nyu.edu/web/) **FIXME_VERSION** (note
   CVC4 support is experimental)
 
@@ -63,12 +63,20 @@ You can also report issues on our [issue tracker](https://github.com/boogie-org/
 
 - Mono
 
-### Windows
+### Windows (old instructions - these do not work with e.g. Visual Studio 2019)
 
 1. Open ``Source\Boogie.sln`` in Visual Studio
 2. Right click the ``Boogie`` solution in the Solution Explorer and click ``Enable NuGet Package Restore``.
    You will probably get a prompt asking to confirm this. Choose ``Yes``.
 3. Click ``BUILD > Build Solution``.
+
+### Windows (command-line - works with newer Visual Studio versions)
+
+1. Download nuget.exe - this is not shipped with newer Visual Studio versions
+2. Open a Visual Studio Developer Command Prompt and navigate to inside the top-level directory of your boogie check-out
+3. Use nuget.exe to install a version of NUnit *older* than version 3.0; for example: ``c:\suitablepath\nuget.exe install -Version 2.6.3 NUnit.Runners``. Boogie's test annotations are not yet compatible with NUnit >= 3.0
+4. Use nuget.exe to restore the reference to this package: ``c:\suitablepath\nuget.exe restore Source\Boogie.sln``
+5. Use msbuild to compile the project: ``msbuild Source\Boogie.sln``
 
 ### Linux/OSX
 
