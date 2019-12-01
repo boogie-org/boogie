@@ -9,7 +9,6 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ExecutionEngine</RootNamespace>
     <AssemblyName>BoogieExecutionEngine</AssemblyName>
-    <TargetFramework>.NETFramework</TargetFramework>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile Condition=" '$(OS)' == 'Windows_NT'">

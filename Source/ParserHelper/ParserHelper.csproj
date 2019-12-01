@@ -10,7 +10,6 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ParserHelper</RootNamespace>
     <AssemblyName>BoogieParserHelper</AssemblyName>
-    <TargetFramework>.NETFramework</TargetFramework>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />

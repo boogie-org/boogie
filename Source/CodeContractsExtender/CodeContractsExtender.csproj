@@ -10,7 +10,6 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>CodeContractsExtender</RootNamespace>
     <AssemblyName>BoogieCodeContractsExtender</AssemblyName>
-    <TargetFramework>.NETFramework</TargetFramework>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SignAssembly>true</SignAssembly>
