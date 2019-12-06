@@ -13,13 +13,19 @@
 
 ## About
 
-Boogie is an intermediate verification language (IVL), intended as a layer on which
-to build program verifiers for other languages. Several program verifiers have
-been built in this way, including the VCC and HAVOC verifiers for C and the
-verifiers for Dafny, Chalice, and Spec#. A previous version of the language was
-called BoogiePL. The current language (version 2) is currently known as just
-Boogie, which is also the name of the verification tool that takes Boogie
-programs as input.
+Boogie is an intermediate verification language (IVL), intended as a layer on
+which to build program verifiers for other languages. Several program verifiers
+have been built in this way, including the
+[VCC](https://github.com/microsoft/vcc) and
+[HAVOC](https://www.microsoft.com/en-us/research/project/havoc) verifiers for C
+and the verifiers for [Dafny](https://github.com/dafny-lang/dafny),
+[Chalice](https://www.microsoft.com/en-us/research/project/chalice), and
+[Spec#](https://www.microsoft.com/en-us/research/project/spec). 
+For a sample verifier for a toy language built on top of Boogie, see
+[Forro](https://github.com/boogie-org/forro).
+A previous version of the language was called BoogiePL. The current language
+(version 2) is currently known as just Boogie, which is also the name of the
+verification tool that takes Boogie programs as input.
 
 Boogie is also the name of a tool. The tool accepts the Boogie language as
 input, optionally infers some invariants in the given Boogie program, and then
