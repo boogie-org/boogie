@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <PackageId>Boogie</PackageId>
-    <VersionPrefix>2.4.1</VersionPrefix>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <RepositoryUrl>https://github.com/boogie-org/boogie</RepositoryUrl>
   </PropertyGroup>
@@ -36,12 +35,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\version.cs" />
     <Compile Remove="**\cce.cs" />
   </ItemGroup>
 
   <ItemGroup>
       <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GitVersionTask" Version="5.1.3-beta1.61">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>

@@ -19,9 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\version.cs">
-      <Link>version.cs</Link>
-    </Compile>
     <Compile Remove="**\cce.cs" />
   </ItemGroup>
 
