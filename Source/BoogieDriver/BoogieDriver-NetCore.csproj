@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <PackageId>Boogie</PackageId>
+    <Authors>Boogie </Authors>
+    <Description>An SMT-based program verifier.</Description>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <RepositoryUrl>https://github.com/boogie-org/boogie</RepositoryUrl>
   </PropertyGroup>
