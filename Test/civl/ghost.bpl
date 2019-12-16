@@ -8,7 +8,7 @@ modifies x;
 
 procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();
 
-procedure ghost(y: int) returns (z: int)
+procedure {:layer 1} ghost(y: int) returns (z: int)
 requires y == 1;
 ensures z == 2;
 {

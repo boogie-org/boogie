@@ -221,14 +221,14 @@ namespace Microsoft.Boogie
     {
         public Procedure proc;
         public LayerRange layerRange;
-        public bool isLeaky;
 
-        public IntroductionProc(Procedure proc, LayerRange layerRange, bool isLeaking)
+        public IntroductionProc(Procedure proc, LayerRange layerRange)
         {
             this.proc = proc;
-            this.isLeaky = isLeaking;
             this.layerRange = layerRange;
         }
+
+        public bool IsLemma => proc.Modifies.Count + proc.OutParams.Count == 0;
     }
 
     /// <summary>

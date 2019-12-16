@@ -103,13 +103,13 @@ ensures  {:layer 1} Inv(x, As, Bs);
   var {:linear "perm"} b:B;
   yield; assert {:layer 1} Inv(x, As, Bs);
   call a,b := split_ab(ab);
-  call Lemma_card_geq();
-  call Lemma_add_to_A(a);
+  call {:layer 1} Lemma_card_geq();
+  call {:layer 1} Lemma_add_to_A(a);
   call geq0_inc(a, b);
   yield;
   assert {:layer 1} Inv(x, As, Bs) && As[bToA(b)];
-  call Lemma_card_greater(b);
-  call Lemma_add_to_B(b);
+  call {:layer 1} Lemma_card_greater(b);
+  call {:layer 1} Lemma_add_to_B(b);
   call geq0_dec(b);
   yield; assert {:layer 1}{:expand} Inv(x, As, Bs);
 }

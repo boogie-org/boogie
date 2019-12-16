@@ -221,8 +221,8 @@ modifies state;
   havoc state;
   assume xConsistent(state[xid]);
   assume state == old(state)[xid := state[xid]];
-} 
-  
+}
+
 procedure {:yields} {:layer 10} {:refines "atomic_Coordinator_TransactionReq"} Coordinator_TransactionReq () returns (xid: Xid)
 requires {:layer 8} Inv_8(state, B, votes);
 ensures  {:layer 8} Inv_8(state, B, votes);
@@ -233,7 +233,7 @@ ensures  {:layer 9,10} gConsistent(state);
   var {:linear "pair"} pairs: [Pair]bool;
   var {:layer 10} snapshot: GState;
   var i : Mid;
-  
+
   par YieldInv_8() | YieldConsistent_9() | YieldConsistent_10();
   call xid, pairs := AllocateXid();
   assert {:layer 10} NextStateTrigger(state[xid]);
@@ -269,7 +269,7 @@ modifies state;
   havoc state;
   assume xConsistentExtension(old(state)[xid], state[xid]);
   assume state == old(state)[xid := state[xid]];
-}          
+}
 
 procedure {:yields} {:layer 9} {:refines "atomic_Participant_VoteReq"} Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 requires {:layer 8} Inv_8(state, B, votes) && pair(xid, mid, pair) && (votes[xid] == -1 || UndecidedOrCommitted(state[xid][mid]));
@@ -321,7 +321,7 @@ modifies state, B;
     assume xAllParticipantsInB(xid, B);
     assume xConsistentExtension(old(state)[xid], state[xid]);
     assume state == old(state)[xid := state[xid]];
-  } 
+  }
 }
 
 procedure {:yields} {:layer 8} {:refines "atomic_Coordinator_VoteYes"} Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
@@ -334,13 +334,13 @@ requires {:layer 8} Inv_8(state, B, votes) && pair(xid, mid, pair) && (votes[xid
   call YieldUndecidedOrCommitted_8(xid, mid, pair);
   assert {:layer 8} XidTrigger(xid);
   call snapshot := GhostRead();
-  call Lemma_add_to_B(pair);
-  call Lemma_all_in_B(xid);
+  call {:layer 8} Lemma_add_to_B(pair);
+  call {:layer 8} Lemma_all_in_B(xid);
   call commit := StateUpdateOnVoteYes(xid, mid, pair);
-  call Lemma_all_in_B(xid);
+  call {:layer 8} Lemma_all_in_B(xid);
   assert {:layer 8} XidTrigger(xid);
   assert {:layer 8} NextStateTrigger(state[xid]);
-  
+
   if (commit)
   {
     assert {:layer 8} xUndecidedOrCommitted(snapshot[xid]);
@@ -387,7 +387,7 @@ requires {:layer 8} Inv_8(state, B, votes) && pair(xid, mid, pair) && Aborted(st
   call abort := StateUpdateOnVoteNo(xid, mid);
   assert {:layer 8} XidTrigger(xid);
   assert {:layer 8} NextStateTrigger(state[xid]);
-  
+
   if (abort)
   {
     i := 1;
@@ -438,7 +438,7 @@ modifies votes, state, B;
     votes[xid] := votes[xid] + 1;
     commit := (votes[xid] == numParticipants);
     state[xid][CoordinatorMid] := (if commit then COMMITTED() else state[xid][CoordinatorMid]);
-  }               
+  }
 }
 
 procedure {:atomic} {:layer 8} atomic_StateUpdateOnVoteNo (xid: Xid, mid: Mid) returns (abort : bool)

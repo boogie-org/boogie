@@ -30,7 +30,6 @@ namespace Microsoft.Boogie
         public List<InductiveSequentialization> inductiveSequentializations;
 
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
-        private Dictionary<CallCmd, int> introductionCallToLayer;
 
         public CtorType pendingAsyncType;
         public MapType pendingAsyncMultisetType;
@@ -55,7 +54,6 @@ namespace Microsoft.Boogie
             this.procToIsAbstraction = new Dictionary<Procedure, AtomicAction>();
             this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
             this.procToIntroductionProc = new Dictionary<Procedure, IntroductionProc>();
-            this.introductionCallToLayer = new Dictionary<CallCmd, int>();
             this.implToPendingAsyncCollector = new Dictionary<Implementation, Variable>();
             this.atomicActionPairToWitnessFunctions = new Dictionary<Tuple<AtomicAction, AtomicAction>,
                 List<WitnessFunction>>();
@@ -340,16 +338,24 @@ namespace Microsoft.Boogie
             foreach (var proc in program.Procedures.Where(IsIntroductionProcedure))
             {
                 LayerRange layerRange = ToLayerRange(FindLayers(proc.Attributes), proc);
-                bool isLeaky = proc.Modifies.Count + proc.OutParams.Count > 0;
-                foreach (var ie in proc.Modifies)
+                if (proc.Modifies.Count > 0)
                 {
-                    if (GlobalVariableLayerRange(ie.Decl).lowerLayerNum != layerRange.lowerLayerNum)
+                    if (layerRange.lowerLayerNum == layerRange.upperLayerNum)
                     {
-                        Error(ie, "Introduction procedures can modify shared variables only on their introduction layer");
+                        foreach (var ie in proc.Modifies)
+                        {
+                            if (GlobalVariableLayerRange(ie.Decl).lowerLayerNum != layerRange.lowerLayerNum)
+                            {
+                                Error(ie,"Introduction procedures can modify a shared variable only on its introduction layer");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Error(proc,"Layer range of an introduction procedure that modifies a global variable should be singleton");
                     }
                 }
-
-                procToIntroductionProc[proc] = new IntroductionProc(proc, layerRange, isLeaky);
+                procToIntroductionProc[proc] = new IntroductionProc(proc, layerRange);
             }
             if (checkingContext.ErrorCount > 0) return;
 
@@ -509,8 +515,8 @@ namespace Microsoft.Boogie
 
         private void TypeCheckLocalVariables()
         {
-            // Local variable with no declared introduction layer implicitely have layer int.MinValue.
-            // However, to save space and avoid hash collisions, we do not explicitely store variables with layer int.MinValue.
+            // Local variable with no declared introduction layer implicitly have layer int.MinValue.
+            // However, to save space and avoid hash collisions, we do not explicitly store variables with layer int.MinValue.
 
             // First we collect in and out parameter layers from procedures
             foreach (Procedure proc in procToYieldingProc.Keys)
@@ -722,7 +728,7 @@ namespace Microsoft.Boogie
 
         private bool IsIntroductionProcedure(Procedure proc)
         {
-            return !IsYieldingProcedure(proc) && !IsAtomicAction(proc);
+            return !IsYieldingProcedure(proc) && !IsAtomicAction(proc) && FindLayers(proc.Attributes).Count > 0;
         }
 
         private MoverType GetActionMoverType(Procedure proc)
@@ -861,13 +867,14 @@ namespace Microsoft.Boogie
         {
             Debug.Assert(procToIntroductionProc.ContainsKey(callCmd.Proc));
             var introductionProc = procToIntroductionProc[callCmd.Proc];
-            if (introductionProc.isLeaky)
+            if (!introductionProc.IsLemma)
             {
                 return enclosingProcLayerNum == layerNum;
             }
             else
             {
-                return introductionCallToLayer[callCmd] <= layerNum;
+                var layers = FindLayers(callCmd.Attributes);
+                return layers.Contains(layerNum);
             }
         }
 
@@ -1284,35 +1291,60 @@ namespace Microsoft.Boogie
                 }
             }
 
-            private void VisitIntroductionProcCallCmd(CallCmd call, YieldingProc callerProc, IntroductionProc calleeProc)
+            private void VisitIntroductionProcCallCmd(CallCmd call, YieldingProc callerProc,
+                IntroductionProc calleeProc)
             {
-                if (!calleeProc.layerRange.Contains(callerProc.upperLayer))
+                if (!calleeProc.IsLemma)
                 {
-                    ctc.checkingContext.Error(call, "Called introduction procedure {0} is not available at layer {1}", calleeProc.proc.Name, callerProc.upperLayer);
-                    return;
-                }
-                if (calleeProc.isLeaky)
-                {
-                    // Call to leaky introduction procedure only exists at the upper layer of caller yielding procedure.
-                    // Thus, all local variables are already introduced and we only have to check output variables.
+                    // Call to ordinary introduction procedure only exists at the upper layer of caller yielding procedure.
+                    if (!calleeProc.layerRange.Contains(callerProc.upperLayer))
+                    {
+                        ctc.checkingContext.Error(call, "Introduction procedure cannot be called at layer {0}", callerProc.upperLayer);
+                    }
+                    // All local variables are already introduced.
+                    // Check output variables are introduced at upper layer of caller yielding procedure.
                     foreach (var ie in call.Outs)
                     {
                         if (ctc.LocalVariableIntroLayer(ie.Decl) != callerProc.upperLayer)
                         {
-                            ctc.checkingContext.Error(ie, "Output variable {0} must be introduced at layer {1}", ie.Decl.Name, callerProc.upperLayer);
+                            ctc.checkingContext.Error(ie, "Output variable {0} must be introduced at layer {1}",
+                                ie.Decl.Name, callerProc.upperLayer);
                         }
                     }
                 }
                 else
                 {
-                    // Call to non-leaky introduction procedure exists as soon as all local variables used as input are available.
-                    // I.e., we compute the maximum introduction layer of all local variables used as input.
+                    // All local variables used as input must be available at all layers at which this call exists.
+                    // We compute the maximum introduction layer of all local variables used as input.
+                    // This layer should be no larger than each layer at which this call exists.
                     localVariableAccesses = new List<IdentifierExpr>();
-                    foreach (var e in call.Ins) { Visit(e); }
-                    ctc.introductionCallToLayer[call] = localVariableAccesses
-                                                           .Select(ie => ctc.LocalVariableIntroLayer(ie.Decl))
-                                                           .Concat1(calleeProc.layerRange.lowerLayerNum)
-                                                           .Max();
+                    foreach (var e in call.Ins)
+                    {
+                        Visit(e);
+                    }
+                    var minLayerCallPossible = localVariableAccesses
+                        .Select(ie => ctc.LocalVariableIntroLayer(ie.Decl))
+                        .Concat1(calleeProc.layerRange.lowerLayerNum)
+                        .Max();
+                    var calledLayers = ctc.FindLayers(call.Attributes);
+                    if (calledLayers.Count == 0)
+                    {
+                        ctc.checkingContext.Error(call, "Call to introduction lemma procedure must be annotated with layers");
+                    }
+                    else
+                    {
+                        var minCalledLayer = calledLayers.Min();
+                        var maxCalledLayer = calledLayers.Max();
+                        if (minCalledLayer < minLayerCallPossible)
+                        {
+                            ctc.checkingContext.Error(call, "Call not possible at layer {0}", minCalledLayer);
+                        }
+
+                        if (maxCalledLayer > callerProc.upperLayer)
+                        {
+                            ctc.checkingContext.Error(call, "Call not possible at layer {0}", maxCalledLayer);
+                        }
+                    }
                     localVariableAccesses = null;
                 }
             }
