@@ -1,3 +1,9 @@
+// #############################################################################
+// #                     DO NOT MODIFY THIS FILE BY HAND!                      #
+// #           Scanner.cs and Parser.cs are generated using Coco/R.            #
+// #    Edit BoogiePL.atg and run make in the same directory to regenerate.    #
+// #############################################################################
+
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;

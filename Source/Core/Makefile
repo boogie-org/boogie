@@ -1,20 +1,15 @@
-COCO = Coco.exe
+# Makefile to generate the Boogie scanner and parser using Coco/R.
 
-# ###############################################################################
-# The frame files are no longer in this directory. They must be downloaded
-# from https://github.com/boogie-org/boogie-partners . Update the FRAME_DIR variable to
-# point to whatever directory you install that into.
-# ###############################################################################
-FRAME_DIR = ..\..\..\boogiepartners\CocoR\Modified
+FRAME_DIR = .
 
-# "all" depends on 2 files, really (Parser.cs and Scanner.cs), but they
-# are both generated in one go and I don't know a better way to tell
-# nmake that.  --KRML
-all: Parser.cs
+ifeq (, $(shell dotnet tool list | grep coco))
+    $(error "Coco/R not available, run dotnet tool restore")
+endif
 
-Parser.cs: $(FRAME_DIR)\Scanner.frame $(FRAME_DIR)\Parser.frame BoogiePL.atg
-	$(COCO) BoogiePL.atg -namespace Microsoft.Boogie -frames $(FRAME_DIR)
+all: Scanner.cs Parser.cs
+
+Scanner.cs Parser.cs: BoogiePL.atg $(FRAME_DIR)/Scanner.frame $(FRAME_DIR)/Parser.frame $(FRAME_DIR)/Copyright.frame
+	dotnet tool run coco BoogiePL.atg -namespace Microsoft.Boogie -frames $(FRAME_DIR)
 
 clean:
-	if exist Scanner.cs del Scanner.cs
-	if exist Parser.cs del Parser.cs
+	@-rm -f Scanner.cs Scanner.cs.old Parser.cs Parser.cs.old

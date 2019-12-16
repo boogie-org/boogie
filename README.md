@@ -139,3 +139,7 @@ See the [Driver test documentation](Test/README.md)
 ### Unit tests
 
 See the [Unit test documentation](Source/UnitTests/README.md)
+
+## License
+
+Boogie is licensed under the MIT License (see [LICENSE.txt](LICENSE.txt)).
