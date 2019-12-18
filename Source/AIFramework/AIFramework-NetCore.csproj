@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <AssemblyName>AIFramework</AssemblyName>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <DefineConstants>COREFX_SUBSET</DefineConstants>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
@@ -13,13 +13,8 @@
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-  </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="..\version.cs" />
-    <Compile Include="**\*.cs" />
     <Compile Remove="**\cce.cs" />
   </ItemGroup>
 

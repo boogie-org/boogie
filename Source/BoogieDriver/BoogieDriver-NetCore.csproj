@@ -10,7 +10,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <AssemblyName>BoogieDriver</AssemblyName>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <DefineConstants>COREFX_SUBSET</DefineConstants>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -35,13 +35,8 @@
     <ProjectReference Include="..\VCGeneration\VCGeneration-NetCore.csproj" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-  </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="..\version.cs" />
-    <Compile Include="**\*.cs" />
     <Compile Remove="**\cce.cs" />
   </ItemGroup>
 

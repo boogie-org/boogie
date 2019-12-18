@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <AssemblyName>BoogieModel</AssemblyName>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <DefineConstants>COREFX_SUBSET</DefineConstants>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
@@ -12,15 +12,10 @@
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-  </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="..\version.cs">
       <Link>version.cs</Link>
     </Compile>
-    <Compile Include="**\*.cs" />
     <Compile Remove="**\cce.cs" />
   </ItemGroup>
 
