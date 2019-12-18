@@ -116,21 +116,21 @@ namespace CoreTests
 
         // Runtime immutability enforcement
 
-        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        [Test()]
         public void IdentifierExprName()
         {
             var id = new IdentifierExpr(Token.NoToken, "foo", BasicType.Bool, /*immutable=*/true);
             Assert.IsTrue(id.Immutable);
-            id.Name = "foo2";
+            Assert.Throws(typeof(InvalidOperationException), () => id.Name = "foo2");
         }
 
-        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        [Test()]
         public void IdentifierExprDecl()
         {
             var id = new IdentifierExpr(Token.NoToken, "foo", BasicType.Bool, /*immutable=*/true);
             Assert.IsTrue(id.Immutable);
             var typedIdent = new TypedIdent(Token.NoToken, "foo2", BasicType.Bool);
-            id.Decl = new GlobalVariable(Token.NoToken, typedIdent);
+            Assert.Throws(typeof(InvalidOperationException), () => id.Decl = new GlobalVariable(Token.NoToken, typedIdent));
         }
 
         private NAryExpr GetUnTypedImmutableNAry()
@@ -160,7 +160,7 @@ namespace CoreTests
             Assert.IsTrue(e.Type.IsBool);
         }
 
-        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        [Test()]
         public void ProtectedExprChangeTypeFail()
         {
             var e = GetUnTypedImmutableNAry();
@@ -173,7 +173,7 @@ namespace CoreTests
             Assert.IsTrue(e.Type.IsBool);
 
             // Trying to modify the Type to a different Type now should fail
-            e.Type = BasicType.Int;
+            Assert.Throws(typeof(InvalidOperationException), () => e.Type = BasicType.Int);
         }
 
         [Test()]
@@ -192,35 +192,35 @@ namespace CoreTests
             e.Type = BasicType.Bool;
         }
 
-        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        [Test()]
         public void ProtectedOldExpr()
         {
             var e = new OldExpr(Token.NoToken, Expr.True, /*immutable=*/ true);
-            e.Expr = Expr.False;
+            Assert.Throws(typeof(InvalidOperationException), () => e.Expr = Expr.False);
         }
 
-        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        [Test()]
         public void ProtectedNAryFunc()
         {
             var e = GetUnTypedImmutableNAry();
-            e.Fun = new BinaryOperator(Token.NoToken, BinaryOperator.Opcode.Sub);
+            Assert.Throws(typeof(InvalidOperationException), () => e.Fun = new BinaryOperator(Token.NoToken, BinaryOperator.Opcode.Sub));
         }
 
-        [Test(), ExpectedException(typeof(NotSupportedException))]
+        [Test()]
         public void ProtectedNAryArgsList()
         {
             var e = GetUnTypedImmutableNAry();
-            e.Args.Add(null);
+            Assert.Throws(typeof(NotSupportedException), () => e.Args.Add(null));
         }
 
-        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        [Test()]
         public void ProtectedNAryArgs()
         {
             var e = GetUnTypedImmutableNAry();
-            e.Args = new List<Expr>();
+            Assert.Throws(typeof(InvalidOperationException), () => e.Args = new List<Expr>());
         }
 
-        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        [Test()]
         public void ProtectedForAllExprBody()
         {
             var x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
@@ -229,10 +229,11 @@ namespace CoreTests
             var yId = new IdentifierExpr(Token.NoToken, y, /*immutable=*/true);
             var body = Expr.Gt(xId, yId);
             var forAll = new ForallExpr(Token.NoToken, new List<Variable> () { x, y }, body, /*immutable=*/true);
-            forAll.Body = Expr.Lt(xId, yId); // Changing the body of an immutable ForAllExpr should fail
+            // Changing the body of an immutable ForAllExpr should fail
+            Assert.Throws(typeof(InvalidOperationException), () => forAll.Body = Expr.Lt(xId, yId));
         }
 
-        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        [Test()]
         public void ProtectedExistsExprBody()
         {
             var x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
@@ -241,10 +242,11 @@ namespace CoreTests
             var yId = new IdentifierExpr(Token.NoToken, y, /*immutable=*/true);
             var body = Expr.Gt(xId, yId);
             var exists = new ExistsExpr(Token.NoToken, new List<Variable> () { x, y }, body, /*immutable=*/true);
-            exists.Body = Expr.Lt(xId, yId); // Changing the body of an immutable ExistsExpr should fail
+            // Changing the body of an immutable ExistsExpr should fail
+            Assert.Throws(typeof(InvalidOperationException), () => exists.Body = Expr.Lt(xId, yId));
         }
 
-        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        [Test()]
         public void ProtectedLambdaExprBody()
         {
             var x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
@@ -254,36 +256,37 @@ namespace CoreTests
             var body = Expr.Gt(xId, yId);
             var lambda = new LambdaExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable>() { x, y},
                 null, body, /*immutable=*/true);
-            lambda.Body = Expr.Lt(xId, yId); // Changing the body of an immutable ExistsExpr should fail
+            // Changing the body of an immutable LambdaExpr should fail
+            Assert.Throws(typeof(InvalidOperationException), () => lambda.Body = Expr.Lt(xId, yId));
         }
 
-        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        [Test()]
         public void ProtectedBvConcatExprLhs()
         {
             var lhs = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 32, /*immutable=*/true);
             var rhs = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1), 32, /*immutable=*/true);
             var concat = new BvConcatExpr(Token.NoToken, lhs, rhs,/* immutable=*/true);
             Assert.IsTrue(concat.Immutable);
-            concat.E0 = rhs; // Should throw
+            Assert.Throws(typeof(InvalidOperationException), () => concat.E0 = rhs);
         }
 
-        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        [Test()]
         public void ProtectedBvConcatExprRhs()
         {
             var lhs = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 32, /*immutable=*/true);
             var rhs = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1), 32, /*immutable=*/true);
             var concat = new BvConcatExpr(Token.NoToken, lhs, rhs,/* immutable=*/true);
             Assert.IsTrue(concat.Immutable);
-            concat.E1 = lhs; // Should throw
+            Assert.Throws(typeof(InvalidOperationException), () => concat.E1 = lhs);
         }
 
-        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        [Test()]
         public void ProtectedBvExtract()
         {
             var bv = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 32, /*immutable=*/true);
             var extract = new BvExtractExpr(Token.NoToken, bv, 32, 0, /*immutable=*/true);
             Assert.IsTrue(extract.Immutable);
-            extract.Bitvector = bv; // Should throw
+            Assert.Throws(typeof(InvalidOperationException), () => extract.Bitvector = bv);
         }
     }
 }

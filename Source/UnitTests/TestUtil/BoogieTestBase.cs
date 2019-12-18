@@ -12,7 +12,7 @@ namespace Microsoft.Boogie
       public BoogieTestBase() {
         // Debug log output goes to standard error.
         // Failing System.Diagnostics failures trigger NUnit assertion failures
-        Debug.Listeners.Add(new AssertionTextWriterTraceListener(Console.Error));
+        // Debug.Listeners.Add(new AssertionTextWriterTraceListener(Console.Error));
 
         // FIXME: THIS IS A HACK. Boogie's methods
         // depend on its command line parser being set!

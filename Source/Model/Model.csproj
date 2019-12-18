@@ -89,7 +89,6 @@
   <ItemGroup>
     <Compile Include="Model.cs" />
     <Compile Include="ModelParser.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="..\version.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

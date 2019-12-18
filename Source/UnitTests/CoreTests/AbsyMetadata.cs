@@ -11,27 +11,23 @@ namespace CoreTests
       return new AssertCmd(Token.NoToken, Expr.True);
     }
 
-    [Test(), ExpectedException(typeof(ArgumentOutOfRangeException))]
+    [Test()]
     public void NoMetadata() {
       var absy = GetAbsy();
 
       Assert.AreEqual(0, absy.NumberedMetaDataCount);
 
-      string willFail = absy.GetMetadata<string>(0);
-      // use willFail in someway so the result is live
-      Assert.IsNotNullOrEmpty(willFail);
+      Assert.Throws(typeof(ArgumentOutOfRangeException), () => absy.GetMetadata<string>(0));
     }
 
-    [Test(), ExpectedException(typeof(ArgumentOutOfRangeException))]
+    [Test()]
     public void InvalidIndex() {
       var absy = GetAbsy();
 
       Assert.AreEqual(0, absy.NumberedMetaDataCount);
       absy.SetMetadata(0, "hello");
 
-      string willFail = absy.GetMetadata<string>(1);
-      // use willFail in someway so the result is live
-      Assert.IsNotNullOrEmpty(willFail);
+      Assert.Throws(typeof(ArgumentOutOfRangeException), () => absy.GetMetadata<string>(1));
     }
 
     [Test()]
@@ -59,7 +55,7 @@ namespace CoreTests
       Assert.AreEqual(2, count);
     }
 
-    [Test(), ExpectedException(typeof(InvalidCastException))]
+    [Test()]
     public void IncorrectType() {
       var absy = GetAbsy();
       Assert.AreEqual(0, absy.NumberedMetaDataCount);
@@ -68,9 +64,7 @@ namespace CoreTests
       absy.SetMetadata(0, string0);
 
       // Now try retrive wrong type
-      int wrongType = absy.GetMetadata<int>(0);
-      // use "wrongType" is someway so the variable is live
-      Assert.AreEqual(0, wrongType);
+      Assert.Throws(typeof(InvalidCastException), () => absy.GetMetadata<int>(0));
     }
 
     [Test()]
