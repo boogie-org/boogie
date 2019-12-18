@@ -125,6 +125,9 @@
     <Compile Include="ExecutionEngine.cs" />
     <Compile Include="ThreadTaskScheduler.cs" />
     <Compile Include="VerificationResultCache.cs" />
+    <Compile Include="..\version.cs">
+      <Link>version.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AbsInt\AbsInt.csproj">

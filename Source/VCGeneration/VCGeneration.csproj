@@ -144,8 +144,10 @@
     <Compile Include="RPFP.cs" />
     <Compile Include="StratifiedVC.cs" />
     <Compile Include="VC.cs" />
-    <Compile Include="..\version.cs" />
     <Compile Include="Wlp.cs" />
+    <Compile Include="..\version.cs">
+      <Link>version.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Basetypes\Basetypes.csproj">
