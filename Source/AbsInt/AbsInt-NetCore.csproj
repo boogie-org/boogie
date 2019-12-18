@@ -5,7 +5,6 @@
     <AssemblyName>BoogieAbsInt</AssemblyName>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <DefineConstants>COREFX_SUBSET</DefineConstants>
-    <GenerateGitVersionInformation>false</GenerateGitVersionInformation>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
