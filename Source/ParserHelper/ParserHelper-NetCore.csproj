@@ -4,7 +4,6 @@
     <OutputType>Library</OutputType>
     <AssemblyName>BoogieParserHelper</AssemblyName>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <DefineConstants>COREFX_SUBSET</DefineConstants>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
