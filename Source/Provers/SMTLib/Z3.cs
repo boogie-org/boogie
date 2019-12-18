@@ -71,6 +71,24 @@ namespace Microsoft.Boogie.SMTLib
                     return;
                 }
 
+                var exePaths = Environment.GetEnvironmentVariable("PATH");
+                foreach (var exePath in exePaths.Split(Path.PathSeparator))
+                {
+                    var exes = new string[] { proverExe, Path.GetFileNameWithoutExtension(proverExe) };
+                    foreach (var exe in exes) {
+                        var path = Path.Combine(exePath, exe);
+                        if (File.Exists(path)) {
+                            _proverPath = path;
+
+                            if (CommandLineOptions.Clo.Trace)
+                            {
+                                Console.WriteLine("[TRACE] Using prover: " + _proverPath);
+                            }
+                            return;
+                        }
+                    }
+                }
+
                 List<string> z3Dirs = new List<string>();
                 var msrDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Microsoft Research\");
                 if (Directory.Exists(msrDir))
