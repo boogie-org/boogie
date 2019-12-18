@@ -57,9 +57,9 @@ def main(args):
     # Try to guess where the tool is
     nunitConsolePath = os.path.join(os.path.join(UnitTestDirRoot,'..'),
                                     "packages",
-                                    "NUnit.Runners.2.6.3",
+                                    "NUnit.ConsoleRunner.3.10.0",
                                     "tools",
-                                    "nunit-console.exe"
+                                    "nunit3-console.exe"
                                    )
     # Mono needs the path to be absolute
     nunitConsolePath = os.path.abspath(nunitConsolePath)
@@ -103,7 +103,7 @@ def main(args):
   if os.name == 'posix':
     cmd.append('mono')
 
-  cmd.extend([nunitConsolePath, '-nologo'])
+  cmd.extend([nunitConsolePath])
 
   if len(parsedArgs.nunit_console_extra_args) > 0:
     cmd.extend(parsedArgs.nunit_console_extra_args)

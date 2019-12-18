@@ -8,8 +8,8 @@ namespace TestUtil
 	{
 		public static Program LoadProgramFrom(string programText, string fileName="file.bpl")
 		{
-			Assert.IsNotNullOrEmpty (programText);
-			Assert.IsNotNullOrEmpty (fileName);
+			Assert.That(programText, Is.Not.Null.And.Not.Empty);
+			Assert.That(fileName, Is.Not.Null.And.Not.Empty);
 
 
 			int errors = 0;
