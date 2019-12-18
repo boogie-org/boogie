@@ -80,7 +80,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
           return head;
         } else if (tail != null && head.V == tail.V) {
           // incorporate both constraints into one Node
-          return new Node(head.V, Max(head.Lo, tail.Lo, true), Min(head.Lo, tail.Lo, true), tail.Next);
+          return new Node(head.V, Max(head.Lo, tail.Lo, true), Min(head.Hi, tail.Hi, true), tail.Next);
         } else {
           return new Node(head.V, head.Lo, head.Hi, tail);
         }
