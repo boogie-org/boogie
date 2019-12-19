@@ -55,78 +55,74 @@ You can also report issues on our [issue tracker](https://github.com/boogie-org/
 
 ## Building
 
-### Requirements
+The preferred way to build (and run) Boogie today is using .NET Core.
+Historically, Boogie can also be built using the classic .NET Framework (on
+Windows) and Mono (on Linux/OSX), but this might not be supported in the future.
 
-- [NuGet](https://www.nuget.org/)
-- [Z3](https://github.com/Z3Prover/z3) 4.8.4 (earlier versions may also work, but the test suite assumes 4.8.4 to produce the expected output) or [CVC4](http://cvc4.cs.nyu.edu/web/) **FIXME_VERSION** (note
-  CVC4 support is experimental)
+To run Boogie, a supported SMT solver has to be available (see below).
 
-#### Windows specific
-
-- Visual Studio >= 2012
-
-#### Linux/OSX specific
-
-- Mono
-
-### Windows
-
-1. Open ``Source\Boogie.sln`` in Visual Studio
-2. Right click the ``Boogie`` solution in the Solution Explorer and click ``Enable NuGet Package Restore``.
-   You will probably get a prompt asking to confirm this. Choose ``Yes``.
-3. Click ``BUILD > Build Solution``.
-
-### Linux/OSX
-
-You first need to fetch the NuGet packages that Boogie depends on. If you're doing this on the command line run
+### .NET Core
 
 ```
-$ cd /path/to/repository
-$ wget https://nuget.org/nuget.exe
-$ mono ./nuget.exe restore Source/Boogie.sln
+$ dotnet build Source/Boogie-NetCore.sln
 ```
 
-Note if you're using MonoDevelop it has a NuGet plug-in which you can use to "restore" the packages needed by Boogie.
+**TODO**: Describe how to install and run.
 
-Note if you see an error message like the following
+### Windows (requires Visual Studio)
+
+1. Open ``Source\Boogie.sln`` in Visual Studio.
+2. Right click the ``Boogie`` solution in the Solution Explorer and click ``Restore NuGet Packages``.
+3. Click ``Build > Build Solution``.
+
+The compiled Boogie binary is `Binaries\Boogie.exe`.
+
+### Linux/OSX (requires Mono)
+
+Either open ``Source\Boogie.sln`` in MonoDevelop and perform the same steps as
+described for Visual Studio above, of compile on the command line as follows.
+
+Fetch the NuGet packages that Boogie depends on:
 
 ```
-WARNING: Error: SendFailure (Error writing headers)
-Unable to find version '2.6.3' of package 'NUnit.Runners'.
+$ nuget restore Source/Boogie.sln
 ```
 
-then you need to initialise Mono's certificate store by running
-
-```
-$ mozroots --import --sync
-```
-
-then you can build by running
+Build Boogie:
 
 ```
 $ msbuild Source/Boogie.sln
 ```
 
-Finally make sure there is a symlink to Z3 in the Binaries directory
-(replace with ``cvc4`` if using CVC4 instead).
+The compiled Boogie binary is `Binaries/Boogie.exe`, which can be executed with
+`mono` or using the wrapper script `Binaries/boogie`.
 
-```
-$ ln -s /usr/bin/z3 Binaries/z3.exe
-```
+## Backend SMT Solver
 
-## Running
+The default SMT solver for Boogie is [Z3](https://github.com/Z3Prover/z3).
+Support for [CVC4](https://cvc4.github.io/) and
+[Yices2](https://yices.csl.sri.com/) is experimental.
 
-On a Windows system call the Boogie binary:
+### Z3
 
-```
-$ Binaries\Boogie.exe
-```
+The current test suite assumes version 4.8.4, but earlier and never versions may
+also work.
 
-On a non-Windows system use the wrapper script:
+Option 1: Make sure a Z3 executable called `z3` or `z3.exe` is in your `PATH`
+environment variable.
 
-```
-$ Binaries/boogie
-```
+Option 2: Call Boogie with `/z3exe:<path>`.
+
+### CVC4 (experimental)
+
+Call Boogie with `/proverOpt:SOLVER=CVC4 /cvc4exe:<path>`.
+
+### Yices2 (experimental)
+
+Call Boogie with `/proverOpt:SOLVER=Yices2 /yices2exe:<path> /useArrayTheory`.
+
+Works for unquantified fragments, e.g. arrays + arithmetic + bitvectors. Does
+not work for quantifiers, generalized arrays, datatypes.
 
 ## Testing
 
