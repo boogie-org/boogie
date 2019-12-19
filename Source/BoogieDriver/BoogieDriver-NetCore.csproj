@@ -35,10 +35,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="**\cce.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
       <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt"/>
   </ItemGroup>
 
