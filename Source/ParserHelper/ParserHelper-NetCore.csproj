@@ -4,16 +4,10 @@
     <OutputType>Library</OutputType>
     <AssemblyName>BoogieParserHelper</AssemblyName>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <DefineConstants>COREFX_SUBSET</DefineConstants>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="**\cce.cs" />
   </ItemGroup>
 
   <ItemGroup>

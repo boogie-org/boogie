@@ -4,17 +4,11 @@
     <OutputType>Library</OutputType>
     <AssemblyName>AIFramework</AssemblyName>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <DefineConstants>COREFX_SUBSET</DefineConstants>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Basetypes\Basetypes-NetCore.csproj" />
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="**\cce.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -4,8 +4,6 @@
     <OutputType>Library</OutputType>
     <AssemblyName>BoogieConcurrency</AssemblyName>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <DefineConstants>COREFX_SUBSET</DefineConstants>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,10 +12,6 @@
     <ProjectReference Include="..\Core\Core-NetCore.csproj" />
     <ProjectReference Include="..\Graph\Graph-NetCore.csproj" />
     <ProjectReference Include="..\ParserHelper\ParserHelper-NetCore.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="**\cce.cs" />
   </ItemGroup>
 
   <ItemGroup>

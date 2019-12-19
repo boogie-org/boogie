@@ -4,8 +4,6 @@
     <OutputType>Library</OutputType>
     <AssemblyName>BoogieHoudini</AssemblyName>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <DefineConstants>COREFX_SUBSET</DefineConstants>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,10 +17,6 @@
     <ProjectReference Include="..\Predication\Predication-NetCore.csproj" />
     <ProjectReference Include="..\VCExpr\VCExpr-NetCore.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration-NetCore.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="**\cce.cs" />
   </ItemGroup>
 
   <ItemGroup>

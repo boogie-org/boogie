@@ -5,7 +5,6 @@
     <AssemblyName>BoogieCore</AssemblyName>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <DefineConstants>COREFX_SUBSET</DefineConstants>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,10 +12,6 @@
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
     <ProjectReference Include="..\Graph\Graph-NetCore.csproj" />
     <ProjectReference Include="..\ParserHelper\ParserHelper-NetCore.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="**\cce.cs" />
   </ItemGroup>
 
   <ItemGroup>
