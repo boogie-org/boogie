@@ -4,6 +4,8 @@ dist: bionic
 sudo: true
 dotnet: 3.1
 mono: none
+git:
+  depth: false
 env:
   global:
     - SOLUTION=Source/Boogie-NetCore.sln
