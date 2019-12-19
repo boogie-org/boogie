@@ -23,15 +23,20 @@ script:
   - dotnet test --no-build -c ${CONFIGURATION} ${SOLUTION}
   - lit -v -D dotnet -D configuration=${CONFIGURATION} Test
 deploy:
-  skip_cleanup: true
-  on:
-    branch: master
-    tags: true
-    condition: ${CONFIGURATION}=Release
   - provider: script
-    script :
+    script:
       - dotnet nuget push Source/BoogieDriver/bin/${CONFIGURATION}/Boogie*.nupkg -k ${NUGET_API_KEY} -s https://api.nuget.org/v3/index.json
+    skip_cleanup: true
+    on:
+      branch: master
+      tags: true
+      condition: ${CONFIGURATION}=Release
   - provider: releases
     api_key: TODO
     file_glob: true
     file: Source/BoogieDriver/bin/${CONFIGURATION}/Boogie*.nupkg
+    skip_cleanup: true
+    on:
+      branch: master
+      tags: true
+      condition: ${CONFIGURATION}=Release
