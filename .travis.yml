@@ -34,7 +34,8 @@ deploy:
       tags: true
       condition: ${CONFIGURATION}=Release
   - provider: releases
-    api_key: TODO
+    api_key:
+      secure: ZjKhOiIpC6R+Xfp1iJX/1a2DD1o+tYhUefZDqRjUfM4rDZqzvOBvY7mA/1BcqNs4gXJIk3p11Kud72cPSSS8iW2EVlRm2UlfdVOf2wmGys/TILvHNDWUoVFSxhVgxbzMVULp6fIrqDypaZ0PAYZVg2loLkVI5AZ/P35ZRVaa9oE=
     file_glob: true
     file: Source/BoogieDriver/bin/${CONFIGURATION}/Boogie*.nupkg
     skip_cleanup: true
