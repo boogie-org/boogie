@@ -995,6 +995,11 @@ namespace Microsoft.Boogie {
       return this.T.GetHashCode();
     }
 
+    [Pure]
+    public override int GetHashCode() {
+      return this.T.GetHashCode();
+    }
+
     //-----------  Resolution  ----------------------------------
 
     public override Type ResolveType(ResolutionContext rc) {
@@ -3288,6 +3293,11 @@ Contract.Requires(that != null);
         res = res * 3 + t.GetHashCode(boundVariables);
       }
       return res;
+    }
+
+    [Pure]
+    public override int GetHashCode() {
+      return base.GetHashCode();
     }
 
     //-----------  Linearisation  ----------------------------------
