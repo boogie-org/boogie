@@ -105,7 +105,7 @@ Support for [CVC4](https://cvc4.github.io/) and
 
 ### Z3
 
-The current test suite assumes version 4.8.4, but earlier and never versions may
+The current test suite assumes version 4.8.4, but earlier and newer versions may
 also work.
 
 Option 1: Make sure a Z3 executable called `z3` or `z3.exe` is in your `PATH`
