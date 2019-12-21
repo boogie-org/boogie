@@ -2249,7 +2249,9 @@ namespace Microsoft.Boogie {
       }
     }
 
-
+    public override int GetHashCode() {
+      return Type.GetHashCode();
+    }
 
     public
       string/*!*/ FunctionName {

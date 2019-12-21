@@ -889,6 +889,10 @@ namespace Microsoft.Boogie {
           (!CompareAttributesAndTriggers || object.Equals(Triggers, other.Triggers));
       }
     }
+
+    public override int GetHashCode() {
+      return base.GetHashCode();
+    }
   }
 
 
