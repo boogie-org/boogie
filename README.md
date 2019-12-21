@@ -53,6 +53,18 @@ many aspects of the Boogie IVL but is slightly out of date.
 We have a public [mailing list](https://mailman.ic.ac.uk/mailman/listinfo/boogie-dev) for users of Boogie.
 You can also report issues on our [issue tracker](https://github.com/boogie-org/boogie/issues)
 
+## Installation
+
+Boogie releases are packaged as a .NET Core global tool available at
+[nuget.org](https://www.nuget.org/packages/Boogie). To install Boogie simply
+run:
+
+```
+$ dotnet tool install --global boogie
+```
+
+To run Boogie, a supported SMT solver has to be available (see below).
+
 ## Building
 
 The preferred way to build (and run) Boogie today is using .NET Core.
@@ -67,7 +79,10 @@ To run Boogie, a supported SMT solver has to be available (see below).
 $ dotnet build Source/Boogie-NetCore.sln
 ```
 
-**TODO**: Describe how to install and run.
+The compiled Boogie binary is
+`Source/BoogieDriver/bin/${CONFIGURATION}/${FRAMEWORK}/BoogieDriver`. Also, a
+NuGet package is placed in `Source/BoogieDriver/bin/Debug/` which can be used
+for a local installation.
 
 ### Windows (requires Visual Studio)
 
