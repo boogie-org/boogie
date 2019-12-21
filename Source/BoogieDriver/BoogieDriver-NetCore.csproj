@@ -13,7 +13,6 @@
     <AssemblyName>BoogieDriver</AssemblyName>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageOutputPath>nupkg</PackageOutputPath>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>boogie</ToolCommandName>
   </PropertyGroup>

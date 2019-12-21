@@ -190,11 +190,8 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public static System.TimeSpan TotalUserTime = System.TimeSpan.Zero;
-
     public void Close()
     {
-      TotalUserTime += prover.UserProcessorTime;
       TerminateProver();
       DisposeProver();
     }
