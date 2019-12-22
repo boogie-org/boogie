@@ -30,6 +30,7 @@ deploy:
       - dotnet nuget push Source/BoogieDriver/bin/${CONFIGURATION}/Boogie*.nupkg -k ${NUGET_API_KEY} -s https://api.nuget.org/v3/index.json
     skip_cleanup: true
     on:
+      all_branches: true
       condition: $CONFIGURATION = Release && $TRAVIS_TAG =~ ^v.*$
   - provider: releases
     name: $TRAVIS_TAG
@@ -39,4 +40,5 @@ deploy:
     file: Source/BoogieDriver/bin/${CONFIGURATION}/Boogie*.nupkg
     skip_cleanup: true
     on:
+      all_branches: true
       condition: $CONFIGURATION = Release && $TRAVIS_TAG =~ ^v.*$
