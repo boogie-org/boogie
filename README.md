@@ -20,7 +20,7 @@ have been built in this way, including the
 [HAVOC](https://www.microsoft.com/en-us/research/project/havoc) verifiers for C
 and the verifiers for [Dafny](https://github.com/dafny-lang/dafny),
 [Chalice](https://www.microsoft.com/en-us/research/project/chalice), and
-[Spec#](https://www.microsoft.com/en-us/research/project/spec). 
+[Spec#](https://www.microsoft.com/en-us/research/project/spec).
 For a sample verifier for a toy language built on top of Boogie, see
 [Forro](https://github.com/boogie-org/forro).
 A previous version of the language was called BoogiePL. The current language
@@ -150,6 +150,21 @@ See the [Driver test documentation](Test/README.md)
 ### Unit tests
 
 See the [Unit test documentation](Source/UnitTests/README.md)
+
+## Versioning and Release Automation
+
+The https://github.com/boogie-org/boogie/blob/master/.github/workflows/main.yml workflow will create and push a new tag each time commits are pushed to the master branch (including PR merges). By default, the created tag increments the patch version number from the previous tag. For example, if the last tagged commit were `v2.4.3`, then pushing to master would tag the latest commit with `v2.4.4`. If incrementing minor or major number is desired instead of patch, simply add `#minor` or `#major` to the first line of the commit message. For instance:
+> Adding the next greatest feature. #minor
+
+If the last tagged commit were `v2.4.3`, then pushing this commit would generate the tag `v2.5.0`.
+
+For pull-request merges, if minor or major version increments are desired, a squash merge is required so that the first line of the merge commit message can be changed to include `#minor` or `#major`.
+
+Note that on each push to `master`, the following will happen:
+* A travis build for `master` is triggered.
+* The GitHub workflow is also triggered.
+* Once the workflow pushes a new tag `vX.Y.Z`, another travis build for `vX.Y.Z` is triggered.
+* The travis build for `vX.Y.Z` in Release configuration publishes releases to GitHub and [NuGet.org](https://www.nuget.org/packages/Boogie/).
 
 ## License
 
