@@ -6,8 +6,8 @@
 |-------------------------------|---------------------------------|
 | [![linux build status][1]][2] | [![windows_build_status][3]][4] |
 
-[1]: https://travis-ci.org/boogie-org/boogie.svg?branch=master
-[2]: https://travis-ci.org/boogie-org/boogie
+[1]: https://travis-ci.com/boogie-org/boogie.svg?branch=master
+[2]: https://travis-ci.com/boogie-org/boogie
 [3]: https://pmbuilds.inf.ethz.ch/buildStatus/icon?job=boogie
 [4]: #FIXME
 
