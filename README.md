@@ -158,7 +158,7 @@ The https://github.com/boogie-org/boogie/blob/master/.github/workflows/main.yml 
 
 If the last tagged commit were `v2.4.3`, then pushing this commit would generate the tag `v2.5.0`.
 
-For pull-request merges, if minor or major version increments are desired, a squash merge is required so that the first line of the merge commit message can be changed to include `#minor` or `#major`.
+For pull-request merges, if minor or major version increments are desired, the first line of the merge commit message can be changed to include `#minor` or `#major`.
 
 Note that on each push to `master`, the following will happen:
 * A travis build for `master` is triggered.
