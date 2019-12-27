@@ -190,8 +190,21 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+
+    // NOTE: this field is used by Corral.
+    // https://github.com/boogie-org/corral/blob/master/source/Driver.cs
+    public static System.TimeSpan TotalUserTime = System.TimeSpan.Zero;
+
     public void Close()
     {
+      try {
+        TotalUserTime += prover.UserProcessorTime;
+      } catch (Exception e) {
+        if (options.Verbosity >= 1) {
+          Console.Error.WriteLine("Warning: prover time not incremented due to {0}", e.GetType());
+        }
+      }
+
       TerminateProver();
       DisposeProver();
     }
@@ -394,4 +407,3 @@ namespace Microsoft.Boogie.SMTLib
     #endregion
   }
 }
-
