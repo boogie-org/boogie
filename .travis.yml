@@ -1,7 +1,7 @@
 # vim: set sw=2 ts=2 softtabstop=2 expandtab:
 language: csharp
+os: linux
 dist: bionic
-sudo: true
 dotnet: 3.1
 mono: none
 git:
@@ -10,7 +10,7 @@ env:
   global:
     - SOLUTION=Source/Boogie-NetCore.sln
     - Z3URL=https://github.com/Z3Prover/z3/releases/download/z3-4.8.4/z3-4.8.4.d6df51951f4c-x64-ubuntu-14.04.zip
-  matrix:
+  jobs:
     - CONFIGURATION=Debug
     - CONFIGURATION=Release
 install:
@@ -26,15 +26,14 @@ script:
   - lit -v -D dotnet -D configuration=${CONFIGURATION} Test
 deploy:
   - provider: script
-    script:
-      - dotnet nuget push Source/BoogieDriver/bin/${CONFIGURATION}/Boogie*.nupkg -k ${NUGET_API_KEY} -s https://api.nuget.org/v3/index.json
+    script: dotnet nuget push Source/BoogieDriver/bin/${CONFIGURATION}/Boogie*.nupkg -k ${NUGET_API_KEY} -s https://api.nuget.org/v3/index.json
     skip_cleanup: true
     on:
       all_branches: true
       condition: $CONFIGURATION = Release && $TRAVIS_TAG =~ ^v.*$
   - provider: releases
     name: $TRAVIS_TAG
-    api_key:
+    token:
       secure: ZjKhOiIpC6R+Xfp1iJX/1a2DD1o+tYhUefZDqRjUfM4rDZqzvOBvY7mA/1BcqNs4gXJIk3p11Kud72cPSSS8iW2EVlRm2UlfdVOf2wmGys/TILvHNDWUoVFSxhVgxbzMVULp6fIrqDypaZ0PAYZVg2loLkVI5AZ/P35ZRVaa9oE=
     file_glob: true
     file: Source/BoogieDriver/bin/${CONFIGURATION}/Boogie*.nupkg
