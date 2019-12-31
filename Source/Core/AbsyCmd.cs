@@ -2278,6 +2278,58 @@ namespace Microsoft.Boogie {
           Contract.Ensures(Contract.Result<Absy>() != null);
           return visitor.VisitParCallCmd(this);
       }
+        public override void Emit(TokenTextWriter stream, int level)
+        {
+            stream.Write(this, level, "");
+            stream.Write("par ");
+            EmitAttributes(stream, Attributes);
+            string sep = "";
+            bool first = true;
+            foreach (var callCmd in CallCmds)
+            {
+                if (!first)
+                {
+                    stream.Write(" | ");
+                }
+                first = false;
+                if (callCmd.Outs.Count > 0)
+                {
+                    foreach (Expr arg in callCmd.Outs)
+                    {
+                        stream.Write(sep);
+                        sep = ", ";
+                        if (arg == null)
+                        {
+                            stream.Write("*");
+                        }
+                        else
+                        {
+                            arg.Emit(stream);
+                        }
+                    }
+                    stream.Write(" := ");
+                }
+                stream.Write(TokenTextWriter.SanitizeIdentifier(callCmd.callee));
+                stream.Write("(");
+                sep = "";
+                foreach (Expr arg in callCmd.Ins)
+                {
+                    stream.Write(sep);
+                    sep = ", ";
+                    if (arg == null)
+                    {
+                        stream.Write("*");
+                    }
+                    else
+                    {
+                        arg.Emit(stream);
+                    }
+                }
+                stream.Write(")");              
+            }
+            stream.WriteLine(";");
+            base.Emit(stream, level);
+        }
   }
 
   public class CallCmd : CallCommonality, IPotentialErrorNode<object, object>
