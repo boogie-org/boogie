@@ -8,12 +8,7 @@ function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
   MapConstBool(false)[x := true]
 }
 
-procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} tid: int)
-{
-    yield;
-    call tid := AllocateLow();
-    yield;
-}
+procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} tid: int);
 
 procedure {:atomic} {:layer 1} AtomicWrite(idx: int, val: int)
 modifies a;
@@ -57,6 +52,3 @@ ensures {:layer 1} old(a)[i] == a[i];
     yield;
     assert {:layer 1} old(a)[i] == a[i];
 }
-
-procedure {:yields} {:layer 0} AllocateLow() returns ({:linear "tid"} tid: int);
-

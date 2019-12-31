@@ -1,6 +1,6 @@
-parallel4.bpl(31,3): Error BP5001: This assertion might not hold.
+parallel4.bpl(26,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    parallel4.bpl(29,5): anon0
-    parallel4.bpl(29,5): anon0_1
+    parallel4.bpl(24,5): anon0
+    parallel4.bpl(24,5): anon0_1
 
-Boogie program verifier finished with 7 verified, 1 error
+Boogie program verifier finished with 5 verified, 1 error

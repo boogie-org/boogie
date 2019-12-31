@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System;
 using System.Diagnostics;
 
 namespace Microsoft.Boogie
@@ -8,7 +9,6 @@ namespace Microsoft.Boogie
     {
         private CivlTypeChecker civlTypeChecker;
         private LinearTypeChecker linearTypeChecker;
-        private Dictionary<Procedure, Procedure> procToSkipProcDummy;
         private Implementation enclosingImpl;
         private YieldingProc enclosingYieldingProc;
 
@@ -18,14 +18,11 @@ namespace Microsoft.Boogie
         private Dictionary<Implementation, Implementation> implMap; /* Duplicate -> Original */
         private HashSet<Procedure> yieldingProcs;
 
-        public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, LinearTypeChecker linearTypeChecker,
-            int layerNum, Dictionary<Procedure, Procedure> procToSkipProcDummy)
+        public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, LinearTypeChecker linearTypeChecker, int layerNum)
         {
             this.civlTypeChecker = civlTypeChecker;
             this.linearTypeChecker = linearTypeChecker;
             this.layerNum = layerNum;
-            this.procToSkipProcDummy = procToSkipProcDummy;
-
             this.procMap = new Dictionary<Procedure, Procedure>();
             this.absyMap = new Dictionary<Absy, Absy>();
             this.implMap = new Dictionary<Implementation, Implementation>();
@@ -54,8 +51,8 @@ namespace Microsoft.Boogie
                     }
                     else if (yieldingProc is SkipProc)
                     {
-                        // (calls to) skip procedures do not completely disappear because of output variables
-                        return procToSkipProcDummy[yieldingProc.proc];
+                        // calls to skip procedures are erased
+                        return node;
                     }
                     else if (yieldingProc is MoverProc)
                     {
@@ -258,9 +255,13 @@ namespace Microsoft.Boogie
             else
             {
                 YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[call.Proc];
+                if (yieldingProc is SkipProc && yieldingProc.upperLayer < layerNum)
+                {
+                    return;
+                }
                 if (newCall.IsAsync)
                 {
-                    if (((yieldingProc is SkipProc || call.HasAttribute(CivlAttributes.SYNC)) && yieldingProc.upperLayer < layerNum) ||
+                    if ((call.HasAttribute(CivlAttributes.SYNC) && yieldingProc.upperLayer < layerNum) ||
                         (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum))
                     {
                         newCall.IsAsync = false;
@@ -333,7 +334,24 @@ namespace Microsoft.Boogie
             }
             else
             {
-                newCmdSeq.Add(newParCall);
+                List<CallCmd> newCallCmds = new List<CallCmd>();
+                foreach (var pair in parCall.CallCmds.Zip(newParCall.CallCmds))
+                {
+                    YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[pair.Item1.Proc];
+                    if (yieldingProc is SkipProc && yieldingProc.upperLayer < layerNum)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        newCallCmds.Add(pair.Item2);
+                    }
+                }
+                if (newCallCmds.Count > 0)
+                {
+                    newParCall.CallCmds = newCallCmds;
+                    newCmdSeq.Add(newParCall);
+                }
             }
         }
 

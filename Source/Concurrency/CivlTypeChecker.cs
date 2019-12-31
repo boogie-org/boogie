@@ -1228,11 +1228,12 @@ namespace Microsoft.Boogie
                         Require(callerProc.upperLayer >= calleeProc.upperLayer, call,
                             "The layer of the caller must be greater than or equal to the layer of the callee");
                     }
-
-                    if (callerProc.upperLayer == calleeProc.upperLayer && enclosingImpl.OutParams.Count > 0)
+                    Require(callerProc.upperLayer == calleeProc.upperLayer || call.Outs.Count == 0, call,
+                        $"Call is not erasable at layer {callerProc.upperLayer}");
+                    if (callerProc is ActionProc && call.Outs.Count > 0 && enclosingImpl.OutParams.Count > 0)
                     {
                         // Skip procedures have the effect of havocing their output variables.
-                        // Currently, the snapshotting during refinement checking does not account for that,
+                        // Currently, refinement checking does not account for that,
                         // so we forbid propagation to the callers output variables.
                         HashSet<Variable> callerOutParams = new HashSet<Variable>(enclosingImpl.OutParams);
                         foreach (var x in call.Outs)

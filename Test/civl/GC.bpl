@@ -227,8 +227,8 @@ modifies mutatorPhase, root, toAbs, Color, mem, collectorPhase, sweepPtr;
     collectorPhase := IDLE();
     sweepPtr := memHi;
 }
-    
-procedure {:yields} {:layer 96} {:refines "AtomicInitVars100"} InitVars100({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)    
+
+procedure {:yields} {:layer 96} {:refines "AtomicInitVars100"} InitVars100({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
 {
     var n:int;
     var m:int;
@@ -1922,7 +1922,10 @@ procedure {:yields} {:layer 95} {:refines "AtomicMutatorReadBarrierOn"} MutatorR
     yield;
 }
 
-procedure {:yields} {:layer 95} PollMutatorReadBarrierOn({:linear "tid"} tid: Tid) returns (val:bool)
+procedure {:both} {:layer 96,99} AtomicPollMutatorReadBarrierOn({:linear "tid"} tid: Tid) returns (val:bool)
+{ }
+
+procedure {:yields} {:layer 95} {:refines "AtomicPollMutatorReadBarrierOn"} PollMutatorReadBarrierOn({:linear "tid"} tid: Tid) returns (val:bool)
 {
     yield;
     call val := PrimitiveReadRootScanOn();

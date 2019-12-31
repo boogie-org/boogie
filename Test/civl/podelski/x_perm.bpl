@@ -67,7 +67,7 @@ requires {:layer 1} As[bToA(_b)];
 ensures  {:layer 1} cardAs(As) > cardBs(Bs);
 
 // Acutal program
-procedure {:yields}{:layer 2} main ()
+procedure {:yields}{:layer 1} main ()
 requires {:layer 1} Inv(x, As, Bs);
 {
   var i:int;
