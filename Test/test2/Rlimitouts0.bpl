@@ -34,7 +34,7 @@ procedure TestRlimit1(in: [int]int, len: int) returns (out: [int]int);
   requires 0 < len;
   ensures (forall j: int :: 0 <= j && j < len ==> out[j] == in[j]);
 
-implementation {:rlimit 60000} TestRlimit1(in: [int]int, len: int) returns (out: [int]int)
+implementation {:rlimit 6000000} TestRlimit1(in: [int]int, len: int) returns (out: [int]int)
 {
     var i : int;
 
