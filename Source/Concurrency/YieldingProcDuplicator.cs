@@ -347,11 +347,9 @@ namespace Microsoft.Boogie
                         newCallCmds.Add(pair.Item2);
                     }
                 }
-                if (newCallCmds.Count > 0)
-                {
-                    newParCall.CallCmds = newCallCmds;
-                    newCmdSeq.Add(newParCall);
-                }
+                Debug.Assert(newCallCmds.Count > 0);
+                newParCall.CallCmds = newCallCmds;
+                newCmdSeq.Add(newParCall);
             }
         }
 
