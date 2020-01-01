@@ -151,7 +151,7 @@ namespace Microsoft.Boogie
             }
             else
             {
-                beta = Expr.And(this.oldGlobalMap.Keys.Select(v => Expr.Eq(Expr.Ident(v), foroldMap[v])));
+                beta = OldEqualityExprForGlobals();
                 alpha = Expr.True;
             }
 
@@ -315,24 +315,17 @@ namespace Microsoft.Boogie
 
         private Expr OldEqualityExpr()
         {
-            Expr bb = OldEqualityExprForGlobals();
-            foreach (Variable o in oldOutputMap.Keys)
-            {
-                bb = Expr.And(bb, Expr.Eq(Expr.Ident(o), Expr.Ident(oldOutputMap[o])));
-                bb.Type = Type.Bool;
-            }
-            return bb;
+            return Expr.And(OldEqualityExprForGlobals(), OldEqualityExprForOutputs());
         }
 
         private Expr OldEqualityExprForGlobals()
         {
-            Expr bb = Expr.True;
-            foreach (Variable g in oldGlobalMap.Keys)
-            {
-                bb = Expr.And(bb, Expr.Eq(Expr.Ident(g), Expr.Ident(oldGlobalMap[g])));
-                bb.Type = Type.Bool;
-            }
-            return bb;
+            return Expr.And(this.oldGlobalMap.Select(kvPair => Expr.Eq(Expr.Ident(kvPair.Key), Expr.Ident(kvPair.Value))));
+        }
+
+        private Expr OldEqualityExprForOutputs()
+        {
+            return Expr.And(this.oldOutputMap.Select(kvPair => Expr.Eq(Expr.Ident(kvPair.Key), Expr.Ident(kvPair.Value))));
         }
 
         private LocalVariable Old(Variable v)
