@@ -7,6 +7,7 @@ Execution trace:
 *** MODEL
 %lbl%@1 -> false
 %lbl%+0 -> true
+%lbl%+2 -> false
 %lbl%+3 -> true
 %lbl%+4 -> true
 %lbl%+5 -> true
@@ -16,12 +17,13 @@ Heap -> |T@[Ref,FieldName]Int!val!0|
 m -> **m
 m@0 -> (- 8)
 m@1 -> (- 7)
+m@2 -> 0
 m@3 -> (- 7)
 r -> **r
 r@0 -> (- 14)
 this -> T@Ref!val!0
 x -> 40
-y -> **y
+y -> 0
 $mv_state -> {
   4 0 -> true
   4 1 -> true
@@ -44,7 +46,7 @@ tickleBool -> {
   r -> **r
   this -> T@Ref!val!0
   x -> 40
-  y -> **y
+  y -> 0
 *** END_STATE
 *** STATE top
 *** END_STATE

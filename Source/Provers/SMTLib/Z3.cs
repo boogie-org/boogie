@@ -291,7 +291,7 @@ namespace Microsoft.Boogie.SMTLib
 
             if (major > 4 || (major == 4 && minor >= 8)) {
               // {:captureState} does not work with compressed models
-              options.AddWeakSmtOption("model_compress", "false");
+              options.AddWeakSmtOption("model.compact", "false");
             }
 
             if (options.TimeLimit > 0)
