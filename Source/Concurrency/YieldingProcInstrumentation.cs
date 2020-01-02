@@ -78,7 +78,7 @@ namespace Microsoft.Boogie
         private Dictionary<Absy, Absy> absyMap;
         private Dictionary<Implementation, Implementation> implMap;
         private HashSet<Procedure> yieldingProcs;
-        
+
         private Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
         private List<Declaration> yieldCheckerDecls;
         private Procedure yieldProc;
@@ -118,7 +118,7 @@ namespace Microsoft.Boogie
                     CallCmd callCmd = new CallCmd(Token.NoToken, proc.Name, exprSeq, new List<IdentifierExpr>());
                     callCmd.Proc = proc;
                     string label = $"L_{labelCount++}";
-                    Block block = new Block(Token.NoToken, label, new List<Cmd> {callCmd},
+                    Block block = new Block(Token.NoToken, label, new List<Cmd> { callCmd },
                         new ReturnCmd(Token.NoToken));
                     labelTargets.Add(label);
                     blockTargets.Add(block);
@@ -136,7 +136,7 @@ namespace Microsoft.Boogie
             CivlUtil.AddInlineAttribute(yieldImpl);
             return yieldImpl;
         }
-        
+
         private Formal OldGlobalFormal(Variable v)
         {
             return new Formal(Token.NoToken,
@@ -157,10 +157,10 @@ namespace Microsoft.Boogie
             if (yieldingProc.upperLayer == this.layerNum)
             {
                 refinementInstrumentation = new SomeRefinementInstrumentation(
-                    civlTypeChecker, 
-                    impl, 
+                    civlTypeChecker,
+                    impl,
                     originalImpl,
-                    globalSnapshotInstrumentation.OldGlobalMap, 
+                    globalSnapshotInstrumentation.OldGlobalMap,
                     yieldingLoopHeaders);
             }
             else
@@ -186,15 +186,15 @@ namespace Microsoft.Boogie
             impl.LocVars.AddRange(refinementInstrumentation.NewLocalVars);
             impl.LocVars.AddRange(noninterferenceInstrumentation.NewLocalVars);
         }
-        
+
         private Block AddInitialBlock(Implementation impl)
         {
             var initCmds = new List<Cmd>();
             initCmds.AddRange(globalSnapshotInstrumentation.CreateInitCmds());
             initCmds.AddRange(refinementInstrumentation.CreateInitCmds());
             initCmds.AddRange(noninterferenceInstrumentation.CreateInitCmds(impl));
-            var gotoCmd = new GotoCmd(Token.NoToken, new List<String> {impl.Blocks[0].Label},
-                new List<Block> {impl.Blocks[0]});
+            var gotoCmd = new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label },
+                new List<Block> { impl.Blocks[0] });
             return new Block(Token.NoToken, "og_init", initCmds, gotoCmd);
         }
 
@@ -247,7 +247,7 @@ namespace Microsoft.Boogie
 
             return false;
         }
-        
+
         private void DesugarConcurrency(Implementation impl, Graph<Block> graph, HashSet<Block> yieldingLoopHeaders)
         {
             var allYieldPredicates = CollectYields(impl);
@@ -260,7 +260,7 @@ namespace Microsoft.Boogie
             var yieldCheckerBlock = CreateYieldCheckerBlock();
             var returnBlock = CreateReturnBlock();
             SplitBlocks(impl);
-            
+
             // add jumps to yieldCheckerBlock and returnBlock
             foreach (var b in impl.Blocks)
             {
@@ -294,7 +294,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    b.TransferCmd = new GotoCmd(b.TransferCmd.tok, new List<string> {returnBlock.Label}, new List<Block> {returnBlock});
+                    b.TransferCmd = new GotoCmd(b.TransferCmd.tok, new List<string> { returnBlock.Label }, new List<Block> { returnBlock });
                 }
             }
             foreach (Block header in yieldingLoopHeaders)
@@ -306,7 +306,7 @@ namespace Microsoft.Boogie
                     gotoCmd.labelTargets.Add(yieldCheckerBlock);
                 }
             }
-            
+
             // desugar YieldCmd, CallCmd, and ParCallCmd 
             foreach (Block b in impl.Blocks)
             {
@@ -374,13 +374,13 @@ namespace Microsoft.Boogie
                     }
                 }
             }
-            
+
             impl.Blocks.AddRange(InstrumentYieldingLoopHeaders(graph, yieldingLoopHeaders));
             impl.Blocks.Add(yieldCheckerBlock);
             impl.Blocks.Add(returnBlock);
             impl.Blocks.Insert(0, AddInitialBlock(impl));
         }
-        
+
         private Dictionary<YieldCmd, List<PredicateCmd>> CollectYields(Implementation impl)
         {
             Dictionary<YieldCmd, List<PredicateCmd>> allYieldPredicates = new Dictionary<YieldCmd, List<PredicateCmd>>();
@@ -416,7 +416,7 @@ namespace Microsoft.Boogie
             }
             return allYieldPredicates;
         }
-        
+
         private void SplitBlocks(Implementation impl)
         {
             List<Block> newBlocks = new List<Block>();
@@ -449,8 +449,8 @@ namespace Microsoft.Boogie
                         var newBlock = new Block(b.tok, $"{b.Label}_{labelCount++}", b.cmds.GetRange(i, lastSplitIndex - i),
                             currTransferCmd);
                         newBlocks.Add(newBlock);
-                        currTransferCmd = new GotoCmd(b.tok, new List<string> {newBlock.Label},
-                            new List<Block> {newBlock});
+                        currTransferCmd = new GotoCmd(b.tok, new List<string> { newBlock.Label },
+                            new List<Block> { newBlock });
                         lastSplitIndex = i;
                     }
                 }
@@ -476,7 +476,7 @@ namespace Microsoft.Boogie
             returnBlockCmds.AddRange(refinementInstrumentation.CreateFinalAssertCmds());
             return new Block(Token.NoToken, "ReturnChecker", returnBlockCmds, new ReturnCmd(Token.NoToken));
         }
-        
+
         private List<Cmd> DesugarYieldCmd(
             YieldCmd yieldCmd,
             List<PredicateCmd> cmds)
@@ -490,7 +490,7 @@ namespace Microsoft.Boogie
             newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
             newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
             newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(yieldCmd));
-            
+
             for (int j = 0; j < cmds.Count; j++)
             {
                 newCmds.Add(new AssumeCmd(Token.NoToken, cmds[j].Expr));
@@ -558,7 +558,7 @@ namespace Microsoft.Boogie
             newCmds.Add(dummyCallCmd);
             return newCmds;
         }
-        
+
         private Formal ParCallDesugarFormal(Variable v, int count, bool incoming)
         {
             return new Formal(Token.NoToken,
@@ -588,7 +588,7 @@ namespace Microsoft.Boogie
                     else
                     {
                         var newBlock = new Block(Token.NoToken, $"{pred.Label}_to_{header.Label}", new List<Cmd>(), pred.TransferCmd);
-                        pred.TransferCmd = new GotoCmd(Token.NoToken, new List<string> {newBlock.Label}, new List<Block>{newBlock});
+                        pred.TransferCmd = new GotoCmd(Token.NoToken, new List<string> { newBlock.Label }, new List<Block> { newBlock });
                         headerToInstrumentationBlocks[header].Add(newBlock);
                         if (!graph.BackEdgeNodes(header).Contains(pred))
                         {
@@ -603,10 +603,7 @@ namespace Microsoft.Boogie
             {
                 foreach (Block pred in headerToInstrumentationBlocks[header])
                 {
-                    pred.cmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
-                    pred.cmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
                     pred.cmds.AddRange(refinementInstrumentation.CreateUpdateCmds());
-                    pred.cmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(header));
                 }
 
                 foreach (Block pred in headerToNonBackEdgeInstrumentationBlocks[header])
@@ -614,15 +611,46 @@ namespace Microsoft.Boogie
                     pred.cmds.AddRange(refinementInstrumentation.CreateYieldingLoopHeaderInitCmds(header));
                 }
 
-                var newCmds = new List<Cmd>();
-                newCmds.AddRange(globalSnapshotInstrumentation.CreateAssumeCmds());
-                newCmds.AddRange(noninterferenceInstrumentation.CreateAssumeCmds(header));
+                List<Cmd> firstCmds;
+                List<Cmd> secondCmds;
+                SplitCmds(header.Cmds, out firstCmds, out secondCmds);
+                List<Cmd> newCmds = new List<Cmd>();
+                newCmds.AddRange(firstCmds);
                 newCmds.AddRange(refinementInstrumentation.CreateYieldingLoopHeaderAssertCmds(header));
-                newCmds.AddRange(header.Cmds);
+                newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
+                newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
+                newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(header));
+                newCmds.AddRange(secondCmds);
                 header.Cmds = newCmds;
             }
 
             return newBlocks;
+        }
+
+        private void SplitCmds(List<Cmd> cmds, out List<Cmd> firstCmds, out List<Cmd> secondCmds)
+        {
+            firstCmds = new List<Cmd>();
+            secondCmds = new List<Cmd>();
+            var count = 0;
+            bool splitDone = false;
+            while (count < cmds.Count)
+            {
+                var cmd = cmds[count];
+                if (splitDone)
+                {
+                    secondCmds.Add(cmd);
+                    count++;
+                }
+                else if (cmd is PredicateCmd)
+                {
+                    firstCmds.Add(cmd);
+                    count++;
+                }
+                else
+                {
+                    splitDone = true;
+                }
+            }
         }
     }
 }

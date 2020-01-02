@@ -56,16 +56,6 @@ namespace Microsoft.Boogie
             }
             return initCmds;
         }
-
-        public List<Cmd> CreateAssumeCmds()
-        {
-            List<Cmd> newCmds = new List<Cmd>();
-            foreach (Variable v in oldGlobalMap.Keys)
-            {
-                newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Eq(Expr.Ident(v), Expr.Ident(oldGlobalMap[v]))));
-            }
-            return newCmds;
-        }
         
         private LocalVariable OldGlobalLocal(Variable v)
         {

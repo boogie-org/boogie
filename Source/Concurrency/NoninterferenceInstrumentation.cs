@@ -7,7 +7,6 @@ namespace Microsoft.Boogie
     interface NoninterferenceInstrumentation
     {
         List<Variable> NewLocalVars { get; }
-        List<Cmd> CreateAssumeCmds(Absy absy);
         List<Cmd> CreateUpdatesToPermissionCollector(Absy absy);
         List<Cmd> CreateInitCmds(Implementation impl);
         List<Declaration> CreateYieldCheckerProcImpl(Implementation impl, IEnumerable<List<PredicateCmd>> yields);
@@ -18,11 +17,6 @@ namespace Microsoft.Boogie
     {
         public List<Variable> NewLocalVars => new List<Variable>();
         
-        public List<Cmd> CreateAssumeCmds(Absy absy)
-        {
-            return new List<Cmd>();
-        }
-
         public List<Cmd> CreateUpdatesToPermissionCollector(Absy absy)
         {
             return new List<Cmd>();
@@ -117,18 +111,6 @@ namespace Microsoft.Boogie
                 initCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
             }
             return initCmds;
-        }
-
-        public List<Cmd> CreateAssumeCmds(Absy absy)
-        {
-            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(AvailableLinearVars(absy));
-            List<Cmd> newCmds = new List<Cmd>();
-            foreach (string domainName in linearTypeChecker.linearDomains.Keys)
-            {
-                newCmds.Add(new AssumeCmd(Token.NoToken,
-                    Expr.Eq(Expr.Ident(domainNameToLocalVar[domainName]), domainNameToExpr[domainName])));
-            }
-            return newCmds;
         }
 
         public List<Declaration> CreateYieldCheckerProcImpl(
