@@ -3,7 +3,6 @@ Execution trace:
     t1.bpl(99,13): anon0
     t1.bpl(99,13): anon0_1
     t1.bpl(99,13): anon0_1$1
-    (0,0): YieldChecker
     (0,0): inline$Impl_YieldChecker_A_1$0$L1
 
 Boogie program verifier finished with 10 verified, 1 error

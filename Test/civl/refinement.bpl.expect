@@ -2,16 +2,16 @@
 Execution trace:
     refinement.bpl(8,3): anon0
     refinement.bpl(8,3): anon0_2
-    refinement.bpl(43,5): inline$INCR$1$anon0
-    refinement.bpl(8,3): anon0_1
     refinement.bpl(43,5): inline$INCR$0$anon0
-    (0,0): YieldChecker
+    refinement.bpl(8,3): anon0_1
+    refinement.bpl(43,5): inline$INCR$1$anon0
+    (0,0): RefinementChecker
 (0,0): Error: Transition invariant violated in initial state
 Execution trace:
     refinement.bpl(17,3): anon0
     refinement.bpl(17,3): anon0_2
     refinement.bpl(50,5): inline$DECR$0$anon0
-    (0,0): YieldChecker
+    (0,0): RefinementChecker
 (0,0): Error: Transition invariant violated in final state
 Execution trace:
     refinement.bpl(17,3): anon0
@@ -19,6 +19,6 @@ Execution trace:
     refinement.bpl(50,5): inline$DECR$0$anon0
     refinement.bpl(17,3): anon0_1
     refinement.bpl(43,5): inline$INCR$0$anon0
-    (0,0): YieldChecker
+    (0,0): RefinementChecker
 
 Boogie program verifier finished with 6 verified, 3 errors

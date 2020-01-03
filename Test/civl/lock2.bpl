@@ -36,10 +36,10 @@ procedure {:yields} {:layer 1} {:refines "AtomicEnter"} Enter()
     yield;
     while (true) {
         call _old := CAS(0, 1);
-        yield;
         if (_old == 0) {
             break;
         }
+        yield;
         while (true) {
             call curr := Read();
             yield;
