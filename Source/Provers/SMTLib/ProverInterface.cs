@@ -272,6 +272,11 @@ namespace Microsoft.Boogie.SMTLib
           foreach (CtorType datatype in ctx.KnownDatatypeConstructors.Keys)
           {
             dependencyGraph.AddSource(datatype);
+	    // Check for user-specified dependency (using ":dependson" attribute).
+	    string userDependency = datatype.getTypeDependency();
+	    if (userDependency != null) {
+	      dependencyGraph.AddEdge(datatype, ctx.LookupDatatype(userDependency));
+	    }
             foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
             {
               List<CtorType> dependentTypes = new List<CtorType>();
@@ -2775,6 +2780,16 @@ namespace Microsoft.Boogie.SMTLib
         KnownDatatypeConstructors[datatype].Add(f);
       }
       base.DeclareFunction(f, attributes);
+    }
+
+    // Return the datatype of the given name if there is one, null otherwise.
+    public CtorType LookupDatatype(string name) {
+      foreach (CtorType datatype in KnownDatatypeConstructors.Keys) {
+        if (name == datatype.ToString()) {
+	  return datatype;
+        }
+      }
+      return null;
     }
   }
 

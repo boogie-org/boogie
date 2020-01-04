@@ -303,8 +303,17 @@ void ObjectInvariant()
         return;
 
       CtorType ctorType = type as CtorType;
-      if (ctorType != null && ctorType.IsDatatype())
-        return;
+      if (ctorType != null) {
+        // Check for user-specified alternate declaration and use it if there is one.
+        string decl = ctorType.getBuiltinDecl();
+	if (decl != null) {
+	  AddDeclaration(decl);
+	  KnownTypes.Add(type);
+	  return;
+	}
+        if (ctorType.IsDatatype())
+          return;
+      }
 
       if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) {
         AddDeclaration("(declare-sort " + TypeToString(type) + " 0)");
