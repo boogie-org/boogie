@@ -18,5 +18,5 @@ procedure test()
   s := IntSeqConcat(s, IntSeqUnit(2));
   assert IntSeqLen(s) == 3;
   assert IntSeqExtract(s, 1, 2) == IntSeqConcat(IntSeqUnit(1), IntSeqUnit(2));
-  assume IntSeqNth(s, 1) == 1;
+  assert IntSeqNth(s, 1) == 1;
 }

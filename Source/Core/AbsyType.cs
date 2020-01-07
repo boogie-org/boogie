@@ -3239,14 +3239,14 @@ Contract.Requires(that != null);
     }
 
     // This attribute is used to provide a user-specified SMT-LIB declaration for the type.
-    public string getBuiltinDecl() {
+    public string GetBuiltinDecl() {
       return this.Decl.FindStringAttribute("builtindecl");
     }
 
     // This attribute can be used to tell Boogie that a datatype depends on another datatype
     // in case Boogie can't figure this out itself (as may happen, for example when a type
     // has the ":builtin" attribute).
-    public string getTypeDependency() {
+    public string GetTypeDependency() {
       return this.Decl.FindStringAttribute("dependson");
     }
 

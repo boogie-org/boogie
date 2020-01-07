@@ -273,7 +273,7 @@ namespace Microsoft.Boogie.SMTLib
           {
             dependencyGraph.AddSource(datatype);
 	    // Check for user-specified dependency (using ":dependson" attribute).
-	    string userDependency = datatype.getTypeDependency();
+	    string userDependency = datatype.GetTypeDependency();
 	    if (userDependency != null) {
 	      dependencyGraph.AddEdge(datatype, ctx.LookupDatatype(userDependency));
 	    }
