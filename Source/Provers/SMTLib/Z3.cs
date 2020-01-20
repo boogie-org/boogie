@@ -301,7 +301,7 @@ namespace Microsoft.Boogie.SMTLib
               // {:captureState} does not work with compressed models
 
               // model_compress was introduced in 4.8.1 and eliminated (consolidated with `model.compact`) in 4.8.7
-              if (patch <= 7)
+              if (patch < 7)
                   options.AddWeakSmtOption("model_compress", "false");
               else
                   options.AddWeakSmtOption("model.compact", "false");
