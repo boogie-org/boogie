@@ -127,7 +127,7 @@ namespace Microsoft.Boogie.SMTLib
         case SolverKind.Z3:
           if (path == null)
             path = Z3.ExecutablePath();
-          return SMTLibProcess.ComputerProcessStartInfo(path, "AUTO_CONFIG=false -smt2 -in");
+          return SMTLibProcess.ComputerProcessStartInfo(path, "-smt2 -in");
         case SolverKind.CVC4:
           if (path == null)
             path = CVC4.ExecutablePath();
