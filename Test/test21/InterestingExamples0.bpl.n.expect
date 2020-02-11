@@ -1,5 +1,0 @@
-InterestingExamples0.bpl(13,1): Error BP5001: This assertion might not hold.
-Execution trace:
-    InterestingExamples0.bpl(11,6): anon0
-
-Boogie program verifier finished with 0 verified, 1 error

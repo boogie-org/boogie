@@ -1,8 +1,0 @@
-Boxing.bpl(25,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    Boxing.bpl(21,6): anon0
-Boxing.bpl(26,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    Boxing.bpl(21,6): anon0
-
-Boogie program verifier finished with 0 verified, 2 errors
