@@ -1,5 +1,5 @@
-// RUN: %boogie "%s" > "%t"
-// RUN: %boogie -removeEmptyBlocks:0 "%s" >> "%t"
+// RUN: %boogie -proverOpt:O:smt.MBQI=false "%s" > "%t"
+// RUN: %boogie -proverOpt:O:smt.MBQI=false -removeEmptyBlocks:0 "%s" >> "%t"
 // RUN: %diff "%s.expect" "%t"
 // A Boogie version of Elevator.asml (see Boogie/Test/inline/Elevator.asml)
 
@@ -121,14 +121,14 @@ procedure {:inline 1} Stop()
   assume liftLevel == headingTo;
   moving := false;
 }
-  
+
 procedure {:inline 1} OpenLiftDoor()
   modifies liftDoorOpen;
 {
   assume !moving;
   liftDoorOpen := true;
 }
-  
+
 procedure {:inline 1} CloseLiftDoor()
   modifies liftDoorOpen;
 {

@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -contractInfer -printAssignment "%s" > "%t"
+// RUN: %boogie -noinfer -proverOpt:O:smt.MBQI=false -contractInfer -printAssignment "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 const {:existential true} b1:bool;
 const {:existential true} b2:bool;
@@ -24,7 +24,7 @@ requires b5 ==> j > 0;
 modifies array;
 {
     call foo(j);
-    result := array[j];	
+    result := array[j];
 }
 
 // expected outcome: Correct

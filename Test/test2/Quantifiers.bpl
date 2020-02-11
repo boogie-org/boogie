@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer /proverOpt:O:smt.MBQI=false "%s" > "%t"
+// RUN: %boogie -noinfer -proverOpt:O:smt.MBQI=false "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // ----------------------------------------------------------------------- single trigger
 

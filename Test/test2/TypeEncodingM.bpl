@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -typeEncoding:m "%s" > "%t"
+// RUN: %boogie -noinfer -proverOpt:O:smt.MBQI=false -typeEncoding:m "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type TT;
 

@@ -1,6 +1,6 @@
-// RUN: %boogie -noinfer "%s" > "%t"
+// RUN: %boogie -noinfer -proverOpt:O:smt.MBQI=false "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// RUN: %boogie -noinfer -typeEncoding:m "%s" > "%t"
+// RUN: %boogie -noinfer -proverOpt:O:smt.MBQI=false -typeEncoding:m "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure foo()
 {
@@ -14,7 +14,7 @@ procedure foo()
 procedure bar()
 {
   assert (lambda x:int :: x > 0)[10];
-  
+
 }
 
 type t1;
@@ -28,7 +28,7 @@ procedure baz()
   assert m[1,t] == 1;
   assert t == t2 || m[1,t2] == 12;
   assert  m[12,t2] == 12;
-  
+
 }
 
 
