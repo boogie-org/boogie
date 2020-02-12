@@ -121,14 +121,14 @@ procedure {:inline 1} Stop()
   assume liftLevel == headingTo;
   moving := false;
 }
-
+  
 procedure {:inline 1} OpenLiftDoor()
   modifies liftDoorOpen;
 {
   assume !moving;
   liftDoorOpen := true;
 }
-
+  
 procedure {:inline 1} CloseLiftDoor()
   modifies liftDoorOpen;
 {

@@ -63,393 +63,393 @@ var Mem_s_1_T.DeviceObject__IO_STACK_LOCATION : [int]int;
 // Field offset definitions
 
 function AssociatedIrp__IRP(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {AssociatedIrp__IRP(x)} AssociatedIrp__IRP(x) == x + 12);
 axiom (forall x:int :: {AssociatedIrp__IRP(x)} AssociatedIrp__IRP(x) == INT_ADD(x, 12));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function COMMON_DATA__PORT_KEYBOARD_EXTENSION(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {COMMON_DATA__PORT_KEYBOARD_EXTENSION(x)} COMMON_DATA__PORT_KEYBOARD_EXTENSION(x) == x + 0);
 axiom (forall x:int :: {COMMON_DATA__PORT_KEYBOARD_EXTENSION(x)} COMMON_DATA__PORT_KEYBOARD_EXTENSION(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function CancelIrql__IRP(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {CancelIrql__IRP(x)} CancelIrql__IRP(x) == x + 37);
 axiom (forall x:int :: {CancelIrql__IRP(x)} CancelIrql__IRP(x) == INT_ADD(x, 37));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function CancelRoutine__IRP(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {CancelRoutine__IRP(x)} CancelRoutine__IRP(x) == x + 56);
 axiom (forall x:int :: {CancelRoutine__IRP(x)} CancelRoutine__IRP(x) == INT_ADD(x, 56));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Cancel__IRP(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Cancel__IRP(x)} Cancel__IRP(x) == x + 36);
 axiom (forall x:int :: {Cancel__IRP(x)} Cancel__IRP(x) == INT_ADD(x, 36));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function CompletionRoutine__IO_STACK_LOCATION(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {CompletionRoutine__IO_STACK_LOCATION(x)} CompletionRoutine__IO_STACK_LOCATION(x) == x + 28);
 axiom (forall x:int :: {CompletionRoutine__IO_STACK_LOCATION(x)} CompletionRoutine__IO_STACK_LOCATION(x) == INT_ADD(x, 28));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Context__IO_STACK_LOCATION(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Context__IO_STACK_LOCATION(x)} Context__IO_STACK_LOCATION(x) == x + 32);
 axiom (forall x:int :: {Context__IO_STACK_LOCATION(x)} Context__IO_STACK_LOCATION(x) == INT_ADD(x, 32));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Control__IO_STACK_LOCATION(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Control__IO_STACK_LOCATION(x)} Control__IO_STACK_LOCATION(x) == x + 3);
 axiom (forall x:int :: {Control__IO_STACK_LOCATION(x)} Control__IO_STACK_LOCATION(x) == INT_ADD(x, 3));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ControllerData__GLOBALS(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {ControllerData__GLOBALS(x)} ControllerData__GLOBALS(x) == x + 0);
 axiom (forall x:int :: {ControllerData__GLOBALS(x)} ControllerData__GLOBALS(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function CurrentLocation__IRP(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {CurrentLocation__IRP(x)} CurrentLocation__IRP(x) == x + 35);
 axiom (forall x:int :: {CurrentLocation__IRP(x)} CurrentLocation__IRP(x) == INT_ADD(x, 35));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function CurrentStackLocation___unnamed_4_3c640f23(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {CurrentStackLocation___unnamed_4_3c640f23(x)} CurrentStackLocation___unnamed_4_3c640f23(x) == x + 0);
 axiom (forall x:int :: {CurrentStackLocation___unnamed_4_3c640f23(x)} CurrentStackLocation___unnamed_4_3c640f23(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function DeviceExtension__DEVICE_OBJECT(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {DeviceExtension__DEVICE_OBJECT(x)} DeviceExtension__DEVICE_OBJECT(x) == x + 40);
 axiom (forall x:int :: {DeviceExtension__DEVICE_OBJECT(x)} DeviceExtension__DEVICE_OBJECT(x) == INT_ADD(x, 40));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function DeviceIoControl___unnamed_16_afe81cff(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {DeviceIoControl___unnamed_16_afe81cff(x)} DeviceIoControl___unnamed_16_afe81cff(x) == x + 0);
 axiom (forall x:int :: {DeviceIoControl___unnamed_16_afe81cff(x)} DeviceIoControl___unnamed_16_afe81cff(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function DeviceObject__IO_STACK_LOCATION(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {DeviceObject__IO_STACK_LOCATION(x)} DeviceObject__IO_STACK_LOCATION(x) == x + 20);
 axiom (forall x:int :: {DeviceObject__IO_STACK_LOCATION(x)} DeviceObject__IO_STACK_LOCATION(x) == INT_ADD(x, 20));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function DeviceState__POWER_STATE(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {DeviceState__POWER_STATE(x)} DeviceState__POWER_STATE(x) == x + 0);
 axiom (forall x:int :: {DeviceState__POWER_STATE(x)} DeviceState__POWER_STATE(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Flags__CM_PARTIAL_RESOURCE_DESCRIPTOR(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Flags__CM_PARTIAL_RESOURCE_DESCRIPTOR(x)} Flags__CM_PARTIAL_RESOURCE_DESCRIPTOR(x) == x + 2);
 axiom (forall x:int :: {Flags__CM_PARTIAL_RESOURCE_DESCRIPTOR(x)} Flags__CM_PARTIAL_RESOURCE_DESCRIPTOR(x) == INT_ADD(x, 2));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Information__IO_STATUS_BLOCK(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Information__IO_STATUS_BLOCK(x)} Information__IO_STATUS_BLOCK(x) == x + 4);
 axiom (forall x:int :: {Information__IO_STATUS_BLOCK(x)} Information__IO_STATUS_BLOCK(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Initialized_COMMON_DATA(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Initialized_COMMON_DATA(x)} Initialized_COMMON_DATA(x) == x + 323);
 axiom (forall x:int :: {Initialized_COMMON_DATA(x)} Initialized_COMMON_DATA(x) == INT_ADD(x, 323));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function InterruptDescriptor_COMMON_DATA(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {InterruptDescriptor_COMMON_DATA(x)} InterruptDescriptor_COMMON_DATA(x) == x + 300);
 axiom (forall x:int :: {InterruptDescriptor_COMMON_DATA(x)} InterruptDescriptor_COMMON_DATA(x) == INT_ADD(x, 300));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function InterruptObject_COMMON_DATA(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {InterruptObject_COMMON_DATA(x)} InterruptObject_COMMON_DATA(x) == x + 4);
 axiom (forall x:int :: {InterruptObject_COMMON_DATA(x)} InterruptObject_COMMON_DATA(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function IoStatus__IRP(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {IoStatus__IRP(x)} IoStatus__IRP(x) == x + 24);
 axiom (forall x:int :: {IoStatus__IRP(x)} IoStatus__IRP(x) == INT_ADD(x, 24));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function IsKeyboard_COMMON_DATA(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {IsKeyboard_COMMON_DATA(x)} IsKeyboard_COMMON_DATA(x) == x + 325);
 axiom (forall x:int :: {IsKeyboard_COMMON_DATA(x)} IsKeyboard_COMMON_DATA(x) == INT_ADD(x, 325));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Item__POWER_UP_WORK_ITEM(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Item__POWER_UP_WORK_ITEM(x)} Item__POWER_UP_WORK_ITEM(x) == x + 0);
 axiom (forall x:int :: {Item__POWER_UP_WORK_ITEM(x)} Item__POWER_UP_WORK_ITEM(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function KeyboardExtension__GLOBALS(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {KeyboardExtension__GLOBALS(x)} KeyboardExtension__GLOBALS(x) == x + 8);
 axiom (forall x:int :: {KeyboardExtension__GLOBALS(x)} KeyboardExtension__GLOBALS(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function KeyboardPowerIrp__POWER_UP_WORK_ITEM(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {KeyboardPowerIrp__POWER_UP_WORK_ITEM(x)} KeyboardPowerIrp__POWER_UP_WORK_ITEM(x) == x + 8);
 axiom (forall x:int :: {KeyboardPowerIrp__POWER_UP_WORK_ITEM(x)} KeyboardPowerIrp__POWER_UP_WORK_ITEM(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function MajorFunction__IO_STACK_LOCATION(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {MajorFunction__IO_STACK_LOCATION(x)} MajorFunction__IO_STACK_LOCATION(x) == x + 0);
 axiom (forall x:int :: {MajorFunction__IO_STACK_LOCATION(x)} MajorFunction__IO_STACK_LOCATION(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function MinorFunction__IO_STACK_LOCATION(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {MinorFunction__IO_STACK_LOCATION(x)} MinorFunction__IO_STACK_LOCATION(x) == x + 1);
 axiom (forall x:int :: {MinorFunction__IO_STACK_LOCATION(x)} MinorFunction__IO_STACK_LOCATION(x) == INT_ADD(x, 1));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function MouseExtension__GLOBALS(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {MouseExtension__GLOBALS(x)} MouseExtension__GLOBALS(x) == x + 4);
 axiom (forall x:int :: {MouseExtension__GLOBALS(x)} MouseExtension__GLOBALS(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function MousePowerIrp__POWER_UP_WORK_ITEM(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {MousePowerIrp__POWER_UP_WORK_ITEM(x)} MousePowerIrp__POWER_UP_WORK_ITEM(x) == x + 4);
 axiom (forall x:int :: {MousePowerIrp__POWER_UP_WORK_ITEM(x)} MousePowerIrp__POWER_UP_WORK_ITEM(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function OutputBufferLength___unnamed_16_ae81ad04(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {OutputBufferLength___unnamed_16_ae81ad04(x)} OutputBufferLength___unnamed_16_ae81ad04(x) == x + 0);
 axiom (forall x:int :: {OutputBufferLength___unnamed_16_ae81ad04(x)} OutputBufferLength___unnamed_16_ae81ad04(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function OutstandingPowerIrp_COMMON_DATA(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {OutstandingPowerIrp_COMMON_DATA(x)} OutstandingPowerIrp_COMMON_DATA(x) == x + 44);
 axiom (forall x:int :: {OutstandingPowerIrp_COMMON_DATA(x)} OutstandingPowerIrp_COMMON_DATA(x) == INT_ADD(x, 44));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Overlay___unnamed_48_e2bbfb0b(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Overlay___unnamed_48_e2bbfb0b(x)} Overlay___unnamed_48_e2bbfb0b(x) == x + 0);
 axiom (forall x:int :: {Overlay___unnamed_48_e2bbfb0b(x)} Overlay___unnamed_48_e2bbfb0b(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Parameters__IO_STACK_LOCATION(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Parameters__IO_STACK_LOCATION(x)} Parameters__IO_STACK_LOCATION(x) == x + 4);
 axiom (forall x:int :: {Parameters__IO_STACK_LOCATION(x)} Parameters__IO_STACK_LOCATION(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function PendingReturned__IRP(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {PendingReturned__IRP(x)} PendingReturned__IRP(x) == x + 33);
 axiom (forall x:int :: {PendingReturned__IRP(x)} PendingReturned__IRP(x) == INT_ADD(x, 33));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function PowerCaps__PORT_KEYBOARD_EXTENSION(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {PowerCaps__PORT_KEYBOARD_EXTENSION(x)} PowerCaps__PORT_KEYBOARD_EXTENSION(x) == x + 328);
 axiom (forall x:int :: {PowerCaps__PORT_KEYBOARD_EXTENSION(x)} PowerCaps__PORT_KEYBOARD_EXTENSION(x) == INT_ADD(x, 328));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function PowerFlags__GLOBALS(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {PowerFlags__GLOBALS(x)} PowerFlags__GLOBALS(x) == x + 40);
 axiom (forall x:int :: {PowerFlags__GLOBALS(x)} PowerFlags__GLOBALS(x) == INT_ADD(x, 40));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function PowerSpinLock__CONTROLLER_DATA(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {PowerSpinLock__CONTROLLER_DATA(x)} PowerSpinLock__CONTROLLER_DATA(x) == x + 116);
 axiom (forall x:int :: {PowerSpinLock__CONTROLLER_DATA(x)} PowerSpinLock__CONTROLLER_DATA(x) == INT_ADD(x, 116));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function PowerState_COMMON_DATA(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {PowerState_COMMON_DATA(x)} PowerState_COMMON_DATA(x) == x + 48);
 axiom (forall x:int :: {PowerState_COMMON_DATA(x)} PowerState_COMMON_DATA(x) == INT_ADD(x, 48));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Power___unnamed_16_afe81cff(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Power___unnamed_16_afe81cff(x)} Power___unnamed_16_afe81cff(x) == x + 0);
 axiom (forall x:int :: {Power___unnamed_16_afe81cff(x)} Power___unnamed_16_afe81cff(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function RemoveLock_COMMON_DATA(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {RemoveLock_COMMON_DATA(x)} RemoveLock_COMMON_DATA(x) == x + 20);
 axiom (forall x:int :: {RemoveLock_COMMON_DATA(x)} RemoveLock_COMMON_DATA(x) == INT_ADD(x, 20));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ShutdownType_COMMON_DATA(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {ShutdownType_COMMON_DATA(x)} ShutdownType_COMMON_DATA(x) == x + 56);
 axiom (forall x:int :: {ShutdownType_COMMON_DATA(x)} ShutdownType_COMMON_DATA(x) == INT_ADD(x, 56));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ShutdownType___unnamed_16_57972375(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {ShutdownType___unnamed_16_57972375(x)} ShutdownType___unnamed_16_57972375(x) == x + 12);
 axiom (forall x:int :: {ShutdownType___unnamed_16_57972375(x)} ShutdownType___unnamed_16_57972375(x) == INT_ADD(x, 12));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Started_COMMON_DATA(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Started_COMMON_DATA(x)} Started_COMMON_DATA(x) == x + 326);
 axiom (forall x:int :: {Started_COMMON_DATA(x)} Started_COMMON_DATA(x) == INT_ADD(x, 326));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function State___unnamed_16_57972375(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {State___unnamed_16_57972375(x)} State___unnamed_16_57972375(x) == x + 8);
 axiom (forall x:int :: {State___unnamed_16_57972375(x)} State___unnamed_16_57972375(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Status___unnamed_4_d4b13373(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Status___unnamed_4_d4b13373(x)} Status___unnamed_4_d4b13373(x) == x + 0);
 axiom (forall x:int :: {Status___unnamed_4_d4b13373(x)} Status___unnamed_4_d4b13373(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function SysButtonEventIrp__PORT_KEYBOARD_EXTENSION(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {SysButtonEventIrp__PORT_KEYBOARD_EXTENSION(x)} SysButtonEventIrp__PORT_KEYBOARD_EXTENSION(x) == x + 332);
 axiom (forall x:int :: {SysButtonEventIrp__PORT_KEYBOARD_EXTENSION(x)} SysButtonEventIrp__PORT_KEYBOARD_EXTENSION(x) == INT_ADD(x, 332));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function SysButtonSpinLock__PORT_KEYBOARD_EXTENSION(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {SysButtonSpinLock__PORT_KEYBOARD_EXTENSION(x)} SysButtonSpinLock__PORT_KEYBOARD_EXTENSION(x) == x + 368);
 axiom (forall x:int :: {SysButtonSpinLock__PORT_KEYBOARD_EXTENSION(x)} SysButtonSpinLock__PORT_KEYBOARD_EXTENSION(x) == INT_ADD(x, 368));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function SystemBuffer___unnamed_4_99f86ad5(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {SystemBuffer___unnamed_4_99f86ad5(x)} SystemBuffer___unnamed_4_99f86ad5(x) == x + 0);
 axiom (forall x:int :: {SystemBuffer___unnamed_4_99f86ad5(x)} SystemBuffer___unnamed_4_99f86ad5(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function SystemState_COMMON_DATA(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {SystemState_COMMON_DATA(x)} SystemState_COMMON_DATA(x) == x + 52);
 axiom (forall x:int :: {SystemState_COMMON_DATA(x)} SystemState_COMMON_DATA(x) == INT_ADD(x, 52));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function SystemState__POWER_STATE(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {SystemState__POWER_STATE(x)} SystemState__POWER_STATE(x) == x + 0);
 axiom (forall x:int :: {SystemState__POWER_STATE(x)} SystemState__POWER_STATE(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Tail__IRP(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Tail__IRP(x)} Tail__IRP(x) == x + 64);
 axiom (forall x:int :: {Tail__IRP(x)} Tail__IRP(x) == INT_ADD(x, 64));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function TopOfStack_COMMON_DATA(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {TopOfStack_COMMON_DATA(x)} TopOfStack_COMMON_DATA(x) == x + 12);
 axiom (forall x:int :: {TopOfStack_COMMON_DATA(x)} TopOfStack_COMMON_DATA(x) == INT_ADD(x, 12));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Type___unnamed_16_57972375(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {Type___unnamed_16_57972375(x)} Type___unnamed_16_57972375(x) == x + 4);
 axiom (forall x:int :: {Type___unnamed_16_57972375(x)} Type___unnamed_16_57972375(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function __unnamed_12_41c62b26___unnamed_40_32307de2(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {__unnamed_12_41c62b26___unnamed_40_32307de2(x)} __unnamed_12_41c62b26___unnamed_40_32307de2(x) == x + 24);
 axiom (forall x:int :: {__unnamed_12_41c62b26___unnamed_40_32307de2(x)} __unnamed_12_41c62b26___unnamed_40_32307de2(x) == INT_ADD(x, 24));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function __unnamed_4_3c640f23___unnamed_12_41c62b26(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {__unnamed_4_3c640f23___unnamed_12_41c62b26(x)} __unnamed_4_3c640f23___unnamed_12_41c62b26(x) == x + 8);
 axiom (forall x:int :: {__unnamed_4_3c640f23___unnamed_12_41c62b26(x)} __unnamed_4_3c640f23___unnamed_12_41c62b26(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function __unnamed_4_d4b13373__IO_STATUS_BLOCK(int) returns (int);
-
-
+        
+        
 //axiom (forall x:int :: {__unnamed_4_d4b13373__IO_STATUS_BLOCK(x)} __unnamed_4_d4b13373__IO_STATUS_BLOCK(x) == x + 0);
 axiom (forall x:int :: {__unnamed_4_d4b13373__IO_STATUS_BLOCK(x)} __unnamed_4_d4b13373__IO_STATUS_BLOCK(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
@@ -517,8 +517,8 @@ function {:bvbuiltin "bvsge"}  BV32_GEQ(x:bv32, y:bv32)  returns  (bool);
 /////////////////////////////////
 
 //Is this sound for bv32?
-function MINUS_BOTH_PTR_OR_BOTH_INT(a:int, b:int, size:int) returns (int);
- axiom  (forall a:int, b:int, size:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size)}
+function MINUS_BOTH_PTR_OR_BOTH_INT(a:int, b:int, size:int) returns (int); 
+ axiom  (forall a:int, b:int, size:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size)} 
 //size * MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size) <= a - b && a - b < size * (MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size) + 1));
  INT_LEQ( INT_MULT(size, MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size)),  INT_SUB(a, b)) && INT_LT( INT_SUB(a, b),  INT_MULT(size, (INT_ADD(MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size), 1)))));
 
@@ -534,16 +534,16 @@ axiom(forall a:int, a_size:int, b:int :: {MINUS_LEFT_PTR(a,a_size,b)} MINUS_LEFT
 function PLUS(a:int, a_size:int, b:int) returns (int);
 //axiom (forall a:int, a_size:int, b:int :: {PLUS(a,a_size,b)} PLUS(a,a_size,b) == a + a_size * b);
 axiom (forall a:int, a_size:int, b:int :: {PLUS(a,a_size,b)} PLUS(a,a_size,b) == INT_ADD(a, INT_MULT(a_size, b)));
-
+ 
 function MULT(a:int, b:int) returns (int); // a*b
 //axiom(forall a:int, b:int :: {MULT(a,b)} MULT(a,b) == a * b);
 axiom(forall a:int, b:int :: {MULT(a,b)} MULT(a,b) == INT_MULT(a, b));
+ 
+function DIV(a:int, b:int) returns (int); // a/b	
 
-function DIV(a:int, b:int) returns (int); // a/b
-
-// Not sure if these axioms hold for BV too, just commet them for BV
-
-
+// Not sure if these axioms hold for BV too, just commet them for BV 	      
+  
+ 
 
 //uninterpreted binary op
 function BINARY_BOTH_INT(a:int, b:int) returns (int);
@@ -555,7 +555,7 @@ function BINARY_BOTH_INT(a:int, b:int) returns (int);
 
 
  function BIT_BAND(a:int, b:int) returns (x:int);
-
+ 
 
  function BIT_BOR(a:int, b:int) returns (x:int);
  function BIT_BXOR(a:int, b:int) returns (x:int);

@@ -24,7 +24,7 @@ requires b5 ==> j > 0;
 modifies array;
 {
     call foo(j);
-    result := array[j];
+    result := array[j];	
 }
 
 // expected outcome: Correct

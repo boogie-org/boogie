@@ -31,12 +31,12 @@ ensures (forall x:int :: {array[x]} (x == j) || array[x] == old(array)[x]);
 ensures (b1 ==> array[j] == old(array)[j]);
 {
     call foo(j);
-    result := array[j];
+    result := array[j];	
 }
 
 var p:int;
 
-procedure main() returns (result: int)
+procedure main() returns (result: int) 
 modifies array;
 {
   call result:= bar(p);
