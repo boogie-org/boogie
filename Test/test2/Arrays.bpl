@@ -1,6 +1,6 @@
-// RUN: %boogie -noinfer -proverOpt:O:smt.MBQI=false "%s" > "%t"
+// RUN: %boogie -noinfer "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// RUN: %boogie -noinfer -proverOpt:O:smt.MBQI=false -typeEncoding:m "%s" > "%t"
+// RUN: %boogie -noinfer -typeEncoding:m "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // --------------------  1-dimensional arrays  --------------------
 

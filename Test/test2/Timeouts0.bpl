@@ -1,4 +1,4 @@
-// RUN: %boogie -proverOpt:O:smt.MBQI=false -timeLimit:4 "%s" > "%t"
+// RUN: %boogie -timeLimit:4 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure TestTimeouts0(in: [int]int, len: int) returns (out: [int]int)
   requires in[0] == 0 && (forall i: int :: 0 <= i ==> in[i + 1] == in[i] + 1);

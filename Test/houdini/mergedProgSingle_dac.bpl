@@ -1,4 +1,4 @@
-// RUN: %boogie /nologo /contractInfer /inlineDepth:1 /printAssignment /noinfer /proverOpt:O:smt.MBQI=false "%s" > "%t"
+// RUN: %boogie /nologo /contractInfer /inlineDepth:1 /printAssignment /noinfer "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function _v2.ite(b: bool, x: int, y: int) : int;

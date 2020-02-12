@@ -1,0 +1,17 @@
+Maps0.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(20,3): anon0
+Maps0.bpl(52,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(47,9): anon0
+Maps0.bpl(55,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(47,9): anon0
+Maps0.bpl(58,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(47,9): anon0
+Maps0.bpl(59,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(47,9): anon0
+
+Boogie program verifier finished with 1 verified, 5 errors

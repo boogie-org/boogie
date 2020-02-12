@@ -1,11 +1,11 @@
-ParallelAssignment.bpl(30,3): Error BP5001: This assertion might not hold.
+ParallelAssignment.bpl(32,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    ParallelAssignment.bpl(19,5): anon0
-ParallelAssignment.bpl(39,3): Error BP5001: This assertion might not hold.
+    ParallelAssignment.bpl(21,5): anon0
+ParallelAssignment.bpl(41,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    ParallelAssignment.bpl(19,5): anon0
-ParallelAssignment.bpl(58,3): Error BP5001: This assertion might not hold.
+    ParallelAssignment.bpl(21,5): anon0
+ParallelAssignment.bpl(60,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    ParallelAssignment.bpl(44,11): anon0
+    ParallelAssignment.bpl(46,11): anon0
 
 Boogie program verifier finished with 0 verified, 3 errors

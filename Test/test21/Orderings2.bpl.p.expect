@@ -1,5 +1,5 @@
-Orderings2.bpl(21,3): Error BP5001: This assertion might not hold.
+Orderings2.bpl(23,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Orderings2.bpl(16,3): anon0
+    Orderings2.bpl(18,3): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
