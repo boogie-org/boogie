@@ -15,7 +15,7 @@ using System.Text.RegularExpressions;
 
 namespace Microsoft.Boogie.SMTLib
 {
-    class Z3
+    static class Z3
     {
         static string _proverPath;
 
@@ -151,11 +151,11 @@ namespace Microsoft.Boogie.SMTLib
             }
         }
 
-
-        static int Z3MajorVersion = 0;
-        static int Z3MinorVersion = 0;
-        static int Z3PatchVersion = 0;
-        static bool Z3VersionObtained = false;
+        // Do not access this fields directly! Use method GetVersion.
+        private static int Z3MajorVersion = 0;
+        private static int Z3MinorVersion = 0;
+        private static int Z3PatchVersion = 0;
+        private static bool Z3VersionObtained = false;
 
         public static void GetVersion(out int major, out int minor, out int patch)
         {
@@ -203,26 +203,9 @@ namespace Microsoft.Boogie.SMTLib
             patch = Z3PatchVersion;
         }
 
-        public static string SetTimeoutOption()
-        {
-            int major, minor, patch;
-            GetVersion(out major, out minor, out patch);
-            if (major > 4 || major == 4 && minor >= 3)
-                return "TIMEOUT";
-            else
-                return "SOFT_TIMEOUT";
-        }
+        public static string TimeoutOption = "timeout";
 
-        public static string SetRlimitOption()
-        {
-            int major, minor, patch;
-            GetVersion(out major, out minor, out patch);
-            if (major > 4 || major == 4 && minor >= 3)
-                return "RLIMIT";
-            else
-                // not sure what is for "rlimit" in earlier versions.
-                return "";
-        }
+        public static string RlimitOption = "rlimit";
 
         // options that work only on the command line
         static string[] commandLineOnly = { "TRACE", "PROOF_MODE" };
@@ -232,8 +215,6 @@ namespace Microsoft.Boogie.SMTLib
         // throws ProverException, System.IO.FileNotFoundException;
         {
           FindExecutable();
-          int major, minor, patch;
-          GetVersion(out major, out minor, out patch);
 
           options.AddWeakSmtOption("smt.mbqi", "false");       // default: true
 

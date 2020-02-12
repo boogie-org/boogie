@@ -1563,7 +1563,7 @@ namespace Microsoft.Boogie.SMTLib
       // FIXME: Gross. Timeout should be set in one place! This is also Z3 specific!
       int newTimeout = (0 < tla && tla < timeLimit) ? tla : timeLimit;
       if (newTimeout > 0) {
-        SendThisVC(string.Format("(set-option :{0} {1})", Z3.SetTimeoutOption(), newTimeout));
+        SendThisVC(string.Format("(set-option :{0} {1})", Z3.TimeoutOption, newTimeout));
       }
       popLater = true;
 
@@ -2296,14 +2296,12 @@ namespace Microsoft.Boogie.SMTLib
     public override void SetRlimit(int limit)
     {
       if (options.Solver == SolverKind.Z3) {
-        var name = Z3.SetRlimitOption();
-        if (name != "") {
-          var value = limit.ToString();
-          options.ResourceLimit = limit;
-          options.SmtOptions.RemoveAll(ov => ov.Option == name);
-          options.AddSmtOption(name, value);
-          SendThisVC(string.Format("(set-option :{0} {1})", name, value));
-        }
+        var name = Z3.RlimitOption;
+        var value = limit.ToString();
+        options.ResourceLimit = limit;
+        options.SmtOptions.RemoveAll(ov => ov.Option == name);
+        options.AddSmtOption(name, value);
+        SendThisVC(string.Format("(set-option :{0} {1})", name, value));
       }
     }
 
