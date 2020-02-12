@@ -235,6 +235,8 @@ namespace Microsoft.Boogie.SMTLib
           int major, minor, patch;
           GetVersion(out major, out minor, out patch);
 
+          options.AddWeakSmtOption("smt.mbqi", "false");       // default: true
+
           // {:captureState} does not work with compressed models
           options.AddWeakSmtOption("model.compact", "false");  // default: false
           options.AddWeakSmtOption("model.v2", "true");        // default: false
