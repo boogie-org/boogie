@@ -792,7 +792,6 @@ namespace Microsoft.Boogie {
     public bool ExtractLoopsUnrollIrreducible = true; // unroll irreducible loops? (set programmatically)
 
     public enum TypeEncoding {
-      None,
       Predicates,
       Arguments,
       Monomorphic
@@ -1390,7 +1389,7 @@ namespace Microsoft.Boogie {
             switch (args[ps.i]) {
               case "n":
               case "none":
-                TypeEncodingMethod = TypeEncoding.None;
+                TypeEncodingMethod = TypeEncoding.Monomorphic;
                 break;
               case "p":
               case "predicates":

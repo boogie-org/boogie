@@ -198,7 +198,7 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Requires(typeRepr != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (CommandLineOptions.Clo.TypeEncodingMethod
-                == CommandLineOptions.TypeEncoding.None)
+                == CommandLineOptions.TypeEncoding.Monomorphic)
         return VCExpressionGenerator.True;
 
       VCExpr res = Gen.Eq(Gen.Function(Ctor, typeRepr),
@@ -211,7 +211,7 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Requires(typeRepr != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (CommandLineOptions.Clo.TypeEncodingMethod
-                == CommandLineOptions.TypeEncoding.None)
+                == CommandLineOptions.TypeEncoding.Monomorphic)
         return VCExpressionGenerator.True;
 
       List<VCExprVar/*!*/>/*!*/ quantifiedVars = HelperFuns.GenVarsForInParams(typeRepr, Gen);

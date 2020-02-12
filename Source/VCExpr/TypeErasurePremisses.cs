@@ -112,7 +112,7 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Assert(eq != null);
       VCExpr/*!*/ premiss;
       if (CommandLineOptions.Clo.TypeEncodingMethod
-              == CommandLineOptions.TypeEncoding.None)
+              == CommandLineOptions.TypeEncoding.Monomorphic)
         premiss = VCExpressionGenerator.True;
       else
         premiss = GenVarTypeAxiom(var, cce.NonNull(castFromU.OutParams[0]).TypedIdent.Type,
@@ -436,7 +436,7 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(originalInTypes.Count + explicitTypeParams.Count == fun.InParams.Count);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.None) {
+      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) {
         return VCExpressionGenerator.True;
       }
 
@@ -501,7 +501,7 @@ namespace Microsoft.Boogie.TypeErasure
     protected override void AddVarTypeAxiom(VCExprVar var, Type originalType) {
       //Contract.Requires(originalType != null);
       //Contract.Requires(var != null);
-      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.None) return;
+      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) return;
       AddTypeAxiom(GenVarTypeAxiom(var, originalType,
         // we don't have any bindings available
                                    new Dictionary<TypeVariable/*!*/, VCExpr/*!*/>()));
@@ -841,7 +841,7 @@ namespace Microsoft.Boogie.TypeErasure
         AxBuilderPremisses.Type2Term(mapResult, bindings.TypeVariableBindings));
       Contract.Assert(ante != null);
       VCExpr body;
-      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.None ||
+      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic ||
           !AxBuilder.U.Equals(cce.NonNull(select.OutParams[0]).TypedIdent.Type)) {
         body = Gen.Let(letBindings_Explicit, eq);
       } else {
@@ -1153,7 +1153,7 @@ namespace Microsoft.Boogie.TypeErasure
       // assemble the new quantified formula
 
       if (CommandLineOptions.Clo.TypeEncodingMethod
-                == CommandLineOptions.TypeEncoding.None) {
+                == CommandLineOptions.TypeEncoding.Monomorphic) {
         typePremisses = VCExpressionGenerator.True;
       }
 
