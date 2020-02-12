@@ -3,14 +3,14 @@ Execution trace:
     bar3.bpl(37,3): anon0
     Inlined call to procedure foo begins
         bar3.bpl(20,3): anon0
-        bar3.bpl(21,7): anon3_Then
+        bar3.bpl(26,7): anon3_Else
         Inlined call to procedure bar begins
             bar3.bpl(9,3): anon0
-            bar3.bpl(10,7): anon3_Then
+            bar3.bpl(12,7): anon3_Else
         Inlined call to procedure bar ends
         Inlined call to procedure bar begins
             bar3.bpl(9,3): anon0
-            bar3.bpl(10,7): anon3_Then
+            bar3.bpl(12,7): anon3_Else
         Inlined call to procedure bar ends
     Inlined call to procedure foo ends
     Inlined call to procedure bar begins
