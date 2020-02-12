@@ -1387,10 +1387,6 @@ namespace Microsoft.Boogie {
         case "typeEncoding":
           if (ps.ConfirmArgumentCount(1)) {
             switch (args[ps.i]) {
-              case "n":
-              case "none":
-                TypeEncodingMethod = TypeEncoding.Monomorphic;
-                break;
               case "p":
               case "predicates":
                 TypeEncodingMethod = TypeEncoding.Predicates;
@@ -2097,7 +2093,6 @@ namespace Microsoft.Boogie {
                 Translate Boogie's A ==> B into prover's A ==> A && B.
   /typeEncoding:<m>
                 how to encode types when sending VC to theorem prover
-                   n = none (unsound)
                    p = predicates (default)
                    a = arguments
                    m = monomorphic
