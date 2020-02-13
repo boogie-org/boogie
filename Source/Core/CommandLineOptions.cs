@@ -680,7 +680,6 @@ namespace Microsoft.Boogie {
     public int Resourcelimit = 0; // default to 0
     public int SmokeTimeout = 10; // default to 10s
     public int ProverCCLimit = 5;
-    public bool z3AtFlag = true;
     public bool RestartProverPerVC = false;
 
     public double VcsMaxCost = 1.0;
@@ -1639,7 +1638,6 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("causalImplies", ref CausalImplies) ||
               ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
               ps.CheckBooleanFlag("z3types", ref Z3types) ||
-              ps.CheckBooleanFlag("z3multipleErrors", ref z3AtFlag, false) ||
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
               ps.CheckBooleanFlag("weakArrayTheory", ref WeakArrayTheory) || 

@@ -1,4 +1,4 @@
-// RUN: %boogie -z3multipleErrors -errorTrace:0 "%s" > "%t"
+// RUN: %boogie -proverOpt:MULTI_TRACES -errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure Foo(x:int) 
 {

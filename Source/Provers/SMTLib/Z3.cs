@@ -210,7 +210,6 @@ namespace Microsoft.Boogie.SMTLib
         // options that work only on the command line
         static string[] commandLineOnly = { "TRACE", "PROOF_MODE" };
 
-
         public static void SetupOptions(SMTLibProverOptions options)
         // throws ProverException, System.IO.FileNotFoundException;
         {
@@ -224,11 +223,6 @@ namespace Microsoft.Boogie.SMTLib
 
           // Make sure we get something that is parsable as a bitvector
           options.AddWeakSmtOption("pp.bv_literals", "false"); // default: true
-
-          // legacy option handling
-          if (!CommandLineOptions.Clo.z3AtFlag)
-            options.MultiTraces = true;
-
 
           foreach (string opt in CommandLineOptions.Clo.Z3Options)
           {
@@ -244,7 +238,5 @@ namespace Microsoft.Boogie.SMTLib
             }
           }
         }
-
-
     }
 }
