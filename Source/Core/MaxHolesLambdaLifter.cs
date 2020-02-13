@@ -131,8 +131,7 @@ class MaxHolesLambdaLifter : StandardVisitor {
 
             replacements.AddRange(bodyTemplate.GetReplacements());
             _templates[node] = new TemplateWithBoundVariables(replacements);
-        }
-        else {
+        } else {
             var newRhss = from arg in varBodies select ((TemplateNoBoundVariables) _templates[arg]).GetReplacement();
             LambdaLiftingTemplate template = new TemplateNoBoundVariables(
                 new LetExpr(node.tok, node.Dummies, newRhss.ToList(),

@@ -1119,11 +1119,16 @@ namespace Microsoft.Boogie {
     public override void ComputeFreeVariables(Set freeVars) {
       //Contract.Requires(freeVars != null);
 
+      foreach (var e in Rhss) {
+        e.ComputeFreeVariables(freeVars);
+      }
       foreach (var v in Dummies) {
         Contract.Assert(v != null);
         Contract.Assert(!freeVars[v]);
       }
-      Body.ComputeFreeVariables(freeVars);
+      foreach (var v in Dummies) {
+        freeVars.AddRange(v.TypedIdent.Type.FreeVariables);
+      }
       for (var a = Attributes; a != null; a = a.Next) {
         foreach (var o in a.Params) {
           var e = o as Expr;
@@ -1132,13 +1137,8 @@ namespace Microsoft.Boogie {
           }
         }
       }
-      foreach (var v in Dummies) {
-        freeVars.AddRange(v.TypedIdent.Type.FreeVariables);
-      }
+      Body.ComputeFreeVariables(freeVars);
       freeVars.RemoveRange(Dummies);
-      foreach (var e in Rhss) {
-        e.ComputeFreeVariables(freeVars);
-      }
     }
   }
 }

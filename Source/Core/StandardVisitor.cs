@@ -311,9 +311,9 @@ namespace Microsoft.Boogie {
     public virtual Expr VisitLetExpr(LetExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-      node.Body = this.VisitExpr(node.Body);
-      node.Dummies = this.VisitVariableSeq(node.Dummies);
       node.Rhss = this.VisitExprSeq(node.Rhss);
+      node.Dummies = this.VisitVariableSeq(node.Dummies);
+      node.Body = this.VisitExpr(node.Body);
       return node;
     }
     public virtual Formal VisitFormal(Formal node) {
@@ -878,9 +878,9 @@ namespace Microsoft.Boogie {
           return this.VisitBinderExpr(node);
       }
       public override Expr VisitLetExpr(LetExpr node) {
-          this.VisitExpr(node.Body);
-          this.VisitVariableSeq(node.Dummies);
           this.VisitExprSeq(node.Rhss);
+          this.VisitVariableSeq(node.Dummies);
+          this.VisitExpr(node.Body);
           return node;
       }
       public override Formal VisitFormal(Formal node)
