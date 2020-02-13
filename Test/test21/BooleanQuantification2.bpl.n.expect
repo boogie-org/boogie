@@ -1,5 +1,0 @@
-BooleanQuantification2.bpl(19,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    BooleanQuantification2.bpl(16,3): anon0
-
-Boogie program verifier finished with 0 verified, 1 error

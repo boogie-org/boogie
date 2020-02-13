@@ -1,5 +1,5 @@
-Flattening.bpl(18,3): Error BP5001: This assertion might not hold.
+Flattening.bpl(16,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Flattening.bpl(18,3): anon0
+    Flattening.bpl(16,3): anon0
 
 Boogie program verifier finished with 0 verified, 1 error

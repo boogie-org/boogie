@@ -111,11 +111,7 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Assert(var != null);
       Contract.Assert(eq != null);
       VCExpr/*!*/ premiss;
-      if (CommandLineOptions.Clo.TypeEncodingMethod
-              == CommandLineOptions.TypeEncoding.None)
-        premiss = VCExpressionGenerator.True;
-      else
-        premiss = GenVarTypeAxiom(var, cce.NonNull(castFromU.OutParams[0]).TypedIdent.Type,
+      premiss = GenVarTypeAxiom(var, cce.NonNull(castFromU.OutParams[0]).TypedIdent.Type,
           // we don't have any bindings available
                                   new Dictionary<TypeVariable/*!*/, VCExpr/*!*/>());
       VCExpr/*!*/ matrix = Gen.ImpliesSimp(premiss, eq);
@@ -436,10 +432,6 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(originalInTypes.Count + explicitTypeParams.Count == fun.InParams.Count);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.None) {
-        return VCExpressionGenerator.True;
-      }
-
       List<VCExprVar/*!*/>/*!*/ typedInputVars = new List<VCExprVar/*!*/>(originalInTypes.Count);
       int i = 0;
       foreach (Type/*!*/ t in originalInTypes) {
@@ -501,7 +493,6 @@ namespace Microsoft.Boogie.TypeErasure
     protected override void AddVarTypeAxiom(VCExprVar var, Type originalType) {
       //Contract.Requires(originalType != null);
       //Contract.Requires(var != null);
-      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.None) return;
       AddTypeAxiom(GenVarTypeAxiom(var, originalType,
         // we don't have any bindings available
                                    new Dictionary<TypeVariable/*!*/, VCExpr/*!*/>()));
@@ -841,8 +832,7 @@ namespace Microsoft.Boogie.TypeErasure
         AxBuilderPremisses.Type2Term(mapResult, bindings.TypeVariableBindings));
       Contract.Assert(ante != null);
       VCExpr body;
-      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.None ||
-          !AxBuilder.U.Equals(cce.NonNull(select.OutParams[0]).TypedIdent.Type)) {
+      if (!AxBuilder.U.Equals(cce.NonNull(select.OutParams[0]).TypedIdent.Type)) {
         body = Gen.Let(letBindings_Explicit, eq);
       } else {
         body = Gen.Let(letBindings_Implicit, Gen.Let(letBindings_Explicit, Gen.ImpliesSimp(ante, eq)));
@@ -1151,11 +1141,6 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Assert(newBody != null);
 
       // assemble the new quantified formula
-
-      if (CommandLineOptions.Clo.TypeEncodingMethod
-                == CommandLineOptions.TypeEncoding.None) {
-        typePremisses = VCExpressionGenerator.True;
-      }
 
       VCExpr/*!*/ bodyWithPremisses =
         AxBuilderPremisses.AddTypePremisses(typeVarBindings, typePremisses,

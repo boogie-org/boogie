@@ -197,10 +197,7 @@ namespace Microsoft.Boogie.TypeErasure {
     private VCExpr GenCtorAssignment(VCExpr typeRepr) {
       Contract.Requires(typeRepr != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      if (CommandLineOptions.Clo.TypeEncodingMethod
-                == CommandLineOptions.TypeEncoding.None)
-        return VCExpressionGenerator.True;
-
+      
       VCExpr res = Gen.Eq(Gen.Function(Ctor, typeRepr),
                            Gen.Integer(CurrentCtorNum));
       CurrentCtorNum = CurrentCtorNum + BigNum.ONE;
@@ -210,9 +207,6 @@ namespace Microsoft.Boogie.TypeErasure {
     private VCExpr GenCtorAssignment(Function typeRepr) {
       Contract.Requires(typeRepr != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      if (CommandLineOptions.Clo.TypeEncodingMethod
-                == CommandLineOptions.TypeEncoding.None)
-        return VCExpressionGenerator.True;
 
       List<VCExprVar/*!*/>/*!*/ quantifiedVars = HelperFuns.GenVarsForInParams(typeRepr, Gen);
       VCExpr/*!*/ eq =

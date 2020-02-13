@@ -1,5 +1,3 @@
-// RUN: %boogie -typeEncoding:n -logPrefix:0n "%s" > "%t"
-// RUN: %diff "%s.n.expect" "%t"
 // RUN: %boogie -typeEncoding:p -logPrefix:0p "%s" > "%t"
 // RUN: %diff "%s.p.expect" "%t"
 // RUN: %boogie -typeEncoding:a -logPrefix:0a "%s" > "%t"
@@ -27,7 +25,7 @@ procedure ManyDigitReals()
   var x: real;
   var y: real;
   x := 15e-1;
-  y := real(3); 
+  y := real(3);
   if (*) {
     assert x == y / 2000000000000000000000000001e-27;  // error
   } else {

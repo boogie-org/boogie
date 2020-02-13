@@ -1,5 +1,5 @@
-HeapAxiom.bpl(30,3): Error BP5001: This assertion might not hold.
+HeapAxiom.bpl(28,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    HeapAxiom.bpl(19,3): anon0
+    HeapAxiom.bpl(17,3): anon0
 
 Boogie program verifier finished with 0 verified, 1 error

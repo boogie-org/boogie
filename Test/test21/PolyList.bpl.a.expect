@@ -1,8 +1,8 @@
-PolyList.bpl(48,3): Error BP5001: This assertion might not hold.
+PolyList.bpl(46,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    PolyList.bpl(33,7): anon0
-PolyList.bpl(66,3): Error BP5001: This assertion might not hold.
+    PolyList.bpl(31,7): anon0
+PolyList.bpl(64,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    PolyList.bpl(55,7): anon0
+    PolyList.bpl(53,7): anon0
 
 Boogie program verifier finished with 0 verified, 2 errors
