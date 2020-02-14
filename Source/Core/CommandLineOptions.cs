@@ -418,7 +418,9 @@ namespace Microsoft.Boogie {
     public bool PrintDesugarings = false;
     public bool PrintLambdaLifting = false;
     public bool FreeVarLambdaLifting = false;
-    public string SimplifyLogFilePath = null;
+    public string ProverLogFilePath = null;
+    public bool ProverLogFileAppend = false;
+    
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
     public string ProverPreamble = null;
@@ -487,7 +489,6 @@ namespace Microsoft.Boogie {
     public int InlineDepth = -1;
     public bool UseProverEvaluate = false; // Use ProverInterface's Evaluate method, instead of model to get variable values
     public bool UseUncheckedContracts = false;
-    public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
     public string Z3ExecutablePath = null;
     public string Z3ExecutableName = null;
@@ -948,7 +949,7 @@ namespace Microsoft.Boogie {
 
         case "proverLog":
           if (ps.ConfirmArgumentCount(1)) {
-            SimplifyLogFilePath = args[ps.i];
+            ProverLogFilePath = args[ps.i];
           }
           return true;
 
@@ -1620,7 +1621,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("traceverify", ref TraceVerify) ||
               ps.CheckBooleanFlag("alwaysAssumeFreeLoopInvariants", ref AlwaysAssumeFreeLoopInvariants, true) ||
               ps.CheckBooleanFlag("nologo", ref DontShowLogo) ||
-              ps.CheckBooleanFlag("proverLogAppend", ref SimplifyLogFileAppend) ||
+              ps.CheckBooleanFlag("proverLogAppend", ref ProverLogFileAppend) ||
               ps.CheckBooleanFlag("soundLoopUnrolling", ref SoundLoopUnrolling) ||
               ps.CheckBooleanFlag("checkInfer", ref InstrumentWithAsserts) ||
               ps.CheckBooleanFlag("interprocInfer", ref IntraproceduralInfer, false) ||
@@ -1674,7 +1675,7 @@ namespace Microsoft.Boogie {
       // expand macros in filenames, now that LogPrefix is fully determined
       ExpandFilename(ref XmlSinkFilename, LogPrefix, FileTimestamp);
       ExpandFilename(ref PrintFile, LogPrefix, FileTimestamp);
-      ExpandFilename(ref SimplifyLogFilePath, LogPrefix, FileTimestamp);
+      ExpandFilename(ref ProverLogFilePath, LogPrefix, FileTimestamp);
       ExpandFilename(ref PrintErrorModelFile, LogPrefix, FileTimestamp);
 
       Contract.Assume(XmlSink == null);  // XmlSink is to be set here

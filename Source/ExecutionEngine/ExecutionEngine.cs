@@ -1303,23 +1303,23 @@ namespace Microsoft.Boogie
       ConditionGeneration vcgen = null;
       if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
       {
-        vcgen = new DCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
+        vcgen = new DCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, checkers);
       }
       else if (CommandLineOptions.Clo.FixedPointEngine != null)
       {
-        vcgen = new FixedpointVC(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
+        vcgen = new FixedpointVC(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, checkers);
       }
       else if (CommandLineOptions.Clo.StratifiedInlining > 0)
       {
-        vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
+        vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, checkers);
       }
       else if (CommandLineOptions.Clo.SecureVcGen != null)
       {
-          vcgen = new SecureVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
+          vcgen = new SecureVCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, checkers);
       }
       else
       {
-          vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
+          vcgen = new VCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, checkers);
       }
       return vcgen;
     }
