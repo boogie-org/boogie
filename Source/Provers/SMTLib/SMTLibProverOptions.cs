@@ -84,17 +84,14 @@ namespace Microsoft.Boogie.SMTLib
     {
       string SolverStr = null;
       if (ParseString(opt, "SOLVER", ref SolverStr)) {
-        switch (SolverStr) {
-          case "Z3":
+        switch (SolverStr.ToLower()) {
           case "z3":
             Solver = SolverKind.Z3;
             break;
-          case "CVC4":
           case "cvc4":
             Solver = SolverKind.CVC4;
             if (Logic.Equals("")) Logic = "ALL_SUPPORTED";
             break;
-          case "Yices2":
           case "yices2":
             Solver = SolverKind.YICES2;
             if (Logic.Equals("")) Logic = "ALL";
