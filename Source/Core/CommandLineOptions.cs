@@ -729,7 +729,6 @@ namespace Microsoft.Boogie {
       this.z3Options.Add(option);
     }
 
-    public bool Z3types = false;
     public int Z3lets = 3;  // 0 - none, 1 - only LET TERM, 2 - only LET FORMULA, 3 - (default) any
 
 
@@ -1637,7 +1636,6 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("dbgRefuted", ref DebugRefuted) ||
               ps.CheckBooleanFlag("causalImplies", ref CausalImplies) ||
               ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
-              ps.CheckBooleanFlag("z3types", ref Z3types) ||
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
               ps.CheckBooleanFlag("weakArrayTheory", ref WeakArrayTheory) || 
@@ -2236,7 +2234,6 @@ namespace Microsoft.Boogie {
                 implies /monomorphize.
   /useSmtOutputFormat
                 Z3 outputs a model in the SMTLIB2 format.
-  /z3types      generate multi-sorted VC that make use of Z3 types
   /z3lets:<n>   0 - no LETs, 1 - only LET TERM, 2 - only LET FORMULA,
                 3 - (default) any
   /z3exe:<path>
