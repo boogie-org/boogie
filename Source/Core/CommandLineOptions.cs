@@ -707,7 +707,6 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant4() {
       Contract.Invariant(cce.NonNullElements(this.z3Options));
-      Contract.Invariant(0 <= Z3lets && Z3lets < 4);
     }
 
     [Peer]
@@ -728,9 +727,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(option != null);
       this.z3Options.Add(option);
     }
-
-    public int Z3lets = 3;  // 0 - none, 1 - only LET TERM, 2 - only LET FORMULA, 3 - (default) any
-
 
     // Maximum amount of virtual memory (in bytes) for the prover to use
     //
@@ -1547,10 +1543,6 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "z3lets":
-          ps.GetNumericArgument(ref Z3lets, 4);
-          return true;
-
         case "platform":
           if (ps.ConfirmArgumentCount(1)) {
             StringCollection platformOptions = this.ParseNamedArgumentList(args[ps.i]);
@@ -2222,8 +2214,6 @@ namespace Microsoft.Boogie {
                 implies /monomorphize.
   /useSmtOutputFormat
                 Z3 outputs a model in the SMTLIB2 format.
-  /z3lets:<n>   0 - no LETs, 1 - only LET TERM, 2 - only LET FORMULA,
-                3 - (default) any
   /z3exe:<path>
                 path to Z3 executable
 

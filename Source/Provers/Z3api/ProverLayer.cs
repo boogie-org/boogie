@@ -21,12 +21,6 @@ namespace Microsoft.Boogie.Z3
 {
   public class Z3InstanceOptions : ProverOptions {
     public int Timeout { get { return TimeLimit / 1000; } }
-    public int Lets {
-      get {
-        Contract.Ensures(0 <= Contract.Result<int>() && Contract.Result<int>() < 4);
-        return CommandLineOptions.Clo.Z3lets;
-      }
-    }
     public bool DistZ3 = false;
     public string ExeName = "z3.exe";
     public bool InverseImplies = false;
