@@ -42,8 +42,6 @@ namespace Microsoft.Boogie.SMTLib
 
     // Z3 specific (at the moment; some of them make sense also for other provers)
     public string Inspector = null;
-    public bool OptimizeForBv = false;
-    public bool SMTLib2Model = false;
 
     public bool ProduceModel() {
       return !CommandLineOptions.Clo.UseLabels || CommandLineOptions.Clo.ExplainHoudini || CommandLineOptions.Clo.UseProverEvaluate ||
@@ -122,8 +120,6 @@ namespace Microsoft.Boogie.SMTLib
         ParseBool(opt, "MULTI_TRACES", ref MultiTraces) ||
         ParseBool(opt, "USE_WEIGHTS", ref UseWeights) ||
         ParseString(opt, "INSPECTOR", ref Inspector) ||
-        ParseBool(opt, "OPTIMIZE_FOR_BV", ref OptimizeForBv) ||
-        ParseBool(opt, "SMTLIB2_MODEL", ref SMTLib2Model) ||
         ParseString(opt, "LOGIC", ref Logic) ||
         base.Parse(opt);
     }
@@ -154,8 +150,6 @@ Z3-specific options:
 ~~~~~~~~~~~~~~~~~~~~
 MULTI_TRACES=<bool>       Report errors with multiple paths leading to the same assertion.
 INSPECTOR=<string>        Use the specified Z3Inspector binary.
-OPTIMIZE_FOR_BV=<bool>    Optimize Z3 options for bitvector reasoning, and not quantifier instantiation. Defaults to false.
-SMTLIB2_MODEL=<bool>      Use the SMTLIB2 output model. Defaults to false.
 " + base.Help;
       }
     }

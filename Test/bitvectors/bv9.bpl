@@ -1,4 +1,4 @@
-// RUN: %boogie -proverOpt:OPTIMIZE_FOR_BV=true "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure foo();
 
