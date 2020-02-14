@@ -675,7 +675,6 @@ namespace Microsoft.Boogie {
 
     public bool CausalImplies = false;
 
-    public int SimplifyProverMatchDepth = -1;  // -1 means not specified
     public int ProverKillTime = -1;  // -1 means not specified
     public int Resourcelimit = 0; // default to 0
     public int SmokeTimeout = 10; // default to 10s
@@ -1507,10 +1506,6 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "simplifyMatchDepth":
-          ps.GetNumericArgument(ref SimplifyProverMatchDepth);
-          return true;
-
         case "timeLimit":
           ps.GetNumericArgument(ref ProverKillTime);
           return true;
@@ -2047,11 +2042,11 @@ namespace Microsoft.Boogie {
   /coalesceBlocks:<c>
                 0 = do not coalesce blocks
                 1 = coalesce blocks (default)
-  /vc:<variety> n = nested block (default for /prover:Simplify),
+  /vc:<variety> n = nested block,
                 m = nested block reach,
                 b = flat block, r = flat block reach,
                 s = structured, l = local,
-                d = dag (default, except with /prover:Simplify)
+                d = dag (default)
                 doomed = doomed
   /traceverify  print debug output during verification condition generation
   /subsumption:<c>
@@ -2175,17 +2170,13 @@ namespace Microsoft.Boogie {
                 2 - include all Trace labels in the error output
   /vcBrackets:<b>
                 bracket odd-charactered identifier names with |'s.  <b> is:
-                   0 - no (default with non-/prover:Simplify),
-                   1 - yes (default with /prover:Simplify)
+                   0 - no (default),
+                   1 - yes
   /prover:<tp>  use theorem prover <tp>, where <tp> is either the name of
                 a DLL containing the prover interface located in the
                 Boogie directory, or a full path to a DLL containing such
-                an interface. The standard interfaces shipped include:
-                    SMTLib (default, uses the SMTLib2 format and calls Z3)
-                    Z3 (uses Z3 with the Simplify format)
-                    Simplify
-                    ContractInference (uses Z3)
-                    Z3api (Z3 using Managed .NET API)
+                an interface. The default interface shipped is:
+                    SMTLib (uses the SMTLib2 format and calls an SMT solver)
   /proverOpt:KEY[=VALUE]
                 Provide a prover-specific option (short form /p).
   /proverLog:<file>
@@ -2220,10 +2211,6 @@ namespace Microsoft.Boogie {
   /platform:<ptype>,<location>
                 ptype = v11,v2,cli1
                 location = platform libraries directory
-
-  Simplify specific options:
-  /simplifyMatchDepth:<num>
-                Set Simplify prover's matching depth limit
 
   Z3 specific options:
   /z3opt:<arg>  specify additional Z3 options
