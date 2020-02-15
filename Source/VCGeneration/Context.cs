@@ -180,7 +180,6 @@ public abstract class ProverContextContracts:ProverContext{
     
     public override void AddAxiom(Axiom ax, string attributes) {//Contract.Requires(ax != null);
       base.AddAxiom(ax, attributes);
-
       axiomConjuncts.Add(translator.Translate(ax.Expr));
     }
 

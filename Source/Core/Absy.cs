@@ -1527,6 +1527,7 @@ namespace Microsoft.Boogie {
 
   public class Axiom : Declaration {
     private Expr/*!*/ expression;
+    public bool isFunctionDefinition;
 
     public Expr Expr {
       get {
@@ -1557,6 +1558,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
       this.expression = expr;
+      this.isFunctionDefinition = false;
       Comment = comment;
     }
 
@@ -2838,7 +2840,7 @@ namespace Microsoft.Boogie {
       return visitor.VisitFunction(this);
     }
 
-    public Axiom CreateDefinitionAxiom(Expr definition, QKeyValue kv = null) {
+    public Axiom CreateDefinitionAxiom(Expr definition, QKeyValue kv = null, bool isFuncDef=false) {
       Contract.Requires(definition != null);
 
       List<Variable> dummies = new List<Variable>();
@@ -2866,11 +2868,17 @@ namespace Microsoft.Boogie {
         def = new ForallExpr(tok, quantifiedTypeVars, dummies,
                              kv,
                              new Trigger(tok, true, new List<Expr> { call }, null),
-                             def);
+                             def, false, isFuncDef);
       }
       DefinitionAxiom = new Axiom(tok, def);
       return DefinitionAxiom;
     }
+
+    public Axiom CreateFunctionDefinition(Expr definition, QKeyValue kv = null) {
+      CreateDefinitionAxiom(definition, kv, true);
+      return DefinitionAxiom;
+    }
+
   }
 
   public class Macro : Function {
