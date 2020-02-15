@@ -25,7 +25,7 @@ using RPFP = Microsoft.Boogie.RPFP;
 namespace Microsoft.Boogie.SMTLib
 {
   public class FunctionDependencyCollector : BoundVarTraversingVCExprVisitor<bool, bool> {
-    private List<Function> FunctionList;
+    private List<Function> functionList;
 
     // not used but required by interface
     protected override bool StandardResult(VCExpr node, bool arg) {
@@ -34,17 +34,16 @@ namespace Microsoft.Boogie.SMTLib
 
     public List<Function> Collect(VCExpr expr) {
       Contract.Requires(expr != null);
-      FunctionList = new List<Function>();
+      functionList = new List<Function>();
       Traverse(expr, true);
-      return FunctionList;
+      return functionList;
     }
 
     public override bool Visit(VCExprNAry node, bool arg) {
       Contract.Requires(node != null);
       VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
-      if (op != null &&
-          !(op.Func is DatatypeConstructor) && !(op.Func is DatatypeMembership) && !(op.Func is DatatypeSelector)) {
-        FunctionList.Add(op.Func);
+      if (op != null) {
+        functionList.Add(op.Func);
       }
       return base.Visit(node, arg);
     }
@@ -381,64 +380,65 @@ namespace Microsoft.Boogie.SMTLib
         // Separate function definitions from other axioms.  Function definitions must be processed
         // first; otherwise, processing an axiom that uses the function definition can create a declaration
         // resulting in the symbol being introduced twice (a definition and a declaration).
-        Dictionary<Function, VCExpr> FunctionDefinitionMap = new Dictionary<Function, VCExpr>();
-        Stack<Function> FunctionDefs = new Stack<Function>();
-        Stack<VCExpr> OtherAxioms = new Stack<VCExpr>();
+        Dictionary<Function, VCExpr> functionDefinitionMap = new Dictionary<Function, VCExpr>();
+        Stack<Function> functionDefs = new Stack<Function>();
+        Stack<VCExpr> otherAxioms = new Stack<VCExpr>();
         for (int i = axiomList.Count-1; i >= 0; i--) {
           Function f = IsFunctionDef(axiomList[i]);
           if (f != null) {
             // Add as a known function to DeclCollector so that it's not declared later.
             DeclCollector.AddFunction(f);
-            FunctionDefinitionMap.Add(f, axiomList[i]);
-            FunctionDefs.Push(f);
+            functionDefinitionMap.Add(f, axiomList[i]);
+            functionDefs.Push(f);
           } else {
-            OtherAxioms.Push(axiomList[i]);
+            otherAxioms.Push(axiomList[i]);
           }
         }
 
         // Process each definition, but also be sure to process dependencies first in case one definition calls another.
         // Also check for definition cycles.
         FunctionDependencyCollector collector = new FunctionDependencyCollector();
-        HashSet<Function> AxiomAdded = new HashSet<Function>(); // whether definition has been fully processed
-        HashSet<Function> DependenciesComputed = new HashSet<Function>(); // whether dependencies have already been computed
-        while (FunctionDefs.Count > 0) {
-          Function f = FunctionDefs.Peek();
-          if (AxiomAdded.Contains(f)) {
+        HashSet<Function> axiomAdded = new HashSet<Function>(); // whether definition has been fully processed
+        HashSet<Function> dependenciesComputed = new HashSet<Function>(); // whether dependencies have already been computed
+        while (functionDefs.Count > 0) {
+          Function f = functionDefs.Peek();
+          if (axiomAdded.Contains(f)) {
             // This definition was already processed (as a dependency of another definition)
-            FunctionDefs.Pop();
+            functionDefs.Pop();
             continue;
           }
           // Grab the definition and then compute the dependencies.
-          Contract.Assert(FunctionDefinitionMap.ContainsKey(f));
-          VCExpr expr = FunctionDefinitionMap[f];
+          Contract.Assert(functionDefinitionMap.ContainsKey(f));
+          VCExpr expr = functionDefinitionMap[f];
           var quan = expr as VCExprQuantifier;
           Contract.Assert(quan != null && quan.Infos.isFunctionDefinition);
           var body = quan.Body as VCExprNAry;
           List<Function> dependencies = collector.Collect(body[1]);
-          bool HasDependencies = false;
+          bool hasDependencies = false;
           foreach (Function fdep in dependencies) {
-            if (FunctionDefinitionMap.ContainsKey(fdep) && !AxiomAdded.Contains(fdep)) {
-              if (DependenciesComputed.Contains(fdep)) {
+            if (functionDefinitionMap.ContainsKey(fdep) && !axiomAdded.Contains(fdep)) {
+              if (!dependenciesComputed.Contains(fdep)) {
+                // Handle dependencies first
+                functionDefs.Push(fdep);
+                hasDependencies = true;
+              } else {
                 HandleProverError("Function definition cycle detected: " + f.ToString() + " depends on " + fdep.ToString());
               }
-              // Handle dependencies first
-              FunctionDefs.Push(fdep);
-              HasDependencies = true;
             }
           }
-          if (!HasDependencies) {
+          if (!hasDependencies) {
             // No dependencies: go ahead and process this definition.
             AddAxiom(VCExpr2String(expr, -1));
-            AxiomAdded.Add(f);
-            FunctionDefs.Pop();
+            axiomAdded.Add(f);
+            functionDefs.Pop();
           } else {
-            DependenciesComputed.Add(f);
+            dependenciesComputed.Add(f);
           }
         }
 
 	// Now process the rest of the axioms.
-        while (OtherAxioms.Count > 0) {
-          VCExpr expr = OtherAxioms.Pop();
+        while (otherAxioms.Count > 0) {
+          VCExpr expr = otherAxioms.Pop();
           var str = VCExpr2String(expr, -1);
           if (str != "true")
             AddAxiom(str);
