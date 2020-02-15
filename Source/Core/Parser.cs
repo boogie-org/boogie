@@ -428,6 +428,8 @@ private class BvBounds : Expr {
 		 // generate either an axiom or a function body
 		 if (QKeyValue.FindBoolAttribute(kv, "inline")) {
 		   func.Body = definition;
+		 } else if (QKeyValue.FindBoolAttribute(kv, "define")) {
+		   ds.Add(func.CreateFunctionDefinition(definition, kv));
 		 } else {
 		   ds.Add(func.CreateDefinitionAxiom(definition, kv));
 		 }

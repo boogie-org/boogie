@@ -331,8 +331,21 @@ namespace Microsoft.Boogie.SMTLib
       UnderQuantifier++;
       Namer.PushScope(); try {
 
-        string kind = node.Quan == Quantifier.ALL ? "forall" : "exists";
-        wr.Write("({0} (", kind);
+        VCQuantifierInfos infos = node.Infos;
+        if (infos.isFunctionDefinition) {
+	  wr.Write("(define-fun ");
+	  var naryExpr = node.Body as VCExprNAry;
+	  Contract.Assert(naryExpr != null);
+	  var funCall = naryExpr[0] as VCExprNAry;
+	  Contract.Assert(funCall != null);
+	  VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)funCall.Op;
+          Contract.Assert(op != null);
+          wr.Write(Namer.GetQuotedName(op.Func, op.Func.Name));
+	  wr.Write(" (");
+        } else {
+          string kind = node.Quan == Quantifier.ALL ? "forall" : "exists";
+          wr.Write("({0} (", kind);
+        }
 
         for (int i = 0; i < node.BoundVars.Count; i++) {
           VCExprVar var = node.BoundVars[i];
@@ -344,7 +357,15 @@ namespace Microsoft.Boogie.SMTLib
 
         wr.Write(") ");
 
-        VCQuantifierInfos infos = node.Infos;
+	if (infos.isFunctionDefinition) {
+	  var naryExpr = node.Body as VCExprNAry;
+	  Contract.Assert(naryExpr != null);
+	  wr.Write(" {0} ", TypeToString(naryExpr[0].Type));
+          Linearise(naryExpr[1], options);
+          wr.Write(")");
+	  return true;
+	}
+
         var weight = QKeyValue.FindIntAttribute(infos.attributes, "weight", 1);
         if (!ProverOptions.UseWeights)
           weight = 1;
