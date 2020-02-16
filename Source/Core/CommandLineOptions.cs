@@ -563,7 +563,6 @@ namespace Microsoft.Boogie {
     public string PrintCFGPrefix = null;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
-    public bool UseSmtOutputFormat = false;
     public bool WeakArrayTheory = false;
     public bool UseLabels = true;
     public bool RunDiagnosticsOnTimeout = false;
