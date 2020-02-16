@@ -629,15 +629,12 @@ namespace Microsoft.Boogie.Houdini {
             fv.functionsUsed.Iter(tup => constant2FuncCall.Add(tup.Item2.Name, tup.Item3));
 
             var gen = prover.VCExprGen;
-            VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : gen.Integer(Microsoft.Basetypes.BigNum.ZERO);
+            VCExpr controlFlowVariableExpr = gen.Integer(Microsoft.Basetypes.BigNum.ZERO);
 
             var vcexpr = vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, prover.Context);
-            if (!CommandLineOptions.Clo.UseLabels)
-            {
-                VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(Microsoft.Basetypes.BigNum.ZERO), gen.Integer(Microsoft.Basetypes.BigNum.ZERO));
-                VCExpr eqExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(Microsoft.Basetypes.BigNum.FromInt(impl.Blocks[0].UniqueId)));
-                vcexpr = gen.Implies(eqExpr, vcexpr);
-            }
+            VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(Microsoft.Basetypes.BigNum.ZERO), gen.Integer(Microsoft.Basetypes.BigNum.ZERO));
+            VCExpr eqExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(Microsoft.Basetypes.BigNum.FromInt(impl.Blocks[0].UniqueId)));
+            vcexpr = gen.Implies(eqExpr, vcexpr);
 
             ProverInterface.ErrorHandler handler = null;
             if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local)
@@ -664,7 +661,7 @@ namespace Microsoft.Boogie.Houdini {
             // the right thing.
             foreach (var tup in fv.functionsUsed)
             {
-                // Ignore ones with bound varibles
+                // Ignore ones with bound variables
                 if (tup.Item2.InParams.Count > 0) continue;
                 var tt = prover.Context.BoogieExprTranslator.Translate(tup.Item3);
                 tt = prover.VCExprGen.Or(VCExpressionGenerator.True, tt);

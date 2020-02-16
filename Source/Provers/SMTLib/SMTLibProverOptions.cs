@@ -44,8 +44,7 @@ namespace Microsoft.Boogie.SMTLib
     public string Inspector = null;
 
     public bool ProduceModel() {
-      return !CommandLineOptions.Clo.UseLabels || CommandLineOptions.Clo.ExplainHoudini || CommandLineOptions.Clo.UseProverEvaluate ||
-             ExpectingModel();
+      return CommandLineOptions.Clo.ExplainHoudini || CommandLineOptions.Clo.UseProverEvaluate || ExpectingModel();
     }
 
     public bool ExpectingModel()

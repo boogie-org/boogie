@@ -96,9 +96,7 @@ namespace VC {
 
     public VCExpr MustReach(Block block)
     {
-        Contract.Assert(!CommandLineOptions.Clo.UseLabels);
-
-        // This information is computed lazily
+      // This information is computed lazily
         if (mustReachBindings == null)
         {
             var vcgen = info.vcgen;
@@ -588,11 +586,8 @@ namespace VC {
       var exprGen = proverInterface.Context.ExprGen;
       var translator = proverInterface.Context.BoogieExprTranslator;
       
-      VCExpr controlFlowVariableExpr = null;
-      if (!CommandLineOptions.Clo.UseLabels) {
-        controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
-        controlFlowVariableExpr = translator.LookupVariable(controlFlowVariable);
-      }
+      controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
+      VCExpr controlFlowVariableExpr = translator.LookupVariable(controlFlowVariable);
 
       vcgen.InstrumentCallSites(impl);
 

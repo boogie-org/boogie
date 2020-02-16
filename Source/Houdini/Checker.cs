@@ -153,15 +153,14 @@ namespace Microsoft.Boogie.Houdini {
       houdiniConstants.UnionWith(houdiniAssumeConstants);
 
       var exprGen = proverInterface.Context.ExprGen;
-      VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
+      VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
 
       Dictionary<int, Absy> label2absy;
       conjecture = vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, proverInterface.Context);
-      if (!CommandLineOptions.Clo.UseLabels) {
-        VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
-        conjecture = exprGen.Implies(eqExpr, conjecture);
-      }
+      
+      VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+      VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+      conjecture = exprGen.Implies(eqExpr, conjecture);
 
       Macro macro = new Macro(Token.NoToken, descriptiveName, new List<Variable>(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false));
       proverInterface.DefineMacro(macro, conjecture);

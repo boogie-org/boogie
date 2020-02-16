@@ -261,10 +261,6 @@ The generic options may or may not be used by the prover plugin.
       }
     }
 
-    public virtual bool SupportsLabels(ProverOptions options) {
-      return true;
-    }
-
     public virtual void Close() {
     }
 

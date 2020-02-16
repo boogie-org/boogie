@@ -299,18 +299,15 @@ namespace VC {
           lock (ch)
           {
             var exprGen = ch.TheoremProver.Context.ExprGen;
-            VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
+            VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
 
             VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, out label2Absy, ch.TheoremProver.Context);
             Contract.Assert(vc != null);
-
-            if (!CommandLineOptions.Clo.UseLabels)
-            {
-              VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-              VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
-              vc = exprGen.Implies(eqExpr, vc);
-            }
-
+            
+            VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+            VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+            vc = exprGen.Implies(eqExpr, vc);
+            
             impl.Blocks = backup;
 
             if (CommandLineOptions.Clo.TraceVerify)
@@ -1388,17 +1385,14 @@ namespace VC {
         bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
 
         var exprGen = ctx.ExprGen;
-        VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
+        VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
 
         VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
         Contract.Assert(vc != null);
-
-        if (!CommandLineOptions.Clo.UseLabels)
-        {
-          VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-          VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
-          vc = exprGen.Implies(eqExpr, vc);
-        }
+        
+        VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+        vc = exprGen.Implies(eqExpr, vc);
 
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local)
         {
