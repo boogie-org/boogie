@@ -24,5 +24,5 @@ for %%f in (pred1.bpl pred2.bpl pred3.bpl pred4.bpl pred5.bpl) do (
 for %%f in (quant1.bpl quant2.bpl quant3.bpl quant4.bpl quant5.bpl) do (
   echo .
   echo -------------------- %%f --------------------
-  %BGEXE% %* /nologo /noinfer /contractInfer /printAssignment /abstractHoudini:HoudiniConst /z3opt:MBQI=true %%f
+  %BGEXE% %* /nologo /noinfer /contractInfer /printAssignment /abstractHoudini:HoudiniConst /proverOpt:O:smt.mbqi=true %%f
 )

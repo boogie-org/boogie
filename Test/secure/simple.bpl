@@ -1,4 +1,4 @@
-// Z3 4.1: /trace /z3opt:MBQI=true /z3opt:RELEVANCY=0
+// Z3 4.1: /trace /proverOpt:O:smt.mbqi=true /proverOpt:O:smt.relevancy=0
 function {:inline} xor(a: bool, b: bool) returns (bool)  { (!a && b) || (a && !b) }
 
 procedure Incorrect_A(

@@ -715,11 +715,6 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class ProverException : Exception {
-    public ProverException(string s)
-      : base(s) {
-    }
-  }
   public class UnexpectedProverOutputException : ProverException {
     public UnexpectedProverOutputException(string s)
       : base(s) {

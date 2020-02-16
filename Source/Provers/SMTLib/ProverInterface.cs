@@ -120,34 +120,11 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    ProcessStartInfo ComputeProcessStartInfo()
-    {
-      var path = this.options.ProverPath;
-      switch (options.Solver) {
-        case SolverKind.Z3:
-          if (path == null)
-            path = Z3.ExecutablePath();
-          return SMTLibProcess.ComputerProcessStartInfo(path, "-smt2 -in");
-        case SolverKind.CVC4:
-          if (path == null)
-            path = CVC4.ExecutablePath();
-          return SMTLibProcess.ComputerProcessStartInfo(path, "--lang=smt --no-strict-parsing --no-condense-function-values --incremental");
-        case SolverKind.YICES2:
-          if (path == null) 
-            path = Yices2.ExecutablePath();
-          return SMTLibProcess.ComputerProcessStartInfo(path, "--incremental");
-        default:
-          Debug.Assert(false);
-          return null;
-      }
-    }
-
     void SetupProcess()
     {
       if (Process != null) return;
 
-      var psi = ComputeProcessStartInfo();
-      Process = new SMTLibProcess(psi, this.options);
+      Process = new SMTLibProcess(this.options);
       Process.ErrorHandler += this.HandleProverError;
     }
 

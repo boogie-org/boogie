@@ -490,12 +490,6 @@ namespace Microsoft.Boogie {
     public bool UseProverEvaluate = false; // Use ProverInterface's Evaluate method, instead of model to get variable values
     public bool UseUncheckedContracts = false;
     public bool SoundnessSmokeTest = false;
-    public string Z3ExecutablePath = null;
-    public string Z3ExecutableName = null;
-    public string CVC4ExecutablePath = null;
-    public string Yices2ExecutablePath = null;
-    public string Yices2ExecutableName = null;
-
     public int KInductionDepth = -1;
     public int EnableUnSatCoreExtract = 0;
 
@@ -703,29 +697,6 @@ namespace Microsoft.Boogie {
         else
           return null;
       }
-    }
-    [ContractInvariantMethod]
-    void ObjectInvariant4() {
-      Contract.Invariant(cce.NonNullElements(this.z3Options));
-    }
-
-    [Peer]
-    private List<string> z3Options = new List<string>();
-
-    public IEnumerable<string> Z3Options
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<IEnumerable<string>>() != null);
-        foreach (string s in z3Options)
-          yield return s;
-      }
-    }
-
-    public void AddZ3Option(string option)
-    {
-      Contract.Requires(option != null);
-      this.z3Options.Add(option);
     }
 
     // Maximum amount of virtual memory (in bytes) for the prover to use
@@ -1531,18 +1502,6 @@ namespace Microsoft.Boogie {
           ps.GetNumericArgument(ref TraceCaching, 4);
           return true;
 		
-		case "useSmtOutputFormat": {
-		  if (ps.ConfirmArgumentCount(0)) {
-			UseSmtOutputFormat = true;
-		  }
-	      return true;
-		}        
-        case "z3opt":
-          if (ps.ConfirmArgumentCount(1)) {
-            AddZ3Option(cce.NonNull(args[ps.i]));
-          }
-          return true;
-
         case "platform":
           if (ps.ConfirmArgumentCount(1)) {
             StringCollection platformOptions = this.ParseNamedArgumentList(args[ps.i]);
@@ -1564,29 +1523,6 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "z3exe":
-          if (ps.ConfirmArgumentCount(1)) {
-            Z3ExecutablePath = args[ps.i];
-          }
-          return true;
-         // This sets name of z3 binary boogie binary directory, not path
-        case "z3name":
-          if (ps.ConfirmArgumentCount(1))
-          {
-              Z3ExecutableName = args[ps.i];
-          }
-          return true;
-
-        case "cvc4exe":
-			if (ps.ConfirmArgumentCount(1)) {
-				CVC4ExecutablePath = args[ps.i];
-			}
-			return true;
-        case "yices2exe":
-			if (ps.ConfirmArgumentCount(1)) {
-				Yices2ExecutablePath = args[ps.i];
-			}
-			return true;
         case "kInductionDepth":
           ps.GetNumericArgument(ref KInductionDepth);
           return true;
@@ -2206,24 +2142,9 @@ namespace Microsoft.Boogie {
                 location = platform libraries directory
 
   Z3 specific options:
-  /z3opt:<arg>  specify additional Z3 options
-  /z3multipleErrors
-                report multiple counterexamples for each error
   /useArrayTheory
                 use Z3's native theory (as opposed to axioms).  Currently
                 implies /monomorphize.
-  /useSmtOutputFormat
-                Z3 outputs a model in the SMTLIB2 format.
-  /z3exe:<path>
-                path to Z3 executable
-
-  CVC4 specific options:
-  /cvc4exe:<path>
-                path to CVC4 executable
-
-  Yices2 specific options:
-  /yices2exe:<path>
-                path to Yices2 executable
 ");
     }
   }
