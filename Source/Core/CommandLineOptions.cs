@@ -620,7 +620,7 @@ namespace Microsoft.Boogie {
 
     [Rep]
     public ProverFactory TheProverFactory;
-    public string ProverName;
+    public string ProverDllName;
     [Peer]
     private List<string> proverOptions = new List<string>();
 
@@ -1195,10 +1195,10 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "prover":
+        case "proverDll":
           if (ps.ConfirmArgumentCount(1)) {
-            TheProverFactory = ProverFactory.Load(cce.NonNull(args[ps.i]));
-            ProverName = cce.NonNull(args[ps.i]).ToUpper();
+            ProverDllName = cce.NonNull(args[ps.i]);
+            TheProverFactory = ProverFactory.Load(ProverDllName);
           }
           return true;
 
@@ -1612,8 +1612,8 @@ namespace Microsoft.Boogie {
       }
 
       if (TheProverFactory == null) {
-        TheProverFactory = ProverFactory.Load("SMTLib");
-        ProverName = "SMTLib".ToUpper();
+        ProverDllName = "SMTLib";
+        TheProverFactory = ProverFactory.Load(ProverDllName);
       }
 
       var proverOpts = TheProverFactory.BlankProverOptions();
@@ -1639,7 +1639,7 @@ namespace Microsoft.Boogie {
         UseArrayTheory = true;
         UseAbstractInterpretation = false;
         MaxProverMemory = 0; // no max: avoids restarts
-        if (ProverName == "Z3API" || ProverName == "SMTLIB") {
+        if (ProverDllName == "Z3api" || ProverDllName == "SMTLib") {
           ProverCCLimit = 1;
         }
         if (UseProverEvaluate)
@@ -2101,7 +2101,8 @@ namespace Microsoft.Boogie {
                 bracket odd-charactered identifier names with |'s.  <b> is:
                    0 - no (default),
                    1 - yes
-  /prover:<tp>  use theorem prover <tp>, where <tp> is either the name of
+  /proverDll:<tp>
+                use theorem prover <tp>, where <tp> is either the name of
                 a DLL containing the prover interface located in the
                 Boogie directory, or a full path to a DLL containing such
                 an interface. The default interface shipped is:
