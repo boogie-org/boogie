@@ -621,6 +621,7 @@ namespace Microsoft.Boogie {
     [Rep]
     public ProverFactory TheProverFactory;
     public string ProverDllName;
+    public bool ProverHelpRequested = false;
     [Peer]
     private List<string> proverOptions = new List<string>();
 
@@ -1208,6 +1209,12 @@ namespace Microsoft.Boogie {
             ProverOptions = ProverOptions.Concat1(cce.NonNull(args[ps.i]));
           }
           return true;
+        
+        case "proverHelp":
+          if (ps.ConfirmArgumentCount(0)) {
+            ProverHelpRequested = true;
+          }
+          return true;
 
         case "DoomStrategy":
           ps.GetNumericArgument(ref DoomStrategy);
@@ -1618,6 +1625,9 @@ namespace Microsoft.Boogie {
 
       var proverOpts = TheProverFactory.BlankProverOptions();
       proverOpts.Parse(ProverOptions);
+      if (ProverHelpRequested) {
+        Console.WriteLine(proverOpts.Help);
+      }
       if (!TheProverFactory.SupportsLabels(proverOpts)) {
         UseLabels = false;
       }
@@ -2109,6 +2119,7 @@ namespace Microsoft.Boogie {
                     SMTLib (uses the SMTLib2 format and calls an SMT solver)
   /proverOpt:KEY[=VALUE]
                 Provide a prover-specific option (short form /p).
+  /proverHelp   Print prover-specific options supported by /proverOpt.
   /proverLog:<file>
                 Log input for the theorem prover.  Like filenames
                 supplied as arguments to other options, <file> can use the
