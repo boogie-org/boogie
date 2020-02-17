@@ -602,26 +602,6 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      public bool VisitLabelOp(VCExprNAry node, LineariserOptions options)
-      {
-        if (ExprLineariser.UnderQuantifier > 0 && !options.LabelsBelowQuantifiers) {
-          ExprLineariser.Linearise(node[0], options);
-          return true;
-        }
-
-        var op = (VCExprLabelOp)node.Op;
-
-        if(!options.LabelsBelowQuantifiers)
-            wr.Write("({0} {1} ", op.pos ? "and" : "or", SMTLibNamer.QuoteId(ExprLineariser.Namer.LabelVar(op.label)));
-
-        ExprLineariser.Linearise(node[0], options);
-        
-        if (!options.LabelsBelowQuantifiers) 
-            wr.Write(")");
-        
-        return true;
-      }
-
       public bool VisitSelectOp(VCExprNAry node, LineariserOptions options)
       {        
         var name = SimplifyLikeExprLineariser.SelectOpName(node);

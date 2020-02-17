@@ -599,15 +599,7 @@ namespace Microsoft.Boogie {
     public int TrustLayersDownto = int.MaxValue;
 
     public enum VCVariety {
-      Structured,
-      Block,
-      Local,
-      BlockNested,
-      BlockReach,
-      BlockNestedReach,
       Dag,
-      DagIterative,
-      Doomed,
       Unspecified
     }
     public VCVariety vcVariety = VCVariety.Unspecified;  // will not be Unspecified after command line has been parsed
@@ -1154,37 +1146,9 @@ namespace Microsoft.Boogie {
         case "vc":
           if (ps.ConfirmArgumentCount(1)) {
             switch (args[ps.i]) {
-              case "s":
-              case "structured":
-                vcVariety = VCVariety.Structured;
-                break;
-              case "b":
-              case "block":
-                vcVariety = VCVariety.Block;
-                break;
-              case "l":
-              case "local":
-                vcVariety = VCVariety.Local;
-                break;
-              case "n":
-              case "nested":
-                vcVariety = VCVariety.BlockNested;
-                break;
-              case "m":
-                vcVariety = VCVariety.BlockNestedReach;
-                break;
-              case "r":
-                vcVariety = VCVariety.BlockReach;
-                break;
               case "d":
               case "dag":
                 vcVariety = VCVariety.Dag;
-                break;
-              case "i":
-                vcVariety = VCVariety.DagIterative;
-                break;
-              case "doomed":
-                vcVariety = VCVariety.Doomed;
                 break;
               default:
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);

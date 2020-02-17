@@ -636,11 +636,7 @@ namespace Microsoft.Boogie.Houdini {
             VCExpr eqExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(Microsoft.Basetypes.BigNum.FromInt(impl.Blocks[0].UniqueId)));
             vcexpr = gen.Implies(eqExpr, vcexpr);
 
-            ProverInterface.ErrorHandler handler = null;
-            if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local)
-                handler = new VCGen.ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, prover.Context, program);
-            else
-                handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, prover.Context, program);
+            ProverInterface.ErrorHandler handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, prover.Context, program);
 
             impl2ErrorHandler.Add(impl.Name, Tuple.Create(handler, collector));
 
@@ -3732,8 +3728,7 @@ namespace Microsoft.Boogie.Houdini {
                 counter++;
             }
 
-            var vc1 = ToVcExpr(a, incarnations, gen);
-            var vc = gen.LabelPos("Temp", vc1);
+            var vc = ToVcExpr(a, incarnations, gen);
 
             // check
             prover.AssertAxioms();
@@ -4573,25 +4568,6 @@ namespace Microsoft.Boogie.Houdini {
 
             if (op == null)
             {
-                var lop = retnary.Op as VCExprLabelOp;
-                if (lop == null) return ret;
-                if (lop.pos) return ret;
-                if (!lop.label.Equals("@" + assertId.ToString())) return ret;
-                
-                //var subexpr = retnary[0] as VCExprNAry;
-                //if (subexpr == null) return ret;
-                //op = subexpr.Op as VCExprBoogieFunctionOp;
-                //if (op == null) return ret;
-
-                var subexpr = retnary[0] as VCExprVar;
-                if (subexpr == null) return ret;
-                if (!subexpr.Name.StartsWith("AbstractHoudiniControl")) return ret;
-
-                for (int i = 0; i < summaryPreds.Count; i++)
-                {
-                    if (summaryPreds[i].Item3 == subexpr)
-                        summaryPreds[i] = Tuple.Create(summaryPreds[i].Item1, true, summaryPreds[i].Item3, summaryPreds[i].Item4);
-                }
                 return ret;
             }
 

@@ -22,8 +22,6 @@ namespace VC {
 
     // boolControlVC (block -> its bool variable)
     public Dictionary<Block, VCExpr> blockToControlVar;
-    // While using labels (block -> its label)
-    public Dictionary<Absy, string> block2label;
 
     public Dictionary<Block, List<StratifiedCallSite>> callSites;
     public Dictionary<Block, List<StratifiedCallSite>> recordProcCallSites;
@@ -65,13 +63,6 @@ namespace VC {
           blockToControlVar = new Dictionary<Block, VCExpr>();
           foreach (var tup in info.blockToControlVar)
               blockToControlVar.Add(tup.Key, substDict[tup.Value]);
-      }
-
-      // labels
-      if (info.label2absy != null)
-      {
-          block2label = new Dictionary<Absy, string>();
-          vcexpr = RenameVCExprLabels.Apply(vcexpr, info.vcgen.prover.VCExprGen, info.label2absy, block2label);
       }
 
       if(procCalls != null)
@@ -169,69 +160,6 @@ namespace VC {
     {
         return info.impl.Name;
     }
-  }
-
-  // Rename all labels in a VC to (globally) fresh labels
-  class RenameVCExprLabels : MutatingVCExprVisitor<bool>
-  {
-      Dictionary<int, Absy> label2absy;
-      Dictionary<Absy, string> absy2newlabel;
-      static int counter = 11;
-
-      RenameVCExprLabels(VCExpressionGenerator gen, Dictionary<int, Absy> label2absy, Dictionary<Absy, string> absy2newlabel)
-          : base(gen)
-      {
-          this.label2absy = label2absy;
-          this.absy2newlabel = absy2newlabel;
-      }
-
-      public static VCExpr Apply(VCExpr expr, VCExpressionGenerator gen, Dictionary<int, Absy> label2absy, Dictionary<Absy, string> absy2newlabel)
-      {
-          return (new RenameVCExprLabels(gen, label2absy, absy2newlabel)).Mutate(expr, true);
-      }
-
-      // Finds labels and changes them to a globally unique label:
-      protected override VCExpr/*!*/ UpdateModifiedNode(VCExprNAry/*!*/ originalNode,
-                                                    List<VCExpr/*!*/>/*!*/ newSubExprs,
-                                                    bool changed,
-                                                    bool arg)
-      {
-          Contract.Ensures(Contract.Result<VCExpr>() != null);
-
-          VCExpr ret;
-          if (changed)
-              ret = Gen.Function(originalNode.Op,
-                                 newSubExprs, originalNode.TypeArguments);
-          else
-              ret = originalNode;
-
-          VCExprLabelOp lop = originalNode.Op as VCExprLabelOp;
-          if (lop == null) return ret;
-          if (!(ret is VCExprNAry)) return ret;
-          VCExprNAry retnary = (VCExprNAry)ret;
-
-          // remove the sign
-          var nosign = 0;
-          if (!Int32.TryParse(lop.label.Substring(1), out nosign))
-              return ret;
-
-          if (!label2absy.ContainsKey(nosign))
-              return ret;
-
-          string newLabel = "SI" + counter.ToString();
-          counter++;
-          absy2newlabel[label2absy[nosign]] = newLabel;
-          
-          if (lop.pos)
-          {
-              return Gen.LabelPos(newLabel, retnary[0]);
-          }
-          else
-          {
-              return Gen.LabelNeg(newLabel, retnary[0]);
-          }
-
-      }
   }
 
   // Remove the uninterpreted function calls that substitute procedure calls
@@ -488,15 +416,6 @@ namespace VC {
                     continue;
                 }
                 var expr = translator.Translate(acmd.Expr);
-                // Label the assume if it is a procedure call
-                NAryExpr naryExpr = acmd.Expr as NAryExpr;
-                if (naryExpr != null && naryExpr.Fun is FunctionCall)
-                {
-                    var id = acmd.UniqueId;
-                    label2absy[id] = acmd;
-                    expr = gen.LabelPos(cce.NonNull("si_fcall_" + id.ToString()), expr);
-                }
-
                 c = gen.AndSimp(c, expr);
             }          
 
@@ -1902,75 +1821,12 @@ namespace VC {
         //Contract.Requires(originalNode != null);
         //Contract.Requires(cce.NonNullElements(newSubExprs));
         Contract.Ensures(Contract.Result<VCExpr>() != null);
-
-        VCExpr ret;
+        
         if (changed)
-          ret = Gen.Function(originalNode.Op,
+          return Gen.Function(originalNode.Op,
                              newSubExprs, originalNode.TypeArguments);
         else
-          ret = originalNode;
-
-        VCExprLabelOp lop = originalNode.Op as VCExprLabelOp;
-        if (lop == null) return ret;
-        if (!(ret is VCExprNAry)) return ret;
-
-        VCExprNAry retnary = (VCExprNAry)ret;
-        Contract.Assert(retnary != null);
-        string prefix = "si_fcall_"; // from Wlp.ssc::Cmd(...)
-        if (lop.label.Substring(1).StartsWith(prefix)) {
-          int id = Int32.Parse(lop.label.Substring(prefix.Length + 1));
-          Dictionary<int, Absy> label2absy = getLabel2absy();
-          Absy cmd = label2absy[id] as Absy;
-          //label2absy.Remove(id);
-
-          Contract.Assert(cmd != null);
-          AssumeCmd acmd = cmd as AssumeCmd;
-          Contract.Assert(acmd != null);
-          NAryExpr naryExpr = acmd.Expr as NAryExpr;
-          Contract.Assert(naryExpr != null);
-
-          string calleeName = naryExpr.Fun.FunctionName;
-
-          VCExprNAry callExpr = retnary[0] as VCExprNAry;
-
-          if (implName2StratifiedInliningInfo.ContainsKey(calleeName)) {
-            Contract.Assert(callExpr != null);
-            int candidateId = GetNewId(callExpr);
-            boogieExpr2Id[new BoogieCallExpr(naryExpr, currInlineCount)] = candidateId;
-            candidateParent[candidateId] = currInlineCount;
-            candiate2block2controlVar[candidateId] = new Dictionary<Block, VCExpr>();
-
-            string label = GetLabel(candidateId);
-            var unique_call_id = QKeyValue.FindIntAttribute(acmd.Attributes, "si_unique_call", -1);
-            if (unique_call_id != -1)
-              candidate2callId[candidateId] = unique_call_id;
-
-            //return Gen.LabelPos(label, callExpr);
-            return Gen.LabelPos(label, id2ControlVar[candidateId]);
-          }
-          else if (calleeName.StartsWith(recordProcName)) {
-            Contract.Assert(callExpr != null);
-            Debug.Assert(callExpr.Length == 1);
-            Debug.Assert(callExpr[0] != null);
-            recordExpr2Var[new BoogieCallExpr(naryExpr, currInlineCount)] = callExpr[0];
-            return callExpr;
-          }
-          else {
-              // callExpr can be null; this happens when the FunctionCall was on a
-              // pure function (not procedure) and the function got inlined
-              return retnary[0];
-          }
-        }
-
-        // Else, rename label
-        string newLabel = RenameAbsyLabel(lop.label);
-        if (lop.pos) {
-          return Gen.LabelPos(newLabel, retnary[0]);
-        }
-        else {
-          return Gen.LabelNeg(newLabel, retnary[0]);
-        }
-
+          return originalNode;
       }
 
       // Upgrades summaryTemp to summaryCandidates by matching ensure clauses with
@@ -2054,25 +1910,11 @@ namespace VC {
                                                     bool arg) {
         //Contract.Requires(originalNode != null);Contract.Requires(newSubExprs != null);
         Contract.Ensures(Contract.Result<VCExpr>() != null);
-
-        VCExpr ret;
+        
         if (changed)
-          ret = Gen.Function(originalNode.Op, newSubExprs, originalNode.TypeArguments);
+          return Gen.Function(originalNode.Op, newSubExprs, originalNode.TypeArguments);
         else
-          ret = originalNode;
-
-        VCExprLabelOp lop = originalNode.Op as VCExprLabelOp;
-        if (lop == null) return ret;
-        if (!(ret is VCExprNAry)) return ret;
-
-        string prefix = "si_fcall_"; // from FCallHandler::GetLabel
-        if (lop.label.Substring(1).StartsWith(prefix)) {
-          int id = Int32.Parse(lop.label.Substring(prefix.Length + 1));
-          if (subst.ContainsKey(id)) {
-            return subst[id];
-          }
-        }
-        return ret;
+          return originalNode;
       }
 
     } // end FCallInliner

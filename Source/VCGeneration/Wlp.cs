@@ -73,12 +73,7 @@ namespace VC {
 
       try {
         cce.BeginExpose(ctxt);
-        if (ctxt.Label2absy == null) {
-          return res;
-        }
-        else {
-          return gen.Implies(gen.LabelPos(cce.NonNull(id.ToString()), VCExpressionGenerator.True), res);
-        }
+        return res;
       } finally {
         cce.EndExpose();
       }
@@ -132,11 +127,8 @@ namespace VC {
           }
           ctxt.Ctxt.BoogieExprTranslator.isPositiveContext = !ctxt.Ctxt.BoogieExprTranslator.isPositiveContext;
         }
-
-        VCExpr R = null;
-        if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-          R = gen.Implies(C, N);
-        } else {
+        
+        {
           var subsumption = Subsumption(ac);
           if (subsumption == CommandLineOptions.SubsumptionOption.Always
               || (subsumption == CommandLineOptions.SubsumptionOption.NotForQuantifiers && !(C is VCExprQuantifier)))
@@ -163,19 +155,14 @@ namespace VC {
 
           if (ctxt.ControlFlowVariableExpr == null) {
             Contract.Assert(ctxt.Label2absy != null);
-            R = gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), C), N);
+            return gen.AndSimp(C, N);
           } else {
             VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(ctxt.ControlFlowVariableExpr, gen.Integer(BigNum.FromInt(b.UniqueId)));
             Contract.Assert(controlFlowFunctionAppl != null);
             VCExpr assertFailure = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(-ac.UniqueId)));
-            if (ctxt.Label2absy == null) {
-              R = gen.AndSimp(gen.Implies(assertFailure, C), N);
-            } else {
-              R = gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), gen.Implies(assertFailure, C)), N);
-            }
+            return gen.AndSimp(gen.Implies(assertFailure, C), N);
           }
         }
-        return R;
       } else if (cmd is AssumeCmd) {
         AssumeCmd ac = (AssumeCmd)cmd;
 
@@ -186,7 +173,7 @@ namespace VC {
             if (naryExpr.Fun is FunctionCall) {
               int id = ac.UniqueId;
               ctxt.Label2absy[id] = ac;
-              return MaybeWrapWithOptimization(ctxt, gen, ac.Attributes, gen.ImpliesSimp(gen.LabelPos(cce.NonNull("si_fcall_" + id.ToString()), ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr)), N));
+              return MaybeWrapWithOptimization(ctxt, gen, ac.Attributes,gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N));
             }
           }
         }

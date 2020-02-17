@@ -225,13 +225,6 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(node != null);
       return PrintNAry("Distinct", node, wr);
     }
-    public bool VisitLabelOp(VCExprNAry node, TextWriter wr) {
-      //Contract.Requires(wr != null);
-      //Contract.Requires(node != null);
-      VCExprLabelOp/*!*/ op = (VCExprLabelOp)node.Op;
-      Contract.Assert(op != null);
-      return PrintNAry("Label " + op.label, node, wr);
-    }
     public bool VisitSelectOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);

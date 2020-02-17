@@ -857,17 +857,6 @@ namespace Microsoft.Boogie.VCExprAST {
         return true;
       }
 
-      public bool VisitLabelOp(VCExprNAry node, LineariserOptions options) {
-        //Contract.Requires(options != null);
-        //Contract.Requires(node != null);
-        VCExprLabelOp op = (VCExprLabelOp)node.Op;
-        Contract.Assert(op != null);
-        wr.Write(String.Format("({0} |{1}| ", op.pos ? "LBLPOS" : "LBLNEG", op.label));
-        ExprLineariser.Linearise(node[0], options);
-        wr.Write(")");
-        return true;
-      }
-
       public bool VisitSelectOp(VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(options != null);
         //Contract.Requires(node != null);

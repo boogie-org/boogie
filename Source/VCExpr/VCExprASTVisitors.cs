@@ -65,7 +65,6 @@ namespace Microsoft.Boogie.VCExprAST {
     Result VisitOrOp(VCExprNAry node, Arg arg);
     Result VisitImpliesOp(VCExprNAry node, Arg arg);
     Result VisitDistinctOp(VCExprNAry node, Arg arg);
-    Result VisitLabelOp(VCExprNAry node, Arg arg);
     Result VisitSelectOp(VCExprNAry node, Arg arg);
     Result VisitStoreOp(VCExprNAry node, Arg arg);
     Result VisitFloatAddOp(VCExprNAry node, Arg arg);
@@ -135,11 +134,6 @@ namespace Microsoft.Boogie.VCExprAST {
     }
 
     public Result VisitDistinctOp(VCExprNAry node, Arg arg) {
-      Contract.Requires(node != null);
-      throw new NotImplementedException();
-    }
-
-    public Result VisitLabelOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
@@ -1498,10 +1492,6 @@ namespace Microsoft.Boogie.VCExprAST {
       return StandardResult(node, arg);
     }
     public virtual Result VisitDistinctOp(VCExprNAry node, Arg arg) {
-      //Contract.Requires(node != null);
-      return StandardResult(node, arg);
-    }
-    public virtual Result VisitLabelOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }

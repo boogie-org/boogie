@@ -165,14 +165,7 @@ namespace Microsoft.Boogie.Houdini {
       Macro macro = new Macro(Token.NoToken, descriptiveName, new List<Variable>(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false));
       proverInterface.DefineMacro(macro, conjecture);
       conjecture = exprGen.Function(macro);
-
-      if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
-        handler = new VCGen.ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, proverInterface.Context, program);
-      }
-      else {
-        handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, proverInterface.Context, program);
-      }
-
+      handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, proverInterface.Context, program);
     }
 
     private VCExpr BuildAxiom(ProverInterface proverInterface, Dictionary<Variable, bool> currentAssignment) {

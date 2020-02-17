@@ -77,11 +77,6 @@ void ObjectInvariant()
         get { return _KnownSelectFunctions.Peek(); }
     }
 
-    private HashSet<string> KnownLBL
-    {
-        get { return _KnownLBL.Peek(); }
-    }
-
     // ------
     private readonly Stack<HashSet<Function/*!*/>/*!*/> _KnownFunctions = new Stack<HashSet<Function/*!*/>>();
     private readonly Stack<HashSet<VCExprVar/*!*/>/*!*/> _KnownVariables = new Stack<HashSet<VCExprVar/*!*/>>();
@@ -89,9 +84,8 @@ void ObjectInvariant()
     private readonly Stack<HashSet<Type/*!*/>/*!*/> _KnownTypes = new Stack<HashSet<Type>>();
     private readonly Stack<HashSet<string/*!*/>/*!*/> _KnownStoreFunctions = new Stack<HashSet<string>>();
     private readonly Stack<HashSet<string/*!*/>/*!*/> _KnownSelectFunctions = new Stack<HashSet<string>>();
-    private readonly Stack<HashSet<string>> _KnownLBL = new Stack<HashSet<string>>();
-		
-	// lets RPFP checker capture decls	
+
+    // lets RPFP checker capture decls	
 	public abstract class DeclHandler {
 		public abstract void VarDecl(VCExprVar v);
 		public abstract void FuncDecl(Function f);
@@ -110,7 +104,6 @@ void ObjectInvariant()
         _KnownTypes.Push(new HashSet<Type>());
         _KnownStoreFunctions.Push(new HashSet<string>());
         _KnownSelectFunctions.Push(new HashSet<string>());
-        _KnownLBL.Push(new HashSet<string>());
     }
 
     public void Reset()
@@ -120,7 +113,6 @@ void ObjectInvariant()
       _KnownTypes.Clear();
       _KnownStoreFunctions.Clear();
       _KnownSelectFunctions.Clear();
-      _KnownLBL.Clear();
       AllDecls.Clear();
       IncDecls.Clear();
       InitializeKnownDecls();
@@ -134,7 +126,6 @@ void ObjectInvariant()
         _KnownTypes.Push(new HashSet<Type>(_KnownTypes.Peek()));
         _KnownStoreFunctions.Push(new HashSet<string>(_KnownStoreFunctions.Peek()));
         _KnownSelectFunctions.Push(new HashSet<string>(_KnownSelectFunctions.Peek()));
-        _KnownLBL.Push(new HashSet<string>(_KnownLBL.Peek()));
     }
 
     public void Pop()
@@ -145,7 +136,6 @@ void ObjectInvariant()
         _KnownTypes.Pop();
         _KnownStoreFunctions.Pop();
         _KnownSelectFunctions.Pop();
-        _KnownLBL.Pop();
     }
 
     public void SetNamer(UniqueNamer namer)
@@ -250,13 +240,6 @@ void ObjectInvariant()
             if (declHandler != null) declHandler.FuncDecl(f);
           }
           KnownFunctions.Add(f);
-        } else {
-          var lab = node.Op as VCExprLabelOp;
-          if (lab != null && !KnownLBL.Contains(lab.label)) {
-            KnownLBL.Add(lab.label);
-            var name = SMTLibNamer.QuoteId(Namer.LabelVar(lab.label));
-            AddDeclaration("(declare-fun " + name + " () Bool)");
-          }
         }
       }
 

@@ -102,15 +102,11 @@ namespace Microsoft.Boogie
       Contract.Requires(0 <= stats.VerifiedCount && 0 <= stats.ErrorCount && 0 <= stats.InconclusiveCount && 0 <= stats.TimeoutCount && 0 <= stats.OutOfMemoryCount);
 
       Console.WriteLine();
-      if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
-      {
-        Console.Write("{0} finished with {1} credible, {2} doomed{3}", CommandLineOptions.Clo.DescriptiveToolName, stats.VerifiedCount, stats.ErrorCount, stats.ErrorCount == 1 ? "" : "s");
-      }
-      else if (CommandLineOptions.Clo.ShowVerifiedProcedureCount)
+      if (CommandLineOptions.Clo.ShowVerifiedProcedureCount)
       {
         Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.DescriptiveToolName, stats.VerifiedCount, stats.ErrorCount, stats.ErrorCount == 1 ? "" : "s");
       }
-      else 
+      else
       {
         Console.Write("{0} finished with {1} error{2}", CommandLineOptions.Clo.DescriptiveToolName, stats.ErrorCount, stats.ErrorCount == 1 ? "" : "s");
       }
@@ -370,7 +366,7 @@ namespace Microsoft.Boogie
               isMonomorphic = false;
           return base.VisitDeclWithFormals(node);
       }
-      
+
       public override BinderExpr VisitBinderExpr(BinderExpr node)
       {
           if (node.TypeParameters.Count > 0)
@@ -440,7 +436,7 @@ namespace Microsoft.Boogie
       var result = programCache.Get(programId) as Program;
       return result;
     }
-    
+
     static List<Checker> Checkers = new List<Checker>();
 
     static DateTime FirstRequestStart;
@@ -788,7 +784,7 @@ namespace Microsoft.Boogie
     public static void Inline(Program program)
     {
       Contract.Requires(program != null);
-      
+
       if (CommandLineOptions.Clo.Trace)
           Console.WriteLine("Inlining...");
 
@@ -996,7 +992,7 @@ namespace Microsoft.Boogie
                   semaphore.Wait(cts.Token);
               }
               catch (OperationCanceledException)
-              {                  
+              {
                   break;
               }
               tasks[j].Start(Scheduler);
@@ -1301,11 +1297,7 @@ namespace Microsoft.Boogie
     private static ConditionGeneration CreateVCGen(Program program, List<Checker> checkers)
     {
       ConditionGeneration vcgen = null;
-      if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
-      {
-        vcgen = new DCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, checkers);
-      }
-      else if (CommandLineOptions.Clo.FixedPointEngine != null)
+      if (CommandLineOptions.Clo.FixedPointEngine != null)
       {
         vcgen = new FixedpointVC(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, checkers);
       }
@@ -1315,11 +1307,11 @@ namespace Microsoft.Boogie
       }
       else if (CommandLineOptions.Clo.SecureVcGen != null)
       {
-          vcgen = new SecureVCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, checkers);
+        vcgen = new SecureVCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, checkers);
       }
       else
       {
-          vcgen = new VCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, checkers);
+        vcgen = new VCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, checkers);
       }
       return vcgen;
     }
@@ -1613,7 +1605,7 @@ namespace Microsoft.Boogie
           traceOutput = "verified";
           break;
         case VCGen.Outcome.Correct:
-          traceOutput = (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed ? "credible" : "verified");
+          traceOutput = "verified";
           break;
         case VCGen.Outcome.TimedOut:
           traceOutput = "timed out";
@@ -1629,7 +1621,7 @@ namespace Microsoft.Boogie
           break;
         case VCGen.Outcome.Errors:
           Contract.Assert(errors != null);
-          traceOutput = (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed ? "doomed" : string.Format("error{0}", errors.Count == 1 ? "" : "s"));
+          traceOutput = string.Format("error{0}", errors.Count == 1 ? "" : "s");
           break;
       }
       return traceOutput;
@@ -1670,17 +1662,9 @@ namespace Microsoft.Boogie
           if (wasCached) { Interlocked.Increment(ref stats.CachedInconclusiveCount); }
           break;
         case VCGen.Outcome.Errors:
-          if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
-          {
-            Interlocked.Increment(ref stats.ErrorCount);
-            if (wasCached) { Interlocked.Increment(ref stats.CachedErrorCount); }
-          }
-          else
-          {
-            int cnt = errors.Where(e => !e.IsAuxiliaryCexForDiagnosingTimeouts).Count();
-            Interlocked.Add(ref stats.ErrorCount, cnt);
-            if (wasCached) { Interlocked.Add(ref stats.CachedErrorCount, cnt); }
-          }
+          int cnt = errors.Where(e => !e.IsAuxiliaryCexForDiagnosingTimeouts).Count();
+          Interlocked.Add(ref stats.ErrorCount, cnt);
+          if (wasCached) { Interlocked.Add(ref stats.CachedErrorCount, cnt); }
           break;
       }
     }

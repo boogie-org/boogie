@@ -180,8 +180,7 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
         state = state.EnterTerm;
 
       if (!node.Op.Equals(VCExpressionGenerator.AndOp) &&
-          !node.Op.Equals(VCExpressionGenerator.OrOp) &&
-          !(node.Op is VCExprLabelOp))
+          !node.Op.Equals(VCExpressionGenerator.OrOp))
         // standard is to set the polarity to 0 (fits most operators)
         return base.Visit(node, state.ZeroPolarity);
 

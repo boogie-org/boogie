@@ -82,21 +82,9 @@ namespace Microsoft.Boogie.ExprExtensions
                 return DeclKind.And;
             if (f == VCExpressionGenerator.ImpliesOp)
                 return DeclKind.Implies;
-            if (f is VCExprLabelOp)
-                return DeclKind.Label;
             return DeclKind.Other;
         }
 
-        public static bool IsLabel(this Term t)
-        {
-            return (t is VCExprNAry) && (GetAppDecl(t) is VCExprLabelOp);
-        }
-
-        public static string LabelName(this Term t)
-        {
-            return (GetAppDecl(t) as VCExprLabelOp).label;
-        }
-         
         public static Sort GetSort(this Term t)
         {
             return t.Type;

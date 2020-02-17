@@ -435,7 +435,7 @@ namespace Microsoft.Boogie.SMTLib
         Process.PingPong(); // flush any errors
 
         if (Process.Inspector != null)
-          Process.Inspector.NewProblem(descriptiveName, vc, handler);
+          Process.Inspector.NewProblem(descriptiveName);
       }
 
       if (HasReset) {
@@ -1459,9 +1459,9 @@ namespace Microsoft.Boogie.SMTLib
             if (globalResult == Outcome.Undetermined)
               globalResult = result;
             
-            if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory || result == Outcome.OutOfResource) {
-                if (CommandLineOptions.Clo.SIBoolControlVC) {
-                  labels = new string[0];
+            if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory || result == Outcome.OutOfResource) { 
+              if (CommandLineOptions.Clo.SIBoolControlVC) {
+                labels = new string[0];
               } else {
                 labels = CalculatePath(handler.StartingProcId());
               }
