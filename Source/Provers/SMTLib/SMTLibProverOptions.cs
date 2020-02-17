@@ -54,8 +54,7 @@ namespace Microsoft.Boogie.SMTLib
     {
         return CommandLineOptions.Clo.PrintErrorModel >= 1 ||
                CommandLineOptions.Clo.EnhancedErrorMessages == 1 ||
-               CommandLineOptions.Clo.ModelViewFile != null ||
-               (CommandLineOptions.Clo.StratifiedInlining > 0 && !CommandLineOptions.Clo.StratifiedInliningWithoutModels);
+               CommandLineOptions.Clo.ModelViewFile != null;
     }
 
     public void AddSolverArgument(string s)

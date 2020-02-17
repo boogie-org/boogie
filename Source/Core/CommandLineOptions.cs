@@ -765,15 +765,8 @@ namespace Microsoft.Boogie {
     public bool ExtractLoops = false;
     public bool DeterministicExtractLoops = false;
     public string SecureVcGen = null;
-    public int StratifiedInlining = 0;
     public string FixedPointEngine = null;
-    public int StratifiedInliningOption = 0;
-    public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
-    public int StratifiedInliningVerbose = 0; // verbosity level
     public int RecursionBound = 500;
-    public bool NonUniformUnfolding = false;
-    public int StackDepthBound = 0; 
-    public string inferLeastForUnsat = null;
 
     // Inference mode for fixed point engine
     public enum FixedPointInferenceMode {
@@ -1290,22 +1283,6 @@ namespace Microsoft.Boogie {
           if (ps.ConfirmArgumentCount(1))
               SecureVcGen = args[ps.i];
           return true;
-        case "stratifiedInline":
-          if (ps.ConfirmArgumentCount(1)) {
-            switch (args[ps.i]) {
-              case "0":
-                StratifiedInlining = 0;
-                break;
-              case "1":
-                StratifiedInlining = 1;
-                break;
-              default:
-                StratifiedInlining = Int32.Parse(cce.NonNull(args[ps.i]));
-                //ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                break;
-            }
-          }
-          return true;
         case "fixedPointEngine":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1350,11 +1327,6 @@ namespace Microsoft.Boogie {
               PrintConjectures = args[ps.i];
           }
           return true;
-        case "siVerbose":
-          if (ps.ConfirmArgumentCount(1)) {
-            StratifiedInliningVerbose = Int32.Parse(cce.NonNull(args[ps.i]));
-          }
-          return true;
         case "recursionBound":
           if (ps.ConfirmArgumentCount(1)) {
             RecursionBound = Int32.Parse(cce.NonNull(args[ps.i]));
@@ -1366,24 +1338,6 @@ namespace Microsoft.Boogie {
                 EnableUnSatCoreExtract = Int32.Parse(cce.NonNull(args[ps.i]));
             }
             return true;
-        case "stackDepthBound":
-          if (ps.ConfirmArgumentCount(1))
-          {
-              StackDepthBound = Int32.Parse(cce.NonNull(args[ps.i]));
-          }
-          return true;
-        case "stratifiedInlineOption":
-          if (ps.ConfirmArgumentCount(1)) {
-            StratifiedInliningOption = Int32.Parse(cce.NonNull(args[ps.i]));
-          }
-          return true;
-
-        case "inferLeastForUnsat":
-          if (ps.ConfirmArgumentCount(1)) {
-            inferLeastForUnsat = args[ps.i];
-          }
-          return true;
-
         case "typeEncoding":
           if (ps.ConfirmArgumentCount(1)) {
             switch (args[ps.i]) {
@@ -1651,7 +1605,6 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
               ps.CheckBooleanFlag("printNecessaryAssumes", ref PrintNecessaryAssumes) ||
               ps.CheckBooleanFlag("useProverEvaluate", ref UseProverEvaluate) ||
-              ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
               ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
               ps.CheckBooleanFlag("trustAtomicityTypes", ref TrustAtomicityTypes) ||
@@ -1703,22 +1656,6 @@ namespace Microsoft.Boogie {
 
       if (UseArrayTheory) {
         Monomorphize = true;
-      }
-
-      if (inferLeastForUnsat != null) {
-        StratifiedInlining = 1;
-      }
-
-      if (StratifiedInlining > 0) {
-        TypeEncodingMethod = TypeEncoding.Monomorphic;
-        UseArrayTheory = true;
-        UseAbstractInterpretation = false;
-        MaxProverMemory = 0; // no max: avoids restarts
-        if (ProverName == "Z3API" || ProverName == "SMTLIB") {
-          ProverCCLimit = 1;
-        }
-        if (UseProverEvaluate)
-            StratifiedInliningWithoutModels = true;
       }
 
       if (Trace) {

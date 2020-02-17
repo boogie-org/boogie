@@ -179,18 +179,9 @@ namespace Microsoft.Boogie {
                 {
                     var cmd = getTraceCmd(loc);
                     var calleeName = getCalledProcName(cmd);
-                    if (calleeName.StartsWith(VC.StratifiedVCGen.recordProcName) && CommandLineOptions.Clo.StratifiedInlining > 0)
-                    {
-                        Contract.Assert(calleeCounterexamples[loc].args.Count == 1);
-                        var arg = calleeCounterexamples[loc].args[0];
-                        tw.WriteLine("{0}value = {1}", ind, arg.ToString());
-                    }
-                    else
-                    {
-                        tw.WriteLine("{1}Inlined call to procedure {0} begins", calleeName, ind);
-                        calleeCounterexamples[loc].counterexample.Print(indent + 4, tw);
-                        tw.WriteLine("{1}Inlined call to procedure {0} ends", calleeName, ind);
-                    }
+                    tw.WriteLine("{1}Inlined call to procedure {0} begins", calleeName, ind);
+                    calleeCounterexamples[loc].counterexample.Print(indent + 4, tw);
+                    tw.WriteLine("{1}Inlined call to procedure {0} ends", calleeName, ind);
                 }
             }
           }
@@ -203,7 +194,7 @@ namespace Microsoft.Boogie {
     public void PrintModel(TextWriter tw)
     {
       var filename = CommandLineOptions.Clo.ModelViewFile;
-      if (Model == null || filename == null || CommandLineOptions.Clo.StratifiedInlining > 0) return;
+      if (Model == null || filename == null) return;
 
       if (!Model.ModelHasStatesAlready) {
         PopulateModelWithStates();

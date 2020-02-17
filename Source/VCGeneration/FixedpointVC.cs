@@ -1465,14 +1465,9 @@ namespace Microsoft.Boogie
             Term background = ctx.MkTrue(); // TODO boogieContext.VCExprToTerm(boogieContext.Axioms, linOptions);
             rpfp.AssertAxiom(background);
 
-            int save_option = CommandLineOptions.Clo.StratifiedInlining; // need this to get funcall labels
-            CommandLineOptions.Clo.StratifiedInlining = 1;
-
             /* Create the nodes, indexing procedures by their relational symbols. */
             foreach (StratifiedInliningInfo info in implName2StratifiedInliningInfo.Values)
                 GenerateVCForStratifiedInlining(program, info, checker);
-
-            CommandLineOptions.Clo.StratifiedInlining = save_option;
 
             if (mode == Mode.Boogie)
             {

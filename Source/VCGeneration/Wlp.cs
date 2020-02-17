@@ -178,18 +178,6 @@ namespace VC {
         return R;
       } else if (cmd is AssumeCmd) {
         AssumeCmd ac = (AssumeCmd)cmd;
-
-        if (CommandLineOptions.Clo.StratifiedInlining > 0) {            
-          // Label the assume if it is a procedure call
-          NAryExpr naryExpr = ac.Expr as NAryExpr;
-          if (naryExpr != null) {
-            if (naryExpr.Fun is FunctionCall) {
-              int id = ac.UniqueId;
-              ctxt.Label2absy[id] = ac;
-              return MaybeWrapWithOptimization(ctxt, gen, ac.Attributes, gen.ImpliesSimp(gen.LabelPos(cce.NonNull("si_fcall_" + id.ToString()), ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr)), N));
-            }
-          }
-        }
         var expr = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
         
         var aid = QKeyValue.FindStringAttribute(ac.Attributes, "id");

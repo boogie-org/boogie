@@ -75,8 +75,7 @@ namespace Microsoft.Boogie.SMTLib
 
       SetupProcess();
 
-      if (CommandLineOptions.Clo.StratifiedInlining > 0 || CommandLineOptions.Clo.ContractInfer
-          || CommandLineOptions.Clo.SecureVcGen != null)
+      if (CommandLineOptions.Clo.ContractInfer || CommandLineOptions.Clo.SecureVcGen != null)
       {
           // Prepare for ApiChecker usage
           if (options.LogFilename != null && currentLogFile == null)
@@ -1016,8 +1015,6 @@ namespace Microsoft.Boogie.SMTLib
         string queryString = "(query " + QuantifiedVCExpr2String(rpfp.GetQuery()) + "\n   :engine duality\n  :print-certificate true\n";
        
 #if true
-        if (CommandLineOptions.Clo.StratifiedInlining != 0)
-            queryString += "    :stratified-inlining true\n";
         if (CommandLineOptions.Clo.RecursionBound > 0)
             queryString += "    :recursion-bound " + Convert.ToString(CommandLineOptions.Clo.RecursionBound) + "\n";
 #endif

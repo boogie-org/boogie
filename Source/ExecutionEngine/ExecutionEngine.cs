@@ -508,18 +508,16 @@ namespace Microsoft.Boogie
             }
           }
         }
-
-        if (CommandLineOptions.Clo.StratifiedInlining == 0)
+        
+        CivlVCGeneration.Transform(linearTypeChecker, civlTypeChecker);
+        linearTypeChecker.EraseLinearAnnotations();
+        if (CommandLineOptions.Clo.CivlDesugaredFile != null)
         {
-          CivlVCGeneration.Transform(linearTypeChecker, civlTypeChecker);
-          linearTypeChecker.EraseLinearAnnotations();
-          if (CommandLineOptions.Clo.CivlDesugaredFile != null)
-          {
-              int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-              CommandLineOptions.Clo.PrintUnstructured = 1;
-              PrintBplFile(CommandLineOptions.Clo.CivlDesugaredFile, program, false, false, CommandLineOptions.Clo.PrettyPrint);
-              CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
-          }
+            int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+            CommandLineOptions.Clo.PrintUnstructured = 1;
+            PrintBplFile(CommandLineOptions.Clo.CivlDesugaredFile, program, false, false,
+              CommandLineOptions.Clo.PrettyPrint);
+            CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
         }
 
         EliminateDeadVariables(program);
@@ -1166,41 +1164,27 @@ namespace Microsoft.Boogie
           {
             CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
           }
+
           try
           {
-            if (CommandLineOptions.Clo.inferLeastForUnsat != null)
+            verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId);
+            if (CommandLineOptions.Clo.ExtractLoops && verificationResult.Errors != null)
             {
-              var svcgen = vcgen as VC.StratifiedVCGen;
-              Contract.Assert(svcgen != null);
-              var ss = new HashSet<string>();
-              foreach (var c in program.Constants)
+              var vcg = vcgen as VCGen;
+              if (vcg != null)
               {
-                if (!c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
-                ss.Add(c.Name);
-              }
-              verificationResult.Outcome = svcgen.FindLeastToVerify(impl, ref ss);
-              verificationResult.Errors = new List<Counterexample>();
-              output.WriteLine("Result: {0}", string.Join(" ", ss));
-            }
-            else
-            {
-              verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId);
-              if (CommandLineOptions.Clo.ExtractLoops && verificationResult.Errors != null)
-              {
-                var vcg = vcgen as VCGen;
-                if (vcg != null)
+                for (int i = 0; i < verificationResult.Errors.Count; i++)
                 {
-                  for (int i = 0; i < verificationResult.Errors.Count; i++)
-                  {
-                    verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name, program, extractLoopMappingInfo);
-                  }
+                  verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name, program,
+                    extractLoopMappingInfo);
                 }
               }
             }
           }
           catch (VCGenException e)
           {
-            var errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok, String.Format("{0} (encountered in implementation {1}).", e.Message, impl.Name), requestId, "Error");
+            var errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok,
+              String.Format("{0} (encountered in implementation {1}).", e.Message, impl.Name), requestId, "Error");
             errorInfo.BoogieErrorCode = "BP5010";
             errorInfo.ImplementationName = impl.Name;
             printer.WriteErrorInformation(errorInfo, output);
@@ -1211,12 +1195,14 @@ namespace Microsoft.Boogie
                 er(errorInfo);
               }
             }
+
             verificationResult.Errors = null;
             verificationResult.Outcome = VCGen.Outcome.Inconclusive;
           }
           catch (UnexpectedProverOutputException upo)
           {
-            printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
+            printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}",
+              impl.Name, upo.Message);
             verificationResult.Errors = null;
             verificationResult.Outcome = VCGen.Outcome.Inconclusive;
           }
@@ -1308,10 +1294,6 @@ namespace Microsoft.Boogie
       else if (CommandLineOptions.Clo.FixedPointEngine != null)
       {
         vcgen = new FixedpointVC(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
-      }
-      else if (CommandLineOptions.Clo.StratifiedInlining > 0)
-      {
-        vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
       }
       else if (CommandLineOptions.Clo.SecureVcGen != null)
       {
