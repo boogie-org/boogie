@@ -1181,19 +1181,6 @@ namespace VC {
 
       Outcome ret = Outcome.ReachedBound;
 
-      #region eager inlining
-      for (int i = 1; i < CommandLineOptions.Clo.StratifiedInlining && calls.currCandidates.Count > 0; i++) {
-        List<int> toExpand = new List<int>();
-
-        foreach (int id in calls.currCandidates) {
-          if (calls.getRecursionBound(id) <= CommandLineOptions.Clo.RecursionBound) {
-            toExpand.Add(id);
-          }
-        }
-        DoExpansion(toExpand, vState);
-      }
-      #endregion
-
       #region Repopulate call tree, if there is one
       if (PersistCallTree && callTree != null) {
         bool expand = true;
@@ -1211,18 +1198,14 @@ namespace VC {
         }
       }
       #endregion
-
-      if (CommandLineOptions.Clo.StratifiedInliningVerbose > 1) {
-        Console.WriteLine(">> SI: Size of VC after eager inlining: {0}", vState.vcSize);
-      }
-
+      
       // Under-approx query is only needed if something was inlined since
       // the last time an under-approx query was made
       // TODO: introduce this
       // bool underApproxNeeded = true;
 
       // The recursion bound for stratified search
-      int bound = CommandLineOptions.Clo.NonUniformUnfolding ? CommandLineOptions.Clo.RecursionBound : 1;
+      int bound = CommandLineOptions.Clo.RecursionBound;
 
       int done = 0;
 
@@ -1286,9 +1269,6 @@ namespace VC {
           {
               if (block.Count == 0)
               {
-                  if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0)
-                      Console.WriteLine(">> SI: Exhausted Bound {0}", bound);
-
                   // Increment bound
                   bound++;
 
@@ -1311,16 +1291,6 @@ namespace VC {
               Contract.Assert(reporter.candidatesToExpand.Count != 0);
 
               #region expand call tree
-              if (CommandLineOptions.Clo.StratifiedInliningVerbose > 1)
-              {
-                  Console.Write(">> SI Inlining: ");
-                  reporter.candidatesToExpand
-                      .Select(c => calls.getProc(c))
-                      .Iter(c =>  Console.Write("{0} ", c));
-
-                  Console.WriteLine();
-              }
-
               // Expand and try again
               vState.checker.prover.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
               DoExpansion(reporter.candidatesToExpand, vState);
@@ -1333,20 +1303,12 @@ namespace VC {
       // Pop off everything that we pushed so that there are no side effects from
       // this call to VerifyImplementation
       vState.checker.prover.Pop();
-
-      if (CommandLineOptions.Clo.StratifiedInliningVerbose > 1) {
-        Console.WriteLine(">> SI: Expansions performed: {0}", vState.expansionCount);
-        Console.WriteLine(">> SI: Candidates left: {0}", calls.currCandidates.Count);
-        Console.WriteLine(">> SI: VC Size: {0}", vState.vcSize);
-      }
-
       vcsize = vState.vcSize;
       numInlined = (calls.candidateParent.Keys.Count + 1) - (calls.currCandidates.Count);
 
       var rbound = "Procs that reached bound: ";
       foreach (var s in procsThatReachedRecBound) rbound += "  " + s;
       if (ret == Outcome.ReachedBound) Helpers.ExtraTraceInformation(rbound);
-      if (CommandLineOptions.Clo.StackDepthBound > 0 && ret == Outcome.Correct) ret = Outcome.ReachedBound;
 
       // Store current call tree
       if (PersistCallTree && (ret == Outcome.Correct || ret == Outcome.Errors || ret == Outcome.ReachedBound)) {
@@ -1413,7 +1375,7 @@ namespace VC {
 
         int idBound = calls.getRecursionBound(id);
         int sd = calls.getStackDepth(id);
-        if (idBound <= bound && (CommandLineOptions.Clo.StackDepthBound == 0 || sd <= CommandLineOptions.Clo.StackDepthBound)) {
+        if (idBound <= bound) {
           if (idBound > 1)
             softAssumptions.Add(calls.getFalseExpr(id));
 
@@ -1438,9 +1400,7 @@ namespace VC {
         ret = Outcome.Correct;
       }
       else {
-        ret = CommandLineOptions.Clo.NonUniformUnfolding
-              ? checker.CheckAssumptions(assumptions, softAssumptions)
-              : checker.CheckAssumptions(assumptions);
+        ret = checker.CheckAssumptions(assumptions, softAssumptions);
       }
 
       if (ret != Outcome.Correct && ret != Outcome.Errors) {

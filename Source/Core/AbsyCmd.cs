@@ -2733,13 +2733,6 @@ namespace Microsoft.Boogie {
             newBlockBody.Add(a);
           }
         }
-        else if (CommandLineOptions.Clo.StratifiedInlining > 0)
-        {
-            // inject free requires as assume statements at the call site
-            AssumeCmd/*!*/ a = new AssumeCmd(req.tok, Substituter.Apply(s, req.Condition));
-            Contract.Assert(a != null);
-            newBlockBody.Add(a);
-        }
       }
       if (hasWildcard) {
         if (preConjunction == null) {
