@@ -1579,10 +1579,8 @@ namespace Microsoft.Boogie {
         TheProverFactory = ProverFactory.Load(ProverDllName);
       }
 
-      var proverOpts = TheProverFactory.BlankProverOptions();
-      proverOpts.Parse(ProverOptions);
       if (ProverHelpRequested) {
-        Console.WriteLine(proverOpts.Help);
+        Console.WriteLine(TheProverFactory.BlankProverOptions().Help);
       }
 
       if (vcVariety == VCVariety.Unspecified) {
