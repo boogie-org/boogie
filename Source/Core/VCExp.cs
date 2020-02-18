@@ -125,7 +125,7 @@ The generic options may or may not be used by the prover plugin.
 
         var exes = new string[] { ProverName, ProverName + ".exe" };
 
-        // Otherwise we look in the executable direclty
+        // Otherwise we look in the executable directory
         foreach (var exe in exes){
             var tryProverPath = Path.Combine(CodebaseString(), exe);
         

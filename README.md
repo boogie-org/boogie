@@ -118,23 +118,26 @@ The default SMT solver for Boogie is [Z3](https://github.com/Z3Prover/z3).
 Support for [CVC4](https://cvc4.github.io/) and
 [Yices2](https://yices.csl.sri.com/) is experimental.
 
+By default, Boogie looks for an executable called `z3|cvc4|yices2[.exe]` in your
+`PATH` environment variable. If the solver executable is called differently on
+your system, use `/proverOpt:PROVER_NAME=<exeName>`. Alternatively, an explicit
+path can be given using `/proverOpt:PROVER_PATH=<path>`.
+
+To learn how custom options can be supplied to the SMT solver (and more), call
+Boogie with `/proverHelp`.
+
 ### Z3
 
 The current test suite assumes version 4.8.7, but earlier and newer versions may
 also work.
 
-Option 1: Make sure a Z3 executable called `z3` or `z3.exe` is in your `PATH`
-environment variable.
-
-Option 2: Call Boogie with `/z3exe:<path>`.
-
 ### CVC4 (experimental)
 
-Call Boogie with `/proverOpt:SOLVER=CVC4 /cvc4exe:<path>`.
+Call Boogie with `/proverOpt:SOLVER=CVC4`.
 
 ### Yices2 (experimental)
 
-Call Boogie with `/proverOpt:SOLVER=Yices2 /yices2exe:<path> /useArrayTheory`.
+Call Boogie with `/proverOpt:SOLVER=Yices2 /useArrayTheory`.
 
 Works for unquantified fragments, e.g. arrays + arithmetic + bitvectors. Does
 not work for quantifiers, generalized arrays, datatypes.
