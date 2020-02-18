@@ -1283,7 +1283,7 @@ namespace Microsoft.Boogie.SMTLib
       
       var result = Outcome.Undetermined;
 
-      if (Process == null)
+      if (Process == null || proverErrors.Count > 0)
         return result;
 
       try {
@@ -1459,11 +1459,11 @@ namespace Microsoft.Boogie.SMTLib
             if (globalResult == Outcome.Undetermined)
               globalResult = result;
             
-            if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory || result == Outcome.OutOfResource) { 
-              Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory || result == Outcome.OutOfResource) ? null : GetErrorModel();
+            if (result == Outcome.Invalid) { 
+              Model model = GetErrorModel();
               if (CommandLineOptions.Clo.SIBoolControlVC) {
                 labels = new string[0];
-              } else if (model != null) {
+              } else {
                 labels = CalculatePath(handler.StartingProcId());
               }
               handler.OnModel(labels, model, result);
