@@ -1284,6 +1284,7 @@ AtomExpression<out Expr/*!*/ e>
   | Dec<out bd>            (. e = new LiteralExpr(t, bd); .)
 		| Float<out bf>            (. e = new LiteralExpr(t, bf); .)
   | BvLit<out bn, out n> (. e = new LiteralExpr(t, bn, n); .)
+  | string                  (. e = new LiteralExpr(t, t.val.Trim('"')); .)
 
   | Ident<out x>            (. id = new IdentifierExpr(x, x.val);  e = id; .)
     [ "("

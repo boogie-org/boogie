@@ -69,6 +69,13 @@ namespace Microsoft.Boogie {
       return new VCExprRModeLit(x);
     }
 
+    public VCExpr/*!*/ String(String x)
+    {
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+      return new VCExprStringLit(x);
+    }
+
     public VCExpr/*!*/ Function(VCExprOp/*!*/ op,
                             List<VCExpr/*!*/>/*!*/ arguments,
                             List<Type/*!*/>/*!*/ typeArguments) {
@@ -938,6 +945,30 @@ namespace Microsoft.Boogie.VCExprAST {
     }
   }
 
+  public class VCExprStringLit : VCExprLiteral
+  {
+    public readonly String Val;
+    internal VCExprStringLit(String val)
+      : base(Type.RMode)
+    {
+      this.Val = val;
+    }
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object that)
+    {
+      if (Object.ReferenceEquals(this, that))
+        return true;
+      if (that is VCExprStringLit)
+        return Val == ((VCExprStringLit)that).Val;
+      return false;
+    }
+    [Pure]
+    public override int GetHashCode()
+    {
+      return Val.GetHashCode() * 72321;
+    }
+  }
   /////////////////////////////////////////////////////////////////////////////////
   // Operator expressions with fixed arity
   [ContractClassFor(typeof(VCExprNAry))]
