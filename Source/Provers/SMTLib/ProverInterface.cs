@@ -1460,17 +1460,18 @@ namespace Microsoft.Boogie.SMTLib
               globalResult = result;
             
             if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory || result == Outcome.OutOfResource) { 
+              Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory || result == Outcome.OutOfResource) ? null : GetErrorModel();
               if (CommandLineOptions.Clo.SIBoolControlVC) {
                 labels = new string[0];
-              } else {
+              } else if (model != null) {
                 labels = CalculatePath(handler.StartingProcId());
               }
-              Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory || result == Outcome.OutOfResource) ? null : GetErrorModel();
               handler.OnModel(labels, model, result);
             }
             
             if (labels == null || !labels.Any() || errorsLeft == 0) break;
-          } finally {
+          } 
+          finally {
             if (popLater)
             {
               SendThisVC("(pop 1)");
