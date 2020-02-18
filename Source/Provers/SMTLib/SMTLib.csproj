@@ -147,8 +147,6 @@
     <Compile Include="SMTLibProcess.cs" />
     <Compile Include="TypeDeclCollector.cs" />
     <Compile Include="Z3.cs" />
-    <Compile Include="Yices2.cs" />
-    <Compile Include="CVC4.cs" />
     <Compile Include="..\..\version.cs">
       <Link>version.cs</Link>
     </Compile>
