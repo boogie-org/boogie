@@ -21,17 +21,10 @@ namespace Microsoft.Boogie.Z3
 {
   public class Z3InstanceOptions : ProverOptions {
     public int Timeout { get { return TimeLimit / 1000; } }
-    public int Lets {
-      get {
-        Contract.Ensures(0 <= Contract.Result<int>() && Contract.Result<int>() < 4);
-        return CommandLineOptions.Clo.Z3lets;
-      }
-    }
     public bool DistZ3 = false;
     public string ExeName = "z3.exe";
     public bool InverseImplies = false;
     public string Inspector = null;
-    public bool OptimizeForBv = false;
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -43,7 +36,6 @@ namespace Microsoft.Boogie.Z3
       return ParseBool(opt, "REVERSE_IMPLIES", ref InverseImplies) ||
              ParseString(opt, "INSPECTOR", ref Inspector) ||
              ParseBool(opt, "DIST", ref DistZ3) ||
-             ParseBool(opt, "OPTIMIZE_FOR_BV", ref OptimizeForBv) ||
              base.Parse(opt);
     }
 
@@ -63,7 +55,6 @@ namespace Microsoft.Boogie.Z3
 Z3-specific options:
 ~~~~~~~~~~~~~~~~~~~~
 INSPECTOR=<string>        Use the specified Z3Inspector binary.
-OPTIMIZE_FOR_BV=<bool>    Optimize Z3 options for bitvector reasoning, and not quantifier instantiation. Defaults to false.
 
 Obscure options:
 ~~~~~~~~~~~~~~~~

@@ -1,3 +1,8 @@
+// This test shows the usage of the rlimit command-line option and attribute.
+// Maintaining appropriate timeout values got tedious, so we do not run
+// this test as part of the regressions anymore.
+
+// UNSUPPORTED: true
 // RUN: %boogie -rlimit:100 "%s" | %OutputCheck "%s"
 
 procedure TestRlimit0(in: [int]int, len: int) returns (out: [int]int);

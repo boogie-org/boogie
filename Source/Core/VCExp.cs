@@ -14,13 +14,6 @@ using Microsoft.Basetypes;
 namespace Microsoft.Boogie {
 
   public class ProverOptions {
-    public class OptionException : Exception {
-      public OptionException(string msg)
-        : base(msg) {
-        Contract.Requires(msg != null);
-      }
-    }
-
     public string/*?*/ LogFilename = null;
     public bool AppendLogFile = false;
     public bool SeparateLogFiles = false;
@@ -30,7 +23,10 @@ namespace Microsoft.Boogie {
     public int ResourceLimit = 0;
     public int MemoryLimit = 0;
     public int Verbosity = 0;
+    public string ProverName;
     public string ProverPath;
+    private string confirmedProverPath;
+
 
     private string/*!*/ stringRepr = "";
     [ContractInvariantMethod]
@@ -48,14 +44,14 @@ namespace Microsoft.Boogie {
     // The usual thing to override.
     protected virtual bool Parse(string opt) {
       Contract.Requires(opt != null);
-      return ParseString(opt, "LOG_FILE", ref LogFilename) ||
+      return ParseString(opt, "PROVER_PATH", ref ProverPath) ||
+             ParseString(opt, "PROVER_NAME", ref ProverName) ||
+             ParseString(opt, "LOG_FILE", ref LogFilename) ||
              ParseBool(opt, "APPEND_LOG_FILE", ref AppendLogFile) ||
              ParseBool(opt, "FORCE_LOG_STATUS", ref ForceLogStatus) ||
              ParseInt(opt, "MEMORY_LIMIT", ref MemoryLimit) ||
              ParseInt(opt, "VERBOSITY", ref Verbosity) ||
-             ParseInt(opt, "TIME_LIMIT", ref TimeLimit) || 
-             ParseString(opt, "PROVER_PATH", ref ProverPath);
-      // || base.Parse(opt)
+             ParseInt(opt, "TIME_LIMIT", ref TimeLimit);
     }
 
     public virtual string Help
@@ -66,6 +62,8 @@ namespace Microsoft.Boogie {
 @"
 Generic prover options :
 ~~~~~~~~~~~~~~~~~~~~~~~
+PROVER_PATH=<string>      Path to the prover to use.
+PROVER_NAME=<string>      Name of the prover executable.
 LOG_FILE=<string>         Log input for the theorem prover. The string @PROC@ in the filename
                           causes there to be one prover log file per verification condition, 
                           and is expanded to the name of the procedure that the verification 
@@ -74,7 +72,6 @@ APPEND_LOG_FILE=<bool>    Append, rather than overwrite the log file.
 MEMORY_LIMIT=<int>        Memory limit of the prover in megabytes.
 VERBOSITY=<int>           The higher, the more verbose.
 TIME_LIMIT=<int>          Time limit per verification condition in miliseconds.
-PROVER_PATH=<string>      Path to the prover to use.
 
 The generic options may or may not be used by the prover plugin.
 ";
@@ -103,9 +100,71 @@ The generic options may or may not be used by the prover plugin.
       }
     }
 
+    static string CodebaseString()
+    {
+        Contract.Ensures(Contract.Result<string>() != null);
+        return Path.GetDirectoryName(cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location));
+    }
+
+    public string ExecutablePath()
+    {
+        Contract.Ensures(confirmedProverPath != null);
+
+        if (confirmedProverPath != null)
+            return confirmedProverPath;
+
+        // Explicitly set path always has priority
+        if (ProverPath != null)
+        {
+            if (!File.Exists(ProverPath))
+            {
+                throw new ProverException("Cannot find specified prover: " + ProverPath);
+            }
+            return ConfirmProverPath(ProverPath);
+        }
+
+        var exes = new string[] { ProverName, ProverName + ".exe" };
+
+        // Otherwise we look in the executable directory
+        foreach (var exe in exes){
+            var tryProverPath = Path.Combine(CodebaseString(), exe);
+        
+            if (File.Exists(tryProverPath))
+            {
+                return ConfirmProverPath(tryProverPath);
+            }
+        }
+        
+        // And finally we look in the system PATH
+        var exePaths = Environment.GetEnvironmentVariable("PATH");
+        foreach (var exePath in exePaths.Split(Path.PathSeparator))
+        {
+            foreach (var exe in exes) {
+                var tryProverPath = Path.Combine(exePath, exe);
+                if (File.Exists(tryProverPath)) {
+                    return ConfirmProverPath(tryProverPath);
+                }
+            }
+        }
+
+        throw new ProverException("Cannot find any prover executable");
+    }
+
+    private string ConfirmProverPath(string proverPath)
+    {
+        Contract.Requires(proverPath != null);
+        Contract.Ensures(confirmedProverPath != null);
+        confirmedProverPath = proverPath;
+        if (CommandLineOptions.Clo.Trace)
+        {
+            Console.WriteLine("[TRACE] Using prover: " + confirmedProverPath);
+        }
+        return confirmedProverPath;
+    }
+
     protected void ReportError(string msg) {
       Contract.Requires(msg != null);
-      throw new OptionException(msg + "\n\n" + Help);
+      throw new ProverOptionException(msg + "\n\n" + Help);
     }
 
     protected virtual bool ParseString(string opt, string name, ref string field) {
@@ -236,4 +295,16 @@ The generic options may or may not be used by the prover plugin.
       throw new NotImplementedException();
     }
   }
+
+  public class ProverException : Exception {
+    public ProverException(string s)
+      : base(s) {
+    }
+  }
+  public class ProverOptionException : Exception {
+      public ProverOptionException(string msg)
+        : base(msg) {
+        Contract.Requires(msg != null);
+      }
+    }
 }

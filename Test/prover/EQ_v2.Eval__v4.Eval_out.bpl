@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -z3multipleErrors "%s" > "%t"
+// RUN: %boogie -typeEncoding:m -proverOpt:MULTI_TRACES "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 var v4.Mem: [name][int]int;
 

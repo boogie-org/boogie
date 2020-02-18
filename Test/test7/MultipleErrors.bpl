@@ -1,3 +1,6 @@
+// This test is disabled because it is quite unstable (see also comment below).
+// UNSUPPORTED: true
+
 // RUN: %boogie -vc:block -errorLimit:1 -errorTrace:1 -logPrefix:-1block "%s" > "%t1"
 // RUN: %diff "%s.e1.block.expect" "%t1"
 // RUN: %boogie -vc:local -errorLimit:1 -errorTrace:1 -logPrefix:-1local "%s" > "%t2"

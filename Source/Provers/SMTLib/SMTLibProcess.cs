@@ -28,9 +28,12 @@ namespace Microsoft.Boogie.SMTLib
     ConsoleCancelEventHandler cancelEvent;
     public bool NeedsRestart;
 
-    public static ProcessStartInfo ComputerProcessStartInfo(string executable, string options)
+    public SMTLibProcess(SMTLibProverOptions options)
     {
-      return new ProcessStartInfo(executable, options)
+      this.options = options;
+      this.smtProcessId = smtProcessIdSeq++;
+      
+      var psi = new ProcessStartInfo(options.ExecutablePath(), options.SolverArguments.Concat(" "))
       {
         CreateNoWindow = true,
         UseShellExecute = false,
@@ -38,19 +41,10 @@ namespace Microsoft.Boogie.SMTLib
         RedirectStandardOutput = true,
         RedirectStandardError = true
       };
-    }
-
-    public SMTLibProcess(ProcessStartInfo psi, SMTLibProverOptions options)
-    {
-      this.options = options;
-      this.smtProcessId = smtProcessIdSeq++;
 
       if (options.Inspector != null) {
         this.inspector = new Inspector(options);
       }
-
-      foreach (var arg in options.SolverArguments)
-        psi.Arguments += " " + arg;
 
       if (cancelEvent == null && CommandLineOptions.Clo.RunningBoogieFromCommandLine) {
         cancelEvent = new ConsoleCancelEventHandler(ControlCHandler);
@@ -60,7 +54,6 @@ namespace Microsoft.Boogie.SMTLib
       if (options.Verbosity >= 1) {
         Console.WriteLine("[SMT-{0}] Starting {1} {2}", smtProcessId, psi.FileName, psi.Arguments);
       }
-
 
       try {
         prover = new Process();

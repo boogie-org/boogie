@@ -98,8 +98,8 @@ namespace Microsoft.Boogie.Houdini {
 
             Inline();
 
-            this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, new List<Checker>());
-            this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
+            this.vcgen = new VCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, new List<Checker>());
+            this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
 
             this.proverTime = TimeSpan.Zero;
             this.numProverQueries = 0;
@@ -2306,8 +2306,8 @@ namespace Microsoft.Boogie.Houdini {
             if (CommandLineOptions.Clo.ProverKillTime > 0)
                 CommandLineOptions.Clo.ProverOptions = CommandLineOptions.Clo.ProverOptions.Concat1(string.Format("TIME_LIMIT={0}", CommandLineOptions.Clo.ProverKillTime));
 
-            this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, new List<Checker>());
-            this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, -1);
+            this.vcgen = new VCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, new List<Checker>());
+            this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, -1);
 
             this.reporter = new AbstractHoudiniErrorReporter();
 
@@ -2439,7 +2439,7 @@ namespace Microsoft.Boogie.Houdini {
         public HashSet<string> GetPredicates()
         {
             var ret = new HashSet<string>();
-            prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, -1);
+            prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, -1);
 
             foreach (var tup in impl2Summary)
             {

@@ -120,34 +120,11 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    ProcessStartInfo ComputeProcessStartInfo()
-    {
-      var path = this.options.ProverPath;
-      switch (options.Solver) {
-        case SolverKind.Z3:
-          if (path == null)
-            path = Z3.ExecutablePath();
-          return SMTLibProcess.ComputerProcessStartInfo(path, "AUTO_CONFIG=false -smt2 -in");
-        case SolverKind.CVC4:
-          if (path == null)
-            path = CVC4.ExecutablePath();
-          return SMTLibProcess.ComputerProcessStartInfo(path, "--lang=smt --no-strict-parsing --no-condense-function-values --incremental");
-        case SolverKind.YICES2:
-          if (path == null) 
-            path = Yices2.ExecutablePath();
-          return SMTLibProcess.ComputerProcessStartInfo(path, "--incremental");
-        default:
-          Debug.Assert(false);
-          return null;
-      }
-    }
-
     void SetupProcess()
     {
       if (Process != null) return;
 
-      var psi = ComputeProcessStartInfo();
-      Process = new SMTLibProcess(psi, this.options);
+      Process = new SMTLibProcess(this.options);
       Process.ErrorHandler += this.HandleProverError;
     }
 
@@ -1563,7 +1540,7 @@ namespace Microsoft.Boogie.SMTLib
       // FIXME: Gross. Timeout should be set in one place! This is also Z3 specific!
       int newTimeout = (0 < tla && tla < timeLimit) ? tla : timeLimit;
       if (newTimeout > 0) {
-        SendThisVC(string.Format("(set-option :{0} {1})", Z3.SetTimeoutOption(), newTimeout));
+        SendThisVC(string.Format("(set-option :{0} {1})", Z3.TimeoutOption, newTimeout));
       }
       popLater = true;
 
@@ -2296,14 +2273,12 @@ namespace Microsoft.Boogie.SMTLib
     public override void SetRlimit(int limit)
     {
       if (options.Solver == SolverKind.Z3) {
-        var name = Z3.SetRlimitOption();
-        if (name != "") {
-          var value = limit.ToString();
-          options.ResourceLimit = limit;
-          options.SmtOptions.RemoveAll(ov => ov.Option == name);
-          options.AddSmtOption(name, value);
-          SendThisVC(string.Format("(set-option :{0} {1})", name, value));
-        }
+        var name = Z3.RlimitOption;
+        var value = limit.ToString();
+        options.ResourceLimit = limit;
+        options.SmtOptions.RemoveAll(ov => ov.Option == name);
+        options.AddSmtOption(name, value);
+        SendThisVC(string.Format("(set-option :{0} {1})", name, value));
       }
     }
 

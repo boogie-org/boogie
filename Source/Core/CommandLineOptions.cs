@@ -418,7 +418,9 @@ namespace Microsoft.Boogie {
     public bool PrintDesugarings = false;
     public bool PrintLambdaLifting = false;
     public bool FreeVarLambdaLifting = false;
-    public string SimplifyLogFilePath = null;
+    public string ProverLogFilePath = null;
+    public bool ProverLogFileAppend = false;
+    
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
     public string ProverPreamble = null;
@@ -487,14 +489,7 @@ namespace Microsoft.Boogie {
     public int InlineDepth = -1;
     public bool UseProverEvaluate = false; // Use ProverInterface's Evaluate method, instead of model to get variable values
     public bool UseUncheckedContracts = false;
-    public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
-    public string Z3ExecutablePath = null;
-    public string Z3ExecutableName = null;
-    public string CVC4ExecutablePath = null;
-    public string Yices2ExecutablePath = null;
-    public string Yices2ExecutableName = null;
-
     public int KInductionDepth = -1;
     public int EnableUnSatCoreExtract = 0;
 
@@ -568,7 +563,6 @@ namespace Microsoft.Boogie {
     public string PrintCFGPrefix = null;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
-    public bool UseSmtOutputFormat = false;
     public bool WeakArrayTheory = false;
     public bool UseLabels = true;
     public bool RunDiagnosticsOnTimeout = false;
@@ -625,7 +619,8 @@ namespace Microsoft.Boogie {
 
     [Rep]
     public ProverFactory TheProverFactory;
-    public string ProverName;
+    public string ProverDllName;
+    public bool ProverHelpRequested = false;
     [Peer]
     private List<string> proverOptions = new List<string>();
 
@@ -675,12 +670,10 @@ namespace Microsoft.Boogie {
 
     public bool CausalImplies = false;
 
-    public int SimplifyProverMatchDepth = -1;  // -1 means not specified
     public int ProverKillTime = -1;  // -1 means not specified
     public int Resourcelimit = 0; // default to 0
     public int SmokeTimeout = 10; // default to 10s
     public int ProverCCLimit = 5;
-    public bool z3AtFlag = true;
     public bool RestartProverPerVC = false;
 
     public double VcsMaxCost = 1.0;
@@ -705,34 +698,6 @@ namespace Microsoft.Boogie {
           return null;
       }
     }
-    [ContractInvariantMethod]
-    void ObjectInvariant4() {
-      Contract.Invariant(cce.NonNullElements(this.z3Options));
-      Contract.Invariant(0 <= Z3lets && Z3lets < 4);
-    }
-
-    [Peer]
-    private List<string> z3Options = new List<string>();
-
-    public IEnumerable<string> Z3Options
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<IEnumerable<string>>() != null);
-        foreach (string s in z3Options)
-          yield return s;
-      }
-    }
-
-    public void AddZ3Option(string option)
-    {
-      Contract.Requires(option != null);
-      this.z3Options.Add(option);
-    }
-
-    public bool Z3types = false;
-    public int Z3lets = 3;  // 0 - none, 1 - only LET TERM, 2 - only LET FORMULA, 3 - (default) any
-
 
     // Maximum amount of virtual memory (in bytes) for the prover to use
     //
@@ -950,7 +915,7 @@ namespace Microsoft.Boogie {
 
         case "proverLog":
           if (ps.ConfirmArgumentCount(1)) {
-            SimplifyLogFilePath = args[ps.i];
+            ProverLogFilePath = args[ps.i];
           }
           return true;
 
@@ -1229,10 +1194,10 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "prover":
+        case "proverDll":
           if (ps.ConfirmArgumentCount(1)) {
-            TheProverFactory = ProverFactory.Load(cce.NonNull(args[ps.i]));
-            ProverName = cce.NonNull(args[ps.i]).ToUpper();
+            ProverDllName = cce.NonNull(args[ps.i]);
+            TheProverFactory = ProverFactory.Load(ProverDllName);
           }
           return true;
 
@@ -1240,6 +1205,12 @@ namespace Microsoft.Boogie {
         case "proverOpt":
           if (ps.ConfirmArgumentCount(1)) {
             ProverOptions = ProverOptions.Concat1(cce.NonNull(args[ps.i]));
+          }
+          return true;
+        
+        case "proverHelp":
+          if (ps.ConfirmArgumentCount(0)) {
+            ProverHelpRequested = true;
           }
           return true;
 
@@ -1504,10 +1475,6 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "simplifyMatchDepth":
-          ps.GetNumericArgument(ref SimplifyProverMatchDepth);
-          return true;
-
         case "timeLimit":
           ps.GetNumericArgument(ref ProverKillTime);
           return true;
@@ -1536,22 +1503,6 @@ namespace Microsoft.Boogie {
           ps.GetNumericArgument(ref TraceCaching, 4);
           return true;
 		
-		case "useSmtOutputFormat": {
-		  if (ps.ConfirmArgumentCount(0)) {
-			UseSmtOutputFormat = true;
-		  }
-	      return true;
-		}        
-        case "z3opt":
-          if (ps.ConfirmArgumentCount(1)) {
-            AddZ3Option(cce.NonNull(args[ps.i]));
-          }
-          return true;
-
-        case "z3lets":
-          ps.GetNumericArgument(ref Z3lets, 4);
-          return true;
-
         case "platform":
           if (ps.ConfirmArgumentCount(1)) {
             StringCollection platformOptions = this.ParseNamedArgumentList(args[ps.i]);
@@ -1573,29 +1524,6 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "z3exe":
-          if (ps.ConfirmArgumentCount(1)) {
-            Z3ExecutablePath = args[ps.i];
-          }
-          return true;
-         // This sets name of z3 binary boogie binary directory, not path
-        case "z3name":
-          if (ps.ConfirmArgumentCount(1))
-          {
-              Z3ExecutableName = args[ps.i];
-          }
-          return true;
-
-        case "cvc4exe":
-			if (ps.ConfirmArgumentCount(1)) {
-				CVC4ExecutablePath = args[ps.i];
-			}
-			return true;
-        case "yices2exe":
-			if (ps.ConfirmArgumentCount(1)) {
-				Yices2ExecutablePath = args[ps.i];
-			}
-			return true;
         case "kInductionDepth":
           ps.GetNumericArgument(ref KInductionDepth);
           return true;
@@ -1622,7 +1550,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("traceverify", ref TraceVerify) ||
               ps.CheckBooleanFlag("alwaysAssumeFreeLoopInvariants", ref AlwaysAssumeFreeLoopInvariants, true) ||
               ps.CheckBooleanFlag("nologo", ref DontShowLogo) ||
-              ps.CheckBooleanFlag("proverLogAppend", ref SimplifyLogFileAppend) ||
+              ps.CheckBooleanFlag("proverLogAppend", ref ProverLogFileAppend) ||
               ps.CheckBooleanFlag("soundLoopUnrolling", ref SoundLoopUnrolling) ||
               ps.CheckBooleanFlag("checkInfer", ref InstrumentWithAsserts) ||
               ps.CheckBooleanFlag("interprocInfer", ref IntraproceduralInfer, false) ||
@@ -1633,8 +1561,6 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("dbgRefuted", ref DebugRefuted) ||
               ps.CheckBooleanFlag("causalImplies", ref CausalImplies) ||
               ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
-              ps.CheckBooleanFlag("z3types", ref Z3types) ||
-              ps.CheckBooleanFlag("z3multipleErrors", ref z3AtFlag, false) ||
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
               ps.CheckBooleanFlag("weakArrayTheory", ref WeakArrayTheory) || 
@@ -1678,7 +1604,7 @@ namespace Microsoft.Boogie {
       // expand macros in filenames, now that LogPrefix is fully determined
       ExpandFilename(ref XmlSinkFilename, LogPrefix, FileTimestamp);
       ExpandFilename(ref PrintFile, LogPrefix, FileTimestamp);
-      ExpandFilename(ref SimplifyLogFilePath, LogPrefix, FileTimestamp);
+      ExpandFilename(ref ProverLogFilePath, LogPrefix, FileTimestamp);
       ExpandFilename(ref PrintErrorModelFile, LogPrefix, FileTimestamp);
 
       Contract.Assume(XmlSink == null);  // XmlSink is to be set here
@@ -1687,12 +1613,15 @@ namespace Microsoft.Boogie {
       }
 
       if (TheProverFactory == null) {
-        TheProverFactory = ProverFactory.Load("SMTLib");
-        ProverName = "SMTLib".ToUpper();
+        ProverDllName = "SMTLib";
+        TheProverFactory = ProverFactory.Load(ProverDllName);
       }
 
       var proverOpts = TheProverFactory.BlankProverOptions();
       proverOpts.Parse(ProverOptions);
+      if (ProverHelpRequested) {
+        Console.WriteLine(proverOpts.Help);
+      }
       if (!TheProverFactory.SupportsLabels(proverOpts)) {
         UseLabels = false;
       }
@@ -1714,7 +1643,7 @@ namespace Microsoft.Boogie {
         UseArrayTheory = true;
         UseAbstractInterpretation = false;
         MaxProverMemory = 0; // no max: avoids restarts
-        if (ProverName == "Z3API" || ProverName == "SMTLIB") {
+        if (ProverDllName == "Z3api" || ProverDllName == "SMTLib") {
           ProverCCLimit = 1;
         }
         if (UseProverEvaluate)
@@ -2046,11 +1975,11 @@ namespace Microsoft.Boogie {
   /coalesceBlocks:<c>
                 0 = do not coalesce blocks
                 1 = coalesce blocks (default)
-  /vc:<variety> n = nested block (default for /prover:Simplify),
+  /vc:<variety> n = nested block,
                 m = nested block reach,
                 b = flat block, r = flat block reach,
                 s = structured, l = local,
-                d = dag (default, except with /prover:Simplify)
+                d = dag (default)
                 doomed = doomed
   /traceverify  print debug output during verification condition generation
   /subsumption:<c>
@@ -2173,19 +2102,17 @@ namespace Microsoft.Boogie {
                 2 - include all Trace labels in the error output
   /vcBrackets:<b>
                 bracket odd-charactered identifier names with |'s.  <b> is:
-                   0 - no (default with non-/prover:Simplify),
-                   1 - yes (default with /prover:Simplify)
-  /prover:<tp>  use theorem prover <tp>, where <tp> is either the name of
+                   0 - no (default),
+                   1 - yes
+  /proverDll:<tp>
+                use theorem prover <tp>, where <tp> is either the name of
                 a DLL containing the prover interface located in the
                 Boogie directory, or a full path to a DLL containing such
-                an interface. The standard interfaces shipped include:
-                    SMTLib (default, uses the SMTLib2 format and calls Z3)
-                    Z3 (uses Z3 with the Simplify format)
-                    Simplify
-                    ContractInference (uses Z3)
-                    Z3api (Z3 using Managed .NET API)
+                an interface. The default interface shipped is:
+                    SMTLib (uses the SMTLib2 format and calls an SMT solver)
   /proverOpt:KEY[=VALUE]
                 Provide a prover-specific option (short form /p).
+  /proverHelp   Print prover-specific options supported by /proverOpt.
   /proverLog:<file>
                 Log input for the theorem prover.  Like filenames
                 supplied as arguments to other options, <file> can use the
@@ -2219,32 +2146,10 @@ namespace Microsoft.Boogie {
                 ptype = v11,v2,cli1
                 location = platform libraries directory
 
-  Simplify specific options:
-  /simplifyMatchDepth:<num>
-                Set Simplify prover's matching depth limit
-
   Z3 specific options:
-  /z3opt:<arg>  specify additional Z3 options
-  /z3multipleErrors
-                report multiple counterexamples for each error
   /useArrayTheory
                 use Z3's native theory (as opposed to axioms).  Currently
                 implies /monomorphize.
-  /useSmtOutputFormat
-                Z3 outputs a model in the SMTLIB2 format.
-  /z3types      generate multi-sorted VC that make use of Z3 types
-  /z3lets:<n>   0 - no LETs, 1 - only LET TERM, 2 - only LET FORMULA,
-                3 - (default) any
-  /z3exe:<path>
-                path to Z3 executable
-
-  CVC4 specific options:
-  /cvc4exe:<path>
-                path to CVC4 executable
-
-  Yices2 specific options:
-  /yices2exe:<path>
-                path to Yices2 executable
 ");
     }
   }
