@@ -1,9 +1,12 @@
 *** MODEL
-%lbl%@1 -> false
-%lbl%+0 -> true
-%lbl%+2 -> true
 null -> T@ref!val!0
 s -> T@ref!val!0
+ControlFlow -> {
+  0 0 -> 38
+  0 25 -> (- 39)
+  0 38 -> 25
+  else -> (- 39)
+}
 tickleBool -> {
   false -> true
   true -> true
