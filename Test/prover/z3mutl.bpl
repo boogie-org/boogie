@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -proverOpt:MULTI_TRACES "%s" > "%t"
+// RUN: %boogie -typeEncoding:m "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 var x:int;
 

@@ -1,10 +1,10 @@
-// RUN: %boogie -proverOpt:MULTI_TRACES -errorTrace:0 "%s" > "%t"
+// RUN: %boogie -errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-procedure Foo(x:int) 
+procedure Foo(x:int)
 {
   var ok:bool;
-  
-  ok := true;  
+
+  ok := true;
 
   if (x == 1) {
      ok := false;
@@ -13,7 +13,7 @@ procedure Foo(x:int)
   } else if (x == 3) {
      ok := false;
   }
-    
+
   assert ok;
 
 }

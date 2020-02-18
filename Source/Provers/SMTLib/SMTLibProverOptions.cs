@@ -37,7 +37,6 @@ namespace Microsoft.Boogie.SMTLib
     public SolverKind Solver = SolverKind.Z3;
     public List<OptionValue> SmtOptions = new List<OptionValue>();
     public List<string> SolverArguments = new List<string>();
-    public bool MultiTraces = false;
     public string Logic = null;
 
     // Z3 specific (at the moment; some of them make sense also for other provers)
@@ -90,7 +89,7 @@ namespace Microsoft.Boogie.SMTLib
         AddSolverArgument(opt.Substring(2));
         return true;
       }
-      
+
       string SolverStr = null;
       if (ParseString(opt, "SOLVER", ref SolverStr)) {
         switch (SolverStr.ToLower()) {
@@ -108,7 +107,6 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       return
-        ParseBool(opt, "MULTI_TRACES", ref MultiTraces) ||
         ParseBool(opt, "USE_WEIGHTS", ref UseWeights) ||
         ParseString(opt, "INSPECTOR", ref Inspector) ||
         ParseString(opt, "LOGIC", ref Logic) ||
@@ -152,11 +150,10 @@ LOGIC=<string>            Pass (set-logic <string>) to the prover (default: empt
 USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas (default: true)
 VERBOSITY=<int>           1 - print prover output (default: 0)
 O:<name>=<value>          Pass (set-option :<name> <value>) to the SMT solver.
-C:<string>                Pass <string> to the SMT on the command line. 
+C:<string>                Pass <string> to the SMT solver on the command line.
 
 Z3-specific options:
 ~~~~~~~~~~~~~~~~~~~~
-MULTI_TRACES=<bool>       Report errors with multiple paths leading to the same assertion.
 INSPECTOR=<string>        Use the specified Z3Inspector binary.
 ";
       }
