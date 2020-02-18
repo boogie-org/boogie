@@ -373,6 +373,11 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       return new LiteralExpr(Token.NoToken, value);
     }
+    public static LiteralExpr Literal(String value)
+    {
+      Contract.Ensures(Contract.Result<LiteralExpr>() != null);
+      return new LiteralExpr(Token.NoToken, value);
+    }
 
     private static LiteralExpr/*!*/ true_ = Literal(true);
     public static LiteralExpr/*!*/ True {
@@ -645,6 +650,21 @@ namespace Microsoft.Boogie {
         CachedHashCode = ComputeHashCode();
     }
 
+    /// <summary>
+    /// Creates a literal expression for the string value "v".
+    /// </summary>
+    /// <param name="tok"></param>
+    /// <param name="v"></param>
+    public LiteralExpr(IToken/*!*/ tok, String v, bool immutable = false)
+      : base(tok, immutable)
+    {
+      Contract.Requires(tok != null);
+      Val = v;
+      Type = Type.String;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
+    }
+
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
     public override bool Equals(object obj) {
@@ -675,6 +695,8 @@ namespace Microsoft.Boogie {
       stream.SetToken(this);
       if (this.Val is bool) {
         stream.Write((bool)this.Val ? "true" : "false"); // correct capitalization
+      } else if (Type.IsString) {
+        stream.Write("\"" + cce.NonNull(this.Val.ToString()) + "\"");
       } else {
         stream.Write(cce.NonNull(this.Val.ToString()));
       }
@@ -710,6 +732,8 @@ namespace Microsoft.Boogie {
           return Type.GetBvType(((BvConst)Val).Bits);
         } else if (Val is RoundingMode) {
           return Type.RMode;
+        } else if (Val is String) {
+          return Type.String;
         } else {
           {
             Contract.Assert(false);
@@ -818,6 +842,23 @@ namespace Microsoft.Boogie {
       {
         Contract.Assert(isRoundingMode);
         return (RoundingMode)cce.NonNull(Val);
+      }
+    }
+
+    public bool isString
+    {
+      get
+      {
+        return Val is String;
+      }
+    }
+
+    public String asString
+    {
+      get
+      {
+        Contract.Assert(isString);
+        return (String)cce.NonNull(Val);
       }
     }
 

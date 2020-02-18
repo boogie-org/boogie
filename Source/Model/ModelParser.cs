@@ -19,7 +19,7 @@ namespace Microsoft.Boogie
 		internal List<Model> resModels = new List<Model> ();
 		internal System.IO.TextReader rd;
 		string lastLine = "";
-		protected static char[] seps = new char[] { ' ' };
+		protected static Regex seps = new Regex("( |(?=\")|(?<=\"))");
 		protected static Regex bitVec = new Regex (@"\(_ BitVec (\d+)\)");
 		protected static Regex bv = new Regex (@"\(_ bv(\d+) (\d+)\)");
 
@@ -49,7 +49,7 @@ namespace Microsoft.Boogie
 		{
 			if (line == null)
 				return null;
-			var words = line.Split (seps, StringSplitOptions.RemoveEmptyEntries);
+			var words = Array.FindAll(seps.Split (line), word => word != "" && word != " ");
 			return words;
 		}
 
@@ -116,24 +116,38 @@ namespace Microsoft.Boogie
 
 			line = line.Replace ("(", " ( ");
 			line = line.Replace (")", " ) ");
-			var tuple = line.Split (seps, StringSplitOptions.RemoveEmptyEntries);
+			var tuple = seps.Split (line);
 
 			List<object> newTuple = new List<object> ();
-			Stack<List<object>> wordStack = new Stack<List<object>> ();
+			var wordStack = new Stack<Tuple<string,List<object>>> ();
 			for (int i = 0; i < tuple.Length; i++) {
 				string elem = tuple [i];
-				if (elem == "(") {
-					List<object> ls = new List<object> ();
+
+				if (elem == "" || elem == " ")
+					continue;
+
+				if (elem == "(" || elem == "\"" && (wordStack.Count == 0 || wordStack.Peek().Item1 != "\"")) {
+					var ls = Tuple.Create(elem, new List<object> ());
 					wordStack.Push (ls);
 				} else if (elem == ")") {
-					List<object> ls = wordStack.Pop ();
+					var tup = wordStack.Pop ();
+					if (tup.Item1 != "(")
+						BadModel("unmatched parentheses");
+					var ls = tup.Item2;
 					if (wordStack.Count > 0) {
-						wordStack.Peek ().Add (ls);
+						wordStack.Peek ().Item2.Add (ls);
 					} else {
 						newTuple.Add (ls);
 					}
+				} else if (elem == "\"") {
+					var words = "\"" + String.Join(" ", wordStack.Pop().Item2) + "\"";
+					if (wordStack.Count > 0)
+						wordStack.Peek().Item2.Add(String.Join(" ", words));
+					else
+						newTuple.Add(words);
+
 				} else if (wordStack.Count > 0) {
-					wordStack.Peek ().Add (elem);
+					wordStack.Peek ().Item2.Add (elem);
 				} else {
 					newTuple.Add (elem);
 				}

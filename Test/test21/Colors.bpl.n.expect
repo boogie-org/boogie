@@ -1,8 +1,0 @@
-Colors.bpl(19,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    Colors.bpl(18,3): anon0
-Colors.bpl(26,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    Colors.bpl(25,3): anon0
-
-Boogie program verifier finished with 0 verified, 2 errors

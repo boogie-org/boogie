@@ -1,5 +1,3 @@
-// RUN: %boogie -typeEncoding:n -logPrefix:0n "%s" > "%t"
-// RUN: %diff "%s.n.expect" "%t"
 // RUN: %boogie -typeEncoding:p -logPrefix:0p "%s" > "%t"
 // RUN: %diff "%s.p.expect" "%t"
 // RUN: %boogie -typeEncoding:a -logPrefix:0a "%s" > "%t"
@@ -43,7 +41,7 @@ procedure R() returns () {
   var o : ref;
   var e : Field int, g : Field bool, h : Field (Field int), i : Field int;
   var heap2 : <a>[ref, Field a] a;
-  
+
   heap2 := heap;
   heap2[o, e] := 17;
   assert heap2 == heap[o, e := 17];

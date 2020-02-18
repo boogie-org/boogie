@@ -1,8 +1,0 @@
-Triggers0.bpl(45,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    Triggers0.bpl(45,3): anon0
-Triggers0.bpl(49,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    Triggers0.bpl(45,3): anon0
-
-Boogie program verifier finished with 1 verified, 2 errors

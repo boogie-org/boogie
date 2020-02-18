@@ -316,7 +316,7 @@ void ObjectInvariant()
         return;
       }
 
-      if (type.IsBool || type.IsInt || type.IsReal || type.IsBv || type.IsFloat || type.IsRMode)
+      if (type.IsBool || type.IsInt || type.IsReal || type.IsBv || type.IsFloat || type.IsRMode || type.IsString || type.IsRegEx)
         return;
 
       CtorType ctorType = type as CtorType;
