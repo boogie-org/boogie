@@ -1353,10 +1353,6 @@ namespace Microsoft.Boogie
 
         public void Generate()
         {
-
-            var oldDagOption = CommandLineOptions.Clo.vcVariety;
-            CommandLineOptions.Clo.vcVariety = CommandLineOptions.VCVariety.Dag;
-
             // MarkAllFunctionImplementationsInline(); // This is for SMACK, which goes crazy with functions
 
             // Run live variable analysis (TODO: should this be here?)
@@ -1496,8 +1492,6 @@ namespace Microsoft.Boogie
 
             // save some information for debugging purposes
             // TODO rpfp.ls.SetAnnotationInfo(annotationInfo);
-
-            CommandLineOptions.Clo.vcVariety = oldDagOption;
         }
 
         

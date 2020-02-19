@@ -598,12 +598,6 @@ namespace Microsoft.Boogie {
     public int TrustLayersUpto = -1;
     public int TrustLayersDownto = int.MaxValue;
 
-    public enum VCVariety {
-      Dag,
-      Unspecified
-    }
-    public VCVariety vcVariety = VCVariety.Unspecified;  // will not be Unspecified after command line has been parsed
-
     public bool RemoveEmptyBlocks = true;
     public bool CoalesceBlocks = true;
     public bool PruneInfeasibleEdges = true;
@@ -1143,19 +1137,6 @@ namespace Microsoft.Boogie {
                 }
                 return true;
             }
-        case "vc":
-          if (ps.ConfirmArgumentCount(1)) {
-            switch (args[ps.i]) {
-              case "d":
-              case "dag":
-                vcVariety = VCVariety.Dag;
-                break;
-              default:
-                ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                break;
-            }
-          }
-          return true;
 
         case "proverDll":
           if (ps.ConfirmArgumentCount(1)) {
@@ -1559,7 +1540,6 @@ namespace Microsoft.Boogie {
 
     public override void ApplyDefaultOptions() {
       Contract.Ensures(TheProverFactory != null);
-      Contract.Ensures(vcVariety != VCVariety.Unspecified);
 
       base.ApplyDefaultOptions();
 
@@ -1581,10 +1561,6 @@ namespace Microsoft.Boogie {
 
       if (ProverHelpRequested) {
         Console.WriteLine(TheProverFactory.BlankProverOptions().Help);
-      }
-
-      if (vcVariety == VCVariety.Unspecified) {
-        vcVariety = TheProverFactory.DefaultVCVariety;
       }
 
       if (UseArrayTheory) {
@@ -1932,12 +1908,6 @@ namespace Microsoft.Boogie {
   /coalesceBlocks:<c>
                 0 = do not coalesce blocks
                 1 = coalesce blocks (default)
-  /vc:<variety> n = nested block,
-                m = nested block reach,
-                b = flat block, r = flat block reach,
-                s = structured, l = local,
-                d = dag (default)
-                doomed = doomed
   /traceverify  print debug output during verification condition generation
   /subsumption:<c>
                 apply subsumption to asserted conditions:

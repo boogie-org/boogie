@@ -1530,17 +1530,10 @@ namespace VC {
 
       VCExpr vc;
       int assertionCount;
-      switch (CommandLineOptions.Clo.vcVariety) {
-        case CommandLineOptions.VCVariety.Dag:
-          if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags || CommandLineOptions.Clo.FixedPointEngine != null) {
-            vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, new Hashtable/*<Block, VCExpr!>*/(), proverContext, out assertionCount);
-          } else {
-            vc = LetVC(impl.Blocks, controlFlowVariableExpr, label2absy, proverContext, out assertionCount);
-          }
-          break;
-        default:
-          Contract.Assert(false);
-          throw new cce.UnreachableException();  // unexpected enumeration value
+      if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags || CommandLineOptions.Clo.FixedPointEngine != null) {
+        vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, new Hashtable/*<Block, VCExpr!>*/(), proverContext, out assertionCount);
+      } else {
+        vc = LetVC(impl.Blocks, controlFlowVariableExpr, label2absy, proverContext, out assertionCount);
       }
       CumulativeAssertionCount += assertionCount;
       return vc;
