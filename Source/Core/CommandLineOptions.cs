@@ -413,8 +413,6 @@ namespace Microsoft.Boogie {
     public string PrintFile = null;
     public int PrintUnstructured = 0;
     public bool UseBaseNameForFileName = false;
-    public int DoomStrategy = -1;
-    public bool DoomRestartTP = false;
     public bool PrintDesugarings = false;
     public bool PrintLambdaLifting = false;
     public bool FreeVarLambdaLifting = false;
@@ -1155,16 +1153,6 @@ namespace Microsoft.Boogie {
         case "proverHelp":
           if (ps.ConfirmArgumentCount(0)) {
             ProverHelpRequested = true;
-          }
-          return true;
-
-        case "DoomStrategy":
-          ps.GetNumericArgument(ref DoomStrategy);
-          return true;
-
-        case "DoomRestartTP":
-          if (ps.ConfirmArgumentCount(0)) {
-            DoomRestartTP = true;
           }
           return true;
 
