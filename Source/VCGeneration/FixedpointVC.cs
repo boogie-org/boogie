@@ -870,10 +870,7 @@ namespace Microsoft.Boogie
                         }
                     }
                 normal:
-                    Term newlbl = null;
-                    if (lhs.IsLabel() && lhs.GetAppArgs()[0] == ctx.MkTrue())
-                        newlbl = lhs;
-                    res = ctx.MkImplies(lhs,ExtractSmallerVCsRec(memo,t.GetAppArgs()[1],small,newlbl));
+                res = ctx.MkImplies(lhs,ExtractSmallerVCsRec(memo,t.GetAppArgs()[1],small,null));
                 }
                 else if (f.GetKind() == DeclKind.And)
                 {
@@ -1356,10 +1353,6 @@ namespace Microsoft.Boogie
 
         public void Generate()
         {
-
-            var oldDagOption = CommandLineOptions.Clo.vcVariety;
-            CommandLineOptions.Clo.vcVariety = CommandLineOptions.VCVariety.Dag;
-
             // MarkAllFunctionImplementationsInline(); // This is for SMACK, which goes crazy with functions
 
             // Run live variable analysis (TODO: should this be here?)
@@ -1499,8 +1492,6 @@ namespace Microsoft.Boogie
 
             // save some information for debugging purposes
             // TODO rpfp.ls.SetAnnotationInfo(annotationInfo);
-
-            CommandLineOptions.Clo.vcVariety = oldDagOption;
         }
 
         
@@ -1641,12 +1632,6 @@ namespace Microsoft.Boogie
         {
             if (memo.Contains(t))
                 return;
-            if (t.IsLabel())
-            {
-                string l = t.LabelName();
-                if (!res.ContainsKey(l))
-                    res.Add(l, t.GetAppArgs()[0]);
-            }
             if (t.GetKind() == TermKind.App)
             {
                 var args = t.GetAppArgs();

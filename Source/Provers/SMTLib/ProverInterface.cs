@@ -435,7 +435,7 @@ namespace Microsoft.Boogie.SMTLib
         Process.PingPong(); // flush any errors
 
         if (Process.Inspector != null)
-          Process.Inspector.NewProblem(descriptiveName, vc, handler);
+          Process.Inspector.NewProblem(descriptiveName);
       }
 
       if (HasReset) {
@@ -1283,7 +1283,7 @@ namespace Microsoft.Boogie.SMTLib
       
       var result = Outcome.Undetermined;
 
-      if (Process == null)
+      if (Process == null || proverErrors.Count > 0)
         return result;
 
       try {
@@ -1459,55 +1459,26 @@ namespace Microsoft.Boogie.SMTLib
             if (globalResult == Outcome.Undetermined)
               globalResult = result;
             
-            if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory || result == Outcome.OutOfResource) {
-              IList<string> xlabels;
-              if (CommandLineOptions.Clo.UseLabels) {
-                labels = GetLabelsInfo();
-                if (labels == null)
-                {
-                  xlabels = new string[] { };
-                }
-                else
-                {
-                  xlabels = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
-                }
-              }
-              else if(CommandLineOptions.Clo.SIBoolControlVC) {
-                  labels = new string[0];
-                  xlabels = labels;
+            if (result == Outcome.Invalid) { 
+              Model model = GetErrorModel();
+              if (CommandLineOptions.Clo.SIBoolControlVC) {
+                labels = new string[0];
               } else {
                 labels = CalculatePath(handler.StartingProcId());
-                xlabels = labels;
               }
-                Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory || result == Outcome.OutOfResource) ? null :
-                    GetErrorModel();
-              handler.OnModel(xlabels, model, result);
+              handler.OnModel(labels, model, result);
             }
             
             if (labels == null || !labels.Any() || errorsLeft == 0) break;
-          } finally {
+          } 
+          finally {
             if (popLater)
             {
               SendThisVC("(pop 1)");
             }
           }
 
-          if (CommandLineOptions.Clo.UseLabels) {
-            var negLabels = labels.Where(l => l.StartsWith("@")).ToArray();
-            var posLabels = labels.Where(l => !l.StartsWith("@"));
-            Func<string, string> lbl = (s) => SMTLibNamer.QuoteId(Namer.LabelVar(s));
-            if (!options.MultiTraces)
-              posLabels = Enumerable.Empty<string>();
-            var conjuncts = posLabels.Select(s => "(not " + lbl(s) + ")").Concat(negLabels.Select(lbl)).ToArray();
-            string expr = conjuncts.Length == 1 ? conjuncts[0] : ("(or " + conjuncts.Concat(" ") + ")"); ;
-            if (!conjuncts.Any())
-            {
-              expr = "false";
-            }
-            SendThisVC("(assert " + expr + ")");
-            SendCheckSat();
-          }
-          else {
+          {
             string source = labels[labels.Length - 2];
             string target = labels[labels.Length - 1];
             SendThisVC("(assert (not (= (ControlFlow 0 " + source + ") (- " + target + "))))");
@@ -2858,11 +2829,6 @@ namespace Microsoft.Boogie.SMTLib
           return new SMTLibInterpolatingProcessTheoremProver(options, gen, ctx);
 
       return new SMTLibProcessTheoremProver(options, gen, ctx);
-    }
-
-    public override bool SupportsLabels(ProverOptions options)
-    {
-      return ((SMTLibProverOptions)options).SupportsLabels;
     }
   }
 }

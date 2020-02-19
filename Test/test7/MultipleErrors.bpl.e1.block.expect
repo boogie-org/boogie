@@ -1,6 +1,0 @@
-MultipleErrors.bpl(28,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    MultipleErrors.bpl(24,1): start
-    MultipleErrors.bpl(27,1): A
-
-Boogie program verifier finished with 0 verified, 1 error

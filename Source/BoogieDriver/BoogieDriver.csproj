@@ -214,10 +214,6 @@
       <Project>{B230A69C-C466-4065-B9C1-84D80E76D802}</Project>
       <Name>Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Doomed\Doomed.csproj">
-      <Project>{884386A3-58E9-40BB-A273-B24976775553}</Project>
-      <Name>Doomed</Name>
-    </ProjectReference>
     <ProjectReference Include="..\ExecutionEngine\ExecutionEngine.csproj">
       <Project>{EAA5EB79-D475-4601-A59B-825C191CD25F}</Project>
       <Name>ExecutionEngine</Name>

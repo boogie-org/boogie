@@ -31,8 +31,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Houdini-NetCore", "Houdini\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Predication-NetCore", "Predication\Predication-NetCore.csproj", "{7A4B3721-D902-4265-94DB-CA8B0BB295B7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Doomed-NetCore", "Doomed\Doomed-NetCore.csproj", "{CE190976-D727-4038-8D8A-8C5579E48CCF}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExecutionEngine-NetCore", "ExecutionEngine\ExecutionEngine-NetCore.csproj", "{51768B2E-FFF9-49F0-96D7-022250A4BEB4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Concurrency-NetCore", "Concurrency\Concurrency-NetCore.csproj", "{4AC86856-E985-4DBC-B089-20D5B9317A99}"

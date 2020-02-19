@@ -36,8 +36,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Houdini", "Houdini\Houdini.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Predication", "Predication\Predication.csproj", "{AFAA5CE1-C41B-44F0-88F8-FD8A43826D44}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Doomed", "Doomed\Doomed.csproj", "{884386A3-58E9-40BB-A273-B24976775553}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExecutionEngine", "ExecutionEngine\ExecutionEngine.csproj", "{EAA5EB79-D475-4601-A59B-825C191CD25F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BVD", "BVD\BVD.csproj", "{8A05D14E-F2BF-4890-BBE0-D76B18A50797}"

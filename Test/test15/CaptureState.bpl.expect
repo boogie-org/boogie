@@ -5,13 +5,7 @@ Execution trace:
     CaptureState.bpl(19,5): anon4_Then
     CaptureState.bpl(27,5): anon3
 *** MODEL
-%lbl%@1 -> false
-%lbl%+0 -> true
-%lbl%+2 -> false
-%lbl%+3 -> true
-%lbl%+4 -> true
-%lbl%+5 -> true
-$mv_state_const -> 4
+$mv_state_const -> 3
 F -> T@FieldName!val!0
 Heap -> |T@[Ref,FieldName]Int!val!0|
 m -> **m
@@ -25,11 +19,19 @@ this -> T@Ref!val!0
 x -> 40
 y -> 0
 $mv_state -> {
-  4 0 -> true
-  4 1 -> true
-  4 2 -> true
-  4 5 -> true
+  3 0 -> true
+  3 1 -> true
+  3 2 -> true
+  3 5 -> true
   else -> true
+}
+ControlFlow -> {
+  0 0 -> 212
+  0 137 -> 139
+  0 139 -> 143
+  0 143 -> (- 437)
+  0 212 -> 137
+  else -> (- 437)
 }
 Select_[Ref,FieldName]$int -> {
   |T@[Ref,FieldName]Int!val!0| T@Ref!val!0 T@FieldName!val!0 -> (- 8)

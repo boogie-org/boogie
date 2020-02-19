@@ -629,21 +629,14 @@ namespace Microsoft.Boogie.Houdini {
             fv.functionsUsed.Iter(tup => constant2FuncCall.Add(tup.Item2.Name, tup.Item3));
 
             var gen = prover.VCExprGen;
-            VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : gen.Integer(Microsoft.Basetypes.BigNum.ZERO);
+            VCExpr controlFlowVariableExpr = gen.Integer(Microsoft.Basetypes.BigNum.ZERO);
 
             var vcexpr = vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, prover.Context);
-            if (!CommandLineOptions.Clo.UseLabels)
-            {
-                VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(Microsoft.Basetypes.BigNum.ZERO), gen.Integer(Microsoft.Basetypes.BigNum.ZERO));
-                VCExpr eqExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(Microsoft.Basetypes.BigNum.FromInt(impl.Blocks[0].UniqueId)));
-                vcexpr = gen.Implies(eqExpr, vcexpr);
-            }
+            VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(Microsoft.Basetypes.BigNum.ZERO), gen.Integer(Microsoft.Basetypes.BigNum.ZERO));
+            VCExpr eqExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(Microsoft.Basetypes.BigNum.FromInt(impl.Blocks[0].UniqueId)));
+            vcexpr = gen.Implies(eqExpr, vcexpr);
 
-            ProverInterface.ErrorHandler handler = null;
-            if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local)
-                handler = new VCGen.ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, prover.Context, program);
-            else
-                handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, prover.Context, program);
+            ProverInterface.ErrorHandler handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, prover.Context, program);
 
             impl2ErrorHandler.Add(impl.Name, Tuple.Create(handler, collector));
 
@@ -664,7 +657,7 @@ namespace Microsoft.Boogie.Houdini {
             // the right thing.
             foreach (var tup in fv.functionsUsed)
             {
-                // Ignore ones with bound varibles
+                // Ignore ones with bound variables
                 if (tup.Item2.InParams.Count > 0) continue;
                 var tt = prover.Context.BoogieExprTranslator.Translate(tup.Item3);
                 tt = prover.VCExprGen.Or(VCExpressionGenerator.True, tt);
@@ -3735,8 +3728,7 @@ namespace Microsoft.Boogie.Houdini {
                 counter++;
             }
 
-            var vc1 = ToVcExpr(a, incarnations, gen);
-            var vc = gen.LabelPos("Temp", vc1);
+            var vc = ToVcExpr(a, incarnations, gen);
 
             // check
             prover.AssertAxioms();
@@ -4576,25 +4568,6 @@ namespace Microsoft.Boogie.Houdini {
 
             if (op == null)
             {
-                var lop = retnary.Op as VCExprLabelOp;
-                if (lop == null) return ret;
-                if (lop.pos) return ret;
-                if (!lop.label.Equals("@" + assertId.ToString())) return ret;
-                
-                //var subexpr = retnary[0] as VCExprNAry;
-                //if (subexpr == null) return ret;
-                //op = subexpr.Op as VCExprBoogieFunctionOp;
-                //if (op == null) return ret;
-
-                var subexpr = retnary[0] as VCExprVar;
-                if (subexpr == null) return ret;
-                if (!subexpr.Name.StartsWith("AbstractHoudiniControl")) return ret;
-
-                for (int i = 0; i < summaryPreds.Count; i++)
-                {
-                    if (summaryPreds[i].Item3 == subexpr)
-                        summaryPreds[i] = Tuple.Create(summaryPreds[i].Item1, true, summaryPreds[i].Item3, summaryPreds[i].Item4);
-                }
                 return ret;
             }
 

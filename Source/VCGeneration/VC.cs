@@ -299,18 +299,15 @@ namespace VC {
           lock (ch)
           {
             var exprGen = ch.TheoremProver.Context.ExprGen;
-            VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
+            VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
 
             VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, out label2Absy, ch.TheoremProver.Context);
             Contract.Assert(vc != null);
-
-            if (!CommandLineOptions.Clo.UseLabels)
-            {
-              VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-              VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
-              vc = exprGen.Implies(eqExpr, vc);
-            }
-
+            
+            VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+            VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+            vc = exprGen.Implies(eqExpr, vc);
+            
             impl.Blocks = backup;
 
             if (CommandLineOptions.Clo.TraceVerify)
@@ -1388,26 +1385,15 @@ namespace VC {
         bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
 
         var exprGen = ctx.ExprGen;
-        VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
+        VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
 
         VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
         Contract.Assert(vc != null);
-
-        if (!CommandLineOptions.Clo.UseLabels)
-        {
-          VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-          VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
-          vc = exprGen.Implies(eqExpr, vc);
-        }
-
-        if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local)
-        {
-          reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, cce.NonNull(this.Checker.TheoremProver.Context), parent.program);
-        }
-        else
-        {
-          reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, this.Checker.TheoremProver.Context, parent.program);
-        }
+        
+        VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+        vc = exprGen.Implies(eqExpr, vc);
+        reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, this.Checker.TheoremProver.Context, parent.program);
 
         if (CommandLineOptions.Clo.TraceVerify && no >= 0)
         {
@@ -1495,7 +1481,7 @@ namespace VC {
             vcgen.AddBlocksBetween(codeExpr.Blocks);
             Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
             int ac;  // computed, but then ignored for this CodeExpr
-            VCExpr startCorrect = VCGen.LetVCIterative(codeExpr.Blocks, null, label2absy, ctx, out ac, isPositiveContext);
+            VCExpr startCorrect = VCGen.LetVC(codeExpr.Blocks, null, label2absy, ctx, out ac, isPositiveContext);
             VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
             if (vcgen.CurrentLocalVariables.Count != 0)
             {
@@ -1544,41 +1530,10 @@ namespace VC {
 
       VCExpr vc;
       int assertionCount;
-      switch (CommandLineOptions.Clo.vcVariety) {
-        case CommandLineOptions.VCVariety.Structured:
-          vc = VCViaStructuredProgram(impl, label2absy, proverContext, out assertionCount);
-          break;
-        case CommandLineOptions.VCVariety.Block:
-          vc = FlatBlockVC(impl, label2absy, false, false, false, proverContext, out assertionCount);
-          break;
-        case CommandLineOptions.VCVariety.BlockReach:
-          vc = FlatBlockVC(impl, label2absy, false, true, false, proverContext, out assertionCount);
-          break;
-        case CommandLineOptions.VCVariety.Local:
-          vc = FlatBlockVC(impl, label2absy, true, false, false, proverContext, out assertionCount);
-          break;
-        case CommandLineOptions.VCVariety.BlockNested:
-          vc = NestedBlockVC(impl, label2absy, false, proverContext, out assertionCount);
-          break;
-        case CommandLineOptions.VCVariety.BlockNestedReach:
-          vc = NestedBlockVC(impl, label2absy, true, proverContext, out assertionCount);
-          break;
-        case CommandLineOptions.VCVariety.Dag:
-          if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags || CommandLineOptions.Clo.FixedPointEngine != null) {
-            vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, new Hashtable/*<Block, VCExpr!>*/(), proverContext, out assertionCount);
-          } else {
-            vc = LetVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, proverContext, out assertionCount);
-          }
-          break;
-        case CommandLineOptions.VCVariety.DagIterative:
-          vc = LetVCIterative(impl.Blocks, controlFlowVariableExpr, label2absy, proverContext, out assertionCount);
-          break;
-        case CommandLineOptions.VCVariety.Doomed:
-          vc = FlatBlockVC(impl, label2absy, false, false, true, proverContext, out assertionCount);
-          break;
-        default:
-          Contract.Assert(false);
-          throw new cce.UnreachableException();  // unexpected enumeration value
+      if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags || CommandLineOptions.Clo.FixedPointEngine != null) {
+        vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, new Hashtable/*<Block, VCExpr!>*/(), proverContext, out assertionCount);
+      } else {
+        vc = LetVC(impl.Blocks, controlFlowVariableExpr, label2absy, proverContext, out assertionCount);
       }
       CumulativeAssertionCount += assertionCount;
       return vc;
@@ -2148,79 +2103,15 @@ namespace VC {
       }
     }
 
-    public class ErrorReporterLocal : ErrorReporter {
-      public ErrorReporterLocal(Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins,
-          Dictionary<int, Absy>/*!*/ label2absy,
-          List<Block/*!*/>/*!*/ blocks,
-          Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
-          VerifierCallback/*!*/ callback,
-          ModelViewInfo mvInfo,
-          ProverContext/*!*/ context,
-          Program/*!*/ program)
-        : base(gotoCmdOrigins, label2absy, blocks, incarnationOriginMap, callback, mvInfo, context, program) // here for aesthetic purposes //TODO: Maybe nix?
+    private void RecordCutEdge(Dictionary<Block, List<Block>> edgesCut, Block from, Block to)
+    {
+      if (edgesCut != null)
       {
-        Contract.Requires(gotoCmdOrigins != null);
-        Contract.Requires(label2absy != null);
-        Contract.Requires(cce.NonNullElements(blocks));
-        Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
-        Contract.Requires(callback != null);
-        Contract.Requires(context != null);
-        Contract.Requires(program != null);
-      }
-
-      public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model, ProverInterface.Outcome proverOutcome) {
-        //Contract.Requires(cce.NonNullElements(labels));
-        // We ignore the error model here for enhanced error message purposes.
-        // It is only printed to the command line.
-        if (CommandLineOptions.Clo.PrintErrorModel >= 1 && model != null) {
-          if (CommandLineOptions.Clo.PrintErrorModelFile != null) {
-            model.Write(ErrorReporter.ModelWriter);
-            ErrorReporter.ModelWriter.Flush();
-          }
-        }
-        List<Block> traceNodes = new List<Block>();
-        List<AssertCmd> assertNodes = new List<AssertCmd>();
-        foreach (string s in labels) {
-          Contract.Assert(s != null);
-          Absy node = Label2Absy(s);
-          if (node is Block) {
-            Block b = (Block)node;
-            traceNodes.Add(b);
-          } else {
-            AssertCmd a = (AssertCmd)node;
-            assertNodes.Add(a);
-          }
-        }
-        Contract.Assert(assertNodes.Count > 0);
-        Contract.Assert(traceNodes.Count == assertNodes.Count);
-
-        foreach (AssertCmd a in assertNodes) {
-          // find the corresponding Block (assertNodes.Count is likely to be 1, or small in any case, so just do a linear search here)
-          foreach (Block b in traceNodes) {
-            if (b.Cmds.Contains(a)) {
-              List<Block> trace = new List<Block>();
-              trace.Add(b);
-              Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, model, MvInfo, context);
-              callback.OnCounterexample(newCounterexample, null);
-              goto NEXT_ASSERT;
-            }
-          }
-          Contract.Assert(false);
-          throw new cce.UnreachableException();  // there was no block that contains the assert
-        NEXT_ASSERT: {
-          }
-        }
+        if (!edgesCut.ContainsKey(from))
+          edgesCut.Add(from, new List<Block>());
+        edgesCut[from].Add(to);
       }
     }
-
-      private void RecordCutEdge(Dictionary<Block,List<Block>> edgesCut, Block from, Block to){
-          if (edgesCut != null)
-          {
-              if (!edgesCut.ContainsKey(from))
-                  edgesCut.Add(from, new List<Block>());
-              edgesCut[from].Add(to);
-          }
-      }
 
     public void ConvertCFG2DAG(Implementation impl, Dictionary<Block,List<Block>> edgesCut = null, int taskID = -1)
     {
@@ -2850,7 +2741,7 @@ namespace VC {
       if (CommandLineOptions.Clo.RemoveEmptyBlocks){
         #region Get rid of empty blocks
         {
-          RemoveEmptyBlocksIterative(impl.Blocks);
+          RemoveEmptyBlocks(impl.Blocks);
           impl.PruneUnreachableBlocks();
         }
         #endregion Get rid of empty blocks
@@ -3167,7 +3058,7 @@ namespace VC {
                 var loc = new TraceLocation(numBlock, numInstr);
                 if (!cex.calleeCounterexamples.ContainsKey(loc))
                 {
-                    if (getCallee(cex.getTraceCmd(loc), inlinedProcs) != null) callCnt++;
+                    if (GetCallee(cex.getTraceCmd(loc), inlinedProcs) != null) callCnt++;
                     continue;
                 }
                 string callee = cex.getCalledProcName(cex.getTraceCmd(loc));
@@ -3193,7 +3084,7 @@ namespace VC {
                 }
                 else
                 {
-                    var origLoc = new TraceLocation(ret.Trace.Count - 1, getCallCmdPosition(origBlock, callCnt, inlinedProcs, callee));
+                    var origLoc = new TraceLocation(ret.Trace.Count - 1, GetCallCmdPosition(origBlock, callCnt, inlinedProcs, callee));
                     ret.calleeCounterexamples.Add(origLoc, origTrace);
                     callCnt++;
                 }
@@ -3205,13 +3096,13 @@ namespace VC {
     // return the position of the i^th CallCmd in the block (count only those Calls that call a procedure in inlinedProcs). 
     // Assert failure if there isn't any.
     // Assert that the CallCmd found calls "callee"
-    private int getCallCmdPosition(Block block, int i, HashSet<string> inlinedProcs, string callee)
+    private int GetCallCmdPosition(Block block, int i, HashSet<string> inlinedProcs, string callee)
     {
         Debug.Assert(i >= 1);
         for (int pos = 0; pos < block.Cmds.Count; pos++)
         {
             Cmd cmd = block.Cmds[pos];
-            string procCalled = getCallee(cmd, inlinedProcs);
+            string procCalled = GetCallee(cmd, inlinedProcs);
 
             if (procCalled != null)
             {
@@ -3228,7 +3119,7 @@ namespace VC {
         return -1;
     }
 
-    private string getCallee(Cmd cmd, HashSet<string> inlinedProcs)
+    private string GetCallee(Cmd cmd, HashSet<string> inlinedProcs)
     {
         string procCalled = null;
         if (cmd is CallCmd)
@@ -3439,23 +3330,7 @@ namespace VC {
       return cc;
     }
 
-    static VCExpr LetVC(Block startBlock,
-                        VCExpr controlFlowVariableExpr,
-                        Dictionary<int, Absy> label2absy,
-                        ProverContext proverCtxt,
-                        out int assertionCount) {
-      Contract.Requires(startBlock != null);
-      Contract.Requires(proverCtxt != null);
-
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-
-      Hashtable/*<Block, LetVariable!>*/ blockVariables = new Hashtable/*<Block, LetVariable!!>*/();
-      List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
-      VCExpr startCorrect = LetVC(startBlock, controlFlowVariableExpr, label2absy, blockVariables, bindings, proverCtxt, out assertionCount);
-      return proverCtxt.ExprGen.Let(bindings, startCorrect);
-    }
-
-    static VCExpr LetVCIterative(List<Block> blocks,
+    static VCExpr LetVC(List<Block> blocks,
                                  VCExpr controlFlowVariableExpr,
                                  Dictionary<int, Absy> label2absy,
                                  ProverContext proverCtxt,
@@ -3531,73 +3406,6 @@ namespace VC {
       return proverCtxt.ExprGen.Let(bindings, blockVariables[blocks[0]]);
     }
 
-    static VCExpr LetVC(Block block,
-                        VCExpr controlFlowVariableExpr,
-                        Dictionary<int, Absy> label2absy,
-                        Hashtable/*<Block, VCExprVar!>*/ blockVariables,
-                        List<VCExprLetBinding/*!*/>/*!*/ bindings,
-                        ProverContext proverCtxt,
-                        out int assertionCount)
-    {
-      Contract.Requires(block != null);
-      Contract.Requires(blockVariables!= null);
-      Contract.Requires(cce.NonNullElements(bindings));
-      Contract.Requires(proverCtxt != null);
-
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-
-      assertionCount = 0;
-
-      VCExpressionGenerator gen = proverCtxt.ExprGen;
-      Contract.Assert(gen != null);
-      VCExprVar v = (VCExprVar)blockVariables[block];
-      if (v == null) {
-        /*
-         * For block A (= block), generate:
-         *   LET_binding A_correct = wp(A_body, (/\ S \in Successors(A) :: S_correct))
-         * with the side effect of adding the let bindings to "bindings" for any
-         * successor not yet visited.
-         */
-        VCExpr SuccCorrect;
-        GotoCmd gotocmd = block.TransferCmd as GotoCmd;
-        if (gotocmd == null) {
-          ReturnExprCmd re = block.TransferCmd as ReturnExprCmd;
-          if (re == null) {
-            SuccCorrect = VCExpressionGenerator.True;
-          } else {
-            SuccCorrect = proverCtxt.BoogieExprTranslator.Translate(re.Expr);
-          }
-        } else {
-          Contract.Assert( gotocmd.labelTargets != null);
-          List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Count);
-          foreach (Block successor in gotocmd.labelTargets) {
-            Contract.Assert(successor != null);
-            int ac;
-            VCExpr s = LetVC(successor, controlFlowVariableExpr, label2absy, blockVariables, bindings, proverCtxt, out ac);
-            assertionCount += ac;
-            if (controlFlowVariableExpr != null) 
-            {
-              VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(block.UniqueId)));
-              VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(successor.UniqueId)));
-              s = gen.Implies(controlTransferExpr, s);
-            }  
-            SuccCorrectVars.Add(s);
-          }
-          SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
-        }
-
-        
-        VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariableExpr);
-        VCExpr vc = Wlp.Block(block, SuccCorrect, context);
-        assertionCount += context.AssertionCount;
-        
-        v = gen.Variable(block.Label + "_correct", Bpl.Type.Bool);
-        bindings.Add(gen.LetBinding(v, vc));
-        blockVariables.Add(block, v);
-      }
-      return v;
-    }
-
     static VCExpr DagVC(Block block,
                          VCExpr controlFlowVariableExpr,
                          Dictionary<int, Absy> label2absy,
@@ -3654,293 +3462,10 @@ namespace VC {
       return vc;
     }
 
-    static VCExpr FlatBlockVC(Implementation impl,
-                              Dictionary<int, Absy> label2absy,
-                              bool local, bool reach, bool doomed,
-                              ProverContext proverCtxt,
-                              out int assertionCount)
-    {
-      Contract.Requires(impl != null);
-      Contract.Requires(label2absy != null);
-      Contract.Requires(proverCtxt != null);
-      Contract.Requires( !local || !reach);  // "reach" must be false for local
-    
-      VCExpressionGenerator gen = proverCtxt.ExprGen;
-      Contract.Assert(gen != null);
-      Hashtable/* Block --> VCExprVar */ BlkCorrect = BlockVariableMap(impl.Blocks, "_correct", gen);
-      Hashtable/* Block --> VCExprVar */ BlkReached = reach ? BlockVariableMap(impl.Blocks, "_reached", gen) : null;
-
-      List<Block> blocks = impl.Blocks;
-      Contract.Assert(blocks != null);
-  // block sorting is now done on the VCExpr
-  //    if (!local && (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).NeedsBlockSorting) {
-  //      blocks = SortBlocks(blocks);
-  //    }
-
-      VCExpr proofObligation;
-      if (!local) {
-        proofObligation = cce.NonNull((VCExprVar)BlkCorrect[impl.Blocks[0]]);
-      } else {
-        List<VCExpr> conjuncts = new List<VCExpr>(blocks.Count);
-        foreach (Block b in blocks) {Contract.Assert(b != null);
-          VCExpr v = cce.NonNull((VCExprVar)BlkCorrect[b]);
-          conjuncts.Add(v);
-        }
-        proofObligation = gen.NAry(VCExpressionGenerator.AndOp, conjuncts);
-      }
-
-      VCContext context = new VCContext(label2absy, proverCtxt);
-      Contract.Assert(context != null);
-
-      List<VCExprLetBinding> programSemantics = new List<VCExprLetBinding>(blocks.Count);
-      foreach (Block b in blocks) {Contract.Assert(b != null);
-        /* 
-         * In block mode,
-         * For a return block A, generate:
-         *   A_correct <== wp(A_body, true)  [post-condition has been translated into an assert]
-         * For all other blocks, generate:
-         *   A_correct <== wp(A_body, (/\ S \in Successors(A) :: S_correct))
-         * 
-         * In doomed mode, proceed as in block mode, except for a return block A, generate:
-         *   A_correct <== wp(A_body, false)  [post-condition has been translated into an assert]
-         *
-         * In block reach mode, the wp(A_body,...) in the equations above change to:
-         *   A_reached ==> wp(A_body,...)
-         * and the conjunction above changes to:
-         *   (/\ S \in Successors(A) :: S_correct \/ (\/ T \in Successors(A) && T != S :: T_reached))
-         *
-         * In local mode, generate:
-         *   A_correct <== wp(A_body, true)
-         */
-        VCExpr SuccCorrect;
-        if (local) {
-          SuccCorrect = VCExpressionGenerator.True;
-        } else {
-          SuccCorrect = SuccessorsCorrect(b, BlkCorrect, BlkReached, doomed, gen);
-        }
-
-        VCExpr wlp = Wlp.Block(b, SuccCorrect, context);
-        if (BlkReached != null) {
-          wlp = gen.Implies(cce.NonNull((VCExprVar)BlkReached[b]), wlp);
-        }
-        
-        VCExprVar okVar = cce.NonNull((VCExprVar)BlkCorrect[b]);
-        VCExprLetBinding binding = gen.LetBinding(okVar, wlp);
-        programSemantics.Add(binding);
-      }
-
-      assertionCount = context.AssertionCount;
-      return gen.Let(programSemantics, proofObligation);
-    }
-
-    private static Hashtable/* Block --> VCExprVar */ BlockVariableMap(List<Block/*!*/>/*!*/ blocks, string suffix,
-                                                                        Microsoft.Boogie.VCExpressionGenerator gen) {
-      Contract.Requires(cce.NonNullElements(blocks));
-      Contract.Requires(suffix != null);
-      Contract.Requires(gen != null);
-      Contract.Ensures(Contract.Result<Hashtable>() != null);
-
-      Hashtable/* Block --> VCExprVar */ map = new Hashtable/* Block --> (Let)Variable */();
-      foreach (Block b in blocks) {
-        Contract.Assert(b != null);
-        VCExprVar v = gen.Variable(b.Label + suffix, Bpl.Type.Bool);
-        Contract.Assert(v != null);
-        map.Add(b, v);
-      }
-      return map;
-    }
-
-    private static VCExpr SuccessorsCorrect(
-        Block b,
-        Hashtable/* Block --> VCExprVar */ BlkCorrect,
-        Hashtable/* Block --> VCExprVar */ BlkReached,
-        bool doomed,
-        Microsoft.Boogie.VCExpressionGenerator gen) {
-      Contract.Requires(b != null);
-      Contract.Requires(BlkCorrect != null);
-      Contract.Requires(gen != null);
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-
-      VCExpr SuccCorrect = null;
-      GotoCmd gotocmd = b.TransferCmd as GotoCmd;
-      if (gotocmd != null) {
-        foreach (Block successor in cce.NonNull(gotocmd.labelTargets)) {
-          Contract.Assert(successor != null);
-          // c := S_correct
-          VCExpr c = (VCExprVar)BlkCorrect[successor];
-          Contract.Assert(c != null);
-          if (BlkReached != null) {
-            // c := S_correct \/ Sibling0_reached \/ Sibling1_reached \/ ...;
-            foreach (Block successorSibling in gotocmd.labelTargets) {
-              Contract.Assert(successorSibling != null);
-              if (successorSibling != successor) {
-                c = gen.Or(c, cce.NonNull((VCExprVar)BlkReached[successorSibling]));
-              }
-            }
-          }
-          SuccCorrect = SuccCorrect == null ? c : gen.And(SuccCorrect, c);
-        }
-      }
-      if (SuccCorrect == null) {
-        return VCExpressionGenerator.True;
-      } else if (doomed) {
-        return VCExpressionGenerator.False;
-      } else {
-        return SuccCorrect;
-      }
-    }
-
-    static VCExpr NestedBlockVC(Implementation impl,
-                                Dictionary<int, Absy> label2absy,
-                                bool reach,
-                                ProverContext proverCtxt,
-                                out int assertionCount){
-      Contract.Requires(impl != null);
-      Contract.Requires(label2absy != null);
-      Contract.Requires(proverCtxt != null);
-      Contract.Requires( impl.Blocks.Count != 0);
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-
-      VCExpressionGenerator gen = proverCtxt.ExprGen;
-      Contract.Assert(gen != null);
-      Graph<Block> g = Program.GraphFromImpl(impl);
-
-      Hashtable/* Block --> VCExprVar */ BlkCorrect = BlockVariableMap(impl.Blocks, "_correct", gen);
-      Hashtable/* Block --> VCExprVar */ BlkReached = reach ? BlockVariableMap(impl.Blocks, "_reached", gen) : null;
-
-      Block startBlock = cce.NonNull( impl.Blocks[0]);
-      VCExpr proofObligation = (VCExprVar)BlkCorrect[startBlock];
-      Contract.Assert(proofObligation != null);
-      VCContext context = new VCContext(label2absy, proverCtxt);
-      
-      Hashtable/*Block->int*/ totalOrder = new Hashtable/*Block->int*/();
-      {
-        List<Block> blocks = impl.Blocks;
-        
-        // block sorting is now done on the VCExpr
-        //   if (((!)CommandLineOptions.Clo.TheProverFactory).NeedsBlockSorting) {
-        //     blocks = SortBlocks(blocks);
-        //   }
-        int i = 0;
-        foreach (Block b in blocks) {
-          Contract.Assert(b != null);
-          totalOrder[b] = i;
-          i++;
-        }
-      }
-      
-      VCExprLetBinding programSemantics = NestedBlockEquation(cce.NonNull(impl.Blocks[0]), BlkCorrect, BlkReached, totalOrder, context, g, gen);
-      List<VCExprLetBinding> ps = new List<VCExprLetBinding>(1);
-      ps.Add(programSemantics);
-
-      assertionCount = context.AssertionCount;
-      return gen.Let(ps, proofObligation);
-    }
-
-    private static VCExprLetBinding NestedBlockEquation(Block b,
-        Hashtable/*Block-->VCExprVar*/ BlkCorrect,
-        Hashtable/*Block-->VCExprVar*/ BlkReached,
-        Hashtable/*Block->int*/ totalOrder,
-        VCContext context,
-        Graph<Block> g,
-        Microsoft.Boogie.VCExpressionGenerator gen) {
-      Contract.Requires(b != null);
-      Contract.Requires(BlkCorrect != null);
-      Contract.Requires(totalOrder != null);
-      Contract.Requires(g != null);
-      Contract.Requires(context != null);
-
-      Contract.Ensures(Contract.Result<VCExprLetBinding>() != null);
-
-      /*
-      * For a block b, return:
-      *   LET_BINDING b_correct = wp(b_body, X)
-      * where X is:
-      *   LET (THOSE d \in DirectDominates(b) :: BlockEquation(d))
-      *   IN (/\ s \in Successors(b) :: s_correct)
-      * 
-      * When the VC-expression generator does not support LET expresions, this
-      * will eventually turn into:
-      *   b_correct <== wp(b_body, X)
-      * where X is:
-      *   (/\ s \in Successors(b) :: s_correct)
-      *   <==
-      *   (/\ d \in DirectDominatees(b) :: BlockEquation(d))
-      *
-      * In both cases above, if BlkReached is non-null, then the wp expression
-      * is instead:
-      *   b_reached ==> wp(b_body, X)
-      */
-
-      VCExpr SuccCorrect = SuccessorsCorrect(b, BlkCorrect, null, false, gen);
-      Contract.Assert(SuccCorrect != null);
-
-      List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
-      foreach (Block dominee in GetSortedBlocksImmediatelyDominatedBy(g, b, totalOrder)) {
-        Contract.Assert(dominee != null);
-        VCExprLetBinding c = NestedBlockEquation(dominee, BlkCorrect, BlkReached, totalOrder, context, g, gen);
-        bindings.Add(c);
-      }
-
-      VCExpr X = gen.Let(bindings, SuccCorrect);
-      VCExpr wlp = Wlp.Block(b, X, context);
-      if (BlkReached != null) {
-        wlp = gen.Implies((VCExprVar)BlkReached[b], wlp);
-        Contract.Assert(wlp != null);
-      }
-      VCExprVar okVar = cce.NonNull((VCExprVar)BlkCorrect[b]);
-      return gen.LetBinding(okVar, wlp);
-    }
-
-    /// <summary>
-    /// Returns a list of g.ImmediatelyDominatedBy(b), but in a sorted order, hoping to steer around
-    /// the nondeterminism problems we've been seeing by using just this call.
-    /// </summary>
-    static List<Block/*!*/>/*!*/ GetSortedBlocksImmediatelyDominatedBy(Graph<Block>/*!*/ g, Block/*!*/ b, Hashtable/*Block->int*//*!*/ totalOrder) {
-      Contract.Requires(g != null);
-      Contract.Requires(b != null);
-      Contract.Requires(totalOrder != null);
-      Contract.Ensures(Contract.Result<List<Block>>() != null);
-
-      List<Block> list = new List<Block>();
-      foreach (Block dominee in g.ImmediatelyDominatedBy(b)) {
-        Contract.Assert(dominee != null);
-        list.Add(dominee);
-      }
-      list.Sort(new Comparison<Block>(delegate(Block x, Block y) {
-        return (int)cce.NonNull(totalOrder[x]) - (int)cce.NonNull(totalOrder[y]);
-      }));
-      return list;
-    }
-
-    static VCExpr VCViaStructuredProgram
-                  (Implementation impl, Dictionary<int, Absy> label2absy,
-                   ProverContext proverCtxt,
-                   out int assertionCount)
-    {
-      Contract.Requires(impl != null);
-      Contract.Requires(label2absy != null);
-      Contract.Requires(proverCtxt != null);
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-
-      #region Convert block structure back to a "regular expression"
-      RE r = DAG2RE.Transform(cce.NonNull(impl.Blocks[0]));
-      Contract.Assert(r != null);
-      #endregion
-
-      VCContext ctxt = new VCContext(label2absy, proverCtxt);
-      Contract.Assert(ctxt != null);
-      #region Send wlp(program,true) to Simplify
-      var vcexp = Wlp.RegExpr(r, VCExpressionGenerator.True, ctxt);
-      assertionCount = ctxt.AssertionCount;
-      return vcexp;
-      #endregion
-    }
-
     /// <summary> 
     /// Remove empty blocks reachable from the startBlock of the CFG
     /// </summary>
-    static void RemoveEmptyBlocksIterative(List<Block> blocks) {
+    static void RemoveEmptyBlocks(List<Block> blocks) {
       // postorder traversal of cfg
       //   noting loop heads in [keep] and
       //   generating token information in [renameInfo]
@@ -4058,131 +3583,6 @@ namespace VC {
         }
       }
 
-    }
-
-    /// <summary> 
-    /// Remove the empty blocks reachable from the block.
-    /// It changes the visiting state of the blocks, so that if you want to visit again the blocks, you have to reset them...
-    /// </summary>
-    static List<Block> RemoveEmptyBlocks(Block b) {
-      Contract.Requires(b != null);
-      Contract.Ensures(Contract.Result<List<Block>>() != null);
-
-      Contract.Assert(b.TraversingStatus == Block.VisitState.ToVisit);
-      Block renameInfo;
-      List<Block> retVal = removeEmptyBlocksWorker(b, true, out renameInfo);
-      if (renameInfo != null && !b.tok.IsValid) {
-        bool onlyAssumes = true;
-        foreach (Cmd c in b.Cmds) {
-          if (!(c is AssumeCmd)) {
-            onlyAssumes = false;
-            break;
-          }
-        }
-        if (onlyAssumes) {
-          b.tok = renameInfo.tok;
-          b.Label = renameInfo.Label;
-        }
-      }
-      return retVal;
-    }
-
-    /// <summary>
-    /// For every not-yet-visited block n reachable from b, change n's successors to skip empty nodes.
-    /// Return the *set* of blocks reachable from b without passing through a nonempty block.
-    /// The target of any backedge is counted as a nonempty block.
-    /// If renameInfoForStartBlock is non-null, it denotes an empty block with location information, and that
-    /// information would be appropriate to display
-    /// </summary>
-    private static List<Block> removeEmptyBlocksWorker(Block b, bool startNode, out Block renameInfoForStartBlock)
-  {
-      Contract.Requires(b != null);
-      Contract.Ensures(Contract.ValueAtReturn(out renameInfoForStartBlock) == null || Contract.ValueAtReturn(out renameInfoForStartBlock).tok.IsValid);
-      // ensures: b in result ==> renameInfoForStartBlock == null;
-    
-      renameInfoForStartBlock = null;
-      List<Block> bs = new List<Block>();
-      GotoCmd gtc = b.TransferCmd as GotoCmd;
-
-      // b has no successors
-      if (gtc == null || gtc.labelTargets == null || gtc.labelTargets.Count == 0) 
-      {
-        if (b.Cmds.Count != 0){ // only empty blocks are removed...
-          bs.Add(b);
-        } else if (b.tok.IsValid) {
-          renameInfoForStartBlock = b;
-        }
-        return bs;
-      }
-      else if (b.TraversingStatus == Block.VisitState.ToVisit)  // if b has some successors and we have not seen it so far...
-      { 
-        b.TraversingStatus = Block.VisitState.BeingVisited;
-
-        // Before recursing down to successors, make a sobering observation:
-        // If b has no commands and is not the start node, then it will see
-        // extinction (because it will not be included in the "return setOfSuccessors"
-        // statement below).  In that case, if b has a location, then the location
-        // information would be lost.  Hence, make an attempt to save the location
-        // by pushing the location onto b's successor.  This can be done if (0) b has
-        // exactly one successor, (1) that successor has no location of its own, and
-        // (2) that successor has no other predecessors.
-        if (b.Cmds.Count == 0 && !startNode) {
-          // b is about to become extinct; try to save its name and location, if possible
-          if (b.tok.IsValid && gtc.labelTargets.Count == 1) {
-            Block succ = cce.NonNull(gtc.labelTargets[0]);
-            if (!succ.tok.IsValid && succ.Predecessors.Count == 1) {
-              succ.tok = b.tok;
-              succ.Label = b.Label;
-            }
-          }
-        }
-
-        // recursively call this method on each successor
-        // merge result into a *set* of blocks
-        HashSet<Block> mergedSuccessors = new HashSet<Block>();
-        int m = 0;  // in the following loop, set renameInfoForStartBlock to the value that all recursive calls agree on, if possible; otherwise, null
-        foreach (Block dest in gtc.labelTargets){Contract.Assert(dest != null);
-          Block renameInfo;
-          List<Block> ys = removeEmptyBlocksWorker(dest, false, out renameInfo);
-          Contract.Assert(ys != null);
-          if (m == 0) {
-            renameInfoForStartBlock = renameInfo;
-          } else if (renameInfoForStartBlock != renameInfo) {
-            renameInfoForStartBlock = null;
-          }
-          foreach (Block successor in ys){
-            if (!mergedSuccessors.Contains(successor))
-              mergedSuccessors.Add(successor);
-          }
-          m++;
-        }
-        b.TraversingStatus = Block.VisitState.AlreadyVisited;
-
-        List<Block> setOfSuccessors = new List<Block>();
-        foreach (Block d in mergedSuccessors)
-          setOfSuccessors.Add(d);
-        if (b.Cmds.Count == 0 && !startNode) {
-          // b is about to become extinct
-          if (b.tok.IsValid) {
-            renameInfoForStartBlock = b;
-          }
-          return setOfSuccessors;
-        }
-        // otherwise, update the list of successors of b to be the blocks in setOfSuccessors
-        gtc.labelTargets = setOfSuccessors;
-        gtc.labelNames = new List<String>();
-        foreach (Block d in setOfSuccessors){
-          Contract.Assert(d != null);
-          gtc.labelNames.Add(d.Label);}
-        if (!startNode) {
-          renameInfoForStartBlock = null;
-        }
-        return new List<Block> { b };
-      }
-      else // b has some successors, but we are already visiting it, or we have already visited it...
-      {
-        return new List<Block> { b };
-      }
     }
 
     static void DumpMap(Hashtable /*Variable->Expr*/ map) {

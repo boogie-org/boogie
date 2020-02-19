@@ -605,31 +605,6 @@ namespace Microsoft.Boogie {
                       allArgs, typeArgs);
     }
 
-
-    // Labels
-
-    public VCExprLabelOp LabelOp(bool pos, string l) {
-      Contract.Requires(l != null);
-      Contract.Ensures(Contract.Result<VCExprLabelOp>() != null);
-      return new VCExprLabelOp(pos, l);
-    }
-
-    public VCExpr LabelNeg(string label, VCExpr e) {
-      Contract.Requires(e != null);
-      Contract.Requires(label != null);
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-      if (e.Equals(True)) {
-        return e;  // don't bother putting negative labels around True (which will expose the True to further peephole optimizations)
-      }
-      return Function(LabelOp(false, label), e);
-    }
-    public VCExpr LabelPos(string label, VCExpr e) {
-      Contract.Requires(e != null);
-      Contract.Requires(label != null);
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Function(LabelOp(true, label), e);
-    }
-
     // Quantifiers
 
     public VCExpr Quantify(Quantifier quan, List<TypeVariable/*!*/>/*!*/ typeParams, List<VCExprVar/*!*/>/*!*/ vars, List<VCTrigger/*!*/>/*!*/ triggers, VCQuantifierInfos infos, VCExpr body) {
@@ -1473,60 +1448,6 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(visitor != null);
       //Contract.Requires(expr != null);
       return visitor.VisitDistinctOp(expr, arg);
-    }
-  }
-
-  public class VCExprLabelOp : VCExprOp {
-    public override int Arity {
-      get {
-        return 1;
-      }
-    }
-    public override int TypeParamArity {
-      get {
-        return 0;
-      }
-    }
-    public override Type InferType(List<VCExpr> args, List<Type/*!*/>/*!*/ typeArgs) {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
-      Contract.Ensures(Contract.Result<Type>() != null);
-      return args[0].Type;
-    }
-
-    public readonly bool pos;
-    public readonly string label;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(label != null);
-    }
-
-    [Pure]
-    [Reads(ReadsAttribute.Reads.Nothing)]
-    public override bool Equals(object that) {
-      if (Object.ReferenceEquals(this, that))
-        return true;
-      if (that is VCExprLabelOp) {
-        VCExprLabelOp/*!*/ thatOp = (VCExprLabelOp)that;
-        return this.pos == thatOp.pos && this.label.Equals(thatOp.label);
-      }
-      return false;
-    }
-    [Pure]
-    public override int GetHashCode() {
-      return (pos ? 9817231 : 7198639) + label.GetHashCode();
-    }
-
-    internal VCExprLabelOp(bool pos, string l) {
-      Contract.Requires(l != null);
-      this.pos = pos;
-      this.label = pos ? "+" + l : "@" + l;
-    }
-    public override Result Accept<Result, Arg>
-           (VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg) {
-      //Contract.Requires(visitor != null);
-      //Contract.Requires(expr != null);
-      return visitor.VisitLabelOp(expr, arg);
     }
   }
 

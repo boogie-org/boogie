@@ -305,7 +305,7 @@ namespace Microsoft.Boogie {
     /// </summary>
     public virtual void ApplyDefaultOptions() {
     }
-      
+
     /// <summary>
     /// Parses the command-line arguments "args" into the global flag variables.  Returns true
     /// if there were no errors.
@@ -413,14 +413,12 @@ namespace Microsoft.Boogie {
     public string PrintFile = null;
     public int PrintUnstructured = 0;
     public bool UseBaseNameForFileName = false;
-    public int DoomStrategy = -1;
-    public bool DoomRestartTP = false;
     public bool PrintDesugarings = false;
     public bool PrintLambdaLifting = false;
     public bool FreeVarLambdaLifting = false;
     public string ProverLogFilePath = null;
     public bool ProverLogFileAppend = false;
-    
+
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
     public string ProverPreamble = null;
@@ -564,7 +562,6 @@ namespace Microsoft.Boogie {
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
     public bool WeakArrayTheory = false;
-    public bool UseLabels = true;
     public bool RunDiagnosticsOnTimeout = false;
     public bool TraceDiagnosticsOnTimeout = false;
     public int TimeLimitPerAssertionInPercent = 10;
@@ -598,20 +595,6 @@ namespace Microsoft.Boogie {
     public bool TrustNonInterference = false;
     public int TrustLayersUpto = -1;
     public int TrustLayersDownto = int.MaxValue;
-
-    public enum VCVariety {
-      Structured,
-      Block,
-      Local,
-      BlockNested,
-      BlockReach,
-      BlockNestedReach,
-      Dag,
-      DagIterative,
-      Doomed,
-      Unspecified
-    }
-    public VCVariety vcVariety = VCVariety.Unspecified;  // will not be Unspecified after command line has been parsed
 
     public bool RemoveEmptyBlocks = true;
     public bool CoalesceBlocks = true;
@@ -737,7 +720,7 @@ namespace Microsoft.Boogie {
     public int StratifiedInliningVerbose = 0; // verbosity level
     public int RecursionBound = 500;
     public bool NonUniformUnfolding = false;
-    public int StackDepthBound = 0; 
+    public int StackDepthBound = 0;
     public string inferLeastForUnsat = null;
 
     // Inference mode for fixed point engine
@@ -749,11 +732,11 @@ namespace Microsoft.Boogie {
        Call
     };
     public FixedPointInferenceMode FixedPointMode = FixedPointInferenceMode.Procedure;
-		
+
     public string PrintFixedPoint = null;
 
     public string PrintConjectures = null;
-		
+
     public bool ExtractLoopsUnrollIrreducible = true; // unroll irreducible loops? (set programmatically)
 
     public enum TypeEncoding {
@@ -789,7 +772,7 @@ namespace Microsoft.Boogie {
     }
 
     private List<string/*!*/> procsToCheck = null;  // null means "no restriction"
-    
+
     [ContractInvariantMethod]
     void ObjectInvariant5() {
       Contract.Invariant(cce.NonNullElements(this.procsToCheck, true));
@@ -890,7 +873,7 @@ namespace Microsoft.Boogie {
           int val = 1;
           if (ps.GetNumericArgument(ref val, 2)) {
             PrettyPrint = val == 1;
-          } 
+          }
           return true;
 
         case "CivlDesugaredFile":
@@ -919,13 +902,13 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "proverPreamble": 
+        case "proverPreamble":
           if (ps.ConfirmArgumentCount(1))
           {
             ProverPreamble = args[ps.i];
           }
            return true;
-          
+
           case "logPrefix":
           if (ps.ConfirmArgumentCount(1)) {
             string s = cce.NonNull(args[ps.i]);
@@ -1152,47 +1135,6 @@ namespace Microsoft.Boogie {
                 }
                 return true;
             }
-        case "vc":
-          if (ps.ConfirmArgumentCount(1)) {
-            switch (args[ps.i]) {
-              case "s":
-              case "structured":
-                vcVariety = VCVariety.Structured;
-                break;
-              case "b":
-              case "block":
-                vcVariety = VCVariety.Block;
-                break;
-              case "l":
-              case "local":
-                vcVariety = VCVariety.Local;
-                break;
-              case "n":
-              case "nested":
-                vcVariety = VCVariety.BlockNested;
-                break;
-              case "m":
-                vcVariety = VCVariety.BlockNestedReach;
-                break;
-              case "r":
-                vcVariety = VCVariety.BlockReach;
-                break;
-              case "d":
-              case "dag":
-                vcVariety = VCVariety.Dag;
-                break;
-              case "i":
-                vcVariety = VCVariety.DagIterative;
-                break;
-              case "doomed":
-                vcVariety = VCVariety.Doomed;
-                break;
-              default:
-                ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                break;
-            }
-          }
-          return true;
 
         case "proverDll":
           if (ps.ConfirmArgumentCount(1)) {
@@ -1207,20 +1149,10 @@ namespace Microsoft.Boogie {
             ProverOptions = ProverOptions.Concat1(cce.NonNull(args[ps.i]));
           }
           return true;
-        
+
         case "proverHelp":
           if (ps.ConfirmArgumentCount(0)) {
             ProverHelpRequested = true;
-          }
-          return true;
-
-        case "DoomStrategy":
-          ps.GetNumericArgument(ref DoomStrategy);
-          return true;
-
-        case "DoomRestartTP":
-          if (ps.ConfirmArgumentCount(0)) {
-            DoomRestartTP = true;
           }
           return true;
 
@@ -1228,7 +1160,7 @@ namespace Microsoft.Boogie {
           if (ps.ConfirmArgumentCount(0)) {
             ExtractLoops = true;
           }
-          return true;  
+          return true;
 
         case "deterministicExtractLoops":
           if (ps.ConfirmArgumentCount(0)) {
@@ -1502,7 +1434,7 @@ namespace Microsoft.Boogie {
         case "traceCaching":
           ps.GetNumericArgument(ref TraceCaching, 4);
           return true;
-		
+
         case "platform":
           if (ps.ConfirmArgumentCount(1)) {
             StringCollection platformOptions = this.ParseNamedArgumentList(args[ps.i]);
@@ -1563,9 +1495,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
-              ps.CheckBooleanFlag("weakArrayTheory", ref WeakArrayTheory) || 
+              ps.CheckBooleanFlag("weakArrayTheory", ref WeakArrayTheory) ||
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
-              ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false) ||
               ps.CheckBooleanFlag("runDiagnosticsOnTimeout", ref RunDiagnosticsOnTimeout) ||
               ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", ref TraceDiagnosticsOnTimeout) ||
               ps.CheckBooleanFlag("boolControlVC", ref SIBoolControlVC, true) ||
@@ -1597,7 +1528,6 @@ namespace Microsoft.Boogie {
 
     public override void ApplyDefaultOptions() {
       Contract.Ensures(TheProverFactory != null);
-      Contract.Ensures(vcVariety != VCVariety.Unspecified);
 
       base.ApplyDefaultOptions();
 
@@ -1617,17 +1547,8 @@ namespace Microsoft.Boogie {
         TheProverFactory = ProverFactory.Load(ProverDllName);
       }
 
-      var proverOpts = TheProverFactory.BlankProverOptions();
-      proverOpts.Parse(ProverOptions);
       if (ProverHelpRequested) {
-        Console.WriteLine(proverOpts.Help);
-      }
-      if (!TheProverFactory.SupportsLabels(proverOpts)) {
-        UseLabels = false;
-      }
-
-      if (vcVariety == VCVariety.Unspecified) {
-        vcVariety = TheProverFactory.DefaultVCVariety;
+        Console.WriteLine(TheProverFactory.BlankProverOptions().Help);
       }
 
       if (UseArrayTheory) {
@@ -1853,7 +1774,7 @@ namespace Microsoft.Boogie {
                          expressions into templates with holes. By default, holes
                          are maximally large subexpressions that do not contain
                          bound variables. This option performs a form of lambda
-                         lifting in which holes are the lambda's free variables. 
+                         lifting in which holes are the lambda's free variables.
 
   /overlookTypeErrors : skip any implementation with resolution or type
                         checking errors
@@ -1961,7 +1882,7 @@ namespace Microsoft.Boogie {
                 3 - use the more advanced caching and report errors according
                     to the new source locations for errors and their
                     related locations (but not /errorTrace and CaptureState
-                    locations) 
+                    locations)
   /traceCaching:<n>
                 0 (default) - none
                 1 - for testing
@@ -1975,12 +1896,6 @@ namespace Microsoft.Boogie {
   /coalesceBlocks:<c>
                 0 = do not coalesce blocks
                 1 = coalesce blocks (default)
-  /vc:<variety> n = nested block,
-                m = nested block reach,
-                b = flat block, r = flat block reach,
-                s = structured, l = local,
-                d = dag (default)
-                doomed = doomed
   /traceverify  print debug output during verification condition generation
   /subsumption:<c>
                 apply subsumption to asserted conditions:
@@ -2025,7 +1940,7 @@ namespace Microsoft.Boogie {
                    p = predicates (default)
                    a = arguments
                    m = monomorphic
-  /monomorphize   
+  /monomorphize
                 Do not abstract map types in the encoding (this is an
                 experimental feature that will not do the right thing if
                 the program uses polymorphism)
@@ -2065,7 +1980,7 @@ namespace Microsoft.Boogie {
   /vcsPathCostMult:<f1>
   /vcsAssumeMult:<f2>
                 The cost of a block is
-                    (<assert-cost> + <f2>*<assume-cost>) * 
+                    (<assert-cost> + <f2>*<assume-cost>) *
                     (1.0 + <f1>*<entering-paths>)
                 <f1> defaults to 1.0, <f2> defaults to 0.01.
                 The cost of a single assertion or assumption is

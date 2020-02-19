@@ -1359,14 +1359,7 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return CastArgumentsToOldType(node, bindings, 0);
     }
-    public override VCExpr VisitLabelOp(VCExprNAry node, VariableBindings bindings) {
-      Contract.Requires((bindings != null));
-      Contract.Requires((node != null));
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-      // argument of the label operator should always be a formula
-      // (at least for Simplify ... should this be ensured at a later point?)
-      return CastArguments(node, Type.Bool, bindings, Eraser.Polarity);
-    }
+    
     public override VCExpr VisitIfThenElseOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
