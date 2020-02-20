@@ -764,6 +764,9 @@ namespace Microsoft.Boogie {
       }
     }
 
+    // Note that procsToCheck stores all patterns <p> supplied with /proc:<p>
+    // (and similarly procsToIgnore for /noProc:<p>). Thus, if procsToCheck
+    // is empty it means that all procedures should be checked.
     private List<string/*!*/> procsToCheck = new List<string/*!*/>();
     private List<string/*!*/> procsToIgnore = new List<string/*!*/>();
 
