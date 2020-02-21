@@ -399,14 +399,6 @@ namespace Microsoft.Boogie.VCExprAST {
           BinaryOperator oper = (BinaryOperator)node.Fun;
           if (oper.Op == BinaryOperator.Opcode.Imp)
               flipContextForArg0 = true;
-          else if (oper.Op == BinaryOperator.Opcode.Iff) {
-              Expr one = new NAryExpr(node.tok, new BinaryOperator(node.tok, BinaryOperator.Opcode.Imp), new List<Expr> { node.Args[0], node.Args[1] });
-              Expr two = new NAryExpr(node.tok, new BinaryOperator(node.tok, BinaryOperator.Opcode.Imp), new List<Expr> { node.Args[1], node.Args[0] });
-              NAryExpr cmpd = new NAryExpr(node.tok, new BinaryOperator(node.tok, BinaryOperator.Opcode.And), new List<Expr> { one, two });
-              TypecheckingContext tc = new TypecheckingContext(null);
-              cmpd.Typecheck(tc);
-              return TranslateNAryExpr(cmpd);
-          }
       }
 
       int n = node.Args.Count;
