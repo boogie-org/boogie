@@ -764,18 +764,16 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public IEnumerable<string/*!*/> ProcsToCheck {
-      get {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<string/*!*/>>(), true));
-        return this.procsToCheck != null ? this.procsToCheck.AsEnumerable() : null;
-      }
-    }
-
-    private List<string/*!*/> procsToCheck = null;  // null means "no restriction"
+    // Note that procsToCheck stores all patterns <p> supplied with /proc:<p>
+    // (and similarly procsToIgnore for /noProc:<p>). Thus, if procsToCheck
+    // is empty it means that all procedures should be checked.
+    private List<string/*!*/> procsToCheck = new List<string/*!*/>();
+    private List<string/*!*/> procsToIgnore = new List<string/*!*/>();
 
     [ContractInvariantMethod]
     void ObjectInvariant5() {
       Contract.Invariant(cce.NonNullElements(this.procsToCheck, true));
+      Contract.Invariant(cce.NonNullElements(this.procsToIgnore, true));
       Contract.Invariant(Ai != null);
     }
 
@@ -849,11 +847,14 @@ namespace Microsoft.Boogie {
           return true;
 
         case "proc":
-          if (this.procsToCheck == null) {
-            this.procsToCheck = new List<string/*!*/>();
-          }
           if (ps.ConfirmArgumentCount(1)) {
             this.procsToCheck.Add(cce.NonNull(args[ps.i]));
+          }
+          return true;
+
+        case "noProc":
+          if (ps.ConfirmArgumentCount(1)) {
+            this.procsToIgnore.Add(cce.NonNull(args[ps.i]));
           }
           return true;
 
@@ -1580,11 +1581,8 @@ namespace Microsoft.Boogie {
 
     public bool UserWantsToCheckRoutine(string methodFullname) {
       Contract.Requires(methodFullname != null);
-      if (ProcsToCheck == null) {
-        // no preference
-        return true;
-      }
-      return ProcsToCheck.Any(s => Regex.IsMatch(methodFullname, "^" + Regex.Escape(s).Replace(@"\*", ".*") + "$"));
+      Func<string, bool> match = s => Regex.IsMatch(methodFullname, "^" + Regex.Escape(s).Replace(@"\*", ".*") + "$");
+      return (procsToCheck.Count == 0 || procsToCheck.Any(match)) && !procsToIgnore.Any(match);
     }
 
     public virtual StringCollection ParseNamedArgumentList(string argList) {
@@ -1749,13 +1747,11 @@ namespace Microsoft.Boogie {
 
   /proc:<p>      : Only check procedures matched by pattern <p>. This option
                    may be specified multiple times to match multiple patterns.
-                   The pattern <p> matches the whole procedure name (i.e.
-                   pattern ""foo"" will only match a procedure called foo and
-                   not fooBar). The pattern <p> may contain * wildcards which
-                   match any character zero or more times. For example the
-                   pattern ""ab*d"" would match abd, abcd and abccd but not
-                   Aabd nor abdD. The pattern ""*ab*d*"" would match abd,
-                   abcd, abccd, Abd and abdD.
+                   The pattern <p> matches the whole procedure name and may
+                   contain * wildcards which match any character zero or more
+                   times.
+  /noProc:<p>    : Do not check procedures matched by pattern <p>. Exclusions
+                   with /noProc are applied after inclusions with /proc.
   /noResolve     : parse only
   /noTypecheck   : parse and resolve only
 
