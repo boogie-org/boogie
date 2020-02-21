@@ -8,8 +8,8 @@ function {:define} foo2(x:int) returns(int)
   { x + 1 }
 
 procedure test(x:int) returns (r:int)
-requires x > 0;
-ensures r > 0;
+  requires x > 0;
+  ensures r > 0;
 {
   if (foo(x)) {
     r := foo2(x);
