@@ -6,7 +6,7 @@ type {:datatype} Value;
 function {:constructor} Integer(i: int): Value;
 function {:constructor} Vector(v: ValueArray): Value;
 
-type {:builtindecl ""} {:builtin "(Seq T@Value)"} ValueSeq;
+type {:builtin "(Seq T@Value)"} ValueSeq;
 function {:builtin "(as seq.empty (Seq T@Value))"} EmptyValueSeq(): ValueSeq;
 function {:builtin "seq.len"} ValueSeqLen(a: ValueSeq): int;
 function {:builtin "seq.++"} ValueSeqConcat(a: ValueSeq, b:ValueSeq): ValueSeq;

@@ -1,7 +1,7 @@
 // RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:builtindecl ""} {:builtin "(Seq Int)"} IntSeq;
+type {:builtin "(Seq Int)"} IntSeq;
 function {:builtin "(as seq.empty (Seq Int))"} EmptyIntSeq(): IntSeq;
 function {:builtin "seq.len"} IntSeqLen(s: IntSeq): int;
 function {:builtin "seq.++"} IntSeqConcat(s1: IntSeq, s2:IntSeq): IntSeq;

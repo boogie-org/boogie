@@ -304,10 +304,9 @@ void ObjectInvariant()
 
       CtorType ctorType = type as CtorType;
       if (ctorType != null) {
-        // Check for user-specified alternate declaration and use it if there is one.
-        string decl = ctorType.GetBuiltinDecl();
+        // Check if this is a built-in type.  If so, no declaration is needed.
+        string decl = ctorType.GetBuiltin();
 	if (decl != null) {
-	  AddDeclaration(decl);
 	  KnownTypes.Add(type);
 	  return;
 	}

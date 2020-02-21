@@ -3238,9 +3238,10 @@ Contract.Requires(that != null);
       return QKeyValue.FindBoolAttribute(Decl.Attributes, "datatype");
     }
 
-    // This attribute is used to provide a user-specified SMT-LIB declaration for the type.
-    public string GetBuiltinDecl() {
-      return this.Decl.FindStringAttribute("builtindecl");
+    // This attribute is used to tell Boogie that this type is built into SMT-LIB and should
+    // be represented using the provided string (and also does not need to be explicitly declared).
+    public string GetBuiltin() {
+      return this.Decl.FindStringAttribute("builtin");
     }
 
     // This attribute can be used to tell Boogie that a datatype depends on another datatype
@@ -3396,7 +3397,7 @@ Contract.Requires(that != null);
       //Contract.Requires(stream != null);
       stream.SetToken(this);
       // If this type has a "builtin" attribute, use the corresponding user-provided string to represent the type.
-      string builtin = this.Decl.FindStringAttribute("builtin");
+      string builtin = GetBuiltin();
       if (builtin != null) {
         stream.Write(builtin);
       } else {
