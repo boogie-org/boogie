@@ -3238,6 +3238,19 @@ Contract.Requires(that != null);
       return QKeyValue.FindBoolAttribute(Decl.Attributes, "datatype");
     }
 
+    // This attribute is used to tell Boogie that this type is built into SMT-LIB and should
+    // be represented using the provided string (and also does not need to be explicitly declared).
+    public string GetBuiltin() {
+      return this.Decl.FindStringAttribute("builtin");
+    }
+
+    // This attribute can be used to tell Boogie that a datatype depends on another datatype
+    // in case Boogie can't figure this out itself (as may happen, for example when a type
+    // has the ":builtin" attribute).
+    public string GetTypeDependency() {
+      return this.Decl.FindStringAttribute("dependson");
+    }
+
     //-----------  Cloning  ----------------------------------
     // We implement our own clone-method, because bound type variables
     // have to be created in the right way. It is /not/ ok to just clone
@@ -3383,7 +3396,13 @@ Contract.Requires(that != null);
     public override void Emit(TokenTextWriter stream, int contextBindingStrength) {
       //Contract.Requires(stream != null);
       stream.SetToken(this);
-      EmitCtorType(this.Decl.Name, Arguments, stream, contextBindingStrength);
+      // If this type has a "builtin" attribute, use the corresponding user-provided string to represent the type.
+      string builtin = GetBuiltin();
+      if (builtin != null) {
+        stream.Write(builtin);
+      } else {
+        EmitCtorType(this.Decl.Name, Arguments, stream, contextBindingStrength);
+      }
     }
 
     internal static void EmitCtorType(string name, List<Type> args, TokenTextWriter stream, int contextBindingStrength) {
