@@ -663,13 +663,13 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Quantify(Quantifier.EX, typeParams, vars, triggers, infos, body);
     }
-    public VCExpr Exists(List<VCExprVar/*!*/>/*!*/ vars, List<VCTrigger/*!*/>/*!*/ triggers, VCExpr body, bool isFuncDef = false) {
+    public VCExpr Exists(List<VCExprVar/*!*/>/*!*/ vars, List<VCTrigger/*!*/>/*!*/ triggers, VCExpr body) {
       Contract.Requires(body != null);
       Contract.Requires(cce.NonNullElements(triggers));
       Contract.Requires(cce.NonNullElements(vars));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Quantify(Quantifier.EX, new List<TypeVariable/*!*/>(), vars,
-                      triggers, new VCQuantifierInfos(null, -1, false, isFuncDef, null), body);
+                      triggers, new VCQuantifierInfos(null, -1, false, false, null), body);
     }
     public VCExpr Exists(VCExprVar var, VCTrigger trigger, VCExpr body) {
       Contract.Requires(body != null);

@@ -33,14 +33,12 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     public List<Function> Collect(VCExpr expr) {
-      Contract.Requires(expr != null);
       functionList = new List<Function>();
       Traverse(expr, true);
       return functionList;
     }
 
     public override bool Visit(VCExprNAry node, bool arg) {
-      Contract.Requires(node != null);
       VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
       if (op != null) {
         functionList.Add(op.Func);
@@ -250,7 +248,7 @@ namespace Microsoft.Boogie.SMTLib
         }
     }
 
-    protected Function IsFunctionDef(VCExpr expr)
+    protected Function AsFunctionDef(VCExpr expr)
     {
       // If this expr is a function definition, return the function object.
       var quan = expr as VCExprQuantifier;
@@ -361,8 +359,9 @@ namespace Microsoft.Boogie.SMTLib
             SendCommon("(declare-datatypes (" + datatypesString + ") (" + datatypeConstructorsString + "))");
           }
         }
-        if (CommandLineOptions.Clo.ProverPreamble != null)
-            SendCommon("(include \"" + CommandLineOptions.Clo.ProverPreamble + "\")");
+        if (CommandLineOptions.Clo.ProverPreamble != null) {
+          SendCommon("(include \"" + CommandLineOptions.Clo.ProverPreamble + "\")");
+        }
       }
 
       if (!AxiomsAreSetup)
@@ -370,12 +369,13 @@ namespace Microsoft.Boogie.SMTLib
         var axioms = ctx.Axioms;
         var nary = axioms as VCExprNAry;
 	List<VCExpr> axiomList = new List<VCExpr>();
-        if (nary != null && nary.Op == VCExpressionGenerator.AndOp)
+        if (nary != null && nary.Op == VCExpressionGenerator.AndOp) {
           foreach (var expr in nary.UniformArguments) {
             axiomList.Add(expr);
           }
-        else
+        } else {
           axiomList.Add(axioms);
+        }
 
         // Separate function definitions from other axioms.  Function definitions must be processed
         // first; otherwise, processing an axiom that uses the function definition can create a declaration
@@ -384,7 +384,7 @@ namespace Microsoft.Boogie.SMTLib
         Stack<Function> functionDefs = new Stack<Function>();
         Stack<VCExpr> otherAxioms = new Stack<VCExpr>();
         for (int i = axiomList.Count-1; i >= 0; i--) {
-          Function f = IsFunctionDef(axiomList[i]);
+          Function f = AsFunctionDef(axiomList[i]);
           if (f != null) {
             // Add as a known function to DeclCollector so that it's not declared later.
             DeclCollector.AddFunction(f);
@@ -440,8 +440,9 @@ namespace Microsoft.Boogie.SMTLib
         while (otherAxioms.Count > 0) {
           VCExpr expr = otherAxioms.Pop();
           var str = VCExpr2String(expr, -1);
-          if (str != "true")
+          if (str != "true") {
             AddAxiom(str);
+          }
         }
         AxiomsAreSetup = true;
         CachedAxBuilder = AxBuilder;
@@ -469,10 +470,11 @@ namespace Microsoft.Boogie.SMTLib
       TypeDecls.Clear();
       foreach (string s in Axioms) {
         Contract.Assert(s != null);
-	if (s.StartsWith("(define-fun"))
+	if (s.StartsWith("(define-fun")) {
 	  SendCommon(s);
-        else if (s != "true")
+        } else if (s != "true") {
           SendCommon("(assert " + s + ")");
+        }
       }
       Axioms.Clear();
       //FlushPushedAssertions();

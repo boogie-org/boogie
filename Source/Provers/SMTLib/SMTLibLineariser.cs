@@ -333,15 +333,15 @@ namespace Microsoft.Boogie.SMTLib
 
         VCQuantifierInfos infos = node.Infos;
         if (infos.isFunctionDefinition) {
-	  wr.Write("(define-fun ");
-	  var naryExpr = node.Body as VCExprNAry;
-	  Contract.Assert(naryExpr != null);
-	  var funCall = naryExpr[0] as VCExprNAry;
-	  Contract.Assert(funCall != null);
-	  VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)funCall.Op;
+          wr.Write("(define-fun ");
+          var naryExpr = node.Body as VCExprNAry;
+          Contract.Assert(naryExpr != null);
+          var funCall = naryExpr[0] as VCExprNAry;
+          Contract.Assert(funCall != null);
+          VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)funCall.Op;
           Contract.Assert(op != null);
           wr.Write(Namer.GetQuotedName(op.Func, op.Func.Name));
-	  wr.Write(" (");
+          wr.Write(" (");
         } else {
           string kind = node.Quan == Quantifier.ALL ? "forall" : "exists";
           wr.Write("({0} (", kind);
@@ -357,14 +357,14 @@ namespace Microsoft.Boogie.SMTLib
 
         wr.Write(") ");
 
-	if (infos.isFunctionDefinition) {
-	  var naryExpr = node.Body as VCExprNAry;
-	  Contract.Assert(naryExpr != null);
-	  wr.Write(" {0} ", TypeToString(naryExpr[0].Type));
+        if (infos.isFunctionDefinition) {
+          var naryExpr = node.Body as VCExprNAry;
+          Contract.Assert(naryExpr != null);
+          wr.Write(" {0} ", TypeToString(naryExpr[0].Type));
           Linearise(naryExpr[1], options);
           wr.Write(")");
-	  return true;
-	}
+          return true;
+        }
 
         var weight = QKeyValue.FindIntAttribute(infos.attributes, "weight", 1);
         if (!ProverOptions.UseWeights)
