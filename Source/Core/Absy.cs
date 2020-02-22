@@ -1527,7 +1527,6 @@ namespace Microsoft.Boogie {
 
   public class Axiom : Declaration {
     private Expr/*!*/ expression;
-    public bool IsFunctionDefinition;
 
     public Expr Expr {
       get {
@@ -1558,7 +1557,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
       this.expression = expr;
-      this.IsFunctionDefinition = false;
       Comment = comment;
     }
 
