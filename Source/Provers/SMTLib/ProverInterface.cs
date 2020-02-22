@@ -368,7 +368,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         var axioms = ctx.Axioms;
         var nary = axioms as VCExprNAry;
-	List<VCExpr> axiomList = new List<VCExpr>();
+        List<VCExpr> axiomList = new List<VCExpr>();
         if (nary != null && nary.Op == VCExpressionGenerator.AndOp) {
           foreach (var expr in nary.UniformArguments) {
             axiomList.Add(expr);
@@ -436,7 +436,7 @@ namespace Microsoft.Boogie.SMTLib
           }
         }
 
-	// Now process the rest of the axioms.
+        // Now process the rest of the axioms.
         while (otherAxioms.Count > 0) {
           VCExpr expr = otherAxioms.Pop();
           var str = VCExpr2String(expr, -1);
@@ -470,8 +470,8 @@ namespace Microsoft.Boogie.SMTLib
       TypeDecls.Clear();
       foreach (string s in Axioms) {
         Contract.Assert(s != null);
-	if (s.StartsWith("(define-fun")) {
-	  SendCommon(s);
+        if (s.StartsWith("(define-fun")) {
+          SendCommon(s);
         } else if (s != "true") {
           SendCommon("(assert " + s + ")");
         }
@@ -613,7 +613,7 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC("; did a full reset");
       }
     }
-	
+
 
 		
 		private string StripCruft(string name){
