@@ -67,7 +67,7 @@
     <Compile Include="YieldingProcDuplicator.cs" />
     <Compile Include="YieldTypeChecker.cs" />
     <Compile Include="CivlUtil.cs" />
-    <Compile Include="Witnesses.cs" />
+    <Compile Include="CommutativityHints.cs" />
     <Compile Include="CivlCoreTypes.cs" />
     <Compile Include="InductiveSequentialization.cs" />
     <Compile Include="PendingAsyncChecker.cs" />

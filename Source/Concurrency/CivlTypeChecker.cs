@@ -24,8 +24,7 @@ namespace Microsoft.Boogie
         public Dictionary<Procedure, AtomicAction> procToIsAbstraction;
         public Dictionary<Procedure, YieldingProc> procToYieldingProc;
         public Dictionary<Procedure, IntroductionProc> procToIntroductionProc;
-        public Dictionary<Tuple<AtomicAction, AtomicAction>,
-            List<WitnessFunction>> atomicActionPairToWitnessFunctions;
+        public CommutativityHints commutativityHints;
 
         public List<InductiveSequentialization> inductiveSequentializations;
 
@@ -55,8 +54,6 @@ namespace Microsoft.Boogie
             this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
             this.procToIntroductionProc = new Dictionary<Procedure, IntroductionProc>();
             this.implToPendingAsyncCollector = new Dictionary<Implementation, Variable>();
-            this.atomicActionPairToWitnessFunctions = new Dictionary<Tuple<AtomicAction, AtomicAction>,
-                List<WitnessFunction>>();
             this.inductiveSequentializations = new List<InductiveSequentialization>();
         }
 
@@ -91,7 +88,7 @@ namespace Microsoft.Boogie
 
             TypeCheckRefinementLayers();
 
-            TypeCheckWitnessFunctions();
+            TypeCheckCommutativityHints();
 
             AttributeEraser.Erase(this);
         }
@@ -129,21 +126,11 @@ namespace Microsoft.Boogie
 
         }
 
-        private void TypeCheckWitnessFunctions()
+        private void TypeCheckCommutativityHints()
         {
-            WitnessFunctionVisitor wfv = new WitnessFunctionVisitor(this);
-            wfv.VisitFunctions();
-            foreach (var witnessFunction in wfv.allWitnessFunctions)
-            {
-                var key = Tuple.Create(
-                    witnessFunction.firstAction,
-                    witnessFunction.secondAction);
-                if (!atomicActionPairToWitnessFunctions.ContainsKey(key))
-                {
-                    atomicActionPairToWitnessFunctions[key] = new List<WitnessFunction>();
-                }
-                atomicActionPairToWitnessFunctions[key].Add(witnessFunction);
-            }
+            CommutativityHintVisitor visitor = new CommutativityHintVisitor(this);
+            visitor.VisitFunctions();
+            this.commutativityHints = visitor.commutativityHints;
         }
 
         private void TypeCheckGlobalVariables()
@@ -891,6 +878,13 @@ namespace Microsoft.Boogie
         public AtomicAction FindIsAbstraction(string name)
         {
             return procToIsAbstraction.Values.FirstOrDefault(a => a.proc.Name == name);
+        }
+
+        public AtomicAction FindAtomicActionOrAbstraction(string name)
+        {
+            var action = FindAtomicAction(name);
+            if (action != null) return action;
+            return FindIsAbstraction(name);
         }
 
         public IEnumerable<AtomicAction> AllActions =>
