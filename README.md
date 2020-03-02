@@ -14,35 +14,27 @@ and the verifiers for [Dafny](https://github.com/dafny-lang/dafny),
 [Spec#](https://www.microsoft.com/en-us/research/project/spec).
 For a sample verifier for a toy language built on top of Boogie, see
 [Forro](https://github.com/boogie-org/forro).
-A previous version of the language was called BoogiePL. The current language
-(version 2) is currently known as just Boogie, which is also the name of the
-verification tool that takes Boogie programs as input.
 
 Boogie is also the name of a tool. The tool accepts the Boogie language as
 input, optionally infers some invariants in the given Boogie program, and then
 generates verification conditions that are passed to an SMT solver. The default
 SMT solver is [Z3](https://github.com/Z3Prover/z3).
 
-The Boogie research project is being developed primarily in the [RiSE
-group](http://research.microsoft.com/rise) at [Microsoft
-Research](http://research.microsoft.com/) in Redmond. However, people at
-several other institutions make the open-source Boogie tool what it is.
+## Documentation
 
-![boogie architecture](http://research.microsoft.com/en-us/projects/boogie/boogie.png)
+Here are some resources to learn more about Boogie. Be aware that some
+information might be incomplete or outdated.
 
-More documentation can be found at http://boogie-docs.readthedocs.org/en/latest/ .
+* [Documentation](https://boogie-docs.readthedocs.org/en/latest/)
+* [Language reference](https://boogie-docs.readthedocs.org/en/latest/LangRef.html).
+* [This is Boogie 2](https://research.microsoft.com/en-us/um/people/leino/papers/krml178.pdf)
+  details many aspects of the Boogie IVL but is slightly out of date.
 
-## Language Reference
+## Getting help and contribute
 
-See [Language reference](http://boogie-docs.readthedocs.org/en/latest/LangRef.html).
+You can ask questions and report issues on our [issue tracker](https://github.com/boogie-org/boogie/issues).
 
-Note: [This is Boogie2](http://research.microsoft.com/en-us/um/people/leino/papers/krml178.pdf) details
-many aspects of the Boogie IVL but is slightly out of date.
-
-## Getting help
-
-We have a public [mailing list](https://mailman.ic.ac.uk/mailman/listinfo/boogie-dev) for users of Boogie.
-You can also report issues on our [issue tracker](https://github.com/boogie-org/boogie/issues)
+We are happy to receive contributions via [pull requests](https://github.com/boogie-org/boogie/pulls).
 
 ## Installation
 
