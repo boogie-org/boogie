@@ -27,6 +27,8 @@ namespace Microsoft.Boogie
         public const string LINEAR_OUT = "linear_out";
 
         public const string BACKWARD = "backward";
+        public const string COMMUTATIVITY = "commutativity";
+        public const string LEMMA = "lemma";
         public const string WITNESS = "witness";
 
         public const string PENDING_ASYNC = "pending_async";
@@ -39,7 +41,8 @@ namespace Microsoft.Boogie
         public const string CHOICE = "choice";
 
         private static string[] CIVL_ATTRIBUTES =
-            {LAYER, YIELDS, ATOMIC, LEFT, RIGHT, BOTH, REFINES, WITNESS,
+            {LAYER, YIELDS, ATOMIC, LEFT, RIGHT, BOTH, REFINES,
+             COMMUTATIVITY, LEMMA, WITNESS,
              PENDING_ASYNC, IS, IS_INVARIANT, IS_ABSTRACTION, ELIM, CHOICE };
 
         private static string[] LINEAR_ATTRIBUTES =

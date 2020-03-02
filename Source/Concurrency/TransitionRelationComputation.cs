@@ -12,7 +12,7 @@ namespace Microsoft.Boogie
         private readonly Dictionary<Variable, Function> triggers;
         private readonly HashSet<Variable> frame;
         private readonly HashSet<Variable> allInParams, allOutParams, allLocVars;
-        private readonly Dictionary<Variable, List<WitnessFunction>> globalVarToWitnesses;
+        private readonly Dictionary<Variable, List<CommutativityWitness>> globalVarToWitnesses;
         private readonly bool ignorePostState;
 
         private readonly string messagePrefix;
@@ -36,7 +36,7 @@ namespace Microsoft.Boogie
 
         private TransitionRelationComputation(
             Implementation first, Implementation second,
-            IEnumerable<Variable> frame, List<WitnessFunction> witnesses, Dictionary<Variable, Function> triggers, bool ignorePostState,
+            IEnumerable<Variable> frame, IEnumerable<CommutativityWitness> witnesses, Dictionary<Variable, Function> triggers, bool ignorePostState,
             string messagePrefix)
         {
             this.first = first;
@@ -59,7 +59,7 @@ namespace Microsoft.Boogie
             this.checkingContext = new CheckingContext(null);
 
             this.pathTranslations = new List<Expr>();
-            this.globalVarToWitnesses = new Dictionary<Variable, List<WitnessFunction>>();
+            this.globalVarToWitnesses = new Dictionary<Variable, List<CommutativityWitness>>();
             if (witnesses != null)
             {
                 foreach (var witness in witnesses)
@@ -67,7 +67,7 @@ namespace Microsoft.Boogie
                     var gVar = witness.witnessedVariable;
                     if (!globalVarToWitnesses.ContainsKey(gVar))
                     {
-                        globalVarToWitnesses[gVar] = new List<WitnessFunction>();
+                        globalVarToWitnesses[gVar] = new List<CommutativityWitness>();
                     }
                     globalVarToWitnesses[gVar].Add(witness);
                 }
@@ -76,7 +76,7 @@ namespace Microsoft.Boogie
 
         private static Expr ComputeTransitionRelation(
             Implementation first, Implementation second,
-            IEnumerable<Variable> frame, Dictionary<Variable, Function> triggers, List<WitnessFunction> witnesses, bool ignorePostState,
+            IEnumerable<Variable> frame, Dictionary<Variable, Function> triggers, IEnumerable<CommutativityWitness> witnesses, bool ignorePostState,
             string messagePrefix)
         {
             var trc = new TransitionRelationComputation(first, second, frame, witnesses, triggers, ignorePostState, messagePrefix);
@@ -88,7 +88,7 @@ namespace Microsoft.Boogie
         }
 
         public static Expr Commutativity(AtomicAction first, AtomicAction second,
-            HashSet<Variable> frame, List<WitnessFunction> witnesses)
+            HashSet<Variable> frame, IEnumerable<CommutativityWitness> witnesses)
         {
             var triggers = first.triggerFunctions.Union(second.triggerFunctions).ToDictionary(kv => kv.Key, kv => kv.Value);
             return ComputeTransitionRelation(
@@ -484,7 +484,7 @@ namespace Microsoft.Boogie
             private void ComputeWitnessedTransitionRelationExprs()
             {
                 witnessedTransitionRelations = new List<Expr>();
-                Dictionary<Variable, List<WitnessFunction>> varToWitnesses = trc.FrameWithWitnesses.
+                Dictionary<Variable, List<CommutativityWitness>> varToWitnesses = trc.FrameWithWitnesses.
                     Where(x => NotEliminatedVars.Contains(frameIntermediateCopy[x])).
                     ToDictionary(
                         x => frameIntermediateCopy[x],
@@ -492,12 +492,12 @@ namespace Microsoft.Boogie
                 foreach (var witnessSet in varToWitnesses.Values.CartesianProduct())
                 {
                     Dictionary<Variable, Expr> witnessSubst = new Dictionary<Variable, Expr>();
-                    foreach (Tuple<Variable, WitnessFunction> pair in
+                    foreach (Tuple<Variable, CommutativityWitness> pair in
                         Enumerable.Zip(varToWitnesses.Keys, witnessSet, Tuple.Create))
                     {
-                        WitnessFunction witnessFunction = pair.Item2;
+                        CommutativityWitness witness = pair.Item2;
                         witnessSubst[pair.Item1] = ExprHelper.FunctionCall(
-                                witnessFunction.function, witnessFunction.args.ToArray()
+                                witness.function, witness.args.ToArray()
                             );
                     }
                     witnessedTransitionRelations.Add(

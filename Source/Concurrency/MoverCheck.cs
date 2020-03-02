@@ -147,8 +147,7 @@ namespace Microsoft.Boogie
             foreach (AssertCmd assertCmd in Enumerable.Union(first.firstGate, second.secondGate))
                 requires.Add(new Requires(false, assertCmd.Expr));
 
-            civlTypeChecker.atomicActionPairToWitnessFunctions.TryGetValue(
-                Tuple.Create(first, second), out List<WitnessFunction> witnesses);
+            var witnesses = civlTypeChecker.commutativityHints.GetWitnesses(first, second);
             var transitionRelation = TransitionRelationComputation.
                 Commutativity(second, first, frame, witnesses);
 
@@ -165,6 +164,10 @@ namespace Microsoft.Boogie
                         second.secondImpl.OutParams.Select(Expr.Ident).ToList()
                     ) { Proc = second.proc }
             };
+            foreach (var lemma in civlTypeChecker.commutativityHints.GetLemmas(first,second))
+            {
+                cmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(lemma.function, lemma.args.ToArray())));
+            }
             var block = new Block(Token.NoToken, "init", cmds, new ReturnCmd(Token.NoToken));
 
             var secondInParamsFiltered = second.secondImpl.InParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_IN);

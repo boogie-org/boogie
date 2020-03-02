@@ -1197,18 +1197,19 @@ function {:inline false} f(i: int): bool {  true  }
 
 
 function
-{:witness "shadow.VC","AtomicVC.Inc","AtomicVC.Copy"}
-{:witness "shadow.VC","AtomicVC.Inc","AtomicVC.Join"}
-{:witness "shadow.VC","AtomicVCSetElem","AtomicVC.Copy"}
-{:witness "shadow.VC","AtomicVCSetElem","AtomicVC.Join"}
-{:witness "shadow.VC","AtomicVCSetElemShared","AtomicVC.Copy"}
-{:witness "shadow.VC","AtomicVCSetElemShared","AtomicVC.Join"}
-{:witness "shadow.VC","AtomicVCInit","AtomicVC.Copy"}
-{:witness "shadow.VC","AtomicVCInit","AtomicVC.Join"}
-{:witness "shadow.VC","AtomicVC.Copy","AtomicVC.Copy"}
-{:witness "shadow.VC","AtomicVC.Copy","AtomicVC.Join"}
-{:witness "shadow.VC","AtomicVC.Join","AtomicVC.Copy"}
-{:witness "shadow.VC","AtomicVC.Join","AtomicVC.Join"}
+{:witness "shadow.VC"}
+{:commutativity "AtomicVC.Inc","AtomicVC.Copy"}
+{:commutativity "AtomicVC.Inc","AtomicVC.Join"}
+{:commutativity "AtomicVCSetElem","AtomicVC.Copy"}
+{:commutativity "AtomicVCSetElem","AtomicVC.Join"}
+{:commutativity "AtomicVCSetElemShared","AtomicVC.Copy"}
+{:commutativity "AtomicVCSetElemShared","AtomicVC.Join"}
+{:commutativity "AtomicVCInit","AtomicVC.Copy"}
+{:commutativity "AtomicVCInit","AtomicVC.Join"}
+{:commutativity "AtomicVC.Copy","AtomicVC.Copy"}
+{:commutativity "AtomicVC.Copy","AtomicVC.Join"}
+{:commutativity "AtomicVC.Join","AtomicVC.Copy"}
+{:commutativity "AtomicVC.Join","AtomicVC.Join"}
 witness (shadow.VC:[Shadowable]VC, shadow.VC':[Shadowable]VC, second_v1:Shadowable) : [Shadowable]VC
 {
    shadow.VC[second_v1 := shadow.VC'[second_v1]]
