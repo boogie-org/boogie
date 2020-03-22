@@ -487,10 +487,9 @@ namespace Microsoft.Boogie
         {
           PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
         }
-
-        LinearTypeChecker linearTypeChecker;
+        
         CivlTypeChecker civlTypeChecker;
-        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypeChecker, out civlTypeChecker);
+        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out civlTypeChecker);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
           return;
 
@@ -507,8 +506,7 @@ namespace Microsoft.Boogie
 
         if (CommandLineOptions.Clo.StratifiedInlining == 0)
         {
-          CivlVCGeneration.Transform(linearTypeChecker, civlTypeChecker);
-          linearTypeChecker.EraseLinearAnnotations();
+          CivlVCGeneration.Transform(civlTypeChecker);
           if (CommandLineOptions.Clo.CivlDesugaredFile != null)
           {
               int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
@@ -699,14 +697,12 @@ namespace Microsoft.Boogie
     ///  - TypeCheckingError if a type checking error occurred
     ///  - ResolvedAndTypeChecked if both resolution and type checking succeeded
     /// </summary>
-    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypeChecker linearTypeChecker, out CivlTypeChecker civlTypeChecker)
+    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out CivlTypeChecker civlTypeChecker)
     {
       Contract.Requires(program != null);
       Contract.Requires(bplFileName != null);
-
-      linearTypeChecker = null;
+      
       civlTypeChecker = null;
-      YieldTypeChecker yieldTypeChecker = null;
 
       // ---------- Resolve ------------------------------------------------------------
 
@@ -749,26 +745,6 @@ namespace Microsoft.Boogie
       {
           Console.WriteLine("{0} type checking errors detected in {1}", civlTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(bplFileName));
           return PipelineOutcome.TypeCheckingError;
-      }
-
-      yieldTypeChecker = new YieldTypeChecker(civlTypeChecker);
-      yieldTypeChecker.TypeCheck();
-      if (yieldTypeChecker.checkingContext.ErrorCount != 0)
-      {
-          Console.WriteLine("{0} type checking errors detected in {1}", yieldTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(bplFileName));
-          return PipelineOutcome.TypeCheckingError;
-      }
-
-      linearTypeChecker = new LinearTypeChecker(program, civlTypeChecker);
-      linearTypeChecker.TypeCheck();
-      if (linearTypeChecker.checkingContext.ErrorCount == 0)
-      {
-        linearTypeChecker.Transform();
-      }
-      else
-      {
-        Console.WriteLine("{0} type checking errors detected in {1}", linearTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(bplFileName));
-        return PipelineOutcome.TypeCheckingError;
       }
 
       if (CommandLineOptions.Clo.PrintFile != null && CommandLineOptions.Clo.PrintDesugarings)
@@ -1376,9 +1352,8 @@ namespace Microsoft.Boogie
     public static Program ProgramFromFile(string filename) {
       Program p = ParseBoogieProgram(new List<string> { filename }, false);
       System.Diagnostics.Debug.Assert(p != null);
-      LinearTypeChecker linearTypeChecker;
       CivlTypeChecker civlTypeChecker;
-      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out linearTypeChecker, out civlTypeChecker);
+      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out civlTypeChecker);
       System.Diagnostics.Debug.Assert(oc == PipelineOutcome.ResolvedAndTypeChecked);
       return p;
     }

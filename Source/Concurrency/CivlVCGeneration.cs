@@ -5,8 +5,9 @@ namespace Microsoft.Boogie
 {
     public class CivlVCGeneration
     {
-        public static void Transform(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker)
+        public static void Transform(CivlTypeChecker civlTypeChecker)
         {
+            var linearTypeChecker = civlTypeChecker.linearTypeChecker;
             Program program = linearTypeChecker.program;
 
             // Store the original declarations of yielding procedures, which will be removed after desugaring below.
@@ -40,6 +41,7 @@ namespace Microsoft.Boogie
             program.AddTopLevelDeclarations(decls);
 
             BackwardAssignmentSubstituter.SubstituteBackwardAssignments(civlTypeChecker.procToAtomicAction.Values);
+            linearTypeChecker.EraseLinearAnnotations();
         }
     }
 }

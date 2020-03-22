@@ -86,7 +86,7 @@ namespace Microsoft.Boogie
         public YieldTypeChecker(CivlTypeChecker civlTypeChecker)
         {
             this.civlTypeChecker = civlTypeChecker;
-            this.checkingContext = new CheckingContext(null);
+            this.checkingContext = civlTypeChecker.checkingContext;
             this.moverProcedureCallGraph = new Graph<MoverProc>();
         }
 

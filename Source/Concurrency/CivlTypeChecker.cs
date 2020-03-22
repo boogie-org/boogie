@@ -40,6 +40,8 @@ namespace Microsoft.Boogie
         public List<GlobalVariable> sharedVariables;
         public List<IdentifierExpr> sharedVariableIdentifiers;
 
+        public LinearTypeChecker linearTypeChecker;
+        
         public CivlTypeChecker(Program program)
         {
             this.checkingContext = new CheckingContext(null);
@@ -91,6 +93,24 @@ namespace Microsoft.Boogie
             TypeCheckCommutativityHints();
 
             AttributeEraser.Erase(this);
+
+            if (checkingContext.ErrorCount > 0)
+                return;
+
+            var yieldTypeChecker = new YieldTypeChecker(this);
+            yieldTypeChecker.TypeCheck();
+            if (checkingContext.ErrorCount > 0)
+            {
+                return;
+            }
+
+            linearTypeChecker = new LinearTypeChecker(this);
+            linearTypeChecker.TypeCheck();
+            if (checkingContext.ErrorCount > 0)
+            {
+                return;
+            }
+            linearTypeChecker.Transform();
         }
 
         private void TypeCheckRefinementLayers()

@@ -308,11 +308,11 @@ namespace Microsoft.Boogie
         private Dictionary<string, Dictionary<Type, Function>> domainNameToCollectors;
         private Dictionary<Variable, string> varToDomainName;
 
-        public LinearTypeChecker(Program program, CivlTypeChecker ctc)
+        public LinearTypeChecker(CivlTypeChecker ctc)
         {
-            this.program = program;
             this.ctc = ctc;
-            this.checkingContext = new CheckingContext(null);
+            this.program = ctc.program;
+            this.checkingContext = ctc.checkingContext;
             this.domainNameToCollectors = new Dictionary<string, Dictionary<Type, Function>>();
             this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
             this.inParamToLinearQualifier = new Dictionary<Variable, LinearQualifier>();
