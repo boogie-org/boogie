@@ -269,7 +269,11 @@ namespace Microsoft.Boogie
 
                     if (yieldingProc is ActionProc actionProc && !call.HasAttribute(CivlAttributes.SYNC) && yieldingProc.upperLayer <= layerNum)
                     {
-                        if (layerNum != enclosingYieldingProc.upperLayer) return;
+                        if (yieldingProc.upperLayer == layerNum)
+                        {
+                            newCmdSeq.Add(newCall);
+                        }
+                        if (!IsRefinementLayer) return;
                         if (SummaryHasPendingAsyncParam)
                         {
                             AtomicAction paAction;
