@@ -156,8 +156,7 @@ namespace Microsoft.Boogie
 
         private Ensures GetEnsures(Expr expr)
         {
-            // expr.Resolve(new ResolutionContext(null) { StateMode = ResolutionContext.State.Two });
-            expr.Typecheck(new TypecheckingContext(null)); // TODO: why here?
+            expr.Typecheck(new TypecheckingContext(null));
             return new Ensures(false, expr)
             { ErrorData = $"IS {checkName} of {inputAction.proc.Name} failed" };
         }
@@ -208,7 +207,7 @@ namespace Microsoft.Boogie
                 var paBound = VarHelper.BoundVariable("pa", PendingAsyncType);
                 var pa = Expr.Ident(paBound);
                 var expr = Expr.Eq(Expr.Select(PAs, pa), Expr.Literal(0));
-                expr.Typecheck(new TypecheckingContext(null));  // TODO: why here?
+                expr.Typecheck(new TypecheckingContext(null));
                 return new ForallExpr(Token.NoToken, new List<Variable> { paBound }, expr);
             }
         }
@@ -222,7 +221,7 @@ namespace Microsoft.Boogie
                 var expr = Expr.Imp(
                     Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0)),
                     Expr.And(elim.Keys.Select(a => Expr.Not(ExprHelper.FunctionCall(a.pendingAsyncCtor.membership, pa)))));
-                expr.Typecheck(new TypecheckingContext(null));  // TODO: why here?
+                expr.Typecheck(new TypecheckingContext(null));
                 return new ForallExpr(Token.NoToken, new List<Variable> { paBound }, expr);
             }
         }

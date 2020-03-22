@@ -1,0 +1,13 @@
+(0,0): Error BP5003: A postcondition might not hold on this return path.
+(0,0): Related location: Action C might create undeclared pending asyncs
+Execution trace:
+    pending-async-2.bpl(19,29): inline$C$0$Entry
+    pending-async-2.bpl(22,7): inline$C$0$anon0
+    pending-async-2.bpl(19,29): inline$C$0$Return
+(0,0): Error BP5003: A postcondition might not hold on this return path.
+(0,0): Related location: Action D might create negative pending asyncs
+Execution trace:
+    pending-async-2.bpl(25,29): inline$D$0$Entry
+    pending-async-2.bpl(25,29): inline$D$0$Return
+
+Boogie program verifier finished with 0 verified, 2 errors

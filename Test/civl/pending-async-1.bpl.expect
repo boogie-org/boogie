@@ -1,0 +1,18 @@
+(0,0): Error: Failed to execute atomic action before procedure return
+Execution trace:
+    pending-async-1.bpl(52,3): anon0
+    pending-async-1.bpl(52,3): anon0_1
+    pending-async-1.bpl(16,7): inline$B$0$anon0
+    pending-async-1.bpl(52,3): anon0_1$1
+    pending-async-1.bpl(16,7): inline$B$1$anon0
+    pending-async-1.bpl(52,3): anon0_1$2
+    pending-async-1.bpl(52,3): anon0_0
+pending-async-1.bpl(69,3): Error: Pending asyncs created by this call are not summarized
+Execution trace:
+    pending-async-1.bpl(68,3): anon0
+    pending-async-1.bpl(68,3): anon0_1
+    pending-async-1.bpl(21,7): inline$C$0$anon0
+    pending-async-1.bpl(23,9): inline$C$0$anon2_Then
+    pending-async-1.bpl(68,3): anon0_1$1
+
+Boogie program verifier finished with 14 verified, 2 errors

@@ -144,7 +144,7 @@ namespace Microsoft.Boogie
                 var pa = Expr.Ident(paBound);
                 var expr = Expr.Eq(Expr.Select(Expr.Ident(CollectedPAs), pa), Expr.Literal(0));
                 var forallExpr = new ForallExpr(Token.NoToken, new List<Variable> { paBound }, expr);
-                forallExpr.Typecheck(new TypecheckingContext(null));  // TODO: why here?
+                forallExpr.Typecheck(new TypecheckingContext(null));
                 newImpl.Blocks.First().Cmds.Insert(0, CmdHelper.AssumeCmd(forallExpr));
 
                 if (!impl.LocVars.Contains(CollectedPAs))
@@ -228,7 +228,7 @@ namespace Microsoft.Boogie
             {
                 if (returnedPAs == null)
                     returnedPAs = VarHelper.LocalVariable("returnedPAs", civlTypeChecker.pendingAsyncMultisetType);
-                return ReturnedPAs;
+                return returnedPAs;
             }
         }
 
@@ -295,27 +295,28 @@ namespace Microsoft.Boogie
             }
 
             newCmdSeq.Add(newCall);
-            if (call.Outs.Count < newCall.Outs.Count)
+
+            // Inject pending async collection
+            if (newCall.Outs.Count != newCall.Proc.OutParams.Count)
             {
+                Debug.Assert(newCall.Outs.Count == newCall.Proc.OutParams.Count - 1);
                 newCall.Outs.Add(Expr.Ident(ReturnedPAs));
-                if (IsRefinementLayer)
+                if (!IsRefinementLayer) return;
+                if (SummaryHasPendingAsyncParam)
                 {
-                    if (SummaryHasPendingAsyncParam)
-                    {
-                        var collectedUnionReturned = ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncAdd, Expr.Ident(CollectedPAs), Expr.Ident(ReturnedPAs));
-                        newCmdSeq.Add(CmdHelper.AssignCmd(CollectedPAs, collectedUnionReturned));
-                    }
-                    else
-                    {
-                        // TODO: As above, this was copied from InductiveSequentialization property NoPendingAsyncs.
-                        // Unify pending async stuff in something like PendingAsyncInstrumentation?
-                        var paBound = VarHelper.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
-                        var pa = Expr.Ident(paBound);
-                        var expr = Expr.Eq(Expr.Select(Expr.Ident(ReturnedPAs), pa), Expr.Literal(0));
-                        var forallExpr = new ForallExpr(Token.NoToken, new List<Variable> { paBound }, expr);
-                        forallExpr.Typecheck(new TypecheckingContext(null));  // TODO: why here?
-                        newCmdSeq.Add(new AssertCmd(call.tok, forallExpr) { ErrorData = "Pending asyncs created by this call are not summarized" });
-                    }
+                    var collectedUnionReturned = ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncAdd, Expr.Ident(CollectedPAs), Expr.Ident(ReturnedPAs));
+                    newCmdSeq.Add(CmdHelper.AssignCmd(CollectedPAs, collectedUnionReturned));
+                }
+                else
+                {
+                    // TODO: As above, this was copied from InductiveSequentialization property NoPendingAsyncs.
+                    // Unify pending async stuff in something like PendingAsyncInstrumentation?
+                    var paBound = VarHelper.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
+                    var pa = Expr.Ident(paBound);
+                    var expr = Expr.Eq(Expr.Select(Expr.Ident(ReturnedPAs), pa), Expr.Literal(0));
+                    var forallExpr = new ForallExpr(Token.NoToken, new List<Variable> { paBound }, expr);
+                    forallExpr.Typecheck(new TypecheckingContext(null));
+                    newCmdSeq.Add(new AssertCmd(call.tok, forallExpr) { ErrorData = "Pending asyncs created by this call are not summarized" });
                 }
             }
         }
