@@ -384,10 +384,6 @@ namespace Microsoft.Boogie
                     else if (cmd is CallCmd callCmd && yieldingProcs.Contains(callCmd.Proc))
                     {
                         List<Cmd> newCmds = new List<Cmd>();
-                        if (!blocksInYieldingLoops.Contains(b))
-                        {
-                            newCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars());
-                        }
                         if (callCmd.IsAsync)
                         {
                             if (!asyncAndParallelCallDesugarings.ContainsKey(callCmd.Proc.Name))
@@ -406,15 +402,19 @@ namespace Microsoft.Boogie
                         }
                         else
                         {
+                            if (!blocksInYieldingLoops.Contains(b))
+                            {
+                                newCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars());
+                            }
                             newCmds.Add(callCmd);
                             if (civlTypeChecker.sharedVariables.Count > 0)
                             {
                                 newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
                             }
+                            newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
+                            newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
+                            newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(callCmd));
                         }
-                        newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
-                        newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
-                        newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(callCmd));
                         newCmds.AddRange(b.cmds.GetRange(1, b.cmds.Count - 1));
                         b.cmds = newCmds;
                     }
