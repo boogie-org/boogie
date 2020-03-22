@@ -14,19 +14,29 @@ namespace Microsoft.Boogie
             LinearTypeChecker linearTypeChecker,
             int layerNum,
             Dictionary<Absy, Absy> absyMap,
-            Dictionary<Implementation, Implementation> implMap,
             HashSet<Procedure> yieldingProcs)
         {
-            var yieldingProcInstrumentation = new YieldingProcInstrumentation(civlTypeChecker, linearTypeChecker, layerNum,
-                absyMap, implMap, yieldingProcs);
-            foreach (var kv in implMap)
+            var linearHelper = new LinearHelper(civlTypeChecker, linearTypeChecker, layerNum, absyMap);
+            var yieldingProcInstrumentation = new YieldingProcInstrumentation(
+                civlTypeChecker, 
+                linearTypeChecker, 
+                linearHelper,
+                layerNum,
+                absyMap,
+                yieldingProcs);
+            foreach (var impl in absyMap.Keys.OfType<Implementation>())
             {
-                var impl = kv.Value;
-                var newImpl = kv.Key;
-                var proc = civlTypeChecker.procToYieldingProc[impl.Proc];
+                // Add disjointness assumptions at beginning, loop headers, and after each call or parallel call.
+                // These are added for each duplicate implementation of yielding procedures.
+                // Disjointness assumptions after yields are added inside TransformImpl which is called for 
+                // all implementations except for a mover procedure at its disappearing layer.
+                // But this is fine because a mover procedure at its disappearing layer does not have a yield in it.
+                linearHelper.AddDisjointnessAssumptions(impl, yieldingProcs);
+                var originalImpl = absyMap[impl] as Implementation;
+                var proc = civlTypeChecker.procToYieldingProc[originalImpl.Proc];
                 if (!(proc is MoverProc && proc.upperLayer == layerNum))
                 {
-                    yieldingProcInstrumentation.TransformImpl(newImpl);
+                    yieldingProcInstrumentation.TransformImpl(originalImpl, impl);
                 }
             }
 
@@ -39,21 +49,36 @@ namespace Microsoft.Boogie
             decls.Add(yieldingProcInstrumentation.YieldImpl());
             return decls;
         }
+        
+        private CivlTypeChecker civlTypeChecker;
+        private LinearTypeChecker linearTypeChecker;
+        private int layerNum;
+        private Dictionary<Absy, Absy> absyMap;
+        private HashSet<Procedure> yieldingProcs;
 
+        private Dictionary<string, Procedure> parallelCallPreconditionCheckers;
+        private List<Declaration> yieldCheckerDecls;
+        private Procedure yieldProc;
+
+        private GlobalSnapshotInstrumentation globalSnapshotInstrumentation;
+        private RefinementInstrumentation refinementInstrumentation;
+        private LinearHelper linearHelper;
+        private NoninterferenceInstrumentation noninterferenceInstrumentation;
+        
         private YieldingProcInstrumentation(
             CivlTypeChecker civlTypeChecker,
             LinearTypeChecker linearTypeChecker,
+            LinearHelper linearHelper,
             int layerNum,
             Dictionary<Absy, Absy> absyMap,
-            Dictionary<Implementation, Implementation> implMap,
             HashSet<Procedure> yieldingProcs)
         {
             this.civlTypeChecker = civlTypeChecker;
             this.linearTypeChecker = linearTypeChecker;
             this.layerNum = layerNum;
             this.absyMap = absyMap;
-            this.implMap = implMap;
             this.yieldingProcs = yieldingProcs;
+            this.linearHelper = linearHelper;
             parallelCallPreconditionCheckers = new Dictionary<string, Procedure>();
             yieldCheckerDecls = new List<Declaration>();
 
@@ -72,21 +97,6 @@ namespace Microsoft.Boogie
                 inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
             CivlUtil.AddInlineAttribute(yieldProc);
         }
-
-        private CivlTypeChecker civlTypeChecker;
-        private LinearTypeChecker linearTypeChecker;
-        private int layerNum;
-        private Dictionary<Absy, Absy> absyMap;
-        private Dictionary<Implementation, Implementation> implMap;
-        private HashSet<Procedure> yieldingProcs;
-
-        private Dictionary<string, Procedure> parallelCallPreconditionCheckers;
-        private List<Declaration> yieldCheckerDecls;
-        private Procedure yieldProc;
-
-        private GlobalSnapshotInstrumentation globalSnapshotInstrumentation;
-        private RefinementInstrumentation refinementInstrumentation;
-        private NoninterferenceInstrumentation noninterferenceInstrumentation;
 
         private Implementation YieldImpl()
         {
@@ -115,7 +125,6 @@ namespace Microsoft.Boogie
                     {
                         exprSeq.Add(Expr.Ident(v));
                     }
-
                     CallCmd callCmd = new CallCmd(Token.NoToken, proc.Name, exprSeq, new List<IdentifierExpr>());
                     callCmd.Proc = proc;
                     string label = $"L_{labelCount++}";
@@ -144,13 +153,12 @@ namespace Microsoft.Boogie
                 new TypedIdent(Token.NoToken, $"og_global_old_{v.Name}", v.TypedIdent.Type), true);
         }
 
-        private void TransformImpl(Implementation impl)
+        private void TransformImpl(Implementation originalImpl, Implementation impl)
         {
             // initialize globalSnapshotInstrumentation
             globalSnapshotInstrumentation = new GlobalSnapshotInstrumentation(civlTypeChecker);
 
             // initialize refinementInstrumentation
-            Implementation originalImpl = implMap[impl];
             YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc];
             if (yieldingProc.upperLayer == this.layerNum)
             {
@@ -175,6 +183,8 @@ namespace Microsoft.Boogie
                 refinementInstrumentation = new RefinementInstrumentation();
             }
 
+            var allYieldPredicates = CollectYields(impl);
+            
             // initialize noninterferenceInstrumentation
             if (CommandLineOptions.Clo.TrustNonInterference)
             {
@@ -182,12 +192,17 @@ namespace Microsoft.Boogie
             }
             else
             {
-                noninterferenceInstrumentation = new SomeNoninterferenceInstrumentation(civlTypeChecker,
+                yieldCheckerDecls.AddRange(
+                    YieldCheckerImplementation.CreateYieldCheckerProcImpl(civlTypeChecker, linearTypeChecker, layerNum, absyMap, impl, allYieldPredicates));
+                noninterferenceInstrumentation = new SomeNoninterferenceInstrumentation(
+                    civlTypeChecker,
                     linearTypeChecker,
-                    layerNum, absyMap, globalSnapshotInstrumentation.OldGlobalMap, yieldProc);
+                    linearHelper,
+                    globalSnapshotInstrumentation.OldGlobalMap, 
+                    yieldProc);
             }
 
-            DesugarConcurrency(impl);
+            DesugarConcurrency(impl, allYieldPredicates);
 
             impl.LocVars.AddRange(globalSnapshotInstrumentation.NewLocalVars);
             impl.LocVars.AddRange(refinementInstrumentation.NewLocalVars);
@@ -205,7 +220,10 @@ namespace Microsoft.Boogie
             return new Block(Token.NoToken, "og_init", initCmds, gotoCmd);
         }
 
-        private void ComputeYieldingLoops(Implementation impl, out HashSet<Block> yieldingLoopHeaders, out HashSet<Block> blocksInYieldingLoops)
+        private void ComputeYieldingLoops(
+            Implementation impl,
+            out HashSet<Block> yieldingLoopHeaders, 
+            out HashSet<Block> blocksInYieldingLoops)
         {
             Graph<Block> graph;
             impl.PruneUnreachableBlocks();
@@ -216,7 +234,6 @@ namespace Microsoft.Boogie
             {
                 throw new Exception("Irreducible flow graphs are unsupported.");
             }
-
             yieldingLoopHeaders = new HashSet<Block>();
             IEnumerable<Block> sortedHeaders = graph.SortHeadersByDominance();
             foreach (Block header in sortedHeaders)
@@ -230,7 +247,6 @@ namespace Microsoft.Boogie
                     yieldingLoopHeaders.Add(header);
                 }
             }
-
             blocksInYieldingLoops = GetBlocksInAllNaturalLoops(yieldingLoopHeaders, graph);
         }
 
@@ -274,21 +290,14 @@ namespace Microsoft.Boogie
             gotoCmd.labelTargets.Add(b);
         }
 
-        private void DesugarConcurrency(Implementation impl)
+        private void DesugarConcurrency(Implementation impl, Dictionary<YieldCmd, List<PredicateCmd>> allYieldPredicates)
         {
-            var allYieldPredicates = CollectYields(impl);
-            var allNonemptyYieldPredicates = allYieldPredicates.Values.Where(x => x.Count > 0);
-            if (allNonemptyYieldPredicates.Count() > 0)
-            {
-                yieldCheckerDecls.AddRange(noninterferenceInstrumentation.CreateYieldCheckerProcImpl(impl, allNonemptyYieldPredicates));
-            }
-
             var yieldCheckerBlock = CreateYieldCheckerBlock();
             var refinementCheckerBlock = CreateRefinementCheckerBlock();
             var refinementCheckerForYieldingLoopsBlock = CreateRefinementCheckerBlockForYieldingLoops();
             var returnBlock = CreateReturnBlock();
             SplitBlocks(impl);
-
+            
             HashSet<Block> yieldingLoopHeaders;
             HashSet<Block> blocksInYieldingLoops;
             ComputeYieldingLoops(impl, out yieldingLoopHeaders, out blocksInYieldingLoops);
@@ -362,7 +371,7 @@ namespace Microsoft.Boogie
                     b.TransferCmd = new GotoCmd(b.TransferCmd.tok, new List<string> { returnBlock.Label }, new List<Block> { returnBlock });
                 }
             }
-
+            
             // desugar YieldCmd, CallCmd, and ParCallCmd 
             foreach (Block b in impl.Blocks)
             {
@@ -550,6 +559,7 @@ namespace Microsoft.Boogie
                 newCmds.Add(new HavocCmd(Token.NoToken, civlTypeChecker.sharedVariableIdentifiers));
                 newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
             }
+            newCmds.AddRange(linearHelper.DisjointnessAssumeCmds(yieldCmd, true));
             newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
             newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
             newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(yieldCmd));

@@ -5,4 +5,4 @@ Execution trace:
     linearity-bug-2.bpl(8,10): inline$atomic_foo$0$anon0
     linearity-bug-2.bpl(6,32): inline$atomic_foo$0$Return
 
-Boogie program verifier finished with 2 verified, 1 error
+Boogie program verifier finished with 0 verified, 1 error

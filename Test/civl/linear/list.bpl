@@ -1,5 +1,9 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory -doModSetAnalysis "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+// XFAIL: *
+// This test depends on insertion of assumes about disjoint permissions,
+// which is automatically supported only inside yielding procedures.
+
 type X;
 function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
 function {:builtin "MapOr"} MapOr([X]bool, [X]bool) : [X]bool;

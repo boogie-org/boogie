@@ -7,16 +7,6 @@ procedure {:atomic} {:layer 2} atomic_foo ({:linear "lin"} i : int)
 modifies set;
 { set[i] := true; }
 
-procedure {:yields} {:layer 1} {:refines "atomic_foo"} foo ({:linear "lin"} i : int);
-
-procedure {:yields} {:layer 2} main ({:linear "lin"} i : int)
-{
-  yield;
-  call foo(i);
-  assert {:layer 2} false;
-  yield;
-}
-
 // ###########################################################################
 // Collectors for linear domains
 

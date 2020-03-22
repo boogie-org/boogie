@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using System;
 using System.Diagnostics;
 
 namespace Microsoft.Boogie
@@ -15,7 +14,6 @@ namespace Microsoft.Boogie
         private int layerNum;
         private Dictionary<Procedure, Procedure> procMap; /* Original -> Duplicate */
         private Dictionary<Absy, Absy> absyMap; /* Duplicate -> Original */
-        private Dictionary<Implementation, Implementation> implMap; /* Duplicate -> Original */
         private HashSet<Procedure> yieldingProcs;
         private Dictionary<string, Procedure> asyncCallPreconditionCheckers;
 
@@ -26,7 +24,6 @@ namespace Microsoft.Boogie
             this.layerNum = layerNum;
             this.procMap = new Dictionary<Procedure, Procedure>();
             this.absyMap = new Dictionary<Absy, Absy>();
-            this.implMap = new Dictionary<Implementation, Implementation>();
             this.yieldingProcs = new HashSet<Procedure>();
             this.asyncCallPreconditionCheckers = new Dictionary<string, Procedure>();
         }
@@ -80,6 +77,7 @@ namespace Microsoft.Boogie
                 }
 
                 procMap[node] = proc;
+                absyMap[proc] = node;
             }
 
             return procMap[node];
@@ -153,7 +151,7 @@ namespace Microsoft.Boogie
                     newImpl.LocVars.Add(CollectedPAs);
             }
 
-            implMap[newImpl] = impl;
+            absyMap[newImpl] = impl;
             return newImpl;
         }
 
@@ -452,13 +450,13 @@ namespace Microsoft.Boogie
         {
             var decls = new List<Declaration>();
             decls.AddRange(procMap.Values);
-            decls.AddRange(implMap.Keys);
+            var newImpls = absyMap.Keys.OfType<Implementation>();
+            decls.AddRange(newImpls);
             decls.AddRange(YieldingProcInstrumentation.TransformImplementations(
                 civlTypeChecker,
                 linearTypeChecker,
                 layerNum,
                 absyMap,
-                implMap,
                 yieldingProcs));
             return decls;
         }

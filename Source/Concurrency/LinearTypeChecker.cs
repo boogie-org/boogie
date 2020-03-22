@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Microsoft.Boogie
@@ -285,9 +286,8 @@ namespace Microsoft.Boogie
     /// The functionality is basically grouped into four parts (see #region's).
     /// 1) TypeCheck parses linear type attributes, sets up the data structures,
     ///    and performs a dataflow check on procedure implementations.
-    /// 2) Program transformation(s) to inject logical disjointness annotations.
-    /// 3) Generation of linearity-invariant checker procedures for atomic actions.
-    /// 4) Erasure procedure to remove all linearity attributes
+    /// 2) Generation of linearity-invariant checker procedures for atomic actions.
+    /// 3) Erasure procedure to remove all linearity attributes
     ///    (invoked after all other CIVL transformations).
     /// </summary>
     public class LinearTypeChecker : ReadOnlyVisitor
@@ -295,7 +295,6 @@ namespace Microsoft.Boogie
         public Program program;
         public CheckingContext checkingContext;
         public Dictionary<string, LinearDomain> linearDomains;
-        public Dictionary<string, Variable> domainNameToHoleVar;
 
         private CivlTypeChecker ctc;
 
@@ -319,7 +318,6 @@ namespace Microsoft.Boogie
             this.outParamToDomainName = new Dictionary<Variable, string>();
             this.globalVarToDomainName = new Dictionary<Variable, string>();
             this.linearDomains = new Dictionary<string, LinearDomain>();
-            this.domainNameToHoleVar = new Dictionary<string, Variable>();
             this.varToDomainName = new Dictionary<Variable, string>();
         }
 
@@ -373,14 +371,17 @@ namespace Microsoft.Boogie
         }
 
         public Formal LinearDomainInFormal(string domainName)
-        { return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", linearDomains[domainName].mapTypeBool), true); }
+        {
+            return new Formal(Token.NoToken, 
+                new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", linearDomains[domainName].mapTypeBool), true);
+        }
 
         public LocalVariable LinearDomainAvailableLocal(string domainName)
-        { return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_available", linearDomains[domainName].mapTypeBool)); }
-
-        private GlobalVariable LinearDomainHoleGlobal(string domainName)
-        { return new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_hole", linearDomains[domainName].mapTypeBool)); }
-
+        {
+            return new LocalVariable(Token.NoToken, 
+                new TypedIdent(Token.NoToken, "linear_" + domainName + "_available", linearDomains[domainName].mapTypeBool));
+        }
+        
         public void TypeCheck()
         {
             this.VisitProgram(program);
@@ -850,96 +851,9 @@ namespace Microsoft.Boogie
         }
         #endregion
 
-        #region Program Transformation
+        #region Useful public methods
         public void Transform()
         {
-            // The disjointness expressions injected below include an additional placeholder variable (a "hole")
-            // which is substituted in yield checker implementations.
-            foreach (string domainName in linearDomains.Keys)
-            {
-                GlobalVariable g = LinearDomainHoleGlobal(domainName);
-                program.AddTopLevelDeclaration(g);
-                domainNameToHoleVar[domainName] = g;
-            }
-
-            foreach (var impl in program.Implementations)
-            {
-                foreach (Block b in impl.Blocks)
-                {
-                    List<Cmd> newCmds = new List<Cmd>();
-                    for (int i = 0; i < b.Cmds.Count; i++)
-                    {
-                        Cmd cmd = b.Cmds[i];
-                        newCmds.Add(cmd);
-                        if (cmd is CallCmd || cmd is ParCallCmd || cmd is YieldCmd)
-                        {
-                            AddDisjointnessExpr(newCmds, cmd);
-                        }
-                    }
-                    b.Cmds = newCmds;
-                }
-
-                {
-                    // Loops
-                    impl.PruneUnreachableBlocks();
-                    impl.ComputePredecessorsForBlocks();
-                    GraphUtil.Graph<Block> g = Program.GraphFromImpl(impl);
-                    g.ComputeLoops();
-                    if (g.Reducible)
-                    {
-                        foreach (Block header in g.Headers)
-                        {
-                            List<Cmd> newCmds = new List<Cmd>();
-                            AddDisjointnessExpr(newCmds, header);
-                            newCmds.AddRange(header.Cmds);
-                            header.Cmds = newCmds;
-                        }
-                    }
-                }
-            }
-
-            foreach (var proc in program.Procedures)
-            {
-                Dictionary<string, HashSet<Variable>> domainNameToInputScope = new Dictionary<string, HashSet<Variable>>();
-                Dictionary<string, HashSet<Variable>> domainNameToOutputScope = new Dictionary<string, HashSet<Variable>>();
-                foreach (var domainName in linearDomains.Keys)
-                {
-                    domainNameToInputScope[domainName] = new HashSet<Variable>();
-                    domainNameToOutputScope[domainName] = new HashSet<Variable>();
-                }
-                foreach (Variable v in globalVarToDomainName.Keys)
-                {
-                    var domainName = globalVarToDomainName[v];
-                    domainNameToInputScope[domainName].Add(v);
-                    domainNameToOutputScope[domainName].Add(v);
-                }
-                foreach (Variable v in proc.InParams)
-                {
-                    var domainName = FindDomainName(v);
-                    if (domainName == null) continue;
-                    if (!this.linearDomains.ContainsKey(domainName)) continue;
-                    domainNameToInputScope[domainName].Add(v);
-                }
-                foreach (Variable v in proc.OutParams)
-                {
-                    var domainName = FindDomainName(v);
-                    if (domainName == null) continue;
-                    if (!this.linearDomains.ContainsKey(domainName)) continue;
-                    domainNameToOutputScope[domainName].Add(v);
-                }
-                // TODO: Also add linear and linear_out parameters to domainNameToOutputScope?
-                //       This should still be sound and strengthen the generated postcondition.
-                foreach (var domainName in linearDomains.Keys)
-                {
-                    Expr req = DisjointnessExpr(domainName, domainNameToInputScope[domainName]);
-                    Expr ens = DisjointnessExpr(domainName, domainNameToOutputScope[domainName]);
-                    if (!req.Equals(Expr.True))
-                        proc.Requires.Add(new Requires(true, req));
-                    if (!ens.Equals(Expr.True))
-                        proc.Ensures.Add(new Ensures(true, ens));
-                }
-            }
-
             foreach (LinearDomain domain in linearDomains.Values)
             {
                 program.AddTopLevelDeclaration(domain.mapConstBool);
@@ -955,11 +869,6 @@ namespace Microsoft.Boogie
                     program.AddTopLevelDeclaration(axiom);
                 }
             }
-
-            //int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-            //CommandLineOptions.Clo.PrintUnstructured = 1;
-            //PrintBplFile("lsd.bpl", program, false, false);
-            //CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
         }
 
         public IEnumerable<Variable> AvailableLinearVars(Absy absy)
@@ -973,30 +882,74 @@ namespace Microsoft.Boogie
                 return new HashSet<Variable>();
             }
         }
-
-        private void AddDisjointnessExpr(List<Cmd> newCmds, Absy absy)
+        
+        public IEnumerable<Expr> DisjointnessExprForEachDomain(IEnumerable<Variable> scope)
         {
             Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
             foreach (var domainName in linearDomains.Keys)
             {
                 domainNameToScope[domainName] = new HashSet<Variable>();
             }
-            foreach (Variable v in AvailableLinearVars(absy))
+            foreach (Variable v in scope)
             {
                 var domainName = FindDomainName(v);
+                if (domainName == null) continue;
                 domainNameToScope[domainName].Add(v);
             }
-            foreach (Variable v in globalVarToDomainName.Keys)
+            foreach (string domainName in domainNameToScope.Keys)
             {
-                var domainName = FindDomainName(v);
-                domainNameToScope[domainName].Add(v);
+                yield return DisjointnessExprForPermissions(
+                    domainName, 
+                    PermissionExprForEachVariable(domainName, domainNameToScope[domainName]));
             }
-            foreach (string domainName in linearDomains.Keys)
+        }
+
+        public IEnumerable<Expr> PermissionExprForEachVariable(string domainName, IEnumerable<Variable> scope)
+        {
+            var domain = linearDomains[domainName];
+            foreach (Variable v in scope)
             {
-                Expr expr = DisjointnessExpr(domainName, domainNameToHoleVar[domainName], domainNameToScope[domainName]);
-                if (!expr.Equals(Expr.True))
-                    newCmds.Add(new AssumeCmd(Token.NoToken, expr));
+                Expr expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.collectors[v.TypedIdent.Type]),
+                    new List<Expr> {Expr.Ident(v)});
+                expr.Resolve(new ResolutionContext(null));
+                expr.Typecheck(new TypecheckingContext(null));
+                yield return expr;
             }
+        }
+        
+        public Expr DisjointnessExprForPermissions(string domainName, IEnumerable<Expr> permissionsExprs)
+        {
+            Expr expr = Expr.True;
+            if (permissionsExprs.Count() > 1)
+            {
+                int count = 0;
+                List<Expr> subsetExprs = new List<Expr>();
+                LinearDomain domain = linearDomains[domainName];
+                BoundVariable partition = new BoundVariable(Token.NoToken,
+                    new TypedIdent(Token.NoToken, $"partition_{domainName}", domain.mapTypeInt));
+                foreach (Expr e in permissionsExprs)
+                {
+                    subsetExprs.Add(SubsetExpr(domain, e, partition, count));
+                    count++;
+                }
+                expr = new ExistsExpr(Token.NoToken, new List<Variable> {partition},Expr.And(subsetExprs));
+            }
+            expr.Resolve(new ResolutionContext(null));
+            expr.Typecheck(new TypecheckingContext(null));
+            return expr;
+        }
+        
+        public Expr UnionExprForPermissions(string domainName, IEnumerable<Expr> permissionExprs)
+        {
+            var domain = linearDomains[domainName];
+            var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new Expr[] {Expr.False});
+            foreach (Expr e in permissionExprs)
+            {
+                expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> {e, expr});
+            }
+            expr.Resolve(new ResolutionContext(null));
+            expr.Typecheck(new TypecheckingContext(null));
+            return expr;
         }
 
         private Expr SubsetExpr(LinearDomain domain, Expr ie, Variable partition, int partitionCount)
@@ -1006,49 +959,6 @@ namespace Microsoft.Boogie
             e = ExprHelper.FunctionCall(domain.mapImpBool, ie, e);
             e = Expr.Eq(e, ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
             return e;
-        }
-
-        private Expr DisjointnessExpr(string domainName, Variable holeVar, HashSet<Variable> scope)
-        {
-            int count = 0;
-            List<Expr> subsetExprs = new List<Expr>();
-
-            if (scope.Count == 0 || (holeVar == null && scope.Count == 1))
-            {
-                return Expr.True;
-            }
-
-            LinearDomain domain = linearDomains[domainName];
-            BoundVariable partition = new BoundVariable(
-              Token.NoToken,
-              new TypedIdent(Token.NoToken,
-                             $"partition_{domainName}",
-                             domain.mapTypeInt));
-
-            if (holeVar != null)
-            {
-                subsetExprs.Add(SubsetExpr(domain, Expr.Ident(holeVar), partition, count));
-                count++;
-            }
-
-            foreach (Variable v in scope)
-            {
-                Expr ie = ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v));
-                subsetExprs.Add(SubsetExpr(domain, ie, partition, count));
-                count++;
-            }
-            var expr = new ExistsExpr(Token.NoToken,
-                                      new List<Variable> { partition },
-                                      Expr.And(subsetExprs));
-            expr.Resolve(new ResolutionContext(null));
-            expr.Typecheck(new TypecheckingContext(null));
-
-            return expr;
-        }
-
-        public Expr DisjointnessExpr(string domainName, HashSet<Variable> scope)
-        {
-            return DisjointnessExpr(domainName, null, scope);
         }
         #endregion
 

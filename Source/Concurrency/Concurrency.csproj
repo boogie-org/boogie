@@ -54,6 +54,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GlobalSnapshotInstrumentation.cs" />
+    <Compile Include="LinearHelper.cs" />
+    <Compile Include="YieldCheckerImplementation.cs" />
     <Compile Include="YieldingProcInstrumentation.cs" />
     <Compile Include="LinearTypeChecker.cs" />
     <Compile Include="MoverCheck.cs" />
