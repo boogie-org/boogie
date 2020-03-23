@@ -17,6 +17,7 @@ namespace Microsoft.Boogie
         private Dictionary<Absy, Absy> absyMap; /* Duplicate -> Original */
         private Dictionary<Implementation, Implementation> implMap; /* Duplicate -> Original */
         private HashSet<Procedure> yieldingProcs;
+        private Dictionary<string, Procedure> asyncCallPreconditionCheckers;
 
         public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, LinearTypeChecker linearTypeChecker, int layerNum)
         {
@@ -27,6 +28,7 @@ namespace Microsoft.Boogie
             this.absyMap = new Dictionary<Absy, Absy>();
             this.implMap = new Dictionary<Implementation, Implementation>();
             this.yieldingProcs = new HashSet<Procedure>();
+            this.asyncCallPreconditionCheckers = new Dictionary<string, Procedure>();
         }
 
         public override Procedure VisitProcedure(Procedure node)
@@ -245,61 +247,47 @@ namespace Microsoft.Boogie
             }
         }
 
-        private void ProcessCallCmd(CallCmd call, CallCmd newCall)
+        private void DesugarAsyncCall(CallCmd newCall)
         {
-            if (civlTypeChecker.procToIntroductionProc.ContainsKey(call.Proc))
+            if (!asyncCallPreconditionCheckers.ContainsKey(newCall.Proc.Name))
             {
-                if (!civlTypeChecker.CallExists(call, enclosingYieldingProc.upperLayer, layerNum))
-                    return;
+                asyncCallPreconditionCheckers[newCall.Proc.Name] = new Procedure(Token.NoToken,
+                    $"DummyAsyncTarget_{newCall.Proc.Name}",
+                    newCall.Proc.TypeParameters, newCall.Proc.InParams, newCall.Proc.OutParams,
+                    newCall.Proc.Requires, new List<IdentifierExpr>(), new List<Ensures>());
+            }
+
+            var dummyAsyncTargetProc = asyncCallPreconditionCheckers[newCall.Proc.Name];
+            CallCmd dummyCallCmd = new CallCmd(newCall.tok, dummyAsyncTargetProc.Name, newCall.Ins,
+                newCall.Outs, newCall.Attributes);
+            dummyCallCmd.Proc = dummyAsyncTargetProc;
+            newCmdSeq.Add(dummyCallCmd);
+        }
+        
+        private void CollectPendingAsync(CallCmd call, CallCmd newCall, ActionProc actionProc)
+        {
+            if (SummaryHasPendingAsyncParam)
+            {
+                AtomicAction paAction;
+                if (actionProc.upperLayer == enclosingYieldingProc.upperLayer)
+                    paAction = actionProc.refinedAction;
+                else
+                    paAction = actionProc.RefinedActionAtLayer(layerNum);
+
+                var pa = ExprHelper.FunctionCall(paAction.pendingAsyncCtor, newCall.Ins.ToArray());
+                var inc = Expr.Add(Expr.Select(Expr.Ident(CollectedPAs), pa), Expr.Literal(1));
+                var add = CmdHelper.AssignCmd(CollectedPAs, Expr.Store(Expr.Ident(CollectedPAs), pa, inc));
+                newCmdSeq.Add(add);
             }
             else
             {
-                YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[call.Proc];
-                if (yieldingProc is SkipProc && yieldingProc.upperLayer < layerNum)
-                {
-                    return;
-                }
-                if (newCall.IsAsync)
-                {
-                    if ((call.HasAttribute(CivlAttributes.SYNC) && yieldingProc.upperLayer < layerNum) ||
-                        (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum))
-                    {
-                        newCall.IsAsync = false;
-                    }
-
-                    if (yieldingProc is ActionProc actionProc && !call.HasAttribute(CivlAttributes.SYNC) && yieldingProc.upperLayer <= layerNum)
-                    {
-                        if (yieldingProc.upperLayer == layerNum)
-                        {
-                            newCmdSeq.Add(newCall);
-                        }
-                        if (!IsRefinementLayer) return;
-                        if (SummaryHasPendingAsyncParam)
-                        {
-                            AtomicAction paAction;
-                            if (actionProc.upperLayer == enclosingYieldingProc.upperLayer)
-                                paAction = actionProc.refinedAction;
-                            else
-                                paAction = actionProc.RefinedActionAtLayer(layerNum);
-
-                            var pa = ExprHelper.FunctionCall(paAction.pendingAsyncCtor, newCall.Ins.ToArray());
-                            var inc = Expr.Add(Expr.Select(Expr.Ident(CollectedPAs), pa), Expr.Literal(1));
-                            var add = CmdHelper.AssignCmd(CollectedPAs, Expr.Store(Expr.Ident(CollectedPAs), pa, inc));
-                            newCmdSeq.Add(add);
-                        }
-                        else
-                        {
-                            newCmdSeq.Add(new AssertCmd(call.tok, Expr.False) { ErrorData = "This pending async is not summarized" });
-                        }
-                        return;
-                    }
-                }
-
-                InjectGate(yieldingProc, newCall);
+                newCmdSeq.Add(new AssertCmd(call.tok, Expr.False)
+                    {ErrorData = "This pending async is not summarized"});
             }
+        }
 
-            newCmdSeq.Add(newCall);
-
+        private void CollectPendingAsyncs(CallCmd call, CallCmd newCall)
+        {
             // Inject pending async collection
             if (newCall.Outs.Count != newCall.Proc.OutParams.Count)
             {
@@ -308,7 +296,8 @@ namespace Microsoft.Boogie
                 if (!IsRefinementLayer) return;
                 if (SummaryHasPendingAsyncParam)
                 {
-                    var collectedUnionReturned = ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncAdd, Expr.Ident(CollectedPAs), Expr.Ident(ReturnedPAs));
+                    var collectedUnionReturned = ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncAdd,
+                        Expr.Ident(CollectedPAs), Expr.Ident(ReturnedPAs));
                     newCmdSeq.Add(CmdHelper.AssignCmd(CollectedPAs, collectedUnionReturned));
                 }
                 else
@@ -318,11 +307,80 @@ namespace Microsoft.Boogie
                     var paBound = VarHelper.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
                     var pa = Expr.Ident(paBound);
                     var expr = Expr.Eq(Expr.Select(Expr.Ident(ReturnedPAs), pa), Expr.Literal(0));
-                    var forallExpr = new ForallExpr(Token.NoToken, new List<Variable> { paBound }, expr);
+                    var forallExpr = new ForallExpr(Token.NoToken, new List<Variable> {paBound}, expr);
                     forallExpr.Typecheck(new TypecheckingContext(null));
-                    newCmdSeq.Add(new AssertCmd(call.tok, forallExpr) { ErrorData = "Pending asyncs created by this call are not summarized" });
+                    newCmdSeq.Add(new AssertCmd(call.tok, forallExpr)
+                        {ErrorData = "Pending asyncs created by this call are not summarized"});
                 }
             }
+        }
+        
+        private void ProcessCallCmd(CallCmd call, CallCmd newCall)
+        {
+            if (civlTypeChecker.procToIntroductionProc.ContainsKey(call.Proc))
+            {
+                if (civlTypeChecker.CallExists(call, enclosingYieldingProc.upperLayer, layerNum))
+                {
+                    newCmdSeq.Add(newCall);
+                }
+                return;
+            }
+
+            // handle calls to yielding procedures in the rest of this method
+            YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[call.Proc];
+            
+            if (newCall.IsAsync)
+            {
+                if (yieldingProc.upperLayer < layerNum)
+                {
+                    if (call.HasAttribute(CivlAttributes.SYNC))
+                    {
+                        // synchronize the called atomic action
+                        newCall.IsAsync = false;
+                        newCmdSeq.Add(newCall);
+                    }
+                }
+                else
+                {
+                    if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum)
+                    {
+                        // synchronize the called mover procedure
+                        newCall.IsAsync = false;
+                        newCmdSeq.Add(newCall);
+                    }
+                    else
+                    {
+                        DesugarAsyncCall(newCall);
+                        if (IsRefinementLayer && yieldingProc is ActionProc actionProc)
+                        {
+                            CollectPendingAsync(call, newCall, actionProc);
+                        }
+                    }
+                }
+                return;
+            }
+            
+            // handle synchronous calls to skip procedures
+            if (yieldingProc is SkipProc)
+            {
+                if (yieldingProc.upperLayer >= layerNum)
+                {
+                    newCmdSeq.Add(newCall);
+                }
+                return;
+            }
+
+            // handle synchronous calls to mover procedures
+            if (yieldingProc is MoverProc)
+            {
+                newCmdSeq.Add(newCall);
+                return;
+            }
+            
+            // handle synchronous calls to action procedures
+            InjectGate(yieldingProc, newCall);
+            newCmdSeq.Add(newCall);
+            CollectPendingAsyncs(call, newCall);
         }
 
         private void ProcessParCallCmd(ParCallCmd parCall, ParCallCmd newParCall)

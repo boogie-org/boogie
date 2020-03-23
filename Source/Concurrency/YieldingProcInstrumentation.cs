@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.GraphUtil;
@@ -30,7 +31,7 @@ namespace Microsoft.Boogie
             }
 
             List<Declaration> decls = new List<Declaration>(yieldingProcInstrumentation.yieldCheckerDecls);
-            foreach (Procedure proc in yieldingProcInstrumentation.asyncAndParallelCallDesugarings.Values)
+            foreach (Procedure proc in yieldingProcInstrumentation.parallelCallPreconditionCheckers.Values)
             {
                 decls.Add(proc);
             }
@@ -53,7 +54,7 @@ namespace Microsoft.Boogie
             this.absyMap = absyMap;
             this.implMap = implMap;
             this.yieldingProcs = yieldingProcs;
-            asyncAndParallelCallDesugarings = new Dictionary<string, Procedure>();
+            parallelCallPreconditionCheckers = new Dictionary<string, Procedure>();
             yieldCheckerDecls = new List<Declaration>();
 
             List<Variable> inputs = new List<Variable>();
@@ -79,7 +80,7 @@ namespace Microsoft.Boogie
         private Dictionary<Implementation, Implementation> implMap;
         private HashSet<Procedure> yieldingProcs;
 
-        private Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
+        private Dictionary<string, Procedure> parallelCallPreconditionCheckers;
         private List<Declaration> yieldCheckerDecls;
         private Procedure yieldProc;
 
@@ -384,37 +385,18 @@ namespace Microsoft.Boogie
                     else if (cmd is CallCmd callCmd && yieldingProcs.Contains(callCmd.Proc))
                     {
                         List<Cmd> newCmds = new List<Cmd>();
-                        if (callCmd.IsAsync)
+                        if (!blocksInYieldingLoops.Contains(b))
                         {
-                            if (!asyncAndParallelCallDesugarings.ContainsKey(callCmd.Proc.Name))
-                            {
-                                asyncAndParallelCallDesugarings[callCmd.Proc.Name] = new Procedure(Token.NoToken,
-                                    $"DummyAsyncTarget_{callCmd.Proc.Name}",
-                                    callCmd.Proc.TypeParameters, callCmd.Proc.InParams, callCmd.Proc.OutParams,
-                                    callCmd.Proc.Requires, new List<IdentifierExpr>(), new List<Ensures>());
-                            }
-
-                            var dummyAsyncTargetProc = asyncAndParallelCallDesugarings[callCmd.Proc.Name];
-                            CallCmd dummyCallCmd = new CallCmd(callCmd.tok, dummyAsyncTargetProc.Name, callCmd.Ins,
-                                callCmd.Outs, callCmd.Attributes);
-                            dummyCallCmd.Proc = dummyAsyncTargetProc;
-                            newCmds.Add(dummyCallCmd);
+                            newCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars());
                         }
-                        else
+                        newCmds.Add(callCmd);
+                        if (civlTypeChecker.sharedVariables.Count > 0)
                         {
-                            if (!blocksInYieldingLoops.Contains(b))
-                            {
-                                newCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars());
-                            }
-                            newCmds.Add(callCmd);
-                            if (civlTypeChecker.sharedVariables.Count > 0)
-                            {
-                                newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
-                            }
-                            newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
-                            newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
-                            newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(callCmd));
+                            newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
                         }
+                        newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
+                        newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
+                        newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(callCmd));
                         newCmds.AddRange(b.cmds.GetRange(1, b.cmds.Count - 1));
                         b.cmds = newCmds;
                     }
@@ -592,7 +574,7 @@ namespace Microsoft.Boogie
                 outs.AddRange(callCmd.Outs);
             }
 
-            if (!asyncAndParallelCallDesugarings.ContainsKey(procName))
+            if (!parallelCallPreconditionCheckers.ContainsKey(procName))
             {
                 List<Variable> inParams = new List<Variable>();
                 List<Variable> outParams = new List<Variable>();
@@ -628,12 +610,12 @@ namespace Microsoft.Boogie
                     }
                     count++;
                 }
-                asyncAndParallelCallDesugarings[procName] = new Procedure(Token.NoToken, procName,
+                parallelCallPreconditionCheckers[procName] = new Procedure(Token.NoToken, procName,
                     new List<TypeVariable>(), inParams, outParams, requiresSeq,
                     civlTypeChecker.sharedVariableIdentifiers, ensuresSeq);
             }
 
-            Procedure proc = asyncAndParallelCallDesugarings[procName];
+            Procedure proc = parallelCallPreconditionCheckers[procName];
             CallCmd dummyCallCmd = new CallCmd(parCallCmd.tok, proc.Name, ins, outs, parCallCmd.Attributes);
             dummyCallCmd.Proc = proc;
             newCmds.Add(dummyCallCmd);
