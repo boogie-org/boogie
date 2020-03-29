@@ -97,8 +97,8 @@ namespace Microsoft.Boogie
             if (checkingContext.ErrorCount > 0)
                 return;
 
-            var yieldTypeChecker = new YieldTypeChecker(this);
-            yieldTypeChecker.TypeCheck();
+            var yieldSufficiencyTypeChecker = new YieldSufficiencyTypeChecker(this);
+            yieldSufficiencyTypeChecker.TypeCheck();
             if (checkingContext.ErrorCount > 0)
             {
                 return;

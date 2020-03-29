@@ -5,7 +5,7 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
-    public class LinearHelper
+    public class LinearPermissionInstrumentation
     {
         private CivlTypeChecker civlTypeChecker;
         private LinearTypeChecker linearTypeChecker;
@@ -14,7 +14,7 @@ namespace Microsoft.Boogie
         private Dictionary<string, Variable> domainNameToHoleVar;
         private Dictionary<Variable, Variable> localVarMap;
         
-        public LinearHelper(
+        public LinearPermissionInstrumentation(
             CivlTypeChecker civlTypeChecker, 
             LinearTypeChecker linearTypeChecker, 
             int layerNum, 
@@ -30,7 +30,7 @@ namespace Microsoft.Boogie
             this.localVarMap = localVarMap;
         }
         
-        public LinearHelper(
+        public LinearPermissionInstrumentation(
             CivlTypeChecker civlTypeChecker, 
             LinearTypeChecker linearTypeChecker, 
             int layerNum, 
@@ -118,7 +118,7 @@ namespace Microsoft.Boogie
                 header.Cmds = newCmds;
             }
         }
-        
+
         private List<Requires> DisjointnessFreeRequires(Procedure proc)
         {
             var availableVars = AvailableLinearLocalVars(proc).Union(LinearGlobalVars());

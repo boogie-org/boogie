@@ -5,7 +5,14 @@ using System.Diagnostics;
 namespace Microsoft.Boogie
 {
     public class YieldingProcDuplicator : Duplicator
-    {
+    { 
+        /* This class creates duplicate copies of yielding procedures for a particular layer
+         * rewriting calls to procedures that have been converted to atomic actions. 
+         * Async calls are also rewritten so that the resulting copies are guaranteed not to
+         * have any async calls.  The copy of yielding procedure X shares local variables of X.
+         * This sharing is exploited when instrumenting the duplicates in the class
+         * YieldProcInstrumentation.
+         */
         private CivlTypeChecker civlTypeChecker;
         private LinearTypeChecker linearTypeChecker;
         private Implementation enclosingImpl;
@@ -16,7 +23,7 @@ namespace Microsoft.Boogie
         private Dictionary<Absy, Absy> absyMap; /* Duplicate -> Original */
         private HashSet<Procedure> yieldingProcs;
         private Dictionary<string, Procedure> asyncCallPreconditionCheckers;
-
+        
         public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, LinearTypeChecker linearTypeChecker, int layerNum)
         {
             this.civlTypeChecker = civlTypeChecker;

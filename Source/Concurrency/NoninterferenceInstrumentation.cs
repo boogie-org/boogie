@@ -36,7 +36,7 @@ namespace Microsoft.Boogie
     {
         private CivlTypeChecker civlTypeChecker;
         private LinearTypeChecker linearTypeChecker;
-        private LinearHelper linearHelper;
+        private LinearPermissionInstrumentation linearPermissionInstrumentation;
         private Dictionary<Variable, Variable> oldGlobalMap;
         private Procedure yieldProc;
 
@@ -46,13 +46,13 @@ namespace Microsoft.Boogie
         public SomeNoninterferenceInstrumentation(
             CivlTypeChecker civlTypeChecker,
             LinearTypeChecker linearTypeChecker,
-            LinearHelper linearHelper,
+            LinearPermissionInstrumentation linearPermissionInstrumentation,
             Dictionary<Variable, Variable> oldGlobalMap,
             Procedure yieldProc)
         {
             this.civlTypeChecker = civlTypeChecker;
             this.linearTypeChecker = linearTypeChecker;
-            this.linearHelper = linearHelper;
+            this.linearPermissionInstrumentation = linearPermissionInstrumentation;
             this.oldGlobalMap = oldGlobalMap;
             this.yieldProc = yieldProc;
             this.newLocalVars = new List<Variable>();
@@ -69,7 +69,7 @@ namespace Microsoft.Boogie
 
         public List<Cmd> CreateInitCmds(Implementation impl)
         {
-            Dictionary<string, Expr> domainNameToExpr = linearHelper.PermissionExprs(impl);
+            Dictionary<string, Expr> domainNameToExpr = linearPermissionInstrumentation.PermissionExprs(impl);
             List<AssignLhs> lhss = new List<AssignLhs>();
             List<Expr> rhss = new List<Expr>();
             foreach (string domainName in linearTypeChecker.linearDomains.Keys)
@@ -87,7 +87,7 @@ namespace Microsoft.Boogie
 
         public List<Cmd> CreateUpdatesToPermissionCollector(Absy absy)
         {
-            Dictionary<string, Expr> domainNameToExpr = linearHelper.PermissionExprs(absy);
+            Dictionary<string, Expr> domainNameToExpr = linearPermissionInstrumentation.PermissionExprs(absy);
             List<AssignLhs> lhss = new List<AssignLhs>();
             List<Expr> rhss = new List<Expr>();
             foreach (var domainName in linearTypeChecker.linearDomains.Keys)
