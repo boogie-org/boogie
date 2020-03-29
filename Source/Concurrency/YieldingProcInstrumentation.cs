@@ -46,7 +46,7 @@ namespace Microsoft.Boogie
                 decls.Add(proc);
             }
             decls.Add(yieldingProcInstrumentation.wrapperNoninterferenceCheckerProc);
-            decls.Add(yieldingProcInstrumentation.YieldImpl());
+            decls.Add(yieldingProcInstrumentation.WrapperNoninterferenceCheckerImpl());
             return decls;
         }
         
@@ -96,7 +96,7 @@ namespace Microsoft.Boogie
             CivlUtil.AddInlineAttribute(wrapperNoninterferenceCheckerProc);
         }
 
-        private Implementation YieldImpl()
+        private Implementation WrapperNoninterferenceCheckerImpl()
         {
             List<Variable> inputs = new List<Variable>();
             foreach (string domainName in linearTypeChecker.linearDomains.Keys)
@@ -290,7 +290,7 @@ namespace Microsoft.Boogie
 
         private void DesugarConcurrency(Implementation impl, Dictionary<YieldCmd, List<PredicateCmd>> allYieldPredicates)
         {
-            var yieldCheckerBlock = CreateYieldCheckerBlock();
+            var noninterferenceCheckerBlock = CreateNoninterferenceCheckerBlock();
             var refinementCheckerBlock = CreateRefinementCheckerBlock();
             var refinementCheckerForYieldingLoopsBlock = CreateRefinementCheckerBlockForYieldingLoops();
             var returnBlock = CreateReturnBlock();
@@ -304,7 +304,7 @@ namespace Microsoft.Boogie
                 foreach (Block pred in header.Predecessors)
                 {
                     var gotoCmd = pred.TransferCmd as GotoCmd;
-                    AddEdge(gotoCmd, yieldCheckerBlock);
+                    AddEdge(gotoCmd, noninterferenceCheckerBlock);
                     if (blocksInYieldingLoops.Contains(pred))
                     {
                         AddEdge(gotoCmd, refinementCheckerForYieldingLoopsBlock);
@@ -326,7 +326,7 @@ namespace Microsoft.Boogie
                 header.Cmds = newCmds;
             }
 
-            // add jumps to yieldCheckerBlock and returnBlock
+            // add jumps to noninterferenceCheckerBlock and returnBlock
             foreach (var b in impl.Blocks)
             {
                 if (b.TransferCmd is GotoCmd gotoCmd)
@@ -353,7 +353,7 @@ namespace Microsoft.Boogie
                     }
                     if (addEdge)
                     {
-                        AddEdge(gotoCmd, yieldCheckerBlock);
+                        AddEdge(gotoCmd, noninterferenceCheckerBlock);
                         if (blocksInYieldingLoops.Contains(b))
                         {
                             AddEdge(gotoCmd, refinementCheckerForYieldingLoopsBlock);
@@ -428,7 +428,7 @@ namespace Microsoft.Boogie
                 }
             }
 
-            impl.Blocks.Add(yieldCheckerBlock);
+            impl.Blocks.Add(noninterferenceCheckerBlock);
             impl.Blocks.Add(refinementCheckerBlock);
             impl.Blocks.Add(refinementCheckerForYieldingLoopsBlock);
             impl.Blocks.Add(returnBlock);
@@ -514,12 +514,12 @@ namespace Microsoft.Boogie
             impl.Blocks.AddRange(newBlocks);
         }
 
-        private Block CreateYieldCheckerBlock()
+        private Block CreateNoninterferenceCheckerBlock()
         {
             var newCmds = new List<Cmd>();
             newCmds.AddRange(noninterferenceInstrumentation.CreateCallToYieldProc());
             newCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
-            return new Block(Token.NoToken, "YieldChecker", newCmds, new ReturnCmd(Token.NoToken));
+            return new Block(Token.NoToken, "NoninterferenceChecker", newCmds, new ReturnCmd(Token.NoToken));
         }
 
         private Block CreateRefinementCheckerBlock()
