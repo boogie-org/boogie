@@ -54,6 +54,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GlobalSnapshotInstrumentation.cs" />
+    <Compile Include="LinearPermissionInstrumentation.cs" />
+    <Compile Include="NoninterferenceChecker.cs" />
     <Compile Include="YieldingProcInstrumentation.cs" />
     <Compile Include="LinearTypeChecker.cs" />
     <Compile Include="MoverCheck.cs" />
@@ -65,7 +67,7 @@
     <Compile Include="TransitionRelationComputation.cs" />
     <Compile Include="NoninterferenceInstrumentation.cs" />
     <Compile Include="YieldingProcDuplicator.cs" />
-    <Compile Include="YieldTypeChecker.cs" />
+    <Compile Include="YieldSufficiencyTypeChecker.cs" />
     <Compile Include="CivlUtil.cs" />
     <Compile Include="CommutativityHints.cs" />
     <Compile Include="CivlCoreTypes.cs" />

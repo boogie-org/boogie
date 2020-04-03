@@ -2,6 +2,6 @@ parallel1.bpl(30,3): Error: Non-interference check failed
 Execution trace:
     parallel1.bpl(7,3): anon0
     parallel1.bpl(14,5): inline$AtomicIncr$0$anon0
-    (0,0): inline$Impl_YieldChecker_PC_1$0$L0
+    (0,0): inline$NoninterferenceChecker_PC_1$0$L1
 
 Boogie program verifier finished with 7 verified, 1 error

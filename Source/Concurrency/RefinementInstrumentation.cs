@@ -104,9 +104,9 @@ namespace Microsoft.Boogie
             newLocalVars = new List<Variable>();
             ActionProc actionProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc;
             int layerNum = actionProc.upperLayer;
-            pc = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_pc", Type.Bool));
+            pc = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "civl_pc", Type.Bool));
             newLocalVars.Add(pc);
-            ok = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_ok", Type.Bool));
+            ok = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "civl_ok", Type.Bool));
             newLocalVars.Add(ok);
 
             this.transitionRelationCache = new Dictionary<AtomicAction, Expr>();
@@ -273,7 +273,7 @@ namespace Microsoft.Boogie
         private LocalVariable Old(Variable v)
         {
             return new LocalVariable(Token.NoToken,
-                new TypedIdent(Token.NoToken, $"og_old_{v.Name}", v.TypedIdent.Type));
+                new TypedIdent(Token.NoToken, $"civl_old_{v.Name}", v.TypedIdent.Type));
         }        
     }
 }

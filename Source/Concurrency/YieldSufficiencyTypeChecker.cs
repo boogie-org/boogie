@@ -8,7 +8,7 @@ using System.ComponentModel;
 
 namespace Microsoft.Boogie
 {
-    public class YieldTypeChecker
+    public class YieldSufficiencyTypeChecker
     {
         // Edge labels of the automaton that abstracts the code of a procedure
         private const char Y = 'Y';  // yield
@@ -83,7 +83,7 @@ namespace Microsoft.Boogie
         public CheckingContext checkingContext;
         private Graph<MoverProc> moverProcedureCallGraph;
 
-        public YieldTypeChecker(CivlTypeChecker civlTypeChecker)
+        public YieldSufficiencyTypeChecker(CivlTypeChecker civlTypeChecker)
         {
             this.civlTypeChecker = civlTypeChecker;
             this.checkingContext = civlTypeChecker.checkingContext;
@@ -123,8 +123,8 @@ namespace Microsoft.Boogie
 
                 foreach (int layerNum in civlTypeChecker.allRefinementLayers.Where(l => l <= yieldingProc.upperLayer))
                 {
-                    PerLayerYieldTypeChecker perLayerTypeChecker = new PerLayerYieldTypeChecker(this, yieldingProc, impl, layerNum, implGraph);
-                    perLayerTypeChecker.TypeCheckLayer();
+                    PerLayerYieldSufficiencyTypeChecker perLayerSufficiencyTypeChecker = new PerLayerYieldSufficiencyTypeChecker(this, yieldingProc, impl, layerNum, implGraph);
+                    perLayerSufficiencyTypeChecker.TypeCheckLayer();
                 }
             }
 
@@ -134,9 +134,9 @@ namespace Microsoft.Boogie
             // TODO: Remove "terminates" attribute
         }
 
-        private class PerLayerYieldTypeChecker
+        private class PerLayerYieldSufficiencyTypeChecker
         {
-            YieldTypeChecker @base;
+            YieldSufficiencyTypeChecker @base;
             YieldingProc yieldingProc;
             Implementation impl;
             int currLayerNum;
@@ -146,7 +146,7 @@ namespace Microsoft.Boogie
             Absy initialState;
             HashSet<Absy> finalStates;
 
-            public PerLayerYieldTypeChecker(YieldTypeChecker @base, YieldingProc yieldingProc, Implementation impl, int currLayerNum, Graph<Block> implGraph)
+            public PerLayerYieldSufficiencyTypeChecker(YieldSufficiencyTypeChecker @base, YieldingProc yieldingProc, Implementation impl, int currLayerNum, Graph<Block> implGraph)
             {
                 this.@base = @base;
                 this.yieldingProc = yieldingProc;

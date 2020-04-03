@@ -97,8 +97,8 @@ namespace Microsoft.Boogie
             if (checkingContext.ErrorCount > 0)
                 return;
 
-            var yieldTypeChecker = new YieldTypeChecker(this);
-            yieldTypeChecker.TypeCheck();
+            var yieldSufficiencyTypeChecker = new YieldSufficiencyTypeChecker(this);
+            yieldSufficiencyTypeChecker.TypeCheck();
             if (checkingContext.ErrorCount > 0)
             {
                 return;
@@ -106,11 +106,6 @@ namespace Microsoft.Boogie
 
             linearTypeChecker = new LinearTypeChecker(this);
             linearTypeChecker.TypeCheck();
-            if (checkingContext.ErrorCount > 0)
-            {
-                return;
-            }
-            linearTypeChecker.Transform();
         }
 
         private void TypeCheckRefinementLayers()
@@ -129,18 +124,18 @@ namespace Microsoft.Boogie
                 }
             }
 
-            var allIndictiveSequentializationLayers = inductiveSequentializations.Select(x => x.inputAction.layerRange.upperLayerNum).ToList();
+            var allInductiveSequentializationLayers = inductiveSequentializations.Select(x => x.inputAction.layerRange.upperLayerNum).ToList();
 
-            var intersect = allRefinementLayers.Intersect(allIndictiveSequentializationLayers).ToList();
+            var intersect = allRefinementLayers.Intersect(allInductiveSequentializationLayers).ToList();
             if (intersect.Any())
                 checkingContext.Error(Token.NoToken, "The following layers mix refinement with IS: " + string.Join(",", intersect));
 
             foreach(var g in sharedVariables)
             {
                 var layerRange = GlobalVariableLayerRange(g);
-                if (allIndictiveSequentializationLayers.Contains(layerRange.lowerLayerNum))
+                if (allInductiveSequentializationLayers.Contains(layerRange.lowerLayerNum))
                     Error(g, $"Shared variable {g.Name} cannot be introduced at layer with IS");
-                if (allIndictiveSequentializationLayers.Contains(layerRange.upperLayerNum))
+                if (allInductiveSequentializationLayers.Contains(layerRange.upperLayerNum))
                     Error(g, $"Shared variable {g.Name} cannot be hidden at layer with IS");
             }
 

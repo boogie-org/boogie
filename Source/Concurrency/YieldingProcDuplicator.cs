@@ -1,12 +1,18 @@
 using System.Collections.Generic;
 using System.Linq;
-using System;
 using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
     public class YieldingProcDuplicator : Duplicator
-    {
+    { 
+        /* This class creates duplicate copies of yielding procedures for a particular layer
+         * rewriting calls to procedures that have been converted to atomic actions. 
+         * Async calls are also rewritten so that the resulting copies are guaranteed not to
+         * have any async calls.  The copy of yielding procedure X shares local variables of X.
+         * This sharing is exploited when instrumenting the duplicates in the class
+         * YieldProcInstrumentation.
+         */
         private CivlTypeChecker civlTypeChecker;
         private LinearTypeChecker linearTypeChecker;
         private Implementation enclosingImpl;
@@ -15,10 +21,9 @@ namespace Microsoft.Boogie
         private int layerNum;
         private Dictionary<Procedure, Procedure> procMap; /* Original -> Duplicate */
         private Dictionary<Absy, Absy> absyMap; /* Duplicate -> Original */
-        private Dictionary<Implementation, Implementation> implMap; /* Duplicate -> Original */
         private HashSet<Procedure> yieldingProcs;
         private Dictionary<string, Procedure> asyncCallPreconditionCheckers;
-
+        
         public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, LinearTypeChecker linearTypeChecker, int layerNum)
         {
             this.civlTypeChecker = civlTypeChecker;
@@ -26,7 +31,6 @@ namespace Microsoft.Boogie
             this.layerNum = layerNum;
             this.procMap = new Dictionary<Procedure, Procedure>();
             this.absyMap = new Dictionary<Absy, Absy>();
-            this.implMap = new Dictionary<Implementation, Implementation>();
             this.yieldingProcs = new HashSet<Procedure>();
             this.asyncCallPreconditionCheckers = new Dictionary<string, Procedure>();
         }
@@ -80,6 +84,7 @@ namespace Microsoft.Boogie
                 }
 
                 procMap[node] = proc;
+                absyMap[proc] = node;
             }
 
             return procMap[node];
@@ -153,7 +158,7 @@ namespace Microsoft.Boogie
                     newImpl.LocVars.Add(CollectedPAs);
             }
 
-            implMap[newImpl] = impl;
+            absyMap[newImpl] = impl;
             return newImpl;
         }
 
@@ -452,13 +457,13 @@ namespace Microsoft.Boogie
         {
             var decls = new List<Declaration>();
             decls.AddRange(procMap.Values);
-            decls.AddRange(implMap.Keys);
+            var newImpls = absyMap.Keys.OfType<Implementation>();
+            decls.AddRange(newImpls);
             decls.AddRange(YieldingProcInstrumentation.TransformImplementations(
                 civlTypeChecker,
                 linearTypeChecker,
                 layerNum,
                 absyMap,
-                implMap,
                 yieldingProcs));
             return decls;
         }

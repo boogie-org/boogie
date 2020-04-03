@@ -74,28 +74,9 @@ namespace Microsoft.Boogie
             }
         }
 
-        private IEnumerable<Expr> DisjointnessExpr(IEnumerable<Variable> paramVars, HashSet<Variable> frame)
-        {
-            Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
-            foreach (var domainName in linearTypeChecker.linearDomains.Keys)
-            {
-                domainNameToScope[domainName] = new HashSet<Variable>();
-            }
-            foreach (Variable v in paramVars.Union(frame))
-            {
-                var domainName = linearTypeChecker.FindDomainName(v);
-                if (domainName == null) continue;
-                domainNameToScope[domainName].Add(v);
-            }
-            foreach (string domainName in domainNameToScope.Keys)
-            {
-                yield return linearTypeChecker.DisjointnessExpr(domainName, domainNameToScope[domainName]);
-            }
-        }
-
         private Requires DisjointnessRequires(IEnumerable<Variable> paramVars, HashSet<Variable> frame)
         {
-            return new Requires(false, Expr.And(DisjointnessExpr(paramVars, frame)));
+            return new Requires(false, Expr.And(linearTypeChecker.DisjointnessExprForEachDomain(paramVars.Union(frame))));
         }
 
         private void AddChecker(string checkerName, List<Variable> inputs, List<Variable> outputs, List<Variable> locals, List<Requires> requires, List<Ensures> ensures, List<Block> blocks)
@@ -172,8 +153,8 @@ namespace Microsoft.Boogie
 
             var secondInParamsFiltered = second.secondImpl.InParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_IN);
             IEnumerable<Expr> linearityAssumes = Enumerable.Union(
-                DisjointnessExpr(first.firstImpl.OutParams.Union(secondInParamsFiltered), frame),
-                DisjointnessExpr(first.firstImpl.OutParams.Union(second.secondImpl.OutParams), frame));
+                linearTypeChecker.DisjointnessExprForEachDomain(first.firstImpl.OutParams.Union(secondInParamsFiltered).Union(frame)),
+                linearTypeChecker.DisjointnessExprForEachDomain(first.firstImpl.OutParams.Union(second.secondImpl.OutParams).Union(frame)));
             // TODO: add further disjointness expressions?
             Ensures ensureCheck = new Ensures(first.proc.tok, false, Expr.Imp(Expr.And(linearityAssumes), transitionRelation), null)
             {
@@ -207,7 +188,7 @@ namespace Microsoft.Boogie
             foreach (AssertCmd assertCmd in second.secondGate)
                 requires.Add(new Requires(false, assertCmd.Expr));
 
-            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(first.firstImpl.InParams.Union(second.secondImpl.OutParams), frame);
+            IEnumerable<Expr> linearityAssumes = linearTypeChecker.DisjointnessExprForEachDomain(first.firstImpl.InParams.Union(second.secondImpl.OutParams).Union(frame));
             foreach (AssertCmd assertCmd in first.firstGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
@@ -257,7 +238,7 @@ namespace Microsoft.Boogie
             foreach (AssertCmd assertCmd in second.secondGate)
                 requires.Add(new Requires(false, assertCmd.Expr));
 
-            IEnumerable<Expr> linearityAssumes = DisjointnessExpr(first.firstImpl.InParams.Union(second.secondImpl.OutParams), frame);
+            IEnumerable<Expr> linearityAssumes = linearTypeChecker.DisjointnessExprForEachDomain(first.firstImpl.InParams.Union(second.secondImpl.OutParams).Union(frame));
             Ensures ensureCheck = new Ensures(first.proc.tok, false, Expr.Imp(Expr.And(linearityAssumes), firstNegatedGate), null)
             {
                 ErrorData = $"Gate failure of {first.proc.Name} not preserved by {second.proc.Name}"

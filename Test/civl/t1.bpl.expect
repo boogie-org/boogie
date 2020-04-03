@@ -2,7 +2,6 @@ t1.bpl(80,5): Error: Non-interference check failed
 Execution trace:
     t1.bpl(99,13): anon0
     t1.bpl(99,13): anon0_1
-    t1.bpl(99,13): anon0_1$1
-    (0,0): inline$Impl_YieldChecker_A_1$0$L1
+    (0,0): inline$NoninterferenceChecker_A_1$0$L1
 
 Boogie program verifier finished with 10 verified, 1 error

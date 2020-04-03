@@ -60,7 +60,7 @@ namespace Microsoft.Boogie
         private LocalVariable OldGlobalLocal(Variable v)
         {
             return new LocalVariable(Token.NoToken,
-                new TypedIdent(Token.NoToken, $"og_global_old_{v.Name}", v.TypedIdent.Type));
+                new TypedIdent(Token.NoToken, $"civl_global_old_{v.Name}", v.TypedIdent.Type));
         }
     }
 }
