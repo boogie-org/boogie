@@ -257,16 +257,16 @@ namespace Microsoft.Boogie
             if (!asyncCallPreconditionCheckers.ContainsKey(newCall.Proc.Name))
             {
                 asyncCallPreconditionCheckers[newCall.Proc.Name] = new Procedure(Token.NoToken,
-                    $"DummyAsyncTarget_{newCall.Proc.Name}",
+                    $"AsyncCallPreconditionChecker_{newCall.Proc.Name}",
                     newCall.Proc.TypeParameters, newCall.Proc.InParams, newCall.Proc.OutParams,
                     newCall.Proc.Requires, new List<IdentifierExpr>(), new List<Ensures>());
             }
 
-            var dummyAsyncTargetProc = asyncCallPreconditionCheckers[newCall.Proc.Name];
-            CallCmd dummyCallCmd = new CallCmd(newCall.tok, dummyAsyncTargetProc.Name, newCall.Ins,
+            var asyncCallPreconditionChecker = asyncCallPreconditionCheckers[newCall.Proc.Name];
+            CallCmd checkerCallCmd = new CallCmd(newCall.tok, asyncCallPreconditionChecker.Name, newCall.Ins,
                 newCall.Outs, newCall.Attributes);
-            dummyCallCmd.Proc = dummyAsyncTargetProc;
-            newCmdSeq.Add(dummyCallCmd);
+            checkerCallCmd.Proc = asyncCallPreconditionChecker;
+            newCmdSeq.Add(checkerCallCmd);
         }
         
         private void CollectPendingAsync(CallCmd call, CallCmd newCall, ActionProc actionProc)
@@ -459,6 +459,7 @@ namespace Microsoft.Boogie
             decls.AddRange(procMap.Values);
             var newImpls = absyMap.Keys.OfType<Implementation>();
             decls.AddRange(newImpls);
+            decls.AddRange(asyncCallPreconditionCheckers.Values);
             decls.AddRange(YieldingProcInstrumentation.TransformImplementations(
                 civlTypeChecker,
                 linearTypeChecker,

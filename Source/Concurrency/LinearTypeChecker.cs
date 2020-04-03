@@ -286,8 +286,10 @@ namespace Microsoft.Boogie
     /// The functionality is basically grouped into four parts (see #region's).
     /// 1) TypeCheck parses linear type attributes, sets up the data structures,
     ///    and performs a dataflow check on procedure implementations.
-    /// 2) Generation of linearity-invariant checker procedures for atomic actions.
-    /// 3) Erasure procedure to remove all linearity attributes
+    /// 2) Useful public methods to generate expressions for permissions, their disjointness,
+    ///    and their union.
+    /// 3) Generation of linearity-invariant checker procedures for atomic actions.
+    /// 4) Erasure procedure to remove all linearity attributes
     ///    (invoked after all other CIVL transformations).
     /// </summary>
     public class LinearTypeChecker : ReadOnlyVisitor
@@ -296,7 +298,7 @@ namespace Microsoft.Boogie
         public CheckingContext checkingContext;
         public Dictionary<string, LinearDomain> linearDomains;
 
-        private CivlTypeChecker ctc;
+        private CivlTypeChecker civlTypeChecker;
 
         private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
         private Dictionary<Variable, LinearQualifier> inParamToLinearQualifier;
@@ -307,11 +309,11 @@ namespace Microsoft.Boogie
         private Dictionary<string, Dictionary<Type, Function>> domainNameToCollectors;
         private Dictionary<Variable, string> varToDomainName;
 
-        public LinearTypeChecker(CivlTypeChecker ctc)
+        public LinearTypeChecker(CivlTypeChecker civlTypeChecker)
         {
-            this.ctc = ctc;
-            this.program = ctc.program;
-            this.checkingContext = ctc.checkingContext;
+            this.civlTypeChecker = civlTypeChecker;
+            this.program = civlTypeChecker.program;
+            this.checkingContext = civlTypeChecker.checkingContext;
             this.domainNameToCollectors = new Dictionary<string, Dictionary<Type, Function>>();
             this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
             this.inParamToLinearQualifier = new Dictionary<Variable, LinearQualifier>();
@@ -455,7 +457,7 @@ namespace Microsoft.Boogie
         }
         public override Implementation VisitImplementation(Implementation node)
         {
-            if (ctc.procToAtomicAction.ContainsKey(node.Proc))
+            if (civlTypeChecker.procToAtomicAction.ContainsKey(node.Proc) || civlTypeChecker.procToIntroductionProc.ContainsKey(node.Proc))
                 return node;
 
             node.PruneUnreachableBlocks();
@@ -852,7 +854,7 @@ namespace Microsoft.Boogie
         #endregion
 
         #region Useful public methods
-        public void Transform()
+        public void AddDeclarations()
         {
             foreach (LinearDomain domain in linearDomains.Values)
             {

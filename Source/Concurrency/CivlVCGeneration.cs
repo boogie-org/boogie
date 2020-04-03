@@ -42,7 +42,7 @@ namespace Microsoft.Boogie
 
             BackwardAssignmentSubstituter.SubstituteBackwardAssignments(civlTypeChecker.procToAtomicAction.Values);
             
-            linearTypeChecker.Transform();
+            linearTypeChecker.AddDeclarations();
             linearTypeChecker.EraseLinearAnnotations();
         }
     }
