@@ -573,7 +573,7 @@ namespace Microsoft.Boogie {
     }
     public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
     public bool DoModSetAnalysis = false;
-    public bool UseAbstractInterpretation = true;          // true iff the user want to use abstract interpretation
+    public bool UseAbstractInterpretation = false;          // true iff the user want to use abstract interpretation
     private int  /*0..9*/stepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
 
     public int StepsBeforeWidening
@@ -1822,7 +1822,7 @@ namespace Microsoft.Boogie {
                    s = debug statistics
                 0..9 = number of iterations before applying a widen (default=0)
   /noinfer      turn off the default inference, and overrides the /infer
-                switch on its left
+                switch on its left (default)
   /checkInfer   instrument inferred invariants as asserts to be checked by
                 theorem prover
   /interprocInfer
