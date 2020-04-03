@@ -574,7 +574,7 @@ namespace Microsoft.Boogie
             var newCmds = new List<Cmd>();
             List<Expr> ins = new List<Expr>();
             List<IdentifierExpr> outs = new List<IdentifierExpr>();
-            string procName = "og";
+            string procName = "ParallelCallPreconditionChecker";
             foreach (CallCmd callCmd in parCallCmd.CallCmds)
             {
                 procName = procName + "_" + callCmd.Proc.Name;
@@ -624,9 +624,9 @@ namespace Microsoft.Boogie
             }
 
             Procedure proc = parallelCallPreconditionCheckers[procName];
-            CallCmd dummyCallCmd = new CallCmd(parCallCmd.tok, proc.Name, ins, outs, parCallCmd.Attributes);
-            dummyCallCmd.Proc = proc;
-            newCmds.Add(dummyCallCmd);
+            CallCmd checkerCallCmd = new CallCmd(parCallCmd.tok, proc.Name, ins, outs, parCallCmd.Attributes);
+            checkerCallCmd.Proc = proc;
+            newCmds.Add(checkerCallCmd);
             return newCmds;
         }
 
