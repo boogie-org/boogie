@@ -79,7 +79,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    proc.Modifies = civlTypeChecker.sharedVariableIdentifiers;
+                    proc.Modifies = civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList();
                     yieldingProcs.Add(proc);
                 }
 
@@ -322,15 +322,24 @@ namespace Microsoft.Boogie
         
         private void ProcessCallCmd(CallCmd call, CallCmd newCall)
         {
-            if (civlTypeChecker.procToIntroductionProc.ContainsKey(call.Proc))
+            if (civlTypeChecker.procToIntroductionAction.ContainsKey(call.Proc))
             {
-                if (civlTypeChecker.CallExists(call, enclosingYieldingProc.upperLayer, layerNum))
+                if (civlTypeChecker.procToIntroductionAction[call.Proc].LayerNum == layerNum)
                 {
                     newCmdSeq.Add(newCall);
                 }
                 return;
             }
 
+            if (civlTypeChecker.procToLemmaProc.ContainsKey(call.Proc))
+            {
+                if (civlTypeChecker.FindLayers(call.Attributes)[0] == layerNum)
+                {
+                    newCmdSeq.Add(newCall);
+                }
+                return;
+            }
+            
             // handle calls to yielding procedures in the rest of this method
             YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[call.Proc];
             

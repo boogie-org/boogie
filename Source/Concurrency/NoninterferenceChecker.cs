@@ -37,7 +37,7 @@ namespace Microsoft.Boogie
 
             Dictionary<Variable, Expr> oldLocalMap = new Dictionary<Variable, Expr>();
             Dictionary<Variable, Expr> assumeMap = new Dictionary<Variable, Expr>(map);
-            foreach (Variable g in civlTypeChecker.sharedVariables)
+            foreach (Variable g in civlTypeChecker.GlobalVariables)
             {
                 var copy = OldLocalLocal(g);
                 locals.Add(copy);

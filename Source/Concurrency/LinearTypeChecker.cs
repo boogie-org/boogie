@@ -457,7 +457,9 @@ namespace Microsoft.Boogie
         }
         public override Implementation VisitImplementation(Implementation node)
         {
-            if (civlTypeChecker.procToAtomicAction.ContainsKey(node.Proc) || civlTypeChecker.procToIntroductionProc.ContainsKey(node.Proc))
+            if (civlTypeChecker.procToAtomicAction.ContainsKey(node.Proc) ||
+                civlTypeChecker.procToIntroductionAction.ContainsKey(node.Proc) ||
+                civlTypeChecker.procToLemmaProc.ContainsKey(node.Proc))
                 return node;
 
             node.PruneUnreachableBlocks();

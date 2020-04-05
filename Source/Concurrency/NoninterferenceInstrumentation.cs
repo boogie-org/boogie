@@ -110,7 +110,7 @@ namespace Microsoft.Boogie
             {
                 exprSeq.Add(Expr.Ident(domainNameToHoleVar[domainName]));
             }
-            foreach (Variable g in civlTypeChecker.sharedVariables)
+            foreach (Variable g in civlTypeChecker.GlobalVariables)
             {
                 exprSeq.Add(Expr.Ident(oldGlobalMap[g]));
             }

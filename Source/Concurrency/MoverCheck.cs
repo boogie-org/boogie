@@ -81,7 +81,7 @@ namespace Microsoft.Boogie
 
         private void AddChecker(string checkerName, List<Variable> inputs, List<Variable> outputs, List<Variable> locals, List<Requires> requires, List<Ensures> ensures, List<Block> blocks)
         {
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
+            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList(), ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, blocks);
             impl.Proc = proc;
             this.decls.Add(impl);
