@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure{:layer 1} P() returns(i:int);
 

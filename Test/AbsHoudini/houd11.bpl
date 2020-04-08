@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -contractInfer -printAssignment -abstractHoudini:IA[ConstantProp] "%s" > "%t"
+// RUN: %boogie -contractInfer -printAssignment -abstractHoudini:IA[ConstantProp] "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 function {:existential true} Assert() : bool;
 

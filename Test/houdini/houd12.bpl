@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -contractInfer -printAssignment "%s" | %OutputCheck -d "%s"
+// RUN: %boogie -contractInfer -printAssignment "%s" | %OutputCheck -d "%s"
 // Example to test candidate annotations on loops
 
 // CHECK-L: Assignment computed by Houdini:

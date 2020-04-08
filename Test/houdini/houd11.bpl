@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -contractInfer -printAssignment "%s" > "%t"
+// RUN: %boogie -contractInfer -printAssignment "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 var fooVar: int;

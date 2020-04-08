@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation.  All rights reserved.
 //
 
-// RUN: %boogie -noinfer -useArrayTheory -typeEncoding:m "%s" > "%t"
+// RUN: %boogie -useArrayTheory -typeEncoding:m "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type X = int;

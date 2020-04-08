@@ -54,6 +54,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
     public virtual void Specialize(Implementation impl) {
     }
 
+    public string DebugStatistics => $"{this.GetType()} currently does not support debug statistics";
+
     public virtual void Validate() {
       Contract.Assert(IsTop(Top));
       Contract.Assert(IsBottom(Bottom));
@@ -74,9 +76,6 @@ namespace Microsoft.Boogie.AbstractInterpretation
     public static void RunAbstractInterpretation(Program program) {
       Contract.Requires(program != null);
 
-      if (!CommandLineOptions.Clo.UseAbstractInterpretation) {
-        return;
-      }
       Helpers.ExtraTraceInformation("Starting abstract interpretation");
 
       DateTime start = new DateTime();  // to please compiler's definite assignment rules
@@ -99,7 +98,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
         Dictionary<Procedure, Implementation[]> procedureImplementations = ComputeProcImplMap(program);
         ComputeProgramInvariants(program, procedureImplementations, lattice);
         if (CommandLineOptions.Clo.Ai.DebugStatistics) {
-          Console.Error.WriteLine(lattice);
+          Console.Error.WriteLine(lattice.DebugStatistics);
         }
       }
 
@@ -200,7 +199,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
         } else if (lattice.Below(e, pre[id])) {
           // no change
           continue;
-        } else if (b.widenBlock && CommandLineOptions.Clo.StepsBeforeWidening <= iterations[id]) {
+        } else if (b.widenBlock && CommandLineOptions.Clo.Ai.StepsBeforeWidening <= iterations[id]) {
           e = lattice.Widen(pre[id], e);
           pre[id] = e;
           iterations[id]++;

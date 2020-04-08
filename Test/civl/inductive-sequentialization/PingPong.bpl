@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 var {:layer 0,3} ping_channel:[int]int; // Incoming channel of Ping

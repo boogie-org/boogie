@@ -11,7 +11,8 @@ procedure ComputeFactorial(n: int) returns (u: int)
   var r, v, s: int;
   r, u := 1, 1;
 TOP:  // B
-  assert r <= n;
+  assert 1 <= r && r <= n;
+  assert 1 <= u;
   assert u == Factorial(r);
   v := u;
   if (n <= r) { return; }

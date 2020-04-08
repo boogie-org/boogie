@@ -6,10 +6,10 @@ j@2 -> 4
 r -> T@ref!val!0
 s -> T@ref!val!0
 ControlFlow -> {
-  0 0 -> 85
-  0 65 -> (- 139)
-  0 85 -> 65
-  else -> (- 139)
+  0 0 -> 77
+  0 65 -> (- 131)
+  0 77 -> 65
+  else -> (- 131)
 }
 tickleBool -> {
   false -> true

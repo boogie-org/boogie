@@ -1,6 +1,6 @@
-// RUN: %boogie -noinfer "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// RUN: %boogie -noinfer -typeEncoding:m "%s" > "%t"
+// RUN: %boogie -typeEncoding:m "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure foo()
 {

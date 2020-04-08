@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // Check that assumes in loop invariants are handled correctly
 

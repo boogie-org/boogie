@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // Write (although lock-protected) is a non-mover, becaues of the unprotected
