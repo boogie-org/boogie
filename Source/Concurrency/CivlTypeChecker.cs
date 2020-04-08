@@ -171,7 +171,7 @@ namespace Microsoft.Boogie
                     Error(proc, "More then one action specification provided");
                     continue;
                 }
-                
+
                 Implementation impl = actionImpls[0];
                 impl.PruneUnreachableBlocks();
                 Graph<Block> cfg = Program.GraphFromImpl(impl);
@@ -442,50 +442,54 @@ namespace Microsoft.Boogie
             }
         }
 
-        // The variable matchingDecls must be set by callers of MatchFormals for
-        // error reporting. Including the declarations as parameters of the call
-        // would in principle be cleaner, but makes the calls much less readable.
-        private Tuple<DeclWithFormals,DeclWithFormals> matchingDecls;
-        private void SetMatchingDecls(DeclWithFormals decl1, DeclWithFormals decl2)
+        public class SignatureMatcher
         {
-            matchingDecls = Tuple.Create(decl1, decl2);
-        }
-        private static string IN = "in";
-        private static string OUT = "out";
+            public static string IN = "in";
+            public static string OUT = "out";
 
-        private void MatchFormals(List<Variable> formals1, List<Variable> formals2,
-            string inout, bool checkLinearity = true)
-        {
-            Debug.Assert(matchingDecls != null);
-            Debug.Assert(matchingDecls.Item1 != null && matchingDecls.Item2 != null);
-            if (formals1.Count != formals2.Count)
+            private DeclWithFormals decl1;
+            private DeclWithFormals decl2;
+            private CheckingContext checkingContext;
+
+            public SignatureMatcher(DeclWithFormals decl1, DeclWithFormals decl2, CheckingContext checkingContext)
             {
-                checkingContext.Error(matchingDecls.Item1, $"mismatched number of {inout}-parameters in {matchingDecls.Item2.Name}");
+                this.decl1 = decl1;
+                this.decl2 = decl2;
+                this.checkingContext = checkingContext;
             }
-            else
+
+            public void MatchFormals(List<Variable> formals1, List<Variable> formals2,
+                string inout, bool checkLinearity = true)
             {
-                for (int i = 0; i < formals1.Count; i++)
+                if (formals1.Count != formals2.Count)
                 {
-                    // For error messages below
-                    string name1 = formals1[i].Name;
-                    string name2 = formals2[i].Name;
-                    string msg = (name1 == name2) ? name1 : $"{name1} (named {name2} in {matchingDecls.Item2.Name})";
-
-                    // the names of the formals are allowed to change from the proc to the impl
-                    // but types must be identical
-                    Type t1 = formals1[i].TypedIdent.Type;
-                    Type t2 = formals2[i].TypedIdent.Type;
-                    if (!t1.Equals(t2))
+                    checkingContext.Error(decl1, $"mismatched number of {inout}-parameters in {decl2.Name}");
+                }
+                else
+                {
+                    for (int i = 0; i < formals1.Count; i++)
                     {
-                        checkingContext.Error(formals1[i], $"mismatched type of {inout}-parameter in {matchingDecls.Item2.Name}: {msg}");
-                    }
+                        // For error messages below
+                        string name1 = formals1[i].Name;
+                        string name2 = formals2[i].Name;
+                        string msg = (name1 == name2) ? name1 : $"{name1} (named {name2} in {decl2.Name})";
 
-                    if (checkLinearity &&
-                       (QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR) != QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR) ||
-                        QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_IN) != QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_IN) ||
-                        QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_OUT) != QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_OUT)))
-                    {
-                        checkingContext.Error(formals1[i], $"mismatched linearity type of {inout}-parameter in {matchingDecls.Item2.Name}: {msg}");
+                        // the names of the formals are allowed to change from the proc to the impl
+                        // but types must be identical
+                        Type t1 = formals1[i].TypedIdent.Type;
+                        Type t2 = formals2[i].TypedIdent.Type;
+                        if (!t1.Equals(t2))
+                        {
+                            checkingContext.Error(formals1[i], $"mismatched type of {inout}-parameter in {decl2.Name}: {msg}");
+                        }
+
+                        if (checkLinearity &&
+                           (QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR) != QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR) ||
+                            QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_IN) != QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_IN) ||
+                            QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_OUT) != QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_OUT)))
+                        {
+                            checkingContext.Error(formals1[i], $"mismatched linearity type of {inout}-parameter in {decl2.Name}: {msg}");
+                        }
                     }
                 }
             }
@@ -493,25 +497,25 @@ namespace Microsoft.Boogie
 
         private void CheckRefinementSignature(ActionProc actionProc)
         {
-            SetMatchingDecls(actionProc.proc, actionProc.refinedAction.proc);
+            var signatureMatcher = new SignatureMatcher(actionProc.proc, actionProc.refinedAction.proc, checkingContext);
             var refinedActionOutParams = actionProc.refinedAction.proc.OutParams.SkipEnd(actionProc.refinedAction.HasPendingAsyncs ? 1 : 0).ToList();
-            MatchFormals(actionProc.proc.InParams, actionProc.refinedAction.proc.InParams, IN);
-            MatchFormals(actionProc.proc.OutParams, refinedActionOutParams, OUT);
+            signatureMatcher.MatchFormals(actionProc.proc.InParams, actionProc.refinedAction.proc.InParams, SignatureMatcher.IN);
+            signatureMatcher.MatchFormals(actionProc.proc.OutParams, refinedActionOutParams, SignatureMatcher.OUT);
         }
 
         private void CheckInductiveSequentializationAbstractionSignature(AtomicAction original, AtomicAction abstraction)
         {
             // Input and output parameters have to match exactly
-            SetMatchingDecls(original.proc, abstraction.proc);
-            MatchFormals(original.proc.InParams, abstraction.proc.InParams, IN);
-            MatchFormals(original.proc.OutParams, abstraction.proc.OutParams, OUT);
+            var signatureMatcher = new SignatureMatcher(original.proc, abstraction.proc, checkingContext);
+            signatureMatcher.MatchFormals(original.proc.InParams, abstraction.proc.InParams, SignatureMatcher.IN);
+            signatureMatcher.MatchFormals(original.proc.OutParams, abstraction.proc.OutParams, SignatureMatcher.OUT);
         }
 
         private void CheckPendingAsyncSignature(AtomicAction action, DatatypeConstructor ctor)
         {
             // Pending asyncs cannot have output parameters, and we do not require linear annotations to be repeated in the pending async constructor
-            SetMatchingDecls(action.proc, ctor);
-            MatchFormals(action.proc.InParams, ctor.InParams, IN, false);
+            var signatureMatcher = new SignatureMatcher(action.proc, ctor, checkingContext);
+            signatureMatcher.MatchFormals(action.proc.InParams, ctor.InParams, SignatureMatcher.IN, false);
         }
 
         private void CheckInductiveSequentializationSignature(AtomicAction action, AtomicAction invariantAction)
@@ -521,13 +525,13 @@ namespace Microsoft.Boogie
             var invariantActionOutParams = invariantAction.proc.OutParams.SkipEnd(invariantAction.hasChoice ? 2 : 1).ToList();
             var refinedActionOutParams = action.refinedAction.proc.OutParams.SkipEnd(action.refinedAction.HasPendingAsyncs ? 1 : 0).ToList();
             
-            SetMatchingDecls(action.proc, invariantAction.proc);
-            MatchFormals(action.proc.InParams, invariantAction.proc.InParams, IN);
-            MatchFormals(actionOutParams, invariantActionOutParams, OUT);
+            var signatureMatcher = new SignatureMatcher(action.proc, invariantAction.proc, checkingContext);
+            signatureMatcher.MatchFormals(action.proc.InParams, invariantAction.proc.InParams, SignatureMatcher.IN);
+            signatureMatcher.MatchFormals(actionOutParams, invariantActionOutParams, SignatureMatcher.OUT);
             
-            SetMatchingDecls(action.proc, action.refinedAction.proc);
-            MatchFormals(action.proc.InParams, action.refinedAction.proc.InParams, IN);
-            MatchFormals(actionOutParams, refinedActionOutParams, OUT);
+            signatureMatcher = new SignatureMatcher(action.proc, action.refinedAction.proc, checkingContext);
+            signatureMatcher.MatchFormals(action.proc.InParams, action.refinedAction.proc.InParams, SignatureMatcher.IN);
+            signatureMatcher.MatchFormals(actionOutParams, refinedActionOutParams, SignatureMatcher.OUT);
         }
 
         private void TypeCheckLocalVariables()
