@@ -258,7 +258,7 @@ procedure {:yields}{:layer 1}{:refines "MAIN1"}
 main ({:linear_in "pid"} pids:[int]bool)
 requires {:layer 1} Init(pids, channel, pendingAsyncs, id, leader);
 {
-  var {:pending_async} PAs:[PA]int;
+  var {:pending_async}{:layer 1} PAs:[PA]int;
   var {:linear "pid"} pid:int;
   var {:linear "pid"} pids':[int]bool;
   var i:int;
@@ -319,13 +319,13 @@ requires {:layer 1} pid(pid);
   yield;
 }
 
-procedure {:layer 1}{:inline 1} AddPendingAsyncs(PAs: [PA]int)
+procedure {:intro}{:layer 1} AddPendingAsyncs(PAs: [PA]int)
 modifies pendingAsyncs;
 {
   pendingAsyncs := MapAddPA(pendingAsyncs, PAs);
 }
 
-procedure {:layer 1}{:inline 1} RemovePendingAsyncs(PAs: [PA]int)
+procedure {:intro}{:layer 1} RemovePendingAsyncs(PAs: [PA]int)
 modifies pendingAsyncs;
 {
   pendingAsyncs := MapSubPA(pendingAsyncs, PAs);

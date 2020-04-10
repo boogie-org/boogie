@@ -95,7 +95,7 @@ requires {:layer 1} InitLow(acceptorState, joinChannel, voteChannel, permJoinCha
   var r: int;
   var {:layer 1}{:linear "perm"} r_lin: int;
   var {:layer 1}{:linear "perm"} rs': [Round]bool;
-  var {:pending_async} PAs:[PA]int;
+  var {:layer 1}{:pending_async} PAs:[PA]int;
 
   par YieldInv() | YieldInvChannels();
   r := 0;
@@ -123,7 +123,7 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
   var {:layer 1}{:linear "perm"} p: Permission;
   var {:layer 1}{:linear "perm"} ps: [Permission]bool;
   var {:layer 1}{:linear "perm"} ps': [Permission]bool;
-  var {:pending_async} PAs:[PA]int;
+  var {:layer 1}{:pending_async} PAs:[PA]int;
 
   par YieldInv() | YieldInvChannels();
   call ps, ps' := SplitPermissions(r_lin);
@@ -162,7 +162,7 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
   var {:layer 1}{:linear "perm"} receivedPermission: Permission;
 
   call YieldInv_0();
-  call ns := InitializeQuorum();
+  call {:layer 1} ns := InitializeQuorum();
   call receivedPermissions := InitializePermissions();
   count := 0;
   maxRound := 0;
@@ -178,8 +178,8 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
   {
     call joinResponse := ReceiveJoinResponse(r);
     call receivedPermission := ReceiveJoinResponseIntro(r, joinResponse);
-    call {:layer 1} MaxRoundLemma(r, ns, SingletonNode(n#JoinPerm(receivedPermission)));
-    call ns := AddToQuorum(ns, n#JoinPerm(receivedPermission));
+    call {:layer 1} MaxRoundLemma(voteInfo, r, ns, SingletonNode(n#JoinPerm(receivedPermission)));
+    call {:layer 1} ns := AddToQuorum(ns, n#JoinPerm(receivedPermission));
     call receivedPermissions := AddPermission(receivedPermissions, receivedPermission);
     count := count + 1;
     if (lastVoteRound#JoinResponse(joinResponse) > maxRound) {
@@ -206,7 +206,7 @@ requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, p
   var {:layer 1}{:linear "perm"} ps': [Permission]bool;
   var {:layer 1}{:linear "perm"} p: Permission;
   var {:layer 1}{:linear "perm"} cp: Permission;
-  var {:pending_async} PAs:[PA]int;
+  var {:layer 1}{:pending_async} PAs:[PA]int;
     
   par YieldInv() | YieldInvChannels();
   call maxRound, maxValue, ns := ProposeHelper(r);
@@ -241,7 +241,7 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
   var {:linear "perm"} {:layer 1} receivedPermission: Permission;
 
   par YieldInv() | YieldInvChannels();
-  call q := InitializeQuorum();
+  call {:layer 1} q := InitializeQuorum();
   call receivedPermissions := InitializePermissions();
   count := 0;
   while (true)
@@ -254,7 +254,7 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
   {
     call voteResponse := ReceiveVoteResponse(r);
     call receivedPermission := ReceiveVoteResponseIntro(r, voteResponse);
-    call q := AddToQuorum(q, n#VotePerm(receivedPermission));
+    call {:layer 1} q := AddToQuorum(q, n#VotePerm(receivedPermission));
     call receivedPermissions := AddPermission(receivedPermissions, receivedPermission);
     count := count + 1;
     if (2 * count > numNodes) {
@@ -304,56 +304,51 @@ requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, p
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:layer 1}{:inline 1} JoinIntro(r: Round, n: Node)
+procedure {:intro}{:layer 1} JoinIntro(r: Round, n: Node)
 modifies joinedNodes;
 {
   joinedNodes[r][n] := true;
 }
 
-procedure {:layer 1}{:inline 1} ProposeIntro(r: Round, v: Value)
+procedure {:intro}{:layer 1} ProposeIntro(r: Round, v: Value)
 modifies voteInfo;
 {
   voteInfo[r] := SomeVoteInfo(v, NoNodes());
 }
 
-procedure {:layer 1}{:inline 1} VoteIntro(r: Round, n: Node)
+procedure {:intro}{:layer 1} VoteIntro(r: Round, n: Node)
 modifies voteInfo;
 {
   voteInfo[r] := SomeVoteInfo(value#SomeVoteInfo(voteInfo[r]), ns#SomeVoteInfo(voteInfo[r])[n := true]);
 }
 
-procedure {:layer 1}{:inline 1} AddPendingAsyncs(PAs: [PA]int)
+procedure {:intro}{:layer 1} AddPendingAsyncs(PAs: [PA]int)
 modifies pendingAsyncs;
 {
   pendingAsyncs := MapAddPA(pendingAsyncs, PAs);
 }
 
-procedure {:layer 1}{:inline 1} RemovePendingAsyncs(PAs: [PA]int)
+procedure {:intro}{:layer 1} RemovePendingAsyncs(PAs: [PA]int)
 modifies pendingAsyncs;
 {
   pendingAsyncs := MapSubPA(pendingAsyncs, PAs);
 }
 
-// Trusted introduction procedures for proof of Propose and Conclude
-procedure {:inline 1} {:layer 1} InitializeQuorum() returns (q: NodeSet)
-{
-  q := NoNodes();
-}
+// Trusted lemmas for the proof of Propose and Conclude
+procedure {:lemma} InitializeQuorum() returns (q: NodeSet);
+ensures q == NoNodes();
 
-procedure {:inline 1} {:layer 1} AddToQuorum(q: NodeSet, n: Node) returns (q': NodeSet)
-{
-  assert !q[n];
-  q' := q[n := true];
-  assume Cardinality(q') == Cardinality(q) + 1;
-}
+procedure {:lemma} AddToQuorum(q: NodeSet, n: Node) returns (q': NodeSet);
+requires !q[n];
+ensures q' == q[n := true];
+ensures Cardinality(q') == Cardinality(q) + 1;
 
-procedure {:inline 1} {:layer 1} MaxRoundLemma(r: Round, ns1: NodeSet, ns2: NodeSet) {
-  assert Round(r);
-  assume MaxRound(r, MapOrNode(ns1, ns2), voteInfo) ==
+procedure {:lemma} MaxRoundLemma(voteInfo:[Round]OptionVoteInfo, r: Round, ns1: NodeSet, ns2: NodeSet);
+requires Round(r);
+ensures MaxRound(r, MapOrNode(ns1, ns2), voteInfo) ==
          if (MaxRound(r, ns1, voteInfo) < MaxRound(r, ns2, voteInfo))
          then MaxRound(r, ns2, voteInfo)
          else MaxRound(r, ns1, voteInfo);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -441,7 +436,7 @@ ReceiveVoteResponse(round: Round) returns (voteResponse: VoteResponse);
 
 //// Introduction procedures to make send/receive more abstract
 
-procedure {:layer 1}{:inline 1} SendJoinResponseIntro(round: Round, from: Node, lastVoteRound: Round, lastVoteValue: Value, {:linear_in "perm"} p: Permission)
+procedure {:intro}{:layer 1} SendJoinResponseIntro(round: Round, from: Node, lastVoteRound: Round, lastVoteValue: Value, {:linear_in "perm"} p: Permission)
 modifies permJoinChannel;
 {
   permJoinChannel := JoinResponseChannel(
@@ -449,7 +444,7 @@ modifies permJoinChannel;
     contents#JoinResponseChannel(permJoinChannel)[p := JoinResponse(from, lastVoteRound, lastVoteValue)]);
 }
 
-procedure {:layer 1}{:inline 1} ReceiveJoinResponseIntro(round: Round, joinResponse: JoinResponse) returns ({:linear "perm"} receivedPermission: Permission)
+procedure {:intro}{:layer 1} ReceiveJoinResponseIntro(round: Round, joinResponse: JoinResponse) returns ({:linear "perm"} receivedPermission: Permission)
 modifies permJoinChannel;
 {
   assert domain#JoinResponseChannel(permJoinChannel)[JoinPerm(round, from#JoinResponse(joinResponse))];
@@ -457,7 +452,7 @@ modifies permJoinChannel;
   permJoinChannel := JoinResponseChannel(domain#JoinResponseChannel(permJoinChannel)[receivedPermission := false], contents#JoinResponseChannel(permJoinChannel));
 }
 
-procedure {:layer 1}{:inline 1} SendVoteResponseIntro(round: Round, from: Node, {:linear_in "perm"} p: Permission)
+procedure {:intro}{:layer 1} SendVoteResponseIntro(round: Round, from: Node, {:linear_in "perm"} p: Permission)
 modifies permVoteChannel;
 {
   permVoteChannel := VoteResponseChannel(
@@ -465,7 +460,7 @@ modifies permVoteChannel;
     contents#VoteResponseChannel(permVoteChannel)[p := VoteResponse(from)]);
 }
 
-procedure {:layer 1}{:inline 1} ReceiveVoteResponseIntro(round: Round, voteResponse: VoteResponse)
+procedure {:intro}{:layer 1} ReceiveVoteResponseIntro(round: Round, voteResponse: VoteResponse)
 returns ({:linear "perm"} receivedPermission: Permission)
 modifies permVoteChannel;
 {
@@ -476,20 +471,20 @@ modifies permVoteChannel;
 
 //// Permission accounting
 
-procedure {:inline 1}{:layer 1} ExtractRoundPermission({:linear_in "perm"} rs: [Round]bool, r: Round)
+procedure {:intro}{:layer 1} ExtractRoundPermission({:linear_in "perm"} rs: [Round]bool, r: Round)
 returns ({:linear "perm"} rs': [Round]bool, {:linear "perm"} r_lin: Round)
 {
   assert rs[r];
   rs', r_lin := rs[r := false], r;
 }
 
-procedure {:inline 1}{:layer 1} SplitPermissions({:linear_in "perm"} r_lin: Round)
+procedure {:intro}{:layer 1} SplitPermissions({:linear_in "perm"} r_lin: Round)
 returns ({:linear "perm"} ps: [Permission]bool, {:linear "perm"} ps': [Permission]bool)
 {
   ps, ps' := JoinPermissions(r_lin), ProposePermissions(r_lin);
 }
 
-procedure {:inline 1}{:layer 1} ExtractJoinPermission({:linear_in "perm"} ps: [Permission]bool, r: Round, n: Node)
+procedure {:intro}{:layer 1} ExtractJoinPermission({:linear_in "perm"} ps: [Permission]bool, r: Round, n: Node)
 returns ({:linear "perm"} ps': [Permission]bool, {:linear "perm"} p: Permission)
 {
   assert ps[JoinPerm(r, n)];
@@ -497,14 +492,14 @@ returns ({:linear "perm"} ps': [Permission]bool, {:linear "perm"} p: Permission)
   ps' := ps[p := false];
 }
 
-procedure {:inline 1}{:layer 1} SplitConcludePermission(r: Round, {:linear_in "perm"} ps: [Permission]bool)
+procedure {:intro}{:layer 1} SplitConcludePermission(r: Round, {:linear_in "perm"} ps: [Permission]bool)
 returns ({:linear "perm"} ps': [Permission]bool, {:linear "perm"} cp: Permission)
 {
   assert ps == ProposePermissions(r);
   ps', cp := VotePermissions(r), ConcludePerm(r);
 }
 
-procedure {:inline 1}{:layer 1} ExtractVotePermission({:linear_in "perm"} ps: [Permission]bool, r: Round, n: Node)
+procedure {:intro}{:layer 1} ExtractVotePermission({:linear_in "perm"} ps: [Permission]bool, r: Round, n: Node)
 returns ({:linear "perm"} ps': [Permission]bool, {:linear "perm"} p: Permission)
 {
   assert ps[VotePerm(r, n)];
@@ -512,13 +507,13 @@ returns ({:linear "perm"} ps': [Permission]bool, {:linear "perm"} p: Permission)
   ps' := ps[p := false];
 }
 
-procedure {:inline 1}{:layer 1} InitializePermissions()
+procedure {:intro}{:layer 1} InitializePermissions()
 returns ({:linear "perm"} receivedPermissions: [Permission]bool)
 {
   receivedPermissions := MapConstPermission(false);
 }
 
-procedure {:inline 1}{:layer 1} AddPermission({:linear_in "perm"} receivedPermissions: [Permission]bool, {:linear_in "perm"} p: Permission)
+procedure {:intro}{:layer 1} AddPermission({:linear_in "perm"} receivedPermissions: [Permission]bool, {:linear_in "perm"} p: Permission)
 returns ({:linear "perm"}receivedPermissions': [Permission]bool)
 {
   receivedPermissions' := receivedPermissions[p := true];
