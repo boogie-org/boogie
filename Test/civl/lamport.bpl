@@ -64,8 +64,8 @@ ensures  {:layer 1} ind_inv(done, y, x);
   assert {:layer 1} ind_inv(done, y, x);
 }
 
-// Introduction procedure that gives meaning to the introduced variable done
-procedure {:layer 1}{:inline 1} mark_done(i: int)
+// Introduction action that gives meaning to the introduced variable done
+procedure {:intro} {:layer 1} mark_done(i: int)
 modifies done;
 {
   done := done[i:=true];
@@ -79,7 +79,7 @@ procedure {:layer 1}{:atomic} atomic_update_x(i: int)
 modifies x;
 {
   x[i] := 1;
-} 
+}
 
 procedure {:layer 1}{:atomic} atomic_update_y(i: int)
 modifies y;
@@ -96,7 +96,7 @@ procedure {:layer 0}{:yields}{:refines "atomic_update_y"} update_y(i: int);
 function in_range(i: int): bool
 {
   0 <= i && i < N
-} 
+}
 
 // The core correctness property of the system. If all the processes
 // have finished, there's at least one element of y equal to 1.

@@ -5,17 +5,15 @@ var {:linear "x"} {:layer 0,1} A : [int]bool;
 procedure {:yields} {:layer 1} Proc ({:linear "x"} i: int)
 {
   par Yield0() | Yield1();
-  call {:layer 1} Lemma(i);
+  call {:layer 1} Lemma(A, i);
   yield;
 }
 
 procedure {:yields} {:layer 0} Yield0 () { yield; }
 procedure {:yields} {:layer 1} Yield1 () { yield; }
 
-procedure {:layer 1} Lemma (i: int)
-requires !A[i];
-{
-}
+procedure {:lemma} Lemma (set: [int]bool, i: int);
+requires !set[i];
 
 // Collectors for linear domains
 

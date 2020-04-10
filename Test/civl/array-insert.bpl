@@ -11,7 +11,7 @@ var {:layer 0,2} count:int;
 var {:layer 0,2} lock:Tid;
 
 function {:inline 1} sorted (A:[int]int, count:int) : bool
-{ (forall i:int, j:int :: 0 <= i && i <= j && j < count ==> A[i] <= A[j]) }    
+{ (forall i:int, j:int :: 0 <= i && i <= j && j < count ==> A[i] <= A[j]) }
 
 procedure {:atomic}{:layer 2} INSERT ({:linear "tid"} tid:Tid, v:int)
 modifies A, count;
@@ -43,7 +43,7 @@ requires {:layer 1} tid != nil;
   var a:int;   // value read from A
   var c:int;   // value read from count
   var {:layer 1} _A:[int]int;
-  
+
   yield; assert {:layer 1} tid != nil;
   call _A := snapshot();
   call acquire(tid);
@@ -75,12 +75,12 @@ requires {:layer 1} tid != nil;
 
   // let's see if we can proof that A is still sorted
   assert {:layer 1} sorted(A, count);
-  
+
   call release(tid);
   yield;
 }
 
-procedure {:layer 1} {:inline 1} snapshot () returns (snapshot: [int]int)
+procedure {:intro} {:layer 1} snapshot () returns (snapshot: [int]int)
 {
    snapshot := A;
 }

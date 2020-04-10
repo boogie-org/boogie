@@ -2,17 +2,16 @@
 // RUN: %diff "%s.expect" "%t"
 var {:layer 1,1} g:int;
 
-procedure {:layer 1} P(x:int)
-  requires {:layer 1} x == 0;
+procedure {:intro} {:layer 1} P(x:int)
 {
+  assert x == 0;
 }
-
 
 procedure{:yields}{:layer 1} Y(x:int)
 {
   yield;
 
-  call {:layer 1} P(x);
+  call P(x);
   assert{:layer 1} x == 0;
 
   yield;

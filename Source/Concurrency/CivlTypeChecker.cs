@@ -366,6 +366,10 @@ namespace Microsoft.Boogie
             if (checkingContext.ErrorCount > 0) return;
 
             LemmaProcedureVisitor visitor = new LemmaProcedureVisitor(this);
+            foreach (Procedure proc in program.Procedures.Where(proc => procToLemmaProc.ContainsKey(proc)))
+            {
+                visitor.VisitProcedure(proc);
+            }
             foreach (Implementation impl in program.Implementations.Where(impl => procToLemmaProc.ContainsKey(impl.Proc)))
             {
                 visitor.VisitImplementation(impl);
@@ -1394,7 +1398,7 @@ namespace Microsoft.Boogie
                 }
                 if (numAtomicActions > 1 && !allLeftMover && !allRightMover)
                 {
-                    ctc.Error(parCall, "The parallel call must have a single arm or atomic actions in the parallel call must be all right movers or all left movers");
+                    ctc.Error(parCall, "The parallel call must either have a single arm or all arms are right movers or all arms are left movers");
                 }
                 if (atomicActionCalleeLayerNum != LayerRange.Min && atomicActionCalleeLayerNum < maxCalleeLayerNum)
                 {

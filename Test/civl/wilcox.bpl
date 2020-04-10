@@ -1,8 +1,7 @@
 // RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-procedure {:layer 1} GhostRead() returns (oldx: int)
-ensures x == oldx;
+procedure {:intro} {:layer 1} GhostRead() returns (oldx: int)
 {
    oldx := x;
 }
