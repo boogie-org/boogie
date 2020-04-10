@@ -1,5 +1,5 @@
-// RUN: %boogie -noinfer "%s" > "%t"
-// RUN: %boogie -noinfer -freeVarLambdaLifting "%s" >> "%t"
+// RUN: %boogie "%s" > "%t"
+// RUN: %boogie -freeVarLambdaLifting "%s" >> "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure Simplest() {

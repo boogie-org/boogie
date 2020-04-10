@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 var {:layer 0,1} x: int;
 function {:builtin "MapConst"} ch_mapconstbool(x: bool) : [int]bool;

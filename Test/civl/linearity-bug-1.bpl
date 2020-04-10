@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -useArrayTheory -typeEncoding:m "%s" > "%t"
+// RUN: %boogie -useArrayTheory -typeEncoding:m "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 var {:layer 0,1} n : int;

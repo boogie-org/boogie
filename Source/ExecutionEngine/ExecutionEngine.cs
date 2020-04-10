@@ -839,16 +839,10 @@ namespace Microsoft.Boogie
 
       #region Infer invariants using Abstract Interpretation
 
-      // Always use (at least) intervals, if not specified otherwise (e.g. with the "/noinfer" switch)
       if (CommandLineOptions.Clo.UseAbstractInterpretation)
       {
-        if (!CommandLineOptions.Clo.Ai.J_Intervals && !CommandLineOptions.Clo.Ai.J_Trivial)
-        {
-          // use /infer:j as the default
-          CommandLineOptions.Clo.Ai.J_Intervals = true;
-        }
+        Microsoft.Boogie.AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
       }
-      Microsoft.Boogie.AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
 
       #endregion
 

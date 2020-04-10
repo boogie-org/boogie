@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -useArrayTheory -errorTrace:0 "%s" > "%t"
+// RUN: %boogie -useArrayTheory -errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 var __storm_thread_done_0 : bool;
 var __storm_thread_done_1 : bool;

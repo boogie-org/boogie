@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure {:selective_checking} foo()
 {

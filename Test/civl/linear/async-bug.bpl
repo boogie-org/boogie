@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory -doModSetAnalysis "%s" > "%t"
+// RUN: %boogie -typeEncoding:m -useArrayTheory -doModSetAnalysis "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 const GcTid:int;
 

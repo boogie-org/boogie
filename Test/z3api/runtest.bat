@@ -12,5 +12,5 @@ for %%f in (boog0.bpl boog1.bpl boog2.bpl boog3.bpl boog4.bpl boog5.bpl boog6.bp
 for %%f in (bar1.bpl bar2.bpl bar3.bpl bar4.bpl bar6.bpl) do (
   echo.
   echo -------------------- %%f --------------------
-  %BGEXE% %* /nologo /noinfer /stratifiedInline:1 /prover:z3api %%f
+  %BGEXE% %* /nologo /stratifiedInline:1 /prover:z3api %%f
 )

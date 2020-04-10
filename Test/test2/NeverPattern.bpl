@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 function {:never_pattern true} f1(x:int) returns(int);
 function {:never_pattern false} f2(x:int) returns(int);

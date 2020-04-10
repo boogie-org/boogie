@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -contractInfer -printAssignment -useUnsatCoreForContractInfer "%s" > "%t"
+// RUN: %boogie -contractInfer -printAssignment -useUnsatCoreForContractInfer "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // Example to exercise the unsatcore to optimize houdini
@@ -29,7 +29,7 @@ const {:existential true} be0: bool;
 // The output does not have any details to illustrate the flag (its an optimization)
 // One way to make sure it works is to run with -trace
 //
-// $boogie_codeplex\binaries\boogie.exe -noinfer -contractInfer -printAssignment -trace testUnsatCore.bpl
+// $boogie_codeplex\binaries\boogie.exe -contractInfer -printAssignment -trace testUnsatCore.bpl
 //
 // and lookout for the following lines
 //

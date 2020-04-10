@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -proverOpt:O:nnf.sk_hack=true "%s" > "%t"
+// RUN: %boogie -proverOpt:O:nnf.sk_hack=true "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 function in_set(int) returns(bool);
 function next(int) returns(int);

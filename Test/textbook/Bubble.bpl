@@ -60,7 +60,7 @@ procedure BubbleSort() returns (perm: [int]int)
 
     p := 0;
     while (p < n)
-      invariant p <= n;
+      invariant 0 <= p && p <= n;
       // array is sorted from n+1 onwards
       invariant (forall i, k: int :: n+1 <= i && i < N && 0 <= k && k < i ==> a[k] <= a[i]);
       // perm is a permutation
