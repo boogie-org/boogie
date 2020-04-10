@@ -59,8 +59,6 @@ namespace Microsoft.Boogie
         public Implementation impl;
         public LayerRange layerRange;
         public List<AssertCmd> gate;
-        public HashSet<Variable> gateUsedGlobalVars;
-        public HashSet<Variable> actionUsedGlobalVars;
         public HashSet<Variable> modifiedGlobalVars;
 
         protected Action(Procedure proc, Implementation impl, LayerRange layerRange)
@@ -73,11 +71,8 @@ namespace Microsoft.Boogie
             CivlUtil.AddInlineAttribute(impl);
 
             // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
-            this.gate = impl.Blocks[0].cmds.TakeWhile((c, i) => c is AssertCmd).Cast<AssertCmd>().ToList();
-            impl.Blocks[0].cmds.RemoveRange(0, gate.Count);
-
-            gateUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(gate).Where(x => x is GlobalVariable));
-            actionUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(impl).Where(x => x is GlobalVariable));
+            gate = impl.Blocks[0].cmds.TakeWhile((c, i) => c is AssertCmd).Cast<AssertCmd>().ToList();
+            
             modifiedGlobalVars = new HashSet<Variable>(AssignedVariables().Where(x => x is GlobalVariable));
 
             // We usually declare the Boogie procedure and implementation of an atomic action together.
@@ -119,6 +114,9 @@ namespace Microsoft.Boogie
         public MoverType moverType;
         public AtomicAction refinedAction;
 
+        public HashSet<Variable> gateUsedGlobalVars;
+        public HashSet<Variable> actionUsedGlobalVars;
+        
         public List<AssertCmd> firstGate;
         public Implementation firstImpl;
         public List<AssertCmd> secondGate;
@@ -134,6 +132,13 @@ namespace Microsoft.Boogie
             base(proc, impl, layerRange)
         {
             this.moverType = moverType;
+            
+            // Separate the gate from the action
+            impl.Blocks[0].cmds.RemoveRange(0, gate.Count);
+            
+            gateUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(gate).Where(x => x is GlobalVariable));
+            actionUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(impl).Where(x => x is GlobalVariable));
+            
             AtomicActionDuplicator.SetupCopy(this, ref firstGate, ref firstImpl, "first_");
             AtomicActionDuplicator.SetupCopy(this, ref secondGate, ref secondImpl, "second_");
             DeclareTriggerFunctions();
