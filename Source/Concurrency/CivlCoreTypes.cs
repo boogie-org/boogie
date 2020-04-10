@@ -199,8 +199,13 @@ namespace Microsoft.Boogie
 
     public class SkipProc : YieldingProc
     {
+        public HashSet<Variable> hiddenFormals;
+
         public SkipProc(Procedure proc, int upperLayer)
-            : base(proc, MoverType.Both, upperLayer) { }
+            : base(proc, MoverType.Both, upperLayer)
+        {
+            hiddenFormals = new HashSet<Variable>(proc.InParams.Union(proc.OutParams));
+        }
     }
 
     public class MoverProc : YieldingProc
@@ -217,11 +222,13 @@ namespace Microsoft.Boogie
     public class ActionProc : YieldingProc
     {
         public AtomicAction refinedAction;
-
+        public HashSet<Variable> hiddenFormals;
+        
         public ActionProc(Procedure proc, AtomicAction refinedAction, int upperLayer)
             : base(proc, refinedAction.moverType, upperLayer)
         {
             this.refinedAction = refinedAction;
+            hiddenFormals = new HashSet<Variable>();
         }
 
         public AtomicAction RefinedActionAtLayer(int layer)

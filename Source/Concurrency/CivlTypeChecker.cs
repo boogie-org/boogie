@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Linq;
 using System.Diagnostics.Contracts;
 using System.Diagnostics;
@@ -1236,40 +1237,57 @@ namespace Microsoft.Boogie
                     }
                 }
 
+                var hiddenFormals = new HashSet<Variable>();
+                if (calleeProc is ActionProc actionProc)
+                {
+                    hiddenFormals = actionProc.hiddenFormals;
+                }
+                else if (calleeProc is SkipProc skipProc)
+                {
+                    hiddenFormals = skipProc.hiddenFormals;
+                }
                 for (int i = 0; i < call.Ins.Count; i++)
                 {
                     // Visitor checks for global variable accesses and collects accessed local variables
                     localVariableAccesses = new List<IdentifierExpr>();
                     Visit(call.Ins[i]);
 
-                    var formalLayerRange = ctc.LocalVariableLayerRange(call.Proc.InParams[i]);
+                    var formal = call.Proc.InParams[i];
+                    var formalLayerRange = ctc.LocalVariableLayerRange(formal);
                     foreach (var ie in localVariableAccesses)
                     {
                         var actualLayerRange = ctc.LocalVariableLayerRange(ie.Decl);
-                        if (!formalLayerRange.Subset(actualLayerRange))
+                        if (formalLayerRange.Subset(actualLayerRange) && 
+                            (hiddenFormals.Contains(formal) || actualLayerRange.upperLayerNum == callerProc.upperLayer))
                         {
-                            ctc.checkingContext.Error(ie, "Variable {0} cannot be used to compute the argument for formal parameter {1}", ie.Decl.Name, call.Proc.InParams[i].Name);
+                            continue;
                         }
+                        ctc.checkingContext.Error(ie, "Variable {0} cannot be used to compute the argument for formal parameter {1}", ie.Decl.Name, formal.Name);
                     }
 
                     localVariableAccesses = null;
                 }
-
                 for (int i = 0; i < call.Outs.Count; i++)
                 {
                     Variable formal = call.Proc.OutParams[i];
                     IdentifierExpr actualIdentifierExpr = call.Outs[i];
                     Variable actual = actualIdentifierExpr.Decl;
-                    var formalLayerRange = ctc.LocalVariableLayerRange(formal); 
+                    var formalLayerRange = ctc.LocalVariableLayerRange(formal);
+                    if (!hiddenFormals.Contains(formal) && calleeProc is ActionProc actionProc1)
+                    {
+                        formalLayerRange = new LayerRange(formalLayerRange.lowerLayerNum,
+                            actionProc1.refinedAction.layerRange.upperLayerNum);
+                    }
                     var actualLayerRange = ctc.LocalVariableLayerRange(actual);
 
                     // Visitor only called to check for global variable accesses
                     Visit(actualIdentifierExpr);
 
-                    if (!actualLayerRange.Subset(formalLayerRange))
+                    if (actualLayerRange.Subset(formalLayerRange))
                     {
-                        ctc.Error(actualIdentifierExpr, "Formal return parameter of call must be introduced no later than the actual parameter");
+                        continue;
                     }
+                    ctc.Error(actualIdentifierExpr, "Formal return parameter of call available at fewer layers than the corresponding actual parameter");
                 }
             }
 

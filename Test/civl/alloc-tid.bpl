@@ -7,7 +7,7 @@ var {:layer 1,2} {:linear "tid"} unallocated:[int]bool;
 procedure {:yields} {:layer 2} main()
 requires {:layer 1} unallocated == MapConstBool(true);
 {
-  var {:layer 1} {:linear "tid"} tid:int;
+  var {:layer 1,2} {:linear "tid"} tid:int;
   var i: int;
 
   yield;
@@ -23,7 +23,7 @@ requires {:layer 1} unallocated == MapConstBool(true);
   yield;
 }
 
-procedure {:yields} {:layer 2} P({:layer 1} {:linear "tid"} tid: int, i: int)
+procedure {:yields} {:layer 2} P({:layer 1,2} {:linear "tid"} tid: int, i: int)
 requires {:layer 1} tid == i;
 requires {:layer 1} AllocInv(count, unallocated);
 ensures  {:layer 1} AllocInv(count, unallocated);
@@ -128,10 +128,13 @@ procedure {:yields} {:layer 0} {:refines "AtomicAllocateLow"} AllocateLow() retu
 
 // We can prove that this primitive procedure preserves the permission invariant locally.
 // We only need to use its specification and the definitions of TidCollector and TidSetCollector.
-procedure {:layer 1} MakeLinear(i: int) returns ({:linear "tid"} tid: int);
+procedure {:intro} {:layer 1} MakeLinear(i: int) returns ({:linear "tid"} tid: int)
 modifies unallocated;
-requires unallocated[i];
-ensures  tid == i && unallocated == old(unallocated)[i := false];
+{
+  assert unallocated[i];
+  tid := i;
+  unallocated := unallocated[i := false];
+}
 
 function {:builtin "MapConst"} MapConstBool(bool): [int]bool;
 function {:builtin "MapOr"} MapOr([int]bool, [int]bool) : [int]bool;
