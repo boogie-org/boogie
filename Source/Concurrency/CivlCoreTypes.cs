@@ -64,7 +64,7 @@ namespace Microsoft.Boogie
 
         public override int GetHashCode()
         {
-            return base.GetHashCode(); // to satisfy the compiler
+            return (23 * 31 + lowerLayerNum) * 31 + upperLayerNum;
         }
     }
 
@@ -74,6 +74,8 @@ namespace Microsoft.Boogie
         public Implementation impl;
         public LayerRange layerRange;
         public List<AssertCmd> gate;
+        public HashSet<Variable> gateUsedGlobalVars;
+        public HashSet<Variable> actionUsedGlobalVars;
         public HashSet<Variable> modifiedGlobalVars;
 
         protected Action(Procedure proc, Implementation impl, LayerRange layerRange)
@@ -85,9 +87,13 @@ namespace Microsoft.Boogie
             CivlUtil.AddInlineAttribute(proc);
             CivlUtil.AddInlineAttribute(impl);
 
-            // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
+            // The gate of an action is represented as asserts at the beginning of the procedure body.
             gate = impl.Blocks[0].cmds.TakeWhile((c, i) => c is AssertCmd).Cast<AssertCmd>().ToList();
-            
+            // We separate the gate from the action
+            impl.Blocks[0].cmds.RemoveRange(0, gate.Count);
+
+            gateUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(gate).Where(x => x is GlobalVariable));
+            actionUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(impl).Where(x => x is GlobalVariable));
             modifiedGlobalVars = new HashSet<Variable>(AssignedVariables().Where(x => x is GlobalVariable));
 
             // We usually declare the Boogie procedure and implementation of an atomic action together.
@@ -102,6 +108,8 @@ namespace Microsoft.Boogie
                 impl.OutParams[i].Attributes = proc.OutParams[i].Attributes;
             }
         }
+
+        public bool HasAssumeCmd => impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
         
         protected List<Variable> AssignedVariables()
         {
@@ -129,9 +137,6 @@ namespace Microsoft.Boogie
         public MoverType moverType;
         public AtomicAction refinedAction;
 
-        public HashSet<Variable> gateUsedGlobalVars;
-        public HashSet<Variable> actionUsedGlobalVars;
-        
         public List<AssertCmd> firstGate;
         public Implementation firstImpl;
         public List<AssertCmd> secondGate;
@@ -147,13 +152,6 @@ namespace Microsoft.Boogie
             base(proc, impl, layerRange)
         {
             this.moverType = moverType;
-            
-            // Separate the gate from the action
-            impl.Blocks[0].cmds.RemoveRange(0, gate.Count);
-            
-            gateUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(gate).Where(x => x is GlobalVariable));
-            actionUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(impl).Where(x => x is GlobalVariable));
-            
             AtomicActionDuplicator.SetupCopy(this, ref firstGate, ref firstImpl, "first_");
             AtomicActionDuplicator.SetupCopy(this, ref secondGate, ref secondImpl, "second_");
             DeclareTriggerFunctions();
@@ -161,8 +159,6 @@ namespace Microsoft.Boogie
 
         public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
         public bool IsLeftMover { get { return moverType == MoverType.Left || moverType == MoverType.Both; } }
-
-        public bool HasAssumeCmd => impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
 
         public bool HasPendingAsyncs => pendingAsyncs != null;
 

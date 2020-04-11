@@ -324,8 +324,10 @@ namespace Microsoft.Boogie
         {
             if (civlTypeChecker.procToIntroductionAction.ContainsKey(call.Proc))
             {
-                if (civlTypeChecker.procToIntroductionAction[call.Proc].LayerNum == layerNum)
+                var introductionAction = civlTypeChecker.procToIntroductionAction[call.Proc];
+                if (introductionAction.LayerNum == layerNum)
                 {
+                    InjectGate(introductionAction, newCall);
                     newCmdSeq.Add(newCall);
                 }
                 return;
@@ -392,9 +394,16 @@ namespace Microsoft.Boogie
             }
             
             // handle synchronous calls to action procedures
-            InjectGate(yieldingProc, newCall);
-            newCmdSeq.Add(newCall);
-            CollectPendingAsyncs(call, newCall);
+            {
+                Debug.Assert(yieldingProc is ActionProc);
+                ActionProc actionProc = (ActionProc)yieldingProc;
+                if (actionProc.upperLayer < layerNum)
+                {
+                    InjectGate(actionProc.RefinedActionAtLayer(layerNum), newCall);
+                }
+                newCmdSeq.Add(newCall);
+                CollectPendingAsyncs(call, newCall);
+            }
         }
 
         private void ProcessParCallCmd(ParCallCmd parCall, ParCallCmd newParCall)
@@ -432,33 +441,28 @@ namespace Microsoft.Boogie
 
         // We only have to check the gate of a called atomic action (via an assert) at the creation layer of the caller.
         // In all layers below we just establish invariants which do not require the gates to be checked and we can inject is as an assume.
-        private void InjectGate(YieldingProc yieldingProc, CallCmd callCmd)
+        private void InjectGate(Action action, CallCmd callCmd)
         {
-            if (!(yieldingProc is ActionProc calledActionProc)) return;
-            if (calledActionProc.upperLayer >= layerNum) return;
-            AtomicAction atomicAction = calledActionProc.RefinedActionAtLayer(layerNum);
-            if (atomicAction.gate.Count == 0) return;
+            if (action.gate.Count == 0) return;
 
             Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-            for (int i = 0; i < calledActionProc.proc.InParams.Count; i++)
+            for (int i = 0; i < action.proc.InParams.Count; i++)
             {
-                // Parameters come from the implementation that defines the atomic action
-                map[atomicAction.impl.InParams[i]] = callCmd.Ins[i];
+                // Parameters come from the implementation that defines the action
+                map[action.impl.InParams[i]] = callCmd.Ins[i];
             }
-
             Substitution subst = Substituter.SubstitutionFromHashtable(map);
 
             // Important: Do not remove CommentCmd!
-            // It separates the injected gate from yield assertions in CollectAndDesugarYields.
+            // It separates the injected gate from yield assertions.
             newCmdSeq.Add(new CommentCmd("<<< injected gate"));
-            foreach (AssertCmd assertCmd in atomicAction.gate)
+            foreach (AssertCmd assertCmd in action.gate)
             {
-                if (IsRefinementLayer)
+                if (IsRefinementLayer || action is IntroductionAction)
                     newCmdSeq.Add((AssertCmd)Substituter.Apply(subst, assertCmd));
                 else
                     newCmdSeq.Add(new AssumeCmd(assertCmd.tok, Substituter.Apply(subst, assertCmd.Expr)));
             }
-
             newCmdSeq.Add(new CommentCmd("injected gate >>>"));
         }
 

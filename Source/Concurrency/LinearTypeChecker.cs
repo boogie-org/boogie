@@ -969,13 +969,13 @@ namespace Microsoft.Boogie
         #region Linearity Invariant Checker
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
-            foreach (var action in civlTypeChecker.procToAtomicAction.Values)
+            foreach (var action in Enumerable.Concat<Action>(civlTypeChecker.procToAtomicAction.Values, civlTypeChecker.procToIntroductionAction.Values))
             {
                 AddChecker(action, linearTypeChecker, decls);
             }
         }
 
-        private static void AddChecker(AtomicAction action, LinearTypeChecker linearTypeChecker, List<Declaration> decls)
+        private static void AddChecker(Action action, LinearTypeChecker linearTypeChecker, List<Declaration> decls)
         {
             // Note: The implementation should be used as the variables in the
             //       gate are bound to implementation and not to the procedure.
