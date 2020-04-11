@@ -4,7 +4,6 @@ using System.ComponentModel.Design;
 using System.Linq;
 using System.Diagnostics.Contracts;
 using System.Diagnostics;
-using System.Security.Cryptography;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
@@ -491,7 +490,7 @@ namespace Microsoft.Boogie
                              QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR) ||
                              QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_IN) != 
                              QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_IN) ||
-                             QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_OUT) != 
+                             QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_OUT) !=
                              QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_OUT)))
                         {
                             checkingContext.Error(formals1[i], $"mismatched linearity type of {inout}-parameter in {decl2.Name}: {msg}");
@@ -504,15 +503,13 @@ namespace Microsoft.Boogie
         private void CheckRefinementSignature(ActionProc actionProc)
         {
             var signatureMatcher = new SignatureMatcher(actionProc.proc, actionProc.refinedAction.proc, checkingContext);
-            var refinedActionOutParams = actionProc.refinedAction.proc.OutParams.SkipEnd(actionProc.refinedAction.HasPendingAsyncs ? 1 : 0).ToList();
-            signatureMatcher.MatchFormals(
-                actionProc.proc.InParams.Where(x => LocalVariableLayerRange(x).upperLayerNum == actionProc.upperLayer).ToList(), 
-                actionProc.refinedAction.proc.InParams, 
-                SignatureMatcher.IN);
-            signatureMatcher.MatchFormals(
-                actionProc.proc.OutParams.Where(x => LocalVariableLayerRange(x).upperLayerNum == actionProc.upperLayer).ToList(), 
-                refinedActionOutParams, 
-                SignatureMatcher.OUT);
+            Func<Variable, bool> existsAtUpperLayer = x => LocalVariableLayerRange(x).upperLayerNum == actionProc.upperLayer;
+            var procInParams = actionProc.proc.InParams.Where(existsAtUpperLayer).ToList();
+            var procOutParams = actionProc.proc.OutParams.Where(existsAtUpperLayer).ToList();
+            var actionInParams = actionProc.refinedAction.proc.InParams;
+            var actionOutParams = actionProc.refinedAction.proc.OutParams.SkipEnd(actionProc.refinedAction.HasPendingAsyncs ? 1 : 0).ToList();
+            signatureMatcher.MatchFormals(procInParams, actionInParams, SignatureMatcher.IN);
+            signatureMatcher.MatchFormals(procOutParams, actionOutParams, SignatureMatcher.OUT);
         }
 
         private void CheckInductiveSequentializationAbstractionSignature(AtomicAction original, AtomicAction abstraction)
