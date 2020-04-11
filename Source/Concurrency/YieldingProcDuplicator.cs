@@ -458,10 +458,12 @@ namespace Microsoft.Boogie
             newCmdSeq.Add(new CommentCmd("<<< injected gate"));
             foreach (AssertCmd assertCmd in action.gate)
             {
+                var expr = Substituter.Apply(subst, assertCmd.Expr);
                 if (IsRefinementLayer || action is IntroductionAction)
-                    newCmdSeq.Add((AssertCmd)Substituter.Apply(subst, assertCmd));
+                    newCmdSeq.Add(new AssertCmd(assertCmd.tok, expr)
+                        { ErrorData = $"This gate of {action.proc.Name} might not hold." });
                 else
-                    newCmdSeq.Add(new AssumeCmd(assertCmd.tok, Substituter.Apply(subst, assertCmd.Expr)));
+                    newCmdSeq.Add(new AssumeCmd(assertCmd.tok, expr));
             }
             newCmdSeq.Add(new CommentCmd("injected gate >>>"));
         }
