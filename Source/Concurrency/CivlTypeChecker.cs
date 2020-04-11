@@ -4,6 +4,7 @@ using System.ComponentModel.Design;
 using System.Linq;
 using System.Diagnostics.Contracts;
 using System.Diagnostics;
+using System.Security.Cryptography;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
@@ -1090,6 +1091,41 @@ namespace Microsoft.Boogie
                 base.VisitAssertCmd(assert);
                 VisitSpecPost(assert);
                 return assert;
+            }
+
+            public override Cmd VisitAssumeCmd(AssumeCmd node)
+            {
+                localVariableAccesses = new List<IdentifierExpr>();
+                var cmd = base.VisitAssumeCmd(node);
+                var fullLayerRange = new LayerRange(LayerRange.Min, yieldingProc.upperLayer);
+                if (!localVariableAccesses.TrueForAll(x => ctc.LocalVariableLayerRange(x.Decl).Equals(fullLayerRange)))
+                {
+                    ctc.checkingContext.Error(node, "Local variables accessed in assume command must be available at all layers where the enclosing procedure exists");
+                }
+                localVariableAccesses = null;
+                return cmd;
+            }
+
+            public override Cmd VisitAssignCmd(AssignCmd node)
+            {
+                var cmd = base.VisitAssignCmd(node);
+                for (int i = 0; i < node.Lhss.Count; i++)
+                {
+                    var lhs = node.Lhss[i].DeepAssignedVariable;
+                    if (lhs is LocalVariable lhsLocalVariable)
+                    {
+                        var lhsLayerRange = ctc.LocalVariableLayerRange(lhsLocalVariable);
+                        localVariableAccesses = new List<IdentifierExpr>();
+                        base.Visit(node.Rhss[i]);
+                        if (!localVariableAccesses.TrueForAll(x => lhsLayerRange.Subset(ctc.LocalVariableLayerRange(x.Decl))))
+                        {
+                            ctc.checkingContext.Error(node,
+                                "Layer range mismatch at position {0}: local variables accessed in rhs must be available at all layers where the lhs exists", i);
+                        }
+                        localVariableAccesses = null;
+                    }
+                }
+                return cmd;
             }
 
             public void VisitSpecPre()

@@ -51,6 +51,21 @@ namespace Microsoft.Boogie
         {
             return $"[{lowerLayerNum}, {upperLayerNum}]";
         }
+
+        public override bool Equals(object obj)
+        {
+            LayerRange other = obj as LayerRange;
+            if (obj == null)
+            {
+                return false;
+            }
+            return lowerLayerNum == other.lowerLayerNum && upperLayerNum == other.upperLayerNum;
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode(); // to satisfy the compiler
+        }
     }
 
     public abstract class Action
