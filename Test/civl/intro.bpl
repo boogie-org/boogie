@@ -11,7 +11,7 @@ procedure {:atomic} {:layer 2,2} atomic_write_y (y':int)
 modifies y;
 { y := y'; }
 
-procedure {:yields} {:layer 1} {:refines "atomic_read_y"}  read_y () returns ({:layer 0} v:int)
+procedure {:yields} {:layer 1} {:refines "atomic_read_y"}  read_y () returns ({:layer 0,1} v:int)
 requires {:layer 1} x == y;
 {
   yield; assert {:layer 1} x == y;

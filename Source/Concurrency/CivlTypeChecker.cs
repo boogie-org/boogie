@@ -414,12 +414,9 @@ namespace Microsoft.Boogie
                     }
                     if (!refinedAction.layerRange.Contains(upperLayer + 1))
                     {
-                        // Strictly speaking, there could be a layer gap if some layer is not used
-                        // for refinement. However, at this point we do not know the refinement layers,
-                        // so we use this conservative check which seems reasonable in practice.
                         checkingContext.Error(proc, "Refined atomic action must be available at layer {0}", upperLayer + 1);
+                        continue;
                     }
-
                     var actionProc = new ActionProc(proc, refinedAction, upperLayer);
                     CheckRefinementSignature(actionProc);
                     procToYieldingProc[proc] = actionProc;
@@ -489,9 +486,12 @@ namespace Microsoft.Boogie
                         }
 
                         if (checkLinearity &&
-                           (QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR) != QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR) ||
-                            QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_IN) != QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_IN) ||
-                            QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_OUT) != QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_OUT)))
+                            (QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR) != 
+                             QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR) ||
+                             QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_IN) != 
+                             QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_IN) ||
+                             QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_OUT) != 
+                             QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_OUT)))
                         {
                             checkingContext.Error(formals1[i], $"mismatched linearity type of {inout}-parameter in {decl2.Name}: {msg}");
                         }
@@ -504,8 +504,14 @@ namespace Microsoft.Boogie
         {
             var signatureMatcher = new SignatureMatcher(actionProc.proc, actionProc.refinedAction.proc, checkingContext);
             var refinedActionOutParams = actionProc.refinedAction.proc.OutParams.SkipEnd(actionProc.refinedAction.HasPendingAsyncs ? 1 : 0).ToList();
-            signatureMatcher.MatchFormals(actionProc.proc.InParams, actionProc.refinedAction.proc.InParams, SignatureMatcher.IN);
-            signatureMatcher.MatchFormals(actionProc.proc.OutParams, refinedActionOutParams, SignatureMatcher.OUT);
+            signatureMatcher.MatchFormals(
+                actionProc.proc.InParams.Where(x => LocalVariableLayerRange(x).upperLayerNum == actionProc.upperLayer).ToList(), 
+                actionProc.refinedAction.proc.InParams, 
+                SignatureMatcher.IN);
+            signatureMatcher.MatchFormals(
+                actionProc.proc.OutParams.Where(x => LocalVariableLayerRange(x).upperLayerNum == actionProc.upperLayer).ToList(), 
+                refinedActionOutParams, 
+                SignatureMatcher.OUT);
         }
 
         private void CheckInductiveSequentializationAbstractionSignature(AtomicAction original, AtomicAction abstraction)
