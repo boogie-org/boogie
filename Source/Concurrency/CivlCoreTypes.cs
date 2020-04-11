@@ -244,7 +244,7 @@ namespace Microsoft.Boogie
             : base(proc, refinedAction.moverType, upperLayer)
         {
             this.refinedAction = refinedAction;
-            hiddenFormals = new HashSet<Variable>();
+            hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => x.HasAttribute(CivlAttributes.HIDE)));
         }
 
         public AtomicAction RefinedActionAtLayer(int layer)

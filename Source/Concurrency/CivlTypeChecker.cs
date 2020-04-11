@@ -503,9 +503,11 @@ namespace Microsoft.Boogie
         private void CheckRefinementSignature(ActionProc actionProc)
         {
             var signatureMatcher = new SignatureMatcher(actionProc.proc, actionProc.refinedAction.proc, checkingContext);
-            Func<Variable, bool> existsAtUpperLayer = x => LocalVariableLayerRange(x).upperLayerNum == actionProc.upperLayer;
-            var procInParams = actionProc.proc.InParams.Where(existsAtUpperLayer).ToList();
-            var procOutParams = actionProc.proc.OutParams.Where(existsAtUpperLayer).ToList();
+            Func<Variable, bool> isRemainingVariable = x =>
+                LocalVariableLayerRange(x).upperLayerNum == actionProc.upperLayer &&
+                !actionProc.hiddenFormals.Contains(x);
+            var procInParams = actionProc.proc.InParams.Where(isRemainingVariable).ToList();
+            var procOutParams = actionProc.proc.OutParams.Where(isRemainingVariable).ToList();
             var actionInParams = actionProc.refinedAction.proc.InParams;
             var actionOutParams = actionProc.refinedAction.proc.OutParams.SkipEnd(actionProc.refinedAction.HasPendingAsyncs ? 1 : 0).ToList();
             signatureMatcher.MatchFormals(procInParams, actionInParams, SignatureMatcher.IN);

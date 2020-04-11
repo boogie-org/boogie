@@ -20,6 +20,7 @@ namespace Microsoft.Boogie
         public const string BOTH = "both";
 
         public static string REFINES = "refines";
+        public static string HIDE = "hide";
 
         public const string TERMINATES = "terminates";
 
@@ -42,7 +43,7 @@ namespace Microsoft.Boogie
         public const string CHOICE = "choice";
 
         private static string[] CIVL_ATTRIBUTES =
-            {LAYER, YIELDS, INTRO, ATOMIC, LEFT, RIGHT, BOTH, REFINES,
+            {LAYER, YIELDS, INTRO, ATOMIC, LEFT, RIGHT, BOTH, REFINES, HIDE,
              COMMUTATIVITY, LEMMA, WITNESS,
              PENDING_ASYNC, IS, IS_INVARIANT, IS_ABSTRACTION, ELIM, CHOICE };
 
