@@ -1299,11 +1299,14 @@ namespace Microsoft.Boogie
 
                     var formal = call.Proc.InParams[i];
                     var formalLayerRange = ctc.LocalVariableLayerRange(formal);
+                    if (!hiddenFormals.Contains(formal) && calleeProc is ActionProc)
+                    {
+                        formalLayerRange = new LayerRange(formalLayerRange.lowerLayerNum, callerProc.upperLayer);
+                    }
                     foreach (var ie in localVariableAccesses)
                     {
                         var actualLayerRange = ctc.LocalVariableLayerRange(ie.Decl);
-                        if (formalLayerRange.Subset(actualLayerRange) && 
-                            (hiddenFormals.Contains(formal) || actualLayerRange.upperLayerNum == callerProc.upperLayer))
+                        if (formalLayerRange.Subset(actualLayerRange))
                         {
                             continue;
                         }
@@ -1314,20 +1317,17 @@ namespace Microsoft.Boogie
                 }
                 for (int i = 0; i < call.Outs.Count; i++)
                 {
-                    Variable formal = call.Proc.OutParams[i];
                     IdentifierExpr actualIdentifierExpr = call.Outs[i];
-                    Variable actual = actualIdentifierExpr.Decl;
-                    var formalLayerRange = ctc.LocalVariableLayerRange(formal);
-                    if (!hiddenFormals.Contains(formal) && calleeProc is ActionProc actionProc1)
-                    {
-                        formalLayerRange = new LayerRange(formalLayerRange.lowerLayerNum,
-                            actionProc1.refinedAction.layerRange.upperLayerNum);
-                    }
-                    var actualLayerRange = ctc.LocalVariableLayerRange(actual);
-
                     // Visitor only called to check for global variable accesses
                     Visit(actualIdentifierExpr);
 
+                    var actualLayerRange = ctc.LocalVariableLayerRange(actualIdentifierExpr.Decl);
+                    var formal = call.Proc.OutParams[i];
+                    var formalLayerRange = ctc.LocalVariableLayerRange(formal);
+                    if (!hiddenFormals.Contains(formal) && calleeProc is ActionProc)
+                    {
+                        formalLayerRange = new LayerRange(formalLayerRange.lowerLayerNum, callerProc.upperLayer);
+                    }
                     if (actualLayerRange.Subset(formalLayerRange))
                     {
                         continue;
