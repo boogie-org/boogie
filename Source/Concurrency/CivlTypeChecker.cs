@@ -876,6 +876,12 @@ namespace Microsoft.Boogie
             return localVarToLayerRange[l];
         }
 
+        public bool FormalRemainsInAction(ActionProc actionProc, Variable param)
+        {
+            return LocalVariableLayerRange(param).Contains(actionProc.upperLayer) &&
+                   !actionProc.hiddenFormals.Contains(param);
+        }
+
         public AtomicAction FindAtomicAction(string name)
         {
             return procToAtomicAction.Values.FirstOrDefault(a => a.proc.Name == name);

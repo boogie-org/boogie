@@ -131,14 +131,22 @@ namespace Microsoft.Boogie
             AtomicAction atomicAction = actionProc.refinedAction;
             Implementation atomicActionImpl = atomicAction.impl;
             Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
-            for (int i = 0; i < impl.InParams.Count; i++)
+            for (int i = 0, j = 0; i < impl.InParams.Count; i++)
             {
-                alwaysMap[atomicActionImpl.InParams[i]] = Expr.Ident(impl.InParams[i]);
+                if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.proc.InParams[i]))
+                {
+                    alwaysMap[atomicActionImpl.InParams[j]] = Expr.Ident(impl.InParams[i]);
+                    j++;
+                }
             }
 
-            for (int i = 0; i < impl.OutParams.Count; i++)
+            for (int i = 0, j = 0; i < impl.OutParams.Count; i++)
             {
-                alwaysMap[atomicActionImpl.OutParams[i]] = Expr.Ident(impl.OutParams[i]);
+                if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.proc.OutParams[i]))
+                {
+                    alwaysMap[atomicActionImpl.OutParams[j]] = Expr.Ident(impl.OutParams[i]);
+                    j++;
+                }
             }
             if (atomicAction.HasPendingAsyncs)
             {
