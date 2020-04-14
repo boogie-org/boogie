@@ -16,15 +16,20 @@ namespace Microsoft.Boogie
 
                 YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, linearTypeChecker, layerNum);
 
-                // We can not simply call VisitProgram, because it does some resolving of calls
-                // that is not necessary here (and actually fails).
-                foreach (Procedure proc in program.Procedures)
+                foreach (var procToYieldingProc in civlTypeChecker.procToYieldingProc)
                 {
-                    duplicator.VisitProcedure(proc);
+                    if (procToYieldingProc.Value.upperLayer >= layerNum)
+                    {
+                        duplicator.VisitProcedure(procToYieldingProc.Key);
+                    }
                 }
                 foreach (Implementation impl in program.Implementations)
                 {
-                    duplicator.VisitImplementation(impl);
+                    if (civlTypeChecker.procToYieldingProc.TryGetValue(impl.Proc, out var yieldingProc) &&
+                        yieldingProc.upperLayer >= layerNum)
+                    {
+                        duplicator.VisitImplementation(impl);
+                    }
                 }
                 decls.AddRange(duplicator.Collect());
             }
