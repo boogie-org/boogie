@@ -533,8 +533,6 @@ namespace Microsoft.Boogie {
     public bool ShowVerifiedProcedureCount = true;
     [ContractInvariantMethod]
     void ObjectInvariant3() {
-      Contract.Invariant(-1 <= LoopFrameConditions && LoopFrameConditions < 3);
-      Contract.Invariant(0 <= ModifiesDefault && ModifiesDefault < 7);
       Contract.Invariant((0 <= PrintErrorModel && PrintErrorModel <= 2) || PrintErrorModel == 4);
       Contract.Invariant(0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2);
       Contract.Invariant(0 <= Ai.StepsBeforeWidening && Ai.StepsBeforeWidening <= 9);
@@ -544,16 +542,6 @@ namespace Microsoft.Boogie {
 
     public int LoopUnrollCount = -1;  // -1 means don't unroll loops
     public bool SoundLoopUnrolling = false;
-    public int LoopFrameConditions = -1;  // -1 means not specified -- this will be replaced by the "implications" section below
-    public int ModifiesDefault = 5;
-    public bool LocalModifiesChecks = true;
-    public bool NoVerifyByDefault = false;
-    public enum OwnershipModelOption {
-      Standard,
-      Experimental,
-      Trivial
-    }
-    public OwnershipModelOption OwnershipModelEncoding = OwnershipModelOption.Standard;
     public int PrintErrorModel = 0;
     public string PrintErrorModelFile = null;
     public string/*?*/ ModelViewFile = null;
@@ -561,7 +549,6 @@ namespace Microsoft.Boogie {
     public string PrintCFGPrefix = null;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
-    public bool WeakArrayTheory = false;
     public bool RunDiagnosticsOnTimeout = false;
     public bool TraceDiagnosticsOnTimeout = false;
     public int TimeLimitPerAssertionInPercent = 10;
@@ -609,20 +596,6 @@ namespace Microsoft.Boogie {
       }
     }
 
-    [Obsolete("use the setter for 'ProverOptions' directly")]
-    public void AddProverOption(string option)
-    {
-      Contract.Requires(option != null);
-
-      this.ProverOptions = this.ProverOptions.Concat1(option);
-    }
-
-    [Obsolete("use the setter for 'ProverOptions' directly")]
-    public void RemoveAllProverOptions(Predicate<string> match)
-    {
-      this.ProverOptions = this.ProverOptions.Where(s => !match(s));
-    }
-
     private int bracketIdsInVC = -1;  // -1 - not specified, 0 - no, 1 - yes
 
     public int BracketIdsInVC {
@@ -635,8 +608,6 @@ namespace Microsoft.Boogie {
         this.bracketIdsInVC = value;
       }
     }
-
-    public bool CausalImplies = false;
 
     public int ProverKillTime = -1;  // -1 means not specified
     public int Resourcelimit = 0; // default to 0
@@ -1474,11 +1445,9 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("smoke", ref SoundnessSmokeTest) ||
               ps.CheckBooleanFlag("vcsDumpSplits", ref VcsDumpSplits) ||
               ps.CheckBooleanFlag("dbgRefuted", ref DebugRefuted) ||
-              ps.CheckBooleanFlag("causalImplies", ref CausalImplies) ||
               ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
-              ps.CheckBooleanFlag("weakArrayTheory", ref WeakArrayTheory) ||
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
               ps.CheckBooleanFlag("runDiagnosticsOnTimeout", ref RunDiagnosticsOnTimeout) ||
               ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", ref TraceDiagnosticsOnTimeout) ||
@@ -1812,8 +1781,6 @@ namespace Microsoft.Boogie {
   /traceTimes   output timing information at certain points in the pipeline
   /tracePOs     output information about the number of proof obligations
                 (also included in the /trace output)
-  /log[:method] Print debug output during translation
-
   /break        launch and break into debugger
 
   ---- CIVL options ----------------------------------------------------------
@@ -1877,8 +1844,6 @@ namespace Microsoft.Boogie {
   /printInlined
                 print the implementation after inlining calls to
                 procedures with the :inline attribute (works with /inline)
-  /lazyInline:1
-                Use the lazy inlining algorithm
   /stratifiedInline:1
                 Use the stratified inlining algorithm
   /fixedPointEngine:<engine>
