@@ -211,7 +211,12 @@ requires {:layer 8} (forall B: [Pair]bool, xid: Xid :: card(B, xid) == 0);
 // ###########################################################################
 // Event Handlers
 
-procedure {:layer 0,10} {:inline 1} GhostRead() returns (snapshot: GState)
+procedure {:intro} {:layer 8} GhostRead_8() returns (snapshot: GState)
+{
+   snapshot := state;
+}
+
+procedure {:intro} {:layer 10} GhostRead_10() returns (snapshot: GState)
 {
    snapshot := state;
 }
@@ -238,7 +243,7 @@ ensures  {:layer 9,10} gConsistent(state);
   par YieldInv_8() | YieldConsistent_9() | YieldConsistent_10();
   call xid, pairs := AllocateXid();
   assert {:layer 10} NextStateTrigger(state[xid]);
-  call snapshot := GhostRead();
+  call snapshot := GhostRead_10();
   i := 1;
   while (i <= numParticipants)
   invariant {:terminates} {:layer 8,9,10} true;
@@ -334,11 +339,11 @@ requires {:layer 8} Inv_8(state, B, votes) && pair(xid, mid, pair) && (votes[xid
 
   call YieldUndecidedOrCommitted_8(xid, mid, pair);
   assert {:layer 8} XidTrigger(xid);
-  call snapshot := GhostRead();
-  call {:layer 8} Lemma_add_to_B(pair);
-  call {:layer 8} Lemma_all_in_B(xid);
+  call snapshot := GhostRead_8();
+  call {:layer 8} Lemma_add_to_set(B, pair);
+  call {:layer 8} Lemma_all_in_set(B, xid);
   call commit := StateUpdateOnVoteYes(xid, mid, pair);
-  call {:layer 8} Lemma_all_in_B(xid);
+  call {:layer 8} Lemma_all_in_set(B, xid);
   assert {:layer 8} XidTrigger(xid);
   assert {:layer 8} NextStateTrigger(state[xid]);
 
@@ -384,7 +389,7 @@ requires {:layer 8} Inv_8(state, B, votes) && pair(xid, mid, pair) && Aborted(st
   var {:layer 8} snapshot: GState;
 
   call YieldAborted_8(xid, mid, pair);
-  call snapshot := GhostRead();
+  call snapshot := GhostRead_8();
   call abort := StateUpdateOnVoteNo(xid, mid);
   assert {:layer 8} XidTrigger(xid);
   assert {:layer 8} NextStateTrigger(state[xid]);
@@ -518,12 +523,11 @@ function {:inline} {:linear "pair"} XidSetCollector(xids: [Xid]bool) : [Pair]boo
 
 function card(pairs: [Pair]bool, xid: Xid) : int;
 
-procedure {:layer 8} Lemma_add_to_B (pair: Pair);
+procedure {:lemma} Lemma_add_to_set (set: [Pair]bool, pair: Pair);
 requires participantMid(mid#Pair(pair));
-requires !B[pair];
-ensures (forall xid: Xid :: card(B[pair := true], xid) == (if xid == xid#Pair(pair) then card(B, xid) + 1 else card(B, xid)));
+requires !set[pair];
+ensures (forall xid: Xid :: card(set[pair := true], xid) == (if xid == xid#Pair(pair) then card(set, xid) + 1 else card(set, xid)));
 
-procedure {:layer 8} Lemma_all_in_B (xid: Xid);
-requires SetInv(B);
-ensures card(B, xid) >= numParticipants ==> (forall mid: Mid :: {participantMid(mid)} participantMid(mid) ==> B[Pair(xid, mid)]);
-
+procedure {:lemma} Lemma_all_in_set (set: [Pair]bool, xid: Xid);
+requires SetInv(set);
+ensures card(set, xid) >= numParticipants ==> (forall mid: Mid :: participantMid(mid) ==> set[Pair(xid, mid)]);

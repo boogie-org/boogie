@@ -26,9 +26,6 @@ namespace Microsoft.Boogie
 
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
-            if (civlTypeChecker.procToAtomicAction.Count == 0)
-                return;
-
             MoverCheck moverChecking = new MoverCheck(linearTypeChecker, civlTypeChecker, decls);
 
             // TODO: make enumeration of mover checks more efficient / elegant
@@ -61,16 +58,21 @@ namespace Microsoft.Boogie
             }
 
             // Here we include IS abstractions
-            foreach (AtomicAction atomicAction in civlTypeChecker.AllActions.Where(a => a.IsLeftMover))
+            foreach (var atomicAction in civlTypeChecker.AllActions.Where(a => a.IsLeftMover))
             {
                 moverChecking.CreateNonBlockingChecker(atomicAction);
             }
 
             // IS abstractions are marked left movers, so here we select regular atomic actions
             // that are not marked left mover but used as abstraction in IS.
-            foreach (AtomicAction atomicAction in civlTypeChecker.inductiveSequentializations.SelectMany(IS => IS.elim.Values).Where(a => !a.IsLeftMover).Distinct())
+            foreach (var atomicAction in civlTypeChecker.inductiveSequentializations.SelectMany(IS => IS.elim.Values).Where(a => !a.IsLeftMover).Distinct())
             {
                 moverChecking.CreateNonBlockingChecker(atomicAction);
+            }
+
+            foreach (var introductionAction in civlTypeChecker.procToIntroductionAction.Values)
+            {
+                moverChecking.CreateNonBlockingChecker(introductionAction);
             }
         }
 
@@ -81,7 +83,7 @@ namespace Microsoft.Boogie
 
         private void AddChecker(string checkerName, List<Variable> inputs, List<Variable> outputs, List<Variable> locals, List<Requires> requires, List<Ensures> ensures, List<Block> blocks)
         {
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, civlTypeChecker.sharedVariableIdentifiers, ensures);
+            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList(), ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, blocks);
             impl.Proc = proc;
             this.decls.Add(impl);
@@ -263,7 +265,7 @@ namespace Microsoft.Boogie
             AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, ensures, new List<Block> { block });
         }
 
-        private void CreateNonBlockingChecker(AtomicAction action)
+        private void CreateNonBlockingChecker(Action action)
         {
             if (!action.HasAssumeCmd) return;
 

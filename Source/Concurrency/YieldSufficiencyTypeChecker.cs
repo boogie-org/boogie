@@ -327,7 +327,8 @@ namespace Microsoft.Boogie
 
             private int CallCmdLabel(CallCmd callCmd)
             {
-                if (@base.civlTypeChecker.procToIntroductionProc.ContainsKey(callCmd.Proc))
+                if (@base.civlTypeChecker.procToIntroductionAction.ContainsKey(callCmd.Proc) ||
+                    @base.civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc))
                     return I;
 
                 YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];

@@ -40,7 +40,7 @@ Execution trace:
     bla1.bpl(1526,3): inline$I8xKeyboardGetSysButtonEvent$0$anon6_Else#1
     bla1.bpl(1534,3): inline$I8xKeyboardGetSysButtonEvent$0$anon7_Then#1
     bla1.bpl(1544,3): inline$I8xKeyboardGetSysButtonEvent$0$anon2#1
-    bla1.bpl(1568,3): inline$I8xKeyboardGetSysButtonEvent$0$label_23_true#1
+    bla1.bpl(1556,3): inline$I8xKeyboardGetSysButtonEvent$0$label_23_false#1
     bla1.bpl(1588,3): inline$I8xKeyboardGetSysButtonEvent$0$label_13_true#1
     bla1.bpl(1621,3): inline$storm_IoCompleteRequest$0$label_6_false#1
     bla1.bpl(1656,3): inline$storm_IoCompleteRequest$0$anon4_Else#1

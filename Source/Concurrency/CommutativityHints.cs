@@ -158,7 +158,7 @@ namespace Microsoft.Boogie
                     if (kv.Params.Count == 1 &&
                         kv.Params[0] is string witnessedVariableName)
                     {
-                        Variable witnessedVariable = ctc.sharedVariables.Find(v => v.Name == witnessedVariableName);
+                        Variable witnessedVariable = ctc.GlobalVariables.First(v => v.Name == witnessedVariableName);
                         if (witnessedVariable == null)
                         {
                             ctc.Error(kv, $"Could not find shared variable {witnessedVariableName}");
@@ -239,7 +239,7 @@ namespace Microsoft.Boogie
             var name = param.Name;
             if (postState)
                 name = name.Substring(0, name.Length - 1);
-            var var = FindVariable(name, param.TypedIdent.Type, ctc.sharedVariables);
+            var var = FindVariable(name, param.TypedIdent.Type, ctc.GlobalVariables);
             if (var != null)
             {
                 if (!postState)

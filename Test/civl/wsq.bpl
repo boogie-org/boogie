@@ -402,13 +402,13 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
   assert {:layer 3} oldH <= H;
 }
 
-procedure {:layer 3} {:inline 1} GhostRead() returns (oldH: int, oldT: int)
+procedure {:intro} {:layer 3} GhostRead() returns (oldH: int, oldT: int)
 {
   oldH := H;
   oldT := T;
 }
 
-procedure {:layer 3} {:inline 1} GhostReadStatus() returns (oldStatus: bool)
+procedure {:intro} {:layer 3} GhostReadStatus() returns (oldStatus: bool)
 {
   oldStatus := status[T];
 }

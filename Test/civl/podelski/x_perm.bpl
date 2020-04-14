@@ -48,23 +48,23 @@ axiom (forall As:[A]bool :: cardAs(As) >= 0);
 function {:inline} cardBs (Bs:[B]bool) : int;
 axiom (forall Bs:[B]bool :: cardBs(Bs) >= 0);
 
-procedure {:layer 1} Lemma_add_to_A (a:A);
-requires {:layer 1} !As[a];
-ensures  {:layer 1} cardAs(As[a := true]) == cardAs(As) + 1;
+procedure {:lemma} Lemma_add_to_A (a: A, As: [A]bool);
+requires !As[a];
+ensures  cardAs(As[a := true]) == cardAs(As) + 1;
 
-procedure {:layer 1} Lemma_add_to_B (b:B);
-requires {:layer 1} !Bs[b];
-ensures  {:layer 1} cardBs(Bs[b := true]) == cardBs(Bs) + 1;
+procedure {:lemma} Lemma_add_to_B (b: B, Bs: [B]bool);
+requires !Bs[b];
+ensures cardBs(Bs[b := true]) == cardBs(Bs) + 1;
 
-procedure {:layer 1} Lemma_card_geq ();
-requires {:layer 1} (forall b:B :: Bs[b] ==> As[bToA(b)]);
-ensures  {:layer 1} cardAs(As) >= cardBs(Bs);
+procedure {:lemma} Lemma_card_geq (As: [A]bool, Bs: [B]bool);
+requires (forall b: B :: Bs[b] ==> As[bToA(b)]);
+ensures cardAs(As) >= cardBs(Bs);
 
-procedure {:layer 1} Lemma_card_greater (_b:B);
-requires {:layer 1} (forall b:B :: Bs[b] ==> As[bToA(b)]);
-requires {:layer 1} !Bs[_b];
-requires {:layer 1} As[bToA(_b)];
-ensures  {:layer 1} cardAs(As) > cardBs(Bs);
+procedure {:lemma} Lemma_card_greater (_b: B, As: [A]bool, Bs: [B]bool);
+requires (forall b: B :: Bs[b] ==> As[bToA(b)]);
+requires !Bs[_b];
+requires As[bToA(_b)];
+ensures cardAs(As) > cardBs(Bs);
 
 // Acutal program
 procedure {:yields}{:layer 1} main ()
@@ -103,13 +103,13 @@ ensures  {:layer 1} Inv(x, As, Bs);
   var {:linear "perm"} b:B;
   yield; assert {:layer 1} Inv(x, As, Bs);
   call a,b := split_ab(ab);
-  call {:layer 1} Lemma_card_geq();
-  call {:layer 1} Lemma_add_to_A(a);
+  call {:layer 1} Lemma_card_geq(As, Bs);
+  call {:layer 1} Lemma_add_to_A(a, As);
   call geq0_inc(a, b);
   yield;
   assert {:layer 1} Inv(x, As, Bs) && As[bToA(b)];
-  call {:layer 1} Lemma_card_greater(b);
-  call {:layer 1} Lemma_add_to_B(b);
+  call {:layer 1} Lemma_card_greater(b, As, Bs);
+  call {:layer 1} Lemma_add_to_B(b, Bs);
   call geq0_dec(b);
   yield; assert {:layer 1}{:expand} Inv(x, As, Bs);
 }

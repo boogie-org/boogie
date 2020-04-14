@@ -27,7 +27,7 @@ procedure {:yields} {:layer 2} Main ()
 requires {:layer 1} PoolInv(unallocated, pool);
 ensures  {:layer 1} PoolInv(unallocated, pool);
 {
-  var {:layer 1} {:linear "mem"} l:lmap;
+  var {:layer 1,2} {:linear "mem"} l:lmap;
   var i:int;
   par Yield() | Dummy();
   while (*)
@@ -40,15 +40,15 @@ ensures  {:layer 1} PoolInv(unallocated, pool);
   par Yield() | Dummy();
 }
 
-procedure {:yields} {:layer 2} Thread ({:layer 1} {:linear_in "mem"} local_in:lmap, i:int)
+procedure {:yields} {:layer 2} Thread ({:layer 1,2} {:linear_in "mem"} local_in:lmap, i:int)
 requires {:layer 1} PoolInv(unallocated, pool);
 ensures  {:layer 1} PoolInv(unallocated, pool);
 requires {:layer 1} dom(local_in)[i] && map(local_in)[i] == mem[i];
 requires {:layer 2} dom(local_in)[i];
 {
   var y, o:int;
-  var {:layer 1} {:linear "mem"} local:lmap;
-  var {:layer 1} {:linear "mem"} l:lmap;
+  var {:layer 1,2} {:linear "mem"} local:lmap;
+  var {:layer 1,2} {:linear "mem"} l:lmap;
 
   par YieldMem(local_in, i) | Dummy();
   call local := Write(local_in, i, 42);
@@ -139,19 +139,26 @@ ensures  {:layer 1} dom(l')[i] && map(l')[i] == mem[i];
   call YieldMem(l', i);
 }
 
-procedure {:layer 1} AllocLinear (i:int) returns ({:linear "mem"} l:lmap);
+procedure {:intro} {:layer 1} AllocLinear (i:int) returns ({:linear "mem"} l:lmap)
 modifies pool;
-requires dom(pool)[i];
-ensures  pool == Remove(old(pool), i) && l == Add(Empty(mem), i);
+{
+  assert dom(pool)[i];
+  pool := Remove(pool, i);
+  l := Add(Empty(mem), i);
+}
 
-procedure {:layer 1} FreeLinear ({:linear_in "mem"} l:lmap, i:int);
+procedure {:intro} {:layer 1} FreeLinear ({:linear_in "mem"} l:lmap, i:int)
 modifies pool;
-requires dom(l)[i];
-ensures  pool == Add(old(pool), i);
+{
+  assert dom(l)[i];
+  pool := Add(pool, i);
+}
 
-procedure {:layer 1} WriteLinear ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap);
-requires dom(l)[i];
-ensures  l' == cons(dom(l), map(l)[i := o]);
+procedure {:intro} {:layer 1} WriteLinear ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap)
+{
+  assert dom(l)[i];
+  l' := cons(dom(l), map(l)[i := o]);
+}
 
 procedure {:yields} {:layer 1} Yield ()
 requires {:layer 1} PoolInv(unallocated, pool);
@@ -197,7 +204,7 @@ modifies unallocated;
 
 procedure {:atomic} {:layer 1} atomic_ReturnAddr (i:int)
 modifies unallocated;
-{ unallocated[i] := true; }  
+{ unallocated[i] := true; }
 
 procedure {:yields} {:layer 0} {:refines "atomic_ReadLow"} ReadLow (i:int) returns (o:int);
 procedure {:yields} {:layer 0} {:refines "atomic_WriteLow"} WriteLow (i:int, o:int);

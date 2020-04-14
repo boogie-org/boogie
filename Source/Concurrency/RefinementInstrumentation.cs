@@ -58,7 +58,7 @@ namespace Microsoft.Boogie
             Dictionary<Variable, Variable> oldGlobalMap)
         {
             this.oldGlobalMap = new Dictionary<Variable, Variable>();
-            foreach (Variable v in civlTypeChecker.sharedVariables)
+            foreach (Variable v in civlTypeChecker.GlobalVariables)
             {
                 var layerRange = civlTypeChecker.GlobalVariableLayerRange(v);
                 if (layerRange.lowerLayerNum <= yieldingProc.upperLayer && yieldingProc.upperLayer < layerRange.upperLayerNum)
@@ -120,7 +120,7 @@ namespace Microsoft.Boogie
             }
 
             Dictionary<Variable, Expr> foroldMap = new Dictionary<Variable, Expr>();
-            foreach (Variable g in civlTypeChecker.sharedVariables)
+            foreach (Variable g in civlTypeChecker.GlobalVariables)
             {
                 foroldMap[g] = Expr.Ident(oldGlobalMap[g]);
             }
@@ -131,14 +131,22 @@ namespace Microsoft.Boogie
             AtomicAction atomicAction = actionProc.refinedAction;
             Implementation atomicActionImpl = atomicAction.impl;
             Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
-            for (int i = 0; i < impl.InParams.Count; i++)
+            for (int i = 0, j = 0; i < impl.InParams.Count; i++)
             {
-                alwaysMap[atomicActionImpl.InParams[i]] = Expr.Ident(impl.InParams[i]);
+                if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.proc.InParams[i]))
+                {
+                    alwaysMap[atomicActionImpl.InParams[j]] = Expr.Ident(impl.InParams[i]);
+                    j++;
+                }
             }
 
-            for (int i = 0; i < impl.OutParams.Count; i++)
+            for (int i = 0, j = 0; i < impl.OutParams.Count; i++)
             {
-                alwaysMap[atomicActionImpl.OutParams[i]] = Expr.Ident(impl.OutParams[i]);
+                if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.proc.OutParams[i]))
+                {
+                    alwaysMap[atomicActionImpl.OutParams[j]] = Expr.Ident(impl.OutParams[i]);
+                    j++;
+                }
             }
             if (atomicAction.HasPendingAsyncs)
             {

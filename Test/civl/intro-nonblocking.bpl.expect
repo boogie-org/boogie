@@ -1,0 +1,5 @@
+intro-nonblocking.bpl(4,30): Error: Non-blocking check for intro failed
+Execution trace:
+    intro-nonblocking.bpl(4,30): L
+
+Boogie program verifier finished with 1 verified, 1 error

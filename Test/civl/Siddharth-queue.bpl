@@ -21,21 +21,18 @@ type Key;
 
 // ---------- Primitives for manipulating logical/abstract state
 
-procedure {:layer 1} intro_readLin() returns (s: SetInvoc)
-  ensures {:layer 1} s == Set_ofSeq(lin);
+procedure {:intro} {:layer 1} intro_readLin() returns (s: SetInvoc)
 {
   s := Set_ofSeq(lin);
 }
 
-procedure {:layer 1} intro_write_vis(n: Invoc, s: SetInvoc)
+procedure {:intro} {:layer 1} intro_write_vis(n: Invoc, s: SetInvoc)
   modifies vis;
-  ensures {:layer 1} vis == old(vis)[n := s];
 {
   vis[n] := s;
 }
 
-procedure {:layer 1} intro_writeLin(n: Invoc)
-  ensures {:layer 1} lin == Seq_append(old(lin), n);
+procedure {:intro} {:layer 1} intro_writeLin(n: Invoc)
   modifies lin;
 {
   lin := Seq_append(lin, n);
@@ -48,10 +45,10 @@ procedure {:atomic} {:layer 2} pop_atomic(this: Invoc) returns (k: Key)
 {
   var my_vis: SetInvoc;
   lin := Seq_append(lin, this);
-  assume my_vis == Set_ofSeq(lin); 
-  // buggy transition relation computation due to assume after assignment to lin which 
+  assume my_vis == Set_ofSeq(lin);
+  // buggy transition relation computation due to assume after assignment to lin which
   // creates difference between lin and old(lin)
-  vis[this] := my_vis; 
+  vis[this] := my_vis;
 }
 
 // ---------- Implementation:

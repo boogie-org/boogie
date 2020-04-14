@@ -454,7 +454,7 @@ main ({:linear_in "pid"} pids:[int]bool)
 requires {:layer 1} Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
 {
   var i:int;
-  var {:pending_async} PAs:[PA]int;
+  var {:pending_async}{:layer 1} PAs:[PA]int;
   var {:linear "pid"} pid:int;
   var {:linear "pid"} pids':[int]bool;
   yield; assert {:layer 1} Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
@@ -572,7 +572,7 @@ requires {:layer 1} lastBuyerID(pid);
   yield;
 }
 
-procedure {:layer 1}{:inline 1} Snapshot_QuoteCH() returns (snapshot:[int][int]int)
+procedure {:intro}{:layer 1} Snapshot_QuoteCH() returns (snapshot:[int][int]int)
 {
   snapshot := QuoteCH;
 }

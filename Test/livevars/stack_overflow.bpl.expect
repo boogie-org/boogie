@@ -25,7 +25,7 @@ Execution trace:
     stack_overflow.bpl(1879,3): inline$BDLPnP$0$anon54_Else#1
     stack_overflow.bpl(1889,3): inline$BDLPnP$0$label_16_false#1
     stack_overflow.bpl(1937,3): inline$BDLPnP$0$anon55_Else#1
-    stack_overflow.bpl(1947,3): inline$BDLPnP$0$label_26_false#1
+    stack_overflow.bpl(1951,3): inline$BDLPnP$0$label_26_true#1
     stack_overflow.bpl(1995,3): inline$BDLPnP$0$anon56_Else#1
     stack_overflow.bpl(2009,3): inline$BDLPnP$0$label_36_true#1
     stack_overflow.bpl(2035,3): inline$IoGetCurrentIrpStackLocation$2$label_3_false#1
@@ -34,59 +34,60 @@ Execution trace:
     stack_overflow.bpl(2111,3): inline$BDLPnP$0$label_47#1
     stack_overflow.bpl(2115,3): inline$BDLPnP$0$anon58_Else#1
     stack_overflow.bpl(2129,3): inline$BDLPnP$0$label_51_false#1
-    stack_overflow.bpl(66448,3): inline$BDLPnP$0$label_52_case_2#1
-    stack_overflow.bpl(66497,3): inline$BDLPnPQueryRemove$0$anon22_Else#1
-    stack_overflow.bpl(66507,3): inline$BDLPnPQueryRemove$0$label_8_false#1
-    stack_overflow.bpl(66555,3): inline$BDLPnPQueryRemove$0$anon23_Else#1
-    stack_overflow.bpl(66569,3): inline$BDLPnPQueryRemove$0$label_18_true#1
-    stack_overflow.bpl(66613,3): inline$BDLPnPQueryRemove$0$anon24_Else#1
-    stack_overflow.bpl(66627,3): inline$BDLPnPQueryRemove$0$label_28_true#1
-    stack_overflow.bpl(66634,3): inline$BDLPnPQueryRemove$0$label_29#1
-    stack_overflow.bpl(66638,3): inline$BDLPnPQueryRemove$0$anon25_Else#1
-    stack_overflow.bpl(66648,3): inline$BDLPnPQueryRemove$0$label_33_false#1
-    stack_overflow.bpl(66706,3): inline$IoGetCurrentIrpStackLocation$23$label_3_false#1
-    stack_overflow.bpl(66746,3): inline$IoCopyCurrentIrpStackLocationToNext$1$anon4_Else#1
-    stack_overflow.bpl(66770,3): inline$IoGetNextIrpStackLocation$3$label_3_false#1
-    stack_overflow.bpl(66806,3): inline$IoCopyCurrentIrpStackLocationToNext$1$anon5_Else#1
-    stack_overflow.bpl(66840,3): inline$BDLCallLowerLevelDriverAndWait$1$anon16_Else#1
-    stack_overflow.bpl(66874,3): inline$BDLCallLowerLevelDriverAndWait$1$anon17_Else#1
-    stack_overflow.bpl(66902,3): inline$storm_IoSetCompletionRoutine$1$label_7_false#1
-    stack_overflow.bpl(66955,3): inline$IoGetNextIrpStackLocation$4$label_3_false#1
-    stack_overflow.bpl(66991,3): inline$storm_IoSetCompletionRoutine$1$anon5_Else#1
-    stack_overflow.bpl(67007,3): inline$storm_IoSetCompletionRoutine$1$label_1#1
-    stack_overflow.bpl(67024,3): inline$BDLCallLowerLevelDriverAndWait$1$anon18_Else#1
-    stack_overflow.bpl(67045,3): inline$IoGetCurrentIrpStackLocation$24$label_3_false#1
-    stack_overflow.bpl(67085,3): inline$BDLCallLowerLevelDriverAndWait$1$anon19_Else#1
-    stack_overflow.bpl(67095,3): inline$BDLCallLowerLevelDriverAndWait$1$label_18_false#1
-    stack_overflow.bpl(67127,3): inline$storm_IoCallDriver$2$label_9_false#1
-    stack_overflow.bpl(67180,3): inline$IoSetNextIrpStackLocation$3$label_3_false#1
-    stack_overflow.bpl(67203,3): inline$IoSetNextIrpStackLocation$3$label_5#1
-    stack_overflow.bpl(67225,3): inline$storm_IoCallDriver$2$anon11_Else#1
-    stack_overflow.bpl(67265,3): inline$IoGetCurrentIrpStackLocation$25$label_3_true#1
-    stack_overflow.bpl(67286,3): inline$storm_IoCallDriver$2$anon13_Else#1
-    stack_overflow.bpl(69653,3): inline$storm_IoCallDriver$2$label_27_case_1#1
-    stack_overflow.bpl(69723,3): inline$IoGetCurrentIrpStackLocation$30$label_3_true#1
-    stack_overflow.bpl(69744,3): inline$CallCompletionRoutine$5$anon10_Else#1
-    stack_overflow.bpl(69801,3): inline$IoGetCurrentIrpStackLocation$31$label_3_true#1
-    stack_overflow.bpl(69822,3): inline$CallCompletionRoutine$5$anon11_Else#1
-    stack_overflow.bpl(69835,3): inline$CallCompletionRoutine$5$label_18_false#1
-    stack_overflow.bpl(71963,3): inline$CallCompletionRoutine$5$label_1#1
-    stack_overflow.bpl(71984,3): inline$storm_IoCallDriver$2$anon15_Else#1
-    stack_overflow.bpl(72012,3): inline$storm_IoCallDriver$2$label_36#1
-    stack_overflow.bpl(72016,3): inline$storm_IoCallDriver$2$label_1#1
-    stack_overflow.bpl(72038,3): inline$BDLCallLowerLevelDriverAndWait$1$anon20_Else#1
-    stack_overflow.bpl(77057,3): inline$BDLCallLowerLevelDriverAndWait$1$label_29_false#1
-    stack_overflow.bpl(77215,3): inline$BDLCallLowerLevelDriverAndWait$1$label_30#1
-    stack_overflow.bpl(77258,3): inline$BDLPnPQueryRemove$0$anon26_Else#1
-    stack_overflow.bpl(77272,3): inline$BDLPnPQueryRemove$0$label_65_false#1
-    stack_overflow.bpl(77490,3): inline$BDLPnPQueryRemove$0$anon27_Else#1
-    stack_overflow.bpl(77504,3): inline$BDLPnPQueryRemove$0$label_41_true#1
-    stack_overflow.bpl(77548,3): inline$BDLPnPQueryRemove$0$anon28_Else#1
-    stack_overflow.bpl(77562,3): inline$BDLPnPQueryRemove$0$label_51_true#1
-    stack_overflow.bpl(77606,3): inline$BDLPnPQueryRemove$0$anon29_Else#1
-    stack_overflow.bpl(77620,3): inline$BDLPnPQueryRemove$0$label_61_true#1
-    stack_overflow.bpl(77627,3): inline$BDLPnPQueryRemove$0$label_62#1
-    stack_overflow.bpl(77669,3): inline$BDLPnP$0$anon68_Else#1
+    stack_overflow.bpl(11320,3): inline$BDLPnP$0$label_52_case_7#1
+    stack_overflow.bpl(11369,3): inline$BDLPnPCancelStop$0$anon22_Else#1
+    stack_overflow.bpl(11379,3): inline$BDLPnPCancelStop$0$label_8_false#1
+    stack_overflow.bpl(11427,3): inline$BDLPnPCancelStop$0$anon23_Else#1
+    stack_overflow.bpl(11437,3): inline$BDLPnPCancelStop$0$label_18_false#1
+    stack_overflow.bpl(11485,3): inline$BDLPnPCancelStop$0$anon24_Else#1
+    stack_overflow.bpl(11499,3): inline$BDLPnPCancelStop$0$label_28_true#1
+    stack_overflow.bpl(11506,3): inline$BDLPnPCancelStop$0$label_29#1
+    stack_overflow.bpl(11559,3): inline$IoGetCurrentIrpStackLocation$112$label_3_false#1
+    stack_overflow.bpl(11599,3): inline$IoCopyCurrentIrpStackLocationToNext$5$anon4_Else#1
+    stack_overflow.bpl(11623,3): inline$IoGetNextIrpStackLocation$11$label_3_false#1
+    stack_overflow.bpl(11659,3): inline$IoCopyCurrentIrpStackLocationToNext$5$anon5_Else#1
+    stack_overflow.bpl(11693,3): inline$BDLCallLowerLevelDriverAndWait$5$anon16_Else#1
+    stack_overflow.bpl(11727,3): inline$BDLCallLowerLevelDriverAndWait$5$anon17_Else#1
+    stack_overflow.bpl(11755,3): inline$storm_IoSetCompletionRoutine$5$label_7_false#1
+    stack_overflow.bpl(11808,3): inline$IoGetNextIrpStackLocation$12$label_3_false#1
+    stack_overflow.bpl(11844,3): inline$storm_IoSetCompletionRoutine$5$anon5_Else#1
+    stack_overflow.bpl(11860,3): inline$storm_IoSetCompletionRoutine$5$label_1#1
+    stack_overflow.bpl(11877,3): inline$BDLCallLowerLevelDriverAndWait$5$anon18_Else#1
+    stack_overflow.bpl(11898,3): inline$IoGetCurrentIrpStackLocation$113$label_3_false#1
+    stack_overflow.bpl(11938,3): inline$BDLCallLowerLevelDriverAndWait$5$anon19_Else#1
+    stack_overflow.bpl(16906,3): inline$BDLCallLowerLevelDriverAndWait$5$label_18_true#1
+    stack_overflow.bpl(16915,3): inline$BDLCallLowerLevelDriverAndWait$5$anon21_Else#1
+    stack_overflow.bpl(16960,3): inline$storm_IoCallDriver$12$label_9_false#1
+    stack_overflow.bpl(17013,3): inline$IoSetNextIrpStackLocation$13$label_3_false#1
+    stack_overflow.bpl(17036,3): inline$IoSetNextIrpStackLocation$13$label_5#1
+    stack_overflow.bpl(17058,3): inline$storm_IoCallDriver$12$anon11_Else#1
+    stack_overflow.bpl(17079,3): inline$IoGetCurrentIrpStackLocation$123$label_3_false#1
+    stack_overflow.bpl(17119,3): inline$storm_IoCallDriver$12$anon13_Else#1
+    stack_overflow.bpl(19486,3): inline$storm_IoCallDriver$12$label_27_case_1#1
+    stack_overflow.bpl(19537,3): inline$IoGetCurrentIrpStackLocation$128$label_3_false#1
+    stack_overflow.bpl(19577,3): inline$CallCompletionRoutine$25$anon10_Else#1
+    stack_overflow.bpl(19615,3): inline$IoGetCurrentIrpStackLocation$129$label_3_false#1
+    stack_overflow.bpl(19655,3): inline$CallCompletionRoutine$25$anon11_Else#1
+    stack_overflow.bpl(19668,3): inline$CallCompletionRoutine$25$label_18_false#1
+    stack_overflow.bpl(21796,3): inline$CallCompletionRoutine$25$label_1#1
+    stack_overflow.bpl(21817,3): inline$storm_IoCallDriver$12$anon15_Else#1
+    stack_overflow.bpl(21845,3): inline$storm_IoCallDriver$12$label_36#1
+    stack_overflow.bpl(21849,3): inline$storm_IoCallDriver$12$label_1#1
+    stack_overflow.bpl(21871,3): inline$storm_PoCallDriver$5$anon2_Else#1
+    stack_overflow.bpl(21896,3): inline$BDLCallLowerLevelDriverAndWait$5$anon22_Else#1
+    stack_overflow.bpl(21910,3): inline$BDLCallLowerLevelDriverAndWait$5$label_29_false#1
+    stack_overflow.bpl(22068,3): inline$BDLCallLowerLevelDriverAndWait$5$label_30#1
+    stack_overflow.bpl(22111,3): inline$BDLPnPCancelStop$0$anon25_Else#1
+    stack_overflow.bpl(22125,3): inline$BDLPnPCancelStop$0$label_34_false#1
+    stack_overflow.bpl(22154,3): inline$BDLPnPCancelStop$0$anon26_Else#1
+    stack_overflow.bpl(22354,3): inline$BDLPnPCancelStop$0$anon30_Else#1
+    stack_overflow.bpl(22368,3): inline$BDLPnPCancelStop$0$label_66_true#1
+    stack_overflow.bpl(22412,3): inline$BDLPnPCancelStop$0$anon31_Else#1
+    stack_overflow.bpl(22422,3): inline$BDLPnPCancelStop$0$label_76_false#1
+    stack_overflow.bpl(22470,3): inline$BDLPnPCancelStop$0$anon32_Else#1
+    stack_overflow.bpl(22480,3): inline$BDLPnPCancelStop$0$label_86_false#1
+    stack_overflow.bpl(22491,3): inline$BDLPnPCancelStop$0$label_87#1
+    stack_overflow.bpl(22545,3): inline$BDLPnP$0$anon73_Else#1
     stack_overflow.bpl(94595,3): inline$BDLPnP$0$label_139_true#1
     stack_overflow.bpl(94624,3): inline$storm_IoCompleteRequest$57$label_6_true#1
     stack_overflow.bpl(94632,3): inline$storm_IoCompleteRequest$57$anon3_Else#1

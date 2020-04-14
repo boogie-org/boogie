@@ -333,7 +333,7 @@ main ({:linear_in "pid"} pids:[int]bool)
 requires {:layer 1} Init(pids, ReqCH, VoteCH, DecCH, decisions);
 {
   var i:int;
-  var {:pending_async} PAs:[PA]int;
+  var {:pending_async}{:layer 1} PAs:[PA]int;
   var {:linear "pid"} pid:int;
   var {:linear "pid"} pids':[int]bool;
   yield; assert {:layer 1} Init(pids, ReqCH, VoteCH, DecCH, decisions);
@@ -448,17 +448,17 @@ requires {:layer 1} (forall vv:vote :: VoteCH[vv] >= 0);
   yield;
 }
 
-procedure {:layer 1}{:inline 1} Snapshot_ReqCH() returns (snapshot:[int]int)
+procedure {:intro}{:layer 1} Snapshot_ReqCH() returns (snapshot:[int]int)
 {
   snapshot := ReqCH;
 }
 
-procedure {:layer 1}{:inline 1} Snapshot_VoteCH() returns (snapshot:[vote]int)
+procedure {:intro}{:layer 1} Snapshot_VoteCH() returns (snapshot:[vote]int)
 {
   snapshot := VoteCH;
 }
 
-procedure {:layer 1}{:inline 1} Snapshot_DecCH() returns (snapshot:[int][decision]int)
+procedure {:intro}{:layer 1} Snapshot_DecCH() returns (snapshot:[int][decision]int)
 {
   snapshot := DecCH;
 }

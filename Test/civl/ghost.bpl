@@ -8,9 +8,7 @@ modifies x;
 
 procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();
 
-procedure {:layer 1} ghost(y: int) returns (z: int)
-requires y == 1;
-ensures z == 2;
+procedure {:intro} {:layer 1} ghost(y: int) returns (z: int)
 {
   z := y + 1;
 }
@@ -30,21 +28,20 @@ procedure {:yields} {:layer 1} {:refines "AtomicIncr2"} Incr2()
   yield;
 }
 
-procedure {:layer 1} ghost_0() returns (z: int)
-ensures z == x;
+procedure {:intro} {:layer 1} ghost'() returns (z: int)
 {
   z := x;
 }
 
-procedure {:yields} {:layer 1} {:refines "AtomicIncr2"} Incr2_0()
+procedure {:yields} {:layer 1} {:refines "AtomicIncr2"} Incr2'()
 {
   var {:layer 1} a: int;
   var {:layer 1} b: int;
 
   yield;
-  call a := ghost_0();
+  call a := ghost'();
   par Incr() | Incr();
-  call b := ghost_0();
+  call b := ghost'();
   assert {:layer 1} b == a + 2;
   yield;
 }

@@ -11,7 +11,7 @@ procedure {:atomic} {:layer 2,2} atomic_write_y (y':int)
 modifies y;
 { y := y'; }
 
-procedure {:yields} {:layer 1} {:refines "atomic_read_y"}  read_y () returns ({:layer 0} v:int)
+procedure {:yields} {:layer 1} {:refines "atomic_read_y"}  read_y () returns ({:layer 0,1} v:int)
 requires {:layer 1} x == y;
 {
   yield; assert {:layer 1} x == y;
@@ -28,8 +28,7 @@ requires {:layer 1} x == y;
   yield;
 }
 
-procedure {:layer 1,1} set_y_to_x ()
-ensures x == y;
+procedure {:intro} {:layer 1,1} set_y_to_x ()
 modifies y;
 {
   y := x;
@@ -56,11 +55,9 @@ procedure {:yields} {:layer 0} {:refines "atomic_write_x"} write_x (x':int)
   yield;
 }
 
-procedure {:layer 0} intro_read_x () returns (v:int)
-ensures x == v;
-{ v := x; }        
+procedure {:intro} {:layer 0} intro_read_x () returns (v:int)
+{ v := x; }
 
-procedure {:layer 0} {:inline 1}  intro_write_x (x':int)
-ensures x == x';
+procedure {:intro} {:layer 0} intro_write_x (x':int)
 modifies x;
 { x := x'; }

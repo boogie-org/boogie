@@ -22,7 +22,7 @@ procedure {:atomic} {:layer 5} atomic_main({:linear "tid"} id: int, {:linear_in 
 modifies status;
 {
     assert id == c;
-    assert (forall i: int :: (0 <= i && i < n) <==> tids[i]);    
+    assert (forall i: int :: (0 <= i && i < n) <==> tids[i]);
     assert (forall i: int :: 0 <= i && i < n ==> status[i] == DEFAULT);
     status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);
 }
@@ -70,8 +70,10 @@ procedure {:yields} {:layer 4} {:refines "atomic_main"} main({:linear "tid"} id:
     yield;
 }
 
-procedure {:layer 3} StatusSnapshot() returns (snapshot: [int]int);
-ensures snapshot == status;
+procedure {:intro} {:layer 3} StatusSnapshot() returns (snapshot: [int]int)
+{
+  snapshot := status;
+}
 
 procedure {:yields} {:layer 2} {:refines "AtomicAlloc"} Alloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool);
 procedure {:both} {:layer 3} AtomicAlloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool)
@@ -134,7 +136,7 @@ procedure {:atomic} {:layer 3} atomic_master2()
 modifies status;
 {
     assert (forall i: int :: 0 <= i && i < n ==> status[i] == PROCESSED);
-    status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);    
+    status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);
 }
 procedure {:yields} {:layer 2} {:refines "atomic_master2"} master2();
 

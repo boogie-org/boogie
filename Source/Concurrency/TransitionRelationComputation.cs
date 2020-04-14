@@ -105,7 +105,7 @@ namespace Microsoft.Boogie
                 string.Format("Transition relation of {0}", action.proc.Name));
         }
 
-        public static Expr Nonblocking(AtomicAction action, HashSet<Variable> frame)
+        public static Expr Nonblocking(Action action, HashSet<Variable> frame)
         {
             return ComputeTransitionRelation(
                 action.impl, null,

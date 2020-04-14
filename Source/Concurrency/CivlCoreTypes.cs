@@ -16,11 +16,13 @@ namespace Microsoft.Boogie
 
     public class LayerRange
     {
+        public static int Min = 0;
+        public static int Max = int.MaxValue;
+        public static LayerRange MinMax = new LayerRange(Min, Max);
+
         public int lowerLayerNum;
         public int upperLayerNum;
-
-        public static LayerRange MinMax = new LayerRange(int.MinValue, int.MaxValue);
-
+        
         public LayerRange(int layer) : this(layer, layer) { }
 
         public LayerRange(int lower, int upper)
@@ -40,50 +42,54 @@ namespace Microsoft.Boogie
             return other.lowerLayerNum <= lowerLayerNum && upperLayerNum <= other.upperLayerNum;
         }
 
-        internal bool OverlapsWith(LayerRange other)
+        public bool OverlapsWith(LayerRange other)
         {
             return lowerLayerNum <= other.upperLayerNum && other.lowerLayerNum <= upperLayerNum;
         }
+
+        public override string ToString()
+        {
+            return $"[{lowerLayerNum}, {upperLayerNum}]";
+        }
+
+        public override bool Equals(object obj)
+        {
+            LayerRange other = obj as LayerRange;
+            if (obj == null)
+            {
+                return false;
+            }
+            return lowerLayerNum == other.lowerLayerNum && upperLayerNum == other.upperLayerNum;
+        }
+
+        public override int GetHashCode()
+        {
+            return (23 * 31 + lowerLayerNum) * 31 + upperLayerNum;
+        }
     }
 
-    public class AtomicAction
+    public abstract class Action
     {
         public Procedure proc;
         public Implementation impl;
-        public MoverType moverType;
         public LayerRange layerRange;
-        public AtomicAction refinedAction;
-
         public List<AssertCmd> gate;
-
-        public List<AssertCmd> firstGate;
-        public Implementation firstImpl;
-
-        public List<AssertCmd> secondGate;
-        public Implementation secondImpl;
-
         public HashSet<Variable> gateUsedGlobalVars;
         public HashSet<Variable> actionUsedGlobalVars;
         public HashSet<Variable> modifiedGlobalVars;
 
-        public DatatypeConstructor pendingAsyncCtor;
-        public HashSet<AtomicAction> pendingAsyncs;
-        public bool hasChoice; // only relevant for invariant actions
-
-        public Dictionary<Variable, Function> triggerFunctions;
-
-        public AtomicAction(Procedure proc, Implementation impl, MoverType moverType, LayerRange layerRange)
+        protected Action(Procedure proc, Implementation impl, LayerRange layerRange)
         {
             this.proc = proc;
             this.impl = impl;
-            this.moverType = moverType;
             this.layerRange = layerRange;
 
             CivlUtil.AddInlineAttribute(proc);
             CivlUtil.AddInlineAttribute(impl);
 
-            // The gate of an atomic action is represented as asserts at the beginning of the procedure body.
-            this.gate = impl.Blocks[0].cmds.TakeWhile((c, i) => c is AssertCmd).Cast<AssertCmd>().ToList();
+            // The gate of an action is represented as asserts at the beginning of the procedure body.
+            gate = impl.Blocks[0].cmds.TakeWhile((c, i) => c is AssertCmd).Cast<AssertCmd>().ToList();
+            // We separate the gate from the action
             impl.Blocks[0].cmds.RemoveRange(0, gate.Count);
 
             gateUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(gate).Where(x => x is GlobalVariable));
@@ -101,17 +107,11 @@ namespace Microsoft.Boogie
             {
                 impl.OutParams[i].Attributes = proc.OutParams[i].Attributes;
             }
-
-            AtomicActionDuplicator.SetupCopy(this, ref firstGate, ref firstImpl, "first_");
-            AtomicActionDuplicator.SetupCopy(this, ref secondGate, ref secondImpl, "second_");
-
-            DeclareTriggerFunctions();
         }
 
-        public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
-        public bool IsLeftMover { get { return moverType == MoverType.Left || moverType == MoverType.Both; } }
-
-        private List<Variable> AssignedVariables()
+        public bool HasAssumeCmd => impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
+        
+        protected List<Variable> AssignedVariables()
         {
             List<Variable> modifiedVars = new List<Variable>();
             foreach (Cmd cmd in impl.Blocks.SelectMany(b => b.Cmds))
@@ -120,8 +120,45 @@ namespace Microsoft.Boogie
             }
             return modifiedVars;
         }
+    }
 
-        public bool HasAssumeCmd => impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
+    public class IntroductionAction : Action
+    {
+        public IntroductionAction(Procedure proc, Implementation impl, LayerRange layerRange) :
+            base(proc, impl, layerRange)
+        {
+        }
+
+        public int LayerNum => layerRange.lowerLayerNum; // layerRange.lowerLayerNum == layerRange.upperLayerNum
+    }
+    
+    public class AtomicAction : Action
+    {
+        public MoverType moverType;
+        public AtomicAction refinedAction;
+
+        public List<AssertCmd> firstGate;
+        public Implementation firstImpl;
+        public List<AssertCmd> secondGate;
+        public Implementation secondImpl;
+        
+        public DatatypeConstructor pendingAsyncCtor;
+        public HashSet<AtomicAction> pendingAsyncs;
+        public bool hasChoice; // only relevant for invariant actions
+
+        public Dictionary<Variable, Function> triggerFunctions;
+
+        public AtomicAction(Procedure proc, Implementation impl, LayerRange layerRange, MoverType moverType):
+            base(proc, impl, layerRange)
+        {
+            this.moverType = moverType;
+            AtomicActionDuplicator.SetupCopy(this, ref firstGate, ref firstImpl, "first_");
+            AtomicActionDuplicator.SetupCopy(this, ref secondGate, ref secondImpl, "second_");
+            DeclareTriggerFunctions();
+        }
+
+        public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
+        public bool IsLeftMover { get { return moverType == MoverType.Left || moverType == MoverType.Both; } }
 
         public bool HasPendingAsyncs => pendingAsyncs != null;
 
@@ -178,8 +215,13 @@ namespace Microsoft.Boogie
 
     public class SkipProc : YieldingProc
     {
+        public HashSet<Variable> hiddenFormals;
+
         public SkipProc(Procedure proc, int upperLayer)
-            : base(proc, MoverType.Both, upperLayer) { }
+            : base(proc, MoverType.Both, upperLayer)
+        {
+            hiddenFormals = new HashSet<Variable>(proc.InParams.Union(proc.OutParams));
+        }
     }
 
     public class MoverProc : YieldingProc
@@ -196,11 +238,13 @@ namespace Microsoft.Boogie
     public class ActionProc : YieldingProc
     {
         public AtomicAction refinedAction;
-
+        public HashSet<Variable> hiddenFormals;
+        
         public ActionProc(Procedure proc, AtomicAction refinedAction, int upperLayer)
             : base(proc, refinedAction.moverType, upperLayer)
         {
             this.refinedAction = refinedAction;
+            hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => x.HasAttribute(CivlAttributes.HIDE)));
         }
 
         public AtomicAction RefinedActionAtLayer(int layer)
@@ -217,18 +261,14 @@ namespace Microsoft.Boogie
         }
     }
 
-    public class IntroductionProc
+    public class LemmaProc
     {
         public Procedure proc;
-        public LayerRange layerRange;
 
-        public IntroductionProc(Procedure proc, LayerRange layerRange)
+        public LemmaProc(Procedure proc)
         {
             this.proc = proc;
-            this.layerRange = layerRange;
         }
-
-        public bool IsLemma => proc.Modifies.Count + proc.OutParams.Count == 0;
     }
 
     /// <summary>
@@ -324,7 +364,7 @@ namespace Microsoft.Boogie
             BinderExpr expr = base.VisitBinderExpr(node);
             expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
 
-            // We process triggers of quantifer expressions here, because otherwise the
+            // We process triggers of quantifier expressions here, because otherwise the
             // substitutions for bound variables have to be leaked outside this procedure.
             if (node is QuantifierExpr quantifierExpr)
             {

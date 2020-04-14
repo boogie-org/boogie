@@ -87,7 +87,7 @@ namespace Microsoft.Boogie
             {
                 inputs.Add(linearTypeChecker.LinearDomainInFormal(domainName));
             }
-            foreach (Variable g in civlTypeChecker.sharedVariables)
+            foreach (Variable g in civlTypeChecker.GlobalVariables)
             {
                 inputs.Add(OldGlobalFormal(g));
             }
@@ -104,7 +104,7 @@ namespace Microsoft.Boogie
                 inputs.Add(linearTypeChecker.LinearDomainInFormal(domainName));
             }
 
-            foreach (Variable g in civlTypeChecker.sharedVariables)
+            foreach (Variable g in civlTypeChecker.GlobalVariables)
             {
                 inputs.Add(OldGlobalFormal(g));
             }
@@ -397,7 +397,7 @@ namespace Microsoft.Boogie
                             newCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars());
                         }
                         newCmds.Add(callCmd);
-                        if (civlTypeChecker.sharedVariables.Count > 0)
+                        if (civlTypeChecker.GlobalVariables.Count() > 0)
                         {
                             newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
                         }
@@ -415,7 +415,7 @@ namespace Microsoft.Boogie
                             newCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars());
                         }
                         newCmds.AddRange(DesugarParCallCmd(parCallCmd));
-                        if (civlTypeChecker.sharedVariables.Count > 0)
+                        if (civlTypeChecker.GlobalVariables.Count() > 0)
                         {
                             newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
                         }
@@ -552,9 +552,9 @@ namespace Microsoft.Boogie
             List<PredicateCmd> cmds)
         {
             var newCmds = new List<Cmd>();
-            if (civlTypeChecker.sharedVariableIdentifiers.Count > 0)
+            if (civlTypeChecker.GlobalVariables.Count() > 0)
             {
-                newCmds.Add(new HavocCmd(Token.NoToken, civlTypeChecker.sharedVariableIdentifiers));
+                newCmds.Add(new HavocCmd(Token.NoToken, civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList()));
                 newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
             }
             newCmds.AddRange(linearPermissionInstrumentation.DisjointnessAssumeCmds(yieldCmd, true));
@@ -620,7 +620,7 @@ namespace Microsoft.Boogie
                 }
                 parallelCallPreconditionCheckers[procName] = new Procedure(Token.NoToken, procName,
                     new List<TypeVariable>(), inParams, outParams, requiresSeq,
-                    civlTypeChecker.sharedVariableIdentifiers, ensuresSeq);
+                    civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList(), ensuresSeq);
             }
 
             Procedure proc = parallelCallPreconditionCheckers[procName];

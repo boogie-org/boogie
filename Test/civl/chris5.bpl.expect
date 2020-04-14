@@ -1,7 +1,6 @@
-chris5.bpl(15,3): Error BP5002: A precondition for this call might not hold.
-chris5.bpl(6,3): Related location: This is the precondition that might not hold.
+chris5.bpl(7,3): Error: This gate of P might not hold.
 Execution trace:
-    chris5.bpl(13,3): anon0
-    chris5.bpl(13,3): anon0_1
+    chris5.bpl(12,3): anon0
+    chris5.bpl(12,3): anon0_1
 
-Boogie program verifier finished with 1 verified, 1 error
+Boogie program verifier finished with 0 verified, 1 error

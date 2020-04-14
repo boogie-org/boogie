@@ -198,7 +198,7 @@ function Inv(CH_low:[pid][val]int, CH:[val]int) : bool
   (forall i:pid :: MultisetSubsetEq(MultisetEmpty, CH_low[i]) && MultisetSubsetEq(CH_low[i], CH))
 }
 
-procedure {:layer 1}{:inline 1} intro (i:pid)
+procedure {:intro}{:layer 1} intro (i:pid)
 modifies CH;
 {
   CH := CH[value[i] := CH[value[i]] + 1];
@@ -206,7 +206,7 @@ modifies CH;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:layer 1}{:inline 1} Snapshot() returns (snapshot:[pid][val]int)
+procedure {:intro}{:layer 1} Snapshot() returns (snapshot:[pid][val]int)
 {
   snapshot := CH_low;
 }
@@ -217,7 +217,7 @@ requires {:layer 1} pidsBroadcast == (lambda ii:pid :: pid(ii)) && pidsCollect =
 requires {:layer 1} (forall ii:pid :: CH_low[ii] == MultisetEmpty);
 requires {:layer 1} CH == MultisetEmpty;
 {
-  var {:pending_async} PAs:[PA]int;
+  var {:pending_async}{:layer 1} PAs:[PA]int;
   var i:pid;
   var {:linear "broadcast"} s:pid;
   var {:linear "collect"} r:pid;

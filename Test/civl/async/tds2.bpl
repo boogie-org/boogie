@@ -27,7 +27,7 @@ procedure {:left} {:layer 1} AtomicCreateTask({:linear "tid"} tid: int)
 modifies status;
 {
     assert status[tid] == DEFAULT;
-    status[tid] := CREATED;    
+    status[tid] := CREATED;
 }
 procedure {:yields} {:layer 0} {:refines "AtomicCreateTask"} CreateTask({:linear "tid"} tid: int);
 
@@ -47,8 +47,10 @@ modifies status;
 }
 procedure {:yields} {:layer 0} {:refines "AtomicFinishTask"} FinishTask({:linear "tid"} tid: int);
 
-procedure {:layer 1} StatusSnapshot() returns (snapshot: [int]int);
-ensures snapshot == status;
+procedure {:intro} {:layer 1} StatusSnapshot() returns (snapshot: [int]int)
+{
+  snapshot := status;
+}
 
 procedure {:yields} {:layer 0} {:refines "AtomicAlloc"} Alloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool);
 procedure {:both} {:layer 1} AtomicAlloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool)
@@ -59,19 +61,19 @@ modifies status;
 {
     assert (forall i: int :: 0 <= i && i < n <==> tids[i]);
     assert (forall i: int :: 0 <= i && i < n ==> status[i] == DEFAULT);
-    status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);    
+    status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);
 }
 
 procedure {:yields} {:layer 1} {:refines "AtomicMain"} Main({:linear_in "tid"} tids: [int]bool) {
     var i: int;
-    var {:layer 1} snapshot: [int]int;    
+    var {:layer 1} snapshot: [int]int;
     var {:linear "tid"} tids': [int]bool;
     var {:linear "tid"} tid: int;
 
     yield;
     i := 0;
     tids' := tids;
-    call snapshot := StatusSnapshot();    
+    call snapshot := StatusSnapshot();
     while (i < n)
     invariant {:terminates} {:layer 0,1} true;
     invariant {:layer 1} 0 <= i && i <= n;
@@ -92,7 +94,7 @@ ensures {:layer 1} status == old(status)[tid := FINISHED];
 {
     call Yield();
     async call GetTask(tid);
-    call Yield();    
+    call Yield();
 }
 
 procedure {:yields} {:left} {:layer 1} GetTask({:linear_in "tid"} tid: int)
@@ -103,7 +105,7 @@ ensures {:layer 1} status == old(status)[tid := FINISHED];
     call Yield();
     call CreateTask(tid);
     async call GetTaskCallback(tid);
-    call Yield();    
+    call Yield();
 }
 
 procedure {:yields} {:left} {:layer 1} GetTaskCallback({:linear_in "tid"} tid: int)
@@ -114,7 +116,7 @@ ensures {:layer 1} status == old(status)[tid := FINISHED];
     call Yield();
     call ProcessTask(tid);
     async call CollectTask(tid);
-    call Yield();    
+    call Yield();
 }
 
 procedure {:yields} {:left} {:layer 1} CollectTask({:linear_in "tid"} tid: int)

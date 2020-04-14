@@ -90,7 +90,7 @@ procedure {:atomic}{:layer 2} TEST4 () returns () {}
 procedure {:yields}{:layer 1}{:refines "TEST5"} test5 ()
 {
   var i:int;
-  var {:pending_async} PAs:[PA]int;
+  var {:pending_async}{:layer 1} PAs:[PA]int;
   yield;
   i := 0;
   while (i < 10)
