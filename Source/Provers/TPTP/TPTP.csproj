@@ -97,10 +97,6 @@
       <Project>{0EFA3E43-690B-48DC-A72C-384A3EA7F31F}</Project>
       <Name>AbsInt</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\AIFramework\AIFramework.csproj">
-      <Project>{39B0658D-C955-41C5-9A43-48C97A1EF5FD}</Project>
-      <Name>AIFramework</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\Basetypes\Basetypes.csproj">
       <Project>{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}</Project>
       <Name>Basetypes</Name>
