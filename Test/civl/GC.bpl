@@ -2180,17 +2180,17 @@ procedure {:yields} {:layer 95} {:refines "AtomicLockRelease"} LockRelease({:lin
     yield;
 }
 
-procedure {:layer 96} {:inline 1} GhostReadMem() returns (snapMem: [int][fld]int)
+procedure {:layer 96} {:intro} GhostReadMem() returns (snapMem: [int][fld]int)
 {
     snapMem := mem;
 }
 
-procedure {:layer 99} {:inline 1} GhostReadColor99() returns (snapColor: [int]int)
+procedure {:layer 99} {:intro} GhostReadColor99() returns (snapColor: [int]int)
 {
     snapColor := Color;
 }
 
-procedure {:layer 100} {:inline 1} GhostReadColor100() returns (snapColor: [int]int)
+procedure {:layer 100} {:intro} GhostReadColor100() returns (snapColor: [int]int)
 {
     snapColor := Color;
 }
@@ -2340,43 +2340,43 @@ modifies lock;
 { lock := 0; }
 procedure {:yields} {:layer 0} {:refines "AtomicPrimitiveLockZero"} PrimitiveLockZero();
 
-procedure {:layer 99} {:inline 1} SetMemAbs1(x: idx, f: fld, y: idx)
+procedure {:layer 99} {:intro} SetMemAbs1(x: idx, f: fld, y: idx)
 modifies memAbs;
 {
     memAbs[rootAbs[x]][f] := rootAbs[y];
 }
 
-procedure {:layer 99} {:inline 1} SetRootAbs1(x: idx, f: fld, y: idx)
+procedure {:layer 99} {:intro} SetRootAbs1(x: idx, f: fld, y: idx)
 modifies rootAbs;
 {
     rootAbs[y] := memAbs[rootAbs[x]][f];
 }
 
-procedure {:layer 99} {:inline 1} SetMemAbs2(absPtr: obj)
+procedure {:layer 99} {:intro} SetMemAbs2(absPtr: obj)
 modifies memAbs;
 {
     memAbs[absPtr] := (lambda z: int :: if (fieldAddr(z)) then absPtr else memAbs[absPtr][z]);
 }
 
-procedure {:layer 99} {:inline 1} SetRootAbs2(y: idx, absPtr: obj)
+procedure {:layer 99} {:intro} SetRootAbs2(y: idx, absPtr: obj)
 modifies rootAbs;
 {
     rootAbs[y] := absPtr;
 }
 
-procedure {:layer 95} {:inline 1} SetToAbs1()
+procedure {:layer 95} {:intro} SetToAbs1()
 modifies toAbs;
 {
     toAbs := (lambda x: int :: if memAddr(x) && White(Color[x]) then nil else toAbs[x]);
 }
 
-procedure {:layer 95} {:inline 1} SetToAbs2(i: int, o: obj)
+procedure {:layer 95} {:intro} SetToAbs2(i: int, o: obj)
 modifies toAbs;
 {
     toAbs[i] := o;
 }
 
-procedure {:layer 95} {:inline 1} SetToAbs3()
+procedure {:layer 95} {:intro} SetToAbs3()
 modifies toAbs;
 {
     toAbs := (lambda i:int :: if memAddr(i) then nil else Int(i));
