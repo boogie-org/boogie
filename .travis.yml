@@ -27,6 +27,8 @@ script:
   - dotnet build -c ${CONFIGURATION} ${SOLUTION}
   - dotnet test --no-build -c ${CONFIGURATION} ${SOLUTION}
   - lit -v -D dotnet -D configuration=${CONFIGURATION} Test
+  # Do not deploy if GitVersionTask could not be used to extract the correct version number
+  - test ! -e Source/BoogieDriver/bin/${CONFIGURATION}/Boogie.1.0.0.nupkg
 deploy:
   - provider: script
     script: dotnet nuget push Source/BoogieDriver/bin/${CONFIGURATION}/Boogie*.nupkg -k ${NUGET_API_KEY} -s https://api.nuget.org/v3/index.json
