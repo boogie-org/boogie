@@ -285,16 +285,6 @@ namespace Microsoft.Boogie
                 }
                 return;
             }
-            
-            // handle synchronous calls to skip procedures
-            if (yieldingProc is SkipProc)
-            {
-                if (yieldingProc.upperLayer >= layerNum)
-                {
-                    AddDuplicateCall(newCall);
-                }
-                return;
-            }
 
             // handle synchronous calls to mover procedures
             if (yieldingProc is MoverProc)
@@ -335,17 +325,9 @@ namespace Microsoft.Boogie
                 List<CallCmd> newCallCmds = new List<CallCmd>();
                 foreach (var call in newParCall.CallCmds)
                 {
-                    YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[call.Proc];
-                    if (yieldingProc is SkipProc && yieldingProc.upperLayer < layerNum)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        call.Proc = procToDuplicate[call.Proc];
-                        call.callee = call.Proc.Name;
-                        newCallCmds.Add(call);
-                    }
+                    call.Proc = procToDuplicate[call.Proc];
+                    call.callee = call.Proc.Name;
+                    newCallCmds.Add(call);
                 }
                 Debug.Assert(newCallCmds.Count > 0);
                 newParCall.CallCmds = newCallCmds;

@@ -160,21 +160,11 @@ namespace Microsoft.Boogie
             YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc];
             if (yieldingProc.upperLayer == this.layerNum)
             {
-                if (yieldingProc is ActionProc)
-                {
-                    refinementInstrumentation = new ActionRefinementInstrumentation(
-                        civlTypeChecker,
-                        impl,
-                        originalImpl,
-                        globalSnapshotInstrumentation.OldGlobalMap);
-                }
-                else
-                {
-                    refinementInstrumentation = new SkipRefinementInstrumentation(
-                        civlTypeChecker,
-                        yieldingProc,
-                        globalSnapshotInstrumentation.OldGlobalMap);
-                }
+                refinementInstrumentation = new ActionRefinementInstrumentation(
+                    civlTypeChecker,
+                    impl,
+                    originalImpl,
+                    globalSnapshotInstrumentation.OldGlobalMap);
             }
             else
             {

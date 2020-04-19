@@ -24,6 +24,7 @@ namespace Microsoft.Boogie
         public Dictionary<Procedure, YieldingProc> procToYieldingProc;
         public Dictionary<Procedure, LemmaProc> procToLemmaProc;
         public Dictionary<Procedure, IntroductionAction> procToIntroductionAction;
+        public Dictionary<Procedure, YieldInvariant> procToYieldInvariant;
         public CommutativityHints commutativityHints;
 
         public List<InductiveSequentialization> inductiveSequentializations;
@@ -40,6 +41,10 @@ namespace Microsoft.Boogie
         public IEnumerable<Variable> GlobalVariables => globalVarToLayerRange.Keys;
 
         public LinearTypeChecker linearTypeChecker;
+
+        public Procedure SkipProcedure;
+        public Implementation SkipImplementation;
+        public AtomicAction SkipAtomicAction;
         
         public CivlTypeChecker(Program program)
         {
@@ -55,14 +60,36 @@ namespace Microsoft.Boogie
             this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
             this.procToLemmaProc = new Dictionary<Procedure, LemmaProc>();
             this.procToIntroductionAction = new Dictionary<Procedure, IntroductionAction>();
+            this.procToYieldInvariant = new Dictionary<Procedure, YieldInvariant>();
             this.implToPendingAsyncCollector = new Dictionary<Implementation, Variable>();
             this.inductiveSequentializations = new List<InductiveSequentialization>();
+
+            SkipProcedure = new Procedure(
+                Token.NoToken,
+                "Skip",
+                new List<TypeVariable>(),
+                new List<Variable>(),
+                new List<Variable>(),
+                new List<Requires>(),
+                new List<IdentifierExpr>(),
+                new List<Ensures>());
+            var skipBlock = new Block(Token.NoToken, "Init", new List<Cmd>(), new ReturnCmd(Token.NoToken));
+            SkipImplementation = new Implementation(
+                Token.NoToken,
+                "Skip",
+                new List<TypeVariable>(),
+                new List<Variable>(),
+                new List<Variable>(),
+                new List<Variable>(),
+                new List<Block> {skipBlock});
+            SkipAtomicAction = new AtomicAction(SkipProcedure, SkipImplementation, LayerRange.MinMax, MoverType.Both);
         }
 
         public void TypeCheck()
         {
             TypeCheckGlobalVariables();
             TypeCheckLemmaProcedures();
+            TypeCheckYieldInvariants();
 
             TypeCheckActionDecls();
             TypeCheckPendingAsyncMachinery();
@@ -348,7 +375,7 @@ namespace Microsoft.Boogie
         {
             // Lemma procedure:
             // * {:lemma}
-            // * no {:yield}
+            // * no {:yields}
             // * no mover type
             // * no layer range
             foreach (var proc in program.Procedures.Where(IsLemmaProcedure))
@@ -374,6 +401,46 @@ namespace Microsoft.Boogie
             {
                 visitor.VisitImplementation(impl);
             }
+        }
+
+        private void TypeCheckYieldInvariants()
+        {
+            // Yield invariant:
+            // * {:yields}
+            // * {:invariant}
+            // * {:layer n}
+            foreach (var proc in program.Procedures.Where(IsYieldInvariant))
+            {
+                if (proc.Modifies.Count > 0)
+                {
+                    Error(proc, "Modifies not allowed on a yield invariant");
+                }
+                else if (proc.Ensures.Count > 0)
+                {
+                    Error(proc, "Postcondition not allowed on a yield invariant");
+                }
+                else
+                {
+                    var layers = FindLayers(proc.Attributes);
+                    if (layers.Count != 1)
+                    {
+                        Error(proc, "A yield invariant must be annotated with a single layer");
+                    }
+                    else
+                    {
+                        procToYieldInvariant[proc] = new YieldInvariant(proc, layers[0]);
+                    }
+                }
+            }
+
+            if (checkingContext.ErrorCount > 0) return;
+
+            // TODO: Check that global variables in preconditions are available at the layer of the yield invariant
+            
+            foreach (Implementation impl in program.Implementations.Where(impl => procToYieldInvariant.ContainsKey(impl.Proc)))
+            {
+                Error(impl, "A yield invariant cannot have an implementation");
+            }   
         }
 
         private void TypeCheckYieldingProcedureDecls()
@@ -417,7 +484,8 @@ namespace Microsoft.Boogie
                         checkingContext.Error(proc, "Refined atomic action must be available at layer {0}", upperLayer + 1);
                         continue;
                     }
-                    var actionProc = new ActionProc(proc, refinedAction, upperLayer);
+                    var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => x.HasAttribute(CivlAttributes.HIDE)));
+                    var actionProc = new ActionProc(proc, refinedAction, upperLayer, hiddenFormals);
                     CheckRefinementSignature(actionProc);
                     procToYieldingProc[proc] = actionProc;
                 }
@@ -425,9 +493,17 @@ namespace Microsoft.Boogie
                 {
                     procToYieldingProc[proc] = new MoverProc(proc, moverType.Value, upperLayer);
                 }
-                else // proc is a skip procedure
+                else // proc refines the skip action
                 {
-                    procToYieldingProc[proc] = new SkipProc(proc, upperLayer);
+                    if (!procToAtomicAction.ContainsKey(SkipProcedure))
+                    {
+                        program.AddTopLevelDeclaration(SkipProcedure);
+                        program.AddTopLevelDeclaration(SkipImplementation);
+                        procToAtomicAction[SkipProcedure] = SkipAtomicAction;
+                    }
+                    var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => localVarToLayerRange[x].upperLayerNum == upperLayer));
+                    var actionProc = new ActionProc(proc, SkipAtomicAction, upperLayer, hiddenFormals);
+                    procToYieldingProc[proc] = actionProc;
                 }
 
                 visitor.VisitProcedure(proc);
@@ -601,7 +677,7 @@ namespace Microsoft.Boogie
                 }
             }
 
-            if(pendingAsyncType != null)
+            if (pendingAsyncType != null)
             {
                 pendingAsyncAdd = new Function(Token.NoToken, "AddPAs",
                     new List<Variable>
@@ -750,6 +826,11 @@ namespace Microsoft.Boogie
             return !IsYieldingProcedure(proc) && proc.HasAttribute(CivlAttributes.LEMMA);
         }
 
+        private bool IsYieldInvariant(Procedure proc)
+        {
+            return IsYieldingProcedure(proc) && proc.HasAttribute(CivlAttributes.INVARIANT);
+        }
+        
         private MoverType GetActionMoverType(Procedure proc)
         {
             if (proc.HasAttribute(CivlAttributes.IS_INVARIANT))
@@ -1189,6 +1270,10 @@ namespace Microsoft.Boogie
                 {
                     VisitLemmaProcCallCmd(call, callerProc);
                 }
+                else if (ctc.procToYieldInvariant.ContainsKey(call.Proc))
+                {
+                    VisitYieldInvariantCallCmd(call, callerProc);
+                }
                 else if (ctc.procToIntroductionAction.ContainsKey(call.Proc))
                 {
                     VisitIntroductionActionCallCmd(call, callerProc, ctc.procToIntroductionAction[call.Proc]);
@@ -1210,8 +1295,35 @@ namespace Microsoft.Boogie
 
             private void VisitYieldingProcCallCmd(CallCmd call, YieldingProc callerProc, YieldingProc calleeProc)
             {
+                if (callerProc.upperLayer < calleeProc.upperLayer)
+                {
+                    ctc.Error(call, "This call cannot have a callee with higher layer than the caller");
+                    return;
+                }
+                if (call.HasAttribute(CivlAttributes.SYNC))
+                {
+                    Require(call.IsAsync && callerProc.upperLayer > calleeProc.upperLayer && calleeProc.IsLeftMover,
+                        call, "Synchronized call must be a left mover");
+                }
                 if (calleeProc is ActionProc calleeActionProc)
                 {
+                    if (call.IsAsync)
+                    {
+                        if (!call.HasAttribute(CivlAttributes.SYNC) || callerProc.upperLayer == calleeProc.upperLayer)
+                        {
+                            Require(callerProc is ActionProc, call, "Caller must be an action procedure");
+                            var highestRefinedAction = calleeActionProc.RefinedActionAtLayer(callerProc.upperLayer + 1);
+                            if (highestRefinedAction == null)
+                            {
+                                ctc.Error(call, $"Called action is not available at layer {callerProc.upperLayer + 1}");
+                            }
+                            else
+                            {
+                                Require(highestRefinedAction.pendingAsyncCtor != null, call,
+                                    $"No pending-async constructor available for the atomic action {highestRefinedAction.proc.Name}");
+                            }
+                        }
+                    }
                     if (callerProc.upperLayer > calleeProc.upperLayer)
                     {
                         var highestRefinedAction = calleeActionProc.RefinedActionAtLayer(callerProc.upperLayer);
@@ -1219,63 +1331,14 @@ namespace Microsoft.Boogie
                         {
                             ctc.Error(call, $"Called action is not available at layer {callerProc.upperLayer}");
                         }
-                        else
+                        else if (highestRefinedAction.HasPendingAsyncs)
                         {
-                            if (call.IsAsync)
-                            {
-                                if (call.HasAttribute(CivlAttributes.SYNC))
-                                    Require(calleeActionProc.refinedAction.IsLeftMover, call, "Synchronized call must be a left mover");
-                                else
-                                    Require(highestRefinedAction.pendingAsyncCtor != null, call, "No pending-async constructor available for this call");
-                            }
-                            if (!(callerProc is ActionProc))
-                            {
-                                Require(!highestRefinedAction.HasPendingAsyncs && (!call.IsAsync || call.HasAttribute(CivlAttributes.SYNC)),
-                                    call, "Only action procedures can summarize pending asyncs");
-                            }
+                            Require(callerProc is ActionProc, call, "Caller must be an action procedure");
                         }
                     }
-                    else if (callerProc.upperLayer == calleeProc.upperLayer)
+                    else // callerProc.upperLayer == calleeProc.upperLayer
                     {
-                        // Calling an action procedure with the same disappearing layer as the caller is only possible if
-                        // (1) the call is a non-synchronized asynchronous call (i.e., results in a pending async), and
-                        // (2) the caller is an action procedure (that can summarize the pending async).
-                        Require(callerProc is ActionProc && call.IsAsync && !call.HasAttribute(CivlAttributes.SYNC),
-                            call, "Call to an action procedure on the same layer must be asynchronous (and turn into a pending async)");
-                        Require(calleeActionProc.refinedAction.pendingAsyncCtor != null, call, "No pending-async constructor available for this call");
-                    }
-                    else
-                    {
-                        ctc.Error(call, "This call cannot have a callee with higher layer than the caller");
-                    }
-                }
-                else if (calleeProc is SkipProc)
-                {
-                    if (callerProc is MoverProc)
-                    {
-                        Require(callerProc.upperLayer > calleeProc.upperLayer, call,
-                            "The layer of the caller must be greater than the layer of the callee");
-                    }
-                    else
-                    {
-                        Require(callerProc.upperLayer >= calleeProc.upperLayer, call,
-                            "The layer of the caller must be greater than or equal to the layer of the callee");
-                    }
-                    Require(callerProc.upperLayer == calleeProc.upperLayer || call.Outs.Count == 0, call,
-                        $"Call is not erasable at layer {callerProc.upperLayer}");
-                    if (callerProc is ActionProc && call.Outs.Count > 0 && enclosingImpl.OutParams.Count > 0)
-                    {
-                        // Skip procedures have the effect of havocing their output variables.
-                        // Currently, refinement checking does not account for that,
-                        // so we forbid propagation to the callers output variables.
-                        HashSet<Variable> callerOutParams = new HashSet<Variable>(enclosingImpl.OutParams);
-                        foreach (var x in call.Outs)
-                        {
-                            if (callerOutParams.Contains(x.Decl))
-                            {
-                                ctc.Error(x, "An output variable of the enclosing implementation cannot be used as output argument for this call");
-                            }
-                        }
+                        Require(callerProc is ActionProc, call, "Caller must be an action procedure");
                     }
                 }
                 else if (calleeProc is MoverProc)
@@ -1287,15 +1350,15 @@ namespace Microsoft.Boogie
                         Require(calleeProc.IsLeftMover, call, "Synchronized call must be a left mover");
                     }
                 }
+                else
+                {
+                    Debug.Assert(false);
+                }
 
                 var hiddenFormals = new HashSet<Variable>();
                 if (calleeProc is ActionProc actionProc)
                 {
                     hiddenFormals = actionProc.hiddenFormals;
-                }
-                else if (calleeProc is SkipProc skipProc)
-                {
-                    hiddenFormals = skipProc.hiddenFormals;
                 }
                 for (int i = 0; i < call.Ins.Count; i++)
                 {
@@ -1360,6 +1423,11 @@ namespace Microsoft.Boogie
                     }
                     globalVariableAccesses = null;
                 }
+            }
+
+            private void VisitYieldInvariantCallCmd(CallCmd call, YieldingProc callerProc)
+            {
+                // TODO: Allow global variables to be used as parameters to yield invariant; check availability on layer of invariant
             }
             
             private void VisitIntroductionActionCallCmd(CallCmd call, YieldingProc callerProc, IntroductionAction introductionAction)
@@ -1483,8 +1551,7 @@ namespace Microsoft.Boogie
                             }
                             else
                             {
-                                Debug.Assert(callee is SkipProc);
-                                mods = new HashSet<Variable>();
+                                Debug.Assert(false);
                             }
                         }
                         else if (ctc.procToIntroductionAction.ContainsKey(callCmd.Proc))

@@ -48,43 +48,9 @@ namespace Microsoft.Boogie
         }
     }
 
-    class SkipRefinementInstrumentation : RefinementInstrumentation
+    class ActionRefinementInstrumentation : RefinementInstrumentation
     {
-        protected Dictionary<Variable, Variable> oldGlobalMap;
-
-        public SkipRefinementInstrumentation(
-            CivlTypeChecker civlTypeChecker,
-            YieldingProc yieldingProc,
-            Dictionary<Variable, Variable> oldGlobalMap)
-        {
-            this.oldGlobalMap = new Dictionary<Variable, Variable>();
-            foreach (Variable v in civlTypeChecker.GlobalVariables)
-            {
-                var layerRange = civlTypeChecker.GlobalVariableLayerRange(v);
-                if (layerRange.lowerLayerNum <= yieldingProc.upperLayer && yieldingProc.upperLayer < layerRange.upperLayerNum)
-                {
-                    this.oldGlobalMap[v] = oldGlobalMap[v];
-                }
-            }
-        }
-
-        public override List<Cmd> CreateAssertCmds()
-        {
-            return CreateUnchangedGlobalsAssertCmds();
-        }
-
-        public override List<Cmd> CreateUnchangedGlobalsAssertCmds()
-        {
-            var assertExpr = Expr.And(this.oldGlobalMap.Select(kvPair => Expr.Eq(Expr.Ident(kvPair.Key), Expr.Ident(kvPair.Value)))); 
-            assertExpr.Typecheck(new TypecheckingContext(null));
-            AssertCmd skipAssertCmd = new AssertCmd(Token.NoToken, assertExpr);
-            skipAssertCmd.ErrorData = "Globals must not be modified";
-            return new List<Cmd> { skipAssertCmd };
-        }
-    }
-
-    class ActionRefinementInstrumentation : SkipRefinementInstrumentation
-    {
+        private Dictionary<Variable, Variable> oldGlobalMap;
         private Dictionary<Variable, Variable> oldOutputMap;
         private List<Variable> newLocalVars;
         private Variable pc;
@@ -98,12 +64,20 @@ namespace Microsoft.Boogie
             CivlTypeChecker civlTypeChecker,
             Implementation impl,
             Implementation originalImpl,
-            Dictionary<Variable, Variable> oldGlobalMap):
-            base (civlTypeChecker, civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc, oldGlobalMap)
+            Dictionary<Variable, Variable> oldGlobalMap)
         {
-            newLocalVars = new List<Variable>();
+            this.oldGlobalMap = new Dictionary<Variable, Variable>();
             ActionProc actionProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc;
             int layerNum = actionProc.upperLayer;
+            foreach (Variable v in civlTypeChecker.GlobalVariables)
+            {
+                var layerRange = civlTypeChecker.GlobalVariableLayerRange(v);
+                if (layerRange.lowerLayerNum <= layerNum && layerNum < layerRange.upperLayerNum)
+                {
+                    this.oldGlobalMap[v] = oldGlobalMap[v];
+                }
+            }
+            this.newLocalVars = new List<Variable>();
             pc = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "civl_pc", Type.Bool));
             newLocalVars.Add(pc);
             ok = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "civl_ok", Type.Bool));
@@ -213,6 +187,15 @@ namespace Microsoft.Boogie
             return new List<Cmd> { assertCmd };
         }
 
+        public override List<Cmd> CreateUnchangedGlobalsAssertCmds()
+        {
+            var assertExpr = Expr.And(this.oldGlobalMap.Select(kvPair => Expr.Eq(Expr.Ident(kvPair.Key), Expr.Ident(kvPair.Value)))); 
+            assertExpr.Typecheck(new TypecheckingContext(null));
+            AssertCmd skipAssertCmd = new AssertCmd(Token.NoToken, assertExpr);
+            skipAssertCmd.ErrorData = "Globals must not be modified";
+            return new List<Cmd> { skipAssertCmd };
+        }
+        
         public override List<Cmd> CreateUnchangedOutputsAssertCmds()
         {
             // assert pc ==> o_old == o;
