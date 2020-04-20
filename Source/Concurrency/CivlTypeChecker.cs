@@ -81,7 +81,8 @@ namespace Microsoft.Boogie
                 new List<Variable>(),
                 new List<Variable>(),
                 new List<Variable>(),
-                new List<Block> {skipBlock});
+                new List<Block> {skipBlock})
+                { Proc = SkipProcedure };
             SkipAtomicAction = new AtomicAction(SkipProcedure, SkipImplementation, LayerRange.MinMax, MoverType.Both);
         }
 
@@ -497,8 +498,6 @@ namespace Microsoft.Boogie
                 {
                     if (!procToAtomicAction.ContainsKey(SkipProcedure))
                     {
-                        program.AddTopLevelDeclaration(SkipProcedure);
-                        program.AddTopLevelDeclaration(SkipImplementation);
                         procToAtomicAction[SkipProcedure] = SkipAtomicAction;
                     }
                     var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => localVarToLayerRange[x].upperLayerNum == upperLayer));
@@ -507,6 +506,12 @@ namespace Microsoft.Boogie
                 }
 
                 visitor.VisitProcedure(proc);
+            }
+
+            if (procToAtomicAction.ContainsKey(SkipProcedure))
+            {
+                program.AddTopLevelDeclaration(SkipProcedure);
+                program.AddTopLevelDeclaration(SkipImplementation);
             }
         }
 
