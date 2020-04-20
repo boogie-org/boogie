@@ -306,7 +306,7 @@ namespace Microsoft.Boogie
                         }
                         else if (cmd is ParCallCmd parCallCmd)
                         {
-                            edgeLabels[edge] = ParCallCmdLabel(parCallCmd);
+                            AddParCallCmdLabels(edgeLabels, parCallCmd, next);
                         }
                         else if (cmd is YieldCmd)
                         {
@@ -329,56 +329,64 @@ namespace Microsoft.Boogie
             {
                 if (@base.civlTypeChecker.procToIntroductionAction.ContainsKey(callCmd.Proc) ||
                     @base.civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc))
+                {
                     return I;
+                }
+
+                if (@base.civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc))
+                {
+                    return @base.civlTypeChecker.procToYieldInvariant[callCmd.Proc].layer == currLayerNum ? Y : P;
+                }
 
                 YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];
                 if (callCmd.IsAsync)
                 {
-                    if (callee is ActionProc && !callCmd.HasAttribute(CivlAttributes.SYNC))
-                        return L;
-                    if (callee.upperLayer < currLayerNum || (callee.upperLayer == currLayerNum && callee is MoverProc))
-                        return MoverTypeToLabel(callee.moverType);
                     return L;
                 }
-                else
+                if (callee is MoverProc && callee.upperLayer == currLayerNum)
                 {
-                    if (callee.upperLayer < currLayerNum || (callee.upperLayer == currLayerNum && callee is MoverProc))
-                        return MoverTypeToLabel(callee.moverType);
-                    return Y;
+                    return MoverTypeToLabel(callee.moverType);
                 }
+                if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum)
+                {
+                    return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).moverType);
+                }
+                return Y;
             }
 
-            private int ParCallCmdLabel(ParCallCmd parCallCmd)
+            private enum Phase
             {
-                foreach (CallCmd callCmd in parCallCmd.CallCmds)
+                LM,
+                RM
+            }
+            
+            private void AddParCallCmdLabels(Dictionary<Tuple<Absy, Absy>, int> edgeLabels, ParCallCmd parCallCmd,  Absy next)
+            {
+                Phase phase = Phase.LM;
+                foreach (var callCmd in parCallCmd.CallCmds)
                 {
-                    if (@base.civlTypeChecker.procToYieldingProc[callCmd.Proc].upperLayer >= currLayerNum)
-                        return Y;
-                }
-
-                bool isRightMover = true;
-                bool isLeftMover = true;
-                int numAtomicActions = 0;
-                foreach (CallCmd callCmd in parCallCmd.CallCmds)
-                {
-                    YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];
-                    isRightMover = isRightMover && callee.IsRightMover;
-                    isLeftMover = isLeftMover && callee.IsLeftMover;
-                    if (callee is ActionProc)
+                    var label = CallCmdLabel(callCmd);
+                    if (phase == Phase.LM)
                     {
-                        numAtomicActions++;
+                        if (label == R || label == A)
+                        {
+                            phase = Phase.RM;
+                        }
+                    }
+                    else if (label == L || label == A)
+                    {
+                        @base.checkingContext.Error(parCallCmd, "Parallel call does not satisfy the side condition");
                     }
                 }
-
-                if (isLeftMover && isRightMover)
-                    return B;
-                else if (isLeftMover)
-                    return L;
-                else if (isRightMover)
-                    return R;
-
-                Debug.Assert(numAtomicActions == 1);
-                return A;
+                edgeLabels[new Tuple<Absy, Absy>(parCallCmd, parCallCmd.CallCmds[0])] = P;
+                for (int i = 0; i < parCallCmd.CallCmds.Count; i++)
+                {
+                    var callCmd = parCallCmd.CallCmds[i];
+                    var edge = new Tuple<Absy, Absy>(callCmd,
+                        i + 1 < parCallCmd.CallCmds.Count ? parCallCmd.CallCmds[i + 1] : next);
+                    var label = CallCmdLabel(callCmd);
+                    edgeLabels[edge] = label;
+                }
             }
 
             private static string PrintGraph(Implementation impl, List<Tuple<Absy, int, Absy>> edges, Absy initialState, HashSet<Absy> finalStates)

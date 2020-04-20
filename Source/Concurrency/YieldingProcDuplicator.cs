@@ -256,13 +256,14 @@ namespace Microsoft.Boogie
             {
                 if (yieldingProc.upperLayer < layerNum)
                 {
+                    Debug.Assert(yieldingProc is ActionProc);
+                    var actionProc = (ActionProc) yieldingProc;
                     if (newCall.HasAttribute(CivlAttributes.SYNC))
                     {
                         // synchronize the called atomic action
-                        Debug.Assert(yieldingProc is ActionProc);
-                        AddActionCall(newCall, (ActionProc)yieldingProc);
+                        AddActionCall(newCall, actionProc);
                     }
-                    else if (IsRefinementLayer && yieldingProc is ActionProc actionProc)
+                    else if (IsRefinementLayer)
                     {
                         AddPendingAsync(newCall, actionProc);
                     }
@@ -272,14 +273,15 @@ namespace Microsoft.Boogie
                     if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum)
                     {
                         // synchronize the called mover procedure
-                        AddDuplicateCall(newCall);
+                        AddDuplicateCall(newCall); // TODO: Do not convert to parallel call
                     }
                     else
                     {
                         DesugarAsyncCall(newCall);
-                        if (IsRefinementLayer && yieldingProc is ActionProc actionProc)
+                        if (IsRefinementLayer)
                         {
-                            AddPendingAsync(newCall, actionProc);
+                            Debug.Assert(yieldingProc is ActionProc);
+                            AddPendingAsync(newCall, (ActionProc) yieldingProc);
                         }
                     }
                 }
@@ -289,7 +291,7 @@ namespace Microsoft.Boogie
             // handle synchronous calls to mover procedures
             if (yieldingProc is MoverProc)
             {
-                AddDuplicateCall(newCall);
+                AddDuplicateCall(newCall); // TODO: Convert to parallel call
                 return;
             }
             
@@ -303,7 +305,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    AddDuplicateCall(newCall);
+                    AddDuplicateCall(newCall); // TODO: Convert to parallel call
                 }
                 Debug.Assert(newCall.Outs.Count == newCall.Proc.OutParams.Count);
             }
@@ -311,6 +313,7 @@ namespace Microsoft.Boogie
 
         private void ProcessParCallCmd(ParCallCmd newParCall)
         {
+            // TODO: Rewrite it to split into multiple calls and parallel calls
             int maxCalleeLayerNum = newParCall.CallCmds.Select(c => civlTypeChecker.procToYieldingProc[c.Proc].upperLayer).Max();
 
             if (layerNum > maxCalleeLayerNum)

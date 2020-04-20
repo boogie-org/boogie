@@ -1305,16 +1305,16 @@ namespace Microsoft.Boogie
                     ctc.Error(call, "This call cannot have a callee with higher layer than the caller");
                     return;
                 }
-                if (call.HasAttribute(CivlAttributes.SYNC))
-                {
-                    Require(call.IsAsync && callerProc.upperLayer > calleeProc.upperLayer && calleeProc.IsLeftMover,
-                        call, "Synchronized call must be a left mover");
-                }
                 if (calleeProc is ActionProc calleeActionProc)
                 {
                     if (call.IsAsync)
                     {
-                        if (!call.HasAttribute(CivlAttributes.SYNC) || callerProc.upperLayer == calleeProc.upperLayer)
+                        if (call.HasAttribute(CivlAttributes.SYNC))
+                        {
+                            Require(callerProc.upperLayer > calleeProc.upperLayer, call, "Called procedure in synchronized call must disappear at lower layer than caller");
+                            Require(calleeProc.IsLeftMover, call, "Synchronized call must be a left mover");
+                        }
+                        else
                         {
                             Require(callerProc is ActionProc, call, "Caller must be an action procedure");
                             var highestRefinedAction = calleeActionProc.RefinedActionAtLayer(callerProc.upperLayer + 1);
@@ -1352,6 +1352,7 @@ namespace Microsoft.Boogie
                         "The layer of the caller must be equal to the layer of the callee");
                     if (call.IsAsync)
                     {
+                        Require(call.HasAttribute(CivlAttributes.SYNC), call, "Async call to mover procedure must be synchronized");
                         Require(calleeProc.IsLeftMover, call, "Synchronized call must be a left mover");
                     }
                 }
@@ -1481,52 +1482,6 @@ namespace Microsoft.Boogie
                 }
             }
             
-            public override Cmd VisitParCallCmd(ParCallCmd parCall)
-            {
-                bool allLeftMover = true;
-                bool allRightMover = true;
-                int maxCalleeLayerNum = LayerRange.Min;
-                int atomicActionCalleeLayerNum = LayerRange.Min;
-                int numAtomicActions = 0;
-                foreach (CallCmd iter in parCall.CallCmds)
-                {
-                    YieldingProc callee = ctc.procToYieldingProc[iter.Proc];
-                    allLeftMover = allLeftMover && callee.IsLeftMover;
-                    allRightMover = allRightMover && callee.IsRightMover;
-
-                    if (callee is MoverProc)
-                    {
-                        ctc.Error(parCall, "Mover procedure cannot be part of a parallel call");
-                    }
-                    else if (callee is ActionProc)
-                    {
-                        numAtomicActions++;
-                        if (atomicActionCalleeLayerNum == LayerRange.Min)
-                        {
-                            atomicActionCalleeLayerNum = callee.upperLayer;
-                        }
-                        else if (atomicActionCalleeLayerNum != callee.upperLayer)
-                        {
-                            ctc.Error(parCall, "All atomic actions must be introduced at the same layer");
-                        }
-                    }
-
-                    if (callee.upperLayer > maxCalleeLayerNum)
-                    {
-                        maxCalleeLayerNum = callee.upperLayer;
-                    }
-                }
-                if (numAtomicActions > 1 && !allLeftMover && !allRightMover)
-                {
-                    ctc.Error(parCall, "The parallel call must either have a single arm or all arms are right movers or all arms are left movers");
-                }
-                if (atomicActionCalleeLayerNum != LayerRange.Min && atomicActionCalleeLayerNum < maxCalleeLayerNum)
-                {
-                    ctc.Error(parCall, "Atomic actions must be introduced at the highest layer");
-                }
-                return base.VisitParCallCmd(parCall);
-            }
-
             public override YieldCmd VisitYieldCmd(YieldCmd node)
             {
                 if (yieldingProc is MoverProc)
