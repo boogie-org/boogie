@@ -42,8 +42,6 @@ namespace Microsoft.Boogie
 
         public LinearTypeChecker linearTypeChecker;
 
-        public Procedure SkipProcedure;
-        public Implementation SkipImplementation;
         public AtomicAction SkipAtomicAction;
         
         public CivlTypeChecker(Program program)
@@ -64,7 +62,7 @@ namespace Microsoft.Boogie
             this.implToPendingAsyncCollector = new Dictionary<Implementation, Variable>();
             this.inductiveSequentializations = new List<InductiveSequentialization>();
 
-            SkipProcedure = new Procedure(
+            var skipProcedure = new Procedure(
                 Token.NoToken,
                 "Skip",
                 new List<TypeVariable>(),
@@ -73,17 +71,16 @@ namespace Microsoft.Boogie
                 new List<Requires>(),
                 new List<IdentifierExpr>(),
                 new List<Ensures>());
-            var skipBlock = new Block(Token.NoToken, "Init", new List<Cmd>(), new ReturnCmd(Token.NoToken));
-            SkipImplementation = new Implementation(
+            var skipImplementation = new Implementation(
                 Token.NoToken,
                 "Skip",
                 new List<TypeVariable>(),
                 new List<Variable>(),
                 new List<Variable>(),
                 new List<Variable>(),
-                new List<Block> {skipBlock})
-                { Proc = SkipProcedure };
-            SkipAtomicAction = new AtomicAction(SkipProcedure, SkipImplementation, LayerRange.MinMax, MoverType.Both);
+                new List<Block> { new Block(Token.NoToken, "Init", new List<Cmd>(), new ReturnCmd(Token.NoToken)) })
+                { Proc = skipProcedure };
+            SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both);
         }
 
         public void TypeCheck()
@@ -496,9 +493,9 @@ namespace Microsoft.Boogie
                 }
                 else // proc refines the skip action
                 {
-                    if (!procToAtomicAction.ContainsKey(SkipProcedure))
+                    if (!procToAtomicAction.ContainsKey(SkipAtomicAction.proc))
                     {
-                        procToAtomicAction[SkipProcedure] = SkipAtomicAction;
+                        procToAtomicAction[SkipAtomicAction.proc] = SkipAtomicAction;
                     }
                     var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => localVarToLayerRange[x].upperLayerNum == upperLayer));
                     var actionProc = new ActionProc(proc, SkipAtomicAction, upperLayer, hiddenFormals);
@@ -508,10 +505,10 @@ namespace Microsoft.Boogie
                 visitor.VisitProcedure(proc);
             }
 
-            if (procToAtomicAction.ContainsKey(SkipProcedure))
+            if (procToAtomicAction.ContainsKey(SkipAtomicAction.proc))
             {
-                program.AddTopLevelDeclaration(SkipProcedure);
-                program.AddTopLevelDeclaration(SkipImplementation);
+                program.AddTopLevelDeclaration(SkipAtomicAction.proc);
+                program.AddTopLevelDeclaration(SkipAtomicAction.impl);
             }
         }
 
