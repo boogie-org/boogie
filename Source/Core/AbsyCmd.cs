@@ -2228,6 +2228,7 @@ namespace Microsoft.Boogie {
               callCmd.Resolve(rc);
           }
           HashSet<Variable> parallelCallLhss = new HashSet<Variable>();
+          HashSet<Variable> inputVariables = new HashSet<Variable>(VariableCollector.Collect(CallCmds.SelectMany(x => x.Ins)));
           foreach (CallCmd callCmd in CallCmds)
           {
               foreach (IdentifierExpr ie in callCmd.Outs)
@@ -2235,6 +2236,10 @@ namespace Microsoft.Boogie {
                   if (parallelCallLhss.Contains(ie.Decl))
                   {
                       rc.Error(this, "left-hand side of parallel call command contains variable twice: {0}", ie.Name);
+                  }
+                  else if (inputVariables.Contains(ie.Decl))
+                  {
+                      rc.Error(this, "left-hand side of parallel call command contains variable accessed on the right-hand side: {0}", ie.Name);
                   }
                   else
                   {

@@ -1291,7 +1291,7 @@ namespace Microsoft.Boogie
             public override Cmd VisitCallCmd(CallCmd call)
             {
                 YieldingProc callerProc = yieldingProc;
-
+                
                 if (civlTypeChecker.procToYieldingProc.ContainsKey(call.Proc))
                 {
                     VisitYieldingProcCallCmd(call, callerProc, civlTypeChecker.procToYieldingProc[call.Proc]);
@@ -1367,6 +1367,15 @@ namespace Microsoft.Boogie
                     else // callerProc.upperLayer == calleeProc.upperLayer
                     {
                         Require(callerProc is ActionProc, call, "Caller must be an action procedure");
+                        ActionProc callerActionProc = (ActionProc) callerProc;
+                        HashSet<string> calleeOutputs = new HashSet<string>(call.Outs.Select(ie => ie.Decl.Name));
+                        HashSet<string> visibleCallerOutputsAtDisappearingLayer = new HashSet<string>(callerActionProc
+                            .proc.OutParams.Where(x => !callerActionProc.hiddenFormals.Contains(x))
+                            .Select(x => x.Name));
+                        Require(
+                            visibleCallerOutputsAtDisappearingLayer.IsSubsetOf(calleeOutputs) ||
+                            !visibleCallerOutputsAtDisappearingLayer.Overlaps(calleeOutputs), call,
+                            $"Visible outputs of caller at disappearing layer must be either included in or disjoint from call outputs");
                     }
                 }
                 else if (calleeProc is MoverProc)
