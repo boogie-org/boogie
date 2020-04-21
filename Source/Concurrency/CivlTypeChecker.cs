@@ -4,7 +4,9 @@ using System.ComponentModel.Design;
 using System.Linq;
 using System.Diagnostics.Contracts;
 using System.Diagnostics;
+using System.Numerics;
 using Microsoft.Boogie.GraphUtil;
+using Microsoft.Basetypes;
 
 namespace Microsoft.Boogie
 {
@@ -407,34 +409,31 @@ namespace Microsoft.Boogie
             // * {:yields}
             // * {:invariant}
             // * {:layer n}
+            YieldingProcVisitor visitor = new YieldingProcVisitor(this);
             foreach (var proc in program.Procedures.Where(IsYieldInvariant))
             {
                 if (proc.Modifies.Count > 0)
                 {
                     Error(proc, "Modifies not allowed on a yield invariant");
+                    continue;
                 }
-                else if (proc.Ensures.Count > 0)
+                if (proc.Ensures.Count > 0)
                 {
                     Error(proc, "Postcondition not allowed on a yield invariant");
+                    continue;
                 }
-                else
+                var layers = FindLayers(proc.Attributes);
+                if (layers.Count != 1)
                 {
-                    var layers = FindLayers(proc.Attributes);
-                    if (layers.Count != 1)
-                    {
-                        Error(proc, "A yield invariant must be annotated with a single layer");
-                    }
-                    else
-                    {
-                        procToYieldInvariant[proc] = new YieldInvariant(proc, layers[0]);
-                    }
+                    Error(proc, "A yield invariant must be annotated with a single layer");
+                    continue;
                 }
+                proc.Requires.ForEach(r => r.Attributes.AddLast(new QKeyValue(Token.NoToken, CivlAttributes.LAYER,
+                    new List<object> {new LiteralExpr(Token.NoToken, BigNum.FromInt(layers[0]))}, null)));
+                procToYieldInvariant[proc] = new YieldInvariant(proc, layers[0]);
+                visitor.VisitProcedure(proc);
             }
-
             if (checkingContext.ErrorCount > 0) return;
-
-            // TODO: Check that global variables in preconditions are available at the layer of the yield invariant
-            
             foreach (Implementation impl in program.Implementations.Where(impl => procToYieldInvariant.ContainsKey(impl.Proc)))
             {
                 Error(impl, "A yield invariant cannot have an implementation");
@@ -1172,7 +1171,7 @@ namespace Microsoft.Boogie
                 VisitSpecPost(requires);
                 return requires;
             }
-
+            
             public override Cmd VisitAssertCmd(AssertCmd assert)
             {
                 VisitSpecPre();
@@ -1268,17 +1267,17 @@ namespace Microsoft.Boogie
                 {
                     VisitYieldingProcCallCmd(call, callerProc, ctc.procToYieldingProc[call.Proc]);
                 }
-                else if (ctc.procToLemmaProc.ContainsKey(call.Proc))
-                {
-                    VisitLemmaProcCallCmd(call, callerProc);
-                }
                 else if (ctc.procToYieldInvariant.ContainsKey(call.Proc))
                 {
-                    VisitYieldInvariantCallCmd(call, callerProc);
+                    VisitYieldInvariantCallCmd(call, callerProc.upperLayer, ctc.procToYieldInvariant[call.Proc].LayerNum);
+                }
+                else if (ctc.procToLemmaProc.ContainsKey(call.Proc))
+                {
+                    VisitLemmaProcCallCmd(call, callerProc.upperLayer);
                 }
                 else if (ctc.procToIntroductionAction.ContainsKey(call.Proc))
                 {
-                    VisitIntroductionActionCallCmd(call, callerProc, ctc.procToIntroductionAction[call.Proc]);
+                    VisitIntroductionActionCallCmd(call, callerProc.upperLayer, ctc.procToIntroductionAction[call.Proc]);
                 }
                 else
                 {
@@ -1408,77 +1407,66 @@ namespace Microsoft.Boogie
                 }
             }
 
-            private void VisitLemmaProcCallCmd(CallCmd call, YieldingProc callerProc)
+            private void VisitYieldInvariantCallCmd(CallCmd call, int callerProcUpperLayer, int calleeLayerNum)
+            {
+                Require(calleeLayerNum <= callerProcUpperLayer, call,
+                        "The layer of the callee must be no more than the disappearing layer of the caller");
+                CheckCallInputs(call, calleeLayerNum);
+            }
+
+            private void VisitLemmaProcCallCmd(CallCmd call, int callerProcUpperLayer)
             {
                 var calledLayers = ctc.FindLayers(call.Attributes);
                 if (calledLayers.Count != 1)
                 {
                     ctc.checkingContext.Error(call, "Call to lemma procedure must be annotated with a layer");
-                }
-                else
-                {
-                    var layerNum = calledLayers[0];
-                    globalVariableAccesses = new List<IdentifierExpr>();
-                    CheckCallInterface(call, callerProc, layerNum);
-                    if (globalVariableAccesses.Any(ie => !ctc.globalVarToLayerRange[ie.Decl].Contains(layerNum)))
-                    {
-                        ctc.checkingContext.Error(call, "A global variable used in input to the call not available at layer {0}", layerNum);
-                    }
-                    globalVariableAccesses = null;
-                }
-            }
-
-            private void VisitYieldInvariantCallCmd(CallCmd call, YieldingProc callerProc)
-            {
-                // TODO: Allow global variables to be used as parameters to yield invariant; check availability on layer of invariant
-            }
-            
-            private void VisitIntroductionActionCallCmd(CallCmd call, YieldingProc callerProc, IntroductionAction introductionAction)
-            {
-                if (introductionAction.LayerNum > callerProc.upperLayer)
-                {
-                    ctc.checkingContext.Error(call,
-                        "The layer of the called introduction action must not be greater than the disappearing layer of the callee");
                     return;
                 }
-                
-                CheckCallInterface(call, callerProc, introductionAction.LayerNum);
-                
-                if (callerProc.upperLayer != introductionAction.LayerNum &&
-                    introductionAction.modifiedGlobalVars.Any(v => ctc.GlobalVariableLayerRange(v).upperLayerNum != introductionAction.LayerNum))
-                {
-                    ctc.checkingContext.Error(call,"All modified variables of callee must be hidden at layer {0}", introductionAction.LayerNum);
-                }
+                var layerNum = calledLayers[0];
+                VisitYieldInvariantCallCmd(call, callerProcUpperLayer, layerNum);
+                CheckCallOutputs(call, callerProcUpperLayer, layerNum);
             }
 
-            private void CheckCallInterface(CallCmd call, YieldingProc callerProc, int layerNum)
+            private void VisitIntroductionActionCallCmd(CallCmd call, int callerProcUpperLayer,
+                IntroductionAction introductionAction)
             {
-                // check inputs
-                {
-                    localVariableAccesses = new List<IdentifierExpr>();
-                    foreach (var e in call.Ins)
-                    {
-                        Visit(e);
-                    }
-                    if (localVariableAccesses.Any(ie => !ctc.localVarToLayerRange[ie.Decl].Contains(layerNum)))
-                    {
-                        ctc.checkingContext.Error(call, "A local variable used in input to the call not available at layer {0}", layerNum);
-                    }
-                    localVariableAccesses = null;
-                }
-                
-                // check outputs
-                if (call.Outs.Any(ie => ctc.LocalVariableLayerRange(ie.Decl).lowerLayerNum != layerNum))
-                {
-                    ctc.checkingContext.Error(call, "All output variables must be introduced at layer {0}", layerNum);
-                }
-                else if (callerProc.upperLayer != layerNum &&
-                         call.Outs.Any(ie => ctc.LocalVariableLayerRange(ie.Decl).upperLayerNum != layerNum))
-                {
-                    ctc.checkingContext.Error(call,"All output variables of call must be hidden at layer {0}", layerNum);
-                }
+                var calleeLayerNum = introductionAction.LayerNum;
+                VisitYieldInvariantCallCmd(call, callerProcUpperLayer, calleeLayerNum);
+                CheckCallOutputs(call, callerProcUpperLayer, calleeLayerNum);
+                Require(callerProcUpperLayer == calleeLayerNum ||
+                        introductionAction.modifiedGlobalVars.All(v =>
+                            ctc.GlobalVariableLayerRange(v).upperLayerNum == calleeLayerNum),
+                    call, $"All modified variables of callee must be hidden at layer {calleeLayerNum}");
             }
-            
+
+            private void CheckCallInputs(CallCmd call, int calleeLayerNum)
+            {
+                globalVariableAccesses = new List<IdentifierExpr>();
+                localVariableAccesses = new List<IdentifierExpr>();
+                foreach (var e in call.Ins)
+                {
+                    Visit(e);
+                }
+                Require(globalVariableAccesses.All(ie => ctc.globalVarToLayerRange[ie.Decl].Contains(calleeLayerNum)),
+                    call,
+                    $"A global variable used in input to the call not available at layer {calleeLayerNum}");
+                Require(localVariableAccesses.All(ie => ctc.localVarToLayerRange[ie.Decl].Contains(calleeLayerNum)),
+                    call,
+                    $"A local variable used in input to the call not available at layer {calleeLayerNum}");
+                localVariableAccesses = null;
+                globalVariableAccesses = null;
+            }
+
+            private void CheckCallOutputs(CallCmd call, int callerProcUpperLayer, int calleeLayerNum)
+            {
+                Require(call.Outs.All(ie => ctc.LocalVariableLayerRange(ie.Decl).lowerLayerNum == calleeLayerNum), 
+                    call,
+                    $"All output variables must be introduced at layer {calleeLayerNum}");
+                Require(callerProcUpperLayer == calleeLayerNum ||
+                        call.Outs.All(ie => ctc.LocalVariableLayerRange(ie.Decl).upperLayerNum == calleeLayerNum),
+                    call, $"All output variables of call must be hidden at layer {calleeLayerNum}");
+            }
+
             public override YieldCmd VisitYieldCmd(YieldCmd node)
             {
                 if (yieldingProc is MoverProc)

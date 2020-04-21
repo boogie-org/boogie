@@ -335,7 +335,7 @@ namespace Microsoft.Boogie
 
                 if (@base.civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc))
                 {
-                    return @base.civlTypeChecker.procToYieldInvariant[callCmd.Proc].layer == currLayerNum ? Y : P;
+                    return @base.civlTypeChecker.procToYieldInvariant[callCmd.Proc].LayerNum == currLayerNum ? Y : P;
                 }
 
                 YieldingProc callee = @base.civlTypeChecker.procToYieldingProc[callCmd.Proc];

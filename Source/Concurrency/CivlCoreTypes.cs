@@ -199,13 +199,14 @@ namespace Microsoft.Boogie
     public class YieldInvariant
     {
         public Procedure proc;
-        public int layer;
+        private int layer;
         
         public YieldInvariant(Procedure proc, int layer)
         {
             this.proc = proc;
             this.layer = layer;
         }
+        public int LayerNum => layer;
     }
     
     public abstract class YieldingProc
