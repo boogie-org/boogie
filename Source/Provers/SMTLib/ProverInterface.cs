@@ -231,7 +231,7 @@ namespace Microsoft.Boogie.SMTLib
       if (common.Length == 0)
       {
         SendCommon("(set-option :print-success false)");
-        SendCommon("(set-info :smt-lib-version 2.0)");
+        SendCommon("(set-info :smt-lib-version 2.6)");
         if (options.ProduceModel())
           SendCommon("(set-option :produce-models true)");
         foreach (var opt in options.SmtOptions)
