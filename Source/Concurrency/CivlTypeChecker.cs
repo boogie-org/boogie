@@ -1083,27 +1083,19 @@ namespace Microsoft.Boogie
             List<IdentifierExpr> globalVariableAccesses;
             List<IdentifierExpr> localVariableAccesses;
 
-            Procedure enclosingProc;
-            Implementation enclosingImpl;
-
             public YieldingProcVisitor(CivlTypeChecker ctc)
             {
                 this.ctc = ctc;
-
                 globalVariableAccesses = null;
                 localVariableAccesses = null;
-
-                enclosingImpl = null;
             }
 
             public override Implementation VisitImplementation(Implementation node)
             {
                 Debug.Assert(yieldingProc == null);
-                enclosingImpl = node;
                 yieldingProc = ctc.procToYieldingProc[node.Proc];
                 var ret = base.VisitImplementation(node);
-                CheckMoverProcModifiesClause();
-                enclosingImpl = null;
+                CheckMoverProcModifiesClause(node);
                 yieldingProc = null;
                 return ret;
             }
@@ -1116,12 +1108,26 @@ namespace Microsoft.Boogie
                     // otherwise the procedure would be visited twice, causing duplicate error messages.
                     return node;
                 }
-                enclosingProc = node;
                 yieldingProc = ctc.procToYieldingProc[node];
-                var ret = base.VisitProcedure(node);
-                enclosingProc = null;
+                
+                // Visit procedure except for modifies clause
+                VisitEnsuresSeq(node.Ensures);
+                VisitVariableSeq(node.InParams);
+                if (yieldingProc is MoverProc moverProc)
+                {
+                    Require(
+                        node.Modifies.All(ie => ctc.GlobalVariableLayerRange(ie.Decl).Contains(moverProc.upperLayer)),
+                        node, $"All variables in the modifies set of a mover procedure must be available at its disappearing layer");
+                }
+                else
+                {
+                    Require(node.Modifies.Count == 0, node, $"Modifies set must be empty");
+                }
+                VisitVariableSeq(node.OutParams);
+                VisitRequiresSeq(node.Requires);
+                
                 yieldingProc = null;
-                return ret;
+                return node;
             }
 
             public override Expr VisitIdentifierExpr(IdentifierExpr node)
@@ -1132,13 +1138,9 @@ namespace Microsoft.Boogie
                     {
                         globalVariableAccesses.Add(node);
                     }
-                    else if (enclosingProc != null)
-                    {
-                        // Modifies clauses of mover procedures need access to global variables.
-                    }
                     else
                     {
-                        ctc.Error(node, "Shared variable can be accessed only in introduction procedures, atomic actions, and specifications");
+                        ctc.Error(node, "Shared variable cannot be accessed");
                     }
                 }
                 else if (node.Decl is Formal || node.Decl is LocalVariable)
@@ -1476,13 +1478,13 @@ namespace Microsoft.Boogie
                 return base.VisitYieldCmd(node);
             }
 
-            private void CheckMoverProcModifiesClause()
+            private void CheckMoverProcModifiesClause(Implementation impl)
             {
                 if (yieldingProc is MoverProc caller)
                 {
                     var declaredModifiedVars = caller.modifiedGlobalVars;
                     HashSet<Variable> mods = null;
-                    foreach (var callCmd in enclosingImpl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
+                    foreach (var callCmd in impl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
                     {
                         if (ctc.procToYieldingProc.TryGetValue(callCmd.Proc, out YieldingProc callee))
                         {
