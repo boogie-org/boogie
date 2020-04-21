@@ -378,6 +378,7 @@ namespace Microsoft.Boogie
             // * no {:yields}
             // * no mover type
             // * no layer range
+            LemmaProcedureVisitor visitor = new LemmaProcedureVisitor(this);
             foreach (var proc in program.Procedures.Where(IsLemmaProcedure))
             {
                 if (proc.Modifies.Count > 0)
@@ -387,16 +388,10 @@ namespace Microsoft.Boogie
                 else
                 {
                     procToLemmaProc[proc] = new LemmaProc(proc);
+                    visitor.VisitProcedure(proc);
                 }
             }
-
             if (checkingContext.ErrorCount > 0) return;
-
-            LemmaProcedureVisitor visitor = new LemmaProcedureVisitor(this);
-            foreach (Procedure proc in program.Procedures.Where(proc => procToLemmaProc.ContainsKey(proc)))
-            {
-                visitor.VisitProcedure(proc);
-            }
             foreach (Implementation impl in program.Implementations.Where(impl => procToLemmaProc.ContainsKey(impl.Proc)))
             {
                 visitor.VisitImplementation(impl);
@@ -409,37 +404,24 @@ namespace Microsoft.Boogie
             // * {:yields}
             // * {:invariant}
             // * {:layer n}
-            YieldingProcVisitor visitor = new YieldingProcVisitor(this);
             foreach (var proc in program.Procedures.Where(IsYieldInvariant))
             {
-                if (proc.Modifies.Count > 0)
-                {
-                    Error(proc, "Modifies not allowed on a yield invariant");
-                    continue;
-                }
-                if (proc.Ensures.Count > 0)
-                {
-                    Error(proc, "Postcondition not allowed on a yield invariant");
-                    continue;
-                }
                 var layers = FindLayers(proc.Attributes);
                 if (layers.Count != 1)
                 {
                     Error(proc, "A yield invariant must be annotated with a single layer");
                     continue;
                 }
-                proc.Requires.ForEach(r => r.Attributes.AddLast(new QKeyValue(Token.NoToken, CivlAttributes.LAYER,
-                    new List<object> {new LiteralExpr(Token.NoToken, BigNum.FromInt(layers[0]))}, null)));
-                procToYieldInvariant[proc] = new YieldInvariant(proc, layers[0]);
+                var visitor = new YieldInvariantVisitor(this, layers[0]);
                 visitor.VisitProcedure(proc);
+                procToYieldInvariant[proc] = new YieldInvariant(proc, layers[0]);
             }
-            if (checkingContext.ErrorCount > 0) return;
             foreach (Implementation impl in program.Implementations.Where(impl => procToYieldInvariant.ContainsKey(impl.Proc)))
             {
                 Error(impl, "A yield invariant cannot have an implementation");
             }   
         }
-
+        
         private void TypeCheckYieldingProcedureDecls()
         {
             YieldingProcVisitor visitor = new YieldingProcVisitor(this);
@@ -481,6 +463,11 @@ namespace Microsoft.Boogie
                         checkingContext.Error(proc, "Refined atomic action must be available at layer {0}", upperLayer + 1);
                         continue;
                     }
+                    if (proc.Modifies.Count > 0)
+                    {
+                        Error(proc, $"Modifies clause must be empty");
+                        continue;
+                    }
                     var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => x.HasAttribute(CivlAttributes.HIDE)));
                     var actionProc = new ActionProc(proc, refinedAction, upperLayer, hiddenFormals);
                     CheckRefinementSignature(actionProc);
@@ -488,10 +475,21 @@ namespace Microsoft.Boogie
                 }
                 else if (moverType.HasValue) // proc is a mover procedure
                 {
+                    if (!proc.Modifies.All(ie => GlobalVariableLayerRange(ie.Decl).Contains(upperLayer)))
+                    {
+                        Error(proc,
+                            $"All variables in the modifies clause of a mover procedure must be available at its disappearing layer");
+                        continue;
+                    }
                     procToYieldingProc[proc] = new MoverProc(proc, moverType.Value, upperLayer);
                 }
                 else // proc refines the skip action
                 {
+                    if (proc.Modifies.Count > 0)
+                    {
+                        Error(proc, $"Modifies clause must be empty");
+                        continue;
+                    }
                     if (!procToAtomicAction.ContainsKey(SkipAtomicAction.proc))
                     {
                         procToAtomicAction[SkipAtomicAction.proc] = SkipAtomicAction;
@@ -500,7 +498,7 @@ namespace Microsoft.Boogie
                     var actionProc = new ActionProc(proc, SkipAtomicAction, upperLayer, hiddenFormals);
                     procToYieldingProc[proc] = actionProc;
                 }
-
+                
                 visitor.VisitProcedure(proc);
             }
 
@@ -994,6 +992,15 @@ namespace Microsoft.Boogie
         {
             checkingContext.Error(node, message);
         }
+
+        public bool Require(bool cond, Absy node, string message)
+        {
+            if (!cond)
+            {
+                Error(node, message);
+            }
+            return cond;
+        }
         #endregion
 
         private class ActionVisitor : ReadOnlyVisitor
@@ -1076,6 +1083,36 @@ namespace Microsoft.Boogie
             }
         }
 
+        private class YieldInvariantVisitor : ReadOnlyVisitor
+        {
+            private CivlTypeChecker civlTypeChecker;
+            private int layerNum;
+
+            public YieldInvariantVisitor(CivlTypeChecker civlTypeChecker, int layerNum)
+            {
+                this.civlTypeChecker = civlTypeChecker;
+                this.layerNum = layerNum;
+            }
+
+            public override Procedure VisitProcedure(Procedure node)
+            {
+                base.VisitRequiresSeq(node.Requires);
+                civlTypeChecker.Require(node.Modifies.Count == 0, node,"Modifies clause of yield invariant must be empty");
+                civlTypeChecker.Require(node.Ensures.Count == 0, node,"Postcondition not allowed on a yield invariant");
+                return node;
+            }
+
+            public override Expr VisitIdentifierExpr(IdentifierExpr node)
+            {
+                if (node.Decl is GlobalVariable)
+                {
+                    civlTypeChecker.Require(civlTypeChecker.GlobalVariableLayerRange(node.Decl).Contains(layerNum),
+                        node, $"Global variable not available at layer {layerNum}");
+                }
+                return base.VisitIdentifierExpr(node);
+            }
+        }
+        
         private class YieldingProcVisitor : ReadOnlyVisitor
         {
             CivlTypeChecker ctc;
@@ -1113,16 +1150,6 @@ namespace Microsoft.Boogie
                 // Visit procedure except for modifies clause
                 VisitEnsuresSeq(node.Ensures);
                 VisitVariableSeq(node.InParams);
-                if (yieldingProc is MoverProc moverProc)
-                {
-                    Require(
-                        node.Modifies.All(ie => ctc.GlobalVariableLayerRange(ie.Decl).Contains(moverProc.upperLayer)),
-                        node, $"All variables in the modifies set of a mover procedure must be available at its disappearing layer");
-                }
-                else
-                {
-                    Require(node.Modifies.Count == 0, node, $"Modifies set must be empty");
-                }
                 VisitVariableSeq(node.OutParams);
                 VisitRequiresSeq(node.Requires);
                 
