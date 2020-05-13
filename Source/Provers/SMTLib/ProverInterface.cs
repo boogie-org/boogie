@@ -1244,17 +1244,32 @@ namespace Microsoft.Boogie.SMTLib
     {
       s = s.Replace("\r", "");
       lock (proverWarnings) {
-        while (s.StartsWith("WARNING: ")) {
-          var idx = s.IndexOf('\n');
-          var warn = s;
-          if (idx > 0) {
-            warn = s.Substring(0, idx);
-            s = s.Substring(idx + 1);
-          } else {
-            s = "";
+        if (options.Solver == SolverKind.Z3) {
+          while (s.StartsWith("WARNING: ")) {
+            var idx = s.IndexOf('\n');
+            var warn = s;
+            if (idx > 0) {
+              warn = s.Substring(0, idx);
+              s = s.Substring(idx + 1);
+            } else {
+              s = "";
+            }
+            warn = warn.Substring(9);
+            proverWarnings.Add(warn);
           }
-          warn = warn.Substring(9);
-          proverWarnings.Add(warn);
+        } else if (options.Solver == SolverKind.CVC4) {
+          while (s.Contains("warning: ")) {
+            var idx = s.IndexOf('\n');
+            var warn = s;
+            if (idx > 0) {
+              warn = s.Substring(0, idx);
+              s = s.Substring(idx + 1);
+            } else {
+              s = "";
+            }
+            warn = warn.Substring(warn.IndexOf("warning: ") + 9);
+            proverWarnings.Add(warn);
+          }
         }
       }
 
