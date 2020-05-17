@@ -36,7 +36,6 @@ namespace Microsoft.Boogie.SMTLib
     void ObjectInvariant()
     {
       Contract.Invariant(ctx != null);
-      Contract.Invariant(AxBuilder != null);
       Contract.Invariant(Namer != null);
       Contract.Invariant(DeclCollector != null);
       Contract.Invariant(cce.NonNullElements(Axioms));
@@ -2770,7 +2769,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override string Lookup(VCExprVar var)
     {
-      VCExprVar v = parent.AxBuilder.TryTyped2Untyped(var);
+      VCExprVar v = parent.AxBuilder?.TryTyped2Untyped(var);
       if (v != null) {
         var = v;
       }
