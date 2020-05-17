@@ -111,7 +111,7 @@ namespace Microsoft.Boogie.SMTLib
           AxBuilder.Setup();
           break;
         case CommandLineOptions.TypeEncoding.Monomorphic:
-          AxBuilder = new TypeAxiomBuilderPremisses(gen);
+          AxBuilder = null;
           break;
         default:
           AxBuilder = new TypeAxiomBuilderPremisses(gen);
@@ -413,7 +413,7 @@ namespace Microsoft.Boogie.SMTLib
       FlushAndCacheCommons();
 
       if (HasReset) {
-        AxBuilder = (TypeAxiomBuilder)CachedAxBuilder.Clone();
+        AxBuilder = (TypeAxiomBuilder)CachedAxBuilder?.Clone();
         Namer = (SMTLibNamer)CachedNamer.Clone();
         Namer.ResetLabelCount();
         DeclCollector.SetNamer(Namer);
@@ -2060,16 +2060,21 @@ namespace Microsoft.Boogie.SMTLib
 
         LetBindingSorter letSorter = new LetBindingSorter(gen);
         Contract.Assert(letSorter != null);
+
         VCExpr sortedExpr = letSorter.Mutate(exprWithoutTypes, true);
         Contract.Assert(sortedExpr != null);
-        VCExpr sortedAxioms = letSorter.Mutate(AxBuilder.GetNewAxioms(), true);
-        Contract.Assert(sortedAxioms != null);
-
-        DeclCollector.Collect(sortedAxioms);
         DeclCollector.Collect(sortedExpr);
         FeedTypeDeclsToProver();
 
-        AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options, namedAssumes: NamedAssumes));
+        if (AxBuilder != null)
+        {
+          VCExpr sortedAxioms = letSorter.Mutate(AxBuilder.GetNewAxioms(), true);
+          Contract.Assert(sortedAxioms != null);
+          DeclCollector.Collect(sortedAxioms);
+          FeedTypeDeclsToProver();
+          AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options, namedAssumes: NamedAssumes));
+        }
+
         string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options, NamedAssumes, OptimizationRequests);
         Contract.Assert(res != null);
 
