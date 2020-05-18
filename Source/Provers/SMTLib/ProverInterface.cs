@@ -1242,6 +1242,11 @@ namespace Microsoft.Boogie.SMTLib
 
     protected void HandleProverError(string s)
     {
+      // Trying to match prover warnings of the form:
+      // - for Z3: WARNING: warning_message
+      // - for CVC4: query.smt2:222.24: warning: warning_message
+      // All other lines are considered to be errors.
+
       s = s.Replace("\r", "");
       const string ProverWarning = "WARNING: ";
       string errors = "";
