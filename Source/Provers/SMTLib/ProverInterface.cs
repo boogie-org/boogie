@@ -1243,45 +1243,30 @@ namespace Microsoft.Boogie.SMTLib
     protected void HandleProverError(string s)
     {
       s = s.Replace("\r", "");
+      const string ProverWarning = "WARNING: ";
+      string errors = "";
+
       lock (proverWarnings) {
-        if (options.Solver == SolverKind.Z3) {
-          while (s.StartsWith("WARNING: ")) {
-            var idx = s.IndexOf('\n');
-            var warn = s;
-            if (idx > 0) {
-              warn = s.Substring(0, idx);
-              s = s.Substring(idx + 1);
-            } else {
-              s = "";
-            }
-            warn = warn.Substring(9);
+        foreach (var line in s.Split("\n")) {
+          int idx = line.IndexOf(ProverWarning, StringComparison.OrdinalIgnoreCase);
+          if (idx >= 0) {
+            string warn = line.Substring(idx + ProverWarning.Length);
             proverWarnings.Add(warn);
-          }
-        } else if (options.Solver == SolverKind.CVC4) {
-          while (s.Contains("warning: ")) {
-            var idx = s.IndexOf('\n');
-            var warn = s;
-            if (idx > 0) {
-              warn = s.Substring(0, idx);
-              s = s.Substring(idx + 1);
-            } else {
-              s = "";
-            }
-            warn = warn.Substring(warn.IndexOf("warning: ") + 9);
-            proverWarnings.Add(warn);
+          } else {
+            errors += (line + "\n");
           }
         }
       }
 
       FlushProverWarnings();
 
-      if (s == "") return;
+      if (errors == "") return;
 
       lock (proverErrors) {
-        proverErrors.Add(s);
-        Console.WriteLine("Prover error: " + s);
+        proverErrors.Add(errors);
+        Console.WriteLine("Prover error: " + errors);
       }
-      ReportProverError(s);
+      ReportProverError(errors);
     }
 
     [NoDefaultContract]
