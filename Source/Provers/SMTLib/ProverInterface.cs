@@ -1242,31 +1242,36 @@ namespace Microsoft.Boogie.SMTLib
 
     protected void HandleProverError(string s)
     {
+      // Trying to match prover warnings of the form:
+      // - for Z3: WARNING: warning_message
+      // - for CVC4: query.smt2:222.24: warning: warning_message
+      // All other lines are considered to be errors.
+
       s = s.Replace("\r", "");
+      const string ProverWarning = "WARNING: ";
+      string errors = "";
+
       lock (proverWarnings) {
-        while (s.StartsWith("WARNING: ")) {
-          var idx = s.IndexOf('\n');
-          var warn = s;
-          if (idx > 0) {
-            warn = s.Substring(0, idx);
-            s = s.Substring(idx + 1);
+        foreach (var line in s.Split("\n")) {
+          int idx = line.IndexOf(ProverWarning, StringComparison.OrdinalIgnoreCase);
+          if (idx >= 0) {
+            string warn = line.Substring(idx + ProverWarning.Length);
+            proverWarnings.Add(warn);
           } else {
-            s = "";
+            errors += (line + "\n");
           }
-          warn = warn.Substring(9);
-          proverWarnings.Add(warn);
         }
       }
 
       FlushProverWarnings();
 
-      if (s == "") return;
+      if (errors == "") return;
 
       lock (proverErrors) {
-        proverErrors.Add(s);
-        Console.WriteLine("Prover error: " + s);
+        proverErrors.Add(errors);
+        Console.WriteLine("Prover error: " + errors);
       }
-      ReportProverError(s);
+      ReportProverError(errors);
     }
 
     [NoDefaultContract]
