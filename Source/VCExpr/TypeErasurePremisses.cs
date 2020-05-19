@@ -643,10 +643,7 @@ namespace Microsoft.Boogie.TypeErasure
         mapTypeParams.Add(var);
       }
 
-      if (CommandLineOptions.Clo.MonomorphicArrays)
-        mapTypeSynonym = abstractedType;
-      else
-        mapTypeSynonym = new CtorType(Token.NoToken, synonymDecl, mapTypeParams);
+      mapTypeSynonym = new CtorType(Token.NoToken, synonymDecl, mapTypeParams);
 
       originalIndexTypes.Add(mapTypeSynonym);
       originalIndexTypes.AddRange(abstractedType.Arguments.ToList());

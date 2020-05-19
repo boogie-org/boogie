@@ -282,7 +282,7 @@ void ObjectInvariant()
       Contract.Requires(type != null);
       if (KnownTypes.Contains(type)) return;
 
-      if (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays) {
+      if (type.IsMap && CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) {
         KnownTypes.Add(type);
         MapType mapType = type.AsMap;
         Contract.Assert(mapType != null);
@@ -352,7 +352,7 @@ void ObjectInvariant()
         string decl = "(declare-fun " + name + " (" + node.MapConcat(n => TypeToString(n.Type), " ") + ") " + TypeToString(node.Type) + ")";
         AddDeclaration(decl);
 
-        if (CommandLineOptions.Clo.MonomorphicArrays) {
+        if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) {
           var sel = SimplifyLikeExprLineariser.SelectOpName(node);
           sel = Namer.GetQuotedName(sel, sel);
           

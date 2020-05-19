@@ -685,7 +685,7 @@ namespace Microsoft.Boogie.TypeErasure {
     [Pure]
     public override bool UnchangedType(Type type) {
       //Contract.Requires(type != null);
-      return type.IsInt || type.IsReal || type.IsBool || type.IsBv || type.IsFloat || type.IsRMode || type.IsString || type.IsRegEx || (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays);
+      return type.IsInt || type.IsReal || type.IsBool || type.IsBv || type.IsFloat || type.IsRMode || type.IsString || type.IsRegEx;
     }
 
     public VCExpr Cast(VCExpr expr, Type toType) {

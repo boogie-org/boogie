@@ -566,11 +566,6 @@ namespace Microsoft.Boogie {
     public bool TraceDiagnosticsOnTimeout = false;
     public int TimeLimitPerAssertionInPercent = 10;
     public bool SIBoolControlVC = false;
-    public bool MonomorphicArrays {
-      get {
-        return UseArrayTheory || TypeEncodingMethod == TypeEncoding.Monomorphic;
-      }
-    }
     public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
     public bool DoModSetAnalysis = false;
     public bool UseAbstractInterpretation = false;
