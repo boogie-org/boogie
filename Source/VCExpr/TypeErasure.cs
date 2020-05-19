@@ -934,9 +934,6 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Requires(rawType != null);
       Contract.Ensures(Contract.Result<Type>() != null);
 
-      if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(rawType))
-        return rawType;
-
       if (rawType.FreeVariables.All(var => !boundTypeParams.Contains(var))) {
         // Bingo!
         // if the type does not contain any bound variables, we can simply

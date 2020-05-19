@@ -680,16 +680,10 @@ namespace Microsoft.Boogie.TypeErasure
         ioTypes[i] = AxBuilder.T;
       foreach (Type/*!*/ type in originalInTypes) {
         Contract.Assert(type != null);
-        if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(type))
-          ioTypes[i] = type;
-        else
-          ioTypes[i] = AxBuilder.U;
+        ioTypes[i] = AxBuilder.U;
         i++;
       }
-      if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(originalResult))
-        ioTypes[i] = originalResult;
-      else
-        ioTypes[i] = AxBuilder.U;
+      ioTypes[i] = AxBuilder.U;
 
       Function/*!*/ res = HelperFuns.BoogieFunction(name, ioTypes);
       Contract.Assert(res != null);

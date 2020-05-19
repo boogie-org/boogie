@@ -731,8 +731,6 @@ namespace Microsoft.Boogie {
     };
     public TypeEncoding TypeEncodingMethod = TypeEncoding.Predicates;
 
-    public bool Monomorphize = false;
-
     public bool ReflectAdd = false;
 
     public int LiveVariableAnalysis = 1;
@@ -1476,7 +1474,6 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("dbgRefuted", ref DebugRefuted) ||
               ps.CheckBooleanFlag("causalImplies", ref CausalImplies) ||
               ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
-              ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
               ps.CheckBooleanFlag("weakArrayTheory", ref WeakArrayTheory) ||
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
@@ -1535,7 +1532,7 @@ namespace Microsoft.Boogie {
       }
 
       if (UseArrayTheory) {
-        Monomorphize = true;
+        TypeEncodingMethod = TypeEncoding.Monomorphic;
       }
 
       if (inferLeastForUnsat != null) {
@@ -1903,10 +1900,9 @@ namespace Microsoft.Boogie {
                    p = predicates (default)
                    a = arguments
                    m = monomorphic
-  /monomorphize
-                Do not abstract map types in the encoding (this is an
-                experimental feature that will not do the right thing if
-                the program uses polymorphism)
+  /useArrayTheory
+                use the SMT theory of arrays (as opposed to axioms). Currently
+                implies /typeEncoding:m.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
 
@@ -2023,11 +2019,6 @@ namespace Microsoft.Boogie {
   /platform:<ptype>,<location>
                 ptype = v11,v2,cli1
                 location = platform libraries directory
-
-  Z3 specific options:
-  /useArrayTheory
-                use Z3's native theory (as opposed to axioms).  Currently
-                implies /monomorphize.
 ");
     }
   }
