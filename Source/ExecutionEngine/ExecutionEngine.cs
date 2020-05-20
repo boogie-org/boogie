@@ -736,6 +736,11 @@ namespace Microsoft.Boogie
       {
           CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
       }
+      else if (CommandLineOptions.Clo.UseArrayTheory)
+      {
+        Console.WriteLine("Option /useArrayTheory only supported for monomorphic programs and polymorphism is detected in {0}", GetFileNameForConsole(bplFileName));
+        return PipelineOutcome.FatalError;
+      }
 
       CollectModSets(program);
 

@@ -1274,10 +1274,6 @@ namespace Microsoft.Boogie {
               case "arguments":
                 TypeEncodingMethod = TypeEncoding.Arguments;
                 break;
-              case "m":
-              case "monomorphic":
-                TypeEncodingMethod = TypeEncoding.Monomorphic;
-                break;
               default:
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
                 break;
@@ -1524,10 +1520,6 @@ namespace Microsoft.Boogie {
 
       if (ProverHelpRequested) {
         Console.WriteLine(TheProverFactory.BlankProverOptions().Help);
-      }
-
-      if (UseArrayTheory) {
-        TypeEncodingMethod = TypeEncoding.Monomorphic;
       }
 
       if (inferLeastForUnsat != null) {
@@ -1891,13 +1883,14 @@ namespace Microsoft.Boogie {
   /causalImplies
                 Translate Boogie's A ==> B into prover's A ==> A && B.
   /typeEncoding:<m>
-                how to encode types when sending VC to theorem prover
+                Encoding of types when generating VC of a polymorphic program:
                    p = predicates (default)
                    a = arguments
-                   m = monomorphic
+                Boogie automatically detects monomorphic programs and enables
+                monomorphic VC generation, thereby overriding the above option.
   /useArrayTheory
-                use the SMT theory of arrays (as opposed to axioms). Currently
-                implies /typeEncoding:m.
+                Use the SMT theory of arrays (as opposed to axioms). Supported
+                only for monomorphic programs.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
 

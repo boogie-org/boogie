@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory -doModSetAnalysis "%s" > "%t"
+// RUN: %boogie -useArrayTheory -doModSetAnalysis "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 function {:builtin "MapConst"} mapconstbool(bool) : [int]bool;
 function {:builtin "MapOr"} mapunion([int]bool, [int]bool) : [int]bool;

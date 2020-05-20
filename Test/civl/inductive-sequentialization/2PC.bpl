@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // A type for vote messages of participants
