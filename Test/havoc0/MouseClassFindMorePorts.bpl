@@ -1,4 +1,4 @@
-// RUN: %boogie -monomorphize "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff success.expect "%t"
 type byte, name;
 function OneByteToInt(byte) returns (int);

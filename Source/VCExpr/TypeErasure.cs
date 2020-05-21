@@ -685,7 +685,7 @@ namespace Microsoft.Boogie.TypeErasure {
     [Pure]
     public override bool UnchangedType(Type type) {
       //Contract.Requires(type != null);
-      return type.IsInt || type.IsReal || type.IsBool || type.IsBv || type.IsFloat || type.IsRMode || type.IsString || type.IsRegEx || (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays);
+      return type.IsInt || type.IsReal || type.IsBool || type.IsBv || type.IsFloat || type.IsRMode || type.IsString || type.IsRegEx;
     }
 
     public VCExpr Cast(VCExpr expr, Type toType) {
@@ -933,9 +933,6 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Requires(boundTypeParams != null);
       Contract.Requires(rawType != null);
       Contract.Ensures(Contract.Result<Type>() != null);
-
-      if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(rawType))
-        return rawType;
 
       if (rawType.FreeVariables.All(var => !boundTypeParams.Contains(var))) {
         // Bingo!

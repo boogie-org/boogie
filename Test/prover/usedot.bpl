@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -proverLog:"%t.smt2" "%s"
+// RUN: %boogie -proverLog:"%t.smt2" "%s"
 // RUN: %OutputCheck "%s" --file-to-check="%t.smt2"
 procedure foo() {
   // . is an illegal starting character in SMT-LIBv2

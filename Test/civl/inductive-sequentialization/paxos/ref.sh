@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# RUN: %boogie -typeEncoding:m -useArrayTheory Paxos.bpl PaxosActions.bpl PaxosImpl.bpl > "%t"
+# RUN: %boogie -useArrayTheory Paxos.bpl PaxosActions.bpl PaxosImpl.bpl > "%t"
 # RUN: %diff "%s.expect" "%t"
 
-boogie -nologo -typeEncoding:m -useArrayTheory $@ Paxos.bpl PaxosActions.bpl PaxosImpl.bpl
+boogie -nologo -useArrayTheory $@ Paxos.bpl PaxosActions.bpl PaxosImpl.bpl

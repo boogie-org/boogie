@@ -193,41 +193,23 @@ Contract.Ensures(Contract.ValueAtReturn(out store) != null);
         storeTypes[i] = AxBuilder.T;
       }
       // Fill in the map type
-      if (CommandLineOptions.Clo.MonomorphicArrays) {
-        selectTypes[i] = abstractedType;
-        storeTypes[i] = abstractedType;
-      } else {
-        selectTypes[i] = AxBuilder.U;
-        storeTypes[i] = AxBuilder.U;
-      }
+      selectTypes[i] = AxBuilder.U;
+      storeTypes[i] = AxBuilder.U;
       i++;
       // Fill in the index types
       foreach (Type/*!*/ type in abstractedType.Arguments) {
         Contract.Assert(type != null);
-        if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(type)) {
-          selectTypes[i] = type;
-          storeTypes[i] = type;
-        } else {
-          selectTypes[i] = AxBuilder.U;
-          storeTypes[i] = AxBuilder.U;
-        }
+        selectTypes[i] = AxBuilder.U;
+        storeTypes[i] = AxBuilder.U;
         i++;
       }
       // Fill in the output type for select function which also happens 
       // to be the type of the last argument to the store function
-      if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(abstractedType.Result)) {
-        selectTypes[i] = abstractedType.Result;
-        storeTypes[i] = abstractedType.Result;
-      } else {
-        selectTypes[i] = AxBuilder.U;
-        storeTypes[i] = AxBuilder.U;
-      }
+      selectTypes[i] = AxBuilder.U;
+      storeTypes[i] = AxBuilder.U;
       i++;
       // Fill in the map type which is the output of the store function
-      if (CommandLineOptions.Clo.MonomorphicArrays)
-        storeTypes[i] = abstractedType;
-      else
-        storeTypes[i] = AxBuilder.U;
+      storeTypes[i] = AxBuilder.U;
       Contract.Assert(cce.NonNullElements<Type>(selectTypes));
       Contract.Assert(cce.NonNullElements<Type>(storeTypes));
 

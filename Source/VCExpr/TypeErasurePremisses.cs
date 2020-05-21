@@ -643,10 +643,7 @@ namespace Microsoft.Boogie.TypeErasure
         mapTypeParams.Add(var);
       }
 
-      if (CommandLineOptions.Clo.MonomorphicArrays)
-        mapTypeSynonym = abstractedType;
-      else
-        mapTypeSynonym = new CtorType(Token.NoToken, synonymDecl, mapTypeParams);
+      mapTypeSynonym = new CtorType(Token.NoToken, synonymDecl, mapTypeParams);
 
       originalIndexTypes.Add(mapTypeSynonym);
       originalIndexTypes.AddRange(abstractedType.Arguments.ToList());
@@ -680,16 +677,10 @@ namespace Microsoft.Boogie.TypeErasure
         ioTypes[i] = AxBuilder.T;
       foreach (Type/*!*/ type in originalInTypes) {
         Contract.Assert(type != null);
-        if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(type))
-          ioTypes[i] = type;
-        else
-          ioTypes[i] = AxBuilder.U;
+        ioTypes[i] = AxBuilder.U;
         i++;
       }
-      if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(originalResult))
-        ioTypes[i] = originalResult;
-      else
-        ioTypes[i] = AxBuilder.U;
+      ioTypes[i] = AxBuilder.U;
 
       Function/*!*/ res = HelperFuns.BoogieFunction(name, ioTypes);
       Contract.Assert(res != null);
