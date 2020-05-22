@@ -130,8 +130,9 @@ namespace Microsoft.Boogie
         private void TypeCheckRefinementLayers()
         {
             // List of all layers where refinement happens
-            allRefinementLayers = procToYieldingProc.Values.Select(a => a.upperLayer).OrderBy(l => l).Distinct().ToList();
-
+            var yieldingProcsWithImpls = procToYieldingProc.Keys.Intersect(program.Implementations.Select(i => i.Proc));
+            allRefinementLayers = yieldingProcsWithImpls.Select(p => procToYieldingProc[p].upperLayer).OrderBy(l => l).Distinct().ToList();
+            
             foreach (var kv in absyToLayerNums)
             {
                 foreach (var layer in kv.Value)
@@ -402,7 +403,7 @@ namespace Microsoft.Boogie
         {
             // Yield invariant:
             // * {:yields}
-            // * {:invariant}
+            // * {:inv}
             // * {:layer n}
             foreach (var proc in program.Procedures.Where(IsYieldInvariant))
             {
@@ -808,12 +809,12 @@ namespace Microsoft.Boogie
         #region Helpers for attribute parsing
         private bool IsYieldingProcedure(Procedure proc)
         {
-            return proc.HasAttribute(CivlAttributes.YIELDS);
+            return proc.HasAttribute(CivlAttributes.YIELDS) && !proc.HasAttribute(CivlAttributes.INVARIANT);
         }
 
         private bool IsAction(Procedure proc)
         {
-            return !IsYieldingProcedure(proc) &&
+            return !proc.HasAttribute(CivlAttributes.YIELDS) &&
                 (GetMoverType(proc) != null ||
                  proc.HasAttribute(CivlAttributes.INTRO) ||
                  proc.HasAttribute(CivlAttributes.IS_INVARIANT) ||
@@ -822,12 +823,12 @@ namespace Microsoft.Boogie
         
         private bool IsLemmaProcedure(Procedure proc)
         {
-            return !IsYieldingProcedure(proc) && proc.HasAttribute(CivlAttributes.LEMMA);
+            return !proc.HasAttribute(CivlAttributes.YIELDS) && proc.HasAttribute(CivlAttributes.LEMMA);
         }
 
         private bool IsYieldInvariant(Procedure proc)
         {
-            return IsYieldingProcedure(proc) && proc.HasAttribute(CivlAttributes.INVARIANT);
+            return proc.HasAttribute(CivlAttributes.YIELDS) && proc.HasAttribute(CivlAttributes.INVARIANT);
         }
         
         private MoverType GetActionMoverType(Procedure proc)
@@ -1345,7 +1346,7 @@ namespace Microsoft.Boogie
                             {
                                 civlTypeChecker.Error(call, $"Called action is not available at layer {callerProc.upperLayer + 1}");
                             }
-                            else
+                            else if (highestRefinedAction != civlTypeChecker.SkipAtomicAction)
                             {
                                 Require(highestRefinedAction.pendingAsyncCtor != null, call,
                                     $"No pending-async constructor available for the atomic action {highestRefinedAction.proc.Name}");

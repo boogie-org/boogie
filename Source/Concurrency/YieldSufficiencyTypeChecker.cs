@@ -11,13 +11,13 @@ namespace Microsoft.Boogie
     public class YieldSufficiencyTypeChecker
     {
         // Edge labels of the automaton that abstracts the code of a procedure
-        private const char Y = 'Y';  // yield
-        private const char B = 'B';  // both mover action
-        private const char L = 'L';  // left mover action
-        private const char R = 'R';  // right mover action
-        private const char A = 'A';  // atomic (non mover) action
-        private const char P = 'P';  // private (local variable) access
-        private const char I = 'I';  // introduction action
+        private const string Y = "Y";  // yield
+        private const string B = "B";  // both mover action
+        private const string L = "L";  // left mover action
+        private const string R = "R";  // right mover action
+        private const string A = "A";  // atomic (non mover) action
+        private const string P = "P";  // private (local variable) access
+        private const string I = "I";  // introduction action
         
         // States of Bracket Automaton (check that all accesses to global variables are bracketed by yields)
         private const int BEFORE = 0;
@@ -25,20 +25,20 @@ namespace Microsoft.Boogie
         private const int AFTER = 2;
         
         // Transitions of Bracket Automaton
-        static List<Tuple<int, int, int>> BracketSpec = new List<Tuple<int, int, int>>
+        static List<Tuple<int, string, int>> BracketSpec = new List<Tuple<int, string, int>>
         { // initial: BEFORE, final: AFTER
-            new Tuple<int, int, int>(BEFORE, P, BEFORE),
-            new Tuple<int, int, int>(BEFORE, Y, INSIDE),
-            new Tuple<int, int, int>(BEFORE, Y, AFTER),
-            new Tuple<int, int, int>(INSIDE, Y, INSIDE),
-            new Tuple<int, int, int>(INSIDE, B, INSIDE),
-            new Tuple<int, int, int>(INSIDE, R, INSIDE),
-            new Tuple<int, int, int>(INSIDE, L, INSIDE),
-            new Tuple<int, int, int>(INSIDE, A, INSIDE),
-            new Tuple<int, int, int>(INSIDE, P, INSIDE),
-            new Tuple<int, int, int>(INSIDE, I, INSIDE),
-            new Tuple<int, int, int>(INSIDE, Y, AFTER),
-            new Tuple<int, int, int>(AFTER, P, AFTER),
+            new Tuple<int, string, int>(BEFORE, P, BEFORE),
+            new Tuple<int, string, int>(BEFORE, Y, INSIDE),
+            new Tuple<int, string, int>(BEFORE, Y, AFTER),
+            new Tuple<int, string, int>(INSIDE, Y, INSIDE),
+            new Tuple<int, string, int>(INSIDE, B, INSIDE),
+            new Tuple<int, string, int>(INSIDE, R, INSIDE),
+            new Tuple<int, string, int>(INSIDE, L, INSIDE),
+            new Tuple<int, string, int>(INSIDE, A, INSIDE),
+            new Tuple<int, string, int>(INSIDE, P, INSIDE),
+            new Tuple<int, string, int>(INSIDE, I, INSIDE),
+            new Tuple<int, string, int>(INSIDE, Y, AFTER),
+            new Tuple<int, string, int>(AFTER, P, AFTER),
         };
         
         // States of Atomicity Automaton (check that transactions are separated by yields)
@@ -46,23 +46,23 @@ namespace Microsoft.Boogie
         private const int LM = 1;
         
         // Transitions of Atomicity Automaton
-        static List<Tuple<int, int, int>> AtomicitySpec = new List<Tuple<int, int, int>>
+        static List<Tuple<int, string, int>> AtomicitySpec = new List<Tuple<int, string, int>>
         { // initial: {RM, LM}, final: {RM, LM}
-            new Tuple<int, int, int>(RM, P, RM),
-            new Tuple<int, int, int>(RM, I, RM),
-            new Tuple<int, int, int>(RM, B, RM),
-            new Tuple<int, int, int>(RM, R, RM),
-            new Tuple<int, int, int>(RM, Y, RM),
-            new Tuple<int, int, int>(RM, L, LM),
-            new Tuple<int, int, int>(RM, A, LM),
-            new Tuple<int, int, int>(LM, P, LM),
-            new Tuple<int, int, int>(LM, I, LM),
-            new Tuple<int, int, int>(LM, B, LM),
-            new Tuple<int, int, int>(LM, L, LM),
-            new Tuple<int, int, int>(LM, Y, RM),
+            new Tuple<int, string, int>(RM, P, RM),
+            new Tuple<int, string, int>(RM, I, RM),
+            new Tuple<int, string, int>(RM, B, RM),
+            new Tuple<int, string, int>(RM, R, RM),
+            new Tuple<int, string, int>(RM, Y, RM),
+            new Tuple<int, string, int>(RM, L, LM),
+            new Tuple<int, string, int>(RM, A, LM),
+            new Tuple<int, string, int>(LM, P, LM),
+            new Tuple<int, string, int>(LM, I, LM),
+            new Tuple<int, string, int>(LM, B, LM),
+            new Tuple<int, string, int>(LM, L, LM),
+            new Tuple<int, string, int>(LM, Y, RM),
         };
 
-        private static int MoverTypeToLabel(MoverType moverType)
+        private static string MoverTypeToLabel(MoverType moverType)
         {
             switch (moverType)
             {
@@ -142,7 +142,7 @@ namespace Microsoft.Boogie
             int currLayerNum;
             Graph<Block> implGraph;
 
-            List<Tuple<Absy, int, Absy>> implEdges;
+            List<Tuple<Absy, string, Absy>> implEdges;
             Absy initialState;
             HashSet<Absy> finalStates;
 
@@ -155,7 +155,7 @@ namespace Microsoft.Boogie
                 this.implGraph = implGraph;
                 this.initialState = impl.Blocks[0];
                 this.finalStates = new HashSet<Absy>();
-                this.implEdges = new List<Tuple<Absy, int, Absy>>();
+                this.implEdges = new List<Tuple<Absy, string, Absy>>();
             }
 
             public void TypeCheckLayer()
@@ -179,7 +179,7 @@ namespace Microsoft.Boogie
                     initialConstraints[finalState] = new HashSet<int> { AFTER };
                 }
 
-                var simulationRelation = new SimulationRelation<Absy, int, int>(implEdges, BracketSpec, initialConstraints).ComputeSimulationRelation();
+                var simulationRelation = new SimulationRelation<Absy, int, string>(implEdges, BracketSpec, initialConstraints).ComputeSimulationRelation();
                 if (simulationRelation[initialState].Count == 0)
                 {
                     @base.checkingContext.Error(impl, $"Implementation {impl.Name} fails bracket check at layer {currLayerNum}. All code that accesses global variables must be bracketed by yields.");
@@ -208,7 +208,7 @@ namespace Microsoft.Boogie
                     }
                 }
 
-                var simulationRelation = new SimulationRelation<Absy, int, int>(implEdges, AtomicitySpec, initialConstraints).ComputeSimulationRelation();
+                var simulationRelation = new SimulationRelation<Absy, int, string>(implEdges, AtomicitySpec, initialConstraints).ComputeSimulationRelation();
 
                 if (IsMoverProcedure)
                 {
@@ -273,7 +273,7 @@ namespace Microsoft.Boogie
             {
                 // Internal representation
                 // At the end of the method, we translate to List<Tuple<Absy, int, Absy>>
-                Dictionary<Tuple<Absy, Absy>, int> edgeLabels = new Dictionary<Tuple<Absy, Absy>, int>();
+                Dictionary<Tuple<Absy, Absy>, string> edgeLabels = new Dictionary<Tuple<Absy, Absy>, string>();
 
                 foreach (Block block in impl.Blocks)
                 {
@@ -321,11 +321,12 @@ namespace Microsoft.Boogie
 
                 foreach (Tuple<Absy, Absy> e in edgeLabels.Keys)
                 {
-                    implEdges.Add(new Tuple<Absy, int, Absy>(e.Item1, edgeLabels[e], e.Item2));
+                    implEdges.Add(new Tuple<Absy, string, Absy>(e.Item1, edgeLabels[e], e.Item2));
                 }
             }
 
-            private int CallCmdLabel(CallCmd callCmd)
+            private string 
+                CallCmdLabel(CallCmd callCmd)
             {
                 if (@base.civlTypeChecker.procToIntroductionAction.ContainsKey(callCmd.Proc) ||
                     @base.civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc))
@@ -360,7 +361,7 @@ namespace Microsoft.Boogie
                 RM
             }
             
-            private void AddParCallCmdLabels(Dictionary<Tuple<Absy, Absy>, int> edgeLabels, ParCallCmd parCallCmd,  Absy next)
+            private void AddParCallCmdLabels(Dictionary<Tuple<Absy, Absy>, string> edgeLabels, ParCallCmd parCallCmd,  Absy next)
             {
                 Phase phase = Phase.LM;
                 foreach (var callCmd in parCallCmd.CallCmds)
@@ -389,7 +390,7 @@ namespace Microsoft.Boogie
                 }
             }
 
-            private static string PrintGraph(Implementation impl, List<Tuple<Absy, int, Absy>> edges, Absy initialState, HashSet<Absy> finalStates)
+            private static string PrintGraph(Implementation impl, List<Tuple<Absy, string, Absy>> edges, Absy initialState, HashSet<Absy> finalStates)
             {
                 Dictionary<Absy, int> map = new Dictionary<Absy, int>();
                 int cnt = 0;
@@ -403,7 +404,7 @@ namespace Microsoft.Boogie
                 s.AppendLine("\nImplementation " + impl.Proc.Name + " digraph G {");
                 foreach (var e in edges)
                 {
-                    s.AppendLine("  \"" + map[e.Item1] + "\" -- " + (char)e.Item2 + " --> \"" + map[e.Item3] + "\";");
+                    s.AppendLine("  \"" + map[e.Item1] + "\" -- " + e.Item2 + " --> \"" + map[e.Item3] + "\";");
                 }
                 s.AppendLine("}");
                 s.AppendLine("Initial state: " + map[initialState]);

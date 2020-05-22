@@ -12,7 +12,7 @@ namespace Microsoft.Boogie
 
         public const string YIELDS = "yields";
 
-        public const string INVARIANT = "invariant";
+        public const string INVARIANT = "inv";
         
         public const string INTRO = "intro";
         

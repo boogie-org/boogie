@@ -205,6 +205,7 @@ namespace Microsoft.Boogie
         {
             this.proc = proc;
             this.layer = layer;
+            this.proc.Ensures.AddRange(this.proc.Requires.Select(requires => new Ensures(requires.tok, false, requires.Condition, null)));
         }
         public int LayerNum => layer;
     }

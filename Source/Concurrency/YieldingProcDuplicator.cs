@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.Boogie
 {
@@ -273,7 +274,7 @@ namespace Microsoft.Boogie
                     if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum)
                     {
                         // synchronize the called mover procedure
-                        AddDuplicateCall(newCall); // TODO: Do not convert to parallel call
+                        AddDuplicateCall(newCall, false);
                     }
                     else
                     {
@@ -291,7 +292,7 @@ namespace Microsoft.Boogie
             // handle synchronous calls to mover procedures
             if (yieldingProc is MoverProc)
             {
-                AddDuplicateCall(newCall); // TODO: Convert to parallel call
+                AddDuplicateCall(newCall, true);
                 return;
             }
             
@@ -305,7 +306,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    AddDuplicateCall(newCall); // TODO: Convert to parallel call
+                    AddDuplicateCall(newCall, true);
                 }
                 Debug.Assert(newCall.Outs.Count == newCall.Proc.OutParams.Count);
             }
@@ -313,28 +314,47 @@ namespace Microsoft.Boogie
 
         private void ProcessParCallCmd(ParCallCmd newParCall)
         {
-            // TODO: Rewrite it to split into multiple calls and parallel calls
-            int maxCalleeLayerNum = newParCall.CallCmds.Select(c => civlTypeChecker.procToYieldingProc[c.Proc].upperLayer).Max();
-
-            if (layerNum > maxCalleeLayerNum)
+            var callCmds = new List<CallCmd>();
+            foreach (var callCmd in newParCall.CallCmds)
             {
-                foreach (var call in newParCall.CallCmds)
+                if (civlTypeChecker.procToYieldingProc.ContainsKey(callCmd.Proc))
                 {
-                    ProcessCallCmd(call);
+                    var yieldingProc = civlTypeChecker.procToYieldingProc[callCmd.Proc];
+                    if (layerNum > yieldingProc.upperLayer && yieldingProc is ActionProc ||
+                        layerNum == yieldingProc.upperLayer && yieldingProc is MoverProc)
+                    {
+                        if (callCmds.Count > 0)
+                        {
+                            var parCallCmd = new ParCallCmd(newParCall.tok, callCmds);
+                            absyMap[parCallCmd] = absyMap[newParCall];
+                            newCmdSeq.Add(parCallCmd);
+                            callCmds = new List<CallCmd>();
+                        }
+                        ProcessCallCmd(callCmd);
+                        continue;
+                    }
+                }
+                if (procToDuplicate.ContainsKey(callCmd.Proc))
+                {
+                    callCmd.Proc = procToDuplicate[callCmd.Proc];
+                    callCmd.callee = callCmd.Proc.Name;
+                    callCmds.Add(callCmd);
+                }
+                else
+                {
+                    Debug.Assert(civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc));
+                    var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
+                    if (layerNum == yieldInvariant.LayerNum)
+                    {
+                        callCmds.Add(callCmd);
+                    }
                 }
             }
-            else
+            if (callCmds.Count > 0)
             {
-                List<CallCmd> newCallCmds = new List<CallCmd>();
-                foreach (var call in newParCall.CallCmds)
-                {
-                    call.Proc = procToDuplicate[call.Proc];
-                    call.callee = call.Proc.Name;
-                    newCallCmds.Add(call);
-                }
-                Debug.Assert(newCallCmds.Count > 0);
-                newParCall.CallCmds = newCallCmds;
-                newCmdSeq.Add(newParCall);
+                var parCallCmd = new ParCallCmd(newParCall.tok, callCmds);
+                absyMap[parCallCmd] = absyMap[newParCall];
+                newCmdSeq.Add(parCallCmd);
             }
         }
 
@@ -430,12 +450,21 @@ namespace Microsoft.Boogie
             }
         }
 
-        private void AddDuplicateCall(CallCmd newCall)
+        private void AddDuplicateCall(CallCmd newCall, bool makeParallel)
         {
             newCall.IsAsync = false;
             newCall.Proc = procToDuplicate[newCall.Proc];
             newCall.callee = newCall.Proc.Name;
-            newCmdSeq.Add(newCall);
+            if (makeParallel)
+            {
+                var parCallCmd = new ParCallCmd(newCall.tok, new List<CallCmd> {newCall});
+                absyMap[parCallCmd] = absyMap[newCall];
+                newCmdSeq.Add(parCallCmd);
+            }
+            else
+            {
+                newCmdSeq.Add(newCall);
+            }
         }
 
         private void DesugarAsyncCall(CallCmd newCall)
