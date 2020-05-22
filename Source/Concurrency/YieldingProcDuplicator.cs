@@ -485,14 +485,17 @@ namespace Microsoft.Boogie
 
         private void AddPendingAsync(CallCmd newCall, ActionProc actionProc)
         {
+            AtomicAction paAction;
+            if (actionProc.upperLayer == enclosingYieldingProc.upperLayer)
+                paAction = actionProc.refinedAction;
+            else
+                paAction = actionProc.RefinedActionAtLayer(layerNum);
+            if (paAction == civlTypeChecker.SkipAtomicAction)
+            {
+                return;
+            }
             if (SummaryHasPendingAsyncParam)
             {
-                AtomicAction paAction;
-                if (actionProc.upperLayer == enclosingYieldingProc.upperLayer)
-                    paAction = actionProc.refinedAction;
-                else
-                    paAction = actionProc.RefinedActionAtLayer(layerNum);
-
                 Expr[] newIns = new Expr[paAction.proc.InParams.Count];
                 for (int i = 0, j = 0; i < actionProc.proc.InParams.Count; i++)
                 {

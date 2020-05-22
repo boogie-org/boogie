@@ -809,7 +809,7 @@ namespace Microsoft.Boogie
         #region Helpers for attribute parsing
         private bool IsYieldingProcedure(Procedure proc)
         {
-            return proc.HasAttribute(CivlAttributes.YIELDS) && !proc.HasAttribute(CivlAttributes.INVARIANT);
+            return proc.HasAttribute(CivlAttributes.YIELDS);
         }
 
         private bool IsAction(Procedure proc)
@@ -828,7 +828,7 @@ namespace Microsoft.Boogie
 
         private bool IsYieldInvariant(Procedure proc)
         {
-            return proc.HasAttribute(CivlAttributes.YIELDS) && proc.HasAttribute(CivlAttributes.INVARIANT);
+            return proc.HasAttribute(CivlAttributes.YIELD_INVARIANT);
         }
         
         private MoverType GetActionMoverType(Procedure proc)

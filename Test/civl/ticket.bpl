@@ -30,13 +30,13 @@ function {:inline} Inv2 (tickets: [int]bool, ticket: int, lock: X): (bool)
 // ###########################################################################
 // Yield invariants
 
-procedure {:yields} {:inv} {:layer 2} YieldSpec ({:linear "tid"} tid: X);
+procedure {:yield_invariant} {:layer 2} YieldSpec ({:linear "tid"} tid: X);
 requires tid != nil && cs == tid;
 
-procedure {:yields} {:inv} {:layer 1} Yield1 ();
+procedure {:yield_invariant} {:layer 1} Yield1 ();
 requires Inv1(T, t);
 
-procedure {:yields} {:inv} {:layer 2} Yield2 ();
+procedure {:yield_invariant} {:layer 2} Yield2 ();
 requires Inv2(T, s, cs);
 
 // ###########################################################################
