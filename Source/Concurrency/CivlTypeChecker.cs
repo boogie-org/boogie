@@ -402,8 +402,7 @@ namespace Microsoft.Boogie
         private void TypeCheckYieldInvariants()
         {
             // Yield invariant:
-            // * {:yields}
-            // * {:inv}
+            // * {:yield_invariant}
             // * {:layer n}
             foreach (var proc in program.Procedures.Where(IsYieldInvariant))
             {
@@ -415,7 +414,12 @@ namespace Microsoft.Boogie
                 }
                 var visitor = new YieldInvariantVisitor(this, layers[0]);
                 visitor.VisitProcedure(proc);
-                procToYieldInvariant[proc] = new YieldInvariant(proc, layers[0]);
+                var yieldInvariant = new YieldInvariant(proc, layers[0]);
+                procToYieldInvariant[proc] = yieldInvariant;
+                foreach (var param in proc.InParams)
+                {
+                    localVarToLayerRange[param] = new LayerRange(yieldInvariant.LayerNum);
+                }
             }
             foreach (Implementation impl in program.Implementations.Where(impl => procToYieldInvariant.ContainsKey(impl.Proc)))
             {

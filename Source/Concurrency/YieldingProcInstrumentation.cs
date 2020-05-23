@@ -39,9 +39,9 @@ namespace Microsoft.Boogie
                     yieldingProcInstrumentation.TransformImpl(originalImpl, impl);
                 }
             }
-
+            yieldingProcInstrumentation.AddYieldInvariantNoninterferenceCheckers();
             List<Declaration> decls = new List<Declaration>(yieldingProcInstrumentation.noninterferenceCheckerDecls);
-            foreach (Procedure proc in yieldingProcInstrumentation.parallelCallPreconditionCheckers.Values)
+            foreach (Procedure proc in yieldingProcInstrumentation.parallelCallAggregators.Values)
             {
                 decls.Add(proc);
             }
@@ -56,7 +56,7 @@ namespace Microsoft.Boogie
         private Dictionary<Absy, Absy> absyMap;
         private HashSet<Procedure> yieldingProcs;
 
-        private Dictionary<string, Procedure> parallelCallPreconditionCheckers;
+        private Dictionary<string, Procedure> parallelCallAggregators;
         private List<Declaration> noninterferenceCheckerDecls;
         private Procedure wrapperNoninterferenceCheckerProc;
 
@@ -79,7 +79,7 @@ namespace Microsoft.Boogie
             this.absyMap = absyMap;
             this.yieldingProcs = yieldingProcs;
             this.linearPermissionInstrumentation = linearPermissionInstrumentation;
-            parallelCallPreconditionCheckers = new Dictionary<string, Procedure>();
+            parallelCallAggregators = new Dictionary<string, Procedure>();
             noninterferenceCheckerDecls = new List<Declaration>();
 
             List<Variable> inputs = new List<Variable>();
@@ -151,6 +151,26 @@ namespace Microsoft.Boogie
                 new TypedIdent(Token.NoToken, $"civl_global_old_{v.Name}", v.TypedIdent.Type), true);
         }
 
+        private void AddYieldInvariantNoninterferenceCheckers()
+        {
+            foreach (var proc in civlTypeChecker.procToYieldInvariant.Keys)
+            {
+                var yieldInvariant = civlTypeChecker.procToYieldInvariant[proc];
+                if (layerNum == yieldInvariant.LayerNum)
+                {
+                    var yieldPredicates = new Dictionary<Absy, List<PredicateCmd>>();
+                    yieldPredicates[proc] =
+                        proc.Requires.Select(requires =>
+                            requires.Free
+                                ? (PredicateCmd) new AssumeCmd(requires.tok, requires.Condition)
+                                : (PredicateCmd) new AssertCmd(requires.tok, requires.Condition)).ToList();
+                    noninterferenceCheckerDecls.AddRange(
+                        NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker,
+                            layerNum, new Dictionary<Absy, Absy>(), proc, new List<Variable>(), yieldPredicates));
+                }
+            }
+        }
+        
         private void TransformImpl(Implementation originalImpl, Implementation impl)
         {
             // initialize globalSnapshotInstrumentation
@@ -181,7 +201,7 @@ namespace Microsoft.Boogie
             else
             {
                 noninterferenceCheckerDecls.AddRange(
-                    NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker, layerNum, absyMap, impl, allYieldPredicates));
+                    NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker, layerNum, absyMap, impl, impl.LocVars, allYieldPredicates));
                 noninterferenceInstrumentation = new SomeNoninterferenceInstrumentation(
                     civlTypeChecker,
                     linearTypeChecker,
@@ -278,7 +298,7 @@ namespace Microsoft.Boogie
             gotoCmd.labelTargets.Add(b);
         }
 
-        private void DesugarConcurrency(Implementation impl, Dictionary<YieldCmd, List<PredicateCmd>> allYieldPredicates)
+        private void DesugarConcurrency(Implementation impl, Dictionary<Absy, List<PredicateCmd>> allYieldPredicates)
         {
             var noninterferenceCheckerBlock = CreateNoninterferenceCheckerBlock();
             var refinementCheckerBlock = CreateRefinementCheckerBlock();
@@ -425,9 +445,9 @@ namespace Microsoft.Boogie
             impl.Blocks.Insert(0, AddInitialBlock(impl));
         }
 
-        private Dictionary<YieldCmd, List<PredicateCmd>> CollectYields(Implementation impl)
+        private Dictionary<Absy, List<PredicateCmd>> CollectYields(Implementation impl)
         {
-            Dictionary<YieldCmd, List<PredicateCmd>> allYieldPredicates = new Dictionary<YieldCmd, List<PredicateCmd>>();
+            var allYieldPredicates = new Dictionary<Absy, List<PredicateCmd>>();
             List<PredicateCmd> yieldPredicates = new List<PredicateCmd>();
             foreach (Block b in impl.Blocks)
             {
@@ -564,7 +584,7 @@ namespace Microsoft.Boogie
             var newCmds = new List<Cmd>();
             List<Expr> ins = new List<Expr>();
             List<IdentifierExpr> outs = new List<IdentifierExpr>();
-            string procName = "ParallelCallPreconditionChecker";
+            string procName = "ParallelCall";
             foreach (CallCmd callCmd in parCallCmd.CallCmds)
             {
                 procName = procName + "_" + callCmd.Proc.Name;
@@ -572,7 +592,7 @@ namespace Microsoft.Boogie
                 outs.AddRange(callCmd.Outs);
             }
 
-            if (!parallelCallPreconditionCheckers.ContainsKey(procName))
+            if (!parallelCallAggregators.ContainsKey(procName))
             {
                 List<Variable> inParams = new List<Variable>();
                 List<Variable> outParams = new List<Variable>();
@@ -608,12 +628,12 @@ namespace Microsoft.Boogie
                     }
                     count++;
                 }
-                parallelCallPreconditionCheckers[procName] = new Procedure(Token.NoToken, procName,
+                parallelCallAggregators[procName] = new Procedure(Token.NoToken, procName,
                     new List<TypeVariable>(), inParams, outParams, requiresSeq,
                     civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList(), ensuresSeq);
             }
 
-            Procedure proc = parallelCallPreconditionCheckers[procName];
+            Procedure proc = parallelCallAggregators[procName];
             CallCmd checkerCallCmd = new CallCmd(parCallCmd.tok, proc.Name, ins, outs, parCallCmd.Attributes);
             checkerCallCmd.Proc = proc;
             newCmds.Add(checkerCallCmd);
