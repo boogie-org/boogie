@@ -1521,10 +1521,9 @@ namespace Microsoft.Boogie
             {
                 if (yieldingProc is MoverProc caller)
                 {
-                    var declaredModifiedVars = caller.modifiedGlobalVars;
-                    HashSet<Variable> mods = null;
                     foreach (var callCmd in impl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
                     {
+                        HashSet<Variable> mods = null;
                         if (civlTypeChecker.procToYieldingProc.TryGetValue(callCmd.Proc, out YieldingProc callee))
                         {
                             if (callee is ActionProc actionProc)
@@ -1547,15 +1546,21 @@ namespace Microsoft.Boogie
                             {
                                 mods = new HashSet<Variable>(callCmd.Proc.Modifies.Select(ie => ie.Decl));
                             }
+                            else
+                            {
+                                continue;
+                            }
                         }
                         else
                         {
-                            Debug.Assert(civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc));
+                            Debug.Assert(civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc) ||
+                                         civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc));
+                            continue;
                         }
 
                         foreach (var mod in mods)
                         {
-                            if (!declaredModifiedVars.Contains(mod))
+                            if (!caller.modifiedGlobalVars.Contains(mod))
                             {
                                 civlTypeChecker.Error(callCmd, $"Modified variable {mod.Name} does not appear in modifies clause of mover procedure");
                             }

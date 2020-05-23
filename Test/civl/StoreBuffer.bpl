@@ -44,29 +44,14 @@ function {:inline} LockInv(StoreBufferPresent:[int][int]bool, StoreBufferVal:[in
 }
 
 // Layer 1
-procedure {:yields} {:layer 1} YieldLock()
-requires {:expand} {:layer 1} LockInv(StoreBufferPresent, StoreBufferVal, Mem, lock, collectorPhase, collectorPhaseDelayed);
-ensures {:layer 1} LockInv(StoreBufferPresent, StoreBufferVal, Mem, lock, collectorPhase, collectorPhaseDelayed);
-{
-    yield;
-    assert {:layer 1} LockInv(StoreBufferPresent, StoreBufferVal, Mem, lock, collectorPhase, collectorPhaseDelayed);
-}
+procedure {:yield_invariant} {:layer 1} YieldLock();
+requires {:expand} LockInv(StoreBufferPresent, StoreBufferVal, Mem, lock, collectorPhase, collectorPhaseDelayed);
 
-procedure {:yields} {:layer 1} YieldStoreBufferLockAddrPresent({:linear "tid"} tid:int)
-requires {:layer 1} StoreBufferPresent[tid][lockAddr];
-ensures {:layer 1} StoreBufferPresent[tid][lockAddr];
-{
-    yield;
-    assert {:layer 1} StoreBufferPresent[tid][lockAddr];
-}
+procedure {:yield_invariant} {:layer 1} YieldStoreBufferLockAddrPresent({:linear "tid"} tid:int);
+requires StoreBufferPresent[tid][lockAddr];
 
-procedure {:yields} {:layer 1} YieldStoreBufferLockAddrAbsent({:linear "tid"} tid:int)
-requires {:layer 1} !StoreBufferPresent[tid][lockAddr];
-ensures {:layer 1} !StoreBufferPresent[tid][lockAddr];
-{
-    yield;
-    assert {:layer 1} !StoreBufferPresent[tid][lockAddr];
-}
+procedure {:yield_invariant} {:layer 1} YieldStoreBufferLockAddrAbsent({:linear "tid"} tid:int);
+requires !StoreBufferPresent[tid][lockAddr];
 
 procedure {:right} {:layer 2} AtomicLockAcquire({:linear "tid"} tid: int)
 modifies lock;

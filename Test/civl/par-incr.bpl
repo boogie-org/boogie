@@ -20,10 +20,7 @@ procedure {:yields} {:layer 1} {:refines "AtomicIncr2"} Incr2()
   yield;
 }
 
-procedure {:yields} {:layer 1} Yield()
-{
-   yield;
-}
+procedure {:yield_invariant} {:layer 1} Yield();
 
 procedure {:atomic} {:layer 3} AtomicIncr4()
 modifies x;

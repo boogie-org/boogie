@@ -32,7 +32,7 @@ procedure {:yields} {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "
 
     yield;
     call Write(i, 42);
-    call Yield(i);
+    call Yield(i, a);
     assert {:layer 1} a[i] == 42;
 }
 
@@ -46,9 +46,5 @@ procedure {:yields} {:layer 1} u({:linear_in "tid"} i': int) returns ({:linear "
     assert {:layer 1} a[i] == 42;
 }
 
-procedure {:yields} {:layer 1} Yield({:linear "tid"} i: int)
-ensures {:layer 1} old(a)[i] == a[i];
-{
-    yield;
-    assert {:layer 1} old(a)[i] == a[i];
-}
+procedure {:yield_invariant} {:layer 1} Yield({:linear "tid"} i: int, old_a: [int]int);
+requires old_a[i] == a[i];
