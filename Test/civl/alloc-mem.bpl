@@ -160,29 +160,14 @@ procedure {:intro} {:layer 1} WriteLinear ({:layer 1} {:linear_in "mem"} l:lmap,
   l' := cons(dom(l), map(l)[i := o]);
 }
 
-procedure {:yields} {:layer 1} Yield ()
+procedure {:yield_invariant} {:layer 1} Yield ();
 requires {:layer 1} PoolInv(unallocated, pool);
-ensures  {:layer 1} PoolInv(unallocated, pool);
-{
-  yield;
-  assert {:layer 1} PoolInv(unallocated, pool);
-}
 
-procedure {:yields} {:layer 1} YieldMem ({:layer 1} {:linear "mem"} l:lmap, i:int)
+procedure {:yield_invariant} {:layer 1} YieldMem ({:layer 1} {:linear "mem"} l:lmap, i:int);
 requires {:layer 1} PoolInv(unallocated, pool);
-ensures  {:layer 1} PoolInv(unallocated, pool);
 requires {:layer 1} dom(l)[i] && map(l)[i] == mem[i];
-ensures  {:layer 1} dom(l)[i] && map(l)[i] == mem[i];
-{
-  yield;
-  assert {:layer 1} PoolInv(unallocated, pool);
-  assert {:layer 1} dom(l)[i] && map(l)[i] == mem[i];
-}
 
-procedure {:yields} {:layer 2} Dummy()
-{
-  yield;
-}
+procedure {:yield_invariant} {:layer 2} Dummy();
 
 var {:layer 1, 2} {:linear "mem"} pool:lmap;
 var {:layer 0, 1} mem:[int]int;

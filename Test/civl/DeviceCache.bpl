@@ -25,13 +25,8 @@ function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
     (ghostLock == nil <==> currsize == newsize)
 }
 
-procedure {:yields} {:layer 1} Yield()
+procedure {:yield_invariant} {:layer 1} Yield();
 requires {:layer 1} Inv(ghostLock, currsize, newsize);
-ensures {:layer 1} Inv(ghostLock, currsize, newsize);
-{
-   yield;
-   assert {:layer 1} Inv(ghostLock, currsize, newsize);
-}
 
 procedure {:yields} {:layer 1} YieldToReadCache({:linear "tid"} tid: X)
 requires {:layer 1} Inv(ghostLock, currsize, newsize) && tid != nil;

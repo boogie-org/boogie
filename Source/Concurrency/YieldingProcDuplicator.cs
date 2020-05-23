@@ -249,6 +249,18 @@ namespace Microsoft.Boogie
                 }
                 return;
             }
+
+            if (civlTypeChecker.procToYieldInvariant.ContainsKey(newCall.Proc))
+            {
+                var yieldInvariant = civlTypeChecker.procToYieldInvariant[newCall.Proc];
+                if (layerNum == yieldInvariant.LayerNum)
+                {
+                    var parCallCmd = new ParCallCmd(newCall.tok, new List<CallCmd> {newCall});
+                    absyMap[parCallCmd] = absyMap[newCall];
+                    newCmdSeq.Add(parCallCmd);
+                }
+                return;
+            }
             
             // handle calls to yielding procedures in the rest of this method
             YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[newCall.Proc];

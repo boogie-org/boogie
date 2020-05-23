@@ -399,24 +399,6 @@ namespace Microsoft.Boogie
                         newCmds.AddRange(b.cmds.GetRange(1 + yieldPredicates.Count, b.cmds.Count - (1 + yieldPredicates.Count)));
                         b.cmds = newCmds;
                     }
-                    else if (cmd is CallCmd callCmd && yieldingProcs.Contains(callCmd.Proc))
-                    {
-                        List<Cmd> newCmds = new List<Cmd>();
-                        if (!blocksInYieldingLoops.Contains(b))
-                        {
-                            newCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars());
-                        }
-                        newCmds.Add(callCmd);
-                        if (civlTypeChecker.GlobalVariables.Count() > 0)
-                        {
-                            newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
-                        }
-                        newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
-                        newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
-                        newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(callCmd));
-                        newCmds.AddRange(b.cmds.GetRange(1, b.cmds.Count - 1));
-                        b.cmds = newCmds;
-                    }
                     else if (cmd is ParCallCmd parCallCmd)
                     {
                         List<Cmd> newCmds = new List<Cmd>();
@@ -434,6 +416,10 @@ namespace Microsoft.Boogie
                         newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(parCallCmd));
                         newCmds.AddRange(b.cmds.GetRange(1, b.cmds.Count - 1));
                         b.cmds = newCmds;
+                    }
+                    else if (cmd is CallCmd callCmd && yieldingProcs.Contains(callCmd.Proc))
+                    {
+                        Debug.Assert(false);
                     }
                 }
             }
