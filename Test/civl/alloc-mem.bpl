@@ -161,11 +161,11 @@ procedure {:intro} {:layer 1} WriteLinear ({:layer 1} {:linear_in "mem"} l:lmap,
 }
 
 procedure {:yield_invariant} {:layer 1} Yield ();
-requires {:layer 1} PoolInv(unallocated, pool);
+requires PoolInv(unallocated, pool);
 
 procedure {:yield_invariant} {:layer 1} YieldMem ({:layer 1} {:linear "mem"} l:lmap, i:int);
-requires {:layer 1} PoolInv(unallocated, pool);
-requires {:layer 1} dom(l)[i] && map(l)[i] == mem[i];
+requires PoolInv(unallocated, pool);
+requires dom(l)[i] && map(l)[i] == mem[i];
 
 procedure {:yield_invariant} {:layer 2} Dummy();
 

@@ -25,7 +25,7 @@ var {:layer 0,1} b: bool;
 const p: int;
 
 procedure {:yield_invariant} {:layer 1} Yield1();
-requires {:layer 1} InvLock(lock, b);
+requires InvLock(lock, b);
 
 function {:inline} InvLock(lock: X, b: bool) : bool
 {
@@ -35,7 +35,7 @@ function {:inline} InvLock(lock: X, b: bool) : bool
 procedure {:yield_invariant} {:layer 2} Yield2();
 
 procedure {:yield_invariant} {:layer 3} Yield3();
-requires {:layer 3} Inv(g);
+requires Inv(g);
 
 function {:inline} Inv(g: lmap) : bool
 {

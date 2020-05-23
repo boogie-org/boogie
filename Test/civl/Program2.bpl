@@ -3,7 +3,7 @@
 var {:layer 0,1} x:int;
 
 procedure {:yield_invariant} {:layer 1} yield_x(n: int);
-requires {:layer 1} x >= n;
+requires x >= n;
 
 procedure {:yields} {:layer 1} p()
 requires {:layer 1} x >= 5;
