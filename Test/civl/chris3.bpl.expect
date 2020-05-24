@@ -1,2 +1,3 @@
-chris3.bpl(19,2): Error: The parallel call must either have a single arm or all arms are right movers or all arms are left movers
-1 type checking errors detected in chris3.bpl
+chris3.bpl(19,2): Error: Parallel call does not satisfy the side condition
+chris3.bpl(16,30): Error: Implementation P fails atomicity check at layer 95. Transactions must be separated by yields.
+2 type checking errors detected in chris3.bpl
