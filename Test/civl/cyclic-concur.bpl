@@ -13,7 +13,7 @@ modifies x;
 procedure {:yields} {:layer 1} {:refines "MAIN"} main ()
 {
   yield;
-  async call a();
+  async call {:sync} a();
   yield;
 }
 
@@ -23,7 +23,7 @@ ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 0;
 {
   call dummy();
   call add(1);
-  async call b();
+  async call {:sync} b();
   call dummy();
 }
 
@@ -33,7 +33,7 @@ ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 5;
 {
   call dummy();
   call add(2);
-  async call c();
+  async call {:sync} c();
   call dummy();
 }
 
@@ -44,7 +44,7 @@ ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 3;
   call dummy();
   call add(3);
   if (*) {
-    async call a();
+    async call {:sync} a();
   }
   call dummy();
 }

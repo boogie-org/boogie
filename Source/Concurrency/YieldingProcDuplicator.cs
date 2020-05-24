@@ -301,17 +301,13 @@ namespace Microsoft.Boogie
                 return;
             }
 
-            // handle synchronous calls to mover procedures
-            if (yieldingProc is MoverProc)
+            // handle synchronous calls to yielding procedures
+            if (yieldingProc is MoverProc moverProc)
             {
-                AddDuplicateCall(newCall, true);
-                return;
+                AddDuplicateCall(newCall, moverProc.upperLayer > layerNum);
             }
-            
-            // handle synchronous calls to action procedures
+            else if (yieldingProc is ActionProc actionProc)
             {
-                Debug.Assert(yieldingProc is ActionProc);
-                var actionProc = (ActionProc)yieldingProc;
                 if (actionProc.upperLayer < layerNum)
                 {
                     AddActionCall(newCall, actionProc);
@@ -321,6 +317,10 @@ namespace Microsoft.Boogie
                     AddDuplicateCall(newCall, true);
                 }
                 Debug.Assert(newCall.Outs.Count == newCall.Proc.OutParams.Count);
+            }
+            else
+            {
+                Debug.Assert(false);
             }
         }
 

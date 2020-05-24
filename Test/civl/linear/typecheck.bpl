@@ -74,7 +74,7 @@ procedure {:yields} {:layer 1} D()
     call c, x := E(a, x);
 
     yield;
-    par a := F(a) | x := F(a);
+    par c := F(a) | x := F(a);
     yield;
 }
 

@@ -230,7 +230,7 @@ requires {:layer 1} CH == MultisetEmpty;
   rr := pidsCollect;
   i := 1;
   while (i <= n)
-  invariant {:layer 0,1}{:terminates} true;
+  invariant {:layer 1}{:terminates} true;
   invariant {:layer 1} 1 <= i && i <= n + 1;
   invariant {:layer 1} ss == (lambda ii:pid :: pid(ii) && ii >= i) && ss == rr;
   invariant {:layer 1} PAs == InitialPAs(i);

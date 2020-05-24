@@ -13,8 +13,8 @@ procedure {:yields} {:layer 1} main (N: int)
 requires {:layer 1} N >= 0;
 {
   yield;
-  async call inc_by_N(N);
-  async call dec_by_N(N);
+  async call {:sync} inc_by_N(N);
+  async call {:sync} dec_by_N(N);
   yield;
 }
 
@@ -26,11 +26,11 @@ ensures {:layer 1} x == old(x) + N;
   var i : int;
 
   call dummy();
-  
+
   i := 0;
   while (i != N)
   invariant {:layer 1} x == old(x) + i;
-  invariant {:layer 1} {:terminates} true;    
+  invariant {:layer 1} {:terminates} true;
   {
     i := i + 1;
     async call {:sync} inc();

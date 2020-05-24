@@ -71,7 +71,7 @@ requires {:layer 1} col_dom == (lambda i:int :: (lambda j:int :: false));
   s := 1;
   perms' := perms;
   while (s <= N)
-  invariant {:layer 0,1}{:terminates} true;
+  invariant {:layer 1}{:terminates} true;
   invariant {:layer 1} perms' == s_perms_geq(s);
   invariant {:layer 1} inv_val(s, init_val, col_dom, col_val);
   invariant {:layer 1} s > N ==> all_decided(init_val, dec_dom, dec_val);
@@ -99,7 +99,7 @@ modifies col_dom, col_val, dec_dom, dec_val;
   r := 1;
   call v := read_init_val(s);
   while (r <= N)
-  invariant {:layer 0,1}{:terminates} true;
+  invariant {:layer 1}{:terminates} true;
   invariant {:layer 1} perms' == s_r_perms_geq(s,r);
   invariant {:layer 1} inv_val'(s, r, init_val, col_dom, col_val);
   invariant {:layer 1} s == N ==> all_decided'(r, init_val, dec_dom, dec_val);
