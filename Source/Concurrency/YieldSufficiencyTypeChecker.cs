@@ -376,7 +376,7 @@ namespace Microsoft.Boogie
                     }
                     else if (label == L || label == A)
                     {
-                        @base.checkingContext.Error(parCallCmd, "Parallel call does not satisfy the side condition");
+                        @base.checkingContext.Error(parCallCmd, $"Mover types in parallel call do not match (left)*(non)?(right)* at layer {currLayerNum}");
                     }
                 }
                 edgeLabels[new Tuple<Absy, Absy>(parCallCmd, parCallCmd.CallCmds[0])] = P;

@@ -70,19 +70,11 @@ function InvChannels (joinChannel: [Round][JoinResponse]int, permJoinChannel: Jo
       contents#VoteResponseChannel(permVoteChannel)[VotePerm(r, from#VoteResponse(vr))] == vr)
 }
 
-procedure {:yields} {:layer 1} YieldInv()
-requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
-ensures  {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
-{
-  yield; assert {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
-}
+procedure {:yield_invariant} {:layer 1} YieldInv();
+requires Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
 
-procedure {:yields} {:layer 1} YieldInvChannels()
+procedure {:yield_invariant} {:layer 1} YieldInvChannels();
 requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
-ensures  {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
-{
-  yield; assert {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 
