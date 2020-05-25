@@ -146,7 +146,8 @@ namespace Microsoft.Boogie
             Absy initialState;
             HashSet<Absy> finalStates;
 
-            public PerLayerYieldSufficiencyTypeChecker(YieldSufficiencyTypeChecker @base, YieldingProc yieldingProc, Implementation impl, int currLayerNum, Graph<Block> implGraph)
+            public PerLayerYieldSufficiencyTypeChecker(YieldSufficiencyTypeChecker @base, YieldingProc yieldingProc,
+                Implementation impl, int currLayerNum, Graph<Block> implGraph)
             {
                 this.@base = @base;
                 this.yieldingProc = yieldingProc;
@@ -167,22 +168,26 @@ namespace Microsoft.Boogie
                 {
                     BracketCheck();
                 }
+
                 AtomicityCheck();
             }
 
             private void BracketCheck()
             {
                 var initialConstraints = new Dictionary<Absy, HashSet<int>>();
-                initialConstraints[initialState] = new HashSet<int> { BEFORE };
+                initialConstraints[initialState] = new HashSet<int> {BEFORE};
                 foreach (var finalState in finalStates)
                 {
-                    initialConstraints[finalState] = new HashSet<int> { AFTER };
+                    initialConstraints[finalState] = new HashSet<int> {AFTER};
                 }
 
-                var simulationRelation = new SimulationRelation<Absy, int, string>(implEdges, BracketSpec, initialConstraints).ComputeSimulationRelation();
+                var simulationRelation =
+                    new SimulationRelation<Absy, int, string>(implEdges, BracketSpec, initialConstraints)
+                        .ComputeSimulationRelation();
                 if (simulationRelation[initialState].Count == 0)
                 {
-                    @base.checkingContext.Error(impl, $"Implementation {impl.Name} fails bracket check at layer {currLayerNum}. All code that accesses global variables must be bracketed by yields.");
+                    @base.checkingContext.Error(impl,
+                        $"Implementation {impl.Name} fails bracket check at layer {currLayerNum}. All code that accesses global variables must be bracketed by yields.");
                 }
             }
 
@@ -194,21 +199,24 @@ namespace Microsoft.Boogie
                 {
                     if (!IsTerminatingLoopHeader(header))
                     {
-                        initialConstraints[header] = new HashSet<int> { RM };
+                        initialConstraints[header] = new HashSet<int> {RM};
                     }
                 }
+
                 if (IsMoverProcedure)
                 {
                     foreach (var call in impl.Blocks.SelectMany(b => b.cmds).OfType<CallCmd>())
                     {
                         if (!IsTerminatingCall(call))
                         {
-                            initialConstraints[call] = new HashSet<int> { RM };
+                            initialConstraints[call] = new HashSet<int> {RM};
                         }
                     }
                 }
 
-                var simulationRelation = new SimulationRelation<Absy, int, string>(implEdges, AtomicitySpec, initialConstraints).ComputeSimulationRelation();
+                var simulationRelation =
+                    new SimulationRelation<Absy, int, string>(implEdges, AtomicitySpec, initialConstraints)
+                        .ComputeSimulationRelation();
 
                 if (IsMoverProcedure)
                 {
@@ -219,25 +227,35 @@ namespace Microsoft.Boogie
                 }
                 else if (simulationRelation[initialState].Count == 0)
                 {
-                    @base.checkingContext.Error(impl, $"Implementation {impl.Name} fails atomicity check at layer {currLayerNum}. Transactions must be separated by yields.");
+                    @base.checkingContext.Error(impl,
+                        $"Implementation {impl.Name} fails atomicity check at layer {currLayerNum}. Transactions must be separated by yields.");
                 }
             }
 
-            private bool IsMoverProcedure { get { return yieldingProc is MoverProc && yieldingProc.upperLayer == currLayerNum; } }
+            private bool IsMoverProcedure
+            {
+                get { return yieldingProc is MoverProc && yieldingProc.upperLayer == currLayerNum; }
+            }
 
             private bool IsTerminatingLoopHeader(Block block)
             {
-                return block.cmds.OfType<AssertCmd>().Any(c => c.HasAttribute(CivlAttributes.TERMINATES) && @base.civlTypeChecker.absyToLayerNums[c].Contains(currLayerNum));
+                return block.cmds.OfType<AssertCmd>().Any(c =>
+                    c.HasAttribute(CivlAttributes.TERMINATES) &&
+                    @base.civlTypeChecker.absyToLayerNums[c].Contains(currLayerNum));
             }
 
-            private bool IsTerminatingCall(CallCmd call){
+            private bool IsTerminatingCall(CallCmd call)
+            {
                 return !IsRecursiveMoverProcedureCall(call) || call.Proc.HasAttribute(CivlAttributes.TERMINATES);
             }
 
             private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)
             {
-                if (yieldingProc.moverType == MoverType.Atomic && simulationRelation[initialState].Count == 0) return false;
-                if (yieldingProc.IsRightMover && (!simulationRelation[initialState].Contains(RM) || finalStates.Any(f => !simulationRelation[f].Contains(RM)))) return false;
+                if (yieldingProc.moverType == MoverType.Atomic && simulationRelation[initialState].Count == 0)
+                    return false;
+                if (yieldingProc.IsRightMover && (!simulationRelation[initialState].Contains(RM) ||
+                                                  finalStates.Any(f => !simulationRelation[f].Contains(RM))))
+                    return false;
                 if (yieldingProc.IsLeftMover && !simulationRelation[initialState].Contains(LM)) return false;
                 return true;
             }
@@ -250,9 +268,9 @@ namespace Microsoft.Boogie
                 if (source == null)
                     return false;
 
-                MoverProc target = (MoverProc)yieldingProc;
+                MoverProc target = (MoverProc) yieldingProc;
 
-                HashSet<MoverProc> frontier = new HashSet<MoverProc> { source };
+                HashSet<MoverProc> frontier = new HashSet<MoverProc> {source};
                 HashSet<MoverProc> visited = new HashSet<MoverProc>();
 
                 while (frontier.Count > 0)
@@ -278,7 +296,7 @@ namespace Microsoft.Boogie
                 foreach (Block block in impl.Blocks)
                 {
                     // Block entry edge
-                    Absy blockEntry = block.Cmds.Count == 0 ? (Absy)block.TransferCmd : (Absy)block.Cmds[0];
+                    Absy blockEntry = block.Cmds.Count == 0 ? (Absy) block.TransferCmd : (Absy) block.Cmds[0];
                     edgeLabels[new Tuple<Absy, Absy>(block, blockEntry)] = P;
 
                     // Block exit edges
@@ -298,7 +316,7 @@ namespace Microsoft.Boogie
                     for (int i = 0; i < block.Cmds.Count; i++)
                     {
                         Cmd cmd = block.Cmds[i];
-                        Absy next = (i + 1 == block.Cmds.Count) ? (Absy)block.TransferCmd : block.Cmds[i + 1];
+                        Absy next = (i + 1 == block.Cmds.Count) ? (Absy) block.TransferCmd : block.Cmds[i + 1];
                         Tuple<Absy, Absy> edge = new Tuple<Absy, Absy>(cmd, next);
                         if (cmd is CallCmd callCmd)
                         {
@@ -325,8 +343,7 @@ namespace Microsoft.Boogie
                 }
             }
 
-            private string 
-                CallCmdLabel(CallCmd callCmd)
+            private string CallCmdLabel(CallCmd callCmd)
             {
                 if (@base.civlTypeChecker.procToIntroductionAction.ContainsKey(callCmd.Proc) ||
                     @base.civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc))
@@ -344,41 +361,113 @@ namespace Microsoft.Boogie
                 {
                     return L;
                 }
+
                 if (callee is MoverProc && callee.upperLayer == currLayerNum)
                 {
                     return MoverTypeToLabel(callee.moverType);
                 }
+
                 if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum)
                 {
                     return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).moverType);
                 }
+
                 return Y;
             }
 
-            private enum Phase
+            private enum ParallelCallPhase
             {
-                LM,
-                RM
+                BEFORE,
+                MIDDLE,
+                AFTER,
             }
             
-            private void AddParCallCmdLabels(Dictionary<Tuple<Absy, Absy>, string> edgeLabels, ParCallCmd parCallCmd,  Absy next)
+            private void CheckNonMoverCondition(ParCallCmd parCallCmd)
             {
-                Phase phase = Phase.LM;
+                ParallelCallPhase phase = ParallelCallPhase.BEFORE;
                 foreach (var callCmd in parCallCmd.CallCmds)
                 {
                     var label = CallCmdLabel(callCmd);
-                    if (phase == Phase.LM)
+                    Debug.Assert(label != I);
+                    if (label == P || label == Y || label == B) continue;
+                    switch (phase)
                     {
-                        if (label == R || label == A)
-                        {
-                            phase = Phase.RM;
-                        }
-                    }
-                    else if (label == L || label == A)
-                    {
-                        @base.checkingContext.Error(parCallCmd, $"Mover types in parallel call do not match (left)*(non)?(right)* at layer {currLayerNum}");
+                        case ParallelCallPhase.BEFORE:
+                            if (label == L) continue;
+                            phase = ParallelCallPhase.AFTER;
+                            break;
+                        case ParallelCallPhase.MIDDLE:
+                            Debug.Assert(false);
+                            break;
+                        case ParallelCallPhase.AFTER:
+                            if (label == R) continue;
+                            @base.checkingContext.Error(parCallCmd,
+                                $"Mover types in parallel call do not match (left)*(non)?(right)* at layer {currLayerNum}");
+                            break;
                     }
                 }
+            }
+
+            private void CheckYieldingProcCondition(ParCallCmd parCallCmd)
+            {
+                ParallelCallPhase phase = ParallelCallPhase.BEFORE;
+                foreach (var callCmd in parCallCmd.CallCmds)
+                {
+                    var label = CallCmdLabel(callCmd);
+                    Debug.Assert(label != I && label != A);
+                    if (label == P || label == Y && @base.civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc)) continue;
+                    switch (phase)
+                    {
+                        case ParallelCallPhase.BEFORE:
+                            if (label == Y)
+                            {
+                                phase = ParallelCallPhase.MIDDLE;
+                            }
+                            else if (label == R)
+                            {
+                                phase = ParallelCallPhase.AFTER;
+                            }
+                            break;
+                        case ParallelCallPhase.MIDDLE:
+                            if (label == Y) continue;
+                            if (label == L)
+                            {
+                                @base.checkingContext.Error(parCallCmd,
+                                    $"Mover types in parallel call do not match (left)*(yield-proc)*(right)* at layer {currLayerNum}");
+                            }
+                            else
+                            {
+                                phase = ParallelCallPhase.AFTER;
+                            }
+                            break;
+                        case ParallelCallPhase.AFTER:
+                            if (label == R || label == B) continue;
+                            @base.checkingContext.Error(parCallCmd,
+                                    $"Mover types in parallel call do not match (left)*(yield-proc)*(right)* at layer {currLayerNum}");
+                            break;
+                    }
+                }
+            }
+
+            private void AddParCallCmdLabels(Dictionary<Tuple<Absy, Absy>, string> edgeLabels, ParCallCmd parCallCmd,
+                Absy next)
+            {
+                CheckNonMoverCondition(parCallCmd);
+                if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == Y &&
+                                                       !@base.civlTypeChecker.procToYieldInvariant.ContainsKey(
+                                                           callCmd.Proc)))
+                {
+                    if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == A))
+                    {
+                        @base.checkingContext.Error(parCallCmd,
+                            $"Parallel call contains both non-mover and yielding procedure at layer {currLayerNum}");
+                    }
+                    else
+                    {
+                        CheckYieldingProcCondition(parCallCmd);
+                    }
+                }
+
                 edgeLabels[new Tuple<Absy, Absy>(parCallCmd, parCallCmd.CallCmds[0])] = P;
                 for (int i = 0; i < parCallCmd.CallCmds.Count; i++)
                 {
