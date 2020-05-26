@@ -14,7 +14,8 @@ namespace Microsoft.Boogie
             LinearTypeChecker linearTypeChecker,
             int layerNum,
             Dictionary<Absy, Absy> absyMap,
-            HashSet<Procedure> yieldingProcs)
+            HashSet<Procedure> yieldingProcs,
+            Dictionary<CallCmd, Block> refinementBlocks)
         {
             var linearHelper = new LinearPermissionInstrumentation(civlTypeChecker, linearTypeChecker, layerNum, absyMap);
             var yieldingProcInstrumentation = new YieldingProcInstrumentation(
@@ -391,7 +392,7 @@ namespace Microsoft.Boogie
                         var newCmds = new List<Cmd>();
                         if (!blocksInYieldingLoops.Contains(b))
                         {
-                            newCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars());
+                            newCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars(false));
                         }
                         var yieldPredicates = allYieldPredicates[yieldCmd];
                         newCmds.AddRange(yieldPredicates);
@@ -404,7 +405,7 @@ namespace Microsoft.Boogie
                         List<Cmd> newCmds = new List<Cmd>();
                         if (!blocksInYieldingLoops.Contains(b))
                         {
-                            newCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars());
+                            newCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars(IsParCallMarked(parCallCmd)));
                         }
                         newCmds.AddRange(DesugarParCallCmd(parCallCmd));
                         if (civlTypeChecker.GlobalVariables.Count() > 0)
@@ -431,6 +432,11 @@ namespace Microsoft.Boogie
             impl.Blocks.Insert(0, AddInitialBlock(impl));
         }
 
+        private bool IsParCallMarked(ParCallCmd parCallCmd)
+        {
+            return parCallCmd.CallCmds.Any(callCmd => callCmd.HasAttribute("mark"));
+        }
+        
         private Dictionary<Absy, List<PredicateCmd>> CollectYields(Implementation impl)
         {
             var allYieldPredicates = new Dictionary<Absy, List<PredicateCmd>>();
@@ -538,7 +544,7 @@ namespace Microsoft.Boogie
         private Block CreateReturnBlock()
         {
             var returnBlockCmds = new List<Cmd>();
-            returnBlockCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars());
+            returnBlockCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars(false));
             returnBlockCmds.AddRange(refinementInstrumentation.CreateReturnAssertCmds());
             return new Block(Token.NoToken, "ReturnChecker", returnBlockCmds, new ReturnCmd(Token.NoToken));
         }

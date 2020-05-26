@@ -1293,6 +1293,12 @@ namespace Microsoft.Boogie
                 localVariableAccesses = null;
             }
 
+            public override Cmd VisitParCallCmd(ParCallCmd node)
+            {
+                Require(node.CallCmds.Where(callCmd => callCmd.HasAttribute("mark")).Count() <= 1, node, "At most one arm of a parallel call can be marked");
+                return base.VisitParCallCmd(node);
+            }
+
             public override Cmd VisitCallCmd(CallCmd call)
             {
                 YieldingProc callerProc = yieldingProc;
@@ -1373,6 +1379,7 @@ namespace Microsoft.Boogie
                     {
                         Require(callerProc is ActionProc, call, "Caller must be an action procedure");
                         ActionProc callerActionProc = (ActionProc) callerProc;
+                        Require(call.IsAsync || calleeActionProc.refinedAction.gate.Count == 0, call, "Atomic action refined by callee may not have a gate");
                         HashSet<string> calleeOutputs = new HashSet<string>(call.Outs.Select(ie => ie.Decl.Name));
                         HashSet<string> visibleCallerOutputsAtDisappearingLayer = new HashSet<string>(callerActionProc
                             .proc.OutParams.Where(x => !callerActionProc.hiddenFormals.Contains(x))

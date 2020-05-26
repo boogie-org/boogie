@@ -37,7 +37,7 @@ namespace Microsoft.Boogie
             return new List<Cmd>();
         }
 
-        public virtual List<Cmd> CreateUpdatesToRefinementVars()
+        public virtual List<Cmd> CreateUpdatesToRefinementVars(bool isMarkedCall)
         {
             return new List<Cmd>();
         }
@@ -206,26 +206,38 @@ namespace Microsoft.Boogie
             return new List<Cmd> { skipAssertCmd };
         }
 
-        public override List<Cmd> CreateUpdatesToRefinementVars()
+        public override List<Cmd> CreateUpdatesToRefinementVars(bool isMarkedCall)
         {
-            // pc := g_old == g ==> pc;
-            // ok := transitionRelation(i, g_old, o, g) || (o_old == o && ok);
+            var cmds = new List<Cmd>();
             List<AssignLhs> pcUpdateLHS = new List<AssignLhs>
             {
                 new SimpleAssignLhs(Token.NoToken, Expr.Ident(pc)),
                 new SimpleAssignLhs(Token.NoToken, Expr.Ident(ok))
             };
-            List<Expr> pcUpdateRHS = new List<Expr>(
-                new Expr[]
-                {
-                    Expr.Imp(OldEqualityExprForGlobals(), Expr.Ident(pc)),
-                    Expr.Or(transitionRelation, Expr.And(OldEqualityExprForOutputs(), Expr.Ident(ok))),
-                });
-            foreach (Expr e in pcUpdateRHS)
+            if (isMarkedCall)
             {
-                e.Typecheck(new TypecheckingContext(null));
+                // assert !pc;
+                // pc, ok := true, true;
+                cmds.Add(new AssertCmd(Token.NoToken, Expr.Not(Expr.Ident(pc))));
+                List<Expr> pcUpdateRHS = new List<Expr>(new Expr[] {Expr.True, Expr.True});
+                cmds.Add(new AssignCmd(Token.NoToken, pcUpdateLHS, pcUpdateRHS));
             }
-            return new List<Cmd> { new AssignCmd(Token.NoToken, pcUpdateLHS, pcUpdateRHS) };
+            else
+            {
+                // pc, ok := g_old == g ==> pc, transitionRelation(i, g_old, o, g) || (o_old == o && ok);
+                List<Expr> pcUpdateRHS = new List<Expr>(
+                    new Expr[]
+                    {
+                        Expr.Imp(OldEqualityExprForGlobals(), Expr.Ident(pc)),
+                        Expr.Or(transitionRelation, Expr.And(OldEqualityExprForOutputs(), Expr.Ident(ok))),
+                    });
+                cmds.Add(new AssignCmd(Token.NoToken, pcUpdateLHS, pcUpdateRHS));
+            }
+            foreach (var cmd in cmds)
+            {
+                cmd.Typecheck(new TypecheckingContext(null));
+            }
+            return cmds;
         }
 
         public override List<Cmd> CreateUpdatesToOldOutputVars()

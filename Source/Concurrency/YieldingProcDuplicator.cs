@@ -23,6 +23,9 @@ namespace Microsoft.Boogie
         private HashSet<Procedure> yieldingProcs;
         private Dictionary<string, Procedure> asyncCallPreconditionCheckers;
 
+        private List<CallCmd> refinementCallCmds;
+        private List<Block> refinementBlocks;
+
         public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, LinearTypeChecker linearTypeChecker, int layerNum)
         {
             this.civlTypeChecker = civlTypeChecker;
@@ -32,6 +35,9 @@ namespace Microsoft.Boogie
             this.absyMap = new Dictionary<Absy, Absy>();
             this.yieldingProcs = new HashSet<Procedure>();
             this.asyncCallPreconditionCheckers = new Dictionary<string, Procedure>();
+            
+            this.refinementCallCmds = new List<CallCmd>();
+            this.refinementBlocks = new List<Block>();
         }
 
         #region Procedure duplication
@@ -143,6 +149,22 @@ namespace Microsoft.Boogie
 
             Implementation newImpl = base.VisitImplementation(impl);
             newImpl.Name = newImpl.Proc.Name;
+
+            if (IsRefinementLayer)
+            {
+                for (int i = refinementBlocks.Count; i < refinementCallCmds.Count; i++)
+                {
+                    var callCmd = refinementCallCmds[i];
+                    var actionProc = (ActionProc) civlTypeChecker.procToYieldingProc[callCmd.Proc];
+                    newCmdSeq = new List<Cmd>();
+                    AddActionCall(callCmd, actionProc);
+                    newCmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.False));
+                    var block = new Block(Token.NoToken, $"call_refinement_{i}", newCmdSeq,
+                        new ReturnCmd(Token.NoToken));
+                    refinementBlocks.Add(block);
+                    newCmdSeq = null;
+                }
+            }
 
             if (returnedPAs != null)
                 newImpl.LocVars.Add(returnedPAs);
@@ -314,6 +336,10 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
+                    if (IsRefinementLayer && layerNum == actionProc.upperLayer && actionProc.RefinedActionAtLayer(layerNum) != civlTypeChecker.SkipAtomicAction)
+                    {
+                        refinementCallCmds.Add((CallCmd) VisitCallCmd(newCall));
+                    }
                     AddDuplicateCall(newCall, true);
                 }
                 Debug.Assert(newCall.Outs.Count == newCall.Proc.OutParams.Count);
@@ -348,6 +374,15 @@ namespace Microsoft.Boogie
                 }
                 if (procToDuplicate.ContainsKey(callCmd.Proc))
                 {
+                    Debug.Assert(civlTypeChecker.procToYieldingProc.ContainsKey(callCmd.Proc));
+                    var yieldingProc = civlTypeChecker.procToYieldingProc[callCmd.Proc];
+                    if (yieldingProc is ActionProc actionProc)
+                    {
+                        if (IsRefinementLayer && layerNum == actionProc.upperLayer && actionProc.RefinedActionAtLayer(layerNum) != civlTypeChecker.SkipAtomicAction)
+                        {
+                            refinementCallCmds.Add((CallCmd) VisitCallCmd(callCmd));
+                        }
+                    }
                     callCmd.Proc = procToDuplicate[callCmd.Proc];
                     callCmd.callee = callCmd.Proc.Name;
                     callCmds.Add(callCmd);
@@ -539,12 +574,16 @@ namespace Microsoft.Boogie
             var newImpls = absyMap.Keys.OfType<Implementation>();
             decls.AddRange(newImpls);
             decls.AddRange(asyncCallPreconditionCheckers.Values);
+            Debug.Assert(refinementCallCmds.Count == refinementBlocks.Count);
+            var callToBlockMap = new Dictionary<CallCmd, Block>(refinementCallCmds.Zip(refinementBlocks)
+                .Select(x => new KeyValuePair<CallCmd, Block>(x.Item1, x.Item2)));
             decls.AddRange(YieldingProcInstrumentation.TransformImplementations(
                 civlTypeChecker,
                 linearTypeChecker,
                 layerNum,
                 absyMap,
-                yieldingProcs));
+                yieldingProcs,
+                callToBlockMap));
             return decls;
         }
     }

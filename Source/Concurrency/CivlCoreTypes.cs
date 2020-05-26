@@ -252,7 +252,7 @@ namespace Microsoft.Boogie
 
         public AtomicAction RefinedActionAtLayer(int layer)
         {
-            if (layer <= upperLayer) return null;
+            Debug.Assert(layer >= upperLayer);
             var action = refinedAction;
             while (action != null)
             {
@@ -260,6 +260,7 @@ namespace Microsoft.Boogie
                     return action;
                 action = action.refinedAction;
             }
+            Debug.Assert(false);
             return null;
         }
     }
