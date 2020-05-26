@@ -24,7 +24,8 @@ namespace Microsoft.Boogie
                 linearHelper,
                 layerNum,
                 absyMap,
-                yieldingProcs);
+                yieldingProcs,
+                refinementBlocks);
             foreach (var impl in absyMap.Keys.OfType<Implementation>())
             {
                 // Add disjointness assumptions at beginning, loop headers, and after each call or parallel call.
@@ -65,6 +66,8 @@ namespace Microsoft.Boogie
         private RefinementInstrumentation refinementInstrumentation;
         private LinearPermissionInstrumentation linearPermissionInstrumentation;
         private NoninterferenceInstrumentation noninterferenceInstrumentation;
+
+        private Dictionary<CallCmd, Block> refinementBlocks;
         
         private YieldingProcInstrumentation(
             CivlTypeChecker civlTypeChecker,
@@ -72,7 +75,8 @@ namespace Microsoft.Boogie
             LinearPermissionInstrumentation linearPermissionInstrumentation,
             int layerNum,
             Dictionary<Absy, Absy> absyMap,
-            HashSet<Procedure> yieldingProcs)
+            HashSet<Procedure> yieldingProcs,
+            Dictionary<CallCmd, Block> refinementBlocks)
         {
             this.civlTypeChecker = civlTypeChecker;
             this.linearTypeChecker = linearTypeChecker;
@@ -80,6 +84,7 @@ namespace Microsoft.Boogie
             this.absyMap = absyMap;
             this.yieldingProcs = yieldingProcs;
             this.linearPermissionInstrumentation = linearPermissionInstrumentation;
+            this.refinementBlocks = refinementBlocks;
             parallelCallAggregators = new Dictionary<string, Procedure>();
             noninterferenceCheckerDecls = new List<Declaration>();
 
@@ -284,8 +289,6 @@ namespace Microsoft.Boogie
                             return true;
                         if (cmd is ParCallCmd)
                             return true;
-                        if (cmd is CallCmd callCmd && yieldingProcs.Contains(callCmd.Proc))
-                            return true;
                     }
                 }
             }
@@ -304,7 +307,8 @@ namespace Microsoft.Boogie
             var noninterferenceCheckerBlock = CreateNoninterferenceCheckerBlock();
             var refinementCheckerBlock = CreateRefinementCheckerBlock();
             var refinementCheckerForYieldingLoopsBlock = CreateRefinementCheckerBlockForYieldingLoops();
-            var returnBlock = CreateReturnBlock();
+            var returnCheckerBlock = CreateReturnCheckerBlock();
+            var returnBlock = new Block(Token.NoToken, "UnifiedReturn", new List<Cmd>(), new ReturnCmd(Token.NoToken));
             SplitBlocks(impl);
             
             HashSet<Block> yieldingLoopHeaders;
@@ -337,11 +341,13 @@ namespace Microsoft.Boogie
                 header.Cmds = newCmds;
             }
 
-            // add jumps to noninterferenceCheckerBlock and returnBlock
+            // add jumps to noninterferenceCheckerBlock, returnBlock, and refinement blocks
+            var implRefinementCheckingBlocks = new List<Block>();
             foreach (var b in impl.Blocks)
             {
                 if (b.TransferCmd is GotoCmd gotoCmd)
                 {
+                    var targetBlocks = new List<Block>();
                     var addEdge = false;
                     foreach (var nextBlock in gotoCmd.labelTargets)
                     {
@@ -352,35 +358,42 @@ namespace Microsoft.Boogie
                             {
                                 addEdge = true;
                             }
-                            else if (cmd is CallCmd callCmd && yieldingProcs.Contains(callCmd.Proc))
+                            else if (cmd is ParCallCmd parCallCmd)
                             {
-                                addEdge = true;
-                            }
-                            else if (cmd is ParCallCmd)
-                            {
+                                foreach (var callCmd in parCallCmd.CallCmds)
+                                {
+                                    if (refinementBlocks.ContainsKey(callCmd))
+                                    {
+                                        var targetBlock = refinementBlocks[callCmd];
+                                        FixUpImplRefinementCheckingBlock(targetBlock,
+                                            IsCallMarked(callCmd)
+                                                ? returnCheckerBlock
+                                                : refinementCheckerForYieldingLoopsBlock);
+                                        targetBlocks.Add(targetBlock);
+                                        implRefinementCheckingBlocks.Add(targetBlock);
+                                    }
+                                }
                                 addEdge = true;
                             }
                         }
                     }
+                    gotoCmd.labelNames.AddRange(targetBlocks.Select(block => block.Label));
+                    gotoCmd.labelTargets.AddRange(targetBlocks);
                     if (addEdge)
                     {
                         AddEdge(gotoCmd, noninterferenceCheckerBlock);
-                        if (blocksInYieldingLoops.Contains(b))
-                        {
-                            AddEdge(gotoCmd, refinementCheckerForYieldingLoopsBlock);
-                        }
-                        else
-                        {
-                            AddEdge(gotoCmd, refinementCheckerBlock);
-                        }
+                        AddEdge(gotoCmd,
+                            blocksInYieldingLoops.Contains(b)
+                                ? refinementCheckerForYieldingLoopsBlock
+                                : refinementCheckerBlock);
                     }
                 }
                 else
                 {
-                    b.TransferCmd = new GotoCmd(b.TransferCmd.tok, new List<string> { returnBlock.Label }, new List<Block> { returnBlock });
+                    b.TransferCmd = new GotoCmd(b.TransferCmd.tok, new List<string> { returnCheckerBlock.Label, returnBlock.Label }, new List<Block> { returnCheckerBlock, returnBlock });
                 }
             }
-            
+
             // desugar YieldCmd, CallCmd, and ParCallCmd 
             foreach (Block b in impl.Blocks)
             {
@@ -418,23 +431,43 @@ namespace Microsoft.Boogie
                         newCmds.AddRange(b.cmds.GetRange(1, b.cmds.Count - 1));
                         b.cmds = newCmds;
                     }
-                    else if (cmd is CallCmd callCmd && yieldingProcs.Contains(callCmd.Proc))
-                    {
-                        Debug.Assert(false);
-                    }
                 }
             }
 
             impl.Blocks.Add(noninterferenceCheckerBlock);
             impl.Blocks.Add(refinementCheckerBlock);
             impl.Blocks.Add(refinementCheckerForYieldingLoopsBlock);
+            impl.Blocks.Add(returnCheckerBlock);
             impl.Blocks.Add(returnBlock);
+            impl.Blocks.AddRange(implRefinementCheckingBlocks);
             impl.Blocks.Insert(0, AddInitialBlock(impl));
         }
 
+        private void FixUpImplRefinementCheckingBlock(Block block, Block refinementCheckerBlock)
+        {
+            var newCmds = new List<Cmd>();
+            if (civlTypeChecker.GlobalVariables.Count() > 0)
+            {
+                newCmds.Add(new HavocCmd(Token.NoToken, civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList()));
+                newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
+            }
+            newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
+            newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
+            newCmds.AddRange(block.Cmds);
+            block.Cmds = newCmds;
+            var gotoCmd = (GotoCmd) block.TransferCmd;
+            gotoCmd.labelNames.Add(refinementCheckerBlock.Label);
+            gotoCmd.labelTargets.Add(refinementCheckerBlock);
+        }
+
+        private bool IsCallMarked(CallCmd callCmd)
+        {
+            return callCmd.HasAttribute("mark");
+        }
+        
         private bool IsParCallMarked(ParCallCmd parCallCmd)
         {
-            return parCallCmd.CallCmds.Any(callCmd => callCmd.HasAttribute("mark"));
+            return parCallCmd.CallCmds.Any(callCmd => IsCallMarked(callCmd));
         }
         
         private Dictionary<Absy, List<PredicateCmd>> CollectYields(Implementation impl)
@@ -489,13 +522,6 @@ namespace Microsoft.Boogie
                     {
                         split = true;
                     }
-                    else if (cmd is CallCmd callCmd)
-                    {
-                        if (yieldingProcs.Contains(callCmd.Proc))
-                        {
-                            split = true;
-                        }
-                    }
                     else if (cmd is ParCallCmd)
                     {
                         split = true;
@@ -541,11 +567,12 @@ namespace Microsoft.Boogie
             return new Block(Token.NoToken, "RefinementCheckerForYieldingLoops", newCmds, new ReturnCmd(Token.NoToken));
         }
 
-        private Block CreateReturnBlock()
+        private Block CreateReturnCheckerBlock()
         {
             var returnBlockCmds = new List<Cmd>();
             returnBlockCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars(false));
             returnBlockCmds.AddRange(refinementInstrumentation.CreateReturnAssertCmds());
+            returnBlockCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
             return new Block(Token.NoToken, "ReturnChecker", returnBlockCmds, new ReturnCmd(Token.NoToken));
         }
 

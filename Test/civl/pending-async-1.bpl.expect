@@ -7,6 +7,7 @@ Execution trace:
     pending-async-1.bpl(16,7): inline$B$1$anon0
     pending-async-1.bpl(52,3): anon0_1$2
     pending-async-1.bpl(52,3): anon0_0
+    (0,0): ReturnChecker
 pending-async-1.bpl(69,3): Error: Pending asyncs created by this call are not summarized
 Execution trace:
     pending-async-1.bpl(68,3): anon0
