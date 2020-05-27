@@ -1,3 +1,6 @@
+// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
 type {:datatype} Perm;
 function {:constructor} Left(i: int): Perm;
 function {:constructor} Right(i: int): Perm;
