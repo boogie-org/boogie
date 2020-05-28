@@ -2884,7 +2884,7 @@ namespace Microsoft.Boogie {
         def = new ForallExpr(tok, quantifiedTypeVars, dummies,
                              kv,
                              new Trigger(tok, true, new List<Expr> { call }, null),
-                             def, false);
+                             def);
       }
       DefinitionAxiom = new Axiom(tok, def);
       return DefinitionAxiom;
