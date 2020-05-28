@@ -322,12 +322,11 @@ namespace Microsoft.Boogie.SMTLib
     {
       Dictionary<Function, VCExprNAry> functionDefinitionMap = new Dictionary<Function, VCExprNAry>();
       Stack<Function> functionDefs = new Stack<Function>();
-      Stack<VCExpr> otherAxioms = new Stack<VCExpr>();
       foreach (KeyValuePair<Function, VCExprNAry> pair in ctx.DefinedFunctions)
       {
         Function f = pair.Key;
         VCExprNAry body = pair.Value;
-        DeclCollector.AddFunction(f);
+        DeclCollector.AddKnownFunction(f);
         functionDefinitionMap.Add(f, body);
         functionDefs.Push(f);
       }
@@ -372,6 +371,8 @@ namespace Microsoft.Boogie.SMTLib
           def += " (";
           foreach (var v in funCall.UniformArguments) {
             VCExprVar varExpr = v as VCExprVar;
+            Contract.Assert(varExpr != null);
+            DeclCollector.AddKnownVariable(varExpr);
             string printedName = Namer.GetQuotedLocalName(varExpr, varExpr.Name);
             Contract.Assert(printedName != null);
             def += "(" + printedName + " " + SMTLibExprLineariser.TypeToString(varExpr.Type) + ") ";
@@ -2336,7 +2337,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     public override void DefineMacro(Macro f, VCExpr vc) {
-      DeclCollector.AddFunction(f);
+      DeclCollector.AddKnownFunction(f);
       string printedName = Namer.GetQuotedName(f, f.Name);
       var argTypes = f.InParams.Cast<Variable>().MapConcat(p => DeclCollector.TypeToStringReg(p.TypedIdent.Type), " ");
       string decl = "(define-fun " + printedName + " (" + argTypes + ") " + DeclCollector.TypeToStringReg(f.OutParams[0].TypedIdent.Type) + " " + VCExpr2String(vc, 1) + ")";
