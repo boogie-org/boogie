@@ -248,6 +248,76 @@ namespace Microsoft.Boogie.SMTLib
         }
     }
 
+    private void PrepareDataTypes()
+    {
+      if (ctx.KnownDatatypeConstructors.Count > 0)
+      {
+        GraphUtil.Graph<CtorType> dependencyGraph = new GraphUtil.Graph<CtorType>();
+        foreach (CtorType datatype in ctx.KnownDatatypeConstructors.Keys)
+        {
+          dependencyGraph.AddSource(datatype);
+          // Check for user-specified dependency (using ":dependson" attribute).
+          string userDependency = datatype.GetTypeDependency();
+          if (userDependency != null)
+          {
+            dependencyGraph.AddEdge(datatype, ctx.LookupDatatype(userDependency));
+          }
+
+          foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
+          {
+            List<CtorType> dependentTypes = new List<CtorType>();
+            foreach (Variable v in f.InParams)
+            {
+              FindDependentTypes(v.TypedIdent.Type, dependentTypes);
+            }
+
+            foreach (CtorType result in dependentTypes)
+            {
+              dependencyGraph.AddEdge(datatype, result);
+            }
+          }
+        }
+
+        GraphUtil.StronglyConnectedComponents<CtorType> sccs =
+          new GraphUtil.StronglyConnectedComponents<CtorType>(dependencyGraph.Nodes, dependencyGraph.Predecessors,
+            dependencyGraph.Successors);
+        sccs.Compute();
+        foreach (GraphUtil.SCC<CtorType> scc in sccs)
+        {
+          string datatypesString = "";
+          string datatypeConstructorsString = "";
+          foreach (CtorType datatype in scc)
+          {
+            datatypesString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " 0)";
+            string datatypeConstructorString = "";
+            foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
+            {
+              string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
+              datatypeConstructorString += "(" + quotedConstructorName + " ";
+              foreach (Variable v in f.InParams)
+              {
+                string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
+                datatypeConstructorString += "(" + quotedSelectorName + " " +
+                                             DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
+              }
+
+              datatypeConstructorString += ") ";
+            }
+
+            datatypeConstructorsString += "(" + datatypeConstructorString + ") ";
+          }
+
+          List<string> decls = DeclCollector.GetNewDeclarations();
+          foreach (string decl in decls)
+          {
+            SendCommon(decl);
+          }
+
+          SendCommon("(declare-datatypes (" + datatypesString + ") (" + datatypeConstructorsString + "))");
+        }
+      }
+    }
+
     private void PrepareCommon()
     {
       if (common.Length == 0)
@@ -288,61 +358,8 @@ namespace Microsoft.Boogie.SMTLib
           SendCommon("(declare-fun timeoutDiagnostics (Int) Bool)");
         }
 
-        if (ctx.KnownDatatypeConstructors.Count > 0)
-        {
-          GraphUtil.Graph<CtorType> dependencyGraph = new GraphUtil.Graph<CtorType>();
-          foreach (CtorType datatype in ctx.KnownDatatypeConstructors.Keys)
-          {
-            dependencyGraph.AddSource(datatype);
-	    // Check for user-specified dependency (using ":dependson" attribute).
-	    string userDependency = datatype.GetTypeDependency();
-	    if (userDependency != null) {
-	      dependencyGraph.AddEdge(datatype, ctx.LookupDatatype(userDependency));
-	    }
-            foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
-            {
-              List<CtorType> dependentTypes = new List<CtorType>();
-              foreach (Variable v in f.InParams)
-              {
-                FindDependentTypes(v.TypedIdent.Type, dependentTypes);
-              }
-              foreach (CtorType result in dependentTypes)
-              {
-                dependencyGraph.AddEdge(datatype, result);
-              }
-            }
-          }
-          GraphUtil.StronglyConnectedComponents<CtorType> sccs = new GraphUtil.StronglyConnectedComponents<CtorType>(dependencyGraph.Nodes, dependencyGraph.Predecessors, dependencyGraph.Successors);
-          sccs.Compute();
-          foreach (GraphUtil.SCC<CtorType> scc in sccs)
-          {
-            string datatypesString = "";
-            string datatypeConstructorsString = "";
-            foreach (CtorType datatype in scc)
-            {
-              datatypesString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " 0)";
-              string datatypeConstructorString = "";
-              foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
-              {
-                string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
-                datatypeConstructorString += "(" + quotedConstructorName + " ";
-                foreach (Variable v in f.InParams) 
-                {
-                  string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
-                  datatypeConstructorString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
-                }
-                datatypeConstructorString += ") ";
-              }
-              datatypeConstructorsString += "(" + datatypeConstructorString + ") ";
-            }
-            List<string> decls = DeclCollector.GetNewDeclarations();
-            foreach (string decl in decls)
-            {
-              SendCommon(decl);
-            }
-            SendCommon("(declare-datatypes (" + datatypesString + ") (" + datatypeConstructorsString + "))");
-          }
-        }
+        PrepareDataTypes();
+
         if (CommandLineOptions.Clo.ProverPreamble != null) {
           SendCommon("(include \"" + CommandLineOptions.Clo.ProverPreamble + "\")");
         }
