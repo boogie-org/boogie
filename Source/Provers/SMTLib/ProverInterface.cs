@@ -248,22 +248,6 @@ namespace Microsoft.Boogie.SMTLib
         }
     }
 
-    protected Function AsFunctionDef(VCExpr expr)
-    {
-      // If this expr is a function definition, return the function object.
-      var quan = expr as VCExprQuantifier;
-      if (quan != null && quan.Infos.isFunctionDefinition) {
-        var body = quan.Body as VCExprNAry;
-        Contract.Assert(body != null);
-        var funCall = body[0] as VCExprNAry;
-        Contract.Assert(funCall != null);
-        VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)funCall.Op;
-        Contract.Assert(op != null);
-        return op.Func;
-      }
-      return null;
-    }
-
     private void PrepareCommon()
     {
       if (common.Length == 0)
@@ -364,86 +348,88 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
+      Dictionary<Function, VCExprNAry> functionDefinitionMap = new Dictionary<Function, VCExprNAry>();
+      Stack<Function> functionDefs = new Stack<Function>();
+      Stack<VCExpr> otherAxioms = new Stack<VCExpr>();
+      foreach (KeyValuePair<Function, VCExprNAry> pair in ctx.DefinedFunctions)
+      {
+        Function f = pair.Key;
+        VCExprNAry body = pair.Value;
+        DeclCollector.AddFunction(f);
+        functionDefinitionMap.Add(f, body);
+        functionDefs.Push(f);
+      }
+
+      // Process each definition, but also be sure to process dependencies first in case one definition calls another.
+      // Also check for definition cycles.
+      FunctionDependencyCollector collector = new FunctionDependencyCollector();
+      HashSet<Function> definitionAdded = new HashSet<Function>(); // whether definition has been fully processed
+      HashSet<Function> dependenciesComputed = new HashSet<Function>(); // whether dependencies have already been computed
+      while (functionDefs.Count > 0) {
+        Function f = functionDefs.Peek();
+        if (definitionAdded.Contains(f)) {
+          // This definition was already processed (as a dependency of another definition)
+          functionDefs.Pop();
+          continue;
+        }
+        // Grab the definition and then compute the dependencies.
+        Contract.Assert(functionDefinitionMap.ContainsKey(f));
+        VCExprNAry expr = functionDefinitionMap[f];
+        List<Function> dependencies = collector.Collect(expr[1]);
+        bool hasDependencies = false;
+        foreach (Function fdep in dependencies) {
+          if (functionDefinitionMap.ContainsKey(fdep) && !definitionAdded.Contains(fdep)) {
+            if (!dependenciesComputed.Contains(fdep)) {
+              // Handle dependencies first
+              functionDefs.Push(fdep);
+              hasDependencies = true;
+            } else {
+              HandleProverError("Function definition cycle detected: " + f.ToString() + " depends on " + fdep.ToString());
+            }
+          }
+        }
+        if (!hasDependencies) {
+          // No dependencies: go ahead and process this definition.
+          string def = "(define-fun ";
+          var funCall = expr[0] as VCExprNAry;
+          Contract.Assert(funCall != null);
+          VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)funCall.Op;
+          Contract.Assert(op != null);
+          def += Namer.GetQuotedName(op.Func, op.Func.Name);
+
+          def += " (";
+          foreach (var v in funCall.UniformArguments) {
+            VCExprVar varExpr = v as VCExprVar;
+            string printedName = Namer.GetQuotedLocalName(varExpr, varExpr.Name);
+            Contract.Assert(printedName != null);
+            def += "(" + printedName + " " + SMTLibExprLineariser.TypeToString(varExpr.Type) + ") ";
+          }
+          def += ") ";
+
+          def += SMTLibExprLineariser.TypeToString(expr[0].Type) + " ";
+          def += VCExpr2String(expr[1], -1);
+          def += ")";
+          SendCommon(def);
+          definitionAdded.Add(f);
+          functionDefs.Pop();
+        } else {
+          dependenciesComputed.Add(f);
+        }
+      }
+
       if (!AxiomsAreSetup)
       {
         var axioms = ctx.Axioms;
         var nary = axioms as VCExprNAry;
-        List<VCExpr> axiomList = new List<VCExpr>();
-        if (nary != null && nary.Op == VCExpressionGenerator.AndOp) {
-          foreach (var expr in nary.UniformArguments) {
-            axiomList.Add(expr);
+        if (nary != null && nary.Op == VCExpressionGenerator.AndOp)
+          foreach (var expr in nary.UniformArguments)
+          {
+            var str = VCExpr2String(expr, -1);
+            if (str != "true")
+              AddAxiom(str);
           }
-        } else {
-          axiomList.Add(axioms);
-        }
-
-        // Separate function definitions from other axioms.  Function definitions must be processed
-        // first; otherwise, processing an axiom that uses the function definition can create a declaration
-        // resulting in the symbol being introduced twice (a definition and a declaration).
-        Dictionary<Function, VCExpr> functionDefinitionMap = new Dictionary<Function, VCExpr>();
-        Stack<Function> functionDefs = new Stack<Function>();
-        Stack<VCExpr> otherAxioms = new Stack<VCExpr>();
-        for (int i = axiomList.Count-1; i >= 0; i--) {
-          Function f = AsFunctionDef(axiomList[i]);
-          if (f != null) {
-            // Add as a known function to DeclCollector so that it's not declared later.
-            DeclCollector.AddFunction(f);
-            functionDefinitionMap.Add(f, axiomList[i]);
-            functionDefs.Push(f);
-          } else {
-            otherAxioms.Push(axiomList[i]);
-          }
-        }
-
-        // Process each definition, but also be sure to process dependencies first in case one definition calls another.
-        // Also check for definition cycles.
-        FunctionDependencyCollector collector = new FunctionDependencyCollector();
-        HashSet<Function> axiomAdded = new HashSet<Function>(); // whether definition has been fully processed
-        HashSet<Function> dependenciesComputed = new HashSet<Function>(); // whether dependencies have already been computed
-        while (functionDefs.Count > 0) {
-          Function f = functionDefs.Peek();
-          if (axiomAdded.Contains(f)) {
-            // This definition was already processed (as a dependency of another definition)
-            functionDefs.Pop();
-            continue;
-          }
-          // Grab the definition and then compute the dependencies.
-          Contract.Assert(functionDefinitionMap.ContainsKey(f));
-          VCExpr expr = functionDefinitionMap[f];
-          var quan = expr as VCExprQuantifier;
-          Contract.Assert(quan != null && quan.Infos.isFunctionDefinition);
-          var body = quan.Body as VCExprNAry;
-          List<Function> dependencies = collector.Collect(body[1]);
-          bool hasDependencies = false;
-          foreach (Function fdep in dependencies) {
-            if (functionDefinitionMap.ContainsKey(fdep) && !axiomAdded.Contains(fdep)) {
-              if (!dependenciesComputed.Contains(fdep)) {
-                // Handle dependencies first
-                functionDefs.Push(fdep);
-                hasDependencies = true;
-              } else {
-                HandleProverError("Function definition cycle detected: " + f.ToString() + " depends on " + fdep.ToString());
-              }
-            }
-          }
-          if (!hasDependencies) {
-            // No dependencies: go ahead and process this definition.
-            AddAxiom(VCExpr2String(expr, -1));
-            axiomAdded.Add(f);
-            functionDefs.Pop();
-          } else {
-            dependenciesComputed.Add(f);
-          }
-        }
-
-        // Now process the rest of the axioms.
-        while (otherAxioms.Count > 0) {
-          VCExpr expr = otherAxioms.Pop();
-          var str = VCExpr2String(expr, -1);
-          if (str != "true") {
-            AddAxiom(str);
-          }
-        }
+        else
+          AddAxiom(VCExpr2String(axioms, -1));
         AxiomsAreSetup = true;
         CachedAxBuilder = AxBuilder;
         CachedNamer = Namer;
@@ -470,11 +456,8 @@ namespace Microsoft.Boogie.SMTLib
       TypeDecls.Clear();
       foreach (string s in Axioms) {
         Contract.Assert(s != null);
-        if (s.StartsWith("(define-fun")) {
-          SendCommon(s);
-        } else if (s != "true") {
+        if (s != "true")
           SendCommon("(assert " + s + ")");
-        }
       }
       Axioms.Clear();
       //FlushPushedAssertions();
@@ -2865,6 +2848,7 @@ namespace Microsoft.Boogie.SMTLib
     internal SMTLibProcessTheoremProver parent;
 
     public readonly Dictionary<CtorType, List<Function>> KnownDatatypeConstructors = new Dictionary<CtorType, List<Function>>();
+    public readonly List<KeyValuePair<Function, VCExprNAry>> DefinedFunctions = new List<KeyValuePair<Function, VCExprNAry>>();
 
     public SMTLibProverContext(VCExpressionGenerator gen,
                                VCGenerationOptions genOptions)
@@ -2897,6 +2881,8 @@ namespace Microsoft.Boogie.SMTLib
         if (!KnownDatatypeConstructors.ContainsKey(datatype))
           KnownDatatypeConstructors[datatype] = new List<Function>();
         KnownDatatypeConstructors[datatype].Add(f);
+      } else if (f.DefBody != null) {
+        DefinedFunctions.Add(new KeyValuePair<Function, VCExprNAry>(f, (VCExprNAry)translator.Translate(f.DefBody)));
       }
       base.DeclareFunction(f, attributes);
     }

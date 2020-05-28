@@ -429,7 +429,7 @@ private class BvBounds : Expr {
 		 if (QKeyValue.FindBoolAttribute(kv, "inline")) {
 		   func.Body = definition;
 		 } else if (QKeyValue.FindBoolAttribute(kv, "define")) {
-		   ds.Add(func.CreateFunctionDefinition(definition, kv));
+			 func.DefBody = func.CreateFunctionDefinition(definition);
 		 } else {
 		   ds.Add(func.CreateDefinitionAxiom(definition, kv));
 		 }

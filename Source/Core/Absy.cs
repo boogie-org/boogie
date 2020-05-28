@@ -2671,8 +2671,10 @@ namespace Microsoft.Boogie {
   public class Function : DeclWithFormals {
     public string Comment;
 
-    // the body is only set if the function is declared with {:inline}
+    // Body is only set if the function is declared with {:inline}
     public Expr Body;
+    // DefBody is only set if the function is declared with {:define}
+    public NAryExpr DefBody;
     public Axiom DefinitionAxiom;
 
     public IList<Axiom> otherDefinitionAxioms;
@@ -2774,6 +2776,13 @@ namespace Microsoft.Boogie {
         Body.Emit(stream);
         stream.WriteLine();
         stream.WriteLine("}");
+      } else if (DefBody != null) {
+        stream.WriteLine();
+        stream.WriteLine("{");
+        stream.Write(level + 1, "");
+        DefBody.Args[1].Emit(stream);
+        stream.WriteLine();
+        stream.WriteLine("}");
       } else {
         stream.WriteLine(";");
       }
@@ -2791,11 +2800,14 @@ namespace Microsoft.Boogie {
         RegisterFormals(InParams, rc);
         RegisterFormals(OutParams, rc);
         ResolveAttributes(rc);
-        if (Body != null)
-        {
+        if (Body != null) {
             rc.StateMode = ResolutionContext.State.StateLess;
             Body.Resolve(rc);
             rc.StateMode = ResolutionContext.State.Single;
+        } else if (DefBody != null) {
+          rc.StateMode = ResolutionContext.State.StateLess;
+          DefBody.Resolve(rc);
+          rc.StateMode = ResolutionContext.State.Single;
         }
         rc.PopVarContext();
         Type.CheckBoundVariableOccurrences(TypeParameters,
@@ -2819,6 +2831,12 @@ namespace Microsoft.Boogie {
           tc.Error(Body,
                    "function body with invalid type: {0} (expected: {1})",
                    Body.Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
+      } else if (DefBody != null) {
+        DefBody.Typecheck(tc);
+        if (!cce.NonNull(DefBody.Args[1].Type).Unify(cce.NonNull(OutParams[0]).TypedIdent.Type))
+          tc.Error(DefBody.Args[1],
+            "function body with invalid type: {0} (expected: {1})",
+            DefBody.Args[1].Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
       }
     }
 
@@ -2838,7 +2856,7 @@ namespace Microsoft.Boogie {
       return visitor.VisitFunction(this);
     }
 
-    public Axiom CreateDefinitionAxiom(Expr definition, QKeyValue kv = null, bool isFuncDef = false) {
+    public Axiom CreateDefinitionAxiom(Expr definition, QKeyValue kv = null) {
       Contract.Requires(definition != null);
 
       List<Variable> dummies = new List<Variable>();
@@ -2866,17 +2884,31 @@ namespace Microsoft.Boogie {
         def = new ForallExpr(tok, quantifiedTypeVars, dummies,
                              kv,
                              new Trigger(tok, true, new List<Expr> { call }, null),
-                             def, false, isFuncDef);
+                             def, false);
       }
       DefinitionAxiom = new Axiom(tok, def);
       return DefinitionAxiom;
     }
 
-    public Axiom CreateFunctionDefinition(Expr definition, QKeyValue kv = null) {
-      CreateDefinitionAxiom(definition, kv, true);
-      return DefinitionAxiom;
-    }
+    public NAryExpr CreateFunctionDefinition(Expr body) {
+      Contract.Requires(body != null);
 
+      List<Expr> callArgs = new List<Expr>();
+      int i = 0;
+      foreach (Formal/*!*/ f in InParams) {
+        Contract.Assert(f != null);
+        string nm = f.TypedIdent.HasName ? f.TypedIdent.Name : "_" + i;
+        callArgs.Add(new IdentifierExpr(f.tok, nm));
+        i++;
+      }
+
+      Expr call = new NAryExpr(tok, new FunctionCall(new IdentifierExpr(tok, Name)), callArgs);
+      // specify the type of the function, because it might be that
+      // type parameters only occur in the output type
+      call = Expr.CoerceType(tok, call, (Type)OutParams[0].TypedIdent.Type.Clone());
+      NAryExpr def = Expr.Binary(tok, BinaryOperator.Opcode.Eq, call, body);
+      return def;
+    }
   }
 
   public class Macro : Function {

@@ -593,8 +593,8 @@ namespace Microsoft.Boogie {
 
   public class ForallExpr : QuantifierExpr {
     public ForallExpr(IToken/*!*/ tok, List<TypeVariable>/*!*/ typeParams,
-                      List<Variable>/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body, bool immutable = false, bool isFuncDef=false)
-      : base(tok, typeParams, dummies, kv, triggers, body, immutable, isFuncDef) {
+                      List<Variable>/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body, bool immutable = false)
+      : base(tok, typeParams, dummies, kv, triggers, body, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(typeParams != null);
       Contract.Requires(dummies != null);
@@ -684,10 +684,9 @@ namespace Microsoft.Boogie {
     }
 
     public readonly int SkolemId;
-    public readonly bool isFunctionDefinition;
 
     public QuantifierExpr(IToken/*!*/ tok, List<TypeVariable>/*!*/ typeParameters,
-                          List<Variable>/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body, bool immutable, bool isFuncDef = false)
+                          List<Variable>/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body, bool immutable)
       : base(tok, typeParameters, dummies, kv, body, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(typeParameters != null);
@@ -699,7 +698,6 @@ namespace Microsoft.Boogie {
 
       Triggers = triggers;
       SkolemId = GetNextSkolemId();
-      isFunctionDefinition = isFuncDef;
     }
 
     protected override void EmitTriggers(TokenTextWriter stream) {
