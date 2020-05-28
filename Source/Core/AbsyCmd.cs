@@ -2240,7 +2240,6 @@ namespace Microsoft.Boogie {
                   inputVariables[v].Add(c);
               }
           });
-          // HashSet<Variable> inputVariables = new HashSet<Variable>(VariableCollector.Collect(CallCmds.SelectMany(x => x.Ins)));
           foreach (CallCmd callCmd in CallCmds)
           {
               foreach (IdentifierExpr ie in callCmd.Outs)
@@ -2251,7 +2250,7 @@ namespace Microsoft.Boogie {
                   }
                   else if (inputVariables.ContainsKey(ie.Decl) && (inputVariables[ie.Decl].Count > 1 || inputVariables[ie.Decl][0] != callCmd))
                   {
-                      rc.Error(this, "left-hand side of parallel call command contains variable accessed on the right-hand side: {0}", ie.Name);
+                      rc.Error(this, "left-hand side of parallel call command contains variable accessed on the right-hand side of a different arm: {0}", ie.Name);
                   }
                   else
                   {

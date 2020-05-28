@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 namespace Microsoft.Boogie
 {
@@ -36,7 +35,6 @@ namespace Microsoft.Boogie
             this.yieldingProcs = new HashSet<Procedure>();
             this.asyncCallPreconditionCheckers = new Dictionary<string, Procedure>();
             
-            this.refinementCallCmds = new Dictionary<CallCmd, CallCmd>();
             this.refinementBlocks = new Dictionary<CallCmd, Block>();
         }
 
@@ -147,6 +145,7 @@ namespace Microsoft.Boogie
 
             returnedPAs = null;
 
+            refinementCallCmds = new Dictionary<CallCmd, CallCmd>();
             Implementation newImpl = base.VisitImplementation(impl);
             newImpl.Name = newImpl.Proc.Name;
 
@@ -162,7 +161,7 @@ namespace Microsoft.Boogie
                 refinementBlocks.Add(rewrittenCallCmd, block);
                 newCmdSeq = null;
             }
-            refinementCallCmds = new Dictionary<CallCmd, CallCmd>();
+            refinementCallCmds = null;
 
             if (returnedPAs != null)
                 newImpl.LocVars.Add(returnedPAs);

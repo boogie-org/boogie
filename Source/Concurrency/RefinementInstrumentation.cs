@@ -209,7 +209,7 @@ namespace Microsoft.Boogie
         public override List<Cmd> CreateUpdatesToRefinementVars(bool isMarkedCall)
         {
             var cmds = new List<Cmd>();
-            List<AssignLhs> pcUpdateLHS = new List<AssignLhs>
+            List<AssignLhs> pcOkUpdateLHS = new List<AssignLhs>
             {
                 new SimpleAssignLhs(Token.NoToken, Expr.Ident(pc)),
                 new SimpleAssignLhs(Token.NoToken, Expr.Ident(ok))
@@ -219,19 +219,19 @@ namespace Microsoft.Boogie
                 // assert !pc;
                 // pc, ok := true, true;
                 cmds.Add(new AssertCmd(Token.NoToken, Expr.Not(Expr.Ident(pc))));
-                List<Expr> pcUpdateRHS = new List<Expr>(new Expr[] {Expr.True, Expr.True});
-                cmds.Add(new AssignCmd(Token.NoToken, pcUpdateLHS, pcUpdateRHS));
+                List<Expr> pcOkUpdateRHS = new List<Expr>(new Expr[] {Expr.True, Expr.True});
+                cmds.Add(new AssignCmd(Token.NoToken, pcOkUpdateLHS, pcOkUpdateRHS));
             }
             else
             {
                 // pc, ok := g_old == g ==> pc, transitionRelation(i, g_old, o, g) || (o_old == o && ok);
-                List<Expr> pcUpdateRHS = new List<Expr>(
+                List<Expr> pcOkUpdateRHS = new List<Expr>(
                     new Expr[]
                     {
                         Expr.Imp(OldEqualityExprForGlobals(), Expr.Ident(pc)),
                         Expr.Or(transitionRelation, Expr.And(OldEqualityExprForOutputs(), Expr.Ident(ok))),
                     });
-                cmds.Add(new AssignCmd(Token.NoToken, pcUpdateLHS, pcUpdateRHS));
+                cmds.Add(new AssignCmd(Token.NoToken, pcOkUpdateLHS, pcOkUpdateRHS));
             }
             foreach (var cmd in cmds)
             {

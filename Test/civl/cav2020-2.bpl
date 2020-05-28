@@ -56,7 +56,7 @@ ensures {:layer 1} LockInv(b, l);
         call set_l(Some(tid));
         call YieldLockInv();
     } else {
-        call {:mark} Acquire(tid);
+        call {:refines} Acquire(tid);
     }
 }
 

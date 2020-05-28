@@ -462,7 +462,7 @@ namespace Microsoft.Boogie
 
         private bool IsCallMarked(CallCmd callCmd)
         {
-            return callCmd.HasAttribute("mark");
+            return callCmd.HasAttribute(CivlAttributes.REFINES);
         }
         
         private bool IsParCallMarked(ParCallCmd parCallCmd)
@@ -570,6 +570,7 @@ namespace Microsoft.Boogie
         private Block CreateReturnCheckerBlock()
         {
             var returnBlockCmds = new List<Cmd>();
+            returnBlockCmds.AddRange(refinementInstrumentation.CreateAssertCmds());
             returnBlockCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars(false));
             returnBlockCmds.AddRange(refinementInstrumentation.CreateReturnAssertCmds());
             returnBlockCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));

@@ -1172,7 +1172,7 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        civlTypeChecker.Error(node, "Shared variable cannot be accessed");
+                        civlTypeChecker.Error(node, "Shared variables cannot be accessed in this context");
                     }
                 }
                 else if (node.Decl is Formal || node.Decl is LocalVariable)
@@ -1295,7 +1295,7 @@ namespace Microsoft.Boogie
 
             public override Cmd VisitParCallCmd(ParCallCmd node)
             {
-                Require(node.CallCmds.Where(callCmd => callCmd.HasAttribute("mark")).Count() <= 1, node, "At most one arm of a parallel call can be marked");
+                Require(node.CallCmds.Where(callCmd => callCmd.HasAttribute(CivlAttributes.REFINES)).Count() <= 1, node, "At most one arm of a parallel call can refine the specification action");
                 return base.VisitParCallCmd(node);
             }
 
@@ -1530,7 +1530,7 @@ namespace Microsoft.Boogie
                 {
                     foreach (var callCmd in impl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
                     {
-                        HashSet<Variable> mods = null;
+                        IEnumerable<Variable> mods = Enumerable.Empty<Variable>();
                         if (civlTypeChecker.procToYieldingProc.TryGetValue(callCmd.Proc, out YieldingProc callee))
                         {
                             if (callee is ActionProc actionProc)
@@ -1553,16 +1553,11 @@ namespace Microsoft.Boogie
                             {
                                 mods = new HashSet<Variable>(callCmd.Proc.Modifies.Select(ie => ie.Decl));
                             }
-                            else
-                            {
-                                continue;
-                            }
                         }
                         else
                         {
                             Debug.Assert(civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc) ||
                                          civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc));
-                            continue;
                         }
 
                         foreach (var mod in mods)

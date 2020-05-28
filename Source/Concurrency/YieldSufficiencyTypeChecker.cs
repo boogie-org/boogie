@@ -381,7 +381,8 @@ namespace Microsoft.Boogie
                 MIDDLE,
                 AFTER,
             }
-            
+
+            // Check pattern (left)*(non)?(right)*
             private void CheckNonMoverCondition(ParCallCmd parCallCmd)
             {
                 ParallelCallPhase phase = ParallelCallPhase.BEFORE;
@@ -408,6 +409,7 @@ namespace Microsoft.Boogie
                 }
             }
 
+            // Check pattern (left)*(yielding-proc)*(right)*
             private void CheckYieldingProcCondition(ParCallCmd parCallCmd)
             {
                 ParallelCallPhase phase = ParallelCallPhase.BEFORE;
@@ -433,7 +435,7 @@ namespace Microsoft.Boogie
                             if (label == L)
                             {
                                 @base.checkingContext.Error(parCallCmd,
-                                    $"Mover types in parallel call do not match (left)*(yield-proc)*(right)* at layer {currLayerNum}");
+                                    $"Mover types in parallel call do not match (left)*(yielding-proc)*(right)* at layer {currLayerNum}");
                             }
                             else
                             {
@@ -443,7 +445,7 @@ namespace Microsoft.Boogie
                         case ParallelCallPhase.AFTER:
                             if (label == R || label == B) continue;
                             @base.checkingContext.Error(parCallCmd,
-                                    $"Mover types in parallel call do not match (left)*(yield-proc)*(right)* at layer {currLayerNum}");
+                                    $"Mover types in parallel call do not match (left)*(yielding-proc)*(right)* at layer {currLayerNum}");
                             break;
                     }
                 }
