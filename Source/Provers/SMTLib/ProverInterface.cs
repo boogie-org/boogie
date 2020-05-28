@@ -320,18 +320,16 @@ namespace Microsoft.Boogie.SMTLib
 
     private void PrepareFunctionDefinitions()
     {
-      Dictionary<Function, VCExprNAry> functionDefinitionMap = new Dictionary<Function, VCExprNAry>();
+      // Collect all function definitions to be processed
       Stack<Function> functionDefs = new Stack<Function>();
-      foreach (KeyValuePair<Function, VCExprNAry> pair in ctx.DefinedFunctions)
+      foreach (Function f in ctx.DefinedFunctions.Keys)
       {
-        Function f = pair.Key;
-        VCExprNAry body = pair.Value;
-        DeclCollector.AddKnownFunction(f);
-        functionDefinitionMap.Add(f, body);
+        DeclCollector.AddKnownFunction(f); // add func to knows funcs so that it does not get declared later on
         functionDefs.Push(f);
       }
 
-      // Process each definition, but also be sure to process dependencies first in case one definition calls another.
+      // Process each definition, but also be sure to process dependencies first in case one
+      // definition calls another.
       // Also check for definition cycles.
       FunctionDependencyCollector collector = new FunctionDependencyCollector();
       HashSet<Function> definitionAdded = new HashSet<Function>(); // whether definition has been fully processed
@@ -343,13 +341,14 @@ namespace Microsoft.Boogie.SMTLib
           functionDefs.Pop();
           continue;
         }
+
         // Grab the definition and then compute the dependencies.
-        Contract.Assert(functionDefinitionMap.ContainsKey(f));
-        VCExprNAry expr = functionDefinitionMap[f];
-        List<Function> dependencies = collector.Collect(expr[1]);
+        Contract.Assert(ctx.DefinedFunctions.ContainsKey(f));
+        VCExprNAry defBody = ctx.DefinedFunctions[f];
+        List<Function> dependencies = collector.Collect(defBody[1]);
         bool hasDependencies = false;
         foreach (Function fdep in dependencies) {
-          if (functionDefinitionMap.ContainsKey(fdep) && !definitionAdded.Contains(fdep)) {
+          if (ctx.DefinedFunctions.ContainsKey(fdep) && !definitionAdded.Contains(fdep)) {
             if (!dependenciesComputed.Contains(fdep)) {
               // Handle dependencies first
               functionDefs.Push(fdep);
@@ -359,10 +358,11 @@ namespace Microsoft.Boogie.SMTLib
             }
           }
         }
+
         if (!hasDependencies) {
           // No dependencies: go ahead and process this definition.
           string def = "(define-fun ";
-          var funCall = expr[0] as VCExprNAry;
+          var funCall = defBody[0] as VCExprNAry;
           Contract.Assert(funCall != null);
           VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)funCall.Op;
           Contract.Assert(op != null);
@@ -372,15 +372,15 @@ namespace Microsoft.Boogie.SMTLib
           foreach (var v in funCall.UniformArguments) {
             VCExprVar varExpr = v as VCExprVar;
             Contract.Assert(varExpr != null);
-            DeclCollector.AddKnownVariable(varExpr);
+            DeclCollector.AddKnownVariable(varExpr); // add var to knows vars so that it does not get declared later on
             string printedName = Namer.GetQuotedLocalName(varExpr, varExpr.Name);
             Contract.Assert(printedName != null);
             def += "(" + printedName + " " + SMTLibExprLineariser.TypeToString(varExpr.Type) + ") ";
           }
           def += ") ";
 
-          def += SMTLibExprLineariser.TypeToString(expr[0].Type) + " ";
-          def += VCExpr2String(expr[1], -1);
+          def += SMTLibExprLineariser.TypeToString(defBody[0].Type) + " ";
+          def += VCExpr2String(defBody[1], -1);
           def += ")";
           SendCommon(def);
           definitionAdded.Add(f);
@@ -2871,7 +2871,7 @@ namespace Microsoft.Boogie.SMTLib
     internal SMTLibProcessTheoremProver parent;
 
     public readonly Dictionary<CtorType, List<Function>> KnownDatatypeConstructors = new Dictionary<CtorType, List<Function>>();
-    public readonly List<KeyValuePair<Function, VCExprNAry>> DefinedFunctions = new List<KeyValuePair<Function, VCExprNAry>>();
+    public readonly Dictionary<Function, VCExprNAry> DefinedFunctions = new Dictionary<Function, VCExprNAry>();
 
     public SMTLibProverContext(VCExpressionGenerator gen,
                                VCGenerationOptions genOptions)
@@ -2905,7 +2905,7 @@ namespace Microsoft.Boogie.SMTLib
           KnownDatatypeConstructors[datatype] = new List<Function>();
         KnownDatatypeConstructors[datatype].Add(f);
       } else if (f.DefBody != null) {
-        DefinedFunctions.Add(new KeyValuePair<Function, VCExprNAry>(f, (VCExprNAry)translator.Translate(f.DefBody)));
+        DefinedFunctions.Add(f, (VCExprNAry)translator.Translate(f.DefBody));
       }
       base.DeclareFunction(f, attributes);
     }

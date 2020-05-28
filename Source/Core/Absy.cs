@@ -2833,6 +2833,9 @@ namespace Microsoft.Boogie {
                    Body.Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
       } else if (DefBody != null) {
         DefBody.Typecheck(tc);
+
+        // We are matching the type of the function body with output param, and not the type
+        // of DefBody, which is always going to be bool (since it is of the form func_call == func_body)
         if (!cce.NonNull(DefBody.Args[1].Type).Unify(cce.NonNull(OutParams[0]).TypedIdent.Type))
           tc.Error(DefBody.Args[1],
             "function body with invalid type: {0} (expected: {1})",
@@ -2890,6 +2893,13 @@ namespace Microsoft.Boogie {
       return DefinitionAxiom;
     }
 
+    // Generates function definition of the form func_call == func_body
+    // For example, for
+    // function {:define} foo(x:int) returns(int) { x + 1 }
+    // this will generate
+    // foo(x):int == x + 1
+    // We need the left hand call part later on to be able to generate
+    // the appropriate SMTlib style function definition.
     public NAryExpr CreateFunctionDefinition(Expr body) {
       Contract.Requires(body != null);
 
