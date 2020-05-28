@@ -1,0 +1,7 @@
+fundef2.bpl(24,3): Error BP5003: A postcondition might not hold on this return path.
+fundef2.bpl(20,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    fundef2.bpl(22,3): anon0
+    fundef2.bpl(23,7): anon3_Then
+
+Boogie program verifier finished with 1 verified, 1 error

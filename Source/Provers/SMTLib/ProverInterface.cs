@@ -318,53 +318,8 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private void PrepareCommon()
+    private void PrepareFunctionDefinitions()
     {
-      if (common.Length == 0)
-      {
-        SendCommon("(set-option :print-success false)");
-        SendCommon("(set-info :smt-lib-version 2.6)");
-        if (options.ProduceModel())
-          SendCommon("(set-option :produce-models true)");
-        foreach (var opt in options.SmtOptions)
-        {
-          SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
-        }
-
-        if (!string.IsNullOrEmpty(options.Logic))
-        {
-          SendCommon("(set-logic " + options.Logic + ")");
-        }
-
-        // Set produce-unsat-cores last. It seems there's a bug in Z3 where if we set it earlier its value
-        // gets reset by other set-option commands ( https://z3.codeplex.com/workitem/188 )
-                if (CommandLineOptions.Clo.PrintNecessaryAssumes || CommandLineOptions.Clo.EnableUnSatCoreExtract == 1 ||(CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini)))
-        {
-          SendCommon("(set-option :produce-unsat-cores true)");
-          this.usingUnsatCore = true;
-        }
-
-        SendCommon("; done setting options\n");
-        SendCommon(_backgroundPredicates);
-
-        if (options.UseTickleBool)
-        {
-          SendCommon("(declare-fun tickleBool (Bool) Bool)");
-          SendCommon("(assert (and (tickleBool true) (tickleBool false)))");
-        }
-
-        if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
-        {
-          SendCommon("(declare-fun timeoutDiagnostics (Int) Bool)");
-        }
-
-        PrepareDataTypes();
-
-        if (CommandLineOptions.Clo.ProverPreamble != null) {
-          SendCommon("(include \"" + CommandLineOptions.Clo.ProverPreamble + "\")");
-        }
-      }
-
       Dictionary<Function, VCExprNAry> functionDefinitionMap = new Dictionary<Function, VCExprNAry>();
       Stack<Function> functionDefs = new Stack<Function>();
       Stack<VCExpr> otherAxioms = new Stack<VCExpr>();
@@ -432,6 +387,56 @@ namespace Microsoft.Boogie.SMTLib
         } else {
           dependenciesComputed.Add(f);
         }
+      }
+    }
+
+    private void PrepareCommon()
+    {
+      if (common.Length == 0)
+      {
+        SendCommon("(set-option :print-success false)");
+        SendCommon("(set-info :smt-lib-version 2.6)");
+        if (options.ProduceModel())
+          SendCommon("(set-option :produce-models true)");
+        foreach (var opt in options.SmtOptions)
+        {
+          SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
+        }
+
+        if (!string.IsNullOrEmpty(options.Logic))
+        {
+          SendCommon("(set-logic " + options.Logic + ")");
+        }
+
+        // Set produce-unsat-cores last. It seems there's a bug in Z3 where if we set it earlier its value
+        // gets reset by other set-option commands ( https://z3.codeplex.com/workitem/188 )
+                if (CommandLineOptions.Clo.PrintNecessaryAssumes || CommandLineOptions.Clo.EnableUnSatCoreExtract == 1 ||(CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini)))
+        {
+          SendCommon("(set-option :produce-unsat-cores true)");
+          this.usingUnsatCore = true;
+        }
+
+        SendCommon("; done setting options\n");
+        SendCommon(_backgroundPredicates);
+
+        if (options.UseTickleBool)
+        {
+          SendCommon("(declare-fun tickleBool (Bool) Bool)");
+          SendCommon("(assert (and (tickleBool true) (tickleBool false)))");
+        }
+
+        if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
+        {
+          SendCommon("(declare-fun timeoutDiagnostics (Int) Bool)");
+        }
+
+        PrepareDataTypes();
+
+        if (CommandLineOptions.Clo.ProverPreamble != null) {
+          SendCommon("(include \"" + CommandLineOptions.Clo.ProverPreamble + "\")");
+        }
+
+        PrepareFunctionDefinitions();
       }
 
       if (!AxiomsAreSetup)
