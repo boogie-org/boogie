@@ -1,0 +1,15 @@
+(0,0): Error: Failed to execute atomic action before procedure return
+Execution trace:
+    r2.bpl(11,5): anon0
+    (0,0): call_refinement_4
+    r2.bpl(21,32): inline$atomic_nop$0$Return
+    (0,0): ReturnChecker
+(0,0): Error: Globals must not be modified
+Execution trace:
+    r2.bpl(11,5): anon0
+    (0,0): call_refinement_3
+    r2.bpl(17,7): inline$atomic_incr$0$anon0
+    r2.bpl(14,32): inline$atomic_incr$0$Return
+    (0,0): RefinementCheckerForYieldingLoops
+
+Boogie program verifier finished with 1 verified, 2 errors

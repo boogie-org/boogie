@@ -1,6 +1,24 @@
-// Skip arm that updates state (global or output)
+// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 
-// Marked arm that does not updated state according to spec
+var {:layer 0,2} x: int;
 
-// Parallel call with multiple skip arms
+procedure {:yields} {:layer 1} {:refines "atomic_incr"} foo1() {
+    par {:refines} incr() | nop() | nop();
+}
 
+procedure {:yields} {:layer 1} {:refines "atomic_incr"} foo2() {
+    par incr() | {:refines} nop() | nop();
+}
+
+procedure {:both} {:layer 1,2} atomic_incr()
+modifies x;
+{
+    x := x + 1;
+}
+procedure {:yields} {:layer 1} {:refines "atomic_incr"} incr();
+
+procedure {:both} {:layer 1,2} atomic_nop()
+{
+}
+procedure {:yields} {:layer 1} {:refines "atomic_nop"} nop();
