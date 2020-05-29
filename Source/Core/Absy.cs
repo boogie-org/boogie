@@ -2755,11 +2755,19 @@ namespace Microsoft.Boogie {
       stream.Write(this, level, "function ");
       EmitAttributes(stream);
       if (Body != null && !QKeyValue.FindBoolAttribute(Attributes, "inline")) {
+        Contract.Assert(DefinitionBody == null);
         // Boogie inlines any function whose .Body field is non-null.  The parser populates the .Body field
-        // is the :inline attribute is present, but if someone creates the Boogie file directly as an AST, then
+        // if the :inline attribute is present, but if someone creates the Boogie file directly as an AST, then
         // the :inline attribute may not be there.  We'll make sure it's printed, so one can see that this means
         // that the body will be inlined.
         stream.Write("{:inline} ");
+      }
+      if (DefinitionBody != null && !QKeyValue.FindBoolAttribute(Attributes, "define")) {
+        // Boogie defines any function whose .DefinitionBody field is non-null.  The parser populates the .DefinitionBody field
+        // if the :define attribute is present, but if someone creates the Boogie file directly as an AST, then
+        // the :define attribute may not be there.  We'll make sure it's printed, so one can see that this means
+        // that the function will be defined.
+        stream.Write("{:define} ");
       }
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
         stream.Write("h{0}^^{1}", this.GetHashCode(), TokenTextWriter.SanitizeIdentifier(this.Name));
@@ -2768,6 +2776,7 @@ namespace Microsoft.Boogie {
       }
       EmitSignature(stream, true);
       if (Body != null) {
+        Contract.Assert(DefinitionBody == null);
         stream.WriteLine();
         stream.WriteLine("{");
         stream.Write(level + 1, "");
@@ -2799,9 +2808,10 @@ namespace Microsoft.Boogie {
         RegisterFormals(OutParams, rc);
         ResolveAttributes(rc);
         if (Body != null) {
-            rc.StateMode = ResolutionContext.State.StateLess;
-            Body.Resolve(rc);
-            rc.StateMode = ResolutionContext.State.Single;
+          Contract.Assert(DefinitionBody == null);
+          rc.StateMode = ResolutionContext.State.StateLess;
+          Body.Resolve(rc);
+          rc.StateMode = ResolutionContext.State.Single;
         } else if (DefinitionBody != null) {
           rc.StateMode = ResolutionContext.State.StateLess;
           DefinitionBody.Resolve(rc);
@@ -2824,6 +2834,7 @@ namespace Microsoft.Boogie {
       base.Typecheck(tc);
       // TypecheckAttributes(tc);
       if (Body != null) {
+        Contract.Assert(DefinitionBody == null);
         Body.Typecheck(tc);
         if (!cce.NonNull(Body.Type).Unify(cce.NonNull(OutParams[0]).TypedIdent.Type))
           tc.Error(Body,
@@ -2897,7 +2908,10 @@ namespace Microsoft.Boogie {
     // this will generate
     // foo(x):int == x + 1
     // We need the left hand call part later on to be able to generate
-    // the appropriate SMTlib style function definition.
+    // the appropriate SMTlib style function definition. Hence, it is
+    // important that is goes through the resolution and type checking passes,
+    // since otherwise it is hard to connect function parameters to the resolved
+    // variables in the function body.
     public NAryExpr CreateFunctionDefinition(Expr body) {
       Contract.Requires(body != null);
 
