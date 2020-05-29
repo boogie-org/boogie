@@ -31,7 +31,7 @@ requires {:layer 2} perm(p);
   var val_a_local : int;
   yield; assert {:layer 2} perm(p);
   call val_a_local := get_val_a_perm(p);
-  async call propose_by_a(val_a_local, p);
+  async call {:sync} propose_by_a(val_a_local, p);
   yield;
 }
 
@@ -45,16 +45,16 @@ ensures {:layer 2} val_a == val_b;
 modifies val_a, val_b;
 {
   var val_b_local : int;
-  
+
   if (*)
   {
     call set_val_b_perm(val, p);
-    async call ack_by_b(p);
+    async call {:sync} ack_by_b(p);
   }
   else
   {
     call set_val_b_perm(val_b_local, p);
-    async call propose_by_b(val_b_local, p);
+    async call {:sync} propose_by_b(val_b_local, p);
   }
 
   call dummy_1();
@@ -78,16 +78,16 @@ ensures {:layer 2} val_a == val_b;
 modifies val_a, val_b;
 {
   var val_a_local : int;
-  
+
   if (*)
   {
     call set_val_a_perm(val, p);
-    async call ack_by_a(p);
+    async call {:sync} ack_by_a(p);
   }
   else
   {
     call set_val_a_perm(val_a_local, p);
-    async call propose_by_a(val_a_local, p);
+    async call {:sync} propose_by_a(val_a_local, p);
   }
 
   call dummy_1();

@@ -342,7 +342,7 @@ requires {:layer 1} Init(pids, ReqCH, VoteCH, DecCH, decisions);
   async call coordinator1(pid);
   i := 1;
   while (i <= n)
-  invariant {:layer 0,1}{:terminates} true;
+  invariant {:layer 1}{:terminates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} (forall ii:int :: pid(ii) && ii >= i ==> pids'[ii]);
   invariant {:layer 1} PAs == MapAddPA(SingletonPA(Coordinator1(0)), (lambda pa:PA :: if is#Participant1(pa) && pid(pid#Participant1(pa)) && pid#Participant1(pa) < i then 1 else 0));

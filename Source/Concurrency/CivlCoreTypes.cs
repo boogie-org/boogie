@@ -196,6 +196,20 @@ namespace Microsoft.Boogie
         }
     }
 
+    public class YieldInvariant
+    {
+        public Procedure proc;
+        private int layer;
+        
+        public YieldInvariant(Procedure proc, int layer)
+        {
+            this.proc = proc;
+            this.layer = layer;
+            this.proc.Ensures.AddRange(this.proc.Requires.Select(requires => new Ensures(requires.tok, false, requires.Condition, null)));
+        }
+        public int LayerNum => layer;
+    }
+    
     public abstract class YieldingProc
     {
         public Procedure proc;
@@ -212,18 +226,7 @@ namespace Microsoft.Boogie
         public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
         public bool IsLeftMover { get { return moverType == MoverType.Left || moverType == MoverType.Both; } }
     }
-
-    public class SkipProc : YieldingProc
-    {
-        public HashSet<Variable> hiddenFormals;
-
-        public SkipProc(Procedure proc, int upperLayer)
-            : base(proc, MoverType.Both, upperLayer)
-        {
-            hiddenFormals = new HashSet<Variable>(proc.InParams.Union(proc.OutParams));
-        }
-    }
-
+    
     public class MoverProc : YieldingProc
     {
         public HashSet<Variable> modifiedGlobalVars;
@@ -240,16 +243,16 @@ namespace Microsoft.Boogie
         public AtomicAction refinedAction;
         public HashSet<Variable> hiddenFormals;
         
-        public ActionProc(Procedure proc, AtomicAction refinedAction, int upperLayer)
+        public ActionProc(Procedure proc, AtomicAction refinedAction, int upperLayer, HashSet<Variable> hiddenFormals)
             : base(proc, refinedAction.moverType, upperLayer)
         {
             this.refinedAction = refinedAction;
-            hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => x.HasAttribute(CivlAttributes.HIDE)));
+            this.hiddenFormals = hiddenFormals;
         }
 
         public AtomicAction RefinedActionAtLayer(int layer)
         {
-            if (layer <= upperLayer) return null;
+            Debug.Assert(layer >= upperLayer);
             var action = refinedAction;
             while (action != null)
             {
@@ -257,6 +260,7 @@ namespace Microsoft.Boogie
                     return action;
                 action = action.refinedAction;
             }
+            Debug.Assert(false);
             return null;
         }
     }

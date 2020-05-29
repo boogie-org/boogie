@@ -165,13 +165,13 @@ namespace Microsoft.Boogie
         {
             if (absy is Implementation impl)
             {
-                return FilterInParams((absyMap[impl] as Implementation).InParams);
+                return FilterInParams((MapAbsy(impl) as Implementation).InParams);
             }
             if (absy is Procedure proc)
             {
-                return FilterInParams((absyMap[proc] as Procedure).InParams);
+                return FilterInParams((MapAbsy(proc) as Procedure).InParams);
             }
-            return linearTypeChecker.AvailableLinearVars(absyMap[absy]).Where(v =>
+            return linearTypeChecker.AvailableLinearVars(MapAbsy(absy)).Where(v =>
                     !(v is GlobalVariable) &&
                     civlTypeChecker.LocalVariableLayerRange(v).Contains(layerNum));
         }
@@ -194,6 +194,11 @@ namespace Microsoft.Boogie
         private Variable MapVariable(Variable v)
         {
             return localVarMap.ContainsKey(v) ? localVarMap[v] : v;
+        }
+
+        private Absy MapAbsy(Absy absy)
+        {
+            return absyMap.ContainsKey(absy) ? absyMap[absy] : absy;
         }
     }
 }

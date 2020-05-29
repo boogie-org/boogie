@@ -5,8 +5,8 @@ using System.Linq;
 namespace Microsoft.Boogie
 {
     /// <summary>
-    /// Implements the simulation relation algorithm from the paper:
-    ///   Monika Rauch Henzinger, Thomas A. Henzinger, Peter W. Kopke
+    ///   Implements the simulation relation algorithm from the paper:
+    ///   Monika R. Henzinger, Thomas A. Henzinger, Peter W. Kopke
     ///   Computing Simulations on Finite and Infinite Graphs
     ///   FOCS 1995
     /// </summary>

@@ -11,8 +11,9 @@ namespace Microsoft.Boogie
             LinearTypeChecker linearTypeChecker,
             int layerNum,
             Dictionary<Absy, Absy> absyMap,
-            Implementation impl,
-            Dictionary<YieldCmd, List<PredicateCmd>> yields)
+            DeclWithFormals decl,
+            List<Variable> declLocalVariables,
+            Dictionary<Absy, List<PredicateCmd>> yields)
         {
             Dictionary<string, Variable> domainNameToHoleVar = new Dictionary<string, Variable>();
             Dictionary<Variable, Variable> localVarMap = new Dictionary<Variable, Variable>();
@@ -27,7 +28,7 @@ namespace Microsoft.Boogie
                 domainNameToHoleVar[domainName] = inParam;
             }
 
-            foreach (Variable local in impl.LocVars.Union(impl.InParams).Union(impl.OutParams))
+            foreach (Variable local in declLocalVariables.Union(decl.InParams).Union(decl.OutParams))
             {
                 var copy = CopyLocal(local);
                 locals.Add(copy);
@@ -92,13 +93,13 @@ namespace Microsoft.Boogie
                 new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
 
             // Create the yield checker procedure
-            var noninterferenceCheckerName = $"NoninterferenceChecker_{impl.Name}";
-            var noninterferenceCheckerProc = new Procedure(Token.NoToken, noninterferenceCheckerName, impl.TypeParameters, inputs,
+            var noninterferenceCheckerName = $"NoninterferenceChecker_{decl.Name}";
+            var noninterferenceCheckerProc = new Procedure(Token.NoToken, noninterferenceCheckerName, decl.TypeParameters, inputs,
                 new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
             CivlUtil.AddInlineAttribute(noninterferenceCheckerProc);
 
             // Create the yield checker implementation
-            var noninterferenceCheckerImpl = new Implementation(Token.NoToken, noninterferenceCheckerName, impl.TypeParameters, inputs,
+            var noninterferenceCheckerImpl = new Implementation(Token.NoToken, noninterferenceCheckerName, decl.TypeParameters, inputs,
                 new List<Variable>(), locals, noninterferenceCheckerBlocks);
             noninterferenceCheckerImpl.Proc = noninterferenceCheckerProc;
             CivlUtil.AddInlineAttribute(noninterferenceCheckerImpl);

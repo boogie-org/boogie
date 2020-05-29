@@ -23,4 +23,4 @@ Execution trace:
     chris2.bpl(13,5): inline$atomic_p_gt1$0$anon0
     chris2.bpl(11,32): inline$atomic_p_gt1$0$Return
 
-Boogie program verifier finished with 2 verified, 4 errors
+Boogie program verifier finished with 1 verified, 4 errors

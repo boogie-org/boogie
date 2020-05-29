@@ -9,8 +9,8 @@ procedure {:yields} {:layer 1} Proc ({:linear "x"} i: int)
   yield;
 }
 
-procedure {:yields} {:layer 0} Yield0 () { yield; }
-procedure {:yields} {:layer 1} Yield1 () { yield; }
+procedure {:yield_invariant} {:layer 0} Yield0 ();
+procedure {:yield_invariant} {:layer 1} Yield1 ();
 
 procedure {:lemma} Lemma (set: [int]bool, i: int);
 requires !set[i];
