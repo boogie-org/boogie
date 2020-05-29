@@ -331,6 +331,7 @@ namespace Microsoft.Boogie.SMTLib
       // Process each definition, but also be sure to process dependencies first in case one
       // definition calls another.
       // Also check for definition cycles.
+      List<string> generatedFuncDefs = new List<string>();
       FunctionDependencyCollector collector = new FunctionDependencyCollector();
       HashSet<Function> definitionAdded = new HashSet<Function>(); // whether definition has been fully processed
       HashSet<Function> dependenciesComputed = new HashSet<Function>(); // whether dependencies have already been computed
@@ -361,34 +362,37 @@ namespace Microsoft.Boogie.SMTLib
 
         if (!hasDependencies) {
           // No dependencies: go ahead and process this definition.
-          string def = "(define-fun ";
+          string funcDef = "(define-fun ";
           var funCall = defBody[0] as VCExprNAry;
           Contract.Assert(funCall != null);
           VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)funCall.Op;
           Contract.Assert(op != null);
-          def += Namer.GetQuotedName(op.Func, op.Func.Name);
+          funcDef += Namer.GetQuotedName(op.Func, op.Func.Name);
 
-          def += " (";
+          funcDef += " (";
           foreach (var v in funCall.UniformArguments) {
             VCExprVar varExpr = v as VCExprVar;
             Contract.Assert(varExpr != null);
             DeclCollector.AddKnownVariable(varExpr); // add var to knows vars so that it does not get declared later on
             string printedName = Namer.GetQuotedLocalName(varExpr, varExpr.Name);
             Contract.Assert(printedName != null);
-            def += "(" + printedName + " " + SMTLibExprLineariser.TypeToString(varExpr.Type) + ") ";
+            funcDef += "(" + printedName + " " + SMTLibExprLineariser.TypeToString(varExpr.Type) + ") ";
           }
-          def += ") ";
+          funcDef += ") ";
 
-          def += SMTLibExprLineariser.TypeToString(defBody[0].Type) + " ";
-          def += VCExpr2String(defBody[1], -1);
-          def += ")";
-          SendCommon(def);
+          funcDef += SMTLibExprLineariser.TypeToString(defBody[0].Type) + " ";
+          funcDef += VCExpr2String(defBody[1], -1);
+          funcDef += ")";
+          generatedFuncDefs.Add(funcDef);
           definitionAdded.Add(f);
           functionDefs.Pop();
         } else {
           dependenciesComputed.Add(f);
         }
       }
+
+      FlushAxioms(); // Flush all dependencies before flushing function definitions
+      generatedFuncDefs.Iter(SendCommon); // Flush function definitions
     }
 
     private void PrepareCommon()
