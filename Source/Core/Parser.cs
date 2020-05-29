@@ -432,6 +432,8 @@ private class BvBounds : Expr {
 		   func.Body = definition;
 		 } else if (QKeyValue.FindBoolAttribute(kv, "define")) {
 		   func.DefinitionBody = func.CreateFunctionDefinition(definition);
+		   if (func.TypeParameters.Count > 0)
+		     SemErr("function with define attribute has to be monomorphic");
 		 } else {
 		   ds.Add(func.CreateDefinitionAxiom(definition, kv));
 		 }
