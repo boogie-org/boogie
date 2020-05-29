@@ -1,0 +1,12 @@
+(0,0): Error: Transition invariant violated in final state
+Execution trace:
+    parallel6.bpl(10,5): anon0
+    parallel6.bpl(10,5): anon0_2
+    parallel6.bpl(32,7): inline$atomic_incr$0$anon0
+    parallel6.bpl(32,7): inline$atomic_incr$1$anon0
+    parallel6.bpl(10,5): anon0_1
+    parallel6.bpl(32,7): inline$atomic_incr$2$anon0
+    parallel6.bpl(32,7): inline$atomic_incr$3$anon0
+    (0,0): RefinementChecker
+
+Boogie program verifier finished with 7 verified, 1 error
