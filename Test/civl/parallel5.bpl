@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 var {:layer 0,1} a:[int]int;
 
@@ -22,7 +22,7 @@ procedure {:yields} {:layer 1} main()
     var {:linear "tid"} j: int;
     call i := Allocate();
     call j := Allocate();
-    par i := t(i) | Yield(j);
+    par i := t(i) | Yield(j, a);
     par i := u(i) | j := u(j);
 }
 
@@ -32,7 +32,7 @@ procedure {:yields} {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "
 
     yield;
     call Write(i, 42);
-    call Yield(i);
+    call Yield(i, a);
     assert {:layer 1} a[i] == 42;
 }
 
@@ -46,9 +46,5 @@ procedure {:yields} {:layer 1} u({:linear_in "tid"} i': int) returns ({:linear "
     assert {:layer 1} a[i] == 42;
 }
 
-procedure {:yields} {:layer 1} Yield({:linear "tid"} i: int)
-ensures {:layer 1} old(a)[i] == a[i];
-{
-    yield;
-    assert {:layer 1} old(a)[i] == a[i];
-}
+procedure {:yield_invariant} {:layer 1} Yield({:linear "tid"} i: int, old_a: [int]int);
+requires {:layer 1} old_a[i] == a[i];

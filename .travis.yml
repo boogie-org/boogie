@@ -22,11 +22,11 @@ install:
   - unzip z3*.zip
   - export PATH="$(find $PWD/z3* -name bin -type d):$PATH"
   # Install needed python tools
-  - sudo pip install lit OutputCheck pyyaml
+  - sudo pip install lit OutputCheck pyyaml psutil
 script:
   - dotnet build -c ${CONFIGURATION} ${SOLUTION}
   - dotnet test --no-build -c ${CONFIGURATION} ${SOLUTION}
-  - lit -v -D dotnet -D configuration=${CONFIGURATION} Test
+  - lit -v --timeout=120 -D dotnet -D configuration=${CONFIGURATION} Test
   # Do not deploy if GitVersionTask could not be used to extract the correct version number
   - test ! -e Source/BoogieDriver/bin/${CONFIGURATION}/Boogie.1.0.0.nupkg
 deploy:

@@ -36,7 +36,6 @@ namespace Microsoft.Boogie.SMTLib
     void ObjectInvariant()
     {
       Contract.Invariant(ctx != null);
-      Contract.Invariant(AxBuilder != null);
       Contract.Invariant(Namer != null);
       Contract.Invariant(DeclCollector != null);
       Contract.Invariant(cce.NonNullElements(Axioms));
@@ -111,7 +110,7 @@ namespace Microsoft.Boogie.SMTLib
           AxBuilder.Setup();
           break;
         case CommandLineOptions.TypeEncoding.Monomorphic:
-          AxBuilder = new TypeAxiomBuilderPremisses(gen);
+          AxBuilder = null;
           break;
         default:
           AxBuilder = new TypeAxiomBuilderPremisses(gen);
@@ -413,7 +412,7 @@ namespace Microsoft.Boogie.SMTLib
       FlushAndCacheCommons();
 
       if (HasReset) {
-        AxBuilder = (TypeAxiomBuilder)CachedAxBuilder.Clone();
+        AxBuilder = (TypeAxiomBuilder)CachedAxBuilder?.Clone();
         Namer = (SMTLibNamer)CachedNamer.Clone();
         Namer.ResetLabelCount();
         DeclCollector.SetNamer(Namer);
@@ -1242,31 +1241,36 @@ namespace Microsoft.Boogie.SMTLib
 
     protected void HandleProverError(string s)
     {
+      // Trying to match prover warnings of the form:
+      // - for Z3: WARNING: warning_message
+      // - for CVC4: query.smt2:222.24: warning: warning_message
+      // All other lines are considered to be errors.
+
       s = s.Replace("\r", "");
+      const string ProverWarning = "WARNING: ";
+      string errors = "";
+
       lock (proverWarnings) {
-        while (s.StartsWith("WARNING: ")) {
-          var idx = s.IndexOf('\n');
-          var warn = s;
-          if (idx > 0) {
-            warn = s.Substring(0, idx);
-            s = s.Substring(idx + 1);
+        foreach (var line in s.Split("\n")) {
+          int idx = line.IndexOf(ProverWarning, StringComparison.OrdinalIgnoreCase);
+          if (idx >= 0) {
+            string warn = line.Substring(idx + ProverWarning.Length);
+            proverWarnings.Add(warn);
           } else {
-            s = "";
+            errors += (line + "\n");
           }
-          warn = warn.Substring(9);
-          proverWarnings.Add(warn);
         }
       }
 
       FlushProverWarnings();
 
-      if (s == "") return;
+      if (errors == "") return;
 
       lock (proverErrors) {
-        proverErrors.Add(s);
-        Console.WriteLine("Prover error: " + s);
+        proverErrors.Add(errors);
+        Console.WriteLine("Prover error: " + errors);
       }
-      ReportProverError(s);
+      ReportProverError(errors);
     }
 
     [NoDefaultContract]
@@ -2060,16 +2064,21 @@ namespace Microsoft.Boogie.SMTLib
 
         LetBindingSorter letSorter = new LetBindingSorter(gen);
         Contract.Assert(letSorter != null);
+
         VCExpr sortedExpr = letSorter.Mutate(exprWithoutTypes, true);
         Contract.Assert(sortedExpr != null);
-        VCExpr sortedAxioms = letSorter.Mutate(AxBuilder.GetNewAxioms(), true);
-        Contract.Assert(sortedAxioms != null);
-
-        DeclCollector.Collect(sortedAxioms);
         DeclCollector.Collect(sortedExpr);
         FeedTypeDeclsToProver();
 
-        AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options, namedAssumes: NamedAssumes));
+        if (AxBuilder != null)
+        {
+          VCExpr sortedAxioms = letSorter.Mutate(AxBuilder.GetNewAxioms(), true);
+          Contract.Assert(sortedAxioms != null);
+          DeclCollector.Collect(sortedAxioms);
+          FeedTypeDeclsToProver();
+          AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options, namedAssumes: NamedAssumes));
+        }
+
         string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options, NamedAssumes, OptimizationRequests);
         Contract.Assert(res != null);
 
@@ -2765,7 +2774,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override string Lookup(VCExprVar var)
     {
-      VCExprVar v = parent.AxBuilder.TryTyped2Untyped(var);
+      VCExprVar v = parent.AxBuilder?.TryTyped2Untyped(var);
       if (v != null) {
         var = v;
       }

@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type Tid;
@@ -17,12 +17,8 @@ function {:inline} Gray(i:int)    returns(bool) { i == 2 }
 function {:inline} Black(i:int)   returns(bool) { i >= 3 }
 function {:inline} WhiteOrLighter(i:int) returns(bool) { i <= 1 }
 
-procedure {:yields} {:layer 2} YieldColorOnlyGetsDarker()
-ensures {:layer 2} Color >= old(Color);
-{
-  yield;
-  assert {:layer 2} Color >= old(Color);
-}
+procedure {:yield_invariant} {:layer 2} YieldColorOnlyGetsDarker(old_Color: int);
+requires Color >= old_Color;
 
 procedure {:yields} {:layer 2} {:refines "AtomicWriteBarrier"} WriteBarrier({:linear "tid"} tid:Tid)
 requires {:layer 2} Color >= WHITE();
@@ -32,7 +28,7 @@ ensures  {:layer 2} Color >= GRAY();
   yield;
   assert {:layer 2} Color >= WHITE();
   call colorLocal := GetColorNoLock();
-  call YieldColorOnlyGetsDarker();
+  call YieldColorOnlyGetsDarker(Color);
   if (WhiteOrLighter(colorLocal)) { call WriteBarrierSlow(tid); }
   yield;
   assert {:layer 2} Color >= GRAY();
@@ -63,7 +59,7 @@ modifies lock;
 {
   assert tid != nil;
   assume lock == nil;
-  lock := tid; 
+  lock := tid;
 }
 
 procedure {:left} {:layer 1,1} AtomicReleaseLock({:linear "tid"} tid: Tid)

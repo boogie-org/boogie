@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory -doModSetAnalysis "%s" > "%t"
+// RUN: %boogie -useArrayTheory -doModSetAnalysis "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // XFAIL: *
 // This test depends on insertion of assumes about disjoint permissions,

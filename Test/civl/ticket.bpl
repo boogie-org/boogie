@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function RightOpen (n: int) : [int]bool;
@@ -28,31 +28,16 @@ function {:inline} Inv2 (tickets: [int]bool, ticket: int, lock: X): (bool)
 }
 
 // ###########################################################################
-// Yield assertions
+// Yield invariants
 
-procedure {:yields} {:layer 2} YieldSpec ({:linear "tid"} tid: X)
-requires {:layer 2} tid != nil && cs == tid;
-ensures  {:layer 2} tid != nil && cs == tid;
-{
-  yield;
-  assert {:layer 2} tid != nil && cs == tid;
-}
+procedure {:yield_invariant} {:layer 2} YieldSpec ({:linear "tid"} tid: X);
+requires tid != nil && cs == tid;
 
-procedure {:yields} {:layer 1} Yield1 ()
-requires {:layer 1} Inv1(T, t);
-ensures  {:layer 1} Inv1(T, t);
-{
-  yield;
-  assert {:layer 1} Inv1(T, t);
-}
+procedure {:yield_invariant} {:layer 1} Yield1 ();
+requires Inv1(T, t);
 
-procedure {:yields} {:layer 2} Yield2 ()
-requires {:layer 2} Inv2(T, s, cs);
-ensures  {:layer 2} Inv2(T, s, cs);
-{
-  yield;
-  assert {:layer 2} Inv2(T, s, cs);
-}
+procedure {:yield_invariant} {:layer 2} Yield2 ();
+requires Inv2(T, s, cs);
 
 // ###########################################################################
 // Main program

@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // ###########################################################################
@@ -25,7 +25,7 @@ procedure {:yields}{:layer 9} main ({:linear_in "lin"} p : int)
 requires {:layer 9} perm(p) && x == y;
 {
   yield; assert {:layer 9} perm(p) && x == y;
-  async call Server_Inc(p);
+  async call {:sync} Server_Inc(p);
   yield;
 }
 
@@ -38,7 +38,7 @@ ensures  {:layer 9} x == old(x) + 1;
 modifies x;
 {
   call Yield_8();
-  async call AsyncInc(p);
+  async call {:sync} AsyncInc(p);
   call Yield_8();
 }
 
@@ -53,8 +53,7 @@ modifies x;
   call Yield_8();
 }
 
-procedure {:yields}{:layer 8} Yield_8 ()
-{ yield; }
+procedure {:yield_invariant}{:layer 8} Yield_8 ();
 
 // ###########################################################################
 // Abstracted low-level atomic actions (i.e., enriched with permissions)

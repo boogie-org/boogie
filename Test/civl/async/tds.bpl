@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function {:builtin "MapConst"} MapConstBool(bool): [int]bool;
@@ -90,7 +90,7 @@ procedure {:yields} {:layer 3} {:refines "atomic_server"} server3({:linear "tid"
     call snapshot := StatusSnapshot();
     tids' := tids;
     while (i < n)
-    invariant {:terminates} {:layer 2,3} true;
+    invariant {:terminates} {:layer 3} true;
     invariant {:layer 3} 0 <= i && i <= n;
     invariant {:layer 3} (forall j: int :: i <= j && j < n <==> tids'[j]);
     invariant {:layer 3} status == (lambda j: int :: if (0 <= j && j < i) then CREATED else snapshot[j]);

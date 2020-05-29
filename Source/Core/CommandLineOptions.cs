@@ -533,8 +533,6 @@ namespace Microsoft.Boogie {
     public bool ShowVerifiedProcedureCount = true;
     [ContractInvariantMethod]
     void ObjectInvariant3() {
-      Contract.Invariant(-1 <= LoopFrameConditions && LoopFrameConditions < 3);
-      Contract.Invariant(0 <= ModifiesDefault && ModifiesDefault < 7);
       Contract.Invariant((0 <= PrintErrorModel && PrintErrorModel <= 2) || PrintErrorModel == 4);
       Contract.Invariant(0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2);
       Contract.Invariant(0 <= Ai.StepsBeforeWidening && Ai.StepsBeforeWidening <= 9);
@@ -544,16 +542,6 @@ namespace Microsoft.Boogie {
 
     public int LoopUnrollCount = -1;  // -1 means don't unroll loops
     public bool SoundLoopUnrolling = false;
-    public int LoopFrameConditions = -1;  // -1 means not specified -- this will be replaced by the "implications" section below
-    public int ModifiesDefault = 5;
-    public bool LocalModifiesChecks = true;
-    public bool NoVerifyByDefault = false;
-    public enum OwnershipModelOption {
-      Standard,
-      Experimental,
-      Trivial
-    }
-    public OwnershipModelOption OwnershipModelEncoding = OwnershipModelOption.Standard;
     public int PrintErrorModel = 0;
     public string PrintErrorModelFile = null;
     public string/*?*/ ModelViewFile = null;
@@ -561,16 +549,10 @@ namespace Microsoft.Boogie {
     public string PrintCFGPrefix = null;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
-    public bool WeakArrayTheory = false;
     public bool RunDiagnosticsOnTimeout = false;
     public bool TraceDiagnosticsOnTimeout = false;
     public int TimeLimitPerAssertionInPercent = 10;
     public bool SIBoolControlVC = false;
-    public bool MonomorphicArrays {
-      get {
-        return UseArrayTheory || TypeEncodingMethod == TypeEncoding.Monomorphic;
-      }
-    }
     public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
     public bool DoModSetAnalysis = false;
     public bool UseAbstractInterpretation = false;
@@ -609,20 +591,6 @@ namespace Microsoft.Boogie {
       }
     }
 
-    [Obsolete("use the setter for 'ProverOptions' directly")]
-    public void AddProverOption(string option)
-    {
-      Contract.Requires(option != null);
-
-      this.ProverOptions = this.ProverOptions.Concat1(option);
-    }
-
-    [Obsolete("use the setter for 'ProverOptions' directly")]
-    public void RemoveAllProverOptions(Predicate<string> match)
-    {
-      this.ProverOptions = this.ProverOptions.Where(s => !match(s));
-    }
-
     private int bracketIdsInVC = -1;  // -1 - not specified, 0 - no, 1 - yes
 
     public int BracketIdsInVC {
@@ -635,8 +603,6 @@ namespace Microsoft.Boogie {
         this.bracketIdsInVC = value;
       }
     }
-
-    public bool CausalImplies = false;
 
     public int ProverKillTime = -1;  // -1 means not specified
     public int Resourcelimit = 0; // default to 0
@@ -730,8 +696,6 @@ namespace Microsoft.Boogie {
       Monomorphic
     };
     public TypeEncoding TypeEncodingMethod = TypeEncoding.Predicates;
-
-    public bool Monomorphize = false;
 
     public bool ReflectAdd = false;
 
@@ -1281,10 +1245,6 @@ namespace Microsoft.Boogie {
               case "arguments":
                 TypeEncodingMethod = TypeEncoding.Arguments;
                 break;
-              case "m":
-              case "monomorphic":
-                TypeEncodingMethod = TypeEncoding.Monomorphic;
-                break;
               default:
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
                 break;
@@ -1474,11 +1434,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("smoke", ref SoundnessSmokeTest) ||
               ps.CheckBooleanFlag("vcsDumpSplits", ref VcsDumpSplits) ||
               ps.CheckBooleanFlag("dbgRefuted", ref DebugRefuted) ||
-              ps.CheckBooleanFlag("causalImplies", ref CausalImplies) ||
               ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
-              ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
-              ps.CheckBooleanFlag("weakArrayTheory", ref WeakArrayTheory) ||
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
               ps.CheckBooleanFlag("runDiagnosticsOnTimeout", ref RunDiagnosticsOnTimeout) ||
               ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", ref TraceDiagnosticsOnTimeout) ||
@@ -1532,10 +1489,6 @@ namespace Microsoft.Boogie {
 
       if (ProverHelpRequested) {
         Console.WriteLine(TheProverFactory.BlankProverOptions().Help);
-      }
-
-      if (UseArrayTheory) {
-        Monomorphize = true;
       }
 
       if (inferLeastForUnsat != null) {
@@ -1812,8 +1765,6 @@ namespace Microsoft.Boogie {
   /traceTimes   output timing information at certain points in the pipeline
   /tracePOs     output information about the number of proof obligations
                 (also included in the /trace output)
-  /log[:method] Print debug output during translation
-
   /break        launch and break into debugger
 
   ---- CIVL options ----------------------------------------------------------
@@ -1877,8 +1828,6 @@ namespace Microsoft.Boogie {
   /printInlined
                 print the implementation after inlining calls to
                 procedures with the :inline attribute (works with /inline)
-  /lazyInline:1
-                Use the lazy inlining algorithm
   /stratifiedInline:1
                 Use the stratified inlining algorithm
   /fixedPointEngine:<engine>
@@ -1899,14 +1848,14 @@ namespace Microsoft.Boogie {
   /causalImplies
                 Translate Boogie's A ==> B into prover's A ==> A && B.
   /typeEncoding:<m>
-                how to encode types when sending VC to theorem prover
+                Encoding of types when generating VC of a polymorphic program:
                    p = predicates (default)
                    a = arguments
-                   m = monomorphic
-  /monomorphize
-                Do not abstract map types in the encoding (this is an
-                experimental feature that will not do the right thing if
-                the program uses polymorphism)
+                Boogie automatically detects monomorphic programs and enables
+                monomorphic VC generation, thereby overriding the above option.
+  /useArrayTheory
+                Use the SMT theory of arrays (as opposed to axioms). Supported
+                only for monomorphic programs.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
 
@@ -2023,11 +1972,6 @@ namespace Microsoft.Boogie {
   /platform:<ptype>,<location>
                 ptype = v11,v2,cli1
                 location = platform libraries directory
-
-  Z3 specific options:
-  /useArrayTheory
-                use Z3's native theory (as opposed to axioms).  Currently
-                implies /monomorphize.
 ");
     }
   }

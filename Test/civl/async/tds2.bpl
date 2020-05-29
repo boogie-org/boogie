@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function {:builtin "MapConst"} MapConstBool(bool): [int]bool;
@@ -20,8 +20,6 @@ var status:[int]int;
 
 const n: int;
 axiom 0 <= n;
-
-procedure {:yields} {:layer 0} Yield();
 
 procedure {:left} {:layer 1} AtomicCreateTask({:linear "tid"} tid: int)
 modifies status;
@@ -75,13 +73,13 @@ procedure {:yields} {:layer 1} {:refines "AtomicMain"} Main({:linear_in "tid"} t
     tids' := tids;
     call snapshot := StatusSnapshot();
     while (i < n)
-    invariant {:terminates} {:layer 0,1} true;
+    invariant {:terminates} {:layer 1} true;
     invariant {:layer 1} 0 <= i && i <= n;
     invariant {:layer 1} (forall j: int :: i <= j && j < n <==> tids'[j]);
     invariant {:layer 1} status == (lambda j: int :: if (0 <= j && j < i) then FINISHED else snapshot[j]);
     {
         call tid, tids' := Alloc(i, tids');
-        async call StartClient(tid);
+        async call {:sync} StartClient(tid);
         i := i + 1;
     }
     yield;
@@ -92,9 +90,7 @@ modifies status;
 requires {:layer 1} status[tid] == DEFAULT;
 ensures {:layer 1} status == old(status)[tid := FINISHED];
 {
-    call Yield();
-    async call GetTask(tid);
-    call Yield();
+    async call {:sync} GetTask(tid);
 }
 
 procedure {:yields} {:left} {:layer 1} GetTask({:linear_in "tid"} tid: int)
@@ -102,10 +98,8 @@ modifies status;
 requires {:layer 1} status[tid] == DEFAULT;
 ensures {:layer 1} status == old(status)[tid := FINISHED];
 {
-    call Yield();
     call CreateTask(tid);
-    async call GetTaskCallback(tid);
-    call Yield();
+    async call {:sync} GetTaskCallback(tid);
 }
 
 procedure {:yields} {:left} {:layer 1} GetTaskCallback({:linear_in "tid"} tid: int)
@@ -113,10 +107,8 @@ modifies status;
 requires {:layer 1} status[tid] == CREATED;
 ensures {:layer 1} status == old(status)[tid := FINISHED];
 {
-    call Yield();
     call ProcessTask(tid);
-    async call CollectTask(tid);
-    call Yield();
+    async call {:sync} CollectTask(tid);
 }
 
 procedure {:yields} {:left} {:layer 1} CollectTask({:linear_in "tid"} tid: int)
@@ -124,7 +116,5 @@ modifies status;
 requires {:layer 1} status[tid] == PROCESSED;
 ensures {:layer 1} status == old(status)[tid := FINISHED];
 {
-    call Yield();
     call FinishTask(tid);
-    call Yield();
 }

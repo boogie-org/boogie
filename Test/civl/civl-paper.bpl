@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type X;
 const nil: X;
@@ -24,31 +24,18 @@ var {:layer 0,1} b: bool;
 
 const p: int;
 
-procedure {:yields} {:layer 1} Yield1()
-requires {:layer 1} InvLock(lock, b);
-ensures {:layer 1} InvLock(lock, b);
-{
-    yield;
-    assert {:layer 1} InvLock(lock, b);
-}
+procedure {:yield_invariant} {:layer 1} Yield1();
+requires InvLock(lock, b);
 
 function {:inline} InvLock(lock: X, b: bool) : bool
 {
     lock != nil <==> b
 }
 
-procedure {:yields} {:layer 2} Yield2()
-{
-    yield;
-}
+procedure {:yield_invariant} {:layer 2} Yield2();
 
-procedure {:yields} {:layer 3} Yield3()
-requires {:layer 3} Inv(g);
-ensures {:layer 3} Inv(g);
-{
-    yield;
-    assert {:layer 3} Inv(g);
-}
+procedure {:yield_invariant} {:layer 3} Yield3();
+requires Inv(g);
 
 function {:inline} Inv(g: lmap) : bool
 {
@@ -140,7 +127,7 @@ ensures {:layer 1} InvLock(lock, b);
     var tmp: X;
 
     call Yield1();
-    
+
     while (true)
     invariant {:layer 1} InvLock(lock, b);
     {

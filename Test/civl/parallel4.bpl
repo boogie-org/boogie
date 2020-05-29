@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 var {:layer 0,1} a:int;
 
@@ -34,7 +34,4 @@ modifies a;
 
 procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();
 
-procedure {:yields} {:layer 1} Yield()
-{
-  yield;
-}
+procedure {:yield_invariant} {:layer 1} Yield();

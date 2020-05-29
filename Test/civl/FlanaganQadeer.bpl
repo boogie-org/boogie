@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type X;
 const nil: X;
@@ -64,30 +64,20 @@ modifies unallocated;
 
 procedure {:yields} {:layer 0} {:refines "AtomicAllocateLow"} AllocateLow() returns ({:linear "tid"} xl: X);
 
-procedure {:yields} {:layer 1} foo({:linear_in "tid"} tid': X, val: int)
-requires {:layer 1} tid' != nil;
+procedure {:yields} {:layer 1} foo({:linear_in "tid"} tid: X, val: int)
+requires {:layer 1} tid != nil;
 {
-    var {:linear "tid"} tid: X;
-    tid := tid';
-
     yield;
     call Lock(tid);
-    call tid := Yield(tid);
+    call Yield(tid, l, x);
     call Set(val);
-    call tid := Yield(tid);
+    call Yield(tid, l, x);
     assert {:layer 1} x == val;
-    call tid := Yield(tid);
+    call Yield(tid, l, x);
     call Unlock();
     yield;
 }
 
-procedure {:yields} {:layer 1} Yield({:linear_in "tid"} tid': X) returns ({:linear "tid"} tid: X)
-requires {:layer 1} tid' != nil;
-ensures {:layer 1} tid == tid';
-ensures {:layer 1} old(l) == tid ==> old(l) == l && old(x) == x;
-{
-    tid := tid';
-    yield;
-    assert {:layer 1} tid != nil;
-    assert {:layer 1} (old(l) == tid ==> old(l) == l && old(x) == x);
-}
+procedure {:yield_invariant} {:layer 1} Yield({:linear "tid"} tid: X, old_l: X, old_x: int);
+requires tid != nil;
+requires old_l == tid ==> old_l == l && old_x == x;

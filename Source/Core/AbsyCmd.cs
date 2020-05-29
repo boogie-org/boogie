@@ -2228,6 +2228,18 @@ namespace Microsoft.Boogie {
               callCmd.Resolve(rc);
           }
           HashSet<Variable> parallelCallLhss = new HashSet<Variable>();
+          Dictionary<Variable, List<CallCmd>> inputVariables = new Dictionary<Variable, List<CallCmd>>();
+          CallCmds.ForEach(c =>
+          {
+              foreach (var v in VariableCollector.Collect(c.Ins))
+              {
+                  if (!inputVariables.ContainsKey(v))
+                  {
+                      inputVariables[v] = new List<CallCmd>();
+                  }
+                  inputVariables[v].Add(c);
+              }
+          });
           foreach (CallCmd callCmd in CallCmds)
           {
               foreach (IdentifierExpr ie in callCmd.Outs)
@@ -2235,6 +2247,10 @@ namespace Microsoft.Boogie {
                   if (parallelCallLhss.Contains(ie.Decl))
                   {
                       rc.Error(this, "left-hand side of parallel call command contains variable twice: {0}", ie.Name);
+                  }
+                  else if (inputVariables.ContainsKey(ie.Decl) && (inputVariables[ie.Decl].Count > 1 || inputVariables[ie.Decl][0] != callCmd))
+                  {
+                      rc.Error(this, "left-hand side of parallel call command contains variable accessed on the right-hand side of a different arm: {0}", ie.Name);
                   }
                   else
                   {
@@ -2254,7 +2270,8 @@ namespace Microsoft.Boogie {
               }
               foreach (CallCmd callCmd in CallCmds)
               {
-                  if (!QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, CivlAttributes.YIELDS))
+                  if (!QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, CivlAttributes.YIELDS) &&
+                      !QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, CivlAttributes.YIELD_INVARIANT))
                   {
                       tc.Error(callCmd, "target procedure of a parallel call must yield");
                   }

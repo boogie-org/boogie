@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 var {:layer 0,3} val_a : int;
@@ -40,7 +40,7 @@ requires {:layer 2} perm(p);
   var val_a_local : int;
   yield; assert {:layer 2} perm(p);
   call val_a_local := get_val_a_perm(p);
-  async call propose_by_a(val_a_local, p);
+  async call {:sync} propose_by_a(val_a_local, p);
   yield;
 }
 
@@ -54,17 +54,17 @@ ensures {:layer 2} Consistent(val_a, val_b, done_a, done_b);
 modifies val_a, done_a, val_b, done_b;
 {
   var val_b_local : int;
-  
+
   if (*)
   {
     call set_val_b_perm(val, p);
     call set_done_b_perm(p);
-    async call ack_by_b(p);
+    async call {:sync} ack_by_b(p);
   }
   else
   {
     call set_val_b_perm(val_b_local, p);
-    async call propose_by_b(val_b_local, p);
+    async call {:sync} propose_by_b(val_b_local, p);
   }
 
   call dummy_1();
@@ -89,17 +89,17 @@ ensures {:layer 2} Consistent(val_a, val_b, done_a, done_b);
 modifies val_a, done_a, val_b, done_b;
 {
   var val_a_local : int;
-  
+
   if (*)
   {
     call set_val_a_perm(val, p);
     call set_done_a_perm(p);
-    async call ack_by_a(p);
+    async call {:sync} ack_by_a(p);
   }
   else
   {
     call set_val_a_perm(val_a_local, p);
-    async call propose_by_a(val_a_local, p);
+    async call {:sync} propose_by_a(val_a_local, p);
   }
 
   call dummy_1();

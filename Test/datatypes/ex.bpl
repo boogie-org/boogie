@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type{:datatype} finite_map;
 function{:constructor} finite_map(dom:[int]bool, map:[int]int):finite_map;

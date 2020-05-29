@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // ###########################################################################
@@ -23,7 +23,7 @@ ensures {:layer 1} x == old(x) + i;
   if (i > 0)
   {
     call inc_x(1);
-    async call inc(i-1);
+    async call {:sync} inc(i-1);
   }
 
   call dummy();

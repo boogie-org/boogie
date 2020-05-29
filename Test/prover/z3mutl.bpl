@@ -1,4 +1,4 @@
-// RUN: %boogie -typeEncoding:m "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 var x:int;
 

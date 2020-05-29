@@ -37,7 +37,7 @@ namespace Microsoft.Boogie
             return new List<Cmd>();
         }
 
-        public virtual List<Cmd> CreateUpdatesToRefinementVars()
+        public virtual List<Cmd> CreateUpdatesToRefinementVars(bool isMarkedCall)
         {
             return new List<Cmd>();
         }
@@ -48,43 +48,9 @@ namespace Microsoft.Boogie
         }
     }
 
-    class SkipRefinementInstrumentation : RefinementInstrumentation
+    class ActionRefinementInstrumentation : RefinementInstrumentation
     {
-        protected Dictionary<Variable, Variable> oldGlobalMap;
-
-        public SkipRefinementInstrumentation(
-            CivlTypeChecker civlTypeChecker,
-            YieldingProc yieldingProc,
-            Dictionary<Variable, Variable> oldGlobalMap)
-        {
-            this.oldGlobalMap = new Dictionary<Variable, Variable>();
-            foreach (Variable v in civlTypeChecker.GlobalVariables)
-            {
-                var layerRange = civlTypeChecker.GlobalVariableLayerRange(v);
-                if (layerRange.lowerLayerNum <= yieldingProc.upperLayer && yieldingProc.upperLayer < layerRange.upperLayerNum)
-                {
-                    this.oldGlobalMap[v] = oldGlobalMap[v];
-                }
-            }
-        }
-
-        public override List<Cmd> CreateAssertCmds()
-        {
-            return CreateUnchangedGlobalsAssertCmds();
-        }
-
-        public override List<Cmd> CreateUnchangedGlobalsAssertCmds()
-        {
-            var assertExpr = Expr.And(this.oldGlobalMap.Select(kvPair => Expr.Eq(Expr.Ident(kvPair.Key), Expr.Ident(kvPair.Value)))); 
-            assertExpr.Typecheck(new TypecheckingContext(null));
-            AssertCmd skipAssertCmd = new AssertCmd(Token.NoToken, assertExpr);
-            skipAssertCmd.ErrorData = "Globals must not be modified";
-            return new List<Cmd> { skipAssertCmd };
-        }
-    }
-
-    class ActionRefinementInstrumentation : SkipRefinementInstrumentation
-    {
+        private Dictionary<Variable, Variable> oldGlobalMap;
         private Dictionary<Variable, Variable> oldOutputMap;
         private List<Variable> newLocalVars;
         private Variable pc;
@@ -98,12 +64,20 @@ namespace Microsoft.Boogie
             CivlTypeChecker civlTypeChecker,
             Implementation impl,
             Implementation originalImpl,
-            Dictionary<Variable, Variable> oldGlobalMap):
-            base (civlTypeChecker, civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc, oldGlobalMap)
+            Dictionary<Variable, Variable> oldGlobalMap)
         {
-            newLocalVars = new List<Variable>();
+            this.oldGlobalMap = new Dictionary<Variable, Variable>();
             ActionProc actionProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc;
             int layerNum = actionProc.upperLayer;
+            foreach (Variable v in civlTypeChecker.GlobalVariables)
+            {
+                var layerRange = civlTypeChecker.GlobalVariableLayerRange(v);
+                if (layerRange.lowerLayerNum <= layerNum && layerNum < layerRange.upperLayerNum)
+                {
+                    this.oldGlobalMap[v] = oldGlobalMap[v];
+                }
+            }
+            this.newLocalVars = new List<Variable>();
             pc = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "civl_pc", Type.Bool));
             newLocalVars.Add(pc);
             ok = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "civl_ok", Type.Bool));
@@ -213,6 +187,15 @@ namespace Microsoft.Boogie
             return new List<Cmd> { assertCmd };
         }
 
+        public override List<Cmd> CreateUnchangedGlobalsAssertCmds()
+        {
+            var assertExpr = Expr.And(this.oldGlobalMap.Select(kvPair => Expr.Eq(Expr.Ident(kvPair.Key), Expr.Ident(kvPair.Value)))); 
+            assertExpr.Typecheck(new TypecheckingContext(null));
+            AssertCmd skipAssertCmd = new AssertCmd(Token.NoToken, assertExpr);
+            skipAssertCmd.ErrorData = "Globals must not be modified";
+            return new List<Cmd> { skipAssertCmd };
+        }
+        
         public override List<Cmd> CreateUnchangedOutputsAssertCmds()
         {
             // assert pc ==> o_old == o;
@@ -223,26 +206,38 @@ namespace Microsoft.Boogie
             return new List<Cmd> { skipAssertCmd };
         }
 
-        public override List<Cmd> CreateUpdatesToRefinementVars()
+        public override List<Cmd> CreateUpdatesToRefinementVars(bool isMarkedCall)
         {
-            // pc := g_old == g ==> pc;
-            // ok := transitionRelation(i, g_old, o, g) || (o_old == o && ok);
-            List<AssignLhs> pcUpdateLHS = new List<AssignLhs>
+            var cmds = new List<Cmd>();
+            List<AssignLhs> pcOkUpdateLHS = new List<AssignLhs>
             {
                 new SimpleAssignLhs(Token.NoToken, Expr.Ident(pc)),
                 new SimpleAssignLhs(Token.NoToken, Expr.Ident(ok))
             };
-            List<Expr> pcUpdateRHS = new List<Expr>(
-                new Expr[]
-                {
-                    Expr.Imp(OldEqualityExprForGlobals(), Expr.Ident(pc)),
-                    Expr.Or(transitionRelation, Expr.And(OldEqualityExprForOutputs(), Expr.Ident(ok))),
-                });
-            foreach (Expr e in pcUpdateRHS)
+            if (isMarkedCall)
             {
-                e.Typecheck(new TypecheckingContext(null));
+                // assert !pc;
+                // pc, ok := true, true;
+                cmds.Add(new AssertCmd(Token.NoToken, Expr.Not(Expr.Ident(pc))));
+                List<Expr> pcOkUpdateRHS = new List<Expr>(new Expr[] {Expr.True, Expr.True});
+                cmds.Add(new AssignCmd(Token.NoToken, pcOkUpdateLHS, pcOkUpdateRHS));
             }
-            return new List<Cmd> { new AssignCmd(Token.NoToken, pcUpdateLHS, pcUpdateRHS) };
+            else
+            {
+                // pc, ok := g_old == g ==> pc, transitionRelation(i, g_old, o, g) || (o_old == o && ok);
+                List<Expr> pcOkUpdateRHS = new List<Expr>(
+                    new Expr[]
+                    {
+                        Expr.Imp(OldEqualityExprForGlobals(), Expr.Ident(pc)),
+                        Expr.Or(transitionRelation, Expr.And(OldEqualityExprForOutputs(), Expr.Ident(ok))),
+                    });
+                cmds.Add(new AssignCmd(Token.NoToken, pcOkUpdateLHS, pcOkUpdateRHS));
+            }
+            foreach (var cmd in cmds)
+            {
+                cmd.Typecheck(new TypecheckingContext(null));
+            }
+            return cmds;
         }
 
         public override List<Cmd> CreateUpdatesToOldOutputVars()
