@@ -1626,6 +1626,7 @@ namespace Microsoft.Boogie {
        Turn this function into a definition (using the define-fun construct)
        when using the SMT-LIB backend.  Can only be used with non-recursive
        functions. Cannot be combined with :inline attribute.
+       Currently works only with monomorphic functions.
 
      {:inline}
      {:inline true}
