@@ -520,9 +520,11 @@ Function<.out List<Declaration>/*!*/ ds.>
     if (definition != null) {
       // generate either an axiom or a function body
       if (QKeyValue.FindBoolAttribute(kv, "inline")) {
+        if (QKeyValue.FindBoolAttribute(kv, "define"))
+          SemErr("function cannot have both inline and define attributes");
         func.Body = definition;
       } else if (QKeyValue.FindBoolAttribute(kv, "define")) {
-        func.DefBody = func.CreateFunctionDefinition(definition);
+        func.DefinitionBody = func.CreateFunctionDefinition(definition);
       } else {
         ds.Add(func.CreateDefinitionAxiom(definition, kv));
       }

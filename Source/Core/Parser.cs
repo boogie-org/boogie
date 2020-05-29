@@ -427,6 +427,8 @@ private class BvBounds : Expr {
 		if (definition != null) {
 		 // generate either an axiom or a function body
 		 if (QKeyValue.FindBoolAttribute(kv, "inline")) {
+		   if (QKeyValue.FindBoolAttribute(kv, "define"))
+		     SemErr("function cannot have both inline and define attributes");
 		   func.Body = definition;
 		 } else if (QKeyValue.FindBoolAttribute(kv, "define")) {
 		   func.DefinitionBody = func.CreateFunctionDefinition(definition);

@@ -1,0 +1,2 @@
+(define-fun foo2 ((x Int) )  Int (+ x 1))
+(define-fun foo ((x@@0 Int) )  Bool (> (foo2 x@@0) 0))
