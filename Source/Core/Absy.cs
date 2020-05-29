@@ -2671,10 +2671,8 @@ namespace Microsoft.Boogie {
   public class Function : DeclWithFormals {
     public string Comment;
 
-    // Body is only set if the function is declared with {:inline}
-    public Expr Body;
-    // DefBody is only set if the function is declared with {:define}
-    public NAryExpr DefBody;
+    public Expr Body; // Only set if the function is declared with {:inline}
+    public NAryExpr DefinitionBody; // Only set if the function is declared with {:define}
     public Axiom DefinitionAxiom;
 
     public IList<Axiom> otherDefinitionAxioms;
@@ -2776,11 +2774,11 @@ namespace Microsoft.Boogie {
         Body.Emit(stream);
         stream.WriteLine();
         stream.WriteLine("}");
-      } else if (DefBody != null) {
+      } else if (DefinitionBody != null) {
         stream.WriteLine();
         stream.WriteLine("{");
         stream.Write(level + 1, "");
-        DefBody.Args[1].Emit(stream);
+        DefinitionBody.Args[1].Emit(stream);
         stream.WriteLine();
         stream.WriteLine("}");
       } else {
@@ -2804,9 +2802,9 @@ namespace Microsoft.Boogie {
             rc.StateMode = ResolutionContext.State.StateLess;
             Body.Resolve(rc);
             rc.StateMode = ResolutionContext.State.Single;
-        } else if (DefBody != null) {
+        } else if (DefinitionBody != null) {
           rc.StateMode = ResolutionContext.State.StateLess;
-          DefBody.Resolve(rc);
+          DefinitionBody.Resolve(rc);
           rc.StateMode = ResolutionContext.State.Single;
         }
         rc.PopVarContext();
@@ -2831,15 +2829,15 @@ namespace Microsoft.Boogie {
           tc.Error(Body,
                    "function body with invalid type: {0} (expected: {1})",
                    Body.Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
-      } else if (DefBody != null) {
-        DefBody.Typecheck(tc);
+      } else if (DefinitionBody != null) {
+        DefinitionBody.Typecheck(tc);
 
         // We are matching the type of the function body with output param, and not the type
-        // of DefBody, which is always going to be bool (since it is of the form func_call == func_body)
-        if (!cce.NonNull(DefBody.Args[1].Type).Unify(cce.NonNull(OutParams[0]).TypedIdent.Type))
-          tc.Error(DefBody.Args[1],
+        // of DefinitionBody, which is always going to be bool (since it is of the form func_call == func_body)
+        if (!cce.NonNull(DefinitionBody.Args[1].Type).Unify(cce.NonNull(OutParams[0]).TypedIdent.Type))
+          tc.Error(DefinitionBody.Args[1],
             "function body with invalid type: {0} (expected: {1})",
-            DefBody.Args[1].Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
+            DefinitionBody.Args[1].Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
       }
     }
 

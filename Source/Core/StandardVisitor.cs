@@ -327,8 +327,8 @@ namespace Microsoft.Boogie {
       node = (Function)this.VisitDeclWithFormals(node);
       if (node.Body != null)
         node.Body = this.VisitExpr(node.Body);
-      if (node.DefBody != null)
-        node.DefBody = (NAryExpr)this.VisitExpr(node.DefBody);
+      if (node.DefinitionBody != null)
+        node.DefinitionBody = (NAryExpr)this.VisitExpr(node.DefinitionBody);
       return node;
     }
     public virtual GlobalVariable VisitGlobalVariable(GlobalVariable node) {
@@ -896,8 +896,8 @@ namespace Microsoft.Boogie {
           node = (Function)this.VisitDeclWithFormals(node);
           if (node.Body != null)
               this.VisitExpr(node.Body);
-          if (node.DefBody != null)
-            this.VisitExpr(node.DefBody);
+          if (node.DefinitionBody != null)
+            this.VisitExpr(node.DefinitionBody);
           return node;
       }
       public override GlobalVariable VisitGlobalVariable(GlobalVariable node)

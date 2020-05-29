@@ -2908,8 +2908,8 @@ namespace Microsoft.Boogie.SMTLib
         if (!KnownDatatypeConstructors.ContainsKey(datatype))
           KnownDatatypeConstructors[datatype] = new List<Function>();
         KnownDatatypeConstructors[datatype].Add(f);
-      } else if (f.DefBody != null) {
-        DefinedFunctions.Add(f, (VCExprNAry)translator.Translate(f.DefBody));
+      } else if (f.DefinitionBody != null) {
+        DefinedFunctions.Add(f, (VCExprNAry)translator.Translate(f.DefinitionBody));
       }
       base.DeclareFunction(f, attributes);
     }
