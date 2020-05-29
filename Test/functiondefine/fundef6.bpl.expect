@@ -16,3 +16,5 @@ axiom (forall x: int :: {:define false} { foo2(x): bool } foo2(x): bool == (x > 
 function foo3(x: int) : bool;
 
 axiom (forall x: int :: { foo3(x): bool } foo3(x): bool == (x > 0));
+
+Boogie program verifier finished with 0 verified, 0 errors
