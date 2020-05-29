@@ -130,7 +130,7 @@ CHARACTERS
   cr        = '\r'.
   lf        = '\n'.
   tab       = '\t'.
-  
+
   space = ' '.
   quote = '"'.
 
@@ -151,7 +151,7 @@ TOKENS
 
   decimal = digit {digit} 'e' [ '-' ] digit {digit} .
   dec_float = digit {digit} '.' digit {digit} [ 'e' [ '-' ] digit {digit} ] .
-	float = [ '-' ] '0' 'x' hexdigit {hexdigit} '.' hexdigit {hexdigit} 'e' [ '-' ] digit {digit} 'f' digit {digit} 'e' digit {digit} 
+	float = [ '-' ] '0' 'x' hexdigit {hexdigit} '.' hexdigit {hexdigit} 'e' [ '-' ] digit {digit} 'f' digit {digit} 'e' digit {digit}
 										| '0' 'N' 'a' 'N' digit {digit} 'e' digit {digit}
 										| '0' 'n' 'a' 'n' digit {digit} 'e' digit {digit}
 										| '0' '+' 'o' 'o' digit {digit} 'e' digit {digit}
@@ -939,11 +939,10 @@ MapAssignIndex<.out IToken/*!*/ x, out List<Expr/*!*/>/*!*/ indexes.>
 
 /*------------------------------------------------------------------------*/
 CallCmd<out Cmd c>
-= (. Contract.Ensures(Contract.ValueAtReturn(out c) != null); 
-     IToken x; 
+= (. Contract.Ensures(Contract.ValueAtReturn(out c) != null);
+     IToken x;
      bool isAsync = false;
      bool isFree = false;
-     QKeyValue kv = null;
      c = null;
   .)
   [ "async"          (. isAsync = true;  .)
@@ -951,34 +950,34 @@ CallCmd<out Cmd c>
   [ "free"          (. isFree = true;  .)
   ]
   "call"                          (. x = t; .)
-  { Attribute<ref kv> }
-  CallParams<isAsync, isFree, kv, x, out c> (. .)
+  CallParams<isAsync, isFree, x, out c> (. .)
   .
 
 ParCallCmd<out Cmd d>
-= (. Contract.Ensures(Contract.ValueAtReturn(out d) != null); 
-     IToken x; 
-     QKeyValue kv = null;
-	 Cmd c = null;
-     List<CallCmd> callCmds = new List<CallCmd>();
+= (.
+    Contract.Ensures(Contract.ValueAtReturn(out d) != null);
+    IToken x;
+    Cmd c = null;
+    List<CallCmd> callCmds = new List<CallCmd>();
   .)
   "par"                          (. x = t; .)
-  { Attribute<ref kv> }
-  CallParams<false, false, kv, x, out c> (. callCmds.Add((CallCmd)c); .) 
-  { "|" CallParams<false, false, kv, x, out c> (. callCmds.Add((CallCmd)c); .) 
+  CallParams<false, false, x, out c> (. callCmds.Add((CallCmd)c); .)
+  { "|" CallParams<false, false, x, out c> (. callCmds.Add((CallCmd)c); .)
   }
-  ";" (. d = new ParCallCmd(x, callCmds, kv); .)
+  ";" (. d = new ParCallCmd(x, callCmds); .)
   .
 
-CallParams<bool isAsync, bool isFree, QKeyValue kv, IToken x, out Cmd c>
-= (. 
+CallParams<bool isAsync, bool isFree, IToken x, out Cmd c>
+= (.
+    QKeyValue kv = null;
     List<IdentifierExpr> ids = new List<IdentifierExpr>();
     List<Expr> es = new List<Expr>();
     Expr en;
-    IToken first; 
+    IToken first;
     IToken p;
 	c = null;
   .)
+  { Attribute<ref kv> }
   Ident<out first>
     ( "("
       [ Expression<out en>       (. es.Add(en); .)

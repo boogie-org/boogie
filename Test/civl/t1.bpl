@@ -39,13 +39,8 @@ modifies h;
 
 procedure {:yields} {:layer 0} {:refines "AtomicSetH"} SetH(val:int);
 
-procedure {:yields} {:layer 1} Yield({:linear "1"} x: [int]bool)
-requires {:layer 1} x == mapconstbool(true) && g == 0;
-ensures {:layer 1} x == mapconstbool(true) && g == 0;
-{
-    yield;
-    assert {:layer 1} x == mapconstbool(true) && g == 0;
-}
+procedure {:yield_invariant} {:layer 1} Yield({:linear "1"} x: [int]bool);
+requires x == mapconstbool(true) && g == 0;
 
 procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: int)
 ensures {:layer 1} xl != 0;

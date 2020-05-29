@@ -139,13 +139,13 @@ requires {:layer 2} Inv(valid, elt, owner) && x != null && tid != nil && tid != 
 ensures {:layer 2} Inv(valid, elt, owner);
 {
   var i: int;
-  par Yield12();
+  par Yield1() | Yield2();
   call i := FindSlot(x, tid);
 
   if(i == -1)
   {
     result := false;
-    par Yield12();
+    par Yield1() | Yield2();
     return;
   }
   par Yield1();
@@ -157,7 +157,7 @@ ensures {:layer 2} Inv(valid, elt, owner);
   call setValid(i, tid);
   call release(i, tid);
   result := true;
-  par Yield12();
+  par Yield1() | Yield2();
   return;
 }
 
@@ -192,14 +192,14 @@ ensures {:layer 2} Inv(valid, elt, owner);
 {
   var i : int;
   var j : int;
-  par Yield12();
+  par Yield1() | Yield2();
 
   call i := FindSlot(x, tid);
 
   if (i == -1)
   {
     result := false;
-    par Yield12();
+    par Yield1() | Yield2();
     return;
   }
 
@@ -213,7 +213,7 @@ ensures {:layer 2} Inv(valid, elt, owner);
     call setEltToNull(i, tid);
     call release(i,tid);
     result := false;
-    par Yield12();
+    par Yield1() | Yield2();
     return;
   }
 
@@ -230,7 +230,7 @@ ensures {:layer 2} Inv(valid, elt, owner);
   call release(j, tid);
   call release(i, tid);
   result := true;
-  par Yield12();
+  par Yield1() | Yield2();
   return;
 }
 
@@ -251,7 +251,7 @@ ensures {:layer 1} {:layer 2} Inv(valid, elt, owner);
   var j : int;
   var isThere : bool;
 
-  par Yield12() | YieldLookUp(old_valid, old_elt);
+  par Yield1() | Yield2() | YieldLookUp1(old_valid, old_elt) | YieldLookUp2(old_valid, old_elt);
 
   j := 0;
 
@@ -267,44 +267,32 @@ ensures {:layer 1} {:layer 2} Inv(valid, elt, owner);
     {
       call release(j, tid);
       found := true;
-      par Yield12() | YieldLookUp(old_valid, old_elt);
+      par Yield1() | Yield2() | YieldLookUp1(old_valid, old_elt) | YieldLookUp2(old_valid, old_elt);
       return;
     }
     call release(j,tid);
-    par Yield12() | YieldLookUp(old_valid, old_elt);
+    par Yield1() | Yield2() | YieldLookUp1(old_valid, old_elt) | YieldLookUp2(old_valid, old_elt);
     j := j + 1;
   }
   found := false;
 
-  par Yield12() | YieldLookUp(old_valid, old_elt);
+  par Yield1() | Yield2() | YieldLookUp1(old_valid, old_elt) | YieldLookUp2(old_valid, old_elt);
   return;
 }
 
-procedure {:yields} {:layer 1} Yield1()
-requires {:layer 1} Inv(valid, elt, owner);
-ensures {:layer 1} Inv(valid, elt, owner);
-{
-  yield;
-  assert {:layer 1} Inv(valid, elt, owner);
-}
+procedure {:yield_invariant} {:layer 1} Yield1();
+requires Inv(valid, elt, owner);
 
-procedure {:yields} {:layer 2} Yield12()
-requires {:layer 1} {:layer 2} Inv(valid, elt, owner);
-ensures {:layer 1} {:layer 2} Inv(valid, elt, owner);
-{
-  yield;
-  assert {:layer 1} {:layer 2} Inv(valid, elt, owner);
-}
+procedure {:yield_invariant} {:layer 2} Yield2();
+requires Inv(valid, elt, owner);
 
 function {:inline} Inv(valid: [int]bool, elt: [int]int, owner: [int]X): (bool)
 {
   (forall i:int :: 0 <= i && i < max ==> (elt[i] == null <==> (!valid[i] && owner[i] == nil)))
 }
 
-procedure {:yields} {:layer 2} YieldLookUp(old_valid: [int]bool, old_elt: [int]int)
-requires {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
-ensures {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
-{
-  yield;
-  assert {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
-}
+procedure {:yield_invariant} {:layer 1} YieldLookUp1(old_valid: [int]bool, old_elt: [int]int);
+requires (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
+
+procedure {:yield_invariant} {:layer 2} YieldLookUp2(old_valid: [int]bool, old_elt: [int]int);
+requires (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);

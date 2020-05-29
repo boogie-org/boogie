@@ -12,6 +12,8 @@ namespace Microsoft.Boogie
 
         public const string YIELDS = "yields";
 
+        public const string YIELD_INVARIANT = "yield_invariant";
+        
         public const string INTRO = "intro";
         
         public const string ATOMIC = "atomic";
@@ -43,7 +45,7 @@ namespace Microsoft.Boogie
         public const string CHOICE = "choice";
 
         private static string[] CIVL_ATTRIBUTES =
-            {LAYER, YIELDS, INTRO, ATOMIC, LEFT, RIGHT, BOTH, REFINES, HIDE,
+            {LAYER, YIELDS, YIELD_INVARIANT, INTRO, ATOMIC, LEFT, RIGHT, BOTH, REFINES, HIDE,
              COMMUTATIVITY, LEMMA, WITNESS,
              PENDING_ASYNC, IS, IS_INVARIANT, IS_ABSTRACTION, ELIM, CHOICE };
 

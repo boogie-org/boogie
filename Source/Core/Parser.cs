@@ -1251,11 +1251,10 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	}
 
 	void CallCmd(out Cmd c) {
-		Contract.Ensures(Contract.ValueAtReturn(out c) != null); 
-		IToken x; 
+		Contract.Ensures(Contract.ValueAtReturn(out c) != null);
+		IToken x;
 		bool isAsync = false;
 		bool isFree = false;
-		QKeyValue kv = null;
 		c = null;
 		
 		if (la.kind == 52) {
@@ -1268,34 +1267,27 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		}
 		Expect(53);
 		x = t; 
-		while (la.kind == 28) {
-			Attribute(ref kv);
-		}
-		CallParams(isAsync, isFree, kv, x, out c);
+		CallParams(isAsync, isFree, x, out c);
 		
 	}
 
 	void ParCallCmd(out Cmd d) {
-		Contract.Ensures(Contract.ValueAtReturn(out d) != null); 
-		IToken x; 
-		QKeyValue kv = null;
+		Contract.Ensures(Contract.ValueAtReturn(out d) != null);
+		IToken x;
 		Cmd c = null;
 		List<CallCmd> callCmds = new List<CallCmd>();
 		
 		Expect(54);
 		x = t; 
-		while (la.kind == 28) {
-			Attribute(ref kv);
-		}
-		CallParams(false, false, kv, x, out c);
+		CallParams(false, false, x, out c);
 		callCmds.Add((CallCmd)c); 
 		while (la.kind == 55) {
 			Get();
-			CallParams(false, false, kv, x, out c);
+			CallParams(false, false, x, out c);
 			callCmds.Add((CallCmd)c); 
 		}
 		Expect(9);
-		d = new ParCallCmd(x, callCmds, kv); 
+		d = new ParCallCmd(x, callCmds); 
 	}
 
 	void MapAssignIndex(out IToken/*!*/ x, out List<Expr/*!*/>/*!*/ indexes) {
@@ -1316,14 +1308,18 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		Expect(19);
 	}
 
-	void CallParams(bool isAsync, bool isFree, QKeyValue kv, IToken x, out Cmd c) {
+	void CallParams(bool isAsync, bool isFree, IToken x, out Cmd c) {
+		QKeyValue kv = null;
 		List<IdentifierExpr> ids = new List<IdentifierExpr>();
 		List<Expr> es = new List<Expr>();
 		Expr en;
-		IToken first; 
+		IToken first;
 		IToken p;
 		c = null;
 		
+		while (la.kind == 28) {
+			Attribute(ref kv);
+		}
 		Ident(out first);
 		if (la.kind == 10) {
 			Get();
@@ -1815,11 +1811,11 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			e = new LiteralExpr(t, bn, n); 
 			break;
 		}
-    case 4: {
-      Get();
-      e = new LiteralExpr(t, t.val.Trim('"'));
-      break;
-    }
+		case 4: {
+			Get();
+			e = new LiteralExpr(t, t.val.Trim('"')); 
+			break;
+		}
 		case 1: {
 			Ident(out x);
 			id = new IdentifierExpr(x, x.val);  e = id; 
