@@ -521,12 +521,12 @@ Function<.out List<Declaration>/*!*/ ds.>
       // generate either an axiom or a function body
       if (QKeyValue.FindBoolAttribute(kv, "inline")) {
         if (QKeyValue.FindBoolAttribute(kv, "define"))
-          SemErr("function cannot have both inline and define attributes");
+          SemErr("function cannot have both :inline and :define attributes");
         func.Body = definition;
       } else if (QKeyValue.FindBoolAttribute(kv, "define")) {
         func.DefinitionBody = func.CreateFunctionDefinition(definition);
         if (func.TypeParameters.Count > 0)
-          SemErr("function with define attribute has to be monomorphic");
+          SemErr("function with :define attribute has to be monomorphic");
       } else {
         ds.Add(func.CreateDefinitionAxiom(definition, kv));
       }
