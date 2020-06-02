@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design;
 using System.Linq;
-using System.Diagnostics.Contracts;
 using System.Diagnostics;
-using System.Numerics;
 using Microsoft.Boogie.GraphUtil;
-using Microsoft.Basetypes;
 
 namespace Microsoft.Boogie
 {

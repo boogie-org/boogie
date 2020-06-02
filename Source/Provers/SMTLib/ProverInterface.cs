@@ -1251,7 +1251,7 @@ namespace Microsoft.Boogie.SMTLib
       string errors = "";
 
       lock (proverWarnings) {
-        foreach (var line in s.Split("\n")) {
+        foreach (var line in s.Split('\n')) {
           int idx = line.IndexOf(ProverWarning, StringComparison.OrdinalIgnoreCase);
           if (idx >= 0) {
             string warn = line.Substring(idx + ProverWarning.Length);
