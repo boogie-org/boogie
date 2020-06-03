@@ -431,9 +431,9 @@ private class BvBounds : Expr {
 		     SemErr("function cannot have both :inline and :define attributes");
 		   func.Body = definition;
 		 } else if (QKeyValue.FindBoolAttribute(kv, "define")) {
-		   func.DefinitionBody = func.CreateFunctionDefinition(definition);
 		   if (func.TypeParameters.Count > 0)
 		     SemErr("function with :define attribute has to be monomorphic");
+		   func.DefinitionBody = func.CreateFunctionDefinition(definition);
 		 } else {
 		   ds.Add(func.CreateDefinitionAxiom(definition, kv));
 		 }
