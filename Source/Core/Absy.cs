@@ -2909,7 +2909,7 @@ namespace Microsoft.Boogie {
     // foo(x):int == x + 1
     // We need the left hand call part later on to be able to generate
     // the appropriate SMTlib style function definition. Hence, it is
-    // important that is goes through the resolution and type checking passes,
+    // important that it goes through the resolution and type checking passes,
     // since otherwise it is hard to connect function parameters to the resolved
     // variables in the function body.
     public NAryExpr CreateFunctionDefinition(Expr body) {
