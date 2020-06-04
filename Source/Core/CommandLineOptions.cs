@@ -1621,9 +1621,17 @@ namespace Microsoft.Boogie {
      {:bvbuiltin ""spec""}
        Rewrite the function to built-in prover function symbol 'fn'.
 
+     {:define}
+     {:define true}
+       Turn this function into a definition (using the define-fun construct)
+       when using the SMT-LIB backend.  Can only be used with non-recursive
+       functions. Cannot be combined with :inline attribute.
+       Currently works only with monomorphic functions.
+
      {:inline}
      {:inline true}
        Expand function according to its definition before going to the prover.
+       Cannot be combined with :define attribute.
 
      {:never_pattern true}
        Terms starting with this function symbol will never be

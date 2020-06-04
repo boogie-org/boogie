@@ -2671,8 +2671,8 @@ namespace Microsoft.Boogie {
   public class Function : DeclWithFormals {
     public string Comment;
 
-    // the body is only set if the function is declared with {:inline}
-    public Expr Body;
+    public Expr Body; // Only set if the function is declared with {:inline}
+    public NAryExpr DefinitionBody; // Only set if the function is declared with {:define}
     public Axiom DefinitionAxiom;
 
     public IList<Axiom> otherDefinitionAxioms;
@@ -2755,11 +2755,19 @@ namespace Microsoft.Boogie {
       stream.Write(this, level, "function ");
       EmitAttributes(stream);
       if (Body != null && !QKeyValue.FindBoolAttribute(Attributes, "inline")) {
+        Contract.Assert(DefinitionBody == null);
         // Boogie inlines any function whose .Body field is non-null.  The parser populates the .Body field
-        // is the :inline attribute is present, but if someone creates the Boogie file directly as an AST, then
+        // if the :inline attribute is present, but if someone creates the Boogie file directly as an AST, then
         // the :inline attribute may not be there.  We'll make sure it's printed, so one can see that this means
         // that the body will be inlined.
         stream.Write("{:inline} ");
+      }
+      if (DefinitionBody != null && !QKeyValue.FindBoolAttribute(Attributes, "define")) {
+        // Boogie defines any function whose .DefinitionBody field is non-null.  The parser populates the .DefinitionBody field
+        // if the :define attribute is present, but if someone creates the Boogie file directly as an AST, then
+        // the :define attribute may not be there.  We'll make sure it's printed, so one can see that this means
+        // that the function will be defined.
+        stream.Write("{:define} ");
       }
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
         stream.Write("h{0}^^{1}", this.GetHashCode(), TokenTextWriter.SanitizeIdentifier(this.Name));
@@ -2768,10 +2776,18 @@ namespace Microsoft.Boogie {
       }
       EmitSignature(stream, true);
       if (Body != null) {
+        Contract.Assert(DefinitionBody == null);
         stream.WriteLine();
         stream.WriteLine("{");
         stream.Write(level + 1, "");
         Body.Emit(stream);
+        stream.WriteLine();
+        stream.WriteLine("}");
+      } else if (DefinitionBody != null) {
+        stream.WriteLine();
+        stream.WriteLine("{");
+        stream.Write(level + 1, "");
+        DefinitionBody.Args[1].Emit(stream);
         stream.WriteLine();
         stream.WriteLine("}");
       } else {
@@ -2791,11 +2807,15 @@ namespace Microsoft.Boogie {
         RegisterFormals(InParams, rc);
         RegisterFormals(OutParams, rc);
         ResolveAttributes(rc);
-        if (Body != null)
-        {
-            rc.StateMode = ResolutionContext.State.StateLess;
-            Body.Resolve(rc);
-            rc.StateMode = ResolutionContext.State.Single;
+        if (Body != null) {
+          Contract.Assert(DefinitionBody == null);
+          rc.StateMode = ResolutionContext.State.StateLess;
+          Body.Resolve(rc);
+          rc.StateMode = ResolutionContext.State.Single;
+        } else if (DefinitionBody != null) {
+          rc.StateMode = ResolutionContext.State.StateLess;
+          DefinitionBody.Resolve(rc);
+          rc.StateMode = ResolutionContext.State.Single;
         }
         rc.PopVarContext();
         Type.CheckBoundVariableOccurrences(TypeParameters,
@@ -2814,11 +2834,21 @@ namespace Microsoft.Boogie {
       base.Typecheck(tc);
       // TypecheckAttributes(tc);
       if (Body != null) {
+        Contract.Assert(DefinitionBody == null);
         Body.Typecheck(tc);
         if (!cce.NonNull(Body.Type).Unify(cce.NonNull(OutParams[0]).TypedIdent.Type))
           tc.Error(Body,
                    "function body with invalid type: {0} (expected: {1})",
                    Body.Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
+      } else if (DefinitionBody != null) {
+        DefinitionBody.Typecheck(tc);
+
+        // We are matching the type of the function body with output param, and not the type
+        // of DefinitionBody, which is always going to be bool (since it is of the form func_call == func_body)
+        if (!cce.NonNull(DefinitionBody.Args[1].Type).Unify(cce.NonNull(OutParams[0]).TypedIdent.Type))
+          tc.Error(DefinitionBody.Args[1],
+            "function body with invalid type: {0} (expected: {1})",
+            DefinitionBody.Args[1].Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
       }
     }
 
@@ -2870,6 +2900,36 @@ namespace Microsoft.Boogie {
       }
       DefinitionAxiom = new Axiom(tok, def);
       return DefinitionAxiom;
+    }
+
+    // Generates function definition of the form func_call == func_body
+    // For example, for
+    // function {:define} foo(x:int) returns(int) { x + 1 }
+    // this will generate
+    // foo(x):int == x + 1
+    // We need the left hand call part later on to be able to generate
+    // the appropriate SMTlib style function definition. Hence, it is
+    // important that it goes through the resolution and type checking passes,
+    // since otherwise it is hard to connect function parameters to the resolved
+    // variables in the function body.
+    public NAryExpr CreateFunctionDefinition(Expr body) {
+      Contract.Requires(body != null);
+
+      List<Expr> callArgs = new List<Expr>();
+      int i = 0;
+      foreach (Formal/*!*/ f in InParams) {
+        Contract.Assert(f != null);
+        string nm = f.TypedIdent.HasName ? f.TypedIdent.Name : "_" + i;
+        callArgs.Add(new IdentifierExpr(f.tok, nm));
+        i++;
+      }
+
+      Expr call = new NAryExpr(tok, new FunctionCall(new IdentifierExpr(tok, Name)), callArgs);
+      // specify the type of the function, because it might be that
+      // type parameters only occur in the output type
+      call = Expr.CoerceType(tok, call, (Type)OutParams[0].TypedIdent.Type.Clone());
+      NAryExpr def = Expr.Binary(tok, BinaryOperator.Opcode.Eq, call, body);
+      return def;
     }
   }
 

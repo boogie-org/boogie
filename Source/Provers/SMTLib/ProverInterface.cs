@@ -24,6 +24,29 @@ using RPFP = Microsoft.Boogie.RPFP;
 
 namespace Microsoft.Boogie.SMTLib
 {
+  public class FunctionDependencyCollector : BoundVarTraversingVCExprVisitor<bool, bool> {
+    private List<Function> functionList;
+
+    // not used but required by interface
+    protected override bool StandardResult(VCExpr node, bool arg) {
+      return true;
+    }
+
+    public List<Function> Collect(VCExpr expr) {
+      functionList = new List<Function>();
+      Traverse(expr, true);
+      return functionList;
+    }
+
+    public override bool Visit(VCExprNAry node, bool arg) {
+      VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
+      if (op != null) {
+        functionList.Add(op.Func);
+      }
+      return base.Visit(node, arg);
+    }
+  }
+
   public class SMTLibProcessTheoremProver : ProverInterface
   {
     private readonly SMTLibProverContext ctx;
@@ -225,6 +248,153 @@ namespace Microsoft.Boogie.SMTLib
         }
     }
 
+    private void PrepareDataTypes()
+    {
+      if (ctx.KnownDatatypeConstructors.Count > 0)
+      {
+        GraphUtil.Graph<CtorType> dependencyGraph = new GraphUtil.Graph<CtorType>();
+        foreach (CtorType datatype in ctx.KnownDatatypeConstructors.Keys)
+        {
+          dependencyGraph.AddSource(datatype);
+          // Check for user-specified dependency (using ":dependson" attribute).
+          string userDependency = datatype.GetTypeDependency();
+          if (userDependency != null)
+          {
+            dependencyGraph.AddEdge(datatype, ctx.LookupDatatype(userDependency));
+          }
+
+          foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
+          {
+            List<CtorType> dependentTypes = new List<CtorType>();
+            foreach (Variable v in f.InParams)
+            {
+              FindDependentTypes(v.TypedIdent.Type, dependentTypes);
+            }
+
+            foreach (CtorType result in dependentTypes)
+            {
+              dependencyGraph.AddEdge(datatype, result);
+            }
+          }
+        }
+
+        GraphUtil.StronglyConnectedComponents<CtorType> sccs =
+          new GraphUtil.StronglyConnectedComponents<CtorType>(dependencyGraph.Nodes, dependencyGraph.Predecessors,
+            dependencyGraph.Successors);
+        sccs.Compute();
+        foreach (GraphUtil.SCC<CtorType> scc in sccs)
+        {
+          string datatypesString = "";
+          string datatypeConstructorsString = "";
+          foreach (CtorType datatype in scc)
+          {
+            datatypesString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " 0)";
+            string datatypeConstructorString = "";
+            foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
+            {
+              string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
+              datatypeConstructorString += "(" + quotedConstructorName + " ";
+              foreach (Variable v in f.InParams)
+              {
+                string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
+                datatypeConstructorString += "(" + quotedSelectorName + " " +
+                                             DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
+              }
+
+              datatypeConstructorString += ") ";
+            }
+
+            datatypeConstructorsString += "(" + datatypeConstructorString + ") ";
+          }
+
+          List<string> decls = DeclCollector.GetNewDeclarations();
+          foreach (string decl in decls)
+          {
+            SendCommon(decl);
+          }
+
+          SendCommon("(declare-datatypes (" + datatypesString + ") (" + datatypeConstructorsString + "))");
+        }
+      }
+    }
+
+    private void PrepareFunctionDefinitions()
+    {
+      // Collect all function definitions to be processed
+      Stack<Function> functionDefs = new Stack<Function>();
+      foreach (Function f in ctx.DefinedFunctions.Keys)
+      {
+        DeclCollector.AddKnownFunction(f); // add func to knows funcs so that it does not get declared later on
+        functionDefs.Push(f);
+      }
+
+      // Process each definition, but also be sure to process dependencies first in case one
+      // definition calls another.
+      // Also check for definition cycles.
+      List<string> generatedFuncDefs = new List<string>();
+      FunctionDependencyCollector collector = new FunctionDependencyCollector();
+      HashSet<Function> definitionAdded = new HashSet<Function>(); // whether definition has been fully processed
+      HashSet<Function> dependenciesComputed = new HashSet<Function>(); // whether dependencies have already been computed
+      while (functionDefs.Count > 0) {
+        Function f = functionDefs.Peek();
+        if (definitionAdded.Contains(f)) {
+          // This definition was already processed (as a dependency of another definition)
+          functionDefs.Pop();
+          continue;
+        }
+
+        // Grab the definition and then compute the dependencies.
+        Contract.Assert(ctx.DefinedFunctions.ContainsKey(f));
+        VCExprNAry defBody = ctx.DefinedFunctions[f];
+        List<Function> dependencies = collector.Collect(defBody[1]);
+        bool hasDependencies = false;
+        foreach (Function fdep in dependencies) {
+          if (ctx.DefinedFunctions.ContainsKey(fdep) && !definitionAdded.Contains(fdep)) {
+            if (!dependenciesComputed.Contains(fdep)) {
+              // Handle dependencies first
+              functionDefs.Push(fdep);
+              hasDependencies = true;
+            } else {
+              HandleProverError("Function definition cycle detected: " + f.ToString() + " depends on " + fdep.ToString());
+            }
+          }
+        }
+
+        if (!hasDependencies) {
+          // No dependencies: go ahead and process this definition.
+          string funcDef = "(define-fun ";
+          var funCall = defBody[0] as VCExprNAry;
+          Contract.Assert(funCall != null);
+          VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)funCall.Op;
+          Contract.Assert(op != null);
+          funcDef += Namer.GetQuotedName(op.Func, op.Func.Name);
+
+          funcDef += " (";
+          foreach (var v in funCall.UniformArguments) {
+            VCExprVar varExpr = v as VCExprVar;
+            Contract.Assert(varExpr != null);
+            DeclCollector.AddKnownVariable(varExpr); // add var to knows vars so that it does not get declared later on
+            string printedName = Namer.GetQuotedLocalName(varExpr, varExpr.Name);
+            Contract.Assert(printedName != null);
+            funcDef += "(" + printedName + " " + SMTLibExprLineariser.TypeToString(varExpr.Type) + ") ";
+          }
+          funcDef += ") ";
+
+          funcDef += SMTLibExprLineariser.TypeToString(defBody[0].Type) + " ";
+          funcDef += VCExpr2String(defBody[1], -1);
+          funcDef += ")";
+          generatedFuncDefs.Add(funcDef);
+          definitionAdded.Add(f);
+          functionDefs.Pop();
+        } else {
+          dependenciesComputed.Add(f);
+        }
+      }
+
+      FlushAxioms(); // Flush all dependencies before flushing function definitions
+      generatedFuncDefs.Iter(SendCommon); // Flush function definitions
+    }
+
     private void PrepareCommon()
     {
       if (common.Length == 0)
@@ -265,63 +435,13 @@ namespace Microsoft.Boogie.SMTLib
           SendCommon("(declare-fun timeoutDiagnostics (Int) Bool)");
         }
 
-        if (ctx.KnownDatatypeConstructors.Count > 0)
-        {
-          GraphUtil.Graph<CtorType> dependencyGraph = new GraphUtil.Graph<CtorType>();
-          foreach (CtorType datatype in ctx.KnownDatatypeConstructors.Keys)
-          {
-            dependencyGraph.AddSource(datatype);
-	    // Check for user-specified dependency (using ":dependson" attribute).
-	    string userDependency = datatype.GetTypeDependency();
-	    if (userDependency != null) {
-	      dependencyGraph.AddEdge(datatype, ctx.LookupDatatype(userDependency));
-	    }
-            foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
-            {
-              List<CtorType> dependentTypes = new List<CtorType>();
-              foreach (Variable v in f.InParams)
-              {
-                FindDependentTypes(v.TypedIdent.Type, dependentTypes);
-              }
-              foreach (CtorType result in dependentTypes)
-              {
-                dependencyGraph.AddEdge(datatype, result);
-              }
-            }
-          }
-          GraphUtil.StronglyConnectedComponents<CtorType> sccs = new GraphUtil.StronglyConnectedComponents<CtorType>(dependencyGraph.Nodes, dependencyGraph.Predecessors, dependencyGraph.Successors);
-          sccs.Compute();
-          foreach (GraphUtil.SCC<CtorType> scc in sccs)
-          {
-            string datatypesString = "";
-            string datatypeConstructorsString = "";
-            foreach (CtorType datatype in scc)
-            {
-              datatypesString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " 0)";
-              string datatypeConstructorString = "";
-              foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
-              {
-                string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
-                datatypeConstructorString += "(" + quotedConstructorName + " ";
-                foreach (Variable v in f.InParams) 
-                {
-                  string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
-                  datatypeConstructorString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
-                }
-                datatypeConstructorString += ") ";
-              }
-              datatypeConstructorsString += "(" + datatypeConstructorString + ") ";
-            }
-            List<string> decls = DeclCollector.GetNewDeclarations();
-            foreach (string decl in decls)
-            {
-              SendCommon(decl);
-            }
-            SendCommon("(declare-datatypes (" + datatypesString + ") (" + datatypeConstructorsString + "))");
-          }
+        PrepareDataTypes();
+
+        if (CommandLineOptions.Clo.ProverPreamble != null) {
+          SendCommon("(include \"" + CommandLineOptions.Clo.ProverPreamble + "\")");
         }
-        if (CommandLineOptions.Clo.ProverPreamble != null)
-            SendCommon("(include \"" + CommandLineOptions.Clo.ProverPreamble + "\")");
+
+        PrepareFunctionDefinitions();
       }
 
       if (!AxiomsAreSetup)
@@ -503,7 +623,7 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC("; did a full reset");
       }
     }
-	
+
 
 		
 		private string StripCruft(string name){
@@ -2221,7 +2341,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     public override void DefineMacro(Macro f, VCExpr vc) {
-      DeclCollector.AddFunction(f);
+      DeclCollector.AddKnownFunction(f);
       string printedName = Namer.GetQuotedName(f, f.Name);
       var argTypes = f.InParams.Cast<Variable>().MapConcat(p => DeclCollector.TypeToStringReg(p.TypedIdent.Type), " ");
       string decl = "(define-fun " + printedName + " (" + argTypes + ") " + DeclCollector.TypeToStringReg(f.OutParams[0].TypedIdent.Type) + " " + VCExpr2String(vc, 1) + ")";
@@ -2755,6 +2875,7 @@ namespace Microsoft.Boogie.SMTLib
     internal SMTLibProcessTheoremProver parent;
 
     public readonly Dictionary<CtorType, List<Function>> KnownDatatypeConstructors = new Dictionary<CtorType, List<Function>>();
+    public readonly Dictionary<Function, VCExprNAry> DefinedFunctions = new Dictionary<Function, VCExprNAry>();
 
     public SMTLibProverContext(VCExpressionGenerator gen,
                                VCGenerationOptions genOptions)
@@ -2787,6 +2908,8 @@ namespace Microsoft.Boogie.SMTLib
         if (!KnownDatatypeConstructors.ContainsKey(datatype))
           KnownDatatypeConstructors[datatype] = new List<Function>();
         KnownDatatypeConstructors[datatype].Add(f);
+      } else if (f.DefinitionBody != null) {
+        DefinedFunctions.Add(f, (VCExprNAry)translator.Translate(f.DefinitionBody));
       }
       base.DeclareFunction(f, attributes);
     }

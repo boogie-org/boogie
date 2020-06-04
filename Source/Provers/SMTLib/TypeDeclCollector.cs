@@ -185,12 +185,22 @@ void ObjectInvariant()
       return TypeToString(t);
     }
 
-    public void AddFunction(Function func) {
+    public void AddKnownFunction(Function func)
+    {
       if (KnownFunctions.Contains(func))
         return;
       KnownFunctions.Add(func);
-	  if(declHandler != null)
-		declHandler.FuncDecl(func);
+      if (declHandler != null)
+        declHandler.FuncDecl(func);
+    }
+
+    public void AddKnownVariable(VCExprVar variable)
+    {
+      if (KnownVariables.Contains(variable))
+        return;
+      KnownVariables.Add(variable);
+      if (declHandler != null)
+        declHandler.VarDecl(variable);
     }
 
     public void RegisterRelation(Function func)
@@ -258,9 +268,10 @@ void ObjectInvariant()
         {
           AddDeclaration(decl);
         }
+
         KnownVariables.Add(node);
-		if(declHandler != null)
-			declHandler.VarDecl(node);
+        if (declHandler != null)
+          declHandler.VarDecl(node);
       }
 
       return base.Visit(node, arg);

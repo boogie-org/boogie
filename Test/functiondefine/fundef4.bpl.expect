@@ -1,0 +1,2 @@
+fundef4.bpl(7,11): error: function cannot have both :inline and :define attributes
+1 parse errors detected in fundef4.bpl

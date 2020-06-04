@@ -1,0 +1,2 @@
+fundef8.bpl(4,65): error: function with :define attribute has to be monomorphic
+1 parse errors detected in fundef8.bpl

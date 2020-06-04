@@ -325,8 +325,11 @@ namespace Microsoft.Boogie {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Function>() != null);
       node = (Function)this.VisitDeclWithFormals(node);
-      if (node.Body != null)
+      if (node.Body != null) {
+        Contract.Assert(node.DefinitionBody == null);
         node.Body = this.VisitExpr(node.Body);
+      } else if (node.DefinitionBody != null)
+        node.DefinitionBody = (NAryExpr)this.VisitExpr(node.DefinitionBody);
       return node;
     }
     public virtual GlobalVariable VisitGlobalVariable(GlobalVariable node) {
@@ -892,8 +895,11 @@ namespace Microsoft.Boogie {
       {
           Contract.Ensures(Contract.Result<Function>() == node);
           node = (Function)this.VisitDeclWithFormals(node);
-          if (node.Body != null)
-              this.VisitExpr(node.Body);
+          if (node.Body != null) {
+            Contract.Assert(node.DefinitionBody == null);
+            this.VisitExpr(node.Body);
+          } else if (node.DefinitionBody != null)
+            this.VisitExpr(node.DefinitionBody);
           return node;
       }
       public override GlobalVariable VisitGlobalVariable(GlobalVariable node)

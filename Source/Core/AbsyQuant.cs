@@ -593,7 +593,7 @@ namespace Microsoft.Boogie {
 
   public class ForallExpr : QuantifierExpr {
     public ForallExpr(IToken/*!*/ tok, List<TypeVariable>/*!*/ typeParams,
-                      List<Variable>/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body, bool immutable=false)
+                      List<Variable>/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body, bool immutable = false)
       : base(tok, typeParams, dummies, kv, triggers, body, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(typeParams != null);
@@ -601,21 +601,21 @@ namespace Microsoft.Boogie {
       Contract.Requires(body != null);
       Contract.Requires(dummies.Count + typeParams.Count > 0);
     }
-    public ForallExpr(IToken tok, List<Variable> dummies, Trigger triggers, Expr body, bool immutable=false)
+    public ForallExpr(IToken tok, List<Variable> dummies, Trigger triggers, Expr body, bool immutable = false)
       : base(tok, new List<TypeVariable>(), dummies, null, triggers, body, immutable) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Count > 0);
     }
-    public ForallExpr(IToken tok, List<Variable> dummies, Expr body, bool immutable=false)
+    public ForallExpr(IToken tok, List<Variable> dummies, Expr body, bool immutable = false)
       : base(tok, new List<TypeVariable>(), dummies, null, null, body, immutable) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Count > 0);
     }
-    public ForallExpr(IToken tok, List<TypeVariable> typeParams, List<Variable> dummies, Expr body, bool immutable=false)
+    public ForallExpr(IToken tok, List<TypeVariable> typeParams, List<Variable> dummies, Expr body, bool immutable = false)
       : base(tok, typeParams, dummies, null, null, body, immutable) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
@@ -639,7 +639,7 @@ namespace Microsoft.Boogie {
 
   public class ExistsExpr : QuantifierExpr {
     public ExistsExpr(IToken/*!*/ tok, List<TypeVariable>/*!*/ typeParams, List<Variable>/*!*/ dummies,
-                      QKeyValue kv, Trigger triggers, Expr/*!*/ body, bool immutable=false)
+                      QKeyValue kv, Trigger triggers, Expr/*!*/ body, bool immutable = false)
       : base(tok, typeParams, dummies, kv, triggers, body, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(typeParams != null);
@@ -647,14 +647,14 @@ namespace Microsoft.Boogie {
       Contract.Requires(body != null);
       Contract.Requires(dummies.Count + typeParams.Count > 0);
     }
-    public ExistsExpr(IToken tok, List<Variable> dummies, Trigger triggers, Expr body, bool immutable=false)
+    public ExistsExpr(IToken tok, List<Variable> dummies, Trigger triggers, Expr body, bool immutable = false)
       : base(tok, new List<TypeVariable>(), dummies, null, triggers, body, immutable) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Count > 0);
     }
-    public ExistsExpr(IToken tok, List<Variable> dummies, Expr body, bool immutable=false)
+    public ExistsExpr(IToken tok, List<Variable> dummies, Expr body, bool immutable = false)
       : base(tok, new List<TypeVariable>(), dummies, null, null, body, immutable) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
@@ -898,7 +898,7 @@ namespace Microsoft.Boogie {
 
   public class LambdaExpr : BinderExpr {
     public LambdaExpr(IToken/*!*/ tok, List<TypeVariable>/*!*/ typeParameters,
-                      List<Variable>/*!*/ dummies, QKeyValue kv, Expr/*!*/ body, bool immutable=false)
+                      List<Variable>/*!*/ dummies, QKeyValue kv, Expr/*!*/ body, bool immutable = false)
       : base(tok, typeParameters, dummies, kv, body, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(typeParameters != null);
