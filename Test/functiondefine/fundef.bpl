@@ -1,7 +1,8 @@
-// RUN: %boogie -proverLog:"%t1" -env:0 "%s"
-// RUN: grep define "%t1" > "%t2"
-// RUN: %diff "%s.expect" "%t2"
+// RUN: %boogie -proverLog:"%t.smt2" -env:0 "%s"
+// RUN: %OutputCheck "%s" --file-to-check="%t.smt2"
 
+// CHECK-L:(define-fun foo2 ((x Int) ) Int (+ x 1))
+// CHECK-L:(define-fun foo ((x@@0 Int) ) Bool (> (foo2 x@@0) 0))
 function {:define} foo(x:int) returns(bool)
   { foo2(x) > 0 }
 function {:define} foo2(x:int) returns(int)
