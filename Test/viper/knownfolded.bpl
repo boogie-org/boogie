@@ -1,5 +1,4 @@
-// RUN: %boogie -proc:known_folded_1 -proc:known_folded_2 "%s" > "%t"
-// RUN: %OutputCheck --file-to-check "%t" "%s"
+// RUN: %boogie "%s" | %OutputCheck "%s"
 // CHECK-L: Boogie program verifier finished with 2 verified, 0 errors
 
 // ==================================================
