@@ -58,7 +58,7 @@ namespace Microsoft.Boogie
             }
 
             // Here we include IS abstractions
-            foreach (var atomicAction in civlTypeChecker.AllActions.Where(a => a.IsLeftMover))
+            foreach (var atomicAction in civlTypeChecker.AllAtomicActions.Where(a => a.IsLeftMover))
             {
                 moverChecking.CreateNonBlockingChecker(atomicAction);
             }

@@ -7,7 +7,7 @@ namespace Microsoft.Boogie
     {
         public static void AddCheckers(CivlTypeChecker ctc)
         {
-            foreach (var action in ctc.AllActions.Where(a => a.HasPendingAsyncs))
+            foreach (var action in ctc.AllAtomicActions.Where(a => a.HasPendingAsyncs))
             {
                 var requires = action.gate.Select(g => new Requires(false, g.Expr)).ToList();
                 var cmds = new List<Cmd>

@@ -258,11 +258,7 @@ namespace Microsoft.Boogie
         private void TypeCheckActionImpls()
         {
             ActionVisitor actionVisitor = new ActionVisitor(this);
-            foreach (var action in procToAtomicAction.Values)
-            {
-                actionVisitor.VisitAction(action);
-            }
-            foreach (var action in procToIntroductionAction.Values)
+            foreach (var action in Enumerable.Concat<Action>(AllAtomicActions, procToIntroductionAction.Values))
             {
                 actionVisitor.VisitAction(action);
             }
@@ -985,7 +981,7 @@ namespace Microsoft.Boogie
             return FindIsAbstraction(name);
         }
 
-        public IEnumerable<AtomicAction> AllActions =>
+        public IEnumerable<AtomicAction> AllAtomicActions =>
             procToAtomicAction.Union(procToIsInvariant).Union(procToIsAbstraction)
             .Select(x => x.Value);
 
@@ -1574,7 +1570,7 @@ namespace Microsoft.Boogie
             {
                 var attributeEraser = new AttributeEraser();
                 attributeEraser.VisitProgram(civlTypeChecker.program);
-                foreach (var action in civlTypeChecker.AllActions)
+                foreach (var action in civlTypeChecker.AllAtomicActions)
                 {
                     attributeEraser.VisitAtomicAction(action);
                 }
