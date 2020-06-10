@@ -1,0 +1,5 @@
+action-no-call.bpl(10,2): Error: Call command not allowed inside an atomic action
+action-no-call.bpl(20,2): Error: Call command not allowed inside an atomic action
+action-no-call.bpl(24,2): Error: Call command not allowed inside an atomic action
+action-no-call.bpl(15,2): Error: Call command not allowed inside an atomic action
+4 type checking errors detected in action-no-call.bpl
