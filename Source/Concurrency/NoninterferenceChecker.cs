@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Microsoft.Boogie
@@ -12,14 +13,31 @@ namespace Microsoft.Boogie
             int layerNum,
             Dictionary<Absy, Absy> absyMap,
             DeclWithFormals decl,
-            List<Variable> declLocalVariables,
-            Dictionary<Absy, List<PredicateCmd>> yields)
+            List<Variable> declLocalVariables)
         {
             Dictionary<string, Variable> domainNameToHoleVar = new Dictionary<string, Variable>();
             Dictionary<Variable, Variable> localVarMap = new Dictionary<Variable, Variable>();
             Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
             List<Variable> locals = new List<Variable>();
             List<Variable> inputs = new List<Variable>();
+            Dictionary<Absy, List<PredicateCmd>> yields = null;
+            if (decl is Implementation impl)
+            {
+                yields = CollectYields(impl);
+            }
+            else if (decl is Procedure proc)
+            {
+                yields = new Dictionary<Absy, List<PredicateCmd>>();
+                yields[proc] =
+                    proc.Requires.Select(requires =>
+                        requires.Free
+                            ? (PredicateCmd) new AssumeCmd(requires.tok, requires.Condition)
+                            : (PredicateCmd) new AssertCmd(requires.tok, requires.Condition)).ToList();
+            }
+            else
+            {
+                Debug.Assert(false);
+            }
 
             foreach (var domainName in linearTypeChecker.linearDomains.Keys)
             {
@@ -62,9 +80,9 @@ namespace Microsoft.Boogie
             int yieldCount = 0;
             foreach (var kv in yields)
             {
-                var yieldCmd = kv.Key;
+                var absy = kv.Key;
                 var yieldPredicates = kv.Value;
-                List<Cmd> newCmds = linearPermissionInstrumentation.DisjointnessAssumeCmds(yieldCmd,false);
+                List<Cmd> newCmds = linearPermissionInstrumentation.DisjointnessAssumeCmds(absy,false);
                 foreach (var predCmd in yieldPredicates)
                 {
                     var newExpr = Substituter.ApplyReplacingOldExprs(assumeSubst, oldSubst, predCmd.Expr);
@@ -106,6 +124,42 @@ namespace Microsoft.Boogie
             return new List<Declaration> {noninterferenceCheckerProc, noninterferenceCheckerImpl};
         }
 
+        private static Dictionary<Absy, List<PredicateCmd>> CollectYields(Implementation impl)
+        {
+            var allYieldPredicates = new Dictionary<Absy, List<PredicateCmd>>();
+            List<PredicateCmd> yieldPredicates = new List<PredicateCmd>();
+            foreach (Block b in impl.Blocks)
+            {
+                YieldCmd yieldCmd = null;
+                foreach (Cmd cmd in b.Cmds)
+                {
+                    if (yieldCmd != null)
+                    {
+                        if (cmd is PredicateCmd)
+                        {
+                            yieldPredicates.Add(cmd as PredicateCmd);
+                        }
+                        else
+                        {
+                            allYieldPredicates[yieldCmd] = yieldPredicates;
+                            yieldPredicates = new List<PredicateCmd>();
+                            yieldCmd = null;
+                        }
+                    }
+                    if (cmd is YieldCmd ycmd)
+                    {
+                        yieldCmd = ycmd;
+                    }
+                }
+                if (yieldCmd != null)
+                {
+                    allYieldPredicates[yieldCmd] = yieldPredicates;
+                    yieldPredicates = new List<PredicateCmd>();
+                }
+            }
+            return allYieldPredicates;
+        }
+        
         private static LocalVariable CopyLocal(Variable v)
         {
             return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type));
