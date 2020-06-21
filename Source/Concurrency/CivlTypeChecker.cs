@@ -450,14 +450,7 @@ namespace Microsoft.Boogie
                 if (CivlUtil.ResolveAndTypecheck(callCmd) == 0)
                 {
                     linearTypeChecker.VisitCallCmd(callCmd);
-                    if (linearTypeChecker.checkingContext.ErrorCount == 0)
-                    {
-                        return callCmd;
-                    }
-                    else
-                    {
-                        return null;
-                    }
+                    return callCmd;
                 }
                 else
                 {
@@ -1210,6 +1203,26 @@ namespace Microsoft.Boogie
                 return base.VisitIdentifierExpr(node);
             }
         }
+
+        private class YieldRequiresVisitor : ReadOnlyVisitor
+        {
+            private CivlTypeChecker civlTypeChecker;
+            HashSet<Variable> outs;
+            public YieldRequiresVisitor(CivlTypeChecker civlTypeChecker, Procedure proc)
+            {
+                this.civlTypeChecker = civlTypeChecker;
+                this.outs = new HashSet<Variable>(proc.OutParams);
+            }
+
+            public override Expr VisitIdentifierExpr(IdentifierExpr node)
+            {
+                if (outs.Contains(node.Decl))
+                {
+                    civlTypeChecker.Error(node, "Output parameter cannot be accessed");
+                }
+                return base.VisitIdentifierExpr(node);
+            }
+        }
         
         private class YieldingProcVisitor : ReadOnlyVisitor
         {
@@ -1265,8 +1278,10 @@ namespace Microsoft.Boogie
                 VisitVariableSeq(node.InParams);
                 VisitVariableSeq(node.OutParams);
                 VisitRequiresSeq(node.Requires);
+                var yieldRequiresVisitor = new YieldRequiresVisitor(civlTypeChecker, node);
                 foreach (var callCmd in yieldRequires)
                 {
+                    yieldRequiresVisitor.Visit(callCmd);
                     VisitYieldInvariantCallCmd(callCmd, yieldingProc.upperLayer, civlTypeChecker.procToYieldInvariant[callCmd.Proc].LayerNum);
                 }
                 foreach (var callCmd in yieldEnsures)
