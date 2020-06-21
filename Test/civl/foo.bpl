@@ -26,8 +26,6 @@ ensures {:layer 1} g == 3;
 {
   yield;
   call Set(3);
-  yield;
-  assert {:layer 1} g == 3;
 }
 
 procedure {:yields} {:layer 1} PE()

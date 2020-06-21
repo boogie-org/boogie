@@ -5,7 +5,7 @@ var {:layer 0,1} count: int;
 var {:layer 1,2} {:linear "tid"} unallocated:[int]bool;
 
 procedure {:yields} {:layer 2} main()
-requires {:layer 1} unallocated == MapConstBool(true);
+requires {:layer 1} AllocInv(count, unallocated);
 {
   var {:layer 1,2} {:linear "tid"} tid:int;
   var i: int;

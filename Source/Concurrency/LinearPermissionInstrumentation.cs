@@ -43,15 +43,18 @@ namespace Microsoft.Boogie
             this.localVarMap = new Dictionary<Variable, Variable>();
         }
         
+        public List<Cmd> ProcDisjointnessAssumeCmds(Procedure proc, bool atEntry)
+        {
+            IEnumerable<Variable> availableVars = atEntry
+                ? FilterInParams(proc.InParams)
+                : FilterInOutParams(proc.InParams.Union(proc.OutParams));
+            return DisjointnessExprs(availableVars).Select(expr => new AssumeCmd(Token.NoToken, expr)).ToList<Cmd>();
+        }
+
         public List<Cmd> DisjointnessAssumeCmds(Absy absy, bool addGlobals)
         {
             var availableVars = AvailableLinearLocalVars(absy).Union(addGlobals ? LinearGlobalVars() : new List<Variable>());
-            var newCmds = new List<Cmd>();
-            foreach (var expr in DisjointnessExprs(availableVars))
-            {
-                newCmds.Add(new AssumeCmd(Token.NoToken, expr));
-            }
-            return newCmds;
+            return DisjointnessExprs(availableVars).Select(expr => new AssumeCmd(Token.NoToken, expr)).ToList<Cmd>();
         }
 
         public Dictionary<string, Expr> PermissionExprs(Absy absy)
@@ -183,6 +186,14 @@ namespace Microsoft.Boogie
                 civlTypeChecker.LocalVariableLayerRange(v).Contains(layerNum));
         }
 
+        private IEnumerable<Variable> FilterInOutParams(IEnumerable<Variable> locals)
+        {
+            Predicate<LinearKind> isLinear = x => x == LinearKind.LINEAR || x == LinearKind.LINEAR_OUT;
+            return locals.Where(v =>
+                isLinear(linearTypeChecker.FindLinearKind(v)) &&
+                civlTypeChecker.LocalVariableLayerRange(v).Contains(layerNum));
+        }
+        
         private IEnumerable<Variable> LinearGlobalVars()
         {
             return linearTypeChecker.program.GlobalVariables.Where(v =>

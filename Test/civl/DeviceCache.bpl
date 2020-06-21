@@ -121,7 +121,7 @@ COPY_TO_BUFFER:
 procedure {:yields} {:layer 1} WriteCache({:linear "tid"} tid: X, index: int)
 requires {:layer 1} Inv(ghostLock, currsize, newsize);
 requires {:layer 1} ghostLock == tid && tid != nil;
-ensures {:layer 1} ghostLock == tid;
+ensures {:layer 1} ghostLock == tid && tid != nil;
 ensures {:layer 1} Inv(ghostLock, currsize, newsize) && old(currsize) == currsize && old(newsize) == newsize;
 {
     var j: int;

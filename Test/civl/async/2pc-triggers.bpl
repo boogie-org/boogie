@@ -174,11 +174,8 @@ witness (state:GState, state':GState, second_xid:Xid) : GState
 // Main
 
 procedure {:yields} {:layer 11} main ()
-// requires {:layer 8} Inv_8(state, B, votes);
-requires {:layer 8,9,10,11} gUndecided(state);
-requires {:layer 8} votes == (lambda xid: Xid :: 0);
-requires {:layer 8} B == (lambda p: Pair :: false);
-requires {:layer 8} (forall B: [Pair]bool, xid: Xid :: card(B, xid) == 0);
+requires {:layer 8} Inv_8(state, B, votes);
+requires {:layer 9,10,11} gConsistent(state);
 {
   var xid: Xid;
   par YieldInv_8() | YieldConsistent_9() | YieldConsistent_10() | YieldConsistent_11();

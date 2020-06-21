@@ -13,6 +13,8 @@ namespace Microsoft.Boogie
         public const string YIELDS = "yields";
 
         public const string YIELD_INVARIANT = "yield_invariant";
+        public const string YIELD_REQUIRES = "yield_requires";
+        public const string YIELD_ENSURES = "yield_ensures";
         
         public const string INTRO = "intro";
         
@@ -47,13 +49,29 @@ namespace Microsoft.Boogie
         private static string[] CIVL_ATTRIBUTES =
             {LAYER, YIELDS, YIELD_INVARIANT, INTRO, ATOMIC, LEFT, RIGHT, BOTH, REFINES, HIDE,
              COMMUTATIVITY, LEMMA, WITNESS,
-             PENDING_ASYNC, IS, IS_INVARIANT, IS_ABSTRACTION, ELIM, CHOICE };
+             PENDING_ASYNC, IS, IS_INVARIANT, IS_ABSTRACTION, ELIM, CHOICE,
+             YIELD_REQUIRES, YIELD_ENSURES};
 
         private static string[] LINEAR_ATTRIBUTES =
             {LINEAR, LINEAR_IN, LINEAR_OUT };
 
-        public static bool HasAttribute(this ICarriesAttributes obj, string attribute)
-        { return QKeyValue.FindBoolAttribute(obj.Attributes, attribute); }
+        public static List<QKeyValue> FindAllAttributes(this ICarriesAttributes obj, string name)
+        {
+            var attributes = new List<QKeyValue>();
+            for (var kv = obj.Attributes; kv != null; kv = kv.Next)
+            {
+                if (kv.Key == name)
+                {
+                    attributes.Add(kv);
+                }
+            }
+            return attributes;
+        }
+
+        public static bool HasAttribute(this ICarriesAttributes obj, string name)
+        {
+            return QKeyValue.FindBoolAttribute(obj.Attributes, name);
+        }
 
         public static bool RemoveAttributes(ICarriesAttributes obj, Func<QKeyValue, bool> cond)
         {

@@ -18,29 +18,7 @@ namespace Microsoft.Boogie
         private const string A = "A";  // atomic (non mover) action
         private const string P = "P";  // private (local variable) access
         private const string I = "I";  // introduction action
-        
-        // States of Bracket Automaton (check that all accesses to global variables are bracketed by yields)
-        private const int BEFORE = 0;
-        private const int INSIDE = 1;
-        private const int AFTER = 2;
-        
-        // Transitions of Bracket Automaton
-        static List<Tuple<int, string, int>> BracketSpec = new List<Tuple<int, string, int>>
-        { // initial: BEFORE, final: AFTER
-            new Tuple<int, string, int>(BEFORE, P, BEFORE),
-            new Tuple<int, string, int>(BEFORE, Y, INSIDE),
-            new Tuple<int, string, int>(BEFORE, Y, AFTER),
-            new Tuple<int, string, int>(INSIDE, Y, INSIDE),
-            new Tuple<int, string, int>(INSIDE, B, INSIDE),
-            new Tuple<int, string, int>(INSIDE, R, INSIDE),
-            new Tuple<int, string, int>(INSIDE, L, INSIDE),
-            new Tuple<int, string, int>(INSIDE, A, INSIDE),
-            new Tuple<int, string, int>(INSIDE, P, INSIDE),
-            new Tuple<int, string, int>(INSIDE, I, INSIDE),
-            new Tuple<int, string, int>(INSIDE, Y, AFTER),
-            new Tuple<int, string, int>(AFTER, P, AFTER),
-        };
-        
+
         // States of Atomicity Automaton (check that transactions are separated by yields)
         private const int RM = 0;
         private const int LM = 1;
@@ -163,32 +141,7 @@ namespace Microsoft.Boogie
             {
                 ComputeGraph();
                 // Console.WriteLine(PrintGraph(impl, implEdges, initialState, finalStates));
-
-                if (!IsMoverProcedure)
-                {
-                    BracketCheck();
-                }
-
                 AtomicityCheck();
-            }
-
-            private void BracketCheck()
-            {
-                var initialConstraints = new Dictionary<Absy, HashSet<int>>();
-                initialConstraints[initialState] = new HashSet<int> {BEFORE};
-                foreach (var finalState in finalStates)
-                {
-                    initialConstraints[finalState] = new HashSet<int> {AFTER};
-                }
-
-                var simulationRelation =
-                    new SimulationRelation<Absy, int, string>(implEdges, BracketSpec, initialConstraints)
-                        .ComputeSimulationRelation();
-                if (simulationRelation[initialState].Count == 0)
-                {
-                    @base.checkingContext.Error(impl,
-                        $"Implementation {impl.Name} fails bracket check at layer {currLayerNum}. All code that accesses global variables must be bracketed by yields.");
-                }
             }
 
             private void AtomicityCheck()

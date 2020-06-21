@@ -61,8 +61,6 @@ modifies col_dom, col_val, dec_dom, dec_val;
 
 procedure {:yields}{:layer 1}{:refines "main_atomic"} main ({:linear_in "Perm"} perms:[Perm]bool)
 requires {:layer 1} perms == all_perms();
-requires {:layer 1} dec_dom == (lambda i:int :: false);
-requires {:layer 1} col_dom == (lambda i:int :: (lambda j:int :: false));
 {
   var s:int;
   var {:linear "Perm"} perms':[Perm]bool;

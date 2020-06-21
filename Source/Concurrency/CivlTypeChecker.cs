@@ -93,6 +93,11 @@ namespace Microsoft.Boogie
             if (checkingContext.ErrorCount > 0)
                 return;
 
+            linearTypeChecker = new LinearTypeChecker(this);
+            linearTypeChecker.TypeCheck();
+            if (checkingContext.ErrorCount > 0)
+                return;
+            
             TypeCheckInductiveSequentializations();
             TypeCheckYieldingProcedureDecls();
             TypeCheckLocalVariables();
@@ -114,13 +119,6 @@ namespace Microsoft.Boogie
 
             var yieldSufficiencyTypeChecker = new YieldSufficiencyTypeChecker(this);
             yieldSufficiencyTypeChecker.TypeCheck();
-            if (checkingContext.ErrorCount > 0)
-            {
-                return;
-            }
-
-            linearTypeChecker = new LinearTypeChecker(this);
-            linearTypeChecker.TypeCheck();
         }
 
         private void TypeCheckRefinementLayers()
@@ -418,10 +416,99 @@ namespace Microsoft.Boogie
                 Error(impl, "A yield invariant cannot have an implementation");
             }   
         }
+
+        private CallCmd TypeCheckYieldInvariantCall(QKeyValue kv)
+        {
+            if (kv.Params.Count == 0)
+            {
+                Error(kv, "A yield invariant name must be provided");
+                return null;
+            }
+            if (kv.Params[0] is string yieldInvariantProcName)
+            {
+                var yieldingProc =
+                    this.procToYieldInvariant.Keys.FirstOrDefault(proc => proc.Name == yieldInvariantProcName);
+                if (yieldingProc == null)
+                {
+                    Error(kv, $"Yield invariant {yieldInvariantProcName} does not exist");
+                    return null;
+                }
+                var exprs = new List<Expr>();
+                for (int i = 1; i < kv.Params.Count; i++)
+                {
+                    if (kv.Params[i] is Expr expr)
+                    {
+                        exprs.Add(expr);
+                    }
+                    else
+                    {
+                        Error(kv, $"Illegal expression at position {i}");
+                    }
+                }
+                var callCmd = new CallCmd(kv.tok, yieldingProc.Name, exprs, new List<IdentifierExpr>());
+                callCmd.Proc = yieldingProc;
+                if (CivlUtil.ResolveAndTypecheck(callCmd) == 0)
+                {
+                    linearTypeChecker.VisitCallCmd(callCmd);
+                    if (linearTypeChecker.checkingContext.ErrorCount == 0)
+                    {
+                        return callCmd;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else
+            {
+                Error(kv, "Name of a yield invariant must be provided at position 1");
+                return null;
+            }
+        }
         
+        private bool TypeCheckYieldingPrePostDecls(Procedure proc,
+            out List<CallCmd> yieldRequires,
+            out List<CallCmd> yieldEnsures)
+        {
+            var ok = true;
+            yieldRequires = new List<CallCmd>();
+            yieldEnsures = new List<CallCmd>();
+            foreach (var attr in CivlAttributes.FindAllAttributes(proc, CivlAttributes.YIELD_REQUIRES))
+            {
+                var callCmd = TypeCheckYieldInvariantCall(attr);
+                if (callCmd == null)
+                {
+                    ok = false;
+                    Error(attr, $"Invalid yield requires");
+                }
+                else
+                {
+                    yieldRequires.Add(callCmd);
+                }
+            }
+            foreach (var attr in CivlAttributes.FindAllAttributes(proc, CivlAttributes.YIELD_ENSURES))
+            {
+                var callCmd = TypeCheckYieldInvariantCall(attr);
+                if (callCmd == null)
+                {
+                    ok = false;
+                    Error(attr, $"Invalid yield ensures");
+                }
+                else
+                {
+                    yieldEnsures.Add(callCmd);
+                }
+            }
+            return ok;
+        }
+
         private void TypeCheckYieldingProcedureDecls()
         {
-            YieldingProcVisitor visitor = new YieldingProcVisitor(this);
             foreach (var proc in program.Procedures.Where(IsYieldingProcedure))
             {
                 int upperLayer;  // must be initialized by the following code, otherwise it is an error
@@ -447,6 +534,11 @@ namespace Microsoft.Boogie
                     continue;
                 }
 
+                List<CallCmd> yieldRequires, yieldEnsures;
+                if (!TypeCheckYieldingPrePostDecls(proc, out yieldRequires, out yieldEnsures))
+                { 
+                    continue;
+                }
                 if (refinesName != null) // proc is an action procedure
                 {
                     AtomicAction refinedAction = FindAtomicAction(refinesName);
@@ -466,7 +558,7 @@ namespace Microsoft.Boogie
                         continue;
                     }
                     var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => x.HasAttribute(CivlAttributes.HIDE)));
-                    var actionProc = new ActionProc(proc, refinedAction, upperLayer, hiddenFormals);
+                    var actionProc = new ActionProc(proc, refinedAction, upperLayer, hiddenFormals, yieldRequires, yieldEnsures);
                     CheckRefinementSignature(actionProc);
                     procToYieldingProc[proc] = actionProc;
                 }
@@ -478,7 +570,7 @@ namespace Microsoft.Boogie
                             $"All variables in the modifies clause of a mover procedure must be available at its disappearing layer");
                         continue;
                     }
-                    procToYieldingProc[proc] = new MoverProc(proc, moverType.Value, upperLayer);
+                    procToYieldingProc[proc] = new MoverProc(proc, moverType.Value, upperLayer, yieldRequires, yieldEnsures);
                 }
                 else // proc refines the skip action
                 {
@@ -492,10 +584,10 @@ namespace Microsoft.Boogie
                         procToAtomicAction[SkipAtomicAction.proc] = SkipAtomicAction;
                     }
                     var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => localVarToLayerRange[x].upperLayerNum == upperLayer));
-                    var actionProc = new ActionProc(proc, SkipAtomicAction, upperLayer, hiddenFormals);
+                    var actionProc = new ActionProc(proc, SkipAtomicAction, upperLayer, hiddenFormals, yieldRequires, yieldEnsures);
                     procToYieldingProc[proc] = actionProc;
                 }
-                
+                YieldingProcVisitor visitor = new YieldingProcVisitor(this, yieldRequires, yieldEnsures);
                 visitor.VisitProcedure(proc);
             }
 
@@ -508,10 +600,9 @@ namespace Microsoft.Boogie
 
         private void TypeCheckYieldingProcedureImpls()
         {
-            YieldingProcVisitor visitor = new YieldingProcVisitor(this);
-
             foreach (var impl in program.Implementations.Where(impl => procToYieldingProc.ContainsKey(impl.Proc)))
             {
+                YieldingProcVisitor visitor = new YieldingProcVisitor(this);
                 visitor.VisitImplementation(impl);
             }
         }
@@ -878,31 +969,41 @@ namespace Microsoft.Boogie
                 if (kv.Key != CivlAttributes.LAYER) continue;
                 foreach (var o in kv.Params)
                 {
-                    if (o is LiteralExpr l && l.isBigNum)
+                    var layerNum = TypeCheckLayer(kv, o);
+                    if (layerNum.HasValue)
                     {
-                        var n = l.asBigNum;
-                        if (n.IsNegative)
-                        {
-                            checkingContext.Error(kv, "Layer must be non-negative");
-                        }
-                        else if (!n.InInt32)
-                        {
-                            checkingContext.Error(kv, "Layer is too large (max value is Int32.MaxValue)");
-                        }
-                        else
-                        {
-                            layers.Add(l.asBigNum.ToIntSafe);
-                        }
-                    }
-                    else
-                    {
-                        checkingContext.Error(kv, "Layer must be a non-negative integer");
+                        layers.Add(layerNum.Value);
                     }
                 }
             }
             return layers;
         }
 
+        private int? TypeCheckLayer(QKeyValue kv, object o)
+        {
+            if (o is LiteralExpr l && l.isBigNum)
+            {
+                var n = l.asBigNum;
+                if (n.IsNegative)
+                {
+                    Error(kv, "Layer must be non-negative");
+                }
+                else if (!n.InInt32)
+                {
+                    Error(kv, "Layer is too large (max value is Int32.MaxValue)");
+                }
+                else
+                {
+                    return l.asBigNum.ToIntSafe;
+                }
+            }
+            else
+            {
+                Error(kv, "Layer must be a non-negative integer");
+            }
+            return null;
+        }
+        
         private LayerRange ToLayerRange(List<int> layerNums, Absy absy, LayerRange defaultLayerRange = null)
         {
             // We return min-max range for invalid declarations in order to proceed with type checking.
@@ -1113,6 +1214,8 @@ namespace Microsoft.Boogie
         private class YieldingProcVisitor : ReadOnlyVisitor
         {
             CivlTypeChecker civlTypeChecker;
+            List<CallCmd> yieldRequires;
+            List<CallCmd> yieldEnsures;
             YieldingProc yieldingProc;
             List<IdentifierExpr> globalVariableAccesses;
             List<IdentifierExpr> localVariableAccesses;
@@ -1120,10 +1223,23 @@ namespace Microsoft.Boogie
             public YieldingProcVisitor(CivlTypeChecker civlTypeChecker)
             {
                 this.civlTypeChecker = civlTypeChecker;
-                globalVariableAccesses = null;
-                localVariableAccesses = null;
+                this.yieldRequires = null;
+                this.yieldEnsures = null;
+                this.yieldingProc = null;
+                this.globalVariableAccesses = null;
+                this.localVariableAccesses = null;
             }
 
+            public YieldingProcVisitor(CivlTypeChecker civlTypeChecker, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
+            {
+                this.civlTypeChecker = civlTypeChecker;
+                this.yieldRequires = yieldRequires;
+                this.yieldEnsures = yieldEnsures;
+                this.yieldingProc = null;
+                this.globalVariableAccesses = null;
+                this.localVariableAccesses = null;
+            }
+            
             public override Implementation VisitImplementation(Implementation node)
             {
                 Debug.Assert(yieldingProc == null);
@@ -1149,7 +1265,14 @@ namespace Microsoft.Boogie
                 VisitVariableSeq(node.InParams);
                 VisitVariableSeq(node.OutParams);
                 VisitRequiresSeq(node.Requires);
-                
+                foreach (var callCmd in yieldRequires)
+                {
+                    VisitYieldInvariantCallCmd(callCmd, yieldingProc.upperLayer, civlTypeChecker.procToYieldInvariant[callCmd.Proc].LayerNum);
+                }
+                foreach (var callCmd in yieldEnsures)
+                {
+                    VisitYieldInvariantCallCmd(callCmd, yieldingProc.upperLayer, civlTypeChecker.procToYieldInvariant[callCmd.Proc].LayerNum);
+                }
                 yieldingProc = null;
                 return node;
             }

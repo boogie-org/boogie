@@ -168,6 +168,38 @@ namespace Microsoft.Boogie
             }
         }
         
+        private void InlineYieldRequiresAndEnsures(YieldingProc yieldingProc, Procedure proc)
+        {
+            foreach (var callCmd in yieldingProc.yieldRequires)
+            {
+                var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
+                if (layerNum == yieldInvariant.LayerNum)
+                {
+                    Dictionary<Variable, Expr> map = callCmd.Proc.InParams.Zip(callCmd.Ins).ToDictionary(x => x.Item1, x => x.Item2);
+                    Substitution subst = Substituter.SubstitutionFromHashtable(map);
+                    foreach (Requires req in callCmd.Proc.Requires)
+                    {
+                        proc.Requires.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition), null,
+                            req.Attributes));
+                    }
+                }
+            }
+            foreach (var callCmd in yieldingProc.yieldEnsures)
+            {
+                var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
+                if (layerNum == yieldInvariant.LayerNum)
+                {
+                    Dictionary<Variable, Expr> map = callCmd.Proc.InParams.Zip(callCmd.Ins).ToDictionary(x => x.Item1, x => x.Item2);
+                    Substitution subst = Substituter.SubstitutionFromHashtable(map);
+                    foreach (Requires req in callCmd.Proc.Requires)
+                    {
+                        proc.Ensures.Add(new Ensures(req.tok, req.Free, Substituter.Apply(subst, req.Condition), null,
+                            req.Attributes));
+                    }
+                }
+            }
+        }
+
         private void TransformImpl(Implementation originalImpl, Implementation impl)
         {
             // initialize globalSnapshotInstrumentation
@@ -195,6 +227,9 @@ namespace Microsoft.Boogie
             }
             else
             {
+                noninterferenceCheckerDecls.AddRange(
+                    NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker, layerNum, new Dictionary<Absy, Absy>(), impl.Proc, new List<Variable>()));
+                InlineYieldRequiresAndEnsures(yieldingProc, impl.Proc);
                 noninterferenceCheckerDecls.AddRange(
                     NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker, layerNum, absyMap, impl, impl.LocVars));
                 noninterferenceInstrumentation = new SomeNoninterferenceInstrumentation(

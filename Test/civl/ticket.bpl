@@ -95,7 +95,7 @@ procedure {:yields} {:layer 2} Enter ({:linear "tid"} tid: X)
 requires {:layer 1} Inv1(T, t);
 ensures  {:layer 1} Inv1(T, t);
 requires {:layer 2} Inv2(T, s, cs) && tid != nil;
-ensures  {:layer 2} Inv2(T, s, cs) && cs == tid;
+ensures  {:layer 2} Inv2(T, s, cs) && tid != nil && cs == tid;
 {
   var m: int;
 

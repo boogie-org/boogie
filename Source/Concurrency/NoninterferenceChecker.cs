@@ -20,32 +20,12 @@ namespace Microsoft.Boogie
             Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
             List<Variable> locals = new List<Variable>();
             List<Variable> inputs = new List<Variable>();
-            Dictionary<Absy, List<PredicateCmd>> yields = null;
-            if (decl is Implementation impl)
-            {
-                yields = CollectYields(impl);
-            }
-            else if (decl is Procedure proc)
-            {
-                yields = new Dictionary<Absy, List<PredicateCmd>>();
-                yields[proc] =
-                    proc.Requires.Select(requires =>
-                        requires.Free
-                            ? (PredicateCmd) new AssumeCmd(requires.tok, requires.Condition)
-                            : (PredicateCmd) new AssertCmd(requires.tok, requires.Condition)).ToList();
-            }
-            else
-            {
-                Debug.Assert(false);
-            }
-
             foreach (var domainName in linearTypeChecker.linearDomains.Keys)
             {
                 var inParam = linearTypeChecker.LinearDomainInFormal(domainName);
                 inputs.Add(inParam);
                 domainNameToHoleVar[domainName] = inParam;
             }
-
             foreach (Variable local in declLocalVariables.Union(decl.InParams).Union(decl.OutParams))
             {
                 var copy = CopyLocal(local);
@@ -53,7 +33,6 @@ namespace Microsoft.Boogie
                 localVarMap[local] = copy;
                 map[local] = Expr.Ident(copy);
             }
-
             Dictionary<Variable, Expr> oldLocalMap = new Dictionary<Variable, Expr>();
             Dictionary<Variable, Expr> assumeMap = new Dictionary<Variable, Expr>(map);
             foreach (Variable g in civlTypeChecker.GlobalVariables)
@@ -67,6 +46,57 @@ namespace Microsoft.Boogie
             }
 
             var linearPermissionInstrumentation = new LinearPermissionInstrumentation(civlTypeChecker, linearTypeChecker, layerNum, absyMap, domainNameToHoleVar, localVarMap);
+            List<Tuple<List<Cmd>, List<PredicateCmd>>> yieldInfo = null;
+            if (decl is Implementation impl)
+            {
+                yieldInfo = CollectYields(impl).Select(kv => new Tuple<List<Cmd>, List<PredicateCmd>>(linearPermissionInstrumentation.DisjointnessAssumeCmds(kv.Key, false), kv.Value)).ToList();
+            }
+            else if (decl is Procedure proc)
+            {
+                yieldInfo = new List<Tuple<List<Cmd>, List<PredicateCmd>>>();
+                if (civlTypeChecker.procToYieldInvariant.ContainsKey(proc))
+                {
+                    if (proc.Requires.Count > 0)
+                    {
+                        var disjointnessCmds = linearPermissionInstrumentation.ProcDisjointnessAssumeCmds(proc, true);
+                        var yieldPredicates = proc.Requires.Select(requires =>
+                            requires.Free
+                                ? (PredicateCmd) new AssumeCmd(requires.tok, requires.Condition)
+                                : (PredicateCmd) new AssertCmd(requires.tok, requires.Condition)).ToList();
+                        yieldInfo.Add(new Tuple<List<Cmd>, List<PredicateCmd>>(disjointnessCmds, yieldPredicates));
+                    }
+                }
+                else
+                {
+                    if (proc.Requires.Count > 0)
+                    {
+                        var entryDisjointnessCmds =
+                            linearPermissionInstrumentation.ProcDisjointnessAssumeCmds(proc, true);
+                        var entryYieldPredicates = proc.Requires.Select(requires =>
+                            requires.Free
+                                ? (PredicateCmd) new AssumeCmd(requires.tok, requires.Condition)
+                                : (PredicateCmd) new AssertCmd(requires.tok, requires.Condition)).ToList();
+                        yieldInfo.Add(
+                            new Tuple<List<Cmd>, List<PredicateCmd>>(entryDisjointnessCmds, entryYieldPredicates));
+                    }
+                    if (proc.Ensures.Count > 0)
+                    {
+                        var exitDisjointnessCmds =
+                            linearPermissionInstrumentation.ProcDisjointnessAssumeCmds(proc, false);
+                        var exitYieldPredicates = proc.Ensures.Select(ensures =>
+                            ensures.Free
+                                ? (PredicateCmd) new AssumeCmd(ensures.tok, ensures.Condition)
+                                : (PredicateCmd) new AssertCmd(ensures.tok, ensures.Condition)).ToList();
+                        yieldInfo.Add(
+                            new Tuple<List<Cmd>, List<PredicateCmd>>(exitDisjointnessCmds, exitYieldPredicates));
+                    }
+                }
+            }
+            else
+            {
+                Debug.Assert(false);
+            }
+            
             Substitution assumeSubst = Substituter.SubstitutionFromHashtable(assumeMap);
             Substitution oldSubst = Substituter.SubstitutionFromHashtable(oldLocalMap);
             Substitution subst = Substituter.SubstitutionFromHashtable(map);
@@ -78,11 +108,11 @@ namespace Microsoft.Boogie
             labelTargets.Add(noninterferenceCheckerBlock);
             noninterferenceCheckerBlocks.Add(noninterferenceCheckerBlock);
             int yieldCount = 0;
-            foreach (var kv in yields)
+            foreach (var kv in yieldInfo)
             {
-                var absy = kv.Key;
-                var yieldPredicates = kv.Value;
-                List<Cmd> newCmds = linearPermissionInstrumentation.DisjointnessAssumeCmds(absy,false);
+                var disjointnessCmds = kv.Item1;
+                var yieldPredicates = kv.Item2;
+                var newCmds = new List<Cmd>(disjointnessCmds);
                 foreach (var predCmd in yieldPredicates)
                 {
                     var newExpr = Substituter.ApplyReplacingOldExprs(assumeSubst, oldSubst, predCmd.Expr);
@@ -111,7 +141,7 @@ namespace Microsoft.Boogie
                 new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
 
             // Create the yield checker procedure
-            var noninterferenceCheckerName = $"NoninterferenceChecker_{decl.Name}";
+            var noninterferenceCheckerName = decl is Procedure ? $"NoninterferenceChecker_proc_{decl.Name}" : $"NoninterferenceChecker_impl_{decl.Name}";
             var noninterferenceCheckerProc = new Procedure(Token.NoToken, noninterferenceCheckerName, decl.TypeParameters, inputs,
                 new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
             CivlUtil.AddInlineAttribute(noninterferenceCheckerProc);

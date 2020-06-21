@@ -21,23 +21,19 @@ modifies g;
 
 procedure {:yields} {:layer 0} {:refines "AtomicSet"} Set(v: int);
 
-procedure {:yields} {:layer 1} PC()
-ensures {:layer 1} g == old(g);
-{
-  yield;
-  assert {:layer 1} g == old(g);
-}
+procedure {:yield_invariant} {:layer 1} PC(old_g: int);
+requires g == old_g;
 
 procedure {:yields} {:layer 1} PE()
 {
-  call PC();
+  call PC(g);
 }
 
 procedure {:yields} {:layer 1} PD()
 {
   yield;
   call Set(3);
-  call PC();
+  call PC(g);
   assert {:layer 1} g == 3;
 }
 

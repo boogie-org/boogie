@@ -26,7 +26,7 @@ var {:layer 1} done : [int]bool;
 
 // Main procedures that spawns all processes
 procedure {:yields} {:layer 1} Main()
-requires {:layer 1} done == (lambda i: int :: false);
+requires {:layer 1} ind_inv(done, y, x);
 ensures  {:layer 1} safety(done, y);
 {
   var i: int;
