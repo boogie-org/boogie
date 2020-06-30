@@ -157,9 +157,12 @@ namespace Microsoft.Boogie
                 var originalImpl = absyMap[impl] as Implementation;
                 YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc];
                 noninterferenceCheckerDecls.AddRange(
-                    NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker, layerNum, absyMap, impl, impl.LocVars));
+                    NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker, layerNum,
+                        absyMap, impl, impl.LocVars));
+                if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum) continue;
                 noninterferenceCheckerDecls.AddRange(
-                    NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker, layerNum, new Dictionary<Absy, Absy>(), impl.Proc, new List<Variable>()));
+                    NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker,
+                        layerNum, new Dictionary<Absy, Absy>(), impl.Proc, new List<Variable>()));
                 InlineYieldRequiresAndEnsures(yieldingProc, impl.Proc);
             }
         }
@@ -234,11 +237,9 @@ namespace Microsoft.Boogie
                 // But this is fine because a mover procedure at its disappearing layer does not have a yield in it.
                 linearPermissionInstrumentation.AddDisjointnessAssumptions(impl, yieldingProcs);
                 var originalImpl = absyMap[impl] as Implementation;
-                var proc = civlTypeChecker.procToYieldingProc[originalImpl.Proc];
-                if (!(proc is MoverProc && proc.upperLayer == layerNum))
-                {
-                    TransformImpl(originalImpl, impl);
-                }
+                var yieldingProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc];
+                if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum) continue;
+                TransformImpl(originalImpl, impl);
             }
         }
         
