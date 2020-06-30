@@ -49,7 +49,7 @@ namespace Microsoft.Boogie
             List<Tuple<List<Cmd>, List<PredicateCmd>>> yieldInfo = null;
             if (decl is Implementation impl)
             {
-                yieldInfo = CollectYields(impl).Select(kv => new Tuple<List<Cmd>, List<PredicateCmd>>(linearPermissionInstrumentation.DisjointnessAssumeCmds(kv.Key, false), kv.Value)).ToList();
+                yieldInfo = CollectYields(civlTypeChecker, absyMap, layerNum, impl).Select(kv => new Tuple<List<Cmd>, List<PredicateCmd>>(linearPermissionInstrumentation.DisjointnessAssumeCmds(kv.Key, false), kv.Value)).ToList();
             }
             else if (decl is Procedure proc)
             {
@@ -154,16 +154,22 @@ namespace Microsoft.Boogie
             return new List<Declaration> {noninterferenceCheckerProc, noninterferenceCheckerImpl};
         }
 
-        private static Dictionary<Absy, List<PredicateCmd>> CollectYields(Implementation impl)
+        private static Dictionary<Absy, List<PredicateCmd>> CollectYields(CivlTypeChecker civlTypeChecker, Dictionary<Absy, Absy> absyMap, int layerNum, Implementation impl)
         {
             var allYieldPredicates = new Dictionary<Absy, List<PredicateCmd>>();
             List<PredicateCmd> yieldPredicates = new List<PredicateCmd>();
             foreach (Block b in impl.Blocks)
             {
-                YieldCmd yieldCmd = null;
+                Absy absy = null;
+                var originalBlock = (Block) absyMap[b];
+                if (civlTypeChecker.yieldingLoops.ContainsKey(originalBlock) &&
+                    civlTypeChecker.yieldingLoops[originalBlock].layers.Contains(layerNum))
+                {
+                    absy = b;
+                }
                 foreach (Cmd cmd in b.Cmds)
                 {
-                    if (yieldCmd != null)
+                    if (absy != null)
                     {
                         if (cmd is PredicateCmd)
                         {
@@ -171,19 +177,19 @@ namespace Microsoft.Boogie
                         }
                         else
                         {
-                            allYieldPredicates[yieldCmd] = yieldPredicates;
+                            allYieldPredicates[absy] = yieldPredicates;
                             yieldPredicates = new List<PredicateCmd>();
-                            yieldCmd = null;
+                            absy = null;
                         }
                     }
                     if (cmd is YieldCmd ycmd)
                     {
-                        yieldCmd = ycmd;
+                        absy = ycmd;
                     }
                 }
-                if (yieldCmd != null)
+                if (absy != null)
                 {
-                    allYieldPredicates[yieldCmd] = yieldPredicates;
+                    allYieldPredicates[absy] = yieldPredicates;
                     yieldPredicates = new List<PredicateCmd>();
                 }
             }

@@ -201,10 +201,10 @@ requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, p
   call ps', cp := SplitConcludePermission(r, ps);
   n := 1;
   while (n <= numNodes)
+  invariant {:layer 1}{:terminates} true;
   invariant {:layer 1} 1 <= n && n <= numNodes+1;
   invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps'[VotePerm(r, n')]);
   invariant {:layer 1} PAs == (lambda pa: PA :: if is#Vote_PA(pa) && round#Vote_PA(pa) == r && 1 <= node#Vote_PA(pa) && node#Vote_PA(pa) < n && value#Vote_PA(pa) == maxValue && p#Vote_PA(pa) == VotePerm(round#Vote_PA(pa), node#Vote_PA(pa)) then 1 else 0);
-  invariant {:layer 1}{:terminates} true;
   {
     call ps', p := ExtractVotePermission(ps', r, n);
     async call Vote(r, n, maxValue, p);

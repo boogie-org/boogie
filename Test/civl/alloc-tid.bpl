@@ -4,44 +4,41 @@ var {:layer 0,2} a:[int]int;
 var {:layer 0,1} count: int;
 var {:layer 1,2} {:linear "tid"} unallocated:[int]bool;
 
-procedure {:yields} {:layer 2} main()
-requires {:layer 1} AllocInv(count, unallocated);
+procedure {:yield_invariant} {:layer 1} Yield1();
+requires AllocInv(count, unallocated);
+
+procedure {:yield_invariant} {:layer 2} Yield2({:linear "tid"} tid: int, v: int);
+requires a[tid] == v;
+
+procedure {:yields} {:layer 2}
+{:yield_requires "Yield1"}
+main()
 {
   var {:layer 1,2} {:linear "tid"} tid:int;
   var i: int;
 
-  yield;
-  assert {:layer 1} AllocInv(count, unallocated);
   while (true)
-  invariant {:layer 1} AllocInv(count, unallocated);
+  invariant {:yields} {:layer 1,2} {:yield_invariant "Yield1"} true;
   {
     call tid, i := Allocate();
     async call P(tid, i);
-    yield;
-    assert {:layer 1} AllocInv(count, unallocated);
   }
-  yield;
 }
 
-procedure {:yields} {:layer 2} P({:layer 1,2} {:linear "tid"} tid: int, i: int)
+procedure {:yields} {:layer 2}
+{:yield_requires "Yield1"}
+{:yield_ensures "Yield1"}
+{:yield_ensures "Yield2", tid, old(a)[tid] + 1}
+P({:layer 1,2} {:linear "tid"} tid: int, i: int)
 requires {:layer 1} tid == i;
-requires {:layer 1} AllocInv(count, unallocated);
-ensures  {:layer 1} AllocInv(count, unallocated);
-ensures  {:layer 2} a[tid] == old(a)[tid] + 1;
 {
   var t:int;
 
-  yield;
-  assert {:layer 1} AllocInv(count, unallocated);
-  assert {:layer 2} a[tid] == old(a)[tid];
+  par Yield1() | Yield2(tid, old(a)[tid]);
   call t := Read(tid, i);
-  yield;
-  assert {:layer 1} AllocInv(count, unallocated);
-  assert {:layer 2} a[tid] == t;
+  par Yield1() | Yield2(tid, t);
   call Write(tid, i, t + 1);
-  yield;
-  assert {:layer 1} AllocInv(count, unallocated);
-  assert {:layer 2} a[tid] == t + 1;
+  par Yield1() | Yield2(tid, t + 1);
 }
 
 procedure {:atomic} {:layer 2,2} AtomicAllocate() returns ({:linear "tid"} tid: int, i: int)
@@ -51,17 +48,14 @@ modifies unallocated;
   unallocated[tid] := false;
 }
 
-procedure {:yields} {:layer 1} {:refines "AtomicAllocate"} Allocate() returns ({:layer 1} {:linear "tid"} tid: int, i: int)
-requires {:layer 1} AllocInv(count, unallocated);
-ensures  {:layer 1} AllocInv(count, unallocated);
-ensures  {:layer 1} tid == i;
+procedure {:yields} {:layer 1} {:refines "AtomicAllocate"}
+{:yield_requires "Yield1"}
+{:yield_ensures "Yield1"}
+Allocate() returns ({:layer 1} {:linear "tid"} tid: int, i: int)
+ensures {:layer 1} tid == i;
 {
-  yield;
-  assert {:layer 1} AllocInv(count, unallocated);
   call i := AllocateLow();
   call tid := MakeLinear(i);
-  yield;
-  assert {:layer 1} AllocInv(count, unallocated);
 }
 
 procedure {:atomic} {:layer 2,2} AtomicRead({:linear "tid"} tid: int, i: int) returns (val: int)
@@ -69,16 +63,13 @@ procedure {:atomic} {:layer 2,2} AtomicRead({:linear "tid"} tid: int, i: int) re
   val := a[tid];
 }
 
-procedure {:yields} {:layer 1} {:refines "AtomicRead"} Read({:layer 1} {:linear "tid"} tid: int, i: int) returns (val: int)
+procedure {:yields} {:layer 1} {:refines "AtomicRead"}
+{:yield_requires "Yield1"}
+{:yield_ensures "Yield1"}
+Read({:layer 1} {:linear "tid"} tid: int, i: int) returns (val: int)
 requires {:layer 1} tid == i;
-requires {:layer 1} AllocInv(count, unallocated);
-ensures  {:layer 1} AllocInv(count, unallocated);
 {
-  yield;
-  assert {:layer 1} AllocInv(count, unallocated);
   call val := ReadLow(i);
-  yield;
-  assert {:layer 1} AllocInv(count, unallocated);
 }
 
 procedure {:atomic} {:layer 2,2} AtomicWrite({:linear "tid"} tid: int, i: int, val: int)
@@ -87,16 +78,13 @@ modifies a;
   a[tid] := val;
 }
 
-procedure {:yields} {:layer 1} {:refines "AtomicWrite"} Write({:layer 1} {:linear "tid"} tid: int, i: int, val: int)
+procedure {:yields} {:layer 1} {:refines "AtomicWrite"}
+{:yield_requires "Yield1"}
+{:yield_ensures "Yield1"}
+Write({:layer 1} {:linear "tid"} tid: int, i: int, val: int)
 requires {:layer 1} tid == i;
-requires {:layer 1} AllocInv(count, unallocated);
-ensures  {:layer 1} AllocInv(count, unallocated);
 {
-  yield;
-  assert {:layer 1} AllocInv(count, unallocated);
   call WriteLow(i, val);
-  yield;
-  assert {:layer 1} AllocInv(count, unallocated);
 }
 
 function {:inline} AllocInv(count: int, unallocated:[int]bool): (bool)

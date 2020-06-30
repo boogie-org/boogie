@@ -12,23 +12,22 @@ var {:layer 0,1} x : int;
 // ###########################################################################
 // Main
 
-procedure {:atomic} {:layer 2} skip () {}    
+procedure {:atomic} {:layer 2} skip () {}
 
 procedure {:yields} {:layer 1} {:refines "skip"} Main ()
 {
   var i : int;
 
   yield; assert {:layer 1} x == old(x);
-  
+
   i := 0;
   while (i != N)
+  invariant {:layer 1} {:terminates} true;
   invariant {:layer 1} x == old(x);
-  invariant {:layer 1} {:terminates} true;    
   {
     async call {:sync} inc();
     async call {:sync} dec();
     i := i + 1;
-    yield; assert {:layer 1} x == old(x);
   }
 
   yield;

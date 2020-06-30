@@ -16,6 +16,10 @@ namespace Microsoft.Boogie
         private Dictionary<Variable, LayerRange> globalVarToLayerRange;
         private Dictionary<Variable, LayerRange> localVarToLayerRange;
 
+        public Dictionary<Block, YieldingLoop> yieldingLoops;
+        public Dictionary<Block, HashSet<int>> terminatingLoopHeaders;
+        public HashSet<Procedure> terminatingProcedures;
+        
         public Dictionary<Procedure, AtomicAction> procToAtomicAction;
         public Dictionary<Procedure, AtomicAction> procToIsInvariant;
         public Dictionary<Procedure, AtomicAction> procToIsAbstraction;
@@ -41,7 +45,7 @@ namespace Microsoft.Boogie
         public LinearTypeChecker linearTypeChecker;
 
         public AtomicAction SkipAtomicAction;
-        
+
         public CivlTypeChecker(Program program)
         {
             this.checkingContext = new CheckingContext(null);
@@ -49,6 +53,9 @@ namespace Microsoft.Boogie
 
             this.globalVarToLayerRange = new Dictionary<Variable, LayerRange>();
             this.localVarToLayerRange = new Dictionary<Variable, LayerRange>();
+            this.yieldingLoops = new Dictionary<Block, YieldingLoop>();
+            this.terminatingLoopHeaders = new Dictionary<Block, HashSet<int>>();
+            this.terminatingProcedures = new HashSet<Procedure>();
             this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
             this.procToAtomicAction = new Dictionary<Procedure, AtomicAction>();
             this.procToIsInvariant = new Dictionary<Procedure, AtomicAction>();
@@ -481,7 +488,17 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    yieldRequires.Add(callCmd);
+                    var oldFinder = new OldFinder();
+                    oldFinder.Visit(callCmd);
+                    if (oldFinder.foundOld)
+                    {
+                        ok = false;
+                        Error(attr, "Old expressions not allowed only in yield requires");
+                    }
+                    else
+                    {
+                        yieldRequires.Add(callCmd);
+                    }
                 }
             }
             foreach (var attr in CivlAttributes.FindAllAttributes(proc, CivlAttributes.YIELD_ENSURES))
@@ -582,6 +599,10 @@ namespace Microsoft.Boogie
                 }
                 YieldingProcVisitor visitor = new YieldingProcVisitor(this, yieldRequires, yieldEnsures);
                 visitor.VisitProcedure(proc);
+                if (proc.HasAttribute(CivlAttributes.TERMINATES))
+                {
+                    terminatingProcedures.Add(proc);
+                }
             }
 
             if (procToAtomicAction.ContainsKey(SkipAtomicAction.proc))
@@ -597,6 +618,55 @@ namespace Microsoft.Boogie
             {
                 YieldingProcVisitor visitor = new YieldingProcVisitor(this);
                 visitor.VisitImplementation(impl);
+                var graph = Program.GraphFromImpl(impl);
+                graph.ComputeLoops();
+                if (!graph.Reducible)
+                {
+                    Error(impl, "Irreducible flow graphs are unsupported.");
+                    continue;
+                }
+                foreach (var header in graph.Headers)
+                {
+                    if (header.Cmds.Count == 0) continue;
+                    var predCmd = header.Cmds[0] as PredicateCmd;
+                    if (predCmd == null) continue;
+                    var isYielding = predCmd.HasAttribute(CivlAttributes.YIELDS);
+                    var isTerminating = predCmd.HasAttribute(CivlAttributes.TERMINATES);
+                    if (!(isYielding || isTerminating)) continue;
+                    if (isYielding && isTerminating)
+                    {
+                        Error(header, "Loop header may not be both yielding and terminating.");
+                        continue;
+                    }
+                    if (!predCmd.Expr.Equals(Expr.True))
+                    {
+                        Error(predCmd, "Predicate command carrying loop header annotation must be true.");
+                        continue;
+                    }
+                    if (isYielding)
+                    {
+                        var yieldingLayers = new HashSet<int>(absyToLayerNums[predCmd]);
+                        var yieldInvariants = new List<CallCmd>();
+                        foreach (var attr in CivlAttributes.FindAllAttributes(predCmd, CivlAttributes.YIELD_INVARIANT))
+                        {
+                            var callCmd = TypeCheckYieldInvariantCall(attr);
+                            if (callCmd == null)
+                            {
+                                Error(attr, $"Invalid yield invariant");
+                            }
+                            else
+                            {
+                                yieldInvariants.Add(callCmd);
+                                yieldingLayers.Add(procToYieldInvariant[callCmd.Proc].LayerNum);
+                            }
+                        }
+                        yieldingLoops[header] = new YieldingLoop(yieldingLayers, yieldInvariants);
+                    }
+                    if (isTerminating)
+                    {
+                        terminatingLoopHeaders[header] = new HashSet<int>(absyToLayerNums[predCmd]);
+                    }
+                }
             }
         }
 
@@ -1035,6 +1105,29 @@ namespace Microsoft.Boogie
         #endregion
 
         #region Public access methods
+        public bool IsYieldingLoopHeader(Block block, int layerNum)
+        {
+            if (!yieldingLoops.ContainsKey(block))
+            {
+                return false;
+            }
+            return yieldingLoops[block].layers.Contains(layerNum);
+        }
+        
+        public bool IsTerminatingLoopHeader(Block block, int layerNum)
+        {
+            if (!terminatingLoopHeaders.ContainsKey(block))
+            {
+                return false;
+            }
+            return terminatingLoopHeaders[block].Contains(layerNum);
+        }
+
+        public bool IsTerminatingProcedure(Procedure proc)
+        {
+            return terminatingProcedures.Contains(proc);
+        }
+
         public LayerRange GlobalVariableLayerRange(Variable g)
         {
             Debug.Assert(globalVarToLayerRange.ContainsKey(g));
@@ -1223,7 +1316,22 @@ namespace Microsoft.Boogie
                 return base.VisitIdentifierExpr(node);
             }
         }
-        
+
+        class OldFinder : ReadOnlyVisitor
+        {
+            public bool foundOld;
+            public OldFinder()
+            {
+                this.foundOld = false;
+            }
+
+            public override Expr VisitOldExpr(OldExpr node)
+            {
+                foundOld = true;
+                return node;
+            }
+        }
+
         private class YieldingProcVisitor : ReadOnlyVisitor
         {
             CivlTypeChecker civlTypeChecker;

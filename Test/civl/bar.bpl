@@ -39,15 +39,11 @@ procedure {:yields} {:layer 1} PD()
 
 procedure {:yields} {:layer 1} Main2()
 {
-  yield;
   while (*)
+  invariant {:terminates} {:layer 1} true;
   {
     async call PB();
-    yield;
     async call PE();
-    yield;
     async call PD();
-    yield;
   }
-  yield;
 }

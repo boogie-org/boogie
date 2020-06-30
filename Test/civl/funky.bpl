@@ -153,10 +153,11 @@ procedure {:yields} {:layer 3} main({:linear "tid"} tid: X)
 requires {:layer 3} tid != nil && counter == 0;
 {
     var {:linear "tid"} cid: X;
-    
+
     yield;
     assert {:layer 3} counter == 0;
     while (*)
+    invariant {:yields} {:layer 1,2,3} true;
     invariant {:layer 3} counter == 0;
     {
         if (*) {

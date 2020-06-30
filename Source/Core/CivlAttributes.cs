@@ -50,7 +50,8 @@ namespace Microsoft.Boogie
             {LAYER, YIELDS, YIELD_INVARIANT, INTRO, ATOMIC, LEFT, RIGHT, BOTH, REFINES, HIDE,
              COMMUTATIVITY, LEMMA, WITNESS,
              PENDING_ASYNC, IS, IS_INVARIANT, IS_ABSTRACTION, ELIM, CHOICE,
-             YIELD_REQUIRES, YIELD_ENSURES};
+             YIELD_REQUIRES, YIELD_ENSURES,
+             TERMINATES};
 
         private static string[] LINEAR_ATTRIBUTES =
             {LINEAR, LINEAR_IN, LINEAR_OUT };

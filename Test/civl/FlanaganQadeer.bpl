@@ -29,15 +29,13 @@ procedure {:yields} {:layer 1} main()
     var {:linear "tid"} tid: X;
     var val: int;
 
-    yield;
     while (*)
+    invariant {:yields} {:layer 1} true;
     {
         call tid := Allocate();
         havoc val;
         async call foo(tid, val);
-        yield;
     }
-    yield;
 }
 
 procedure {:atomic} {:layer 1} AtomicLock(tid: X)

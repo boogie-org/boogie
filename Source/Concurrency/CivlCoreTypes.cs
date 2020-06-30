@@ -208,6 +208,18 @@ namespace Microsoft.Boogie
         public int LayerNum => layer;
     }
 
+    public class YieldingLoop
+    {
+        public HashSet<int> layers;
+        public List<CallCmd> yieldInvariants;
+
+        public YieldingLoop(HashSet<int> layers, List<CallCmd> yieldInvariants)
+        {
+            this.layers = layers;
+            this.yieldInvariants = yieldInvariants;
+        }
+    }
+    
     public abstract class YieldingProc
     {
         public Procedure proc;

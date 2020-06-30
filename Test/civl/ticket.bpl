@@ -48,22 +48,15 @@ requires {:layer 2} xls' == MapConstBool(true);
   var {:linear "tid"} tid: X;
   var {:linear "tid"} xls: [X]bool;
 
-  yield;
-
   call InitAbstract(xls');
   xls := xls';
 
-  par Yield1() | Yield2();
-
   while (*)
-  invariant {:layer 1} Inv1(T, t);
-  invariant {:layer 2} Inv2(T, s, cs);
+  invariant {:yields} {:layer 1,2} {:yield_invariant "Yield1"} {:yield_invariant "Yield2"} true;
   {
     par xls, tid := Allocate(xls) | Yield1() | Yield2();
     async call Customer(tid);
-    par Yield1() | Yield2();
   }
-  par Yield1() | Yield2();
 }
 
 procedure {:yields} {:layer 2} Allocate ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X)
@@ -74,35 +67,34 @@ ensures {:layer 1,2} xl != nil;
   yield;
 }
 
-procedure {:yields} {:layer 2} Customer ({:linear_in "tid"} tid: X)
-requires {:layer 1} Inv1(T, t);
-requires {:layer 2} Inv2(T, s, cs) && tid != nil;
+procedure {:yields} {:layer 2}
+{:yield_requires "Yield1"}
+{:yield_requires "Yield2"}
+Customer ({:linear_in "tid"} tid: X)
+requires {:layer 2} tid != nil;
 {
-  par Yield1() | Yield2();
   while (*)
-  invariant {:layer 1} Inv1(T, t);
-  invariant {:layer 2} Inv2(T, s, cs);
+  invariant {:yields} {:layer 1,2} {:yield_invariant "Yield1"} {:yield_invariant "Yield2"} true;
   {
     call Enter(tid);
     par Yield1() | Yield2() | YieldSpec(tid);
     call Leave(tid);
-    par Yield1() | Yield2();
   }
-  par Yield1() | Yield2();
 }
 
-procedure {:yields} {:layer 2} Enter ({:linear "tid"} tid: X)
-requires {:layer 1} Inv1(T, t);
-ensures  {:layer 1} Inv1(T, t);
-requires {:layer 2} Inv2(T, s, cs) && tid != nil;
-ensures  {:layer 2} Inv2(T, s, cs) && tid != nil && cs == tid;
+procedure {:yields} {:layer 2}
+{:yield_requires "Yield1"}
+{:yield_requires "Yield2"}
+{:yield_ensures "Yield1"}
+{:yield_ensures "Yield2"}
+{:yield_ensures "YieldSpec", tid}
+Enter ({:linear "tid"} tid: X)
+requires {:layer 2} tid != nil;
 {
   var m: int;
 
-  par Yield1() | Yield2();
   call m := GetTicketAbstract(tid);
   call WaitAndEnter(tid, m);
-  par Yield1() | Yield2() | YieldSpec(tid);
 }
 
 // ###########################################################################

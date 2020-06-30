@@ -7,57 +7,47 @@ const nil: X;
 var {:layer 0,2} b: bool;
 var {:layer 1,3} lock: X;
 
-procedure {:yields} {:layer 3} Customer({:linear "tid"} tid: X)
-requires {:layer 2} tid != nil;
-requires {:layer 2} InvLock(lock, b);
-ensures {:layer 2} InvLock(lock, b);
+procedure {:yields} {:layer 3}
+{:yield_requires "Yield", tid}
+{:yield_ensures "Yield", tid}
+Customer({:linear "tid"} tid: X)
 {
-  yield;
-  assert {:layer 2} InvLock(lock, b);
   while (*)
-  invariant {:layer 2} InvLock(lock, b);
+  invariant {:yields} {:layer 1,2,3} {:yield_invariant "Yield", tid} true;
   {
     call Enter(tid);
     call Leave(tid);
-    yield;
-    assert {:layer 2} InvLock(lock, b);
   }
-  yield;
-  assert {:layer 2} InvLock(lock, b);
 }
 
 function {:inline} InvLock(lock: X, b: bool) : bool
 { lock != nil <==> b }
 
+procedure {:yield_invariant} {:layer 2} Yield({:linear "tid"} tid: X);
+requires tid != nil && InvLock(lock, b);
+
 procedure {:right} {:layer 3} AtomicEnter({:linear "tid"} tid: X)
 modifies lock;
 { assume lock == nil && tid != nil; lock := tid; }
 
-procedure {:yields} {:layer 2} {:refines "AtomicEnter"} Enter({:linear "tid"} tid: X)
-requires {:layer 2} tid != nil;
-requires {:layer 2} InvLock(lock, b);
-ensures {:layer 2} InvLock(lock, b);
+procedure {:yields} {:layer 2} {:refines "AtomicEnter"}
+{:yield_requires "Yield", tid}
+{:yield_ensures "Yield", tid}
+Enter({:linear "tid"} tid: X)
 {
-  yield;
-  assert {:layer 2} InvLock(lock, b);
   call LowerEnter(tid);
-  yield;
-  assert {:layer 2} InvLock(lock, b);
 }
 
 procedure {:left} {:layer 3} AtomicLeave({:linear "tid"} tid:X)
 modifies lock;
 { assert lock == tid && tid != nil; lock := nil; }
 
-procedure {:yields} {:layer 2} {:refines "AtomicLeave"} Leave({:linear "tid"} tid:X)
-requires {:layer 2} InvLock(lock, b);
-ensures {:layer 2} InvLock(lock, b);
+procedure {:yields} {:layer 2} {:refines "AtomicLeave"}
+{:yield_requires "Yield", tid}
+{:yield_ensures "Yield", tid}
+Leave({:linear "tid"} tid:X)
 {
-  yield;
-  assert {:layer 2} InvLock(lock, b);
   call LowerLeave();
-  yield;
-  assert {:layer 2} InvLock(lock, b);
 }
 
 procedure {:atomic} {:layer 2} AtomicLowerEnter({:linear "tid"} tid: X)
@@ -67,17 +57,16 @@ modifies b, lock;
 procedure {:yields} {:layer 1} {:refines "AtomicLowerEnter"} LowerEnter({:linear "tid"} tid: X)
 {
   var status: bool;
-  yield;
-  while (true) {
+
+  while (true)
+  invariant {:yields} {:layer 1} true;
+  {
     call status := CAS(false, true);
     if (status) {
       call SetLock(tid);
-      yield;
       return;
     }
-    yield;
   }
-  yield;
 }
 
 procedure {:atomic} {:layer 2} AtomicLowerLeave()
@@ -86,10 +75,8 @@ modifies b, lock;
 
 procedure {:yields} {:layer 1} {:refines "AtomicLowerLeave"} LowerLeave()
 {
-  yield;
   call SET(false);
   call SetLock(nil);
-  yield;
 }
 
 procedure {:intro} {:layer 1} SetLock(v: X)

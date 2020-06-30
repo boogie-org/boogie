@@ -4,26 +4,22 @@ var {:layer 0,2} b: int;
 
 procedure {:yields} {:layer 2} main()
 {
-    yield;
     while (*)
+    invariant {:terminates} {:layer 1,2} true;
     {
         async call Customer();
-        yield;
     }
-    yield;
 }
 
 procedure {:yields} {:layer 2} Customer()
 {
-    yield;
     while (*)
+    invariant {:yields} {:layer 1,2} true;
     {
         call Enter();
         yield;
         call Leave();
-        yield;
     }
-    yield;
 }
 
 procedure {:atomic} {:layer 2} AtomicEnter()
@@ -33,23 +29,25 @@ modifies b;
 procedure {:yields} {:layer 1} {:refines "AtomicEnter"} Enter()
 {
     var _old, curr: int;
-    yield;
-    while (true) {
+
+    while (true)
+    invariant {:yields} {:layer 1} true;
+    {
         call _old := CAS(0, 1);
         if (_old == 0) {
             break;
         }
         yield;
-        while (true) {
+        while (true)
+        invariant {:yields} {:layer 1} true;
+        {
             call curr := Read();
             yield;
             if (curr == 0) {
                 break;
             }
         }
-        yield;
     }
-    yield;
 }
 
 procedure {:atomic} {:layer 1,2} AtomicRead() returns (val: int)

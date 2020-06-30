@@ -39,6 +39,7 @@ procedure {:yields} {:layer 1} {:refines "atomic_Alloc"} Alloc({:linear "tid"} t
   i := 0;
   r := -1;
   while (i < max)
+  invariant {:yields} {:layer 1} true;
   invariant {:layer 1} 0 <= i;
   {
     yield;

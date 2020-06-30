@@ -29,8 +29,8 @@ ensures {:layer 1} x == old(x) + N;
 
   i := 0;
   while (i != N)
-  invariant {:layer 1} x == old(x) + i;
   invariant {:layer 1} {:terminates} true;
+  invariant {:layer 1} x == old(x) + i;
   {
     i := i + 1;
     async call {:sync} inc();
@@ -51,8 +51,8 @@ ensures {:layer 1} x == old(x) - N;
 
   i := 0;
   while (i != N)
-  invariant {:layer 1} x == old(x) - i;
   invariant {:layer 1} {:terminates} true;
+  invariant {:layer 1} x == old(x) - i;
   {
     i := i + 1;
     async call {:sync} dec();
