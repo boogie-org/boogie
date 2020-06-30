@@ -452,6 +452,12 @@ namespace Microsoft.Boogie
                         Error(kv, $"Illegal expression at position {i}");
                     }
                 }
+
+                if (yieldingProc.InParams.Count != exprs.Count)
+                {
+                    Error(kv, $"Incorrect number of arguments to yield invariant {yieldingProc.Name}");
+                    return null;
+                }
                 var callCmd = new CallCmd(kv.tok, yieldingProc.Name, exprs, new List<IdentifierExpr>());
                 callCmd.Proc = yieldingProc;
                 if (CivlUtil.ResolveAndTypecheck(callCmd) == 0)
