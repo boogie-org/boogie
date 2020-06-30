@@ -106,7 +106,6 @@ WriteCache({:linear "tid"} tid: X, index: int)
     invariant {:yields} {:layer 1} {:yield_invariant "YieldToWriteCache", tid, old(currsize), old(newsize)} true;
     invariant {:layer 1} old(currsize) <= j;
     {
-        par YieldToWriteCache(tid, currsize, newsize);
         call WriteCacheEntry(tid, j);
         j := j + 1;
     }
