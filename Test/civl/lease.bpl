@@ -59,7 +59,7 @@ procedure{:right}{:layer 2} AtomicRecv({:linear "me"} me:int) returns(m:msg)
         assume network[m] && dst#msg(m) == me;
 }
 
-procedure{:yields}{:layer 1} {:refines "AtomicRecv"} Recv({:linear "me"} me:int) returns(m:msg);  
+procedure{:yields}{:layer 1} {:refines "AtomicRecv"} Recv({:linear "me"} me:int) returns(m:msg);
 
 procedure{:left}{:layer 2} AtomicSendInternal({:linear "me"} me:int, dst:int, payload:lockMsg)
 modifies network;
@@ -163,7 +163,8 @@ procedure{:yields}{:layer 2} {:refines "AtomicAccept"} Accept({:linear "me"} me:
   yield; assert{:layer 2} Inv(network, nodes, history);
 
   while (true)
-    invariant{:layer 2} Inv(network, nodes, history);
+    invariant {:yields} {:layer 2} true;
+    invariant {:layer 2} Inv(network, nodes, history);
   {
     yield; assert{:layer 2} Inv(network, nodes, history);
 

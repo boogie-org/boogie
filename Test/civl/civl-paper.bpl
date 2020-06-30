@@ -42,16 +42,17 @@ function {:inline} Inv(g: lmap) : bool
     dom(g)[p] && dom(g)[p+4] && map(g)[p] == map(g)[p+4]
 }
 
-procedure {:yields} {:layer 3} P({:linear "tid"} tid: X)
-requires {:layer 1} tid != nil && InvLock(lock, b);
-ensures {:layer 1} InvLock(lock, b);
-requires {:layer 3} tid != nil && Inv(g);
-ensures {:layer 3} Inv(g);
+procedure {:yields} {:layer 3}
+{:yield_requires "Yield1"}
+{:yield_ensures "Yield1"}
+{:yield_requires "Yield3"}
+{:yield_ensures "Yield3"}
+P({:linear "tid"} tid: X)
+requires {:layer 1,3} tid != nil;
 {
     var t: int;
     var {:linear "mem"} l: lmap;
 
-    par Yield3() | Yield1();
     call AcquireProtected(tid);
     call l := TransferFromGlobalProtected(tid);
     call t := Load(l, p);
@@ -60,98 +61,90 @@ ensures {:layer 3} Inv(g);
     call l := Store(l, p+4, t+1);
     call TransferToGlobalProtected(tid, l);
     call ReleaseProtected(tid);
-    par Yield3() | Yield1();
 }
 
 procedure {:both} {:layer 3} AtomicTransferToGlobalProtected({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap)
 modifies g;
 { assert tid != nil && lock == tid; g := l; }
 
-procedure {:yields} {:layer 2} {:refines "AtomicTransferToGlobalProtected"} TransferToGlobalProtected({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap)
-requires {:layer 1} InvLock(lock, b);
-ensures {:layer 1} InvLock(lock, b);
+procedure {:yields} {:layer 2} {:refines "AtomicTransferToGlobalProtected"}
+{:yield_requires "Yield1"}
+{:yield_ensures "Yield1"}
+TransferToGlobalProtected({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap)
 {
-  par Yield1() | Yield2();
   call TransferToGlobal(tid, l);
-  par Yield1() | Yield2();
 }
 
 procedure {:both} {:layer 3} AtomicTransferFromGlobalProtected({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap)
 modifies g;
 { assert tid != nil && lock == tid; l := g; g := emptyDom(g); }
 
-procedure {:yields} {:layer 2} {:refines "AtomicTransferFromGlobalProtected"} TransferFromGlobalProtected({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap)
-requires {:layer 1} InvLock(lock, b);
-ensures {:layer 1} InvLock(lock, b);
+procedure {:yields} {:layer 2} {:refines "AtomicTransferFromGlobalProtected"}
+{:yield_requires "Yield1"}
+{:yield_ensures "Yield1"}
+TransferFromGlobalProtected({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap)
 {
-  par Yield1() | Yield2();
   call l := TransferFromGlobal(tid);
-  par Yield1() | Yield2();
 }
 
 procedure {:right} {:layer 3} AtomicAcquireProtected({:linear "tid"} tid: X)
 modifies lock;
 { assert tid != nil; assume lock == nil; lock := tid; }
 
-procedure {:yields} {:layer 2} {:refines "AtomicAcquireProtected"} AcquireProtected({:linear "tid"} tid: X)
-requires {:layer 1} tid != nil && InvLock(lock, b);
-ensures {:layer 1} InvLock(lock, b);
+procedure {:yields} {:layer 2} {:refines "AtomicAcquireProtected"}
+{:yield_requires "Yield1"}
+{:yield_ensures "Yield1"}
+AcquireProtected({:linear "tid"} tid: X)
+requires {:layer 1} tid != nil;
 {
-  par Yield1() | Yield2();
   call Acquire(tid);
-  par Yield1() | Yield2();
 }
 
 procedure {:left} {:layer 3} AtomicReleaseProtected({:linear "tid"} tid: X)
 modifies lock;
 { assert tid != nil && lock == tid; lock := nil; }
 
-procedure {:yields} {:layer 2} {:refines "AtomicReleaseProtected"} ReleaseProtected({:linear "tid"} tid: X)
-requires {:layer 1} InvLock(lock, b);
-ensures {:layer 1} InvLock(lock, b);
+procedure {:yields} {:layer 2} {:refines "AtomicReleaseProtected"}
+{:yield_requires "Yield1"}
+{:yield_ensures "Yield1"}
+ReleaseProtected({:linear "tid"} tid: X)
 {
-  par Yield1() | Yield2();
   call Release(tid);
-  par Yield1() | Yield2();
 }
 
 procedure {:atomic} {:layer 2} AtomicAcquire({:linear "tid"} tid: X)
 modifies lock;
 { assume lock == nil; lock := tid; }
 
-procedure {:yields} {:layer 1} {:refines "AtomicAcquire"} Acquire({:linear "tid"} tid: X)
-requires {:layer 1} tid != nil && InvLock(lock, b);
-ensures {:layer 1} InvLock(lock, b);
+procedure {:yields} {:layer 1} {:refines "AtomicAcquire"}
+{:yield_requires "Yield1"}
+{:yield_ensures "Yield1"}
+Acquire({:linear "tid"} tid: X)
+requires {:layer 1} tid != nil;
 {
     var status: bool;
     var tmp: X;
 
-    call Yield1();
-
     while (true)
-    invariant {:layer 1} InvLock(lock, b);
+    invariant {:yields} {:layer 1} {:yield_invariant "Yield1"} true;
     {
         call status := CAS(tid, false, true);
         if (status) {
-            call Yield1();
             return;
         }
-        call Yield1();
     }
-    yield;
 }
 
 procedure {:atomic} {:layer 2} AtomicRelease({:linear "tid"} tid: X)
 modifies lock;
 { lock := nil; }
 
-procedure {:yields} {:layer 1} {:refines "AtomicRelease"} Release({:linear "tid"} tid: X)
-requires {:layer 1} InvLock(lock, b);
-ensures {:layer 1} InvLock(lock, b);
+procedure {:yields} {:layer 1} {:refines "AtomicRelease"}
+{:yield_requires "Yield1"}
+{:yield_ensures "Yield1"}
+Release({:linear "tid"} tid: X)
 {
-    call Yield1();
     call CLEAR(tid, false);
-    call Yield1();
 }
 
 procedure {:atomic} {:layer 1,2} AtomicTransferToGlobal({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap)

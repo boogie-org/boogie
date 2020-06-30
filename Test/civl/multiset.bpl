@@ -88,6 +88,7 @@ ensures {:layer 1} Inv(valid, elt, owner);
 
   j := 0;
   while(j < max)
+  invariant {:yields} {:layer 1} true;
   invariant {:layer 1} Inv(valid, elt, owner);
   invariant {:layer 1} 0 <= j;
   {
@@ -256,6 +257,7 @@ ensures {:layer 1} {:layer 2} Inv(valid, elt, owner);
   j := 0;
 
   while(j < max)
+  invariant {:yields} {:layer 1,2} true;
   invariant {:layer 1} {:layer 2} Inv(valid, elt, owner);
   invariant {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < j ==> !(old_valid[ii] && old_elt[ii] == x));
   invariant {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);

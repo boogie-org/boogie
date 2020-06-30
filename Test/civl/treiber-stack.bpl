@@ -81,6 +81,9 @@ function {:inline} Inv(TopOfStack: int, Stack: lmap) : (bool)
   Subset(BetweenSet(map(Stack), TopOfStack, null), Union(Singleton(null), dom(Stack)))
 }
 
+procedure {:yield_invariant} {:layer 1} YieldInv();
+requires Inv(TopOfStack, Stack);
+
 var {:linear "Node"} {:layer 0,2} Used: [int]bool;
 
 function {:inline} {:linear "Node"} NodeCollector(x: int) : [int]bool
@@ -96,21 +99,20 @@ procedure {:atomic} {:layer 2} atomic_push(x: int, {:linear_in "Node"} x_lmap: l
 modifies Stack, TopOfStack;
 { assert dom(x_lmap)[x]; Stack := Add(Stack, x, TopOfStack); TopOfStack := x; }
 
-procedure {:yields} {:layer 1} {:refines "atomic_push"} push(x: int, {:linear_in "Node"} x_lmap: lmap)
+procedure {:yields} {:layer 1} {:refines "atomic_push"}
+{:yield_requires "YieldInv"}
+{:yield_ensures "YieldInv"}
+push(x: int, {:linear_in "Node"} x_lmap: lmap)
 requires {:layer 1} dom(x_lmap)[x];
-requires {:layer 1} Inv(TopOfStack, Stack);
-ensures {:layer 1} Inv(TopOfStack, Stack);
 {
   var t: int;
   var g: bool;
   var {:linear "Node"} t_lmap: lmap;
 
-  yield;
-  assert {:layer 1} Inv(TopOfStack, Stack);
   t_lmap := x_lmap;
   while (true)
+  invariant {:yields} {:layer 1} {:yield_invariant "YieldInv"} true;
   invariant {:layer 1} dom(t_lmap) == dom(x_lmap);
-  invariant {:layer 1} Inv(TopOfStack, Stack);
   {
     call t := ReadTopOfStack();
     call t_lmap := Store(t_lmap, x, t);
@@ -118,29 +120,23 @@ ensures {:layer 1} Inv(TopOfStack, Stack);
     if (g) {
       break;
     }
-    yield;
-    assert {:layer 1} dom(t_lmap) == dom(x_lmap);
-    assert {:layer 1} Inv(TopOfStack, Stack);
   }
-  yield;
-  assert {:expand} {:layer 1} Inv(TopOfStack, Stack);
 }
 
 procedure {:atomic} {:layer 2} atomic_pop() returns (t: int)
 modifies Used, TopOfStack, Stack;
 { assert Inv(TopOfStack, Stack); assume TopOfStack != null; t := TopOfStack; Used[t] := true; TopOfStack := map(Stack)[t]; Stack := Remove(Stack, t); }
 
-procedure {:yields} {:layer 1} {:refines "atomic_pop"} pop() returns (t: int)
-requires {:layer 1} Inv(TopOfStack, Stack);
-ensures {:layer 1} Inv(TopOfStack, Stack);
+procedure {:yields} {:layer 1} {:refines "atomic_pop"}
+{:yield_requires "YieldInv"}
+{:yield_ensures "YieldInv"}
+pop() returns (t: int)
 {
   var g: bool;
   var x: int;
 
-  yield;
-  assert {:layer 1} Inv(TopOfStack, Stack);
   while (true)
-  invariant {:layer 1} Inv(TopOfStack, Stack);
+  invariant {:yields} {:layer 1} {:yield_invariant "YieldInv"} true;
   {
     call t := ReadTopOfStack();
     if (t != null) {
@@ -150,11 +146,7 @@ ensures {:layer 1} Inv(TopOfStack, Stack);
         break;
       }
     }
-    yield;
-    assert {:layer 1} Inv(TopOfStack, Stack);
   }
-  yield;
-  assert {:layer 1} Inv(TopOfStack, Stack);
 }
 
 function Equal([int]bool, [int]bool) returns (bool);

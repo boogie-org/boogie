@@ -25,34 +25,29 @@ var {:layer 1} done : [int]bool;
 // #############################################################################
 
 // Main procedures that spawns all processes
-procedure {:yields} {:layer 1} Main()
-requires {:layer 1} ind_inv(done, y, x);
-ensures  {:layer 1} safety(done, y);
+procedure {:yields} {:layer 1}
+{:yield_requires "yield_ind_inv"}
+{:yield_ensures "yield_ind_inv"}
+Main()
 {
   var i: int;
   assert {:layer 1} Trigger(0);
-  yield;
-  assert {:layer 1} ind_inv(done, y, x);
   i := 0;
   while (i < N)
+  invariant {:terminates} {:layer 1} true;
   invariant {:layer 1} ind_inv(done, y, x);
   {
     async call Proc(i);
     i := i + 1;
-    yield;
-    assert {:layer 1} ind_inv(done, y, x);
   }
-  yield;
-  assert {:layer 1} ind_inv(done, y, x);
 }
 
 // Code of process i
-procedure {:yields} {:layer 1} Proc(i: int)
-requires {:layer 1} ind_inv(done, y, x);
-ensures  {:layer 1} ind_inv(done, y, x);
+procedure {:yields} {:layer 1}
+{:yield_requires "yield_ind_inv"}
+{:yield_ensures "yield_ind_inv"}
+Proc(i: int)
 {
-  yield;
-  assert {:layer 1} ind_inv(done, y, x);
   call update_x(i);
   yield;
   assert {:layer 1} x[i] == 1;
@@ -60,8 +55,6 @@ ensures  {:layer 1} ind_inv(done, y, x);
   call update_y(i);
   call mark_done(i);
   assert {:layer 1} Trigger((i-1) mod N);
-  yield;
-  assert {:layer 1} ind_inv(done, y, x);
 }
 
 // Introduction action that gives meaning to the introduced variable done
@@ -123,6 +116,9 @@ function ind_inv(done: [int]bool, y: [int]int, x: [int]int): bool
 {
   safety(done, y) && x_inv(done, x)
 }
+
+procedure {:yield_invariant} {:layer 1} yield_ind_inv();
+requires ind_inv(done, y, x);
 
 // Dummy function to supply hints for quantifier reasoning
 function Trigger(i: int) : bool { true }

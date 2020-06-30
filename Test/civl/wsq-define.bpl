@@ -162,6 +162,7 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
   assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
 
   while(true)
+  invariant {:yields} {:layer 3} true;
   invariant {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs;
   invariant {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
   {
@@ -311,6 +312,7 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
   assert {:layer 3} !steal_in_cs[tid];
 
   while(true)
+  invariant {:yields} {:layer 3} true;
   invariant {:layer 3} stealerTid(tid);
   invariant {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1);
   invariant {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);

@@ -1046,6 +1046,7 @@ procedure {:yields} {:layer 30} Driver({:linear "tid"} tid:Tid) returns (ok: boo
   call Yield30(tid);
   ok := true;
   while (ok)
+    invariant {:yields} {:layer 10,20,30} true;
     invariant {:layer 10,20,30} ValidTid(tid);
     invariant {:layer 10,20,30} shadow.Lock[ShadowableTid(tid)] == tid;
     invariant {:layer 30} thread.State[tid] == RUNNING();
