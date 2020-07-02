@@ -653,7 +653,7 @@ namespace Microsoft.Boogie
                     {
                         var yieldingLayers = new HashSet<int>(absyToLayerNums[predCmd]);
                         var yieldInvariants = new List<CallCmd>();
-                        foreach (var attr in CivlAttributes.FindAllAttributes(predCmd, CivlAttributes.YIELD_INVARIANT))
+                        foreach (var attr in CivlAttributes.FindAllAttributes(predCmd, CivlAttributes.YIELD_LOOP))
                         {
                             var callCmd = TypeCheckYieldInvariantCall(attr);
                             if (callCmd == null)

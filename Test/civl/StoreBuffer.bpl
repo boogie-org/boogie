@@ -65,7 +65,7 @@ requires {:layer 1} mutatorOrGcTid(tid);
 {
     var status:bool;
     while (true)
-    invariant {:yields} {:layer 1} {:yield_invariant "YieldLock"} true;
+    invariant {:yields} {:layer 1} {:yield_loop "YieldLock"} true;
     {
         call status := LockCAS(tid);
         if (status)

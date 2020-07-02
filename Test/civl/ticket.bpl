@@ -52,7 +52,7 @@ requires {:layer 2} xls' == MapConstBool(true);
   xls := xls';
 
   while (*)
-  invariant {:yields} {:layer 1,2} {:yield_invariant "Yield1"} {:yield_invariant "Yield2"} true;
+  invariant {:yields} {:layer 1,2} {:yield_loop "Yield1"} {:yield_loop "Yield2"} true;
   {
     par xls, tid := Allocate(xls) | Yield1() | Yield2();
     async call Customer(tid);
@@ -74,7 +74,7 @@ Customer ({:linear_in "tid"} tid: X)
 requires {:layer 2} tid != nil;
 {
   while (*)
-  invariant {:yields} {:layer 1,2} {:yield_invariant "Yield1"} {:yield_invariant "Yield2"} true;
+  invariant {:yields} {:layer 1,2} {:yield_loop "Yield1"} {:yield_loop "Yield2"} true;
   {
     call Enter(tid);
     par Yield1() | Yield2() | YieldSpec(tid);
