@@ -35,11 +35,12 @@ var {:layer 0,1}{:linear "perm"} As:[A]bool;
 var {:layer 0,1}{:linear "perm"} Bs:[B]bool;
 
 // Invariant
-function {:inline} Inv (x:int, As:[A]bool, Bs: [B]bool) : bool
-{
-     x >= cardAs(As) - cardBs(Bs)
-  && (forall b:B :: Bs[b] ==> As[bToA(b)])
-}
+procedure {:yield_invariant}{:layer 1} Inv ();
+requires x >= cardAs(As) - cardBs(Bs);
+requires (forall b:B :: Bs[b] ==> As[bToA(b)]);
+
+procedure {:yield_invariant}{:layer 1} Inv_incdec (b:B);
+requires As[bToA(b)];
 
 // Definitions and facts about cardinality
 function {:inline} cardAs (As:[A]bool) : int;
@@ -67,20 +68,18 @@ requires As[bToA(_b)];
 ensures cardAs(As) > cardBs(Bs);
 
 // Acutal program
-procedure {:yields}{:layer 1} main ()
-requires {:layer 1} Inv(x, As, Bs);
+procedure {:yields}{:layer 1}
+{:yield_requires "Inv"}
+main ()
 {
   var i:int;
   var {:linear "perm"} ab:AB;
-  yield; assert {:layer 1} Inv(x, As, Bs);
   while (*)
-  invariant {:layer 1} Inv(x, As, Bs);
+  invariant {:yields}{:layer 1}{:yield_loop "Inv"} true;
   {
     call ab := alloc_ab();
     async call incdec(ab);
-    yield; assert {:layer 1} Inv(x, As, Bs);
   }
-  yield;
 }
 
 procedure {:yields}{:layer 1} alloc_ab () returns ({:linear "perm"} ab:AB);
@@ -95,23 +94,21 @@ ensures {:layer 1} As == old(As);
 ensures {:layer 1} Bs == old(Bs);
 ensures {:layer 1} x == old(x);
 
-procedure {:yields}{:layer 1} incdec({:linear_in "perm"} ab:AB)
-requires {:layer 1} Inv(x, As, Bs);
-ensures  {:layer 1} Inv(x, As, Bs);
+procedure {:yields}{:layer 1}
+{:yield_requires "Inv"}
+{:yield_ensures  "Inv"}
+incdec({:linear_in "perm"} ab:AB)
 {
   var {:linear "perm"} a:A;
   var {:linear "perm"} b:B;
-  yield; assert {:layer 1} Inv(x, As, Bs);
   call a,b := split_ab(ab);
   call {:layer 1} Lemma_card_geq(As, Bs);
   call {:layer 1} Lemma_add_to_A(a, As);
   call geq0_inc(a, b);
-  yield;
-  assert {:layer 1} Inv(x, As, Bs) && As[bToA(b)];
+  par Inv() | Inv_incdec(b);
   call {:layer 1} Lemma_card_greater(b, As, Bs);
   call {:layer 1} Lemma_add_to_B(b, Bs);
   call geq0_dec(b);
-  yield; assert {:layer 1}{:expand} Inv(x, As, Bs);
 }
 
 procedure {:atomic}{:layer 1} GEQ0_INC ({:linear_in "perm"} a:A, {:linear "perm"} b:B)
