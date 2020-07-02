@@ -7,18 +7,14 @@ procedure {:yield_invariant} {:layer 1} Yield();
 
 procedure {:yields} {:layer 1} {:refines "atomic_incr_by_two"} incr_by_two_bad()
 {
-    yield;
     par incr() | incr() | Yield() | incr();
     call incr();
-    yield;
 }
 
 procedure {:yields} {:layer 1} {:refines "atomic_incr_by_two"} incr_by_two()
 {
-    yield;
     par incr() | decr() | Yield() | incr();
     call incr();
-    yield;
 }
 procedure {:both} {:layer 1,2} atomic_incr_by_two()
 modifies x;

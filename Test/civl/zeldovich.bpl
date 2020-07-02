@@ -24,24 +24,20 @@ modifies x, y;
 procedure {:layer 1}{:yields}{:refines "GET_X"} get_x ({:linear "tid"} tid:Tid) returns (v:int)
 requires {:layer 1} tid != nil;
 {
-  yield; assert {:layer 1} tid != nil;
   call acquire_x(tid);
   call v := read_x(tid);
   call release_x(tid);
-  yield;
 }
 
 procedure {:layer 1}{:yields}{:refines "SET_BOTH"} set_both ({:linear "tid"} tid:Tid, v:int, w:int)
 requires {:layer 1} tid != nil;
 {
-  yield; assert {:layer 1} tid != nil;
   call acquire_x(tid);
   call acquire_y(tid);
   call write_x(tid, v);
   call release_x(tid); // early release of lock_x
   call write_y(tid, w);
   call release_y(tid);
-  yield;
 }
 
 procedure {:right}{:layer 1} ACQUIRE_X ({:linear "tid"} tid:Tid)

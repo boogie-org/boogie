@@ -19,9 +19,7 @@ function {:inline} {:linear "tid"} TidSetCollector(x: [X]bool) : [X]bool
 procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: X)
 ensures {:layer 1} xl != nil;
 {
-    yield;
     call xl := AllocateLow();
-    yield;
 }
 
 procedure {:yields} {:layer 1} main()
@@ -65,7 +63,6 @@ procedure {:yields} {:layer 0} {:refines "AtomicAllocateLow"} AllocateLow() retu
 procedure {:yields} {:layer 1} foo({:linear_in "tid"} tid: X, val: int)
 requires {:layer 1} tid != nil;
 {
-    yield;
     call Lock(tid);
     call Yield(tid, l, x);
     call Set(val);
@@ -73,7 +70,6 @@ requires {:layer 1} tid != nil;
     assert {:layer 1} x == val;
     call Yield(tid, l, x);
     call Unlock();
-    yield;
 }
 
 procedure {:yield_invariant} {:layer 1} Yield({:linear "tid"} tid: X, old_l: X, old_x: int);

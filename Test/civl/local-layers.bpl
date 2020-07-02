@@ -7,6 +7,5 @@ procedure {:yields} {:layer 5} foo()
     var y: int;
 
     x, y := y, x;
-    yield;
     assume x == y;
 }

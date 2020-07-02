@@ -6,7 +6,6 @@ procedure {:yields} {:layer 1} Proc ({:linear "x"} i: int)
 {
   par Yield0() | Yield1();
   call {:layer 1} Lemma(A, i);
-  yield;
 }
 
 procedure {:yield_invariant} {:layer 0} Yield0 ();

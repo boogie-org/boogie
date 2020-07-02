@@ -29,10 +29,8 @@ procedure {:yields} {:layer 2} {:refines "atomic_agree"} main ({:linear_in "lin"
 requires {:layer 2} perm(p);
 {
   var val_a_local : int;
-  yield; assert {:layer 2} perm(p);
   call val_a_local := get_val_a_perm(p);
   async call {:sync} propose_by_a(val_a_local, p);
-  yield;
 }
 
 // ###########################################################################
@@ -110,11 +108,11 @@ modifies val_b;
 { assert perm(p); val_b := val; }
 
 procedure {:yields} {:layer 1} {:refines "atomic_get_val_a_perm"} get_val_a_perm ({:linear "lin"} p : int) returns (ret : int)
-{ yield; call ret := get_val_a(); yield; }
+{ call ret := get_val_a(); }
 procedure {:yields} {:layer 1} {:refines "atomic_set_val_a_perm"} set_val_a_perm (val : int, {:linear "lin"} p : int)
-{ yield; call set_val_a(val); yield; }
+{ call set_val_a(val); }
 procedure {:yields} {:layer 1} {:refines "atomic_set_val_b_perm"} set_val_b_perm (val : int, {:linear "lin"} p : int)
-{ yield; call set_val_b(val); yield; }
+{ call set_val_b(val); }
 
 // ###########################################################################
 // Primitive atomic actions

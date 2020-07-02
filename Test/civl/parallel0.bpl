@@ -4,9 +4,7 @@
 procedure {:yields} {:layer 1} P()
 {
   var x, y: int;
-  yield;
   par x := A(y) | y := B(x);
-  yield;
 }
 
 procedure {:left} {:layer 1} AtomicA(a: int) returns (b: int)

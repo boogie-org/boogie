@@ -10,7 +10,5 @@ procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();
 
 procedure {:yields} {:layer 1} {:refines "AtomicIncr"} AsyncIncr()
 {
-  yield;
   async call {:sync} Incr();
-  yield;
 }

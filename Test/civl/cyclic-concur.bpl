@@ -12,9 +12,7 @@ modifies x;
 
 procedure {:yields} {:layer 1} {:refines "MAIN"} main ()
 {
-  yield;
   async call {:sync} a();
-  yield;
 }
 
 procedure {:yields} {:layer 1} {:left} {:terminates} a ()

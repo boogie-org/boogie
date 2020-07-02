@@ -1,6 +1,6 @@
-parallel-patterns.bpl(9,4): Error: Mover types in parallel call do not match (left)*(non)?(right)* at layer 1
-parallel-patterns.bpl(11,4): Error: Parallel call contains both non-mover and yielding procedure at layer 1
-parallel-patterns.bpl(13,4): Error: Mover types in parallel call do not match (left)*(yielding-proc)*(right)* at layer 1
-parallel-patterns.bpl(19,31): Error: Implementation baz1 fails atomicity check at layer 1. Transactions must be separated by yields.
-parallel-patterns.bpl(26,31): Error: Implementation baz2 fails atomicity check at layer 1. Transactions must be separated by yields.
+parallel-patterns.bpl(8,4): Error: Mover types in parallel call do not match (left)*(non)?(right)* at layer 1
+parallel-patterns.bpl(10,4): Error: Parallel call contains both non-mover and yielding procedure at layer 1
+parallel-patterns.bpl(12,4): Error: Mover types in parallel call do not match (left)*(yielding-proc)*(right)* at layer 1
+parallel-patterns.bpl(17,31): Error: Implementation baz1 fails atomicity check at layer 1. Transactions must be separated by yields.
+parallel-patterns.bpl(22,31): Error: Implementation baz2 fails atomicity check at layer 1. Transactions must be separated by yields.
 5 type checking errors detected in parallel-patterns.bpl

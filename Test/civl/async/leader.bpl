@@ -61,11 +61,11 @@ modifies col_dom, col_val, dec_dom, dec_val;
 
 procedure {:yields}{:layer 1}{:refines "main_atomic"} main ({:linear_in "Perm"} perms:[Perm]bool)
 requires {:layer 1} perms == all_perms();
+ensures {:layer 1} all_decided(init_val, dec_dom, dec_val);
 {
   var s:int;
   var {:linear "Perm"} perms':[Perm]bool;
   var {:linear "Perm"} perms'':[Perm]bool;
-  yield; assert {:layer 1} perms == all_perms();
   s := 1;
   perms' := perms;
   while (s <= N)
@@ -78,7 +78,6 @@ requires {:layer 1} perms == all_perms();
     async call {:sync} P(s, perms'');
     s := s + 1;
   }
-  yield; assert {:layer 1} all_decided(init_val, dec_dom, dec_val);
 }
 
 procedure {:yields}{:layer 1}{:left} P (s:int, {:linear_in "Perm"} perms:[Perm]bool)

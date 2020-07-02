@@ -3,9 +3,7 @@
 
 procedure {:yields}{:layer 1} b ()
 {
-  yield;
   call a(1);
-  yield;
 }
 
 procedure {:atomic}{:layer 1} A () { }

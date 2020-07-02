@@ -25,7 +25,6 @@ procedure {:yields} {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "
   call Yield();
   assert {:layer 1} a == old(a);
   call Incr();
-  yield;
 }
 
 procedure {:atomic} {:layer 1} AtomicIncr()

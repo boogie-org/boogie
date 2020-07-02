@@ -36,9 +36,7 @@ var {:layer 0,1} l: [X]bool;
 procedure {:yields} {:layer 1} Split({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool)
 ensures {:layer 1} xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None();
 {
-  yield;
   call xls1, xls2 := SplitLow(xls);
-  yield;
 }
 
 procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xls: [X]bool);
@@ -84,7 +82,6 @@ requires {:layer 1} tidls' != None() && xls' == All();
     tidls := tidls';
     xls := xls';
 
-    yield;
     call Set(42);
     yield;
     assert {:layer 1} xls == All();
@@ -98,7 +95,6 @@ requires {:layer 1} tidls' != None() && xls' == All();
     assume (lsChild != None());
     yield;
     async call thread(lsChild, xls2);
-    yield;
 }
 
 procedure {:yields} {:layer 1} thread({:linear_in "tid"} tidls': [X]bool, {:linear_in "x"} xls': [X]bool)
@@ -110,7 +106,6 @@ requires {:layer 1} tidls' != None() && xls' != None();
     tidls := tidls';
     xls := xls';
 
-    yield;
     call Lock(tidls);
     yield;
     assert {:layer 1} tidls != None() && xls != None();
@@ -119,5 +114,4 @@ requires {:layer 1} tidls' != None() && xls' != None();
     assert {:layer 1} tidls != None() && xls != None();
     assert {:layer 1} x == 0;
     call Unlock();
-    yield;
 }

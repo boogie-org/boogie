@@ -18,8 +18,6 @@ procedure {:yields} {:layer 1} {:refines "skip"} Main ()
 {
   var i : int;
 
-  yield; assert {:layer 1} x == old(x);
-
   i := 0;
   while (i != N)
   invariant {:layer 1} {:terminates} true;
@@ -29,8 +27,6 @@ procedure {:yields} {:layer 1} {:refines "skip"} Main ()
     async call {:sync} dec();
     i := i + 1;
   }
-
-  yield;
 }
 
 // ###########################################################################

@@ -147,16 +147,13 @@ modifies C, head;
 procedure {:yields}{:layer 1}{:refines "MAIN"}
 main ({:linear_in "pid"} prod_pid:int, {:linear_in "pid"} cons_pid:int)
 {
-  yield;
   async call producer(1, prod_pid);
   async call consumer(1, cons_pid);
-  yield;
 }
 
 procedure {:yields}{:layer 1}{:refines "PRODUCER"}
 producer (x:int, {:linear_in "pid"} pid:int)
 {
-  yield;
   if (*)
   {
     call send(x);
@@ -166,21 +163,19 @@ producer (x:int, {:linear_in "pid"} pid:int)
   {
     call send(0);
   }
-  yield;
 }
 
 procedure {:yields}{:layer 1}{:refines "CONSUMER"}
 consumer (y:int, {:linear_in "pid"} pid:int)
 {
   var y':int;
-  yield;
+
   call y' := receive();
   if (y' != 0)
   {
     call assert_eq(y', y); // low-level assertion to discharge
     async call consumer(y'+1, pid);
   }
-  yield;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -68,7 +68,6 @@ procedure {:yields} {:layer 1} {:refines "AtomicMain"} Main({:linear_in "tid"} t
     var {:linear "tid"} tids': [int]bool;
     var {:linear "tid"} tid: int;
 
-    yield;
     i := 0;
     tids' := tids;
     call snapshot := StatusSnapshot();
@@ -82,7 +81,6 @@ procedure {:yields} {:layer 1} {:refines "AtomicMain"} Main({:linear_in "tid"} t
         async call {:sync} StartClient(tid);
         i := i + 1;
     }
-    yield;
 }
 
 procedure {:yields} {:left} {:layer 1} StartClient({:linear_in "tid"} tid: int)

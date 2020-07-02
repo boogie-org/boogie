@@ -58,12 +58,8 @@ procedure {:yields} {:layer 1} {:refines "pop_atomic"} pop(this: Invoc)
 {
   var {:layer 1} my_vis: SetInvoc;
 
-  yield;
-
   call intro_writeLin(this);
   call my_vis := intro_readLin();
   call intro_write_vis(this, my_vis);
   assert {:layer 1} my_vis == Set_ofSeq(lin);  // Despite this assertion passing
-
-  yield;
 }

@@ -12,10 +12,8 @@ var {:layer 0,2} x : int;
 procedure {:yields} {:layer 1} main (N: int)
 requires {:layer 1} N >= 0;
 {
-  yield;
   async call {:sync} inc_by_N(N);
   async call {:sync} dec_by_N(N);
-  yield;
 }
 
 procedure {:yields} {:layer 1} {:left} inc_by_N (N: int)

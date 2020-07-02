@@ -4,7 +4,6 @@ var{:layer 1,3} x:int;
 
 procedure{:yields}{:layer 2} Havoc()
 {
-  yield;
 }
 
 procedure{:atomic}{:layer 2,3} AtomicRecover()
@@ -12,7 +11,6 @@ procedure{:atomic}{:layer 2,3} AtomicRecover()
 
 procedure{:yields}{:layer 1} {:refines "AtomicRecover"} Recover()
 {
-  yield;
 }
 
 procedure{:yields}{:layer 3} P()
@@ -20,9 +18,7 @@ procedure{:yields}{:layer 3} P()
   ensures {:layer 2,3} x == 5;
 {
 
-  yield; assert{:layer 2,3} x == 5;
   call Havoc();
   yield; assert{:layer 3} x == 5;
   call Recover();
-  yield; assert{:layer 2,3} x == 5;
 }

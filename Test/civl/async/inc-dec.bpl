@@ -14,10 +14,8 @@ var {:layer 0,1} x : int;
 
 procedure {:yields} {:layer 1} main ()
 {
-  yield;
   async call {:sync} inc_by_N();
   async call {:sync} dec_by_N();
-  yield;
 }
 
 procedure {:yields} {:layer 1} {:left} inc_by_N ()

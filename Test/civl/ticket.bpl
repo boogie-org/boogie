@@ -62,9 +62,7 @@ requires {:layer 2} xls' == MapConstBool(true);
 procedure {:yields} {:layer 2} Allocate ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X)
 ensures {:layer 1,2} xl != nil;
 {
-  yield;
   call xls, xl := AllocateLow(xls');
-  yield;
 }
 
 procedure {:yields} {:layer 2}
@@ -109,9 +107,7 @@ modifies cs, s, T;
 procedure {:yields} {:layer 1} {:refines "AtomicInitAbstract"} InitAbstract ({:linear "tid"} xls:[X]bool)
 ensures  {:layer 1} Inv1(T, t);
 {
-  yield;
   call Init(xls);
-  par Yield1();
 }
 
 procedure {:right} {:layer 2} AtomicGetTicketAbstract ({:linear "tid"} tid: X) returns (m: int)
