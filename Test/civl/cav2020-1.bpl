@@ -4,39 +4,37 @@
 var {:layer 0,1} x: int;
 var {:layer 0,1} y: int;
 
-procedure {:yields} {:layer 1} incr_x(_x: int)
-requires {:layer 1} Inv(_x, x);
-ensures {:layer 1} Inv(_x, x);
+procedure {:yields} {:layer 1}
+{:yield_requires "yield_x", _x}
+{:yield_ensures  "yield_x", _x}
+incr_x(_x: int)
 {
-    call yield_x(_x);
     call _incr_x();
     call yield_x(_x);
     call _incr_x();
-    call yield_x(_x);
 }
 
 procedure {:layer 1} {:yield_invariant} yield_x(_x: int);
-requires Inv(_x, x);
+requires _x <= x;
 
-procedure {:yields} {:layer 1} incr_y(_y: int)
-requires {:layer 1} Inv(_y, y);
-ensures {:layer 1} Inv(_y, y);
+procedure {:yields} {:layer 1}
+{:yield_requires "yield_y", _y}
+{:yield_ensures  "yield_y", _y}
+incr_y(_y: int)
 {
-    call yield_y(_y);
     call _incr_y();
     call yield_y(_y);
     call _incr_y();
-    call yield_y(_y);
 }
 
 procedure {:layer 1} {:yield_invariant} yield_y(_y: int);
-requires Inv(_y, y);
+requires _y <= y;
 
-procedure {:yields} {:layer 1} incr_x_y()
-requires {:layer 1} Inv(0, x);
-requires {:layer 1} Inv(0, y);
+procedure {:yields} {:layer 1}
+{:yield_requires "yield_x", 0}
+{:yield_requires "yield_y", 0}
+incr_x_y()
 {
-    par yield_x(0) | yield_y(0);
     if (*) {
         async call incr_x_y();
     }
@@ -58,8 +56,3 @@ modifies y;
     y := y + 1;
 }
 procedure {:yields} {:layer 0} {:refines "atomic_incr_y"} _incr_y();
-
-function {:inline} Inv(_a: int, a: int): bool
-{
-    _a <= a
-}
