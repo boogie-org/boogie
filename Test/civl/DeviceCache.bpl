@@ -29,10 +29,10 @@ procedure {:yield_invariant} {:layer 1} Yield();
 requires Inv(ghostLock, currsize, newsize);
 
 procedure {:yield_invariant} {:layer 1} YieldToReadCache({:linear "tid"} tid: X, old_currsize: int);
-requires Inv(ghostLock, currsize, newsize) && tid != nil && old_currsize <= currsize;
+requires tid != nil && old_currsize <= currsize;
 
 procedure {:yield_invariant} {:layer 1} YieldToWriteCache({:linear "tid"} tid: X, old_currsize: int, old_newsize: int);
-requires Inv(ghostLock, currsize, newsize) && ghostLock == tid && tid != nil && old_currsize == currsize && old_newsize == newsize;
+requires tid != nil && ghostLock == tid && old_currsize == currsize && old_newsize == newsize;
 
 procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: X)
 ensures {:layer 1} xl != nil;
@@ -57,8 +57,10 @@ requires {:layer 1} xls == mapconstbool(true);
 }
 
 procedure {:yields} {:layer 1}
-{:yield_requires "YieldToReadCache", tid, currsize}
+{:yield_requires "Yield"}
+{:yield_ensures "Yield"}
 Thread({:linear "tid"} tid: X)
+requires {:layer 1} tid != nil;
 {
     var start, size: int;
     var bytesRead, i, tmp: int;
@@ -95,15 +97,17 @@ COPY_TO_BUFFER:
 }
 
 procedure {:yields} {:layer 1}
-{:yield_requires "YieldToWriteCache", tid, currsize, newsize}
+{:yield_requires "Yield"}
+{:yield_ensures "Yield"}
 {:yield_ensures "YieldToWriteCache", tid, old(currsize), old(newsize)}
 WriteCache({:linear "tid"} tid: X, index: int)
+requires {:layer 1} tid != nil && ghostLock == tid;
 {
     var j: int;
 
     call j := ReadCurrsize(tid);
     while (j < index)
-    invariant {:yields} {:layer 1} {:yield_invariant "YieldToWriteCache", tid, old(currsize), old(newsize)} true;
+    invariant {:yields} {:layer 1} {:yield_invariant "Yield"} {:yield_invariant "YieldToWriteCache", tid, old(currsize), old(newsize)} true;
     invariant {:layer 1} old(currsize) <= j;
     {
         call WriteCacheEntry(tid, j);
@@ -112,9 +116,11 @@ WriteCache({:linear "tid"} tid: X, index: int)
 }
 
 procedure {:yields} {:layer 1}
-{:yield_requires "YieldToReadCache", tid, currsize}
+{:yield_requires "Yield"}
+{:yield_ensures "Yield"}
 {:yield_ensures "YieldToReadCache", tid, old(currsize)}
 ReadCache({:linear "tid"} tid: X, start: int, bytesRead: int)
+requires {:layer 1} tid != nil;
 requires {:layer 1} 0 <= start && 0 <= bytesRead;
 requires {:layer 1} (bytesRead == 0 || start + bytesRead <= currsize);
 {
@@ -122,7 +128,7 @@ requires {:layer 1} (bytesRead == 0 || start + bytesRead <= currsize);
 
     j := 0;
     while(j < bytesRead)
-    invariant {:yields} {:layer 1} {:yield_invariant "YieldToReadCache", tid, old(currsize)} true;
+    invariant {:yields} {:layer 1} {:yield_invariant "Yield"} {:yield_invariant "YieldToReadCache", tid, old(currsize)} true;
     invariant {:layer 1} 0 <= j;
     invariant {:layer 1} bytesRead == 0 || start + bytesRead <= currsize;
     {

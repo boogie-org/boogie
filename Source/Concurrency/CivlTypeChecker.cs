@@ -114,6 +114,11 @@ namespace Microsoft.Boogie
 
             TypeCheckActionImpls();
             TypeCheckYieldingProcedureImpls();
+            
+            if (checkingContext.ErrorCount > 0)
+                return;
+            
+            TypeCheckLoopAnnotations();
 
             TypeCheckRefinementLayers();
 
@@ -452,8 +457,12 @@ namespace Microsoft.Boogie
                         Error(kv, $"Illegal expression at position {i}");
                     }
                 }
-
-                if (yieldingProc.InParams.Count != exprs.Count)
+                if (exprs.Count + 1 != kv.Params.Count)
+                {
+                    // Error added in the loop above
+                    return null;
+                }
+                if (exprs.Count!= yieldingProc.InParams.Count)
                 {
                     Error(kv, $"Incorrect number of arguments to yield invariant {yieldingProc.Name}");
                     return null;
@@ -487,37 +496,27 @@ namespace Microsoft.Boogie
             foreach (var attr in CivlAttributes.FindAllAttributes(proc, CivlAttributes.YIELD_REQUIRES))
             {
                 var callCmd = TypeCheckYieldInvariantCall(attr);
-                if (callCmd == null)
+                if (callCmd != null &&
+                    new YieldInvariantCallVisitor(this, false).Check(callCmd))
                 {
-                    ok = false;
-                    Error(attr, $"Invalid yield requires");
+                    yieldRequires.Add(callCmd);
                 }
                 else
                 {
-                    var oldFinder = new OldFinder();
-                    oldFinder.Visit(callCmd);
-                    if (oldFinder.foundOld)
-                    {
-                        ok = false;
-                        Error(attr, "Old expressions not allowed only in yield requires");
-                    }
-                    else
-                    {
-                        yieldRequires.Add(callCmd);
-                    }
+                    ok = false;
                 }
             }
             foreach (var attr in CivlAttributes.FindAllAttributes(proc, CivlAttributes.YIELD_ENSURES))
             {
                 var callCmd = TypeCheckYieldInvariantCall(attr);
-                if (callCmd == null)
+                if (callCmd != null &&
+                    new YieldInvariantCallVisitor(this, true).Check(callCmd))
                 {
-                    ok = false;
-                    Error(attr, $"Invalid yield ensures");
+                    yieldEnsures.Add(callCmd);
                 }
                 else
                 {
-                    yieldEnsures.Add(callCmd);
+                    ok = false;
                 }
             }
             return ok;
@@ -624,6 +623,13 @@ namespace Microsoft.Boogie
             {
                 YieldingProcVisitor visitor = new YieldingProcVisitor(this);
                 visitor.VisitImplementation(impl);
+            }
+        }
+
+        private void TypeCheckLoopAnnotations()
+        {
+            foreach (var impl in program.Implementations.Where(impl => procToYieldingProc.ContainsKey(impl.Proc)))
+            {
                 var graph = Program.GraphFromImpl(impl);
                 graph.ComputeLoops();
                 if (!graph.Reducible)
@@ -633,45 +639,46 @@ namespace Microsoft.Boogie
                 }
                 foreach (var header in graph.Headers)
                 {
-                    if (header.Cmds.Count == 0) continue;
-                    var predCmd = header.Cmds[0] as PredicateCmd;
-                    if (predCmd == null) continue;
-                    var isYielding = predCmd.HasAttribute(CivlAttributes.YIELDS);
-                    var isTerminating = predCmd.HasAttribute(CivlAttributes.TERMINATES);
-                    if (!(isYielding || isTerminating)) continue;
-                    if (isYielding && isTerminating)
+                    terminatingLoopHeaders[header] = new HashSet<int>();
+                    var yieldingLayers = new HashSet<int>();
+                    foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
                     {
-                        Error(header, "Loop header may not be both yielding and terminating.");
-                        continue;
+                        var isYielding = predCmd.HasAttribute(CivlAttributes.YIELDS);
+                        var isTerminating = predCmd.HasAttribute(CivlAttributes.TERMINATES);
+                        if (isYielding && isTerminating)
+                        {
+                            Error(header, "Loop predicate command may not be both yielding and terminating.");
+                            continue;
+                        }
+                        if (isYielding)
+                        {
+                            yieldingLayers.UnionWith(absyToLayerNums[predCmd]);
+                        }
+                        if (isTerminating)
+                        {
+                            terminatingLoopHeaders[header].UnionWith(absyToLayerNums[predCmd]);
+                        }
                     }
-                    if (!predCmd.Expr.Equals(Expr.True))
+                    var yieldInvariants = new List<CallCmd>();
+                    foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
                     {
-                        Error(predCmd, "Predicate command carrying loop header annotation must be true.");
-                        continue;
-                    }
-                    if (isYielding)
-                    {
-                        var yieldingLayers = new HashSet<int>(absyToLayerNums[predCmd]);
-                        var yieldInvariants = new List<CallCmd>();
                         foreach (var attr in CivlAttributes.FindAllAttributes(predCmd, CivlAttributes.YIELD_INVARIANT))
                         {
                             var callCmd = TypeCheckYieldInvariantCall(attr);
-                            if (callCmd == null)
+                            if (callCmd == null) continue;
+                            var calleeLayerNum = procToYieldInvariant[callCmd.Proc].LayerNum;
+                            if (yieldingLayers.Contains(calleeLayerNum) &&
+                                new YieldInvariantCallVisitor(this, true).Check(callCmd))
                             {
-                                Error(attr, $"Invalid yield invariant");
+                                yieldInvariants.Add(callCmd);
                             }
                             else
                             {
-                                yieldInvariants.Add(callCmd);
-                                yieldingLayers.Add(procToYieldInvariant[callCmd.Proc].LayerNum);
+                                Error(attr, $"Loop must yield at layer {calleeLayerNum} of the called yield invariant");
                             }
                         }
-                        yieldingLoops[header] = new YieldingLoop(yieldingLayers, yieldInvariants);
                     }
-                    if (isTerminating)
-                    {
-                        terminatingLoopHeaders[header] = new HashSet<int>(absyToLayerNums[predCmd]);
-                    }
+                    yieldingLoops[header] = new YieldingLoop(yieldingLayers, yieldInvariants);
                 }
             }
         }
@@ -1323,17 +1330,48 @@ namespace Microsoft.Boogie
             }
         }
 
-        class OldFinder : ReadOnlyVisitor
+        class YieldInvariantCallVisitor : ReadOnlyVisitor
         {
-            public bool foundOld;
-            public OldFinder()
+            private CivlTypeChecker civlTypeChecker;
+            private bool allowOld;
+            private bool insideOld;
+            private bool ok;
+
+            public YieldInvariantCallVisitor(CivlTypeChecker civlTypeChecker, bool allowOld)
             {
-                this.foundOld = false;
+                this.civlTypeChecker = civlTypeChecker;
+                this.allowOld = allowOld;
+                this.insideOld = false;
+                this.ok = true;
             }
 
+            public bool Check(CallCmd callCmd)
+            {
+                Visit(callCmd);
+                return ok;
+            }
+            
             public override Expr VisitOldExpr(OldExpr node)
             {
-                foundOld = true;
+                if (!allowOld)
+                {
+                    ok = false;
+                    civlTypeChecker.Error(node,"Old expression not allowed only in this context");
+                    return node;
+                }
+                insideOld = true;
+                base.VisitOldExpr(node);
+                insideOld = false;
+                return node;
+            }
+
+            public override Expr VisitIdentifierExpr(IdentifierExpr node)
+            {
+                if (node.Decl is GlobalVariable && !insideOld)
+                {
+                    ok = false;
+                    civlTypeChecker.Error(node, "Global variable cannot be accessed in this context");
+                }
                 return node;
             }
         }
