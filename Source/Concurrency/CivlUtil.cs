@@ -85,6 +85,12 @@ namespace Microsoft.Boogie
             var lhs = new SimpleAssignLhs(Token.NoToken, Expr.Ident(v));
             return new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { x });
         }
+
+        public static AssignCmd AssignCmd(IList<IdentifierExpr> lhss, IList<Expr> rhss)
+        {
+            var assignLhss = lhss.Select(lhs => new SimpleAssignLhs(Token.NoToken, lhs)).ToList<AssignLhs>();
+            return new AssignCmd(Token.NoToken, assignLhss, rhss);
+        }
     }
 
     public static class VarHelper

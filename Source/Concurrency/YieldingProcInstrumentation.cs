@@ -167,6 +167,19 @@ namespace Microsoft.Boogie
             }
         }
 
+        // Add assignment g := g for all global variables g at yielding loop heads.
+        // This is to make all global variables loop targets that get havoced.
+        private List<Cmd> YieldingLoopDummyAssignment()
+        {
+            var globals = civlTypeChecker.GlobalVariables.Select(Expr.Ident).ToList();
+            var cmds = new List<Cmd>();
+            if (globals.Count != 0)
+            {
+                cmds.Add(CmdHelper.AssignCmd(globals, globals.ToList<Expr>()));
+            }
+            return cmds;
+        }
+
         private List<Cmd> InlineYieldLoopInvariants(List<CallCmd> yieldInvariants)
         {
             var inlinedYieldInvariants = new List<Cmd>();
@@ -370,6 +383,7 @@ namespace Microsoft.Boogie
                 List<Cmd> newCmds = new List<Cmd>();
                 newCmds.AddRange(firstCmds);
                 newCmds.AddRange(InlineYieldLoopInvariants(civlTypeChecker.yieldingLoops[(Block) absyMap[header]].yieldInvariants));
+                newCmds.AddRange(YieldingLoopDummyAssignment());
                 newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
                 newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
                 newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(header));
