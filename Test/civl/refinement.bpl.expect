@@ -4,7 +4,7 @@ Execution trace:
     refinement.bpl(37,5): inline$INCR$0$anon0
     refinement.bpl(8,3): anon0_0
     refinement.bpl(37,5): inline$INCR$1$anon0
-    refinement.bpl(8,3): anon0_0$1
+    (0,0): ReturnChecker
 (0,0): Error: Transition invariant violated in initial state
 Execution trace:
     refinement.bpl(16,3): anon0
@@ -16,6 +16,6 @@ Execution trace:
     refinement.bpl(44,5): inline$DECR$0$anon0
     refinement.bpl(16,3): anon0_0
     refinement.bpl(37,5): inline$INCR$0$anon0
-    refinement.bpl(16,3): anon0_0$1
+    (0,0): ReturnChecker
 
 Boogie program verifier finished with 3 verified, 3 errors

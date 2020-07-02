@@ -8,9 +8,7 @@ requires g > 0;
 
 procedure {:yields} {:layer 1} foo()
 {
-    yield;
     call A();
-    yield;
 }
 
 procedure {:yields} {:layer 0} {:refines "atomic_A"} A();
