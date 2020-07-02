@@ -15,12 +15,10 @@ procedure {:yields}{:layer 1}{:refines "SKIP"} b ()
   var {:layer 0} r:real;
   var {:layer 0} r':real;
   
-  yield;
   i := 1;
   call b', i', r' := a(b, i, r);
   // at layer 1 this call must be rewritten to
   // call i', returnedPAs := A(i);
-  yield;
 }
 
 procedure {:atomic}{:layer 1} A (i:int) returns (i':int, {:pending_async} PAs:[PA]int)
@@ -35,6 +33,5 @@ procedure {:atomic}{:layer 1} A (i:int) returns (i':int, {:pending_async} PAs:[P
 procedure {:yields}{:layer 0}{:refines "A"}
 a ({:hide} b:bool, i:int, {:hide} r:real) returns ({:hide} b':bool, i':int, {:hide} r':real)
 {
-  yield;
   i' := i + 1;
 }

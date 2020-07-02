@@ -11,10 +11,8 @@ var {:layer 0,2} x:int;
 
 procedure {:yields }{:layer 2} foo ()
 {
-  yield;
   call nondet();
   assert {:layer 2} x > 0;
-  yield;
 }
 
 procedure {:atomic} {:layer 2} NONDET ()
@@ -28,9 +26,7 @@ modifies x;
 
 procedure {:yields} {:layer 1} {:refines "NONDET"} nondet ()
 {
-  yield;
   call set(1);
-  yield;
 }
 
 procedure {:atomic} {:layer 1} SET (v:int)

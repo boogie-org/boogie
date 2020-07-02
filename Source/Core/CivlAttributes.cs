@@ -15,6 +15,7 @@ namespace Microsoft.Boogie
         public const string YIELD_INVARIANT = "yield_invariant";
         public const string YIELD_REQUIRES = "yield_requires";
         public const string YIELD_ENSURES = "yield_ensures";
+        public const string YIELD_LOOP = "yield_loop";
         
         public const string INTRO = "intro";
         
@@ -50,7 +51,7 @@ namespace Microsoft.Boogie
             {LAYER, YIELDS, YIELD_INVARIANT, INTRO, ATOMIC, LEFT, RIGHT, BOTH, REFINES, HIDE,
              COMMUTATIVITY, LEMMA, WITNESS,
              PENDING_ASYNC, IS, IS_INVARIANT, IS_ABSTRACTION, ELIM, CHOICE,
-             YIELD_REQUIRES, YIELD_ENSURES,
+             YIELD_REQUIRES, YIELD_ENSURES, YIELD_LOOP,
              TERMINATES};
 
         private static string[] LINEAR_ATTRIBUTES =

@@ -4,9 +4,7 @@ var {:layer 0,1} g:int;
 
 procedure {:yields} {:layer 1} PB()
 {
-  yield;
   call Incr();
-  yield;
 }
 
 procedure {:atomic} {:layer 1} AtomicIncr()
@@ -31,7 +29,6 @@ procedure {:yields} {:layer 1} PE()
 
 procedure {:yields} {:layer 1} PD()
 {
-  yield;
   call Set(3);
   call PC(g);
   assert {:layer 1} g == 3;

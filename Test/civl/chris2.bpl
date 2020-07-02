@@ -14,9 +14,7 @@ modifies x;
   
 procedure{:yields}{:layer 25} {:refines "atomic_p_gt1"} p_gt1()  
 {
-  yield;
   call p_gt1_lower();
-  yield;
 }
 
 procedure{:both}{:layer 21,40} atomic_p_gt2()

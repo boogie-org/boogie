@@ -15,22 +15,16 @@ procedure {:yields} {:layer 0} {:refines "AtomicDecr"} Decr();
 
 procedure {:yields} {:layer 1} {:refines "AtomicIncr"} AsyncIncr()
 {
-  yield;
   async call {:sync} Incr();
-  yield;
 }
 
 procedure {:yields} {:layer 1} {:refines "AtomicDecr"} AsyncDecr()
 {
-  yield;
   async call {:sync} Decr();
-  yield;
 }
 
 procedure {:yields} {:layer 1} AsyncIncrDecr()
 {
-  yield;
   async call {:sync} Incr();
   async call {:sync} Decr();
-  yield;
 }

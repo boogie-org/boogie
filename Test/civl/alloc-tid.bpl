@@ -18,7 +18,7 @@ main()
   var i: int;
 
   while (true)
-  invariant {:yields} {:layer 1,2} {:yield_invariant "Yield1"} true;
+  invariant {:yields} {:layer 1,2} {:yield_loop "Yield1"} true;
   {
     call tid, i := Allocate();
     async call P(tid, i);
@@ -34,11 +34,9 @@ requires {:layer 1} tid == i;
 {
   var t:int;
 
-  par Yield1() | Yield2(tid, old(a)[tid]);
   call t := Read(tid, i);
   par Yield1() | Yield2(tid, t);
   call Write(tid, i, t + 1);
-  par Yield1() | Yield2(tid, t + 1);
 }
 
 procedure {:atomic} {:layer 2,2} AtomicAllocate() returns ({:linear "tid"} tid: int, i: int)

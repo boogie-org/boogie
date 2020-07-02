@@ -14,10 +14,8 @@ var {:layer 0,1} x : int;
 
 procedure {:yields} {:layer 1} main ()
 {
-  yield;
   async call {:sync} inc_by_N();
   async call {:sync} dec_by_N();
-  yield;
 }
 
 procedure {:yields} {:layer 1} {:left} inc_by_N ()
@@ -26,8 +24,6 @@ ensures {:layer 1} x == old(x) + N;
 {
   var i : int;
 
-  call dummy();
-
   i := 0;
   while (i != N)
   invariant {:layer 1} {:terminates} true;
@@ -35,10 +31,7 @@ ensures {:layer 1} x == old(x) + N;
   {
     i := i + 1;
     async call {:sync} inc();
-    call dummy();
   }
-
-  call dummy();
 }
 
 procedure {:yields} {:layer 1} {:left} dec_by_N ()
@@ -47,8 +40,6 @@ ensures {:layer 1} x == old(x) - N;
 {
   var i : int;
 
-  call dummy();
-
   i := 0;
   while (i != N)
   invariant {:layer 1} {:terminates} true;
@@ -56,13 +47,8 @@ ensures {:layer 1} x == old(x) - N;
   {
     i := i + 1;
     async call {:sync} dec();
-    call dummy();
   }
-
-  call dummy();
 }
-
-procedure {:yields} {:layer 0} dummy ();
 
 // ###########################################################################
 // Low level atomic actions

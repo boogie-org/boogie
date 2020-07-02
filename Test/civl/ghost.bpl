@@ -21,11 +21,9 @@ procedure {:yields} {:layer 1} {:refines "AtomicIncr2"} Incr2()
 {
   var {:layer 1} a: int;
 
-  yield;
   call a := ghost(1);
   assert {:layer 1} a == 2;
   par Incr() | Incr();
-  yield;
 }
 
 procedure {:intro} {:layer 1} ghost'() returns (z: int)
@@ -38,10 +36,8 @@ procedure {:yields} {:layer 1} {:refines "AtomicIncr2"} Incr2'()
   var {:layer 1} a: int;
   var {:layer 1} b: int;
 
-  yield;
   call a := ghost'();
   par Incr() | Incr();
   call b := ghost'();
   assert {:layer 1} b == a + 2;
-  yield;
 }

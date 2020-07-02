@@ -17,9 +17,7 @@ modifies x;
 procedure {:yields}{:layer 3}{:refines "Client_atomic"} Client ({:linear_in "tid"} tid:Tid)
 requires {:layer 2} tid != nil;
 {
-  yield;
   async call GetLockAbstract(tid);
-  yield;
 }
 
 procedure {:left}{:layer 3} GetLockAbstract_atomic({:linear_in "tid"} tid:Tid)
@@ -31,9 +29,7 @@ modifies x;
 procedure {:yields}{:layer 2}{:refines "GetLockAbstract_atomic"} GetLockAbstract({:linear_in "tid"} tid:Tid)
 requires {:layer 2} tid != nil;
 {
-  yield;
   call GetLock(tid);
-  yield;
 }
 
 procedure {:left}{:layer 2} Callback_atomic ({:linear_in "tid"} tid:Tid)
@@ -47,11 +43,9 @@ modifies l,x;
 procedure {:yields}{:layer 1}{:refines "Callback_atomic"} Callback ({:linear_in "tid"} tid:Tid)
 {
   var tmp:int;
-  yield;
   call tmp := read_x(tid);
   call write_x(tmp+1, tid);
   async call ReleaseLock(tid);
-  yield;
 }
 
 // -----------------------------------------------------------------------------

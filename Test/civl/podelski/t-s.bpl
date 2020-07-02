@@ -4,33 +4,28 @@
 var {:layer 0,1} s:int;
 var {:layer 0,1} t:int;
 
-function {:inline} Inv (s:int, t:int) : bool
-{
-  t == s
-// t >= s
-}
+procedure {:yield_invariant}{:layer 1} Inv ();
+requires t == s;
+// requires t >= s;
 
-procedure {:yields}{:layer 2} main ()
-requires {:layer 1} s == t;
+procedure {:yields}{:layer 1}
+{:yield_requires "Inv"}
+main ()
 {
-  yield; assert {:layer 1} Inv(s, t);
   while (*)
-  invariant {:layer 1} Inv(s, t);
+  invariant {:yields}{:layer 1}{:yield_loop "Inv"} true;
   {
     async call incdec();
-    yield; assert {:layer 1} Inv(s, t);
   }
-  yield;
 }
 
-procedure {:yields}{:layer 1} incdec()
-requires {:layer 1} Inv(s, t);
-ensures  {:layer 1} Inv(s, t);
+procedure {:yields}{:layer 1}
+{:yield_requires "Inv"}
+{:yield_ensures  "Inv"}
+incdec()
 {
-  yield; assert {:layer 1} Inv(s, t);
   call inc_t();
   call inc_s();
-  yield; assert {:layer 1} Inv(s, t);
 }
 
 procedure {:right}{:layer 1} INC_T ()

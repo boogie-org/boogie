@@ -426,7 +426,9 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    b.TransferCmd = new GotoCmd(b.TransferCmd.tok, new List<string> { returnCheckerBlock.Label, returnBlock.Label }, new List<Block> { returnCheckerBlock, returnBlock });
+                    b.TransferCmd = new GotoCmd(b.TransferCmd.tok,
+                        new List<string> { returnCheckerBlock.Label, returnBlock.Label, noninterferenceCheckerBlock.Label},
+                        new List<Block> { returnCheckerBlock, returnBlock, noninterferenceCheckerBlock });
                 }
             }
 

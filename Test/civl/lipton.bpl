@@ -7,12 +7,10 @@ var {:layer 0,1} c : int;
 
 procedure {:yields}{:layer 1} Thread ()
 {
-  yield;
   call p();
   call p();
   call v();
   call v();
-  yield;
 }
 
 procedure {:right} {:layer 1} P ()

@@ -10,32 +10,25 @@ var {:layer 0, 1} b: bool;
 var {:layer 0, 3} count: int;
 var {:layer 1, 2} l: OptionTid;
 
-function LockInv(b: bool, l: OptionTid): bool
-{
-    b <==> (l != None())
-}
-procedure {:yield_invariant} {:layer 1} YieldLockInv();
-requires LockInv(b, l);
-
-procedure {:yield_invariant} {:layer 2} Yield();
+procedure {:yield_invariant} {:layer 1} LockInv();
+requires b <==> (l != None());
 
 procedure {:atomic} {:layer 3,3} IncrSpec()
 modifies count;
 {
     count := count + 1;
 }
-procedure {:yields} {:layer 2} {:refines "IncrSpec"} Incr({:layer 1,2} {:hide} {:linear "tid"} tid: Tid)
-requires {:layer 1} LockInv(b, l);
-ensures {:layer 1} LockInv(b, l);
+procedure {:yields} {:layer 2} {:refines "IncrSpec"}
+{:yield_requires "LockInv"}
+{:yield_ensures  "LockInv"}
+Incr({:layer 1,2} {:hide} {:linear "tid"} tid: Tid)
 {
     var t: int;
 
-    par YieldLockInv() | Yield();
     call Acquire(tid);
-    par t := Read(tid) | YieldLockInv();
-    par Write(tid, t+1) | YieldLockInv();
+    par t := Read(tid) | LockInv();
+    par Write(tid, t+1) | LockInv();
     call Release(tid);
-    par YieldLockInv() | Yield();
 }
 
 procedure {:right} {:layer 2,2} AcquireSpec({:linear "tid"} tid: Tid)
@@ -44,17 +37,16 @@ modifies l;
     assume l == None();
     l := Some(tid);
 }
-procedure {:yields} {:layer 1} {:refines "AcquireSpec"} Acquire({:layer 1} {:linear "tid"} tid: Tid)
-requires {:layer 1} LockInv(b, l);
-ensures {:layer 1} LockInv(b, l);
+procedure {:yields} {:layer 1} {:refines "AcquireSpec"}
+{:yield_requires "LockInv"}
+{:yield_ensures  "LockInv"}
+Acquire({:layer 1} {:linear "tid"} tid: Tid)
 {
     var t: bool;
 
-    call YieldLockInv();
     call t := CAS(false, true);
     if (t) {
         call set_l(Some(tid));
-        call YieldLockInv();
     } else {
         call {:refines} Acquire(tid);
     }
@@ -66,16 +58,15 @@ modifies l;
     assert l == Some(tid);
     l := None();
 }
-procedure {:yields} {:layer 1} {:refines "ReleaseSpec"} Release({:layer 1} {:linear "tid"} tid: Tid)
-requires {:layer 1} LockInv(b, l);
-ensures {:layer 1} LockInv(b, l);
+procedure {:yields} {:layer 1} {:refines "ReleaseSpec"}
+{:yield_requires "LockInv"}
+{:yield_ensures  "LockInv"}
+Release({:layer 1} {:linear "tid"} tid: Tid)
 {
     var t: bool;
 
-    call YieldLockInv();
     call t := CAS(true, false);
     call set_l(None());
-    call YieldLockInv();
 }
 
 procedure {:both} {:layer 2,2} ReadSpec({:linear "tid"} tid: Tid) returns (v: int)
@@ -85,9 +76,7 @@ procedure {:both} {:layer 2,2} ReadSpec({:linear "tid"} tid: Tid) returns (v: in
 }
 procedure {:yields} {:layer 1} {:refines "ReadSpec"} Read({:layer 1} {:linear "tid"} tid: Tid) returns (v: int)
 {
-    yield;
     call v := READ();
-    yield;
 }
 
 procedure {:both} {:layer 2,2} WriteSpec({:linear "tid"} tid: Tid, v: int)
@@ -98,9 +87,7 @@ modifies count;
 }
 procedure {:yields} {:layer 1} {:refines "WriteSpec"} Write({:layer 1} {:linear "tid"} tid: Tid, v: int)
 {
-    yield;
     call WRITE(v);
-    yield;
 }
 
 procedure {:atomic} {:layer 1,1} atomic_CAS(old_b: bool, new_b: bool) returns (success: bool)

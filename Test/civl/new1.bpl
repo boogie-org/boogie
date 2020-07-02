@@ -15,7 +15,6 @@ requires {:layer 1} permVar_in[0] && g == 0;
   var {:linear "Perm"} permVar_out: [int]bool;
   permVar_out := permVar_in;
 
-  yield;
   assert {:layer 1} permVar_out[0];
   assert {:layer 1} g == 0;
 
@@ -29,10 +28,8 @@ requires {:layer 1} permVar_in[0] && g == 0;
 procedure {:yields} {:layer 1} Main({:linear_in "Perm"} Permissions: [int]bool)
 requires {:layer 1} Permissions == mapconstbool(true);
 {
-  yield;
   call SetG(0);
   async call PB(Permissions);
-  yield;
 }
 
 procedure {:atomic} {:layer 1} AtomicSetG(val:int)

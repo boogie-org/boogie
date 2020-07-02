@@ -111,7 +111,7 @@ requires {:layer 1} dom(x_lmap)[x];
 
   t_lmap := x_lmap;
   while (true)
-  invariant {:yields} {:layer 1} {:yield_invariant "YieldInv"} true;
+  invariant {:yields} {:layer 1} {:yield_loop "YieldInv"} true;
   invariant {:layer 1} dom(t_lmap) == dom(x_lmap);
   {
     call t := ReadTopOfStack();
@@ -136,7 +136,7 @@ pop() returns (t: int)
   var x: int;
 
   while (true)
-  invariant {:yields} {:layer 1} {:yield_invariant "YieldInv"} true;
+  invariant {:yields} {:layer 1} {:yield_loop "YieldInv"} true;
   {
     call t := ReadTopOfStack();
     if (t != null) {

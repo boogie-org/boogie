@@ -48,12 +48,10 @@ requires {:layer 3} tid != Nil;
 {
   var t: int;
   
-  yield;
   call acq(tid);
   call t := read(tid);
   call write(tid, t+1);
   call rel(tid);
-  yield;
 }
 
 procedure {:left} {:layer 5} AtomicIncrBy2()
@@ -64,21 +62,17 @@ procedure {:yields} {:layer 4} {:refines "AtomicIncrBy2"} IncrBy2()
 {
   var {:linear "tid"} tid1: X;
   var {:linear "tid"} tid2: X;
-  yield;
+  
   call tid1 := AllocTid();
   call tid2 := AllocTid();
   par Incr(tid1) | Incr(tid2);
-  yield;
 }
 
 procedure {:yields} {:layer 5} EqualTo2({:linear "tid"} tid: X)
 requires {:layer 5} tid == MainTid && x == 0;
+ensures  {:layer 5} x == 2;
 {
-  yield;
-  assert {:layer 5} tid == MainTid && x == 0;
   call IncrBy2();
-  yield;
-  assert {:layer 5} x == 2;
 }
 
 function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;

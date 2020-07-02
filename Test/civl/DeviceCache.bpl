@@ -37,9 +37,7 @@ requires tid != nil && ghostLock == tid && old_currsize == currsize && old_newsi
 procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: X)
 ensures {:layer 1} xl != nil;
 {
-    yield;
     call xl := AllocateLow();
-    yield;
 }
 
 procedure {:yields} {:layer 1} main({:linear_in "tid"} xls: [X]bool)
@@ -49,7 +47,7 @@ requires {:layer 1} xls == mapconstbool(true);
 
     call Init(xls);
     while (*)
-    invariant {:yields} {:layer 1} {:yield_invariant "Yield"} true;
+    invariant {:yields} {:layer 1} {:yield_loop "Yield"} true;
     {
         par tid := Allocate() | Yield();
         async call Thread(tid);
@@ -107,7 +105,7 @@ requires {:layer 1} tid != nil && ghostLock == tid;
 
     call j := ReadCurrsize(tid);
     while (j < index)
-    invariant {:yields} {:layer 1} {:yield_invariant "Yield"} {:yield_invariant "YieldToWriteCache", tid, old(currsize), old(newsize)} true;
+    invariant {:yields} {:layer 1} {:yield_loop "Yield"} {:yield_loop "YieldToWriteCache", tid, old(currsize), old(newsize)} true;
     invariant {:layer 1} old(currsize) <= j;
     {
         call WriteCacheEntry(tid, j);
@@ -128,7 +126,7 @@ requires {:layer 1} (bytesRead == 0 || start + bytesRead <= currsize);
 
     j := 0;
     while(j < bytesRead)
-    invariant {:yields} {:layer 1} {:yield_invariant "Yield"} {:yield_invariant "YieldToReadCache", tid, old(currsize)} true;
+    invariant {:yields} {:layer 1} {:yield_loop "Yield"} {:yield_loop "YieldToReadCache", tid, old(currsize)} true;
     invariant {:layer 1} 0 <= j;
     invariant {:layer 1} bytesRead == 0 || start + bytesRead <= currsize;
     {

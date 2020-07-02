@@ -8,7 +8,5 @@ procedure {:intro}{:layer 1} intro (x:int)
 
 procedure {:yields}{:layer 1} p (x:int)
 {
-  yield;
   call intro(x);
-  yield;
 }

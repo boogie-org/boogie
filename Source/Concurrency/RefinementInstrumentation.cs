@@ -151,6 +151,8 @@ namespace Microsoft.Boogie
             List<Expr> rhss = new List<Expr> { Expr.False, Expr.False };
             var cmds = new List<Cmd> { new AssignCmd(Token.NoToken, lhss, rhss) };
             cmds.AddRange(CreateUpdatesToOldOutputVars());
+            // assume spec gate at procedure entry
+            cmds.Add(CmdHelper.AssumeCmd(gate));
             return cmds;
         }
 
