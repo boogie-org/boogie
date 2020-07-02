@@ -56,8 +56,6 @@ modifies val_a, val_b;
     call set_val_b_perm(val_b_local, p);
     async call {:sync} propose_by_b(val_b_local, p);
   }
-
-  call dummy_1();
 }
 
 procedure {:yields} {:layer 2} {:left} ack_by_a({:linear_in "lin"} p : int)
@@ -65,7 +63,6 @@ requires {:layer 2} perm(p);
 requires {:layer 2} val_a == val_b;
 ensures {:layer 2} val_a == val_b;
 {
-  call dummy_1();
 }
 
 // ###########################################################################
@@ -89,8 +86,6 @@ modifies val_a, val_b;
     call set_val_a_perm(val_a_local, p);
     async call {:sync} propose_by_a(val_a_local, p);
   }
-
-  call dummy_1();
 }
 
 procedure {:yields} {:layer 2} {:left} ack_by_b({:linear_in "lin"} p : int)
@@ -98,13 +93,7 @@ requires {:layer 2} perm(p);
 requires {:layer 2} val_a == val_b;
 ensures {:layer 2} val_a == val_b;
 {
-  call dummy_1();
 }
-
-// ###########################################################################
-// Dummy procedure to satisfy yield checker for mover procedures
-
-procedure {:yields} {:layer 1} dummy_1 ();
 
 // ###########################################################################
 // Abstracted atomic actions with permissions
