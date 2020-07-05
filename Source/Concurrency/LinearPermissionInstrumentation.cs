@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Microsoft.Boogie
@@ -57,6 +58,12 @@ namespace Microsoft.Boogie
             return DisjointnessExprs(availableVars).Select(expr => new AssumeCmd(Token.NoToken, expr)).ToList<Cmd>();
         }
 
+        public List<Expr> DisjointnessExprs(Absy absy, bool addGlobals)
+        {
+            var availableVars = AvailableLinearLocalVars(absy).Union(addGlobals ? LinearGlobalVars() : new List<Variable>());
+            return DisjointnessExprs(availableVars);
+        }
+        
         public Dictionary<string, Expr> PermissionExprs(Absy absy)
         {
             var domainNameToScope = new Dictionary<string, HashSet<Variable>>();
@@ -81,9 +88,6 @@ namespace Microsoft.Boogie
 
         public void AddDisjointnessAssumptions(Implementation impl, HashSet<Procedure> yieldingProcs)
         {
-            // preconditions
-            impl.Proc.Requires.AddRange(DisjointnessFreeRequires(impl.Proc));
-            
             // calls and parallel calls
             foreach (var b in impl.Blocks)
             {
@@ -91,11 +95,7 @@ namespace Microsoft.Boogie
                 foreach (var cmd in b.Cmds)
                 {
                     newCmds.Add(cmd);
-                    if (cmd is CallCmd callCmd && yieldingProcs.Contains(callCmd.Proc))
-                    {
-                        newCmds.AddRange(DisjointnessAssumeCmds(cmd, true));
-                    }
-                    else if (cmd is ParCallCmd)
+                    if (cmd is ParCallCmd)
                     {
                         newCmds.AddRange(DisjointnessAssumeCmds(cmd, true));
                     }
@@ -119,17 +119,6 @@ namespace Microsoft.Boogie
                 newCmds.AddRange(header.Cmds);
                 header.Cmds = newCmds;
             }
-        }
-
-        private List<Requires> DisjointnessFreeRequires(Procedure proc)
-        {
-            var availableVars = AvailableLinearLocalVars(proc).Union(LinearGlobalVars());
-            var newRequires = new List<Requires>();
-            foreach (var expr in DisjointnessExprs(availableVars))
-            {
-                newRequires.Add(new Requires(true, expr));
-            }
-            return newRequires;
         }
 
         private List<Expr> DisjointnessExprs(IEnumerable<Variable> availableVars)

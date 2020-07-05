@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.GraphUtil;
@@ -17,31 +16,35 @@ namespace Microsoft.Boogie
             HashSet<Procedure> yieldingProcs,
             Dictionary<CallCmd, Block> refinementBlocks)
         {
-            var linearPermissionInstrumentation = new LinearPermissionInstrumentation(civlTypeChecker, linearTypeChecker, layerNum, absyMap);
+            var linearPermissionInstrumentation =
+                new LinearPermissionInstrumentation(civlTypeChecker, linearTypeChecker, layerNum, absyMap);
             var yieldingProcInstrumentation = new YieldingProcInstrumentation(
-                civlTypeChecker, 
-                linearTypeChecker, 
+                civlTypeChecker,
+                linearTypeChecker,
                 linearPermissionInstrumentation,
                 layerNum,
                 absyMap,
                 refinementBlocks);
             yieldingProcInstrumentation.AddNoninterferenceCheckers();
-            yieldingProcInstrumentation.TransformImpls(yieldingProcs);
+            var implToPreconditions = yieldingProcInstrumentation.CreatePreconditions(linearPermissionInstrumentation);
+            yieldingProcInstrumentation.InlineYieldRequiresAndEnsures(); // inline after creating the preconditions but before transforming the implementations
+            yieldingProcInstrumentation.TransformImpls(yieldingProcs, implToPreconditions);
             List<Declaration> decls = new List<Declaration>(yieldingProcInstrumentation.noninterferenceCheckerDecls);
             foreach (Procedure proc in yieldingProcInstrumentation.parallelCallAggregators.Values)
             {
                 decls.Add(proc);
             }
+
             decls.Add(yieldingProcInstrumentation.wrapperNoninterferenceCheckerProc);
             decls.Add(yieldingProcInstrumentation.WrapperNoninterferenceCheckerImpl());
             return decls;
         }
-        
+
         private CivlTypeChecker civlTypeChecker;
         private LinearTypeChecker linearTypeChecker;
         private int layerNum;
         private Dictionary<Absy, Absy> absyMap;
-        
+
         private Dictionary<string, Procedure> parallelCallAggregators;
         private List<Declaration> noninterferenceCheckerDecls;
         private Procedure wrapperNoninterferenceCheckerProc;
@@ -52,7 +55,7 @@ namespace Microsoft.Boogie
         private NoninterferenceInstrumentation noninterferenceInstrumentation;
 
         private Dictionary<CallCmd, Block> refinementBlocks;
-        
+
         private YieldingProcInstrumentation(
             CivlTypeChecker civlTypeChecker,
             LinearTypeChecker linearTypeChecker,
@@ -75,15 +78,24 @@ namespace Microsoft.Boogie
             {
                 inputs.Add(linearTypeChecker.LinearDomainInFormal(domainName));
             }
+
             foreach (Variable g in civlTypeChecker.GlobalVariables)
             {
                 inputs.Add(OldGlobalFormal(g));
             }
-            wrapperNoninterferenceCheckerProc = new Procedure(Token.NoToken, $"Wrapper_NoninterferenceChecker_{layerNum}", new List<TypeVariable>(),
+
+            wrapperNoninterferenceCheckerProc = new Procedure(Token.NoToken,
+                $"Wrapper_NoninterferenceChecker_{layerNum}", new List<TypeVariable>(),
                 inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
             CivlUtil.AddInlineAttribute(wrapperNoninterferenceCheckerProc);
         }
 
+        private YieldingProc GetYieldingProc(Implementation impl)
+        {
+            var originalImpl = (Implementation) absyMap[impl];
+            return civlTypeChecker.procToYieldingProc[originalImpl.Proc];
+        }
+        
         private Implementation WrapperNoninterferenceCheckerImpl()
         {
             List<Variable> inputs = new List<Variable>();
@@ -154,8 +166,7 @@ namespace Microsoft.Boogie
             }
             foreach (var impl in absyMap.Keys.OfType<Implementation>())
             {
-                var originalImpl = absyMap[impl] as Implementation;
-                YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc];
+                var yieldingProc = GetYieldingProc(impl);
                 noninterferenceCheckerDecls.AddRange(
                     NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker, layerNum,
                         absyMap, impl, impl.LocVars));
@@ -163,10 +174,9 @@ namespace Microsoft.Boogie
                 noninterferenceCheckerDecls.AddRange(
                     NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker,
                         layerNum, new Dictionary<Absy, Absy>(), impl.Proc, new List<Variable>()));
-                InlineYieldRequiresAndEnsures(yieldingProc, impl.Proc);
             }
         }
-
+        
         // Add assignment g := g for all global variables g at yielding loop heads.
         // This is to make all global variables loop targets that get havoced.
         private List<Cmd> YieldingLoopDummyAssignment()
@@ -206,69 +216,112 @@ namespace Microsoft.Boogie
             }
             return inlinedYieldInvariants;
         }
-        
-        private void InlineYieldRequiresAndEnsures(YieldingProc yieldingProc, Procedure proc)
+
+        private Dictionary<Implementation, List<Cmd>> CreatePreconditions(LinearPermissionInstrumentation linearPermissionInstrumentation)
         {
-            foreach (var callCmd in yieldingProc.yieldRequires)
+            var implToInitCmds = new Dictionary<Implementation, List<Cmd>>();
+            foreach (var impl in absyMap.Keys.OfType<Implementation>())
             {
-                var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
-                if (layerNum == yieldInvariant.LayerNum)
+                var initCmds = new List<Cmd>();
+                if (civlTypeChecker.GlobalVariables.Count() > 0)
                 {
-                    Dictionary<Variable, Expr> map = callCmd.Proc.InParams.Zip(callCmd.Ins).ToDictionary(x => x.Item1, x => x.Item2);
-                    Substitution subst = Substituter.SubstitutionFromHashtable(map);
-                    foreach (Requires req in callCmd.Proc.Requires)
+                    initCmds.Add(new HavocCmd(Token.NoToken, civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList()));
+                    linearPermissionInstrumentation.DisjointnessExprs(impl, true).ForEach(
+                        expr => initCmds.Add(new AssumeCmd(Token.NoToken, expr)));
+                    
+                    Substitution procToImplInParams = Substituter.SubstitutionFromHashtable(impl.Proc.InParams
+                        .Zip(impl.InParams).ToDictionary(x => x.Item1, x => (Expr) Expr.Ident(x.Item2)));
+                    
+                    impl.Proc.Requires.ForEach(req => initCmds.Add(new AssumeCmd(req.tok, Substituter.Apply(procToImplInParams, req.Condition))));
+                    
+                    foreach (var callCmd in GetYieldingProc(impl).yieldRequires)
                     {
-                        proc.Requires.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition), null,
-                            req.Attributes));
+                        var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
+                        if (layerNum == yieldInvariant.LayerNum)
+                        {
+                            Substitution callFormalsToActuals = Substituter.SubstitutionFromHashtable(callCmd.Proc.InParams
+                                .Zip(callCmd.Ins)
+                                .ToDictionary(x => x.Item1, x => (Expr) new OldExpr(Token.NoToken, x.Item2)));
+                            callCmd.Proc.Requires.ForEach(req => initCmds.Add(new AssumeCmd(req.tok,
+                                Substituter.Apply(procToImplInParams,
+                                    Substituter.Apply(callFormalsToActuals, req.Condition)))));
+                        }
                     }
                 }
+                implToInitCmds[impl] = initCmds;
             }
-            foreach (var callCmd in yieldingProc.yieldEnsures)
+            return implToInitCmds;
+        }
+
+        private void InlineYieldRequiresAndEnsures()
+        {
+            foreach (var impl in absyMap.Keys.OfType<Implementation>())
             {
-                var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
-                if (layerNum == yieldInvariant.LayerNum)
+                var yieldingProc = GetYieldingProc(impl);
+                foreach (var callCmd in yieldingProc.yieldRequires)
                 {
-                    Dictionary<Variable, Expr> map = callCmd.Proc.InParams.Zip(callCmd.Ins).ToDictionary(x => x.Item1, x => x.Item2);
-                    Substitution subst = Substituter.SubstitutionFromHashtable(map);
-                    foreach (Requires req in callCmd.Proc.Requires)
+                    var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
+                    if (layerNum == yieldInvariant.LayerNum)
                     {
-                        proc.Ensures.Add(new Ensures(req.tok, req.Free, Substituter.Apply(subst, req.Condition), null,
-                            req.Attributes));
+                        Dictionary<Variable, Expr> map = callCmd.Proc.InParams.Zip(callCmd.Ins)
+                            .ToDictionary(x => x.Item1, x => x.Item2);
+                        Substitution subst = Substituter.SubstitutionFromHashtable(map);
+                        foreach (Requires req in callCmd.Proc.Requires)
+                        {
+                            impl.Proc.Requires.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition),
+                                null,
+                                req.Attributes));
+                        }
+                    }
+                }
+                foreach (var callCmd in yieldingProc.yieldEnsures)
+                {
+                    var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
+                    if (layerNum == yieldInvariant.LayerNum)
+                    {
+                        Dictionary<Variable, Expr> map = callCmd.Proc.InParams.Zip(callCmd.Ins)
+                            .ToDictionary(x => x.Item1, x => x.Item2);
+                        Substitution subst = Substituter.SubstitutionFromHashtable(map);
+                        foreach (Requires req in callCmd.Proc.Requires)
+                        {
+                            impl.Proc.Ensures.Add(new Ensures(req.tok, req.Free, Substituter.Apply(subst, req.Condition),
+                                null,
+                                req.Attributes));
+                        }
                     }
                 }
             }
         }
 
-        private void TransformImpls(HashSet<Procedure> yieldingProcs)
+        private void TransformImpls(HashSet<Procedure> yieldingProcs, Dictionary<Implementation, List<Cmd>> implToPreconditions)
         {
             foreach (var impl in absyMap.Keys.OfType<Implementation>())
             {
-                // Add disjointness assumptions at beginning, loop headers, and after each call or parallel call.
-                // These are added for each duplicate implementation of yielding procedures.
+                // Add disjointness assumptions at loop headers and after each parallel call
+                // for each duplicate implementation of yielding procedures.
                 // Disjointness assumptions after yields are added inside TransformImpl which is called for 
                 // all implementations except for a mover procedure at its disappearing layer.
                 // But this is fine because a mover procedure at its disappearing layer does not have a yield in it.
                 linearPermissionInstrumentation.AddDisjointnessAssumptions(impl, yieldingProcs);
-                var originalImpl = absyMap[impl] as Implementation;
-                var yieldingProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc];
+                var yieldingProc = GetYieldingProc(impl);
                 if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum) continue;
-                TransformImpl(originalImpl, impl);
+                TransformImpl(impl, implToPreconditions[impl]);
             }
         }
         
-        private void TransformImpl(Implementation originalImpl, Implementation impl)
+        private void TransformImpl(Implementation impl, List<Cmd> preconditions)
         {
             // initialize globalSnapshotInstrumentation
             globalSnapshotInstrumentation = new GlobalSnapshotInstrumentation(civlTypeChecker);
 
             // initialize refinementInstrumentation
-            YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc];
+            var yieldingProc = GetYieldingProc(impl);
             if (yieldingProc.upperLayer == this.layerNum)
             {
                 refinementInstrumentation = new ActionRefinementInstrumentation(
                     civlTypeChecker,
                     impl,
-                    originalImpl,
+                    (Implementation) absyMap[impl],
                     globalSnapshotInstrumentation.OldGlobalMap);
             }
             else
@@ -291,16 +344,16 @@ namespace Microsoft.Boogie
                     wrapperNoninterferenceCheckerProc);
             }
 
-            DesugarConcurrency(impl);
+            DesugarConcurrency(impl, preconditions);
 
             impl.LocVars.AddRange(globalSnapshotInstrumentation.NewLocalVars);
             impl.LocVars.AddRange(refinementInstrumentation.NewLocalVars);
             impl.LocVars.AddRange(noninterferenceInstrumentation.NewLocalVars);
         }
 
-        private Block AddInitialBlock(Implementation impl)
+        private Block CreateInitialBlock(Implementation impl, List<Cmd> preconditions)
         {
-            var initCmds = new List<Cmd>();
+            var initCmds = new List<Cmd>(preconditions);
             initCmds.AddRange(globalSnapshotInstrumentation.CreateInitCmds());
             initCmds.AddRange(refinementInstrumentation.CreateInitCmds());
             initCmds.AddRange(noninterferenceInstrumentation.CreateInitCmds(impl));
@@ -350,7 +403,7 @@ namespace Microsoft.Boogie
             gotoCmd.labelTargets.Add(b);
         }
 
-        private void DesugarConcurrency(Implementation impl)
+        private void DesugarConcurrency(Implementation impl, List<Cmd> preconditions)
         {
             var noninterferenceCheckerBlock = CreateNoninterferenceCheckerBlock();
             var refinementCheckerBlock = CreateRefinementCheckerBlock();
@@ -469,7 +522,7 @@ namespace Microsoft.Boogie
             impl.Blocks.Add(returnCheckerBlock);
             impl.Blocks.Add(returnBlock);
             impl.Blocks.AddRange(implRefinementCheckingBlocks);
-            impl.Blocks.Insert(0, AddInitialBlock(impl));
+            impl.Blocks.Insert(0, CreateInitialBlock(impl, preconditions));
         }
 
         private void FixUpImplRefinementCheckingBlock(Block block, Block refinementCheckerBlock)

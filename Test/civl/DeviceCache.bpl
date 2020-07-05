@@ -97,9 +97,9 @@ COPY_TO_BUFFER:
 procedure {:yields} {:layer 1}
 {:yield_requires "Yield"}
 {:yield_ensures "Yield"}
+{:yield_requires "YieldToWriteCache", tid, currsize, newsize}
 {:yield_ensures "YieldToWriteCache", tid, old(currsize), old(newsize)}
 WriteCache({:linear "tid"} tid: X, index: int)
-requires {:layer 1} tid != nil && ghostLock == tid;
 {
     var j: int;
 
@@ -116,9 +116,9 @@ requires {:layer 1} tid != nil && ghostLock == tid;
 procedure {:yields} {:layer 1}
 {:yield_requires "Yield"}
 {:yield_ensures "Yield"}
+{:yield_requires "YieldToReadCache", tid, currsize}
 {:yield_ensures "YieldToReadCache", tid, old(currsize)}
 ReadCache({:linear "tid"} tid: X, start: int, bytesRead: int)
-requires {:layer 1} tid != nil;
 requires {:layer 1} 0 <= start && 0 <= bytesRead;
 requires {:layer 1} (bytesRead == 0 || start + bytesRead <= currsize);
 {

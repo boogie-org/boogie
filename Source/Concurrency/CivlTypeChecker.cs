@@ -1367,7 +1367,7 @@ namespace Microsoft.Boogie
 
             public override Expr VisitIdentifierExpr(IdentifierExpr node)
             {
-                if (node.Decl is GlobalVariable && !insideOld)
+                if (node.Decl is GlobalVariable && allowOld && !insideOld)
                 {
                     ok = false;
                     civlTypeChecker.Error(node, "Global variable cannot be accessed in this context");

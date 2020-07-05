@@ -16,6 +16,7 @@ p1()
 }
 
 procedure {:yields} {:layer 1}
+{:yield_requires "yield_x", x}
 {:yield_ensures "yield_x", old(x) + 3}
 p2()
 {
