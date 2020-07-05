@@ -30,6 +30,13 @@ p2({:layer 0,0} a: int) returns (c: int)
 {
 }
 
+procedure {:yields} {:layer 1}
+{:yield_requires "linear_yield_x", a}
+{:yield_ensures "linear_yield_x", a}
+{:yield_requires "linear_yield_x", c}
+{:yield_ensures "linear_yield_x", b}
+p3({:linear "lin"} a: int, {:linear_in "lin"} b: int, {:linear_out "lin"} c: int);
+
 function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
 function {:inline} {:linear "lin"} TidCollector(x: int) : [int]bool
 {

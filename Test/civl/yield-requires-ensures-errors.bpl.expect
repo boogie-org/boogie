@@ -4,4 +4,6 @@ yield-requires-ensures-errors.bpl(20,0): Error: Only a linear argument can be pa
 yield-requires-ensures-errors.bpl(19,28): Error: Output parameter cannot be accessed
 yield-requires-ensures-errors.bpl(27,0): Error: A local variable used in input to the call not available at layer 1
 yield-requires-ensures-errors.bpl(28,0): Error: A local variable used in input to the call not available at layer 1
-4 type checking errors detected in yield-requires-ensures-errors.bpl
+yield-requires-ensures-errors.bpl(36,35): Error: Argument must be linear or linear_in
+yield-requires-ensures-errors.bpl(37,34): Error: Argument must be linear or linear_out
+6 type checking errors detected in yield-requires-ensures-errors.bpl

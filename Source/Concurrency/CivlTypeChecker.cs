@@ -497,7 +497,8 @@ namespace Microsoft.Boogie
             {
                 var callCmd = TypeCheckYieldInvariantCall(attr);
                 if (callCmd != null &&
-                    new YieldInvariantCallVisitor(this, false).Check(callCmd))
+                    new YieldInvariantCallVisitor(this, false).Check(callCmd) &&
+                    linearTypeChecker.TypeCheckYieldRequires(proc, callCmd))
                 {
                     yieldRequires.Add(callCmd);
                 }
@@ -510,7 +511,8 @@ namespace Microsoft.Boogie
             {
                 var callCmd = TypeCheckYieldInvariantCall(attr);
                 if (callCmd != null &&
-                    new YieldInvariantCallVisitor(this, true).Check(callCmd))
+                    new YieldInvariantCallVisitor(this, true).Check(callCmd) &&
+                    linearTypeChecker.TypeCheckYieldEnsures(proc, callCmd))
                 {
                     yieldEnsures.Add(callCmd);
                 }
@@ -667,10 +669,13 @@ namespace Microsoft.Boogie
                             var callCmd = TypeCheckYieldInvariantCall(attr);
                             if (callCmd == null) continue;
                             var calleeLayerNum = procToYieldInvariant[callCmd.Proc].LayerNum;
-                            if (yieldingLayers.Contains(calleeLayerNum) &&
-                                new YieldInvariantCallVisitor(this, true).Check(callCmd))
+                            if (yieldingLayers.Contains(calleeLayerNum))
                             {
-                                yieldInvariants.Add(callCmd);
+                                if (new YieldInvariantCallVisitor(this, true).Check(callCmd) &&
+                                    linearTypeChecker.TypeCheckYieldLoop(header, callCmd))
+                                {
+                                    yieldInvariants.Add(callCmd);
+                                }
                             }
                             else
                             {
