@@ -657,6 +657,7 @@ namespace Microsoft.Boogie
                     if (yieldingLayers.Intersect(terminatingLayers).Count() != 0)
                     {
                         Error(header, "Loop cannot be both yielding and terminating on the same layer.");
+                        continue;
                     }
                     var yieldInvariants = new List<CallCmd>();
                     foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
