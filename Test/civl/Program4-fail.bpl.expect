@@ -1,0 +1,9 @@
+Program4-fail.bpl(26,1): Error BP5003: A postcondition might not hold on this return path.
+Program4-fail.bpl(6,1): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Program4-fail.bpl(23,3): anon0
+    Program4-fail.bpl(36,5): inline$AtomicIncr$0$anon0
+    Program4-fail.bpl(36,5): inline$AtomicIncr$1$anon0
+    Program4-fail.bpl(36,5): inline$AtomicIncr$2$anon0
+
+Boogie program verifier finished with 3 verified, 1 error
