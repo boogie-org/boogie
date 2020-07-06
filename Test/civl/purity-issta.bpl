@@ -39,9 +39,9 @@ procedure {:yields} {:layer 1} {:refines "atomic_Alloc"} Alloc({:linear "tid"} t
   i := 0;
   r := -1;
   while (i < max)
+  invariant {:yields} {:layer 1} true;
   invariant {:layer 1} 0 <= i;
   {
-    yield;
     call acquire(tid, i);
     call b := Read(tid, i);
     if (b) {
@@ -52,18 +52,14 @@ procedure {:yields} {:layer 1} {:refines "atomic_Alloc"} Alloc({:linear "tid"} t
     }
     call release(tid, i);
     i := i + 1;
-    yield;
   }
-  yield;
 }
 
 procedure {:yields} {:layer 1} {:refines "atomic_Free"} Free({:linear "tid"} tid: X, i: int)
 {
-  yield;
   call acquire(tid, i);
   call Write(tid, i, true);
   call release(tid, i);
-  yield;
 }
 
 procedure {:right} {:layer 1} atomic_acquire({:linear "tid"} tid: X, i: int)

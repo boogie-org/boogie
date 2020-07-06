@@ -10,9 +10,7 @@ var {:layer 0,2} x : int;
 procedure {:yields} {:layer 1} {:refines "atomic_inc_x"} main (n: int)
 requires {:layer 1} n >= 0;
 {
-  yield;
   call inc(n);
-  yield;
 }
 
 procedure {:yields} {:left} {:layer 1} {:terminates}  inc (i : int)
@@ -25,11 +23,7 @@ ensures {:layer 1} x == old(x) + i;
     call inc_x(1);
     async call {:sync} inc(i-1);
   }
-
-  call dummy();
 }
-
-procedure {:yields} {:layer 0} dummy ();
 
 procedure {:both} {:layer 1,2} atomic_inc_x (n: int)
 modifies x;

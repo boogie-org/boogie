@@ -382,6 +382,58 @@ namespace Microsoft.Boogie
             return new LocalVariable(Token.NoToken, 
                 new TypedIdent(Token.NoToken, "linear_" + domainName + "_available", linearDomains[domainName].mapTypeBool));
         }
+
+        public bool TypeCheckYieldRequires(Procedure callerProc, CallCmd callCmd)
+        {
+            var ok = true;
+            callCmd.Ins.Zip(callCmd.Proc.InParams)
+                .Where(pair => FindDomainName(pair.Item2) != null)
+                .Iter(
+                    pair =>
+                    {
+                        if (FindLinearKind(((IdentifierExpr) pair.Item1).Decl) == LinearKind.LINEAR_OUT)
+                        {
+                            Error(pair.Item1, "Argument must be linear or linear_in");
+                            ok = false;
+                        }
+                    });
+            return ok;
+        }
+        
+        public bool TypeCheckYieldEnsures(Procedure callerProc, CallCmd callCmd)
+        {
+            var ok = true;
+            callCmd.Ins.Zip(callCmd.Proc.InParams)
+                .Where(pair => FindDomainName(pair.Item2) != null)
+                .Iter(
+                    pair =>
+                    {
+                        if (FindLinearKind(((IdentifierExpr) pair.Item1).Decl) == LinearKind.LINEAR_IN)
+                        {
+                            Error(pair.Item1, "Argument must be linear or linear_out");
+                            ok = false;
+                        }
+                    });
+            return ok;
+        }
+        
+        public bool TypeCheckYieldLoop(Block loopHeader, CallCmd callCmd)
+        {
+            var ok = true;
+            callCmd.Ins.Zip(callCmd.Proc.InParams)
+                .Where(pair => FindDomainName(pair.Item2) != null)
+                .Iter(
+                    pair =>
+                    {
+                        var decl = ((IdentifierExpr) pair.Item1).Decl;
+                        if (!AvailableLinearVars(loopHeader).Contains(decl))
+                        {
+                            Error(pair.Item1, "Argument must be available");
+                            ok = false;
+                        }
+                    });
+            return ok;
+        }
         
         public void TypeCheck()
         {
@@ -824,6 +876,7 @@ namespace Microsoft.Boogie
             HashSet<Variable> parallelCallInvars = new HashSet<Variable>();
             foreach (CallCmd callCmd in node.CallCmds)
             {
+                if (civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc)) continue;
                 for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
                 {
                     Variable formal = callCmd.Proc.InParams[i];
@@ -837,6 +890,21 @@ namespace Microsoft.Boogie
                     else
                     {
                         parallelCallInvars.Add(actual.Decl);
+                    }
+                }
+            }
+            foreach (CallCmd callCmd in node.CallCmds)
+            {
+                if (!civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc)) continue;
+                for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
+                {
+                    Variable formal = callCmd.Proc.InParams[i];
+                    string domainName = FindDomainName(formal);
+                    if (domainName == null) continue;
+                    IdentifierExpr actual = callCmd.Ins[i] as IdentifierExpr;
+                    if (parallelCallInvars.Contains(actual.Decl))
+                    {
+                        Error(node, $"Linear variable {actual.Decl.Name} cannot be an input parameter to both a yield invariant and a procedure in a parallel call");
                     }
                 }
             }

@@ -11,16 +11,27 @@ namespace Microsoft.Boogie
             decl.AddAttribute("inline", Expr.Literal(1));
         }
 
-        public static void ResolveAndTypecheck(Absy absy)
+        public static int ResolveAndTypecheck(Absy absy)
         {
-            absy.Resolve(new ResolutionContext(null));
-            absy.Typecheck(new TypecheckingContext(null));
+            var rc = new ResolutionContext(null);
+            absy.Resolve(rc);
+            if (rc.ErrorCount != 0)
+            {
+                return rc.ErrorCount;
+            }
+            var tc = new TypecheckingContext(null);
+            absy.Typecheck(tc);
+            return tc.ErrorCount;
         }
 
-        public static void ResolveAndTypecheck(IEnumerable<Absy> absys)
+        public static int ResolveAndTypecheck(IEnumerable<Absy> absys)
         {
+            int errorCount = 0;
             foreach (var absy in absys)
-                ResolveAndTypecheck(absy);
+            {
+                errorCount += ResolveAndTypecheck(absy);
+            }
+            return errorCount;
         }
     }
 
@@ -73,6 +84,12 @@ namespace Microsoft.Boogie
         {
             var lhs = new SimpleAssignLhs(Token.NoToken, Expr.Ident(v));
             return new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { x });
+        }
+
+        public static AssignCmd AssignCmd(IList<IdentifierExpr> lhss, IList<Expr> rhss)
+        {
+            var assignLhss = lhss.Select(lhs => new SimpleAssignLhs(Token.NoToken, lhs)).ToList<AssignLhs>();
+            return new AssignCmd(Token.NoToken, assignLhss, rhss);
         }
     }
 

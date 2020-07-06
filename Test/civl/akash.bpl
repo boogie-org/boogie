@@ -41,9 +41,7 @@ procedure {:yields} {:layer 0} {:refines "AtomicSetH"} SetH(val:int);
 procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: int)
 ensures {:layer 1} xl != 0;
 {
-    yield;
     call xl := AllocateLow();
-    yield;
 }
 
 procedure {:atomic} {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} xls: int)
@@ -59,7 +57,6 @@ requires {:layer 1} y == mapconstbool(true);
     var {:linear "tid"} tid_child: int;
     tid_out := tid_in;
 
-    yield;
     call SetG(0);
     yield;
     assert {:layer 1} g == 0 && x == mapconstbool(true);
@@ -78,7 +75,6 @@ requires {:layer 1} y == mapconstbool(true);
     call tid_child := Allocate();
     async call C(tid_child, y);
 
-    yield;
 }
 
 procedure {:yields} {:layer 1} B({:linear_in "tid"} tid_in: int, {:linear_in "1"} x_in: [int]bool)
@@ -89,15 +85,11 @@ requires {:layer 1} x_in != mapconstbool(false);
     tid_out := tid_in;
     x := x_in;
 
-    yield;
-
     call SetG(1);
 
     yield;
 
     call SetG(2);
-
-    yield;
 }
 
 procedure {:yields} {:layer 1} C({:linear_in "tid"} tid_in: int, {:linear_in "2"} y_in: [int]bool)
@@ -108,13 +100,9 @@ requires {:layer 1} y_in != mapconstbool(false);
     tid_out := tid_in;
     y := y_in;
 
-    yield;
-
     call SetH(1);
 
     yield;
 
     call SetH(2);
-
-    yield;
 }

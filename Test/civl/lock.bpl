@@ -4,26 +4,22 @@ var {:layer 0,2} b: bool;
 
 procedure {:yields} {:layer 2} main()
 {
-    yield;
     while (*)
+    invariant {:terminates} {:layer 1,2} true;
     {
         async call Customer();
-        yield;
     }
-    yield;
 }
 
 procedure {:yields} {:layer 2} Customer()
 {
-    yield;
     while (*)
+    invariant {:yields} {:layer 1,2} true;
     {
         call Enter();
         yield;
         call Leave();
-        yield;
     }
-    yield;
 }
 
 procedure {:atomic} {:layer 2} AtomicEnter()
@@ -33,16 +29,15 @@ modifies b;
 procedure {:yields} {:layer 1} {:refines "AtomicEnter"} Enter()
 {
     var status: bool;
-    yield;
-    while (true) {
+
+    while (true)
+    invariant {:yields} {:layer 1} true;
+    {
         call status := CAS(false, true);
         if (status) {
-            yield;
             return;
         }
-        yield;
     }
-    yield;
 }
 
 procedure {:atomic} {:layer 1,2} AtomicCAS(prev: bool, next: bool) returns (status: bool)

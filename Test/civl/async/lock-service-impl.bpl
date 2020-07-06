@@ -17,9 +17,7 @@ modifies x;
 procedure {:yields}{:layer 4}{:refines "Client_atomic"} Client ({:linear_in "tid"} tid:Tid)
 requires {:layer 3} tid != nil;
 {
-  yield;
   async call GetLockAbstract(tid);
-  yield;
 }
 
 procedure {:left}{:layer 4} GetLockAbstract_atomic({:linear_in "tid"} tid:Tid)
@@ -31,9 +29,7 @@ modifies x;
 procedure {:yields}{:layer 3}{:refines "GetLockAbstract_atomic"} GetLockAbstract({:linear_in "tid"} tid:Tid)
 requires {:layer 3} tid != nil;
 {
-  yield;
   call GetLock(tid);
-  yield;
 }
 
 procedure {:left}{:layer 3} Callback_atomic ({:linear_in "tid"} tid:Tid)
@@ -47,11 +43,9 @@ modifies l,x;
 procedure {:yields}{:layer 2}{:refines "Callback_atomic"} Callback ({:linear_in "tid"} tid:Tid)
 {
   var tmp:int;
-  yield;
   call tmp := read_x_lock(tid);
   call write_x_lock(tmp+1, tid);
   async call ReleaseLock(tid);
-  yield;
 }
 
 
@@ -76,24 +70,18 @@ modifies l;
 procedure {:yields}{:layer 1}{:refines "GetLock_atomic"} GetLock ({:linear_in "tid"} tid:Tid)
 {
   var success:bool;
-  yield;
   while (true) {
     call success := cas_l(nil, tid);
     if (success) {
       async call Callback(tid);
-      yield;
       return;
     }
-    yield;
   }
-  yield;
 }
 
 procedure {:yields}{:layer 1}{:refines "ReleaseLock_atomic"} ReleaseLock ({:linear_in "tid"} tid:Tid)
 {
-  yield;
   call write_l(nil);
-  yield;
 }
 
 // -----------------------------------------------------------------------------
@@ -106,9 +94,9 @@ modifies x;
 { assert tid != nil && l == tid; x := v; }
 
 procedure {:yields}{:layer 1}{:refines "read_x_lock_atomic"} read_x_lock ({:linear "tid"} tid:Tid) returns (v:int)
-{ yield; call v := read_x(); yield; }
+{ call v := read_x(); }
 procedure {:yields}{:layer 1}{:refines "write_x_lock_atomic"} write_x_lock (v:int, {:linear "tid"} tid:Tid)
-{ yield; call write_x(v); yield; }
+{ call write_x(v); }
 
 // -----------------------------------------------------------------------------
 

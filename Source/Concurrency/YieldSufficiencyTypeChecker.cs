@@ -18,29 +18,7 @@ namespace Microsoft.Boogie
         private const string A = "A";  // atomic (non mover) action
         private const string P = "P";  // private (local variable) access
         private const string I = "I";  // introduction action
-        
-        // States of Bracket Automaton (check that all accesses to global variables are bracketed by yields)
-        private const int BEFORE = 0;
-        private const int INSIDE = 1;
-        private const int AFTER = 2;
-        
-        // Transitions of Bracket Automaton
-        static List<Tuple<int, string, int>> BracketSpec = new List<Tuple<int, string, int>>
-        { // initial: BEFORE, final: AFTER
-            new Tuple<int, string, int>(BEFORE, P, BEFORE),
-            new Tuple<int, string, int>(BEFORE, Y, INSIDE),
-            new Tuple<int, string, int>(BEFORE, Y, AFTER),
-            new Tuple<int, string, int>(INSIDE, Y, INSIDE),
-            new Tuple<int, string, int>(INSIDE, B, INSIDE),
-            new Tuple<int, string, int>(INSIDE, R, INSIDE),
-            new Tuple<int, string, int>(INSIDE, L, INSIDE),
-            new Tuple<int, string, int>(INSIDE, A, INSIDE),
-            new Tuple<int, string, int>(INSIDE, P, INSIDE),
-            new Tuple<int, string, int>(INSIDE, I, INSIDE),
-            new Tuple<int, string, int>(INSIDE, Y, AFTER),
-            new Tuple<int, string, int>(AFTER, P, AFTER),
-        };
-        
+
         // States of Atomicity Automaton (check that transactions are separated by yields)
         private const int RM = 0;
         private const int LM = 1;
@@ -130,8 +108,6 @@ namespace Microsoft.Boogie
 
             // To allow garbage collection
             moverProcedureCallGraph = null;
-
-            // TODO: Remove "terminates" attribute
         }
 
         private class PerLayerYieldSufficiencyTypeChecker
@@ -163,44 +139,85 @@ namespace Microsoft.Boogie
             {
                 ComputeGraph();
                 // Console.WriteLine(PrintGraph(impl, implEdges, initialState, finalStates));
-
-                if (!IsMoverProcedure)
-                {
-                    BracketCheck();
-                }
-
+                LoopCheck();
                 AtomicityCheck();
             }
 
-            private void BracketCheck()
+            private void LoopCheck()
             {
-                var initialConstraints = new Dictionary<Absy, HashSet<int>>();
-                initialConstraints[initialState] = new HashSet<int> {BEFORE};
-                foreach (var finalState in finalStates)
+                var edgeLabel = new Dictionary<Tuple<Absy, Absy>, string>();
+                var graph = new Graph<Absy>();
+                graph.AddSource(impl.Blocks[0]);
+                implEdges.ForEach(e =>
                 {
-                    initialConstraints[finalState] = new HashSet<int> {AFTER};
+                    graph.AddEdge(e.Item1, e.Item3);
+                    edgeLabel[new Tuple<Absy, Absy>(e.Item1, e.Item3)] = e.Item2;
+                });
+                graph.ComputeLoops();
+                var edgeToLoopHeader = new Dictionary<Tuple<Absy, Absy>, Block>();
+                foreach (Block header in graph.SortHeadersByDominance())
+                {
+                    foreach (var source in graph.BackEdgeNodes(header))
+                    {
+                        edgeToLoopHeader[new Tuple<Absy, Absy>(source, header)] = header;
+                        foreach (var node in graph.NaturalLoops(header, source))
+                        {
+                            if (node == header) continue;
+                            foreach (var pred in graph.Predecessors(node))
+                            {
+                                var edge = new Tuple<Absy, Absy>(pred, node);
+                                if (edgeToLoopHeader.ContainsKey(edge)) continue;
+                                edgeToLoopHeader[edge] = header;
+                            }
+                        }
+                    }
+                }
+                var parentLoopHeader = new Dictionary<Block, Block>();
+                foreach (Block header in graph.Headers)
+                {
+                    foreach (var pred in graph.Predecessors(header).Except(graph.BackEdgeNodes(header)))
+                    {
+                        var edge = new Tuple<Absy, Absy>(pred, header);
+                        if (edgeToLoopHeader.ContainsKey(edge))
+                        {
+                            parentLoopHeader[header] = edgeToLoopHeader[edge];
+                            break;
+                        }
+                    }
                 }
 
-                var simulationRelation =
-                    new SimulationRelation<Absy, int, string>(implEdges, BracketSpec, initialConstraints)
-                        .ComputeSimulationRelation();
-                if (simulationRelation[initialState].Count == 0)
+                var yieldingLoopHeaders = new HashSet<Block>(graph.Headers.OfType<Block>().Where(header => @base.civlTypeChecker.IsYieldingLoopHeader(header, currLayerNum)));
+                foreach (var header in parentLoopHeader.Keys)
                 {
-                    @base.checkingContext.Error(impl,
-                        $"Implementation {impl.Name} fails bracket check at layer {currLayerNum}. All code that accesses global variables must be bracketed by yields.");
+                    var parentHeader = parentLoopHeader[header];
+                    if (yieldingLoopHeaders.Contains(header) && !yieldingLoopHeaders.Contains(parentHeader))
+                    {
+                        @base.checkingContext.Error(parentHeader,
+                            $"Loop header must be yielding at layer {currLayerNum}");
+                    }
+                }
+
+                foreach (var edge in edgeToLoopHeader.Keys)
+                {
+                    var header = edgeToLoopHeader[edge];
+                    if (yieldingLoopHeaders.Contains(header)) continue;
+                    if (edgeLabel[edge] == Y)
+                    {
+                        @base.checkingContext.Error(header,
+                            $"Loop header must be yielding at layer {currLayerNum}");
+                    }
                 }
             }
-
+            
             private void AtomicityCheck()
             {
                 var initialConstraints = new Dictionary<Absy, HashSet<int>>();
 
                 foreach (Block header in implGraph.Headers)
                 {
-                    if (!IsTerminatingLoopHeader(header))
-                    {
-                        initialConstraints[header] = new HashSet<int> {RM};
-                    }
+                    if (@base.civlTypeChecker.IsYieldingLoopHeader(header, currLayerNum) || 
+                        @base.civlTypeChecker.IsTerminatingLoopHeader(header, currLayerNum)) continue;
+                    initialConstraints[header] = new HashSet<int> {RM};
                 }
 
                 if (IsMoverProcedure)
@@ -237,16 +254,9 @@ namespace Microsoft.Boogie
                 get { return yieldingProc is MoverProc && yieldingProc.upperLayer == currLayerNum; }
             }
 
-            private bool IsTerminatingLoopHeader(Block block)
-            {
-                return block.cmds.OfType<AssertCmd>().Any(c =>
-                    c.HasAttribute(CivlAttributes.TERMINATES) &&
-                    @base.civlTypeChecker.absyToLayerNums[c].Contains(currLayerNum));
-            }
-
             private bool IsTerminatingCall(CallCmd call)
             {
-                return !IsRecursiveMoverProcedureCall(call) || call.Proc.HasAttribute(CivlAttributes.TERMINATES);
+                return !IsRecursiveMoverProcedureCall(call) || @base.civlTypeChecker.IsTerminatingProcedure(call.Proc);
             }
 
             private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)
@@ -297,7 +307,7 @@ namespace Microsoft.Boogie
                 {
                     // Block entry edge
                     Absy blockEntry = block.Cmds.Count == 0 ? (Absy) block.TransferCmd : (Absy) block.Cmds[0];
-                    edgeLabels[new Tuple<Absy, Absy>(block, blockEntry)] = P;
+                    edgeLabels[new Tuple<Absy, Absy>(block, blockEntry)] = @base.civlTypeChecker.IsYieldingLoopHeader(block, currLayerNum) ? Y : P;
 
                     // Block exit edges
                     if (block.TransferCmd is GotoCmd gotoCmd)

@@ -120,17 +120,34 @@ function {:inline} VotesEqCoordinatorState (votes: [Xid]int, state: GState, xid:
 // ###########################################################################
 // Yield assertions
 
+function {:inline} SetInv (B: [Pair]bool) : bool
+{
+  (forall xid: Xid, mid: Mid :: B[Pair(xid,mid)] ==> participantMid(mid))
+}
+
+function {:inline} Inv_8 (state: GState, B: [Pair]bool, votes: [Xid]int) : bool
+{
+     gConsistent(state)
+  && SetInv(B)
+  && (forall xid: Xid :: VotesEqCoordinatorState(votes, state, xid))
+  && (forall xid: Xid :: votes[xid] == -1 || votes[xid] == card(B, xid))
+  && (forall p: Pair :: B[p] && votes[xid#Pair(p)] != -1 ==> UndecidedOrCommitted(state[xid#Pair(p)][mid#Pair(p)]))
+}
+
+function {:inline} Inv_9 (state: GState, B: [Pair]bool, xid: Xid) : bool
+{
+     gConsistent(state)
+  && (xAllParticipantsInB(xid, B) || xUndecidedOrAborted(state[xid]))
+}
+
 procedure {:yield_invariant} {:layer 8} YieldInv_8 ();
 requires Inv_8(state, B, votes);
 
-procedure {:yield_invariant} {:layer 8} YieldPairs_8 (xid: Xid, {:linear "pair"} pairs: [Pair]bool);
-requires Inv_8(state, B, votes) && (votes[xid] == -1 || (forall p: Pair :: pairs[p] ==> pair(xid, mid#Pair(p), p) && UndecidedOrCommitted(state[xid][mid#Pair(p)])));
-
 procedure {:yield_invariant} {:layer 8} YieldUndecidedOrCommitted_8 (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
-requires Inv_8(state, B, votes) && pair(xid, mid, pair) && (votes[xid] == -1 || UndecidedOrCommitted(state[xid][mid]));
+requires pair(xid, mid, pair) && (votes[xid] == -1 || UndecidedOrCommitted(state[xid][mid]));
 
 procedure {:yield_invariant} {:layer 8} YieldAborted_8 (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
-requires Inv_8(state, B, votes) && pair(xid, mid, pair) && Aborted(state[xid][mid]);
+requires pair(xid, mid, pair) && Aborted(state[xid][mid]);
 
 procedure {:yield_invariant} {:layer 9} YieldInv_9 (xid: Xid);
 requires Inv_9(state, B, xid);
@@ -139,9 +156,6 @@ procedure {:yield_invariant} {:layer 9} YieldConsistent_9 ();
 requires gConsistent(state);
 
 procedure {:yield_invariant} {:layer 10} YieldConsistent_10 ();
-requires gConsistent(state);
-
-procedure {:yield_invariant} {:layer 11} YieldConsistent_11 ();
 requires gConsistent(state);
 
 // ###########################################################################
@@ -163,23 +177,22 @@ witness (state:GState, state':GState, second_xid:Xid) : GState
 // ###########################################################################
 // Main
 
-procedure {:yields} {:layer 11} main ()
-// requires {:layer 8} Inv_8(state, B, votes);
-requires {:layer 8,9,10,11} gUndecided(state);
-requires {:layer 8} votes == (lambda xid: Xid :: 0);
-requires {:layer 8} B == (lambda p: Pair :: false);
-requires {:layer 8} (forall B: [Pair]bool, xid: Xid :: card(B, xid) == 0);
+procedure {:yields} {:layer 11}
+{:yield_requires "YieldInv_8"}
+{:yield_requires "YieldConsistent_9"}
+{:yield_requires "YieldConsistent_10"}
+main ()
 {
   var xid: Xid;
-  par YieldInv_8() | YieldConsistent_9() | YieldConsistent_10() | YieldConsistent_11();
   while (*)
-  invariant {:layer 8} Inv_8(state, B, votes);
-  invariant {:layer 9,10,11} gConsistent(state);
+  invariant {:yields}{:layer 8,9,10,11}
+    {:yield_loop "YieldInv_8"}
+    {:yield_loop "YieldConsistent_9"}
+    {:yield_loop "YieldConsistent_10"}
+    true;
   {
     call xid := Coordinator_TransactionReq();
-    par YieldInv_8() | YieldConsistent_9() | YieldConsistent_10() | YieldConsistent_11();
   }
-  yield;
 }
 
 // ###########################################################################
@@ -203,18 +216,20 @@ modifies state;
   assume state == old(state)[xid := state[xid]];
 }
 
-procedure {:yields} {:layer 10} {:refines "atomic_Coordinator_TransactionReq"} Coordinator_TransactionReq () returns (xid: Xid)
-requires {:layer 8} Inv_8(state, B, votes);
-ensures  {:layer 8} Inv_8(state, B, votes);
-requires {:layer 9,10} gConsistent(state);
-ensures  {:layer 9,10} gConsistent(state);
+procedure {:yields} {:layer 10} {:refines "atomic_Coordinator_TransactionReq"}
+{:yield_requires "YieldInv_8"}
+{:yield_ensures  "YieldInv_8"}
+{:yield_requires "YieldConsistent_9"}
+{:yield_ensures  "YieldConsistent_9"}
+{:yield_requires "YieldConsistent_10"}
+{:yield_ensures  "YieldConsistent_10"}
+Coordinator_TransactionReq () returns (xid: Xid)
 {
   var {:linear "pair"} pair: Pair;
   var {:linear "pair"} pairs: [Pair]bool;
   var {:layer 10} snapshot: GState;
   var i : Mid;
 
-  par YieldInv_8() | YieldConsistent_9() | YieldConsistent_10();
   call xid, pairs := AllocateXid();
   call snapshot := GhostRead_10();
   i := 1;
@@ -226,14 +241,12 @@ ensures  {:layer 9,10} gConsistent(state);
   invariant {:layer 9} Inv_9(state, B, xid);
   invariant {:layer 10} gConsistent(state);
   invariant {:layer 10} ExistsMonotoneExtension(snapshot, state, xid);
-  invariant {:layer 8,10} 1 <= i && i <= numParticipants + 1;
+  invariant {:layer 10} 1 <= i && i <= numParticipants + 1;
   {
     call pairs, pair := TransferPair(xid, i, pairs);
     async call {:sync} Participant_VoteReq(xid, i, pair);
     i := i + 1;
-    par YieldPairs_8(xid, pairs) | YieldInv_9(xid);
   }
-  par YieldInv_8() | YieldConsistent_9() | YieldConsistent_10();
 }
 
 // ---------------------------------------------------------------------------
@@ -249,43 +262,21 @@ modifies state;
   assume state == old(state)[xid := state[xid]];
 }
 
-procedure {:yields} {:layer 9} {:refines "atomic_Participant_VoteReq"} Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
-requires {:layer 8} Inv_8(state, B, votes) && pair(xid, mid, pair) && (votes[xid] == -1 || UndecidedOrCommitted(state[xid][mid]));
-requires {:layer 9} Inv_9(state, B, xid);
+procedure {:yields} {:layer 9} {:refines "atomic_Participant_VoteReq"}
+{:yield_requires "YieldInv_8"}
+{:yield_requires "YieldUndecidedOrCommitted_8", xid, mid, pair}
+{:yield_requires "YieldInv_9", xid}
+Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 {
-  par YieldUndecidedOrCommitted_8(xid, mid, pair) | YieldInv_9(xid);
-
   if (*) {
     async call {:sync} Coordinator_VoteYes(xid, mid, pair);
   } else {
     call SetParticipantAborted(xid, mid, pair);
     async call {:sync} Coordinator_VoteNo(xid, mid, pair);
   }
-
-  yield;
 }
 
 // ---------------------------------------------------------------------------
-
-function {:inline} Inv_9 (state: GState, B: [Pair]bool, xid: Xid) : bool
-{
-     gConsistent(state)
-  && (xAllParticipantsInB(xid, B) || xUndecidedOrAborted(state[xid]))
-}
-
-function {:inline} SetInv (B: [Pair]bool) : bool
-{
-  (forall xid: Xid, mid: Mid :: B[Pair(xid,mid)] ==> participantMid(mid))
-}
-
-function {:inline} Inv_8 (state: GState, B: [Pair]bool, votes: [Xid]int) : bool
-{
-     gConsistent(state)
-  && SetInv(B)
-  && (forall xid: Xid :: VotesEqCoordinatorState(votes, state, xid))
-  && (forall xid: Xid :: votes[xid] == -1 || votes[xid] == card(B, xid))
-  && (forall p: Pair :: B[p] && votes[xid#Pair(p)] != -1 ==> UndecidedOrCommitted(state[xid#Pair(p)][mid#Pair(p)]))
-}
 
 procedure {:left} {:layer 9} atomic_Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state, B;
@@ -302,14 +293,15 @@ modifies state, B;
   }
 }
 
-procedure {:yields} {:layer 8} {:refines "atomic_Coordinator_VoteYes"} Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
-requires {:layer 8} Inv_8(state, B, votes) && pair(xid, mid, pair) && (votes[xid] == -1 || UndecidedOrCommitted(state[xid][mid]));
+procedure {:yields} {:layer 8} {:refines "atomic_Coordinator_VoteYes"}
+{:yield_requires "YieldInv_8"}
+{:yield_requires "YieldUndecidedOrCommitted_8", xid, mid, pair}
+Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 {
   var commit : bool;
   var i : Mid;
   var {:layer 8} snapshot: GState;
 
-  call YieldUndecidedOrCommitted_8(xid, mid, pair);
   call snapshot := GhostRead_8();
   call {:layer 8} Lemma_add_to_set(B, pair);
   call {:layer 8} Lemma_all_in_set(B, xid);
@@ -331,7 +323,6 @@ requires {:layer 8} Inv_8(state, B, votes) && pair(xid, mid, pair) && (votes[xid
       i := i + 1;
     }
   }
-  yield;
 }
 
 procedure {:left} {:layer 9} atomic_Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
@@ -346,14 +337,14 @@ modifies state;
   assume state == old(state)[xid := state[xid]];
 }
 
-procedure {:yields} {:layer 8} {:refines "atomic_Coordinator_VoteNo"} Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
-requires {:layer 8} Inv_8(state, B, votes) && pair(xid, mid, pair) && Aborted(state[xid][mid]);
+procedure {:yields} {:layer 8} {:refines "atomic_Coordinator_VoteNo"}
+{:yield_requires "YieldAborted_8", xid, mid, pair}
+Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 {
   var abort : bool;
   var i : int;
   var {:layer 8} snapshot: GState;
 
-  call YieldAborted_8(xid, mid, pair);
   call snapshot := GhostRead_8();
   call abort := StateUpdateOnVoteNo(xid, mid);
 
@@ -365,14 +356,12 @@ requires {:layer 8} Inv_8(state, B, votes) && pair(xid, mid, pair) && Aborted(st
     invariant {:layer 8} 1 <= i && i <= numParticipants + 1;
     invariant {:layer 8} Aborted(state[xid][CoordinatorMid]);
     invariant {:layer 8} xUndecidedOrAborted(state[xid]);
-    invariant {:layer 8} Inv_8(state, B, votes);
     invariant {:layer 8} ExistsMonotoneExtension(snapshot, state, xid);
     {
       async call {:sync} Participant_Abort(xid, i);
       i := i + 1;
     }
   }
-  yield;
 }
 
 // ---------------------------------------------------------------------------

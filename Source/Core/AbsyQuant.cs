@@ -356,7 +356,14 @@ namespace Microsoft.Boogie {
 
       foreach (object p in Params) {
         if (p is Expr) {
+          var oldCtxtState = rc.StateMode;
+          if (oldCtxtState == ResolutionContext.State.Single) {
+            rc.StateMode = ResolutionContext.State.Two;
+          }
           ((Expr)p).Resolve(rc);
+          if (oldCtxtState != rc.StateMode) {
+            rc.StateMode = oldCtxtState;
+          }
         }
       }
     }

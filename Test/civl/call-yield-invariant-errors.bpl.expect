@@ -1,0 +1,4 @@
+call-yield-invariant-errors.bpl(14,64): Error: Argument must be available
+call-yield-invariant-errors.bpl(15,33): Error: Only a linear argument can be passed to linear parameter n
+call-yield-invariant-errors.bpl(15,64): Error: Argument must be available
+3 type checking errors detected in call-yield-invariant-errors.bpl

@@ -33,22 +33,19 @@ procedure {:layer 2}{:yields}{:refines "READ"} read () returns (v:int, w:int)
 {
   var seq1:int;
   var seq2:int;
-  yield;
-  while (true) {
-    yield;
+  while (true)
+  invariant {:yields}{:layer 1,2} true;
+  {
     call seq1 := stale_read_seq();
     if (isEven(seq1)) {
       call v := stale_read_x(seq1);
       call w := stale_read_y(seq1);
       call seq2 := read_seq();
       if (seq1 == seq2) {
-        yield;
         return;
       }
     }
-    yield;
   }
-  yield;
 }
 
 procedure {:layer 2}{:yields}{:refines "WRITE"} write ({:linear "tid"} tid:Tid, v:int, w:int)
@@ -56,9 +53,6 @@ requires {:layer 2} tid != nil;
 requires {:layer 2} lock == nil <==> isEven(seq);
 ensures  {:layer 2} lock == nil <==> isEven(seq);
 {
-  yield;
-  assert {:layer 2} tid != nil;
-  assert {:layer 2} lock == nil <==> isEven(seq);
   call acquire(tid);
   call locked_inc_seq(tid);
   call locked_write_x(tid, v);
@@ -68,8 +62,6 @@ ensures  {:layer 2} lock == nil <==> isEven(seq);
   assert {:layer 2} lock == nil <==> isEven(seq);
   call locked_inc_seq(tid);
   call release(tid);
-  yield;
-  assert {:layer 2} lock == nil <==> isEven(seq);
 }
 
 // =============================================================================
@@ -127,17 +119,17 @@ modifies y;
 }
 
 procedure {:yields}{:layer 1}{:refines "STALE_READ_SEQ"} stale_read_seq () returns (r:int)
-{ yield; call r := read_seq(); yield; }
+{ call r := read_seq(); }
 procedure {:yields}{:layer 1}{:refines "STALE_READ_X"} stale_read_x ({:layer 1} seq1:int) returns (r:int)
-{ yield; call r := read_x(); yield; }
+{ call r := read_x(); }
 procedure {:yields}{:layer 1}{:refines "STALE_READ_Y"} stale_read_y ({:layer 1} seq1:int) returns (r:int)
-{ yield; call r := read_y(); yield; }
+{ call r := read_y(); }
 procedure {:yields}{:layer 1}{:refines "LOCKED_INC_SEQ"} locked_inc_seq ({:layer 1}{:linear "tid"} tid:Tid)
-{ yield; call inc_seq(); yield; }
+{ call inc_seq(); }
 procedure {:yields}{:layer 1}{:refines "LOCKED_WRITE_X"} locked_write_x ({:layer 1}{:linear "tid"} tid:Tid, v:int)
-{ yield; call write_x(v); yield; }
+{ call write_x(v); }
 procedure {:yields}{:layer 1}{:refines "LOCKED_WRITE_Y"} locked_write_y ({:layer 1}{:linear "tid"} tid:Tid, v:int)
-{ yield; call write_y(v); yield; }
+{ call write_y(v); }
 
 // =============================================================================
 // Primitie atomic actions

@@ -1,3 +1,3 @@
-parallel0.bpl(8,2): Error: left-hand side of parallel call command contains variable accessed on the right-hand side of a different arm: x
-parallel0.bpl(8,2): Error: left-hand side of parallel call command contains variable accessed on the right-hand side of a different arm: y
+parallel0.bpl(7,2): Error: left-hand side of parallel call command contains variable accessed on the right-hand side of a different arm: x
+parallel0.bpl(7,2): Error: left-hand side of parallel call command contains variable accessed on the right-hand side of a different arm: y
 2 name resolution errors detected in parallel0.bpl

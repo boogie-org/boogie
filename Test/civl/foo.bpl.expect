@@ -1,8 +1,7 @@
-foo.bpl(30,3): Error: Non-interference check failed
+foo.bpl(23,1): Error: Non-interference check failed
 Execution trace:
     foo.bpl(7,3): anon0
-    foo.bpl(7,3): anon0_1
-    foo.bpl(14,5): inline$AtomicIncr$0$anon0
-    (0,0): inline$NoninterferenceChecker_PC_1$0$L1
+    foo.bpl(12,5): inline$AtomicIncr$0$anon0
+    (0,0): inline$NoninterferenceChecker_proc_PC_1$0$L0
 
 Boogie program verifier finished with 4 verified, 1 error

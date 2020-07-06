@@ -25,24 +25,18 @@ requires {:layer 2} Color >= WHITE();
 ensures  {:layer 2} Color >= GRAY();
 {
   var colorLocal:int;
-  yield;
-  assert {:layer 2} Color >= WHITE();
   call colorLocal := GetColorNoLock();
   call YieldColorOnlyGetsDarker(Color);
   if (WhiteOrLighter(colorLocal)) { call WriteBarrierSlow(tid); }
-  yield;
-  assert {:layer 2} Color >= GRAY();
 }
 
 procedure {:yields} {:layer 1} {:refines "AtomicWriteBarrier"} WriteBarrierSlow({:linear "tid"} tid:Tid)
 {
   var colorLocal:int;
-  yield;
   call AcquireLock(tid);
   call colorLocal := GetColorLocked(tid);
   if (WhiteOrLighter(colorLocal)) { call SetColorLocked(tid, GRAY()); }
   call ReleaseLock(tid);
-  yield;
 }
 
 procedure {:atomic} {:layer 2,3} AtomicWriteBarrier({:linear "tid"} tid:Tid)

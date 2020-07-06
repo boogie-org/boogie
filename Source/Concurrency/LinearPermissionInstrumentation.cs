@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Microsoft.Boogie
@@ -43,17 +44,26 @@ namespace Microsoft.Boogie
             this.localVarMap = new Dictionary<Variable, Variable>();
         }
         
+        public List<Cmd> ProcDisjointnessAssumeCmds(Procedure proc, bool atEntry)
+        {
+            IEnumerable<Variable> availableVars = atEntry
+                ? FilterInParams(proc.InParams)
+                : FilterInOutParams(proc.InParams.Union(proc.OutParams));
+            return DisjointnessExprs(availableVars).Select(expr => new AssumeCmd(Token.NoToken, expr)).ToList<Cmd>();
+        }
+
         public List<Cmd> DisjointnessAssumeCmds(Absy absy, bool addGlobals)
         {
             var availableVars = AvailableLinearLocalVars(absy).Union(addGlobals ? LinearGlobalVars() : new List<Variable>());
-            var newCmds = new List<Cmd>();
-            foreach (var expr in DisjointnessExprs(availableVars))
-            {
-                newCmds.Add(new AssumeCmd(Token.NoToken, expr));
-            }
-            return newCmds;
+            return DisjointnessExprs(availableVars).Select(expr => new AssumeCmd(Token.NoToken, expr)).ToList<Cmd>();
         }
 
+        public List<Expr> DisjointnessExprs(Absy absy, bool addGlobals)
+        {
+            var availableVars = AvailableLinearLocalVars(absy).Union(addGlobals ? LinearGlobalVars() : new List<Variable>());
+            return DisjointnessExprs(availableVars);
+        }
+        
         public Dictionary<string, Expr> PermissionExprs(Absy absy)
         {
             var domainNameToScope = new Dictionary<string, HashSet<Variable>>();
@@ -78,9 +88,6 @@ namespace Microsoft.Boogie
 
         public void AddDisjointnessAssumptions(Implementation impl, HashSet<Procedure> yieldingProcs)
         {
-            // preconditions
-            impl.Proc.Requires.AddRange(DisjointnessFreeRequires(impl.Proc));
-            
             // calls and parallel calls
             foreach (var b in impl.Blocks)
             {
@@ -88,11 +95,7 @@ namespace Microsoft.Boogie
                 foreach (var cmd in b.Cmds)
                 {
                     newCmds.Add(cmd);
-                    if (cmd is CallCmd callCmd && yieldingProcs.Contains(callCmd.Proc))
-                    {
-                        newCmds.AddRange(DisjointnessAssumeCmds(cmd, true));
-                    }
-                    else if (cmd is ParCallCmd)
+                    if (cmd is ParCallCmd)
                     {
                         newCmds.AddRange(DisjointnessAssumeCmds(cmd, true));
                     }
@@ -116,17 +119,6 @@ namespace Microsoft.Boogie
                 newCmds.AddRange(header.Cmds);
                 header.Cmds = newCmds;
             }
-        }
-
-        private List<Requires> DisjointnessFreeRequires(Procedure proc)
-        {
-            var availableVars = AvailableLinearLocalVars(proc).Union(LinearGlobalVars());
-            var newRequires = new List<Requires>();
-            foreach (var expr in DisjointnessExprs(availableVars))
-            {
-                newRequires.Add(new Requires(true, expr));
-            }
-            return newRequires;
         }
 
         private List<Expr> DisjointnessExprs(IEnumerable<Variable> availableVars)
@@ -183,6 +175,14 @@ namespace Microsoft.Boogie
                 civlTypeChecker.LocalVariableLayerRange(v).Contains(layerNum));
         }
 
+        private IEnumerable<Variable> FilterInOutParams(IEnumerable<Variable> locals)
+        {
+            Predicate<LinearKind> isLinear = x => x == LinearKind.LINEAR || x == LinearKind.LINEAR_OUT;
+            return locals.Where(v =>
+                isLinear(linearTypeChecker.FindLinearKind(v)) &&
+                civlTypeChecker.LocalVariableLayerRange(v).Contains(layerNum));
+        }
+        
         private IEnumerable<Variable> LinearGlobalVars()
         {
             return linearTypeChecker.program.GlobalVariables.Where(v =>

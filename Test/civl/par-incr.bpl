@@ -15,9 +15,7 @@ modifies x;
 
 procedure {:yields} {:layer 1} {:refines "AtomicIncr2"} Incr2()
 {
-  yield;
   par Incr() | Incr();
-  yield;
 }
 
 procedure {:yield_invariant} {:layer 1} Yield();
@@ -28,9 +26,7 @@ modifies x;
 
 procedure {:yields} {:layer 2} {:refines "AtomicIncr4"} Incr4()
 {
-  yield;
   par Incr2() | Incr2() | Yield();
-  yield;
 }
 
 

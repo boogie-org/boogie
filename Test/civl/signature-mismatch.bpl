@@ -7,9 +7,7 @@ var {:layer 0,1} x:int;
 
 procedure {:yields} {:layer 1} main ()
 {
-  yield;
   call write_x_1(true);
-  yield;
 }
 
 procedure {:atomic} {:layer 1,1} atomic_write_x_1 (x':int)
@@ -34,3 +32,9 @@ modifies x;
 { x := x'; }
 
 procedure {:yields} {:layer 0} {:refines "atomic_write_x_3"} write_x_3 ({:linear_in "lin"} x':int);
+
+function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
+function {:inline} {:linear "lin"} TidCollector(x: int) : [int]bool
+{
+  MapConstBool(false)[x := true]
+}

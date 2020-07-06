@@ -236,11 +236,13 @@ procedure {:yields} {:layer 96} {:refines "AtomicInitVars100"} InitVars100({:lin
 
     n := memLo;
     while (n < memHi)
+        invariant{:layer 95}{:yields} true;
         invariant{:layer 96} memLo <= n && n <= memHi;
         invariant{:layer 96} (forall i:int, f: fld :: memLo <= i && i < n && fieldAddr(f) ==> mem[i][f] == i);
     {
         m := 0;
         while (m < numFields)
+            invariant{:layer 95}{:yields} true;
             invariant{:layer 96} 0 <= m && m <= numFields;
             invariant{:layer 96} (forall i:int, f: fld :: memLo <= i && i < n && fieldAddr(f) ==> mem[i][f] == i);
             invariant{:layer 96} (forall f: fld :: 0 <= f && f < m ==> mem[n][f] == n);
@@ -255,6 +257,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicInitVars100"} InitVars100({:lin
 
     n := 0;
     while (n < numRoots)
+        invariant{:layer 95}{:yields} true;
         invariant{:layer 96} 0 <= n && n <= numRoots;
         invariant{:layer 96} (forall i:int :: 0 <= i && i < n ==> root[i] == 0);
     {
@@ -264,6 +267,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicInitVars100"} InitVars100({:lin
 
     n := memLo;
     while (n < memHi)
+        invariant{:layer 95}{:yields} true;
         invariant{:layer 96} memLo <= n && n <= memHi;
         invariant{:layer 96} (forall i:int :: memLo <= i && i < n ==> Color[i] == UNALLOC());
     {
@@ -273,6 +277,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicInitVars100"} InitVars100({:lin
 
     n := 1;
     while (n <= numMutators)
+        invariant{:layer 95}{:yields} true;
         invariant{:layer 96} 1 <= n && n <= numMutators + 1;
         invariant{:layer 96} (forall i:int :: mutatorId(i) && i < n ==> mutatorPhase[i] == IDLE());
     {
@@ -479,6 +484,7 @@ requires {:layer 97} nextPhase == collectorPhase;
     done := false;
     call YieldWaitForMutators(tid, nextPhase, done, 1);
     while (!done)
+    invariant {:layer 95,96,97}{:yields} true;
     invariant {:layer 97} nextPhase == collectorPhase;
     invariant {:layer 97} done ==> (forall j:int:: mutatorId(j) ==> nextPhase == mutatorPhase[j]);
     {
@@ -486,6 +492,7 @@ requires {:layer 97} nextPhase == collectorPhase;
         i := 1;
         call YieldWaitForMutators(tid, nextPhase, done, i);
         while (i <= numMutators)
+          invariant {:layer 95,96,97}{:yields} true;
           invariant {:layer 97} nextPhase == collectorPhase;
           invariant {:layer 97} done ==> (forall j:int:: 1 <= j && j < i ==> nextPhase == mutatorPhase[j]);
         {
@@ -558,6 +565,7 @@ requires {:layer 100} sweepPtr == memHi;
 
     call YieldGarbageCollect(tid);
     while (*)
+    invariant {:layer 95,96,97,98,99,100}{:yields} true;
     invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
     invariant {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
     invariant {:layer 98,100} IdlePhase(collectorPhase);
@@ -686,6 +694,7 @@ ensures {:layer 100} (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black
     call ResetSweepPtr(tid);
     call YieldMark(tid);
     while (true)
+    invariant {:layer 95,96,97,98,99,100}{:yields} true;
     invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
     invariant {:layer 98} collectorPhase == old(collectorPhase);
     invariant {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
@@ -722,6 +731,7 @@ ensures {:layer 100} MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet)
 
   call YieldMark(tid);
   while (true)
+  invariant {:layer 95,96,97,98,99,100}{:yields} true;
   invariant {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
   invariant {:layer 100} MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
   invariant {:layer 100} MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
@@ -734,6 +744,7 @@ ensures {:layer 100} MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet)
     }
     fldIter := 0;
     while (fldIter < numFields)
+    invariant {:layer 95,96,97,98,99,100}{:yields} true;
     invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, nodeProcessed);
     invariant {:layer 98} collectorPhase == old(collectorPhase);
     invariant {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
@@ -802,7 +813,8 @@ ensures {:layer 99} RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrie
 
     i := 0;
     while (i < numRoots)
-    invariant {:terminates} {:layer 96,97,98,99} true;
+    invariant {:yields}{:layer 95,96,97,98} true;
+    invariant {:terminates}{:layer 99} true;
     invariant {:layer 99} Mutators == mutatorsInRootScanBarrier && rootScanOn;
     invariant {:layer 99} 0 <= i && i <= numRoots;
     invariant {:layer 99} Color == (lambda u: int :: if memAddr(u) && White(snapColor[u]) && (exists k: int :: 0 <= k && k < i && root[k] == u) then GRAY() else snapColor[u]);
@@ -914,6 +926,7 @@ ensures {:layer 98,100} SweepPhase(collectorPhase) && PhaseConsistent(collectorP
 
   call snapColor := GhostReadColor100();
   while (localSweepPtr < memHi)
+  invariant {:layer 95,96}{:yields} true;
   invariant {:terminates} {:layer 97,98,99,100} true;
   invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
   invariant {:layer 98,100} SweepPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
@@ -1034,11 +1047,13 @@ procedure {:yields} {:layer 98} {:refines "AtomicFindFreePtr"} FindFreePtr({:lin
     yield;
     spaceFound := false;
     while (true)
+    invariant {:layer 95,96,97,98}{:yields} true;
     invariant {:layer 98} !spaceFound;
     invariant {:layer 98} (forall x: int, f: fld :: memAddr(x) && Unalloc(Color[x]) ==> toAbs[x] == nil);
     {
         iter := memLo;
         while (iter < memHi)
+        invariant {:layer 95,96,97,98}{:yields} true;
         invariant {:layer 98} !spaceFound;
         invariant {:layer 98} memLo <= iter && iter <= memHi;
         invariant {:layer 98} memAddr(iter) && Unalloc(Color[iter]) ==> toAbs[iter] == nil;
@@ -1490,6 +1505,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicCollectorRootScanBarrierWait"} 
 
     yield;
     while (true)
+    invariant {:layer 95,96}{:yields} true;    
     {
         yield;
         call v := CollectorRootScanBarrierRead(tid);
@@ -1545,6 +1561,7 @@ ensures {:layer 95,96} i#Tid(tid) == i#Tid(tid_left) && left#Tid(tid) && right#T
 
     yield;
     loop:
+        assert {:layer 95,96}{:yields} true;
         yield;
         call LockAcquire(tid_left);
         call b := MutatorReadBarrierOn(tid_left);
@@ -1605,14 +1622,15 @@ procedure {:yields} {:layer 96} {:refines "AtomicAllocIfPtrFree"} AllocIfPtrFree
                 color := WHITE();
             }
 
-          call snapMem := GhostReadMem();
+            call snapMem := GhostReadMem();
             fldIter := 0;
             while (fldIter < numFields)
+            invariant {:layer 95}{:yields} true;
             invariant {:layer 96} 0 <= fldIter && fldIter <= numFields;
-          invariant {:layer 96} mem == snapMem[ptr := (lambda z: int :: if (0 <= z && z < fldIter) then ptr else snapMem[ptr][z])];
+            invariant {:layer 96} mem == snapMem[ptr := (lambda z: int :: if (0 <= z && z < fldIter) then ptr else snapMem[ptr][z])];
             {
                 call InitializeFieldInAlloc(tid, ptr, fldIter);
-    fldIter := fldIter + 1;
+                fldIter := fldIter + 1;
             }
 
             call SetColor3(tid, ptr, color, absPtr);
@@ -2157,6 +2175,7 @@ procedure {:yields} {:layer 95} {:refines "AtomicLockAcquire"} LockAcquire({:lin
     var status:bool;
     yield;
     while (true)
+    invariant {:layer 95}{:yields} true;
     {
         call status := PrimitiveLockCAS(i#Tid(tid));
         if (status)

@@ -223,9 +223,7 @@ requires {:layer 1} CH == MultisetEmpty;
   var {:linear "collect"} r:pid;
   var {:linear "broadcast"} ss:[pid]bool;
   var {:linear "collect"} rr:[pid]bool;
-  yield;
-  assert {:layer 1} pidsBroadcast == (lambda ii:pid :: pid(ii)) && pidsCollect == pidsBroadcast;
-  assert {:layer 1} Inv(CH_low, CH);
+
   ss := pidsBroadcast;
   rr := pidsCollect;
   i := 1;
@@ -241,7 +239,6 @@ requires {:layer 1} CH == MultisetEmpty;
     i := i + 1;
   }
   assert {:layer 1} PAs == MapAddPA(AllBroadcasts(), AllCollects());
-  yield;
 }
 
 procedure {:yields}{:layer 1}{:refines "BROADCAST"} Broadcast({:linear_in "broadcast"} i:pid)
@@ -250,7 +247,7 @@ requires {:layer 1} pid(i);
   var j: pid;
   var v: val;
   var {:layer 1} old_CH_low: [pid][val]int;
-  yield;
+
   call old_CH_low := Snapshot();
   call v := get_value(i);
   j := 1;
@@ -263,7 +260,6 @@ requires {:layer 1} pid(i);
     j := j + 1;
   }
   call intro(i);
-  yield;
 }
 
 procedure {:yields}{:layer 1}{:refines "COLLECT"} Collect({:linear_in "collect"} i:pid)
@@ -275,7 +271,7 @@ requires {:layer 1} Inv(CH_low, CH);
   var v: val;
   var {:layer 1} received_values: [val]int;
   var {:layer 1} old_CH_low: [pid][val]int;
-  yield; assert{:layer 1} Inv(CH_low, CH);
+
   call old_CH_low := Snapshot();
   call d := receive(i);
   received_values := MultisetEmpty;
@@ -296,7 +292,6 @@ requires {:layer 1} Inv(CH_low, CH);
     j := j + 1;
   }
   call set_decision(i, d);
-  yield;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

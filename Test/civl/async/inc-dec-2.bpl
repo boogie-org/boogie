@@ -12,26 +12,28 @@ var {:layer 0,1} x : int;
 // ###########################################################################
 // Main
 
-procedure {:atomic} {:layer 2} skip () {}    
+procedure {:atomic} {:layer 2} skip () {}
 
 procedure {:yields} {:layer 1} {:refines "skip"} Main ()
 {
   var i : int;
+  var {:layer 1} old_x: int;
 
-  yield; assert {:layer 1} x == old(x);
-  
   i := 0;
+  call old_x := snapshot_x();
   while (i != N)
-  invariant {:layer 1} x == old(x);
-  invariant {:layer 1} {:terminates} true;    
+  invariant {:layer 1} {:terminates} true;
+  invariant {:layer 1} x == old_x;
   {
     async call {:sync} inc();
     async call {:sync} dec();
     i := i + 1;
-    yield; assert {:layer 1} x == old(x);
   }
+}
 
-  yield;
+procedure {:intro} {:layer 1} snapshot_x() returns (snapshot: int)
+{
+   snapshot := x;
 }
 
 // ###########################################################################

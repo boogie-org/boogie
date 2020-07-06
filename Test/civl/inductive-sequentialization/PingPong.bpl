@@ -185,18 +185,16 @@ modifies ping_channel, pong_channel;
 procedure {:yields}{:layer 1}{:refines "MAIN"}
 main ({:linear_in "pid"} ping_pid:int, {:linear_in "pid"} pong_pid:int)
 {
-  yield;
   call send_pong_channel(1);
   async call ping(1, ping_pid);
   async call pong(1, pong_pid);
-  yield;
 }
 
 procedure {:yields}{:layer 1}{:refines "PING"}
 ping (x:int, {:linear_in "pid"} pid:int)
 {
   var x':int;
-  yield;
+
   call x' := receive_ping_channel();
   call assert_eq(x', x); // low-level assertion to discharge
   if (*)
@@ -208,14 +206,13 @@ ping (x:int, {:linear_in "pid"} pid:int)
   {
     call send_pong_channel(0);
   }
-  yield;
 }
 
 procedure {:yields}{:layer 1}{:refines "PONG"}
 pong (y:int, {:linear_in "pid"} pid:int)
 {
   var y':int;
-  yield;
+
   call y' := receive_pong_channel();
   if (y' != 0)
   {
@@ -223,7 +220,6 @@ pong (y:int, {:linear_in "pid"} pid:int)
     call send_ping_channel(y');
     async call pong(y'+1, pid);
   }
-  yield;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

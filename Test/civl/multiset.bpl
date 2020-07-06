@@ -88,6 +88,7 @@ ensures {:layer 1} Inv(valid, elt, owner);
 
   j := 0;
   while(j < max)
+  invariant {:yields} {:layer 1} true;
   invariant {:layer 1} Inv(valid, elt, owner);
   invariant {:layer 1} 0 <= j;
   {
@@ -243,7 +244,7 @@ procedure {:atomic} {:layer 3} AtomicLookUp(x : int, {:linear "tid"} tid: X, old
 }
 
 procedure {:yields} {:layer 2} {:refines "AtomicLookUp"} LookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
-requires {:layer 1} {:layer 2} old_valid == valid && old_elt == elt;
+requires {:layer 1} {:layer 2} InvLookUp(old_valid, valid, old_elt, elt);
 requires {:layer 1} {:layer 2} Inv(valid, elt, owner);
 requires {:layer 1} {:layer 2} (tid != nil && tid != done);
 ensures {:layer 1} {:layer 2} Inv(valid, elt, owner);
@@ -256,6 +257,7 @@ ensures {:layer 1} {:layer 2} Inv(valid, elt, owner);
   j := 0;
 
   while(j < max)
+  invariant {:yields} {:layer 1,2} true;
   invariant {:layer 1} {:layer 2} Inv(valid, elt, owner);
   invariant {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < j ==> !(old_valid[ii] && old_elt[ii] == x));
   invariant {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
@@ -292,7 +294,12 @@ function {:inline} Inv(valid: [int]bool, elt: [int]int, owner: [int]X): (bool)
 }
 
 procedure {:yield_invariant} {:layer 1} YieldLookUp1(old_valid: [int]bool, old_elt: [int]int);
-requires (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
+requires InvLookUp(old_valid, valid, old_elt, elt);
 
 procedure {:yield_invariant} {:layer 2} YieldLookUp2(old_valid: [int]bool, old_elt: [int]int);
-requires (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
+requires InvLookUp(old_valid, valid, old_elt, elt);
+
+function InvLookUp(old_valid: [int]bool, valid: [int]bool, old_elt: [int]int, elt: [int]int): (bool)
+{
+  (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii])
+}

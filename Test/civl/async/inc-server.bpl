@@ -24,9 +24,7 @@ var {:layer 7,11} y : int;
 procedure {:yields}{:layer 11} main ({:linear_in "lin"} p : int)
 requires {:layer 9} perm(p) && x == y;
 {
-  yield; assert {:layer 9} perm(p) && x == y;
   async call {:sync} Server_Inc(p);
-  yield;
 }
 
 // ###########################################################################
@@ -39,18 +37,14 @@ modifies x;
 procedure {:yields}{:layer 10}{:refines "inc_x_high_atomic"} Server_Inc ({:linear_in "lin"} p : int)
 requires {:layer 9} perm(p) && x == y;
 {
-  yield; assert {:layer 9} perm(p) && x == y;
   async call {:sync} AsyncInc(p);
-  yield;
 }
 
 procedure {:yields}{:layer 9}{:refines "inc_x_high_atomic"} AsyncInc ({:linear_in "lin"} p : int)
 requires {:layer 9} perm(p) && x == y;
 {
-  yield; assert {:layer 9} perm(p) && x == y;
   call inc_x_perm(p);
   async call {:sync} Client_IncDone(p);
-  yield;
 }
 
 // ###########################################################################
@@ -65,16 +59,12 @@ procedure {:left}{:layer 9} Client_IncDone_atomic ({:linear_in "lin"} p : int)
 
 procedure {:yields}{:layer 8}{:refines "inc_x_perm_atomic"} inc_x_perm ({:linear "lin"} p : int)
 {
-  yield;
   call inc_x();
-  yield;
 }
 
 procedure {:yields}{:layer 8}{:refines "Client_IncDone_atomic"} Client_IncDone ({:linear_in "lin"} p : int)
 {
-  yield;
   call Assertion();
-  yield;
 }
 
 // ###########################################################################

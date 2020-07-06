@@ -12,17 +12,16 @@ procedure {:yields} {:layer 1} {:refines "AtomicInc"} Inc() {
     var n: int;
     var success: bool;
 
-    yield;
-    while(true) {
+    while(true)
+    invariant {:yields} {:layer 1} true;
+    {
         call n := Read();
         yield;
         call success := CAS(n, n+1);
         if (success) {
             break;
         }
-        yield;
     }
-    yield;
 }
 
 procedure {:atomic} {:layer 1} AtomicCAS(prev: int, next: int) returns (status: bool)

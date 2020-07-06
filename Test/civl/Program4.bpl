@@ -8,7 +8,17 @@ requires x >= n;
 procedure {:yields} {:layer 1}
 {:yield_requires "yield_x", 5}
 {:yield_ensures "yield_x", 8}
-p()
+p1()
+{
+  call Incr(1);
+  call Incr(1);
+  call Incr(1);
+}
+
+procedure {:yields} {:layer 1}
+{:yield_requires "yield_x", x}
+{:yield_ensures "yield_x", old(x) + 3}
+p2()
 {
   call Incr(1);
   call Incr(1);

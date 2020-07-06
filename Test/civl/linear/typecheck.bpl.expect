@@ -13,4 +13,5 @@ typecheck.bpl(86,0): Error: Output variable d must be available at a return
 typecheck.bpl(95,0): Error: Global variable g must be available at a return
 typecheck.bpl(100,7): Error: unavailable source for a linear read
 typecheck.bpl(101,0): Error: Output variable r must be available at a return
-15 type checking errors detected in typecheck.bpl
+typecheck.bpl(137,2): Error: Linear variable x cannot be an input parameter to both a yield invariant and a procedure in a parallel call
+16 type checking errors detected in typecheck.bpl

@@ -207,18 +207,36 @@ namespace Microsoft.Boogie
         }
         public int LayerNum => layer;
     }
+
+    public class YieldingLoop
+    {
+        public HashSet<int> layers;
+        public List<CallCmd> yieldInvariants;
+
+        public YieldingLoop(HashSet<int> layers, List<CallCmd> yieldInvariants)
+        {
+            this.layers = layers;
+            this.yieldInvariants = yieldInvariants;
+        }
+    }
     
     public abstract class YieldingProc
     {
         public Procedure proc;
         public MoverType moverType;
         public int upperLayer;
+        public List<CallCmd> yieldRequires;
+        public List<CallCmd> yieldEnsures;
 
-        public YieldingProc(Procedure proc, MoverType moverType, int upperLayer)
+        public YieldingProc(Procedure proc, MoverType moverType, int upperLayer,
+            List<CallCmd> yieldRequires,
+            List<CallCmd> yieldEnsures)
         {
             this.proc = proc;
             this.moverType = moverType;
             this.upperLayer = upperLayer;
+            this.yieldRequires = yieldRequires;
+            this.yieldEnsures = yieldEnsures;
         }
 
         public bool IsRightMover { get { return moverType == MoverType.Right || moverType == MoverType.Both; } }
@@ -229,8 +247,10 @@ namespace Microsoft.Boogie
     {
         public HashSet<Variable> modifiedGlobalVars;
 
-        public MoverProc(Procedure proc, MoverType moverType, int upperLayer)
-            : base(proc, moverType, upperLayer)
+        public MoverProc(Procedure proc, MoverType moverType, int upperLayer,
+            List<CallCmd> yieldRequires,
+            List<CallCmd> yieldEnsures)
+            : base(proc, moverType, upperLayer, yieldRequires, yieldEnsures)
         {
             modifiedGlobalVars = new HashSet<Variable>(proc.Modifies.Select(ie => ie.Decl));
         }
@@ -241,8 +261,10 @@ namespace Microsoft.Boogie
         public AtomicAction refinedAction;
         public HashSet<Variable> hiddenFormals;
         
-        public ActionProc(Procedure proc, AtomicAction refinedAction, int upperLayer, HashSet<Variable> hiddenFormals)
-            : base(proc, refinedAction.moverType, upperLayer)
+        public ActionProc(Procedure proc, AtomicAction refinedAction, int upperLayer, HashSet<Variable> hiddenFormals,
+            List<CallCmd> yieldRequires,
+            List<CallCmd> yieldEnsures)
+            : base(proc, refinedAction.moverType, upperLayer, yieldRequires, yieldEnsures)
         {
             this.refinedAction = refinedAction;
             this.hiddenFormals = hiddenFormals;

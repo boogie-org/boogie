@@ -18,12 +18,7 @@ procedure {:yields} {:layer 1} mainE({:linear_in "Perm"} permVar_in: [int]bool)
 
     permVar_out := permVar_in;
 
-    yield;
-    assert {:layer 1} x == 0;
-    assert {:layer 1} permVar_out == ch_mapconstbool(true);
-
     async call foo(permVar_out);
-    yield;
 }
 
 procedure {:yields} {:layer 1} foo({:linear_in "Perm"} permVar_in: [int]bool)
@@ -33,10 +28,6 @@ procedure {:yields} {:layer 1} foo({:linear_in "Perm"} permVar_in: [int]bool)
 {
   var {:linear "Perm"} permVar_out: [int]bool;
   permVar_out := permVar_in;
-
-  yield;
-  assert {:layer 1} permVar_out[1];
-  assert {:layer 1} x == 0;
 
   call Incr();
 

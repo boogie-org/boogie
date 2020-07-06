@@ -14,18 +14,14 @@ modifies y;
 procedure {:yields} {:layer 1} {:refines "atomic_read_y"}  read_y () returns ({:layer 0,1} v:int)
 requires {:layer 1} x == y;
 {
-  yield; assert {:layer 1} x == y;
   call v := read_x();
-  yield;
 }
 
 procedure {:yields} {:layer 1} {:refines "atomic_write_y"}  write_y (y':int)
 requires {:layer 1} x == y;
 {
-  yield; assert {:layer 1} x == y;
   call write_x(y');
   call set_y_to_x();
-  yield;
 }
 
 procedure {:intro} {:layer 1,1} set_y_to_x ()
@@ -43,16 +39,12 @@ modifies x;
 
 procedure {:yields} {:layer 0} {:refines "atomic_read_x"} read_x () returns ({:layer 0} v:int)
 {
-  yield;
   call v := intro_read_x();
-  yield;
 }
 
 procedure {:yields} {:layer 0} {:refines "atomic_write_x"} write_x (x':int)
 {
-  yield;
   call intro_write_x(x');
-  yield;
 }
 
 procedure {:intro} {:layer 0} intro_read_x () returns (v:int)

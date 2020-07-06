@@ -91,9 +91,7 @@ modifies counter;
 
 procedure {:yields} {:layer 1} {:refines "AtomicAbsDecrB"} AbsDecrB({:linear "tid"} tid: X)
 {
-    yield;
     call DecrB(tid);
-    yield;
 }
 
 procedure {:both} {:layer 3} AtomicAbsAssertA({:linear "tid"} tid: X)
@@ -101,9 +99,7 @@ procedure {:both} {:layer 3} AtomicAbsAssertA({:linear "tid"} tid: X)
 
 procedure {:yields} {:layer 2} {:refines "AtomicAbsAssertA"} AbsAssertA({:linear "tid"} tid: X)
 {
-    yield;
     call AssertA(tid);
-    yield;
 }
 
 procedure {:both} {:layer 3} AtomicAbsAssertB({:linear "tid"} tid: X)
@@ -111,20 +107,16 @@ procedure {:both} {:layer 3} AtomicAbsAssertB({:linear "tid"} tid: X)
 
 procedure {:yields} {:layer 2} {:refines "AtomicAbsAssertB"} AbsAssertB({:linear "tid"} tid: X)
 {
-    yield;
     call AssertB(tid);
-    yield;
 }
 
 procedure {:yields} {:layer 1} TA({:linear "tid"} tid: X)
 requires {:layer 1} tid != nil;
 {
-    yield;
     call LockA(tid);
     call IncrA(tid);
     call DecrA(tid);
     call UnlockA(tid);
-    yield;
 }
 
 procedure {:both} {:layer 3} AtomicTB({:linear "tid"} tid: X)
@@ -132,31 +124,27 @@ procedure {:both} {:layer 3} AtomicTB({:linear "tid"} tid: X)
 
 procedure {:yields} {:layer 2} {:refines "AtomicTB"} TB({:linear "tid"} tid: X)
 {
-    yield;
     call LockB(tid);
     call AbsDecrB(tid);
     call IncrB(tid);
     call UnlockB(tid);
-    yield;
 }
 
 procedure {:yields} {:layer 3} AbsTB({:linear "tid"} tid: X)
 requires {:layer 3} tid != nil && counter == 0;
 {
-    yield;
     assert {:layer 3} counter == 0;
     call TB(tid);
-    yield;
 }
 
 procedure {:yields} {:layer 3} main({:linear "tid"} tid: X)
 requires {:layer 3} tid != nil && counter == 0;
 {
     var {:linear "tid"} cid: X;
-    
-    yield;
+
     assert {:layer 3} counter == 0;
     while (*)
+    invariant {:yields} {:layer 1,2,3} true;
     invariant {:layer 3} counter == 0;
     {
         if (*) {
@@ -177,8 +165,5 @@ requires {:layer 3} tid != nil && counter == 0;
         call AbsAssertB(tid);
         call UnlockB(tid);
         call UnlockA(tid);
-        yield;
-        assert {:layer 3} counter == 0;
     }
-    yield;
 }

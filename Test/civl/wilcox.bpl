@@ -19,7 +19,6 @@ requires {:layer 1} n >= 0;
 {
     var i: int;
     var {:layer 1} oldx: int;
-    yield;
 
     call oldx := GhostRead();
     i := 0;
@@ -32,8 +31,6 @@ requires {:layer 1} n >= 0;
     }
 
     assert {:layer 1} i == n;
-
-    yield;
 }
 
 procedure {:both} {:layer 2} AtomicSlowAdd(n: int)

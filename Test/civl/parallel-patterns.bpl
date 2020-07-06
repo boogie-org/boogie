@@ -5,29 +5,23 @@ procedure {:yield_invariant} {:layer 1} Yield();
 
 procedure {:yields} {:layer 1} foo()
 {
-    yield;
-    par A() | B();
+    par A() | L();
     yield;
     par A() | bar();
     yield;
-    par bar() | B();
-    yield;
+    par bar() | L();
 }
 
 procedure {:yields} {:layer 1} bar();
 
 procedure {:yields} {:layer 1} baz1()
 {
-    yield;
-    par B() | A();
-    yield;
+    par L() | A();
 }
 
 procedure {:yields} {:layer 1} baz2()
 {
-    yield;
-    par A() | C();
-    yield;
+    par A() | R();
 }
 
 procedure {:atomic} {:layer 1,1} atomic_A()
@@ -35,12 +29,12 @@ procedure {:atomic} {:layer 1,1} atomic_A()
 }
 procedure {:yields} {:layer 0} {:refines "atomic_A"} A();
 
-procedure {:left} {:layer 1,1} atomic_B()
+procedure {:left} {:layer 1,1} atomic_L()
 {
 }
-procedure {:yields} {:layer 0} {:refines "atomic_B"} B();
+procedure {:yields} {:layer 0} {:refines "atomic_L"} L();
 
-procedure {:right} {:layer 1,1} atomic_C()
+procedure {:right} {:layer 1,1} atomic_R()
 {
 }
-procedure {:yields} {:layer 0} {:refines "atomic_C"} C();
+procedure {:yields} {:layer 0} {:refines "atomic_R"} R();

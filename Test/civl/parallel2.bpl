@@ -30,7 +30,6 @@ procedure {:yields} {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "
 {
     i := i';
 
-    yield;
     call Write(i, 42);
     call Yield(i, a);
     assert {:layer 1} a[i] == 42;
@@ -40,7 +39,6 @@ procedure {:yields} {:layer 1} u({:linear_in "tid"} i': int) returns ({:linear "
 {
     i := i';
 
-    yield;
     call Write(i, 42);
     yield;
     assert {:layer 1} a[i] == 42;

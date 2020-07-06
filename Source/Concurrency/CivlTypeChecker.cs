@@ -16,6 +16,10 @@ namespace Microsoft.Boogie
         private Dictionary<Variable, LayerRange> globalVarToLayerRange;
         private Dictionary<Variable, LayerRange> localVarToLayerRange;
 
+        public Dictionary<Block, YieldingLoop> yieldingLoops;
+        public Dictionary<Block, HashSet<int>> terminatingLoopHeaders;
+        public HashSet<Procedure> terminatingProcedures;
+
         public Dictionary<Procedure, AtomicAction> procToAtomicAction;
         public Dictionary<Procedure, AtomicAction> procToIsInvariant;
         public Dictionary<Procedure, AtomicAction> procToIsAbstraction;
@@ -41,7 +45,7 @@ namespace Microsoft.Boogie
         public LinearTypeChecker linearTypeChecker;
 
         public AtomicAction SkipAtomicAction;
-        
+
         public CivlTypeChecker(Program program)
         {
             this.checkingContext = new CheckingContext(null);
@@ -49,6 +53,9 @@ namespace Microsoft.Boogie
 
             this.globalVarToLayerRange = new Dictionary<Variable, LayerRange>();
             this.localVarToLayerRange = new Dictionary<Variable, LayerRange>();
+            this.yieldingLoops = new Dictionary<Block, YieldingLoop>();
+            this.terminatingLoopHeaders = new Dictionary<Block, HashSet<int>>();
+            this.terminatingProcedures = new HashSet<Procedure>();
             this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
             this.procToAtomicAction = new Dictionary<Procedure, AtomicAction>();
             this.procToIsInvariant = new Dictionary<Procedure, AtomicAction>();
@@ -93,6 +100,11 @@ namespace Microsoft.Boogie
             if (checkingContext.ErrorCount > 0)
                 return;
 
+            linearTypeChecker = new LinearTypeChecker(this);
+            linearTypeChecker.TypeCheck();
+            if (checkingContext.ErrorCount > 0)
+                return;
+
             TypeCheckInductiveSequentializations();
             TypeCheckYieldingProcedureDecls();
             TypeCheckLocalVariables();
@@ -102,6 +114,11 @@ namespace Microsoft.Boogie
 
             TypeCheckActionImpls();
             TypeCheckYieldingProcedureImpls();
+
+            if (checkingContext.ErrorCount > 0)
+                return;
+
+            TypeCheckLoopAnnotations();
 
             TypeCheckRefinementLayers();
 
@@ -114,13 +131,6 @@ namespace Microsoft.Boogie
 
             var yieldSufficiencyTypeChecker = new YieldSufficiencyTypeChecker(this);
             yieldSufficiencyTypeChecker.TypeCheck();
-            if (checkingContext.ErrorCount > 0)
-            {
-                return;
-            }
-
-            linearTypeChecker = new LinearTypeChecker(this);
-            linearTypeChecker.TypeCheck();
         }
 
         private void TypeCheckRefinementLayers()
@@ -128,7 +138,7 @@ namespace Microsoft.Boogie
             // List of all layers where refinement happens
             var yieldingProcsWithImpls = procToYieldingProc.Keys.Intersect(program.Implementations.Select(i => i.Proc));
             allRefinementLayers = yieldingProcsWithImpls.Select(p => procToYieldingProc[p].upperLayer).OrderBy(l => l).Distinct().ToList();
-            
+
             foreach (var kv in absyToLayerNums)
             {
                 foreach (var layer in kv.Value)
@@ -321,7 +331,7 @@ namespace Microsoft.Boogie
                             {
                                 if (elimAction.pendingAsyncCtor == null)
                                     Error(kv, $"No pending async constructor for atomic action {actionName}");
-                                if (!elimAction.layerRange.Contains(layer)) 
+                                if (!elimAction.layerRange.Contains(layer))
                                     Error(kv, $"Elim action does not exist at layer {layer}");
                             }
                             if (kv.Params.Count == 2)
@@ -416,12 +426,106 @@ namespace Microsoft.Boogie
             foreach (Implementation impl in program.Implementations.Where(impl => procToYieldInvariant.ContainsKey(impl.Proc)))
             {
                 Error(impl, "A yield invariant cannot have an implementation");
-            }   
+            }
         }
-        
+
+        private CallCmd TypeCheckYieldInvariantCall(QKeyValue kv)
+        {
+            if (kv.Params.Count == 0)
+            {
+                Error(kv, "A yield invariant name must be provided");
+                return null;
+            }
+            if (kv.Params[0] is string yieldInvariantProcName)
+            {
+                var yieldingProc =
+                    this.procToYieldInvariant.Keys.FirstOrDefault(proc => proc.Name == yieldInvariantProcName);
+                if (yieldingProc == null)
+                {
+                    Error(kv, $"Yield invariant {yieldInvariantProcName} does not exist");
+                    return null;
+                }
+                var exprs = new List<Expr>();
+                for (int i = 1; i < kv.Params.Count; i++)
+                {
+                    if (kv.Params[i] is Expr expr)
+                    {
+                        exprs.Add(expr);
+                    }
+                    else
+                    {
+                        Error(kv, $"Illegal expression at position {i}");
+                    }
+                }
+                if (exprs.Count + 1 != kv.Params.Count)
+                {
+                    // Error added in the loop above
+                    return null;
+                }
+                if (exprs.Count!= yieldingProc.InParams.Count)
+                {
+                    Error(kv, $"Incorrect number of arguments to yield invariant {yieldingProc.Name}");
+                    return null;
+                }
+                var callCmd = new CallCmd(kv.tok, yieldingProc.Name, exprs, new List<IdentifierExpr>());
+                callCmd.Proc = yieldingProc;
+                if (CivlUtil.ResolveAndTypecheck(callCmd) == 0)
+                {
+                    linearTypeChecker.VisitCallCmd(callCmd);
+                    return callCmd;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else
+            {
+                Error(kv, "Name of a yield invariant must be provided at position 1");
+                return null;
+            }
+        }
+
+        private bool TypeCheckYieldingPrePostDecls(Procedure proc,
+            out List<CallCmd> yieldRequires,
+            out List<CallCmd> yieldEnsures)
+        {
+            var ok = true;
+            yieldRequires = new List<CallCmd>();
+            yieldEnsures = new List<CallCmd>();
+            foreach (var attr in CivlAttributes.FindAllAttributes(proc, CivlAttributes.YIELD_REQUIRES))
+            {
+                var callCmd = TypeCheckYieldInvariantCall(attr);
+                if (callCmd != null &&
+                    new YieldInvariantCallVisitor(this, false).Check(callCmd) &&
+                    linearTypeChecker.TypeCheckYieldRequires(proc, callCmd))
+                {
+                    yieldRequires.Add(callCmd);
+                }
+                else
+                {
+                    ok = false;
+                }
+            }
+            foreach (var attr in CivlAttributes.FindAllAttributes(proc, CivlAttributes.YIELD_ENSURES))
+            {
+                var callCmd = TypeCheckYieldInvariantCall(attr);
+                if (callCmd != null &&
+                    new YieldInvariantCallVisitor(this, true).Check(callCmd) &&
+                    linearTypeChecker.TypeCheckYieldEnsures(proc, callCmd))
+                {
+                    yieldEnsures.Add(callCmd);
+                }
+                else
+                {
+                    ok = false;
+                }
+            }
+            return ok;
+        }
+
         private void TypeCheckYieldingProcedureDecls()
         {
-            YieldingProcVisitor visitor = new YieldingProcVisitor(this);
             foreach (var proc in program.Procedures.Where(IsYieldingProcedure))
             {
                 int upperLayer;  // must be initialized by the following code, otherwise it is an error
@@ -447,6 +551,11 @@ namespace Microsoft.Boogie
                     continue;
                 }
 
+                List<CallCmd> yieldRequires, yieldEnsures;
+                if (!TypeCheckYieldingPrePostDecls(proc, out yieldRequires, out yieldEnsures))
+                {
+                    continue;
+                }
                 if (refinesName != null) // proc is an action procedure
                 {
                     AtomicAction refinedAction = FindAtomicAction(refinesName);
@@ -466,7 +575,7 @@ namespace Microsoft.Boogie
                         continue;
                     }
                     var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => x.HasAttribute(CivlAttributes.HIDE)));
-                    var actionProc = new ActionProc(proc, refinedAction, upperLayer, hiddenFormals);
+                    var actionProc = new ActionProc(proc, refinedAction, upperLayer, hiddenFormals, yieldRequires, yieldEnsures);
                     CheckRefinementSignature(actionProc);
                     procToYieldingProc[proc] = actionProc;
                 }
@@ -478,7 +587,7 @@ namespace Microsoft.Boogie
                             $"All variables in the modifies clause of a mover procedure must be available at its disappearing layer");
                         continue;
                     }
-                    procToYieldingProc[proc] = new MoverProc(proc, moverType.Value, upperLayer);
+                    procToYieldingProc[proc] = new MoverProc(proc, moverType.Value, upperLayer, yieldRequires, yieldEnsures);
                 }
                 else // proc refines the skip action
                 {
@@ -492,11 +601,15 @@ namespace Microsoft.Boogie
                         procToAtomicAction[SkipAtomicAction.proc] = SkipAtomicAction;
                     }
                     var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => localVarToLayerRange[x].upperLayerNum == upperLayer));
-                    var actionProc = new ActionProc(proc, SkipAtomicAction, upperLayer, hiddenFormals);
+                    var actionProc = new ActionProc(proc, SkipAtomicAction, upperLayer, hiddenFormals, yieldRequires, yieldEnsures);
                     procToYieldingProc[proc] = actionProc;
                 }
-                
+                YieldingProcVisitor visitor = new YieldingProcVisitor(this, yieldRequires, yieldEnsures);
                 visitor.VisitProcedure(proc);
+                if (proc.HasAttribute(CivlAttributes.TERMINATES))
+                {
+                    terminatingProcedures.Add(proc);
+                }
             }
 
             if (procToAtomicAction.ContainsKey(SkipAtomicAction.proc))
@@ -508,11 +621,69 @@ namespace Microsoft.Boogie
 
         private void TypeCheckYieldingProcedureImpls()
         {
-            YieldingProcVisitor visitor = new YieldingProcVisitor(this);
-
             foreach (var impl in program.Implementations.Where(impl => procToYieldingProc.ContainsKey(impl.Proc)))
             {
+                YieldingProcVisitor visitor = new YieldingProcVisitor(this);
                 visitor.VisitImplementation(impl);
+            }
+        }
+
+        private void TypeCheckLoopAnnotations()
+        {
+            foreach (var impl in program.Implementations.Where(impl => procToYieldingProc.ContainsKey(impl.Proc)))
+            {
+                var graph = Program.GraphFromImpl(impl);
+                graph.ComputeLoops();
+                if (!graph.Reducible)
+                {
+                    Error(impl, "Irreducible flow graphs are unsupported.");
+                    continue;
+                }
+                foreach (var header in graph.Headers)
+                {
+                    var yieldingLayers = new HashSet<int>();
+                    var terminatingLayers = new HashSet<int>();
+                    foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
+                    {
+                        if (predCmd.HasAttribute(CivlAttributes.YIELDS))
+                        {
+                            yieldingLayers.UnionWith(absyToLayerNums[predCmd]);
+                        }
+                        if (predCmd.HasAttribute(CivlAttributes.TERMINATES))
+                        {
+                            terminatingLayers.UnionWith(absyToLayerNums[predCmd]);
+                        }
+                    }
+                    if (yieldingLayers.Intersect(terminatingLayers).Count() != 0)
+                    {
+                        Error(header, "Loop cannot be both yielding and terminating on the same layer.");
+                        continue;
+                    }
+                    var yieldInvariants = new List<CallCmd>();
+                    foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
+                    {
+                        foreach (var attr in CivlAttributes.FindAllAttributes(predCmd, CivlAttributes.YIELD_LOOP))
+                        {
+                            var callCmd = TypeCheckYieldInvariantCall(attr);
+                            if (callCmd == null) continue;
+                            var calleeLayerNum = procToYieldInvariant[callCmd.Proc].LayerNum;
+                            if (yieldingLayers.Contains(calleeLayerNum))
+                            {
+                                if (new YieldInvariantCallVisitor(this, true).Check(callCmd) &&
+                                    linearTypeChecker.TypeCheckYieldLoop(header, callCmd))
+                                {
+                                    yieldInvariants.Add(callCmd);
+                                }
+                            }
+                            else
+                            {
+                                Error(attr, $"Loop must yield at layer {calleeLayerNum} of the called yield invariant");
+                            }
+                        }
+                    }
+                    yieldingLoops[header] = new YieldingLoop(yieldingLayers, yieldInvariants);
+                    terminatingLoopHeaders[header] = terminatingLayers;
+                }
             }
         }
 
@@ -558,9 +729,9 @@ namespace Microsoft.Boogie
                         }
 
                         if (checkLinearity &&
-                            (QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR) != 
+                            (QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR) !=
                              QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR) ||
-                             QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_IN) != 
+                             QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_IN) !=
                              QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_IN) ||
                              QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_OUT) !=
                              QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_OUT)))
@@ -607,11 +778,11 @@ namespace Microsoft.Boogie
             var actionOutParams = action.proc.OutParams.SkipEnd(1).ToList();
             var invariantActionOutParams = invariantAction.proc.OutParams.SkipEnd(invariantAction.hasChoice ? 2 : 1).ToList();
             var refinedActionOutParams = action.refinedAction.proc.OutParams.SkipEnd(action.refinedAction.HasPendingAsyncs ? 1 : 0).ToList();
-            
+
             var signatureMatcher = new SignatureMatcher(action.proc, invariantAction.proc, checkingContext);
             signatureMatcher.MatchFormals(action.proc.InParams, invariantAction.proc.InParams, SignatureMatcher.IN);
             signatureMatcher.MatchFormals(actionOutParams, invariantActionOutParams, SignatureMatcher.OUT);
-            
+
             signatureMatcher = new SignatureMatcher(action.proc, action.refinedAction.proc, checkingContext);
             signatureMatcher.MatchFormals(action.proc.InParams, action.refinedAction.proc.InParams, SignatureMatcher.IN);
             signatureMatcher.MatchFormals(actionOutParams, refinedActionOutParams, SignatureMatcher.OUT);
@@ -816,7 +987,7 @@ namespace Microsoft.Boogie
                  proc.HasAttribute(CivlAttributes.IS_INVARIANT) ||
                  proc.HasAttribute(CivlAttributes.IS_ABSTRACTION));
         }
-        
+
         private bool IsLemmaProcedure(Procedure proc)
         {
             return !proc.HasAttribute(CivlAttributes.YIELDS) && proc.HasAttribute(CivlAttributes.LEMMA);
@@ -826,7 +997,7 @@ namespace Microsoft.Boogie
         {
             return proc.HasAttribute(CivlAttributes.YIELD_INVARIANT);
         }
-        
+
         private MoverType GetActionMoverType(Procedure proc)
         {
             if (proc.HasAttribute(CivlAttributes.IS_INVARIANT))
@@ -878,29 +1049,39 @@ namespace Microsoft.Boogie
                 if (kv.Key != CivlAttributes.LAYER) continue;
                 foreach (var o in kv.Params)
                 {
-                    if (o is LiteralExpr l && l.isBigNum)
+                    var layerNum = TypeCheckLayer(kv, o);
+                    if (layerNum.HasValue)
                     {
-                        var n = l.asBigNum;
-                        if (n.IsNegative)
-                        {
-                            checkingContext.Error(kv, "Layer must be non-negative");
-                        }
-                        else if (!n.InInt32)
-                        {
-                            checkingContext.Error(kv, "Layer is too large (max value is Int32.MaxValue)");
-                        }
-                        else
-                        {
-                            layers.Add(l.asBigNum.ToIntSafe);
-                        }
-                    }
-                    else
-                    {
-                        checkingContext.Error(kv, "Layer must be a non-negative integer");
+                        layers.Add(layerNum.Value);
                     }
                 }
             }
             return layers;
+        }
+
+        private int? TypeCheckLayer(QKeyValue kv, object o)
+        {
+            if (o is LiteralExpr l && l.isBigNum)
+            {
+                var n = l.asBigNum;
+                if (n.IsNegative)
+                {
+                    Error(kv, "Layer must be non-negative");
+                }
+                else if (!n.InInt32)
+                {
+                    Error(kv, "Layer is too large (max value is Int32.MaxValue)");
+                }
+                else
+                {
+                    return l.asBigNum.ToIntSafe;
+                }
+            }
+            else
+            {
+                Error(kv, "Layer must be a non-negative integer");
+            }
+            return null;
         }
 
         private LayerRange ToLayerRange(List<int> layerNums, Absy absy, LayerRange defaultLayerRange = null)
@@ -936,11 +1117,34 @@ namespace Microsoft.Boogie
             {
                 Error(decl, "Hidden layer of local variable cannot be greater than the disappearing layer of enclosing procedure");
             }
-            return layerRange; 
+            return layerRange;
         }
         #endregion
 
         #region Public access methods
+        public bool IsYieldingLoopHeader(Block block, int layerNum)
+        {
+            if (!yieldingLoops.ContainsKey(block))
+            {
+                return false;
+            }
+            return yieldingLoops[block].layers.Contains(layerNum);
+        }
+
+        public bool IsTerminatingLoopHeader(Block block, int layerNum)
+        {
+            if (!terminatingLoopHeaders.ContainsKey(block))
+            {
+                return false;
+            }
+            return terminatingLoopHeaders[block].Contains(layerNum);
+        }
+
+        public bool IsTerminatingProcedure(Procedure proc)
+        {
+            return terminatingProcedures.Contains(proc);
+        }
+
         public LayerRange GlobalVariableLayerRange(Variable g)
         {
             Debug.Assert(globalVarToLayerRange.ContainsKey(g));
@@ -1031,8 +1235,8 @@ namespace Microsoft.Boogie
                 if (node.Decl is GlobalVariable)
                 {
                     var sharedVarLayerRange = civlTypeChecker.GlobalVariableLayerRange(node.Decl);
-                    if (!action.layerRange.Subset(sharedVarLayerRange) || 
-                        (sharedVarLayerRange.lowerLayerNum == action.layerRange.lowerLayerNum && 
+                    if (!action.layerRange.Subset(sharedVarLayerRange) ||
+                        (sharedVarLayerRange.lowerLayerNum == action.layerRange.lowerLayerNum &&
                          action is AtomicAction))
                     // a shared variable introduced at layer n is visible to an atomic action only at layer n+1 or higher
                     // thus, a shared variable with layer range [n,n] is not accessible by an atomic action
@@ -1109,10 +1313,78 @@ namespace Microsoft.Boogie
                 return base.VisitIdentifierExpr(node);
             }
         }
-        
+
+        private class YieldRequiresVisitor : ReadOnlyVisitor
+        {
+            private CivlTypeChecker civlTypeChecker;
+            HashSet<Variable> outs;
+            public YieldRequiresVisitor(CivlTypeChecker civlTypeChecker, Procedure proc)
+            {
+                this.civlTypeChecker = civlTypeChecker;
+                this.outs = new HashSet<Variable>(proc.OutParams);
+            }
+
+            public override Expr VisitIdentifierExpr(IdentifierExpr node)
+            {
+                if (outs.Contains(node.Decl))
+                {
+                    civlTypeChecker.Error(node, "Output parameter cannot be accessed");
+                }
+                return base.VisitIdentifierExpr(node);
+            }
+        }
+
+        class YieldInvariantCallVisitor : ReadOnlyVisitor
+        {
+            private CivlTypeChecker civlTypeChecker;
+            private bool allowOld;
+            private bool insideOld;
+            private bool ok;
+
+            public YieldInvariantCallVisitor(CivlTypeChecker civlTypeChecker, bool allowOld)
+            {
+                this.civlTypeChecker = civlTypeChecker;
+                this.allowOld = allowOld;
+                this.insideOld = false;
+                this.ok = true;
+            }
+
+            public bool Check(CallCmd callCmd)
+            {
+                Visit(callCmd);
+                return ok;
+            }
+
+            public override Expr VisitOldExpr(OldExpr node)
+            {
+                if (!allowOld)
+                {
+                    ok = false;
+                    civlTypeChecker.Error(node,"Old expression not allowed only in this context");
+                    return node;
+                }
+                insideOld = true;
+                base.VisitOldExpr(node);
+                insideOld = false;
+                return node;
+            }
+
+            public override Expr VisitIdentifierExpr(IdentifierExpr node)
+            {
+                if (node.Decl is GlobalVariable && allowOld && !insideOld)
+                {
+                    ok = false;
+                    civlTypeChecker.Error(node, "Global variable cannot be accessed in this context");
+                }
+                return node;
+            }
+        }
+
         private class YieldingProcVisitor : ReadOnlyVisitor
         {
             CivlTypeChecker civlTypeChecker;
+            List<CallCmd> yieldRequires;
+            List<CallCmd> yieldEnsures;
             YieldingProc yieldingProc;
             List<IdentifierExpr> globalVariableAccesses;
             List<IdentifierExpr> localVariableAccesses;
@@ -1120,8 +1392,21 @@ namespace Microsoft.Boogie
             public YieldingProcVisitor(CivlTypeChecker civlTypeChecker)
             {
                 this.civlTypeChecker = civlTypeChecker;
-                globalVariableAccesses = null;
-                localVariableAccesses = null;
+                this.yieldRequires = null;
+                this.yieldEnsures = null;
+                this.yieldingProc = null;
+                this.globalVariableAccesses = null;
+                this.localVariableAccesses = null;
+            }
+
+            public YieldingProcVisitor(CivlTypeChecker civlTypeChecker, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
+            {
+                this.civlTypeChecker = civlTypeChecker;
+                this.yieldRequires = yieldRequires;
+                this.yieldEnsures = yieldEnsures;
+                this.yieldingProc = null;
+                this.globalVariableAccesses = null;
+                this.localVariableAccesses = null;
             }
 
             public override Implementation VisitImplementation(Implementation node)
@@ -1143,13 +1428,22 @@ namespace Microsoft.Boogie
                     return node;
                 }
                 yieldingProc = civlTypeChecker.procToYieldingProc[node];
-                
+
                 // Visit procedure except for modifies clause
                 VisitEnsuresSeq(node.Ensures);
                 VisitVariableSeq(node.InParams);
                 VisitVariableSeq(node.OutParams);
                 VisitRequiresSeq(node.Requires);
-                
+                var yieldRequiresVisitor = new YieldRequiresVisitor(civlTypeChecker, node);
+                foreach (var callCmd in yieldRequires)
+                {
+                    yieldRequiresVisitor.Visit(callCmd);
+                    VisitYieldInvariantCallCmd(callCmd, yieldingProc.upperLayer, civlTypeChecker.procToYieldInvariant[callCmd.Proc].LayerNum);
+                }
+                foreach (var callCmd in yieldEnsures)
+                {
+                    VisitYieldInvariantCallCmd(callCmd, yieldingProc.upperLayer, civlTypeChecker.procToYieldInvariant[callCmd.Proc].LayerNum);
+                }
                 yieldingProc = null;
                 return node;
             }
@@ -1197,7 +1491,7 @@ namespace Microsoft.Boogie
                 VisitSpecPost(requires);
                 return requires;
             }
-            
+
             public override Cmd VisitAssertCmd(AssertCmd assert)
             {
                 VisitSpecPre();
@@ -1294,7 +1588,7 @@ namespace Microsoft.Boogie
             public override Cmd VisitCallCmd(CallCmd call)
             {
                 YieldingProc callerProc = yieldingProc;
-                
+
                 if (civlTypeChecker.procToYieldingProc.ContainsKey(call.Proc))
                 {
                     VisitYieldingProcCallCmd(call, callerProc, civlTypeChecker.procToYieldingProc[call.Proc]);
@@ -1313,7 +1607,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    civlTypeChecker.Error(call, 
+                    civlTypeChecker.Error(call,
                         "A yielding procedure can only call yielding procedures, lemma procedures, or introduction actions");
                 }
                 return call;
@@ -1499,7 +1793,7 @@ namespace Microsoft.Boogie
 
             private void CheckCallOutputs(CallCmd call, int callerProcUpperLayer, int calleeLayerNum)
             {
-                Require(call.Outs.All(ie => civlTypeChecker.LocalVariableLayerRange(ie.Decl).lowerLayerNum == calleeLayerNum), 
+                Require(call.Outs.All(ie => civlTypeChecker.LocalVariableLayerRange(ie.Decl).lowerLayerNum == calleeLayerNum),
                     call,
                     $"All output variables must be introduced at layer {calleeLayerNum}");
                 Require(callerProcUpperLayer == calleeLayerNum ||

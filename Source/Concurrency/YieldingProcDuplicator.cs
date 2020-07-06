@@ -516,7 +516,7 @@ namespace Microsoft.Boogie
             if (!asyncCallPreconditionCheckers.ContainsKey(newCall.Proc.Name))
             {
                 asyncCallPreconditionCheckers[newCall.Proc.Name] = new Procedure(Token.NoToken,
-                    $"AsyncCall_{newCall.Proc.Name}",
+                    $"AsyncCall_{newCall.Proc.Name}_{layerNum}",
                     newCall.Proc.TypeParameters, newCall.Proc.InParams, newCall.Proc.OutParams,
                     procToDuplicate[newCall.Proc].Requires, new List<IdentifierExpr>(), new List<Ensures>());
             }

@@ -9,10 +9,6 @@ procedure {:intro} {:layer 1} P(x:int)
 
 procedure{:yields}{:layer 1} Y(x:int)
 {
-  yield;
-
   call P(x);
   assert{:layer 1} x == 0;
-
-  yield;
 }
