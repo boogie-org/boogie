@@ -641,25 +641,22 @@ namespace Microsoft.Boogie
                 }
                 foreach (var header in graph.Headers)
                 {
-                    terminatingLoopHeaders[header] = new HashSet<int>();
                     var yieldingLayers = new HashSet<int>();
+                    var terminatingLayers = new HashSet<int>();
                     foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
                     {
-                        var isYielding = predCmd.HasAttribute(CivlAttributes.YIELDS);
-                        var isTerminating = predCmd.HasAttribute(CivlAttributes.TERMINATES);
-                        if (isYielding && isTerminating)
-                        {
-                            Error(header, "Loop predicate command may not be both yielding and terminating.");
-                            continue;
-                        }
-                        if (isYielding)
+                        if (predCmd.HasAttribute(CivlAttributes.YIELDS))
                         {
                             yieldingLayers.UnionWith(absyToLayerNums[predCmd]);
                         }
-                        if (isTerminating)
+                        if (predCmd.HasAttribute(CivlAttributes.TERMINATES))
                         {
-                            terminatingLoopHeaders[header].UnionWith(absyToLayerNums[predCmd]);
+                            terminatingLayers.UnionWith(absyToLayerNums[predCmd]);
                         }
+                    }
+                    if (yieldingLayers.Intersect(terminatingLayers).Count() != 0)
+                    {
+                        Error(header, "Loop cannot be both yielding and terminating on the same layer.");
                     }
                     var yieldInvariants = new List<CallCmd>();
                     foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
@@ -684,6 +681,7 @@ namespace Microsoft.Boogie
                         }
                     }
                     yieldingLoops[header] = new YieldingLoop(yieldingLayers, yieldInvariants);
+                    terminatingLoopHeaders[header] = terminatingLayers;
                 }
             }
         }
