@@ -59,7 +59,7 @@ implementation Find(a: int, b: int) returns (k: int)
     call k := Find(a-1, b+1);
   }
 }
- 
+
 // deterministic, structured, iterative version
 implementation Find(a: int, b: int) returns (k: int)
 {
@@ -81,7 +81,7 @@ implementation Find(a: int, b: int) returns (k: int)
     k := y;
   }
 }
- 
+
 // deterministic, structured, iterative version with breaks
 implementation Find(a: int, b: int) returns (k: int)
 {
@@ -104,7 +104,7 @@ implementation Find(a: int, b: int) returns (k: int)
     y := y+1;
   }
 }
- 
+
 // deterministic, somewhat structured, iterative version
 implementation Find(a: int, b: int) returns (k: int)
 {
@@ -133,7 +133,7 @@ implementation Find(a: int, b: int) returns (k: int)
   k := y;
   return;
 }
- 
+
 // deterministic, structured, iterative version with breaks
 implementation Find(a: int, b: int) returns (k: int)
 {
@@ -333,7 +333,7 @@ procedure BreakIssue(x: int) returns (curr: int)
   ensures x == 18 || curr == 100;  // holds, because the procedure doesn't
                                    // actually ever terminate if x != 18
 {
-  while (x != 18) { 
+  while (x != 18) {
     while (x != 19) {
       call curr := Read();
       if (curr == 0) {
@@ -344,3 +344,21 @@ procedure BreakIssue(x: int) returns (curr: int)
 }
 
 procedure Read() returns (val: int);
+
+// There was a bug in Boogie's handling of a break inside a nested while loop.
+// In the presence of the bug, the loop invariant of the outer loop was verfied
+// since the break was translated as jump to the control location before the
+// first assignment to x.
+procedure BreakToOuterLoopHead() returns (x: int)
+{
+  x := 42;
+  while (true)
+  invariant x > 0;
+  {
+    x := 0;
+    while (true)
+    {
+      break;
+    }
+  }
+}

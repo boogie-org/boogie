@@ -361,6 +361,9 @@ namespace Microsoft.Boogie {
       Contract.Requires(errorHandler != null);
       Contract.Requires(stmtList != null);
       this.stmtList = stmtList;
+      // Inject an empty big block at the end of the body of a while loop if its current end is another while loop.
+      // This transformation creates a suitable jump target for break statements inside the nested while loop.
+      InjectEmptyBigBlockInsideWhileLoopBody(stmtList);
       this.errorHandler = errorHandler;
       ComputeAllLabels(stmtList);
     }
@@ -391,6 +394,27 @@ namespace Microsoft.Boogie {
       }
     }
 
+    void InjectEmptyBigBlockInsideWhileLoopBody(StmtList stmtList) {
+      foreach (var bb in stmtList.BigBlocks) {
+        InjectEmptyBigBlockInsideWhileLoopBody(bb.ec);
+      }
+    }
+    
+    void InjectEmptyBigBlockInsideWhileLoopBody(StructuredCmd structuredCmd) {
+      if (structuredCmd is WhileCmd whileCmd) {
+        InjectEmptyBigBlockInsideWhileLoopBody(whileCmd.Body);
+        if (whileCmd.Body.BigBlocks.Count > 0 && whileCmd.Body.BigBlocks.Last().ec is WhileCmd) {
+          var newBigBlocks = new List<BigBlock>(whileCmd.Body.BigBlocks);
+          newBigBlocks.Add(new BigBlock(Token.NoToken, null, new List<Cmd>(), null, null));
+          whileCmd.Body = new StmtList(newBigBlocks, whileCmd.Body.EndCurly);
+        }
+      } else if (structuredCmd is IfCmd ifCmd) {
+        InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.thn);
+        if (ifCmd.elseBlock != null) InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.elseBlock);
+        if (ifCmd.elseIf != null) InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.elseIf);
+      }
+    }
+    
     void CheckLegalLabels(StmtList stmtList, StmtList parentContext, BigBlock parentBigBlock) {
       Contract.Requires(stmtList != null);
       Contract.Requires((parentContext == null) == (parentBigBlock == null));
