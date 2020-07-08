@@ -16,5 +16,12 @@ Execution trace:
     Structured.bpl(310,3): anon0
     Structured.bpl(310,3): anon1_Then
     Structured.bpl(311,5): A
+Structured.bpl(356,3): Error BP5005: This loop invariant might not be maintained by the loop.
+Execution trace:
+    Structured.bpl(354,5): anon0
+    Structured.bpl(355,3): anon4_LoopHead
+    Structured.bpl(358,7): anon4_LoopBody
+    Structured.bpl(361,7): anon5_LoopBody
+    (0,0): anon3
 
-Boogie program verifier finished with 16 verified, 3 errors
+Boogie program verifier finished with 16 verified, 4 errors
