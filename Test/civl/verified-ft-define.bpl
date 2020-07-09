@@ -92,7 +92,7 @@ function {:define} EpochInit(tid: Tid): Epoch {
  */
 type VC = [Tid]Epoch;
 
-// primite accessors to array
+// primitive accessors to array
 // len of VC is stored at -1.
 function {:define} VCArrayLen(vc: VC): int { clock#epoch(vc[-1]) }
 function {:define} VCArraySetLen(vc: VC, n: int): VC { vc[-1 := epoch(-1,n)] }
