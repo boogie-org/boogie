@@ -232,7 +232,6 @@ procedure {:yields} {:layer 96} {:refines "AtomicInitVars100"} InitVars100({:lin
 {
     var n:int;
     var m:int;
-    yield;
 
     n := memLo;
     while (n < memHi)
@@ -288,7 +287,6 @@ procedure {:yields} {:layer 96} {:refines "AtomicInitVars100"} InitVars100({:lin
     call InitToAbs(tid, mutatorTids);
     call InitCollectorPhase(tid, mutatorTids);
     call InitSweepPtr(tid, mutatorTids);
-    yield;
 }
 
 procedure {:yields} {:layer 99} InitVars99({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
@@ -392,7 +390,6 @@ requires {:layer 99} !mutatorsInRootScanBarrier[i#Tid(tid)] && RootScanBarrierIn
         call tid_tmp := MutatorRootScanBarrierWait(tid_tmp);
         call TidOutput(tid_tmp, tid);
     }
-    yield;
 }
 
 procedure {:atomic} {:layer 101} AtomicWriteField({:linear "tid"} tid:Tid, x: idx, f: fld, y: idx) // x.f = y
@@ -590,7 +587,6 @@ requires {:layer 100} sweepPtr == memHi;
         call nextPhase := HandshakeCollector(tid); // SWEEP --> IDLE
         call YieldGarbageCollect(tid);
     }
-    yield;
 }
 
 procedure {:yields} {:layer 100} YieldMarkBegin({:linear "tid"} tid:Tid)
@@ -955,14 +951,10 @@ requires {:layer 98} mutatorTidWhole(tid);
     var valx: int;
     var valy: int;
 
-    yield;
-    assert {:layer 98} mutatorTidWhole(tid);
     call valx := ReadRoot(tid, x);
     call valy := ReadRoot(tid, y);
     call WriteFieldGeneral(tid, valx, f, valy);
     call SetMemAbs1(x, f, y);
-    yield;
-    assert {:layer 98} mutatorTidWhole(tid);
 }
 
 procedure {:atomic} {:layer 100} AtomicReadFieldRaw({:linear "tid"} tid:Tid, x: idx, f: fld, y: idx)
@@ -978,12 +970,10 @@ procedure {:yields} {:layer 99} {:refines "AtomicReadFieldRaw"} ReadFieldRaw({:l
     var valx: int;
     var valy: int;
 
-    yield;
     call valx := ReadRoot(tid, x);
     call valy := ReadFieldGeneral(tid, valx, f);
     call WriteRoot(tid, y, valy);
     call SetRootAbs1(x, f, y);
-    yield;
 }
 
 procedure {:atomic} {:layer 100} AtomicEqRaw({:linear "tid"} tid:Tid, x: idx, y:idx) returns (isEqual:bool)
@@ -994,11 +984,9 @@ procedure {:yields} {:layer 99} {:refines "AtomicEqRaw"} EqRaw({:linear "tid"} t
     var vx:int;
     var vy:int;
 
-    yield;
     call vx := ReadRoot(tid, x);
     call vy := ReadRoot(tid, y);
     isEqual := vx == vy;
-    yield;
 }
 
 procedure {:atomic} {:layer 100} AtomicAllocRaw({:linear "tid"} tid:Tid, y:idx) returns (ptr: int, absPtr: obj)
@@ -1019,13 +1007,11 @@ modifies allocSet, rootAbs, root, toAbs, memAbs, Color, mem;
 
 procedure {:yields} {:layer 99} {:refines "AtomicAllocRaw"} AllocRaw({:linear "tid"} tid:Tid, y:idx) returns (ptr: int, absPtr: obj)
 {
-    yield;
     call absPtr := PrimitiveFindFreePtrAbs();
     call ptr := FindFreePtr(tid, absPtr);
     call WriteRoot(tid, y, ptr);
     call SetMemAbs2(absPtr);
     call SetRootAbs2(y, absPtr);
-    yield;
 }
 
 procedure {:atomic} {:layer 99} AtomicFindFreePtr({:linear "tid"} tid: Tid, absPtr: obj) returns (ptr: int)
@@ -1044,7 +1030,6 @@ procedure {:yields} {:layer 98} {:refines "AtomicFindFreePtr"} FindFreePtr({:lin
     var iter: int;
     var spaceFound: bool;
 
-    yield;
     spaceFound := false;
     while (true)
     invariant {:layer 95,96,97,98}{:yields} true;
@@ -1068,15 +1053,12 @@ procedure {:yields} {:layer 98} {:refines "AtomicFindFreePtr"} FindFreePtr({:lin
             {
                 iter := iter + 1;
             }
-            yield;
         }
         if (spaceFound)
         {
             break;
         }
-        yield;
     }
-    yield;
 }
 
 procedure{:atomic} {:layer 100} AtomicWriteBarrier({:linear "tid"} tid:Tid, y:idx)
@@ -1096,8 +1078,6 @@ requires {:layer 98} mutatorTidWhole(tid);
     var phase: int;
     var rootVal: int;
 
-    yield;
-    assert {:layer 98} mutatorTidWhole(tid);
     call rootVal := ReadRoot(tid, y);
     if (memAddr(rootVal))
     {
@@ -1107,8 +1087,6 @@ requires {:layer 98} mutatorTidWhole(tid);
             call SET_InsertIntoSetIfWhiteByMutator(tid, rootVal);
         }
     }
-    yield;
-    assert {:layer 98} mutatorTidWhole(tid);
 }
 
 procedure {:atomic} {:layer 99} AtomicSET_InsertIntoSetIfWhiteByMutator({:linear "tid"} tid:Tid, memLocal:int)
@@ -1269,11 +1247,9 @@ modifies Color;
 
 procedure {:yields} {:layer 96} {:refines "AtomicSET_RemoveFromSet"} SET_RemoveFromSet({:linear "tid"} tid:Tid, scannedLocal:int)
 {
-    yield;
     call LockAcquire(tid);
     call SetColor2(tid, scannedLocal, BLACK());
     call LockRelease(tid);
-    yield;
 }
 
 procedure {:atomic} {:layer 97,98} AtomicMsPushByCollector({:linear "tid"} tid: Tid, val: int)
@@ -1291,7 +1267,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicMsPushByCollector"} MsPushByCol
 {
     var color:int;
     var stack:int;
-    yield;
+
     call LockAcquire(tid);
     call color := ReadColorByCollector(tid, val);
     if (White(color))
@@ -1303,7 +1279,6 @@ procedure {:yields} {:layer 96} {:refines "AtomicMsPushByCollector"} MsPushByCol
         call SetMarkStackPtr(tid, stack);
     }
     call LockRelease(tid);
-    yield;
 }
 
 procedure {:atomic} {:layer 97,98} AtomicMsPushByMutator({:linear "tid"} tid: Tid, val: int)
@@ -1321,7 +1296,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicMsPushByMutator"} MsPushByMutat
 {
     var color:int;
     var stack:int;
-    yield;
+
     call LockAcquire(tid);
     call color := ReadColorByMutator2(tid, val);
     if (White(color))
@@ -1333,7 +1308,6 @@ procedure {:yields} {:layer 96} {:refines "AtomicMsPushByMutator"} MsPushByMutat
         call SetMarkStackPtr(tid, stack);
     }
     call LockRelease(tid);
-    yield;
 }
 
 procedure{:atomic} {:layer 97,98} AtomicMsPop({:linear "tid"} tid:Tid) returns (isEmpty: bool, val:int)
@@ -1353,7 +1327,7 @@ modifies MarkStackPtr;
 procedure{:yields} {:layer 96} {:refines "AtomicMsPop"} MsPop({:linear "tid"} tid:Tid) returns (isEmpty: bool, val:int)
 {
     var stack:int;
-    yield;
+
     call LockAcquire(tid);
     call stack := ReadMarkStackPtr(tid);
     if (stack > 0)
@@ -1369,7 +1343,6 @@ procedure{:yields} {:layer 96} {:refines "AtomicMsPop"} MsPop({:linear "tid"} ti
         isEmpty := true;
     }
     call LockRelease(tid);
-    yield;
 }
 
 procedure{:atomic} {:layer 97,98} AtomicMsIsEmpty({:linear "tid"} tid: Tid) returns (isEmpty: bool)
@@ -1378,12 +1351,11 @@ procedure{:atomic} {:layer 97,98} AtomicMsIsEmpty({:linear "tid"} tid: Tid) retu
 procedure{:yields} {:layer 96} {:refines "AtomicMsIsEmpty"} MsIsEmpty({:linear "tid"} tid: Tid) returns (isEmpty: bool)
 {
     var v:int;
-    yield;
+
     call LockAcquire(tid);
     call v := ReadMarkStackPtr(tid);
     isEmpty := v == 0;
     call LockRelease(tid);
-    yield;
 }
 
 procedure {:atomic} {:layer 97,100} AtomicResetSweepPtr({:linear "tid"} tid:Tid)
@@ -1392,11 +1364,9 @@ modifies sweepPtr;
 
 procedure {:yields} {:layer 96} {:refines "AtomicResetSweepPtr"} ResetSweepPtr({:linear "tid"} tid:Tid)
 {
-    yield;
     call LockAcquire(tid);
     call SetSweepPtrLocked(tid, memLo);
     call LockRelease(tid);
-    yield;
 }
 
 procedure {:left} {:layer 97,100} AtomicSweepNext({:linear "tid"} tid:Tid)
@@ -1414,7 +1384,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicSweepNext"} SweepNext({:linear 
 {
     var color:int;
     var sweep:int;
-    yield;
+
     call LockAcquire(tid);
     call sweep := ReadSweepPtr(tid);
     call color := ReadColorByCollector(tid, sweep);
@@ -1423,7 +1393,6 @@ procedure {:yields} {:layer 96} {:refines "AtomicSweepNext"} SweepNext({:linear 
     sweep := sweep + 1;
     call SetSweepPtrLocked(tid, sweep);
     call LockRelease(tid);
-    yield;
 }
 
 procedure{:atomic} {:layer 97,100} AtomicHandshakeCollector({:linear "tid"} tid:Tid) returns (nextPhase: int)
@@ -1446,13 +1415,12 @@ modifies collectorPhase;
 procedure{:yields} {:layer 96} {:refines "AtomicHandshakeCollector"} HandshakeCollector({:linear "tid"} tid:Tid) returns (nextPhase: int)
 {
     var phase:int;
-    yield;
+
     call LockAcquire(tid);
     call phase := ReadCollectorPhase(tid);
     nextPhase := if IdlePhase(phase) then MARK() else if MarkPhase(phase) then SWEEP() else IDLE();
     call SetCollectorPhase(tid, nextPhase);
     call LockRelease(tid);
-    yield;
 }
 
 procedure {:atomic} {:layer 97,100} AtomicUpdateMutatorPhase({:linear "tid"} tid: Tid)
@@ -1462,12 +1430,11 @@ modifies mutatorPhase;
 procedure {:yields} {:layer 96} {:refines "AtomicUpdateMutatorPhase"} UpdateMutatorPhase({:linear "tid"} tid: Tid)
 {
     var p:int;
-    yield;
+
     call LockAcquire(tid);
     call p := ReadCollectorPhaseLocked(tid);
     call SetMutatorPhaseLocked(tid, p);
     call LockRelease(tid);
-    yield;
 }
 
 procedure {:atomic} {:layer 97,99} AtomicCollectorRootScanBarrierStart({:linear "tid"} tid: Tid)
@@ -1476,11 +1443,9 @@ modifies rootScanOn;
 
 procedure {:yields} {:layer 96} {:refines "AtomicCollectorRootScanBarrierStart"} CollectorRootScanBarrierStart({:linear "tid"} tid: Tid)
 {
-    yield;
     call LockAcquire(tid);
     call CollectorRootScanBarrierStartLocked(tid);
     call LockRelease(tid);
-    yield;
 }
 
 procedure {:left} {:layer 97,99} AtomicCollectorRootScanBarrierEnd({:linear "tid"} tid: Tid)
@@ -1489,11 +1454,9 @@ modifies rootScanOn;
 
 procedure {:yields} {:layer 96} {:refines "AtomicCollectorRootScanBarrierEnd"} CollectorRootScanBarrierEnd({:linear "tid"} tid: Tid)
 {
-    yield;
     call LockAcquire(tid);
     call CollectorRootScanBarrierEndLocked(tid);
     call LockRelease(tid);
-    yield;
 }
 
 procedure {:atomic} {:layer 97,99} AtomicCollectorRootScanBarrierWait({:linear "tid"} tid: Tid)
@@ -1503,20 +1466,15 @@ procedure {:yields} {:layer 96} {:refines "AtomicCollectorRootScanBarrierWait"} 
 {
     var v:int;
 
-    yield;
     while (true)
-    invariant {:layer 95,96}{:yields} true;    
+    invariant {:layer 95,96}{:yields} true;
     {
-        yield;
         call v := CollectorRootScanBarrierRead(tid);
-        yield;
         if (v == 0)
         {
-            yield;
             return;
         }
     }
-    yield;
 }
 
 procedure {:atomic} {:layer 97,99} AtomicMutatorRootScanBarrierEnter({:linear_in "tid"} tid: Tid) returns({:linear "tid"} tid_left: Tid)
@@ -1534,13 +1492,11 @@ ensures {:layer 95,96} i#Tid(tid_left) == i#Tid(tid) && left#Tid(tid_left);
 {
     var{:linear "tid"} tid_right: Tid;
 
-    yield;
     call tid_left, tid_right := TidSplit(tid);
     call LockAcquire(tid_left);
     call MutatorsInRootScanBarrierAdd(tid_left, tid_right);
     call AddRootScanBarrier(tid_left, -1);
     call LockRelease(tid_left);
-    yield;
 }
 
 procedure {:atomic} {:layer 97,99} AtomicMutatorRootScanBarrierWait({:linear_in "tid"} tid_left: Tid) returns({:linear "tid"} tid: Tid)
@@ -1559,10 +1515,8 @@ ensures {:layer 95,96} i#Tid(tid) == i#Tid(tid_left) && left#Tid(tid) && right#T
     var{:linear "tid"} tid_right: Tid;
     var b:bool;
 
-    yield;
     loop:
         assert {:layer 95,96}{:yields} true;
-        yield;
         call LockAcquire(tid_left);
         call b := MutatorReadBarrierOn(tid_left);
         if (!b)
@@ -1571,11 +1525,9 @@ ensures {:layer 95,96} i#Tid(tid) == i#Tid(tid_left) && left#Tid(tid) && right#T
             call tid_right := MutatorsInRootScanBarrierRemove(tid_left);
             call LockRelease(tid_left);
             call tid := TidCombine(tid_left, tid_right);
-            yield;
             return;
         }
         call LockRelease(tid_left);
-        yield;
         goto loop;
 }
 
@@ -1602,7 +1554,6 @@ procedure {:yields} {:layer 96} {:refines "AtomicAllocIfPtrFree"} AllocIfPtrFree
     var fldIter:fld;
     var {:layer 96} snapMem: [int][fld]int;
 
-    yield;
     call color := ReadColorByMutator1(tid, ptr);
     if (Unalloc(color))
     {
@@ -1635,13 +1586,11 @@ procedure {:yields} {:layer 96} {:refines "AtomicAllocIfPtrFree"} AllocIfPtrFree
 
             call SetColor3(tid, ptr, color, absPtr);
             call LockRelease(tid);
-            yield;
             return;
         }
         call LockRelease(tid);
     }
     spaceFound := false;
-    yield;
 }
 
 procedure {:atomic} {:layer 97,100} AtomicIsWhiteByCollector({:linear "tid"} tid:Tid, i: int) returns (isWhite: bool)
@@ -1650,12 +1599,11 @@ procedure {:atomic} {:layer 97,100} AtomicIsWhiteByCollector({:linear "tid"} tid
 procedure {:yields} {:layer 96} {:refines "AtomicIsWhiteByCollector"} IsWhiteByCollector({:linear "tid"} tid:Tid, i: int) returns (isWhite: bool)
 {
     var v:int;
-    yield;
+
     call LockAcquire(tid);
     call v := ReadColorByCollector(tid, i);
     isWhite := White(v);
     call LockRelease(tid);
-    yield;
 }
 
 procedure {:atomic} {:layer 97,100} AtomicClearToAbsWhite({:linear "tid"} tid:Tid)
@@ -1664,11 +1612,9 @@ modifies toAbs;
 
 procedure {:yields} {:layer 96} {:refines "AtomicClearToAbsWhite"} ClearToAbsWhite({:linear "tid"} tid:Tid)
 {
-    yield;
     call LockAcquire(tid);
     call LockedClearToAbsWhite(tid);
     call LockRelease(tid);
-    yield;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1681,9 +1627,7 @@ modifies toAbs;
 
 procedure {:yields} {:layer 95} {:refines "AtomicLockedClearToAbsWhite"} LockedClearToAbsWhite({:linear "tid"} tid:Tid)
 {
-    yield;
     call SetToAbs1();
-    yield;
 }
 
 procedure {:both} {:layer 96,99} AtomicInitField({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool, x: int, f: int)
@@ -1692,9 +1636,7 @@ modifies mem;
 
 procedure {:yields} {:layer 95} {:refines "AtomicInitField"} InitField({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool, x: int, f: int)
 {
-    yield;
     call PrimitiveWriteField(x, f, x);
-    yield;
 }
 
 procedure {:atomic} {:layer 96,100} AtomicReadFieldCollector({:linear "tid"} tid:Tid, x:int, f: fld) returns (y: int)
@@ -1702,9 +1644,7 @@ procedure {:atomic} {:layer 96,100} AtomicReadFieldCollector({:linear "tid"} tid
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadFieldCollector"} ReadFieldCollector({:linear "tid"} tid:Tid, x:int, f: fld) returns (y: int)
 {
-    yield;
     call y := PrimitiveReadField(x, f);
-    yield;
 }
 
 procedure {:atomic} {:layer 96,99} AtomicReadFieldGeneral({:linear "tid"} tid:Tid, x: int, f: fld) returns (y: int)
@@ -1712,9 +1652,7 @@ procedure {:atomic} {:layer 96,99} AtomicReadFieldGeneral({:linear "tid"} tid:Ti
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadFieldGeneral"} ReadFieldGeneral({:linear "tid"} tid:Tid, x: int, f: fld) returns (y: int)
 {
-    yield;
     call y := PrimitiveReadField(x, f);
-    yield;
 }
 
 procedure {:atomic} {:layer 96,99} AtomicWriteFieldGeneral({:linear "tid"} tid:Tid, x: int, f: fld, y: int)
@@ -1723,9 +1661,7 @@ modifies mem;
 
 procedure {:yields} {:layer 95} {:refines "AtomicWriteFieldGeneral"} WriteFieldGeneral({:linear "tid"} tid:Tid, x: int, f: fld, y: int)
 {
-    yield;
     call PrimitiveWriteField(x, f, y);
-    yield;
 }
 
 procedure {:right} {:layer 96} AtomicInitializeFieldInAlloc({:linear "tid"} tid: Tid, ptr: int, fld: int)
@@ -1734,9 +1670,7 @@ modifies mem;
 
 procedure {:yields} {:layer 95} {:refines "AtomicInitializeFieldInAlloc"} InitializeFieldInAlloc({:linear "tid"} tid: Tid, ptr: int, fld: int)
 {
-    yield;
     call PrimitiveWriteField(ptr, fld, ptr);
-    yield;
 }
 
 procedure{:both} {:layer 96} AtomicReadMarkStackPtr({:linear "tid"} tid:Tid) returns (val: int)
@@ -1744,9 +1678,7 @@ procedure{:both} {:layer 96} AtomicReadMarkStackPtr({:linear "tid"} tid:Tid) ret
 
 procedure{:yields} {:layer 95} {:refines "AtomicReadMarkStackPtr"} ReadMarkStackPtr({:linear "tid"} tid:Tid) returns (val: int)
 {
-    yield;
     call val := PrimitiveReadMarkStackPtr();
-    yield;
 }
 
 procedure{:atomic} {:layer 96,98} AtomicInitMarkStackPtr({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
@@ -1755,9 +1687,7 @@ modifies MarkStackPtr;
 
 procedure{:yields} {:layer 95} {:refines "AtomicInitMarkStackPtr"} InitMarkStackPtr({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
 {
-    yield;
     call PrimitiveSetMarkStackPtr(0);
-    yield;
 }
 
 procedure{:both} {:layer 96} AtomicSetMarkStackPtr({:linear "tid"} tid:Tid, val: int)
@@ -1766,9 +1696,7 @@ modifies MarkStackPtr;
 
 procedure{:yields} {:layer 95} {:refines "AtomicSetMarkStackPtr"} SetMarkStackPtr({:linear "tid"} tid:Tid, val: int)
 {
-    yield;
     call PrimitiveSetMarkStackPtr(val);
-    yield;
 }
 
 procedure{:both} {:layer 96} AtomicReadMarkStack({:linear "tid"} tid:Tid, ptr: int) returns(val: int)
@@ -1776,9 +1704,7 @@ procedure{:both} {:layer 96} AtomicReadMarkStack({:linear "tid"} tid:Tid, ptr: i
 
 procedure{:yields} {:layer 95} {:refines "AtomicReadMarkStack"} ReadMarkStack({:linear "tid"} tid:Tid, ptr: int) returns(val: int)
 {
-    yield;
     call val := PrimitiveReadMarkStack(ptr);
-    yield;
 }
 
 procedure{:both} {:layer 96} AtomicWriteMarkStack({:linear "tid"} tid:Tid, ptr: int, val: int)
@@ -1787,9 +1713,7 @@ modifies MarkStack;
 
 procedure{:yields} {:layer 95} {:refines "AtomicWriteMarkStack"} WriteMarkStack({:linear "tid"} tid:Tid, ptr: int, val: int)
 {
-    yield;
     call PrimitiveWriteMarkStack(ptr, val);
-    yield;
 }
 
 procedure {:both} {:layer 96,99} AtomicInitCollectorPhase({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
@@ -1798,9 +1722,7 @@ modifies collectorPhase;
 
 procedure {:yields} {:layer 95} {:refines "AtomicInitCollectorPhase"} InitCollectorPhase({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
 {
-    yield;
     call PrimitiveSetCollectorPhase(IDLE());
-    yield;
 }
 
 procedure {:atomic} {:layer 96} AtomicReadCollectorPhase({:linear "tid"} tid: Tid) returns (phase:int)
@@ -1808,9 +1730,7 @@ procedure {:atomic} {:layer 96} AtomicReadCollectorPhase({:linear "tid"} tid: Ti
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadCollectorPhase"} ReadCollectorPhase({:linear "tid"} tid: Tid) returns (phase:int)
 {
-    yield;
     call phase := PrimitiveReadCollectorPhase();
-    yield;
 }
 
 procedure {:right} {:layer 96} AtomicReadCollectorPhaseLocked({:linear "tid"} tid: Tid) returns (phase:int)
@@ -1818,9 +1738,7 @@ procedure {:right} {:layer 96} AtomicReadCollectorPhaseLocked({:linear "tid"} ti
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadCollectorPhaseLocked"} ReadCollectorPhaseLocked({:linear "tid"} tid: Tid) returns (phase:int)
 {
-    yield;
     call phase := PrimitiveReadCollectorPhase();
-    yield;
 }
 
 procedure {:both} {:layer 96} AtomicSetCollectorPhase({:linear "tid"} tid: Tid, phase:int)
@@ -1829,9 +1747,7 @@ modifies collectorPhase;
 
 procedure {:yields} {:layer 95} {:refines "AtomicSetCollectorPhase"} SetCollectorPhase({:linear "tid"} tid: Tid, phase:int)
 {
-    yield;
     call PrimitiveSetCollectorPhase(phase);
-    yield;
 }
 
 procedure {:both} {:layer 96,99} AtomicInitMutatorPhase({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool, id: int)
@@ -1840,9 +1756,7 @@ modifies mutatorPhase;
 
 procedure {:yields} {:layer 95} {:refines "AtomicInitMutatorPhase"} InitMutatorPhase({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool, id: int)
 {
-    yield;
     call PrimitiveSetMutatorPhase(id, IDLE());
-    yield;
 }
 
 procedure {:atomic} {:layer 96,100} AtomicReadMutatorPhaseByCollector({:linear "tid"} tid: Tid, i: int) returns (phase:int)
@@ -1850,9 +1764,7 @@ procedure {:atomic} {:layer 96,100} AtomicReadMutatorPhaseByCollector({:linear "
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadMutatorPhaseByCollector"} ReadMutatorPhaseByCollector({:linear "tid"} tid: Tid, i: int) returns (phase:int)
 {
-    yield;
     call phase := PrimitiveReadMutatorPhase(i);
-    yield;
 }
 
 procedure {:both} {:layer 96,99} AtomicReadMutatorPhase({:linear "tid"} tid: Tid) returns (phase:int)
@@ -1860,9 +1772,7 @@ procedure {:both} {:layer 96,99} AtomicReadMutatorPhase({:linear "tid"} tid: Tid
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadMutatorPhase"} ReadMutatorPhase({:linear "tid"} tid: Tid) returns (phase:int)
 {
-    yield;
     call phase := PrimitiveReadMutatorPhase(i#Tid(tid));
-    yield;
 }
 
 procedure {:atomic} {:layer 96} AtomicSetMutatorPhaseLocked({:linear "tid"} tid: Tid, phase: int)
@@ -1871,9 +1781,7 @@ modifies mutatorPhase;
 
 procedure {:yields} {:layer 95} {:refines "AtomicSetMutatorPhaseLocked"} SetMutatorPhaseLocked({:linear "tid"} tid: Tid, phase: int)
 {
-    yield;
     call PrimitiveSetMutatorPhase(i#Tid(tid), phase);
-    yield;
 }
 
 procedure {:both} {:layer 96,99} AtomicInitSweepPtr({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
@@ -1882,9 +1790,7 @@ modifies sweepPtr;
 
 procedure {:yields} {:layer 95} {:refines "AtomicInitSweepPtr"} InitSweepPtr({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
 {
-    yield;
     call PrimitiveSetSweepPtr(memHi);
-    yield;
 }
 
 procedure {:both} {:layer 96} AtomicReadSweepPtr({:linear "tid"} tid:Tid) returns(val:int)
@@ -1892,9 +1798,7 @@ procedure {:both} {:layer 96} AtomicReadSweepPtr({:linear "tid"} tid:Tid) return
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadSweepPtr"} ReadSweepPtr({:linear "tid"} tid:Tid) returns(val:int)
 {
-    yield;
     call val := PrimitiveReadSweepPtr();
-    yield;
 }
 
 procedure {:atomic} {:layer 96} AtomicSetSweepPtrLocked({:linear "tid"} tid:Tid, val: int)
@@ -1903,9 +1807,7 @@ modifies sweepPtr;
 
 procedure {:yields} {:layer 95} {:refines "AtomicSetSweepPtrLocked"} SetSweepPtrLocked({:linear "tid"} tid:Tid, val: int)
 {
-    yield;
     call PrimitiveSetSweepPtr(val);
-    yield;
 }
 
 procedure {:atomic} {:layer 96} AtomicCollectorRootScanBarrierStartLocked({:linear "tid"} tid: Tid)
@@ -1914,9 +1816,7 @@ modifies rootScanOn;
 
 procedure {:yields} {:layer 95} {:refines "AtomicCollectorRootScanBarrierStartLocked"} CollectorRootScanBarrierStartLocked({:linear "tid"} tid: Tid)
 {
-    yield;
     call PrimitiveSetRootScanOn(true);
-    yield;
 }
 
 procedure {:atomic} {:layer 96} AtomicCollectorRootScanBarrierEndLocked({:linear "tid"} tid: Tid)
@@ -1925,9 +1825,7 @@ modifies rootScanOn;
 
 procedure {:yields} {:layer 95} {:refines "AtomicCollectorRootScanBarrierEndLocked"} CollectorRootScanBarrierEndLocked({:linear "tid"} tid: Tid)
 {
-    yield;
     call PrimitiveSetRootScanOn(false);
-    yield;
 }
 
 procedure {:right} {:layer 96} AtomicMutatorReadBarrierOn({:linear "tid"} tid: Tid) returns (val:bool)
@@ -1935,9 +1833,7 @@ procedure {:right} {:layer 96} AtomicMutatorReadBarrierOn({:linear "tid"} tid: T
 
 procedure {:yields} {:layer 95} {:refines "AtomicMutatorReadBarrierOn"} MutatorReadBarrierOn({:linear "tid"} tid: Tid) returns (val:bool)
 {
-    yield;
     call val := PrimitiveReadRootScanOn();
-    yield;
 }
 
 procedure {:both} {:layer 96,99} AtomicPollMutatorReadBarrierOn({:linear "tid"} tid: Tid) returns (val:bool)
@@ -1945,9 +1841,7 @@ procedure {:both} {:layer 96,99} AtomicPollMutatorReadBarrierOn({:linear "tid"} 
 
 procedure {:yields} {:layer 95} {:refines "AtomicPollMutatorReadBarrierOn"} PollMutatorReadBarrierOn({:linear "tid"} tid: Tid) returns (val:bool)
 {
-    yield;
     call val := PrimitiveReadRootScanOn();
-    yield;
 }
 
 procedure{:atomic} {:layer 96,99} AtomicInitRootScanBarrier({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
@@ -1956,9 +1850,7 @@ modifies rootScanBarrier;
 
 procedure{:yields} {:layer 95} {:refines "AtomicInitRootScanBarrier"} InitRootScanBarrier({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
 {
-    yield;
     call PrimitiveSetRootScanBarrier(numMutators);
-    yield;
 }
 
 procedure {:atomic} {:layer 96} AtomicCollectorRootScanBarrierRead({:linear "tid"} tid: Tid) returns (val:int)
@@ -1966,9 +1858,7 @@ procedure {:atomic} {:layer 96} AtomicCollectorRootScanBarrierRead({:linear "tid
 
 procedure {:yields} {:layer 95} {:refines "AtomicCollectorRootScanBarrierRead"} CollectorRootScanBarrierRead({:linear "tid"} tid: Tid) returns (val:int)
 {
-    yield;
     call val := PrimitiveReadRootScanBarrier();
-    yield;
 }
 
 procedure {:atomic} {:layer 96} AtomicAddRootScanBarrier({:linear "tid"} tid_left: Tid, val: int)
@@ -1977,9 +1867,7 @@ modifies rootScanBarrier;
 
 procedure {:yields} {:layer 95} {:refines "AtomicAddRootScanBarrier"} AddRootScanBarrier({:linear "tid"} tid_left: Tid, val: int)
 {
-    yield;
     call PrimitiveAddRootScanBarrier(val);
-    yield;
 }
 
 procedure {:right} {:layer 96} AtomicMutatorsInRootScanBarrierAdd({:linear "tid"} tid_left: Tid, {:linear_in "tid"} tid_right: Tid)
@@ -1991,9 +1879,7 @@ modifies mutatorsInRootScanBarrier;
 
 procedure {:yields} {:layer 95} {:refines "AtomicMutatorsInRootScanBarrierAdd"} MutatorsInRootScanBarrierAdd({:linear "tid"} tid_left: Tid, {:linear_in "tid"} tid_right: Tid)
 {
-    yield;
     call PrimitiveMutatorsInRootScanBarrierAdd(tid_right);
-    yield;
 }
 
 procedure {:both} {:layer 96} AtomicMutatorsInRootScanBarrierRemove({:linear "tid"} tid_left: Tid) returns({:linear "tid"} tid_right: Tid)
@@ -2008,9 +1894,7 @@ procedure {:yields} {:layer 95} {:refines "AtomicMutatorsInRootScanBarrierRemove
 ensures {:layer 95} i#Tid(tid_left) == i#Tid(tid_right);
 ensures {:layer 95} left#Tid(tid_left) && right#Tid(tid_right);
 {
-    yield;
     call tid_right := PrimitiveMutatorsInRootScanBarrierRemove(tid_left);
-    yield;
 }
 
 procedure {:both} {:layer 96,99} AtomicInitRoot({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool, x: int)
@@ -2019,9 +1903,7 @@ modifies root;
 
 procedure {:yields} {:layer 95} {:refines "AtomicInitRoot"} InitRoot({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool, x: int)
 {
-    yield;
     call PrimitiveWriteRoot(x, 0);
-    yield;
 }
 
 procedure {:left} {:layer 96,99} AtomicReadRootInRootScanBarrier({:linear "tid"} tid:Tid, x: idx) returns (val: int)
@@ -2029,9 +1911,7 @@ procedure {:left} {:layer 96,99} AtomicReadRootInRootScanBarrier({:linear "tid"}
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadRootInRootScanBarrier"} ReadRootInRootScanBarrier({:linear "tid"} tid:Tid, x: idx) returns (val: int)
 {
-    yield;
     call val := PrimitiveReadRoot(x);
-    yield;
 }
 
 procedure {:both} {:layer 96,99} AtomicWriteRoot({:linear "tid"} tid: Tid, i: idx, val: int)
@@ -2040,9 +1920,7 @@ modifies root;
 
 procedure {:yields} {:layer 95} {:refines "AtomicWriteRoot"} WriteRoot({:linear "tid"} tid: Tid, i: idx, val: int)
 {
-    yield;
     call PrimitiveWriteRoot(i, val);
-    yield;
 }
 
 procedure {:both} {:layer 96,99} AtomicReadRoot({:linear "tid"} tid: Tid, i: idx) returns (val: int)
@@ -2050,9 +1928,7 @@ procedure {:both} {:layer 96,99} AtomicReadRoot({:linear "tid"} tid: Tid, i: idx
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadRoot"} ReadRoot({:linear "tid"} tid: Tid, i: idx) returns (val: int)
 {
-    yield;
     call val := PrimitiveReadRoot(i);
-    yield;
 }
 
 procedure {:both} {:layer 96,99} AtomicInitColor({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool, x: int)
@@ -2061,9 +1937,7 @@ modifies Color;
 
 procedure {:yields} {:layer 95} {:refines "AtomicInitColor"} InitColor({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool, x: int)
 {
-    yield;
     call PrimitiveSetColor(x, UNALLOC());
-    yield;
 }
 
 procedure {:both} {:layer 96} AtomicReadColorByCollector({:linear "tid"} tid:Tid, i: int) returns (val: int)
@@ -2071,9 +1945,7 @@ procedure {:both} {:layer 96} AtomicReadColorByCollector({:linear "tid"} tid:Tid
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadColorByCollector"} ReadColorByCollector({:linear "tid"} tid:Tid, i: int) returns (val: int)
 {
-    yield;
     call val := PrimitiveReadColor(i);
-    yield;
 }
 
 procedure {:atomic} {:layer 96} AtomicReadColorByMutator1({:linear "tid"} tid:Tid, i: int) returns (val: int)
@@ -2081,9 +1953,7 @@ procedure {:atomic} {:layer 96} AtomicReadColorByMutator1({:linear "tid"} tid:Ti
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadColorByMutator1"} ReadColorByMutator1({:linear "tid"} tid:Tid, i: int) returns (val: int)
 {
-    yield;
     call val := PrimitiveReadColor(i);
-    yield;
 }
 
 procedure {:both} {:layer 96} AtomicReadColorByMutator2({:linear "tid"} tid:Tid, i: int) returns (val: int)
@@ -2091,9 +1961,7 @@ procedure {:both} {:layer 96} AtomicReadColorByMutator2({:linear "tid"} tid:Tid,
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadColorByMutator2"} ReadColorByMutator2({:linear "tid"} tid:Tid, i: int) returns (val: int)
 {
-    yield;
     call val := PrimitiveReadColor(i);
-    yield;
 }
 
 procedure {:atomic} {:layer 96,98} AtomicReadColorByMutator3({:linear "tid"} tid:Tid, i: int) returns (val: int)
@@ -2104,9 +1972,7 @@ procedure {:atomic} {:layer 96,98} AtomicReadColorByMutator3({:linear "tid"} tid
 
 procedure {:yields} {:layer 95} {:refines "AtomicReadColorByMutator3"} ReadColorByMutator3({:linear "tid"} tid:Tid, i: int) returns (val: int)
 {
-    yield;
     call val := PrimitiveReadColor(i);
-    yield;
 }
 
 procedure {:both} {:layer 96} AtomicSetColor({:linear "tid"} tid:Tid, i: int, val: int)
@@ -2115,9 +1981,7 @@ modifies Color;
 
 procedure {:yields} {:layer 95} {:refines "AtomicSetColor"} SetColor({:linear "tid"} tid:Tid, i: int, val: int)
 {
-    yield;
     call PrimitiveSetColor(i, val);
-    yield;
 }
 
 procedure {:left} {:layer 96} AtomicSetColor2({:linear "tid"} tid:Tid, i: int, val: int)
@@ -2130,9 +1994,7 @@ modifies Color;
 
 procedure {:yields} {:layer 95} {:refines "AtomicSetColor2"} SetColor2({:linear "tid"} tid:Tid, i: int, val: int)
 {
-    yield;
     call PrimitiveSetColor(i, val);
-    yield;
 }
 
 procedure {:atomic} {:layer 96} AtomicSetColor3({:linear "tid"} tid:Tid, i: int, val: int, o: obj)
@@ -2146,10 +2008,8 @@ modifies Color, toAbs;
 
 procedure {:yields} {:layer 95} {:refines "AtomicSetColor3"} SetColor3({:linear "tid"} tid:Tid, i: int, val: int, o: obj)
 {
-    yield;
     call PrimitiveSetColor(i, val);
     call SetToAbs2(i, o);
-    yield;
 }
 
 procedure {:both} {:layer 96,99} AtomicInitToAbs({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
@@ -2161,9 +2021,7 @@ modifies toAbs;
 
 procedure {:yields} {:layer 95} {:refines "AtomicInitToAbs"} InitToAbs({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
 {
-    yield;
     call SetToAbs3();
-    yield;
 }
 
 procedure {:right} {:layer 96} AtomicLockAcquire({:linear "tid"} tid: Tid)
@@ -2173,19 +2031,15 @@ modifies lock;
 procedure {:yields} {:layer 95} {:refines "AtomicLockAcquire"} LockAcquire({:linear "tid"} tid: Tid)
 {
     var status:bool;
-    yield;
     while (true)
     invariant {:layer 95}{:yields} true;
     {
         call status := PrimitiveLockCAS(i#Tid(tid));
         if (status)
         {
-            yield;
             return;
         }
-        yield;
     }
-    yield;
 }
 
 procedure {:left} {:layer 96} AtomicLockRelease({:linear "tid"} tid:Tid)
@@ -2194,9 +2048,7 @@ modifies lock;
 
 procedure {:yields} {:layer 95} {:refines "AtomicLockRelease"} LockRelease({:linear "tid"} tid:Tid)
 {
-    yield;
     call PrimitiveLockZero();
-    yield;
 }
 
 procedure {:layer 96} {:intro} GhostReadMem() returns (snapMem: [int][fld]int)
