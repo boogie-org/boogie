@@ -1233,7 +1233,7 @@ ensures {:layer 98} collectorPhase == old(collectorPhase);
 }
 
 //////////////////////////////////////////////////////////////////////////////
-// Phase 96
+// Layer 96
 //////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic} {:layer 97,100} AtomicSET_RemoveFromSet({:linear "tid"} tid:Tid, scannedLocal:int)
@@ -1480,10 +1480,10 @@ procedure {:yields} {:layer 96} {:refines "AtomicCollectorRootScanBarrierWait"} 
 procedure {:atomic} {:layer 97,99} AtomicMutatorRootScanBarrierEnter({:linear_in "tid"} tid: Tid) returns({:linear "tid"} tid_left: Tid)
 modifies rootScanBarrier, mutatorsInRootScanBarrier;
 {
-                        assert mutatorTidWhole(tid);
-                        rootScanBarrier := rootScanBarrier - 1;
-                        mutatorsInRootScanBarrier[i#Tid(tid)] := true;
-                        tid_left := Tid(i#Tid(tid), true, false);
+    assert mutatorTidWhole(tid);
+    rootScanBarrier := rootScanBarrier - 1;
+    mutatorsInRootScanBarrier[i#Tid(tid)] := true;
+    tid_left := Tid(i#Tid(tid), true, false);
 }
 
 procedure {:yields} {:layer 96} {:refines "AtomicMutatorRootScanBarrierEnter"} MutatorRootScanBarrierEnter({:linear_in "tid"} tid: Tid) returns({:linear "tid"} tid_left: Tid)
@@ -1502,11 +1502,11 @@ ensures {:layer 95,96} i#Tid(tid_left) == i#Tid(tid) && left#Tid(tid_left);
 procedure {:atomic} {:layer 97,99} AtomicMutatorRootScanBarrierWait({:linear_in "tid"} tid_left: Tid) returns({:linear "tid"} tid: Tid)
 modifies rootScanBarrier, mutatorsInRootScanBarrier;
 {
-                        assert mutatorTidLeft(tid_left) && mutatorsInRootScanBarrier[i#Tid(tid_left)];
-                        assume !rootScanOn;
-                        rootScanBarrier := rootScanBarrier + 1;
-                        mutatorsInRootScanBarrier[i#Tid(tid_left)] := false;
-                        tid := Tid(i#Tid(tid_left), true, true);
+    assert mutatorTidLeft(tid_left) && mutatorsInRootScanBarrier[i#Tid(tid_left)];
+    assume !rootScanOn;
+    rootScanBarrier := rootScanBarrier + 1;
+    mutatorsInRootScanBarrier[i#Tid(tid_left)] := false;
+    tid := Tid(i#Tid(tid_left), true, true);
 }
 
 procedure {:yields} {:layer 96} {:refines "AtomicMutatorRootScanBarrierWait"} MutatorRootScanBarrierWait({:linear_in "tid"} tid_left: Tid) returns({:linear "tid"} tid: Tid)
@@ -1618,7 +1618,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicClearToAbsWhite"} ClearToAbsWhi
 }
 
 //////////////////////////////////////////////////////////////////////////////
-// Phase 95
+// Layer 95
 //////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic} {:layer 96} AtomicLockedClearToAbsWhite({:linear "tid"} tid:Tid)

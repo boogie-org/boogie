@@ -153,7 +153,7 @@ namespace Microsoft.Boogie
 
         private void AddNoninterferenceCheckers()
         {
-            if (CommandLineOptions.Clo.TrustNonInterference) return;
+            if (CommandLineOptions.Clo.TrustNoninterference) return;
             foreach (var proc in civlTypeChecker.procToYieldInvariant.Keys)
             {
                 var yieldInvariant = civlTypeChecker.procToYieldInvariant[proc];
@@ -330,7 +330,7 @@ namespace Microsoft.Boogie
             }
 
             // initialize noninterferenceInstrumentation
-            if (CommandLineOptions.Clo.TrustNonInterference)
+            if (CommandLineOptions.Clo.TrustNoninterference)
             {
                 noninterferenceInstrumentation = new NoneNoninterferenceInstrumentation();
             }
@@ -435,6 +435,7 @@ namespace Microsoft.Boogie
                 SplitCmds(header.Cmds, out firstCmds, out secondCmds);
                 List<Cmd> newCmds = new List<Cmd>();
                 newCmds.AddRange(firstCmds);
+                newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
                 newCmds.AddRange(InlineYieldLoopInvariants(civlTypeChecker.yieldingLoops[(Block) absyMap[header]].yieldInvariants));
                 newCmds.AddRange(YieldingLoopDummyAssignment());
                 newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
@@ -531,8 +532,8 @@ namespace Microsoft.Boogie
             if (civlTypeChecker.GlobalVariables.Count() > 0)
             {
                 newCmds.Add(new HavocCmd(Token.NoToken, civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList()));
-                newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
             }
+            newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
             newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
             newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
             newCmds.AddRange(block.Cmds);
@@ -647,8 +648,8 @@ namespace Microsoft.Boogie
             if (civlTypeChecker.GlobalVariables.Count() > 0)
             {
                 newCmds.Add(new HavocCmd(Token.NoToken, civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList()));
-                newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
             }
+            newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
             newCmds.AddRange(linearPermissionInstrumentation.DisjointnessAssumeCmds(yieldCmd, true));
             newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
             newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
@@ -721,11 +722,7 @@ namespace Microsoft.Boogie
             CallCmd checkerCallCmd = new CallCmd(parCallCmd.tok, proc.Name, ins, outs, parCallCmd.Attributes);
             checkerCallCmd.Proc = proc;
             newCmds.Add(checkerCallCmd);
-            
-            if (civlTypeChecker.GlobalVariables.Count() > 0)
-            {
-                newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
-            }
+            newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
             newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
             newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
             newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(parCallCmd));
