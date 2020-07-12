@@ -280,7 +280,6 @@ namespace Microsoft.Boogie
                     return action;
                 action = action.refinedAction;
             }
-            Debug.Assert(false);
             return null;
         }
     }

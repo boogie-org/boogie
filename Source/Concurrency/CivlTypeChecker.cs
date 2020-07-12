@@ -1414,7 +1414,10 @@ namespace Microsoft.Boogie
                 Debug.Assert(yieldingProc == null);
                 yieldingProc = civlTypeChecker.procToYieldingProc[node.Proc];
                 var ret = base.VisitImplementation(node);
-                CheckMoverProcModifiesClause(node);
+                if (civlTypeChecker.checkingContext.ErrorCount == 0)
+                {
+                    CheckMoverProcModifiesClause(node);
+                }
                 yieldingProc = null;
                 return ret;
             }
