@@ -96,6 +96,12 @@ namespace Microsoft.Boogie
             {
                 Debug.Assert(false);
             }
+
+            var filteredYieldInfo = yieldInfo.Where(info => info.Item2.Any(predCmd => new GlobalAccessChecker().AccessesGlobal(predCmd.Expr)));
+            if (filteredYieldInfo.Count() == 0)
+            {
+                return new List<Declaration>();
+            }
             
             Substitution assumeSubst = Substituter.SubstitutionFromHashtable(assumeMap);
             Substitution oldSubst = Substituter.SubstitutionFromHashtable(oldLocalMap);
@@ -108,7 +114,7 @@ namespace Microsoft.Boogie
             labelTargets.Add(noninterferenceCheckerBlock);
             noninterferenceCheckerBlocks.Add(noninterferenceCheckerBlock);
             int yieldCount = 0;
-            foreach (var kv in yieldInfo)
+            foreach (var kv in filteredYieldInfo)
             {
                 var disjointnessCmds = kv.Item1;
                 var yieldPredicates = kv.Item2;
@@ -211,6 +217,42 @@ namespace Microsoft.Boogie
         {
             return new LocalVariable(Token.NoToken,
                 new TypedIdent(Token.NoToken, $"civl_local_old_{v.Name}", v.TypedIdent.Type));
+        }
+    }
+    
+    class GlobalAccessChecker : ReadOnlyVisitor
+    {
+        private bool accessesGlobal;
+        private bool insideOld;
+        
+        public GlobalAccessChecker()
+        {
+            this.accessesGlobal = false;
+            this.insideOld = false;
+        }
+
+        public bool AccessesGlobal(Expr expr)
+        {
+            Visit(expr);
+            return accessesGlobal;
+        }
+
+        public override Expr VisitOldExpr(OldExpr node)
+        {
+            var saved = insideOld;
+            insideOld = true;
+            base.VisitOldExpr(node);
+            insideOld = saved;
+            return node;
+        }
+
+        public override Expr VisitIdentifierExpr(IdentifierExpr node)
+        {
+            if (node.Decl is GlobalVariable && !insideOld)
+            {
+                accessesGlobal = true;
+            }
+            return node;
         }
     }
 }

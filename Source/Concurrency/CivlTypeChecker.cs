@@ -1363,9 +1363,10 @@ namespace Microsoft.Boogie
                     civlTypeChecker.Error(node,"Old expression not allowed only in this context");
                     return node;
                 }
+                var saved = insideOld;
                 insideOld = true;
                 base.VisitOldExpr(node);
-                insideOld = false;
+                insideOld = saved;
                 return node;
             }
 
