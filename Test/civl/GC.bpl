@@ -136,26 +136,26 @@ function tidOwns(tid:Tid, x:idx):bool { owner(x) == i#Tid(tid) }
 
 function {:inline} Iso(root:[idx]int, rootAbs:[idx]obj, mem:[int][fld]int, memAbs:[obj][fld]obj, Color:[int]int, toAbs:[int]obj, allocSet:[obj]bool) returns (bool)
 {
-  (forall x: int :: memAddr(x) <==> memAddrAbs(toAbs[x])) &&
-  (forall x: int, y: int :: toAbs[x] == toAbs[y] ==> x == y || (memAddr(x) && toAbs[x] == nil) || (memAddr(y) && toAbs[y] == nil)) &&
-  (forall x: idx :: rootAddr(x) ==> toAbs[root[x]] == rootAbs[x]) &&
-  (forall x: int, f: fld :: memAddr(x) && toAbs[x] != nil && fieldAddr(f) ==> toAbs[mem[x][f]] == memAbs[toAbs[x]][f]) &&
-  (forall x: int :: memAddr(x) && toAbs[x] != nil ==> allocSet[toAbs[x]]) &&
-  (forall x: idx :: rootAddr(x) && memAddr(root[x]) ==> toAbs[root[x]] != nil) &&
-  (forall x: int, f: fld :: memAddr(x) && toAbs[x] != nil && fieldAddr(f) && memAddr(mem[x][f]) ==> toAbs[mem[x][f]] != nil) &&
-  (forall x: int, f: fld :: memAddr(x) && Unalloc(Color[x]) ==> toAbs[x] == nil)
+    (forall x: int :: memAddr(x) <==> memAddrAbs(toAbs[x])) &&
+    (forall x: int, y: int :: toAbs[x] == toAbs[y] ==> x == y || (memAddr(x) && toAbs[x] == nil) || (memAddr(y) && toAbs[y] == nil)) &&
+    (forall x: idx :: rootAddr(x) ==> toAbs[root[x]] == rootAbs[x]) &&
+    (forall x: int, f: fld :: memAddr(x) && toAbs[x] != nil && fieldAddr(f) ==> toAbs[mem[x][f]] == memAbs[toAbs[x]][f]) &&
+    (forall x: int :: memAddr(x) && toAbs[x] != nil ==> allocSet[toAbs[x]]) &&
+    (forall x: idx :: rootAddr(x) && memAddr(root[x]) ==> toAbs[root[x]] != nil) &&
+    (forall x: int, f: fld :: memAddr(x) && toAbs[x] != nil && fieldAddr(f) && memAddr(mem[x][f]) ==> toAbs[mem[x][f]] != nil) &&
+    (forall x: int, f: fld :: memAddr(x) && Unalloc(Color[x]) ==> toAbs[x] == nil)
 }
 
 function {:inline false} MST(i:int) returns (bool) { true }
 
 function {:inline} MsWellFormed(MarkStack:[int]int, MarkStackPtr:int, Color:[int]int, nodePeeked:int) returns (bool)
 {
-  (forall i:int :: {MST(i)} MST(i) ==> (0 <= i && i < MarkStackPtr) ==> (memAddr(MarkStack[i]) && Gray(Color[MarkStack[i]]))) &&
-  (nodePeeked != 0 ==> memAddr(nodePeeked) && Gray(Color[nodePeeked])) &&
-  (forall i:int :: (memAddr(i) && Gray(Color[i])) ==>  (exists j:int :: {MST(j)} MST(j) && 0 <= j && j < MarkStackPtr && MarkStack[j] == i) || nodePeeked == i) &&
-  (forall i:int :: {MST(i)} MST(i) ==> (0 <= i && i < MarkStackPtr) ==> (forall j:int :: {MST(j)} MST(j) ==> (0 <= j && j < MarkStackPtr && i != j) ==> MarkStack[i] != MarkStack[j])) &&
-  (forall i:int :: {MST(i)} MST(i) ==> (0 <= i && i < MarkStackPtr) ==> MarkStack[i] != nodePeeked) &&
-  (0 <= MarkStackPtr)
+    (forall i:int :: {MST(i)} MST(i) ==> (0 <= i && i < MarkStackPtr) ==> (memAddr(MarkStack[i]) && Gray(Color[MarkStack[i]]))) &&
+    (nodePeeked != 0 ==> memAddr(nodePeeked) && Gray(Color[nodePeeked])) &&
+    (forall i:int :: (memAddr(i) && Gray(Color[i])) ==>  (exists j:int :: {MST(j)} MST(j) && 0 <= j && j < MarkStackPtr && MarkStack[j] == i) || nodePeeked == i) &&
+    (forall i:int :: {MST(i)} MST(i) ==> (0 <= i && i < MarkStackPtr) ==> (forall j:int :: {MST(j)} MST(j) ==> (0 <= j && j < MarkStackPtr && i != j) ==> MarkStack[i] != MarkStack[j])) &&
+    (forall i:int :: {MST(i)} MST(i) ==> (0 <= i && i < MarkStackPtr) ==> MarkStack[i] != nodePeeked) &&
+    (0 <= MarkStackPtr)
 }
 
 function {:inline} PhaseConsistent(collectorPhase: int, mutatorPhase: [int]int) returns (bool)
@@ -165,25 +165,25 @@ function {:inline} PhaseConsistent(collectorPhase: int, mutatorPhase: [int]int) 
 
 function {:inline} MarkInv(root:[idx]int, rootAbs:[idx]obj, mem:[int][fld]int, memAbs:[obj][fld]obj, Color:[int]int, toAbs:[int]obj, allocSet:[obj]bool) returns (bool)
 {
-  Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet) &&
-  (forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x]))) &&
-  (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Gray(Color[mem[x][f]]) || Black(Color[mem[x][f]]))
+    Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet) &&
+    (forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x]))) &&
+    (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Gray(Color[mem[x][f]]) || Black(Color[mem[x][f]]))
 }
 
 function {:inline} SweepInv(root:[idx]int, rootAbs:[idx]obj, mem:[int][fld]int, memAbs:[obj][fld]obj, Color:[int]int, toAbs:[int]obj, allocSet:[obj]bool) returns (bool)
 {
-  Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet) &&
-  (forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x]))) &&
-  (forall x: int :: memAddr(x) ==> !Gray(Color[x])) &&
-  (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]))
+    Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet) &&
+    (forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x]))) &&
+    (forall x: int :: memAddr(x) ==> !Gray(Color[x])) &&
+    (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]))
 }
 
 function {:inline} SweepInvInit(root:[idx]int, rootAbs:[idx]obj, mem:[int][fld]int, memAbs:[obj][fld]obj, Color:[int]int, toAbs:[int]obj, allocSet:[obj]bool) returns (bool)
 {
-  Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet) &&
-  (forall x: int :: memAddr(x) ==> (toAbs[x] != nil <==> Black(Color[x]))) &&
-  (forall x: int :: memAddr(x) ==> !Gray(Color[x])) &&
-  (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]))
+    Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet) &&
+    (forall x: int :: memAddr(x) ==> (toAbs[x] != nil <==> Black(Color[x]))) &&
+    (forall x: int :: memAddr(x) ==> !Gray(Color[x])) &&
+    (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]))
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -487,28 +487,28 @@ procedure {:yields} {:layer 100}
 Sweep({:linear "tid"} tid:Tid)
 requires {:layer 98,99,100} tid == GcTid;
 {
-  var localSweepPtr: int;
-  var {:layer 100} snapColor: [int]int;
+    var localSweepPtr: int;
+    var {:layer 100} snapColor: [int]int;
 
-  localSweepPtr := memLo;
-  call ClearToAbsWhite(tid);
-  par YieldSweepBegin(tid, true, Color) | Yield_MsWellFormed(tid, 0) | Yield_RootScanBarrierInv() | Yield_Iso();
+    localSweepPtr := memLo;
+    call ClearToAbsWhite(tid);
+    par YieldSweepBegin(tid, true, Color) | Yield_MsWellFormed(tid, 0) | Yield_RootScanBarrierInv() | Yield_Iso();
 
-  call snapColor := GhostReadColor100();
-  while (localSweepPtr < memHi)
-  invariant {:layer 95,96}{:yields} true;
-  invariant {:terminates} {:layer 97,98,99,100} true;
-  invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
-  invariant {:layer 100} Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
-  invariant {:layer 100} SweepPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
-  invariant {:layer 100} localSweepPtr == sweepPtr && memLo <= sweepPtr && sweepPtr <= memHi;
-  invariant {:layer 100} (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(snapColor[root[i]]));
-  invariant {:layer 100} SweepInvInit(root, rootAbs, mem, memAbs, snapColor, toAbs, allocSet);
-  invariant {:layer 100} (forall i:int:: memAddr(i) ==> if sweepPtr <= i then Color[i] == snapColor[i] else if Black(snapColor[i]) then White(Color[i]) else Unalloc(Color[i]));
-  {
-    call SweepNext(tid);
-    localSweepPtr := localSweepPtr + 1;
-  }
+    call snapColor := GhostReadColor100();
+    while (localSweepPtr < memHi)
+    invariant {:layer 95,96}{:yields} true;
+    invariant {:terminates} {:layer 97,98,99,100} true;
+    invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
+    invariant {:layer 100} Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
+    invariant {:layer 100} SweepPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
+    invariant {:layer 100} localSweepPtr == sweepPtr && memLo <= sweepPtr && sweepPtr <= memHi;
+    invariant {:layer 100} (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(snapColor[root[i]]));
+    invariant {:layer 100} SweepInvInit(root, rootAbs, mem, memAbs, snapColor, toAbs, allocSet);
+    invariant {:layer 100} (forall i:int:: memAddr(i) ==> if sweepPtr <= i then Color[i] == snapColor[i] else if Black(snapColor[i]) then White(Color[i]) else Unalloc(Color[i]));
+    {
+        call SweepNext(tid);
+        localSweepPtr := localSweepPtr + 1;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -683,17 +683,17 @@ procedure {:yields} {:layer 99} {:refines "AtomicEqRaw"} EqRaw({:linear "tid"} t
 procedure {:atomic} {:layer 100} AtomicAllocRaw({:linear "tid"} tid:Tid, y:idx) returns (ptr: int, absPtr: obj)
 modifies allocSet, rootAbs, root, toAbs, memAbs, Color, mem;
 {
-     assert mutatorTidWhole(tid) && rootAddr(y) && tidOwns(tid, y);
-     assert (forall x: int, f: fld :: memAddr(x) && Unalloc(Color[x]) ==> toAbs[x] == nil);
-     assume(memAddr(ptr) && Unalloc(Color[ptr]));
-     assume(memAddrAbs(absPtr) && !allocSet[absPtr] && absPtr != nil);
-     allocSet[absPtr] := true;
-     rootAbs[y] := absPtr;
-     root[y] := ptr;
-     toAbs[ptr] := absPtr;
-     memAbs[absPtr] := (lambda z: int :: if (fieldAddr(z)) then absPtr else memAbs[absPtr][z]);
-     Color[ptr] := if sweepPtr <= ptr then BLACK() else WHITE();
-     mem[ptr] := (lambda z: int :: if (fieldAddr(z)) then ptr else mem[ptr][z]);
+    assert mutatorTidWhole(tid) && rootAddr(y) && tidOwns(tid, y);
+    assert (forall x: int, f: fld :: memAddr(x) && Unalloc(Color[x]) ==> toAbs[x] == nil);
+    assume(memAddr(ptr) && Unalloc(Color[ptr]));
+    assume(memAddrAbs(absPtr) && !allocSet[absPtr] && absPtr != nil);
+    allocSet[absPtr] := true;
+    rootAbs[y] := absPtr;
+    root[y] := ptr;
+    toAbs[ptr] := absPtr;
+    memAbs[absPtr] := (lambda z: int :: if (fieldAddr(z)) then absPtr else memAbs[absPtr][z]);
+    Color[ptr] := if sweepPtr <= ptr then BLACK() else WHITE();
+    mem[ptr] := (lambda z: int :: if (fieldAddr(z)) then ptr else mem[ptr][z]);
 }
 
 procedure {:yields} {:layer 99} {:refines "AtomicAllocRaw"} AllocRaw({:linear "tid"} tid:Tid, y:idx) returns (ptr: int, absPtr: obj)
@@ -1212,15 +1212,15 @@ modifies collectorPhase;
 {
     assert tid == GcTid;
     if (IdlePhase(collectorPhase)) {
-       collectorPhase := MARK();
-       nextPhase := MARK();
+        collectorPhase := MARK();
+        nextPhase := MARK();
     } else if (MarkPhase(collectorPhase)) {
-       collectorPhase := SWEEP();
-       nextPhase := SWEEP();
+        collectorPhase := SWEEP();
+        nextPhase := SWEEP();
     } else {
-       //assume (SweepPhase(collectorPhase));
-       collectorPhase := IDLE();
-       nextPhase := IDLE();
+        //assume (SweepPhase(collectorPhase));
+        collectorPhase := IDLE();
+        nextPhase := IDLE();
     }
 }
 
@@ -1827,8 +1827,8 @@ procedure {:yields} {:layer 95} {:refines "AtomicSetColor3"} SetColor3({:linear 
 procedure {:both} {:layer 96,99} AtomicInitToAbs({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
 modifies toAbs;
 {
-  assert gcAndMutatorTids(tid, mutatorTids);
-  toAbs := (lambda i:int :: if memAddr(i) then nil else Int(i));
+    assert gcAndMutatorTids(tid, mutatorTids);
+    toAbs := (lambda i:int :: if memAddr(i) then nil else Int(i));
 }
 
 procedure {:yields} {:layer 95} {:refines "AtomicInitToAbs"} InitToAbs({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
@@ -2009,12 +2009,12 @@ procedure {:yields} {:layer 0} {:refines "AtomicPrimitiveSetColor"} PrimitiveSet
 procedure {:atomic} {:layer 1,95} AtomicPrimitiveLockCAS(next: int) returns (status: bool)
 modifies lock;
 {
-  assert next != 0;
-  if (*) {
-    assume lock == 0; lock := next; status := true;
-  } else {
-    status := false;
-  }
+    assert next != 0;
+    if (*) {
+        assume lock == 0; lock := next; status := true;
+    } else {
+        status := false;
+    }
 }
 procedure {:yields} {:layer 0} {:refines "AtomicPrimitiveLockCAS"} PrimitiveLockCAS(next: int) returns (status: bool);
 
