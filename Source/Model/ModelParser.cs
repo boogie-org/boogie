@@ -22,6 +22,7 @@ namespace Microsoft.Boogie
 		protected static Regex seps = new Regex("( |(?=\")|(?<=\"))");
 		protected static Regex bitVec = new Regex (@"\(_ BitVec (\d+)\)");
 		protected static Regex bv = new Regex (@"\(_ bv(\d+) (\d+)\)");
+		protected static Regex fpType = new Regex (@"\(_ FloatingPoint (\d+) (\d+)\)");
 
 		protected void NewModel ()
 		{
@@ -101,6 +102,7 @@ namespace Microsoft.Boogie
 				return null;
 			newLine = bitVec.Replace (newLine, "bv${1}");
 			newLine = bv.Replace (newLine, "bv${1}[${2}]");
+			newLine = fpType.Replace (newLine, "float${2}e${1}");
 			string line = newLine;
 			int openParenCounter = CountOpenParentheses (newLine, 0);
 			if (!newLine.Contains ("}")) {
