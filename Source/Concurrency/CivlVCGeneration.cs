@@ -17,7 +17,7 @@ namespace Microsoft.Boogie
 
             // Commutativity checks
             List<Declaration> decls = new List<Declaration>();
-            if (!CommandLineOptions.Clo.TrustAtomicityTypes)
+            if (!CommandLineOptions.Clo.TrustMoverTypes)
             {
                 MoverCheck.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
             }

@@ -1337,15 +1337,15 @@ namespace Microsoft.Boogie
         class YieldInvariantCallVisitor : ReadOnlyVisitor
         {
             private CivlTypeChecker civlTypeChecker;
-            private bool allowOld;
-            private bool insideOld;
+            private bool allowOldExpr;
+            private int insideOldExpr;
             private bool ok;
 
-            public YieldInvariantCallVisitor(CivlTypeChecker civlTypeChecker, bool allowOld)
+            public YieldInvariantCallVisitor(CivlTypeChecker civlTypeChecker, bool allowOldExpr)
             {
                 this.civlTypeChecker = civlTypeChecker;
-                this.allowOld = allowOld;
-                this.insideOld = false;
+                this.allowOldExpr = allowOldExpr;
+                this.insideOldExpr = 0;
                 this.ok = true;
             }
 
@@ -1357,21 +1357,21 @@ namespace Microsoft.Boogie
 
             public override Expr VisitOldExpr(OldExpr node)
             {
-                if (!allowOld)
+                if (!allowOldExpr)
                 {
                     ok = false;
                     civlTypeChecker.Error(node,"Old expression not allowed only in this context");
                     return node;
                 }
-                insideOld = true;
+                insideOldExpr++;
                 base.VisitOldExpr(node);
-                insideOld = false;
+                insideOldExpr--;
                 return node;
             }
 
             public override Expr VisitIdentifierExpr(IdentifierExpr node)
             {
-                if (node.Decl is GlobalVariable && allowOld && !insideOld)
+                if (node.Decl is GlobalVariable && allowOldExpr && insideOldExpr == 0)
                 {
                     ok = false;
                     civlTypeChecker.Error(node, "Global variable cannot be accessed in this context");
@@ -1414,7 +1414,10 @@ namespace Microsoft.Boogie
                 Debug.Assert(yieldingProc == null);
                 yieldingProc = civlTypeChecker.procToYieldingProc[node.Proc];
                 var ret = base.VisitImplementation(node);
-                CheckMoverProcModifiesClause(node);
+                if (civlTypeChecker.checkingContext.ErrorCount == 0)
+                {
+                    CheckMoverProcModifiesClause(node);
+                }
                 yieldingProc = null;
                 return ret;
             }

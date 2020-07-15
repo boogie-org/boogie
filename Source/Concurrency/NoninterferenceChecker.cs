@@ -46,14 +46,14 @@ namespace Microsoft.Boogie
             }
 
             var linearPermissionInstrumentation = new LinearPermissionInstrumentation(civlTypeChecker, linearTypeChecker, layerNum, absyMap, domainNameToHoleVar, localVarMap);
-            List<Tuple<List<Cmd>, List<PredicateCmd>>> yieldInfo = null;
+            List<YieldInfo> yieldInfos = null;
             if (decl is Implementation impl)
             {
-                yieldInfo = CollectYields(civlTypeChecker, absyMap, layerNum, impl).Select(kv => new Tuple<List<Cmd>, List<PredicateCmd>>(linearPermissionInstrumentation.DisjointnessAssumeCmds(kv.Key, false), kv.Value)).ToList();
+                yieldInfos = CollectYields(civlTypeChecker, absyMap, layerNum, impl).Select(kv => new YieldInfo(linearPermissionInstrumentation.DisjointnessAssumeCmds(kv.Key, false), kv.Value)).ToList();
             }
             else if (decl is Procedure proc)
             {
-                yieldInfo = new List<Tuple<List<Cmd>, List<PredicateCmd>>>();
+                yieldInfos = new List<YieldInfo>();
                 if (civlTypeChecker.procToYieldInvariant.ContainsKey(proc))
                 {
                     if (proc.Requires.Count > 0)
@@ -63,7 +63,7 @@ namespace Microsoft.Boogie
                             requires.Free
                                 ? (PredicateCmd) new AssumeCmd(requires.tok, requires.Condition)
                                 : (PredicateCmd) new AssertCmd(requires.tok, requires.Condition)).ToList();
-                        yieldInfo.Add(new Tuple<List<Cmd>, List<PredicateCmd>>(disjointnessCmds, yieldPredicates));
+                        yieldInfos.Add(new YieldInfo(disjointnessCmds, yieldPredicates));
                     }
                 }
                 else
@@ -76,8 +76,7 @@ namespace Microsoft.Boogie
                             requires.Free
                                 ? (PredicateCmd) new AssumeCmd(requires.tok, requires.Condition)
                                 : (PredicateCmd) new AssertCmd(requires.tok, requires.Condition)).ToList();
-                        yieldInfo.Add(
-                            new Tuple<List<Cmd>, List<PredicateCmd>>(entryDisjointnessCmds, entryYieldPredicates));
+                        yieldInfos.Add(new YieldInfo(entryDisjointnessCmds, entryYieldPredicates));
                     }
                     if (proc.Ensures.Count > 0)
                     {
@@ -87,14 +86,19 @@ namespace Microsoft.Boogie
                             ensures.Free
                                 ? (PredicateCmd) new AssumeCmd(ensures.tok, ensures.Condition)
                                 : (PredicateCmd) new AssertCmd(ensures.tok, ensures.Condition)).ToList();
-                        yieldInfo.Add(
-                            new Tuple<List<Cmd>, List<PredicateCmd>>(exitDisjointnessCmds, exitYieldPredicates));
+                        yieldInfos.Add(new YieldInfo(exitDisjointnessCmds, exitYieldPredicates));
                     }
                 }
             }
             else
             {
                 Debug.Assert(false);
+            }
+
+            var filteredYieldInfos = yieldInfos.Where(info => info.invariantCmds.Any(predCmd => new GlobalAccessChecker().AccessesGlobal(predCmd.Expr)));
+            if (filteredYieldInfos.Count() == 0)
+            {
+                return new List<Declaration>();
             }
             
             Substitution assumeSubst = Substituter.SubstitutionFromHashtable(assumeMap);
@@ -108,18 +112,15 @@ namespace Microsoft.Boogie
             labelTargets.Add(noninterferenceCheckerBlock);
             noninterferenceCheckerBlocks.Add(noninterferenceCheckerBlock);
             int yieldCount = 0;
-            foreach (var kv in yieldInfo)
+            foreach (var kv in filteredYieldInfos)
             {
-                var disjointnessCmds = kv.Item1;
-                var yieldPredicates = kv.Item2;
-                var newCmds = new List<Cmd>(disjointnessCmds);
-                foreach (var predCmd in yieldPredicates)
+                var newCmds = new List<Cmd>(kv.disjointnessCmds);
+                foreach (var predCmd in kv.invariantCmds)
                 {
                     var newExpr = Substituter.ApplyReplacingOldExprs(assumeSubst, oldSubst, predCmd.Expr);
                     newCmds.Add(new AssumeCmd(Token.NoToken, newExpr));
                 }
-
-                foreach (var predCmd in yieldPredicates)
+                foreach (var predCmd in kv.invariantCmds)
                 {
                     if (predCmd is AssertCmd)
                     {
@@ -129,7 +130,6 @@ namespace Microsoft.Boogie
                         newCmds.Add(assertCmd);
                     }
                 }
-
                 newCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
                 noninterferenceCheckerBlock = new Block(Token.NoToken, "L" + yieldCount++, newCmds, new ReturnCmd(Token.NoToken));
                 labels.Add(noninterferenceCheckerBlock.Label);
@@ -211,6 +211,53 @@ namespace Microsoft.Boogie
         {
             return new LocalVariable(Token.NoToken,
                 new TypedIdent(Token.NoToken, $"civl_local_old_{v.Name}", v.TypedIdent.Type));
+        }
+    }
+
+    class YieldInfo
+    {
+        public List<Cmd> disjointnessCmds;
+        public List<PredicateCmd> invariantCmds;
+
+        public YieldInfo(List<Cmd> disjointnessCmds, List<PredicateCmd> invariantCmds)
+        {
+            this.disjointnessCmds = disjointnessCmds;
+            this.invariantCmds = invariantCmds;
+        }
+    }
+    
+    class GlobalAccessChecker : ReadOnlyVisitor
+    {
+        private bool accessesGlobal;
+        private int insideOldExpr;
+        
+        public GlobalAccessChecker()
+        {
+            this.accessesGlobal = false;
+            this.insideOldExpr = 0;
+        }
+
+        public bool AccessesGlobal(Expr expr)
+        {
+            Visit(expr);
+            return accessesGlobal;
+        }
+
+        public override Expr VisitOldExpr(OldExpr node)
+        {
+            insideOldExpr++;
+            base.VisitOldExpr(node);
+            insideOldExpr--;
+            return node;
+        }
+
+        public override Expr VisitIdentifierExpr(IdentifierExpr node)
+        {
+            if (node.Decl is GlobalVariable && insideOldExpr == 0)
+            {
+                accessesGlobal = true;
+            }
+            return node;
         }
     }
 }
