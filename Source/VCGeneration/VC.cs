@@ -1960,7 +1960,7 @@ namespace VC {
       protected VerifierCallback/*!*/ callback;
       protected ModelViewInfo MvInfo;
       internal string resourceExceededMessage;
-      static System.IO.TextWriter modelWriter;
+      
       [ContractInvariantMethod]
       void ObjectInvariant() {
         Contract.Invariant(gotoCmdOrigins != null);
@@ -1970,17 +1970,6 @@ namespace VC {
         Contract.Invariant(callback != null);
         Contract.Invariant(context != null);
         Contract.Invariant(program != null);
-      }
-
-
-      public static TextWriter ModelWriter {
-        get {
-          Contract.Ensures(Contract.Result<TextWriter>() != null);
-
-          if (ErrorReporter.modelWriter == null)
-            ErrorReporter.modelWriter = CommandLineOptions.Clo.PrintErrorModelFile == null ? Console.Out : new StreamWriter(CommandLineOptions.Clo.PrintErrorModelFile, false);
-          return ErrorReporter.modelWriter;
-        }
       }
 
       protected ProverContext/*!*/ context;
@@ -2023,17 +2012,6 @@ namespace VC {
       }
 
       public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model, ProverInterface.Outcome proverOutcome) {
-        //Contract.Requires(cce.NonNullElements(labels));
-        if (CommandLineOptions.Clo.PrintErrorModel >= 1 && model != null) {
-          if (VC.ConditionGeneration.errorModelList != null)
-          {
-            VC.ConditionGeneration.errorModelList.Add(model);
-          }
-          
-          model.Write(ErrorReporter.ModelWriter);
-          ErrorReporter.ModelWriter.Flush();
-        }
-
         // no counter examples reported.
         if (labels.Count == 0) return;
 

@@ -2104,11 +2104,6 @@ namespace VC {
       }
 
       public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model, ProverInterface.Outcome proverOutcome) {
-        if (CommandLineOptions.Clo.PrintErrorModel >= 1 && model != null) {
-          model.Write(ErrorReporter.ModelWriter);
-          ErrorReporter.ModelWriter.Flush();
-        }
-
         // Timeout?
         if (proverOutcome != ProverInterface.Outcome.Invalid)
             return;

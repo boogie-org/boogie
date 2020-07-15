@@ -450,6 +450,21 @@ namespace Microsoft.Boogie
 
     static ThreadTaskScheduler Scheduler = new ThreadTaskScheduler(16 * 1024 * 1024);
 
+    private static TextWriter modelWriter = null;
+    public static TextWriter ModelWriter {
+      get {
+        if (CommandLineOptions.Clo.PrintErrorModelFile == null)
+        {
+          return null;
+        }
+        if (ExecutionEngine.modelWriter == null)
+        {
+          ExecutionEngine.modelWriter = new StreamWriter(CommandLineOptions.Clo.PrintErrorModelFile, false);
+        }
+        return ExecutionEngine.modelWriter;
+      }
+    }
+    
     public static void ProcessFiles(List<string> fileNames, bool lookForSnapshots = true, string programId = null)
     {
       Contract.Requires(cce.NonNullElements(fileNames));
@@ -1677,6 +1692,10 @@ namespace Microsoft.Boogie
           {
             errorInfo.Out.WriteLine("Execution trace:");
             error.Print(4, errorInfo.Out, b => { errorInfo.AddAuxInfo(b.tok, b.Label, "Execution trace"); });
+            if (CommandLineOptions.Clo.PrintErrorModel >= 1 && error.Model != null)
+            {
+              error.Model.Write(ExecutionEngine.ModelWriter == null ? errorInfo.Out : ExecutionEngine.ModelWriter);
+            }
           }
           if (CommandLineOptions.Clo.ModelViewFile != null)
           {
