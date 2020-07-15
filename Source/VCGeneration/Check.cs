@@ -382,6 +382,7 @@ namespace Microsoft.Boogie {
       
       thmProver.Reset(gen);
       SetTimeout();
+      SetRlimit();
       proverStart = DateTime.UtcNow;
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy

@@ -415,7 +415,7 @@ namespace Microsoft.Boogie.SMTLib
 
         // Set produce-unsat-cores last. It seems there's a bug in Z3 where if we set it earlier its value
         // gets reset by other set-option commands ( https://z3.codeplex.com/workitem/188 )
-                if (CommandLineOptions.Clo.PrintNecessaryAssumes || CommandLineOptions.Clo.EnableUnSatCoreExtract == 1 ||(CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini)))
+        if (CommandLineOptions.Clo.PrintNecessaryAssumes || CommandLineOptions.Clo.EnableUnSatCoreExtract == 1 ||(CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini)))
         {
           SendCommon("(set-option :produce-unsat-cores true)");
           this.usingUnsatCore = true;
@@ -2372,18 +2372,24 @@ namespace Microsoft.Boogie.SMTLib
       if (ms < 0) {
           throw new ArgumentOutOfRangeException ("ms must be >= 0");
       }
+
       options.TimeLimit = ms;
+      if (options.Solver == SolverKind.Z3) {
+        var name = Z3.TimeoutOption;
+        var value = ms.ToString();
+        options.SmtOptions.RemoveAll(ov => ov.Option == name);
+        options.AddSmtOption(name, value);
+      }
     }
 
     public override void SetRlimit(int limit)
     {
+      options.ResourceLimit = limit;
       if (options.Solver == SolverKind.Z3) {
         var name = Z3.RlimitOption;
         var value = limit.ToString();
-        options.ResourceLimit = limit;
         options.SmtOptions.RemoveAll(ov => ov.Option == name);
         options.AddSmtOption(name, value);
-        SendThisVC(string.Format("(set-option :{0} {1})", name, value));
       }
     }
 
