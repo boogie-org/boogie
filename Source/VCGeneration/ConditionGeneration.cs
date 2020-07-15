@@ -635,8 +635,6 @@ namespace VC {
     protected string/*?*/ logFilePath;
     protected bool appendLogFile;
 
-    public static List<Model> errorModelList;
-
     public ConditionGeneration(Program p, List<Checker> checkers) {
       Contract.Requires(p != null && checkers != null && cce.NonNullElements(checkers));
       program = p;
@@ -679,19 +677,11 @@ namespace VC {
     /// each counterexample consisting of an array of labels.
     /// </summary>
     /// <param name="impl"></param>
-    public Outcome VerifyImplementation(Implementation impl, out List<Counterexample> errors, out List<Model> errorsModel)
+    public Outcome VerifyImplementation(Implementation impl, out List<Counterexample> errors)
     {
         Contract.Ensures(Contract.Result<Outcome>() != Outcome.Errors || Contract.ValueAtReturn(out errors) != null);
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-        List<Counterexample> errorsOut;
-
-        Outcome outcome;
-        errorModelList = new List<Model>();
-        outcome = VerifyImplementation(impl, out errorsOut);
-        errors = errorsOut;
-        errorsModel = errorModelList;
-
-        return outcome;
+        return VerifyImplementation(impl, out errors);
     }
 
     public abstract Outcome VerifyImplementation(Implementation impl, VerifierCallback callback);
