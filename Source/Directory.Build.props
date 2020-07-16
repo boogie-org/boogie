@@ -12,5 +12,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
+
+  <!-- Use StyleCop to check for consistent code formatting -->
+  <ItemGroup Condition="$(MSBuildProjectName.Contains('-NetCore'))">
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.164" />
+  </ItemGroup>
   
 </Project>
