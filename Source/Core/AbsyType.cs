@@ -7,7 +7,8 @@
 // BoogiePL - Absy.cs
 //---------------------------------------------------------------------------------------------
 
-namespace Microsoft.Boogie {
+namespace Microsoft.Boogie
+{
   using System;
   using System.Collections;
   using System.Diagnostics;
@@ -20,9 +21,11 @@ namespace Microsoft.Boogie {
   //---------------------------------------------------------------------
   // Types
   [ContractClass(typeof(TypeContracts))]
-  public abstract class Type : Absy {
-    public Type(IToken/*!*/ token)
-      : base(token) {
+  public abstract class Type : Absy
+  {
+    public Type(IToken /*!*/ token)
+      : base(token)
+    {
       Contract.Requires(token != null);
     }
 
@@ -33,35 +36,40 @@ namespace Microsoft.Boogie {
     // a type in which all bound variables have been replaced with new
     // variables, whereas free variables have not changed
 
-    public override Absy Clone() {
+    public override Absy Clone()
+    {
       Contract.Ensures(Contract.Result<Absy>() != null);
-      return this.Clone(new Dictionary<TypeVariable/*!*/, TypeVariable/*!*/>());
+      return this.Clone(new Dictionary<TypeVariable /*!*/, TypeVariable /*!*/>());
     }
 
-    public abstract Type/*!*/ Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap);
+    public abstract Type /*!*/ Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap);
 
     /// <summary>
     /// Clones the type, but only syntactically.  Anything resolved in the source
     /// type is left unresolved (that is, with just the name) in the destination type.
     /// </summary>
-    public abstract Type/*!*/ CloneUnresolved();
+    public abstract Type /*!*/ CloneUnresolved();
 
     //-----------  Linearisation  ----------------------------------
 
-    public void Emit(TokenTextWriter stream) {
+    public void Emit(TokenTextWriter stream)
+    {
       Contract.Requires(stream != null);
       this.Emit(stream, 0);
     }
 
-    public abstract void Emit(TokenTextWriter/*!*/ stream, int contextBindingStrength);
+    public abstract void Emit(TokenTextWriter /*!*/ stream, int contextBindingStrength);
 
     [Pure]
-    public override string ToString() {
+    public override string ToString()
+    {
       Contract.Ensures(Contract.Result<string>() != null);
       System.IO.StringWriter buffer = new System.IO.StringWriter();
-      using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/false, /*pretty=*/ false)) {
+      using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/false, /*pretty=*/ false))
+      {
         this.Emit(stream);
       }
+
       return buffer.ToString();
     }
 
@@ -69,24 +77,27 @@ namespace Microsoft.Boogie {
 
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
-    public override bool Equals(object that) {
+    public override bool Equals(object that)
+    {
       if (ReferenceEquals(this, that))
         return true;
       Type thatType = that as Type;
       return thatType != null && this.Equals(thatType,
-                                             new List<TypeVariable>(),
-                                             new List<TypeVariable>());
+        new List<TypeVariable>(),
+        new List<TypeVariable>());
     }
 
     [Pure]
-    public abstract bool Equals(Type/*!*/ that,
-                                List<TypeVariable>/*!*/ thisBoundVariables,
-                                List<TypeVariable>/*!*/ thatBoundVariables);
+    public abstract bool Equals(Type /*!*/ that,
+      List<TypeVariable> /*!*/ thisBoundVariables,
+      List<TypeVariable> /*!*/ thatBoundVariables);
 
     // used to skip leading type annotations (subexpressions of the
     // resulting type might still contain annotations)
-    internal virtual Type/*!*/ Expanded {
-      get {
+    internal virtual Type /*!*/ Expanded
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<Type>() != null);
 
         return this;
@@ -100,26 +111,28 @@ namespace Microsoft.Boogie {
     /// If not possible, return false (which may have added some partial constraints).
     /// No error is printed.
     /// </summary>
-    public bool Unify(Type that) {
+    public bool Unify(Type that)
+    {
       Contract.Requires(that != null);
-      return Unify(that, new List<TypeVariable>(), new Dictionary<TypeVariable/*!*/, Type/*!*/>());
+      return Unify(that, new List<TypeVariable>(), new Dictionary<TypeVariable /*!*/, Type /*!*/>());
     }
 
-    public abstract bool Unify(Type/*!*/ that,
-                               List<TypeVariable>/*!*/ unifiableVariables,
+    public abstract bool Unify(Type /*!*/ that,
+      List<TypeVariable> /*!*/ unifiableVariables,
       // an idempotent substitution that describes the
       // unification result up to a certain point
-                               IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier);
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ unifier);
 
 
     [Pure]
-    public static bool IsIdempotent(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier) {
+    public static bool IsIdempotent(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ unifier)
+    {
       Contract.Requires(cce.NonNullDictionaryAndValues(unifier));
       return unifier.Values.All(val => val.FreeVariables.All(var => !unifier.ContainsKey(var)));
     }
 
 
-#if OLD_UNIFICATION    
+#if OLD_UNIFICATION
     // Compute a most general unification of two types. null is returned if
     // no such unifier exists. The unifier is not allowed to subtitute any
     // type variables other than the ones in "unifiableVariables"
@@ -165,51 +178,52 @@ namespace Microsoft.Boogie {
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
-    public abstract Type/*!*/ Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst);
+    public abstract Type /*!*/ Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst);
 
     //-----------  Hashcodes  ----------------------------------
 
     // Hack to be able to access the hashcode of superclasses further up
     // (from the subclasses of this class)
     [Pure]
-    protected int GetBaseHashCode() {
+    protected int GetBaseHashCode()
+    {
       return base.GetHashCode();
     }
 
     [Pure]
-    public override int GetHashCode() {
+    public override int GetHashCode()
+    {
       return this.GetHashCode(new List<TypeVariable>());
     }
 
     [Pure]
-    public abstract int GetHashCode(List<TypeVariable>/*!*/ boundVariables);
+    public abstract int GetHashCode(List<TypeVariable> /*!*/ boundVariables);
 
     //-----------  Resolution  ----------------------------------
 
-    public override void Resolve(ResolutionContext rc) {
+    public override void Resolve(ResolutionContext rc)
+    {
       //Contract.Requires(rc != null);
       System.Diagnostics.Debug.Fail("Type.Resolve should never be called." +
                                     " Use Type.ResolveType instead");
     }
 
-    public abstract Type/*!*/ ResolveType(ResolutionContext/*!*/ rc);
+    public abstract Type /*!*/ ResolveType(ResolutionContext /*!*/ rc);
 
-    public override void Typecheck(TypecheckingContext tc) {
+    public override void Typecheck(TypecheckingContext tc)
+    {
       //Contract.Requires(tc != null);
       System.Diagnostics.Debug.Fail("Type.Typecheck should never be called");
     }
 
     // determine the free variables in a type, in the order in which the variables occur
-    public abstract List<TypeVariable>/*!*/ FreeVariables {
-      get;
-    }
+    public abstract List<TypeVariable> /*!*/ FreeVariables { get; }
 
     // determine the free type proxies in a type, in the order in which they occur
-    public abstract List<TypeProxy/*!*/>/*!*/ FreeProxies {
-      get;
-    }
+    public abstract List<TypeProxy /*!*/> /*!*/ FreeProxies { get; }
 
-    protected static void AppendWithoutDups<A>(List<A> a, List<A> b) {
+    protected static void AppendWithoutDups<A>(List<A> a, List<A> b)
+    {
       Contract.Requires(b != null);
       Contract.Requires(a != null);
       foreach (A x in b)
@@ -217,10 +231,9 @@ namespace Microsoft.Boogie {
           a.Add(x);
     }
 
-    public bool IsClosed {
-      get {
-        return FreeVariables.Count == 0;
-      }
+    public bool IsClosed
+    {
+      get { return FreeVariables.Count == 0; }
     }
 
     //-----------  Getters/Issers  ----------------------------------
@@ -229,54 +242,55 @@ namespace Microsoft.Boogie {
     // C# "is" operator, because they handle type synonym annotations and
     // type proxies correctly
 
-    public virtual bool IsBasic {
-      get {
-        return false;
-      }
-    }
-    public virtual bool IsInt {
-      get {
-        return false;
-      }
-    }
-    public virtual bool IsReal {
-      get {
-        return false;
-      }
-    }
-    public virtual bool IsFloat {
-      get {
-        return false;
-      }
-    }
-    public virtual bool IsBool {
-      get {
-        return false;
-      }
-    }
-    public virtual bool IsRMode {
-      get {
-        return false;
-      }
-    }
-    public virtual bool IsString {
-      get {
-        return false;
-      }
-    }
-    public virtual bool IsRegEx {
-      get {
-        return false;
-      }
+    public virtual bool IsBasic
+    {
+      get { return false; }
     }
 
-    public virtual bool IsVariable {
-      get {
-        return false;
-      }
+    public virtual bool IsInt
+    {
+      get { return false; }
     }
-    public virtual TypeVariable/*!*/ AsVariable {
-      get {
+
+    public virtual bool IsReal
+    {
+      get { return false; }
+    }
+
+    public virtual bool IsFloat
+    {
+      get { return false; }
+    }
+
+    public virtual bool IsBool
+    {
+      get { return false; }
+    }
+
+    public virtual bool IsRMode
+    {
+      get { return false; }
+    }
+
+    public virtual bool IsString
+    {
+      get { return false; }
+    }
+
+    public virtual bool IsRegEx
+    {
+      get { return false; }
+    }
+
+    public virtual bool IsVariable
+    {
+      get { return false; }
+    }
+
+    public virtual TypeVariable /*!*/ AsVariable
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<TypeVariable>() != null);
 
         {
@@ -285,13 +299,16 @@ namespace Microsoft.Boogie {
         } // Type.AsVariable should never be called
       }
     }
-    public virtual bool IsCtor {
-      get {
-        return false;
-      }
+
+    public virtual bool IsCtor
+    {
+      get { return false; }
     }
-    public virtual CtorType/*!*/ AsCtor {
-      get {
+
+    public virtual CtorType /*!*/ AsCtor
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<CtorType>() != null);
 
         {
@@ -300,13 +317,16 @@ namespace Microsoft.Boogie {
         } // Type.AsCtor should never be called
       }
     }
-    public virtual bool IsMap {
-      get {
-        return false;
-      }
+
+    public virtual bool IsMap
+    {
+      get { return false; }
     }
-    public virtual MapType/*!*/ AsMap {
-      get {
+
+    public virtual MapType /*!*/ AsMap
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<MapType>() != null);
 
         {
@@ -315,22 +335,27 @@ namespace Microsoft.Boogie {
         } // Type.AsMap should never be called
       }
     }
-    public virtual int MapArity {
-      get {
 
+    public virtual int MapArity
+    {
+      get
+      {
         {
           Contract.Assert(false);
           throw new cce.UnreachableException();
         } // Type.MapArity should never be called
       }
     }
-    public virtual bool IsUnresolved {
-      get {
-        return false;
-      }
+
+    public virtual bool IsUnresolved
+    {
+      get { return false; }
     }
-    public virtual UnresolvedTypeIdentifier/*!*/ AsUnresolved {
-      get {
+
+    public virtual UnresolvedTypeIdentifier /*!*/ AsUnresolved
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<UnresolvedTypeIdentifier>() != null);
 
         {
@@ -340,11 +365,11 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public virtual bool isFloat {
-      get {
-        return false;
-      }
+    public virtual bool isFloat
+    {
+      get { return false; }
     }
+
     public virtual int FloatExponent
     {
       get
@@ -355,21 +380,27 @@ namespace Microsoft.Boogie {
         } // Type.FloatExponent should never be called
       }
     }
-    public virtual int FloatSignificand {
-      get {
+
+    public virtual int FloatSignificand
+    {
+      get
+      {
         {
           Contract.Assert(false);
           throw new cce.UnreachableException();
         } // Type.FloatSignificand should never be called
       }
     }
-    public virtual bool IsBv {
-      get {
-        return false;
-      }
+
+    public virtual bool IsBv
+    {
+      get { return false; }
     }
-    public virtual int BvBits {
-      get {
+
+    public virtual int BvBits
+    {
+      get
+      {
         {
           Contract.Assert(false);
           throw new cce.UnreachableException();
@@ -377,34 +408,55 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public static readonly Type/*!*/ Int = new BasicType(SimpleType.Int);
-    public static readonly Type/*!*/ Real = new BasicType(SimpleType.Real);
-    public static readonly Type/*!*/ Bool = new BasicType(SimpleType.Bool);
-    public static readonly Type/*!*/ RMode = new BasicType(SimpleType.RMode);
-    public static readonly Type/*!*/ String = new BasicType(SimpleType.String);
-    public static readonly Type/*!*/ RegEx = new BasicType(SimpleType.RegEx);
+    public static readonly Type /*!*/
+      Int = new BasicType(SimpleType.Int);
+
+    public static readonly Type /*!*/
+      Real = new BasicType(SimpleType.Real);
+
+    public static readonly Type /*!*/
+      Bool = new BasicType(SimpleType.Bool);
+
+    public static readonly Type /*!*/
+      RMode = new BasicType(SimpleType.RMode);
+
+    public static readonly Type /*!*/
+      String = new BasicType(SimpleType.String);
+
+    public static readonly Type /*!*/
+      RegEx = new BasicType(SimpleType.RegEx);
+
     private static BvType[] bvtypeCache;
 
-    static public BvType GetBvType(int sz) {
+    static public BvType GetBvType(int sz)
+    {
       Contract.Requires(0 <= sz);
       Contract.Ensures(Contract.Result<BvType>() != null);
 
-      if (bvtypeCache == null) {
+      if (bvtypeCache == null)
+      {
         bvtypeCache = new BvType[128];
       }
-      if (sz < bvtypeCache.Length) {
+
+      if (sz < bvtypeCache.Length)
+      {
         BvType t = bvtypeCache[sz];
-        if (t == null) {
+        if (t == null)
+        {
           t = new BvType(sz);
           bvtypeCache[sz] = t;
         }
+
         return t;
-      } else {
+      }
+      else
+      {
         return new BvType(sz);
       }
     }
 
-    static public FloatType GetFloatType(int sig, int exp) {
+    static public FloatType GetFloatType(int sig, int exp)
+    {
       Contract.Requires(0 <= exp);
       Contract.Requires(0 <= sig);
       Contract.Ensures(Contract.Result<FloatType>() != null);
@@ -488,14 +540,15 @@ namespace Microsoft.Boogie {
       return subst;
     }
 #else
-    public static IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/
-                  MatchArgumentTypes(List<TypeVariable>/*!*/ typeParams,
-                                     List<Type>/*!*/ formalArgs,
-                                     IList<Expr>/*!*/ actualArgs,
-                                     List<Type> formalOuts,
-                                     List<IdentifierExpr> actualOuts,
-                                     string/*!*/ opName,
-                                     TypecheckingContext/*!*/ tc) {
+    public static IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+      MatchArgumentTypes(List<TypeVariable> /*!*/ typeParams,
+        List<Type> /*!*/ formalArgs,
+        IList<Expr> /*!*/ actualArgs,
+        List<Type> formalOuts,
+        List<IdentifierExpr> actualOuts,
+        string /*!*/ opName,
+        TypecheckingContext /*!*/ tc)
+    {
       Contract.Requires(typeParams != null);
       Contract.Requires(formalArgs != null);
       Contract.Requires(actualArgs != null);
@@ -504,48 +557,55 @@ namespace Microsoft.Boogie {
       Contract.Requires(formalArgs.Count == actualArgs.Count);
       Contract.Requires((formalOuts == null) == (actualOuts == null));
       Contract.Requires(formalOuts == null || formalOuts.Count == cce.NonNull(actualOuts).Count);
-      Contract.Requires(tc == null || opName != null);//Redundant
+      Contract.Requires(tc == null || opName != null); //Redundant
       Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
 
       // requires "actualArgs" and "actualOuts" to have been type checked
 
-      Dictionary<TypeVariable/*!*/, Type/*!*/> subst = new Dictionary<TypeVariable/*!*/, Type/*!*/>();
-      foreach (TypeVariable/*!*/ tv in typeParams) {
+      Dictionary<TypeVariable /*!*/, Type /*!*/> subst = new Dictionary<TypeVariable /*!*/, Type /*!*/>();
+      foreach (TypeVariable /*!*/ tv in typeParams)
+      {
         Contract.Assert(tv != null);
         TypeProxy proxy = new TypeProxy(Token.NoToken, tv.Name);
         subst.Add(tv, proxy);
       }
 
-      for (int i = 0; i < formalArgs.Count; i++) {
+      for (int i = 0; i < formalArgs.Count; i++)
+      {
         Type formal = formalArgs[i].Substitute(subst);
         Type actual = cce.NonNull(cce.NonNull(actualArgs[i]).Type);
         // if the type variables to be matched occur in the actual
         // argument types, something has gone very wrong
-        Contract.Assert(Contract.ForAll(0, typeParams.Count, index => !actual.FreeVariables.Contains(typeParams[index])));
+        Contract.Assert(
+          Contract.ForAll(0, typeParams.Count, index => !actual.FreeVariables.Contains(typeParams[index])));
 
-        if (!formal.Unify(actual)) {
-          Contract.Assume(tc != null);  // caller expected no errors
-          Contract.Assert(opName != null);  // follows from precondition
+        if (!formal.Unify(actual))
+        {
+          Contract.Assume(tc != null); // caller expected no errors
+          Contract.Assert(opName != null); // follows from precondition
           tc.Error(cce.NonNull(actualArgs[i]),
-                   "invalid type for argument {0} in {1}: {2} (expected: {3})",
-                   i, opName, actual, formalArgs[i]);
+            "invalid type for argument {0} in {1}: {2} (expected: {3})",
+            i, opName, actual, formalArgs[i]);
         }
       }
 
-      if (formalOuts != null) {
-        for (int i = 0; i < formalOuts.Count; ++i) {
+      if (formalOuts != null)
+      {
+        for (int i = 0; i < formalOuts.Count; ++i)
+        {
           Type formal = formalOuts[i].Substitute(subst);
           Type actual = cce.NonNull(cce.NonNull(actualOuts)[i].Type);
           // if the type variables to be matched occur in the actual
           // argument types, something has gone very wrong
           Contract.Assert(Contract.ForAll(0, typeParams.Count, var => !actual.FreeVariables.Contains(typeParams[var])));
 
-          if (!formal.Unify(actual)) {
-            Contract.Assume(tc != null);  // caller expected no errors
-            Contract.Assert(opName != null);  // follows from precondition
+          if (!formal.Unify(actual))
+          {
+            Contract.Assume(tc != null); // caller expected no errors
+            Contract.Assert(opName != null); // follows from precondition
             tc.Error(actualOuts[i],
-                     "invalid type for out-parameter {0} in {1}: {2} (expected: {3})",
-                     i, opName, actual, formal);
+              "invalid type for out-parameter {0} in {1}: {2} (expected: {3})",
+              i, opName, actual, formal);
           }
         }
       }
@@ -558,35 +618,39 @@ namespace Microsoft.Boogie {
     //------------  on concrete types, substitute the result into the
     //------------  result type. Null is returned for type errors
 
-    public static List<Type> CheckArgumentTypes(List<TypeVariable>/*!*/ typeParams,
-                                             out List<Type/*!*/>/*!*/ actualTypeParams,
-                                             List<Type>/*!*/ formalIns,
-                                             IList<Expr>/*!*/ actualIns,
-                                             List<Type>/*!*/ formalOuts,
-                                             List<IdentifierExpr> actualOuts,
-                                             IToken/*!*/ typeCheckingSubject,
-                                             string/*!*/ opName,
-                                             TypecheckingContext/*!*/ tc)
+    public static List<Type> CheckArgumentTypes(List<TypeVariable> /*!*/ typeParams,
+        out List<Type /*!*/> /*!*/ actualTypeParams,
+        List<Type> /*!*/ formalIns,
+        IList<Expr> /*!*/ actualIns,
+        List<Type> /*!*/ formalOuts,
+        List<IdentifierExpr> actualOuts,
+        IToken /*!*/ typeCheckingSubject,
+        string /*!*/ opName,
+        TypecheckingContext /*!*/ tc)
       // requires "actualIns" and "actualOuts" to have been type checked
     {
       Contract.Requires(typeParams != null);
-      
+
       Contract.Requires(formalIns != null);
       Contract.Requires(formalOuts != null);
       Contract.Requires(actualIns != null);
       Contract.Requires(typeCheckingSubject != null);
-      Contract.Requires(opName != null);Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out actualTypeParams)));
-      actualTypeParams = new List<Type/*!*/>();
+      Contract.Requires(opName != null);
+      Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out actualTypeParams)));
+      actualTypeParams = new List<Type /*!*/>();
 
-      if (formalIns.Count != actualIns.Count) {
+      if (formalIns.Count != actualIns.Count)
+      {
         tc.Error(typeCheckingSubject, "wrong number of arguments in {0}: {1}",
-                 opName, actualIns.Count);
+          opName, actualIns.Count);
         // if there are no type parameters, we can still return the result
         // type and hope that the type checking proceeds
         return typeParams.Count == 0 ? formalOuts : null;
-      } else if (actualOuts != null && formalOuts.Count != actualOuts.Count) {
+      }
+      else if (actualOuts != null && formalOuts.Count != actualOuts.Count)
+      {
         tc.Error(typeCheckingSubject, "wrong number of result variables in {0}: {1}",
-                 opName, actualOuts.Count);
+          opName, actualOuts.Count);
         // if there are no type parameters, we can still return the result
         // type and hope that the type checking proceeds
         actualTypeParams = new List<Type>();
@@ -594,22 +658,27 @@ namespace Microsoft.Boogie {
       }
 
       int previousErrorCount = tc.ErrorCount;
-      IDictionary<TypeVariable/*!*/, Type/*!*/> subst =
+      IDictionary<TypeVariable /*!*/, Type /*!*/> subst =
         MatchArgumentTypes(typeParams, formalIns, actualIns,
-                           actualOuts != null ? formalOuts : null, actualOuts, opName, tc);
+          actualOuts != null ? formalOuts : null, actualOuts, opName, tc);
       Contract.Assert(cce.NonNullDictionaryAndValues(subst));
-      foreach (TypeVariable/*!*/ var in typeParams) {
+      foreach (TypeVariable /*!*/ var in typeParams)
+      {
         Contract.Assert(var != null);
         actualTypeParams.Add(subst[var]);
       }
 
-      List<Type>/*!*/ actualResults = new List<Type>();
-      foreach (Type/*!*/ t in formalOuts) {
+      List<Type> /*!*/
+        actualResults = new List<Type>();
+      foreach (Type /*!*/ t in formalOuts)
+      {
         Contract.Assert(t != null);
         actualResults.Add(t.Substitute(subst));
       }
+
       List<TypeVariable> resultFreeVars = FreeVariablesIn(actualResults);
-      if (previousErrorCount != tc.ErrorCount) {
+      if (previousErrorCount != tc.ErrorCount)
+      {
         // errors occured when matching the formal arguments
         // in case we have been able to substitute all type parameters,
         // we can still return the result type and hope that the
@@ -630,24 +699,28 @@ namespace Microsoft.Boogie {
 
     // about the same as Type.CheckArgumentTypes, but without
     // detailed error reports
-    public static Type/*!*/ InferValueType(List<TypeVariable>/*!*/ typeParams,
-                                       List<Type>/*!*/ formalArgs,
-                                       Type/*!*/ formalResult,
-                                       List<Type>/*!*/ actualArgs) {
+    public static Type /*!*/ InferValueType(List<TypeVariable> /*!*/ typeParams,
+      List<Type> /*!*/ formalArgs,
+      Type /*!*/ formalResult,
+      List<Type> /*!*/ actualArgs)
+    {
       Contract.Requires(typeParams != null);
       Contract.Requires(formalArgs != null);
       Contract.Requires(formalResult != null);
       Contract.Requires(actualArgs != null);
       Contract.Ensures(Contract.Result<Type>() != null);
 
-      IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst =
-        InferTypeParameters(typeParams, formalArgs, actualArgs);
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+        subst =
+          InferTypeParameters(typeParams, formalArgs, actualArgs);
       Contract.Assert(cce.NonNullDictionaryAndValues(subst));
 
-      Type/*!*/ res = formalResult.Substitute(subst);
+      Type /*!*/
+        res = formalResult.Substitute(subst);
       Contract.Assert(res != null);
       // all type parameters have to be substituted with concrete types
-      List<TypeVariable>/*!*/ resFreeVars = res.FreeVariables;
+      List<TypeVariable> /*!*/
+        resFreeVars = res.FreeVariables;
       Contract.Assert(resFreeVars != null);
       Contract.Assert(Contract.ForAll(0, typeParams.Count, var => !resFreeVars.Contains(typeParams[var])));
       return res;
@@ -686,34 +759,41 @@ namespace Microsoft.Boogie {
     /// like Type.CheckArgumentTypes, but assumes no errors
     /// (and only does arguments, not results; and takes actuals as List<Type>, not List<Expr>)
     /// </summary>
-    public static IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/
-                  InferTypeParameters(List<TypeVariable>/*!*/ typeParams,
-                                      List<Type>/*!*/ formalArgs,
-                                      List<Type>/*!*/ actualArgs) {
+    public static IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+      InferTypeParameters(List<TypeVariable> /*!*/ typeParams,
+        List<Type> /*!*/ formalArgs,
+        List<Type> /*!*/ actualArgs)
+    {
       Contract.Requires(typeParams != null);
       Contract.Requires(formalArgs != null);
-      Contract.Requires(actualArgs != null);Contract.Requires(formalArgs.Count == actualArgs.Count);
+      Contract.Requires(actualArgs != null);
+      Contract.Requires(formalArgs.Count == actualArgs.Count);
       Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
 
-      
+
       List<Type> proxies = new List<Type>();
-      Dictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst = new Dictionary<TypeVariable/*!*/, Type/*!*/>();
-      foreach (TypeVariable/*!*/ tv in typeParams) {
+      Dictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+        subst = new Dictionary<TypeVariable /*!*/, Type /*!*/>();
+      foreach (TypeVariable /*!*/ tv in typeParams)
+      {
         Contract.Assert(tv != null);
         TypeProxy proxy = new TypeProxy(Token.NoToken, tv.Name);
         proxies.Add(proxy);
         subst.Add(tv, proxy);
       }
 
-      for (int i = 0; i < formalArgs.Count; i++) {
+      for (int i = 0; i < formalArgs.Count; i++)
+      {
         Type formal = formalArgs[i].Substitute(subst);
         Type actual = actualArgs[i];
         // if the type variables to be matched occur in the actual
         // argument types, something has gone very wrong
-        Contract.Assert(Contract.ForAll(0, typeParams.Count, index => !actual.FreeVariables.Contains(typeParams[index])));
+        Contract.Assert(
+          Contract.ForAll(0, typeParams.Count, index => !actual.FreeVariables.Contains(typeParams[index])));
 
-        if (!formal.Unify(actual)) {
-          Contract.Assume(false);  // caller expected no errors
+        if (!formal.Unify(actual))
+        {
+          Contract.Assume(false); // caller expected no errors
         }
       }
 
@@ -723,10 +803,12 @@ namespace Microsoft.Boogie {
 
     //-----------  Helper methods to deal with bound type variables  ---------------
 
-    public static void EmitOptionalTypeParams(TokenTextWriter stream, List<TypeVariable> typeParams) {
+    public static void EmitOptionalTypeParams(TokenTextWriter stream, List<TypeVariable> typeParams)
+    {
       Contract.Requires(typeParams != null);
       Contract.Requires(stream != null);
-      if (typeParams.Count > 0) {
+      if (typeParams.Count > 0)
+      {
         stream.Write("<");
         typeParams.Emit(stream, ","); // default binding strength of 0 is ok
         stream.Write(">");
@@ -734,26 +816,33 @@ namespace Microsoft.Boogie {
     }
 
     // Sort the type parameters according to the order of occurrence in the argument types
-    public static List<TypeVariable>/*!*/ SortTypeParams(List<TypeVariable>/*!*/ typeParams, List<Type>/*!*/ argumentTypes, Type resultType) {
+    public static List<TypeVariable> /*!*/ SortTypeParams(List<TypeVariable> /*!*/ typeParams,
+      List<Type> /*!*/ argumentTypes, Type resultType)
+    {
       Contract.Requires(typeParams != null);
       Contract.Requires(argumentTypes != null);
       Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
       Contract.Ensures(Contract.Result<List<TypeVariable>>().Count == typeParams.Count);
-      if (typeParams.Count == 0) {
+      if (typeParams.Count == 0)
+      {
         return typeParams;
       }
 
       List<TypeVariable> freeVarsInUse = FreeVariablesIn(argumentTypes);
-      if (resultType != null) {
+      if (resultType != null)
+      {
         freeVarsInUse.AppendWithoutDups(resultType.FreeVariables);
       }
+
       // "freeVarsInUse" is already sorted, but it may contain type variables not in "typeParams".
       // So, project "freeVarsInUse" onto "typeParams":
       List<TypeVariable> sortedTypeParams = new List<TypeVariable>();
-      foreach (TypeVariable/*!*/ var in freeVarsInUse) {
+      foreach (TypeVariable /*!*/ var in freeVarsInUse)
+      {
         Contract.Assert(var != null);
-        if (typeParams.Contains(var)) {
+        if (typeParams.Contains(var))
+        {
           sortedTypeParams.Add(var);
         }
       }
@@ -770,12 +859,13 @@ namespace Microsoft.Boogie {
     // Return true if some type parameters appear only among "moreArgumentTypes" and
     // not in "argumentTypes".
     [Pure]
-    public static bool CheckBoundVariableOccurrences(List<TypeVariable>/*!*/ typeParams,
-                                                     List<Type>/*!*/ argumentTypes,
-                                                     List<Type> moreArgumentTypes,
-                                                     IToken/*!*/ resolutionSubject,
-                                                     string/*!*/ subjectName,
-                                                     ResolutionContext/*!*/ rc) {
+    public static bool CheckBoundVariableOccurrences(List<TypeVariable> /*!*/ typeParams,
+      List<Type> /*!*/ argumentTypes,
+      List<Type> moreArgumentTypes,
+      IToken /*!*/ resolutionSubject,
+      string /*!*/ subjectName,
+      ResolutionContext /*!*/ rc)
+    {
       Contract.Requires(typeParams != null);
       Contract.Requires(argumentTypes != null);
       Contract.Requires(resolutionSubject != null);
@@ -784,75 +874,106 @@ namespace Microsoft.Boogie {
       List<TypeVariable> freeVarsInArgs = FreeVariablesIn(argumentTypes);
       List<TypeVariable> moFreeVarsInArgs = moreArgumentTypes == null ? null : FreeVariablesIn(moreArgumentTypes);
       bool someTypeParamsAppearOnlyAmongMo = false;
-      foreach (TypeVariable/*!*/ var in typeParams) {
+      foreach (TypeVariable /*!*/ var in typeParams)
+      {
         Contract.Assert(var != null);
-        if (rc.LookUpTypeBinder(var.Name) == var)  // avoid to complain twice about variables that are bound multiple times
+        if (rc.LookUpTypeBinder(var.Name) == var
+        ) // avoid to complain twice about variables that are bound multiple times
         {
-          if (freeVarsInArgs.Contains(var)) {
+          if (freeVarsInArgs.Contains(var))
+          {
             // cool
-          } else if (moFreeVarsInArgs != null && moFreeVarsInArgs.Contains(var)) {
+          }
+          else if (moFreeVarsInArgs != null && moFreeVarsInArgs.Contains(var))
+          {
             someTypeParamsAppearOnlyAmongMo = true;
-          } else {
+          }
+          else
+          {
             rc.Error(resolutionSubject,
-                 "type variable must occur in {0}: {1}",
-                 subjectName, var);
+              "type variable must occur in {0}: {1}",
+              subjectName, var);
           }
         }
       }
+
       return someTypeParamsAppearOnlyAmongMo;
     }
 
     [Pure]
-    public static List<TypeVariable> FreeVariablesIn(List<Type> arguments) {
+    public static List<TypeVariable> FreeVariablesIn(List<Type> arguments)
+    {
       Contract.Requires(arguments != null);
       Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
-      List<TypeVariable>/*!*/ res = new List<TypeVariable>();
-      foreach (Type/*!*/ t in arguments) {
+      List<TypeVariable> /*!*/
+        res = new List<TypeVariable>();
+      foreach (Type /*!*/ t in arguments)
+      {
         Contract.Assert(t != null);
         res.AppendWithoutDups(t.FreeVariables);
       }
+
       return res;
     }
   }
-  [ContractClassFor(typeof(Type))]
-  public abstract class TypeContracts : Type {
-    public TypeContracts() :base(null){
 
+  [ContractClassFor(typeof(Type))]
+  public abstract class TypeContracts : Type
+  {
+    public TypeContracts() : base(null)
+    {
     }
-    public override List<TypeProxy> FreeProxies {
-      get {
+
+    public override List<TypeProxy> FreeProxies
+    {
+      get
+      {
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
         throw new NotImplementedException();
       }
     }
-    public override List<TypeVariable> FreeVariables {
-      get {
+
+    public override List<TypeVariable> FreeVariables
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
         throw new NotImplementedException();
       }
     }
-    public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap) {
+
+    public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
+    {
       Contract.Requires(cce.NonNullDictionaryAndValues(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
 
       throw new NotImplementedException();
     }
-    public override Type CloneUnresolved() {
+
+    public override Type CloneUnresolved()
+    {
       Contract.Ensures(Contract.Result<Type>() != null);
 
       throw new NotImplementedException();
     }
-    public override void Emit(TokenTextWriter stream, int contextBindingStrength) {
+
+    public override void Emit(TokenTextWriter stream, int contextBindingStrength)
+    {
       Contract.Requires(stream != null);
       throw new NotImplementedException();
     }
-    public override bool Equals(Type that, List<TypeVariable> thisBoundVariables, List<TypeVariable> thatBoundVariables) {
+
+    public override bool Equals(Type that, List<TypeVariable> thisBoundVariables, List<TypeVariable> thatBoundVariables)
+    {
       Contract.Requires(that != null);
       Contract.Requires(thisBoundVariables != null);
       Contract.Requires(thatBoundVariables != null);
       throw new NotImplementedException();
     }
-    public override bool Unify(Type that, List<TypeVariable> unifiableVariables, IDictionary<TypeVariable, Type> unifier) {
+
+    public override bool Unify(Type that, List<TypeVariable> unifiableVariables,
+      IDictionary<TypeVariable, Type> unifier)
+    {
       Contract.Requires(that != null);
       Contract.Requires(unifiableVariables != null);
       Contract.Requires(cce.NonNullDictionaryAndValues(unifier));
@@ -860,34 +981,45 @@ namespace Microsoft.Boogie {
       Contract.Requires(IsIdempotent(unifier));
       throw new NotImplementedException();
     }
-    public override Type Substitute(IDictionary<TypeVariable, Type> subst) {
+
+    public override Type Substitute(IDictionary<TypeVariable, Type> subst)
+    {
       Contract.Requires(cce.NonNullDictionaryAndValues(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
 
       throw new NotImplementedException();
     }
-    public override Type ResolveType(ResolutionContext rc) {
+
+    public override Type ResolveType(ResolutionContext rc)
+    {
       Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
 
       throw new NotImplementedException();
     }
-    public override int GetHashCode(List<TypeVariable> boundVariables) {
+
+    public override int GetHashCode(List<TypeVariable> boundVariables)
+    {
       Contract.Requires(boundVariables != null);
       throw new NotImplementedException();
     }
   }
   //=====================================================================
 
-  public class BasicType : Type {
+  public class BasicType : Type
+  {
     public readonly SimpleType T;
-    public BasicType(IToken/*!*/ token, SimpleType t)
-      : base(token) {
+
+    public BasicType(IToken /*!*/ token, SimpleType t)
+      : base(token)
+    {
       Contract.Requires(token != null);
       T = t;
     }
+
     public BasicType(SimpleType t)
-      : base(Token.NoToken) {
+      : base(Token.NoToken)
+    {
       T = t;
     }
 
@@ -896,21 +1028,24 @@ namespace Microsoft.Boogie {
     // have to be created in the right way. It is /not/ ok to just clone
     // everything recursively.
 
-    public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
+    public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
+    {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       // BasicTypes are immutable anyway, we do not clone
       return this;
     }
 
-    public override Type CloneUnresolved() {
+    public override Type CloneUnresolved()
+    {
       Contract.Ensures(Contract.Result<Type>() != null);
       return this;
     }
 
     //-----------  Linearisation  ----------------------------------
 
-    public override void Emit(TokenTextWriter stream, int contextBindingStrength) {
+    public override void Emit(TokenTextWriter stream, int contextBindingStrength)
+    {
       //Contract.Requires(stream != null);
       // no parentheses are necessary for basic types
       stream.SetToken(this);
@@ -918,9 +1053,11 @@ namespace Microsoft.Boogie {
     }
 
     [Pure]
-    public override string ToString() {
+    public override string ToString()
+    {
       Contract.Ensures(Contract.Result<string>() != null);
-      switch (T) {
+      switch (T)
+      {
         case SimpleType.Int:
           return "int";
         case SimpleType.Real:
@@ -934,6 +1071,7 @@ namespace Microsoft.Boogie {
         case SimpleType.RegEx:
           return "regex";
       }
+
       Debug.Assert(false, "bad type " + T);
       {
         Contract.Assert(false);
@@ -945,7 +1083,8 @@ namespace Microsoft.Boogie {
 
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
-    public override bool Equals(object that) {
+    public override bool Equals(object that)
+    {
       // shortcut
       Type thatType = that as Type;
       if (thatType == null)
@@ -955,7 +1094,8 @@ namespace Microsoft.Boogie {
     }
 
     [Pure]
-    public override bool Equals(Type that, List<TypeVariable> thisBoundVariables, List<TypeVariable> thatBoundVariables) {
+    public override bool Equals(Type that, List<TypeVariable> thisBoundVariables, List<TypeVariable> thatBoundVariables)
+    {
       //Contract.Requires(thatBoundVariables != null);
       //Contract.Requires(thisBoundVariables != null);
       //Contract.Requires(that != null);
@@ -964,7 +1104,9 @@ namespace Microsoft.Boogie {
 
     //-----------  Unification of types  -----------
 
-    public override bool Unify(Type that, List<TypeVariable> unifiableVariables, IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier) {
+    public override bool Unify(Type that, List<TypeVariable> unifiableVariables,
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ unifier)
+    {
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(that != null);
       //Contract.Requires(cce.NonNullElements(unifier));
@@ -972,9 +1114,12 @@ namespace Microsoft.Boogie {
       // unification result up to a certain point
 
       that = that.Expanded;
-      if (that is TypeProxy || that is TypeVariable) {
+      if (that is TypeProxy || that is TypeVariable)
+      {
         return that.Unify(this, unifiableVariables, unifier);
-      } else {
+      }
+      else
+      {
         return this.Equals(that);
       }
     }
@@ -997,7 +1142,8 @@ namespace Microsoft.Boogie {
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
-    public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
+    public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
+    {
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       return this;
@@ -1006,19 +1152,22 @@ namespace Microsoft.Boogie {
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(List<TypeVariable> boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables)
+    {
       //Contract.Requires(boundVariables != null);
       return this.T.GetHashCode();
     }
 
     [Pure]
-    public override int GetHashCode() {
+    public override int GetHashCode()
+    {
       return this.T.GetHashCode();
     }
 
     //-----------  Resolution  ----------------------------------
 
-    public override Type ResolveType(ResolutionContext rc) {
+    public override Type ResolveType(ResolutionContext rc)
+    {
       //Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       // nothing to resolve
@@ -1026,66 +1175,64 @@ namespace Microsoft.Boogie {
     }
 
     // determine the free variables in a type, in the order in which the variables occur
-    public override List<TypeVariable>/*!*/ FreeVariables {
-      get {
+    public override List<TypeVariable> /*!*/ FreeVariables
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
-        return new List<TypeVariable>();  // basic type are closed
+        return new List<TypeVariable>(); // basic type are closed
       }
     }
 
-    public override List<TypeProxy/*!*/>/*!*/ FreeProxies {
-      get {
+    public override List<TypeProxy /*!*/> /*!*/ FreeProxies
+    {
+      get
+      {
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
-        return new List<TypeProxy/*!*/>();
+        return new List<TypeProxy /*!*/>();
       }
     }
 
     //-----------  Getters/Issers  ----------------------------------
 
-    public override bool IsBasic {
-      get {
-        return true;
-      }
-    }
-    public override bool IsInt {
-      get {
-        return this.T == SimpleType.Int;
-      }
-    }
-    public override bool IsReal {
-      get {
-        return this.T == SimpleType.Real;
-      }
-    }
-    public override bool IsBool {
-      get {
-        return this.T == SimpleType.Bool;
-      }
-    }
-    public override bool IsRMode
+    public override bool IsBasic
     {
-      get
-      {
-        return this.T == SimpleType.RMode;
-      }
-    }
-    public override bool IsString
-    {
-      get
-      {
-        return this.T == SimpleType.String;
-      }
-    }
-    public override bool IsRegEx
-    {
-      get
-      {
-        return this.T == SimpleType.RegEx;
-      }
+      get { return true; }
     }
 
-    public override Absy StdDispatch(StandardVisitor visitor) {
+    public override bool IsInt
+    {
+      get { return this.T == SimpleType.Int; }
+    }
+
+    public override bool IsReal
+    {
+      get { return this.T == SimpleType.Real; }
+    }
+
+    public override bool IsBool
+    {
+      get { return this.T == SimpleType.Bool; }
+    }
+
+    public override bool IsRMode
+    {
+      get { return this.T == SimpleType.RMode; }
+    }
+
+    public override bool IsString
+    {
+      get { return this.T == SimpleType.String; }
+    }
+
+    public override bool IsRegEx
+    {
+      get { return this.T == SimpleType.RegEx; }
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitBasicType(this);
@@ -1095,19 +1242,22 @@ namespace Microsoft.Boogie {
   //=====================================================================
 
   //Note that the functions in this class were directly copied from the BV class just below
-  public class FloatType : Type { 
+  public class FloatType : Type
+  {
     public readonly int Significand; //Size of Significand in bits
     public readonly int Exponent; //Size of exponent in bits
 
     public FloatType(IToken token, int significand, int exponent)
-      : base(token) {
+      : base(token)
+    {
       Contract.Requires(token != null);
       Significand = significand;
       Exponent = exponent;
     }
 
     public FloatType(int significand, int exponent)
-      : base(Token.NoToken) {
+      : base(Token.NoToken)
+    {
       Significand = significand;
       Exponent = exponent;
     }
@@ -1117,7 +1267,7 @@ namespace Microsoft.Boogie {
     // have to be created in the right way. It is /not/ ok to just clone
     // everything recursively.
 
-    public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap)
+    public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
     {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
@@ -1150,37 +1300,40 @@ namespace Microsoft.Boogie {
     //-----------  Equality  ----------------------------------
 
     [Pure]
-    public override bool Equals(Type/*!*/ that,
-                                List<TypeVariable>/*!*/ thisBoundVariables,
-                                List<TypeVariable>/*!*/ thatBoundVariables)
+    public override bool Equals(Type /*!*/ that,
+      List<TypeVariable> /*!*/ thisBoundVariables,
+      List<TypeVariable> /*!*/ thatBoundVariables)
     {
       FloatType thatFloatType = TypeProxy.FollowProxy(that.Expanded) as FloatType;
-      return thatFloatType != null && this.Significand == thatFloatType.Significand && this.Exponent == thatFloatType.Exponent;
+      return thatFloatType != null && this.Significand == thatFloatType.Significand &&
+             this.Exponent == thatFloatType.Exponent;
     }
 
     //-----------  Unification of types  -----------
 
-    public override bool Unify(Type/*!*/ that,
-                               List<TypeVariable>/*!*/ unifiableVariables,
+    public override bool Unify(Type /*!*/ that,
+      List<TypeVariable> /*!*/ unifiableVariables,
       // an idempotent substitution that describes the
       // unification result up to a certain point
-                               IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier)
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ unifier)
     {
       //Contract.Requires(that != null);
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(cce.NonNullElements(unifier));
       that = that.Expanded;
-      if (that is TypeProxy || that is TypeVariable) {
-        return that.Unify(this, unifiableVariables, unifier); 
+      if (that is TypeProxy || that is TypeVariable)
+      {
+        return that.Unify(this, unifiableVariables, unifier);
       }
-      else {
-        return this.Equals(that); 
+      else
+      {
+        return this.Equals(that);
       }
     }
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
-    public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst)
+    public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
     {
       Contract.Ensures(Contract.Result<Type>() != null);
       return this;
@@ -1205,41 +1358,40 @@ namespace Microsoft.Boogie {
     }
 
     // determine the free variables in a type, in the order in which the variables occur
-    public override List<TypeVariable>/*!*/ FreeVariables
+    public override List<TypeVariable> /*!*/ FreeVariables
     {
       get
       {
         Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
-        return new List<TypeVariable>();  // bitvector-type are closed
+        return new List<TypeVariable>(); // bitvector-type are closed
       }
     }
 
-    public override List<TypeProxy/*!*/>/*!*/ FreeProxies
+    public override List<TypeProxy /*!*/> /*!*/ FreeProxies
     {
       get
       {
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
-        return new List<TypeProxy/*!*/>();
+        return new List<TypeProxy /*!*/>();
       }
     }
 
     //-----------  Getters/Issers  ----------------------------------
 
-    public override bool IsFloat {
-      get {
-        return true;
-      }
+    public override bool IsFloat
+    {
+      get { return true; }
     }
-    public override int FloatSignificand {
-      get {
-        return Significand;
-      }
+
+    public override int FloatSignificand
+    {
+      get { return Significand; }
     }
-    public override int FloatExponent {
-      get {
-        return Exponent;
-      }
+
+    public override int FloatExponent
+    {
+      get { return Exponent; }
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
@@ -1248,22 +1400,24 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitFloatType(this);
     }
-
   }
 
   //=====================================================================
 
-  public class BvType : Type {
+  public class BvType : Type
+  {
     public readonly int Bits;
 
     public BvType(IToken token, int bits)
-      : base(token) {
+      : base(token)
+    {
       Contract.Requires(token != null);
       Bits = bits;
     }
 
     public BvType(int bits)
-      : base(Token.NoToken) {
+      : base(Token.NoToken)
+    {
       Bits = bits;
     }
 
@@ -1272,21 +1426,24 @@ namespace Microsoft.Boogie {
     // have to be created in the right way. It is /not/ ok to just clone
     // everything recursively.
 
-    public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
+    public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
+    {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       // BvTypes are immutable anyway, we do not clone
       return this;
     }
 
-    public override Type CloneUnresolved() {
+    public override Type CloneUnresolved()
+    {
       Contract.Ensures(Contract.Result<Type>() != null);
       return this;
     }
 
     //-----------  Linearisation  ----------------------------------
 
-    public override void Emit(TokenTextWriter stream, int contextBindingStrength) {
+    public override void Emit(TokenTextWriter stream, int contextBindingStrength)
+    {
       //Contract.Requires(stream != null);
       // no parentheses are necessary for bitvector-types
       stream.SetToken(this);
@@ -1294,7 +1451,8 @@ namespace Microsoft.Boogie {
     }
 
     [Pure]
-    public override string ToString() {
+    public override string ToString()
+    {
       Contract.Ensures(Contract.Result<string>() != null);
       return "bv" + Bits;
     }
@@ -1302,9 +1460,10 @@ namespace Microsoft.Boogie {
     //-----------  Equality  ----------------------------------
 
     [Pure]
-    public override bool Equals(Type/*!*/ that,
-                                List<TypeVariable>/*!*/ thisBoundVariables,
-                                List<TypeVariable>/*!*/ thatBoundVariables) {
+    public override bool Equals(Type /*!*/ that,
+      List<TypeVariable> /*!*/ thisBoundVariables,
+      List<TypeVariable> /*!*/ thatBoundVariables)
+    {
       //Contract.Requires(thisBoundVariables != null);
       //Contract.Requires(thatBoundVariables != null);
       //Contract.Requires(that != null);
@@ -1314,18 +1473,22 @@ namespace Microsoft.Boogie {
 
     //-----------  Unification of types  -----------
 
-    public override bool Unify(Type/*!*/ that,
-                               List<TypeVariable>/*!*/ unifiableVariables,
+    public override bool Unify(Type /*!*/ that,
+      List<TypeVariable> /*!*/ unifiableVariables,
       // an idempotent substitution that describes the
       // unification result up to a certain point
-                               IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier) {
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ unifier)
+    {
       //Contract.Requires(that != null);
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(cce.NonNullElements(unifier));
       that = that.Expanded;
-      if (that is TypeProxy || that is TypeVariable) {
+      if (that is TypeProxy || that is TypeVariable)
+      {
         return that.Unify(this, unifiableVariables, unifier);
-      } else {
+      }
+      else
+      {
         return this.Equals(that);
       }
     }
@@ -1350,7 +1513,8 @@ Contract.Requires(that != null);
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
-    public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
+    public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
+    {
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       return this;
@@ -1359,14 +1523,16 @@ Contract.Requires(that != null);
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(List<TypeVariable> boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables)
+    {
       //Contract.Requires(boundVariables != null);
       return this.Bits.GetHashCode();
     }
 
     //-----------  Resolution  ----------------------------------
 
-    public override Type ResolveType(ResolutionContext rc) {
+    public override Type ResolveType(ResolutionContext rc)
+    {
       //Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       // nothing to resolve
@@ -1374,35 +1540,39 @@ Contract.Requires(that != null);
     }
 
     // determine the free variables in a type, in the order in which the variables occur
-    public override List<TypeVariable>/*!*/ FreeVariables {
-      get {
+    public override List<TypeVariable> /*!*/ FreeVariables
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
-        return new List<TypeVariable>();  // bitvector-type are closed
+        return new List<TypeVariable>(); // bitvector-type are closed
       }
     }
 
-    public override List<TypeProxy/*!*/>/*!*/ FreeProxies {
-      get {
+    public override List<TypeProxy /*!*/> /*!*/ FreeProxies
+    {
+      get
+      {
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
-        return new List<TypeProxy/*!*/>();
+        return new List<TypeProxy /*!*/>();
       }
     }
 
     //-----------  Getters/Issers  ----------------------------------
 
-    public override bool IsBv {
-      get {
-        return true;
-      }
-    }
-    public override int BvBits {
-      get {
-        return Bits;
-      }
+    public override bool IsBv
+    {
+      get { return true; }
     }
 
-    public override Absy StdDispatch(StandardVisitor visitor) {
+    public override int BvBits
+    {
+      get { return Bits; }
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitBvType(this);
@@ -1414,24 +1584,32 @@ Contract.Requires(that != null);
   // An AST node containing an identifier and a sequence of type arguments, which
   // will be turned either into a TypeVariable, into a CtorType or into a BvType
   // during the resolution phase
-  public class UnresolvedTypeIdentifier : Type {
-    public readonly string/*!*/ Name;
-    public readonly List<Type>/*!*/ Arguments;
+  public class UnresolvedTypeIdentifier : Type
+  {
+    public readonly string /*!*/
+      Name;
+
+    public readonly List<Type> /*!*/
+      Arguments;
+
     [ContractInvariantMethod]
-    void ObjectInvariant() {
+    void ObjectInvariant()
+    {
       Contract.Invariant(Name != null);
       Contract.Invariant(Arguments != null);
     }
 
 
     public UnresolvedTypeIdentifier(IToken token, string name)
-      : this(token, name, new List<Type>()) {
+      : this(token, name, new List<Type>())
+    {
       Contract.Requires(name != null);
       Contract.Requires(token != null);
     }
 
     public UnresolvedTypeIdentifier(IToken token, string name, List<Type> arguments)
-      : base(token) {
+      : base(token)
+    {
       Contract.Requires(arguments != null);
       Contract.Requires(name != null);
       Contract.Requires(token != null);
@@ -1444,24 +1622,32 @@ Contract.Requires(that != null);
     // have to be created in the right way. It is /not/ ok to just clone
     // everything recursively
 
-    public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
+    public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
+    {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
-      List<Type>/*!*/ newArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
+      List<Type> /*!*/
+        newArgs = new List<Type>();
+      foreach (Type /*!*/ t in Arguments)
+      {
         Contract.Assert(t != null);
         newArgs.Add(t.Clone(varMap));
       }
+
       return new UnresolvedTypeIdentifier(tok, Name, newArgs);
     }
 
-    public override Type CloneUnresolved() {
+    public override Type CloneUnresolved()
+    {
       Contract.Ensures(Contract.Result<Type>() != null);
-      List<Type>/*!*/ newArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
+      List<Type> /*!*/
+        newArgs = new List<Type>();
+      foreach (Type /*!*/ t in Arguments)
+      {
         Contract.Assert(t != null);
         newArgs.Add(t.CloneUnresolved());
       }
+
       return new UnresolvedTypeIdentifier(tok, Name, newArgs);
     }
 
@@ -1469,8 +1655,9 @@ Contract.Requires(that != null);
 
     [Pure]
     public override bool Equals(Type that,
-                                List<TypeVariable>/*!*/ thisBoundVariables,
-                                List<TypeVariable>/*!*/ thatBoundVariables) {
+      List<TypeVariable> /*!*/ thisBoundVariables,
+      List<TypeVariable> /*!*/ thatBoundVariables)
+    {
       //Contract.Requires(thisBoundVariables != null);
       //Contract.Requires(thatBoundVariables != null);
       //Contract.Requires(that != null);
@@ -1481,8 +1668,9 @@ Contract.Requires(that != null);
     //-----------  Unification of types  -----------
 
     public override bool Unify(Type that,
-                               List<TypeVariable>/*!*/ unifiableVariables,
-                               IDictionary<TypeVariable/*!*/, Type/*!*/> result) {
+      List<TypeVariable> /*!*/ unifiableVariables,
+      IDictionary<TypeVariable /*!*/, Type /*!*/> result)
+    {
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(cce.NonNullElements(result));
       //Contract.Requires(that != null);
@@ -1506,7 +1694,8 @@ Contract.Requires(that != null);
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
-    public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
+    public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
+    {
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       {
@@ -1518,7 +1707,8 @@ Contract.Requires(that != null);
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(List<TypeVariable> boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables)
+    {
       //Contract.Requires(boundVariables != null);
       {
         Contract.Assert(false);
@@ -1528,25 +1718,33 @@ Contract.Requires(that != null);
 
     //-----------  Resolution  ----------------------------------
 
-    public override Type ResolveType(ResolutionContext rc) {
+    public override Type ResolveType(ResolutionContext rc)
+    {
       //Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       // first case: the type name denotes a bitvector-type, float-type, rmode-type, string-type, or regex-type
 
-      if (Name.StartsWith("bv") && Name.Length > 2) {
+      if (Name.StartsWith("bv") && Name.Length > 2)
+      {
         bool is_bv = true;
-        for (int i = 2; i < Name.Length; ++i) {
-          if (!char.IsDigit(Name[i])) {
+        for (int i = 2; i < Name.Length; ++i)
+        {
+          if (!char.IsDigit(Name[i]))
+          {
             is_bv = false;
             break;
           }
         }
-        if (is_bv) {
-          if (Arguments.Count > 0) {
+
+        if (is_bv)
+        {
+          if (Arguments.Count > 0)
+          {
             rc.Error(this,
-                     "bitvector types must not be applied to arguments: {0}",
-                     Name);
+              "bitvector types must not be applied to arguments: {0}",
+              Name);
           }
+
           return new BvType(tok, int.Parse(Name.Substring(2)));
         }
       }
@@ -1556,20 +1754,23 @@ Contract.Requires(that != null);
         bool is_float = true;
         int i = 5;
         for (; is_float && Name[i] != 'e'; i++)
-          if (i >= Name.Length-1 || !char.IsDigit(Name[i])) //There must be an e
+          if (i >= Name.Length - 1 || !char.IsDigit(Name[i])) //There must be an e
             is_float = false;
         int mid = i;
         i++;
         for (; i < Name.Length && is_float; i++)
           if (!char.IsDigit(Name[i]))
             is_float = false;
-        if (is_float) {
-          if (Arguments.Count > 0) {
+        if (is_float)
+        {
+          if (Arguments.Count > 0)
+          {
             rc.Error(this,
-                     "float types must not be applied to arguments: {0}",
-                     Name);
+              "float types must not be applied to arguments: {0}",
+              Name);
           }
-          return new FloatType(tok, int.Parse(Name.Substring(5, mid-5)), int.Parse(Name.Substring(mid+1)));
+
+          return new FloatType(tok, int.Parse(Name.Substring(5, mid - 5)), int.Parse(Name.Substring(mid + 1)));
         }
       }
 
@@ -1578,9 +1779,10 @@ Contract.Requires(that != null);
         if (Arguments.Count > 0)
         {
           rc.Error(this,
-                   "rounding mode type must not be applied to arguments: {0}",
-                   Name);
+            "rounding mode type must not be applied to arguments: {0}",
+            Name);
         }
+
         return Type.RMode;
       }
 
@@ -1589,9 +1791,10 @@ Contract.Requires(that != null);
         if (Arguments.Count > 0)
         {
           rc.Error(this,
-                   "string type must not be applied to arguments: {0}",
-                   Name);
+            "string type must not be applied to arguments: {0}",
+            Name);
         }
+
         return Type.String;
       }
 
@@ -1600,50 +1803,60 @@ Contract.Requires(that != null);
         if (Arguments.Count > 0)
         {
           rc.Error(this,
-                   "regex type must not be applied to arguments: {0}",
-                   Name);
+            "regex type must not be applied to arguments: {0}",
+            Name);
         }
+
         return Type.RegEx;
       }
 
       // second case: the identifier is resolved to a type variable
       TypeVariable var = rc.LookUpTypeBinder(Name);
-      if (var != null) {
-        if (Arguments.Count > 0) {
+      if (var != null)
+      {
+        if (Arguments.Count > 0)
+        {
           rc.Error(this,
-                   "type variables must not be applied to arguments: {0}",
-                   var);
+            "type variables must not be applied to arguments: {0}",
+            var);
         }
+
         return var;
       }
 
       // third case: the identifier denotes a type constructor and we
       // recursively resolve the arguments
       TypeCtorDecl ctorDecl = rc.LookUpType(Name);
-      if (ctorDecl != null) {
-        if (Arguments.Count != ctorDecl.Arity) {
+      if (ctorDecl != null)
+      {
+        if (Arguments.Count != ctorDecl.Arity)
+        {
           rc.Error(this,
-                   "type constructor received wrong number of arguments: {0}",
-                   ctorDecl);
+            "type constructor received wrong number of arguments: {0}",
+            ctorDecl);
           return this;
         }
+
         return new CtorType(tok, ctorDecl, ResolveArguments(rc));
       }
 
       // fourth case: the identifier denotes a type synonym
       TypeSynonymDecl synDecl = rc.LookUpTypeSynonym(Name);
-      if (synDecl != null) {
-        if (Arguments.Count != synDecl.TypeParameters.Count) {
+      if (synDecl != null)
+      {
+        if (Arguments.Count != synDecl.TypeParameters.Count)
+        {
           rc.Error(this,
-                   "type synonym received wrong number of arguments: {0}",
-                   synDecl);
+            "type synonym received wrong number of arguments: {0}",
+            synDecl);
           return this;
         }
-        List<Type>/*!*/ resolvedArgs = ResolveArguments(rc);
+
+        List<Type> /*!*/
+          resolvedArgs = ResolveArguments(rc);
         Contract.Assert(resolvedArgs != null);
 
         return new TypeSynonymAnnotation(this.tok, synDecl, resolvedArgs);
-
       }
 
       // otherwise: this name is not declared anywhere
@@ -1651,35 +1864,44 @@ Contract.Requires(that != null);
       return this;
     }
 
-    private List<Type> ResolveArguments(ResolutionContext rc) {
+    private List<Type> ResolveArguments(ResolutionContext rc)
+    {
       Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<List<Type>>() != null);
-      List<Type>/*!*/ resolvedArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
+      List<Type> /*!*/
+        resolvedArgs = new List<Type>();
+      foreach (Type /*!*/ t in Arguments)
+      {
         Contract.Assert(t != null);
         resolvedArgs.Add(t.ResolveType(rc));
       }
+
       return resolvedArgs;
     }
 
-    public override List<TypeVariable>/*!*/ FreeVariables {
-      get {
+    public override List<TypeVariable> /*!*/ FreeVariables
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
         return new List<TypeVariable>();
       }
     }
 
-    public override List<TypeProxy/*!*/>/*!*/ FreeProxies {
-      get {
+    public override List<TypeProxy /*!*/> /*!*/ FreeProxies
+    {
+      get
+      {
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
-        return new List<TypeProxy/*!*/>();
+        return new List<TypeProxy /*!*/>();
       }
     }
 
     //-----------  Linearisation  ----------------------------------
 
-    public override void Emit(TokenTextWriter stream, int contextBindingStrength) {
+    public override void Emit(TokenTextWriter stream, int contextBindingStrength)
+    {
       //Contract.Requires(stream != null);
       stream.SetToken(this);
       // PR: should unresolved types be syntactically distinguished from resolved types?
@@ -1688,19 +1910,22 @@ Contract.Requires(that != null);
 
     //-----------  Getters/Issers  ----------------------------------
 
-    public override bool IsUnresolved {
-      get {
-        return true;
-      }
+    public override bool IsUnresolved
+    {
+      get { return true; }
     }
-    public override UnresolvedTypeIdentifier/*!*/ AsUnresolved {
-      get {
+
+    public override UnresolvedTypeIdentifier /*!*/ AsUnresolved
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<UnresolvedTypeIdentifier>() != null);
         return this;
       }
     }
 
-    public override Absy StdDispatch(StandardVisitor visitor) {
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitUnresolvedTypeIdentifier(this);
@@ -1709,16 +1934,21 @@ Contract.Requires(that != null);
 
   //=====================================================================
 
-  public class TypeVariable : Type {
-    public readonly string/*!*/ Name;
+  public class TypeVariable : Type
+  {
+    public readonly string /*!*/
+      Name;
+
     [ContractInvariantMethod]
-    void ObjectInvariant() {
+    void ObjectInvariant()
+    {
       Contract.Invariant(Name != null);
     }
 
 
     public TypeVariable(IToken token, string name)
-      : base(token) {
+      : base(token)
+    {
       Contract.Requires(name != null);
       Contract.Requires(token != null);
       this.Name = name;
@@ -1729,7 +1959,8 @@ Contract.Requires(that != null);
     // have to be created in the right way. It is /not/ ok to just clone
     // everything recursively
 
-    public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
+    public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
+    {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       // if this variable is mapped to some new variable, we take the new one
@@ -1742,7 +1973,8 @@ Contract.Requires(that != null);
         return res;
     }
 
-    public override Type CloneUnresolved() {
+    public override Type CloneUnresolved()
+    {
       Contract.Ensures(Contract.Result<Type>() != null);
       return this;
     }
@@ -1751,8 +1983,9 @@ Contract.Requires(that != null);
 
     [Pure]
     public override bool Equals(Type that,
-                                List<TypeVariable>/*!*/ thisBoundVariables,
-                                List<TypeVariable>/*!*/ thatBoundVariables) {
+      List<TypeVariable> /*!*/ thisBoundVariables,
+      List<TypeVariable> /*!*/ thatBoundVariables)
+    {
       //Contract.Requires(thisBoundVariables != null);
       //Contract.Requires(thatBoundVariables != null);
       //Contract.Requires(that != null);
@@ -1770,11 +2003,12 @@ Contract.Requires(that != null);
 
     //-----------  Unification of types  -----------
 
-    public override bool Unify(Type/*!*/ that,
-                               List<TypeVariable>/*!*/ unifiableVariables,
+    public override bool Unify(Type /*!*/ that,
+      List<TypeVariable> /*!*/ unifiableVariables,
       // an idempotent substitution that describes the
       // unification result up to a certain point
-                               IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier) {
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ unifier)
+    {
       //Contract.Requires(that != null);
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(cce.NonNullElements(unifier));
@@ -1785,12 +2019,16 @@ Contract.Requires(that != null);
       if (this.Equals(that))
         return true;
 
-      if (unifiableVariables.Contains(this)) {
+      if (unifiableVariables.Contains(this))
+      {
         Type previousSubst;
         unifier.TryGetValue(this, out previousSubst);
-        if (previousSubst == null) {
+        if (previousSubst == null)
+        {
           return addSubstitution(unifier, that);
-        } else {
+        }
+        else
+        {
           // we have to unify the old instantiation with the new one
           return previousSubst.Unify(that, unifiableVariables, unifier);
         }
@@ -1809,16 +2047,19 @@ Contract.Requires(that != null);
     // TODO: the following might cause problems, because when applying substitutions
     // to type proxies the substitutions are not propagated to the proxy
     // constraints (right now at least)
-    private bool addSubstitution(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ oldSolution,
+    private bool addSubstitution(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ oldSolution,
       // the type that "this" is instantiated with
-                                 Type/*!*/ newSubst) {
+      Type /*!*/ newSubst)
+    {
       Contract.Requires(cce.NonNullDictionaryAndValues(oldSolution));
       Contract.Requires(newSubst != null);
       Contract.Requires(!oldSolution.ContainsKey(this));
 
-      Dictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ newMapping = new Dictionary<TypeVariable/*!*/, Type/*!*/>();
+      Dictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+        newMapping = new Dictionary<TypeVariable /*!*/, Type /*!*/>();
       // apply the old (idempotent) substitution to the new instantiation
-      Type/*!*/ substSubst = newSubst.Substitute(oldSolution);
+      Type /*!*/
+        substSubst = newSubst.Substitute(oldSolution);
       Contract.Assert(substSubst != null);
       // occurs check
       if (substSubst.FreeVariables.Contains(this))
@@ -1826,12 +2067,15 @@ Contract.Requires(that != null);
       newMapping.Add(this, substSubst);
 
       // apply the new substitution to the old ones to ensure idempotence
-      List<TypeVariable/*!*/>/*!*/ keys = new List<TypeVariable/*!*/>();
+      List<TypeVariable /*!*/> /*!*/
+        keys = new List<TypeVariable /*!*/>();
       keys.AddRange(oldSolution.Keys);
-      foreach (TypeVariable/*!*/ var in keys) {
+      foreach (TypeVariable /*!*/ var in keys)
+      {
         Contract.Assert(var != null);
         oldSolution[var] = oldSolution[var].Substitute(newMapping);
       }
+
       oldSolution.Add(this, substSubst);
 
       Contract.Assert(IsIdempotent(oldSolution));
@@ -1892,14 +2136,18 @@ Contract.Requires(that != null);
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
-    public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
+    public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
+    {
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       Type res;
-      if (subst.TryGetValue(this, out res)) {
+      if (subst.TryGetValue(this, out res))
+      {
         Contract.Assert(res != null);
         return res;
-      } else {
+      }
+      else
+      {
         return this;
       }
     }
@@ -1907,7 +2155,8 @@ Contract.Requires(that != null);
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(List<TypeVariable> boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables)
+    {
       //Contract.Requires(boundVariables != null);
       int thisIndex = boundVariables.LastIndexOf(this);
       if (thisIndex == -1)
@@ -1917,7 +2166,8 @@ Contract.Requires(that != null);
 
     //-----------  Linearisation  ----------------------------------
 
-    public override void Emit(TokenTextWriter stream, int contextBindingStrength) {
+    public override void Emit(TokenTextWriter stream, int contextBindingStrength)
+    {
       //Contract.Requires(stream != null);
       // never put parentheses around variables
       stream.SetToken(this);
@@ -1926,42 +2176,50 @@ Contract.Requires(that != null);
 
     //-----------  Resolution  ----------------------------------
 
-    public override Type ResolveType(ResolutionContext rc) {
+    public override Type ResolveType(ResolutionContext rc)
+    {
       //Contract.Requires(rc != null);
       //Contract.Ensures(Contract.Result<Type>() != null);
       // nothing to resolve
       return this;
     }
 
-    public override List<TypeVariable>/*!*/ FreeVariables {
-      get {
+    public override List<TypeVariable> /*!*/ FreeVariables
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
-        return new List<TypeVariable> { this };
+        return new List<TypeVariable> {this};
       }
     }
 
-    public override List<TypeProxy/*!*/>/*!*/ FreeProxies {
-      get {
+    public override List<TypeProxy /*!*/> /*!*/ FreeProxies
+    {
+      get
+      {
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
-        return new List<TypeProxy/*!*/>();
+        return new List<TypeProxy /*!*/>();
       }
     }
 
     //-----------  Getters/Issers  ----------------------------------
 
-    public override bool IsVariable {
-      get {
-        return true;
-      }
+    public override bool IsVariable
+    {
+      get { return true; }
     }
-    public override TypeVariable/*!*/ AsVariable {
-      get {
+
+    public override TypeVariable /*!*/ AsVariable
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<TypeVariable>() != null);
         return this;
       }
     }
 
-    public override Absy StdDispatch(StandardVisitor visitor) {
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
       //Contract.Requires(visitor != null);
       //Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitTypeVariable(this);
@@ -1970,23 +2228,30 @@ Contract.Requires(that != null);
 
   //=====================================================================
 
-  public class TypeProxy : Type {
+  public class TypeProxy : Type
+  {
     static int proxies = 0;
-    protected readonly string/*!*/ Name;
+
+    protected readonly string /*!*/
+      Name;
+
     [ContractInvariantMethod]
-    void ObjectInvariant() {
+    void ObjectInvariant()
+    {
       Contract.Invariant(Name != null);
     }
 
 
     public TypeProxy(IToken token, string givenName)
-      : this(token, givenName, "proxy") {
+      : this(token, givenName, "proxy")
+    {
       Contract.Requires(givenName != null);
       Contract.Requires(token != null);
     }
 
     protected TypeProxy(IToken token, string givenName, string kind)
-      : base(token) {
+      : base(token)
+    {
       Contract.Requires(kind != null);
       Contract.Requires(givenName != null);
       Contract.Requires(token != null);
@@ -1995,78 +2260,101 @@ Contract.Requires(that != null);
     }
 
     private Type proxyFor;
-    public Type ProxyFor {
+
+    public Type ProxyFor
+    {
       // apply path shortening, and then return the value of proxyFor
-      get {
+      get
+      {
         TypeProxy anotherProxy = proxyFor as TypeProxy;
-        if (anotherProxy != null && anotherProxy.proxyFor != null) {
+        if (anotherProxy != null && anotherProxy.proxyFor != null)
+        {
           // apply path shortening by bypassing "anotherProxy" (and possibly others)
           proxyFor = anotherProxy.ProxyFor;
           Contract.Assert(proxyFor != null);
         }
+
         return proxyFor;
       }
     }
 
     [Pure]
     [Reads(ReadsAttribute.Reads.Everything)]
-    public static Type FollowProxy(Type t) {
+    public static Type FollowProxy(Type t)
+    {
       Contract.Requires(t != null);
       Contract.Ensures(Contract.Result<Type>() != null);
-      Contract.Ensures(!(Contract.Result<Type>() is TypeProxy) || ((TypeProxy)Contract.Result<Type>()).proxyFor == null);
-      if (t is TypeProxy) {
-        Type p = ((TypeProxy)t).ProxyFor;
-        if (p != null) {
+      Contract.Ensures(
+        !(Contract.Result<Type>() is TypeProxy) || ((TypeProxy) Contract.Result<Type>()).proxyFor == null);
+      if (t is TypeProxy)
+      {
+        Type p = ((TypeProxy) t).ProxyFor;
+        if (p != null)
+        {
           return p;
         }
       }
+
       return t;
     }
 
-    protected void DefineProxy(Type ty) {
+    protected void DefineProxy(Type ty)
+    {
       Contract.Requires(ty != null);
       Contract.Requires(ProxyFor == null);
       // follow ty down to the leaf level, so that we can avoid creating a cycle
       ty = FollowProxy(ty);
-      if (!object.ReferenceEquals(this, ty)) {
+      if (!object.ReferenceEquals(this, ty))
+      {
         proxyFor = ty;
       }
     }
 
     //-----------  Cloning  ----------------------------------
 
-    public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
+    public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
+    {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       Type p = ProxyFor;
-      if (p != null) {
+      if (p != null)
+      {
         return p.Clone(varMap);
-      } else {
-        return new TypeProxy(this.tok, this.Name);  // the clone will have a name that ends with $proxy<n>$proxy<m>
+      }
+      else
+      {
+        return new TypeProxy(this.tok, this.Name); // the clone will have a name that ends with $proxy<n>$proxy<m>
       }
     }
 
-    public override Type CloneUnresolved() {
+    public override Type CloneUnresolved()
+    {
       Contract.Ensures(Contract.Result<Type>() != null);
-      return new TypeProxy(this.tok, this.Name);  // the clone will have a name that ends with $proxy<n>$proxy<m>
+      return new TypeProxy(this.tok, this.Name); // the clone will have a name that ends with $proxy<n>$proxy<m>
     }
 
     //-----------  Equality  ----------------------------------
 
     [Pure]
     public override bool Equals(Type that,
-                                List<TypeVariable>/*!*/ thisBoundVariables,
-                                List<TypeVariable>/*!*/ thatBoundVariables) {
+      List<TypeVariable> /*!*/ thisBoundVariables,
+      List<TypeVariable> /*!*/ thatBoundVariables)
+    {
       //Contract.Requires(thisBoundVariables != null);
       //Contract.Requires(thatBoundVariables != null);
       //Contract.Requires(that != null);
-      if (object.ReferenceEquals(this, that)) {
+      if (object.ReferenceEquals(this, that))
+      {
         return true;
       }
+
       Type p = ProxyFor;
-      if (p != null) {
+      if (p != null)
+      {
         return p.Equals(that, thisBoundVariables, thatBoundVariables);
-      } else {
+      }
+      else
+      {
         // This proxy could be made to be equal to anything, so what to return?
         return false;
       }
@@ -2075,7 +2363,8 @@ Contract.Requires(that != null);
     //-----------  Unification of types  -----------
 
     // determine whether the occurs check fails: this is a strict subtype of that
-    protected bool ReallyOccursIn(Type that) {
+    protected bool ReallyOccursIn(Type that)
+    {
       Contract.Requires(that != null);
       that = FollowProxy(that.Expanded);
       return that.FreeProxies.Contains(this) &&
@@ -2083,15 +2372,19 @@ Contract.Requires(that != null);
     }
 
     public override bool Unify(Type that,
-                               List<TypeVariable>/*!*/ unifiableVariables,
-                               IDictionary<TypeVariable/*!*/, Type/*!*/> result) {
+      List<TypeVariable> /*!*/ unifiableVariables,
+      IDictionary<TypeVariable /*!*/, Type /*!*/> result)
+    {
       //Contract.Requires(cce.NonNullElements(result));
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(that != null);
       Type p = ProxyFor;
-      if (p != null) {
+      if (p != null)
+      {
         return p.Unify(that, unifiableVariables, result);
-      } else {
+      }
+      else
+      {
         // unify this with that
         if (this.ReallyOccursIn(that))
           return false;
@@ -2102,13 +2395,17 @@ Contract.Requires(that != null);
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
-    public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
+    public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
+    {
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       Type p = ProxyFor;
-      if (p != null) {
+      if (p != null)
+      {
         return p.Substitute(subst);
-      } else {
+      }
+      else
+      {
         return this;
       }
     }
@@ -2116,24 +2413,32 @@ Contract.Requires(that != null);
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(List<TypeVariable> boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables)
+    {
       //Contract.Requires(boundVariables != null);
       Type p = ProxyFor;
-      if (p != null) {
+      if (p != null)
+      {
         return p.GetHashCode(boundVariables);
-      } else {
+      }
+      else
+      {
         return GetBaseHashCode();
       }
     }
 
     //-----------  Linearisation  ----------------------------------
 
-    public override void Emit(TokenTextWriter stream, int contextBindingStrength) {
+    public override void Emit(TokenTextWriter stream, int contextBindingStrength)
+    {
       //Contract.Requires(stream != null);
       Type p = ProxyFor;
-      if (p != null) {
+      if (p != null)
+      {
         p.Emit(stream, contextBindingStrength);
-      } else {
+      }
+      else
+      {
         // no need for parentheses
         stream.SetToken(this);
         stream.Write("{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
@@ -2142,38 +2447,53 @@ Contract.Requires(that != null);
 
     //-----------  Resolution  ----------------------------------
 
-    public override Type ResolveType(ResolutionContext rc) {
+    public override Type ResolveType(ResolutionContext rc)
+    {
       //Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       Type p = ProxyFor;
-      if (p != null) {
+      if (p != null)
+      {
         return p.ResolveType(rc);
-      } else {
+      }
+      else
+      {
         return this;
       }
     }
 
-    public override List<TypeVariable>/*!*/ FreeVariables {
-      get {
+    public override List<TypeVariable> /*!*/ FreeVariables
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
         Type p = ProxyFor;
-        if (p != null) {
+        if (p != null)
+        {
           return p.FreeVariables;
-        } else {
+        }
+        else
+        {
           return new List<TypeVariable>();
         }
       }
     }
 
-    public override List<TypeProxy/*!*/>/*!*/ FreeProxies {
-      get {
+    public override List<TypeProxy /*!*/> /*!*/ FreeProxies
+    {
+      get
+      {
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
         Type p = ProxyFor;
-        if (p != null) {
+        if (p != null)
+        {
           return p.FreeProxies;
-        } else {
-          List<TypeProxy/*!*/>/*!*/ res = new List<TypeProxy/*!*/>();
+        }
+        else
+        {
+          List<TypeProxy /*!*/> /*!*/
+            res = new List<TypeProxy /*!*/>();
           res.Add(this);
           return res;
         }
@@ -2182,49 +2502,68 @@ Contract.Requires(that != null);
 
     //-----------  Getters/Issers  ----------------------------------
 
-    public override bool IsBasic {
-      get {
+    public override bool IsBasic
+    {
+      get
+      {
         Type p = ProxyFor;
         return p != null && p.IsBasic;
       }
     }
-    public override bool IsInt {
-      get {
+
+    public override bool IsInt
+    {
+      get
+      {
         Type p = ProxyFor;
         return p != null && p.IsInt;
       }
     }
-    public override bool IsReal {
-      get {
+
+    public override bool IsReal
+    {
+      get
+      {
         Type p = ProxyFor;
         return p != null && p.IsReal;
       }
     }
-    public override bool IsFloat {
-      get {
+
+    public override bool IsFloat
+    {
+      get
+      {
         Type p = ProxyFor;
         return p != null && p.IsFloat;
       }
     }
-    public override int FloatExponent {
-        get {
-          Type p = ProxyFor;
-          if (p == null || !p.IsFloat)
-            return base.FloatExponent; //Shouldn't happen, so get an unreachable exception
-          return p.FloatExponent;
-        }
-    }
-    public override int FloatSignificand {
-        get {
-          Type p = ProxyFor;
-          if (p == null || !p.IsFloat)
-            return base.FloatSignificand; //Shouldn't happen, so get an unreachable exception
-          return p.FloatSignificand;
-        }
+
+    public override int FloatExponent
+    {
+      get
+      {
+        Type p = ProxyFor;
+        if (p == null || !p.IsFloat)
+          return base.FloatExponent; //Shouldn't happen, so get an unreachable exception
+        return p.FloatExponent;
+      }
     }
 
-    public override bool IsBool {
-      get {
+    public override int FloatSignificand
+    {
+      get
+      {
+        Type p = ProxyFor;
+        if (p == null || !p.IsFloat)
+          return base.FloatSignificand; //Shouldn't happen, so get an unreachable exception
+        return p.FloatSignificand;
+      }
+    }
+
+    public override bool IsBool
+    {
+      get
+      {
         Type p = ProxyFor;
         return p != null && p.IsBool;
       }
@@ -2238,6 +2577,7 @@ Contract.Requires(that != null);
         return p != null && p.IsRMode;
       }
     }
+
     public override bool IsString
     {
       get
@@ -2246,6 +2586,7 @@ Contract.Requires(that != null);
         return p != null && p.IsString;
       }
     }
+
     public override bool IsRegEx
     {
       get
@@ -2255,14 +2596,19 @@ Contract.Requires(that != null);
       }
     }
 
-    public override bool IsVariable {
-      get {
+    public override bool IsVariable
+    {
+      get
+      {
         Type p = ProxyFor;
         return p != null && p.IsVariable;
       }
     }
-    public override TypeVariable/*!*/ AsVariable {
-      get {
+
+    public override TypeVariable /*!*/ AsVariable
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<TypeVariable>() != null);
 
         Type p = ProxyFor;
@@ -2271,14 +2617,19 @@ Contract.Requires(that != null);
       }
     }
 
-    public override bool IsCtor {
-      get {
+    public override bool IsCtor
+    {
+      get
+      {
         Type p = ProxyFor;
         return p != null && p.IsCtor;
       }
     }
-    public override CtorType/*!*/ AsCtor {
-      get {
+
+    public override CtorType /*!*/ AsCtor
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<CtorType>() != null);
 
         Type p = ProxyFor;
@@ -2286,14 +2637,20 @@ Contract.Requires(that != null);
         return p.AsCtor;
       }
     }
-    public override bool IsMap {
-      get {
+
+    public override bool IsMap
+    {
+      get
+      {
         Type p = ProxyFor;
         return p != null && p.IsMap;
       }
     }
-    public override MapType/*!*/ AsMap {
-      get {
+
+    public override MapType /*!*/ AsMap
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<MapType>() != null);
 
         Type p = ProxyFor;
@@ -2301,21 +2658,30 @@ Contract.Requires(that != null);
         return p.AsMap;
       }
     }
-    public override int MapArity {
-      get {
+
+    public override int MapArity
+    {
+      get
+      {
         Type p = ProxyFor;
         Contract.Assume(p != null);
         return p.MapArity;
       }
     }
-    public override bool IsUnresolved {
-      get {
+
+    public override bool IsUnresolved
+    {
+      get
+      {
         Type p = ProxyFor;
         return p != null && p.IsUnresolved;
       }
     }
-    public override UnresolvedTypeIdentifier/*!*/ AsUnresolved {
-      get {
+
+    public override UnresolvedTypeIdentifier /*!*/ AsUnresolved
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<UnresolvedTypeIdentifier>() != null);
 
         Type p = ProxyFor;
@@ -2324,30 +2690,38 @@ Contract.Requires(that != null);
       }
     }
 
-    public override bool IsBv {
-      get {
+    public override bool IsBv
+    {
+      get
+      {
         Type p = ProxyFor;
         return p != null && p.IsBv;
       }
     }
-    public override int BvBits {
-      get {
+
+    public override int BvBits
+    {
+      get
+      {
         Type p = ProxyFor;
         Contract.Assume(p != null);
         return p.BvBits;
       }
     }
 
-    public override Absy StdDispatch(StandardVisitor visitor) {
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitTypeProxy(this);
     }
   }
 
-  public abstract class ConstrainedProxy : TypeProxy {
+  public abstract class ConstrainedProxy : TypeProxy
+  {
     protected ConstrainedProxy(IToken token, string givenName, string kind)
-      : base(token, givenName, kind) {
+      : base(token, givenName, kind)
+    {
       Contract.Requires(kind != null);
       Contract.Requires(givenName != null);
       Contract.Requires(token != null);
@@ -2372,18 +2746,27 @@ Contract.Requires(that != null);
   /// So, this implementation of BvTypeProxy does not keep track of where a BvTypeProxy may occur
   /// transitively in some other BvTypeProxy's constraints.
   /// </summary>
-  public class BvTypeProxy : ConstrainedProxy {
+  public class BvTypeProxy : ConstrainedProxy
+  {
     public int MinBits;
-    List<BvTypeConstraint/*!*/> constraints;
+    List<BvTypeConstraint /*!*/> constraints;
+
     [ContractInvariantMethod]
-    void ObjectInvariant() {
+    void ObjectInvariant()
+    {
       Contract.Invariant(cce.NonNullElements(constraints, true));
     }
 
-    class BvTypeConstraint {
-      public Type/*!*/ T0;
-      public Type/*!*/ T1;
-      public BvTypeConstraint(Type t0, Type t1) {
+    class BvTypeConstraint
+    {
+      public Type /*!*/
+        T0;
+
+      public Type /*!*/
+        T1;
+
+      public BvTypeConstraint(Type t0, Type t1)
+      {
         Contract.Requires(t1 != null);
         Contract.Requires(t0 != null);
         Contract.Requires(t0.IsBv && t1.IsBv);
@@ -2393,7 +2776,8 @@ Contract.Requires(that != null);
     }
 
     public BvTypeProxy(IToken token, string name, int minBits)
-      : base(token, name, "bv" + minBits + "proxy") {
+      : base(token, name, "bv" + minBits + "proxy")
+    {
       Contract.Requires(name != null);
       Contract.Requires(token != null);
       this.MinBits = minBits;
@@ -2404,7 +2788,8 @@ Contract.Requires(that != null);
     /// be constructed.
     /// </summary>
     public BvTypeProxy(IToken token, string name, Type t0, Type t1)
-      : base(token, name, "bvproxy") {
+      : base(token, name, "bvproxy")
+    {
       Contract.Requires(t1 != null);
       Contract.Requires(t0 != null);
       Contract.Requires(name != null);
@@ -2413,7 +2798,7 @@ Contract.Requires(that != null);
       t0 = FollowProxy(t0);
       t1 = FollowProxy(t1);
       this.MinBits = MinBitsFor(t0) + MinBitsFor(t1);
-      List<BvTypeConstraint/*!*/> list = new List<BvTypeConstraint/*!*/>();
+      List<BvTypeConstraint /*!*/> list = new List<BvTypeConstraint /*!*/>();
       list.Add(new BvTypeConstraint(t0, t1));
       this.constraints = list;
     }
@@ -2422,14 +2807,16 @@ Contract.Requires(that != null);
     /// Construct a BvTypeProxy like p, but with minBits.
     /// </summary>
     private BvTypeProxy(BvTypeProxy p, int minBits)
-      : base(p.tok, p.Name, "") {
+      : base(p.tok, p.Name, "")
+    {
       Contract.Requires(p != null);
       this.MinBits = minBits;
       this.constraints = p.constraints;
     }
 
-    private BvTypeProxy(IToken token, string name, int minBits, List<BvTypeConstraint/*!*/> constraints)
-      : base(token, name, "") {
+    private BvTypeProxy(IToken token, string name, int minBits, List<BvTypeConstraint /*!*/> constraints)
+      : base(token, name, "")
+    {
       Contract.Requires(cce.NonNullElements(constraints, true));
       Contract.Requires(name != null);
       Contract.Requires(token != null);
@@ -2439,50 +2826,64 @@ Contract.Requires(that != null);
 
     [Pure]
     [Reads(ReadsAttribute.Reads.Everything)]
-    private static int MinBitsFor(Type t) {
+    private static int MinBitsFor(Type t)
+    {
       Contract.Requires(t != null);
       Contract.Requires(t.IsBv);
       Contract.Ensures(0 <= Contract.Result<int>());
 
-      if (t is TypeSynonymAnnotation) {
-        return MinBitsFor(((TypeSynonymAnnotation)t).ExpandedType);
+      if (t is TypeSynonymAnnotation)
+      {
+        return MinBitsFor(((TypeSynonymAnnotation) t).ExpandedType);
       }
 
-      if (t is BvType) {
+      if (t is BvType)
+      {
         return t.BvBits;
-      } else {
-        return ((BvTypeProxy)t).MinBits;
+      }
+      else
+      {
+        return ((BvTypeProxy) t).MinBits;
       }
     }
 
     //-----------  Cloning  ----------------------------------
 
-    public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
+    public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
+    {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       Type p = ProxyFor;
-      if (p != null) {
+      if (p != null)
+      {
         return p.Clone(varMap);
-      } else {
-        return new BvTypeProxy(this.tok, this.Name, this.MinBits, this.constraints);  // the clone will have a name that ends with $bvproxy<n>$bvproxy<m>
+      }
+      else
+      {
+        return new BvTypeProxy(this.tok, this.Name, this.MinBits,
+          this.constraints); // the clone will have a name that ends with $bvproxy<n>$bvproxy<m>
       }
     }
 
-    public override Type CloneUnresolved() {
+    public override Type CloneUnresolved()
+    {
       Contract.Ensures(Contract.Result<Type>() != null);
-      return new BvTypeProxy(this.tok, this.Name, this.MinBits, this.constraints);  // the clone will have a name that ends with $bvproxy<n>$bvproxy<m>
+      return new BvTypeProxy(this.tok, this.Name, this.MinBits,
+        this.constraints); // the clone will have a name that ends with $bvproxy<n>$bvproxy<m>
     }
 
     //-----------  Unification of types  -----------
 
     public override bool Unify(Type that,
-                               List<TypeVariable> unifiableVariables,
-                               IDictionary<TypeVariable, Type> result) {
+      List<TypeVariable> unifiableVariables,
+      IDictionary<TypeVariable, Type> result)
+    {
       //Contract.Requires(cce.NonNullElements(result));
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(that != null);
       Type p = ProxyFor;
-      if (p != null) {
+      if (p != null)
+      {
         return p.Unify(that, unifiableVariables, result);
       }
 
@@ -2498,113 +2899,154 @@ Contract.Requires(that != null);
       if (tv != null && unifiableVariables.Contains(tv))
         return that.Unify(this, unifiableVariables, result);
 
-      if (object.ReferenceEquals(this, that)) {
+      if (object.ReferenceEquals(this, that))
+      {
         return true;
-      } else if (that is BvType) {
-        if (MinBits <= that.BvBits) {
-          if (constraints != null) {
-            foreach (BvTypeConstraint btc in constraints) {
+      }
+      else if (that is BvType)
+      {
+        if (MinBits <= that.BvBits)
+        {
+          if (constraints != null)
+          {
+            foreach (BvTypeConstraint btc in constraints)
+            {
               int minT1 = MinBitsFor(btc.T1);
               int left = IncreaseBits(btc.T0, that.BvBits - minT1);
               left = IncreaseBits(btc.T1, minT1 + left);
-              Contract.Assert(left == 0);  // because it should always be possible to increase the total size of a BvTypeConstraint pair (t0,t1) arbitrarily
+              Contract.Assert(
+                left == 0); // because it should always be possible to increase the total size of a BvTypeConstraint pair (t0,t1) arbitrarily
             }
           }
+
           DefineProxy(that);
           return true;
         }
-      } else if (that is BvTypeProxy) {
-        BvTypeProxy bt = (BvTypeProxy)that;
+      }
+      else if (that is BvTypeProxy)
+      {
+        BvTypeProxy bt = (BvTypeProxy) that;
         // keep the proxy with the stronger constraint (that is, the higher minBits), but if either
         // has a constraints list, then concatenate both constraints lists and define the previous
         // proxies to the new one
-        if (this.constraints != null || bt.constraints != null) {
-          List<BvTypeConstraint/*!*/> list = new List<BvTypeConstraint/*!*/>();
-          if (this.constraints != null) {
+        if (this.constraints != null || bt.constraints != null)
+        {
+          List<BvTypeConstraint /*!*/> list = new List<BvTypeConstraint /*!*/>();
+          if (this.constraints != null)
+          {
             list.AddRange(this.constraints);
           }
-          if (bt.constraints != null) {
+
+          if (bt.constraints != null)
+          {
             list.AddRange(bt.constraints);
           }
+
           BvTypeProxy np = new BvTypeProxy(this.tok, this.Name, Math.Max(this.MinBits, bt.MinBits), list);
           this.DefineProxy(np);
           bt.DefineProxy(np);
-        } else if (this.MinBits <= bt.MinBits) {
+        }
+        else if (this.MinBits <= bt.MinBits)
+        {
           this.DefineProxy(bt);
-        } else {
+        }
+        else
+        {
           bt.DefineProxy(this);
         }
+
         return true;
-      } else if (that is ConstrainedProxy) {
+      }
+      else if (that is ConstrainedProxy)
+      {
         // only bitvector proxies can be unified with this BvTypeProxy
         return false;
-      } else if (that is TypeProxy) {
+      }
+      else if (that is TypeProxy)
+      {
         // define:  that.ProxyFor := this;
         return that.Unify(this, unifiableVariables, result);
       }
+
       return false;
     }
 
-    private static int IncreaseBits(Type t, int to) {
+    private static int IncreaseBits(Type t, int to)
+    {
       Contract.Requires(t != null);
       Contract.Requires(t.IsBv && 0 <= to && MinBitsFor(t) <= to);
       Contract.Ensures(0 <= Contract.Result<int>() && Contract.Result<int>() <= to);
 
-      if(t is TypeSynonymAnnotation) {
-        return IncreaseBits(((TypeSynonymAnnotation)t).ExpandedType, to);
+      if (t is TypeSynonymAnnotation)
+      {
+        return IncreaseBits(((TypeSynonymAnnotation) t).ExpandedType, to);
       }
 
       t = FollowProxy(t);
-      if (t is BvType) {
+      if (t is BvType)
+      {
         return to - t.BvBits;
-      } else {
-        BvTypeProxy p = (BvTypeProxy)t;
+      }
+      else
+      {
+        BvTypeProxy p = (BvTypeProxy) t;
         Contract.Assert(p.MinBits <= to);
-        if (p.MinBits < to) {
+        if (p.MinBits < to)
+        {
           BvTypeProxy q = new BvTypeProxy(p, to);
           p.DefineProxy(q);
         }
-        return 0;  // we were able to satisfy the request completely
+
+        return 0; // we were able to satisfy the request completely
       }
     }
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
-    public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
+    public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
+    {
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
-      if (this.ProxyFor == null) {
+      if (this.ProxyFor == null)
+      {
         // check that the constraints are clean and do not contain any
         // of the substituted variables (otherwise, we are in big trouble)
         Contract.Assert(Contract.ForAll(constraints, c =>
-               Contract.ForAll(subst.Keys, var =>
-                      !c.T0.FreeVariables.Contains(var) && !c.T1.FreeVariables.Contains(var))));
+          Contract.ForAll(subst.Keys, var =>
+            !c.T0.FreeVariables.Contains(var) && !c.T1.FreeVariables.Contains(var))));
       }
+
       return base.Substitute(subst);
     }
 
     //-----------  Getters/Issers  ----------------------------------
 
-    public override bool IsBv {
-      get {
-        return true;
-      }
+    public override bool IsBv
+    {
+      get { return true; }
     }
-    public override int BvBits {
-      get {
+
+    public override int BvBits
+    {
+      get
+      {
         // This method is supposed to return the number of bits supplied, but unless the proxy has been resolved,
         // we only have a lower bound on the number of bits supplied.  But this method is not supposed to be
         // called until type checking has finished, at which time the minBits is stable.
         Type p = ProxyFor;
-        if (p != null) {
+        if (p != null)
+        {
           return p.BvBits;
-        } else {
+        }
+        else
+        {
           return MinBits;
         }
       }
     }
 
-    public override Absy StdDispatch(StandardVisitor visitor) {
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitBvTypeProxy(this);
@@ -2617,113 +3059,139 @@ Contract.Requires(that != null);
   // Because map type can be polymorphic (in the most general case, each index or
   // value type is described by a separate type parameter) any combination of
   // constraints can be satisfied.
-  public class MapTypeProxy : ConstrainedProxy {
+  public class MapTypeProxy : ConstrainedProxy
+  {
     public readonly int Arity;
-    private readonly List<Constraint>/*!*/ constraints = new List<Constraint>();
+
+    private readonly List<Constraint> /*!*/
+      constraints = new List<Constraint>();
+
     [ContractInvariantMethod]
-    void ObjectInvariant() {
+    void ObjectInvariant()
+    {
       Contract.Invariant(constraints != null);
     }
 
 
     // each constraint specifies that the given combination of argument/result
     // types must be a possible instance of the formal map argument/result types
-    private struct Constraint {
-      public readonly List<Type>/*!*/ Arguments;
-      public readonly Type/*!*/ Result;
+    private struct Constraint
+    {
+      public readonly List<Type> /*!*/
+        Arguments;
+
+      public readonly Type /*!*/
+        Result;
+
       [ContractInvariantMethod]
-      void ObjectInvariant() {
+      void ObjectInvariant()
+      {
         Contract.Invariant(Arguments != null);
         Contract.Invariant(Result != null);
       }
 
 
-      public Constraint(List<Type> arguments, Type result) {
+      public Constraint(List<Type> arguments, Type result)
+      {
         Contract.Requires(result != null);
         Contract.Requires(arguments != null);
         Arguments = arguments;
         Result = result;
       }
 
-      public Constraint Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
+      public Constraint Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
+      {
         Contract.Requires(cce.NonNullDictionaryAndValues(varMap));
-        List<Type>/*!*/ args = new List<Type>();
-        foreach (Type/*!*/ t in Arguments) {
+        List<Type> /*!*/
+          args = new List<Type>();
+        foreach (Type /*!*/ t in Arguments)
+        {
           Contract.Assert(t != null);
           args.Add(t.Clone(varMap));
         }
-        Type/*!*/ res = Result.Clone(varMap);
+
+        Type /*!*/
+          res = Result.Clone(varMap);
         Contract.Assert(res != null);
         return new Constraint(args, res);
       }
 
       public bool Unify(MapType that,
-                        List<TypeVariable>/*!*/ unifiableVariables,
-                        IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ result) {
+        List<TypeVariable> /*!*/ unifiableVariables,
+        IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ result)
+      {
         Contract.Requires(unifiableVariables != null);
         Contract.Requires(cce.NonNullDictionaryAndValues(result));
         Contract.Requires(that != null);
         Contract.Requires(Arguments.Count == that.Arguments.Count);
-        Dictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst = new Dictionary<TypeVariable/*!*/, Type/*!*/>();
-        foreach (TypeVariable/*!*/ tv in that.TypeParameters) {
+        Dictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+          subst = new Dictionary<TypeVariable /*!*/, Type /*!*/>();
+        foreach (TypeVariable /*!*/ tv in that.TypeParameters)
+        {
           Contract.Assert(tv != null);
           TypeProxy proxy = new TypeProxy(Token.NoToken, tv.Name);
           subst.Add(tv, proxy);
         }
 
         bool good = true;
-        for (int i = 0; i < that.Arguments.Count; i++) {
+        for (int i = 0; i < that.Arguments.Count; i++)
+        {
           Type t0 = that.Arguments[i].Substitute(subst);
           Type t1 = this.Arguments[i];
           good &= t0.Unify(t1, unifiableVariables, result);
         }
+
         good &= that.Result.Substitute(subst).Unify(this.Result, unifiableVariables, result);
         return good;
       }
     }
 
     public MapTypeProxy(IToken token, string name, int arity)
-      : base(token, name, "mapproxy") {
+      : base(token, name, "mapproxy")
+    {
       Contract.Requires(name != null);
       Contract.Requires(token != null);
       Contract.Requires(0 <= arity);
       this.Arity = arity;
     }
 
-    private void AddConstraint(Constraint c) {
+    private void AddConstraint(Constraint c)
+    {
       Contract.Requires(c.Arguments.Count == Arity);
 
       Type f = ProxyFor;
       MapType mf = f as MapType;
-      if (mf != null) {
-        bool success = c.Unify(mf, new List<TypeVariable>(), new Dictionary<TypeVariable/*!*/, Type/*!*/>());
+      if (mf != null)
+      {
+        bool success = c.Unify(mf, new List<TypeVariable>(), new Dictionary<TypeVariable /*!*/, Type /*!*/>());
         Contract.Assert(success);
         return;
       }
 
       MapTypeProxy mpf = f as MapTypeProxy;
-      if (mpf != null) {
+      if (mpf != null)
+      {
         mpf.AddConstraint(c);
         return;
       }
 
-      Contract.Assert(f == null);  // no other types should occur as specialisations of this proxy
+      Contract.Assert(f == null); // no other types should occur as specialisations of this proxy
 
       constraints.Add(c);
     }
 
-    public Type CheckArgumentTypes(List<Expr>/*!*/ actualArgs,
-                                   out TypeParamInstantiation/*!*/ tpInstantiation,
-                                   IToken/*!*/ typeCheckingSubject,
-                                   string/*!*/ opName,
-                                   TypecheckingContext/*!*/ tc) {
+    public Type CheckArgumentTypes(List<Expr> /*!*/ actualArgs,
+      out TypeParamInstantiation /*!*/ tpInstantiation,
+      IToken /*!*/ typeCheckingSubject,
+      string /*!*/ opName,
+      TypecheckingContext /*!*/ tc)
+    {
       Contract.Requires(actualArgs != null);
       Contract.Requires(typeCheckingSubject != null);
       Contract.Requires(opName != null);
       Contract.Requires(tc != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
 
-      
 
       Type f = ProxyFor;
       MapType mf = f as MapType;
@@ -2734,23 +3202,30 @@ Contract.Requires(that != null);
       if (mpf != null)
         return mpf.CheckArgumentTypes(actualArgs, out tpInstantiation, typeCheckingSubject, opName, tc);
 
-      Contract.Assert(f == null);  // no other types should occur as specialisations of this proxy
+      Contract.Assert(f == null); // no other types should occur as specialisations of this proxy
 
       // otherwise, we just record the constraints given by this usage of the map type
-      List<Type>/*!*/ arguments = new List<Type>();
-      foreach (Expr/*!*/ e in actualArgs) {
+      List<Type> /*!*/
+        arguments = new List<Type>();
+      foreach (Expr /*!*/ e in actualArgs)
+      {
         Contract.Assert(e != null);
         arguments.Add(e.Type);
       }
-      Type/*!*/ result = new TypeProxy(tok, "result");
+
+      Type /*!*/
+        result = new TypeProxy(tok, "result");
       Contract.Assert(result != null);
       AddConstraint(new Constraint(arguments, result));
 
-      List<Type>/*!*/ argumentsResult = new List<Type>();
-      foreach (Expr/*!*/ e in actualArgs) {
+      List<Type> /*!*/
+        argumentsResult = new List<Type>();
+      foreach (Expr /*!*/ e in actualArgs)
+      {
         Contract.Assert(e != null);
         argumentsResult.Add(e.Type);
       }
+
       argumentsResult.Add(result);
 
       tpInstantiation = new MapTypeProxyParamInstantiation(this, argumentsResult);
@@ -2759,49 +3234,62 @@ Contract.Requires(that != null);
 
     //-----------  Cloning  ----------------------------------
 
-    public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
+    public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
+    {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       Type p = ProxyFor;
-      if (p != null) {
+      if (p != null)
+      {
         return p.Clone(varMap);
-      } else {
+      }
+      else
+      {
         MapTypeProxy p2 = new MapTypeProxy(tok, Name, Arity);
         foreach (Constraint c in constraints)
           p2.AddConstraint(c.Clone(varMap));
-        return p2;  // the clone will have a name that ends with $mapproxy<n>$mapproxy<m> (hopefully)
+        return p2; // the clone will have a name that ends with $mapproxy<n>$mapproxy<m> (hopefully)
       }
     }
 
     //-----------  Linearisation  ----------------------------------
 
-    public override void Emit(TokenTextWriter stream, int contextBindingStrength) {
+    public override void Emit(TokenTextWriter stream, int contextBindingStrength)
+    {
       //Contract.Requires(stream != null);
       Type p = ProxyFor;
-      if (p != null) {
+      if (p != null)
+      {
         p.Emit(stream, contextBindingStrength);
-      } else {
+      }
+      else
+      {
         stream.Write("[");
-        string/*!*/ sep = "";
-        for (int i = 0; i < Arity; ++i) {
+        string /*!*/
+          sep = "";
+        for (int i = 0; i < Arity; ++i)
+        {
           stream.Write(sep);
           sep = ", ";
           stream.Write("?");
         }
+
         stream.Write("]?");
       }
     }
 
     //-----------  Unification of types  -----------
 
-    public override bool Unify(Type/*!*/ that,
-                               List<TypeVariable>/*!*/ unifiableVariables,
-                               IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ result) {
+    public override bool Unify(Type /*!*/ that,
+      List<TypeVariable> /*!*/ unifiableVariables,
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ result)
+    {
       //Contract.Requires(that != null);
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(cce.NonNullElements(result));
       Type p = ProxyFor;
-      if (p != null) {
+      if (p != null)
+      {
         return p.Unify(that, unifiableVariables, result);
       }
 
@@ -2817,69 +3305,90 @@ Contract.Requires(that != null);
       if (tv != null && unifiableVariables.Contains(tv))
         return that.Unify(this, unifiableVariables, result);
 
-      if (object.ReferenceEquals(this, that)) {
+      if (object.ReferenceEquals(this, that))
+      {
         return true;
-      } else if (that is MapType) {
-        MapType mapType = (MapType)that;
-        if (mapType.Arguments.Count == Arity) {
+      }
+      else if (that is MapType)
+      {
+        MapType mapType = (MapType) that;
+        if (mapType.Arguments.Count == Arity)
+        {
           bool good = true;
           foreach (Constraint c in constraints)
             good &= c.Unify(mapType, unifiableVariables, result);
-          if (good) {
+          if (good)
+          {
             DefineProxy(mapType);
             return true;
           }
         }
-      } else if (that is MapTypeProxy) {
-        MapTypeProxy mt = (MapTypeProxy)that;
-        if (mt.Arity == this.Arity) {
+      }
+      else if (that is MapTypeProxy)
+      {
+        MapTypeProxy mt = (MapTypeProxy) that;
+        if (mt.Arity == this.Arity)
+        {
           // we propagate the constraints of this proxy to the more specific one
           foreach (Constraint c in constraints)
             mt.AddConstraint(c);
           DefineProxy(mt);
           return true;
         }
-      } else if (that is ConstrainedProxy) {
+      }
+      else if (that is ConstrainedProxy)
+      {
         // only map-type proxies can be unified with this MapTypeProxy
         return false;
-      } else if (that is TypeProxy) {
+      }
+      else if (that is TypeProxy)
+      {
         // define:  that.ProxyFor := this;
         return that.Unify(this, unifiableVariables, result);
       }
+
       return false;
     }
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
-    public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
+    public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
+    {
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
-      if (this.ProxyFor == null) {
+      if (this.ProxyFor == null)
+      {
         // check that the constraints are clean and do not contain any
         // of the substituted variables (otherwise, we are in big trouble)
         Contract.Assert(Contract.ForAll(constraints, c =>
-               Contract.ForAll(subst.Keys, var =>
-               Contract.ForAll(0, c.Arguments.Count, t => !c.Arguments[t].FreeVariables.Contains(var)) &&
-                     !c.Result.FreeVariables.Contains(var))));
+          Contract.ForAll(subst.Keys, var =>
+            Contract.ForAll(0, c.Arguments.Count, t => !c.Arguments[t].FreeVariables.Contains(var)) &&
+            !c.Result.FreeVariables.Contains(var))));
       }
+
       return base.Substitute(subst);
     }
 
     //-----------  Getters/Issers  ----------------------------------
 
-    public override bool IsMap {
-      get {
-        return true;
-      }
+    public override bool IsMap
+    {
+      get { return true; }
     }
-    public override MapType/*!*/ AsMap {
-      get {
+
+    public override MapType /*!*/ AsMap
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<MapType>() != null);
 
         Type p = ProxyFor;
-        if (p != null) {
+        if (p != null)
+        {
           return p.AsMap;
-        } else {
+        }
+        else
+        {
           {
             Contract.Assert(false);
             throw new cce.UnreachableException();
@@ -2887,13 +3396,14 @@ Contract.Requires(that != null);
         }
       }
     }
-    public override int MapArity {
-      get {
-        return Arity;
-      }
+
+    public override int MapArity
+    {
+      get { return Arity; }
     }
 
-    public override Absy StdDispatch(StandardVisitor visitor) {
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitMapTypeProxy(this);
@@ -2906,22 +3416,30 @@ Contract.Requires(that != null);
   // original unresolved types. Such types should be considered as
   // equivalent to ExpandedType, the annotations are only used to enable
   // better pretty-printing
-  public class TypeSynonymAnnotation : Type {
-    public Type/*!*/ ExpandedType;
+  public class TypeSynonymAnnotation : Type
+  {
+    public Type /*!*/
+      ExpandedType;
 
-    public readonly List<Type>/*!*/ Arguments;
+    public readonly List<Type> /*!*/
+      Arguments;
+
     // is set during resolution and determines whether the right number of arguments is given
-    public readonly TypeSynonymDecl/*!*/ Decl;
+    public readonly TypeSynonymDecl /*!*/
+      Decl;
+
     [ContractInvariantMethod]
-    void ObjectInvariant() {
+    void ObjectInvariant()
+    {
       Contract.Invariant(ExpandedType != null);
       Contract.Invariant(Arguments != null);
       Contract.Invariant(Decl != null);
     }
 
 
-    public TypeSynonymAnnotation(IToken/*!*/ token, TypeSynonymDecl/*!*/ decl, List<Type>/*!*/ arguments)
-      : base(token) {
+    public TypeSynonymAnnotation(IToken /*!*/ token, TypeSynonymDecl /*!*/ decl, List<Type> /*!*/ arguments)
+      : base(token)
+    {
       Contract.Requires(token != null);
       Contract.Requires(decl != null);
       Contract.Requires(arguments != null);
@@ -2931,17 +3449,19 @@ Contract.Requires(that != null);
 
       // build a substitution that can be applied to the definition of
       // the type synonym
-      IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst =
-        new Dictionary<TypeVariable/*!*/, Type/*!*/>();
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+        subst =
+          new Dictionary<TypeVariable /*!*/, Type /*!*/>();
       for (int i = 0; i < arguments.Count; ++i)
         subst.Add(decl.TypeParameters[i], arguments[i]);
 
       ExpandedType = decl.Body.Substitute(subst);
     }
 
-    private TypeSynonymAnnotation(IToken/*!*/ token, TypeSynonymDecl/*!*/ decl, List<Type>/*!*/ arguments,
-                                  Type/*!*/ expandedType)
-      : base(token) {
+    private TypeSynonymAnnotation(IToken /*!*/ token, TypeSynonymDecl /*!*/ decl, List<Type> /*!*/ arguments,
+      Type /*!*/ expandedType)
+      : base(token)
+    {
       Contract.Requires(token != null);
       Contract.Requires(decl != null);
       Contract.Requires(arguments != null);
@@ -2957,35 +3477,45 @@ Contract.Requires(that != null);
     // have to be created in the right way. It is /not/ ok to just clone
     // everything recursively
 
-    public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
+    public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
+    {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
-      List<Type>/*!*/ newArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
+      List<Type> /*!*/
+        newArgs = new List<Type>();
+      foreach (Type /*!*/ t in Arguments)
+      {
         Contract.Assert(t != null);
         newArgs.Add(t.Clone(varMap));
       }
-      Type/*!*/ newExpandedType = ExpandedType.Clone(varMap);
+
+      Type /*!*/
+        newExpandedType = ExpandedType.Clone(varMap);
       Contract.Assert(newExpandedType != null);
       return new TypeSynonymAnnotation(tok, Decl, newArgs, newExpandedType);
     }
 
-    public override Type CloneUnresolved() {
+    public override Type CloneUnresolved()
+    {
       Contract.Ensures(Contract.Result<Type>() != null);
-      List<Type>/*!*/ newArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
+      List<Type> /*!*/
+        newArgs = new List<Type>();
+      foreach (Type /*!*/ t in Arguments)
+      {
         Contract.Assert(t != null);
         newArgs.Add(t.CloneUnresolved());
       }
+
       return new TypeSynonymAnnotation(tok, Decl, newArgs);
     }
 
     //-----------  Equality  ----------------------------------
 
     [Pure]
-    public override bool Equals(Type/*!*/ that,
-                                List<TypeVariable>/*!*/ thisBoundVariables,
-                                List<TypeVariable>/*!*/ thatBoundVariables) {
+    public override bool Equals(Type /*!*/ that,
+      List<TypeVariable> /*!*/ thisBoundVariables,
+      List<TypeVariable> /*!*/ thatBoundVariables)
+    {
       //Contract.Requires(that != null);
       //Contract.Requires(thisBoundVariables != null);
       //Contract.Requires(thatBoundVariables != null);
@@ -2993,8 +3523,10 @@ Contract.Requires(that != null);
     }
 
     // used to skip leading type annotations
-    internal override Type/*!*/ Expanded {
-      get {
+    internal override Type /*!*/ Expanded
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<Type>() != null);
 
         return ExpandedType.Expanded;
@@ -3003,9 +3535,10 @@ Contract.Requires(that != null);
 
     //-----------  Unification of types  -----------
 
-    public override bool Unify(Type/*!*/ that,
-                               List<TypeVariable>/*!*/ unifiableVariables,
-                               IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ result) {
+    public override bool Unify(Type /*!*/ that,
+      List<TypeVariable> /*!*/ unifiableVariables,
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ result)
+    {
       //Contract.Requires(that != null);
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(cce.NonNullElements(result));
@@ -3025,17 +3558,21 @@ Contract.Requires(that != null);
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
-    public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
+    public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
+    {
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       if (subst.Count == 0)
         return this;
       List<Type> newArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
+      foreach (Type /*!*/ t in Arguments)
+      {
         Contract.Assert(t != null);
         newArgs.Add(t.Substitute(subst));
       }
-      Type/*!*/ newExpandedType = ExpandedType.Substitute(subst);
+
+      Type /*!*/
+        newExpandedType = ExpandedType.Substitute(subst);
       Contract.Assert(newExpandedType != null);
       return new TypeSynonymAnnotation(tok, Decl, newArgs, newExpandedType);
     }
@@ -3043,14 +3580,16 @@ Contract.Requires(that != null);
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(List<TypeVariable> boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables)
+    {
       //Contract.Requires(boundVariables != null);
       return ExpandedType.GetHashCode(boundVariables);
     }
 
     //-----------  Linearisation  ----------------------------------
 
-    public override void Emit(TokenTextWriter stream, int contextBindingStrength) {
+    public override void Emit(TokenTextWriter stream, int contextBindingStrength)
+    {
       //Contract.Requires(stream != null);
       stream.SetToken(this);
       CtorType.EmitCtorType(this.Decl.Name, Arguments, stream, contextBindingStrength);
@@ -3058,27 +3597,34 @@ Contract.Requires(that != null);
 
     //-----------  Resolution  ----------------------------------
 
-    public override Type ResolveType(ResolutionContext rc) {
+    public override Type ResolveType(ResolutionContext rc)
+    {
       //Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       List<Type> resolvedArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
+      foreach (Type /*!*/ t in Arguments)
+      {
         Contract.Assert(t != null);
         resolvedArgs.Add(t.ResolveType(rc));
       }
+
       return new TypeSynonymAnnotation(tok, Decl, resolvedArgs);
     }
 
-    public override List<TypeVariable>/*!*/ FreeVariables {
-      get {
+    public override List<TypeVariable> /*!*/ FreeVariables
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
         return ExpandedType.FreeVariables;
       }
     }
 
-    public override List<TypeProxy/*!*/>/*!*/ FreeProxies {
-      get {
+    public override List<TypeProxy /*!*/> /*!*/ FreeProxies
+    {
+      get
+      {
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
         return ExpandedType.FreeProxies;
       }
@@ -3086,125 +3632,125 @@ Contract.Requires(that != null);
 
     //-----------  Getters/Issers  ----------------------------------
 
-    public override bool IsBasic {
-      get {
-        return ExpandedType.IsBasic;
-      }
+    public override bool IsBasic
+    {
+      get { return ExpandedType.IsBasic; }
     }
-    public override bool IsInt {
-      get {
-        return ExpandedType.IsInt;
-      }
+
+    public override bool IsInt
+    {
+      get { return ExpandedType.IsInt; }
     }
+
     public override bool IsReal
     {
-      get
-      {
-        return ExpandedType.IsReal;
-      }
+      get { return ExpandedType.IsReal; }
     }
+
     public override bool IsFloat
     {
+      get { return ExpandedType.IsFloat; }
+    }
+
+    public override int FloatExponent
+    {
+      get { return ExpandedType.FloatExponent; }
+    }
+
+    public override int FloatSignificand
+    {
+      get { return ExpandedType.FloatSignificand; }
+    }
+
+    public override bool IsBool
+    {
+      get { return ExpandedType.IsBool; }
+    }
+
+    public override bool IsRMode
+    {
+      get { return ExpandedType.IsRMode; }
+    }
+
+    public override bool IsString
+    {
+      get { return ExpandedType.IsString; }
+    }
+
+    public override bool IsRegEx
+    {
+      get { return ExpandedType.IsRegEx; }
+    }
+
+    public override bool IsVariable
+    {
+      get { return ExpandedType.IsVariable; }
+    }
+
+    public override TypeVariable /*!*/ AsVariable
+    {
       get
       {
-        return ExpandedType.IsFloat;
-      }
-    }
-    public override int FloatExponent 
-    {
-      get 
-      {
-        return ExpandedType.FloatExponent;
-      }
-    }
-
-    public override int FloatSignificand 
-    {
-      get 
-      {
-        return ExpandedType.FloatSignificand;
-      }
-    }
-
-    public override bool IsBool {
-      get {
-        return ExpandedType.IsBool;
-      }
-    }
-    public override bool IsRMode {
-      get {
-        return ExpandedType.IsRMode;
-      }
-    }
-    public override bool IsString {
-      get {
-        return ExpandedType.IsString;
-      }
-    }
-    public override bool IsRegEx {
-      get {
-        return ExpandedType.IsRegEx;
-      }
-    }
-
-    public override bool IsVariable {
-      get {
-        return ExpandedType.IsVariable;
-      }
-    }
-    public override TypeVariable/*!*/ AsVariable {
-      get {
         Contract.Ensures(Contract.Result<TypeVariable>() != null);
         return ExpandedType.AsVariable;
       }
     }
-    public override bool IsCtor {
-      get {
-        return ExpandedType.IsCtor;
-      }
+
+    public override bool IsCtor
+    {
+      get { return ExpandedType.IsCtor; }
     }
-    public override CtorType/*!*/ AsCtor {
-      get {
+
+    public override CtorType /*!*/ AsCtor
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<CtorType>() != null);
         return ExpandedType.AsCtor;
       }
     }
-    public override bool IsMap {
-      get {
-        return ExpandedType.IsMap;
-      }
+
+    public override bool IsMap
+    {
+      get { return ExpandedType.IsMap; }
     }
-    public override MapType/*!*/ AsMap {
-      get {
+
+    public override MapType /*!*/ AsMap
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<MapType>() != null);
         return ExpandedType.AsMap;
       }
     }
-    public override bool IsUnresolved {
-      get {
-        return ExpandedType.IsUnresolved;
-      }
+
+    public override bool IsUnresolved
+    {
+      get { return ExpandedType.IsUnresolved; }
     }
-    public override UnresolvedTypeIdentifier/*!*/ AsUnresolved {
-      get {
+
+    public override UnresolvedTypeIdentifier /*!*/ AsUnresolved
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<UnresolvedTypeIdentifier>() != null);
 
         return ExpandedType.AsUnresolved;
       }
     }
 
-    public override bool IsBv {
-      get {
-        return ExpandedType.IsBv;
-      }
-    }
-    public override int BvBits {
-      get {
-        return ExpandedType.BvBits;
-      }
+    public override bool IsBv
+    {
+      get { return ExpandedType.IsBv; }
     }
 
-    public override Absy StdDispatch(StandardVisitor visitor) {
+    public override int BvBits
+    {
+      get { return ExpandedType.BvBits; }
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitTypeSynonymAnnotation(this);
@@ -3213,19 +3759,26 @@ Contract.Requires(that != null);
 
   //=====================================================================
 
-  public class CtorType : Type {
-    public readonly List<Type>/*!*/ Arguments;
+  public class CtorType : Type
+  {
+    public readonly List<Type> /*!*/
+      Arguments;
+
     // is set during resolution and determines whether the right number of arguments is given
-    public readonly TypeCtorDecl/*!*/ Decl;
+    public readonly TypeCtorDecl /*!*/
+      Decl;
+
     [ContractInvariantMethod]
-    void ObjectInvariant() {
+    void ObjectInvariant()
+    {
       Contract.Invariant(Arguments != null);
       Contract.Invariant(Decl != null);
     }
 
 
-    public CtorType(IToken/*!*/ token, TypeCtorDecl/*!*/ decl, List<Type>/*!*/ arguments)
-      : base(token) {
+    public CtorType(IToken /*!*/ token, TypeCtorDecl /*!*/ decl, List<Type> /*!*/ arguments)
+      : base(token)
+    {
       Contract.Requires(token != null);
       Contract.Requires(decl != null);
       Contract.Requires(arguments != null);
@@ -3234,20 +3787,23 @@ Contract.Requires(that != null);
       this.Arguments = arguments;
     }
 
-    public bool IsDatatype() {
+    public bool IsDatatype()
+    {
       return QKeyValue.FindBoolAttribute(Decl.Attributes, "datatype");
     }
 
     // This attribute is used to tell Boogie that this type is built into SMT-LIB and should
     // be represented using the provided string (and also does not need to be explicitly declared).
-    public string GetBuiltin() {
+    public string GetBuiltin()
+    {
       return this.Decl.FindStringAttribute("builtin");
     }
 
     // This attribute can be used to tell Boogie that a datatype depends on another datatype
     // in case Boogie can't figure this out itself (as may happen, for example when a type
     // has the ":builtin" attribute).
-    public string GetTypeDependency() {
+    public string GetTypeDependency()
+    {
       return this.Decl.FindStringAttribute("dependson");
     }
 
@@ -3256,24 +3812,32 @@ Contract.Requires(that != null);
     // have to be created in the right way. It is /not/ ok to just clone
     // everything recursively
 
-    public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
+    public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
+    {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
-      List<Type>/*!*/ newArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
+      List<Type> /*!*/
+        newArgs = new List<Type>();
+      foreach (Type /*!*/ t in Arguments)
+      {
         Contract.Assert(t != null);
         newArgs.Add(t.Clone(varMap));
       }
+
       return new CtorType(tok, Decl, newArgs);
     }
 
-    public override Type CloneUnresolved() {
+    public override Type CloneUnresolved()
+    {
       Contract.Ensures(Contract.Result<Type>() != null);
-      List<Type>/*!*/ newArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
+      List<Type> /*!*/
+        newArgs = new List<Type>();
+      foreach (Type /*!*/ t in Arguments)
+      {
         Contract.Assert(t != null);
         newArgs.Add(t.CloneUnresolved());
       }
+
       return new CtorType(tok, Decl, newArgs);
     }
 
@@ -3281,7 +3845,8 @@ Contract.Requires(that != null);
 
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
-    public override bool Equals(object that) {
+    public override bool Equals(object that)
+    {
       Type thatType = that as Type;
       if (thatType == null)
         return false;
@@ -3296,34 +3861,41 @@ Contract.Requires(that != null);
     }
 
     [Pure]
-    public override bool Equals(Type/*!*/ that,
-                                List<TypeVariable>/*!*/ thisBoundVariables,
-                                List<TypeVariable>/*!*/ thatBoundVariables) {
+    public override bool Equals(Type /*!*/ that,
+      List<TypeVariable> /*!*/ thisBoundVariables,
+      List<TypeVariable> /*!*/ thatBoundVariables)
+    {
       that = TypeProxy.FollowProxy(that.Expanded);
       CtorType thatCtorType = that as CtorType;
       if (thatCtorType == null || !this.Decl.Equals(thatCtorType.Decl))
         return false;
-      for (int i = 0; i < Arguments.Count; ++i) {
+      for (int i = 0; i < Arguments.Count; ++i)
+      {
         if (!Arguments[i].Equals(thatCtorType.Arguments[i],
-                                 thisBoundVariables, thatBoundVariables))
+          thisBoundVariables, thatBoundVariables))
           return false;
       }
+
       return true;
     }
 
     //-----------  Unification of types  -----------
 
-    public override bool Unify(Type/*!*/ that,
-                               List<TypeVariable>/*!*/ unifiableVariables,
-                               IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ result) {
+    public override bool Unify(Type /*!*/ that,
+      List<TypeVariable> /*!*/ unifiableVariables,
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ result)
+    {
       that = that.Expanded;
       if (that is TypeProxy || that is TypeVariable)
         return that.Unify(this, unifiableVariables, result);
 
       CtorType thatCtorType = that as CtorType;
-      if (thatCtorType == null || !thatCtorType.Decl.Equals(Decl)) {
+      if (thatCtorType == null || !thatCtorType.Decl.Equals(Decl))
+      {
         return false;
-      } else {
+      }
+      else
+      {
         bool good = true;
         for (int i = 0; i < Arguments.Count; ++i)
           good &= Arguments[i].Unify(thatCtorType.Arguments[i], unifiableVariables, result);
@@ -3356,7 +3928,8 @@ Contract.Requires(that != null);
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
-    public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
+    public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
+    {
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       if (subst.Count == 0)
@@ -3364,48 +3937,58 @@ Contract.Requires(that != null);
       List<Type> newArgs = new List<Type>();
       lock (Arguments)
       {
-        foreach (Type/*!*/ t in Arguments)
+        foreach (Type /*!*/ t in Arguments)
         {
           Contract.Assert(t != null);
           newArgs.Add(t.Substitute(subst));
         }
       }
+
       return new CtorType(tok, Decl, newArgs);
     }
 
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(List<TypeVariable> boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables)
+    {
       //Contract.Requires(boundVariables != null);
       int res = 1637643879 * Decl.GetHashCode();
-      foreach (Type/*!*/ t in Arguments.ToArray()) {
+      foreach (Type /*!*/ t in Arguments.ToArray())
+      {
         Contract.Assert(t != null);
         res = res * 3 + t.GetHashCode(boundVariables);
       }
+
       return res;
     }
 
     [Pure]
-    public override int GetHashCode() {
+    public override int GetHashCode()
+    {
       return base.GetHashCode();
     }
 
     //-----------  Linearisation  ----------------------------------
 
-    public override void Emit(TokenTextWriter stream, int contextBindingStrength) {
+    public override void Emit(TokenTextWriter stream, int contextBindingStrength)
+    {
       //Contract.Requires(stream != null);
       stream.SetToken(this);
       // If this type has a "builtin" attribute, use the corresponding user-provided string to represent the type.
       string builtin = GetBuiltin();
-      if (builtin != null) {
+      if (builtin != null)
+      {
         stream.Write(builtin);
-      } else {
+      }
+      else
+      {
         EmitCtorType(this.Decl.Name, Arguments, stream, contextBindingStrength);
       }
     }
 
-    internal static void EmitCtorType(string name, List<Type> args, TokenTextWriter stream, int contextBindingStrength) {
+    internal static void EmitCtorType(string name, List<Type> args, TokenTextWriter stream, int contextBindingStrength)
+    {
       Contract.Requires(stream != null);
       Contract.Requires(args != null);
       Contract.Requires(name != null);
@@ -3415,7 +3998,8 @@ Contract.Requires(that != null);
 
       stream.Write("{0}", TokenTextWriter.SanitizeIdentifier(name));
       int i = args.Count;
-      foreach (Type/*!*/ t in args) {
+      foreach (Type /*!*/ t in args)
+      {
         Contract.Assert(t != null);
         stream.Write(" ");
         // use a lower binding strength for the last argument
@@ -3430,53 +4014,66 @@ Contract.Requires(that != null);
 
     //-----------  Resolution  ----------------------------------
 
-    public override Type ResolveType(ResolutionContext rc) {
+    public override Type ResolveType(ResolutionContext rc)
+    {
       //Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       List<Type> resolvedArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
+      foreach (Type /*!*/ t in Arguments)
+      {
         Contract.Assert(t != null);
         resolvedArgs.Add(t.ResolveType(rc));
       }
+
       return new CtorType(tok, Decl, resolvedArgs);
     }
 
-    public override List<TypeVariable>/*!*/ FreeVariables {
-      get {
-        List<TypeVariable>/*!*/ res = new List<TypeVariable>();
-        foreach (Type/*!*/ t in Arguments.ToArray()) {
+    public override List<TypeVariable> /*!*/ FreeVariables
+    {
+      get
+      {
+        List<TypeVariable> /*!*/
+          res = new List<TypeVariable>();
+        foreach (Type /*!*/ t in Arguments.ToArray())
+        {
           Contract.Assert(t != null);
           res.AppendWithoutDups(t.FreeVariables);
         }
+
         return res;
       }
     }
 
-    public override List<TypeProxy/*!*/>/*!*/ FreeProxies {
-      get {
-        List<TypeProxy/*!*/>/*!*/ res = new List<TypeProxy/*!*/>();
-        foreach (Type/*!*/ t in Arguments.ToArray()) {
+    public override List<TypeProxy /*!*/> /*!*/ FreeProxies
+    {
+      get
+      {
+        List<TypeProxy /*!*/> /*!*/
+          res = new List<TypeProxy /*!*/>();
+        foreach (Type /*!*/ t in Arguments.ToArray())
+        {
           Contract.Assert(t != null);
           AppendWithoutDups(res, t.FreeProxies);
         }
+
         return res;
       }
     }
 
     //-----------  Getters/Issers  ----------------------------------
 
-    public override bool IsCtor {
-      get {
-        return true;
-      }
-    }
-    public override CtorType/*!*/ AsCtor {
-      get {
-        return this;
-      }
+    public override bool IsCtor
+    {
+      get { return true; }
     }
 
-    public override Absy StdDispatch(StandardVisitor visitor) {
+    public override CtorType /*!*/ AsCtor
+    {
+      get { return this; }
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitCtorType(this);
@@ -3485,22 +4082,32 @@ Contract.Requires(that != null);
 
   //=====================================================================
 
-  public class MapType : Type {
+  public class MapType : Type
+  {
     // an invariant is that each of the type parameters has to occur as
     // free variable in at least one of the arguments
-    public readonly List<TypeVariable>/*!*/ TypeParameters;
-    public readonly List<Type>/*!*/ Arguments;
-    public Type/*!*/ Result;
+    public readonly List<TypeVariable> /*!*/
+      TypeParameters;
+
+    public readonly List<Type> /*!*/
+      Arguments;
+
+    public Type /*!*/
+      Result;
+
     [ContractInvariantMethod]
-    void ObjectInvariant() {
+    void ObjectInvariant()
+    {
       Contract.Invariant(TypeParameters != null);
       Contract.Invariant(Arguments != null);
       Contract.Invariant(Result != null);
     }
 
 
-    public MapType(IToken/*!*/ token, List<TypeVariable>/*!*/ typeParameters, List<Type>/*!*/ arguments, Type/*!*/ result)
-      : base(token) {
+    public MapType(IToken /*!*/ token, List<TypeVariable> /*!*/ typeParameters, List<Type> /*!*/ arguments,
+      Type /*!*/ result)
+      : base(token)
+    {
       Contract.Requires(token != null);
       Contract.Requires(typeParameters != null);
       Contract.Requires(arguments != null);
@@ -3516,53 +4123,71 @@ Contract.Requires(that != null);
     // have to be created in the right way. It is /not/ ok to just clone
     // everything recursively
 
-    public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
+    public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
+    {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
-      IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ newVarMap =
-        new Dictionary<TypeVariable/*!*/, TypeVariable/*!*/>();
-      foreach (KeyValuePair<TypeVariable/*!*/, TypeVariable/*!*/> p in varMap) {
+      IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/
+        newVarMap =
+          new Dictionary<TypeVariable /*!*/, TypeVariable /*!*/>();
+      foreach (KeyValuePair<TypeVariable /*!*/, TypeVariable /*!*/> p in varMap)
+      {
         Contract.Assert(cce.NonNullElements(p));
         if (!TypeParameters.Contains(p.Key))
           newVarMap.Add(p);
       }
 
-      List<TypeVariable>/*!*/ newTypeParams = new List<TypeVariable>();
-      foreach (TypeVariable/*!*/ var in TypeParameters) {
+      List<TypeVariable> /*!*/
+        newTypeParams = new List<TypeVariable>();
+      foreach (TypeVariable /*!*/ var in TypeParameters)
+      {
         Contract.Assert(var != null);
-        TypeVariable/*!*/ newVar = new TypeVariable(var.tok, var.Name);
+        TypeVariable /*!*/
+          newVar = new TypeVariable(var.tok, var.Name);
         Contract.Assert(newVar != null);
         newVarMap.Add(var, newVar);
         newTypeParams.Add(newVar);
       }
 
-      List<Type>/*!*/ newArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
+      List<Type> /*!*/
+        newArgs = new List<Type>();
+      foreach (Type /*!*/ t in Arguments)
+      {
         Contract.Assert(t != null);
         newArgs.Add(t.Clone(newVarMap));
       }
-      Type/*!*/ newResult = Result.Clone(newVarMap);
+
+      Type /*!*/
+        newResult = Result.Clone(newVarMap);
       Contract.Assert(newResult != null);
 
       return new MapType(this.tok, newTypeParams, newArgs, newResult);
     }
 
-    public override Type CloneUnresolved() {
+    public override Type CloneUnresolved()
+    {
       Contract.Ensures(Contract.Result<Type>() != null);
-      List<TypeVariable>/*!*/ newTypeParams = new List<TypeVariable>();
-      foreach (TypeVariable/*!*/ var in TypeParameters) {
+      List<TypeVariable> /*!*/
+        newTypeParams = new List<TypeVariable>();
+      foreach (TypeVariable /*!*/ var in TypeParameters)
+      {
         Contract.Assert(var != null);
-        TypeVariable/*!*/ newVar = new TypeVariable(var.tok, var.Name);
+        TypeVariable /*!*/
+          newVar = new TypeVariable(var.tok, var.Name);
         Contract.Assert(newVar != null);
         newTypeParams.Add(newVar);
       }
 
-      List<Type>/*!*/ newArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
+      List<Type> /*!*/
+        newArgs = new List<Type>();
+      foreach (Type /*!*/ t in Arguments)
+      {
         Contract.Assert(t != null);
         newArgs.Add(t.CloneUnresolved());
       }
-      Type/*!*/ newResult = Result.CloneUnresolved();
+
+      Type /*!*/
+        newResult = Result.CloneUnresolved();
       Contract.Assert(newResult != null);
 
       return new MapType(this.tok, newTypeParams, newArgs, newResult);
@@ -3571,9 +4196,9 @@ Contract.Requires(that != null);
     //-----------  Equality  ----------------------------------
 
     [Pure]
-    public override bool Equals(Type/*!*/ that,
-                                List<TypeVariable>/*!*/ thisBoundVariables,
-                                List<TypeVariable>/*!*/ thatBoundVariables)
+    public override bool Equals(Type /*!*/ that,
+      List<TypeVariable> /*!*/ thisBoundVariables,
+      List<TypeVariable> /*!*/ thatBoundVariables)
     {
       that = TypeProxy.FollowProxy(that.Expanded);
       MapType thatMapType = that as MapType;
@@ -3583,13 +4208,14 @@ Contract.Requires(that != null);
         return false;
 
       thisBoundVariables = thisBoundVariables.ToList();
-      foreach (TypeVariable/*!*/ var in this.TypeParameters)
+      foreach (TypeVariable /*!*/ var in this.TypeParameters)
       {
         Contract.Assert(var != null);
         thisBoundVariables.Add(var);
       }
+
       thatBoundVariables = thatBoundVariables.ToList();
-      foreach (TypeVariable/*!*/ var in thatMapType.TypeParameters)
+      foreach (TypeVariable /*!*/ var in thatMapType.TypeParameters)
       {
         Contract.Assert(var != null);
         thatBoundVariables.Add(var);
@@ -3598,19 +4224,20 @@ Contract.Requires(that != null);
       for (int i = 0; i < Arguments.Count; ++i)
       {
         if (!Arguments[i].Equals(thatMapType.Arguments[i],
-                                 thisBoundVariables, thatBoundVariables))
+          thisBoundVariables, thatBoundVariables))
           return false;
       }
 
       return this.Result.Equals(thatMapType.Result,
-                                thisBoundVariables, thatBoundVariables);
+        thisBoundVariables, thatBoundVariables);
     }
 
     //-----------  Unification of types  -----------
 
-    public override bool Unify(Type/*!*/ that,
-                               List<TypeVariable>/*!*/ unifiableVariables,
-                               IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ result) {
+    public override bool Unify(Type /*!*/ that,
+      List<TypeVariable> /*!*/ unifiableVariables,
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ result)
+    {
       that = that.Expanded;
       if (that is TypeProxy || that is TypeVariable)
         return that.Unify(this, unifiableVariables, result);
@@ -3622,12 +4249,15 @@ Contract.Requires(that != null);
         return false;
 
       // treat the bound variables of the two map types as equal...
-      Dictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst0 =
-        new Dictionary<TypeVariable/*!*/, Type/*!*/>();
-      Dictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst1 =
-        new Dictionary<TypeVariable/*!*/, Type/*!*/>();
+      Dictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+        subst0 =
+          new Dictionary<TypeVariable /*!*/, Type /*!*/>();
+      Dictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+        subst1 =
+          new Dictionary<TypeVariable /*!*/, Type /*!*/>();
       List<TypeVariable> freshies = new List<TypeVariable>();
-      for (int i = 0; i < this.TypeParameters.Count; i++) {
+      for (int i = 0; i < this.TypeParameters.Count; i++)
+      {
         TypeVariable tp0 = this.TypeParameters[i];
         TypeVariable tp1 = thatMapType.TypeParameters[i];
         TypeVariable freshVar = new TypeVariable(tp0.tok, tp0.Name);
@@ -3635,40 +4265,49 @@ Contract.Requires(that != null);
         subst0.Add(tp0, freshVar);
         subst1.Add(tp1, freshVar);
       }
+
       // ... and then unify the domain and range types
       bool good = true;
-      for (int i = 0; i < this.Arguments.Count; i++) {
+      for (int i = 0; i < this.Arguments.Count; i++)
+      {
         Type t0 = this.Arguments[i].Substitute(subst0);
         Type t1 = thatMapType.Arguments[i].Substitute(subst1);
         good &= t0.Unify(t1, unifiableVariables, result);
       }
+
       Type r0 = this.Result.Substitute(subst0);
       Type r1 = thatMapType.Result.Substitute(subst1);
       good &= r0.Unify(r1, unifiableVariables, result);
 
       // Finally, check that none of the bound variables has escaped
-      if (good && freshies.Count != 0) {
+      if (good && freshies.Count != 0)
+      {
         // This is done by looking for occurrences of the fresh variables in the
         // non-substituted types ...
         List<TypeVariable> freeVars = this.FreeVariables;
         foreach (TypeVariable fr in freshies)
-          if (freeVars.Contains(fr)) {
+          if (freeVars.Contains(fr))
+          {
             return false;
-          }  // fresh variable escaped
+          } // fresh variable escaped
+
         freeVars = thatMapType.FreeVariables;
         foreach (TypeVariable fr in freshies)
-          if (freeVars.Contains(fr)) {
+          if (freeVars.Contains(fr))
+          {
             return false;
-          }  // fresh variable escaped
+          } // fresh variable escaped
 
         // ... and in the resulting unifier of type variables
-        foreach (KeyValuePair<TypeVariable/*!*/, Type/*!*/> pair in result) {
+        foreach (KeyValuePair<TypeVariable /*!*/, Type /*!*/> pair in result)
+        {
           Contract.Assert(cce.NonNullElements(pair));
           freeVars = pair.Value.FreeVariables;
           foreach (TypeVariable fr in freshies)
-            if (freeVars.Contains(fr)) {
+            if (freeVars.Contains(fr))
+            {
               return false;
-            }  // fresh variable escaped          
+            } // fresh variable escaped          
         }
       }
 
@@ -3735,13 +4374,16 @@ Contract.Assert(var != null);
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
     [Pure]
-    private bool collisionsPossible(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
+    private bool collisionsPossible(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
+    {
       Contract.Requires(cce.NonNullDictionaryAndValues(subst));
       // PR: could be written more efficiently
-      return TypeParameters.Any(param => subst.ContainsKey(param) || subst.Values.Any(val => val.FreeVariables.Contains(param)));
+      return TypeParameters.Any(param =>
+        subst.ContainsKey(param) || subst.Values.Any(val => val.FreeVariables.Contains(param)));
     }
 
-    public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
+    public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
+    {
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       if (subst.Count == 0)
@@ -3755,8 +4397,10 @@ Contract.Assert(var != null);
       // in both cases, we first clone the type to ensure that bound
       // variables are fresh
 
-      if (collisionsPossible(subst)) {
-        MapType/*!*/ newType = (MapType)this.Clone();
+      if (collisionsPossible(subst))
+      {
+        MapType /*!*/
+          newType = (MapType) this.Clone();
         Contract.Assert(newType != null);
         Contract.Assert(newType.Equals(this) && !newType.collisionsPossible(subst));
         return newType.Substitute(subst);
@@ -3765,13 +4409,15 @@ Contract.Assert(var != null);
       List<Type> newArgs = new List<Type>();
       lock (Arguments)
       {
-        foreach (Type/*!*/ t in Arguments)
+        foreach (Type /*!*/ t in Arguments)
         {
           Contract.Assert(t != null);
           newArgs.Add(t.Substitute(subst));
         }
       }
-      Type/*!*/ newResult = Result.Substitute(subst);
+
+      Type /*!*/
+        newResult = Result.Substitute(subst);
       Contract.Assert(newResult != null);
 
       return new MapType(tok, TypeParameters, newArgs, newResult);
@@ -3780,28 +4426,33 @@ Contract.Assert(var != null);
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(List<TypeVariable> boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables)
+    {
       //Contract.Requires(boundVariables != null);
       int res = 7643761 * TypeParameters.Count + 65121 * Arguments.Count;
 
       boundVariables = boundVariables.ToList();
-      foreach (TypeVariable/*!*/ var in this.TypeParameters) {
+      foreach (TypeVariable /*!*/ var in this.TypeParameters)
+      {
         Contract.Assert(var != null);
         boundVariables.Add(var);
       }
 
-      foreach (Type/*!*/ t in Arguments.ToArray()) {
+      foreach (Type /*!*/ t in Arguments.ToArray())
+      {
         Contract.Assert(t != null);
         res = res * 5 + t.GetHashCode(boundVariables);
       }
+
       res = res * 7 + Result.GetHashCode(boundVariables);
-      
+
       return res;
     }
 
     //-----------  Linearisation  ----------------------------------
 
-    public override void Emit(TokenTextWriter stream, int contextBindingStrength) {
+    public override void Emit(TokenTextWriter stream, int contextBindingStrength)
+    {
       //Contract.Requires(stream != null);
       stream.SetToken(this);
 
@@ -3812,9 +4463,9 @@ Contract.Assert(var != null);
       EmitOptionalTypeParams(stream, TypeParameters);
 
       stream.Write("[");
-      Arguments.Emit(stream, ",");        // default binding strength of 0 is ok
+      Arguments.Emit(stream, ","); // default binding strength of 0 is ok
       stream.Write("]");
-      Result.Emit(stream);                 // default binding strength of 0 is ok
+      Result.Emit(stream); // default binding strength of 0 is ok
 
       if (opBindingStrength < contextBindingStrength)
         stream.Write(")");
@@ -3822,18 +4473,22 @@ Contract.Assert(var != null);
 
     //-----------  Resolution  ----------------------------------
 
-    public override Type ResolveType(ResolutionContext rc) {
+    public override Type ResolveType(ResolutionContext rc)
+    {
       //Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       int previousState = rc.TypeBinderState;
-      try {
-        foreach (TypeVariable/*!*/ v in TypeParameters) {
+      try
+      {
+        foreach (TypeVariable /*!*/ v in TypeParameters)
+        {
           Contract.Assert(v != null);
           rc.AddTypeBinder(v);
         }
 
         List<Type> resolvedArgs = new List<Type>();
-        foreach (Type/*!*/ ty in Arguments) {
+        foreach (Type /*!*/ ty in Arguments)
+        {
           Contract.Assert(ty != null);
           resolvedArgs.Add(ty.ResolveType(rc));
         }
@@ -3841,39 +4496,52 @@ Contract.Assert(var != null);
         Type resolvedResult = Result.ResolveType(rc);
 
         CheckBoundVariableOccurrences(TypeParameters,
-                                      resolvedArgs, new List<Type> { resolvedResult },
-                                      this.tok, "map arguments",
-                                      rc);
+          resolvedArgs, new List<Type> {resolvedResult},
+          this.tok, "map arguments",
+          rc);
 
         // sort the type parameters so that they are bound in the order of occurrence
-        List<TypeVariable>/*!*/ sortedTypeParams = SortTypeParams(TypeParameters, resolvedArgs, resolvedResult);
+        List<TypeVariable> /*!*/
+          sortedTypeParams = SortTypeParams(TypeParameters, resolvedArgs, resolvedResult);
         Contract.Assert(sortedTypeParams != null);
         return new MapType(tok, sortedTypeParams, resolvedArgs, resolvedResult);
-      } finally {
+      }
+      finally
+      {
         rc.TypeBinderState = previousState;
       }
     }
 
-    public override List<TypeVariable>/*!*/ FreeVariables {
-      get {
-        List<TypeVariable>/*!*/ res = FreeVariablesIn(Arguments.ToList());
+    public override List<TypeVariable> /*!*/ FreeVariables
+    {
+      get
+      {
+        List<TypeVariable> /*!*/
+          res = FreeVariablesIn(Arguments.ToList());
         Contract.Assert(res != null);
         res.AppendWithoutDups(Result.FreeVariables);
-        foreach (TypeVariable/*!*/ v in TypeParameters.ToArray()) {
+        foreach (TypeVariable /*!*/ v in TypeParameters.ToArray())
+        {
           Contract.Assert(v != null);
           res.Remove(v);
         }
+
         return res;
       }
     }
 
-    public override List<TypeProxy/*!*/>/*!*/ FreeProxies {
-      get {
-        List<TypeProxy/*!*/>/*!*/ res = new List<TypeProxy/*!*//*!*/>();
-        foreach (Type/*!*/ t in Arguments.ToArray()) {
+    public override List<TypeProxy /*!*/> /*!*/ FreeProxies
+    {
+      get
+      {
+        List<TypeProxy /*!*/> /*!*/
+          res = new List<TypeProxy /*!*/ /*!*/>();
+        foreach (Type /*!*/ t in Arguments.ToArray())
+        {
           Contract.Assert(t != null);
           AppendWithoutDups(res, t.FreeProxies);
         }
+
         AppendWithoutDups(res, Result.FreeProxies);
         return res;
       }
@@ -3881,20 +4549,19 @@ Contract.Assert(var != null);
 
     //-----------  Getters/Issers  ----------------------------------
 
-    public override bool IsMap {
-      get {
-        return true;
-      }
+    public override bool IsMap
+    {
+      get { return true; }
     }
-    public override MapType/*!*/ AsMap {
-      get {
-        return this;
-      }
+
+    public override MapType /*!*/ AsMap
+    {
+      get { return this; }
     }
-    public override int MapArity {
-      get {
-        return Arguments.Count;
-      }
+
+    public override int MapArity
+    {
+      get { return Arguments.Count; }
     }
 
     //------------  Match formal argument types of the map
@@ -3902,32 +4569,38 @@ Contract.Assert(var != null);
     //------------  result type. Null is returned if so many type checking
     //------------  errors occur that the situation is hopeless
 
-    public Type CheckArgumentTypes(List<Expr>/*!*/ actualArgs,
-                                   out TypeParamInstantiation/*!*/ tpInstantiation,
-                                   IToken/*!*/ typeCheckingSubject,
-                                   string/*!*/ opName,
-                                   TypecheckingContext/*!*/ tc) {
+    public Type CheckArgumentTypes(List<Expr> /*!*/ actualArgs,
+      out TypeParamInstantiation /*!*/ tpInstantiation,
+      IToken /*!*/ typeCheckingSubject,
+      string /*!*/ opName,
+      TypecheckingContext /*!*/ tc)
+    {
       Contract.Requires(actualArgs != null);
       Contract.Requires(typeCheckingSubject != null);
-      
+
       Contract.Requires(opName != null);
       Contract.Requires(tc != null);
-Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
-      List<Type/*!*/>/*!*/ actualTypeParams;
+      Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
+      List<Type /*!*/> /*!*/
+        actualTypeParams;
       List<Type> actualResult =
         Type.CheckArgumentTypes(TypeParameters, out actualTypeParams, Arguments, actualArgs,
-                                new List<Type> { Result }, null, typeCheckingSubject, opName, tc);
-      if (actualResult == null) {
+          new List<Type> {Result}, null, typeCheckingSubject, opName, tc);
+      if (actualResult == null)
+      {
         tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
         return null;
-      } else {
+      }
+      else
+      {
         Contract.Assert(actualResult.Count == 1);
         tpInstantiation = SimpleTypeParamInstantiation.From(TypeParameters, actualTypeParams);
         return actualResult[0];
       }
     }
 
-    public override Absy StdDispatch(StandardVisitor visitor) {
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitMapType(this);
@@ -3936,7 +4609,8 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
 
   //---------------------------------------------------------------------
 
-  public enum SimpleType {
+  public enum SimpleType
+  {
     Int,
     Real,
     Bool,
@@ -3954,30 +4628,33 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
   // (due to the type proxies for map types) the actual number and instantiation
   // of type parameters can only be determined very late.
   [ContractClass(typeof(TypeParamInstantiationContracts))]
-  public interface TypeParamInstantiation {
+  public interface TypeParamInstantiation
+  {
     // return what formal type parameters there are
-    List<TypeVariable/*!*/>/*!*/ FormalTypeParams {
-      get;
-    }
+    List<TypeVariable /*!*/> /*!*/ FormalTypeParams { get; }
+
     // given a formal type parameter, return the actual instantiation
-    Type/*!*/ this[TypeVariable/*!*/ var] {
-      get;
-    }
+    Type /*!*/ this[TypeVariable /*!*/ var] { get; }
   }
+
   [ContractClassFor(typeof(TypeParamInstantiation))]
-  public abstract class TypeParamInstantiationContracts : TypeParamInstantiation {
+  public abstract class TypeParamInstantiationContracts : TypeParamInstantiation
+  {
     #region TypeParamInstantiation Members
 
-    public List<TypeVariable> FormalTypeParams {
-
-      get {
+    public List<TypeVariable> FormalTypeParams
+    {
+      get
+      {
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
         throw new NotImplementedException();
       }
     }
 
-    public Type this[TypeVariable var] {
-      get {
+    public Type this[TypeVariable var]
+    {
+      get
+      {
         Contract.Requires(var != null);
         Contract.Ensures(Contract.Result<Type>() != null);
 
@@ -3989,27 +4666,38 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
   }
 
 
-  public class SimpleTypeParamInstantiation : TypeParamInstantiation {
-    private readonly List<TypeVariable/*!*/>/*!*/ TypeParams;
+  public class SimpleTypeParamInstantiation : TypeParamInstantiation
+  {
+    private readonly List<TypeVariable /*!*/> /*!*/
+      TypeParams;
+
     [ContractInvariantMethod]
-    void TypeParamsInvariantMethod() {
+    void TypeParamsInvariantMethod()
+    {
       Contract.Invariant(cce.NonNullElements(TypeParams));
     }
-    private readonly IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ Instantiations;
+
+    private readonly IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+      Instantiations;
+
     [ContractInvariantMethod]
-    void InstantiationsInvariantMethod() {
+    void InstantiationsInvariantMethod()
+    {
       Contract.Invariant(cce.NonNullDictionaryAndValues(Instantiations));
     }
 
-    public SimpleTypeParamInstantiation(List<TypeVariable/*!*/>/*!*/ typeParams,
-                                        IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ instantiations) {
+    public SimpleTypeParamInstantiation(List<TypeVariable /*!*/> /*!*/ typeParams,
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ instantiations)
+    {
       Contract.Requires(cce.NonNullElements(typeParams));
       Contract.Requires(cce.NonNullDictionaryAndValues(instantiations));
       this.TypeParams = typeParams;
       this.Instantiations = instantiations;
     }
 
-    public static TypeParamInstantiation/*!*/ From(List<TypeVariable> typeParams, List<Type/*!*/>/*!*/ actualTypeParams) {
+    public static TypeParamInstantiation /*!*/
+      From(List<TypeVariable> typeParams, List<Type /*!*/> /*!*/ actualTypeParams)
+    {
       Contract.Requires(cce.NonNullElements(actualTypeParams));
       Contract.Requires(typeParams != null);
       Contract.Requires(typeParams.Count == actualTypeParams.Count);
@@ -4018,31 +4706,37 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       if (typeParams.Count == 0)
         return EMPTY;
 
-      List<TypeVariable/*!*/>/*!*/ typeParamList = new List<TypeVariable/*!*/>();
-      IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ dict = new Dictionary<TypeVariable/*!*/, Type/*!*/>();
-      for (int i = 0; i < typeParams.Count; ++i) {
+      List<TypeVariable /*!*/> /*!*/
+        typeParamList = new List<TypeVariable /*!*/>();
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+        dict = new Dictionary<TypeVariable /*!*/, Type /*!*/>();
+      for (int i = 0; i < typeParams.Count; ++i)
+      {
         typeParamList.Add(typeParams[i]);
         dict.Add(typeParams[i], actualTypeParams[i]);
       }
+
       return new SimpleTypeParamInstantiation(typeParamList, dict);
     }
 
     public static readonly TypeParamInstantiation EMPTY =
-      new SimpleTypeParamInstantiation(new List<TypeVariable/*!*/>(),
-                                        new Dictionary<TypeVariable/*!*/, Type/*!*/>());
+      new SimpleTypeParamInstantiation(new List<TypeVariable /*!*/>(),
+        new Dictionary<TypeVariable /*!*/, Type /*!*/>());
 
     // return what formal type parameters there are
-    public List<TypeVariable/*!*/>/*!*/ FormalTypeParams {
-      get {
+    public List<TypeVariable /*!*/> /*!*/ FormalTypeParams
+    {
+      get
+      {
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
         return TypeParams;
       }
     }
+
     // given a formal type parameter, return the actual instantiation
-    public Type/*!*/ this[TypeVariable/*!*/ var] {
-      get {
-        return Instantiations[var];
-      }
+    public Type /*!*/ this[TypeVariable /*!*/ var]
+    {
+      get { return Instantiations[var]; }
     }
   }
 
@@ -4050,27 +4744,33 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
   // value of a MapTypeProxy. This means that the values return by the
   // methods of this implementation can change in case the MapTypeProxy
   // receives further unifications.
-  class MapTypeProxyParamInstantiation : TypeParamInstantiation {
-    private readonly MapTypeProxy/*!*/ Proxy;
+  class MapTypeProxyParamInstantiation : TypeParamInstantiation
+  {
+    private readonly MapTypeProxy /*!*/
+      Proxy;
 
     // the argument and result type of this particular usage of the map
     // type. these are necessary to derive the values of the type parameters
-    private readonly List<Type>/*!*/ ArgumentsResult;
+    private readonly List<Type> /*!*/
+      ArgumentsResult;
 
     // field that is initialised once all necessary information is available
     // (the MapTypeProxy is instantiated to an actual type) and the instantiation
     // of a type parameter is queried
-    private IDictionary<TypeVariable/*!*/, Type/*!*/> Instantiations = null;
+    private IDictionary<TypeVariable /*!*/, Type /*!*/> Instantiations = null;
+
     [ContractInvariantMethod]
-    void ObjectInvariant() {
+    void ObjectInvariant()
+    {
       Contract.Invariant(Proxy != null);
       Contract.Invariant(ArgumentsResult != null);
       Contract.Invariant(Instantiations == null || cce.NonNullDictionaryAndValues(Instantiations));
     }
 
 
-    public MapTypeProxyParamInstantiation(MapTypeProxy/*!*/ proxy,
-                                          List<Type>/*!*/ argumentsResult) {
+    public MapTypeProxyParamInstantiation(MapTypeProxy /*!*/ proxy,
+      List<Type> /*!*/ argumentsResult)
+    {
       Contract.Requires(proxy != null);
       Contract.Requires(argumentsResult != null);
       this.Proxy = proxy;
@@ -4078,34 +4778,43 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
     }
 
     // return what formal type parameters there are
-    public List<TypeVariable/*!*/>/*!*/ FormalTypeParams {
-      get {
+    public List<TypeVariable /*!*/> /*!*/ FormalTypeParams
+    {
+      get
+      {
         MapType realType = Proxy.ProxyFor as MapType;
         if (realType == null)
           // no instantiation of the map type is known, which means
           // that the map type is assumed to be monomorphic
-          return new List<TypeVariable/*!*/>();
+          return new List<TypeVariable /*!*/>();
         else
           return realType.TypeParameters.ToList();
       }
     }
 
     // given a formal type parameter, return the actual instantiation
-    public Type/*!*/ this[TypeVariable/*!*/ var] {
-      get {
+    public Type /*!*/ this[TypeVariable /*!*/ var]
+    {
+      get
+      {
         // then there has to be an instantiation that is a polymorphic map type
-        if (Instantiations == null) {
+        if (Instantiations == null)
+        {
           MapType realType = Proxy.ProxyFor as MapType;
           Contract.Assert(realType != null);
-          List<Type>/*!*/ formalArgs = new List<Type>();
-          foreach (Type/*!*/ t in realType.Arguments) {
+          List<Type> /*!*/
+            formalArgs = new List<Type>();
+          foreach (Type /*!*/ t in realType.Arguments)
+          {
             Contract.Assert(t != null);
             formalArgs.Add(t);
           }
+
           formalArgs.Add(realType.Result);
           Instantiations =
             Type.InferTypeParameters(realType.TypeParameters, formalArgs, ArgumentsResult);
         }
+
         return Instantiations[var];
       }
     }

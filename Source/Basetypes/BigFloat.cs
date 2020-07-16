@@ -22,23 +22,23 @@ namespace Microsoft.Basetypes
     //Please note that this code outline is copy-pasted from BigDec.cs
 
     // the internal representation
-    internal readonly BIM significand; //Note that the significand arrangement matches standard fp arrangement (most significant bit is farthest left)
+    internal readonly BIM
+      significand; //Note that the significand arrangement matches standard fp arrangement (most significant bit is farthest left)
+
     internal readonly int significandSize; //The bit size of the significand
     internal readonly BIM exponent; //The value of the exponent is always positive as per fp representation requirements
     internal readonly int exponentSize; //The bit size of the exponent
     internal readonly String value; //Only used with second syntax
     internal readonly bool isSignBitSet; //Stores the sign bit in the fp representaiton
 
-    public int SignificandSize {
-      get {
-        return significandSize;
-      }
+    public int SignificandSize
+    {
+      get { return significandSize; }
     }
 
-    public int ExponentSize {
-      get {
-        return exponentSize;
-      }
+    public int ExponentSize
+    {
+      get { return exponentSize; }
     }
 
     public static BigFloat ZERO = new BigFloat(false, BIM.Zero, BIM.Zero, 24, 8); //Does not include negative zero
@@ -50,16 +50,19 @@ namespace Microsoft.Basetypes
     //For a complete summary of where this class has been added, simply view constructor references
 
     [Pure]
-    public static BigFloat FromInt(int v) {
+    public static BigFloat FromInt(int v)
+    {
       return new BigFloat(v.ToString(), 24, 8);
     }
 
-    public static BigFloat FromBigInt(BIM v, int significandSize, int exponentSize) {
+    public static BigFloat FromBigInt(BIM v, int significandSize, int exponentSize)
+    {
       return new BigFloat(v.ToString(), significandSize, exponentSize);
     }
 
     [Pure]
-    public static BigFloat FromString(String s) {
+    public static BigFloat FromString(String s)
+    {
       /*
       * String must be either of the format [-]0x^.^e*f*e*
       * or of the special value formats: 0NaN*e* 0nan*e* 0+oo*e* 0-oo*e*
@@ -69,22 +72,28 @@ namespace Microsoft.Basetypes
       int posLastE = s.LastIndexOf('e');
 
       int expSize = int.Parse(s.Substring(posLastE + 1));
-      if (expSize <= 1) {
+      if (expSize <= 1)
+      {
         throw new FormatException("Exponent size must be greater than 1");
       }
 
       int posLastF = s.LastIndexOf('f');
       int posSig = posLastF + 1;
-      if (posLastF == -1) {//NaN, +oo, -oo
+      if (posLastF == -1)
+      {
+        //NaN, +oo, -oo
         posSig = 4;
       }
 
       int sigSize = int.Parse(s.Substring(posSig, posLastE - posSig));
-      if (sigSize <= 1) {
+      if (sigSize <= 1)
+      {
         throw new FormatException("Significand size must be greater than 1");
       }
 
-      if (posLastF == -1) {//NaN, +oo, -oo
+      if (posLastF == -1)
+      {
+        //NaN, +oo, -oo
         return new BigFloat(s.Substring(1, 3), sigSize, expSize);
       }
 
@@ -109,7 +118,8 @@ namespace Microsoft.Basetypes
       int posFirstOne = binSig.IndexOf('1');
       int posLastOne = binSig.LastIndexOf('1');
 
-      if (posFirstOne == -1) {
+      if (posFirstOne == -1)
+      {
         return new BigFloat(isSignBitSet, 0, 0, sigSize, expSize);
       }
 
@@ -120,28 +130,36 @@ namespace Microsoft.Basetypes
 
       BIM newExp = 4 * oldExp + bias + (posDec - posFirstOne - 1);
 
-      if (newExp <= 0) {
-        if (-newExp <= (sigSize - 1) - binSig.Length) {
+      if (newExp <= 0)
+      {
+        if (-newExp <= (sigSize - 1) - binSig.Length)
+        {
           binSig = new string('0', (int) -newExp) + binSig;
           newExp = 0;
         }
-      } else {
+      }
+      else
+      {
         binSig = binSig.Substring(1);
       }
 
-      if (newExp < 0 || newExp >= upperBound) {
+      if (newExp < 0 || newExp >= upperBound)
+      {
         throw new FormatException("The given exponent cannot fit in the bit size " + expSize);
       }
 
       binSig = binSig.PadRight(sigSize - 1, '0');
 
-      if (binSig.Length > sigSize - 1) {
+      if (binSig.Length > sigSize - 1)
+      {
         throw new FormatException("The given significand cannot fit in the bit size " + (sigSize - 1));
       }
 
       BIM newSig = 0;
-      foreach (char b in binSig) {
-        if (b != '.') {
+      foreach (char b in binSig)
+      {
+        if (b != '.')
+        {
           newSig <<= 1;
           newSig += b - '0';
         }
@@ -150,7 +168,8 @@ namespace Microsoft.Basetypes
       return new BigFloat(isSignBitSet, newSig, newExp, sigSize, expSize);
     }
 
-    public BigFloat(bool isSignBitSet, BIM significand, BIM exponent, int significandSize, int exponentSize) {
+    public BigFloat(bool isSignBitSet, BIM significand, BIM exponent, int significandSize, int exponentSize)
+    {
       this.exponentSize = exponentSize;
       this.exponent = exponent;
       this.significand = significand;
@@ -159,13 +178,15 @@ namespace Microsoft.Basetypes
       this.value = "";
     }
 
-    public BigFloat(String value, int significandSize, int exponentSize) {
+    public BigFloat(String value, int significandSize, int exponentSize)
+    {
       this.exponentSize = exponentSize;
       this.significandSize = significandSize;
       this.exponent = BIM.Zero;
       this.significand = BIM.Zero;
       this.value = value;
-      if (value.Equals("nan")) {
+      if (value.Equals("nan"))
+      {
         this.value = "NaN";
       }
 
@@ -177,12 +198,15 @@ namespace Microsoft.Basetypes
 
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
-    public override bool Equals(object obj) {
-      if (obj == null) {
+    public override bool Equals(object obj)
+    {
+      if (obj == null)
+      {
         return false;
       }
 
-      if (!(obj is BigFloat)) {
+      if (!(obj is BigFloat))
+      {
         return false;
       }
 
@@ -190,33 +214,45 @@ namespace Microsoft.Basetypes
     }
 
     [Pure]
-    public override int GetHashCode() {
+    public override int GetHashCode()
+    {
       return significand.GetHashCode() * 13 + exponent.GetHashCode();
     }
 
     [Pure]
-    public override string/*!*/ ToString() {
+    public override string /*!*/ ToString()
+    {
       Contract.Ensures(Contract.Result<string>() != null);
-      if (value == "") {
+      if (value == "")
+      {
         byte[] sigBytes = significand.ToByteArray();
         StringBuilder binSig = new StringBuilder();
 
-        if (exponent == 0) {
+        if (exponent == 0)
+        {
           binSig.Append('0');
-        } else {
+        }
+        else
+        {
           binSig.Append('1'); //hidden bit
         }
 
-        for (int i = significandSize - 2; i >= 0; --i) { //little endian
-          if (i / 8 < sigBytes.Length) {
+        for (int i = significandSize - 2; i >= 0; --i)
+        {
+          //little endian
+          if (i / 8 < sigBytes.Length)
+          {
             binSig.Append((char) ('0' + ((sigBytes[i / 8] >> (i % 8)) & 1)));
-          } else {
+          }
+          else
+          {
             binSig.Append('0');
           }
         }
 
         BIM bias = BIM.Pow(2, exponentSize - 1) - 1;
-        if (exponent == 0) {
+        if (exponent == 0)
+        {
           --bias;
         }
 
@@ -232,15 +268,20 @@ namespace Microsoft.Basetypes
         StringBuilder leftHexSig = new StringBuilder();
         StringBuilder rightHexSig = new StringBuilder();
 
-        for (int i = 0; i < leftBinSig.Length / 4; ++i) {
+        for (int i = 0; i < leftBinSig.Length / 4; ++i)
+        {
           leftHexSig.AppendFormat("{0:X}", Convert.ToByte(leftBinSig.Substring(i * 4, 4), 2));
         }
-        for (int i = 0; i < rightBinSig.Length / 4; ++i) {
+
+        for (int i = 0; i < rightBinSig.Length / 4; ++i)
+        {
           rightHexSig.AppendFormat("{0:X}", Convert.ToByte(rightBinSig.Substring(i * 4, 4), 2));
         }
 
-        return String.Format("{0}0x{1}.{2}e{3}f{4}e{5}", isSignBitSet ? "-" : "", leftHexSig, rightHexSig, finalExp, significandSize, exponentSize);
+        return String.Format("{0}0x{1}.{2}e{3}f{4}e{5}", isSignBitSet ? "-" : "", leftHexSig, rightHexSig, finalExp,
+          significandSize, exponentSize);
       }
+
       return String.Format("0{0}{1}e{2}", value, significandSize, exponentSize);
     }
 
@@ -255,7 +296,8 @@ namespace Microsoft.Basetypes
     /// </summary>
     /// <param name="floor">Floor (rounded towards negative infinity)</param>
     /// <param name="ceiling">Ceiling (rounded towards positive infinity)</param>
-    public void FloorCeiling(out BIM floor, out BIM ceiling) {
+    public void FloorCeiling(out BIM floor, out BIM ceiling)
+    {
       Contract.Requires(value == "");
 
       BIM sig = significand;
@@ -263,39 +305,55 @@ namespace Microsoft.Basetypes
 
       BIM hiddenBitPow = BIM.Pow(2, significandSize - 1);
 
-      if (exponent > 0) {
+      if (exponent > 0)
+      {
         sig += hiddenBitPow;
-      } else {
+      }
+      else
+      {
         ++exp;
       }
 
       exp -= (BIM.Pow(2, exponentSize - 1) - 1) + (significandSize - 1);
 
-      if (exp >= BIM.Zero) {
-        while (exp >= int.MaxValue) {
+      if (exp >= BIM.Zero)
+      {
+        while (exp >= int.MaxValue)
+        {
           sig <<= int.MaxValue;
           exp -= int.MaxValue;
         }
 
         sig <<= (int) exp;
         floor = ceiling = (isSignBitSet ? -sig : sig);
-      } else {
+      }
+      else
+      {
         exp = -exp;
 
-        if (exp > significandSize) {
-          if (sig == 0) {
+        if (exp > significandSize)
+        {
+          if (sig == 0)
+          {
             floor = ceiling = 0;
-          } else {
+          }
+          else
+          {
             ceiling = isSignBitSet ? 0 : 1;
             floor = ceiling - 1;
           }
-        } else {
+        }
+        else
+        {
           BIM frac = sig & ((BIM.One << (int) exp) - 1);
           sig >>= (int) exp; //Guaranteed to fit in a 32-bit integer
 
-          if (frac == 0) {
+          if (frac == 0)
+          {
             floor = ceiling = (isSignBitSet ? -sig : sig);
-          } else {
+          }
+          else
+          {
             ceiling = isSignBitSet ? -sig : sig + 1;
             floor = ceiling - 1;
           }
@@ -303,13 +361,21 @@ namespace Microsoft.Basetypes
       }
     }
 
-    public String ToBVString() {
-      if (value != "") {
+    public String ToBVString()
+    {
+      if (value != "")
+      {
         return "_ " + value + " " + exponentSize + " " + significandSize;
-      } else if (value == "") {
-        return "fp (_ bv" + (isSignBitSet ? "1" : "0") + " 1) (_ bv" + exponent + " " + exponentSize + ") (_ bv" + significand + " " + (significandSize - 1) + ")";
-      } else {
-        return "(_ to_fp " + exponentSize + " " + significandSize + ") (_ bv" + value + " " + (exponentSize + significandSize).ToString() + ")";
+      }
+      else if (value == "")
+      {
+        return "fp (_ bv" + (isSignBitSet ? "1" : "0") + " 1) (_ bv" + exponent + " " + exponentSize + ") (_ bv" +
+               significand + " " + (significandSize - 1) + ")";
+      }
+      else
+      {
+        return "(_ to_fp " + exponentSize + " " + significandSize + ") (_ bv" + value + " " +
+               (exponentSize + significandSize).ToString() + ")";
       }
     }
 
@@ -317,13 +383,17 @@ namespace Microsoft.Basetypes
     // Basic arithmetic operations
 
     [Pure]
-    public static BigFloat operator -(BigFloat x) {
-      if (x.value != "") {
-        if (x.value[0] == '-') {
+    public static BigFloat operator -(BigFloat x)
+    {
+      if (x.value != "")
+      {
+        if (x.value[0] == '-')
+        {
           return new BigFloat("+oo", x.significandSize, x.exponentSize);
         }
 
-        if (x.value[0] == '+') {
+        if (x.value[0] == '+')
+        {
           return new BigFloat("-oo", x.significandSize, x.exponentSize);
         }
 
@@ -334,23 +404,29 @@ namespace Microsoft.Basetypes
     }
 
     [Pure]
-    public static BigFloat operator +(BigFloat x, BigFloat y) {
+    public static BigFloat operator +(BigFloat x, BigFloat y)
+    {
       Contract.Requires(x.exponentSize == y.exponentSize);
       Contract.Requires(x.significandSize == y.significandSize);
 
-      if (x.value != "" || y.value != "") {
-        if (x.value == "NaN" || y.value == "NaN" || x.value == "+oo" && y.value == "-oo" || x.value == "-oo" && y.value == "+oo") {
+      if (x.value != "" || y.value != "")
+      {
+        if (x.value == "NaN" || y.value == "NaN" || x.value == "+oo" && y.value == "-oo" ||
+            x.value == "-oo" && y.value == "+oo")
+        {
           return new BigFloat("NaN", x.significandSize, x.exponentSize);
         }
 
-        if (x.value != "") {
+        if (x.value != "")
+        {
           return new BigFloat(x.value, x.significandSize, x.exponentSize);
         }
 
         return new BigFloat(y.value, y.significandSize, y.exponentSize);
       }
 
-      if (x.exponent > y.exponent) {
+      if (x.exponent > y.exponent)
+      {
         BigFloat temp = x;
         x = y;
         y = temp;
@@ -366,22 +442,31 @@ namespace Microsoft.Basetypes
 
       BIM hiddenBitPow = BIM.Pow(2, x.significandSize - 1);
 
-      if (xexp > 0) {
+      if (xexp > 0)
+      {
         xsig += hiddenBitPow;
-      } else {
+      }
+      else
+      {
         ++xexp;
       }
 
-      if (yexp > 0) {
+      if (yexp > 0)
+      {
         ysig += hiddenBitPow;
-      } else {
+      }
+      else
+      {
         ++yexp;
       }
 
-      if (x.isSignBitSet) {
+      if (x.isSignBitSet)
+      {
         xsig = -xsig;
       }
-      if (y.isSignBitSet) {
+
+      if (y.isSignBitSet)
+      {
         ysig = -ysig;
       }
 
@@ -393,27 +478,34 @@ namespace Microsoft.Basetypes
 
       ysig = BIM.Abs(ysig);
 
-      if (ysig == 0) {
+      if (ysig == 0)
+      {
         return new BigFloat(x.isSignBitSet && y.isSignBitSet, 0, 0, x.significandSize, x.exponentSize);
       }
 
-      if (ysig >= hiddenBitPow * 2) {
+      if (ysig >= hiddenBitPow * 2)
+      {
         ysig >>= 1;
         ++yexp;
       }
 
-      while (ysig < hiddenBitPow && yexp > 1) {
+      while (ysig < hiddenBitPow && yexp > 1)
+      {
         ysig <<= 1;
         --yexp;
       }
 
-      if (ysig < hiddenBitPow) {
+      if (ysig < hiddenBitPow)
+      {
         yexp = 0;
-      } else {
+      }
+      else
+      {
         ysig -= hiddenBitPow;
       }
 
-      if (yexp >= BIM.Pow(2, x.exponentSize) - 1) {
+      if (yexp >= BIM.Pow(2, x.exponentSize) - 1)
+      {
         return new BigFloat(y.isSignBitSet ? "-oo" : "+oo", x.significandSize, x.exponentSize);
       }
 
@@ -421,20 +513,25 @@ namespace Microsoft.Basetypes
     }
 
     [Pure]
-    public static BigFloat operator -(BigFloat x, BigFloat y) {
+    public static BigFloat operator -(BigFloat x, BigFloat y)
+    {
       return x + -y;
     }
 
     [Pure]
-    public static BigFloat operator *(BigFloat x, BigFloat y) {
+    public static BigFloat operator *(BigFloat x, BigFloat y)
+    {
       Contract.Requires(x.exponentSize == y.exponentSize);
       Contract.Requires(x.significandSize == y.significandSize);
 
-      if (x.value == "NaN" || y.value == "NaN" || (x.value == "+oo" || x.value == "-oo") && y.IsZero || (y.value == "+oo" || y.value == "-oo") && x.IsZero) {
+      if (x.value == "NaN" || y.value == "NaN" || (x.value == "+oo" || x.value == "-oo") && y.IsZero ||
+          (y.value == "+oo" || y.value == "-oo") && x.IsZero)
+      {
         return new BigFloat("NaN", x.significandSize, x.exponentSize);
       }
 
-      if (x.value != "" || y.value != "") {
+      if (x.value != "" || y.value != "")
+      {
         bool xSignBitSet = x.value == "" ? x.isSignBitSet : x.value[0] == '-';
         bool ySignBitSet = y.value == "" ? y.isSignBitSet : y.value[0] == '-';
         return new BigFloat((xSignBitSet ^ ySignBitSet ? "-" : "+") + "oo", x.significandSize, x.exponentSize);
@@ -445,38 +542,50 @@ namespace Microsoft.Basetypes
 
       BIM hiddenBitPow = BIM.Pow(2, x.significandSize - 1);
 
-      if (xexp > 0) {
+      if (xexp > 0)
+      {
         xsig += hiddenBitPow;
-      } else {
+      }
+      else
+      {
         ++xexp;
       }
 
-      if (yexp > 0) {
+      if (yexp > 0)
+      {
         ysig += hiddenBitPow;
-      } else {
+      }
+      else
+      {
         ++yexp;
       }
 
       ysig *= xsig;
       yexp += xexp - (BIM.Pow(2, x.exponentSize - 1) - 1) - (x.significandSize - 1);
 
-      while (ysig >= hiddenBitPow * 2 || yexp <= 0) {
+      while (ysig >= hiddenBitPow * 2 || yexp <= 0)
+      {
         ysig >>= 1;
         ++yexp;
       }
 
-      while (ysig < hiddenBitPow && yexp > 1) {
+      while (ysig < hiddenBitPow && yexp > 1)
+      {
         ysig <<= 1;
         --yexp;
       }
 
-      if (ysig < hiddenBitPow) {
+      if (ysig < hiddenBitPow)
+      {
         yexp = 0;
-      } else {
+      }
+      else
+      {
         ysig -= hiddenBitPow;
       }
 
-      if (yexp >= BIM.Pow(2, x.exponentSize) - 1) {
+      if (yexp >= BIM.Pow(2, x.exponentSize) - 1)
+      {
         return new BigFloat(x.isSignBitSet ^ y.isSignBitSet ? "-oo" : "+oo", x.significandSize, x.exponentSize);
       }
 
@@ -487,10 +596,9 @@ namespace Microsoft.Basetypes
     ////////////////////////////////////////////////////////////////////////////
     // Some basic comparison operations
 
-    public bool IsZero {
-      get {
-        return value == "" && significand.IsZero && exponent.IsZero;
-      }
+    public bool IsZero
+    {
+      get { return value == "" && significand.IsZero && exponent.IsZero; }
     }
 
     /// <summary>
@@ -500,34 +608,41 @@ namespace Microsoft.Basetypes
     /// whereas the expression (0.0f / 0.0f) == (0.0f / 0.0f) should return false.
     /// </summary>
     [Pure]
-    public int CompareTo(BigFloat that) {
+    public int CompareTo(BigFloat that)
+    {
       Contract.Requires(exponentSize == that.exponentSize);
       Contract.Requires(significandSize == that.significandSize);
 
-      if (value == "" && that.value == "") {
+      if (value == "" && that.value == "")
+      {
         int cmpThis = IsZero ? 0 : isSignBitSet ? -1 : 1;
         int cmpThat = that.IsZero ? 0 : that.isSignBitSet ? -1 : 1;
 
-        if (cmpThis == cmpThat) {
-          if (exponent == that.exponent) {
+        if (cmpThis == cmpThat)
+        {
+          if (exponent == that.exponent)
+          {
             return cmpThis * significand.CompareTo(that.significand);
           }
 
           return cmpThis * exponent.CompareTo(that.exponent);
         }
 
-        if (cmpThis == 0) {
+        if (cmpThis == 0)
+        {
           return -cmpThat;
         }
 
         return cmpThis;
       }
 
-      if (value == that.value) {
+      if (value == that.value)
+      {
         return 0;
       }
 
-      if (value == "NaN" || that.value == "+oo" || value == "-oo" && that.value != "NaN") {
+      if (value == "NaN" || that.value == "+oo" || value == "-oo" && that.value != "NaN")
+      {
         return -1;
       }
 
@@ -535,8 +650,10 @@ namespace Microsoft.Basetypes
     }
 
     [Pure]
-    public static bool operator ==(BigFloat x, BigFloat y) {
-      if (x.value == "NaN" || y.value == "NaN") {
+    public static bool operator ==(BigFloat x, BigFloat y)
+    {
+      if (x.value == "NaN" || y.value == "NaN")
+      {
         return false;
       }
 
@@ -544,8 +661,10 @@ namespace Microsoft.Basetypes
     }
 
     [Pure]
-    public static bool operator !=(BigFloat x, BigFloat y) {
-      if (x.value == "NaN" || y.value == "NaN") {
+    public static bool operator !=(BigFloat x, BigFloat y)
+    {
+      if (x.value == "NaN" || y.value == "NaN")
+      {
         return true;
       }
 
@@ -553,8 +672,10 @@ namespace Microsoft.Basetypes
     }
 
     [Pure]
-    public static bool operator <(BigFloat x, BigFloat y) {
-      if (x.value == "NaN" || y.value == "NaN") {
+    public static bool operator <(BigFloat x, BigFloat y)
+    {
+      if (x.value == "NaN" || y.value == "NaN")
+      {
         return false;
       }
 
@@ -562,8 +683,10 @@ namespace Microsoft.Basetypes
     }
 
     [Pure]
-    public static bool operator >(BigFloat x, BigFloat y) {
-      if (x.value == "NaN" || y.value == "NaN") {
+    public static bool operator >(BigFloat x, BigFloat y)
+    {
+      if (x.value == "NaN" || y.value == "NaN")
+      {
         return false;
       }
 
@@ -571,8 +694,10 @@ namespace Microsoft.Basetypes
     }
 
     [Pure]
-    public static bool operator <=(BigFloat x, BigFloat y) {
-      if (x.value == "NaN" || y.value == "NaN") {
+    public static bool operator <=(BigFloat x, BigFloat y)
+    {
+      if (x.value == "NaN" || y.value == "NaN")
+      {
         return false;
       }
 
@@ -580,8 +705,10 @@ namespace Microsoft.Basetypes
     }
 
     [Pure]
-    public static bool operator >=(BigFloat x, BigFloat y) {
-      if (x.value == "NaN" || y.value == "NaN") {
+    public static bool operator >=(BigFloat x, BigFloat y)
+    {
+      if (x.value == "NaN" || y.value == "NaN")
+      {
         return false;
       }
 

@@ -42,6 +42,7 @@ namespace Microsoft.Boogie
   public class Model
   {
     #region Elements and functions (inner classes)
+
     public enum ElementKind
     {
       Integer,
@@ -59,106 +60,206 @@ namespace Microsoft.Boogie
       internal List<FuncTuple> references = new List<FuncTuple>();
       public readonly int Id;
 
-      public IEnumerable<FuncTuple> References { get { return references; } }
-      
-      public IEnumerable<FuncTuple> Names { 
-        get {
-          foreach (var f in references)
-            if (f.Result == this) yield return f;
-        } 
+      public IEnumerable<FuncTuple> References
+      {
+        get { return references; }
       }
 
-      protected Element(Model p) 
-      { 
+      public IEnumerable<FuncTuple> Names
+      {
+        get
+        {
+          foreach (var f in references)
+            if (f.Result == this)
+              yield return f;
+        }
+      }
+
+      protected Element(Model p)
+      {
         Model = p;
         Id = Model.elements.Count;
       }
-      public abstract ElementKind Kind { get; }
-      public virtual int AsInt() { throw new NotImplementedException(); }
 
-      public override int GetHashCode() {
+      public abstract ElementKind Kind { get; }
+
+      public virtual int AsInt()
+      {
+        throw new NotImplementedException();
+      }
+
+      public override int GetHashCode()
+      {
         return Id;
       }
 
-      public override bool Equals(object obj) {
+      public override bool Equals(object obj)
+      {
         return obj == this;
       }
     }
 
     #region element kinds
+
     public class Uninterpreted : Element
     {
-      public override ElementKind Kind { get { return ElementKind.Uninterpreted; } }
-      public override string ToString() { return Name; }
+      public override ElementKind Kind
+      {
+        get { return ElementKind.Uninterpreted; }
+      }
 
-      internal Uninterpreted(Model p, string n) : base(p) { Name = n; }
+      public override string ToString()
+      {
+        return Name;
+      }
+
+      internal Uninterpreted(Model p, string n) : base(p)
+      {
+        Name = n;
+      }
+
       public readonly string Name;
     }
 
     abstract public class Number : Element
     {
-      protected Number(Model p, string n) : base(p) { Numeral = n; }
+      protected Number(Model p, string n) : base(p)
+      {
+        Numeral = n;
+      }
+
       public readonly string Numeral;
-      public override int AsInt() { return int.Parse(Numeral); }
+
+      public override int AsInt()
+      {
+        return int.Parse(Numeral);
+      }
     }
 
     public class Integer : Number
     {
-      internal Integer(Model p, string n) : base(p, n) { }
-      public override ElementKind Kind { get { return ElementKind.Integer; } }
-      public override string ToString() { return Numeral.ToString(); }
+      internal Integer(Model p, string n) : base(p, n)
+      {
+      }
+
+      public override ElementKind Kind
+      {
+        get { return ElementKind.Integer; }
+      }
+
+      public override string ToString()
+      {
+        return Numeral.ToString();
+      }
     }
 
     public class Real : Number
     {
-      internal Real(Model p, string n) : base(p, n) { }
-      public override ElementKind Kind { get { return ElementKind.Real; } }
-      public override string ToString() { return Numeral.ToString(); }
+      internal Real(Model p, string n) : base(p, n)
+      {
+      }
+
+      public override ElementKind Kind
+      {
+        get { return ElementKind.Real; }
+      }
+
+      public override string ToString()
+      {
+        return Numeral.ToString();
+      }
     }
 
     public class BitVector : Number
     {
-      internal BitVector(Model p, string n, int sz) : base(p, n) { Size = sz; }
+      internal BitVector(Model p, string n, int sz) : base(p, n)
+      {
+        Size = sz;
+      }
+
       public readonly int Size;
-      public override ElementKind Kind { get { return ElementKind.BitVector; } }
-      public override string ToString() { return string.Format("{0}bv{1}", Numeral, Size); }
+
+      public override ElementKind Kind
+      {
+        get { return ElementKind.BitVector; }
+      }
+
+      public override string ToString()
+      {
+        return string.Format("{0}bv{1}", Numeral, Size);
+      }
     }
 
     public class Boolean : Element
     {
       public bool Value;
-      internal Boolean(Model p, bool v) : base(p) { Value = v; }
-      public override ElementKind Kind { get { return ElementKind.Boolean; } }
-      public override string ToString() { return Value ? "true" : "false"; }      
+
+      internal Boolean(Model p, bool v) : base(p)
+      {
+        Value = v;
+      }
+
+      public override ElementKind Kind
+      {
+        get { return ElementKind.Boolean; }
+      }
+
+      public override string ToString()
+      {
+        return Value ? "true" : "false";
+      }
     }
 
     public class Array : Element
     {
       public Func Value;
-      internal Array(Model p, Func v) : base(p) { Value = v; }
-      public override ElementKind Kind { get { return ElementKind.Array; } }
-      public override string ToString() { return string.Format("as-array[{0}]", Value.Name); }
+
+      internal Array(Model p, Func v) : base(p)
+      {
+        Value = v;
+      }
+
+      public override ElementKind Kind
+      {
+        get { return ElementKind.Array; }
+      }
+
+      public override string ToString()
+      {
+        return string.Format("as-array[{0}]", Value.Name);
+      }
     }
 
-    public class DatatypeValue : Element 
+    public class DatatypeValue : Element
     {
       public readonly string ConstructorName;
       public readonly Element[] Arguments;
-      internal DatatypeValue(Model p, string name, List<Element> args) : base(p) { 
-        ConstructorName = name; 
-        Arguments = args.ToArray(); 
+
+      internal DatatypeValue(Model p, string name, List<Element> args) : base(p)
+      {
+        ConstructorName = name;
+        Arguments = args.ToArray();
       }
-      public override ElementKind Kind { get { return ElementKind.DataValue; } }
-      public override string ToString() {
+
+      public override ElementKind Kind
+      {
+        get { return ElementKind.DataValue; }
+      }
+
+      public override string ToString()
+      {
         StringBuilder builder = new StringBuilder();
         builder.Append("(").Append(ConstructorName);
-        foreach (Element arg in Arguments) {
+        foreach (Element arg in Arguments)
+        {
           builder.Append(" ").Append(arg);
         }
+
         builder.Append(")");
         return builder.ToString();
       }
     }
+
     #endregion
 
     public class Func
@@ -167,34 +268,48 @@ namespace Microsoft.Boogie
       public readonly string Name;
       public readonly int Arity;
       internal readonly List<FuncTuple> apps = new List<FuncTuple>();
-      public IEnumerable<FuncTuple> Apps { get { return apps; } }
-      public int AppCount { get { return apps.Count; } }
+
+      public IEnumerable<FuncTuple> Apps
+      {
+        get { return apps; }
+      }
+
+      public int AppCount
+      {
+        get { return apps.Count; }
+      }
+
       private Element @else;
 
-      internal Func(Model p, string n, int a) { Model = p;  Name = n; Arity = a; }
+      internal Func(Model p, string n, int a)
+      {
+        Model = p;
+        Name = n;
+        Arity = a;
+      }
 
       public override string ToString()
       {
         return string.Format("{0}/{1}", Name, Arity);
       }
 
-      internal void Substitute(Dictionary<Element, Element> mapping) {
+      internal void Substitute(Dictionary<Element, Element> mapping)
+      {
         Element e;
         if (@else != null && mapping.TryGetValue(@else, out e))
           @else = e;
-        foreach (var ft in apps) {
+        foreach (var ft in apps)
+        {
           if (mapping.TryGetValue(ft.Result, out e)) ft.Result = e;
           for (var i = 0; i < ft.Args.Length; ++i)
-            if (mapping.TryGetValue(ft.Args[i], out e)) ft.Args[i] = e;
+            if (mapping.TryGetValue(ft.Args[i], out e))
+              ft.Args[i] = e;
         }
       }
 
       public Element Else
       {
-        get
-        {
-          return @else;
-        }
+        get { return @else; }
         set
         {
           if (@else != null)
@@ -237,7 +352,8 @@ namespace Microsoft.Boogie
       /// </summary>
       public IEnumerable<FuncTuple> AppsWithArg(int argIdx, Element elt)
       {
-        foreach (var r in elt.References) {
+        foreach (var r in elt.References)
+        {
           if (r.Func == this && r.Args[argIdx] == elt)
             yield return r;
         }
@@ -248,7 +364,8 @@ namespace Microsoft.Boogie
       /// </summary>
       public IEnumerable<FuncTuple> AppsWithArgs(int argIdx0, Element elt0, int argIdx1, Element elt1)
       {
-        foreach (var r in elt0.References) {
+        foreach (var r in elt0.References)
+        {
           if (r.Func == this && r.Args[argIdx0] == elt0 && r.Args[argIdx1] == elt1)
             yield return r;
         }
@@ -259,7 +376,8 @@ namespace Microsoft.Boogie
       /// </summary>
       public IEnumerable<FuncTuple> AppsWithResult(Element elt)
       {
-        foreach (var r in elt.References) {
+        foreach (var r in elt.References)
+        {
           if (r.Func == this && r.Result == elt)
             yield return r;
         }
@@ -292,39 +410,49 @@ namespace Microsoft.Boogie
       public Element TryEval(params Element[] args)
       {
         for (int i = 0; i < args.Length; ++i)
-          if(args[i]==null)
+          if (args[i] == null)
             throw new ArgumentException();
 
-        if (apps.Count > 10) {
+        if (apps.Count > 10)
+        {
           var best = apps;
           for (int i = 0; i < args.Length; ++i)
             if (args[i].references.Count < best.Count)
               best = args[i].references;
-          if (best != apps) {
-            foreach (var tpl in best) {
+          if (best != apps)
+          {
+            foreach (var tpl in best)
+            {
               bool same = true;
               if (tpl.Func != this)
                 continue;
               for (int i = 0; i < args.Length; ++i)
-                if (tpl.Args[i] != args[i]) {
+                if (tpl.Args[i] != args[i])
+                {
                   same = false;
                   break;
                 }
+
               if (same) return tpl.Result;
             }
+
             return null;
           }
         }
 
-        foreach (var tpl in apps) {
+        foreach (var tpl in apps)
+        {
           bool same = true;
           for (int i = 0; i < args.Length; ++i)
-            if (tpl.Args[i] != args[i]) {
+            if (tpl.Args[i] != args[i])
+            {
               same = false;
               break;
             }
+
           if (same) return tpl.Result;
         }
+
         return null;
       }
 
@@ -333,19 +461,23 @@ namespace Microsoft.Boogie
       /// </summary>
       public Element TryPartialEval(params Element[] args)
       {
-        foreach (var tpl in apps) {
+        foreach (var tpl in apps)
+        {
           int j = 0;
-          for (int i = 0; i < args.Length; ++i) {
-            if (tpl.Args[j] == args[i]) {
+          for (int i = 0; i < args.Length; ++i)
+          {
+            if (tpl.Args[j] == args[i])
+            {
               j++;
               if (j == tpl.Args.Length)
                 return tpl.Result;
             }
           }
         }
+
         return null;
       }
- 
+
       /// <summary>
       /// Short for TryEval(args) == (Element)true
       /// </summary>
@@ -365,19 +497,21 @@ namespace Microsoft.Boogie
       }
 
       public void AddApp(Element res, params Element[] args)
-      {        
+      {
         if (Arity == 0)
           SetConstant(res);
-        else {
+        else
+        {
           if (args.Length != Arity)
             throw new ArgumentException();
-          var t = new FuncTuple(this, res, (Element[])args.Clone());
+          var t = new FuncTuple(this, res, (Element[]) args.Clone());
           apps.Add(t);
           var u = new HashSet<Element>();
           res.references.Add(t);
           u.Add(res);
           foreach (var a in args)
-            if (!u.Contains(a)) {
+            if (!u.Contains(a))
+            {
               u.Add(a);
               a.references.Add(t);
             }
@@ -391,7 +525,7 @@ namespace Microsoft.Boogie
 
       // These should be immutable, except when Substituting the entire model
       public readonly Func Func;
-      public Element Result; 
+      public Element Result;
       public readonly Element[] Args;
 
       internal FuncTuple(Func func, Element res, Element[] args)
@@ -406,13 +540,16 @@ namespace Microsoft.Boogie
       {
         var res = new StringBuilder();
         res.Append("(").Append(Func.Name);
-        for (int i = 0; i < Args.Length; ++i) {
+        for (int i = 0; i < Args.Length; ++i)
+        {
           res.Append(" ").Append(Args[i]);
         }
+
         res.Append(") -> ").Append(Result);
         return res.ToString();
       }
     }
+
     #endregion
 
     private List<Func> functions = new List<Func>();
@@ -422,6 +559,7 @@ namespace Microsoft.Boogie
     private Dictionary<string, Element> elementsByName = new Dictionary<string, Element>();
 
     #region factory methods
+
     Element ConstructElement(string name)
     {
       if (name.ToLower() == "true") return True;
@@ -430,46 +568,67 @@ namespace Microsoft.Boogie
       if (name.StartsWith("bv") && name.Length > 4 && Char.IsDigit(name[2]))
         name = name.Substring(2);
 
-      if (Char.IsDigit(name[0]) || (name[0] == '-' && name.Length > 1 && Char.IsDigit(name[1]))) {
+      if (Char.IsDigit(name[0]) || (name[0] == '-' && name.Length > 1 && Char.IsDigit(name[1])))
+      {
         int col = name.IndexOf("bv");
         int szi = -1;
 
         if (name.EndsWith(":int"))
           name = name.Substring(0, name.Length - 4);
 
-        if (col > 0) {          
-          if (int.TryParse(name.Substring(col + 2), out szi) && szi > 0) {
+        if (col > 0)
+        {
+          if (int.TryParse(name.Substring(col + 2), out szi) && szi > 0)
+          {
             name = name.Substring(0, col);
-          } else {
+          }
+          else
+          {
             return null;
           }
-        } else if (name.EndsWith("]")) {
+        }
+        else if (name.EndsWith("]"))
+        {
           col = name.IndexOf("[");
-          if (col > 0 && int.TryParse(name.Substring(col + 1, name.Length - col - 2), out szi) && szi > 0) {
+          if (col > 0 && int.TryParse(name.Substring(col + 1, name.Length - col - 2), out szi) && szi > 0)
+          {
             name = name.Substring(0, col);
-          } else {
+          }
+          else
+          {
             return null;
           }
         }
 
         var allDigits = new Regex(@"^-?[0-9]*$");
         var real = new Regex(@"^-?[0-9]+\.[0-9]+$");
-        if (allDigits.IsMatch(name)) {
+        if (allDigits.IsMatch(name))
+        {
           if (szi > 0)
             return new BitVector(this, name, szi);
           else
             return new Integer(this, name);
-        } else if (real.IsMatch(name)) {
+        }
+        else if (real.IsMatch(name))
+        {
           return new Real(this, name);
-        } else {
+        }
+        else
+        {
           return null;
         }
-      } else if (name[0] == '*' || name.StartsWith("val!") || name.Contains("!val!")) {
+      }
+      else if (name[0] == '*' || name.StartsWith("val!") || name.Contains("!val!"))
+      {
         return new Uninterpreted(this, name);
-      } else if (name.StartsWith("as-array[") && name.EndsWith("]")) {
+      }
+      else if (name.StartsWith("as-array[") && name.EndsWith("]"))
+      {
         var fnName = name.Substring(9, name.Length - 10);
         return new Array(this, MkFunc(fnName, 1));
-      } else {
+      }
+      else
+      {
         return new DatatypeValue(this, name, new List<Element>());
       }
     }
@@ -504,50 +663,72 @@ namespace Microsoft.Boogie
     public Func MkFunc(string name, int arity)
     {
       Func res;
-      if (functionsByName.TryGetValue(name, out res)) {
+      if (functionsByName.TryGetValue(name, out res))
+      {
         if (res.Arity != arity)
-          throw new ArgumentException(string.Format("function '{0}' previously created with arity {1}, now trying to recreate with arity {2}", name, res.Arity, arity));
+          throw new ArgumentException(string.Format(
+            "function '{0}' previously created with arity {1}, now trying to recreate with arity {2}", name, res.Arity,
+            arity));
         return res;
       }
+
       res = new Func(this, name, arity);
       functionsByName.Add(name, res);
       functions.Add(res);
       return res;
     }
+
     #endregion
 
     #region state management
+
     public class CapturedState
     {
       List<string> vars = new List<string>();
       Dictionary<string, Element> valuations = new Dictionary<string, Element>();
+
       readonly CapturedState previous;
+
       // AL: Dropping "readonly" for corral
       public /* readonly */ string Name { get; private set; }
 
-      public IEnumerable<string> Variables { get { return vars; } }
-      public IEnumerable<string> AllVariables { 
-        get {
+      public IEnumerable<string> Variables
+      {
+        get { return vars; }
+      }
+
+      public IEnumerable<string> AllVariables
+      {
+        get
+        {
           if (previous != null)
             return previous.AllVariables.Concat(Variables).Distinct();
           else
             return Variables;
-        } 
+        }
       }
-      public int VariableCount { get { return vars.Count; } }
+
+      public int VariableCount
+      {
+        get { return vars.Count; }
+      }
+
       public bool HasBinding(string varname)
       {
         return valuations.ContainsKey(varname);
       }
+
       public Element TryGet(string varname)
       {
         CapturedState curr = this;
-        while (curr != null) {
+        while (curr != null)
+        {
           Element res;
           if (curr.valuations.TryGetValue(varname, out res))
             return res;
           curr = curr.previous;
         }
+
         return null;
       }
 
@@ -560,30 +741,30 @@ namespace Microsoft.Boogie
       // Change name of the state
       public void ChangeName(string newName)
       {
-          Name = newName;
+        Name = newName;
       }
 
       // Change names of variables in this state
       // (Used by corral)
       internal void ChangeVariableNames(Dictionary<string, string> varNameMap)
       {
-          var oldVars = vars;
-          var oldValuations = valuations;
+        var oldVars = vars;
+        var oldValuations = valuations;
 
-          vars = new List<string>();
-          valuations = new Dictionary<string, Element>();
+        vars = new List<string>();
+        valuations = new Dictionary<string, Element>();
 
-          foreach (var v in oldVars)
-          {
-              if (varNameMap.ContainsKey(v)) vars.Add(varNameMap[v]);
-              else vars.Add(v);
-          }
+        foreach (var v in oldVars)
+        {
+          if (varNameMap.ContainsKey(v)) vars.Add(varNameMap[v]);
+          else vars.Add(v);
+        }
 
-          foreach (var kvp in oldValuations)
-          {
-              if (varNameMap.ContainsKey(kvp.Key)) valuations.Add(varNameMap[kvp.Key], kvp.Value);
-              else valuations.Add(kvp.Key, kvp.Value);
-          }
+        foreach (var kvp in oldValuations)
+        {
+          if (varNameMap.ContainsKey(kvp.Key)) valuations.Add(varNameMap[kvp.Key], kvp.Value);
+          else valuations.Add(kvp.Key, kvp.Value);
+        }
       }
 
       internal CapturedState(string name, CapturedState prev)
@@ -605,10 +786,10 @@ namespace Microsoft.Boogie
     // (Used by corral)
     public void ChangeVariableNames(Dictionary<string, string> varNameMap)
     {
-        foreach (var s in states)
-        {
-            s.ChangeVariableNames(varNameMap);
-        }
+      foreach (var s in states)
+      {
+        s.ChangeVariableNames(varNameMap);
+      }
     }
 
     #endregion
@@ -620,14 +801,26 @@ namespace Microsoft.Boogie
       True = new Boolean(this, true);
       elements.Add(True);
       elementsByName.Add("true", True);
-      False = new Boolean(this, false);      
+      False = new Boolean(this, false);
       elements.Add(False);
       elementsByName.Add("false", False);
     }
 
-    public IEnumerable<Func> Functions { get { return functions; } }
-    public IEnumerable<Element> Elements { get { return elements; } }
-    public IEnumerable<CapturedState> States { get { return states; } }
+    public IEnumerable<Func> Functions
+    {
+      get { return functions; }
+    }
+
+    public IEnumerable<Element> Elements
+    {
+      get { return elements; }
+    }
+
+    public IEnumerable<CapturedState> States
+    {
+      get { return states; }
+    }
+
     public readonly Element True, False;
     public readonly CapturedState InitialState;
     public bool ModelHasStatesAlready = false;
@@ -676,46 +869,67 @@ namespace Microsoft.Boogie
     public void Write(System.IO.TextWriter wr)
     {
       wr.WriteLine("*** MODEL");
-      foreach (var f in Functions.OrderBy(f => f.Name)) {
-        if (f.Arity == 0) {
+      foreach (var f in Functions.OrderBy(f => f.Name))
+      {
+        if (f.Arity == 0)
+        {
           wr.WriteLine("{0} -> {1}", f.Name, f.GetConstant());
         }
       }
-      foreach (var f in Functions.OrderBy(f => f.Name)) {
-        if (f.Arity != 0) {
+
+      foreach (var f in Functions.OrderBy(f => f.Name))
+      {
+        if (f.Arity != 0)
+        {
           wr.WriteLine("{0} -> {{", f.Name);
           // first, add the entries to a list, so that they can be sorted before printing
           List<Tuple<string, Element>> entries = new List<Tuple<string, Element>>();
-          foreach (var app in f.Apps) {
+          foreach (var app in f.Apps)
+          {
             var args = "";
-            foreach (var a in app.Args) {
+            foreach (var a in app.Args)
+            {
               args += a + " ";
             }
+
             entries.Add(new Tuple<string, Element>(args, app.Result));
           }
-          foreach (var entry in entries.OrderBy(pair => pair.Item1)) {
+
+          foreach (var entry in entries.OrderBy(pair => pair.Item1))
+          {
             wr.WriteLine("  {0}-> {1}", entry.Item1, entry.Item2);
           }
-          if (f.Else != null) {
+
+          if (f.Else != null)
+          {
             wr.WriteLine("  else -> {0}", f.Else);
           }
+
           wr.WriteLine("}");
         }
       }
-      foreach (var s in States) {
-        if (s == InitialState && s.VariableCount == 0) {
+
+      foreach (var s in States)
+      {
+        if (s == InitialState && s.VariableCount == 0)
+        {
           continue;
         }
+
         wr.WriteLine("*** STATE {0}", s.Name);
-        foreach (var v in s.Variables.OrderBy(nm => nm)) {
+        foreach (var v in s.Variables.OrderBy(nm => nm))
+        {
           wr.WriteLine("  {0} -> {1}", v, s.TryGet(v));
         }
+
         wr.WriteLine("*** END_STATE", s.Name);
       }
+
       wr.WriteLine("*** END_MODEL");
     }
 
-    public void Substitute(Dictionary<Element, Element> mapping) {
+    public void Substitute(Dictionary<Element, Element> mapping)
+    {
       foreach (var f in functions) f.Substitute(mapping);
     }
 
@@ -728,4 +942,3 @@ namespace Microsoft.Boogie
     }
   }
 }
-

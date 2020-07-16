@@ -3,7 +3,9 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
-namespace Microsoft.Boogie {
+
+namespace Microsoft.Boogie
+{
   using System;
   using System.IO;
   using System.Collections;
@@ -13,26 +15,30 @@ namespace Microsoft.Boogie {
   /// <summary>
   /// A class representing a mathematical set.
   /// </summary>
-  public class GSet<T> : ICloneable, IEnumerable, IEnumerable<T> {
+  public class GSet<T> : ICloneable, IEnumerable, IEnumerable<T>
+  {
     /*[Own]*/
     Dictionary<T, int> ht;
     List<T> arr; // keep elements in a well-defined order; otherwise iteration is non-deterministic
 
     [ContractInvariantMethod]
-    void ObjectInvariant() {
+    void ObjectInvariant()
+    {
       Contract.Invariant(ht != null);
       Contract.Invariant(arr != null);
       Contract.Invariant(ht.Count == arr.Count);
     }
 
 
-    public GSet() {
+    public GSet()
+    {
       ht = new Dictionary<T, int>();
       arr = new List<T>();
       //:base();
     }
 
-    private GSet(Dictionary<T,int>/*!*/ ht, List<T> arr) {
+    private GSet(Dictionary<T, int> /*!*/ ht, List<T> arr)
+    {
       Contract.Requires(ht != null);
       Contract.Requires(arr != null);
       this.ht = ht;
@@ -40,16 +46,19 @@ namespace Microsoft.Boogie {
       //:base();
     }
 
-    public GSet(int capacity) {
+    public GSet(int capacity)
+    {
       ht = new Dictionary<T, int>(capacity);
       arr = new List<T>(capacity);
       //:base();
     }
 
 
-    public readonly static GSet<T>/*!*/ Empty = new GSet<T>();
+    public readonly static GSet<T> /*!*/
+      Empty = new GSet<T>();
 
-    public void Clear() {
+    public void Clear()
+    {
       ht.Clear();
       arr.Clear();
     }
@@ -59,8 +68,10 @@ namespace Microsoft.Boogie {
     /// In notation:
     ///   this.SetElements =  this.SetElements_old \union {o};
     /// </summary>
-    public void Add(T o) {
-      if (!ht.ContainsKey(o)) {
+    public void Add(T o)
+    {
+      if (!ht.ContainsKey(o))
+      {
         ht[o] = arr.Count;
         arr.Add(o);
       }
@@ -69,8 +80,10 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// this.SetElements =  this.SetElements_old \union s.GSet<T>Elements;
     /// </summary>
-    public void AddRange(IEnumerable<T> s) {
-      foreach (T o in s) {
+    public void AddRange(IEnumerable<T> s)
+    {
+      foreach (T o in s)
+      {
         Add(o);
       }
     }
@@ -78,15 +91,19 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// this.SetElements =  this.SetElements_old \setminus {o};
     /// </summary>
-    public void Remove(T o) {
+    public void Remove(T o)
+    {
       int idx;
-      if (ht.TryGetValue(o, out idx)) {
+      if (ht.TryGetValue(o, out idx))
+      {
         var last = arr[arr.Count - 1];
         arr.RemoveAt(arr.Count - 1);
-        if (idx != arr.Count) {
+        if (idx != arr.Count)
+        {
           arr[idx] = last;
           ht[last] = idx;
         }
+
         ht.Remove(o);
       }
     }
@@ -94,13 +111,18 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// this.SetElements =  this.SetElements_old \setminus s.SetElements;
     /// </summary>
-    public void RemoveRange(IEnumerable<T> s) {
+    public void RemoveRange(IEnumerable<T> s)
+    {
       Contract.Requires(s != null);
-      if (s == this) {
+      if (s == this)
+      {
         ht.Clear();
         arr.Clear();
-      } else {
-        foreach (T o in s) {
+      }
+      else
+      {
+        foreach (T o in s)
+        {
           Remove(o);
         }
       }
@@ -109,9 +131,10 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Returns an arbitrary element from the set.
     /// </summary>
-    public T Choose() {
+    public T Choose()
+    {
       Contract.Requires((Count > 0));
-      foreach(var e in this) 
+      foreach (var e in this)
         return e;
       return default(T);
     }
@@ -119,7 +142,8 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Picks an arbitrary element from the set, removes it, and returns it.
     /// </summary>
-    public T Take() {
+    public T Take()
+    {
       Contract.Requires((Count > 0));
       Contract.Ensures(Count == Contract.OldValue(Count) - 1);
       T r = Choose();
@@ -127,17 +151,21 @@ namespace Microsoft.Boogie {
       return r;
     }
 
-    public void Intersect(GSet<T>/*!*/ s) {
+    public void Intersect(GSet<T> /*!*/ s)
+    {
       Contract.Requires(s != null);
       if (s == this) return;
       ht.Clear();
       var newArr = new List<T>();
-      foreach (T key in arr) {
-        if (s.ht.ContainsKey(key)) {
+      foreach (T key in arr)
+      {
+        if (s.ht.ContainsKey(key))
+        {
           ht[key] = newArr.Count;
           newArr.Add(key);
         }
       }
+
       arr = newArr;
     }
 
@@ -145,14 +173,17 @@ namespace Microsoft.Boogie {
     /// The getter returns true iff "o" is in the set.
     /// The setter adds the value "o" (for "true") or removes "o" (for "false")
     /// </summary>
-    public bool this[T o] {
-      get {
-        return ht.ContainsKey(o);
-      }
-      set {
-        if (value) {
+    public bool this[T o]
+    {
+      get { return ht.ContainsKey(o); }
+      set
+      {
+        if (value)
+        {
           Add(o);
-        } else {
+        }
+        else
+        {
           Remove(o);
         }
       }
@@ -164,7 +195,8 @@ namespace Microsoft.Boogie {
     /// <param name="o"></param>
     /// <returns></returns>
     [Pure]
-    public bool Contains(T o) {
+    public bool Contains(T o)
+    {
       return this.ht.ContainsKey(o);
     }
 
@@ -174,45 +206,60 @@ namespace Microsoft.Boogie {
     /// </summary>
     /// <param name="s"></param>
     /// <returns></returns>
-    public bool ContainsRange(IEnumerable<T> s) {
+    public bool ContainsRange(IEnumerable<T> s)
+    {
       Contract.Requires(s != null);
-      if (s != this) {
-        foreach (T key in s) {
-          if (!this.ht.ContainsKey(key)) {
+      if (s != this)
+      {
+        foreach (T key in s)
+        {
+          if (!this.ht.ContainsKey(key))
+          {
             return false;
           }
         }
       }
+
       return true;
     }
 
-    public object/*!*/ Clone() {
+    public object /*!*/ Clone()
+    {
       Contract.Ensures(Contract.Result<object>() != null);
-      return new GSet<T>(new Dictionary<T,int>(ht), new List<T>(arr));
+      return new GSet<T>(new Dictionary<T, int>(ht), new List<T>(arr));
     }
 
-    public virtual int Count {
-      get {
-        return ht.Count;
-      }
+    public virtual int Count
+    {
+      get { return ht.Count; }
     }
 
     [Pure]
-    public override string/*!*/ ToString() {
+    public override string /*!*/ ToString()
+    {
       Contract.Ensures(Contract.Result<string>() != null);
       string s = null;
-      foreach (object/*!*/ key in ht.Keys) {
+      foreach (object /*!*/ key in ht.Keys)
+      {
         Contract.Assert(key != null);
-        if (s == null) {
+        if (s == null)
+        {
           s = "{";
-        } else {
+        }
+        else
+        {
           s += ", ";
         }
+
         s += key.ToString();
       }
-      if (s == null) {
+
+      if (s == null)
+      {
         return "{}";
-      } else {
+      }
+      else
+      {
         return s + "}";
       }
     }
@@ -220,40 +267,49 @@ namespace Microsoft.Boogie {
     //----------------------------- Static Methods ---------------------------------
 
     // Functional Intersect
-    public static GSet<T>/*!*/ Intersect(GSet<T>/*!*/ a, GSet<T>/*!*/ b) {
+    public static GSet<T> /*!*/ Intersect(GSet<T> /*!*/ a, GSet<T> /*!*/ b)
+    {
       Contract.Requires(b != null);
       Contract.Requires(a != null);
       Contract.Ensures(Contract.Result<GSet<T>>() != null);
       //Contract.Ensures(Contract.ForAll(result, x => a[x] && b[x] ));
-      GSet<T>/*!*/ res = (GSet<T>/*!*/)cce.NonNull(a.Clone());
+      GSet<T> /*!*/
+        res = (GSet<T> /*!*/) cce.NonNull(a.Clone());
       res.Intersect(b);
       return res;
     }
+
     // Functional Union
-    public static GSet<T>/*!*/ Union(GSet<T>/*!*/ a, GSet<T>/*!*/ b) {
+    public static GSet<T> /*!*/ Union(GSet<T> /*!*/ a, GSet<T> /*!*/ b)
+    {
       Contract.Requires(a != null);
       Contract.Requires(b != null);
       Contract.Ensures(Contract.Result<GSet<T>>() != null);
       //  Contract.Ensures(Contract.ForAll(result, x => a[x] || b[x] ));
-      GSet<T>/*!*/ res = (GSet<T>/*!*/)cce.NonNull(a.Clone());
+      GSet<T> /*!*/
+        res = (GSet<T> /*!*/) cce.NonNull(a.Clone());
       res.AddRange(b);
       return res;
     }
 
-    public delegate bool SetFilter(object/*!*/ obj);
+    public delegate bool SetFilter(object /*!*/ obj);
 
-    public static GSet<T>/*!*/ Filter(GSet<T>/*!*/ a, Func<T,bool> filter) {
+    public static GSet<T> /*!*/ Filter(GSet<T> /*!*/ a, Func<T, bool> filter)
+    {
       Contract.Requires(filter != null);
       Contract.Requires(a != null);
       Contract.Ensures(Contract.Result<GSet<T>>() != null);
       GSet<T> inter = new GSet<T>();
 
-      foreach (T elem in a) {
+      foreach (T elem in a)
+      {
         Contract.Assert(elem != null);
-        if (filter(elem)) {
+        if (filter(elem))
+        {
           inter.Add(elem);
         }
       }
+
       return inter;
     }
 
@@ -264,7 +320,7 @@ namespace Microsoft.Boogie {
 
     IEnumerator IEnumerable.GetEnumerator()
     {
-      return ((IEnumerable)arr).GetEnumerator();
+      return ((IEnumerable) arr).GetEnumerator();
     }
 
     public bool AddAll(IEnumerable s)
@@ -275,12 +331,11 @@ namespace Microsoft.Boogie {
   }
 
 
-  public interface IWorkList : ICollection {
+  public interface IWorkList : ICollection
+  {
     bool Add(object o);
     bool AddAll(IEnumerable objs);
     bool IsEmpty();
     object Pull();
   }
-
-
 }
