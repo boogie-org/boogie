@@ -1,8 +1,6 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
+// <copyright file="BoogieDriver.cs" company="Microsoft Corporation">
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// </copyright>
 //---------------------------------------------------------------------------------------------
 // OnlyBoogie OnlyBoogie.ssc
 //       - main program for taking a BPL program and verifying it
@@ -11,9 +9,9 @@
 namespace Microsoft.Boogie
 {
   using System;
-  using System.IO;
   using System.Collections.Generic;
   using System.Diagnostics.Contracts;
+  using System.IO;
 
   /*
     The following assemblies are referenced because they are needed at runtime, not at compile time:
@@ -86,7 +84,7 @@ namespace Microsoft.Boogie
         {
           StreamReader stream = new StreamReader(file);
           string s = stream.ReadToEnd();
-          fileList.AddRange(s.Split(new char[3] {' ', '\n', '\r'}, StringSplitOptions.RemoveEmptyEntries));
+          fileList.AddRange(s.Split(new char[3] { ' ', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
         }
         else
         {
@@ -105,10 +103,11 @@ namespace Microsoft.Boogie
 
         if (extension != ".bpl")
         {
-          ExecutionEngine.printer.ErrorWriteLine(Console.Out,
+          ExecutionEngine.printer.ErrorWriteLine(
+            Console.Out,
             "*** Error: '{0}': Filename extension '{1}' is not supported. Input files must be BoogiePL programs (.bpl).",
             file,
-            extension == null ? "" : extension);
+            extension == null ? string.Empty : extension);
           goto END;
         }
       }
