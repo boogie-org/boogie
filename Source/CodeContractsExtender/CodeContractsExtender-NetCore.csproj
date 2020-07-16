@@ -5,4 +5,8 @@
     <AssemblyName>BoogieCodeContractsExtender</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.164" />
+  </ItemGroup>
+
 </Project>

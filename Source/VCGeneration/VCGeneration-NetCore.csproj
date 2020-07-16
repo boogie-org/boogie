@@ -15,4 +15,8 @@
     <ProjectReference Include="..\VCExpr\VCExpr-NetCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.164" />
+  </ItemGroup>
+
 </Project>
