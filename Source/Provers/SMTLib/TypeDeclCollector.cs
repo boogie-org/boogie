@@ -90,7 +90,7 @@ namespace Microsoft.Boogie.SMTLib
     private readonly Stack<HashSet<string /*!*/> /*!*/> _KnownStoreFunctions = new Stack<HashSet<string>>();
     private readonly Stack<HashSet<string /*!*/> /*!*/> _KnownSelectFunctions = new Stack<HashSet<string>>();
 
-    // lets RPFP checker capture decls	
+    // lets RPFP checker capture decls
     public abstract class DeclHandler
     {
       public abstract void VarDecl(VCExprVar v);

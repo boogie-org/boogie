@@ -254,15 +254,15 @@ namespace Microsoft.Boogie
        *    statements appearing in C.
        *    
        * 4. Consider each statement to work out variable dependences.  v may depend on u if:
-	     *       - there is a statement v := e where u appears in e
-	     *       - there is a statement call ... := foo(..., e, ...) where v is formal in parameter of foo 
+       *       - there is a statement v := e where u appears in e
+       *       - there is a statement call ... := foo(..., e, ...) where v is formal in parameter of foo 
        *         corresponding to e and u appears in e
        *       - there is a statement call ..., v, ... := foo(...) where u is formal out parameter of foo 
        *         correspondnig to v
-	     *       - there is a statement v := ... controlled by u
-	     *       - there is a statement call ... := foo(...) controlled by u where v is a formal in parameter
+       *       - there is a statement v := ... controlled by u
+       *       - there is a statement call ... := foo(...) controlled by u where v is a formal in parameter
        *         of foo
-	     *       - there is a statement call ..., v, ... := foo(...) controlled by u
+       *       - there is a statement call ..., v, ... := foo(...) controlled by u
        *       
        * 5. Finialise variable dependence graph by taking its transitive closure.
        * 
