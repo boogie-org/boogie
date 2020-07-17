@@ -686,8 +686,8 @@ namespace Microsoft.Boogie
     public bool UseAbstractInterpretation = false;
 
     public string CivlDesugaredFile = null;
-    public bool TrustAtomicityTypes = false;
-    public bool TrustNonInterference = false;
+    public bool TrustMoverTypes = false;
+    public bool TrustNoninterference = false;
     public int TrustLayersUpto = -1;
     public int TrustLayersDownto = int.MaxValue;
 
@@ -1748,8 +1748,8 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
               ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
-              ps.CheckBooleanFlag("trustAtomicityTypes", ref TrustAtomicityTypes) ||
-              ps.CheckBooleanFlag("trustNonInterference", ref TrustNonInterference) ||
+              ps.CheckBooleanFlag("trustMoverTypes", ref TrustMoverTypes) ||
+              ps.CheckBooleanFlag("trustNoninterference", ref TrustNoninterference) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting) ||
               ps.CheckBooleanFlag("warnNotEliminatedVars", ref WarnNotEliminatedVars)
@@ -2094,9 +2094,9 @@ namespace Microsoft.Boogie
 
   ---- CIVL options ----------------------------------------------------------
 
-  /trustAtomicityTypes
-                do not verify atomic action declarations
-  /trustNonInterference
+  /trustMoverTypes
+                do not verify mover type annotations on atomic action declarations
+  /trustNoninterference
                 do not perform noninterference checks
   /trustLayersUpto:<n>
                 do not verify layers <n> and below

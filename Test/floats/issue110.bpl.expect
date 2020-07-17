@@ -1,3 +1,6 @@
+issue110.bpl(5,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    issue110.bpl(5,3): anon0
 *** MODEL
 a -> |T@[Int]float24e8!val!0|
 ControlFlow -> {
@@ -16,8 +19,5 @@ tickleBool -> {
   else -> true
 }
 *** END_MODEL
-issue110.bpl(5,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    issue110.bpl(5,3): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
