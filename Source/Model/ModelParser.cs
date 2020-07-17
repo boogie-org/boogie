@@ -185,7 +185,7 @@ namespace Microsoft.Boogie
     {
       var selectFunctions = new Dictionary<int, Model.Func>();
       var storeFunctions = new Dictionary<int, Model.Func>();
-      for (;;)
+      while (true)
       {
         var line = ReadLine();
         if (line == null)
@@ -218,7 +218,7 @@ namespace Microsoft.Boogie
             cs = currModel.InitialState;
           else
             cs = currModel.MkState(name);
-          for (;;)
+          while (true)
           {
             var tmpline = ReadLine();
             if (tmpline == "*** END_STATE")
@@ -249,7 +249,7 @@ namespace Microsoft.Boogie
           if (lastWord is string && ((string) lastWord) == "{")
           {
             fn = currModel.TryGetFunc(funName);
-            for (;;)
+            while (true)
             {
               var tuple = GetFunctionTokens(ReadLine());
               if (tuple == null)
