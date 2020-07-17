@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DotNetAnalyzers/StyleCopAnalyzers/master/StyleCop.Analyzers/StyleCop.Analyzers/Settings/stylecop.schema.json",
+  "settings": {
+    "documentationRules": {
+      "copyrightText": "Licensed under the MIT license. See LICENSE file in the samples root for full license information.",
+      "companyName": "Microsoft",
+      "xmlHeader": false,
+      "documentExposedElements": false
+    },
+    "indentation": {
+      "indentationSize": 2,
+      "useTabs": false
+    },
+  }
+}

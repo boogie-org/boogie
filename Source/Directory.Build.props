@@ -16,10 +16,11 @@
   <!-- Use StyleCop to check for consistent code formatting -->
   <ItemGroup Condition="$(MSBuildProjectName.Contains('-NetCore'))">
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.164" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json" />
   </ItemGroup>
 
   <!-- Configure StyleCop analysis rules -->
-  <PropertyGroup>
+  <PropertyGroup Condition="$(MSBuildProjectName.Contains('-NetCore'))">
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)CustomCodeAnalysisRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
