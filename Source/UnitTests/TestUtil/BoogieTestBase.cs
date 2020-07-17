@@ -7,9 +7,10 @@ namespace Microsoft.Boogie
 {
   namespace TestUtil
   {
-    public class BoogieTestBase {
-
-      public BoogieTestBase() {
+    public class BoogieTestBase
+    {
+      public BoogieTestBase()
+      {
         // Debug log output goes to standard error.
         // Failing System.Diagnostics failures trigger NUnit assertion failures
         // Debug.Listeners.Add(new AssertionTextWriterTraceListener(Console.Error));
@@ -21,4 +22,3 @@ namespace Microsoft.Boogie
     }
   }
 }
-

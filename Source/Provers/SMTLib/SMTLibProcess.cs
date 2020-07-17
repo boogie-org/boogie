@@ -32,7 +32,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       this.options = options;
       this.smtProcessId = smtProcessIdSeq++;
-      
+
       var psi = new ProcessStartInfo(options.ExecutablePath(), options.SolverArguments.Concat(" "))
       {
         CreateNoWindow = true,
@@ -42,62 +42,78 @@ namespace Microsoft.Boogie.SMTLib
         RedirectStandardError = true
       };
 
-      if (options.Inspector != null) {
+      if (options.Inspector != null)
+      {
         this.inspector = new Inspector(options);
       }
 
-      if (cancelEvent == null && CommandLineOptions.Clo.RunningBoogieFromCommandLine) {
+      if (cancelEvent == null && CommandLineOptions.Clo.RunningBoogieFromCommandLine)
+      {
         cancelEvent = new ConsoleCancelEventHandler(ControlCHandler);
         Console.CancelKeyPress += cancelEvent;
       }
 
-      if (options.Verbosity >= 1) {
+      if (options.Verbosity >= 1)
+      {
         Console.WriteLine("[SMT-{0}] Starting {1} {2}", smtProcessId, psi.FileName, psi.Arguments);
       }
 
-      try {
+      try
+      {
         prover = new Process();
-        prover.StartInfo = psi;        
+        prover.StartInfo = psi;
         prover.ErrorDataReceived += prover_ErrorDataReceived;
         prover.OutputDataReceived += prover_OutputDataReceived;
         prover.Start();
         toProver = prover.StandardInput;
         prover.BeginErrorReadLine();
-        prover.BeginOutputReadLine();        
-      } catch (System.ComponentModel.Win32Exception e) {
+        prover.BeginOutputReadLine();
+      }
+      catch (System.ComponentModel.Win32Exception e)
+      {
         throw new ProverException(string.Format("Unable to start the process {0}: {1}", psi.FileName, e.Message));
       }
     }
 
-    [NoDefaultContract]  // important, since we have no idea what state the object might be in when this handler is invoked
+    [NoDefaultContract] // important, since we have no idea what state the object might be in when this handler is invoked
     void ControlCHandler(object o, ConsoleCancelEventArgs a)
     {
-      if (prover != null) {
+      if (prover != null)
+      {
         TerminateProver();
       }
     }
 
-    private void TerminateProver(Int32 timeout = 2000) {
-      try {
+    private void TerminateProver(Int32 timeout = 2000)
+    {
+      try
+      {
         // Let the prover know that we're done sending input.
         prover.StandardInput.Close();
 
-         // Give it a chance to exit cleanly (e.g. to flush buffers)
-        if (!prover.WaitForExit(timeout)) {
+        // Give it a chance to exit cleanly (e.g. to flush buffers)
+        if (!prover.WaitForExit(timeout))
+        {
           prover.Kill();
         }
-      } catch { /* Swallow errors */ }
+      }
+      catch
+      {
+        /* Swallow errors */
+      }
     }
 
     public void Send(string cmd)
     {
-      if (options.Verbosity >= 2) {
+      if (options.Verbosity >= 2)
+      {
         var log = cmd;
         if (log.Length > 50)
           log = log.Substring(0, 50) + "...";
         log = log.Replace("\r", "").Replace("\n", " ");
         Console.WriteLine("[SMT-INP-{0}] {1}", smtProcessId, log);
       }
+
       toProver.WriteLine(cmd);
     }
 
@@ -115,9 +131,11 @@ namespace Microsoft.Boogie.SMTLib
     public void PingPong()
     {
       Ping();
-      while (true) {
+      while (true)
+      {
         var sx = GetProverResponse();
-        if (sx == null) {
+        if (sx == null)
+        {
           this.NeedsRestart = true;
           HandleError("Prover died");
           return;
@@ -139,13 +157,15 @@ namespace Microsoft.Boogie.SMTLib
     {
       toProver.Flush();
 
-      while (true) {
+      while (true)
+      {
         var exprs = ParseSExprs(true).ToArray();
         Contract.Assert(exprs.Length <= 1);
         if (exprs.Length == 0)
           return null;
         var resp = exprs[0];
-        if (resp.Name == "error") {
+        if (resp.Name == "error")
+        {
           if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId)
             if (resp.Arguments[0].Name.Contains("max. resource limit exceeded"))
               return resp;
@@ -153,31 +173,45 @@ namespace Microsoft.Boogie.SMTLib
               HandleError(resp.Arguments[0].Name);
           else
             HandleError(resp.ToString());
-        } else if (resp.Name == "progress") {
-          if (inspector != null) {
+        }
+        else if (resp.Name == "progress")
+        {
+          if (inspector != null)
+          {
             var sb = new StringBuilder();
-            foreach (var a in resp.Arguments) {
-              if (a.Name == "labels") {
+            foreach (var a in resp.Arguments)
+            {
+              if (a.Name == "labels")
+              {
                 sb.Append("STATS LABELS");
                 foreach (var x in a.Arguments)
                   sb.Append(" ").Append(x.Name);
-              } else if (a.Name.StartsWith(":")) {
+              }
+              else if (a.Name.StartsWith(":"))
+              {
                 sb.Append("STATS NAMED_VALUES ").Append(a.Name);
                 foreach (var x in a.Arguments)
                   sb.Append(" ").Append(x.Name);
-              } else {
+              }
+              else
+              {
                 continue;
               }
+
               inspector.StatsLine(sb.ToString());
               sb.Clear();
             }
           }
-        } else if (resp.Name == "unsupported") {
+        }
+        else if (resp.Name == "unsupported")
+        {
           // Skip -- this may be a benign "unsupported" from a previous command.
           // Of course, this is suboptimal.  We should really be using
           // print-success to identify the errant command and determine whether
           // the response is benign.
-        } else {
+        }
+        else
+        {
           return resp;
         }
       }
@@ -190,10 +224,14 @@ namespace Microsoft.Boogie.SMTLib
 
     public void Close()
     {
-      try {
+      try
+      {
         TotalUserTime += prover.UserProcessorTime;
-      } catch (Exception e) {
-        if (options.Verbosity >= 1) {
+      }
+      catch (Exception e)
+      {
+        if (options.Verbosity >= 1)
+        {
           Console.Error.WriteLine("Warning: prover time not incremented due to {0}", e.GetType());
         }
       }
@@ -214,12 +252,16 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     #region SExpr parsing
+
     int linePos;
     string currLine;
+
     char SkipWs()
     {
-      while (true) {
-        if (currLine == null) {
+      while (true)
+      {
+        if (currLine == null)
+        {
           currLine = ReadProver();
           if (currLine == null)
             return '\0';
@@ -231,7 +273,8 @@ namespace Microsoft.Boogie.SMTLib
 
         if (linePos < currLine.Length && currLine[linePos] != ';')
           return currLine[linePos];
-        else {
+        else
+        {
           currLine = null;
           linePos = 0;
         }
@@ -248,33 +291,41 @@ namespace Microsoft.Boogie.SMTLib
       var sb = new StringBuilder();
 
       var beg = SkipWs();
-      
+
       var quoted = beg == '"' || beg == '|';
       if (quoted)
         Shift();
-      while (true) {
-        if (linePos >= currLine.Length) {
-          if (quoted) {
+      while (true)
+      {
+        if (linePos >= currLine.Length)
+        {
+          if (quoted)
+          {
             sb.Append("\n");
             currLine = ReadProver();
             linePos = 0;
             if (currLine == null)
               break;
-          } else break;
+          }
+          else break;
         }
 
         var c = currLine[linePos++];
         if (quoted && c == beg)
           break;
-        if (!quoted && (char.IsWhiteSpace(c) || c == '(' || c == ')')) {
+        if (!quoted && (char.IsWhiteSpace(c) || c == '(' || c == ')'))
+        {
           linePos--;
           break;
         }
-        if (quoted && c == '\\' && linePos < currLine.Length && currLine[linePos] == '"') {
+
+        if (quoted && c == '\\' && linePos < currLine.Length && currLine[linePos] == '"')
+        {
           sb.Append('"');
           linePos++;
           continue;
         }
+
         sb.Append(c);
       }
 
@@ -288,12 +339,14 @@ namespace Microsoft.Boogie.SMTLib
 
     IEnumerable<SExpr> ParseSExprs(bool top)
     {
-      while (true) {
+      while (true)
+      {
         var c = SkipWs();
         if (c == '\0')
           break;
 
-        if (c == ')') {
+        if (c == ')')
+        {
           if (top)
             ParseError("stray ')'");
           break;
@@ -301,28 +354,40 @@ namespace Microsoft.Boogie.SMTLib
 
         string id;
 
-        if (c == '(') {
+        if (c == '(')
+        {
           Shift();
-          c = SkipWs();          
-          if (c == '\0') {
+          c = SkipWs();
+          if (c == '\0')
+          {
             ParseError("expecting something after '('");
             break;
-          } else if (c == '(') {
+          }
+          else if (c == '(')
+          {
             id = "";
-          } else {
+          }
+          else
+          {
             id = ParseId();
           }
 
           var args = ParseSExprs(false).ToArray();
 
           c = SkipWs();
-          if (c == ')') {
+          if (c == ')')
+          {
             Shift();
-          } else {
+          }
+          else
+          {
             ParseError("unclosed '(" + id + "'");
           }
+
           yield return new SExpr(id, args);
-        } else {
+        }
+        else
+        {
           id = ParseId();
           yield return new SExpr(id);
         }
@@ -330,34 +395,43 @@ namespace Microsoft.Boogie.SMTLib
         if (top) break;
       }
     }
+
     #endregion
 
     #region handling input from the prover
+
     string ReadProver()
     {
       string error = null;
-      while (true) {
-        if (error != null) {
+      while (true)
+      {
+        if (error != null)
+        {
           HandleError(error);
           errorCnt++;
           error = null;
         }
 
-        lock (this) {
-          while (proverOutput.Count == 0 && proverErrors.Count == 0 && !prover.HasExited) {
+        lock (this)
+        {
+          while (proverOutput.Count == 0 && proverErrors.Count == 0 && !prover.HasExited)
+          {
             Monitor.Wait(this, 100);
           }
 
-          if (proverErrors.Count > 0) {
+          if (proverErrors.Count > 0)
+          {
             error = proverErrors.Dequeue();
             continue;
           }
 
-          if (proverOutput.Count > 0) {
+          if (proverOutput.Count > 0)
+          {
             return proverOutput.Dequeue();
           }
 
-          if (prover.HasExited) {
+          if (prover.HasExited)
+          {
             DisposeProver();
             return null;
           }
@@ -367,7 +441,8 @@ namespace Microsoft.Boogie.SMTLib
 
     void DisposeProver()
     {
-      if (cancelEvent != null) {
+      if (cancelEvent != null)
+      {
         Console.CancelKeyPress -= cancelEvent;
         cancelEvent = null;
       }
@@ -375,11 +450,15 @@ namespace Microsoft.Boogie.SMTLib
 
     void prover_OutputDataReceived(object sender, DataReceivedEventArgs e)
     {
-      lock (this) {
-        if (e.Data != null) {
-          if (options.Verbosity >= 2 || (options.Verbosity >= 1 && !e.Data.StartsWith("(:name "))) {
+      lock (this)
+      {
+        if (e.Data != null)
+        {
+          if (options.Verbosity >= 2 || (options.Verbosity >= 1 && !e.Data.StartsWith("(:name ")))
+          {
             Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
           }
+
           proverOutput.Enqueue(e.Data);
           Monitor.Pulse(this);
         }
@@ -388,8 +467,10 @@ namespace Microsoft.Boogie.SMTLib
 
     void prover_ErrorDataReceived(object sender, DataReceivedEventArgs e)
     {
-      lock (this) {
-        if (e.Data != null) {
+      lock (this)
+      {
+        if (e.Data != null)
+        {
           if (options.Verbosity >= 1)
             Console.WriteLine("[SMT-ERR-{0}] {1}", smtProcessId, e.Data);
           proverErrors.Enqueue(e.Data);
@@ -397,6 +478,7 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
     }
+
     #endregion
   }
 }

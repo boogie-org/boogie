@@ -4,15 +4,18 @@ using System;
 
 namespace CoreTests
 {
-  [TestFixture ()]
-  public class AbsyMetadata {
-    private Absy GetAbsy() {
+  [TestFixture()]
+  public class AbsyMetadata
+  {
+    private Absy GetAbsy()
+    {
       // The choice of Absy type here is arbitary
       return new AssertCmd(Token.NoToken, Expr.True);
     }
 
     [Test()]
-    public void NoMetadata() {
+    public void NoMetadata()
+    {
       var absy = GetAbsy();
 
       Assert.AreEqual(0, absy.NumberedMetaDataCount);
@@ -21,7 +24,8 @@ namespace CoreTests
     }
 
     [Test()]
-    public void InvalidIndex() {
+    public void InvalidIndex()
+    {
       var absy = GetAbsy();
 
       Assert.AreEqual(0, absy.NumberedMetaDataCount);
@@ -31,7 +35,8 @@ namespace CoreTests
     }
 
     [Test()]
-    public void SimpleMetadata() {
+    public void SimpleMetadata()
+    {
       var absy = GetAbsy();
       Assert.AreEqual(0, absy.NumberedMetaDataCount);
 
@@ -47,16 +52,19 @@ namespace CoreTests
 
       // Now try iterating over the metadata
       int count = 0;
-      foreach (var o in absy.NumberedMetadata) {
-          Assert.AreEqual(count, o.Key);
-          Assert.IsNotNull(o.Value);
-          ++count;
+      foreach (var o in absy.NumberedMetadata)
+      {
+        Assert.AreEqual(count, o.Key);
+        Assert.IsNotNull(o.Value);
+        ++count;
       }
+
       Assert.AreEqual(2, count);
     }
 
     [Test()]
-    public void IncorrectType() {
+    public void IncorrectType()
+    {
       var absy = GetAbsy();
       Assert.AreEqual(0, absy.NumberedMetaDataCount);
 
@@ -68,7 +76,8 @@ namespace CoreTests
     }
 
     [Test()]
-    public void NullPadding() {
+    public void NullPadding()
+    {
       var absy = GetAbsy();
       Assert.AreEqual(0, absy.NumberedMetaDataCount);
 
@@ -78,12 +87,15 @@ namespace CoreTests
 
       // Should nulls be made accessible? Right now its impossible to access
       // them as we always throw an exception if the stored item is null
-      for (int i = 0; i <= 9 ; ++i) {
-        try {
+      for (int i = 0; i <= 9; ++i)
+      {
+        try
+        {
           absy.GetMetadata<String>(i);
           Assert.Fail("Accesing unset metadata should of failed");
         }
-        catch (InvalidCastException) {
+        catch (InvalidCastException)
+        {
         }
       }
 
@@ -92,4 +104,3 @@ namespace CoreTests
     }
   }
 }
-    
