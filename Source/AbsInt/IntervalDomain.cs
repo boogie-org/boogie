@@ -1246,25 +1246,25 @@ namespace Microsoft.Boogie.AbstractInterpretation
               break;
             case BinaryOperator.Opcode.Gt:
               // swap the operands and then continue as Lt
-            {
-              var tmp = lo0;
-              lo0 = lo1;
-              lo1 = tmp;
-              tmp = hi0;
-              hi0 = hi1;
-              hi1 = tmp;
-            }
+              {
+                var tmp = lo0;
+                lo0 = lo1;
+                lo1 = tmp;
+                tmp = hi0;
+                hi0 = hi1;
+                hi1 = tmp;
+              }
               goto case BinaryOperator.Opcode.Lt;
             case BinaryOperator.Opcode.Ge:
               // swap the operands and then continue as Le
-            {
-              var tmp = lo0;
-              lo0 = lo1;
-              lo1 = tmp;
-              tmp = hi0;
-              hi0 = hi1;
-              hi1 = tmp;
-            }
+              {
+                var tmp = lo0;
+                lo0 = lo1;
+                lo1 = tmp;
+                tmp = hi0;
+                hi0 = hi1;
+                hi1 = tmp;
+              }
               goto case BinaryOperator.Opcode.Le;
             case BinaryOperator.Opcode.Add:
               if (lo0 != null && lo1 != null)
@@ -1700,18 +1700,18 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
             break;
           case BinaryOperator.Opcode.Ge:
-          {
-            var tmp = arg0;
-            arg0 = arg1;
-            arg1 = tmp;
-          }
+            {
+              var tmp = arg0;
+              arg0 = arg1;
+              arg1 = tmp;
+            }
             goto case BinaryOperator.Opcode.Le;
           case BinaryOperator.Opcode.Gt:
-          {
-            var tmp = arg0;
-            arg0 = arg1;
-            arg1 = tmp;
-          }
+            {
+              var tmp = arg0;
+              arg0 = arg1;
+              arg1 = tmp;
+            }
             goto case BinaryOperator.Opcode.Lt;
           default:
             break;

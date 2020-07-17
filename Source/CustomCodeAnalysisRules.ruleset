@@ -43,7 +43,6 @@
     <Rule Id="SA1134" Action="None" /> <!-- Each attribute should be placed on its own line of code -->
     <Rule Id="SA1135" Action="None" /> <!-- Using directive for type 'Microsoft.Boogie.GSet<object>' should be qualified -->
     <Rule Id="SA1136" Action="None" /> <!-- Enum values should be on separate lines -->
-    <Rule Id="SA1137" Action="None" /> <!-- Elements should have the same indentation -->
     <Rule Id="SA1200" Action="None" /> <!-- Using directive should appear within a namespace declaration -->
     <Rule Id="SA1201" Action="None" /> <!-- A constructor should not follow a method -->
     <Rule Id="SA1202" Action="None" /> <!-- 'protected' members should come before 'private' members -->
