@@ -1,5 +1,10 @@
 <Project>
 
+  <!-- Configure StyleCop analysis rules -->
+  <PropertyGroup>
+    <CodeAnalysisRuleSet>../CustomCodeAnalysisRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+
   <!-- Configure target framework for .NET Core build -->
   <PropertyGroup Condition="$(MSBuildProjectName.Contains('-NetCore'))">
     <TargetFramework>netcoreapp3.1</TargetFramework>
