@@ -1682,7 +1682,7 @@ namespace Microsoft.Boogie.Houdini
       FALSE,
       NEITHER,
       TRUE
-    };
+    }
 
     Val tlevel;
 
@@ -1932,7 +1932,7 @@ namespace Microsoft.Boogie.Houdini
       NOT_A,
       A_IMP_B,
       TRUE
-    };
+    }
 
     Val val;
 
@@ -2905,7 +2905,6 @@ namespace Microsoft.Boogie.Houdini
               Console.WriteLine("Timeout/Spaceout while verifying " + impl.Name);
             var tt = impl2Summary[impl.Name].GetTrueSummary(program, impl);
             ret = prev.IsEqual(tt) ? false : true;
-            ;
             impl2Summary[impl.Name] = tt;
             break;
           }
@@ -2970,7 +2969,6 @@ namespace Microsoft.Boogie.Houdini
               Console.WriteLine("Timeout/Spaceout while verifying " + impl.Name);
             var tt = impl2Summary[impl.Name].GetTrueSummary(program, impl);
             ret = prev.IsEqual(tt) ? false : true;
-            ;
             impl2Summary[impl.Name] = tt;
             break;
           }
@@ -4879,7 +4877,7 @@ namespace Microsoft.Boogie.Houdini
     public AbsHoudiniInternalError(string msg) : base(msg)
     {
     }
-  };
+  }
 
   public class SimpleUtil
   {

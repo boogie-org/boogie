@@ -200,7 +200,7 @@ namespace Microsoft.Boogie
       False,
       True,
       Undef
-    };
+    }
 
 
     /** Solve an RPFP graph. This means either strengthen the annotation
@@ -300,7 +300,7 @@ namespace Microsoft.Boogie
     public class LogicSolver
     {
       public Context ctx;
-    };
+    }
 
     public LogicSolver solver;
 
@@ -576,7 +576,7 @@ namespace Microsoft.Boogie
     {
       public List<Edge> edges = new List<Edge>();
       public List<Node> nodes = new List<Node>();
-    };
+    }
 
     /** Set the model of the background theory used in a counterexample. */
     public void SetBackgroundModel(Model m)

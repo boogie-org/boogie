@@ -1210,7 +1210,7 @@ namespace Microsoft.Boogie.Houdini
       REQUIRES,
       ENSURES,
       ASSERT
-    };
+    }
 
     public class RefutedAnnotation
     {

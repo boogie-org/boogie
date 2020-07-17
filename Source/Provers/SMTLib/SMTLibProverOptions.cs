@@ -32,7 +32,7 @@ namespace Microsoft.Boogie.SMTLib
     Z3,
     CVC4,
     YICES2
-  };
+  }
 
   public class SMTLibProverOptions : ProverOptions
   {

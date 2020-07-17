@@ -1671,7 +1671,7 @@ namespace Microsoft.Boogie
     {
       Neg,
       Not
-    };
+    }
 
     private Opcode op;
 
@@ -1908,7 +1908,7 @@ namespace Microsoft.Boogie
       Imp,
       Iff,
       Subtype
-    };
+    }
 
     private Opcode op;
 

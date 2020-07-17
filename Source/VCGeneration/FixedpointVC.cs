@@ -29,13 +29,13 @@ namespace Microsoft.Boogie
       {
         LoopInvariant,
         ProcedureSummary
-      };
+      }
 
       public string filename;
       public int lineno;
       public string[] argnames;
       public AnnotationType type;
-    };
+    }
 
     static bool NoLabels = false;
 
@@ -83,14 +83,14 @@ namespace Microsoft.Boogie
       Corral,
       OldCorral,
       Boogie
-    };
+    }
 
     public enum AnnotationStyle
     {
       Flat,
       Procedure,
       Call
-    };
+    }
 
     Mode mode;
     AnnotationStyle style;
@@ -1790,7 +1790,7 @@ namespace Microsoft.Boogie
 
     public class LabelNotFound : Exception
     {
-    };
+    }
 
     public bool CodeLabelTrue(RPFP rpfp, RPFP.Node root, Absy code, StratifiedInliningInfo info, string prefix)
     {

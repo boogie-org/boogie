@@ -792,7 +792,7 @@ namespace Microsoft.Boogie
       Assert,
       Assume,
       Spec
-    };
+    }
 
     public Inlining ProcedureInlining = Inlining.Assume;
     public bool PrintInlined = false;
@@ -817,7 +817,7 @@ namespace Microsoft.Boogie
       Flat,
       Procedure,
       Call
-    };
+    }
 
     public FixedPointInferenceMode FixedPointMode = FixedPointInferenceMode.Procedure;
 
@@ -832,7 +832,7 @@ namespace Microsoft.Boogie
       Predicates,
       Arguments,
       Monomorphic
-    };
+    }
 
     public TypeEncoding TypeEncodingMethod = TypeEncoding.Predicates;
 

@@ -20,7 +20,6 @@
     <Rule Id="SA1028" Action="None" /> <!-- Code should not contain trailing whitespace -->
     <Rule Id="SA1100" Action="None" /> <!-- Do not prefix calls with base unless local implementation exists -->
     <Rule Id="SA1101" Action="None" /> <!-- Prefix local calls with this -->
-    <Rule Id="SA1106" Action="None" /> <!-- Code should not contain empty statements -->
     <Rule Id="SA1107" Action="None" /> <!-- Code should not contain multiple statements on one line -->
     <Rule Id="SA1108" Action="None" /> <!-- Block statements should not contain embedded comments -->
     <Rule Id="SA1110" Action="None" /> <!-- Opening parenthesis or bracket should be on declaration line -->

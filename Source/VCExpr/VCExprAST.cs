@@ -506,7 +506,7 @@ namespace Microsoft.Boogie
       ToIntOp,
       ToRealOp,
       ToFloatOp
-    };
+    }
 
     internal static Dictionary<VCExprOp /*!*/, SingletonOp> /*!*/
       SingletonOpDict;
@@ -2484,7 +2484,7 @@ namespace Microsoft.Boogie.VCExprAST
   {
     ALL,
     EX
-  };
+  }
 
   public class VCExprQuantifier : VCExprBinder
   {

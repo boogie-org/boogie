@@ -674,7 +674,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private class BadExprFromProver : Exception
     {
-    };
+    }
 
     private delegate VCExpr ArgGetter(int pos);
 

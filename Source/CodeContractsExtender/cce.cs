@@ -213,7 +213,7 @@ public class ReadsAttribute : SA
   {
     Nothing,
     Everything,
-  };
+  }
 
   public ReadsAttribute(object o)
   {

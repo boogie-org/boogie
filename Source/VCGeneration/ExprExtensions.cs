@@ -52,7 +52,7 @@ namespace Microsoft.Boogie.ExprExtensions
   {
     App,
     Other
-  };
+  }
 
   public enum DeclKind
   {
@@ -61,7 +61,7 @@ namespace Microsoft.Boogie.ExprExtensions
     Implies,
     Label,
     Other
-  };
+  }
 
   public static class MyExtensions
   {
@@ -352,5 +352,5 @@ namespace Microsoft.Boogie.ExprExtensions
       var thing = new Letifier(this);
       return thing.Letify(t);
     }
-  };
+  }
 }

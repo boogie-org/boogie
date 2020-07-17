@@ -1224,7 +1224,7 @@ namespace Microsoft.Boogie
       ToVisit,
       BeingVisited,
       AlreadyVisited
-    }; // used by WidenPoints.Compute
+    } // used by WidenPoints.Compute
 
     public VisitState TraversingStatus;
 
