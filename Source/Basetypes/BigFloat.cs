@@ -134,7 +134,7 @@ namespace Microsoft.Basetypes
       {
         if (-newExp <= (sigSize - 1) - binSig.Length)
         {
-          binSig = new string('0', (int) -newExp) + binSig;
+          binSig = new string('0', (int)-newExp) + binSig;
           newExp = 0;
         }
       }
