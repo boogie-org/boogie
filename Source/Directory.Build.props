@@ -21,7 +21,7 @@
 
   <!-- Configure StyleCop analysis rules -->
   <PropertyGroup Condition="$(MSBuildProjectName.Contains('-NetCore'))">
-    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)CustomCodeAnalysisRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)StyleCop.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
 </Project>
