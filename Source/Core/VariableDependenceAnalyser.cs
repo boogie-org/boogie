@@ -349,8 +349,8 @@ namespace Microsoft.Boogie
 
     private void HandleAssign(string proc, Block b, AssignCmd assign)
     {
-      foreach (var assignPair in assign.Lhss.Zip(assign.Rhss).Where
-        (Item => VariableRelevantToAnalysis(Item.Item1.DeepAssignedVariable, proc)))
+      foreach (var assignPair in assign.Lhss.Zip(assign.Rhss).Where(
+        Item => VariableRelevantToAnalysis(Item.Item1.DeepAssignedVariable, proc)))
       {
         VariableDescriptor assignedVariable = MakeDescriptor(proc, assignPair.Item1.DeepAssignedVariable);
         AddDependences(assignedVariable, GetReferencedVariables(assignPair.Item1, proc),

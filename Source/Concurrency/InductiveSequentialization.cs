@@ -185,8 +185,8 @@ namespace Microsoft.Boogie
         $"Gate of {action.proc.Name} fails in IS {checkName} of {inputAction.proc.Name}");
     }
 
-    private Tuple<Procedure, Implementation> GetCheckerTuple
-      (List<Requires> requires, List<Ensures> ensures, List<Variable> locals, List<Block> blocks)
+    private Tuple<Procedure, Implementation> GetCheckerTuple(
+      List<Requires> requires, List<Ensures> ensures, List<Variable> locals, List<Block> blocks)
     {
       var proc = new Procedure(Token.NoToken, $"IS_{checkName}_{inputAction.proc.Name}", new List<TypeVariable>(),
         invariantAction.impl.InParams, invariantAction.impl.OutParams, requires, modifies, ensures);

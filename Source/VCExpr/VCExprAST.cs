@@ -1701,8 +1701,10 @@ namespace Microsoft.Boogie.VCExprAST
       return Arity * 917632481;
     }
 
-    public override Result Accept<Result, Arg>
-      (VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg)
+    public override Result Accept<Result, Arg>(
+      VCExprNAry expr,
+      IVCExprOpVisitor<Result, Arg> visitor,
+      Arg arg)
     {
       //Contract.Requires(visitor != null);
       //Contract.Requires(expr != null);
@@ -1765,8 +1767,10 @@ namespace Microsoft.Boogie.VCExprAST
       this.MapTypeParamArity = typeParamArity;
     }
 
-    public override Result Accept<Result, Arg>
-      (VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg)
+    public override Result Accept<Result, Arg>(
+      VCExprNAry expr,
+      IVCExprOpVisitor<Result, Arg> visitor,
+      Arg arg)
     {
       //Contract.Requires(visitor != null);
       //Contract.Requires(expr != null);
@@ -1823,8 +1827,10 @@ namespace Microsoft.Boogie.VCExprAST
       this.MapTypeParamArity = typeParamArity;
     }
 
-    public override Result Accept<Result, Arg>
-      (VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg)
+    public override Result Accept<Result, Arg>(
+      VCExprNAry expr,
+      IVCExprOpVisitor<Result, Arg> visitor,
+      Arg arg)
     {
       //Contract.Requires(visitor != null);
       //Contract.Requires(expr != null);
@@ -1873,8 +1879,10 @@ namespace Microsoft.Boogie.VCExprAST
     {
     }
 
-    public override Result Accept<Result, Arg>
-      (VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg)
+    public override Result Accept<Result, Arg>(
+      VCExprNAry expr,
+      IVCExprOpVisitor<Result, Arg> visitor,
+      Arg arg)
     {
       //Contract.Requires(visitor != null);
       //Contract.Requires(expr != null);
@@ -1958,8 +1966,10 @@ namespace Microsoft.Boogie.VCExprAST
       return Type;
     }
 
-    public override Result Accept<Result, Arg>
-      (VCExprNAry /*!*/ expr, IVCExprOpVisitor<Result, Arg> /*!*/ visitor, Arg arg)
+    public override Result Accept<Result, Arg>(
+      VCExprNAry /*!*/ expr,
+      IVCExprOpVisitor<Result, Arg> /*!*/ visitor,
+      Arg arg)
     {
       //Contract.Requires(expr != null);
       //Contract.Requires(visitor != null);
@@ -2036,8 +2046,10 @@ namespace Microsoft.Boogie.VCExprAST
       this.op = op;
     }
 
-    public override Result Accept<Result, Arg>
-      (VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg)
+    public override Result Accept<Result, Arg>(
+      VCExprNAry expr,
+      IVCExprOpVisitor<Result, Arg> visitor,
+      Arg arg)
     {
       //Contract.Requires(visitor != null);
       //Contract.Requires(expr != null);
@@ -2117,8 +2129,10 @@ namespace Microsoft.Boogie.VCExprAST
       this.Bits = bits;
     }
 
-    public override Result Accept<Result, Arg>
-      (VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg)
+    public override Result Accept<Result, Arg>(
+      VCExprNAry expr,
+      IVCExprOpVisitor<Result, Arg> visitor,
+      Arg arg)
     {
       //Contract.Requires(visitor != null);
       //Contract.Requires(expr != null);
@@ -2180,8 +2194,10 @@ namespace Microsoft.Boogie.VCExprAST
       this.Total = total;
     }
 
-    public override Result Accept<Result, Arg>
-      (VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg)
+    public override Result Accept<Result, Arg>(
+      VCExprNAry expr,
+      IVCExprOpVisitor<Result, Arg> visitor,
+      Arg arg)
     {
       //Contract.Requires(visitor != null);
       //Contract.Requires(expr != null);
@@ -2240,8 +2256,10 @@ namespace Microsoft.Boogie.VCExprAST
       this.RightSize = rightSize;
     }
 
-    public override Result Accept<Result, Arg>
-      (VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg)
+    public override Result Accept<Result, Arg>(
+      VCExprNAry expr,
+      IVCExprOpVisitor<Result, Arg> visitor,
+      Arg arg)
     {
       //Contract.Requires(visitor != null);
       //Contract.Requires(expr != null);
@@ -2313,8 +2331,10 @@ namespace Microsoft.Boogie.VCExprAST
       this.Func = func;
     }
 
-    public override Result Accept<Result, Arg>
-      (VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg)
+    public override Result Accept<Result, Arg>(
+      VCExprNAry expr,
+      IVCExprOpVisitor<Result, Arg> visitor,
+      Arg arg)
     {
       //Contract.Requires(visitor != null);
       //Contract.Requires(expr != null);

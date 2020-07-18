@@ -236,8 +236,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     private int GetIndexFor(BigNum lit)
     {
-      return Literals.BinarySearch(new KeyValuePair<BigNum, VCExprVar>
-          (lit, DummyVar),
+      return Literals.BinarySearch(
+        new KeyValuePair<BigNum, VCExprVar>(lit, DummyVar),
         EntryComparer);
     }
 

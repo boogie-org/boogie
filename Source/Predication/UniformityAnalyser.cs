@@ -93,8 +93,8 @@ namespace Microsoft.Boogie
       {
         bool uniformProcedure = doAnalysis || entryPoints.Contains(Impl);
 
-        uniformityInfo.Add(Impl.Name, new KeyValuePair<bool, Dictionary<string, bool>>
-          (uniformProcedure, new Dictionary<string, bool>()));
+        uniformityInfo.Add(Impl.Name, new KeyValuePair<bool,
+          Dictionary<string, bool>>(uniformProcedure, new Dictionary<string, bool>()));
 
         nonUniformLoops.Add(Impl.Name, new HashSet<int>());
         loopsWithNonuniformReturn.Add(Impl.Name, new HashSet<int>());
@@ -157,8 +157,8 @@ namespace Microsoft.Boogie
 
         bool uniformProcedure = doAnalysis;
 
-        uniformityInfo.Add(Proc.Name, new KeyValuePair<bool, Dictionary<string, bool>>
-          (uniformProcedure, new Dictionary<string, bool>()));
+        uniformityInfo.Add(Proc.Name, new KeyValuePair<bool,
+          Dictionary<string, bool>>(uniformProcedure, new Dictionary<string, bool>()));
 
         inParameters[Proc.Name] = new List<string>();
 
@@ -391,8 +391,8 @@ namespace Microsoft.Boogie
 
     private void SetNonUniform(string procedureName)
     {
-      uniformityInfo[procedureName] = new KeyValuePair<bool, Dictionary<string, bool>>
-        (false, uniformityInfo[procedureName].Value);
+      uniformityInfo[procedureName] = new KeyValuePair<bool,
+        Dictionary<string, bool>>(false, uniformityInfo[procedureName].Value);
       RecordProcedureChanged();
     }
 
