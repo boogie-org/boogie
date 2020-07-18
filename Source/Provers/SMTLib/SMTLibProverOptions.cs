@@ -6,11 +6,11 @@ using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie.SMTLib
 {
-
   public class OptionValue
   {
     public readonly string Option;
     public readonly string Value;
+
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
@@ -27,7 +27,12 @@ namespace Microsoft.Boogie.SMTLib
     }
   }
 
-  public enum SolverKind { Z3, CVC4, YICES2 };
+  public enum SolverKind
+  {
+    Z3,
+    CVC4,
+    YICES2
+  }
 
   public class SMTLibProverOptions : ProverOptions
   {
@@ -42,16 +47,17 @@ namespace Microsoft.Boogie.SMTLib
     // Z3 specific (at the moment; some of them make sense also for other provers)
     public string Inspector = null;
 
-    public bool ProduceModel() {
+    public bool ProduceModel()
+    {
       return CommandLineOptions.Clo.ExplainHoudini || CommandLineOptions.Clo.UseProverEvaluate || ExpectingModel();
     }
 
     public bool ExpectingModel()
     {
-        return CommandLineOptions.Clo.PrintErrorModel >= 1 ||
-               CommandLineOptions.Clo.EnhancedErrorMessages == 1 ||
-               CommandLineOptions.Clo.ModelViewFile != null ||
-               (CommandLineOptions.Clo.StratifiedInlining > 0 && !CommandLineOptions.Clo.StratifiedInliningWithoutModels);
+      return CommandLineOptions.Clo.PrintErrorModel >= 1 ||
+             CommandLineOptions.Clo.EnhancedErrorMessages == 1 ||
+             CommandLineOptions.Clo.ModelViewFile != null ||
+             (CommandLineOptions.Clo.StratifiedInlining > 0 && !CommandLineOptions.Clo.StratifiedInliningWithoutModels);
     }
 
     public void AddSolverArgument(string s)
@@ -80,29 +86,37 @@ namespace Microsoft.Boogie.SMTLib
 
     protected override bool Parse(string opt)
     {
-      if (opt.StartsWith("O:")) {
+      if (opt.StartsWith("O:"))
+      {
         AddSmtOption(opt.Substring(2));
         return true;
       }
 
-      if (opt.StartsWith("C:")) {
+      if (opt.StartsWith("C:"))
+      {
         AddSolverArgument(opt.Substring(2));
         return true;
       }
 
       string SolverStr = null;
-      if (ParseString(opt, "SOLVER", ref SolverStr)) {
-        switch (SolverStr.ToLower()) {
+      if (ParseString(opt, "SOLVER", ref SolverStr))
+      {
+        switch (SolverStr.ToLower())
+        {
           case "z3":
-            Solver = SolverKind.Z3; break;
+            Solver = SolverKind.Z3;
+            break;
           case "cvc4":
-            Solver = SolverKind.CVC4; break;
+            Solver = SolverKind.CVC4;
+            break;
           case "yices2":
-            Solver = SolverKind.YICES2; break;
+            Solver = SolverKind.YICES2;
+            break;
           default:
             ReportError("Invalid SOLVER value; must be 'Z3' or 'CVC4' or 'Yices2'");
             return false;
         }
+
         return true;
       }
 
@@ -117,13 +131,15 @@ namespace Microsoft.Boogie.SMTLib
     {
       base.PostParse();
 
-      switch (Solver) {
+      switch (Solver)
+      {
         case SolverKind.Z3:
           Z3.SetDefaultOptions(this);
           SolverArguments.Add("-smt2 -in");
           break;
         case SolverKind.CVC4:
-          SolverArguments.Add("--lang=smt --no-strict-parsing --no-condense-function-values --incremental --produce-models");
+          SolverArguments.Add(
+            "--lang=smt --no-strict-parsing --no-condense-function-values --incremental --produce-models");
           if (Logic == null) Logic = "ALL_SUPPORTED";
           break;
         case SolverKind.YICES2:
@@ -133,7 +149,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       if (ProverName == null)
-          ProverName = Solver.ToString().ToLower();
+        ProverName = Solver.ToString().ToLower();
     }
 
     public override string Help
@@ -141,8 +157,8 @@ namespace Microsoft.Boogie.SMTLib
       get
       {
         return
-base.Help +
-@"
+          base.Help +
+          @"
 SMT-specific options:
 ~~~~~~~~~~~~~~~~~~~~~
 SOLVER=<string>           Use the given SMT solver (z3, cvc4, yices2; default: z3)

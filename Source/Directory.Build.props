@@ -12,5 +12,16 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
-  
+
+  <!-- Use StyleCop to check for consistent code formatting -->
+  <ItemGroup Condition="$(MSBuildProjectName.Contains('-NetCore'))">
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json" />
+  </ItemGroup>
+
+  <!-- Configure StyleCop analysis rules -->
+  <PropertyGroup Condition="$(MSBuildProjectName.Contains('-NetCore'))">
+    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)StyleCop.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+
 </Project>

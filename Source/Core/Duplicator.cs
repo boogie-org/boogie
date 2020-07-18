@@ -12,343 +12,455 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 
-namespace Microsoft.Boogie {
-  public class Duplicator : StandardVisitor {
+namespace Microsoft.Boogie
+{
+  public class Duplicator : StandardVisitor
+  {
     // This is used to ensure that Procedures get duplicated only once
     // and that Implementation.Proc is resolved to the correct duplicated
     // Procedure.
-    private Dictionary<Procedure,Procedure> OldToNewProcedureMap = null;
+    private Dictionary<Procedure, Procedure> OldToNewProcedureMap = null;
 
-    public override Absy Visit(Absy node) {
+    public override Absy Visit(Absy node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       node = base.Visit(node);
       return node;
     }
 
-    public override Cmd VisitAssertCmd(AssertCmd node) {
+    public override Cmd VisitAssertCmd(AssertCmd node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      return base.VisitAssertCmd((AssertCmd)node.Clone());
+      return base.VisitAssertCmd((AssertCmd) node.Clone());
     }
+
     public override Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node)
     {
-        //Contract.Requires(node != null);
-        Contract.Ensures(Contract.Result<Cmd>() != null);
-        return base.VisitAssertEnsuresCmd((AssertEnsuresCmd)node.Clone());
+      //Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Cmd>() != null);
+      return base.VisitAssertEnsuresCmd((AssertEnsuresCmd) node.Clone());
     }
+
     public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node)
     {
-        //Contract.Requires(node != null);
-        Contract.Ensures(Contract.Result<Cmd>() != null);
-        return base.VisitAssertRequiresCmd((AssertRequiresCmd)node.Clone());
-    }
-    public override Cmd VisitAssignCmd(AssignCmd node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      AssignCmd clone = (AssignCmd)node.Clone();
-      clone.Lhss = new List<AssignLhs/*!*/>(clone.Lhss);
-      clone.Rhss = new List<Expr/*!*/>(clone.Rhss);
+      return base.VisitAssertRequiresCmd((AssertRequiresCmd) node.Clone());
+    }
+
+    public override Cmd VisitAssignCmd(AssignCmd node)
+    {
+      //Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Cmd>() != null);
+      AssignCmd clone = (AssignCmd) node.Clone();
+      clone.Lhss = new List<AssignLhs /*!*/>(clone.Lhss);
+      clone.Rhss = new List<Expr /*!*/>(clone.Rhss);
       return base.VisitAssignCmd(clone);
     }
-    public override Cmd VisitAssumeCmd(AssumeCmd node) {
+
+    public override Cmd VisitAssumeCmd(AssumeCmd node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      return base.VisitAssumeCmd((AssumeCmd)node.Clone());
+      return base.VisitAssumeCmd((AssumeCmd) node.Clone());
     }
-    public override AtomicRE VisitAtomicRE(AtomicRE node) {
+
+    public override AtomicRE VisitAtomicRE(AtomicRE node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<AtomicRE>() != null);
-      return base.VisitAtomicRE((AtomicRE)node.Clone());
+      return base.VisitAtomicRE((AtomicRE) node.Clone());
     }
-    public override Axiom VisitAxiom(Axiom node) {
+
+    public override Axiom VisitAxiom(Axiom node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Axiom>() != null);
-      return base.VisitAxiom((Axiom)node.Clone());
+      return base.VisitAxiom((Axiom) node.Clone());
     }
-    public override Type VisitBasicType(BasicType node) {
+
+    public override Type VisitBasicType(BasicType node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       // do /not/ clone the type recursively
-      return (BasicType)node.Clone();
+      return (BasicType) node.Clone();
     }
-    public override Block VisitBlock(Block node) {
+
+    public override Block VisitBlock(Block node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Block>() != null);
       return base.VisitBlock((Block) node.Clone());
     }
-    public override Expr VisitBvConcatExpr (BvConcatExpr node) {
+
+    public override Expr VisitBvConcatExpr(BvConcatExpr node)
+    {
       Contract.Ensures(Contract.Result<Expr>() != null);
       return base.VisitBvConcatExpr((BvConcatExpr) node.Clone());
     }
-    public override Expr VisitBvExtractExpr(BvExtractExpr node) {
+
+    public override Expr VisitBvExtractExpr(BvExtractExpr node)
+    {
       Contract.Ensures(Contract.Result<Expr>() != null);
       return base.VisitBvExtractExpr((BvExtractExpr) node.Clone());
     }
-    public override Expr VisitCodeExpr(CodeExpr node) {
+
+    public override Expr VisitCodeExpr(CodeExpr node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-      CodeExpr clone = (CodeExpr)base.VisitCodeExpr((CodeExpr)node.Clone());
+      CodeExpr clone = (CodeExpr) base.VisitCodeExpr((CodeExpr) node.Clone());
       // Before returning, fix up the resolved goto targets
       Contract.Assert(node.Blocks.Count == clone.Blocks.Count);
       Dictionary<Block, Block> subst = new Dictionary<Block, Block>();
-      for (int i = 0; i < node.Blocks.Count; i++) {
+      for (int i = 0; i < node.Blocks.Count; i++)
+      {
         subst.Add(node.Blocks[i], clone.Blocks[i]);
       }
-      foreach (Block/*!*/ b in clone.Blocks) {
+
+      foreach (Block /*!*/ b in clone.Blocks)
+      {
         Contract.Assert(b != null);
         GotoCmd g = b.TransferCmd as GotoCmd;
-        if (g != null) {
+        if (g != null)
+        {
           List<Block> targets = new List<Block>();
-          foreach (Block t in cce.NonNull(g.labelTargets)) {
+          foreach (Block t in cce.NonNull(g.labelTargets))
+          {
             Block nt = subst[t];
             targets.Add(nt);
           }
+
           g.labelTargets = targets;
         }
       }
+
       return clone;
     }
-    public override List<Block> VisitBlockSeq(List<Block> blockSeq) {
+
+    public override List<Block> VisitBlockSeq(List<Block> blockSeq)
+    {
       //Contract.Requires(blockSeq != null);
       Contract.Ensures(Contract.Result<List<Block>>() != null);
       return base.VisitBlockSeq(new List<Block>(blockSeq));
     }
-    public override List<Block/*!*/>/*!*/ VisitBlockList(List<Block/*!*/>/*!*/ blocks) {
+
+    public override List<Block /*!*/> /*!*/ VisitBlockList(List<Block /*!*/> /*!*/ blocks)
+    {
       //Contract.Requires(cce.NonNullElements(blocks));
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
-      return base.VisitBlockList(new List<Block/*!*/>(blocks));
+      return base.VisitBlockList(new List<Block /*!*/>(blocks));
     }
-    public override BoundVariable VisitBoundVariable(BoundVariable node) {
+
+    public override BoundVariable VisitBoundVariable(BoundVariable node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BoundVariable>() != null);
-      return base.VisitBoundVariable((BoundVariable)node.Clone());
+      return base.VisitBoundVariable((BoundVariable) node.Clone());
     }
-    public override Type VisitBvType(BvType node) {
+
+    public override Type VisitBvType(BvType node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       // do /not/ clone the type recursively
-      return (BvType)node.Clone();
+      return (BvType) node.Clone();
     }
-    public override Cmd VisitCallCmd(CallCmd node) {
+
+    public override Cmd VisitCallCmd(CallCmd node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      CallCmd clone = (CallCmd)node.Clone();
+      CallCmd clone = (CallCmd) node.Clone();
       Contract.Assert(clone != null);
       clone.Ins = new List<Expr>(clone.Ins);
       clone.Outs = new List<IdentifierExpr>(clone.Outs);
       return base.VisitCallCmd(clone);
     }
-    public override Choice VisitChoice(Choice node) {
+
+    public override Choice VisitChoice(Choice node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Choice>() != null);
-      return base.VisitChoice((Choice)node.Clone());
+      return base.VisitChoice((Choice) node.Clone());
     }
-    public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq) {
+
+    public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
+    {
       //Contract.Requires(cmdSeq != null);
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       return base.VisitCmdSeq(new List<Cmd>(cmdSeq));
     }
-    public override Constant VisitConstant(Constant node) {
+
+    public override Constant VisitConstant(Constant node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Constant>() != null);
-      return base.VisitConstant((Constant)node.Clone());
+      return base.VisitConstant((Constant) node.Clone());
     }
-    public override CtorType VisitCtorType(CtorType node) {
+
+    public override CtorType VisitCtorType(CtorType node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<CtorType>() != null);
       // do /not/ clone the type recursively
-      return (CtorType)node.Clone();
+      return (CtorType) node.Clone();
     }
-    public override Declaration VisitDeclaration(Declaration node) {
+
+    public override Declaration VisitDeclaration(Declaration node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Declaration>() != null);
-      return base.VisitDeclaration((Declaration)node.Clone());
+      return base.VisitDeclaration((Declaration) node.Clone());
     }
-    public override List<Declaration/*!*/>/*!*/ VisitDeclarationList(List<Declaration/*!*/>/*!*/ declarationList) {
+
+    public override List<Declaration /*!*/> /*!*/ VisitDeclarationList(List<Declaration /*!*/> /*!*/ declarationList)
+    {
       //Contract.Requires(cce.NonNullElements(declarationList));
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Declaration>>()));
 
       // For Implementation.Proc to resolve correctly to duplicated Procedures
       // we need to visit the procedures first
-      for (int i = 0, n = declarationList.Count; i < n; i++) {
-        if (!( declarationList[i] is Procedure ))
+      for (int i = 0, n = declarationList.Count; i < n; i++)
+      {
+        if (!(declarationList[i] is Procedure))
           continue;
 
         declarationList[i] = cce.NonNull((Declaration) this.Visit(declarationList[i]));
       }
 
       // Now visit everything else
-      for (int i = 0, n = declarationList.Count; i < n; i++) {
+      for (int i = 0, n = declarationList.Count; i < n; i++)
+      {
         if (declarationList[i] is Procedure)
           continue;
 
         declarationList[i] = cce.NonNull((Declaration) this.Visit(declarationList[i]));
       }
+
       return declarationList;
     }
-    public override DeclWithFormals VisitDeclWithFormals(DeclWithFormals node) {
+
+    public override DeclWithFormals VisitDeclWithFormals(DeclWithFormals node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<DeclWithFormals>() != null);
-      return base.VisitDeclWithFormals((DeclWithFormals)node.Clone());
+      return base.VisitDeclWithFormals((DeclWithFormals) node.Clone());
     }
+
     public override Ensures VisitEnsures(Ensures node)
     {
-        //Contract.Requires(node != null);
-        Contract.Ensures(Contract.Result<Ensures>() != null);
-        return base.VisitEnsures((Ensures)node.Clone());
+      //Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Ensures>() != null);
+      return base.VisitEnsures((Ensures) node.Clone());
     }
+
     public override List<Ensures> VisitEnsuresSeq(List<Ensures> ensuresSeq)
     {
-        //Contract.Requires(ensuresSeq != null);
-        Contract.Ensures(Contract.Result<List<Ensures>>() != null);
-        return base.VisitEnsuresSeq(new List<Ensures>(ensuresSeq));
+      //Contract.Requires(ensuresSeq != null);
+      Contract.Ensures(Contract.Result<List<Ensures>>() != null);
+      return base.VisitEnsuresSeq(new List<Ensures>(ensuresSeq));
     }
-    public override Expr VisitExistsExpr(ExistsExpr node) {
+
+    public override Expr VisitExistsExpr(ExistsExpr node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-      return base.VisitExistsExpr((ExistsExpr)node.Clone());
+      return base.VisitExistsExpr((ExistsExpr) node.Clone());
     }
-    public override Expr VisitExpr(Expr node) {
+
+    public override Expr VisitExpr(Expr node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-      return base.VisitExpr((Expr)node.Clone());
+      return base.VisitExpr((Expr) node.Clone());
     }
-    public override IList<Expr> VisitExprSeq(IList<Expr> list) {
+
+    public override IList<Expr> VisitExprSeq(IList<Expr> list)
+    {
       //Contract.Requires(list != null);
       Contract.Ensures(Contract.Result<IList<Expr>>() != null);
       return base.VisitExprSeq(new List<Expr>(list));
     }
-    public override Expr VisitForallExpr(ForallExpr node) {
+
+    public override Expr VisitForallExpr(ForallExpr node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-      return base.VisitForallExpr((ForallExpr)node.Clone());
+      return base.VisitForallExpr((ForallExpr) node.Clone());
     }
-    public override Formal VisitFormal(Formal node) {
+
+    public override Formal VisitFormal(Formal node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Formal>() != null);
-      return base.VisitFormal((Formal)node.Clone());
+      return base.VisitFormal((Formal) node.Clone());
     }
-    public override Function VisitFunction(Function node) {
+
+    public override Function VisitFunction(Function node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Function>() != null);
-      return base.VisitFunction((Function)node.Clone());
+      return base.VisitFunction((Function) node.Clone());
     }
-    public override GlobalVariable VisitGlobalVariable(GlobalVariable node) {
+
+    public override GlobalVariable VisitGlobalVariable(GlobalVariable node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<GlobalVariable>() != null);
-      return base.VisitGlobalVariable((GlobalVariable)node.Clone());
+      return base.VisitGlobalVariable((GlobalVariable) node.Clone());
     }
-    public override GotoCmd VisitGotoCmd(GotoCmd node) {
+
+    public override GotoCmd VisitGotoCmd(GotoCmd node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<GotoCmd>() != null);
       // NOTE: This doesn't duplicate the labelTarget basic blocks
       // or resolve them to the new blocks
       // VisitImplementation() and VisitBlock() handle this
-      return base.VisitGotoCmd( (GotoCmd)node.Clone());
+      return base.VisitGotoCmd((GotoCmd) node.Clone());
     }
-    public override Cmd VisitHavocCmd(HavocCmd node) {
+
+    public override Cmd VisitHavocCmd(HavocCmd node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      return base.VisitHavocCmd((HavocCmd)node.Clone());
+      return base.VisitHavocCmd((HavocCmd) node.Clone());
     }
-    public override Expr VisitIdentifierExpr(IdentifierExpr node) {
+
+    public override Expr VisitIdentifierExpr(IdentifierExpr node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-      return base.VisitIdentifierExpr((IdentifierExpr)node.Clone());
+      return base.VisitIdentifierExpr((IdentifierExpr) node.Clone());
     }
-    public override List<IdentifierExpr> VisitIdentifierExprSeq(List<IdentifierExpr> identifierExprSeq) {
+
+    public override List<IdentifierExpr> VisitIdentifierExprSeq(List<IdentifierExpr> identifierExprSeq)
+    {
       //Contract.Requires(identifierExprSeq != null);
       Contract.Ensures(Contract.Result<List<IdentifierExpr>>() != null);
       return base.VisitIdentifierExprSeq(new List<IdentifierExpr>(identifierExprSeq));
     }
-    public override Implementation VisitImplementation(Implementation node) {
+
+    public override Implementation VisitImplementation(Implementation node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Implementation>() != null);
-      var impl = base.VisitImplementation((Implementation)node.Clone());
+      var impl = base.VisitImplementation((Implementation) node.Clone());
       var blockDuplicationMapping = new Dictionary<Block, Block>();
 
       // Compute the mapping between the blocks of the old implementation (node)
       // and the new implementation (impl).
-      foreach (var blockPair in node.Blocks.Zip(impl.Blocks)) {
+      foreach (var blockPair in node.Blocks.Zip(impl.Blocks))
+      {
         blockDuplicationMapping.Add(blockPair.Item1, blockPair.Item2);
       }
 
       // The GotoCmds and blocks have now been duplicated.
       // Resolve GotoCmd targets to the duplicated blocks
-      foreach (GotoCmd gotoCmd in impl.Blocks.Select( bb => bb.TransferCmd).OfType<GotoCmd>()) {
+      foreach (GotoCmd gotoCmd in impl.Blocks.Select(bb => bb.TransferCmd).OfType<GotoCmd>())
+      {
         var newLabelTargets = new List<Block>();
         var newLabelNames = new List<string>();
-        for (int index = 0; index < gotoCmd.labelTargets.Count; ++index) {
+        for (int index = 0; index < gotoCmd.labelTargets.Count; ++index)
+        {
           var newBlock = blockDuplicationMapping[gotoCmd.labelTargets[index]];
           newLabelTargets.Add(newBlock);
           newLabelNames.Add(newBlock.Label);
         }
+
         gotoCmd.labelTargets = newLabelTargets;
         gotoCmd.labelNames = newLabelNames;
       }
 
       return impl;
     }
-    public override Expr VisitLetExpr(LetExpr node) {
+
+    public override Expr VisitLetExpr(LetExpr node)
+    {
       Contract.Ensures(Contract.Result<Expr>() != null);
-      return base.VisitLetExpr((LetExpr)node.Clone());
+      return base.VisitLetExpr((LetExpr) node.Clone());
     }
-    public override Expr VisitLiteralExpr(LiteralExpr node) {
+
+    public override Expr VisitLiteralExpr(LiteralExpr node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-      return base.VisitLiteralExpr((LiteralExpr)node.Clone());
+      return base.VisitLiteralExpr((LiteralExpr) node.Clone());
     }
-    public override LocalVariable VisitLocalVariable(LocalVariable node) {
+
+    public override LocalVariable VisitLocalVariable(LocalVariable node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<LocalVariable>() != null);
-      return base.VisitLocalVariable((LocalVariable)node.Clone());
+      return base.VisitLocalVariable((LocalVariable) node.Clone());
     }
-    public override AssignLhs VisitMapAssignLhs(MapAssignLhs node) {
+
+    public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<AssignLhs>() != null);
-      MapAssignLhs clone = (MapAssignLhs)node.Clone();
-      clone.Indexes = new List<Expr/*!*/>(clone.Indexes);
+      MapAssignLhs clone = (MapAssignLhs) node.Clone();
+      clone.Indexes = new List<Expr /*!*/>(clone.Indexes);
       return base.VisitMapAssignLhs(clone);
     }
-    public override MapType VisitMapType(MapType node) {
+
+    public override MapType VisitMapType(MapType node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<MapType>() != null);
       // do /not/ clone the type recursively
-      return (MapType)node.Clone();
+      return (MapType) node.Clone();
     }
-    public override Expr VisitNAryExpr(NAryExpr node) {
+
+    public override Expr VisitNAryExpr(NAryExpr node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-      return base.VisitNAryExpr((NAryExpr)node.Clone());
+      return base.VisitNAryExpr((NAryExpr) node.Clone());
     }
-    public override Expr VisitOldExpr(OldExpr node) {
+
+    public override Expr VisitOldExpr(OldExpr node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-      return base.VisitOldExpr((OldExpr)node.Clone());
+      return base.VisitOldExpr((OldExpr) node.Clone());
     }
-    public override Cmd VisitParCallCmd(ParCallCmd node) {
+
+    public override Cmd VisitParCallCmd(ParCallCmd node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      ParCallCmd clone = (ParCallCmd)node.Clone();
+      ParCallCmd clone = (ParCallCmd) node.Clone();
       Contract.Assert(clone != null);
       clone.CallCmds = new List<CallCmd>(node.CallCmds);
       return base.VisitParCallCmd(clone);
     }
-    public override Procedure VisitProcedure(Procedure node) {
+
+    public override Procedure VisitProcedure(Procedure node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Procedure>() != null);
       Procedure newProcedure = null;
-      if (OldToNewProcedureMap != null && OldToNewProcedureMap.ContainsKey(node)) {
+      if (OldToNewProcedureMap != null && OldToNewProcedureMap.ContainsKey(node))
+      {
         newProcedure = OldToNewProcedureMap[node];
-      } else {
+      }
+      else
+      {
         newProcedure = base.VisitProcedure((Procedure) node.Clone());
         if (OldToNewProcedureMap != null)
           OldToNewProcedureMap[node] = newProcedure;
       }
+
       return newProcedure;
     }
-    public override Program VisitProgram(Program node) {
+
+    public override Program VisitProgram(Program node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Program>() != null);
 
@@ -358,144 +470,194 @@ namespace Microsoft.Boogie {
       // call the right Procedure.
       // The map below is used to achieve this.
       OldToNewProcedureMap = new Dictionary<Procedure, Procedure>();
-      var newProgram = base.VisitProgram((Program)node.Clone());
+      var newProgram = base.VisitProgram((Program) node.Clone());
 
       // We need to make sure that CallCmds get resolved to call Procedures we duplicated
       // instead of pointing to procedures in the old program
       var callCmds = newProgram.Blocks().SelectMany(b => b.Cmds).OfType<CallCmd>();
-      foreach (var callCmd in callCmds) {
-          callCmd.Proc = OldToNewProcedureMap[callCmd.Proc];
+      foreach (var callCmd in callCmds)
+      {
+        callCmd.Proc = OldToNewProcedureMap[callCmd.Proc];
       }
 
       OldToNewProcedureMap = null; // This Visitor could be used for other things later so remove the map.
       return newProgram;
     }
-    public override QKeyValue VisitQKeyValue(QKeyValue node) {
+
+    public override QKeyValue VisitQKeyValue(QKeyValue node)
+    {
       //Contract.Requires(node != null);
       var newParams = new List<object>();
-      foreach (var o in node.Params) {
+      foreach (var o in node.Params)
+      {
         var e = o as Expr;
-        if (e == null) {
+        if (e == null)
+        {
           newParams.Add(o);
-        } else {
-          newParams.Add((Expr)this.Visit(e));
+        }
+        else
+        {
+          newParams.Add((Expr) this.Visit(e));
         }
       }
-      QKeyValue next = node.Next == null ? null : (QKeyValue)this.Visit(node.Next);
+
+      QKeyValue next = node.Next == null ? null : (QKeyValue) this.Visit(node.Next);
       return new QKeyValue(node.tok, node.Key, newParams, next);
     }
-    public override BinderExpr VisitBinderExpr(BinderExpr node) {
+
+    public override BinderExpr VisitBinderExpr(BinderExpr node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BinderExpr>() != null);
-      return base.VisitBinderExpr((BinderExpr)node.Clone());
+      return base.VisitBinderExpr((BinderExpr) node.Clone());
     }
+
     public override Requires VisitRequires(Requires node)
     {
-        //Contract.Requires(node != null);
-        Contract.Ensures(Contract.Result<Requires>() != null);
-        return base.VisitRequires((Requires)node.Clone());
+      //Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Requires>() != null);
+      return base.VisitRequires((Requires) node.Clone());
     }
+
     public override List<Requires> VisitRequiresSeq(List<Requires> requiresSeq)
     {
-        //Contract.Requires(requiresSeq != null);
-        Contract.Ensures(Contract.Result<List<Requires>>() != null);
-        return base.VisitRequiresSeq(new List<Requires>(requiresSeq));
+      //Contract.Requires(requiresSeq != null);
+      Contract.Ensures(Contract.Result<List<Requires>>() != null);
+      return base.VisitRequiresSeq(new List<Requires>(requiresSeq));
     }
-    public override Cmd VisitRE(RE node) {
+
+    public override Cmd VisitRE(RE node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      return base.VisitRE((RE)node.Clone());
+      return base.VisitRE((RE) node.Clone());
     }
-    public override List<RE> VisitRESeq(List<RE> reSeq) {
+
+    public override List<RE> VisitRESeq(List<RE> reSeq)
+    {
       //Contract.Requires(reSeq != null);
       Contract.Ensures(Contract.Result<List<RE>>() != null);
       return base.VisitRESeq(new List<RE>(reSeq));
     }
-    public override ReturnCmd VisitReturnCmd(ReturnCmd node) {
+
+    public override ReturnCmd VisitReturnCmd(ReturnCmd node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ReturnCmd>() != null);
-      return base.VisitReturnCmd((ReturnCmd)node.Clone());
+      return base.VisitReturnCmd((ReturnCmd) node.Clone());
     }
-    public override ReturnExprCmd VisitReturnExprCmd(ReturnExprCmd node) {
+
+    public override ReturnExprCmd VisitReturnExprCmd(ReturnExprCmd node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ReturnExprCmd>() != null);
-      return base.VisitReturnExprCmd((ReturnExprCmd)node.Clone());
+      return base.VisitReturnExprCmd((ReturnExprCmd) node.Clone());
     }
-    public override Sequential VisitSequential(Sequential node) {
+
+    public override Sequential VisitSequential(Sequential node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Sequential>() != null);
-      return base.VisitSequential((Sequential)node.Clone());
+      return base.VisitSequential((Sequential) node.Clone());
     }
-    public override AssignLhs VisitSimpleAssignLhs(SimpleAssignLhs node) {
+
+    public override AssignLhs VisitSimpleAssignLhs(SimpleAssignLhs node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<AssignLhs>() != null);
-      return base.VisitSimpleAssignLhs((SimpleAssignLhs)node.Clone());
+      return base.VisitSimpleAssignLhs((SimpleAssignLhs) node.Clone());
     }
-    public override Cmd VisitStateCmd(StateCmd node) {
+
+    public override Cmd VisitStateCmd(StateCmd node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      return base.VisitStateCmd((StateCmd)node.Clone());
+      return base.VisitStateCmd((StateCmd) node.Clone());
     }
-    public override TransferCmd VisitTransferCmd(TransferCmd node) {
+
+    public override TransferCmd VisitTransferCmd(TransferCmd node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<TransferCmd>() != null);
-      return base.VisitTransferCmd((TransferCmd)node.Clone());
+      return base.VisitTransferCmd((TransferCmd) node.Clone());
     }
-    public override Trigger VisitTrigger(Trigger node) {
+
+    public override Trigger VisitTrigger(Trigger node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Trigger>() != null);
-      return base.VisitTrigger((Trigger)node.Clone());
+      return base.VisitTrigger((Trigger) node.Clone());
     }
-    public override Type VisitType(Type node) {
+
+    public override Type VisitType(Type node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       // do /not/ clone the type recursively
-      return (Type)node.Clone();
+      return (Type) node.Clone();
     }
-    public override TypedIdent VisitTypedIdent(TypedIdent node) {
+
+    public override TypedIdent VisitTypedIdent(TypedIdent node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<TypedIdent>() != null);
-      return base.VisitTypedIdent((TypedIdent)node.Clone());
+      return base.VisitTypedIdent((TypedIdent) node.Clone());
     }
-    public override Variable VisitVariable(Variable node) {
+
+    public override Variable VisitVariable(Variable node)
+    {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Variable>() != null);
       return node;
     }
-    public override List<Variable> VisitVariableSeq(List<Variable> variableSeq) {
+
+    public override List<Variable> VisitVariableSeq(List<Variable> variableSeq)
+    {
       //Contract.Requires(variableSeq != null);
       Contract.Ensures(Contract.Result<List<Variable>>() != null);
       return base.VisitVariableSeq(new List<Variable>(variableSeq));
     }
+
     public override YieldCmd VisitYieldCmd(YieldCmd node)
     {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<YieldCmd>() != null);
-      return base.VisitYieldCmd((YieldCmd)node.Clone());
+      return base.VisitYieldCmd((YieldCmd) node.Clone());
     }
   }
 
 
   #region A duplicator that also does substitutions for a set of variables
+
   /// <summary>
   /// A substitution is a partial mapping from Variables to Exprs.
   /// </summary>
-  public delegate Expr/*?*/ Substitution(Variable/*!*/ v);
+  public delegate Expr /*?*/ Substitution(Variable /*!*/ v);
 
-  public static class Substituter {
-    public static Substitution SubstitutionFromHashtable(Dictionary<Variable, Expr> map, bool fallBackOnName = false, Procedure proc = null)
+  public static class Substituter
+  {
+    public static Substitution SubstitutionFromHashtable(Dictionary<Variable, Expr> map, bool fallBackOnName = false,
+      Procedure proc = null)
     {
       Contract.Requires(map != null);
       Contract.Ensures(Contract.Result<Substitution>() != null);
       // TODO: With Whidbey, could use anonymous functions.
       return new Substitution(new CreateSubstitutionClosure(map, fallBackOnName, proc).Method);
     }
-    private sealed class CreateSubstitutionClosure {
-      Dictionary<Variable /*!*/, Expr /*!*/>/*!*/ map;
-      Dictionary<string /*!*/, Expr /*!*/>/*!*/ nameMap;
+
+    private sealed class CreateSubstitutionClosure
+    {
+      Dictionary<Variable /*!*/, Expr /*!*/> /*!*/
+        map;
+
+      Dictionary<string /*!*/, Expr /*!*/> /*!*/
+        nameMap;
+
       Procedure proc;
+
       [ContractInvariantMethod]
-      void ObjectInvariant() {
+      void ObjectInvariant()
+      {
         Contract.Invariant(map != null);
       }
 
@@ -507,11 +669,14 @@ namespace Microsoft.Boogie {
         {
           scope = proc.Name;
         }
+
         return string.Format("{0}.{1}", scope, variable.Name);
       }
 
-      public CreateSubstitutionClosure(Dictionary<Variable, Expr> map, bool fallBackOnName = false, Procedure proc = null)
-        : base() {
+      public CreateSubstitutionClosure(Dictionary<Variable, Expr> map, bool fallBackOnName = false,
+        Procedure proc = null)
+        : base()
+      {
         Contract.Requires(map != null);
         this.map = map;
         this.proc = proc;
@@ -520,16 +685,21 @@ namespace Microsoft.Boogie {
           this.nameMap = map.ToDictionary(kv => UniqueName(kv.Key, proc), kv => kv.Value);
         }
       }
-      public Expr/*?*/ Method(Variable v) {
+
+      public Expr /*?*/ Method(Variable v)
+      {
         Contract.Requires(v != null);
-        if(map.ContainsKey(v)) {
+        if (map.ContainsKey(v))
+        {
           return map[v];
         }
+
         Expr e;
         if (nameMap != null && proc != null && nameMap.TryGetValue(UniqueName(v, proc), out e))
         {
           return e;
         }
+
         return null;
       }
     }
@@ -541,11 +711,12 @@ namespace Microsoft.Boogie {
     /// is not changed.  The substitutions apply within the "old", but the "old"
     /// expression remains.
     /// </summary>
-    public static Expr Apply(Substitution subst, Expr expr) {
+    public static Expr Apply(Substitution subst, Expr expr)
+    {
       Contract.Requires(subst != null);
       Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-      return (Expr)new NormalSubstituter(subst).Visit(expr);
+      return (Expr) new NormalSubstituter(subst).Visit(expr);
     }
 
     /// <summary>
@@ -555,12 +726,13 @@ namespace Microsoft.Boogie {
     /// variables in domain(forOld), apply map "always" to variables in
     /// domain(always)-domain(forOld), and leave variable unchanged otherwise.
     /// </summary>
-    public static Expr Apply(Substitution always, Substitution forold, Expr expr) {
+    public static Expr Apply(Substitution always, Substitution forold, Expr expr)
+    {
       Contract.Requires(always != null);
       Contract.Requires(forold != null);
       Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-      return (Expr)new NormalSubstituter(always, forold).Visit(expr);
+      return (Expr) new NormalSubstituter(always, forold).Visit(expr);
     }
 
     /// <summary>
@@ -570,30 +742,33 @@ namespace Microsoft.Boogie {
     /// variables in domain(forOld), apply map "always" to variables in
     /// domain(always)-domain(forOld), and leave variable unchanged otherwise.
     /// </summary>    
-    public static Expr ApplyReplacingOldExprs(Substitution always, Substitution forOld, Expr expr) {
-      Contract.Requires(always != null);
-      Contract.Requires(forOld != null);
-      Contract.Requires(expr != null);
-      Contract.Ensures(Contract.Result<Expr>() != null);
-      return (Expr)new ReplacingOldSubstituter(always, forOld).Visit(expr);
-    }
-
-    public static Expr FunctionCallReresolvingApplyReplacingOldExprs(Substitution always, Substitution forOld, Expr expr, Program program)
+    public static Expr ApplyReplacingOldExprs(Substitution always, Substitution forOld, Expr expr)
     {
       Contract.Requires(always != null);
       Contract.Requires(forOld != null);
       Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-      return (Expr)new FunctionCallReresolvingReplacingOldSubstituter(program, always, forOld).Visit(expr);
+      return (Expr) new ReplacingOldSubstituter(always, forOld).Visit(expr);
     }
 
-    public static Expr FunctionCallReresolvingApply(Substitution always, Substitution forOld, Expr expr, Program program)
+    public static Expr FunctionCallReresolvingApplyReplacingOldExprs(Substitution always, Substitution forOld,
+      Expr expr, Program program)
     {
       Contract.Requires(always != null);
       Contract.Requires(forOld != null);
       Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-      return (Expr)new FunctionCallReresolvingNormalSubstituter(program, always, forOld).Visit(expr);
+      return (Expr) new FunctionCallReresolvingReplacingOldSubstituter(program, always, forOld).Visit(expr);
+    }
+
+    public static Expr FunctionCallReresolvingApply(Substitution always, Substitution forOld, Expr expr,
+      Program program)
+    {
+      Contract.Requires(always != null);
+      Contract.Requires(forOld != null);
+      Contract.Requires(expr != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
+      return (Expr) new FunctionCallReresolvingNormalSubstituter(program, always, forOld).Visit(expr);
     }
 
     // ----------------------------- Substitutions for Cmd -------------------------------
@@ -603,11 +778,12 @@ namespace Microsoft.Boogie {
     /// is not changed.  The substitutions apply within the "old", but the "old"
     /// expression remains.
     /// </summary>
-    public static Cmd Apply(Substitution subst, Cmd cmd) {
+    public static Cmd Apply(Substitution subst, Cmd cmd)
+    {
       Contract.Requires(subst != null);
       Contract.Requires(cmd != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      return (Cmd)new NormalSubstituter(subst).Visit(cmd);
+      return (Cmd) new NormalSubstituter(subst).Visit(cmd);
     }
 
     /// <summary>
@@ -619,11 +795,11 @@ namespace Microsoft.Boogie {
     /// </summary>
     public static Cmd Apply(Substitution always, Substitution forOld, Cmd cmd)
     {
-        Contract.Requires(always != null);
-        Contract.Requires(forOld != null);
-        Contract.Requires(cmd != null);
-        Contract.Ensures(Contract.Result<Cmd>() != null);
-        return (Cmd)new NormalSubstituter(always, forOld).Visit(cmd);
+      Contract.Requires(always != null);
+      Contract.Requires(forOld != null);
+      Contract.Requires(cmd != null);
+      Contract.Ensures(Contract.Result<Cmd>() != null);
+      return (Cmd) new NormalSubstituter(always, forOld).Visit(cmd);
     }
 
     /// <summary>
@@ -633,12 +809,13 @@ namespace Microsoft.Boogie {
     /// variables in domain(forOld), apply map "always" to variables in
     /// domain(always)-domain(forOld), and leave variable unchanged otherwise.
     /// </summary>    
-    public static Cmd ApplyReplacingOldExprs(Substitution always, Substitution forOld, Cmd cmd) {
+    public static Cmd ApplyReplacingOldExprs(Substitution always, Substitution forOld, Cmd cmd)
+    {
       Contract.Requires(always != null);
       Contract.Requires(forOld != null);
       Contract.Requires(cmd != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      return (Cmd)new ReplacingOldSubstituter(always, forOld).Visit(cmd);
+      return (Cmd) new ReplacingOldSubstituter(always, forOld).Visit(cmd);
     }
 
     // ----------------------------- Substitutions for QKeyValue -------------------------------
@@ -648,12 +825,16 @@ namespace Microsoft.Boogie {
     /// is not changed.  The substitutions apply within the "old", but the "old"
     /// expression remains.
     /// </summary>
-    public static QKeyValue Apply(Substitution subst, QKeyValue kv) {
+    public static QKeyValue Apply(Substitution subst, QKeyValue kv)
+    {
       Contract.Requires(subst != null);
-      if (kv == null) {
+      if (kv == null)
+      {
         return null;
-      } else {
-        return (QKeyValue)new NormalSubstituter(subst).Visit(kv);
+      }
+      else
+      {
+        return (QKeyValue) new NormalSubstituter(subst).Visit(kv);
       }
     }
 
@@ -661,13 +842,17 @@ namespace Microsoft.Boogie {
     /// Apply a substitution to a list of attributes replacing "old" expressions.
     /// For a further description, see "ApplyReplacingOldExprs" above for Expr.
     /// </summary>    
-    public static QKeyValue ApplyReplacingOldExprs(Substitution always, Substitution forOld, QKeyValue kv) {
+    public static QKeyValue ApplyReplacingOldExprs(Substitution always, Substitution forOld, QKeyValue kv)
+    {
       Contract.Requires(always != null);
       Contract.Requires(forOld != null);
-      if (kv == null) {
+      if (kv == null)
+      {
         return null;
-      } else {
-        return (QKeyValue)new ReplacingOldSubstituter(always, forOld).Visit(kv);
+      }
+      else
+      {
+        return (QKeyValue) new ReplacingOldSubstituter(always, forOld).Visit(kv);
       }
     }
 
@@ -675,59 +860,67 @@ namespace Microsoft.Boogie {
 
     private class NormalSubstituter : Duplicator
     {
-      private readonly Substitution/*!*/ always;
-      private readonly Substitution/*!*/ forold;
+      private readonly Substitution /*!*/
+        always;
+
+      private readonly Substitution /*!*/
+        forold;
+
       [ContractInvariantMethod]
-      void ObjectInvariant() {
+      void ObjectInvariant()
+      {
         Contract.Invariant(always != null);
         Contract.Invariant(forold != null);
       }
 
       public NormalSubstituter(Substitution subst)
-        : base() {
+        : base()
+      {
         Contract.Requires(subst != null);
         this.always = subst;
         this.forold = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
       }
 
       public NormalSubstituter(Substitution subst, Substitution forold)
-          : base()
+        : base()
       {
-          Contract.Requires(subst != null);
-          this.always = subst;
-          this.forold = forold;
+        Contract.Requires(subst != null);
+        this.always = subst;
+        this.forold = forold;
       }
 
       private bool insideOldExpr = false;
 
       public override Expr VisitIdentifierExpr(IdentifierExpr node)
       {
-          //Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Expr>() != null);
-          Expr/*?*/ e = null;
+        //Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<Expr>() != null);
+        Expr /*?*/
+          e = null;
 
-          if (insideOldExpr)
-          {
-              e = forold(cce.NonNull(node.Decl));
-          }
+        if (insideOldExpr)
+        {
+          e = forold(cce.NonNull(node.Decl));
+        }
 
-          if (e == null)
-          {
-              e = always(cce.NonNull(node.Decl));
-          }
+        if (e == null)
+        {
+          e = always(cce.NonNull(node.Decl));
+        }
 
-          return e == null ? base.VisitIdentifierExpr(node) : e;
+        return e == null ? base.VisitIdentifierExpr(node) : e;
       }
 
       public override Expr VisitOldExpr(OldExpr node)
       {
-          //Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Expr>() != null);
-          bool previouslyInOld = insideOldExpr;
-          insideOldExpr = true;
-          Expr/*!*/ e = (Expr/*!*/)cce.NonNull(this.Visit(node.Expr));
-          insideOldExpr = previouslyInOld;
-          return new OldExpr(node.tok, e);
+        //Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<Expr>() != null);
+        bool previouslyInOld = insideOldExpr;
+        insideOldExpr = true;
+        Expr /*!*/
+          e = (Expr /*!*/) cce.NonNull(this.Visit(node.Expr));
+        insideOldExpr = previouslyInOld;
+        return new OldExpr(node.tok, e);
       }
     }
 
@@ -753,6 +946,7 @@ namespace Microsoft.Boogie {
             funCall.Func = Program.FindFunction(funCall.FunctionName);
           }
         }
+
         return result;
       }
     }
@@ -779,21 +973,29 @@ namespace Microsoft.Boogie {
             funCall.Func = Program.FindFunction(funCall.FunctionName);
           }
         }
+
         return result;
       }
     }
 
-    private class ReplacingOldSubstituter : Duplicator {
-      private readonly Substitution/*!*/ always;
-      private readonly Substitution/*!*/ forold;
+    private class ReplacingOldSubstituter : Duplicator
+    {
+      private readonly Substitution /*!*/
+        always;
+
+      private readonly Substitution /*!*/
+        forold;
+
       [ContractInvariantMethod]
-      void ObjectInvariant() {
+      void ObjectInvariant()
+      {
         Contract.Invariant(always != null);
         Contract.Invariant(forold != null);
       }
 
       public ReplacingOldSubstituter(Substitution always, Substitution forold)
-        : base() {
+        : base()
+      {
         Contract.Requires(forold != null);
         Contract.Requires(always != null);
         this.always = always;
@@ -802,32 +1004,39 @@ namespace Microsoft.Boogie {
 
       private bool insideOldExpr = false;
 
-      public override Expr VisitIdentifierExpr(IdentifierExpr node) {
+      public override Expr VisitIdentifierExpr(IdentifierExpr node)
+      {
         //Contract.Requires(node != null);
         Contract.Ensures(Contract.Result<Expr>() != null);
-        Expr/*?*/ e = null;
+        Expr /*?*/
+          e = null;
 
-        if (insideOldExpr) {
+        if (insideOldExpr)
+        {
           e = forold(cce.NonNull(node.Decl));
         }
 
-        if (e == null) {
+        if (e == null)
+        {
           e = always(cce.NonNull(node.Decl));
         }
 
         return e == null ? base.VisitIdentifierExpr(node) : e;
       }
 
-      public override Expr VisitOldExpr(OldExpr node) {
+      public override Expr VisitOldExpr(OldExpr node)
+      {
         //Contract.Requires(node != null);
         Contract.Ensures(Contract.Result<Expr>() != null);
         bool previouslyInOld = insideOldExpr;
         insideOldExpr = true;
-        Expr/*!*/ e = (Expr/*!*/)cce.NonNull(this.Visit(node.Expr));
+        Expr /*!*/
+          e = (Expr /*!*/) cce.NonNull(this.Visit(node.Expr));
         insideOldExpr = previouslyInOld;
         return e;
       }
     }
   }
+
   #endregion
 }

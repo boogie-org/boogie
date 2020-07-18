@@ -8,7 +8,6 @@ using System.ComponentModel;
 
 namespace Microsoft.Boogie
 {
-
   using System;
   using System.IO;
   using System.Collections;
@@ -20,14 +19,16 @@ namespace Microsoft.Boogie
   {
     private readonly DeBruijnRenamer deBruijn = new DeBruijnRenamer();
 
-    bool IEqualityComparer<Expr>.Equals(Expr x, Expr y) {
+    bool IEqualityComparer<Expr>.Equals(Expr x, Expr y)
+    {
       var nx = deBruijn.Rename(x);
       var ny = deBruijn.Rename(y);
       return BinderExpr.EqualWithAttributesAndTriggers(nx, ny);
     }
 
-    int IEqualityComparer<Expr>.GetHashCode(Expr obj) {
-      return 0; 
+    int IEqualityComparer<Expr>.GetHashCode(Expr obj)
+    {
+      return 0;
       // Best we can do because GetHashCode for Expression don't respect its equality.
       // When it does, we can instead use: 
       // return deBruijn.Rename(obj).GetHashCode(); 
@@ -43,7 +44,6 @@ namespace Microsoft.Boogie
     // could then leak FreeVariables out of here.
     private class DeBruijnRenamer : Duplicator
     {
-
       // Maps from index positions and types to new variables
       private readonly TypeDict<BoundVariable> boundVars =
         new TypeDict<BoundVariable>("bv", ti => new BoundVariable(Token.NoToken, ti));
@@ -58,9 +58,11 @@ namespace Microsoft.Boogie
       // Cached, previous results
       private readonly Dictionary<Expr, Expr> cache = new Dictionary<Expr, Expr>();
 
-      public Expr Rename(Expr e) {
+      public Expr Rename(Expr e)
+      {
         Expr ne;
-        if (!cache.TryGetValue(e, out ne)) {
+        if (!cache.TryGetValue(e, out ne))
+        {
           boundVarCount = 0;
           freeVarCount = 0;
           freeVarMap = new Dictionary<Variable, FreeVariable>();
@@ -78,35 +80,46 @@ namespace Microsoft.Boogie
           Console.WriteLine("h = " + ne.GetHashCode());
 #endif
         }
+
         return ne;
       }
 
-      public override BinderExpr VisitBinderExpr(BinderExpr node) {
+      public override BinderExpr VisitBinderExpr(BinderExpr node)
+      {
         var subst = new Dictionary<Variable, Expr>();
         var newBound = new List<Variable>();
-        foreach (var bv in node.Dummies) {
+        foreach (var bv in node.Dummies)
+        {
           var bvNew = boundVars[boundVarCount++, bv.TypedIdent.Type];
           newBound.Add(bvNew);
           subst[bv] = new IdentifierExpr(Token.NoToken, bvNew);
         }
+
         node.Dummies = this.VisitVariableSeq(newBound);
         node.Body = this.VisitExpr(Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), node.Body));
         return node;
       }
 
-      public override Variable VisitVariable(Variable node) {
+      public override Variable VisitVariable(Variable node)
+      {
         FreeVariable fv;
         var bv = node as BoundVariable;
-        if (boundVars.ContainsValue(bv)) {
+        if (boundVars.ContainsValue(bv))
+        {
           return node;
-        } else if (freeVarMap.TryGetValue(node, out fv)) {
+        }
+        else if (freeVarMap.TryGetValue(node, out fv))
+        {
           return fv;
-        } else {
+        }
+        else
+        {
           return freeVarMap[node] = freeVars[freeVarCount++, node.TypedIdent.Type];
         }
       }
 
-      public override Expr VisitIdentifierExpr(IdentifierExpr node) {
+      public override Expr VisitIdentifierExpr(IdentifierExpr node)
+      {
         var ie = (IdentifierExpr) base.VisitIdentifierExpr(node);
         // Need to fix up the name, since IdentifierExpr's equality also checks the name
         ie.Name = ie.Decl.TypedIdent.Name;
@@ -117,10 +130,11 @@ namespace Microsoft.Boogie
       {
         private readonly Dictionary<Tuple<int, Type>, A> vars = new Dictionary<Tuple<int, Type>, A>();
 
-        private readonly string Prefix;          // either "bv" or "fv"
+        private readonly string Prefix; // either "bv" or "fv"
         private readonly Func<TypedIdent, A> Mk; // either new BoundVar or new FreeVar
 
-        public TypeDict(string prefix, Func<TypedIdent, A> mk) {
+        public TypeDict(string prefix, Func<TypedIdent, A> mk)
+        {
           Prefix = prefix;
           Mk = mk;
         }
@@ -129,31 +143,40 @@ namespace Microsoft.Boogie
         private int created = 0;
 
         // Make sure that this index and this type is always mapped to the same variable
-        public A this[int i, Type t] {
-          get {
+        public A this[int i, Type t]
+        {
+          get
+          {
             A v;
-            if (!vars.TryGetValue(Tuple.Create(i, t), out v)) {
+            if (!vars.TryGetValue(Tuple.Create(i, t), out v))
+            {
               v = Mk(new TypedIdent(Token.NoToken, Prefix + i + "#" + created++, t));
               vars[Tuple.Create(i, t)] = v;
             }
+
             return v;
           }
         }
 
-        public bool ContainsValue(A a) {
+        public bool ContainsValue(A a)
+        {
           return vars.ContainsValue(a);
         }
       }
 
       private class FreeVariable : Variable
       {
-        public FreeVariable(TypedIdent ti) : base(Token.NoToken, ti) {}
+        public FreeVariable(TypedIdent ti) : base(Token.NoToken, ti)
+        {
+        }
 
-        public override bool IsMutable {
+        public override bool IsMutable
+        {
           get { throw new cce.UnreachableException(); }
         }
 
-        public override void Register(ResolutionContext rc) {
+        public override void Register(ResolutionContext rc)
+        {
           throw new cce.UnreachableException();
         }
       }

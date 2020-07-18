@@ -11,24 +11,32 @@ using VC;
 
 namespace Microsoft.Boogie
 {
-
   struct CachedVerificationResultInjectorRun
   {
     public DateTime Start { get; internal set; }
+
     public DateTime End { get; internal set; }
+
     public int TransformedImplementationCount { get; internal set; }
+
     public int ImplementationCount { get; internal set; }
+
     public int SkippedImplementationCount { get; set; }
+
     public int LowPriorityImplementationCount { get; set; }
+
     public int MediumPriorityImplementationCount { get; set; }
+
     public int HighPriorityImplementationCount { get; set; }
+
     public long[] CachingActionCounts { get; set; }
   }
 
 
   sealed class CachedVerificationResultInjectorStatistics
   {
-    ConcurrentDictionary<string, CachedVerificationResultInjectorRun> runs = new ConcurrentDictionary<string, CachedVerificationResultInjectorRun>();
+    ConcurrentDictionary<string, CachedVerificationResultInjectorRun> runs =
+      new ConcurrentDictionary<string, CachedVerificationResultInjectorRun>();
 
     public bool AddRun(string requestId, CachedVerificationResultInjectorRun run)
     {
@@ -45,9 +53,12 @@ namespace Microsoft.Boogie
         foreach (var kv in runs.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key)))
         {
           var t = printTime ? string.Format(", {0,8:F0}", kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds) : "";
-          wr.WriteLine("{0,-19}, {1,3}, {2,3}, {3,3}, {4,3}, {5,3}{6}", kv.Key, kv.Value.TransformedImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, t);
+          wr.WriteLine("{0,-19}, {1,3}, {2,3}, {3,3}, {4,3}, {5,3}{6}", kv.Key, kv.Value.TransformedImplementationCount,
+            kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount,
+            kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, t);
         }
       }
+
       return wr.ToString();
     }
   }
@@ -56,6 +67,7 @@ namespace Microsoft.Boogie
   sealed class CachedVerificationResultInjector : StandardVisitor
   {
     readonly Program Program;
+
     // TODO(wuestholz): We should probably increase the threshold to something like 2 seconds.
     static readonly double TimeThreshold = -1.0d;
     Program programInCachedSnapshot;
@@ -63,22 +75,17 @@ namespace Microsoft.Boogie
     int assumptionVariableCount;
     int temporaryVariableCount;
 
-    public static readonly CachedVerificationResultInjectorStatistics Statistics = new CachedVerificationResultInjectorStatistics();
+    public static readonly CachedVerificationResultInjectorStatistics Statistics =
+      new CachedVerificationResultInjectorStatistics();
 
     int FreshAssumptionVariableName
     {
-      get
-      {
-        return assumptionVariableCount++;
-      }
+      get { return assumptionVariableCount++; }
     }
 
     int FreshTemporaryVariableName
     {
-      get
-      {
-        return temporaryVariableCount++;
-      }
+      get { return temporaryVariableCount++; }
     }
 
     CachedVerificationResultInjector(Program program)
@@ -108,11 +115,15 @@ namespace Microsoft.Boogie
         var canUseSpecs = DependencyCollector.CanExpressOldSpecs(oldProc, Program, true);
         if (canUseSpecs && oldProc.SignatureEquals(currentImplementation.Proc))
         {
-          var always = Substituter.SubstitutionFromHashtable(currentImplementation.GetImplFormalMap(), true, currentImplementation.Proc);
+          var always = Substituter.SubstitutionFromHashtable(currentImplementation.GetImplFormalMap(), true,
+            currentImplementation.Proc);
           var forOld = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
-          var clauses = oldProc.Requires.Select(r => Substituter.FunctionCallReresolvingApply(always, forOld, r.Condition, Program));
+          var clauses = oldProc.Requires.Select(r =>
+            Substituter.FunctionCallReresolvingApply(always, forOld, r.Condition, Program));
           var conj = Expr.And(clauses, true);
-          assumedExpr = conj != null ? FunctionExtractor.Extract(conj, Program, axioms) : new LiteralExpr(Token.NoToken, true);
+          assumedExpr = conj != null
+            ? FunctionExtractor.Extract(conj, Program, axioms)
+            : new LiteralExpr(Token.NoToken, true);
         }
 
         if (assumedExpr != null)
@@ -123,7 +134,7 @@ namespace Microsoft.Boogie
           currentImplementation.InjectAssumptionVariable(lv, !canUseSpecs);
           var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, lv));
           var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), assumedExpr);
-          var assumed = new AssignCmd(currentImplementation.tok, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
+          var assumed = new AssignCmd(currentImplementation.tok, new List<AssignLhs> {lhs}, new List<Expr> {rhs});
           assumed.IrrelevantForChecksumComputation = true;
           currentImplementation.ExplicitAssumptionAboutCachedPrecondition = assumed;
           after.Add(assumed);
@@ -133,7 +144,10 @@ namespace Microsoft.Boogie
         {
           using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
           {
-            var loc = currentImplementation.tok != null && currentImplementation.tok != Token.NoToken ? string.Format("{0}({1},{2})", currentImplementation.tok.filename, currentImplementation.tok.line, currentImplementation.tok.col) : "<unknown location>";
+            var loc = currentImplementation.tok != null && currentImplementation.tok != Token.NoToken
+              ? string.Format("{0}({1},{2})", currentImplementation.tok.filename, currentImplementation.tok.line,
+                currentImplementation.tok.col)
+              : "<unknown location>";
             Console.Out.WriteLine("Processing implementation {0} (at {1}):", currentImplementation.Name, loc);
             foreach (var a in axioms)
             {
@@ -141,6 +155,7 @@ namespace Microsoft.Boogie
               a.Expr.Emit(tokTxtWr);
               Console.Out.WriteLine();
             }
+
             foreach (var b in after)
             {
               Console.Out.Write("  >>> added after assuming the current precondition: ");
@@ -158,34 +173,50 @@ namespace Microsoft.Boogie
       return result;
     }
 
-    public static void Inject(Program program, IEnumerable<Implementation> implementations, string requestId, string programId, out long[] cachingActionCounts)
+    public static void Inject(Program program, IEnumerable<Implementation> implementations, string requestId,
+      string programId, out long[] cachingActionCounts)
     {
       var eai = new CachedVerificationResultInjector(program);
 
       cachingActionCounts = new long[Enum.GetNames(typeof(VC.ConditionGeneration.CachingAction)).Length];
-      var run = new CachedVerificationResultInjectorRun { Start = DateTime.UtcNow, ImplementationCount = implementations.Count(), CachingActionCounts = cachingActionCounts };
+      var run = new CachedVerificationResultInjectorRun
+      {
+        Start = DateTime.UtcNow, ImplementationCount = implementations.Count(),
+        CachingActionCounts = cachingActionCounts
+      };
       foreach (var impl in implementations)
       {
         int priority;
         var vr = ExecutionEngine.Cache.Lookup(impl, out priority);
         if (vr != null && vr.ProgramId == programId)
         {
-          if (priority == Priority.LOW) {
+          if (priority == Priority.LOW)
+          {
             run.LowPriorityImplementationCount++;
-          } else if (priority == Priority.MEDIUM) {
+          }
+          else if (priority == Priority.MEDIUM)
+          {
             run.MediumPriorityImplementationCount++;
-          } else if (priority == Priority.HIGH) {
+          }
+          else if (priority == Priority.HIGH)
+          {
             run.HighPriorityImplementationCount++;
-          } else if (priority == Priority.SKIP) {
+          }
+          else if (priority == Priority.SKIP)
+          {
             run.SkippedImplementationCount++;
           }
 
-          if (priority == Priority.LOW || priority == Priority.MEDIUM || 3 <= CommandLineOptions.Clo.VerifySnapshots) {
-            if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds) {
+          if (priority == Priority.LOW || priority == Priority.MEDIUM || CommandLineOptions.Clo.VerifySnapshots >= 3)
+          {
+            if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
+            {
               SetErrorAndAssertionChecksumsInCachedSnapshot(impl, vr);
-              if (vr.ProgramId != null) {
+              if (vr.ProgramId != null)
+              {
                 var p = ExecutionEngine.CachedProgram(vr.ProgramId);
-                if (p != null) {
+                if (p != null)
+                {
                   eai.Inject(impl, p);
                   run.TransformedImplementationCount++;
                 }
@@ -194,15 +225,19 @@ namespace Microsoft.Boogie
           }
         }
       }
+
       run.End = DateTime.UtcNow;
       Statistics.AddRun(requestId, run);
     }
 
-    private static void SetErrorAndAssertionChecksumsInCachedSnapshot(Implementation implementation, VerificationResult result)
+    private static void SetErrorAndAssertionChecksumsInCachedSnapshot(Implementation implementation,
+      VerificationResult result)
     {
-      if (result.Outcome == ConditionGeneration.Outcome.Errors && result.Errors != null && result.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
+      if (result.Outcome == ConditionGeneration.Outcome.Errors && result.Errors != null &&
+          result.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
       {
-        implementation.SetErrorChecksumToCachedError(result.Errors.Select(cex => new Tuple<byte[], byte[], object>(cex.Checksum, cex.SugaredCmdChecksum, cex)));
+        implementation.SetErrorChecksumToCachedError(result.Errors.Select(cex =>
+          new Tuple<byte[], byte[], object>(cex.Checksum, cex.SugaredCmdChecksum, cex)));
         implementation.AssertionChecksumsInCachedSnapshot = result.AssertionChecksums;
       }
       else if (result.Outcome == ConditionGeneration.Outcome.Correct)
@@ -235,7 +270,8 @@ namespace Microsoft.Boogie
           var precond = node.CheckedPrecondition(oldProc, Program, e => FunctionExtractor.Extract(e, Program, axioms));
           if (precond != null)
           {
-            var assume = new AssumeCmd(node.tok, precond, new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
+            var assume = new AssumeCmd(node.tok, precond,
+              new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
             assume.IrrelevantForChecksumComputation = true;
             beforePrecondtionCheck.Add(assume);
           }
@@ -245,13 +281,15 @@ namespace Microsoft.Boogie
           foreach (var unmod in unmods)
           {
             var oldUnmod = new LocalVariable(Token.NoToken,
-              new TypedIdent(Token.NoToken, string.Format("{0}##old##{1}", unmod.Name, FreshTemporaryVariableName), unmod.Type));
+              new TypedIdent(Token.NoToken, string.Format("{0}##old##{1}", unmod.Name, FreshTemporaryVariableName),
+                unmod.Type));
             var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, oldUnmod));
             var rhs = new IdentifierExpr(Token.NoToken, unmod.Decl);
-            var cmd = new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
+            var cmd = new AssignCmd(Token.NoToken, new List<AssignLhs> {lhs}, new List<Expr> {rhs});
             cmd.IrrelevantForChecksumComputation = true;
             before.Add(cmd);
-            var eq = LiteralExpr.Eq(new IdentifierExpr(Token.NoToken, oldUnmod), new IdentifierExpr(Token.NoToken, unmod.Decl));
+            var eq = LiteralExpr.Eq(new IdentifierExpr(Token.NoToken, oldUnmod),
+              new IdentifierExpr(Token.NoToken, unmod.Decl));
             eq.Type = Type.Bool;
             eq.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
             eqs.Add(eq);
@@ -262,16 +300,18 @@ namespace Microsoft.Boogie
           foreach (var mod in mods)
           {
             var oldMod = new LocalVariable(Token.NoToken,
-              new TypedIdent(Token.NoToken, string.Format("{0}##old##{1}", mod.Name, FreshTemporaryVariableName), mod.Type));
+              new TypedIdent(Token.NoToken, string.Format("{0}##old##{1}", mod.Name, FreshTemporaryVariableName),
+                mod.Type));
             oldSubst[mod.Decl] = new IdentifierExpr(Token.NoToken, oldMod);
             var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, oldMod));
             var rhs = new IdentifierExpr(Token.NoToken, mod.Decl);
-            var cmd = new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
+            var cmd = new AssignCmd(Token.NoToken, new List<AssignLhs> {lhs}, new List<Expr> {rhs});
             cmd.IrrelevantForChecksumComputation = true;
             before.Add(cmd);
           }
-          
-          assumedExpr = node.Postcondition(oldProc, eqs, oldSubst, Program, e => FunctionExtractor.Extract(e, Program, axioms));
+
+          assumedExpr = node.Postcondition(oldProc, eqs, oldSubst, Program,
+            e => FunctionExtractor.Extract(e, Program, axioms));
           if (assumedExpr == null)
           {
             assumedExpr = new LiteralExpr(Token.NoToken, true);
@@ -287,7 +327,7 @@ namespace Microsoft.Boogie
           currentImplementation.InjectAssumptionVariable(lv, !canUseSpecs);
           var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, lv));
           var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), assumedExpr);
-          var assumed = new AssignCmd(node.tok, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
+          var assumed = new AssignCmd(node.tok, new List<AssignLhs> {lhs}, new List<Expr> {rhs});
           assumed.IrrelevantForChecksumComputation = true;
           after.Add(assumed);
         }
@@ -297,24 +337,30 @@ namespace Microsoft.Boogie
         {
           using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
           {
-            var loc = node.tok != null && node.tok != Token.NoToken ? string.Format("{0}({1},{2})", node.tok.filename, node.tok.line, node.tok.col) : "<unknown location>";
-            Console.Out.WriteLine("Processing call to procedure {0} in implementation {1} (at {2}):", node.Proc.Name, currentImplementation.Name, loc);
+            var loc = node.tok != null && node.tok != Token.NoToken
+              ? string.Format("{0}({1},{2})", node.tok.filename, node.tok.line, node.tok.col)
+              : "<unknown location>";
+            Console.Out.WriteLine("Processing call to procedure {0} in implementation {1} (at {2}):", node.Proc.Name,
+              currentImplementation.Name, loc);
             foreach (var a in axioms)
             {
               Console.Out.Write("  >>> added axiom: ");
               a.Expr.Emit(tokTxtWr);
               Console.Out.WriteLine();
             }
+
             foreach (var b in before)
             {
               Console.Out.Write("  >>> added before: ");
               b.Emit(tokTxtWr, 0);
             }
+
             foreach (var b in beforePrecondtionCheck)
             {
               Console.Out.Write("  >>> added before precondition check: ");
               b.Emit(tokTxtWr, 0);
             }
+
             foreach (var a in after)
             {
               Console.Out.Write("  >>> added after: ");
@@ -347,6 +393,7 @@ namespace Microsoft.Boogie
           boundVar = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, node.Name, node.Type));
           Substitutions[node.Decl] = boundVar;
         }
+
         return new IdentifierExpr(node.tok, boundVar);
       }
     }
@@ -354,7 +401,7 @@ namespace Microsoft.Boogie
     public static Expr Extract(Expr expr, Program program, List<Axiom> axioms)
     {
       Contract.Requires(expr != null && program != null && !program.TopLevelDeclarationsAreFrozen && axioms != null);
-      
+
       if (expr is LiteralExpr)
       {
         return expr;
@@ -366,13 +413,16 @@ namespace Microsoft.Boogie
 
       var name = program.FreshExtractedFunctionName();
       var originalVars = extractor.Substitutions.Keys.ToList();
-      var formalInArgs = originalVars.Select(v => new Formal(Token.NoToken, new TypedIdent(Token.NoToken, extractor.Substitutions[v].Name, extractor.Substitutions[v].TypedIdent.Type), true)).ToList<Variable>();
+      var formalInArgs = originalVars.Select(v => new Formal(Token.NoToken,
+        new TypedIdent(Token.NoToken, extractor.Substitutions[v].Name, extractor.Substitutions[v].TypedIdent.Type),
+        true)).ToList<Variable>();
       var formalOutArg = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, name + "$result$", expr.Type), false);
       var func = new Function(Token.NoToken, name, formalInArgs, formalOutArg);
       func.AddAttribute("never_pattern");
 
       var boundVars = originalVars.Select(k => extractor.Substitutions[k]);
-      var axiomCall = new NAryExpr(Token.NoToken, new FunctionCall(func), boundVars.Select(b => new IdentifierExpr(Token.NoToken, b)).ToList<Expr>());
+      var axiomCall = new NAryExpr(Token.NoToken, new FunctionCall(func),
+        boundVars.Select(b => new IdentifierExpr(Token.NoToken, b)).ToList<Expr>());
       axiomCall.Type = expr.Type;
       axiomCall.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
       var eq = LiteralExpr.Eq(axiomCall, body);
@@ -380,9 +430,11 @@ namespace Microsoft.Boogie
       eq.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
       if (0 < formalInArgs.Count)
       {
-        var forallExpr = new ForallExpr(Token.NoToken, boundVars.ToList<Variable>(), new Trigger(Token.NoToken, true, new List<Expr> { axiomCall }), eq);
+        var forallExpr = new ForallExpr(Token.NoToken, boundVars.ToList<Variable>(),
+          new Trigger(Token.NoToken, true, new List<Expr> {axiomCall}), eq);
         body = forallExpr;
-        forallExpr.Attributes = new QKeyValue(Token.NoToken, "weight", new List<object> { new LiteralExpr(Token.NoToken, Basetypes.BigNum.FromInt(30)) }, null);
+        forallExpr.Attributes = new QKeyValue(Token.NoToken, "weight",
+          new List<object> {new LiteralExpr(Token.NoToken, Basetypes.BigNum.FromInt(30))}, null);
         body.Type = Type.Bool;
       }
       else
@@ -396,7 +448,8 @@ namespace Microsoft.Boogie
       program.AddTopLevelDeclaration(axiom);
       axioms.Add(axiom);
 
-      var call = new NAryExpr(Token.NoToken, new FunctionCall(func), originalVars.Select(v => new IdentifierExpr(Token.NoToken, v)).ToList<Expr>());
+      var call = new NAryExpr(Token.NoToken, new FunctionCall(func),
+        originalVars.Select(v => new IdentifierExpr(Token.NoToken, v)).ToList<Expr>());
       call.Type = expr.Type;
       call.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
       return call;
@@ -424,7 +477,8 @@ namespace Microsoft.Boogie
       var end = DateTime.UtcNow;
       if (CommandLineOptions.Clo.TraceCachingForDebugging)
       {
-        Console.Out.WriteLine("Collected other definition axioms within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
+        Console.Out.WriteLine("Collected other definition axioms within {0:F0} ms.",
+          end.Subtract(start).TotalMilliseconds);
       }
     }
 
@@ -437,21 +491,26 @@ namespace Microsoft.Boogie
         {
           VisitExpr(e);
         }
+
         currentTrigger = currentTrigger.Next;
       }
+
       return base.VisitQuantifierExpr(node);
     }
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
       var funCall = node.Fun as FunctionCall;
-      if (funCall != null && funCall.Func != null && funCall.Func.Checksum != null && funCall.Func.Checksum != "stable") {
-        if (funCall.ArgumentCount == 0 || currentTrigger != null) {
+      if (funCall != null && funCall.Func != null && funCall.Func.Checksum != null && funCall.Func.Checksum != "stable")
+      {
+        if (funCall.ArgumentCount == 0 || currentTrigger != null)
+        {
           // We found a function call within a trigger of a quantifier expression, or the function does not take any
           // arguments so we don't expect it ever to sit inside a quantifier.
           funCall.Func.AddOtherDefinitionAxiom(currentAxiom);
         }
       }
+
       return base.VisitNAryExpr(node);
     }
   }
@@ -483,7 +542,8 @@ namespace Microsoft.Boogie
       var funcs = newProg.Functions;
       var globals = newProg.GlobalVariables;
       return oldProc.DependenciesCollected
-             && (oldProc.FunctionDependencies == null || oldProc.FunctionDependencies.All(dep => funcs.Any(f => f.Name == dep.Name && f.DependencyChecksum == dep.DependencyChecksum)))
+             && (oldProc.FunctionDependencies == null || oldProc.FunctionDependencies.All(dep =>
+               funcs.Any(f => f.Name == dep.Name && f.DependencyChecksum == dep.DependencyChecksum)))
              && (ignoreModifiesClauses || oldProc.Modifies.All(m => globals.Any(g => g.Name == m.Name)));
     }
 
@@ -539,8 +599,10 @@ namespace Microsoft.Boogie
             currentDeclaration.AddFunctionDependency(f);
           }
         }
+
         return node;
       }
+
       currentAxiom = node;
       var result = base.VisitAxiom(node);
       node.DependenciesCollected = true;
@@ -556,6 +618,7 @@ namespace Microsoft.Boogie
       {
         VisitAxiom(node.DefinitionAxiom);
       }
+
       if (node.OtherDefinitionAxioms != null)
       {
         foreach (var a in node.OtherDefinitionAxioms)
@@ -592,6 +655,7 @@ namespace Microsoft.Boogie
         {
           currentDeclaration.AddFunctionDependency(funCall.Func);
         }
+
         if (currentAxiom != null)
         {
           currentAxiom.AddFunctionDependency(funCall.Func);
@@ -605,9 +669,9 @@ namespace Microsoft.Boogie
 
   static internal class Priority
   {
-    public static readonly int LOW = 1;             // the same snapshot has been verified before, but a callee has changed
-    public static readonly int MEDIUM = 2;          // old snapshot has been verified before
-    public static readonly int HIGH = 3;            // has been never verified before
+    public static readonly int LOW = 1; // the same snapshot has been verified before, but a callee has changed
+    public static readonly int MEDIUM = 2; // old snapshot has been verified before
+    public static readonly int HIGH = 3; // has been never verified before
     public static readonly int SKIP = int.MaxValue; // highest priority to get them done as soon as possible
   }
 
@@ -615,7 +679,9 @@ namespace Microsoft.Boogie
   public sealed class VerificationResultCache
   {
     private readonly MemoryCache Cache = new MemoryCache("VerificationResultCache");
-    private readonly CacheItemPolicy Policy = new CacheItemPolicy { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };
+
+    private readonly CacheItemPolicy Policy = new CacheItemPolicy
+      {SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default};
 
 
     public void Insert(Implementation impl, VerificationResult result)
@@ -652,6 +718,7 @@ namespace Microsoft.Boogie
       {
         priority = Priority.SKIP;
       }
+
       return result;
     }
 
@@ -685,5 +752,4 @@ namespace Microsoft.Boogie
       return priority;
     }
   }
-
 }

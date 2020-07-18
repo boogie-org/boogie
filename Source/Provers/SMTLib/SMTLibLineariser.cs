@@ -3,6 +3,7 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
+
 using System;
 using System.Text;
 using System.IO;
@@ -19,7 +20,6 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.SMTLib
 {
-
   // Options for the linearisation
   public class LineariserOptions
   {
@@ -31,10 +31,10 @@ namespace Microsoft.Boogie.SMTLib
   ////////////////////////////////////////////////////////////////////////////////////////
 
   // Lineariser for expressions. The result (bool) is currently not used for anything
-  public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions/*!*/>
+  public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions /*!*/>
   {
-
-    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibProverOptions opts, ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null, ISet<VCExprVar> tryAssumes = null)
+    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibProverOptions opts,
+      ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null, ISet<VCExprVar> tryAssumes = null)
     {
       Contract.Requires(e != null);
       Contract.Requires(namer != null);
@@ -50,6 +50,7 @@ namespace Microsoft.Boogie.SMTLib
     ////////////////////////////////////////////////////////////////////////////////////////
 
     private readonly TextWriter wr;
+
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
@@ -58,7 +59,8 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     private SMTLibOpLineariser OpLinObject = null;
-    private IVCExprOpVisitor<bool, LineariserOptions>/*!>!*/ OpLineariser
+
+    private IVCExprOpVisitor<bool, LineariserOptions> /*!>!*/ OpLineariser
     {
       get
       {
@@ -77,9 +79,11 @@ namespace Microsoft.Boogie.SMTLib
     readonly IList<string> OptimizationRequests;
     readonly ISet<VCExprVar> NamedAssumes;
 
-    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibProverOptions opts, ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null)
+    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibProverOptions opts,
+      ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null)
     {
-      Contract.Requires(wr != null); Contract.Requires(namer != null);
+      Contract.Requires(wr != null);
+      Contract.Requires(namer != null);
       this.wr = wr;
       this.Namer = namer;
       this.ProverOptions = opts;
@@ -101,37 +105,51 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(t != null);
 
       TypeSynonymAnnotation syn = t as TypeSynonymAnnotation;
-      if (syn != null) {
+      if (syn != null)
+      {
         TypeToStringHelper(syn.ExpandedType, sb);
-      } else {
-        if (t.IsMap && CommandLineOptions.Clo.UseArrayTheory) {
+      }
+      else
+      {
+        if (t.IsMap && CommandLineOptions.Clo.UseArrayTheory)
+        {
           MapType m = t.AsMap;
           // Contract.Assert(m.MapArity == 1);
           sb.Append("(Array ");
           foreach (Type tp in m.Arguments)
             sb.Append(TypeToString(tp)).Append(" ");
           sb.Append(TypeToString(m.Result)).Append(")");
-        } else if (t.IsMap) {
+        }
+        else if (t.IsMap)
+        {
           MapType m = t.AsMap;
           sb.Append('[');
-          for (int i = 0; i < m.MapArity; ++i) {
+          for (int i = 0; i < m.MapArity; ++i)
+          {
             if (i != 0)
               sb.Append(',');
             TypeToStringHelper(m.Arguments[i], sb);
           }
+
           sb.Append(']');
           TypeToStringHelper(m.Result, sb);
-        } else if (t.IsBool || t.IsInt || t.IsReal || t.IsFloat || t.IsBv || t.IsRMode || t.IsString) {
+        }
+        else if (t.IsBool || t.IsInt || t.IsReal || t.IsFloat || t.IsBv || t.IsRMode || t.IsString)
+        {
           sb.Append(TypeToString(t));
-        } else {
+        }
+        else
+        {
           System.IO.StringWriter buffer = new System.IO.StringWriter();
-          using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/false, /*pretty=*/false)) {
+          using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/false, /*pretty=*/false)
+          )
+          {
             t.Emit(stream);
           }
+
           sb.Append(buffer.ToString());
         }
       }
-
     }
 
     public static string TypeToString(Type t)
@@ -153,10 +171,13 @@ namespace Microsoft.Boogie.SMTLib
         return "RoundingMode";
       else if (t.IsString)
         return "String";
-      else if (t.IsRegEx) {
+      else if (t.IsRegEx)
+      {
         return "(RegEx String)";
-      } else {
-        StringBuilder sb = new StringBuilder();        
+      }
+      else
+      {
+        StringBuilder sb = new StringBuilder();
         TypeToStringHelper(t, sb);
         var s = sb.ToString();
         if (s[0] == '(')
@@ -171,18 +192,19 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(f != null);
       string retVal = null;
       retVal = f.FindStringAttribute("bvbuiltin");
-      
+
       // It used to be "sign_extend 12" in Simplify, and is "(_ sign_extend 12)" with SMT
       if (retVal != null && (retVal.StartsWith("sign_extend ") || retVal.StartsWith("zero_extend ")))
         return "(_ " + retVal + ")";
 
-      if (retVal == null) {
+      if (retVal == null)
+      {
         retVal = f.FindStringAttribute("builtin");
       }
 
       if (retVal != null && !CommandLineOptions.Clo.UseArrayTheory && SMTLibOpLineariser.ArrayOps.Contains(retVal))
       {
-          retVal = null;
+        retVal = null;
       }
 
       return retVal;
@@ -196,16 +218,18 @@ namespace Microsoft.Boogie.SMTLib
         wr.Write("true");
       else if (node == VCExpressionGenerator.False)
         wr.Write("false");
-      else if (node is VCExprIntLit) {
-        BigNum lit = ((VCExprIntLit)node).Val;
+      else if (node is VCExprIntLit)
+      {
+        BigNum lit = ((VCExprIntLit) node).Val;
         if (lit.IsNegative)
           // In SMT2 "-42" is an identifier (SMT2, Sect. 3.2 "Symbols")
           wr.Write("(- 0 {0})", lit.Abs);
         else
           wr.Write(lit);
-      } 
-      else if (node is VCExprRealLit) {
-        BigDec lit = ((VCExprRealLit)node).Val;
+      }
+      else if (node is VCExprRealLit)
+      {
+        BigDec lit = ((VCExprRealLit) node).Val;
         if (lit.IsNegative)
           // In SMT2 "-42" is an identifier (SMT2, Sect. 3.2 "Symbols")
           wr.Write("(- 0.0 {0})", lit.Abs.ToDecimalString());
@@ -214,20 +238,21 @@ namespace Microsoft.Boogie.SMTLib
       }
       else if (node is VCExprFloatLit)
       {
-        BigFloat lit = ((VCExprFloatLit)node).Val;
+        BigFloat lit = ((VCExprFloatLit) node).Val;
         wr.Write("(" + lit.ToBVString() + ")");
       }
       else if (node is VCExprRModeLit)
       {
-        RoundingMode lit = ((VCExprRModeLit)node).Val;
+        RoundingMode lit = ((VCExprRModeLit) node).Val;
         wr.Write(lit.ToString());
       }
       else if (node is VCExprStringLit)
       {
-        String lit = ((VCExprStringLit)node).Val;
+        String lit = ((VCExprStringLit) node).Val;
         wr.Write("\"" + lit.ToString() + "\"");
       }
-      else {
+      else
+      {
         Contract.Assert(false);
         throw new cce.UnreachableException();
       }
@@ -239,79 +264,87 @@ namespace Microsoft.Boogie.SMTLib
 
     public bool Visit(VCExprNAry node, LineariserOptions options)
     {
-        VCExprOp op = node.Op;
-        Contract.Assert(op != null);
+      VCExprOp op = node.Op;
+      Contract.Assert(op != null);
 
-        var booleanOps = new HashSet<VCExprOp>();
-        booleanOps.Add(VCExpressionGenerator.NotOp);
-        booleanOps.Add(VCExpressionGenerator.ImpliesOp);
-        booleanOps.Add(VCExpressionGenerator.AndOp);
-        booleanOps.Add(VCExpressionGenerator.OrOp);
-        if (booleanOps.Contains(op))
+      var booleanOps = new HashSet<VCExprOp>();
+      booleanOps.Add(VCExpressionGenerator.NotOp);
+      booleanOps.Add(VCExpressionGenerator.ImpliesOp);
+      booleanOps.Add(VCExpressionGenerator.AndOp);
+      booleanOps.Add(VCExpressionGenerator.OrOp);
+      if (booleanOps.Contains(op))
+      {
+        Stack<VCExpr> exprs = new Stack<VCExpr>();
+        exprs.Push(node);
+        while (exprs.Count > 0)
         {
-            Stack<VCExpr> exprs = new Stack<VCExpr>();
-            exprs.Push(node);
-            while (exprs.Count > 0)
-            {
-                VCExpr expr = exprs.Pop();
-                if (expr == null)
-                {
-                    wr.Write(")");
-                    continue;
-                }
-                wr.Write(" ");
-                VCExprNAry naryExpr = expr as VCExprNAry;
-                if (naryExpr == null || !booleanOps.Contains(naryExpr.Op))
-                {
-                    Linearise(expr, options);
-                    continue;
-                }
-                else if (naryExpr.Op.Equals(VCExpressionGenerator.NotOp))
-                {
-                    wr.Write("(not");
-                }
-                else if (naryExpr.Op.Equals(VCExpressionGenerator.ImpliesOp))
-                {
-                    wr.Write("(=>");
-                }
-                else if (naryExpr.Op.Equals(VCExpressionGenerator.AndOp))
-                {
-                    wr.Write("(and");
-                }
-                else 
-                {
-                    System.Diagnostics.Debug.Assert(naryExpr.Op.Equals(VCExpressionGenerator.OrOp));
-                    wr.Write("(or");
-                }
-                exprs.Push(null);
-                for (int i = naryExpr.Arity - 1; i >= 0; i--)
-                {
-                    exprs.Push(naryExpr[i]);
-                }
-            }
-            return true;
+          VCExpr expr = exprs.Pop();
+          if (expr == null)
+          {
+            wr.Write(")");
+            continue;
+          }
+
+          wr.Write(" ");
+          VCExprNAry naryExpr = expr as VCExprNAry;
+          if (naryExpr == null || !booleanOps.Contains(naryExpr.Op))
+          {
+            Linearise(expr, options);
+            continue;
+          }
+          else if (naryExpr.Op.Equals(VCExpressionGenerator.NotOp))
+          {
+            wr.Write("(not");
+          }
+          else if (naryExpr.Op.Equals(VCExpressionGenerator.ImpliesOp))
+          {
+            wr.Write("(=>");
+          }
+          else if (naryExpr.Op.Equals(VCExpressionGenerator.AndOp))
+          {
+            wr.Write("(and");
+          }
+          else
+          {
+            System.Diagnostics.Debug.Assert(naryExpr.Op.Equals(VCExpressionGenerator.OrOp));
+            wr.Write("(or");
+          }
+
+          exprs.Push(null);
+          for (int i = naryExpr.Arity - 1; i >= 0; i--)
+          {
+            exprs.Push(naryExpr[i]);
+          }
         }
-        if (OptimizationRequests != null
-            && (node.Op.Equals(VCExpressionGenerator.MinimizeOp) || node.Op.Equals(VCExpressionGenerator.MaximizeOp)))
-        {
-          string optOp = node.Op.Equals(VCExpressionGenerator.MinimizeOp) ? "minimize" : "maximize";
-          OptimizationRequests.Add(string.Format("({0} {1})", optOp, ToString(node[0], Namer, ProverOptions, NamedAssumes)));
-          Linearise(node[1], options);
-          return true;
-        }
-        if (node.Op is VCExprSoftOp)
-        {
-          Linearise(node[1], options);
-          return true;
-        }
-        if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp))
-        {
-          var exprVar = node[0] as VCExprVar;
-          NamedAssumes.Add(exprVar);
-          Linearise(node[1], options);
-          return true;
-        }
-        return node.Accept<bool, LineariserOptions/*!*/>(OpLineariser, options);
+
+        return true;
+      }
+
+      if (OptimizationRequests != null
+          && (node.Op.Equals(VCExpressionGenerator.MinimizeOp) || node.Op.Equals(VCExpressionGenerator.MaximizeOp)))
+      {
+        string optOp = node.Op.Equals(VCExpressionGenerator.MinimizeOp) ? "minimize" : "maximize";
+        OptimizationRequests.Add(string.Format("({0} {1})", optOp,
+          ToString(node[0], Namer, ProverOptions, NamedAssumes)));
+        Linearise(node[1], options);
+        return true;
+      }
+
+      if (node.Op is VCExprSoftOp)
+      {
+        Linearise(node[1], options);
+        return true;
+      }
+
+      if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp))
+      {
+        var exprVar = node[0] as VCExprVar;
+        NamedAssumes.Add(exprVar);
+        Linearise(node[1], options);
+        return true;
+      }
+
+      return node.Accept<bool, LineariserOptions /*!*/>(OpLineariser, options);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////
@@ -329,12 +362,14 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Assert(node.TypeParameters.Count == 0);
 
       UnderQuantifier++;
-      Namer.PushScope(); try {
-
+      Namer.PushScope();
+      try
+      {
         string kind = node.Quan == Quantifier.ALL ? "forall" : "exists";
         wr.Write("({0} (", kind);
 
-        for (int i = 0; i < node.BoundVars.Count; i++) {
+        for (int i = 0; i < node.BoundVars.Count; i++)
+        {
           VCExprVar var = node.BoundVars[i];
           Contract.Assert(var != null);
           string printedName = Namer.GetQuotedLocalName(var, var.Name);
@@ -355,7 +390,8 @@ namespace Microsoft.Boogie.SMTLib
 
         Linearise(node.Body, options);
 
-        if (hasAttrs) {
+        if (hasAttrs)
+        {
           wr.Write("\n");
           if (infos.qid != null)
             wr.Write(" :qid {0}\n", SMTLibNamer.QuoteId(infos.qid));
@@ -364,64 +400,80 @@ namespace Microsoft.Boogie.SMTLib
           if (infos.uniqueId != -1)
             wr.Write(" :skolemid |{0}|\n", infos.uniqueId);
           WriteTriggers(node.Triggers, options);
-          
+
           wr.Write(")");
         }
-        
+
         wr.Write(")");
 
         return true;
-
-      } finally {
+      }
+      finally
+      {
         UnderQuantifier--;
         Namer.PopScope();
       }
     }
 
-    private void WriteTriggers(List<VCTrigger/*!>!*/> triggers, LineariserOptions options)
+    private void WriteTriggers(List<VCTrigger /*!>!*/> triggers, LineariserOptions options)
     {
       Contract.Requires(options != null);
       Contract.Requires(triggers != null);
       // first, count how many neg/pos triggers there are
       int negTriggers = 0;
       int posTriggers = 0;
-      foreach (VCTrigger vcTrig in triggers) {
+      foreach (VCTrigger vcTrig in triggers)
+      {
         Contract.Assert(vcTrig != null);
-        if (vcTrig.Pos) {
+        if (vcTrig.Pos)
+        {
           posTriggers++;
-        } else {
+        }
+        else
+        {
           negTriggers++;
         }
       }
 
-      if (posTriggers > 0) {
-        foreach (VCTrigger vcTrig in triggers) {
+      if (posTriggers > 0)
+      {
+        foreach (VCTrigger vcTrig in triggers)
+        {
           Contract.Assert(vcTrig != null);
-          if (vcTrig.Pos) {
+          if (vcTrig.Pos)
+          {
             wr.Write(" :pattern (");
-            foreach (VCExpr e in vcTrig.Exprs) {
+            foreach (VCExpr e in vcTrig.Exprs)
+            {
               Contract.Assert(e != null);
               wr.Write(" ");
               var subPat = e;
               var nary = e as VCExprNAry;
-              if (nary != null && (nary.Op == VCExpressionGenerator.NeqOp || nary.Op == VCExpressionGenerator.EqOp)) {
+              if (nary != null && (nary.Op == VCExpressionGenerator.NeqOp || nary.Op == VCExpressionGenerator.EqOp))
+              {
                 if (nary[0] is VCExprLiteral)
                   subPat = nary[1];
                 else if (nary[1] is VCExprLiteral)
                   subPat = nary[0];
               }
+
               Linearise(subPat, options);
             }
+
             wr.Write(")\n");
           }
         }
-      } else if (negTriggers > 0) {
+      }
+      else if (negTriggers > 0)
+      {
         // if also positive triggers are given, the SMT solver (at least Z3)
         // will ignore the negative patterns and output a warning. Therefore
         // we never specify both negative and positive triggers
-        foreach (VCTrigger vcTrig in triggers) {
+        foreach (VCTrigger vcTrig in triggers)
+        {
           Contract.Assert(vcTrig != null);
-          if (!vcTrig.Pos) {
+          if (!vcTrig.Pos)
+          {
             wr.Write(" :no-pattern ");
             Contract.Assert(vcTrig.Exprs.Count == 1);
             Linearise(vcTrig.Exprs[0], options);
@@ -436,20 +488,24 @@ namespace Microsoft.Boogie.SMTLib
     public bool Visit(VCExprLet node, LineariserOptions options)
     {
       Namer.PushScope();
-      try {
-        
-        foreach (VCExprLetBinding b in node) {
+      try
+      {
+        foreach (VCExprLetBinding b in node)
+        {
           wr.Write("(let (");
           Contract.Assert(b != null);
           wr.Write("({0} ", Namer.GetQuotedName(b.V, b.V.Name));
           Linearise(b.E, options);
           wr.Write("))\n");
-        }        
+        }
+
         Linearise(node.Body, options);
         foreach (VCExprLetBinding b in node)
           wr.Write(")");
         return true;
-      } finally {
+      }
+      finally
+      {
         Namer.PopScope();
       }
     }
@@ -457,10 +513,11 @@ namespace Microsoft.Boogie.SMTLib
     /////////////////////////////////////////////////////////////////////////////////////
 
     // Lineariser for operator terms. The result (bool) is currently not used for anything
-    internal class SMTLibOpLineariser : IVCExprOpVisitor<bool, LineariserOptions/*!*/>
+    internal class SMTLibOpLineariser : IVCExprOpVisitor<bool, LineariserOptions /*!*/>
     {
       private readonly SMTLibExprLineariser ExprLineariser;
       private readonly TextWriter wr;
+
       [ContractInvariantMethod]
       void ObjectInvariant()
       {
@@ -478,14 +535,15 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       ///////////////////////////////////////////////////////////////////////////////////
-      private void WriteApplication(string opName, IEnumerable<VCExpr>/*!>!*/ args, LineariserOptions options)
+      private void WriteApplication(string opName, IEnumerable<VCExpr> /*!>!*/ args, LineariserOptions options)
       {
         Contract.Requires(cce.NonNullElements(args));
         Contract.Requires(options != null);
         Contract.Assert(opName != null);
 
         bool hasArgs = false;
-        foreach (VCExpr e in args) {
+        foreach (VCExpr e in args)
+        {
           Contract.Assert(e != null);
           if (!hasArgs)
             wr.Write("({0}", opName);
@@ -504,7 +562,7 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitNotOp(VCExprNAry node, LineariserOptions options)
       {
-        WriteApplication("not", node, options);      // arguments can be both terms and formulas
+        WriteApplication("not", node, options); // arguments can be both terms and formulas
         return true;
       }
 
@@ -559,7 +617,7 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitCustomOp(VCExprNAry node, LineariserOptions options)
       {
-        VCExprCustomOp op = (VCExprCustomOp)node.Op;
+        VCExprCustomOp op = (VCExprCustomOp) node.Op;
         if (!ExprLineariser.ProverOptions.UseTickleBool && op.Name == "tickleBool")
           ExprLineariser.Linearise(VCExpressionGenerator.True, options);
         else
@@ -572,23 +630,32 @@ namespace Microsoft.Boogie.SMTLib
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
 
-        if (node.Length < 2) {
+        if (node.Length < 2)
+        {
           ExprLineariser.Linearise(VCExpressionGenerator.True, options);
-        } else {
+        }
+        else
+        {
           var groupings = node.GroupBy(e => e.Type).Where(g => g.Count() > 1).ToArray();
-          if (groupings.Length == 0) {
+          if (groupings.Length == 0)
+          {
             ExprLineariser.Linearise(VCExpressionGenerator.True, options);
-          } else {
+          }
+          else
+          {
             if (groupings.Length > 1)
               wr.Write("(and ");
 
-            foreach (var g in groupings) {
+            foreach (var g in groupings)
+            {
               wr.Write("(distinct");
-              foreach (VCExpr e in g) {
+              foreach (VCExpr e in g)
+              {
                 Contract.Assert(e != null);
                 wr.Write(" ");
                 ExprLineariser.Linearise(e, options);
               }
+
               wr.Write(")");
             }
 
@@ -603,7 +670,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       public bool VisitSelectOp(VCExprNAry node, LineariserOptions options)
-      {        
+      {
         var name = SimplifyLikeExprLineariser.SelectOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
         if (CommandLineOptions.Clo.UseArrayTheory)
@@ -684,32 +751,39 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      static char[] hex = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+      static char[] hex = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
       public bool VisitBvOp(VCExprNAry node, LineariserOptions options)
       {
-        var lit = (VCExprIntLit)node[0];
+        var lit = (VCExprIntLit) node[0];
         var bytes = lit.Val.ToByteArray();
-        if (node.Type.BvBits % 8 == 0) {
+        if (node.Type.BvBits % 8 == 0)
+        {
           wr.Write("#x");
-          for (var pos = node.Type.BvBits / 8 - 1; pos >= 0; pos--) {
-            var k = pos < bytes.Length ? bytes[pos] : (byte)0;
+          for (var pos = node.Type.BvBits / 8 - 1; pos >= 0; pos--)
+          {
+            var k = pos < bytes.Length ? bytes[pos] : (byte) 0;
             wr.Write(hex[k >> 4]);
             wr.Write(hex[k & 0xf]);
           }
-        } else {
+        }
+        else
+        {
           wr.Write("#b");
-          for (var pos = node.Type.BvBits - 1; pos >= 0; pos--) {
+          for (var pos = node.Type.BvBits - 1; pos >= 0; pos--)
+          {
             var i = pos >> 3;
-            var k = i < bytes.Length ? bytes[i] : (byte)0;
+            var k = i < bytes.Length ? bytes[i] : (byte) 0;
             wr.Write((k & (1 << (pos & 7))) == 0 ? '0' : '1');
           }
         }
+
         return true;
       }
 
       public bool VisitBvExtractOp(VCExprNAry node, LineariserOptions options)
       {
-        var op = (VCExprBvExtractOp)node.Op;
+        var op = (VCExprBvExtractOp) node.Op;
         wr.Write("((_ extract {0} {1}) ", op.End - 1, op.Start);
         ExprLineariser.Linearise(node[0], options);
         wr.Write(")");
@@ -752,12 +826,14 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      public bool VisitRealDivOp(VCExprNAry node, LineariserOptions options) {
+      public bool VisitRealDivOp(VCExprNAry node, LineariserOptions options)
+      {
         WriteApplication("/", node, options);
         return true;
       }
 
-      public bool VisitPowOp(VCExprNAry node, LineariserOptions options) {
+      public bool VisitPowOp(VCExprNAry node, LineariserOptions options)
+      {
         WriteApplication("real_pow", node, options);
         return true;
       }
@@ -798,33 +874,40 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      public bool VisitToIntOp(VCExprNAry node, LineariserOptions options) {
+      public bool VisitToIntOp(VCExprNAry node, LineariserOptions options)
+      {
         WriteApplication("to_int", node, options);
         return true;
       }
 
-      public bool VisitToRealOp(VCExprNAry node, LineariserOptions options) {
+      public bool VisitToRealOp(VCExprNAry node, LineariserOptions options)
+      {
         WriteApplication("to_real", node, options);
         return true;
       }
 
-      private string ExtractDatatype(Function func) {
-        if (func is DatatypeSelector) {
+      private string ExtractDatatype(Function func)
+      {
+        if (func is DatatypeSelector)
+        {
           DatatypeSelector selector = (DatatypeSelector) func;
           Variable v = selector.constructor.InParams[selector.index];
           return ExprLineariser.Namer.GetQuotedName(v, v.Name + "#" + selector.constructor.Name);
         }
-        else if (func is DatatypeMembership) {
-          DatatypeMembership membership = (DatatypeMembership)func;
+        else if (func is DatatypeMembership)
+        {
+          DatatypeMembership membership = (DatatypeMembership) func;
           return ExprLineariser.Namer.GetQuotedName(membership, "is-" + membership.constructor.Name);
         }
-        else {
+        else
+        {
           return null;
         }
       }
 
-      public bool VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options) {
-        VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)node.Op;
+      public bool VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options)
+      {
+        VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp) node.Op;
         Contract.Assert(op != null);
         string printedName;
 
@@ -832,16 +915,17 @@ namespace Microsoft.Boogie.SMTLib
         var datatype = ExtractDatatype(op.Func);
         if (builtin != null)
         {
-            printedName = CheckMapApply(builtin, node);
+          printedName = CheckMapApply(builtin, node);
         }
         else if (datatype != null)
         {
-            printedName = datatype;
+          printedName = datatype;
         }
         else
-        { 
-            printedName = ExprLineariser.Namer.GetQuotedName(op.Func, op.Func.Name); 
+        {
+          printedName = ExprLineariser.Namer.GetQuotedName(op.Func, op.Func.Name);
         }
+
         Contract.Assert(printedName != null);
 
         WriteApplication(printedName, node, options);
@@ -849,82 +933,106 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      private static Type ResultType(Type type) {
+      private static Type ResultType(Type type)
+      {
         MapType mapType = type as MapType;
-        if (mapType != null) {
+        if (mapType != null)
+        {
           return ResultType(mapType.Result);
         }
-        else {
+        else
+        {
           return type;
         }
       }
 
-      public static HashSet<string> ArrayOps = new HashSet<string>(new string[] { 
-          "MapConst", "MapAdd", "MapSub", "MapMul", "MapDiv", "MapMod", "MapEq", "MapIff", "MapGt", "MapGe", "MapLt", "MapLe", "MapOr", "MapAnd", "MapNot", "MapImp", "MapIte" });
+      public static HashSet<string> ArrayOps = new HashSet<string>(new string[]
+      {
+        "MapConst", "MapAdd", "MapSub", "MapMul", "MapDiv", "MapMod", "MapEq", "MapIff", "MapGt", "MapGe", "MapLt",
+        "MapLe", "MapOr", "MapAnd", "MapNot", "MapImp", "MapIte"
+      });
 
-      private static string CheckMapApply(string name, VCExprNAry node) {
-        if (name == "MapConst") {
+      private static string CheckMapApply(string name, VCExprNAry node)
+      {
+        if (name == "MapConst")
+        {
           Type type = node.Type;
           string s = TypeToString(type);
           return "(as const " + s + ")";
-        } 
-        else if (name == "MapAdd") {
+        }
+        else if (name == "MapAdd")
+        {
           return "(_ map (+ (Int Int) Int))";
         }
-        else if (name == "MapSub") {
+        else if (name == "MapSub")
+        {
           return "(_ map (- (Int Int) Int))";
         }
-        else if (name == "MapMul") {
+        else if (name == "MapMul")
+        {
           return "(_ map (* (Int Int) Int))";
         }
-        else if (name == "MapDiv") {
+        else if (name == "MapDiv")
+        {
           return "(_ map (div (Int Int) Int))";
         }
-        else if (name == "MapMod") {
+        else if (name == "MapMod")
+        {
           return "(_ map (mod (Int Int) Int))";
         }
-        else if (name == "MapEq") {
+        else if (name == "MapEq")
+        {
           Type type = ResultType(node[0].Type);
           string s = TypeToString(type);
           return "(_ map (= (" + s + " " + s + ") Bool))";
         }
-        else if (name == "MapIff") {
+        else if (name == "MapIff")
+        {
           return "(_ map (= (Bool Bool) Bool))";
         }
-        else if (name == "MapGt") {
+        else if (name == "MapGt")
+        {
           return "(_ map (> (Int Int) Int))";
         }
-        else if (name == "MapGe") {
+        else if (name == "MapGe")
+        {
           return "(_ map (>= (Int Int) Int))";
         }
-        else if (name == "MapLt") {
+        else if (name == "MapLt")
+        {
           return "(_ map (< (Int Int) Int))";
         }
-        else if (name == "MapLe") {
+        else if (name == "MapLe")
+        {
           return "(_ map (<= (Int Int) Int))";
         }
-        else if (name == "MapOr") {
+        else if (name == "MapOr")
+        {
           return "(_ map or)";
         }
-        else if (name == "MapAnd") {
+        else if (name == "MapAnd")
+        {
           return "(_ map and)";
         }
-        else if (name == "MapNot") {
+        else if (name == "MapNot")
+        {
           return "(_ map not)";
         }
-        else if (name == "MapImp") {
+        else if (name == "MapImp")
+        {
           return "(_ map =>)";
         }
-        else if (name == "MapIte") {
+        else if (name == "MapIte")
+        {
           Type type = ResultType(node.Type);
           string s = TypeToString(type);
           return "(_ map (ite (Bool " + s + " " + s + ") " + s + "))";
         }
-        else {
+        else
+        {
           return name;
         }
       }
     }
   }
-
 }

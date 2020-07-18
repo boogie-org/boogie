@@ -12,9 +12,10 @@ namespace Microsoft.Boogie.SMTLib
     const string idCharacters = "~!@$%^&*_-+=<>.?/";
 
 
-    static string[] reservedSmtWordsList = 
-    { // Basic symbols:
-      "", "!", "_", "as", "DECIMAL", "exists", "forall", "let", "NUMERAL", "par", "STRING", 
+    static string[] reservedSmtWordsList =
+    {
+      // Basic symbols:
+      "", "!", "_", "as", "DECIMAL", "exists", "forall", "let", "NUMERAL", "par", "STRING",
       // Commands:
       "assert", "check-sat", "declare-sort", "declare-fun", "define-sort,", "define-fun", "exit",
       "get-assertions", "get-assignment", "get-info", "get-option,", "get-proof", "get-unsat-core",
@@ -24,10 +25,11 @@ namespace Microsoft.Boogie.SMTLib
       "=>", // implies (sic!)
       // Integers and reals
       "Int", "Real", "*", "/", "-", "~", "+", "<", "<=", ">", ">=", "div", "mod", "rem",
-      "^", "sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "pi", "euler",
+      "^", "sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "pi",
+      "euler",
       "to_real", "to_int", "is_int",
       // Bitvectors
-      "extract", "concat", 
+      "extract", "concat",
       "bvnot", "bvneg", "bvand", "bvor", "bvadd", "bvmul", "bvudiv", "bvurem", "bvshl", "bvlshr", "bvult",
       // arrays
       "store", "select", "const", "default", "map", "union", "intersect", "difference", "complement",
@@ -35,21 +37,21 @@ namespace Microsoft.Boogie.SMTLib
       // Z3 (and not only?) extensions to bitvectors
       "bit1", "bit0", "bvsub", "bvsdiv", "bvsrem", "bvsmod", "bvsdiv0", "bvudiv0", "bvsrem0", "bvurem0",
       "bvsmod0", "bvsdiv_i", "bvudiv_i", "bvsrem_i", "bvurem_i", "bvumod_i", "bvule", "bvsle", "bvuge",
-      "bvsge", "bvslt", "bvugt", "bvsgt", "bvxor", "bvnand", "bvnor", "bvxnor", "sign_extend", "zero_extend", 
+      "bvsge", "bvslt", "bvugt", "bvsgt", "bvxor", "bvnand", "bvnor", "bvxnor", "sign_extend", "zero_extend",
       "repeat", "bvredor", "bvredand", "bvcomp", "bvumul_noovfl", "bvsmul_noovfl", "bvsmul_noudfl", "bvashr",
       "rotate_left", "rotate_right", "ext_rotate_left", "ext_rotate_right", "int2bv", "bv2int", "mkbv",
       // floating point (FIXME: Legacy, remove this)
       "plusInfinity", "minusInfinity",
-      "+", "-", "/", "*", "==", "<", ">", "<=", ">=", 
-      "abs", "remainder", "fusedMA", "squareRoot", "roundToIntegral", 
-      "isZero", "isNZero", "isPZero", "isSignMinus", "min", "max", "asFloat", 
+      "+", "-", "/", "*", "==", "<", ">", "<=", ">=",
+      "abs", "remainder", "fusedMA", "squareRoot", "roundToIntegral",
+      "isZero", "isNZero", "isPZero", "isSignMinus", "min", "max", "asFloat",
       // SMT v1 stuff (FIXME: Legacy, remove this)
       "flet", "implies", "!=", "if_then_else",
       // Z3 extensions
       "lblneg", "lblpos", "lbl-lit",
       "if", "&&", "||", "equals", "equiv", "bool", "minimize", "maximize",
       // Boogie-defined
-      "real_pow", "UOrdering2", "UOrdering3", 
+      "real_pow", "UOrdering2", "UOrdering3",
       // Floating point (final draft SMTLIB-v2.5)
       "NaN",
       "fp.abs", "fp.neg", "fp.add", "fp.sub", "fp.mul", "fp.div", "fp.fma", "fp.sqrt", "fp.rem", "fp.roundToIntegral",
@@ -58,7 +60,8 @@ namespace Microsoft.Boogie.SMTLib
       "fp", "fp.to_ubv", "fp.to_sbv", "to_fp",
       // Rounding mode
       "rmode",
-      "roundNearestTiesToEven", "roundNearestTiesToAway", "roundTowardPositive", "roundTowardNegative", "roundTowardZero",
+      "roundNearestTiesToEven", "roundNearestTiesToAway", "roundTowardPositive", "roundTowardNegative",
+      "roundTowardZero",
       "RNE", "RNA", "RTP", "RTN", "RTZ",
     };
 
@@ -68,7 +71,8 @@ namespace Microsoft.Boogie.SMTLib
 
     static void InitSymbolLists()
     {
-      lock (reservedSmtWordsList) {
+      lock (reservedSmtWordsList)
+      {
         // don't move out, c.f. http://en.wikipedia.org/wiki/Double-checked_locking
         if (symbolListsInitilized)
           return;
@@ -77,7 +81,7 @@ namespace Microsoft.Boogie.SMTLib
           reservedSmtWords.Add(w);
         validIdChar = new bool[255];
         for (int i = 0; i < validIdChar.Length; ++i)
-          validIdChar[i] = char.IsLetterOrDigit((char)i) || idCharacters.IndexOf((char)i) >= 0;
+          validIdChar[i] = char.IsLetterOrDigit((char) i) || idCharacters.IndexOf((char) i) >= 0;
         symbolListsInitilized = true;
       }
     }
@@ -86,9 +90,11 @@ namespace Microsoft.Boogie.SMTLib
     {
       var allGood = true;
 
-      foreach (char ch in s) {
-        var c = (int)ch;
-        if (c >= validIdChar.Length || !validIdChar[c]) {
+      foreach (char ch in s)
+      {
+        var c = (int) ch;
+        if (c >= validIdChar.Length || !validIdChar[c])
+        {
           allGood = false;
           break;
         }
@@ -120,8 +126,12 @@ namespace Microsoft.Boogie.SMTLib
       return s;
     }
 
-    public IDictionary<string/*!*/, string/*!*/>/*!*/ LabelCounters; // Absy id -> local id
-    public IDictionary<string/*!*/, string/*!*/>/*!*/ CounterToLabels; // local id -> Absy id
+    public IDictionary<string /*!*/, string /*!*/> /*!*/
+      LabelCounters; // Absy id -> local id
+
+    public IDictionary<string /*!*/, string /*!*/> /*!*/
+      CounterToLabels; // local id -> Absy id
+
     private int CurrentLabelId;
 
     public override void ResetLabelCount()
@@ -138,30 +148,38 @@ namespace Microsoft.Boogie.SMTLib
 
     public override string LabelName(string s)
     {
-
-      if (s[0] == '+' || s[0] == '@') {
-       return s[0] + AbsyIndexToLocalIndex(s.Substring(1));
-      } else {
+      if (s[0] == '+' || s[0] == '@')
+      {
+        return s[0] + AbsyIndexToLocalIndex(s.Substring(1));
+      }
+      else
+      {
         return AbsyIndexToLocalIndex(s);
       }
     }
-    
-    private string AbsyIndexToLocalIndex (string s) { 
+
+    private string AbsyIndexToLocalIndex(string s)
+    {
       string counter;
-      if (!LabelCounters.TryGetValue(s, out counter)) { 
+      if (!LabelCounters.TryGetValue(s, out counter))
+      {
         counter = CurrentLabelId.ToString();
         CurrentLabelId++;
         LabelCounters[s] = counter;
         CounterToLabels[counter] = s;
       }
+
       return counter;
     }
 
     public override string AbsyLabel(string s)
     {
-      if (s[0] == '+' || s[0] == '@') {
+      if (s[0] == '+' || s[0] == '@')
+      {
         return s[0] + cce.NonNull(CounterToLabels[s.Substring(1)]);
-      } else {
+      }
+      else
+      {
         return cce.NonNull(CounterToLabels[s.Substring(1)]);
       }
     }
@@ -190,7 +208,9 @@ namespace Microsoft.Boogie.SMTLib
       CurrentLabelId = 0;
     }
 
-    private SMTLibNamer(SMTLibNamer namer) : base(namer) { }
+    private SMTLibNamer(SMTLibNamer namer) : base(namer)
+    {
+    }
 
     public override object Clone()
     {

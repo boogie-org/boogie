@@ -10,11 +10,14 @@ namespace Microsoft.Boogie.AbstractInterpretation
     class E : NativeLattice.Element
     {
       public readonly bool IsTop;
-      public E(bool isTop) {
+
+      public E(bool isTop)
+      {
         IsTop = isTop;
       }
 
-      public override Expr ToExpr() {
+      public override Expr ToExpr()
+      {
         return Expr.Literal(IsTop);
       }
     }
@@ -22,57 +25,83 @@ namespace Microsoft.Boogie.AbstractInterpretation
     private E top = new E(true);
     private E bottom = new E(false);
 
-    public override Element Top { get { return top; } }
-    public override Element Bottom { get { return bottom; } }
+    public override Element Top
+    {
+      get { return top; }
+    }
 
-    public override bool IsTop(Element element) {
-      var e = (E)element;
+    public override Element Bottom
+    {
+      get { return bottom; }
+    }
+
+    public override bool IsTop(Element element)
+    {
+      var e = (E) element;
       return e.IsTop;
     }
-    public override bool IsBottom(Element element) {
-      var e = (E)element;
+
+    public override bool IsBottom(Element element)
+    {
+      var e = (E) element;
       return !e.IsTop;
     }
 
-    public override bool Below(Element a, Element b) {
+    public override bool Below(Element a, Element b)
+    {
       return IsBottom(a) || IsTop(b);
     }
 
-    public override Element Meet(Element a, Element b) {
-      if (IsBottom(b)) {
+    public override Element Meet(Element a, Element b)
+    {
+      if (IsBottom(b))
+      {
         return b;
-      } else {
+      }
+      else
+      {
         return a;
       }
     }
 
-    public override Element Join(Element a, Element b) {
-      if (IsTop(b)) {
+    public override Element Join(Element a, Element b)
+    {
+      if (IsTop(b))
+      {
         return b;
-      } else {
+      }
+      else
+      {
         return a;
       }
     }
 
-    public override Element Widen(Element a, Element b) {
-      return Join(a, b);  // it's a finite domain, after all
+    public override Element Widen(Element a, Element b)
+    {
+      return Join(a, b); // it's a finite domain, after all
     }
 
-    public override Element Constrain(Element element, Expr expr) {
-      var e = (E)element;
+    public override Element Constrain(Element element, Expr expr)
+    {
+      var e = (E) element;
       var lit = expr as LiteralExpr;
-      if (lit != null && lit.isBool && !(bool)lit.Val) {
+      if (lit != null && lit.isBool && !(bool) lit.Val)
+      {
         return bottom;
-      } else {
+      }
+      else
+      {
         return e;
       }
     }
 
-    public override Element Update(Element element, AssignCmd cmd) {
+    public override Element Update(Element element, AssignCmd cmd)
+    {
       return element;
     }
 
-    public override Element Eliminate(Element element, Variable v) {
+    public override Element Eliminate(Element element, Variable v)
+    {
       return element;
     }
   }

@@ -3,6 +3,7 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -19,30 +20,35 @@ using Microsoft.Boogie.Clustering;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
 using System.Numerics;
-
 using RPFP = Microsoft.Boogie.RPFP;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  public class FunctionDependencyCollector : BoundVarTraversingVCExprVisitor<bool, bool> {
+  public class FunctionDependencyCollector : BoundVarTraversingVCExprVisitor<bool, bool>
+  {
     private List<Function> functionList;
 
     // not used but required by interface
-    protected override bool StandardResult(VCExpr node, bool arg) {
+    protected override bool StandardResult(VCExpr node, bool arg)
+    {
       return true;
     }
 
-    public List<Function> Collect(VCExpr expr) {
+    public List<Function> Collect(VCExpr expr)
+    {
       functionList = new List<Function>();
       Traverse(expr, true);
       return functionList;
     }
 
-    public override bool Visit(VCExprNAry node, bool arg) {
+    public override bool Visit(VCExprNAry node, bool arg)
+    {
       VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
-      if (op != null) {
+      if (op != null)
+      {
         functionList.Add(op.Func);
       }
+
       return base.Visit(node, arg);
     }
   }
@@ -64,21 +70,20 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Invariant(cce.NonNullElements(Axioms));
       Contract.Invariant(cce.NonNullElements(TypeDecls));
       Contract.Invariant(_backgroundPredicates != null);
-
     }
 
 
     [NotDelayed]
     public SMTLibProcessTheoremProver(ProverOptions options, VCExpressionGenerator gen,
-                                      SMTLibProverContext ctx)
+      SMTLibProverContext ctx)
     {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
-      
+
       InitializeGlobalInformation();
-      
-      this.options = (SMTLibProverOptions)options;
+
+      this.options = (SMTLibProverOptions) options;
       this.ctx = ctx;
       this.gen = gen;
       this.usingUnsatCore = false;
@@ -87,25 +92,26 @@ namespace Microsoft.Boogie.SMTLib
 
       Namer = new SMTLibNamer();
       ctx.parent = this;
-      this.DeclCollector = new TypeDeclCollector((SMTLibProverOptions)options, Namer);
+      this.DeclCollector = new TypeDeclCollector((SMTLibProverOptions) options, Namer);
 
       if (CommandLineOptions.Clo.PrintFixedPoint != null || CommandLineOptions.Clo.PrintConjectures != null)
       {
-          declHandler = new MyDeclHandler();
-          DeclCollector.SetDeclHandler(declHandler);
+        declHandler = new MyDeclHandler();
+        DeclCollector.SetDeclHandler(declHandler);
       }
 
       SetupProcess();
 
       if (CommandLineOptions.Clo.StratifiedInlining > 0 || CommandLineOptions.Clo.ContractInfer
-          || CommandLineOptions.Clo.SecureVcGen != null)
+                                                        || CommandLineOptions.Clo.SecureVcGen != null)
       {
-          // Prepare for ApiChecker usage
-          if (options.LogFilename != null && currentLogFile == null)
-          {
-              currentLogFile = OpenOutputFile("");
-          }
-          PrepareCommon();
+        // Prepare for ApiChecker usage
+        if (options.LogFilename != null && currentLogFile == null)
+        {
+          currentLogFile = OpenOutputFile("");
+        }
+
+        PrepareCommon();
       }
     }
 
@@ -120,6 +126,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         vcString = "(not " + VCExpr2String(vc, 1) + ")";
       }
+
       AssertAxioms();
       SendThisVC(string.Format("(assert (! {0} :named {1}))", vcString, name));
     }
@@ -153,7 +160,8 @@ namespace Microsoft.Boogie.SMTLib
 
     void PossiblyRestart()
     {
-      if (Process != null && Process.NeedsRestart) {
+      if (Process != null && Process.NeedsRestart)
+      {
         Process.Close();
         Process = null;
         SetupProcess();
@@ -186,7 +194,8 @@ namespace Microsoft.Boogie.SMTLib
 
     private void FeedTypeDeclsToProver()
     {
-      foreach (string s in DeclCollector.GetNewDeclarations()) {
+      foreach (string s in DeclCollector.GetNewDeclarations())
+      {
         Contract.Assert(s != null);
         AddTypeDecl(s);
       }
@@ -202,7 +211,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void LogComment(string comment)
     {
-        SendCommon("; " + comment);
+      SendCommon("; " + comment);
     }
 
     private void SendCommon(string s)
@@ -224,7 +233,8 @@ namespace Microsoft.Boogie.SMTLib
 
       if (Process != null)
         Process.Send(s);
-      if (currentLogFile != null) {
+      if (currentLogFile != null)
+      {
         currentLogFile.WriteLine(s);
         currentLogFile.Flush();
       }
@@ -232,20 +242,22 @@ namespace Microsoft.Boogie.SMTLib
 
     private void FindDependentTypes(Type type, List<CtorType> dependentTypes)
     {
-        MapType mapType = type as MapType;
-        if (mapType != null)
+      MapType mapType = type as MapType;
+      if (mapType != null)
+      {
+        foreach (Type t in mapType.Arguments)
         {
-            foreach (Type t in mapType.Arguments)
-            {
-                FindDependentTypes(t, dependentTypes);
-            }
-            FindDependentTypes(mapType.Result, dependentTypes);
+          FindDependentTypes(t, dependentTypes);
         }
-        CtorType ctorType = type as CtorType;
-        if (ctorType != null && ctx.KnownDatatypeConstructors.ContainsKey(ctorType))
-        {
-            dependentTypes.Add(ctorType);
-        }
+
+        FindDependentTypes(mapType.Result, dependentTypes);
+      }
+
+      CtorType ctorType = type as CtorType;
+      if (ctorType != null && ctx.KnownDatatypeConstructors.ContainsKey(ctorType))
+      {
+        dependentTypes.Add(ctorType);
+      }
     }
 
     private void PrepareDataTypes()
@@ -334,10 +346,13 @@ namespace Microsoft.Boogie.SMTLib
       List<string> generatedFuncDefs = new List<string>();
       FunctionDependencyCollector collector = new FunctionDependencyCollector();
       HashSet<Function> definitionAdded = new HashSet<Function>(); // whether definition has been fully processed
-      HashSet<Function> dependenciesComputed = new HashSet<Function>(); // whether dependencies have already been computed
-      while (functionDefs.Count > 0) {
+      HashSet<Function>
+        dependenciesComputed = new HashSet<Function>(); // whether dependencies have already been computed
+      while (functionDefs.Count > 0)
+      {
         Function f = functionDefs.Peek();
-        if (definitionAdded.Contains(f)) {
+        if (definitionAdded.Contains(f))
+        {
           // This definition was already processed (as a dependency of another definition)
           functionDefs.Pop();
           continue;
@@ -348,29 +363,37 @@ namespace Microsoft.Boogie.SMTLib
         VCExprNAry defBody = ctx.DefinedFunctions[f];
         List<Function> dependencies = collector.Collect(defBody[1]);
         bool hasDependencies = false;
-        foreach (Function fdep in dependencies) {
-          if (ctx.DefinedFunctions.ContainsKey(fdep) && !definitionAdded.Contains(fdep)) {
-            if (!dependenciesComputed.Contains(fdep)) {
+        foreach (Function fdep in dependencies)
+        {
+          if (ctx.DefinedFunctions.ContainsKey(fdep) && !definitionAdded.Contains(fdep))
+          {
+            if (!dependenciesComputed.Contains(fdep))
+            {
               // Handle dependencies first
               functionDefs.Push(fdep);
               hasDependencies = true;
-            } else {
-              HandleProverError("Function definition cycle detected: " + f.ToString() + " depends on " + fdep.ToString());
+            }
+            else
+            {
+              HandleProverError(
+                "Function definition cycle detected: " + f.ToString() + " depends on " + fdep.ToString());
             }
           }
         }
 
-        if (!hasDependencies) {
+        if (!hasDependencies)
+        {
           // No dependencies: go ahead and process this definition.
           string funcDef = "(define-fun ";
           var funCall = defBody[0] as VCExprNAry;
           Contract.Assert(funCall != null);
-          VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)funCall.Op;
+          VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp) funCall.Op;
           Contract.Assert(op != null);
           funcDef += Namer.GetQuotedName(op.Func, op.Func.Name);
 
           funcDef += " (";
-          foreach (var v in funCall.UniformArguments) {
+          foreach (var v in funCall.UniformArguments)
+          {
             VCExprVar varExpr = v as VCExprVar;
             Contract.Assert(varExpr != null);
             DeclCollector.AddKnownVariable(varExpr); // add var to knows vars so that it does not get declared later on
@@ -378,6 +401,7 @@ namespace Microsoft.Boogie.SMTLib
             Contract.Assert(printedName != null);
             funcDef += "(" + printedName + " " + SMTLibExprLineariser.TypeToString(varExpr.Type) + ") ";
           }
+
           funcDef += ") ";
 
           funcDef += SMTLibExprLineariser.TypeToString(defBody[0].Type) + " ";
@@ -386,7 +410,9 @@ namespace Microsoft.Boogie.SMTLib
           generatedFuncDefs.Add(funcDef);
           definitionAdded.Add(f);
           functionDefs.Pop();
-        } else {
+        }
+        else
+        {
           dependenciesComputed.Add(f);
         }
       }
@@ -415,7 +441,9 @@ namespace Microsoft.Boogie.SMTLib
 
         // Set produce-unsat-cores last. It seems there's a bug in Z3 where if we set it earlier its value
         // gets reset by other set-option commands ( https://z3.codeplex.com/workitem/188 )
-        if (CommandLineOptions.Clo.PrintNecessaryAssumes || CommandLineOptions.Clo.EnableUnSatCoreExtract == 1 ||(CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini)))
+        if (CommandLineOptions.Clo.PrintNecessaryAssumes || CommandLineOptions.Clo.EnableUnSatCoreExtract == 1 ||
+            (CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer ||
+                                                      CommandLineOptions.Clo.ExplainHoudini)))
         {
           SendCommon("(set-option :produce-unsat-cores true)");
           this.usingUnsatCore = true;
@@ -437,7 +465,8 @@ namespace Microsoft.Boogie.SMTLib
 
         PrepareDataTypes();
 
-        if (CommandLineOptions.Clo.ProverPreamble != null) {
+        if (CommandLineOptions.Clo.ProverPreamble != null)
+        {
           SendCommon("(include \"" + CommandLineOptions.Clo.ProverPreamble + "\")");
         }
 
@@ -457,6 +486,7 @@ namespace Microsoft.Boogie.SMTLib
           }
         else
           AddAxiom(VCExpr2String(axioms, -1));
+
         AxiomsAreSetup = true;
         CachedAxBuilder = AxBuilder;
         CachedNamer = Namer;
@@ -472,7 +502,8 @@ namespace Microsoft.Boogie.SMTLib
     private void FlushAndCacheCommons()
     {
       FlushAxioms();
-      if (CachedCommon == null) {
+      if (CachedCommon == null)
+      {
         CachedCommon = common.ToString();
       }
     }
@@ -481,18 +512,21 @@ namespace Microsoft.Boogie.SMTLib
     {
       TypeDecls.Iter(SendCommon);
       TypeDecls.Clear();
-      foreach (string s in Axioms) {
+      foreach (string s in Axioms)
+      {
         Contract.Assert(s != null);
         if (s != "true")
           SendCommon("(assert " + s + ")");
       }
+
       Axioms.Clear();
       //FlushPushedAssertions();
     }
 
     private void CloseLogFile()
     {
-      if (currentLogFile != null) {
+      if (currentLogFile != null)
+      {
         currentLogFile.Close();
         currentLogFile = null;
       }
@@ -500,7 +534,8 @@ namespace Microsoft.Boogie.SMTLib
 
     private void FlushLogFile()
     {
-      if (currentLogFile != null) {
+      if (currentLogFile != null)
+      {
         currentLogFile.Flush();
       }
     }
@@ -531,9 +566,10 @@ namespace Microsoft.Boogie.SMTLib
       PrepareCommon();
       FlushAndCacheCommons();
 
-      if (HasReset) {
-        AxBuilder = (TypeAxiomBuilder)CachedAxBuilder?.Clone();
-        Namer = (SMTLibNamer)CachedNamer.Clone();
+      if (HasReset)
+      {
+        AxBuilder = (TypeAxiomBuilder) CachedAxBuilder?.Clone();
+        Namer = (SMTLibNamer) CachedNamer.Clone();
         Namer.ResetLabelCount();
         DeclCollector.SetNamer(Namer);
         DeclCollector.Push();
@@ -555,18 +591,21 @@ namespace Microsoft.Boogie.SMTLib
 
       FlushLogFile();
 
-      if (Process != null) {
+      if (Process != null)
+      {
         Process.PingPong(); // flush any errors
 
         if (Process.Inspector != null)
           Process.Inspector.NewProblem(descriptiveName);
       }
 
-      if (HasReset) {
+      if (HasReset)
+      {
         DeclCollector.Pop();
         common = new StringBuilder(CachedCommon);
         HasReset = false;
       }
+
       SendCheckSat();
       FlushLogFile();
     }
@@ -598,6 +637,7 @@ namespace Microsoft.Boogie.SMTLib
             currentLogFile.WriteLine(c);
           }
         }
+
         HasReset = true;
       }
     }
@@ -625,424 +665,474 @@ namespace Microsoft.Boogie.SMTLib
     }
 
 
-		
-		private string StripCruft(string name){
-			if(name.Contains("@@"))
-			  return name.Remove(name.LastIndexOf ("@@"));
-			return name;
-		}
-		
-		private class BadExprFromProver : Exception
-		{
-		};
-		
-		private delegate VCExpr ArgGetter (int pos);
-		
-		private delegate VCExpr[] ArgsGetter ();
-		
-		private delegate VCExprVar[] VarsGetter ();
-		
-		private VCExprOp VCStringToVCOp (string op)
-		{
-			switch (op) {
-			case "+" :
-				return VCExpressionGenerator.AddIOp;
-			case "-" :
-				return VCExpressionGenerator.SubIOp;
-			case "*" :
-				return VCExpressionGenerator.MulIOp;
-			case "div" :
-				return VCExpressionGenerator.DivIOp;
-			case "=" :
-				return VCExpressionGenerator.EqOp;
-			case "<=" :
-				return VCExpressionGenerator.LeOp;
-			case "<" :
-				return VCExpressionGenerator.LtOp;
-			case ">=" :
-				return VCExpressionGenerator.GeOp;
-			case ">" :
-				return VCExpressionGenerator.GtOp;
-			case "and" :
-				return VCExpressionGenerator.AndOp;
-			case "or" :
-				return VCExpressionGenerator.OrOp;
-			case "not" :
-				return VCExpressionGenerator.NotOp;
-			case "ite" :
-				return VCExpressionGenerator.IfThenElseOp;
-			default:
-				return null;
-			}
-		}
-		
-		private class MyDeclHandler : TypeDeclCollector.DeclHandler {
-			public Dictionary<string,VCExprVar> var_map = new Dictionary<string, VCExprVar>();
-			public Dictionary<string,Function> func_map = new Dictionary<string, Function>();
-			public override void VarDecl(VCExprVar v){
-				var_map[v.Name] = v;
-			}
-			public override void FuncDecl(Function f){
-				func_map[f.Name] = f;
-			}
-			public MyDeclHandler() {
-			}
-		}
-		
-		private MyDeclHandler declHandler = null;
-
-		private VCExprVar SExprToVar (SExpr e)
-		{
-			if(e.Arguments.Count() != 1){
-				HandleProverError ("Prover error: bad quantifier syntax");
-				throw new BadExprFromProver ();
-			}
-			string vname = StripCruft(e.Name);
-			SExpr vtype = e[0];
-			switch(vtype.Name){
-			case "Int":
-				return gen.Variable(vname,Type.Int);
-			case "Bool":
-				return gen.Variable (vname,Type.Bool);
-			case "Array":{
-                // TODO: handle more general array types
-                var idxType = Type.Int; // well, could be something else
-                var valueType = 
-                    (vtype.Arguments[1].Name == "Int") ? Type.Int : Type.Bool;
-                var types = new List<Type>();
-                types.Add(idxType);
-				return gen.Variable (vname, new MapType(Token.NoToken,new List<TypeVariable>(),types,valueType));
-            }
-			default: {
-				HandleProverError ("Prover error: bad type: " + vtype.Name);
-				throw new BadExprFromProver ();
-				}
-			}
-		}
-
-        private VCExpr MakeBinary(VCExprOp op, VCExpr [] args)
-        {
-            if (args.Count() == 0)
-            {
-                // with zero args we need the identity of the op
-                if (op == VCExpressionGenerator.AndOp)
-                    return VCExpressionGenerator.True;
-                if (op == VCExpressionGenerator.OrOp)
-                    return VCExpressionGenerator.False;
-                if (op == VCExpressionGenerator.AddIOp)
-                {
-                    Microsoft.Basetypes.BigNum x = Microsoft.Basetypes.BigNum.ZERO;
-                    return gen.Integer(x);
-                }
-                HandleProverError("Prover error: bad expression ");
-                throw new BadExprFromProver();
-            }
-            var temp = args[0];
-            for (int i = 1; i < args.Count(); i++)
-                temp = gen.Function(op, temp, args[i]);
-            return temp;
-        }
-		
-		protected VCExpr SExprToVCExpr (SExpr e, Dictionary<string,VCExpr> bound)
-		{
-			if (e.Arguments.Count() == 0) {
-				var name = StripCruft(e.Name);
-				if (name [0] >= '0' && name [0] <= '9') {
-					Microsoft.Basetypes.BigNum x = Microsoft.Basetypes.BigNum.FromString(name);
-					return gen.Integer (x);
-				}
-				if (bound.ContainsKey (name)) {
-					return bound [name];
-				}
-				if(name == "true")
-					return VCExpressionGenerator.True;
-				if(name == "false")
-					return VCExpressionGenerator.False;
-				if(declHandler.var_map.ContainsKey(name))
-					return declHandler.var_map[name];
-				HandleProverError ("Prover error: unknown symbol:" + name);
-				//throw new BadExprFromProver ();
-                var v = gen.Variable(name, Type.Int);
-                bound.Add(name, v);
-                return v;
-			}
-			ArgGetter g = i => SExprToVCExpr (e [i], bound);
-			ArgsGetter ga = () => e.Arguments.Select (x => SExprToVCExpr (x, bound)).ToArray ();
-			VarsGetter gb = () => e [0].Arguments.Select (x => SExprToVar (x)).ToArray ();
-			switch (e.Name) {
-			case "select" :
-				return gen.Select (ga ());
-			case "store" :
-				return gen.Store (ga ());
-            case "forall":
-            case "exists":
-                {
-                    var binds = e.Arguments[0];
-                    var vcbinds = new List<VCExprVar>();
-                    var bound_copy = new Dictionary<string, VCExpr>(bound);
-                    for (int i = 0; i < binds.Arguments.Count(); i++)
-                    {
-                        var bind = binds.Arguments[i];
-                        var symb = StripCruft(bind.Name);
-                        var vcv = SExprToVar(bind);
-                        vcbinds.Add(vcv);
-                        bound[symb] = vcv;
-                    }
-                    var body = g(1);
-                    if (e.Name == "forall")
-                        body = gen.Forall(vcbinds, new List<VCTrigger>(), body);
-                    else
-                        body = gen.Exists(vcbinds, new List<VCTrigger>(), body);
-                    bound = bound_copy;
-                    return body;
-                }
-			case "-" : // have to deal with unary case
-			{
-				if(e.ArgCount == 1){
-					var args = new VCExpr[2];
-					args[0] = gen.Integer (Microsoft.Basetypes.BigNum.ZERO);
-					args[1] = g(0);
-					return gen.Function(VCStringToVCOp("-"),args);
-				}
-				return gen.Function(VCStringToVCOp("-"),ga());
-			}
-            case "!" : // this is commentary
-                return g(0);
-            case "let" : {
-				// we expand lets exponentially since there is no let binding in Boogie surface syntax
-				bool expand_lets = true;
-				var binds = e.Arguments[0];
-				var vcbinds = new List<VCExprLetBinding>();
-                var bound_copy = new Dictionary<string, VCExpr>(bound);
-				for(int i = 0; i < binds.Arguments.Count(); i++){
-					var bind = binds.Arguments[i];
-					var symb = bind.Name;
-					var def = bind.Arguments[0];
-                    var vce = SExprToVCExpr(def, bound);
-					var vcv = gen.Variable(symb,vce.Type);
-					var vcb = gen.LetBinding(vcv,vce);
-					vcbinds.Add (vcb);
-					bound[symb] = expand_lets ? vce : vcv;
-				}
-				var body = g(1); 
-				if(!expand_lets)
-					body = gen.Let(vcbinds,body);
-                bound = bound_copy;
-                return body;
-			}
-				
-			default: {
-					var op = VCStringToVCOp (e.Name);
-					if (op == null) {
-						var name = StripCruft(e.Name);
-					    if(declHandler.func_map.ContainsKey(name)){
-							Function f = declHandler.func_map[name];	
-							return gen.Function (f, ga());
-					    }
-						HandleProverError ("Prover error: unknown operator:" + e.Name);
-						throw new BadExprFromProver ();
-					}
-                    if(op.Arity == 2)
-					    return MakeBinary (op, ga ());
-                    return gen.Function(op, ga());
-				}
-			}
-		}
-		
-		private void SExprToSoln (SExpr resp,
-                             Dictionary<int,Dictionary<string,string>> varSubst)
-		{
-			Dictionary<string, RPFP.Node> pmap = new Dictionary<string,RPFP.Node> ();
-
-			foreach (var node in rpfp.nodes)
-				pmap.Add ((node.Name as VCExprBoogieFunctionOp).Func.Name, node);
-			
-			var lines = resp.Arguments;
-
-			// get all the predicate definitions
-			for (int i = 0; i < lines.Length; i++) {
-				var line = lines [i];
-                string pname;
-                RPFP.Transformer annot;
-                GetDefun(line, out pname, out annot);
-				
-				if(pmap.ContainsKey(pname)){
-					var node = pmap[pname];
-					node.Annotation = annot;
-				}
-				else if(pname[0] != '@'){ // if not an internal symbol
-					HandleProverError ("Prover error: got unknown predicate:" + pname);
-					throw new BadExprFromProver ();
-				}
-			}
-			
-		}
-
-        private void GetDefun(SExpr line, out string pname, out RPFP.Transformer annot)
-        {
-            if (line.Name != "define-fun")
-            {
-                HandleProverError("Prover error: expected define-fun but got:" + line.Name);
-                throw new BadExprFromProver();
-            }
-            if (line.ArgCount != 4)
-            {
-                HandleProverError("Prover error: define-fun has wrong number of arguments");
-                throw new BadExprFromProver();
-            }
-            pname = StripCruft(line.Arguments[0].Name);
-            var pvars = line.Arguments[1];
-            var pbody = line.Arguments[3]; // range has to be Bool
-            var binding = new Dictionary<string, VCExpr>();
-            var pvs = new List<VCExpr>();
-            foreach (var b in pvars.Arguments)
-            {
-                var e = SExprToVar(b);
-                pvs.Add(e);
-                binding.Add(StripCruft(b.Name), e);
-            }
-            VCExpr bexpr = SExprToVCExpr(pbody, binding);
-
-            annot = rpfp.CreateRelation(pvs.ToArray(), bexpr);
-        }
-		
-    private RPFP.Node SExprToCex(SExpr resp, ErrorHandler handler, 
-                                 Dictionary<int,Dictionary<string,string>> varSubst)
+    private string StripCruft(string name)
     {
-        Dictionary<string, RPFP.Node> nmap = new Dictionary<string,RPFP.Node>();
-        Dictionary<string, RPFP.Node> pmap = new Dictionary<string,RPFP.Node>();
+      if (name.Contains("@@"))
+        return name.Remove(name.LastIndexOf("@@"));
+      return name;
+    }
 
-        foreach(var node in rpfp.nodes)
-            pmap.Add((node.Name as VCExprBoogieFunctionOp).Func.Name,node);
+    private class BadExprFromProver : Exception
+    {
+    }
 
-        RPFP.Node topnode = null;
-        var lines = resp.Arguments;
+    private delegate VCExpr ArgGetter(int pos);
 
-        // last line of derivation is from query, skip it
-        for (int i = 0; i < lines.Length-1; i++)
+    private delegate VCExpr[] ArgsGetter();
+
+    private delegate VCExprVar[] VarsGetter();
+
+    private VCExprOp VCStringToVCOp(string op)
+    {
+      switch (op)
+      {
+        case "+":
+          return VCExpressionGenerator.AddIOp;
+        case "-":
+          return VCExpressionGenerator.SubIOp;
+        case "*":
+          return VCExpressionGenerator.MulIOp;
+        case "div":
+          return VCExpressionGenerator.DivIOp;
+        case "=":
+          return VCExpressionGenerator.EqOp;
+        case "<=":
+          return VCExpressionGenerator.LeOp;
+        case "<":
+          return VCExpressionGenerator.LtOp;
+        case ">=":
+          return VCExpressionGenerator.GeOp;
+        case ">":
+          return VCExpressionGenerator.GtOp;
+        case "and":
+          return VCExpressionGenerator.AndOp;
+        case "or":
+          return VCExpressionGenerator.OrOp;
+        case "not":
+          return VCExpressionGenerator.NotOp;
+        case "ite":
+          return VCExpressionGenerator.IfThenElseOp;
+        default:
+          return null;
+      }
+    }
+
+    private class MyDeclHandler : TypeDeclCollector.DeclHandler
+    {
+      public Dictionary<string, VCExprVar> var_map = new Dictionary<string, VCExprVar>();
+      public Dictionary<string, Function> func_map = new Dictionary<string, Function>();
+
+      public override void VarDecl(VCExprVar v)
+      {
+        var_map[v.Name] = v;
+      }
+
+      public override void FuncDecl(Function f)
+      {
+        func_map[f.Name] = f;
+      }
+
+      public MyDeclHandler()
+      {
+      }
+    }
+
+    private MyDeclHandler declHandler = null;
+
+    private VCExprVar SExprToVar(SExpr e)
+    {
+      if (e.Arguments.Count() != 1)
+      {
+        HandleProverError("Prover error: bad quantifier syntax");
+        throw new BadExprFromProver();
+      }
+
+      string vname = StripCruft(e.Name);
+      SExpr vtype = e[0];
+      switch (vtype.Name)
+      {
+        case "Int":
+          return gen.Variable(vname, Type.Int);
+        case "Bool":
+          return gen.Variable(vname, Type.Bool);
+        case "Array":
         {
-            var line = lines[i];
-            if (line.ArgCount != 6)
-            {
-                HandleProverError("bad derivation line from prover: " + line.ToString());
-                return null;
-            }
-            var name = line[0];
-            var conseq = line[1];
-            var rule = line[2];
-            var subst = line[3];
-            var labs = line[4];
-            var refs = line[5];
-            var predName = conseq.Name;
-            {
-                string spacer = "@@"; // Hack! UniqueNamer is adding these and I can't stop it!
-                int pos = predName.LastIndexOf(spacer);
-                if (pos >= 0)
-                    predName = predName.Substring(0, pos);
-            }
-            RPFP.Node node = null;
-            if (!pmap.TryGetValue(predName, out node))
-            {
-                HandleProverError("unknown predicate from prover: " + predName.ToString());
-                return null;
-            }
-            RPFP.Node cexnode = rpfp.CloneNode(node);
-            cexnode.map = node;
-            nmap.Add(name.Name, cexnode);
-            List<RPFP.Node> Chs = new List<RPFP.Node>();
-
-            if (refs.Name != "ref")
-            {
-                HandleProverError("bad references from prover: " + refs.ToString());
-                return null;
-            }
-            foreach (var c in refs.Arguments)
-            {
-                if (c.Name == "true")
-                    Chs.Add(null);
-                else
-                {
-                    RPFP.Node ch = null;
-                    if (!nmap.TryGetValue(c.Name, out ch))
-                    {
-                        HandleProverError("unknown reference from prover: " + c.ToString());
-                        return null;
-                    }
-                    Chs.Add(ch);
-                }
-            }
-
-            if (!rule.Name.StartsWith("rule!"))
-            {
-                HandleProverError("bad rule name from prover: " + refs.ToString());
-                return null;
-            }
-            int ruleNum = Convert.ToInt32(rule.Name.Substring(5)) - 1;
-            if (ruleNum < 0 || ruleNum > rpfp.edges.Count)
-            {
-                HandleProverError("bad rule name from prover: " + refs.ToString());
-                return null;
-            }
-            RPFP.Edge orig_edge = rpfp.edges[ruleNum];
-            RPFP.Edge e = rpfp.CreateEdge(cexnode, orig_edge.F, Chs.ToArray());
-            e.map = orig_edge;
-            topnode = cexnode;
-
-            if (labs.Name != "labels")
-            {
-                HandleProverError("bad labels from prover: " + labs.ToString());
-                return null;
-            }
-            e.labels = new HashSet<string>();
-            foreach (var l in labs.Arguments)
-                e.labels.Add(l.Name);
-
-            if (subst.Name != "subst")
-            {
-                HandleProverError("bad subst from prover: " + subst.ToString());
-                return null;
-            }
-            Dictionary<string, string> dict = new Dictionary<string, string>();
-            varSubst[e.number] = dict;
-            foreach (var s in subst.Arguments)
-            {
-                if (s.Name != "=" || s.Arguments.Length != 2)
-                {
-                    HandleProverError("bad equation from prover: " + s.ToString());
-                    return null;
-                }
-                string uniqueName = s.Arguments[0].Name;
-                string spacer = "@@"; // Hack! UniqueNamer is adding these and I can't stop it!
-                int pos = uniqueName.LastIndexOf(spacer);
-                if (pos >= 0)
-                    uniqueName = uniqueName.Substring(0, pos);
-                dict.Add(uniqueName, s.Arguments[1].ToString());
-            }
-
+          // TODO: handle more general array types
+          var idxType = Type.Int; // well, could be something else
+          var valueType =
+            (vtype.Arguments[1].Name == "Int") ? Type.Int : Type.Bool;
+          var types = new List<Type>();
+          types.Add(idxType);
+          return gen.Variable(vname, new MapType(Token.NoToken, new List<TypeVariable>(), types, valueType));
         }
-        if (topnode == null)
+        default:
         {
-            HandleProverError("empty derivation from prover: " + resp.ToString());
+          HandleProverError("Prover error: bad type: " + vtype.Name);
+          throw new BadExprFromProver();
         }
-        return topnode;
+      }
+    }
+
+    private VCExpr MakeBinary(VCExprOp op, VCExpr[] args)
+    {
+      if (args.Count() == 0)
+      {
+        // with zero args we need the identity of the op
+        if (op == VCExpressionGenerator.AndOp)
+          return VCExpressionGenerator.True;
+        if (op == VCExpressionGenerator.OrOp)
+          return VCExpressionGenerator.False;
+        if (op == VCExpressionGenerator.AddIOp)
+        {
+          Microsoft.Basetypes.BigNum x = Microsoft.Basetypes.BigNum.ZERO;
+          return gen.Integer(x);
+        }
+
+        HandleProverError("Prover error: bad expression ");
+        throw new BadExprFromProver();
+      }
+
+      var temp = args[0];
+      for (int i = 1; i < args.Count(); i++)
+        temp = gen.Function(op, temp, args[i]);
+      return temp;
+    }
+
+    protected VCExpr SExprToVCExpr(SExpr e, Dictionary<string, VCExpr> bound)
+    {
+      if (e.Arguments.Count() == 0)
+      {
+        var name = StripCruft(e.Name);
+        if (name[0] >= '0' && name[0] <= '9')
+        {
+          Microsoft.Basetypes.BigNum x = Microsoft.Basetypes.BigNum.FromString(name);
+          return gen.Integer(x);
+        }
+
+        if (bound.ContainsKey(name))
+        {
+          return bound[name];
+        }
+
+        if (name == "true")
+          return VCExpressionGenerator.True;
+        if (name == "false")
+          return VCExpressionGenerator.False;
+        if (declHandler.var_map.ContainsKey(name))
+          return declHandler.var_map[name];
+        HandleProverError("Prover error: unknown symbol:" + name);
+        //throw new BadExprFromProver ();
+        var v = gen.Variable(name, Type.Int);
+        bound.Add(name, v);
+        return v;
+      }
+
+      ArgGetter g = i => SExprToVCExpr(e[i], bound);
+      ArgsGetter ga = () => e.Arguments.Select(x => SExprToVCExpr(x, bound)).ToArray();
+      VarsGetter gb = () => e[0].Arguments.Select(x => SExprToVar(x)).ToArray();
+      switch (e.Name)
+      {
+        case "select":
+          return gen.Select(ga());
+        case "store":
+          return gen.Store(ga());
+        case "forall":
+        case "exists":
+        {
+          var binds = e.Arguments[0];
+          var vcbinds = new List<VCExprVar>();
+          var bound_copy = new Dictionary<string, VCExpr>(bound);
+          for (int i = 0; i < binds.Arguments.Count(); i++)
+          {
+            var bind = binds.Arguments[i];
+            var symb = StripCruft(bind.Name);
+            var vcv = SExprToVar(bind);
+            vcbinds.Add(vcv);
+            bound[symb] = vcv;
+          }
+
+          var body = g(1);
+          if (e.Name == "forall")
+            body = gen.Forall(vcbinds, new List<VCTrigger>(), body);
+          else
+            body = gen.Exists(vcbinds, new List<VCTrigger>(), body);
+          bound = bound_copy;
+          return body;
+        }
+        case "-": // have to deal with unary case
+        {
+          if (e.ArgCount == 1)
+          {
+            var args = new VCExpr[2];
+            args[0] = gen.Integer(Microsoft.Basetypes.BigNum.ZERO);
+            args[1] = g(0);
+            return gen.Function(VCStringToVCOp("-"), args);
+          }
+
+          return gen.Function(VCStringToVCOp("-"), ga());
+        }
+        case "!": // this is commentary
+          return g(0);
+        case "let":
+        {
+          // we expand lets exponentially since there is no let binding in Boogie surface syntax
+          bool expand_lets = true;
+          var binds = e.Arguments[0];
+          var vcbinds = new List<VCExprLetBinding>();
+          var bound_copy = new Dictionary<string, VCExpr>(bound);
+          for (int i = 0; i < binds.Arguments.Count(); i++)
+          {
+            var bind = binds.Arguments[i];
+            var symb = bind.Name;
+            var def = bind.Arguments[0];
+            var vce = SExprToVCExpr(def, bound);
+            var vcv = gen.Variable(symb, vce.Type);
+            var vcb = gen.LetBinding(vcv, vce);
+            vcbinds.Add(vcb);
+            bound[symb] = expand_lets ? vce : vcv;
+          }
+
+          var body = g(1);
+          if (!expand_lets)
+            body = gen.Let(vcbinds, body);
+          bound = bound_copy;
+          return body;
+        }
+
+        default:
+        {
+          var op = VCStringToVCOp(e.Name);
+          if (op == null)
+          {
+            var name = StripCruft(e.Name);
+            if (declHandler.func_map.ContainsKey(name))
+            {
+              Function f = declHandler.func_map[name];
+              return gen.Function(f, ga());
+            }
+
+            HandleProverError("Prover error: unknown operator:" + e.Name);
+            throw new BadExprFromProver();
+          }
+
+          if (op.Arity == 2)
+            return MakeBinary(op, ga());
+          return gen.Function(op, ga());
+        }
+      }
+    }
+
+    private void SExprToSoln(SExpr resp,
+      Dictionary<int, Dictionary<string, string>> varSubst)
+    {
+      Dictionary<string, RPFP.Node> pmap = new Dictionary<string, RPFP.Node>();
+
+      foreach (var node in rpfp.nodes)
+        pmap.Add((node.Name as VCExprBoogieFunctionOp).Func.Name, node);
+
+      var lines = resp.Arguments;
+
+      // get all the predicate definitions
+      for (int i = 0; i < lines.Length; i++)
+      {
+        var line = lines[i];
+        string pname;
+        RPFP.Transformer annot;
+        GetDefun(line, out pname, out annot);
+
+        if (pmap.ContainsKey(pname))
+        {
+          var node = pmap[pname];
+          node.Annotation = annot;
+        }
+        else if (pname[0] != '@')
+        {
+          // if not an internal symbol
+          HandleProverError("Prover error: got unknown predicate:" + pname);
+          throw new BadExprFromProver();
+        }
+      }
+    }
+
+    private void GetDefun(SExpr line, out string pname, out RPFP.Transformer annot)
+    {
+      if (line.Name != "define-fun")
+      {
+        HandleProverError("Prover error: expected define-fun but got:" + line.Name);
+        throw new BadExprFromProver();
+      }
+
+      if (line.ArgCount != 4)
+      {
+        HandleProverError("Prover error: define-fun has wrong number of arguments");
+        throw new BadExprFromProver();
+      }
+
+      pname = StripCruft(line.Arguments[0].Name);
+      var pvars = line.Arguments[1];
+      var pbody = line.Arguments[3]; // range has to be Bool
+      var binding = new Dictionary<string, VCExpr>();
+      var pvs = new List<VCExpr>();
+      foreach (var b in pvars.Arguments)
+      {
+        var e = SExprToVar(b);
+        pvs.Add(e);
+        binding.Add(StripCruft(b.Name), e);
+      }
+
+      VCExpr bexpr = SExprToVCExpr(pbody, binding);
+
+      annot = rpfp.CreateRelation(pvs.ToArray(), bexpr);
+    }
+
+    private RPFP.Node SExprToCex(SExpr resp, ErrorHandler handler,
+      Dictionary<int, Dictionary<string, string>> varSubst)
+    {
+      Dictionary<string, RPFP.Node> nmap = new Dictionary<string, RPFP.Node>();
+      Dictionary<string, RPFP.Node> pmap = new Dictionary<string, RPFP.Node>();
+
+      foreach (var node in rpfp.nodes)
+        pmap.Add((node.Name as VCExprBoogieFunctionOp).Func.Name, node);
+
+      RPFP.Node topnode = null;
+      var lines = resp.Arguments;
+
+      // last line of derivation is from query, skip it
+      for (int i = 0; i < lines.Length - 1; i++)
+      {
+        var line = lines[i];
+        if (line.ArgCount != 6)
+        {
+          HandleProverError("bad derivation line from prover: " + line.ToString());
+          return null;
+        }
+
+        var name = line[0];
+        var conseq = line[1];
+        var rule = line[2];
+        var subst = line[3];
+        var labs = line[4];
+        var refs = line[5];
+        var predName = conseq.Name;
+        {
+          string spacer = "@@"; // Hack! UniqueNamer is adding these and I can't stop it!
+          int pos = predName.LastIndexOf(spacer);
+          if (pos >= 0)
+            predName = predName.Substring(0, pos);
+        }
+        RPFP.Node node = null;
+        if (!pmap.TryGetValue(predName, out node))
+        {
+          HandleProverError("unknown predicate from prover: " + predName.ToString());
+          return null;
+        }
+
+        RPFP.Node cexnode = rpfp.CloneNode(node);
+        cexnode.map = node;
+        nmap.Add(name.Name, cexnode);
+        List<RPFP.Node> Chs = new List<RPFP.Node>();
+
+        if (refs.Name != "ref")
+        {
+          HandleProverError("bad references from prover: " + refs.ToString());
+          return null;
+        }
+
+        foreach (var c in refs.Arguments)
+        {
+          if (c.Name == "true")
+            Chs.Add(null);
+          else
+          {
+            RPFP.Node ch = null;
+            if (!nmap.TryGetValue(c.Name, out ch))
+            {
+              HandleProverError("unknown reference from prover: " + c.ToString());
+              return null;
+            }
+
+            Chs.Add(ch);
+          }
+        }
+
+        if (!rule.Name.StartsWith("rule!"))
+        {
+          HandleProverError("bad rule name from prover: " + refs.ToString());
+          return null;
+        }
+
+        int ruleNum = Convert.ToInt32(rule.Name.Substring(5)) - 1;
+        if (ruleNum < 0 || ruleNum > rpfp.edges.Count)
+        {
+          HandleProverError("bad rule name from prover: " + refs.ToString());
+          return null;
+        }
+
+        RPFP.Edge orig_edge = rpfp.edges[ruleNum];
+        RPFP.Edge e = rpfp.CreateEdge(cexnode, orig_edge.F, Chs.ToArray());
+        e.map = orig_edge;
+        topnode = cexnode;
+
+        if (labs.Name != "labels")
+        {
+          HandleProverError("bad labels from prover: " + labs.ToString());
+          return null;
+        }
+
+        e.labels = new HashSet<string>();
+        foreach (var l in labs.Arguments)
+          e.labels.Add(l.Name);
+
+        if (subst.Name != "subst")
+        {
+          HandleProverError("bad subst from prover: " + subst.ToString());
+          return null;
+        }
+
+        Dictionary<string, string> dict = new Dictionary<string, string>();
+        varSubst[e.number] = dict;
+        foreach (var s in subst.Arguments)
+        {
+          if (s.Name != "=" || s.Arguments.Length != 2)
+          {
+            HandleProverError("bad equation from prover: " + s.ToString());
+            return null;
+          }
+
+          string uniqueName = s.Arguments[0].Name;
+          string spacer = "@@"; // Hack! UniqueNamer is adding these and I can't stop it!
+          int pos = uniqueName.LastIndexOf(spacer);
+          if (pos >= 0)
+            uniqueName = uniqueName.Substring(0, pos);
+          dict.Add(uniqueName, s.Arguments[1].ToString());
+        }
+      }
+
+      if (topnode == null)
+      {
+        HandleProverError("empty derivation from prover: " + resp.ToString());
+      }
+
+      return topnode;
     }
 
     private Model SExprToModel(SExpr resp, ErrorHandler handler)
     {
-        // Concatenate all the arguments
-        string modelString = resp[0].Name;
-        // modelString = modelString.Substring(7, modelString.Length - 8); // remove "(model " and final ")"
-        var models = Model.ParseModels(new StringReader("Error model: \n" + modelString));
-        if (models == null || models.Count == 0)
-        {
-            HandleProverError("no model from prover: " + resp.ToString());
-        }
-        return models[0];
+      // Concatenate all the arguments
+      string modelString = resp[0].Name;
+      // modelString = modelString.Substring(7, modelString.Length - 8); // remove "(model " and final ")"
+      var models = Model.ParseModels(new StringReader("Error model: \n" + modelString));
+      if (models == null || models.Count == 0)
+      {
+        HandleProverError("no model from prover: " + resp.ToString());
+      }
+
+      return models[0];
     }
 
     private string QuantifiedVCExpr2String(VCExpr x)
     {
-        return VCExpr2String(x, 1); 
+      return VCExpr2String(x, 1);
 #if false
         if (!(x is VCExprQuantifier))
             return VCExpr2String(x, 1);
@@ -1071,170 +1161,177 @@ namespace Microsoft.Boogie.SMTLib
         return res;
 #endif
     }
-		
-    public override Outcome CheckRPFP(string descriptiveName, RPFP _rpfp, ErrorHandler handler, 
-                                      out RPFP.Node cex,
-                                      Dictionary<int, Dictionary<string, string>> varSubst,
-                                      Dictionary<string, int> extra_bound)
+
+    public override Outcome CheckRPFP(string descriptiveName, RPFP _rpfp, ErrorHandler handler,
+      out RPFP.Node cex,
+      Dictionary<int, Dictionary<string, string>> varSubst,
+      Dictionary<string, int> extra_bound)
     {
-        //Contract.Requires(descriptiveName != null);
-        //Contract.Requires(vc != null);
-        //Contract.Requires(handler != null);
-        rpfp = _rpfp;
-        cex = null;
-			
-			
-        if (options.SeparateLogFiles) CloseLogFile(); // shouldn't really happen
+      //Contract.Requires(descriptiveName != null);
+      //Contract.Requires(vc != null);
+      //Contract.Requires(handler != null);
+      rpfp = _rpfp;
+      cex = null;
 
-        if (options.LogFilename != null && currentLogFile == null)
-        {
-            currentLogFile = OpenOutputFile(descriptiveName);
-            currentLogFile.Write(common.ToString());
-        }
 
-        PrepareCommon(); 
-        
-        Push();
-        SendThisVC("(fixedpoint-push)");
-        foreach (var node in rpfp.nodes)
-        {
-            DeclCollector.RegisterRelation((node.Name as VCExprBoogieFunctionOp).Func);
-        }
+      if (options.SeparateLogFiles) CloseLogFile(); // shouldn't really happen
 
-        LineariserOptions.Default.LabelsBelowQuantifiers = true;
-        List<string> ruleStrings = new List<string>();
-        var recursion_bound = CommandLineOptions.Clo.RecursionBound;
-        foreach (var edge in rpfp.edges)
-        {
-            string node_name = (edge.Parent.Name as VCExprBoogieFunctionOp).Func.Name;
-            string rule_name = "rule_" + edge.number.ToString();
-            string rec_bound = "";
-            if(extra_bound != null && extra_bound.ContainsKey(node_name))
-                    rec_bound = (recursion_bound + extra_bound[node_name]).ToString();
-            string ruleString = "(rule " + QuantifiedVCExpr2String(rpfp.GetRule(edge)) + " " + rule_name + " " + rec_bound + "\n)";
-            ruleStrings.Add(ruleString);
-        }
-        string queryString = "(query " + QuantifiedVCExpr2String(rpfp.GetQuery()) + "\n   :engine duality\n  :print-certificate true\n";
-       
+      if (options.LogFilename != null && currentLogFile == null)
+      {
+        currentLogFile = OpenOutputFile(descriptiveName);
+        currentLogFile.Write(common.ToString());
+      }
+
+      PrepareCommon();
+
+      Push();
+      SendThisVC("(fixedpoint-push)");
+      foreach (var node in rpfp.nodes)
+      {
+        DeclCollector.RegisterRelation((node.Name as VCExprBoogieFunctionOp).Func);
+      }
+
+      LineariserOptions.Default.LabelsBelowQuantifiers = true;
+      List<string> ruleStrings = new List<string>();
+      var recursion_bound = CommandLineOptions.Clo.RecursionBound;
+      foreach (var edge in rpfp.edges)
+      {
+        string node_name = (edge.Parent.Name as VCExprBoogieFunctionOp).Func.Name;
+        string rule_name = "rule_" + edge.number.ToString();
+        string rec_bound = "";
+        if (extra_bound != null && extra_bound.ContainsKey(node_name))
+          rec_bound = (recursion_bound + extra_bound[node_name]).ToString();
+        string ruleString = "(rule " + QuantifiedVCExpr2String(rpfp.GetRule(edge)) + " " + rule_name + " " + rec_bound +
+                            "\n)";
+        ruleStrings.Add(ruleString);
+      }
+
+      string queryString = "(query " + QuantifiedVCExpr2String(rpfp.GetQuery()) +
+                           "\n   :engine duality\n  :print-certificate true\n";
+
 #if true
-        if (CommandLineOptions.Clo.StratifiedInlining != 0)
-            queryString += "    :stratified-inlining true\n";
-        if (CommandLineOptions.Clo.RecursionBound > 0)
-            queryString += "    :recursion-bound " + Convert.ToString(CommandLineOptions.Clo.RecursionBound) + "\n";
+      if (CommandLineOptions.Clo.StratifiedInlining != 0)
+        queryString += "    :stratified-inlining true\n";
+      if (CommandLineOptions.Clo.RecursionBound > 0)
+        queryString += "    :recursion-bound " + Convert.ToString(CommandLineOptions.Clo.RecursionBound) + "\n";
 #endif
-        queryString += ")";
-        LineariserOptions.Default.LabelsBelowQuantifiers = false;
-        FlushAxioms();
+      queryString += ")";
+      LineariserOptions.Default.LabelsBelowQuantifiers = false;
+      FlushAxioms();
 
-        PossiblyRestart();
+      PossiblyRestart();
 
-        SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
-        foreach(var rs in ruleStrings)
-            SendThisVC(rs);
-        FlushLogFile();
+      SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
+      foreach (var rs in ruleStrings)
+        SendThisVC(rs);
+      FlushLogFile();
 
-        if (Process != null)
-        {
-            Process.PingPong(); // flush any errors
+      if (Process != null)
+      {
+        Process.PingPong(); // flush any errors
 
 #if false
             // TODO: this is not going to work
             if (Process.Inspector != null)
                 Process.Inspector.NewProblem(descriptiveName, vc, handler);
 #endif
-        }
+      }
 
-        SendThisVC(queryString);
-        FlushLogFile();
+      SendThisVC(queryString);
+      FlushLogFile();
 
-        var result = Outcome.Undetermined;
+      var result = Outcome.Undetermined;
 
-        if (Process != null)
+      if (Process != null)
+      {
+        var resp = Process.GetProverResponse();
+
+        if (proverErrors.Count > 0)
         {
-            
-            var resp = Process.GetProverResponse();
-
-            if (proverErrors.Count > 0)
+          result = Outcome.Undetermined;
+          foreach (var err in proverErrors)
+          {
+            if (err.Contains("canceled"))
             {
+              result = Outcome.TimeOut;
+            }
+          }
+        }
+        else if (resp == null)
+          HandleProverError("Prover did not respond");
+        else
+          switch (resp.Name)
+          {
+            case "unsat":
+              result = Outcome.Valid;
+              break;
+            case "sat":
+              result = Outcome.Invalid;
+              break;
+            case "unknown":
+              result = Outcome.Invalid;
+              break;
+            case "bounded":
+              result = Outcome.Bounded;
+              break;
+            case "error":
+              if (resp.ArgCount > 0 && resp.Arguments[0].Name.Contains("canceled"))
+              {
+                result = Outcome.TimeOut;
+              }
+              else
+              {
+                HandleProverError("Prover error: " + resp.Arguments[0]);
                 result = Outcome.Undetermined;
-                foreach (var err in proverErrors)
-                {
-                    if (err.Contains("canceled"))
-                    {
-                        result = Outcome.TimeOut;
-                    }
-                }
-            }
-            else if(resp == null)
-                HandleProverError("Prover did not respond");
-            else switch (resp.Name)
+              }
+
+              break;
+            default:
+              HandleProverError("Unexpected prover response: " + resp.ToString());
+              break;
+          }
+
+        switch (result)
+        {
+          case Outcome.Invalid:
+          {
+            resp = Process.GetProverResponse();
+            if (resp.Name == "derivation")
             {
-                case "unsat":
-                    result = Outcome.Valid;
-                    break;
-                case "sat":
-                    result = Outcome.Invalid;
-                    break;
-                case "unknown":
-                    result = Outcome.Invalid;
-                    break;
-                case "bounded":
-                    result = Outcome.Bounded;
-                    break;
-                case "error":
-                    if (resp.ArgCount > 0 && resp.Arguments[0].Name.Contains("canceled"))
-                    {
-                        result = Outcome.TimeOut;
-                    }
-                    else
-                    {
-                        HandleProverError("Prover error: " + resp.Arguments[0]);
-                        result = Outcome.Undetermined;
-                    }
-                    break;
-                default:
-                    HandleProverError("Unexpected prover response: " + resp.ToString());
-                    break;
+              cex = SExprToCex(resp, handler, varSubst);
             }
-            
-            switch (result)
+            else
+              HandleProverError("Unexpected prover response: " + resp.ToString());
+
+            resp = Process.GetProverResponse();
+            if (resp.Name == "model")
             {
-                case Outcome.Invalid:
-                    {
-                        resp = Process.GetProverResponse();
-                        if (resp.Name == "derivation")
-                        {
-                            cex = SExprToCex(resp, handler,varSubst);
-                        }
-                        else
-                            HandleProverError("Unexpected prover response: " + resp.ToString());
-                        resp = Process.GetProverResponse();
-                        if (resp.Name == "model")
-                        {
-                            var model = SExprToModel(resp, handler);
-                            cex.owner.SetBackgroundModel(model);
-                        }
-                        else
-                            HandleProverError("Unexpected prover response: " + resp.ToString());
-                        break;
-                    }
-                case Outcome.Valid:
-                case Outcome.Bounded:
-				    {
-						resp = Process.GetProverResponse();
-                        if (resp.Name == "fixedpoint")
-                        {
-                            // only get the response if we need it
-                            if(CommandLineOptions.Clo.PrintFixedPoint != null)
-                               SExprToSoln(resp, varSubst);
-                        }
-						else
-							HandleProverError("Unexpected prover response: " + resp.ToString());
-					    break;
-				    }
-                default:
-                    break;
+              var model = SExprToModel(resp, handler);
+              cex.owner.SetBackgroundModel(model);
             }
+            else
+              HandleProverError("Unexpected prover response: " + resp.ToString());
+
+            break;
+          }
+          case Outcome.Valid:
+          case Outcome.Bounded:
+          {
+            resp = Process.GetProverResponse();
+            if (resp.Name == "fixedpoint")
+            {
+              // only get the response if we need it
+              if (CommandLineOptions.Clo.PrintFixedPoint != null)
+                SExprToSoln(resp, varSubst);
+            }
+            else
+              HandleProverError("Unexpected prover response: " + resp.ToString());
+
+            break;
+          }
+          default:
+            break;
+        }
 
 #if false
             while (true)
@@ -1245,76 +1342,80 @@ namespace Microsoft.Boogie.SMTLib
                 HandleProverError("Unexpected prover response: " + resp.ToString());
             }
 #endif
-        }
-        SendThisVC("(fixedpoint-pop)");
-        Pop();
-        AxiomsAreSetup = false;
+      }
 
-        if (CommandLineOptions.Clo.PrintConjectures != null)
-        {
-            ReadConjectures(CommandLineOptions.Clo.PrintConjectures);
-        }
+      SendThisVC("(fixedpoint-pop)");
+      Pop();
+      AxiomsAreSetup = false;
 
-        return result;
+      if (CommandLineOptions.Clo.PrintConjectures != null)
+      {
+        ReadConjectures(CommandLineOptions.Clo.PrintConjectures);
+      }
+
+      return result;
     }
 
     class MyFileParser : SExpr.Parser
     {
-        SMTLibProcessTheoremProver parent;
+      SMTLibProcessTheoremProver parent;
 
-        public MyFileParser(System.IO.StreamReader _sr, SMTLibProcessTheoremProver _parent)
-            : base(_sr)
-        {
-            parent = _parent;
-        }
-        public override void ParseError(string msg)
-        {
-            parent.HandleProverError("Error in conjecture file from prover: " + msg);
-        }
+      public MyFileParser(System.IO.StreamReader _sr, SMTLibProcessTheoremProver _parent)
+        : base(_sr)
+      {
+        parent = _parent;
+      }
+
+      public override void ParseError(string msg)
+      {
+        parent.HandleProverError("Error in conjecture file from prover: " + msg);
+      }
     }
 
     void ReadConjectures(string filename)
     {
-        try
+      try
+      {
+        System.IO.StreamReader sr = new StreamReader(filename + ".tmp");
+        SExpr.Parser p = new MyFileParser(sr, this);
+        var sexps = p.ParseSExprs(false);
+        Dictionary<string, RPFP.Node> pmap = GetNodeMap();
+        foreach (var e in sexps)
         {
-            System.IO.StreamReader sr = new StreamReader(filename + ".tmp");
-            SExpr.Parser p = new MyFileParser(sr, this);
-            var sexps = p.ParseSExprs(false);
-            Dictionary<string, RPFP.Node> pmap = GetNodeMap();
-            foreach (var e in sexps)
-            {
-                string pname;
-                RPFP.Transformer annot;
-                GetDefun(e, out pname, out annot);
+          string pname;
+          RPFP.Transformer annot;
+          GetDefun(e, out pname, out annot);
 
-                if (pmap.ContainsKey(pname))
-                {
-                    var c = new RPFP.Conjecture();
-                    c.node = pmap[pname];
-                    c.bound = annot;
-                    rpfp.conjectures.Add(c);
-                }
-                else if (pname[0] != '@')
-                { // if not an internal symbol
-                    HandleProverError("Prover error: got unknown predicate:" + pname);
-                    throw new BadExprFromProver();
-                }
-            }
-            sr.Close();
-        }
-        catch (Exception)
-        {
-            HandleProverError("No conjecture file from prover");
+          if (pmap.ContainsKey(pname))
+          {
+            var c = new RPFP.Conjecture();
+            c.node = pmap[pname];
+            c.bound = annot;
+            rpfp.conjectures.Add(c);
+          }
+          else if (pname[0] != '@')
+          {
+            // if not an internal symbol
+            HandleProverError("Prover error: got unknown predicate:" + pname);
             throw new BadExprFromProver();
+          }
         }
+
+        sr.Close();
+      }
+      catch (Exception)
+      {
+        HandleProverError("No conjecture file from prover");
+        throw new BadExprFromProver();
+      }
     }
 
     private Dictionary<string, RPFP.Node> GetNodeMap()
     {
-        Dictionary<string, RPFP.Node> pmap = new Dictionary<string, RPFP.Node>();
-        foreach (var node in rpfp.nodes)
-            pmap.Add((node.Name as VCExprBoogieFunctionOp).Func.Name, node);
-        return pmap;
+      Dictionary<string, RPFP.Node> pmap = new Dictionary<string, RPFP.Node>();
+      foreach (var node in rpfp.nodes)
+        pmap.Add((node.Name as VCExprBoogieFunctionOp).Func.Name, node);
+      return pmap;
     }
 
     private static HashSet<string> usedLogNames = new HashSet<string>();
@@ -1328,11 +1429,14 @@ namespace Microsoft.Boogie.SMTLib
       filename = Helpers.SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
       var curFilename = filename;
 
-      lock (usedLogNames) {
+      lock (usedLogNames)
+      {
         int n = 1;
-        while (usedLogNames.Contains(curFilename)) {
+        while (usedLogNames.Contains(curFilename))
+        {
           curFilename = filename + "." + n++;
         }
+
         usedLogNames.Add(curFilename);
       }
 
@@ -1342,8 +1446,10 @@ namespace Microsoft.Boogie.SMTLib
     private void FlushProverWarnings()
     {
       var handler = currentErrorHandler;
-      if (handler != null) {
-        lock (proverWarnings) {
+      if (handler != null)
+      {
+        lock (proverWarnings)
+        {
           proverWarnings.Iter(handler.OnProverWarning);
           proverWarnings.Clear();
         }
@@ -1352,11 +1458,11 @@ namespace Microsoft.Boogie.SMTLib
 
     private void ReportProverError(string err)
     {
-        var handler = currentErrorHandler;
-        if (handler != null)
-        {
-            handler.OnProverError(err);
-        }
+      var handler = currentErrorHandler;
+      if (handler != null)
+      {
+        handler.OnProverError(err);
+      }
     }
 
     protected void HandleProverError(string s)
@@ -1370,13 +1476,18 @@ namespace Microsoft.Boogie.SMTLib
       const string ProverWarning = "WARNING: ";
       string errors = "";
 
-      lock (proverWarnings) {
-        foreach (var line in s.Split('\n')) {
+      lock (proverWarnings)
+      {
+        foreach (var line in s.Split('\n'))
+        {
           int idx = line.IndexOf(ProverWarning, StringComparison.OrdinalIgnoreCase);
-          if (idx >= 0) {
+          if (idx >= 0)
+          {
             string warn = line.Substring(idx + ProverWarning.Length);
             proverWarnings.Add(warn);
-          } else {
+          }
+          else
+          {
             errors += (line + "\n");
           }
         }
@@ -1386,10 +1497,12 @@ namespace Microsoft.Boogie.SMTLib
 
       if (errors == "") return;
 
-      lock (proverErrors) {
+      lock (proverErrors)
+      {
         proverErrors.Add(errors);
         Console.WriteLine("Prover error: " + errors);
       }
+
       ReportProverError(errors);
     }
 
@@ -1407,23 +1520,27 @@ namespace Microsoft.Boogie.SMTLib
 
     [NoDefaultContract]
     public override Outcome CheckOutcomeCore(ErrorHandler handler, int taskID = -1)
-    {  
+    {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-      
+
       var result = Outcome.Undetermined;
 
       if (Process == null || proverErrors.Count > 0)
         return result;
 
-      try {
+      try
+      {
         currentErrorHandler = handler;
         FlushProverWarnings();
 
         int errorLimit;
-        if (CommandLineOptions.Clo.ConcurrentHoudini) {
+        if (CommandLineOptions.Clo.ConcurrentHoudini)
+        {
           Contract.Assert(taskID >= 0);
           errorLimit = CommandLineOptions.Clo.Cho[taskID].ProverCCLimit;
-        } else {
+        }
+        else
+        {
           errorLimit = CommandLineOptions.Clo.ProverCCLimit;
         }
 
@@ -1434,13 +1551,15 @@ namespace Microsoft.Boogie.SMTLib
 
         var globalResult = Outcome.Undetermined;
 
-        while (true) {
+        while (true)
+        {
           string[] labels = null;
           bool popLater = false;
 
-          try {
+          try
+          {
             errorsLeft--;
-            
+
             result = GetResponse();
 
             var reporter = handler as VC.VCGen.ErrorReporter;
@@ -1460,6 +1579,7 @@ namespace Microsoft.Boogie.SMTLib
                     reporter.AddNecessaryAssume(resp.Name.Substring("aux$$assume$$".Length));
                   }
                 }
+
                 foreach (var arg in resp.Arguments)
                 {
                   UsedNamedAssumes.Add(arg.Name);
@@ -1491,7 +1611,9 @@ namespace Microsoft.Boogie.SMTLib
               var timedOut = new SortedSet<int>();
               int frac = 2;
               int queries = 0;
-              int timeLimitPerAssertion = 0 < options.TimeLimit ? (options.TimeLimit / 100) * CommandLineOptions.Clo.TimeLimitPerAssertionInPercent : 1000;
+              int timeLimitPerAssertion = 0 < options.TimeLimit
+                ? (options.TimeLimit / 100) * CommandLineOptions.Clo.TimeLimitPerAssertionInPercent
+                : 1000;
               while (true)
               {
                 int rem = unverified.Count;
@@ -1519,6 +1641,7 @@ namespace Microsoft.Boogie.SMTLib
                   {
                     result = Outcome.Valid;
                   }
+
                   break;
                 }
 
@@ -1527,7 +1650,8 @@ namespace Microsoft.Boogie.SMTLib
                 // It seems like assertions later in the control flow have smaller indexes.
                 var split = new SortedSet<int>(unverified.Where((val, idx) => (rem - idx - 1) < cnt));
                 Contract.Assert(0 < split.Count);
-                var splitRes = CheckSplit(split, ref popLater, timeLimitPerAssertion, timeLimitPerAssertion, ref queries);
+                var splitRes = CheckSplit(split, ref popLater, timeLimitPerAssertion, timeLimitPerAssertion,
+                  ref queries);
                 if (splitRes == Outcome.Valid)
                 {
                   unverified.ExceptWith(split);
@@ -1569,17 +1693,24 @@ namespace Microsoft.Boogie.SMTLib
 
               if (CommandLineOptions.Clo.TraceDiagnosticsOnTimeout)
               {
-                Console.Out.WriteLine("Terminated timeout diagnostics after {0:F0} ms and {1} prover queries.", end.Subtract(start).TotalMilliseconds, queries);
+                Console.Out.WriteLine("Terminated timeout diagnostics after {0:F0} ms and {1} prover queries.",
+                  end.Subtract(start).TotalMilliseconds, queries);
                 Console.Out.WriteLine("Outcome: {0}", result);
-                Console.Out.WriteLine("Unverified assertions: {0} (of {1})", unverified.Count, ctx.TimeoutDiagnosticIDToAssertion.Keys.Count);
+                Console.Out.WriteLine("Unverified assertions: {0} (of {1})", unverified.Count,
+                  ctx.TimeoutDiagnosticIDToAssertion.Keys.Count);
 
                 string filename = "unknown";
-                var assertion = ctx.TimeoutDiagnosticIDToAssertion.Values.Select(t => t.Item1).FirstOrDefault(a => a.tok != null && a.tok != Token.NoToken && a.tok.filename != null);
+                var assertion = ctx.TimeoutDiagnosticIDToAssertion.Values.Select(t => t.Item1)
+                  .FirstOrDefault(a => a.tok != null && a.tok != Token.NoToken && a.tok.filename != null);
                 if (assertion != null)
                 {
                   filename = assertion.tok.filename;
                 }
-                File.AppendAllText("timeouts.csv", string.Format(";{0};{1};{2:F0};{3};{4};{5};{6}\n", filename, options.TimeLimit, end.Subtract(start).TotalMilliseconds, queries, result, unverified.Count, ctx.TimeoutDiagnosticIDToAssertion.Keys.Count));
+
+                File.AppendAllText("timeouts.csv",
+                  string.Format(";{0};{1};{2:F0};{3};{4};{5};{6}\n", filename, options.TimeLimit,
+                    end.Subtract(start).TotalMilliseconds, queries, result, unverified.Count,
+                    ctx.TimeoutDiagnosticIDToAssertion.Keys.Count));
               }
 
               #endregion
@@ -1587,20 +1718,26 @@ namespace Microsoft.Boogie.SMTLib
 
             if (globalResult == Outcome.Undetermined)
               globalResult = result;
-            
-            if (result == Outcome.Invalid) { 
+
+            if (result == Outcome.Invalid)
+            {
               Model model = GetErrorModel();
-              if (CommandLineOptions.Clo.SIBoolControlVC) {
+              if (CommandLineOptions.Clo.SIBoolControlVC)
+              {
                 labels = new string[0];
-              } else {
+              }
+              else
+              {
                 labels = CalculatePath(handler.StartingProcId());
               }
+
               handler.OnModel(labels, model, result);
             }
-            
+
             if (labels == null || !labels.Any() || errorsLeft == 0) break;
-          } 
-          finally {
+          }
+          finally
+          {
             if (popLater)
             {
               SendThisVC("(pop 1)");
@@ -1621,13 +1758,15 @@ namespace Microsoft.Boogie.SMTLib
           Process.NeedsRestart = true;
 
         return globalResult;
-
-      } finally {
+      }
+      finally
+      {
         currentErrorHandler = null;
       }
     }
 
-    private Outcome CheckSplit(SortedSet<int> split, ref bool popLater, int timeLimit, int timeLimitPerAssertion, ref int queries)
+    private Outcome CheckSplit(SortedSet<int> split, ref bool popLater, int timeLimit, int timeLimitPerAssertion,
+      ref int queries)
     {
       var tla = timeLimitPerAssertion * split.Count;
 
@@ -1639,36 +1778,45 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(push 1)");
       // FIXME: Gross. Timeout should be set in one place! This is also Z3 specific!
       int newTimeout = (0 < tla && tla < timeLimit) ? tla : timeLimit;
-      if (newTimeout > 0) {
+      if (newTimeout > 0)
+      {
         SendThisVC(string.Format("(set-option :{0} {1})", Z3.TimeoutOption, newTimeout));
       }
+
       popLater = true;
 
       SendThisVC(string.Format("; checking split VC with {0} unverified assertions", split.Count));
       var expr = VCExpressionGenerator.True;
       foreach (var i in ctx.TimeoutDiagnosticIDToAssertion.Keys)
       {
-        var lit = VCExprGen.Function(VCExpressionGenerator.TimeoutDiagnosticsOp, VCExprGen.Integer(Microsoft.Basetypes.BigNum.FromInt(i)));
-        if (split.Contains(i)) {
+        var lit = VCExprGen.Function(VCExpressionGenerator.TimeoutDiagnosticsOp,
+          VCExprGen.Integer(Microsoft.Basetypes.BigNum.FromInt(i)));
+        if (split.Contains(i))
+        {
           lit = VCExprGen.Not(lit);
         }
+
         expr = VCExprGen.AndSimp(expr, lit);
       }
+
       SendThisVC("(assert " + VCExpr2String(expr, 1) + ")");
       if (options.Solver == SolverKind.Z3)
       {
         SendThisVC("(apply (then (using-params propagate-values :max_rounds 1) simplify) :print false)");
       }
+
       FlushLogFile();
       SendCheckSat();
       queries++;
       return GetResponse();
     }
 
-    public override string[] CalculatePath(int controlFlowConstant) {
+    public override string[] CalculatePath(int controlFlowConstant)
+    {
       SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " 0)))");
       var path = new List<string>();
-      while (true) {
+      while (true)
+      {
         var resp = Process.GetProverResponse();
         if (resp == null) break;
         if (!(resp.Name == "" && resp.ArgCount == 1)) break;
@@ -1676,324 +1824,400 @@ namespace Microsoft.Boogie.SMTLib
         if (!(resp.Name == "" && resp.ArgCount == 2)) break;
         resp = resp.Arguments[1];
         var v = resp.Name;
-        if (v == "-" && resp.ArgCount == 1) {
+        if (v == "-" && resp.ArgCount == 1)
+        {
           v = resp.Arguments[0].Name;
           path.Add(v);
           break;
         }
         else if (resp.ArgCount != 0)
           break;
+
         path.Add(v);
         SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " " + v + ")))");
       }
+
       return path.ToArray();
     }
 
 
-    private class SMTErrorModelConverter {
-        private List<SExpr> ErrorModelTodo;
-        private SMTLibProcessTheoremProver Parent;
-        private StringBuilder ErrorModel = new StringBuilder();
-        private HashSet<SExpr> TopLevelProcessed = new HashSet<SExpr>();
-        private int NumNewArrays = 0;
-        private Dictionary<string, int> SortSet = new Dictionary<string, int>();
-        private Dictionary<string, Dictionary<string, List<SExpr>>> DataTypes = new Dictionary<string, Dictionary<string, List<SExpr>>>();
-        private Dictionary<string, SExpr> Functions = new Dictionary<string, SExpr>();
+    private class SMTErrorModelConverter
+    {
+      private List<SExpr> ErrorModelTodo;
+      private SMTLibProcessTheoremProver Parent;
+      private StringBuilder ErrorModel = new StringBuilder();
+      private HashSet<SExpr> TopLevelProcessed = new HashSet<SExpr>();
+      private int NumNewArrays = 0;
+      private Dictionary<string, int> SortSet = new Dictionary<string, int>();
 
-        public SMTErrorModelConverter(SExpr _ErrorModel, SMTLibProcessTheoremProver _Parent) {
-            ErrorModelTodo = _ErrorModel.Arguments.ToList();
-            Parent = _Parent;
+      private Dictionary<string, Dictionary<string, List<SExpr>>> DataTypes =
+        new Dictionary<string, Dictionary<string, List<SExpr>>>();
+
+      private Dictionary<string, SExpr> Functions = new Dictionary<string, SExpr>();
+
+      public SMTErrorModelConverter(SExpr _ErrorModel, SMTLibProcessTheoremProver _Parent)
+      {
+        ErrorModelTodo = _ErrorModel.Arguments.ToList();
+        Parent = _Parent;
+      }
+
+      public string Convert()
+      {
+        ConvertErrorModel(ErrorModel);
+        return ErrorModel.ToString();
+      }
+
+      bool isConstArray(SExpr element, SExpr type)
+      {
+        if (type.Name != "Array")
+          return false;
+
+        if (element.Name == "__array_store_all__") // CVC4 1.4
+          return true;
+        else if (element.Name == "" && element[0].Name == "as" &&
+                 element[0][0].Name == "const") // CVC4 > 1.4
+          return true;
+
+        return false;
+      }
+
+      SExpr getConstArrayElement(SExpr element)
+      {
+        if (element.Name == "__array_store_all__") // CVC4 1.4
+          return element[1];
+        else if (element.Name == "" && element[0].Name == "as" &&
+                 element[0][0].Name == "const") // CVC4 > 1.4
+          return element[1];
+
+        Parent.HandleProverError("Unexpected value: " + element);
+        throw new BadExprFromProver();
+      }
+
+      void ConstructComplexValue(SExpr element, SExpr type, StringBuilder m)
+      {
+        if (type.Name == "Array")
+        {
+          if (element.Name == "store" || isConstArray(element, type))
+          {
+            NumNewArrays++;
+            m.Append("as-array[k!" + NumNewArrays + ']');
+            SExpr[] args = {new SExpr("k!" + NumNewArrays), new SExpr(""), type, element};
+            var newElement = new SExpr("define-fun", args);
+            TopLevelProcessed.Add(newElement);
+            ErrorModelTodo.Add(newElement);
+            return;
+          }
         }
 
-        public string Convert() {
-            ConvertErrorModel(ErrorModel);
-            return ErrorModel.ToString();
+        ConstructSimpleValue(element, type, m);
+      }
+
+      void ConstructSimpleValue(SExpr element, SExpr type, StringBuilder m)
+      {
+        if (type.Name == "Bool" && element.ArgCount == 0)
+        {
+          m.Append(element.ToString());
+          return;
         }
 
-        bool isConstArray(SExpr element, SExpr type) {
-            if (type.Name != "Array")
-                return false;
-
-            if (element.Name == "__array_store_all__") // CVC4 1.4
-                return true;
-            else if (element.Name == "" && element[0].Name == "as" &&
-                     element[0][0].Name == "const") // CVC4 > 1.4
-                return true;
-
-            return false;
+        if (type.Name == "Int")
+        {
+          if (element.ArgCount == 0)
+          {
+            m.Append(element.ToString());
+            return;
+          }
+          else if (element.Name == "-" && element.ArgCount == 1)
+          {
+            m.Append(element.ToString());
+            return;
+          }
         }
 
-        SExpr getConstArrayElement(SExpr element) {
-            if (element.Name == "__array_store_all__") // CVC4 1.4
-                return element[1];
-            else if (element.Name == "" && element[0].Name == "as" &&
-                     element[0][0].Name == "const") // CVC4 > 1.4
-                return element[1];
-
-            Parent.HandleProverError("Unexpected value: " + element);
-            throw new BadExprFromProver ();
+        if (type.Name == "_" && type.ArgCount == 2 && type[0].Name == "BitVec")
+        {
+          if (element.Name == "_" && element.ArgCount == 2 &&
+              element[0].Name.StartsWith("bv") && element[0].ArgCount == 0 &&
+              element[1].Name == type.Arguments[1].Name && element[1].ArgCount == 0)
+          {
+            m.Append(element[0].Name + '[' + element[1].Name + ']');
+            return;
+          }
         }
 
-        void ConstructComplexValue(SExpr element, SExpr type, StringBuilder m) {
-            if (type.Name == "Array") {
-                if (element.Name == "store" || isConstArray(element, type)) {
-                    NumNewArrays++;
-                    m.Append("as-array[k!" + NumNewArrays + ']');
-                    SExpr[] args = {new SExpr("k!" + NumNewArrays), new SExpr(""), type, element};
-                    var newElement = new SExpr("define-fun", args);
-                    TopLevelProcessed.Add(newElement);
-                    ErrorModelTodo.Add(newElement);
-                    return;
-                }
+        if (type.Name == "Array")
+        {
+          while (element.Name == "store")
+          {
+            ConstructComplexValue(element[1], type[0], m);
+            m.Append(" -> ");
+            ConstructComplexValue(element[2], type[1], m);
+            m.Append("\n  ");
+            if (element[0].Name != "store")
+            {
+              m.Append("else -> ");
             }
 
-            ConstructSimpleValue(element, type, m);
+            element = element[0];
+          }
+
+          if (isConstArray(element, type))
+          {
+            ConstructComplexValue(getConstArrayElement(element), type[1], m);
+            return;
+          }
+          else if (element.Name == "_" && element.ArgCount == 2 &&
+                   element[0].Name == "as-array")
+          {
+            m.Append("as-array[" + element[1].Name + ']');
+            return;
+          }
         }
 
-        void ConstructSimpleValue(SExpr element, SExpr type, StringBuilder m) {
-            if (type.Name == "Bool" && element.ArgCount == 0) {
-                m.Append(element.ToString());
-                return;
-            }
-
-            if (type.Name == "Int") {
-                if (element.ArgCount == 0) {
-                    m.Append(element.ToString());
-                    return;
-                } else if (element.Name == "-" && element.ArgCount == 1) {
-                    m.Append(element.ToString());
-                    return;
-                }
-            }
-
-            if (type.Name == "_" && type.ArgCount == 2 && type[0].Name == "BitVec") {
-                if (element.Name == "_" && element.ArgCount == 2 &&
-                    element[0].Name.StartsWith("bv") && element[0].ArgCount == 0 &&
-                    element[1].Name == type.Arguments[1].Name && element[1].ArgCount == 0) {
-                    m.Append(element[0].Name + '[' + element[1].Name + ']');
-                    return;
-                }
-            }
-
-            if (type.Name == "Array") {
-                while (element.Name == "store") {
-                    ConstructComplexValue(element[1], type[0], m);
-                    m.Append(" -> ");
-                    ConstructComplexValue(element[2], type[1], m);
-                    m.Append("\n  ");
-                    if (element[0].Name != "store") {
-                        m.Append("else -> ");
-                    }
-                    element = element[0];
-                }
-
-                if (isConstArray(element, type)) {
-                    ConstructComplexValue(getConstArrayElement(element), type[1], m);
-                    return;
-                } else if (element.Name == "_" && element.ArgCount == 2 &&
-                           element[0].Name == "as-array") {
-                    m.Append("as-array[" + element[1].Name + ']');
-                    return;
-                }
-            }
-
-            if (SortSet.ContainsKey(type.Name) && SortSet[type.Name] == 0) {
-                var prefix = "@uc_T@" + type.Name.Substring(2) + "_";
-                if (element.Name.StartsWith(prefix)) {
-                    m.Append(type.Name + "!val!" + element.Name.Substring(prefix.Length));
-                    return;
-                }
-            }
-
-            if (Functions.ContainsKey(element.Name) &&
-                type.Name == Functions[element.Name].Name) {
-                m.Append(element.Name);
-                return;
-            }
-
-            if (DataTypes.ContainsKey(type.Name) &&
-                DataTypes[type.Name].ContainsKey(element.Name) &&
-                element.ArgCount == DataTypes[type.Name][element.Name].Count) {
-                m.Append("(" + element.Name);
-                for (int i = 0; i < element.ArgCount; ++i) {
-                    m.Append(" ");
-                    ConstructComplexValue(element[i], DataTypes[type.Name][element.Name][i], m);
-                }
-                m.Append(")");
-                return;
-            }
-
-            Parent.HandleProverError("Unexpected value: " + element);
-            throw new BadExprFromProver ();
+        if (SortSet.ContainsKey(type.Name) && SortSet[type.Name] == 0)
+        {
+          var prefix = "@uc_T@" + type.Name.Substring(2) + "_";
+          if (element.Name.StartsWith(prefix))
+          {
+            m.Append(type.Name + "!val!" + element.Name.Substring(prefix.Length));
+            return;
+          }
         }
 
-        void ConstructFunctionArguments(SExpr arguments, List<SExpr> argTypes, StringBuilder[] argValues) {
-            if (arguments.Name == "and") {
-                ConstructFunctionArguments(arguments[0], argTypes, argValues);
-                ConstructFunctionArguments(arguments[1], argTypes, argValues);
-            } else if (arguments.Name == "=" &&
-                       (arguments[0].Name.StartsWith("_ufmt_") || arguments[0].Name.StartsWith("x!") ||
-	                arguments[0].Name.StartsWith("_arg_"))) {
-                int argNum;
-                if (arguments[0].Name.StartsWith("_ufmt_"))
-                    argNum = System.Convert.ToInt32(arguments[0].Name.Substring("_uftm_".Length)) - 1;
-                else if (arguments[0].Name.StartsWith("_arg_"))
-		    argNum = System.Convert.ToInt32(arguments[0].Name.Substring("_arg_".Length)) - 1;
-                else /* if (arguments[0].Name.StartsWith("x!")) */
-                    argNum = System.Convert.ToInt32(arguments[0].Name.Substring("x!".Length)) - 1;
-                if (argNum < 0 || argNum >= argTypes.Count) {
-                    Parent.HandleProverError("Unexpected function argument: " + arguments[0]);
-                    throw new BadExprFromProver ();
-                }
-                if (argValues[argNum] != null) {
-                    Parent.HandleProverError("Function argument defined multiple times: " + arguments[0]);
-                    throw new BadExprFromProver ();
-                }
-                argValues[argNum] = new StringBuilder();
-                ConstructComplexValue(arguments[1], argTypes[argNum], argValues[argNum]);
-            } else {
-                Parent.HandleProverError("Unexpected function argument: " + arguments);
-                throw new BadExprFromProver ();
-            }
+        if (Functions.ContainsKey(element.Name) &&
+            type.Name == Functions[element.Name].Name)
+        {
+          m.Append(element.Name);
+          return;
         }
 
-        void ConstructFunctionElements(SExpr element, List<SExpr> argTypes, SExpr outType, StringBuilder m) {
-            while (element.Name == "ite") {
-                StringBuilder[] argValues = new StringBuilder[argTypes.Count];
-                ConstructFunctionArguments(element[0], argTypes, argValues);
-                foreach (var s in argValues)
-                    m.Append(s + " ");
-                m.Append("-> ");
-                ConstructComplexValue(element[1], outType, m);
-                m.Append("\n  ");
-                if (element[2].Name != "ite")
-                    m.Append("else -> ");
-                element = element[2];
-            }
+        if (DataTypes.ContainsKey(type.Name) &&
+            DataTypes[type.Name].ContainsKey(element.Name) &&
+            element.ArgCount == DataTypes[type.Name][element.Name].Count)
+        {
+          m.Append("(" + element.Name);
+          for (int i = 0; i < element.ArgCount; ++i)
+          {
+            m.Append(" ");
+            ConstructComplexValue(element[i], DataTypes[type.Name][element.Name][i], m);
+          }
 
-            ConstructComplexValue(element, outType, m);
+          m.Append(")");
+          return;
         }
 
-        void ConstructFunction(SExpr element, SExpr inType, SExpr outType, StringBuilder m) {
-            List<SExpr> argTypes = new List<SExpr>();
+        Parent.HandleProverError("Unexpected value: " + element);
+        throw new BadExprFromProver();
+      }
 
-            for (int i = 0; i < inType.ArgCount; ++i) {
-                if (inType[i].Name != "_ufmt_" + (i + 1) && inType[i].Name != "x!" + (i + 1) &&
-                    !inType[i].Name.StartsWith("BOUND_VARIABLE_") && inType[i].Name != "_arg_" + (i + 1)) {
-                    Parent.HandleProverError("Unexpected function argument: " + inType[i].Name);
-                    throw new BadExprFromProver ();
-                }
-                argTypes.Add(inType[i][0]);
-            }
+      void ConstructFunctionArguments(SExpr arguments, List<SExpr> argTypes, StringBuilder[] argValues)
+      {
+        if (arguments.Name == "and")
+        {
+          ConstructFunctionArguments(arguments[0], argTypes, argValues);
+          ConstructFunctionArguments(arguments[1], argTypes, argValues);
+        }
+        else if (arguments.Name == "=" &&
+                 (arguments[0].Name.StartsWith("_ufmt_") || arguments[0].Name.StartsWith("x!") ||
+                  arguments[0].Name.StartsWith("_arg_")))
+        {
+          int argNum;
+          if (arguments[0].Name.StartsWith("_ufmt_"))
+            argNum = System.Convert.ToInt32(arguments[0].Name.Substring("_uftm_".Length)) - 1;
+          else if (arguments[0].Name.StartsWith("_arg_"))
+            argNum = System.Convert.ToInt32(arguments[0].Name.Substring("_arg_".Length)) - 1;
+          else /* if (arguments[0].Name.StartsWith("x!")) */
+            argNum = System.Convert.ToInt32(arguments[0].Name.Substring("x!".Length)) - 1;
+          if (argNum < 0 || argNum >= argTypes.Count)
+          {
+            Parent.HandleProverError("Unexpected function argument: " + arguments[0]);
+            throw new BadExprFromProver();
+          }
 
-            ConstructFunctionElements(element, argTypes, outType, m);
+          if (argValues[argNum] != null)
+          {
+            Parent.HandleProverError("Function argument defined multiple times: " + arguments[0]);
+            throw new BadExprFromProver();
+          }
+
+          argValues[argNum] = new StringBuilder();
+          ConstructComplexValue(arguments[1], argTypes[argNum], argValues[argNum]);
+        }
+        else
+        {
+          Parent.HandleProverError("Unexpected function argument: " + arguments);
+          throw new BadExprFromProver();
+        }
+      }
+
+      void ConstructFunctionElements(SExpr element, List<SExpr> argTypes, SExpr outType, StringBuilder m)
+      {
+        while (element.Name == "ite")
+        {
+          StringBuilder[] argValues = new StringBuilder[argTypes.Count];
+          ConstructFunctionArguments(element[0], argTypes, argValues);
+          foreach (var s in argValues)
+            m.Append(s + " ");
+          m.Append("-> ");
+          ConstructComplexValue(element[1], outType, m);
+          m.Append("\n  ");
+          if (element[2].Name != "ite")
+            m.Append("else -> ");
+          element = element[2];
         }
 
-        void ConstructDefine(SExpr element, StringBuilder m) {
-            Debug.Assert(element.Name == "define-fun");
+        ConstructComplexValue(element, outType, m);
+      }
 
-            if (element[1].ArgCount != 0)
-                TopLevelProcessed.Add(element);
+      void ConstructFunction(SExpr element, SExpr inType, SExpr outType, StringBuilder m)
+      {
+        List<SExpr> argTypes = new List<SExpr>();
 
-            m.Append(element[0] + " -> ");
-            if (TopLevelProcessed.Contains(element))
-                m.Append("{\n  ");
+        for (int i = 0; i < inType.ArgCount; ++i)
+        {
+          if (inType[i].Name != "_ufmt_" + (i + 1) && inType[i].Name != "x!" + (i + 1) &&
+              !inType[i].Name.StartsWith("BOUND_VARIABLE_") && inType[i].Name != "_arg_" + (i + 1))
+          {
+            Parent.HandleProverError("Unexpected function argument: " + inType[i].Name);
+            throw new BadExprFromProver();
+          }
 
-            if (element[1].ArgCount == 0 && element[2].Name == "Array" && !TopLevelProcessed.Contains(element)) {
-                ConstructComplexValue(element[3], element[2], m);
-            } else if (element[1].ArgCount == 0) {
-                ConstructSimpleValue(element[3], element[2], m);
-            } else {
-                ConstructFunction(element[3], element[1], element[2], m);
-            }
-
-            if (TopLevelProcessed.Contains(element))
-                m.Append("\n}");
-            m.Append("\n");
+          argTypes.Add(inType[i][0]);
         }
 
-        void ExtractDataType(SExpr datatypes) {
-            Debug.Assert(datatypes.Name == "declare-datatypes");
+        ConstructFunctionElements(element, argTypes, outType, m);
+      }
 
-            if (datatypes[0].Name != "" || datatypes[1].Name != "" || datatypes[1].ArgCount != 1) {
-                Parent.HandleProverError("Unexpected datatype: " + datatypes);
-                throw new BadExprFromProver ();
-            }
-            SExpr typeDef = datatypes[1][0];
-            Dictionary<string, List<SExpr>> dataTypeConstructors = new Dictionary<string, List<SExpr>>();
-            for (int j = 0; j < typeDef.ArgCount; ++j) {
-                var argumentTypes = new List<SExpr>();
-                for (int i = 0; i < typeDef[j].ArgCount; ++i) {
-                    if (typeDef[j][i].ArgCount != 1) {
-                        Parent.HandleProverError("Unexpected datatype constructor: " + typeDef[j]);
-                        throw new BadExprFromProver();
-                    }
-                    argumentTypes.Add(typeDef[j][i][0]);
-                }
-                dataTypeConstructors[typeDef[j].Name] = argumentTypes;
-            }
-            DataTypes[datatypes[0][0].Name] = dataTypeConstructors;
+      void ConstructDefine(SExpr element, StringBuilder m)
+      {
+        Debug.Assert(element.Name == "define-fun");
+
+        if (element[1].ArgCount != 0)
+          TopLevelProcessed.Add(element);
+
+        m.Append(element[0] + " -> ");
+        if (TopLevelProcessed.Contains(element))
+          m.Append("{\n  ");
+
+        if (element[1].ArgCount == 0 && element[2].Name == "Array" && !TopLevelProcessed.Contains(element))
+        {
+          ConstructComplexValue(element[3], element[2], m);
+        }
+        else if (element[1].ArgCount == 0)
+        {
+          ConstructSimpleValue(element[3], element[2], m);
+        }
+        else
+        {
+          ConstructFunction(element[3], element[1], element[2], m);
         }
 
-        private void ConvertErrorModel(StringBuilder m) {
-            if (Parent.options.Solver == SolverKind.Z3) {
-                // Datatype declarations are not returned by Z3, so parse common
-                // instead. This is not very efficient, but currently not an issue,
-                // as this not the normal way of interfacing with Z3.
-                var ms = new MemoryStream(Encoding.ASCII.GetBytes(Parent.common.ToString()));
-                var sr = new StreamReader(ms);
-                SExpr.Parser p = new MyFileParser(sr, null);
-                var sexprs = p.ParseSExprs(false);
-                foreach (var e in sexprs) {
-                    switch (e.Name) {
-                    case "declare-datatypes":
-                        ExtractDataType(e);
-                        break;
-                    }
-                }
-            }
+        if (TopLevelProcessed.Contains(element))
+          m.Append("\n}");
+        m.Append("\n");
+      }
 
-            while (ErrorModelTodo.Count > 0) {
-                var e = ErrorModelTodo[0];
-                ErrorModelTodo.RemoveAt(0);
+      void ExtractDataType(SExpr datatypes)
+      {
+        Debug.Assert(datatypes.Name == "declare-datatypes");
 
-                switch (e.Name) {
-                case "define-fun":
-                    ConstructDefine(e, m);
-                    break;
-                case "declare-sort":
-                    SortSet[e[0].Name] = System.Convert.ToInt32(e[1].Name);
-                    break;
-                case "declare-datatypes":
-                    ExtractDataType(e);
-                    break;
-                case "declare-fun":
-                    if (e[1].Name != "" || e[1].ArgCount > 0 || e[2].ArgCount > 0 ||
-                        e[2].Name == "Bool" || e[2].Name == "Int") {
-                        Parent.HandleProverError("Unexpected top level model element: " + e.Name);
-                        throw new BadExprFromProver ();
-                    }
-                    Functions[e[0].Name] = e[2];
-                    break;
-                case "forall":
-                    // ignore
-                    break;
-                default:
-                    Parent.HandleProverError("Unexpected top level model element: " + e.Name);
-                    throw new BadExprFromProver ();
-                }
-            }
+        if (datatypes[0].Name != "" || datatypes[1].Name != "" || datatypes[1].ArgCount != 1)
+        {
+          Parent.HandleProverError("Unexpected datatype: " + datatypes);
+          throw new BadExprFromProver();
         }
+
+        SExpr typeDef = datatypes[1][0];
+        Dictionary<string, List<SExpr>> dataTypeConstructors = new Dictionary<string, List<SExpr>>();
+        for (int j = 0; j < typeDef.ArgCount; ++j)
+        {
+          var argumentTypes = new List<SExpr>();
+          for (int i = 0; i < typeDef[j].ArgCount; ++i)
+          {
+            if (typeDef[j][i].ArgCount != 1)
+            {
+              Parent.HandleProverError("Unexpected datatype constructor: " + typeDef[j]);
+              throw new BadExprFromProver();
+            }
+
+            argumentTypes.Add(typeDef[j][i][0]);
+          }
+
+          dataTypeConstructors[typeDef[j].Name] = argumentTypes;
+        }
+
+        DataTypes[datatypes[0][0].Name] = dataTypeConstructors;
+      }
+
+      private void ConvertErrorModel(StringBuilder m)
+      {
+        if (Parent.options.Solver == SolverKind.Z3)
+        {
+          // Datatype declarations are not returned by Z3, so parse common
+          // instead. This is not very efficient, but currently not an issue,
+          // as this not the normal way of interfacing with Z3.
+          var ms = new MemoryStream(Encoding.ASCII.GetBytes(Parent.common.ToString()));
+          var sr = new StreamReader(ms);
+          SExpr.Parser p = new MyFileParser(sr, null);
+          var sexprs = p.ParseSExprs(false);
+          foreach (var e in sexprs)
+          {
+            switch (e.Name)
+            {
+              case "declare-datatypes":
+                ExtractDataType(e);
+                break;
+            }
+          }
+        }
+
+        while (ErrorModelTodo.Count > 0)
+        {
+          var e = ErrorModelTodo[0];
+          ErrorModelTodo.RemoveAt(0);
+
+          switch (e.Name)
+          {
+            case "define-fun":
+              ConstructDefine(e, m);
+              break;
+            case "declare-sort":
+              SortSet[e[0].Name] = System.Convert.ToInt32(e[1].Name);
+              break;
+            case "declare-datatypes":
+              ExtractDataType(e);
+              break;
+            case "declare-fun":
+              if (e[1].Name != "" || e[1].ArgCount > 0 || e[2].ArgCount > 0 ||
+                  e[2].Name == "Bool" || e[2].Name == "Int")
+              {
+                Parent.HandleProverError("Unexpected top level model element: " + e.Name);
+                throw new BadExprFromProver();
+              }
+
+              Functions[e[0].Name] = e[2];
+              break;
+            case "forall":
+              // ignore
+              break;
+            default:
+              Parent.HandleProverError("Unexpected top level model element: " + e.Name);
+              throw new BadExprFromProver();
+          }
+        }
+      }
     }
 
-    private Model GetErrorModel() {
+    private Model GetErrorModel()
+    {
       if (!options.ExpectingModel())
         return null;
 
       SendThisVC("(get-model)");
       Process.Ping();
       Model theModel = null;
-      while (true) {
+      while (true)
+      {
         var resp = Process.GetProverResponse();
         if (resp == null || Process.IsPong(resp))
           break;
@@ -2001,20 +2225,25 @@ namespace Microsoft.Boogie.SMTLib
           HandleProverError("Expecting only one model but got many");
 
         string modelStr = null;
-        if (resp.Name == "model" && resp.ArgCount >= 1) {
+        if (resp.Name == "model" && resp.ArgCount >= 1)
+        {
           var converter = new SMTErrorModelConverter(resp, this);
           modelStr = converter.Convert();
         }
-        else if (resp.ArgCount == 0 && resp.Name.Contains("->")) {
+        else if (resp.ArgCount == 0 && resp.Name.Contains("->"))
+        {
           modelStr = resp.Name;
         }
-        else {
+        else
+        {
           HandleProverError("Unexpected prover response getting model: " + resp.ToString());
         }
 
         List<Model> models = null;
-        try {
-          switch (options.Solver) {
+        try
+        {
+          switch (options.Solver)
+          {
             case SolverKind.Z3:
             case SolverKind.CVC4:
               models = Model.ParseModels(new StringReader("Error model: \n" + modelStr));
@@ -2024,9 +2253,11 @@ namespace Microsoft.Boogie.SMTLib
               return null;
           }
         }
-        catch (ArgumentException exn) {
+        catch (ArgumentException exn)
+        {
           HandleProverError("Model parsing error: " + exn.Message);
         }
+
         if (models == null)
           HandleProverError("Could not parse any models");
         else if (models.Count == 0)
@@ -2036,6 +2267,7 @@ namespace Microsoft.Boogie.SMTLib
         else
           theModel = models[0];
       }
+
       return theModel;
     }
 
@@ -2045,19 +2277,23 @@ namespace Microsoft.Boogie.SMTLib
       Process.Ping();
 
       string[] res = null;
-      while (true) {
+      while (true)
+      {
         var resp = Process.GetProverResponse();
         if (resp == null || Process.IsPong(resp))
           break;
         if (res != null)
           HandleProverError("Expecting only one sequence of labels but got many");
-        if (resp.Name == "labels") {
+        if (resp.Name == "labels")
+        {
           res = resp.Arguments.Select(a => Namer.AbsyLabel(a.Name.Replace("|", ""))).ToArray();
         }
-        else {
+        else
+        {
           HandleProverError("Unexpected prover response getting labels: " + resp.ToString());
         }
       }
+
       return res;
     }
 
@@ -2068,12 +2304,14 @@ namespace Microsoft.Boogie.SMTLib
 
       Process.Ping();
 
-      while (true) {
+      while (true)
+      {
         var resp = Process.GetProverResponse();
         if (resp == null || Process.IsPong(resp))
           break;
 
-        switch (resp.Name) {
+        switch (resp.Name)
+        {
           case "unsat":
             result = Outcome.Valid;
             break;
@@ -2089,13 +2327,17 @@ namespace Microsoft.Boogie.SMTLib
             break;
           case "error":
             if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId &&
-                (  resp.Arguments[0].Name.Contains("max. resource limit exceeded")
-                || resp.Arguments[0].Name.Contains("resource limits reached"))) {
+                (resp.Arguments[0].Name.Contains("max. resource limit exceeded")
+                 || resp.Arguments[0].Name.Contains("resource limits reached")))
+            {
               currentErrorHandler.OnResourceExceeded("max resource limit");
               result = Outcome.OutOfResource;
-            } else {
+            }
+            else
+            {
               HandleProverError("Unexpected prover response: " + resp.ToString());
             }
+
             break;
           default:
             HandleProverError("Unexpected prover response: " + resp.ToString());
@@ -2103,50 +2345,59 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
-      if (wasUnknown) {
+      if (wasUnknown)
+      {
         SendThisVC("(get-info :reason-unknown)");
         Process.Ping();
-        while (true) {
+        while (true)
+        {
           var resp = Process.GetProverResponse();
           if (resp == null || Process.IsPong(resp))
-              break;
+            break;
 
-          if (resp.ArgCount == 1 && resp.Name == ":reason-unknown") {
-            switch (resp[0].Name) {
+          if (resp.ArgCount == 1 && resp.Name == ":reason-unknown")
+          {
+            switch (resp[0].Name)
+            {
               case "memout":
                 currentErrorHandler.OnResourceExceeded("memory");
                 result = Outcome.OutOfMemory;
                 Process.NeedsRestart = true;
                 break;
-                case "timeout":
+              case "timeout":
                 currentErrorHandler.OnResourceExceeded("timeout");
                 result = Outcome.TimeOut;
                 break;
-                case "canceled":
+              case "canceled":
                 // both timeout and max resource limit are reported as
                 // canceled in version 4.4.1 
-                if (this.options.TimeLimit > 0) {
+                if (this.options.TimeLimit > 0)
+                {
                   currentErrorHandler.OnResourceExceeded("timeout");
                   result = Outcome.TimeOut;
-                } else {
+                }
+                else
+                {
                   currentErrorHandler.OnResourceExceeded("max resource limit");
                   result = Outcome.OutOfResource;
                 }
+
                 break;
-                case "max. resource limit exceeded":
-                case "resource limits reached":
-                case "(resource limits reached)":
+              case "max. resource limit exceeded":
+              case "resource limits reached":
+              case "(resource limits reached)":
                 currentErrorHandler.OnResourceExceeded("max resource limit");
                 result = Outcome.OutOfResource;
                 break;
               default:
                 break;
             }
-          } else {
+          }
+          else
+          {
             HandleProverError("Unexpected prover response (getting info about 'unknown' response): " + resp.ToString());
           }
         }
-
       }
 
       return result;
@@ -2170,15 +2421,16 @@ namespace Microsoft.Boogie.SMTLib
         switch (CommandLineOptions.Clo.TypeEncodingMethod)
         {
           case CommandLineOptions.TypeEncoding.Arguments:
-            eraser = new TypeEraserArguments((TypeAxiomBuilderArguments)AxBuilder, gen);
+            eraser = new TypeEraserArguments((TypeAxiomBuilderArguments) AxBuilder, gen);
             break;
           case CommandLineOptions.TypeEncoding.Monomorphic:
             eraser = null;
             break;
           default:
-            eraser = new TypeEraserPremisses((TypeAxiomBuilderPremisses)AxBuilder, gen);
+            eraser = new TypeEraserPremisses((TypeAxiomBuilderPremisses) AxBuilder, gen);
             break;
         }
+
         VCExpr exprWithoutTypes = eraser == null ? expr : eraser.Erase(expr, polarity);
         Contract.Assert(exprWithoutTypes != null);
 
@@ -2209,19 +2461,20 @@ namespace Microsoft.Boogie.SMTLib
           if (elapsed.TotalSeconds > 0.5)
             Console.WriteLine("Linearising   [{0} s]", elapsed.TotalSeconds);
         }
+
         return res;
       }
     }
 
     // the list of all known axioms, where have to be included in each
     // verification condition
-    private readonly List<string/*!>!*/> Axioms = new List<string/*!*/>();
+    private readonly List<string /*!>!*/> Axioms = new List<string /*!*/>();
     private bool AxiomsAreSetup = false;
     private bool HasReset = false;
 
 
     // similarly, a list of function/predicate declarations
-    private readonly List<string/*!>!*/> TypeDecls = new List<string/*!*/>();
+    private readonly List<string /*!>!*/> TypeDecls = new List<string /*!*/>();
 
     protected void AddAxiom(string axiom)
     {
@@ -2251,14 +2504,15 @@ namespace Microsoft.Boogie.SMTLib
     {
       Contract.Ensures(_backgroundPredicates != null);
       //throws ProverException, System.IO.FileNotFoundException;
-      if (_backgroundPredicates == null) {
+      if (_backgroundPredicates == null)
+      {
         if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
         {
-            _backgroundPredicates = "";
+          _backgroundPredicates = "";
         }
         else
         {
-            _backgroundPredicates = @"
+          _backgroundPredicates = @"
 (set-info :category ""industrial"")
 (declare-sort |T@U| 0)
 (declare-sort |T@T| 0)
@@ -2285,8 +2539,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void PushVCExpression(VCExpr vc)
     {
-        throw new NotImplementedException();
-
+      throw new NotImplementedException();
     }
 
     public override void Pop()
@@ -2297,68 +2550,73 @@ namespace Microsoft.Boogie.SMTLib
 
     public override int NumAxiomsPushed()
     {
-        throw new NotImplementedException();
-        //return numRealPushes + pushedAssertions.Count;
+      throw new NotImplementedException();
+      //return numRealPushes + pushedAssertions.Count;
     }
 
     private void FlushPushedAssertions()
     {
-        throw new NotImplementedException();
+      throw new NotImplementedException();
     }
 
     public override void Assert(VCExpr vc, bool polarity, bool isSoft = false, int weight = 1, string name = null)
     {
-        OptimizationRequests.Clear();
-        string assert = "assert";
-        if (options.Solver == SolverKind.Z3 && isSoft)
-        {
-            assert += "-soft";
-        }
-        var expr = polarity ? VCExpr2String(vc, 1) : "(not\n" + VCExpr2String(vc, 1) + "\n)";
-        if (options.Solver == SolverKind.Z3 && isSoft)
-        {
-            expr += " :weight " + weight;
-        }
-        if (name != null)
-        {
-            expr = "(! " + expr + ":named " + name + ")";
-        }
-        AssertAxioms();
-        SendThisVC("(" + assert + " " + expr + ")");
-        SendOptimizationRequests();
+      OptimizationRequests.Clear();
+      string assert = "assert";
+      if (options.Solver == SolverKind.Z3 && isSoft)
+      {
+        assert += "-soft";
+      }
+
+      var expr = polarity ? VCExpr2String(vc, 1) : "(not\n" + VCExpr2String(vc, 1) + "\n)";
+      if (options.Solver == SolverKind.Z3 && isSoft)
+      {
+        expr += " :weight " + weight;
+      }
+
+      if (name != null)
+      {
+        expr = "(! " + expr + ":named " + name + ")";
+      }
+
+      AssertAxioms();
+      SendThisVC("(" + assert + " " + expr + ")");
+      SendOptimizationRequests();
     }
 
     public override List<string> UnsatCore()
     {
-        SendThisVC("(get-unsat-core)");
-        var resp = Process.GetProverResponse().ToString();
-        if (resp == "" || resp == "()")
-            return null;
-        if (resp[0] == '(')
-            resp = resp.Substring(1, resp.Length - 2);
-        var ucore = resp.Split(' ').ToList();
-        return ucore;
+      SendThisVC("(get-unsat-core)");
+      var resp = Process.GetProverResponse().ToString();
+      if (resp == "" || resp == "()")
+        return null;
+      if (resp[0] == '(')
+        resp = resp.Substring(1, resp.Length - 2);
+      var ucore = resp.Split(' ').ToList();
+      return ucore;
     }
 
-    public override void DefineMacro(Macro f, VCExpr vc) {
+    public override void DefineMacro(Macro f, VCExpr vc)
+    {
       DeclCollector.AddKnownFunction(f);
       string printedName = Namer.GetQuotedName(f, f.Name);
       var argTypes = f.InParams.Cast<Variable>().MapConcat(p => DeclCollector.TypeToStringReg(p.TypedIdent.Type), " ");
-      string decl = "(define-fun " + printedName + " (" + argTypes + ") " + DeclCollector.TypeToStringReg(f.OutParams[0].TypedIdent.Type) + " " + VCExpr2String(vc, 1) + ")";
+      string decl = "(define-fun " + printedName + " (" + argTypes + ") " +
+                    DeclCollector.TypeToStringReg(f.OutParams[0].TypedIdent.Type) + " " + VCExpr2String(vc, 1) + ")";
       AssertAxioms();
-      SendThisVC(decl); 
+      SendThisVC(decl);
     }
 
     public override void AssertAxioms()
     {
-        FlushAxioms();
+      FlushAxioms();
     }
 
     public override void Check()
     {
-        PrepareCommon();
-        SendCheckSat();
-        FlushLogFile();
+      PrepareCommon();
+      SendCheckSat();
+      FlushLogFile();
     }
 
     public void SendCheckSat()
@@ -2366,15 +2624,17 @@ namespace Microsoft.Boogie.SMTLib
       UsedNamedAssumes = null;
       SendThisVC("(check-sat)");
     }
-	
+
     public override void SetTimeOut(int ms)
     {
-      if (ms < 0) {
-          throw new ArgumentOutOfRangeException ("ms must be >= 0");
+      if (ms < 0)
+      {
+        throw new ArgumentOutOfRangeException("ms must be >= 0");
       }
 
       options.TimeLimit = ms;
-      if (options.Solver == SolverKind.Z3) {
+      if (options.Solver == SolverKind.Z3)
+      {
         var name = Z3.TimeoutOption;
         var value = ms.ToString();
         options.SmtOptions.RemoveAll(ov => ov.Option == name);
@@ -2385,7 +2645,8 @@ namespace Microsoft.Boogie.SMTLib
     public override void SetRlimit(int limit)
     {
       options.ResourceLimit = limit;
-      if (options.Solver == SolverKind.Z3) {
+      if (options.Solver == SolverKind.Z3)
+      {
         var name = Z3.RlimitOption;
         var value = limit.ToString();
         options.SmtOptions.RemoveAll(ov => ov.Option == name);
@@ -2393,11 +2654,13 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    object ParseValueFromProver(SExpr expr) {
-      return expr.ToString().Replace(" ","").Replace("(","").Replace(")","");
+    object ParseValueFromProver(SExpr expr)
+    {
+      return expr.ToString().Replace(" ", "").Replace("(", "").Replace(")", "");
     }
 
-    SExpr ReduceLet(SExpr expr) {
+    SExpr ReduceLet(SExpr expr)
+    {
       if (expr.Name != "let")
         return expr;
 
@@ -2405,7 +2668,8 @@ namespace Microsoft.Boogie.SMTLib
       var subexpr = expr.Arguments[1];
 
       var dict = new Dictionary<string, SExpr>();
-      foreach (var binding in bindings) {
+      foreach (var binding in bindings)
+      {
         Contract.Assert(binding.ArgCount == 1);
         dict.Add(binding.Name, binding.Arguments[0]);
       }
@@ -2414,9 +2678,11 @@ namespace Microsoft.Boogie.SMTLib
 
       var workList = new Stack<SExpr>();
       workList.Push(subexpr);
-      while (workList.Count > 0) {
+      while (workList.Count > 0)
+      {
         var curr = workList.Pop();
-        for (int i = 0; i < curr.ArgCount; i++) {
+        for (int i = 0; i < curr.ArgCount; i++)
+        {
           var arg = curr.Arguments[i];
           if (dict.ContainsKey(arg.Name))
             curr.Arguments[i] = dict[arg.Name];
@@ -2424,10 +2690,12 @@ namespace Microsoft.Boogie.SMTLib
             workList.Push(arg);
         }
       }
+
       return subexpr;
     }
 
-    object GetArrayFromProverResponse(SExpr resp) {
+    object GetArrayFromProverResponse(SExpr resp)
+    {
       resp = ReduceLet(resp);
       var dict = GetArrayFromArrayExpr(resp);
       if (dict == null) dict = GetArrayFromProverLambdaExpr(resp);
@@ -2443,16 +2711,19 @@ namespace Microsoft.Boogie.SMTLib
       return str.ToString();
     }
 
-    Dictionary<string, object> GetArrayFromProverLambdaExpr(SExpr resp) {
+    Dictionary<string, object> GetArrayFromProverLambdaExpr(SExpr resp)
+    {
       var dict = new Dictionary<string, object>();
-      if (resp.Name == "lambda" && resp.ArgCount == 2) {
-
+      if (resp.Name == "lambda" && resp.ArgCount == 2)
+      {
         // TODO: multiple indices, as (lambda (() (x!1 Int) (x!2 Int)) ...)
         var indexVar = resp.Arguments[0].Arguments[0].Name;
 
         var cases = resp.Arguments[1];
-        while (cases != null) {
-          if (cases.Name == "ite") {
+        while (cases != null)
+        {
+          if (cases.Name == "ite")
+          {
             var condition = cases.Arguments[0];
             var positive = cases.Arguments[1];
             var negative = cases.Arguments[2];
@@ -2472,103 +2743,115 @@ namespace Microsoft.Boogie.SMTLib
             dict.Add(index.ToString(), value);
 
             cases = negative;
-
-          } else if (cases.IsId) {
+          }
+          else if (cases.IsId)
+          {
             var value = ParseValueFromProver(cases);
             dict.Add("*", value);
             cases = null;
-
-          } else {
+          }
+          else
+          {
             throw new VCExprEvaluationException();
           }
         }
       }
+
       return dict.Count > 0 ? dict : null;
     }
 
-    Dictionary<string, object> GetArrayFromArrayExpr(SExpr resp) {
+    Dictionary<string, object> GetArrayFromArrayExpr(SExpr resp)
+    {
       var dict = new Dictionary<string, object>();
       var curr = resp;
-      while (curr != null) {
-        if (curr.Name == "store") {
+      while (curr != null)
+      {
+        if (curr.Name == "store")
+        {
           var ary = curr.Arguments[0];
           var indices = curr.Arguments.Skip(1).Take(curr.ArgCount - 2).Select(ParseValueFromProver).ToArray();
           var val = curr.Arguments[curr.ArgCount - 1];
           dict.Add(String.Join(",", indices), ParseValueFromProver(val));
           curr = ary;
-
-        } else if (curr.Name == "" && curr.ArgCount == 2 && curr.Arguments[0].Name == "as") {
+        }
+        else if (curr.Name == "" && curr.ArgCount == 2 && curr.Arguments[0].Name == "as")
+        {
           var val = curr.Arguments[1];
           dict.Add("*", ParseValueFromProver(val));
           curr = null;
-
-        } else {
+        }
+        else
+        {
           return null;
         }
       }
+
       return dict.Count > 0 ? dict : null;
     }
 
     public override object Evaluate(VCExpr expr)
     {
-        string vcString = VCExpr2String(expr, 1);
-        SendThisVC("(get-value (" + vcString + "))");
-        var resp = Process.GetProverResponse();
-        if (resp == null) throw new VCExprEvaluationException();
-        if (!(resp.Name == "" && resp.ArgCount == 1)) throw new VCExprEvaluationException();
-        resp = resp.Arguments[0];
-        if (resp.Name == "")
-        {
-            // evaluating an expression
-            if (resp.ArgCount == 2)
-                resp = resp.Arguments[1];
-            else
-                throw new VCExprEvaluationException();
-        }
+      string vcString = VCExpr2String(expr, 1);
+      SendThisVC("(get-value (" + vcString + "))");
+      var resp = Process.GetProverResponse();
+      if (resp == null) throw new VCExprEvaluationException();
+      if (!(resp.Name == "" && resp.ArgCount == 1)) throw new VCExprEvaluationException();
+      resp = resp.Arguments[0];
+      if (resp.Name == "")
+      {
+        // evaluating an expression
+        if (resp.ArgCount == 2)
+          resp = resp.Arguments[1];
         else
-        {
-            // evaluating a variable
-            if (resp.ArgCount == 1)
-                resp = resp.Arguments[0];
-            else
-                throw new VCExprEvaluationException();
-        }
-        if (resp.Name == "-" && resp.ArgCount == 1) // negative int
-            return Microsoft.Basetypes.BigNum.FromString("-" + resp.Arguments[0].Name);
-        if (resp.Name == "_" && resp.ArgCount == 2 && resp.Arguments[0].Name.StartsWith("bv")) // bitvector
-            return new BvConst(Microsoft.Basetypes.BigNum.FromString(resp.Arguments[0].Name.Substring("bv".Length)),
-                int.Parse(resp.Arguments[1].Name));
-        if (resp.Name == "fp" && resp.ArgCount == 3) 
-        {
-            Func<SExpr,BigInteger> getBvVal = e => BigInteger.Parse(e.Arguments[0].Name.Substring("bv".Length));
-            Func<SExpr,int> getBvSize = e => int.Parse(e.Arguments[1].ToString());
-            bool isNeg = getBvVal(resp.Arguments[0]).IsOne;
-            var expExpr = resp.Arguments[1];
-            var sigExpr = resp.Arguments[2];
-            BigInteger exp = getBvVal(expExpr);
-            int expSize = getBvSize(expExpr);
-            BigInteger sig = getBvVal(sigExpr);
-            int sigSize = getBvSize(sigExpr)+1;
-            return new Basetypes.BigFloat(isNeg, sig, exp, sigSize, expSize);
-        }
-        if (resp.Name == "_" && resp.ArgCount == 3)
-        {
-            String specialValue = resp.Arguments[0].ToString();
-            int expSize = int.Parse(resp.Arguments[1].ToString());
-            int sigSize = int.Parse(resp.Arguments[2].ToString());
-            return new Basetypes.BigFloat(specialValue, sigSize, expSize);
-        }
-        var ary = GetArrayFromProverResponse(resp);
-        if (ary != null)
-            return ary;
-        if (resp.ArgCount != 0)
-            throw new VCExprEvaluationException();
-        if (expr.Type.Equals(Boogie.Type.Bool))
-            return bool.Parse(resp.Name);
-        else if (expr.Type.Equals(Boogie.Type.Int))
-            return Microsoft.Basetypes.BigNum.FromString(resp.Name); 
+          throw new VCExprEvaluationException();
+      }
+      else
+      {
+        // evaluating a variable
+        if (resp.ArgCount == 1)
+          resp = resp.Arguments[0];
         else
-            return resp.Name;
+          throw new VCExprEvaluationException();
+      }
+
+      if (resp.Name == "-" && resp.ArgCount == 1) // negative int
+        return Microsoft.Basetypes.BigNum.FromString("-" + resp.Arguments[0].Name);
+      if (resp.Name == "_" && resp.ArgCount == 2 && resp.Arguments[0].Name.StartsWith("bv")) // bitvector
+        return new BvConst(Microsoft.Basetypes.BigNum.FromString(resp.Arguments[0].Name.Substring("bv".Length)),
+          int.Parse(resp.Arguments[1].Name));
+      if (resp.Name == "fp" && resp.ArgCount == 3)
+      {
+        Func<SExpr, BigInteger> getBvVal = e => BigInteger.Parse(e.Arguments[0].Name.Substring("bv".Length));
+        Func<SExpr, int> getBvSize = e => int.Parse(e.Arguments[1].ToString());
+        bool isNeg = getBvVal(resp.Arguments[0]).IsOne;
+        var expExpr = resp.Arguments[1];
+        var sigExpr = resp.Arguments[2];
+        BigInteger exp = getBvVal(expExpr);
+        int expSize = getBvSize(expExpr);
+        BigInteger sig = getBvVal(sigExpr);
+        int sigSize = getBvSize(sigExpr) + 1;
+        return new Basetypes.BigFloat(isNeg, sig, exp, sigSize, expSize);
+      }
+
+      if (resp.Name == "_" && resp.ArgCount == 3)
+      {
+        String specialValue = resp.Arguments[0].ToString();
+        int expSize = int.Parse(resp.Arguments[1].ToString());
+        int sigSize = int.Parse(resp.Arguments[2].ToString());
+        return new Basetypes.BigFloat(specialValue, sigSize, expSize);
+      }
+
+      var ary = GetArrayFromProverResponse(resp);
+      if (ary != null)
+        return ary;
+      if (resp.ArgCount != 0)
+        throw new VCExprEvaluationException();
+      if (expr.Type.Equals(Boogie.Type.Bool))
+        return bool.Parse(resp.Name);
+      else if (expr.Type.Equals(Boogie.Type.Int))
+        return Microsoft.Basetypes.BigNum.FromString(resp.Name);
+      else
+        return resp.Name;
     }
 
     /// <summary>
@@ -2578,82 +2861,95 @@ namespace Microsoft.Boogie.SMTLib
 
     public override Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore, ErrorHandler handler)
     {
-        unsatCore = new List<int>();
+      unsatCore = new List<int>();
 
-        Push();
-        // Name the assumptions
-        var nameToAssumption = new Dictionary<string, int>();
-        int i = 0;
-        foreach (var vc in assumptions)
-        {
-            var name = "a" + nameCounter.ToString();
-            nameCounter++;
-            nameToAssumption.Add(name, i);
+      Push();
+      // Name the assumptions
+      var nameToAssumption = new Dictionary<string, int>();
+      int i = 0;
+      foreach (var vc in assumptions)
+      {
+        var name = "a" + nameCounter.ToString();
+        nameCounter++;
+        nameToAssumption.Add(name, i);
 
-            string vcString = VCExpr2String(vc, 1);
-            AssertAxioms();
-            SendThisVC(string.Format("(assert (! {0} :named {1}))", vcString, name));
-            i++;
-        }
-        Check();
-        
-        var outcome = CheckOutcomeCore(handler);
+        string vcString = VCExpr2String(vc, 1);
+        AssertAxioms();
+        SendThisVC(string.Format("(assert (! {0} :named {1}))", vcString, name));
+        i++;
+      }
 
-        if (outcome != Outcome.Valid) {
-          Pop();
-          return outcome;
-        }
+      Check();
 
-        Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
-        SendThisVC("(get-unsat-core)");
-        var resp = Process.GetProverResponse();
-        unsatCore = new List<int>();
-        if (resp.Name != "") unsatCore.Add(nameToAssumption[resp.Name]);
-        foreach (var s in resp.Arguments) unsatCore.Add(nameToAssumption[s.Name]);
+      var outcome = CheckOutcomeCore(handler);
 
-        FlushLogFile();
+      if (outcome != Outcome.Valid)
+      {
         Pop();
         return outcome;
+      }
+
+      Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
+      SendThisVC("(get-unsat-core)");
+      var resp = Process.GetProverResponse();
+      unsatCore = new List<int>();
+      if (resp.Name != "") unsatCore.Add(nameToAssumption[resp.Name]);
+      foreach (var s in resp.Arguments) unsatCore.Add(nameToAssumption[s.Name]);
+
+      FlushLogFile();
+      Pop();
+      return outcome;
     }
 
     public override void Push()
     {
-        SendThisVC("(push 1)");
-        DeclCollector.Push();
+      SendThisVC("(push 1)");
+      DeclCollector.Push();
     }
 
-    public override Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions, out List<int> unsatisfiedSoftAssumptions, ErrorHandler handler) {
+    public override Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
+      out List<int> unsatisfiedSoftAssumptions, ErrorHandler handler)
+    {
       unsatisfiedSoftAssumptions = new List<int>();
 
       // First, convert both hard and soft assumptions to SMTLIB strings
       List<string> hardAssumptionStrings = new List<string>();
-      foreach (var a in hardAssumptions) {
+      foreach (var a in hardAssumptions)
+      {
         hardAssumptionStrings.Add(VCExpr2String(a, 1));
       }
+
       List<string> currAssumptionStrings = new List<string>();
-      foreach (var a in softAssumptions) {
+      foreach (var a in softAssumptions)
+      {
         currAssumptionStrings.Add(VCExpr2String(a, 1));
       }
 
       Push();
       AssertAxioms();
-      foreach (var a in hardAssumptionStrings) {
+      foreach (var a in hardAssumptionStrings)
+      {
         SendThisVC("(assert " + a + ")");
       }
+
       Check();
       Outcome outcome = GetResponse();
-      if (outcome != Outcome.Invalid) {
+      if (outcome != Outcome.Invalid)
+      {
         Pop();
         return outcome;
       }
 
       int k = 0;
       List<string> relaxVars = new List<string>();
-      while (true) {
+      while (true)
+      {
         Push();
-        foreach (var a in currAssumptionStrings) {
+        foreach (var a in currAssumptionStrings)
+        {
           SendThisVC("(assert " + a + ")");
         }
+
         Check();
         outcome = CheckOutcomeCore(handler);
         if (outcome != Outcome.Valid)
@@ -2663,16 +2959,20 @@ namespace Microsoft.Boogie.SMTLib
         relaxVars.Add(relaxVar);
         SendThisVC("(declare-fun " + relaxVar + " () Int)");
         List<string> nextAssumptionStrings = new List<string>();
-        for (int i = 0; i < currAssumptionStrings.Count; i++) {
+        for (int i = 0; i < currAssumptionStrings.Count; i++)
+        {
           string constraint = "(= " + relaxVar + " " + i + ")";
           nextAssumptionStrings.Add("(or " + currAssumptionStrings[i] + " " + constraint + ")");
         }
+
         currAssumptionStrings = nextAssumptionStrings;
         k++;
       }
 
-      if (outcome == Outcome.Invalid) {
-        foreach (var relaxVar in relaxVars) {
+      if (outcome == Outcome.Invalid)
+      {
+        foreach (var relaxVar in relaxVars)
+        {
           SendThisVC("(get-value (" + relaxVar + "))");
           FlushLogFile();
           var resp = Process.GetProverResponse();
@@ -2680,7 +2980,7 @@ namespace Microsoft.Boogie.SMTLib
           if (!(resp.Name == "" && resp.ArgCount == 1)) break;
           resp = resp.Arguments[0];
           if (!(resp.Name != "" && resp.ArgCount == 1)) break;
-          resp = resp.Arguments[0]; 
+          resp = resp.Arguments[0];
           if (resp.ArgCount != 0)
             break;
           int v;
@@ -2689,6 +2989,7 @@ namespace Microsoft.Boogie.SMTLib
           else
             break;
         }
+
         Pop();
       }
 
@@ -2699,192 +3000,198 @@ namespace Microsoft.Boogie.SMTLib
 
   public class SMTLibInterpolatingProcessTheoremProver : SMTLibProcessTheoremProver
   {
-      public SMTLibInterpolatingProcessTheoremProver(ProverOptions options, VCExpressionGenerator gen,
-                                        SMTLibProverContext ctx)
-          : base(AddInterpOption(options), gen, ctx)
-      {
+    public SMTLibInterpolatingProcessTheoremProver(ProverOptions options, VCExpressionGenerator gen,
+      SMTLibProverContext ctx)
+      : base(AddInterpOption(options), gen, ctx)
+    {
+    }
 
+    private static ProverOptions AddInterpOption(ProverOptions options)
+    {
+      var opts = (SMTLibProverOptions) options;
+      opts.AddSmtOption("produce-interpolants", "true");
+      if (CommandLineOptions.Clo.PrintFixedPoint == null)
+        CommandLineOptions.Clo.PrintFixedPoint = "itp.fixedpoint.bpl";
+      return opts;
+    }
+
+    public override VCExpr ComputeInterpolant(VCExpr A, VCExpr B)
+    {
+      string A_str = VCExpr2String(A, 1);
+      string B_str = VCExpr2String(B, 1);
+
+      AssertAxioms();
+      SendThisVC("(compute-interpolant " + A_str + " " + B_str + ")");
+
+      SExpr interpolant;
+      Outcome result = GetInterpolantResponse(out interpolant);
+
+      if (result != Outcome.Valid)
+        return null;
+
+      VCExpr interpolantVC = SExprToVCExpr(interpolant, new Dictionary<string, VCExpr>());
+      return interpolantVC;
+    }
+
+    private Outcome GetInterpolantResponse(out SExpr interpolant)
+    {
+      var result = Outcome.Undetermined;
+      var wasUnknown = false;
+      interpolant = null;
+
+      Process.Ping();
+      bool onlyOnce = false;
+
+      while (true)
+      {
+        var resp = Process.GetProverResponse();
+        if (resp == null || Process.IsPong(resp))
+          break;
+
+        switch (resp.Name)
+        {
+          case "unsat":
+            result = Outcome.Valid;
+            break;
+          case "sat":
+            result = Outcome.Invalid;
+            break;
+          case "unknown":
+            result = Outcome.Invalid;
+            wasUnknown = true;
+            break;
+          default:
+            if (result == Outcome.Valid)
+            {
+              interpolant = resp as SExpr;
+
+              Contract.Assert(onlyOnce == false);
+              onlyOnce = true;
+              continue;
+            }
+
+            HandleProverError("Unexpected prover response: " + resp.ToString());
+            break;
+        }
       }
 
-      private static ProverOptions AddInterpOption(ProverOptions options)
+      if (wasUnknown)
       {
-          var opts = (SMTLibProverOptions)options;
-          opts.AddSmtOption("produce-interpolants", "true");
-          if (CommandLineOptions.Clo.PrintFixedPoint == null)
-              CommandLineOptions.Clo.PrintFixedPoint = "itp.fixedpoint.bpl";
-          return opts;
-      }
+        SendThisVC("(get-info :reason-unknown)");
+        Process.Ping();
 
-      public override VCExpr ComputeInterpolant(VCExpr A, VCExpr B)
-      {
-          string A_str = VCExpr2String(A, 1);
-          string B_str = VCExpr2String(B, 1);
+        while (true)
+        {
+          var resp = Process.GetProverResponse();
+          if (resp == null || Process.IsPong(resp))
+            break;
 
-          AssertAxioms();
-          SendThisVC("(compute-interpolant " + A_str + " " + B_str + ")");
-
-          SExpr interpolant;
-          Outcome result = GetInterpolantResponse(out interpolant);
-
-          if (result != Outcome.Valid)
-              return null;
-
-          VCExpr interpolantVC = SExprToVCExpr(interpolant, new Dictionary<string, VCExpr>());
-          return interpolantVC;
-      }
-
-      private Outcome GetInterpolantResponse(out SExpr interpolant)
-      {
-          var result = Outcome.Undetermined;
-          var wasUnknown = false;
-          interpolant = null;
-
-          Process.Ping();
-          bool onlyOnce = false;
-
-          while (true)
+          if (resp.ArgCount == 1 && resp.Name == ":reason-unknown")
           {
-              var resp = Process.GetProverResponse();
-              if (resp == null || Process.IsPong(resp))
-                  break;
+            switch (resp[0].Name)
+            {
+              case "memout":
+                currentErrorHandler.OnResourceExceeded("memory");
+                result = Outcome.OutOfMemory;
+                Process.NeedsRestart = true;
+                break;
+              case "timeout":
+                currentErrorHandler.OnResourceExceeded("timeout");
+                result = Outcome.TimeOut;
+                break;
+              case "canceled":
+                // both timeout and max resource limit are reported as
+                // canceled in version 4.4.1 
+                if (this.options.TimeLimit > 0)
+                {
+                  currentErrorHandler.OnResourceExceeded("timeout");
+                  result = Outcome.TimeOut;
+                }
+                else
+                {
+                  currentErrorHandler.OnResourceExceeded("max resource limit");
+                  result = Outcome.OutOfResource;
+                }
 
-              switch (resp.Name)
-              {
-                  case "unsat":
-                      result = Outcome.Valid;
-                      break;
-                  case "sat":
-                      result = Outcome.Invalid;
-                      break;
-                  case "unknown":
-                      result = Outcome.Invalid;
-                      wasUnknown = true;
-                      break;
-                  default:
-                      if (result == Outcome.Valid)
-                      {
-                          interpolant = resp as SExpr;
-
-                          Contract.Assert(onlyOnce == false);
-                          onlyOnce = true;
-                          continue;
-                      }
-                      HandleProverError("Unexpected prover response: " + resp.ToString());
-                      break;
-              }
+                break;
+              case "max. resource limit exceeded":
+              case "resource limits reached":
+              case "(resource limits reached)":
+                currentErrorHandler.OnResourceExceeded("max resource limit");
+                result = Outcome.OutOfResource;
+                break;
+              default:
+                break;
+            }
           }
-
-          if (wasUnknown)
+          else
           {
-              SendThisVC("(get-info :reason-unknown)");
-              Process.Ping();
-
-              while (true)
-              {
-                  var resp = Process.GetProverResponse();
-                  if (resp == null || Process.IsPong(resp))
-                      break;
-
-                  if (resp.ArgCount == 1 && resp.Name == ":reason-unknown")
-                  {
-                      switch (resp[0].Name)
-                      {
-                          case "memout":
-                              currentErrorHandler.OnResourceExceeded("memory");
-                              result = Outcome.OutOfMemory;
-                              Process.NeedsRestart = true;
-                              break;
-                          case "timeout":
-                              currentErrorHandler.OnResourceExceeded("timeout");
-                              result = Outcome.TimeOut;
-                              break;
-                          case "canceled":
-                              // both timeout and max resource limit are reported as
-                              // canceled in version 4.4.1 
-                              if (this.options.TimeLimit > 0) {
-                                currentErrorHandler.OnResourceExceeded("timeout");
-                                result = Outcome.TimeOut;
-                              } else {
-                                currentErrorHandler.OnResourceExceeded("max resource limit");
-                                result = Outcome.OutOfResource;
-                              }
-                          break;
-                          case "max. resource limit exceeded":
-                          case "resource limits reached":
-                          case "(resource limits reached)":
-                              currentErrorHandler.OnResourceExceeded("max resource limit");
-                              result = Outcome.OutOfResource;
-                              break;
-                          default:
-                              break;
-                      }
-                  }
-                  else
-                  {
-                      HandleProverError("Unexpected prover response (getting info about 'unknown' response): " + resp.ToString());
-                  }
-              }
+            HandleProverError("Unexpected prover response (getting info about 'unknown' response): " + resp.ToString());
           }
-
-          return result;
+        }
       }
 
-      public override List<VCExpr> GetTreeInterpolant(List<string> root, List<string> leaves)
+      return result;
+    }
+
+    public override List<VCExpr> GetTreeInterpolant(List<string> root, List<string> leaves)
+    {
+      List<VCExpr> result = new List<VCExpr>();
+
+      string vcStr = "true";
+      foreach (string str in root)
+        vcStr = vcStr + " " + str;
+      foreach (string str in leaves)
+        vcStr = vcStr + "\r\n (interp " + str + ")";
+
+      vcStr = "(get-interpolant (and\r\n" + vcStr + "\r\n))";
+      SendThisVC(vcStr);
+      if (currentLogFile != null) currentLogFile.Flush();
+
+      List<SExpr> interpolantList;
+      GetTreeInterpolantResponse(out interpolantList);
+
+      Dictionary<string, VCExpr> bound = new Dictionary<string, VCExpr>();
+      foreach (SExpr sexpr in interpolantList)
       {
-          List<VCExpr> result = new List<VCExpr>();
-
-          string vcStr = "true";
-          foreach (string str in root)
-              vcStr = vcStr + " " + str;
-          foreach (string str in leaves)
-              vcStr = vcStr + "\r\n (interp " + str + ")";
-
-          vcStr = "(get-interpolant (and\r\n" + vcStr + "\r\n))";
-          SendThisVC(vcStr);
-          if(currentLogFile != null) currentLogFile.Flush();
-
-          List<SExpr> interpolantList;
-          GetTreeInterpolantResponse(out interpolantList);
-
-          Dictionary<string, VCExpr> bound = new Dictionary<string, VCExpr>();
-          foreach (SExpr sexpr in interpolantList)
-          {
-              VCExpr interpolantVC = SExprToVCExpr(sexpr, bound);
-              result.Add(interpolantVC);
-          }
-
-          return result;
+        VCExpr interpolantVC = SExprToVCExpr(sexpr, bound);
+        result.Add(interpolantVC);
       }
 
-      private void GetTreeInterpolantResponse(out List<SExpr> interpolantList)
+      return result;
+    }
+
+    private void GetTreeInterpolantResponse(out List<SExpr> interpolantList)
+    {
+      interpolantList = new List<SExpr>();
+
+      Process.Ping();
+
+      while (true)
       {
-          interpolantList = new List<SExpr>();
+        var resp = Process.GetProverResponse();
+        if (resp == null || Process.IsPong(resp))
+          break;
 
-          Process.Ping();
-
-          while (true)
-          {
-              var resp = Process.GetProverResponse();
-              if (resp == null || Process.IsPong(resp))
-                  break;
-              
-              SExpr interpolant = resp as SExpr;
-              if(interpolant == null)
-                  HandleProverError("Unexpected prover response: got null for interpolant!");
-              interpolantList.Add(interpolant);
-          }
+        SExpr interpolant = resp as SExpr;
+        if (interpolant == null)
+          HandleProverError("Unexpected prover response: got null for interpolant!");
+        interpolantList.Add(interpolant);
       }
+    }
   }
 
   public class SMTLibProverContext : DeclFreeProverContext
   {
     internal SMTLibProcessTheoremProver parent;
 
-    public readonly Dictionary<CtorType, List<Function>> KnownDatatypeConstructors = new Dictionary<CtorType, List<Function>>();
+    public readonly Dictionary<CtorType, List<Function>> KnownDatatypeConstructors =
+      new Dictionary<CtorType, List<Function>>();
+
     public readonly Dictionary<Function, VCExprNAry> DefinedFunctions = new Dictionary<Function, VCExprNAry>();
 
     public SMTLibProverContext(VCExpressionGenerator gen,
-                               VCGenerationOptions genOptions)
+      VCGenerationOptions genOptions)
       : base(gen, genOptions)
     {
     }
@@ -2902,31 +3209,42 @@ namespace Microsoft.Boogie.SMTLib
     public override string Lookup(VCExprVar var)
     {
       VCExprVar v = parent.AxBuilder?.TryTyped2Untyped(var);
-      if (v != null) {
+      if (v != null)
+      {
         var = v;
       }
+
       return parent.Namer.Lookup(var);
     }
 
-    public override void DeclareFunction(Function f, string attributes) {
-      if (f is DatatypeConstructor) {
+    public override void DeclareFunction(Function f, string attributes)
+    {
+      if (f is DatatypeConstructor)
+      {
         CtorType datatype = (CtorType) f.OutParams[0].TypedIdent.Type;
         if (!KnownDatatypeConstructors.ContainsKey(datatype))
           KnownDatatypeConstructors[datatype] = new List<Function>();
         KnownDatatypeConstructors[datatype].Add(f);
-      } else if (f.DefinitionBody != null) {
-        DefinedFunctions.Add(f, (VCExprNAry)translator.Translate(f.DefinitionBody));
       }
+      else if (f.DefinitionBody != null)
+      {
+        DefinedFunctions.Add(f, (VCExprNAry) translator.Translate(f.DefinitionBody));
+      }
+
       base.DeclareFunction(f, attributes);
     }
 
     // Return the datatype of the given name if there is one, null otherwise.
-    public CtorType LookupDatatype(string name) {
-      foreach (CtorType datatype in KnownDatatypeConstructors.Keys) {
-        if (name == datatype.ToString()) {
-	  return datatype;
+    public CtorType LookupDatatype(string name)
+    {
+      foreach (CtorType datatype in KnownDatatypeConstructors.Keys)
+      {
+        if (name == datatype.ToString())
+        {
+          return datatype;
         }
       }
+
       return null;
     }
   }
@@ -2943,8 +3261,8 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Ensures(Contract.Result<object>() != null);
 
       return this.SpawnProver(options,
-                              cce.NonNull((SMTLibProverContext)ctxt).ExprGen,
-                              cce.NonNull((SMTLibProverContext)ctxt));
+        cce.NonNull((SMTLibProverContext) ctxt).ExprGen,
+        cce.NonNull((SMTLibProverContext) ctxt));
     }
 
     public override object NewProverContext(ProverOptions options)
@@ -2953,9 +3271,10 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Ensures(Contract.Result<object>() != null);
 
       VCExpressionGenerator gen = new VCExpressionGenerator();
-      List<string>/*!>!*/ proverCommands = new List<string/*!*/>();
+      List<string> /*!>!*/
+        proverCommands = new List<string /*!*/>();
       proverCommands.Add("smtlib");
-      var opts = (SMTLibProverOptions)options ;
+      var opts = (SMTLibProverOptions) options;
       if (opts.Solver == SolverKind.Z3)
         proverCommands.Add("z3");
       else
@@ -2970,8 +3289,8 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     protected virtual SMTLibProcessTheoremProver SpawnProver(ProverOptions options,
-                                                              VCExpressionGenerator gen,
-                                                              SMTLibProverContext ctx)
+      VCExpressionGenerator gen,
+      SMTLibProverContext ctx)
     {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
@@ -2979,7 +3298,7 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Ensures(Contract.Result<SMTLibProcessTheoremProver>() != null);
 
       if (UseInterpolation)
-          return new SMTLibInterpolatingProcessTheoremProver(options, gen, ctx);
+        return new SMTLibInterpolatingProcessTheoremProver(options, gen, ctx);
 
       return new SMTLibProcessTheoremProver(options, gen, ctx);
     }

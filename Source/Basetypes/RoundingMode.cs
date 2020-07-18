@@ -3,13 +3,13 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
+
 using System;
 using System.Text;
 using System.Diagnostics.Contracts;
 
 namespace Microsoft.Basetypes
 {
-
   /// <summary>
   /// A representation of a rounding mode
   /// </summary>
@@ -54,7 +54,7 @@ namespace Microsoft.Basetypes
     }
 
     [Pure]
-    public override string/*!*/ ToString()
+    public override string /*!*/ ToString()
     {
       Contract.Ensures(Contract.Result<string>() != null);
       return val;

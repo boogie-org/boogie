@@ -3,6 +3,7 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
+
 using System;
 using System.Linq;
 using System.Collections;
@@ -17,8 +18,8 @@ using Microsoft.Boogie.VCExprAST;
 using Microsoft.Basetypes;
 using System.Threading.Tasks;
 
-namespace Microsoft.Boogie {
-
+namespace Microsoft.Boogie
+{
   enum CheckerStatus
   {
     Idle,
@@ -33,9 +34,11 @@ namespace Microsoft.Boogie {
   /// This class creates the appropriate background axioms.  There
   /// should be one instance per BoogiePL program.
   /// </summary>
-  public sealed class Checker {
+  public sealed class Checker
+  {
     [ContractInvariantMethod]
-    void ObjectInvariant() {
+    void ObjectInvariant()
+    {
       Contract.Invariant(gen != null);
       Contract.Invariant(thmProver != null);
     }
@@ -72,18 +75,25 @@ namespace Microsoft.Boogie {
 
     public Task ProverTask { get; set; }
 
-    public bool WillingToHandle(int timeout, int rlimit, Program prog) {
-      return status == CheckerStatus.Idle && timeout == this.timeout && rlimit == this.rlimit && (prog == null || Program == prog);
+    public bool WillingToHandle(int timeout, int rlimit, Program prog)
+    {
+      return status == CheckerStatus.Idle && timeout == this.timeout && rlimit == this.rlimit &&
+             (prog == null || Program == prog);
     }
 
-    public VCExpressionGenerator VCExprGen {
-      get {
+    public VCExpressionGenerator VCExprGen
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<VCExpressionGenerator>() != null);
         return this.gen;
       }
     }
-    public ProverInterface TheoremProver {
-      get {
+
+    public ProverInterface TheoremProver
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<ProverInterface>() != null);
         return this.thmProver;
       }
@@ -92,31 +102,38 @@ namespace Microsoft.Boogie {
     /////////////////////////////////////////////////////////////////////////////////
     // We share context information for the same program between different Checkers
 
-    private struct ContextCacheKey {
+    private struct ContextCacheKey
+    {
       [ContractInvariantMethod]
-      void ObjectInvariant() {
+      void ObjectInvariant()
+      {
         Contract.Invariant(program != null);
       }
 
       public readonly Program program;
 
-      public ContextCacheKey(Program prog) {
+      public ContextCacheKey(Program prog)
+      {
         Contract.Requires(prog != null);
         this.program = prog;
       }
 
       [Pure]
       [Reads(ReadsAttribute.Reads.Nothing)]
-      public override bool Equals(object that) {
-        if (that is ContextCacheKey) {
-          ContextCacheKey thatKey = (ContextCacheKey)that;
+      public override bool Equals(object that)
+      {
+        if (that is ContextCacheKey)
+        {
+          ContextCacheKey thatKey = (ContextCacheKey) that;
           return this.program.Equals(thatKey.program);
         }
+
         return false;
       }
 
       [Pure]
-      public override int GetHashCode() {
+      public override int GetHashCode()
+      {
         return this.program.GetHashCode();
       }
     }
@@ -127,7 +144,9 @@ namespace Microsoft.Boogie {
     /// Constructor.  Initialize a checker with the program and log file.
     /// Optionally, use prover context provided by parameter "ctx". 
     /// </summary>
-    public Checker(VC.ConditionGeneration vcgen, Program prog, string/*?*/ logFilePath, bool appendLogFile, int timeout, int rlimit = 0, ProverContext ctx = null) {
+    public Checker(VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile,
+      int timeout, int rlimit = 0, ProverContext ctx = null)
+    {
       Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
       this.timeout = timeout;
@@ -136,19 +155,24 @@ namespace Microsoft.Boogie {
 
       ProverOptions options = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
 
-      if (logFilePath != null) {
+      if (logFilePath != null)
+      {
         options.LogFilename = logFilePath;
         if (appendLogFile)
           options.AppendLogFile = appendLogFile;
       }
 
-      if (timeout > 0) {
+      if (timeout > 0)
+      {
         options.TimeLimit = timeout * 1000;
       }
 
-      if (rlimit > 0) {
+      if (rlimit > 0)
+      {
         options.ResourceLimit = rlimit;
-      } else {
+      }
+      else
+      {
         options.ResourceLimit = 0;
       }
 
@@ -157,18 +181,23 @@ namespace Microsoft.Boogie {
       ContextCacheKey key = new ContextCacheKey(prog);
       ProverInterface prover;
 
-      if (vcgen.CheckerCommonState == null) {
+      if (vcgen.CheckerCommonState == null)
+      {
         vcgen.CheckerCommonState = new Dictionary<ContextCacheKey, ProverContext>();
       }
-      IDictionary<ContextCacheKey, ProverContext>/*!>!*/ cachedContexts = (IDictionary<ContextCacheKey, ProverContext/*!*/>)vcgen.CheckerCommonState;
+
+      IDictionary<ContextCacheKey, ProverContext> /*!>!*/
+        cachedContexts = (IDictionary<ContextCacheKey, ProverContext /*!*/>) vcgen.CheckerCommonState;
 
       if (ctx == null && cachedContexts.TryGetValue(key, out ctx))
       {
-        ctx = (ProverContext)cce.NonNull(ctx).Clone();
+        ctx = (ProverContext) cce.NonNull(ctx).Clone();
         prover = (ProverInterface)
           CommandLineOptions.Clo.TheProverFactory.SpawnProver(options, ctx);
-      } else {
-        if (ctx == null) ctx = (ProverContext)CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
+      }
+      else
+      {
+        if (ctx == null) ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
 
         Setup(prog, ctx);
 
@@ -177,7 +206,7 @@ namespace Microsoft.Boogie {
         // the context to be cached
         prover = (ProverInterface)
           CommandLineOptions.Clo.TheProverFactory.SpawnProver(options, ctx);
-        cachedContexts.Add(key, cce.NonNull((ProverContext)ctx.Clone()));
+        cachedContexts.Add(key, cce.NonNull((ProverContext) ctx.Clone()));
       }
 
       this.thmProver = prover;
@@ -204,8 +233,8 @@ namespace Microsoft.Boogie {
 
     public void RetargetWithoutReset(Program prog, ProverContext ctx)
     {
-        ctx.Clear();
-        Setup(prog, ctx);
+      ctx.Clear();
+      Setup(prog, ctx);
     }
 
 
@@ -223,10 +252,11 @@ namespace Microsoft.Boogie {
 
     public void SetRlimit()
     {
-      if (0 < rlimit) {
+      if (0 < rlimit)
+      {
         TheoremProver.SetRlimit(rlimit);
       }
-      else 
+      else
       {
         TheoremProver.SetRlimit(0);
       }
@@ -276,7 +306,8 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Clean-up.
     /// </summary>
-    public void Close() {      
+    public void Close()
+    {
       thmProver.Close();
       status = CheckerStatus.Closed;
     }
@@ -285,60 +316,57 @@ namespace Microsoft.Boogie {
     /// Push a Verification Condition as an Axiom 
     /// (Required for Doomed Program Point detection)
     /// </summary>
-    public void PushVCExpr(VCExpr vc) {
+    public void PushVCExpr(VCExpr vc)
+    {
       Contract.Requires(vc != null);
       //thmProver.Context.AddAxiom(vc);
       thmProver.PushVCExpression(vc);
     }
 
-    public bool IsBusy {
-      get {
-        return status == CheckerStatus.Busy;
-      }
+    public bool IsBusy
+    {
+      get { return status == CheckerStatus.Busy; }
     }
 
     public bool IsReady
     {
-      get
-      {
-        return status == CheckerStatus.Ready;
-      }
+      get { return status == CheckerStatus.Ready; }
     }
 
-    public bool IsClosed {
-      get {
-        return status == CheckerStatus.Closed;
-      }
+    public bool IsClosed
+    {
+      get { return status == CheckerStatus.Closed; }
     }
 
     public bool IsIdle
     {
-      get
-      {
-        return status == CheckerStatus.Idle;
-      }
+      get { return status == CheckerStatus.Idle; }
     }
 
-    public bool HasOutput {
-      get {
-        return hasOutput;
-      }
+    public bool HasOutput
+    {
+      get { return hasOutput; }
     }
 
-    public TimeSpan ProverRunTime {
-      get {
-        return proverRunTime;
-      }
+    public TimeSpan ProverRunTime
+    {
+      get { return proverRunTime; }
     }
 
-    private void WaitForOutput(object dummy) {
+    private void WaitForOutput(object dummy)
+    {
       lock (this)
       {
-        try {
+        try
+        {
           outcome = thmProver.CheckOutcome(cce.NonNull(handler));
-        } catch (UnexpectedProverOutputException e) {
+        }
+        catch (UnexpectedProverOutputException e)
+        {
           outputExn = e;
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
           outputExn = new UnexpectedProverOutputException(e.Message);
         }
 
@@ -369,7 +397,8 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler) {
+    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler)
+    {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
       Contract.Requires(handler != null);
@@ -379,7 +408,7 @@ namespace Microsoft.Boogie {
       hasOutput = false;
       outputExn = null;
       this.handler = handler;
-      
+
       thmProver.Reset(gen);
       SetTimeout();
       SetRlimit();
@@ -390,14 +419,16 @@ namespace Microsoft.Boogie {
       ProverTask = Task.Factory.StartNew(() => { WaitForOutput(null); }, TaskCreationOptions.LongRunning);
     }
 
-    public ProverInterface.Outcome ReadOutcome() {
+    public ProverInterface.Outcome ReadOutcome()
+    {
       Contract.Requires(IsBusy);
       Contract.Requires(HasOutput);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
       hasOutput = false;
 
-      if (outputExn != null) {
+      if (outputExn != null)
+      {
         throw outputExn;
       }
 
@@ -409,67 +440,87 @@ namespace Microsoft.Boogie {
   // -----------------------------------------------------------------------------------------------
   // -----------------------------------------------------------------------------------------------
 
-  public abstract class ProverInterface {
-
-    public static ProverInterface CreateProver(Program prog, string/*?*/ logFilePath, bool appendLogFile, int timeout, int taskID = -1) {
+  public abstract class ProverInterface
+  {
+    public static ProverInterface CreateProver(Program prog, string /*?*/ logFilePath, bool appendLogFile, int timeout,
+      int taskID = -1)
+    {
       Contract.Requires(prog != null);
 
       ProverOptions options = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
 
-      if (logFilePath != null) {
+      if (logFilePath != null)
+      {
         options.LogFilename = logFilePath;
         if (appendLogFile)
           options.AppendLogFile = appendLogFile;
       }
 
-      if (timeout > 0) {
+      if (timeout > 0)
+      {
         options.TimeLimit = timeout * 1000;
       }
 
-      if (taskID >= 0) {
+      if (taskID >= 0)
+      {
         options.Parse(CommandLineOptions.Clo.Cho[taskID].ProverOptions);
-      } else {
+      }
+      else
+      {
         options.Parse(CommandLineOptions.Clo.ProverOptions);
       }
 
-      ProverContext ctx = (ProverContext)CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
+      ProverContext ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
 
       // set up the context
-      foreach (Declaration decl in prog.TopLevelDeclarations) {
+      foreach (Declaration decl in prog.TopLevelDeclarations)
+      {
         Contract.Assert(decl != null);
         TypeCtorDecl t = decl as TypeCtorDecl;
-        if (t != null) {
+        if (t != null)
+        {
           ctx.DeclareType(t, null);
         }
       }
-      foreach (Declaration decl in prog.TopLevelDeclarations) {
+
+      foreach (Declaration decl in prog.TopLevelDeclarations)
+      {
         Contract.Assert(decl != null);
         Constant c = decl as Constant;
-        if (c != null) {
+        if (c != null)
+        {
           ctx.DeclareConstant(c, c.Unique, null);
         }
-        else {
+        else
+        {
           Function f = decl as Function;
-          if (f != null) {
+          if (f != null)
+          {
             ctx.DeclareFunction(f, null);
           }
         }
       }
-      foreach (var ax in prog.Axioms) {
+
+      foreach (var ax in prog.Axioms)
+      {
         ctx.AddAxiom(ax, null);
       }
-      foreach (Declaration decl in prog.TopLevelDeclarations) {
+
+      foreach (Declaration decl in prog.TopLevelDeclarations)
+      {
         Contract.Assert(decl != null);
         GlobalVariable v = decl as GlobalVariable;
-        if (v != null) {
+        if (v != null)
+        {
           ctx.DeclareGlobalVariable(v, null);
         }
       }
 
-      return (ProverInterface)CommandLineOptions.Clo.TheProverFactory.SpawnProver(options, ctx);
+      return (ProverInterface) CommandLineOptions.Clo.TheProverFactory.SpawnProver(options, ctx);
     }
 
-    public enum Outcome {
+    public enum Outcome
+    {
       Valid,
       Invalid,
       TimeOut,
@@ -482,25 +533,30 @@ namespace Microsoft.Boogie {
     public readonly ISet<VCExprVar> NamedAssumes = new HashSet<VCExprVar>();
     public ISet<string> UsedNamedAssumes { get; protected set; }
 
-    public class ErrorHandler {
+    public class ErrorHandler
+    {
       // Used in CheckOutcomeCore
       public virtual int StartingProcId()
       {
-          return 0;
+        return 0;
       }
 
-      public virtual void OnModel(IList<string> labels, Model model, Outcome proverOutcome) {
+      public virtual void OnModel(IList<string> labels, Model model, Outcome proverOutcome)
+      {
         Contract.Requires(cce.NonNullElements(labels));
       }
 
-      public virtual void OnResourceExceeded(string message, IEnumerable<Tuple<AssertCmd, TransferCmd>> assertCmds = null) {
+      public virtual void OnResourceExceeded(string message,
+        IEnumerable<Tuple<AssertCmd, TransferCmd>> assertCmds = null)
+      {
         Contract.Requires(message != null);
       }
 
       public virtual void OnProverWarning(string message)
       {
         Contract.Requires(message != null);
-        switch (CommandLineOptions.Clo.PrintProverWarnings) {
+        switch (CommandLineOptions.Clo.PrintProverWarnings)
+        {
           case CommandLineOptions.ProverWarnings.None:
             break;
           case CommandLineOptions.ProverWarnings.Stdout:
@@ -511,40 +567,49 @@ namespace Microsoft.Boogie {
             break;
           default:
             Contract.Assume(false);
-            throw new cce.UnreachableException();  // unexpected case
+            throw new cce.UnreachableException(); // unexpected case
         }
       }
 
       public virtual void OnProverError(string message)
       {
-            // no-op by default. 
-            //Errors are always printed to console by the prover
+        // no-op by default. 
+        //Errors are always printed to console by the prover
       }
 
-      public virtual Absy Label2Absy(string label) {
+      public virtual Absy Label2Absy(string label)
+      {
         Contract.Requires(label != null);
         Contract.Ensures(Contract.Result<Absy>() != null);
 
         throw new System.NotImplementedException();
       }
     }
+
     public abstract void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler);
-    
+
     public virtual Outcome CheckRPFP(string descriptiveName, RPFP vc, ErrorHandler handler,
-                                     out RPFP.Node cex,
-                                     Dictionary<int, Dictionary<string, string>> varSubst, Dictionary<string,int> extra_bound = null)
+      out RPFP.Node cex,
+      Dictionary<int, Dictionary<string, string>> varSubst, Dictionary<string, int> extra_bound = null)
     {
-        throw new System.NotImplementedException();
-    }
-    [NoDefaultContract]
-    public abstract Outcome CheckOutcome(ErrorHandler handler, int taskID = -1);
-    public virtual string[] CalculatePath(int controlFlowConstant) {
       throw new System.NotImplementedException();
     }
-    public virtual void LogComment(string comment) {
+
+    [NoDefaultContract]
+    public abstract Outcome CheckOutcome(ErrorHandler handler, int taskID = -1);
+
+    public virtual string[] CalculatePath(int controlFlowConstant)
+    {
+      throw new System.NotImplementedException();
+    }
+
+    public virtual void LogComment(string comment)
+    {
       Contract.Requires(comment != null);
     }
-    public virtual void Close() {
+
+    public virtual void Close()
+    {
     }
 
     public abstract void Reset(VCExpressionGenerator gen);
@@ -556,23 +621,32 @@ namespace Microsoft.Boogie {
     /// for now it is only implemented by ProcessTheoremProver and still requires some
     /// testing
     /// </summary>    
-    public virtual void PushVCExpression(VCExpr vc) {
+    public virtual void PushVCExpression(VCExpr vc)
+    {
       Contract.Requires(vc != null);
       throw new NotImplementedException();
     }
-    public virtual string VCExpressionToString(VCExpr vc) {
+
+    public virtual string VCExpressionToString(VCExpr vc)
+    {
       Contract.Requires(vc != null);
       Contract.Ensures(Contract.Result<string>() != null);
       throw new NotImplementedException();
     }
-    public virtual void Pop() {
+
+    public virtual void Pop()
+    {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       throw new NotImplementedException();
     }
-    public virtual int NumAxiomsPushed() {
+
+    public virtual int NumAxiomsPushed()
+    {
       throw new NotImplementedException();
     }
-    public virtual int FlushAxiomsToTheoremProver() {
+
+    public virtual int FlushAxiomsToTheoremProver()
+    {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       throw new NotImplementedException();
     }
@@ -580,75 +654,75 @@ namespace Microsoft.Boogie {
     // (assert vc)
     public virtual void Assert(VCExpr vc, bool polarity, bool isSoft = false, int weight = 1, string name = null)
     {
-        throw new NotImplementedException();
+      throw new NotImplementedException();
     }
 
     public virtual List<string> UnsatCore()
     {
-        throw new NotImplementedException();
+      throw new NotImplementedException();
     }
 
 
     // (assert implicit-axioms)
     public virtual void AssertAxioms()
     {
-        throw new NotImplementedException();
+      throw new NotImplementedException();
     }
 
     // (check-sat)
     public virtual void Check()
     {
-        throw new NotImplementedException();
+      throw new NotImplementedException();
     }
 
     // (check-sat + get-unsat-core + checkOutcome)
     public virtual Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore, ErrorHandler handler)
     {
-        throw new NotImplementedException();
+      throw new NotImplementedException();
     }
 
-    public virtual Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions, out List<int> unsatisfiedSoftAssumptions, ErrorHandler handler) {
+    public virtual Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
+      out List<int> unsatisfiedSoftAssumptions, ErrorHandler handler)
+    {
       throw new NotImplementedException();
     }
 
     public virtual Outcome CheckOutcomeCore(ErrorHandler handler, int taskID = -1)
     {
-        throw new NotImplementedException();
+      throw new NotImplementedException();
     }
 
     // (push 1)
     public virtual void Push()
     {
-        throw new NotImplementedException();
+      throw new NotImplementedException();
     }
 
     // Set theorem prover timeout for the next "check-sat"
     public virtual void SetTimeOut(int ms)
-    { }
+    {
+    }
 
     public virtual void SetRlimit(int limit)
-    { }
-
-    public abstract ProverContext Context {
-      get;
+    {
     }
 
-    public abstract VCExpressionGenerator VCExprGen {
-      get;
-    }
+    public abstract ProverContext Context { get; }
 
-    public virtual void DefineMacro(Macro fun, VCExpr vc) {
+    public abstract VCExpressionGenerator VCExprGen { get; }
+
+    public virtual void DefineMacro(Macro fun, VCExpr vc)
+    {
       throw new NotImplementedException();
     }
 
     public class VCExprEvaluationException : Exception
     {
-
     }
 
     public virtual object Evaluate(VCExpr expr)
     {
-        throw new NotImplementedException();
+      throw new NotImplementedException();
     }
 
     //////////////////////
@@ -658,13 +732,13 @@ namespace Microsoft.Boogie {
     // Assert vc tagged with a name
     public virtual void AssertNamed(VCExpr vc, bool polarity, string name)
     {
-        throw new NotImplementedException();
+      throw new NotImplementedException();
     }
 
     // Returns Interpolant(A,B)
     public virtual VCExpr ComputeInterpolant(VCExpr A, VCExpr B)
     {
-        throw new NotImplementedException();
+      throw new NotImplementedException();
     }
 
     // Returns for each l, Interpolant(root + (leaves - l), l)
@@ -673,33 +747,43 @@ namespace Microsoft.Boogie {
     //    Both root and leaves should have been previously named via AssertNamed
     public virtual List<VCExpr> GetTreeInterpolant(List<string> root, List<string> leaves)
     {
-        throw new NotImplementedException();
+      throw new NotImplementedException();
     }
-
   }
 
-  public class ProverInterfaceContracts : ProverInterface {
-    public override ProverContext Context {
-      get {
+  public class ProverInterfaceContracts : ProverInterface
+  {
+    public override ProverContext Context
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<ProverContext>() != null);
 
         throw new NotImplementedException();
       }
     }
-    public override VCExpressionGenerator VCExprGen {
-      get {
+
+    public override VCExpressionGenerator VCExprGen
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<VCExpressionGenerator>() != null);
 
         throw new NotImplementedException();
       }
     }
-    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler) {/*Contract.Requires(descriptiveName != null);*/
+
+    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
+    {
+      /*Contract.Requires(descriptiveName != null);*/
       //Contract.Requires(vc != null);
       //Contract.Requires(handler != null);
       throw new NotImplementedException();
     }
+
     [NoDefaultContract]
-    public override Outcome CheckOutcome(ErrorHandler handler, int taskID = -1) {
+    public override Outcome CheckOutcome(ErrorHandler handler, int taskID = -1)
+    {
       //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       throw new NotImplementedException();
@@ -716,14 +800,19 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class UnexpectedProverOutputException : ProverException {
+  public class UnexpectedProverOutputException : ProverException
+  {
     public UnexpectedProverOutputException(string s)
-      : base(s) {
+      : base(s)
+    {
     }
   }
-  public class ProverDiedException : UnexpectedProverOutputException {
+
+  public class ProverDiedException : UnexpectedProverOutputException
+  {
     public ProverDiedException()
-      : base("Prover died with no further output, perhaps it ran out of memory or was killed.") {
+      : base("Prover died with no further output, perhaps it ran out of memory or was killed.")
+    {
     }
   }
 }
