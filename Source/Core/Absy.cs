@@ -1910,7 +1910,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        int tl = CommandLineOptions.Clo.ProverKillTime;
+        int tl = CommandLineOptions.Clo.TimeLimit;
         CheckIntAttribute("timeLimit", ref tl);
         return tl;
       }
@@ -1920,12 +1920,21 @@ namespace Microsoft.Boogie
     {
       get
       {
-        int rl = CommandLineOptions.Clo.Resourcelimit;
+        int rl = CommandLineOptions.Clo.ResourceLimit;
         CheckIntAttribute("rlimit", ref rl);
         return rl;
       }
     }
 
+    public int? RandomSeed
+    {
+      get
+      {
+        int rs = 0;
+        return CheckIntAttribute("random_seed", ref rs) ? (int?) rs : null;
+      }
+    }
+    
     public NamedDeclaration(IToken /*!*/ tok, string /*!*/ name)
       : base(tok)
     {

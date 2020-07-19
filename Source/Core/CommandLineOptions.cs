@@ -733,8 +733,8 @@ namespace Microsoft.Boogie
       }
     }
 
-    public int ProverKillTime = -1; // -1 means not specified
-    public int Resourcelimit = 0; // default to 0
+    public int TimeLimit = -1; // -1 means not specified
+    public int ResourceLimit = 0; // default to 0
     public int SmokeTimeout = 10; // default to 10s
     public int ProverCCLimit = 5;
     public bool RestartProverPerVC = false;
@@ -1637,11 +1637,11 @@ namespace Microsoft.Boogie
           return true;
 
         case "timeLimit":
-          ps.GetNumericArgument(ref ProverKillTime);
+          ps.GetNumericArgument(ref TimeLimit);
           return true;
 
         case "rlimit":
-          ps.GetNumericArgument(ref Resourcelimit);
+          ps.GetNumericArgument(ref ResourceLimit);
           return true;
 
         case "timeLimitPerAssertionInPercent":
@@ -1926,10 +1926,13 @@ namespace Microsoft.Boogie
        result caching (default: ""<impl. name>:0"").
 
      {:timeLimit N}
-       Set the time limit for a given implementation.
+       Set the time limit for verifying a given implementation.
 
      {:rlimit N}
-       Set the Z3 resource limit for a given implementation.
+       Set the Z3 resource limit for verifying a given implementation.
+
+     {:random_seed N}
+       Set the random seed for verifying a given implementation.
 
   ---- On functions ----------------------------------------------------------
 

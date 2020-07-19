@@ -429,10 +429,6 @@ namespace Microsoft.Boogie.SMTLib
         SendCommon("(set-info :smt-lib-version 2.6)");
         if (options.ProduceModel())
           SendCommon("(set-option :produce-models true)");
-        foreach (var opt in options.SmtOptions)
-        {
-          SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
-        }
 
         if (!string.IsNullOrEmpty(options.Logic))
         {
@@ -495,7 +491,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override int FlushAxiomsToTheoremProver()
     {
-      // we feed the axioms when begincheck is called.
+      // we feed the axioms when BeginCheck is called.
       return 0;
     }
 
@@ -585,6 +581,12 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(push 1)");
       SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
 
+      // send per-VC options
+      foreach (var opt in options.SmtOptions)
+      {
+        SendThisVC("(set-option :" + opt.Option + " " + opt.Value + ")");
+      }
+      // send VC
       SendThisVC(vcString);
 
       SendOptimizationRequests();
@@ -2625,7 +2627,7 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(check-sat)");
     }
 
-    public override void SetTimeOut(int ms)
+    public override void SetTimeout(int ms)
     {
       if (ms < 0)
       {
@@ -2654,6 +2656,17 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    public override void SetRandomSeed(int randomSeed)
+    {
+      if (options.Solver == SolverKind.Z3)
+      {
+        var name = Z3.RandomSeedOption;
+        var value = randomSeed.ToString();
+        options.SmtOptions.RemoveAll(ov => ov.Option == name);
+        options.AddSmtOption(name, value);
+      }
+    }
+    
     object ParseValueFromProver(SExpr expr)
     {
       return expr.ToString().Replace(" ", "").Replace("(", "").Replace(")", "");

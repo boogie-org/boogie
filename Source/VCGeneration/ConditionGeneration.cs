@@ -1133,8 +1133,7 @@ namespace VC
     #endregion
 
 
-    protected Checker FindCheckerFor(int timeout, int rlimit = 0, bool isBlocking = true, int waitTimeinMs = 50,
-      int maxRetries = 3)
+    protected Checker FindCheckerFor(bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
     {
       Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
       Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
@@ -1150,7 +1149,7 @@ namespace VC
           {
             try
             {
-              if (c.WillingToHandle(timeout, rlimit, program))
+              if (c.WillingToHandle(program))
               {
                 c.GetReady();
                 return c;
@@ -1159,7 +1158,7 @@ namespace VC
               {
                 if (c.IsIdle)
                 {
-                  c.Retarget(program, c.TheoremProver.Context, timeout, rlimit);
+                  c.Retarget(program, c.TheoremProver.Context);
                   c.GetReady();
                   return c;
                 }
@@ -1203,7 +1202,7 @@ namespace VC
           log = log + "." + checkers.Count;
         }
 
-        Checker ch = new Checker(this, program, log, appendLogFile, timeout, rlimit);
+        Checker ch = new Checker(this, program, log, appendLogFile);
         ch.GetReady();
         checkers.Add(ch);
         return ch;

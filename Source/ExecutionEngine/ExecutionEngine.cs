@@ -1452,7 +1452,7 @@ namespace Microsoft.Boogie
 
       foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
       {
-        ProcessOutcome(x.outcome, x.errors, "", stats, Console.Out, CommandLineOptions.Clo.ProverKillTime, er);
+        ProcessOutcome(x.outcome, x.errors, "", stats, Console.Out, CommandLineOptions.Clo.TimeLimit, er);
         ProcessErrors(x.errors, x.outcome, Console.Out, er);
       }
 
@@ -1504,7 +1504,7 @@ namespace Microsoft.Boogie
 
       foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
       {
-        ProcessOutcome(x.outcome, x.errors, "", stats, Console.Out, CommandLineOptions.Clo.ProverKillTime, er);
+        ProcessOutcome(x.outcome, x.errors, "", stats, Console.Out, CommandLineOptions.Clo.TimeLimit, er);
         ProcessErrors(x.errors, x.outcome, Console.Out, er);
       }
 
@@ -1528,7 +1528,7 @@ namespace Microsoft.Boogie
       // Run Abstract Houdini
       var abs = new Houdini.AbsHoudini(program, domain);
       var absout = abs.ComputeSummaries();
-      ProcessOutcome(absout.outcome, absout.errors, "", stats, Console.Out, CommandLineOptions.Clo.ProverKillTime, er);
+      ProcessOutcome(absout.outcome, absout.errors, "", stats, Console.Out, CommandLineOptions.Clo.TimeLimit, er);
       ProcessErrors(absout.errors, absout.outcome, Console.Out, er);
 
       //Houdini.PredicateAbs.Initialize(program);

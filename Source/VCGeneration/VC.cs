@@ -347,7 +347,7 @@ namespace VC
         ModelViewInfo mvInfo;
         parent.PassifyImpl(impl, out mvInfo);
         Dictionary<int, Absy> label2Absy;
-        Checker ch = parent.FindCheckerFor(CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.Resourcelimit);
+        Checker ch = parent.FindCheckerFor();
         Contract.Assert(ch != null);
 
         ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
@@ -375,7 +375,8 @@ namespace VC
               Emit();
             }
 
-            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback));
+            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback), 
+              CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit, null);
           }
 
           ch.ProverTask.Wait();
@@ -1674,7 +1675,7 @@ namespace VC
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
       /// </summary>
-      public void BeginCheck(Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int no, int timeout)
+      public void BeginCheck(Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int no, int timeout, int rlimit)
       {
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
@@ -1714,7 +1715,7 @@ namespace VC
         string desc = cce.NonNull(impl.Name);
         if (no >= 0)
           desc += "_split" + no;
-        checker.BeginCheck(desc, vc, reporter);
+        checker.BeginCheck(desc, vc, reporter, timeout, rlimit, impl.RandomSeed);
       }
 
       private void SoundnessCheck(HashSet<List<Block> /*!*/> /*!*/ cache, Block /*!*/ orig,
@@ -2155,7 +2156,7 @@ namespace VC
               keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
               impl.TimeLimit;
 
-            var checker = s.parent.FindCheckerFor(timeout, impl.ResourceLimit, false);
+            var checker = s.parent.FindCheckerFor(false);
             try
             {
               if (checker == null)
@@ -2179,7 +2180,7 @@ namespace VC
               Contract.Assert(s.parent == this);
               lock (checker)
               {
-                s.BeginCheck(checker, callback, mvInfo, no, timeout);
+                s.BeginCheck(checker, callback, mvInfo, no, timeout, impl.ResourceLimit);
               }
 
               no++;
