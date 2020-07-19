@@ -1365,7 +1365,7 @@ namespace VC
       while (true)
       {
         // Check timeout
-        if (CommandLineOptions.Clo.TimeLimit != -1)
+        if (CommandLineOptions.Clo.TimeLimit != 0)
         {
           if ((DateTime.UtcNow - startTime).TotalSeconds > CommandLineOptions.Clo.TimeLimit)
           {

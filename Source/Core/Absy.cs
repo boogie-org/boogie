@@ -1912,6 +1912,10 @@ namespace Microsoft.Boogie
       {
         int tl = CommandLineOptions.Clo.TimeLimit;
         CheckIntAttribute("timeLimit", ref tl);
+        if (tl < 0)
+        {
+          tl = CommandLineOptions.Clo.TimeLimit;
+        }
         return tl;
       }
     }
@@ -1922,16 +1926,25 @@ namespace Microsoft.Boogie
       {
         int rl = CommandLineOptions.Clo.ResourceLimit;
         CheckIntAttribute("rlimit", ref rl);
+        if (rl < 0)
+        {
+          rl = CommandLineOptions.Clo.ResourceLimit;
+        }
         return rl;
       }
     }
 
-    public int? RandomSeed
+    public int RandomSeed
     {
       get
       {
         int rs = 0;
-        return CheckIntAttribute("random_seed", ref rs) ? (int?) rs : null;
+        CheckIntAttribute("random_seed", ref rs);
+        if (rs < 0)
+        {
+          rs = 0;
+        }
+        return rs;
       }
     }
     

@@ -429,7 +429,11 @@ namespace Microsoft.Boogie.SMTLib
         SendCommon("(set-info :smt-lib-version 2.6)");
         if (options.ProduceModel())
           SendCommon("(set-option :produce-models true)");
-
+        foreach (var opt in options.SmtOptions)
+        {
+          SendThisVC("(set-option :" + opt.Option + " " + opt.Value + ")");
+        }
+        
         if (!string.IsNullOrEmpty(options.Logic))
         {
           SendCommon("(set-logic " + options.Logic + ")");
@@ -580,13 +584,12 @@ namespace Microsoft.Boogie.SMTLib
 
       SendThisVC("(push 1)");
       SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
-
-      // send per-VC options
-      foreach (var opt in options.SmtOptions)
+      if (options.Solver == SolverKind.Z3)
       {
-        SendThisVC("(set-option :" + opt.Option + " " + opt.Value + ")");
+        SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
+        SendThisVC("(set-option :" + Z3.RlimitOption + " " + options.ResourceLimit + ")");
+        SendThisVC("(set-option :" + Z3.RandomSeedOption + " " + options.RandomSeed + ")");
       }
-      // send VC
       SendThisVC(vcString);
 
       SendOptimizationRequests();
@@ -2629,42 +2632,17 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void SetTimeout(int ms)
     {
-      if (ms < 0)
-      {
-        throw new ArgumentOutOfRangeException("ms must be >= 0");
-      }
-
       options.TimeLimit = ms;
-      if (options.Solver == SolverKind.Z3)
-      {
-        var name = Z3.TimeoutOption;
-        var value = ms.ToString();
-        options.SmtOptions.RemoveAll(ov => ov.Option == name);
-        options.AddSmtOption(name, value);
-      }
     }
 
     public override void SetRlimit(int limit)
     {
       options.ResourceLimit = limit;
-      if (options.Solver == SolverKind.Z3)
-      {
-        var name = Z3.RlimitOption;
-        var value = limit.ToString();
-        options.SmtOptions.RemoveAll(ov => ov.Option == name);
-        options.AddSmtOption(name, value);
-      }
     }
 
     public override void SetRandomSeed(int randomSeed)
     {
-      if (options.Solver == SolverKind.Z3)
-      {
-        var name = Z3.RandomSeedOption;
-        var value = randomSeed.ToString();
-        options.SmtOptions.RemoveAll(ov => ov.Option == name);
-        options.AddSmtOption(name, value);
-      }
+      options.RandomSeed = randomSeed;
     }
     
     object ParseValueFromProver(SExpr expr)

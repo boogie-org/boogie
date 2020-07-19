@@ -214,29 +214,14 @@ namespace Microsoft.Boogie
       Setup(prog, ctx);
     }
 
-
     private void SetTimeout(int timeout)
     {
-      if (0 < timeout)
-      {
-        TheoremProver.SetTimeout(timeout * 1000);
-      }
-      else
-      {
-        TheoremProver.SetTimeout(0);
-      }
+      TheoremProver.SetTimeout(timeout * 1000);
     }
 
     private void SetRlimit(int rlimit)
     {
-      if (0 < rlimit)
-      {
-        TheoremProver.SetRlimit(rlimit);
-      }
-      else
-      {
-        TheoremProver.SetRlimit(0);
-      }
+      TheoremProver.SetRlimit(rlimit);
     }
 
     private void SetRandomSeed(int randomSeed)
@@ -379,7 +364,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, int timeout, int rlimit, int? randomSeed)
+    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, int timeout, int rlimit, int randomSeed = 0)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
@@ -394,10 +379,7 @@ namespace Microsoft.Boogie
       thmProver.Reset(gen);
       SetTimeout(timeout);
       SetRlimit(rlimit);
-      if (randomSeed.HasValue)
-      {
-        SetRandomSeed(randomSeed.Value);
-      }
+      SetRandomSeed(randomSeed);
       proverStart = DateTime.UtcNow;
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy

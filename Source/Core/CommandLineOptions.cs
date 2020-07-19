@@ -733,7 +733,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public int TimeLimit = -1; // -1 means not specified
+    public int TimeLimit = 0; // 0 means no limit
     public int ResourceLimit = 0; // default to 0
     public int SmokeTimeout = 10; // default to 10s
     public int ProverCCLimit = 5;
@@ -992,7 +992,7 @@ namespace Microsoft.Boogie
 
           return true;
 
-        case "CivlDesugaredFile":
+        case "civlDesugaredFile":
           if (ps.ConfirmArgumentCount(1))
           {
             CivlDesugaredFile = args[ps.i];
