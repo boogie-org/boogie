@@ -431,7 +431,7 @@ namespace Microsoft.Boogie.SMTLib
           SendCommon("(set-option :produce-models true)");
         foreach (var opt in options.SmtOptions)
         {
-          SendThisVC("(set-option :" + opt.Option + " " + opt.Value + ")");
+          SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
         }
         
         if (!string.IsNullOrEmpty(options.Logic))
