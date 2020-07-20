@@ -433,7 +433,7 @@ namespace Microsoft.Boogie.SMTLib
         {
           SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
         }
-        
+
         if (!string.IsNullOrEmpty(options.Logic))
         {
           SendCommon("(set-logic " + options.Logic + ")");
