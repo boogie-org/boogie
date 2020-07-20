@@ -106,7 +106,7 @@ namespace Microsoft.Boogie.Houdini
       this.vcgen = new VCGen(program, CommandLineOptions.Clo.ProverLogFilePath,
         CommandLineOptions.Clo.ProverLogFileAppend, new List<Checker>());
       this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.ProverLogFilePath,
-        CommandLineOptions.Clo.ProverLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
+        CommandLineOptions.Clo.ProverLogFileAppend, CommandLineOptions.Clo.TimeLimit);
 
       this.proverTime = TimeSpan.Zero;
       this.numProverQueries = 0;
@@ -2405,10 +2405,10 @@ namespace Microsoft.Boogie.Houdini
       this.impl2Summary = new Dictionary<string, ISummaryElement>();
       this.name2Impl = SimpleUtil.nameImplMapping(program);
 
-      if (CommandLineOptions.Clo.ProverKillTime > 0)
+      if (CommandLineOptions.Clo.TimeLimit > 0)
         CommandLineOptions.Clo.ProverOptions =
           CommandLineOptions.Clo.ProverOptions.Concat1(string.Format("TIME_LIMIT={0}",
-            CommandLineOptions.Clo.ProverKillTime));
+            CommandLineOptions.Clo.TimeLimit));
 
       this.vcgen = new VCGen(program, CommandLineOptions.Clo.ProverLogFilePath,
         CommandLineOptions.Clo.ProverLogFileAppend, new List<Checker>());

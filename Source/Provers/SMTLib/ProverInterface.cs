@@ -495,7 +495,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override int FlushAxiomsToTheoremProver()
     {
-      // we feed the axioms when begincheck is called.
+      // we feed the axioms when BeginCheck is called.
       return 0;
     }
 
@@ -584,7 +584,12 @@ namespace Microsoft.Boogie.SMTLib
 
       SendThisVC("(push 1)");
       SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
-
+      if (options.Solver == SolverKind.Z3)
+      {
+        SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
+        SendThisVC("(set-option :" + Z3.RlimitOption + " " + options.ResourceLimit + ")");
+        SendThisVC("(set-option :" + Z3.RandomSeedOption + " " + options.RandomSeed + ")");
+      }
       SendThisVC(vcString);
 
       SendOptimizationRequests();
@@ -2625,35 +2630,21 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(check-sat)");
     }
 
-    public override void SetTimeOut(int ms)
+    public override void SetTimeout(int ms)
     {
-      if (ms < 0)
-      {
-        throw new ArgumentOutOfRangeException("ms must be >= 0");
-      }
-
       options.TimeLimit = ms;
-      if (options.Solver == SolverKind.Z3)
-      {
-        var name = Z3.TimeoutOption;
-        var value = ms.ToString();
-        options.SmtOptions.RemoveAll(ov => ov.Option == name);
-        options.AddSmtOption(name, value);
-      }
     }
 
     public override void SetRlimit(int limit)
     {
       options.ResourceLimit = limit;
-      if (options.Solver == SolverKind.Z3)
-      {
-        var name = Z3.RlimitOption;
-        var value = limit.ToString();
-        options.SmtOptions.RemoveAll(ov => ov.Option == name);
-        options.AddSmtOption(name, value);
-      }
     }
 
+    public override void SetRandomSeed(int randomSeed)
+    {
+      options.RandomSeed = randomSeed;
+    }
+    
     object ParseValueFromProver(SExpr expr)
     {
       return expr.ToString().Replace(" ", "").Replace("(", "").Replace(")", "");

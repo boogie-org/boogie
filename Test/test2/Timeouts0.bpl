@@ -1,5 +1,10 @@
 // RUN: %boogie -timeLimit:4 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+// RUN: %boogie -timeLimit:4 -proverLog:%t "%s"
+// RUN: %OutputCheck --file-to-check "%t" "%s"
+// CHECK-L: (set-option :timeout 4000)
+// CHECK-L: (set-option :timeout 8000)
+// CHECK-L: (set-option :timeout 2000)
 procedure TestTimeouts0(in: [int]int, len: int) returns (out: [int]int)
   requires in[0] == 0 && (forall i: int :: 0 <= i ==> in[i + 1] == in[i] + 1);
   requires 0 < len;

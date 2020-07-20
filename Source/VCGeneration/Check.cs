@@ -46,9 +46,7 @@ namespace Microsoft.Boogie
     private readonly VCExpressionGenerator gen;
 
     private ProverInterface thmProver;
-    private int timeout;
-    private int rlimit;
-
+    
     // state for the async interface
     private volatile ProverInterface.Outcome outcome;
     private volatile bool hasOutput;
@@ -75,10 +73,9 @@ namespace Microsoft.Boogie
 
     public Task ProverTask { get; set; }
 
-    public bool WillingToHandle(int timeout, int rlimit, Program prog)
+    public bool WillingToHandle(Program prog)
     {
-      return status == CheckerStatus.Idle && timeout == this.timeout && rlimit == this.rlimit &&
-             (prog == null || Program == prog);
+      return status == CheckerStatus.Idle && (prog == null || Program == prog);
     }
 
     public VCExpressionGenerator VCExprGen
@@ -144,13 +141,11 @@ namespace Microsoft.Boogie
     /// Constructor.  Initialize a checker with the program and log file.
     /// Optionally, use prover context provided by parameter "ctx". 
     /// </summary>
-    public Checker(VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile,
-      int timeout, int rlimit = 0, ProverContext ctx = null)
+    public Checker(VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile, 
+      ProverContext ctx = null)
     {
       Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
-      this.timeout = timeout;
-      this.rlimit = rlimit;
       this.Program = prog;
 
       ProverOptions options = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
@@ -160,20 +155,6 @@ namespace Microsoft.Boogie
         options.LogFilename = logFilePath;
         if (appendLogFile)
           options.AppendLogFile = appendLogFile;
-      }
-
-      if (timeout > 0)
-      {
-        options.TimeLimit = timeout * 1000;
-      }
-
-      if (rlimit > 0)
-      {
-        options.ResourceLimit = rlimit;
-      }
-      else
-      {
-        options.ResourceLimit = 0;
       }
 
       options.Parse(CommandLineOptions.Clo.ProverOptions);
@@ -213,7 +194,7 @@ namespace Microsoft.Boogie
       this.gen = prover.VCExprGen;
     }
 
-    public void Retarget(Program prog, ProverContext ctx, int timeout = 0, int rlimit = 0)
+    public void Retarget(Program prog, ProverContext ctx)
     {
       lock (this)
       {
@@ -224,10 +205,6 @@ namespace Microsoft.Boogie
         TheoremProver.FullReset(gen);
         ctx.Reset();
         Setup(prog, ctx);
-        this.timeout = timeout;
-        SetTimeout();
-        this.rlimit = rlimit;
-        SetRlimit();
       }
     }
 
@@ -237,31 +214,21 @@ namespace Microsoft.Boogie
       Setup(prog, ctx);
     }
 
-
-    public void SetTimeout()
+    private void SetTimeout(int timeout)
     {
-      if (0 < timeout)
-      {
-        TheoremProver.SetTimeOut(timeout * 1000);
-      }
-      else
-      {
-        TheoremProver.SetTimeOut(0);
-      }
+      TheoremProver.SetTimeout(timeout * 1000);
     }
 
-    public void SetRlimit()
+    private void SetRlimit(int rlimit)
     {
-      if (0 < rlimit)
-      {
-        TheoremProver.SetRlimit(rlimit);
-      }
-      else
-      {
-        TheoremProver.SetRlimit(0);
-      }
+      TheoremProver.SetRlimit(rlimit);
     }
 
+    private void SetRandomSeed(int randomSeed)
+    {
+      TheoremProver.SetRandomSeed(randomSeed);
+    }
+    
     /// <summary>
     /// Set up the context.
     /// </summary>
@@ -397,7 +364,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler)
+    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, int timeout, int rlimit, int randomSeed = 0)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
@@ -410,8 +377,9 @@ namespace Microsoft.Boogie
       this.handler = handler;
 
       thmProver.Reset(gen);
-      SetTimeout();
-      SetRlimit();
+      SetTimeout(timeout);
+      SetRlimit(rlimit);
+      SetRandomSeed(randomSeed);
       proverStart = DateTime.UtcNow;
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
@@ -699,7 +667,7 @@ namespace Microsoft.Boogie
     }
 
     // Set theorem prover timeout for the next "check-sat"
-    public virtual void SetTimeOut(int ms)
+    public virtual void SetTimeout(int ms)
     {
     }
 
@@ -707,6 +675,10 @@ namespace Microsoft.Boogie
     {
     }
 
+    public virtual void SetRandomSeed(int randomSeed)
+    {
+    }
+    
     public abstract ProverContext Context { get; }
 
     public abstract VCExpressionGenerator VCExprGen { get; }

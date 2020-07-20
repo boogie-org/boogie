@@ -663,7 +663,7 @@ namespace VC
       : base(program, logFilePath, appendLogFile, checkers)
     {
       implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
-      prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime);
+      prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.TimeLimit);
       foreach (var impl in program.Implementations)
       {
         implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this, PassiveImplInstrumentation);
@@ -1365,9 +1365,9 @@ namespace VC
       while (true)
       {
         // Check timeout
-        if (CommandLineOptions.Clo.ProverKillTime != -1)
+        if (CommandLineOptions.Clo.TimeLimit != 0)
         {
-          if ((DateTime.UtcNow - startTime).TotalSeconds > CommandLineOptions.Clo.ProverKillTime)
+          if ((DateTime.UtcNow - startTime).TotalSeconds > CommandLineOptions.Clo.TimeLimit)
           {
             ret = Outcome.TimedOut;
             break;
@@ -3151,7 +3151,7 @@ namespace VC
       var startTime = DateTime.UtcNow;
 
       CommandLineOptions.Clo.ProverCCLimit = 1;
-      prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime);
+      prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.TimeLimit);
 
       // Flush any axioms that came with the program before we start SI on this implementation
       prover.AssertAxioms();

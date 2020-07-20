@@ -139,8 +139,7 @@ namespace Microsoft.Boogie
       program = _program;
       gen = ctx;
       if (old_checker == null)
-        checker = new Checker(this, program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime,
-          CommandLineOptions.Clo.Resourcelimit, null);
+        checker = new Checker(this, program, logFilePath, appendLogFile, null);
       else
       {
         checker = old_checker;
