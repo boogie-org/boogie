@@ -3149,8 +3149,8 @@ namespace VC
     {
       // Record current time
       var startTime = DateTime.UtcNow;
-
-      CommandLineOptions.Clo.ProverCCLimit = 1;
+      
+      CommandLineOptions.Clo.ErrorLimit = 1;
       prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.TimeLimit);
 
       // Flush any axioms that came with the program before we start SI on this implementation
