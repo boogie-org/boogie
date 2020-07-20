@@ -736,7 +736,7 @@ namespace Microsoft.Boogie
     public int TimeLimit = 0; // 0 means no limit
     public int ResourceLimit = 0; // default to 0
     public int SmokeTimeout = 10; // default to 10s
-    public int ProverCCLimit = 5;
+    public int ErrorLimit = 5; // 0 means attempt to falsify each assertion in a desugared implementation 
     public bool RestartProverPerVC = false;
 
     public double VcsMaxCost = 1.0;
@@ -886,7 +886,7 @@ namespace Microsoft.Boogie
     public class ConcurrentHoudiniOptions
     {
       public List<string> ProverOptions = new List<string>();
-      public int ProverCCLimit = 5;
+      public int ErrorLimit = 5;
       public bool DisableLoopInvEntryAssert = false;
       public bool DisableLoopInvMaintainedAssert = false;
       public bool ModifyTopologicalSorting = false;
@@ -1653,7 +1653,7 @@ namespace Microsoft.Boogie
           return true;
 
         case "errorLimit":
-          ps.GetNumericArgument(ref ProverCCLimit);
+          ps.GetNumericArgument(ref ErrorLimit);
           return true;
 
         case "verifySnapshots":
@@ -1807,7 +1807,7 @@ namespace Microsoft.Boogie
         MaxProverMemory = 0; // no max: avoids restarts
         if (ProverDllName == "Z3api" || ProverDllName == "SMTLib")
         {
-          ProverCCLimit = 1;
+          ErrorLimit = 1;
         }
 
         if (UseProverEvaluate)

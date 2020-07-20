@@ -234,7 +234,7 @@ namespace Microsoft.Boogie
       VerificationResult result)
     {
       if (result.Outcome == ConditionGeneration.Outcome.Errors && result.Errors != null &&
-          result.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
+          result.Errors.Count < CommandLineOptions.Clo.ErrorLimit)
       {
         implementation.SetErrorChecksumToCachedError(result.Errors.Select(cex =>
           new Tuple<byte[], byte[], object>(cex.Checksum, cex.SugaredCmdChecksum, cex)));
@@ -257,7 +257,7 @@ namespace Microsoft.Boogie
           && node.AssignedAssumptionVariable == null)
       {
         var before = new List<Cmd>();
-        var beforePrecondtionCheck = new List<Cmd>();
+        var beforePreconditionCheck = new List<Cmd>();
         var after = new List<Cmd>();
         var axioms = new List<Axiom>();
         Expr assumedExpr = new LiteralExpr(Token.NoToken, false);
@@ -273,7 +273,7 @@ namespace Microsoft.Boogie
             var assume = new AssumeCmd(node.tok, precond,
               new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
             assume.IrrelevantForChecksumComputation = true;
-            beforePrecondtionCheck.Add(assume);
+            beforePreconditionCheck.Add(assume);
           }
 
           var unmods = node.UnmodifiedBefore(oldProc);
@@ -332,7 +332,7 @@ namespace Microsoft.Boogie
           after.Add(assumed);
         }
 
-        node.ExtendDesugaring(before, beforePrecondtionCheck, after);
+        node.ExtendDesugaring(before, beforePreconditionCheck, after);
         if (CommandLineOptions.Clo.TraceCachingForTesting || CommandLineOptions.Clo.TraceCachingForBenchmarking)
         {
           using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
@@ -355,7 +355,7 @@ namespace Microsoft.Boogie
               b.Emit(tokTxtWr, 0);
             }
 
-            foreach (var b in beforePrecondtionCheck)
+            foreach (var b in beforePreconditionCheck)
             {
               Console.Out.Write("  >>> added before precondition check: ");
               b.Emit(tokTxtWr, 0);

@@ -372,8 +372,8 @@ namespace Microsoft.Boogie.Houdini
 
       DateTime now = DateTime.UtcNow;
 
-      var el = CommandLineOptions.Clo.ProverCCLimit;
-      CommandLineOptions.Clo.ProverCCLimit = 1;
+      var el = CommandLineOptions.Clo.ErrorLimit;
+      CommandLineOptions.Clo.ErrorLimit = 1;
 
       var outcome = ProverInterface.Outcome.Undetermined;
 
@@ -455,7 +455,7 @@ namespace Microsoft.Boogie.Houdini
           "TimeOut", descriptiveName);
       }
 
-      CommandLineOptions.Clo.ProverCCLimit = el;
+      CommandLineOptions.Clo.ErrorLimit = el;
 
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
       stats.proverTime += queryTime;

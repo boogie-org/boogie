@@ -1542,17 +1542,14 @@ namespace Microsoft.Boogie.SMTLib
         if (CommandLineOptions.Clo.ConcurrentHoudini)
         {
           Contract.Assert(taskID >= 0);
-          errorLimit = CommandLineOptions.Clo.Cho[taskID].ProverCCLimit;
+          errorLimit = CommandLineOptions.Clo.Cho[taskID].ErrorLimit;
         }
         else
         {
-          errorLimit = CommandLineOptions.Clo.ProverCCLimit;
+          errorLimit = CommandLineOptions.Clo.ErrorLimit;
         }
 
-        if (errorLimit < 1)
-          errorLimit = 1;
-
-        int errorsLeft = errorLimit;
+        int errorsDiscovered = 0;
 
         var globalResult = Outcome.Undetermined;
 
@@ -1563,7 +1560,7 @@ namespace Microsoft.Boogie.SMTLib
 
           try
           {
-            errorsLeft--;
+            errorsDiscovered++;
 
             result = GetResponse();
 
@@ -1739,7 +1736,10 @@ namespace Microsoft.Boogie.SMTLib
               handler.OnModel(labels, model, result);
             }
 
-            if (labels == null || !labels.Any() || errorsLeft == 0) break;
+            Debug.Assert(errorsDiscovered > 0);
+            // if errorLimit is 0, loop will break only if there are no more 
+            // counterexamples to be discovered.
+            if (labels == null || !labels.Any() || errorsDiscovered == errorLimit) break;
           }
           finally
           {
@@ -1752,6 +1752,7 @@ namespace Microsoft.Boogie.SMTLib
           {
             string source = labels[labels.Length - 2];
             string target = labels[labels.Length - 1];
+            // block the assert which was falsified by this counterexample
             SendThisVC("(assert (not (= (ControlFlow 0 " + source + ") (- " + target + "))))");
             SendCheckSat();
           }
