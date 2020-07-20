@@ -886,7 +886,7 @@ namespace Microsoft.Boogie
     public class ConcurrentHoudiniOptions
     {
       public List<string> ProverOptions = new List<string>();
-      public int ProverCCLimit = 5;
+      public int ErrorLimit = 5;
       public bool DisableLoopInvEntryAssert = false;
       public bool DisableLoopInvMaintainedAssert = false;
       public bool ModifyTopologicalSorting = false;

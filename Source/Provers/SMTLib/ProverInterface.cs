@@ -1542,7 +1542,7 @@ namespace Microsoft.Boogie.SMTLib
         if (CommandLineOptions.Clo.ConcurrentHoudini)
         {
           Contract.Assert(taskID >= 0);
-          errorLimit = CommandLineOptions.Clo.Cho[taskID].ProverCCLimit;
+          errorLimit = CommandLineOptions.Clo.Cho[taskID].ErrorLimit;
         }
         else
         {
@@ -1735,8 +1735,8 @@ namespace Microsoft.Boogie.SMTLib
 
               handler.OnModel(labels, model, result);
             }
-            
-            // errorsDiscovered > 0 at this control location.
+
+            Debug.Assert(errorsDiscovered > 0);
             // if errorLimit is 0, loop will break only if there are no more 
             // counterexamples to be discovered.
             if (labels == null || !labels.Any() || errorsDiscovered == errorLimit) break;
