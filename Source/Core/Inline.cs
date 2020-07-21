@@ -33,9 +33,6 @@ namespace Microsoft.Boogie
     protected List<Variable> /*!*/
       newLocalVars;
 
-    protected List<IdentifierExpr> /*!*/
-      newModifies;
-
     protected string prefix;
     
     private InlineCallback inlineCallback;
@@ -47,7 +44,6 @@ namespace Microsoft.Boogie
     {
       Contract.Invariant(program != null);
       Contract.Invariant(newLocalVars != null);
-      Contract.Invariant(newModifies != null);
       Contract.Invariant(codeCopier != null);
       Contract.Invariant(recursiveProcUnrollMap != null);
       Contract.Invariant(inlinedProcLblMap != null);
@@ -100,7 +96,6 @@ namespace Microsoft.Boogie
       this.codeCopier = new CodeCopier();
       this.inlineCallback = cb;
       this.newLocalVars = new List<Variable>();
-      this.newModifies = new List<IdentifierExpr>();
       this.prefix = null;
     }
 
@@ -158,7 +153,6 @@ namespace Microsoft.Boogie
       inliner.ComputePrefix(program, impl);
 
       inliner.newLocalVars.AddRange(impl.LocVars);
-      inliner.newModifies.AddRange(impl.Proc.Modifies);
 
       bool inlined = false;
       List<Block> newBlocks = inliner.DoInlineBlocks(impl.Blocks, ref inlined);
@@ -170,7 +164,6 @@ namespace Microsoft.Boogie
       impl.InParams = new List<Variable>(impl.InParams);
       impl.OutParams = new List<Variable>(impl.OutParams);
       impl.LocVars = inliner.newLocalVars;
-      impl.Proc.Modifies = inliner.newModifies;
       impl.Blocks = newBlocks;
 
       impl.ResetImplFormalMap();
@@ -475,7 +468,6 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
-      Contract.Requires(newModifies != null);
       Contract.Requires(newLocalVars != null);
 
       Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
@@ -543,13 +535,6 @@ namespace Microsoft.Boogie
         if (!substMapOld.ContainsKey(mVar))
         {
           substMapOld.Add(mVar, ie);
-        }
-
-        // FIXME why are we doing this? the modifies list should already include them.
-        // add the modified variable to the modifies list of the procedure
-        if (!newModifies.Contains(mie))
-        {
-          newModifies.Add(mie);
         }
       }
 
