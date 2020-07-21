@@ -1805,7 +1805,7 @@ namespace Microsoft.Boogie
         UseArrayTheory = true;
         UseAbstractInterpretation = false;
         MaxProverMemory = 0; // no max: avoids restarts
-        if (ProverDllName == "Z3api" || ProverDllName == "SMTLib")
+        if (ProverDllName == "SMTLib")
         {
           ErrorLimit = 1;
         }
