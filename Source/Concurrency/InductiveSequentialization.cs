@@ -367,7 +367,7 @@ namespace Microsoft.Boogie
 
         var proc = new Procedure(Token.NoToken, $"AbstractionCheck_{action.proc.Name}_{abs.proc.Name}",
           new List<TypeVariable>(),
-          abs.impl.InParams, abs.impl.OutParams, requires, abs.modifiedGlobalVars.Select(Expr.Ident).ToList(), ensures);
+          abs.impl.InParams, abs.impl.OutParams, requires, action.proc.Modifies, ensures);
         var impl = new Implementation(Token.NoToken, proc.Name, new List<TypeVariable>(),
             proc.InParams, proc.OutParams, new List<Variable>(), blocks)
           {Proc = proc};

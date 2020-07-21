@@ -97,7 +97,7 @@ modifies C, tail;
 procedure {:atomic}{:layer 2}
 CONSUMER (x:int, {:linear_in "pid"} pid:int)
 returns ({:pending_async "CONSUMER"} PAs:[PA]int)
-modifies C, head;
+modifies head;
 {
   var x':int;
 
@@ -122,7 +122,7 @@ modifies C, head;
 procedure {:IS_abstraction}{:layer 2}
 CONSUMER' (x:int, {:linear_in "pid"} pid:int)
 returns ({:pending_async "CONSUMER"} PAs:[PA]int)
-modifies C, head;
+modifies head;
 {
   var x':int;
 
