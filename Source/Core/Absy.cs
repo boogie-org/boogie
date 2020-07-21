@@ -1089,7 +1089,7 @@ namespace Microsoft.Boogie
         Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
         HashSet<string> dummyBlocks = new HashSet<string>();
 
-        CodeCopier codeCopier = new CodeCopier(loopHeaderToSubstMap[header]); // fix me
+        var subst = Substituter.SubstitutionFromHashtable(loopHeaderToSubstMap[header]); // fix me
         List<Variable> inputs = loopHeaderToInputs[header];
         List<Variable> outputs = loopHeaderToOutputs[header];
         int si_unique_loc = 1; // Added by AL: to distinguish the back edges
@@ -1109,18 +1109,18 @@ namespace Microsoft.Boogie
               addUniqueCallAttr(si_unique_loc, callCmd);
               si_unique_loc++;
               newBlock.Cmds.Add(callCmd); // add the recursive call at head of loop
-              var rest = codeCopier.CopyCmdSeq(block.Cmds);
+              var rest = Substituter.Apply(subst, block.Cmds);
               newBlock.Cmds.AddRange(rest);
             }
             else
-              newBlock.Cmds = codeCopier.CopyCmdSeq(block.Cmds);
+              newBlock.Cmds = Substituter.Apply(subst, block.Cmds);
 
             blockMap[block] = newBlock;
             if (newBlocksCreated.ContainsKey(block))
             {
               Block newBlock2 = new Block();
               newBlock2.Label = newBlocksCreated[block].Label;
-              newBlock2.Cmds = codeCopier.CopyCmdSeq(newBlocksCreated[block].Cmds);
+              newBlock2.Cmds = Substituter.Apply(subst, newBlocksCreated[block].Cmds);
               blockMap[newBlocksCreated[block]] = newBlock2;
             }
 
@@ -1138,10 +1138,10 @@ namespace Microsoft.Boogie
                     !loopNodes.Contains(bl))
                 {
                   Block auxNewBlock = new Block();
-                  auxNewBlock.Label = ((Block) bl).Label;
+                  auxNewBlock.Label = bl.Label;
                   //these blocks may have read/write locals that are not present in naturalLoops
                   //we need to capture these variables 
-                  auxNewBlock.Cmds = codeCopier.CopyCmdSeq(((Block) bl).Cmds);
+                  auxNewBlock.Cmds = Substituter.Apply(subst, bl.Cmds);
                   //add restoration code for such blocks
                   if (loopHeaderToAssignCmd.ContainsKey(header))
                   {

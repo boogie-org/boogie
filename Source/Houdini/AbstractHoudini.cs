@@ -2488,9 +2488,9 @@ namespace Microsoft.Boogie.Houdini
             impl.InParams, impl.OutParams, new List<Variable>(impl.LocVars), new List<Block>());
           foreach (var blk in impl.Blocks)
           {
-            var cd = new CodeCopier();
+            var cd = new Duplicator();
             nimpl.Blocks.Add(new Block(Token.NoToken, blk.Label,
-              cd.CopyCmdSeq(blk.Cmds), cd.CopyTransferCmd(blk.TransferCmd)));
+              cd.VisitCmdSeq(blk.Cmds), cd.VisitTransferCmd(blk.TransferCmd)));
           }
 
           copy.Add(impl.Name, nimpl);

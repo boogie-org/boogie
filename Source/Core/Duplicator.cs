@@ -818,6 +818,53 @@ namespace Microsoft.Boogie
       return (Cmd) new ReplacingOldSubstituter(always, forOld).Visit(cmd);
     }
 
+    // ----------------------------- Substitutions for CmdSeq -------------------------------
+
+    /// <summary>
+    /// Apply a substitution to a command.  Any variables not in domain(subst)
+    /// is not changed.  The substitutions apply within the "old", but the "old"
+    /// expression remains.
+    /// </summary>
+    public static List<Cmd> Apply(Substitution subst, List<Cmd> cmdSeq)
+    {
+      Contract.Requires(subst != null);
+      Contract.Requires(cmdSeq != null);
+      Contract.Ensures(Contract.Result<Cmd>() != null);
+      return new NormalSubstituter(subst).VisitCmdSeq(cmdSeq);
+    }
+
+    /// <summary>
+    /// Apply a substitution to a command.  
+    /// Outside "old" expressions, the substitution "always" is applied; any variable not in
+    /// domain(always) is not changed.  Inside "old" expressions, apply map "forOld" to
+    /// variables in domain(forOld), apply map "always" to variables in
+    /// domain(always)-domain(forOld), and leave variable unchanged otherwise.
+    /// </summary>
+    public static List<Cmd> Apply(Substitution always, Substitution forOld, List<Cmd> cmdSeq)
+    {
+      Contract.Requires(always != null);
+      Contract.Requires(forOld != null);
+      Contract.Requires(cmdSeq != null);
+      Contract.Ensures(Contract.Result<Cmd>() != null);
+      return new NormalSubstituter(always, forOld).VisitCmdSeq(cmdSeq);
+    }
+
+    /// <summary>
+    /// Apply a substitution to a command replacing "old" expressions.
+    /// Outside "old" expressions, the substitution "always" is applied; any variable not in
+    /// domain(always) is not changed.  Inside "old" expressions, apply map "forOld" to
+    /// variables in domain(forOld), apply map "always" to variables in
+    /// domain(always)-domain(forOld), and leave variable unchanged otherwise.
+    /// </summary>    
+    public static List<Cmd> ApplyReplacingOldExprs(Substitution always, Substitution forOld, List<Cmd> cmdSeq)
+    {
+      Contract.Requires(always != null);
+      Contract.Requires(forOld != null);
+      Contract.Requires(cmdSeq != null);
+      Contract.Ensures(Contract.Result<Cmd>() != null);
+      return new ReplacingOldSubstituter(always, forOld).VisitCmdSeq(cmdSeq);
+    }
+    
     // ----------------------------- Substitutions for QKeyValue -------------------------------
 
     /// <summary>
@@ -1038,5 +1085,95 @@ namespace Microsoft.Boogie
     }
   }
 
+  class BoundVarAndReplacingOldSubstituter : Duplicator
+  {
+    private Dictionary<Variable, Expr> subst;
+    private Dictionary<Variable, Expr> oldSubst;
+    private readonly string prefix;
+    private Dictionary<Variable, Expr> boundVarSubst;
+    private int insideOldExpr;
+
+    public static Expr Apply(Dictionary<Variable, Expr> subst, Dictionary<Variable, Expr> oldSubst, string prefix, Expr expr)
+    {
+      return (Expr) new BoundVarAndReplacingOldSubstituter(subst, oldSubst, prefix).Visit(expr);
+    }
+    
+    public static Cmd Apply(Dictionary<Variable, Expr> subst, Dictionary<Variable, Expr> oldSubst, string prefix, Cmd cmd)
+    {
+      return (Cmd) new BoundVarAndReplacingOldSubstituter(subst, oldSubst, prefix).Visit(cmd);
+    }
+    
+    private BoundVarAndReplacingOldSubstituter(Dictionary<Variable, Expr> subst, Dictionary<Variable, Expr> oldSubst, string prefix)
+    {
+      this.subst = subst;
+      this.oldSubst = oldSubst;
+      this.prefix = prefix;
+      this.boundVarSubst = new Dictionary<Variable, Expr>();
+      this.insideOldExpr = 0;
+    }
+
+    public override Expr VisitIdentifierExpr(IdentifierExpr node)
+    {
+      if (0 < insideOldExpr && oldSubst.ContainsKey(node.Decl))
+      {
+        return oldSubst[node.Decl];
+      }
+      if (subst.ContainsKey(node.Decl))
+      { 
+        return subst[node.Decl];
+      }
+      if (boundVarSubst.ContainsKey(node.Decl))
+      {
+        return boundVarSubst[node.Decl];
+      }
+      return base.VisitIdentifierExpr(node);
+    }
+
+    public override Expr VisitOldExpr(OldExpr node)
+    {
+      insideOldExpr++;
+      Expr e = (Expr) this.Visit(node.Expr);
+      insideOldExpr--;
+      return e;
+    }
+    
+    public override BinderExpr VisitBinderExpr(BinderExpr node)
+    {
+      var oldToNew = node.Dummies.ToDictionary(x => x,
+        x => new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type),
+          x.Attributes));
+
+      foreach (var x in node.Dummies)
+      {
+        boundVarSubst.Add(x, Expr.Ident(oldToNew[x]));
+      }
+
+      BinderExpr expr = base.VisitBinderExpr(node);
+      expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
+
+      // We process triggers of quantifier expressions here, because otherwise the
+      // substitutions for bound variables have to be leaked outside this procedure.
+      if (node is QuantifierExpr quantifierExpr)
+      {
+        if (quantifierExpr.Triggers != null)
+        {
+          ((QuantifierExpr) expr).Triggers = this.VisitTrigger(quantifierExpr.Triggers);
+        }
+      }
+
+      foreach (var x in node.Dummies)
+      {
+        boundVarSubst.Remove(x);
+      }
+
+      return expr;
+    }
+
+    public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
+    {
+      // Don't remove this implementation! Triggers should be duplicated in VisitBinderExpr.
+      return (QuantifierExpr) this.VisitBinderExpr(node);
+    }
+  }
   #endregion
 }

@@ -4,16 +4,15 @@
 //
 //-----------------------------------------------------------------------------
 
+using System.Runtime.Serialization;
+
 namespace Microsoft.Boogie
 {
   using System;
-  using System.IO;
-  using System.Collections;
   using System.Collections.Generic;
   using System.Diagnostics.Contracts;
   using BoogiePL = Microsoft.Boogie;
   using System.Diagnostics;
-  using System.Text.RegularExpressions; // for procedure inlining
 
   public delegate void InlineCallback(Implementation /*!*/ impl);
 
@@ -22,11 +21,6 @@ namespace Microsoft.Boogie
     protected bool inlinedSomething;
 
     protected Program program;
-
-    private InlineCallback inlineCallback;
-
-    protected CodeCopier /*!*/
-      codeCopier;
 
     protected Dictionary<string /*!*/, int> /*!*/ /* Procedure.Name -> int */
       recursiveProcUnrollMap;
@@ -43,6 +37,10 @@ namespace Microsoft.Boogie
       newModifies;
 
     protected string prefix;
+    
+    private InlineCallback inlineCallback;
+
+    private CodeCopier codeCopier;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -555,14 +553,12 @@ namespace Microsoft.Boogie
         }
       }
 
-      codeCopier.Subst = Substituter.SubstitutionFromHashtable(substMap);
-      codeCopier.OldSubst = Substituter.SubstitutionFromHashtable(substMapOld);
+      codeCopier.BeginInline(substMap, substMapOld, GetInlinedProcLabel(proc.Name) + "$");
     }
 
     protected void EndInline()
     {
-      codeCopier.Subst = null;
-      codeCopier.OldSubst = null;
+      codeCopier.EndInline();
     }
 
     private Cmd InlinedRequires(CallCmd callCmd, Requires req)
@@ -618,9 +614,9 @@ namespace Microsoft.Boogie
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
       Contract.Requires(callCmd != null);
-      Contract.Requires(codeCopier.Subst != null);
+      Contract.Requires(codeCopier.substMap != null);
+      Contract.Requires(codeCopier.oldSubstMap != null);
 
-      Contract.Requires(codeCopier.OldSubst != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
       List<Block /*!*/> /*!*/
         implBlocks = cce.NonNull(impl.OriginalBlocks);
@@ -639,7 +635,7 @@ namespace Microsoft.Boogie
       for (int i = 0; i < impl.InParams.Count; ++i)
       {
         Cmd cmd = Cmd.SimpleAssign(impl.tok,
-          (IdentifierExpr) cce.NonNull(codeCopier.Subst)(cce.NonNull(impl.InParams[i])),
+          (IdentifierExpr) codeCopier.Subst(cce.NonNull(impl.InParams[i])),
           cce.NonNull(callCmd.Ins[i]));
         inCmds.Add(cmd);
       }
@@ -677,7 +673,7 @@ namespace Microsoft.Boogie
         Expr whereExpr = (cce.NonNull(locVars[i])).TypedIdent.WhereExpr;
         if (whereExpr != null)
         {
-          whereExpr = Substituter.Apply(codeCopier.Subst, whereExpr);
+          whereExpr = codeCopier.CopyExpr(whereExpr);
           // FIXME we cannot overwrite it, can we?!
           (cce.NonNull(locVars[i])).TypedIdent.WhereExpr = whereExpr;
           AssumeCmd /*!*/
@@ -693,7 +689,7 @@ namespace Microsoft.Boogie
         Expr whereExpr = (cce.NonNull(impl.OutParams[i])).TypedIdent.WhereExpr;
         if (whereExpr != null)
         {
-          whereExpr = Substituter.Apply(codeCopier.Subst, whereExpr);
+          whereExpr = codeCopier.CopyExpr(whereExpr);
           // FIXME likewise
           (cce.NonNull(impl.OutParams[i])).TypedIdent.WhereExpr = whereExpr;
           AssumeCmd /*!*/
@@ -802,110 +798,101 @@ namespace Microsoft.Boogie
 
       return null;
     }
-  }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public class CodeCopier
-  {
-    public Substitution Subst;
-    public Substitution OldSubst;
-
-    public CodeCopier(Dictionary<Variable, Expr> substMap)
+    class CodeCopier
     {
-      Contract.Requires(substMap != null);
-      Subst = Substituter.SubstitutionFromHashtable(substMap);
-    }
+      public Dictionary<Variable, Expr> substMap;
+      public Dictionary<Variable, Expr> oldSubstMap;
+      public string prefix;
 
-    public CodeCopier(Dictionary<Variable, Expr> substMap, Dictionary<Variable, Expr> oldSubstMap)
-    {
-      Contract.Requires(oldSubstMap != null);
-      Contract.Requires(substMap != null);
-      Subst = Substituter.SubstitutionFromHashtable(substMap);
-      OldSubst = Substituter.SubstitutionFromHashtable(oldSubstMap);
-    }
-
-    public CodeCopier()
-    {
-    }
-
-    public List<Cmd> CopyCmdSeq(List<Cmd> cmds)
-    {
-      Contract.Requires(cmds != null);
-      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
-      List<Cmd> newCmds = new List<Cmd>();
-      foreach (Cmd /*!*/ cmd in cmds)
+      public void BeginInline(Dictionary<Variable, Expr> substMap, Dictionary<Variable, Expr> oldSubstMap, string prefix)
       {
-        Contract.Assert(cmd != null);
-        newCmds.Add(CopyCmd(cmd));
+        Contract.Requires(oldSubstMap != null);
+        Contract.Requires(substMap != null);
+        this.substMap = substMap;
+        this.oldSubstMap = oldSubstMap;
+        this.prefix = prefix;
       }
 
-      return newCmds;
-    }
-
-    public TransferCmd CopyTransferCmd(TransferCmd cmd)
-    {
-      Contract.Requires(cmd != null);
-      Contract.Ensures(Contract.Result<TransferCmd>() != null);
-      TransferCmd transferCmd;
-      GotoCmd gotocmd = cmd as GotoCmd;
-      if (gotocmd != null)
+      public void EndInline()
       {
-        Contract.Assert(gotocmd.labelNames != null);
-        List<String> labels = new List<String>();
-        labels.AddRange(gotocmd.labelNames);
-        transferCmd = new GotoCmd(cmd.tok, labels);
+        this.substMap = null;
+        this.oldSubstMap = null;
+        this.prefix = null;
       }
-      else
+
+      public Expr Subst(Variable v)
       {
-        ReturnExprCmd returnExprCmd = cmd as ReturnExprCmd;
-        if (returnExprCmd != null)
+        return substMap[v];
+      }
+      
+      public Expr OldSubst(Variable v)
+      {
+        return oldSubstMap[v];
+      }
+      
+      public List<Cmd> CopyCmdSeq(List<Cmd> cmds)
+      {
+        Contract.Requires(cmds != null);
+        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+        List<Cmd> newCmds = new List<Cmd>();
+        foreach (Cmd /*!*/ cmd in cmds)
         {
-          transferCmd = new ReturnExprCmd(cmd.tok, CopyExpr(returnExprCmd.Expr));
+          Contract.Assert(cmd != null);
+          newCmds.Add(CopyCmd(cmd));
+        }
+
+        return newCmds;
+      }
+
+      public TransferCmd CopyTransferCmd(TransferCmd cmd)
+      {
+        Contract.Requires(cmd != null);
+        Contract.Ensures(Contract.Result<TransferCmd>() != null);
+        TransferCmd transferCmd;
+        GotoCmd gotocmd = cmd as GotoCmd;
+        if (gotocmd != null)
+        {
+          Contract.Assert(gotocmd.labelNames != null);
+          List<String> labels = new List<String>();
+          labels.AddRange(gotocmd.labelNames);
+          transferCmd = new GotoCmd(cmd.tok, labels);
         }
         else
         {
-          transferCmd = new ReturnCmd(cmd.tok);
+          ReturnExprCmd returnExprCmd = cmd as ReturnExprCmd;
+          if (returnExprCmd != null)
+          {
+            transferCmd = new ReturnExprCmd(cmd.tok, CopyExpr(returnExprCmd.Expr));
+          }
+          else
+          {
+            transferCmd = new ReturnCmd(cmd.tok);
+          }
         }
+
+        return transferCmd;
       }
 
-      return transferCmd;
-    }
+      public Cmd CopyCmd(Cmd cmd)
+      {
+        if (substMap == null)
+        {
+          return cmd;
+        }
+        return BoundVarAndReplacingOldSubstituter.Apply(substMap, oldSubstMap, prefix, cmd);
+      }
 
-    public Cmd CopyCmd(Cmd cmd)
-    {
-      Contract.Requires(cmd != null);
-      Contract.Ensures(Contract.Result<Cmd>() != null);
-      if (Subst == null)
+      public Expr CopyExpr(Expr expr)
       {
-        return cmd;
+        if (substMap == null)
+        {
+          return expr;
+        }
+        return BoundVarAndReplacingOldSubstituter.Apply(substMap, oldSubstMap, prefix, expr);
       }
-      else if (OldSubst == null)
-      {
-        return Substituter.Apply(Subst, cmd);
-      }
-      else
-      {
-        return Substituter.ApplyReplacingOldExprs(Subst, OldSubst, cmd);
-      }
-    }
-
-    public Expr CopyExpr(Expr expr)
-    {
-      Contract.Requires(expr != null);
-      Contract.Ensures(Contract.Result<Expr>() != null);
-      if (Subst == null)
-      {
-        return expr;
-      }
-      else if (OldSubst == null)
-      {
-        return Substituter.Apply(Subst, expr);
-      }
-      else
-      {
-        return Substituter.ApplyReplacingOldExprs(Subst, OldSubst, expr);
-      }
-    }
-  } // end class CodeCopier
+    } // end class CodeCopier
+  } // end class Inliner
 } // end namespace
