@@ -665,12 +665,8 @@ namespace Microsoft.Boogie.VCExprAST
       {
         // generate default name (line:column position in .bpl file)
         Variable v = vars[0];
-        Contract.Assert(v != null); // Rustan's claim!
-        // Include the first 8 characters of the filename in QID (helpful in case we use /concat)
-        // We limit it to 8, so the SX file doesn't grow too big, and who on earth would need
-        // more than 8 characters in a filename anyways.
-        int max = 8;
-        StringBuilder buf = new StringBuilder(max + 20);
+        Contract.Assert(v != null);
+        StringBuilder buf = new StringBuilder(20);
         string filename = v.tok.filename;
         if (filename == null)
           filename = "unknown";
@@ -678,7 +674,7 @@ namespace Microsoft.Boogie.VCExprAST
         {
           if (filename[i] == '/' || filename[i] == '\\')
             buf.Length = 0;
-          if (buf.Length < max && char.IsLetterOrDigit(filename[i]))
+          if (char.IsLetterOrDigit(filename[i]))
           {
             if (buf.Length == 0 && char.IsDigit(filename[i]))
             {
