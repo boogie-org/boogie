@@ -14,6 +14,8 @@ implementation {:inline 1} b()
 
   anon0:
     assert (forall a: int :: { arr[a] } a < 10 ==> arr[a] == 0);
+    assert arr == (lambda a: int :: 10);
+    assert (var a := 42; a == 42);
     return;
 }
 
@@ -51,6 +53,8 @@ implementation foo(a: ref)
 
   inline$b$0$anon0:
     assert (forall inline$b$0$a: int :: { arr[inline$b$0$a] } inline$b$0$a < 10 ==> arr[inline$b$0$a] == 0);
+    assert arr == (lambda inline$b$0$a: int :: 10);
+    assert (var inline$b$0$a := 42; inline$b$0$a == 42);
     goto inline$b$0$Return;
 
   inline$b$0$Return:
@@ -65,9 +69,16 @@ implementation foo(a: ref)
 <console>(16,4): Error BP5001: This assertion might not hold.
 Execution trace:
     <console>(15,0): anon0
+<console>(17,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    <console>(15,0): anon0
 <console>(13,4): Error BP5001: This assertion might not hold.
 Execution trace:
     <console>(5,0): anon0
     <console>(12,0): inline$b$0$anon0
+<console>(14,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    <console>(5,0): anon0
+    <console>(12,0): inline$b$0$anon0
 
-Boogie program verifier finished with 0 verified, 2 errors
+Boogie program verifier finished with 0 verified, 4 errors

@@ -1174,6 +1174,28 @@ namespace Microsoft.Boogie
       // Don't remove this implementation! Triggers should be duplicated in VisitBinderExpr.
       return (QuantifierExpr) this.VisitBinderExpr(node);
     }
+
+    public override Expr VisitLetExpr(LetExpr node)
+    {
+      var oldToNew = node.Dummies.ToDictionary(x => x,
+        x => new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type),
+          x.Attributes));
+
+      foreach (var x in node.Dummies)
+      {
+        boundVarSubst.Add(x, Expr.Ident(oldToNew[x]));
+      }
+
+      var expr = (LetExpr) base.VisitLetExpr(node);
+      expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
+
+      foreach (var x in node.Dummies)
+      {
+        boundVarSubst.Remove(x);
+      }
+
+      return expr;
+    }
   }
   #endregion
 }
