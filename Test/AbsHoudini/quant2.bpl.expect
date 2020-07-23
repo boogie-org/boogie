@@ -1,6 +1,0 @@
-function {:existential true} {:absdomain "Intervals"} {:inline} b1(x: int) : bool
-{
-  x >= 0 && x <= 1
-}
-
-Boogie program verifier finished with 1 verified, 0 errors

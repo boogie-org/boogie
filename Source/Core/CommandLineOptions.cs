@@ -587,7 +587,6 @@ namespace Microsoft.Boogie
     public bool StagedHoudiniMergeIgnoredAnnotations = false;
     public int StagedHoudiniThreads = 1;
     public string VariableDependenceIgnore = null;
-    public string AbstractHoudini = null;
     public bool UseUnsatCoreForContractInfer = false;
 
     public bool PrintAssignment = false;
@@ -1309,17 +1308,7 @@ namespace Microsoft.Boogie
 
           return true;
         }
-
-        case "abstractHoudini":
-        {
-          if (ps.ConfirmArgumentCount(1))
-          {
-            AbstractHoudini = args[ps.i];
-          }
-
-          return true;
-        }
-
+        
         case "proverDll":
           if (ps.ConfirmArgumentCount(1))
           {

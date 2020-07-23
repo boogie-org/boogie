@@ -1,6 +1,0 @@
-function {:existential true} {:absdomain "IA[HoudiniConst]"} {:inline} b1() : bool
-{
-  true
-}
-
-Boogie program verifier finished with 1 verified, 0 errors

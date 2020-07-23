@@ -1407,12 +1407,7 @@ namespace Microsoft.Boogie
     private static PipelineOutcome RunHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
     {
       Contract.Requires(stats != null);
-
-      if (CommandLineOptions.Clo.AbstractHoudini != null)
-      {
-        return RunAbstractHoudini(program, stats, er);
-      }
-
+      
       if (CommandLineOptions.Clo.StagedHoudini != null)
       {
         return RunStagedHoudini(program, stats, er);
@@ -1507,33 +1502,6 @@ namespace Microsoft.Boogie
         ProcessOutcome(x.outcome, x.errors, "", stats, Console.Out, CommandLineOptions.Clo.TimeLimit, er);
         ProcessErrors(x.errors, x.outcome, Console.Out, er);
       }
-
-      return PipelineOutcome.Done;
-    }
-
-
-    private static PipelineOutcome RunAbstractHoudini(Program program, PipelineStatistics stats,
-      ErrorReporterDelegate er)
-    {
-      Contract.Requires(stats != null);
-
-      //CommandLineOptions.Clo.PrintErrorModel = 1;
-      CommandLineOptions.Clo.UseProverEvaluate = true;
-      CommandLineOptions.Clo.ModelViewFile = "z3model";
-      CommandLineOptions.Clo.UseArrayTheory = true;
-      CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
-      Houdini.AbstractDomainFactory.Initialize(program);
-      var domain = Houdini.AbstractDomainFactory.GetInstance(CommandLineOptions.Clo.AbstractHoudini);
-
-      // Run Abstract Houdini
-      var abs = new Houdini.AbsHoudini(program, domain);
-      var absout = abs.ComputeSummaries();
-      ProcessOutcome(absout.outcome, absout.errors, "", stats, Console.Out, CommandLineOptions.Clo.TimeLimit, er);
-      ProcessErrors(absout.errors, absout.outcome, Console.Out, er);
-
-      //Houdini.PredicateAbs.Initialize(program);
-      //var abs = new Houdini.AbstractHoudini(program);
-      //abs.computeSummaries(new Houdini.PredicateAbs(program.TopLevelDeclarations.OfType<Implementation>().First().Name));
 
       return PipelineOutcome.Done;
     }
