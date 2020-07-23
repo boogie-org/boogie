@@ -2094,7 +2094,7 @@ namespace Microsoft.Boogie
                 do not verify layers <n> and below
   /trustLayersDownto:<n>
                 do not verify layers <n> and above
-  /CivlDesugaredFile:<file>
+  /civlDesugaredFile:<file>
                 print plain Boogie program to <file>
 
   ---- Verification-condition generation options -----------------------------
