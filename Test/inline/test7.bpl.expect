@@ -1,0 +1,84 @@
+
+type ref;
+
+var arr: [int]int;
+
+procedure {:inline 1} b();
+  modifies arr;
+  ensures (forall a: int :: { arr[a] } a < 10 ==> arr[a] == 0);
+
+
+
+implementation {:inline 1} b()
+{
+
+  anon0:
+    assert (forall a: int :: { arr[a] } a < 10 ==> arr[a] == 0);
+    assert arr == (lambda a: int :: 10);
+    assert (var a := 42; a == 42);
+    return;
+}
+
+
+
+procedure foo(a: ref);
+  modifies arr;
+
+
+
+implementation foo(a: ref)
+{
+
+  anon0:
+    call b();
+    return;
+}
+
+
+after inlining procedure calls
+procedure foo(a: ref);
+  modifies arr;
+
+
+implementation foo(a: ref)
+{
+  var inline$b$0$arr: [int]int;
+
+  anon0:
+    goto inline$b$0$Entry;
+
+  inline$b$0$Entry:
+    inline$b$0$arr := arr;
+    goto inline$b$0$anon0;
+
+  inline$b$0$anon0:
+    assert (forall inline$b$0$a: int :: { arr[inline$b$0$a] } inline$b$0$a < 10 ==> arr[inline$b$0$a] == 0);
+    assert arr == (lambda inline$b$0$a: int :: 10);
+    assert (var inline$b$0$a := 42; inline$b$0$a == 42);
+    goto inline$b$0$Return;
+
+  inline$b$0$Return:
+    assert (forall inline$b$0$a: int :: { arr[inline$b$0$a] } inline$b$0$a < 10 ==> arr[inline$b$0$a] == 0);
+    goto anon0$1;
+
+  anon0$1:
+    return;
+}
+
+
+<console>(16,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    <console>(15,0): anon0
+<console>(17,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    <console>(15,0): anon0
+<console>(13,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    <console>(5,0): anon0
+    <console>(12,0): inline$b$0$anon0
+<console>(14,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    <console>(5,0): anon0
+    <console>(12,0): inline$b$0$anon0
+
+Boogie program verifier finished with 0 verified, 4 errors
