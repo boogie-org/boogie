@@ -4,8 +4,6 @@
 //
 //-----------------------------------------------------------------------------
 
-using System.Runtime.Serialization;
-
 namespace Microsoft.Boogie
 {
   using System;
@@ -836,29 +834,21 @@ namespace Microsoft.Boogie
       {
         Contract.Requires(cmd != null);
         Contract.Ensures(Contract.Result<TransferCmd>() != null);
-        TransferCmd transferCmd;
-        GotoCmd gotocmd = cmd as GotoCmd;
-        if (gotocmd != null)
+        if (cmd is GotoCmd gotocmd)
         {
           Contract.Assert(gotocmd.labelNames != null);
           List<String> labels = new List<String>();
           labels.AddRange(gotocmd.labelNames);
-          transferCmd = new GotoCmd(cmd.tok, labels);
+          return new GotoCmd(cmd.tok, labels);
+        }
+        else if (cmd is ReturnExprCmd returnExprCmd)
+        {
+          return new ReturnExprCmd(cmd.tok, CopyExpr(returnExprCmd.Expr));
         }
         else
         {
-          ReturnExprCmd returnExprCmd = cmd as ReturnExprCmd;
-          if (returnExprCmd != null)
-          {
-            transferCmd = new ReturnExprCmd(cmd.tok, CopyExpr(returnExprCmd.Expr));
-          }
-          else
-          {
-            transferCmd = new ReturnCmd(cmd.tok);
-          }
+          return new ReturnCmd(cmd.tok);
         }
-
-        return transferCmd;
       }
 
       public Cmd CopyCmd(Cmd cmd)

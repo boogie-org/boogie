@@ -821,7 +821,7 @@ namespace Microsoft.Boogie
     // ----------------------------- Substitutions for CmdSeq -------------------------------
 
     /// <summary>
-    /// Apply a substitution to a command.  Any variables not in domain(subst)
+    /// Apply a substitution to a command sequence.  Any variables not in domain(subst)
     /// is not changed.  The substitutions apply within the "old", but the "old"
     /// expression remains.
     /// </summary>
@@ -834,7 +834,7 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Apply a substitution to a command.  
+    /// Apply a substitution to a command sequence.  
     /// Outside "old" expressions, the substitution "always" is applied; any variable not in
     /// domain(always) is not changed.  Inside "old" expressions, apply map "forOld" to
     /// variables in domain(forOld), apply map "always" to variables in
@@ -850,7 +850,7 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Apply a substitution to a command replacing "old" expressions.
+    /// Apply a substitution to a command sequence replacing "old" expressions.
     /// Outside "old" expressions, the substitution "always" is applied; any variable not in
     /// domain(always) is not changed.  Inside "old" expressions, apply map "forOld" to
     /// variables in domain(forOld), apply map "always" to variables in
