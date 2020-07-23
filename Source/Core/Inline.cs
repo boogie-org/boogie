@@ -454,7 +454,7 @@ namespace Microsoft.Boogie
           }
         }
 
-        Block newBlock = new Block(block.tok, ((lblCount == 0) ? (block.Label) : (block.Label + "$" + lblCount)),
+        Block newBlock = new Block(block.tok, lblCount == 0 ? block.Label : block.Label + "$" + lblCount,
           newCmds, codeCopier.CopyTransferCmd(transferCmd));
         newBlocks.Add(newBlock);
       }
