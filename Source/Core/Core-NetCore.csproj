@@ -13,4 +13,13 @@
     <ProjectReference Include="..\ParserHelper\ParserHelper-NetCore.csproj" />
   </ItemGroup>
 
+  <!-- Based on https://stackoverflow.com/questions/44818730/is-there-a-net-core-cli-pre-before-build-task -->
+  <Target Name="Generate Parser using Coco" BeforeTargets="BeforeBuild">
+    <Exec Command="dotnet tool restore &amp;&amp; dotnet tool run coco BoogiePL.atg -namespace Microsoft.Boogie" />
+    <ItemGroup>
+      <Compile Include="**/*$(DefaultLanguageSourceExtension)"
+               Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);$(BaseIntermediateOutputPath)**;$(BaseOutputPath)**;@(Compile)" />
+    </ItemGroup>
+  </Target>
+
 </Project>

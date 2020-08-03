@@ -210,6 +210,9 @@
     <None Include="BoogiePL.atg" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PreBuildEvent>dotnet tool restore &amp;&amp; dotnet tool run coco BoogiePL.atg -namespace Microsoft.Boogie</PreBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

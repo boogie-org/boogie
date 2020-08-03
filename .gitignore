@@ -19,6 +19,7 @@ TestResult.xml
 # Coco/R
 Scanner.cs.old
 Parser.cs.old
+Parser.cs
 
 # Editor temporary files
 .*.swp
