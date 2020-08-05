@@ -1,10 +1,8 @@
 ﻿using Microsoft.Boogie.TestUtil;
 using Microsoft.Boogie;
-using Microsoft.Basetypes;
+using Microsoft.BaseTypes;
 using NUnit.Framework;
-using System;
 using System.Linq;
-
 
 namespace CoreTests
 {

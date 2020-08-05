@@ -1,20 +1,10 @@
-﻿//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
-using System;
-using System.Text;
+﻿using System;
 using System.Diagnostics.Contracts;
 using System.Diagnostics;
+using BIM = System.Numerics.BigInteger;
 
-
-namespace Microsoft.Basetypes
+namespace Microsoft.BaseTypes
 {
-  using BIM = System.Numerics.BigInteger;
-
-
   /// <summary>
   /// A representation of decimal values.
   /// </summary>

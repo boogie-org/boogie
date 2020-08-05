@@ -169,9 +169,9 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Basetypes\Basetypes.csproj">
+    <ProjectReference Include="..\BaseTypes\BaseTypes.csproj">
       <Project>{43dfad18-3e35-4558-9be2-caff6b5ba8a0}</Project>
-      <Name>Basetypes</Name>
+      <Name>BaseTypes</Name>
     </ProjectReference>
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender.csproj">
       <Project>{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}</Project>

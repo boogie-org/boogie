@@ -1,21 +1,7 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
-using System.Linq;
-using System.Collections;
 using System.Collections.Generic;
-using System.Threading;
-using System.IO;
-using System.Text.RegularExpressions;
-using System.Diagnostics;
 using System.Diagnostics.Contracts;
-using Microsoft.Boogie.AbstractInterpretation;
 using Microsoft.Boogie.VCExprAST;
-using Microsoft.Basetypes;
 using System.Threading.Tasks;
 
 namespace Microsoft.Boogie

@@ -1,12 +1,9 @@
 ﻿using System;
-using System.IO;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
-using System.Text.RegularExpressions;
 using System.Linq;
-using VC;
 
 namespace Microsoft.Boogie.Houdini
 {

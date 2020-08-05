@@ -1,20 +1,12 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
 using System.Text;
-using System.IO;
 using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using Microsoft.Basetypes;
+using Microsoft.BaseTypes;
 
 // A translator from the Boogie AST to the VCExpr AST.
-// This was previously realised in the methods AbsyExpr.VCView
 
 namespace Microsoft.Boogie.VCExprAST
 {

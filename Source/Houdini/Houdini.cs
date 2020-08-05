@@ -1,20 +1,10 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
-using Microsoft.Boogie;
-using Microsoft.Boogie.VCExprAST;
 using VC;
-using System.Collections;
 using System.IO;
 using Microsoft.Boogie.GraphUtil;
 using System.Linq;
-using System.Diagnostics;
 
 namespace Microsoft.Boogie.Houdini
 {

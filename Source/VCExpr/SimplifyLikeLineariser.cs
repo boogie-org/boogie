@@ -1,17 +1,9 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
 using System.Text;
 using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using Microsoft.Basetypes;
-using Microsoft.Boogie.VCExprAST;
 
 // a naive method to turn VCExprs into strings that can be fed into Simplify
 

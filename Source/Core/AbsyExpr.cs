@@ -1,25 +1,14 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-//---------------------------------------------------------------------------------------------
-// BoogiePL - Absy.cs
-//---------------------------------------------------------------------------------------------
+using System;
+using System.Collections;
+using System.Diagnostics;
+using System.Collections.Generic;
+using System.Diagnostics.Contracts;
+using System.Linq;
+using Microsoft.BaseTypes;
+using Set = Microsoft.Boogie.GSet<object>; // not that the set used is not a set of Variable only, as it also contains TypeVariables
 
 namespace Microsoft.Boogie
 {
-  using System;
-  using System.Collections;
-  using System.Diagnostics;
-  using System.Collections.Generic;
-  using Microsoft.Boogie.AbstractInterpretation;
-  using System.Diagnostics.Contracts;
-  using System.Linq;
-  using Microsoft.Basetypes;
-  using Set = GSet<object>; // not that the set used is not a set of Variable only, as it also contains TypeVariables
-
-
   //---------------------------------------------------------------------
   // Expressions
   //

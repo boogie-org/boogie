@@ -97,9 +97,9 @@
       <Project>{0EFA3E43-690B-48DC-A72C-384A3EA7F31F}</Project>
       <Name>AbsInt</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\Basetypes\Basetypes.csproj">
+    <ProjectReference Include="..\..\BaseTypes\BaseTypes.csproj">
       <Project>{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}</Project>
-      <Name>Basetypes</Name>
+      <Name>BaseTypes</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\CodeContractsExtender\CodeContractsExtender.csproj">
       <Project>{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}</Project>
@@ -122,7 +122,7 @@
     <Folder Include="Properties\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
   </Target>

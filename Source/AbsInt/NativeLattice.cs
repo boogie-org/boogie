@@ -1,15 +1,7 @@
-﻿//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Diagnostics.Contracts;
-using Microsoft.Boogie;
 
 namespace Microsoft.Boogie.AbstractInterpretation
 {
@@ -46,7 +38,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
     public abstract Element Constrain(Element element, Expr expr);
 
     public abstract Element
-      Update(Element element, AssignCmd cmd); // requiers 'cmd' to be a simple (possibly parallel) assignment command
+      Update(Element element, AssignCmd cmd); // requires 'cmd' to be a simple (possibly parallel) assignment command
 
     public abstract Element Eliminate(Element element, Variable v);
 
@@ -101,7 +93,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       }
       else if (CommandLineOptions.Clo.Ai.J_Intervals)
       {
-        lattice = new NativeIntervallDomain();
+        lattice = new NativeIntervalDomain();
       }
 
       if (lattice != null)

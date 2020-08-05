@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Threading;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.IO;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
-using Microsoft.Basetypes;
+using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
 namespace VC

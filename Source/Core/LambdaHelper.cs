@@ -1,18 +1,11 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using Core;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.Contracts;
+using Set = Microsoft.Boogie.GSet<object>; // for the purposes here, "object" really means "either Variable or TypeVariable"
 
 namespace Microsoft.Boogie
 {
-  using System;
-  using System.Collections.Generic;
-  using System.Diagnostics.Contracts;
-  using Set = GSet<object>; // for the purposes here, "object" really means "either Variable or TypeVariable"
-
   public static class LambdaHelper
   {
     public static Program Desugar(Program program, out List<Expr /*!*/> /*!*/ axioms,

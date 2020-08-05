@@ -1,17 +1,8 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
-using System.Text;
-using System.IO;
 using System.Linq;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using Microsoft.Basetypes;
+using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
 // different classes for erasing complex types in VCExprs, replacing them
@@ -19,8 +10,6 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.TypeErasure
 {
-  using Microsoft.Boogie.VCExprAST;
-
   // some functionality that is needed in many places (and that should
   // really be provided by the Spec# container classes; maybe one
   // could integrate the functions in a nicer way?)

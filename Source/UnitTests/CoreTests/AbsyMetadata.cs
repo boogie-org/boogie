@@ -9,7 +9,7 @@ namespace CoreTests
   {
     private Absy GetAbsy()
     {
-      // The choice of Absy type here is arbitary
+      // The choice of Absy type here is arbitrary
       return new AssertCmd(Token.NoToken, Expr.True);
     }
 

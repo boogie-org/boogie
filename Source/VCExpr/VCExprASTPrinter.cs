@@ -1,16 +1,6 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
-using System;
-using System.Text;
 using System.IO;
 using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using Microsoft.Basetypes;
 
 // A simple visitor for turning a VCExpr into a human-readable string
 // (S-expr syntax)

@@ -1,24 +1,13 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
-using System.Text;
-using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
-using Microsoft.Basetypes;
 
 // Some visitor skeletons for the VCExpression AST
 
 namespace Microsoft.Boogie.VCExprAST
 {
-  using Microsoft.Boogie;
-
   [ContractClass(typeof(IVCExprVisitorContracts<,>))]
   public interface IVCExprVisitor<Result, Arg>
   {

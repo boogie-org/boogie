@@ -1,25 +1,13 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
-using System.Text;
-using System.IO;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics.Contracts;
-using Microsoft.Basetypes;
 using Microsoft.Boogie.VCExprAST;
 
 // Erasure of types using premisses   (forall x :: type(x)=T ==> p(x))
 
 namespace Microsoft.Boogie.TypeErasure
 {
-  using Microsoft.Boogie.VCExprAST;
-
   // When using type premisses, we can distinguish two kinds of type
   // parameters of a function or map: parameters that occur in the
   // formal argument types of the function are "implicit" because they

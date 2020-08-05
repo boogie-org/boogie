@@ -1,16 +1,6 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
-using System.Text;
-using System.IO;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using Microsoft.Basetypes;
 
 // Visitor that establishes unique variable (or constant) names in a VCExpr.
 // This is done by adding a counter as suffix if name clashes occur

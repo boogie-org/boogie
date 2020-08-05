@@ -1,16 +1,8 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
+using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie
 {
-  using System;
-  using System.Collections.Generic;
-  using System.Diagnostics.Contracts;
-
-
   /// <summary>
   /// This class provides the functionality of traversing a program to determine which
   /// blocks are blocks where the widening operator may need to be applied.  Assumes

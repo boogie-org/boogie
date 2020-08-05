@@ -1,17 +1,4 @@
-﻿//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Diagnostics.Contracts;
-using System.IO;
-using System.Text.RegularExpressions;
+﻿using System;
 
 namespace Microsoft.Boogie.SMTLib
 {

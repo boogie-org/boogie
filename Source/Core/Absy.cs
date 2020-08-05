@@ -1,119 +1,15 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-//---------------------------------------------------------------------------------------------
-// BoogiePL - Absy.cs
-//---------------------------------------------------------------------------------------------
-
-namespace Microsoft.Boogie.AbstractInterpretation
-{
-  using System.Diagnostics;
-  using System.Diagnostics.Contracts;
-  using System.Collections;
-  using System.Collections.Generic;
-  using System.Linq;
-
-  public class CallSite
-  {
-    public readonly Implementation /*!*/
-      Impl;
-
-    public readonly Block /*!*/
-      Block;
-
-    public readonly int Statement; // invariant: Block[Statement] is CallCmd
-
-    public readonly ProcedureSummaryEntry /*!*/
-      SummaryEntry;
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(Impl != null);
-      Contract.Invariant(Block != null);
-      Contract.Invariant(SummaryEntry != null);
-    }
-
-
-    public CallSite(Implementation impl, Block b, int stmt, ProcedureSummaryEntry summaryEntry)
-    {
-      Contract.Requires(summaryEntry != null);
-      Contract.Requires(b != null);
-      Contract.Requires(impl != null);
-      this.Impl = impl;
-      this.Block = b;
-      this.Statement = stmt;
-      this.SummaryEntry = summaryEntry;
-    }
-  }
-
-  public class ProcedureSummaryEntry
-  {
-    private HashSet<CallSite> /*!*/
-      _returnPoints; // whenever OnExit changes, we start analysis again at all the ReturnPoints
-
-    public HashSet<CallSite> /*!*/ ReturnPoints
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<HashSet<CallSite>>() != null);
-        return this._returnPoints;
-      }
-      set
-      {
-        Contract.Requires(value != null);
-        this._returnPoints = value;
-      }
-    }
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(this._returnPoints != null);
-    }
-
-    public ProcedureSummaryEntry()
-    {
-      this._returnPoints = new HashSet<CallSite>();
-    }
-  } // class
-
-  public class ProcedureSummary : ArrayList /*<ProcedureSummaryEntry>*/
-  {
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(
-        !IsReadOnly && !IsFixedSize);
-    }
-
-    public new ProcedureSummaryEntry /*!*/ this[int i]
-    {
-      get
-      {
-        Contract.Requires(0 <= i && i < Count);
-        Contract.Ensures(Contract.Result<ProcedureSummaryEntry>() != null);
-        return cce.NonNull((ProcedureSummaryEntry /*!*/) base[i]);
-      }
-    }
-  } // class
-} // namespace
+using System;
+using System.Linq;
+using System.Collections;
+using System.Diagnostics;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics.Contracts;
+using Microsoft.Boogie.GraphUtil;
+using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Microsoft.Boogie
 {
-  using System;
-  using System.Linq;
-  using System.Collections;
-  using System.Diagnostics;
-  using System.Collections.Generic;
-  using System.Collections.ObjectModel;
-  using System.Diagnostics.Contracts;
-  using Microsoft.Boogie.AbstractInterpretation;
-  using Microsoft.Boogie.GraphUtil;
-  using Set = GSet<object>;
-
   [ContractClass(typeof(AbsyContracts))]
   public abstract class Absy
   {
@@ -1318,7 +1214,7 @@ namespace Microsoft.Boogie
     private void addUniqueCallAttr(int val, CallCmd cmd)
     {
       var a = new List<object>();
-      a.Add(new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(val)));
+      a.Add(new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigNum.FromInt(val)));
 
       cmd.Attributes = new QKeyValue(Token.NoToken, "si_unique_call", a, cmd.Attributes);
     }
@@ -3796,12 +3692,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(Requires != null);
       Contract.Invariant(Modifies != null);
       Contract.Invariant(Ensures != null);
-      Contract.Invariant(Summary != null);
     }
-
-
-    // Abstract interpretation:  Procedure-specific invariants...
-    [Rep] public readonly ProcedureSummary /*!*/ Summary;
 
     public Procedure(IToken /*!*/ tok, string /*!*/ name, List<TypeVariable> /*!*/ typeParams,
       List<Variable> /*!*/ inParams, List<Variable> /*!*/ outParams,
@@ -3836,7 +3727,6 @@ namespace Microsoft.Boogie
       this.Requires = @requires;
       this.Modifies = @modifies;
       this.Ensures = @ensures;
-      this.Summary = new ProcedureSummary();
       this.Attributes = kv;
     }
 
@@ -3868,17 +3758,6 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(e != null);
         e.Emit(stream, level);
-      }
-
-      if (!CommandLineOptions.Clo.IntraproceduralInfer)
-      {
-        for (int s = 0; s < this.Summary.Count; s++)
-        {
-          ProcedureSummaryEntry /*!*/
-            entry = cce.NonNull(this.Summary[s]);
-          stream.Write(level + 1, "// ");
-          stream.WriteLine();
-        }
       }
 
       stream.WriteLine();

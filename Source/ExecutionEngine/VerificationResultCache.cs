@@ -5,7 +5,6 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Runtime.Caching;
-using System.Text;
 using System.Text.RegularExpressions;
 using VC;
 
@@ -434,7 +433,7 @@ namespace Microsoft.Boogie
           new Trigger(Token.NoToken, true, new List<Expr> {axiomCall}), eq);
         body = forallExpr;
         forallExpr.Attributes = new QKeyValue(Token.NoToken, "weight",
-          new List<object> {new LiteralExpr(Token.NoToken, Basetypes.BigNum.FromInt(30))}, null);
+          new List<object> {new LiteralExpr(Token.NoToken, BaseTypes.BigNum.FromInt(30))}, null);
         body.Type = Type.Bool;
       }
       else

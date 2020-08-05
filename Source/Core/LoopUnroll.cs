@@ -1,9 +1,3 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 using Bpl = Microsoft.Boogie;

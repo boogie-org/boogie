@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Diagnostics.Contracts;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Threading;
-using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie.Houdini

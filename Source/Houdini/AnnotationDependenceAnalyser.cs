@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Microsoft.Boogie.GraphUtil;
-using Microsoft.Basetypes;
+using Microsoft.BaseTypes;
 using System.Diagnostics;
 
 namespace Microsoft.Boogie.Houdini

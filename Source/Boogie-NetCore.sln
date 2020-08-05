@@ -19,7 +19,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core-NetCore", "Core\Core-N
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Graph-NetCore", "Graph\Graph-NetCore.csproj", "{02FF1986-288C-4C6C-993F-7FB45F132DC2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Basetypes-NetCore", "Basetypes\Basetypes-NetCore.csproj", "{11F5844A-BA03-40B3-98F4-510889EC2127}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BaseTypes-NetCore", "BaseTypes\BaseTypes-NetCore.csproj", "{11F5844A-BA03-40B3-98F4-510889EC2127}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeContractsExtender-NetCore", "CodeContractsExtender\CodeContractsExtender-NetCore.csproj", "{C6F8D957-8CD3-4CF9-8B5B-338C8A660A96}"
 EndProject

@@ -1,26 +1,14 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
-using System.Text;
-using System.IO;
 using System.Linq;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using Microsoft.Basetypes;
 using Microsoft.Boogie.VCExprAST;
+using HFNS = Microsoft.Boogie.VCExprAST.HelperFuns;
 
 // Erasure of types using explicit type parameters for functions
 
 namespace Microsoft.Boogie.TypeErasure
 {
-  using Microsoft.Boogie.VCExprAST;
-  using HFNS = Microsoft.Boogie.VCExprAST.HelperFuns;
-
   public class TypeAxiomBuilderArguments : TypeAxiomBuilderIntBoolU
   {
     public TypeAxiomBuilderArguments(VCExpressionGenerator gen)

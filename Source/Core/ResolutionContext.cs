@@ -1,17 +1,11 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
+using System.Collections;
+using System.Collections.Generic;
+using System;
+using System.Linq;
+using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie
 {
-  using System.Collections;
-  using System.Collections.Generic;
-  using System;
-  using System.Linq;
-  using System.Diagnostics.Contracts;
-
   [ContractClass(typeof(IErrorSinkContracts))]
   public interface IErrorSink
   {

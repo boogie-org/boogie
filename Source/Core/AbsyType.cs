@@ -1,22 +1,11 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-//---------------------------------------------------------------------------------------------
-// BoogiePL - Absy.cs
-//---------------------------------------------------------------------------------------------
+using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie
 {
-  using System;
-  using System.Collections;
-  using System.Diagnostics;
-  using System.Linq;
-  using System.Collections.Generic;
-  using Microsoft.Boogie.AbstractInterpretation;
-  using System.Diagnostics.Contracts;
-
   //=====================================================================
   //---------------------------------------------------------------------
   // Types

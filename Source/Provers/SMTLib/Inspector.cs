@@ -1,19 +1,7 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
 using System.IO;
 using System.Diagnostics;
-using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-//using util;
-using Microsoft.Boogie;
-using Microsoft.Basetypes;
-using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.SMTLib
 {

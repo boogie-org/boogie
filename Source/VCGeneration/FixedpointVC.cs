@@ -1,23 +1,13 @@
-﻿//-----------------------------------------------------------------------------
-//
-// Copyright (C) 2012 Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.IO;
 using System.Diagnostics.Contracts;
-using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
 using Term = Microsoft.Boogie.VCExprAST.VCExpr;
 using FuncDecl = Microsoft.Boogie.VCExprAST.VCExprOp;
 using Sort = Microsoft.Boogie.Type;
 using Microsoft.Boogie.ExprExtensions;
-
 
 namespace Microsoft.Boogie
 {
@@ -2251,7 +2241,7 @@ namespace Microsoft.Boogie
           case BinaryOperator.Opcode.Or:
             return Expr.False;
           case BinaryOperator.Opcode.Add:
-            return new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.ZERO);
+            return new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigNum.ZERO);
           default:
             throw new InternalError();
         }

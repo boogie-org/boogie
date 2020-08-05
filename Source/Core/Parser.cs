@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Microsoft.Boogie;
-using Microsoft.Basetypes;
+using Microsoft.BaseTypes;
 using Bpl = Microsoft.Boogie;
 
 

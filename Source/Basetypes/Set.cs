@@ -1,17 +1,10 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie
 {
-  using System;
-  using System.IO;
-  using System.Collections;
-  using System.Collections.Generic;
-  using System.Diagnostics.Contracts;
-
   /// <summary>
   /// A class representing a mathematical set.
   /// </summary>

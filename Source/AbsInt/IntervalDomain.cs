@@ -2,11 +2,11 @@
 using System.Numerics;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using Microsoft.Basetypes;
+using Microsoft.BaseTypes;
 
 namespace Microsoft.Boogie.AbstractInterpretation
 {
-  class NativeIntervallDomain : NativeLattice
+  class NativeIntervalDomain : NativeLattice
   {
     abstract class E_Common : NativeLattice.Element
     {
@@ -326,16 +326,16 @@ namespace Microsoft.Boogie.AbstractInterpretation
       }
       else if (ty.IsReal)
       {
-        return Expr.Literal(Basetypes.BigDec.FromBigInt(n));
+        return Expr.Literal(BaseTypes.BigDec.FromBigInt(n));
       }
       else if (ty.IsFloat)
       {
-        return Expr.Literal(Basetypes.BigFloat.FromBigInt(n, ty.FloatExponent, ty.FloatSignificand));
+        return Expr.Literal(BaseTypes.BigFloat.FromBigInt(n, ty.FloatExponent, ty.FloatSignificand));
       }
       else
       {
         Contract.Assume(ty.IsInt);
-        return Expr.Literal(Basetypes.BigNum.FromBigInt(n));
+        return Expr.Literal(BaseTypes.BigNum.FromBigInt(n));
       }
     }
 
@@ -345,7 +345,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
     /// <summary>
     /// Requires "thresholds" to be sorted.
     /// </summary>
-    public NativeIntervallDomain()
+    public NativeIntervalDomain()
     {
       upThresholds = new List<BigInteger>();
       downThresholds = new List<BigInteger>();

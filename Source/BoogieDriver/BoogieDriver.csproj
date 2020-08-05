@@ -202,9 +202,9 @@
       <Project>{0EFA3E43-690B-48DC-A72C-384A3EA7F31F}</Project>
       <Name>AbsInt</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Basetypes\Basetypes.csproj">
+    <ProjectReference Include="..\BaseTypes\BaseTypes.csproj">
       <Project>{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}</Project>
-      <Name>Basetypes</Name>
+      <Name>BaseTypes</Name>
     </ProjectReference>
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender.csproj">
       <Project>{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}</Project>
