@@ -21,11 +21,20 @@ install:
   - wget ${Z3URL}
   - unzip z3*.zip
   - export PATH="$(find $PWD/z3* -name bin -type d):$PATH"
-  # Install needed python tools
+  # Install python tools
   - sudo pip install lit OutputCheck pyyaml psutil
+  # Restore dotnet tools
+  - dotnet tool restore
 script:
+  # Check that generated scanner and parser are consistent with attributed grammar
+  - dotnet tool run coco Source/Core/BoogiePL.atg -namespace Microsoft.Boogie -frames Source/Core/
+  - diff --strip-trailing-cr Source/Core/Parser.cs Source/Core/Parser.cs.old
+  - diff --strip-trailing-cr Source/Core/Scanner.cs Source/Core/Scanner.cs.old
+  # Build Boogie
   - dotnet build -c ${CONFIGURATION} ${SOLUTION}
+  # Run unit tests
   - dotnet test --no-build -c ${CONFIGURATION} ${SOLUTION}
+  # Run lit test suite
   - lit -v --timeout=120 -D dotnet -D configuration=${CONFIGURATION} Test
   # Do not deploy if GitVersionTask could not be used to extract the correct version number
   - test ! -e Source/BoogieDriver/bin/${CONFIGURATION}/Boogie.1.0.0.nupkg
