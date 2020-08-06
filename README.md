@@ -148,7 +148,7 @@ default, the created tag increments the patch version number from the previous
 tag. For example, if the last tagged commit were `v2.4.3`, then pushing to
 master would tag the latest commit with `v2.4.4`. If incrementing minor or major
 number is desired instead of patch, simply add `#minor` or `#major` to the first
-line of the commit message. For instance: 
+line of the commit message. For instance:
 
 > Adding the next greatest feature. #minor
 
