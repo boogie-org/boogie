@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Basetypes\Basetypes-NetCore.csproj" />
+    <ProjectReference Include="..\..\BaseTypes\BaseTypes-NetCore.csproj" />
     <ProjectReference Include="..\..\Core\Core-NetCore.csproj" />
     <ProjectReference Include="..\..\ParserHelper\ParserHelper-NetCore.csproj" />
     <ProjectReference Include="..\TestUtil\TestUtil-NetCore.csproj" />

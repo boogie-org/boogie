@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <AssemblyName>BoogieBaseTypes</AssemblyName>
+    <RootNamespace>BaseTypes-NetCore</RootNamespace>
+    <PackageId>BoogieBaseTypes</PackageId>
+    <Authors>BoogieBaseTypes</Authors>
+    <Company>BoogieBaseTypes</Company>
+    <Product>BoogieBaseTypes</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,7 +1,6 @@
 ﻿using Microsoft.Boogie;
-using Microsoft.Basetypes;
+using Microsoft.BaseTypes;
 using NUnit.Framework;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 

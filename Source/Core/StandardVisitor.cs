@@ -1,13 +1,4 @@
-﻿//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-//---------------------------------------------------------------------------------------------
-// BoogiePL - StandardVisitor.cs
-//---------------------------------------------------------------------------------------------
-
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 

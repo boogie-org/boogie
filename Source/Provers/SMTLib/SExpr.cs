@@ -1,16 +1,8 @@
-﻿//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
-using System;
+﻿using System;
 using System.Linq;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Text;
 using System.Diagnostics.Contracts;
-using System.Globalization;
 
 namespace Microsoft.Boogie
 {

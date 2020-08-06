@@ -1,9 +1,3 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 /*
 An instance of the Model class represents a single model returned from the SMT solver. This usually 
 corresponds to a single verification error. The model consists of elements and function interpretations.
@@ -34,7 +28,6 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text;
-using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace Microsoft.Boogie

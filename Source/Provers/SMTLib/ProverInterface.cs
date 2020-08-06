@@ -1,26 +1,13 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Threading;
 using System.IO;
-//using ExternalProver;
 using System.Linq;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
-using Microsoft.Boogie.AbstractInterpretation;
-using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
-using Microsoft.Boogie.Clustering;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
 using System.Numerics;
-using RPFP = Microsoft.Boogie.RPFP;
 
 namespace Microsoft.Boogie.SMTLib
 {
@@ -789,7 +776,7 @@ namespace Microsoft.Boogie.SMTLib
           return VCExpressionGenerator.False;
         if (op == VCExpressionGenerator.AddIOp)
         {
-          Microsoft.Basetypes.BigNum x = Microsoft.Basetypes.BigNum.ZERO;
+          Microsoft.BaseTypes.BigNum x = Microsoft.BaseTypes.BigNum.ZERO;
           return gen.Integer(x);
         }
 
@@ -810,7 +797,7 @@ namespace Microsoft.Boogie.SMTLib
         var name = StripCruft(e.Name);
         if (name[0] >= '0' && name[0] <= '9')
         {
-          Microsoft.Basetypes.BigNum x = Microsoft.Basetypes.BigNum.FromString(name);
+          Microsoft.BaseTypes.BigNum x = Microsoft.BaseTypes.BigNum.FromString(name);
           return gen.Integer(x);
         }
 
@@ -869,7 +856,7 @@ namespace Microsoft.Boogie.SMTLib
           if (e.ArgCount == 1)
           {
             var args = new VCExpr[2];
-            args[0] = gen.Integer(Microsoft.Basetypes.BigNum.ZERO);
+            args[0] = gen.Integer(Microsoft.BaseTypes.BigNum.ZERO);
             args[1] = g(0);
             return gen.Function(VCStringToVCOp("-"), args);
           }
@@ -1796,7 +1783,7 @@ namespace Microsoft.Boogie.SMTLib
       foreach (var i in ctx.TimeoutDiagnosticIDToAssertion.Keys)
       {
         var lit = VCExprGen.Function(VCExpressionGenerator.TimeoutDiagnosticsOp,
-          VCExprGen.Integer(Microsoft.Basetypes.BigNum.FromInt(i)));
+          VCExprGen.Integer(Microsoft.BaseTypes.BigNum.FromInt(i)));
         if (split.Contains(i))
         {
           lit = VCExprGen.Not(lit);
@@ -2807,9 +2794,9 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       if (resp.Name == "-" && resp.ArgCount == 1) // negative int
-        return Microsoft.Basetypes.BigNum.FromString("-" + resp.Arguments[0].Name);
+        return Microsoft.BaseTypes.BigNum.FromString("-" + resp.Arguments[0].Name);
       if (resp.Name == "_" && resp.ArgCount == 2 && resp.Arguments[0].Name.StartsWith("bv")) // bitvector
-        return new BvConst(Microsoft.Basetypes.BigNum.FromString(resp.Arguments[0].Name.Substring("bv".Length)),
+        return new BvConst(Microsoft.BaseTypes.BigNum.FromString(resp.Arguments[0].Name.Substring("bv".Length)),
           int.Parse(resp.Arguments[1].Name));
       if (resp.Name == "fp" && resp.ArgCount == 3)
       {
@@ -2822,7 +2809,7 @@ namespace Microsoft.Boogie.SMTLib
         int expSize = getBvSize(expExpr);
         BigInteger sig = getBvVal(sigExpr);
         int sigSize = getBvSize(sigExpr) + 1;
-        return new Basetypes.BigFloat(isNeg, sig, exp, sigSize, expSize);
+        return new BaseTypes.BigFloat(isNeg, sig, exp, sigSize, expSize);
       }
 
       if (resp.Name == "_" && resp.ArgCount == 3)
@@ -2830,7 +2817,7 @@ namespace Microsoft.Boogie.SMTLib
         String specialValue = resp.Arguments[0].ToString();
         int expSize = int.Parse(resp.Arguments[1].ToString());
         int sigSize = int.Parse(resp.Arguments[2].ToString());
-        return new Basetypes.BigFloat(specialValue, sigSize, expSize);
+        return new BaseTypes.BigFloat(specialValue, sigSize, expSize);
       }
 
       var ary = GetArrayFromProverResponse(resp);
@@ -2841,7 +2828,7 @@ namespace Microsoft.Boogie.SMTLib
       if (expr.Type.Equals(Boogie.Type.Bool))
         return bool.Parse(resp.Name);
       else if (expr.Type.Equals(Boogie.Type.Int))
-        return Microsoft.Basetypes.BigNum.FromString(resp.Name);
+        return Microsoft.BaseTypes.BigNum.FromString(resp.Name);
       else
         return resp.Name;
     }

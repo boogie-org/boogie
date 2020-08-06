@@ -18,7 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AbsInt\AbsInt-NetCore.csproj" />
-    <ProjectReference Include="..\Basetypes\Basetypes-NetCore.csproj" />
+    <ProjectReference Include="..\BaseTypes\BaseTypes-NetCore.csproj" />
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
     <ProjectReference Include="..\Core\Core-NetCore.csproj" />
     <ProjectReference Include="..\ExecutionEngine\ExecutionEngine-NetCore.csproj" />

@@ -1,8 +1,8 @@
-﻿using Microsoft.Basetypes;
+﻿using Microsoft.BaseTypes;
 using NUnit.Framework;
 using System.Numerics;
 
-namespace BasetypesTests
+namespace BaseTypesTests
 {
   [TestFixture()]
   public class BigDecTests

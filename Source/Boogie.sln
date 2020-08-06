@@ -22,7 +22,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core", "Core\Core.csproj", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Graph", "Graph\Graph.csproj", "{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Basetypes", "Basetypes\Basetypes.csproj", "{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BaseTypes", "BaseTypes\BaseTypes.csproj", "{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeContractsExtender", "CodeContractsExtender\CodeContractsExtender.csproj", "{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}"
 EndProject
@@ -48,7 +48,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoreTests", "UnitTests\Core
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestUtil", "UnitTests\TestUtil\TestUtil.csproj", "{59118E35-4236-495E-AF6E-0D641302ED2C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BasetypesTests", "UnitTests\BasetypesTests\BasetypesTests.csproj", "{D00C3F22-1EDA-4781-8F0E-81991E9CB0D9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BaseTypesTests", "UnitTests\BaseTypesTests\BaseTypesTests.csproj", "{D00C3F22-1EDA-4781-8F0E-81991E9CB0D9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

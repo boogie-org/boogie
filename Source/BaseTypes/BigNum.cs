@@ -1,18 +1,10 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
 using System.Text;
 using System.Diagnostics.Contracts;
+using BIM = System.Numerics.BigInteger;
 
-
-namespace Microsoft.Basetypes
+namespace Microsoft.BaseTypes
 {
-  using BIM = System.Numerics.BigInteger;
-
   /// <summary>
   /// A thin wrapper around System.Numerics.BigInteger
   /// (to be able to define equality, etc. properly)

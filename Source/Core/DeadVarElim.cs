@@ -4,7 +4,6 @@ using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
 
-
 namespace Microsoft.Boogie
 {
   public class UnusedVarEliminator : VariableCollector

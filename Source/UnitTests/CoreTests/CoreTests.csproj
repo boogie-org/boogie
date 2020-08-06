@@ -50,9 +50,9 @@
     <Compile Include="ExprImmutability.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Basetypes\Basetypes.csproj">
+    <ProjectReference Include="..\..\BaseTypes\BaseTypes.csproj">
       <Project>{43dfad18-3e35-4558-9be2-caff6b5ba8a0}</Project>
-      <Name>Basetypes</Name>
+      <Name>BaseTypes</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\Core\Core.csproj">
       <Project>{B230A69C-C466-4065-B9C1-84D80E76D802}</Project>
@@ -74,7 +74,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
   </Target>

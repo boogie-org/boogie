@@ -1,9 +1,4 @@
-﻿using System;
-using System.Numerics;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-
-namespace Microsoft.Boogie.AbstractInterpretation
+﻿namespace Microsoft.Boogie.AbstractInterpretation
 {
   class TrivialDomain : NativeLattice
   {

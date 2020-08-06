@@ -1,18 +1,11 @@
-﻿//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
-using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Text.RegularExpressions;
+using System.Diagnostics; // required for Mono Build
 
 namespace Microsoft.Boogie
 {
@@ -572,8 +565,7 @@ namespace Microsoft.Boogie
 
     public int /*(0:3)*/
       ErrorTrace = 1;
-
-    public bool IntraproceduralInfer = true;
+    
     public bool ContractInfer = false;
     public bool ExplainHoudini = false;
     public bool ReverseHoudiniWorklist = false;
@@ -1714,7 +1706,6 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("proverLogAppend", ref ProverLogFileAppend) ||
               ps.CheckBooleanFlag("soundLoopUnrolling", ref SoundLoopUnrolling) ||
               ps.CheckBooleanFlag("checkInfer", ref InstrumentWithAsserts) ||
-              ps.CheckBooleanFlag("interprocInfer", ref IntraproceduralInfer, false) ||
               ps.CheckBooleanFlag("restartProver", ref RestartProverPerVC) ||
               ps.CheckBooleanFlag("printInlined", ref PrintInlined) ||
               ps.CheckBooleanFlag("smoke", ref SoundnessSmokeTest) ||
@@ -2062,8 +2053,6 @@ namespace Microsoft.Boogie
                 0..9 = number of iterations before applying a widen (default=0)
   /checkInfer   instrument inferred invariants as asserts to be checked by
                 theorem prover
-  /interprocInfer
-                perform interprocedural inference (deprecated, not supported)
   /contractInfer
                 perform procedure contract inference
   /instrumentInfer

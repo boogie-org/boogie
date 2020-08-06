@@ -81,9 +81,9 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Basetypes\Basetypes.csproj">
+    <ProjectReference Include="..\BaseTypes\BaseTypes.csproj">
       <Project>{43dfad18-3e35-4558-9be2-caff6b5ba8a0}</Project>
-      <Name>Basetypes</Name>
+      <Name>BaseTypes</Name>
     </ProjectReference>
     <ProjectReference Include="..\Core\Core.csproj">
       <Project>{b230a69c-c466-4065-b9c1-84d80e76d802}</Project>

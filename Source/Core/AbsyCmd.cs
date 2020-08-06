@@ -1,24 +1,12 @@
-﻿//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-//---------------------------------------------------------------------------------------------
-// BoogiePL - Absy.cs
-//---------------------------------------------------------------------------------------------
+﻿using System;
+using System.Diagnostics;
+using System.Collections.Generic;
+using System.Linq;
+using System.Diagnostics.Contracts;
+using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Microsoft.Boogie
 {
-  using System;
-  using System.Collections;
-  using System.Diagnostics;
-  using System.Collections.Generic;
-  using System.Linq;
-  using Microsoft.Boogie.AbstractInterpretation;
-  using System.Diagnostics.Contracts;
-  using Set = GSet<object>;
-
-
   //---------------------------------------------------------------------
   // BigBlock
   public class BigBlock

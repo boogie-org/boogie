@@ -1,25 +1,10 @@
-// <copyright file="BoogieDriver.cs" company="Microsoft Corporation">
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// </copyright>
-//---------------------------------------------------------------------------------------------
-// OnlyBoogie OnlyBoogie.ssc
-//       - main program for taking a BPL program and verifying it
-//---------------------------------------------------------------------------------------------
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.Contracts;
+using System.IO;
 
 namespace Microsoft.Boogie
 {
-  using System;
-  using System.Collections.Generic;
-  using System.Diagnostics.Contracts;
-  using System.IO;
-
-  /*
-    The following assemblies are referenced because they are needed at runtime, not at compile time:
-      BaseTypes
-      Provers.Z3
-      System.Compiler.Framework
-  */
-
   public class OnlyBoogie
   {
     public static int Main(string[] args)

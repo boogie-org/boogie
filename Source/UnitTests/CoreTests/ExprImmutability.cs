@@ -20,19 +20,19 @@ namespace CoreTests
       var literal = new LiteralExpr(Token.NoToken, true, /*immutable=*/true);
       Assert.AreEqual(literal.ComputeHashCode(), literal.GetHashCode());
 
-      var literal2 = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), /*immutable=*/true);
+      var literal2 = new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigNum.FromInt(0), /*immutable=*/true);
       Assert.AreEqual(literal2.ComputeHashCode(), literal2.GetHashCode());
 
-      var literal3 = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigDec.FromInt(0), /*immutable=*/true);
+      var literal3 = new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigDec.FromInt(0), /*immutable=*/true);
       Assert.AreEqual(literal3.ComputeHashCode(), literal3.GetHashCode());
 
-      var literal4 = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 8, /*immutable=*/true);
+      var literal4 = new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigNum.FromInt(0), 8, /*immutable=*/true);
       Assert.AreEqual(literal4.ComputeHashCode(), literal4.GetHashCode());
 
-      var literal5 = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigFloat.FromInt(0), /*immutable=*/true);
+      var literal5 = new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigFloat.FromInt(0), /*immutable=*/true);
       Assert.AreEqual(literal5.ComputeHashCode(), literal5.GetHashCode());
 
-      var literal6 = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.RoundingMode.RNE, /*immutable=*/true);
+      var literal6 = new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.RoundingMode.RNE, /*immutable=*/true);
       Assert.AreEqual(literal6.ComputeHashCode(), literal6.GetHashCode());
     }
 
@@ -58,7 +58,7 @@ namespace CoreTests
     [Test()]
     public void CachedHashCodeBvExtractExpr()
     {
-      var literalBv = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 4, /*immutable=*/true);
+      var literalBv = new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigNum.FromInt(0), 4, /*immutable=*/true);
       var bvExtract = new BvExtractExpr(Token.NoToken, literalBv, 3, 0, /*immutable=*/true);
       Assert.AreEqual(bvExtract.ComputeHashCode(), bvExtract.GetHashCode());
     }
@@ -66,7 +66,7 @@ namespace CoreTests
     [Test()]
     public void CachedHashCodeBvConcatExpr()
     {
-      var literalBv = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 4, /*immutable=*/true);
+      var literalBv = new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigNum.FromInt(0), 4, /*immutable=*/true);
       var bvConcat = new BvConcatExpr(Token.NoToken, literalBv, literalBv, /*immutable=*/true);
       Assert.AreEqual(bvConcat.ComputeHashCode(), bvConcat.GetHashCode());
     }
@@ -74,7 +74,7 @@ namespace CoreTests
     [Test()]
     public void CachedHashCodeOldExpr()
     {
-      var literalBv = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 4, /*immutable=*/true);
+      var literalBv = new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigNum.FromInt(0), 4, /*immutable=*/true);
       var oldExpr = new OldExpr(Token.NoToken, literalBv, /*immutable=*/true);
       Assert.AreEqual(oldExpr.ComputeHashCode(), oldExpr.GetHashCode());
     }
@@ -264,8 +264,8 @@ namespace CoreTests
     [Test()]
     public void ProtectedBvConcatExprLhs()
     {
-      var lhs = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 32, /*immutable=*/true);
-      var rhs = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1), 32, /*immutable=*/true);
+      var lhs = new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigNum.FromInt(0), 32, /*immutable=*/true);
+      var rhs = new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigNum.FromInt(1), 32, /*immutable=*/true);
       var concat = new BvConcatExpr(Token.NoToken, lhs, rhs, /* immutable=*/true);
       Assert.IsTrue(concat.Immutable);
       Assert.Throws(typeof(InvalidOperationException), () => concat.E0 = rhs);
@@ -274,8 +274,8 @@ namespace CoreTests
     [Test()]
     public void ProtectedBvConcatExprRhs()
     {
-      var lhs = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 32, /*immutable=*/true);
-      var rhs = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1), 32, /*immutable=*/true);
+      var lhs = new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigNum.FromInt(0), 32, /*immutable=*/true);
+      var rhs = new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigNum.FromInt(1), 32, /*immutable=*/true);
       var concat = new BvConcatExpr(Token.NoToken, lhs, rhs, /* immutable=*/true);
       Assert.IsTrue(concat.Immutable);
       Assert.Throws(typeof(InvalidOperationException), () => concat.E1 = lhs);
@@ -284,7 +284,7 @@ namespace CoreTests
     [Test()]
     public void ProtectedBvExtract()
     {
-      var bv = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 32, /*immutable=*/true);
+      var bv = new LiteralExpr(Token.NoToken, Microsoft.BaseTypes.BigNum.FromInt(0), 32, /*immutable=*/true);
       var extract = new BvExtractExpr(Token.NoToken, bv, 32, 0, /*immutable=*/true);
       Assert.IsTrue(extract.Immutable);
       Assert.Throws(typeof(InvalidOperationException), () => extract.Bitvector = bv);

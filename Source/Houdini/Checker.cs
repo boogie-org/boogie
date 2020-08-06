@@ -1,18 +1,8 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
-using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
-using Microsoft.Basetypes;
-using System.Collections;
-using System.IO;
-using System.Threading;
+using Microsoft.BaseTypes;
 using VC;
 using System.Linq;
 

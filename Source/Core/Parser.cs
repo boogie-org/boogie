@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Microsoft.Boogie;
-using Microsoft.Basetypes;
+using Microsoft.BaseTypes;
 using Bpl = Microsoft.Boogie;
 
 
@@ -76,7 +76,7 @@ public static int Parse (string/*!*/ filename, List<string/*!*/> defines, out /*
   }
 }
 
-public static int Parse(TextReader stream, string/*!*/ filename, List<string> defines, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ 
+public static int Parse(TextReader stream, string/*!*/ filename, List<string> defines, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */
 {
   var preprocessedSource = ParserHelper.Fill(stream, defines);
   return Parse(preprocessedSource, filename, out program, useBaseName);

@@ -5,11 +5,10 @@ using System.IO;
 using System.Linq;
 using Microsoft.Boogie;
 using Type = Microsoft.Boogie.Type;
+using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Core
 {
-  using Set = GSet<object>;
-
   /// <summary>
   /// This visitor performs the first phase of the MaxHoles lambda lifting (see <see cref="LambdaHelper.ExpandLambdas"/>),
   /// after which it invokes the second phase in the <see cref="VisitLambdaExpr"/> method.

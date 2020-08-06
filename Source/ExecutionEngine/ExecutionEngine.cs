@@ -4,12 +4,10 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using VC;
 using BoogiePL = Microsoft.Boogie;
-using System.Diagnostics;
 using System.Runtime.Caching;
 
 namespace Microsoft.Boogie

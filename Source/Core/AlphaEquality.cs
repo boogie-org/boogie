@@ -1,20 +1,8 @@
-﻿//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
-using System.ComponentModel;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Microsoft.Boogie
 {
-  using System;
-  using System.IO;
-  using System.Collections;
-  using System.Collections.Generic;
-  using System.Diagnostics;
-  using System.Diagnostics.Contracts;
-
   public class AlphaEquality : IEqualityComparer<Expr>
   {
     private readonly DeBruijnRenamer deBruijn = new DeBruijnRenamer();

@@ -1,20 +1,11 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
-using System.Text;
-using System.IO;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using Microsoft.Basetypes;
+using Microsoft.BaseTypes;
 
 // Code for replacing large integer literals in VCExpr with
 // constants. This is necessary for Simplify, which cannot deal with
-// literals larger than 32 bits
+// literals larger than 32 bits.
 
 namespace Microsoft.Boogie.VCExprAST
 {

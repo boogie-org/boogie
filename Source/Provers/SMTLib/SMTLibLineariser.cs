@@ -1,17 +1,10 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
 using System.Text;
 using System.IO;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
-using Microsoft.Basetypes;
+using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
 // Method to turn VCExprs into strings that can be fed into SMT

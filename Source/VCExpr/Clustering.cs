@@ -1,27 +1,13 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
-using System;
-using System.Text;
-using System.IO;
 using System.Linq;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using Microsoft.Basetypes;
 using Microsoft.Boogie.VCExprAST;
 
-// Code for managing and clusterings sets of terms; this is used to
+// Code for managing and clustering sets of terms; this is used to
 // compress the input given to the theorem prover
 
 namespace Microsoft.Boogie.Clustering
 {
-  using Microsoft.Boogie.VCExprAST;
-
-
   public class SubtermCollector : BoundVarTraversingVCExprVisitor<bool, bool>
   {
     private readonly VCExpressionGenerator /*!*/

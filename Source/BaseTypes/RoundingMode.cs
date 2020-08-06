@@ -1,14 +1,7 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
-using System.Text;
 using System.Diagnostics.Contracts;
 
-namespace Microsoft.Basetypes
+namespace Microsoft.BaseTypes
 {
   /// <summary>
   /// A representation of a rounding mode

@@ -2,9 +2,6 @@
 using SA = System.Attribute;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using System.Text;
-
-//using Microsoft.Boogie;
 
 /// <summary>
 /// A class containing static methods to extend the functionality of Code Contracts

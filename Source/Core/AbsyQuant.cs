@@ -1,24 +1,11 @@
-﻿//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-//---------------------------------------------------------------------------------------------
-// BoogiePL - AbsyQuant.cs
-//---------------------------------------------------------------------------------------------
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Diagnostics.Contracts;
+using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Microsoft.Boogie
 {
-  using System;
-  using System.Collections;
-  using System.Diagnostics;
-  using System.Collections.Generic;
-  using System.Linq;
-  using Microsoft.Boogie.AbstractInterpretation;
-  using System.Diagnostics.Contracts;
-  using Microsoft.Basetypes;
-  using Set = GSet<object>;
-
   //---------------------------------------------------------------------
   // Quantifiers and general binders
   //---------------------------------------------------------------------
@@ -879,7 +866,7 @@ namespace Microsoft.Boogie
     // (forall x, y ::  ... ) which may help the prover to pick trigger terms
     //
     // (Note: there used to be a different criterion here, which allowed merging when triggers were specified, which could cause prover errors due to resulting unbound variables in the triggers)
-    private void MergeAdjecentQuantifier()
+    private void MergeAdjacentQuantifier()
     {
       QuantifierExpr qbody = Body as QuantifierExpr;
       if (!(qbody != null && (qbody is ForallExpr) == (this is ForallExpr) && Triggers == null))
@@ -887,7 +874,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      qbody.MergeAdjecentQuantifier();
+      qbody.MergeAdjacentQuantifier();
       if (this.Triggers != null || qbody.Triggers != null)
       {
         return;
@@ -1020,7 +1007,7 @@ namespace Microsoft.Boogie
       //Contract.Requires(rc != null);
       int oldErrorCount = rc.ErrorCount;
 
-      this.MergeAdjecentQuantifier();
+      this.MergeAdjacentQuantifier();
 
       base.Resolve(rc);
 

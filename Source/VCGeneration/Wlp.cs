@@ -1,16 +1,9 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
 using System;
-using System.Collections;
 using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
-using Microsoft.Basetypes;
+using Microsoft.BaseTypes;
 
 namespace VC
 {

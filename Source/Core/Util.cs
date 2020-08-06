@@ -1,19 +1,12 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
+using System;
+using System.IO;
+using System.Diagnostics.Contracts;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace Microsoft.Boogie
 {
-  using System;
-  using System.IO;
-  using System.Collections;
-  using System.Diagnostics.Contracts;
-  using System.Collections.Generic;
-  using System.Linq;
-  using System.Text;
-
   public static class LinqExtender
   {
     public static string Concat(this IEnumerable<string> strings, string separator)

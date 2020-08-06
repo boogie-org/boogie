@@ -1,17 +1,6 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
-using System;
-using System.Text;
-using System.IO;
 using System.Linq;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using Microsoft.Basetypes;
 
 // Sort the bindings in a let-expression so that terms bound earlier do
 // not contain variables bound later

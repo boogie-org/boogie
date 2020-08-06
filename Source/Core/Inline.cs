@@ -1,17 +1,11 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.Contracts;
+using BoogiePL = Microsoft.Boogie;
+using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
-  using System;
-  using System.Collections.Generic;
-  using System.Diagnostics.Contracts;
-  using BoogiePL = Microsoft.Boogie;
-  using System.Diagnostics;
-
   public delegate void InlineCallback(Implementation /*!*/ impl);
 
   public class Inliner : Duplicator

@@ -1,19 +1,10 @@
-﻿//-----------------------------------------------------------------------------
-//
-// Copyright (C) 2012 Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Term = Microsoft.Boogie.VCExprAST.VCExpr;
 using FuncDecl = Microsoft.Boogie.VCExprAST.VCExprOp;
 using Sort = Microsoft.Boogie.Type;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.ExprExtensions;
-
 
 namespace Microsoft.Boogie
 {

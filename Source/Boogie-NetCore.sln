@@ -19,7 +19,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core-NetCore", "Core\Core-N
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Graph-NetCore", "Graph\Graph-NetCore.csproj", "{02FF1986-288C-4C6C-993F-7FB45F132DC2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Basetypes-NetCore", "Basetypes\Basetypes-NetCore.csproj", "{11F5844A-BA03-40B3-98F4-510889EC2127}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BaseTypes-NetCore", "BaseTypes\BaseTypes-NetCore.csproj", "{11F5844A-BA03-40B3-98F4-510889EC2127}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeContractsExtender-NetCore", "CodeContractsExtender\CodeContractsExtender-NetCore.csproj", "{C6F8D957-8CD3-4CF9-8B5B-338C8A660A96}"
 EndProject
@@ -39,7 +39,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "UnitTests", "UnitTests", "{
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestUtil-NetCore", "UnitTests\TestUtil\TestUtil-NetCore.csproj", "{65A3F7E9-3E13-4C26-A72A-F60B9943E1B2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BasetypesTests-NetCore", "UnitTests\BasetypesTests\BasetypesTests-NetCore.csproj", "{10F866A2-6A9B-4B3D-AEAB-43314BD0475D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BaseTypesTests-NetCore", "UnitTests\BaseTypesTests\BaseTypesTests-NetCore.csproj", "{10F866A2-6A9B-4B3D-AEAB-43314BD0475D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoreTests-NetCore", "UnitTests\CoreTests\CoreTests-NetCore.csproj", "{D2D77420-CFDB-4DA1-B7E7-844C8E8CC686}"
 EndProject

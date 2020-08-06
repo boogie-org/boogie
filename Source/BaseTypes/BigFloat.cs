@@ -1,18 +1,11 @@
-﻿//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
-using System;
+﻿using System;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
+using BIM = System.Numerics.BigInteger;
 
-namespace Microsoft.Basetypes
+namespace Microsoft.BaseTypes
 {
-  using BIM = System.Numerics.BigInteger;
-
   /// <summary>
   /// A representation of a floating-point value
   /// Note that this value has a 1-bit sign, along with an exponent and significand whose sizes must be greater than 1

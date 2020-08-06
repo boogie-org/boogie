@@ -1,10 +1,3 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
-
-using System;
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 

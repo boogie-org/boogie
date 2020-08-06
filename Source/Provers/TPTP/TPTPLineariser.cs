@@ -9,7 +9,7 @@ using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using Microsoft.Basetypes;
+using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
 // Method to turn VCExprs into strings that can be fed into TPTP provers.
@@ -37,7 +37,7 @@ namespace Microsoft.Boogie.TPTP
     }
 
     [ContractInvariantMethod]
-void ObjectInvariant() 
+void ObjectInvariant()
 {
     Contract.Invariant(Default!=null);
       Contract.Invariant(DefaultTerm!=null);
@@ -69,7 +69,7 @@ void ObjectInvariant()
 
     private readonly TextWriter wr;
     [ContractInvariantMethod]
-void ObjectInvariant() 
+void ObjectInvariant()
 {
     Contract.Invariant(wr!=null);
       Contract.Invariant(Namer != null);
@@ -128,7 +128,7 @@ void ObjectInvariant()
       }
 
       var res = new StringBuilder();
-      
+
       foreach (char ch in s) {
         if (Char.IsLetterOrDigit(ch))
           res.Append(ch);
@@ -227,7 +227,7 @@ void ObjectInvariant()
     public bool Visit(VCExprNAry node, LineariserOptions options) {
       //Contract.Requires(node != null);
       //Contract.Requires(options != null);
-      
+
       VCExprOp op = node.Op;
       Contract.Assert(op!=null);
 
@@ -290,7 +290,7 @@ void ObjectInvariant()
       string kind = node.Quan == Quantifier.ALL ? "!" : "?";
       wr.Write("{0} [", kind);
 
-      for (int i = 0; i < node.BoundVars.Count; i++) 
+      for (int i = 0; i < node.BoundVars.Count; i++)
         {
           VCExprVar var = node.BoundVars[i];
           Contract.Assert(var!=null);
@@ -303,7 +303,7 @@ void ObjectInvariant()
         }
 
       wr.Write("] : (");
-        
+
       /*      if (options.QuantifierIds) {
         // only needed for Z3
         VCQuantifierInfos! infos = node.Infos;
@@ -331,7 +331,7 @@ void ObjectInvariant()
       }
     }
 
-    
+
 
     /////////////////////////////////////////////////////////////////////////////////////
 
@@ -346,7 +346,7 @@ void ObjectInvariant()
       private readonly TPTPExprLineariser ExprLineariser;
       private readonly TextWriter wr;
       [ContractInvariantMethod]
-void ObjectInvariant() 
+void ObjectInvariant()
 {
     Contract.Invariant(wr!=null);
         Contract.Invariant(ExprLineariser!=null);
@@ -361,7 +361,7 @@ void ObjectInvariant()
       }
 
       ///////////////////////////////////////////////////////////////////////////////////
-     
+
       private void WriteApplication(string op, IEnumerable<VCExpr/*!>!*/> args,
                                     LineariserOptions options) {
       Contract.Requires(op != null);
@@ -379,7 +379,7 @@ void ObjectInvariant()
         WriteApplication(op, args, options, options.AsTerm);
       }
 
-   
+
       private void WriteApplication(string termOp,
                                     IEnumerable<VCExpr>/*!>!*/ args, LineariserOptions options,
                                     // change the AsTerm option for the arguments?
@@ -419,7 +419,7 @@ void ObjectInvariant()
             else
               wr.Write(", ");
             argCnt++;
-            ExprLineariser.Linearise(e, newOptions);            
+            ExprLineariser.Linearise(e, newOptions);
           }
 
           if (argCnt > 0)
@@ -447,7 +447,7 @@ void ObjectInvariant()
       }
 
       ///////////////////////////////////////////////////////////////////////////////////
-      
+
       public bool VisitNotOp      (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
@@ -500,7 +500,7 @@ void ObjectInvariant()
       public bool VisitOrOp       (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-        
+
         Contract.Assert(options.AsTerm);
         WriteApplication(orName, node, options);
         return true;
@@ -509,7 +509,7 @@ void ObjectInvariant()
       public bool VisitImpliesOp  (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         WriteApplication(impliesName, node, options);
         return true;
       }
@@ -532,9 +532,9 @@ void ObjectInvariant()
       public bool VisitDistinctOp (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         ExprLineariser.AssertAsFormula("distinct", options);
-        
+
         if (node.Length < 2) {
           ExprLineariser.Linearise(VCExpressionGenerator.True, options);
         } else {
@@ -611,28 +611,28 @@ void ObjectInvariant()
       public bool VisitBvOp       (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
        {Contract.Assert(false);  throw new NotImplementedException();}       // TODO
       }
 
       public bool VisitBvExtractOp(VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
        {Contract.Assert(false);  throw new NotImplementedException();}       // TODO
       }
 
       public bool VisitBvConcatOp (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
        {Contract.Assert(false);  throw new NotImplementedException();}       // TODO
       }
 
       public bool VisitAddOp            (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         WriteTermApplication(intAddName, node, options);
         return true;
       }
@@ -640,7 +640,7 @@ void ObjectInvariant()
       public bool VisitSubOp            (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         WriteTermApplication(intSubName, node, options);
         return true;
       }
@@ -648,7 +648,7 @@ void ObjectInvariant()
       public bool VisitMulOp            (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         WriteTermApplication(intMulName, node, options);
         return true;
       }
@@ -656,7 +656,7 @@ void ObjectInvariant()
       public bool VisitDivOp            (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         WriteTermApplication(intDivName, node, options);
         return true;
       }
@@ -664,7 +664,7 @@ void ObjectInvariant()
       public bool VisitModOp            (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         WriteTermApplication(intModName, node, options);
         return true;
       }
@@ -672,7 +672,7 @@ void ObjectInvariant()
       public bool VisitLtOp             (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         WriteApplication(lessName, node, options, true);  // arguments are always terms
         return true;
       }
@@ -680,7 +680,7 @@ void ObjectInvariant()
       public bool VisitLeOp             (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         WriteApplication(atmostName, node, options, true);  // arguments are always terms
         return true;
       }
@@ -688,7 +688,7 @@ void ObjectInvariant()
       public bool VisitGtOp             (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         WriteApplication(greaterName, node, options, true);  // arguments are always terms
         return true;
       }
@@ -696,7 +696,7 @@ void ObjectInvariant()
       public bool VisitGeOp             (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         WriteApplication(atleastName, node, options, true);  // arguments are always terms
         return true;
       }
@@ -704,7 +704,7 @@ void ObjectInvariant()
       public bool VisitSubtypeOp        (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         WriteApplication(subtypeName, node, options, true);               // arguments are always terms
         return true;
       }
@@ -712,7 +712,7 @@ void ObjectInvariant()
       public bool VisitSubtype3Op        (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         WriteApplication(subtypeArgsName, node, options, true);               // arguments are always terms
         return true;
       }
@@ -720,7 +720,7 @@ void ObjectInvariant()
       public bool VisitBoogieFunctionOp (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
+
         VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)node.Op;
         Contract.Assert(op!=null);
         string printedName = ExprLineariser.Namer.GetName(op.Func, Lowercase(op.Func.Name));
@@ -733,7 +733,7 @@ void ObjectInvariant()
           WriteApplicationTermOnly(printedName, node, options);
         return true;
       }
-      
+
     }
   }
 
