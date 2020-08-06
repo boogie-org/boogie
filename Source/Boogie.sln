@@ -48,7 +48,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoreTests", "UnitTests\Core
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestUtil", "UnitTests\TestUtil\TestUtil.csproj", "{59118E35-4236-495E-AF6E-0D641302ED2C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BasetypesTests", "UnitTests\BasetypesTests\BasetypesTests.csproj", "{D00C3F22-1EDA-4781-8F0E-81991E9CB0D9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BaseTypesTests", "UnitTests\BaseTypesTests\BaseTypesTests.csproj", "{D00C3F22-1EDA-4781-8F0E-81991E9CB0D9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
