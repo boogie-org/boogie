@@ -210,7 +210,7 @@ namespace Microsoft.Boogie
       TheoremProver.SetRlimit(rlimit);
     }
 
-    private void SetRandomSeed(int randomSeed)
+    private void SetRandomSeed(int? randomSeed)
     {
       TheoremProver.SetRandomSeed(randomSeed);
     }
@@ -350,7 +350,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, int timeout, int rlimit, int randomSeed = 0)
+    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, int timeout, int rlimit, int? randomSeed)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
@@ -661,7 +661,7 @@ namespace Microsoft.Boogie
     {
     }
 
-    public virtual void SetRandomSeed(int randomSeed)
+    public virtual void SetRandomSeed(int? randomSeed)
     {
     }
     

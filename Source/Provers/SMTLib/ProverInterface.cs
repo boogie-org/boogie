@@ -575,7 +575,10 @@ namespace Microsoft.Boogie.SMTLib
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
         SendThisVC("(set-option :" + Z3.RlimitOption + " " + options.ResourceLimit + ")");
-        SendThisVC("(set-option :" + Z3.RandomSeedOption + " " + options.RandomSeed + ")");
+        if (options.RandomSeed.HasValue)
+        {
+          SendThisVC("(set-option :" + Z3.RandomSeedOption + " " + options.RandomSeed.Value + ")");
+        }
       }
       SendThisVC(vcString);
 
@@ -2628,7 +2631,7 @@ namespace Microsoft.Boogie.SMTLib
       options.ResourceLimit = limit;
     }
 
-    public override void SetRandomSeed(int randomSeed)
+    public override void SetRandomSeed(int? randomSeed)
     {
       options.RandomSeed = randomSeed;
     }

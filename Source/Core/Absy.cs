@@ -1572,10 +1572,9 @@ namespace Microsoft.Boogie
       return QKeyValue.FindStringAttribute(this.Attributes, name);
     }
 
-    // Look for {:name N} or {:name N} in list of attributes. Return result in 'result'
-    // (which is not touched if there is no attribute specified).
-    //
-    // Returns false is there was an error processing the flag, true otherwise.
+    // Look for {:name N} in list of attributes. Return false if attribute
+    // 'name' does not exist or if N is not an integer constant.  Otherwise,
+    // return true and update 'result' with N.
     public bool CheckIntAttribute(string name, ref int result)
     {
       Contract.Requires(name != null);
@@ -1585,14 +1584,11 @@ namespace Microsoft.Boogie
         if (expr is LiteralExpr && ((LiteralExpr) expr).isBigNum)
         {
           result = ((LiteralExpr) expr).asBigNum.ToInt;
-        }
-        else
-        {
-          return false;
+          return true;
         }
       }
 
-      return true;
+      return false;
     }
 
     public void AddAttribute(string name, params object[] vals)
@@ -1830,17 +1826,16 @@ namespace Microsoft.Boogie
       }
     }
 
-    public int RandomSeed
+    public int? RandomSeed
     {
       get
       {
         int rs = 0;
-        CheckIntAttribute("random_seed", ref rs);
-        if (rs < 0)
+        if (CheckIntAttribute("random_seed", ref rs))
         {
-          rs = 0;
+          return rs;
         }
-        return rs;
+        return null;
       }
     }
     

@@ -369,7 +369,7 @@ namespace VC
             }
 
             ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback), 
-              CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit);
+              CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit, null);
           }
 
           ch.ProverTask.Wait();
@@ -1882,11 +1882,11 @@ namespace VC
     {
       Contract.Requires(impl != null);
       Contract.Requires(name != null);
-      if (!(cce.NonNull(impl.Proc).CheckIntAttribute(name, ref val) || !impl.CheckIntAttribute(name, ref val)))
+      if (impl.FindAttribute(name) == null || impl.CheckIntAttribute(name, ref val))
       {
-        Console.WriteLine("ignoring ill-formed {:{0} ...} attribute on {1}, parameter should be an int", name,
-          impl.Name);
+        return;
       }
+      Console.WriteLine("ignoring ill-formed {:{0} ...} attribute on {1}, parameter should be an int", name, impl.Name);
     }
 
     public override Outcome VerifyImplementation(Implementation /*!*/ impl, VerifierCallback /*!*/ callback)
