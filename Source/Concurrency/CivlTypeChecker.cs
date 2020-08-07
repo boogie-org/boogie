@@ -867,6 +867,16 @@ namespace Microsoft.Boogie
             localVarToLayerRange[impl.OutParams[i]] = localVarToLayerRange[v];
         }
       }
+
+      // Also add parameters of atomic actions to localVarToLayerRange,
+      // assigning to them the layer range of the action.
+      foreach (var a in procToAtomicAction.Values)
+      {
+        foreach (var v in a.proc.InParams.Union(a.proc.OutParams).Union(a.impl.InParams).Union(a.impl.OutParams))
+        {
+          localVarToLayerRange[v] = a.layerRange;
+        }
+      }
     }
 
     private void TypeCheckPendingAsyncMachinery()
