@@ -80,6 +80,11 @@ namespace Microsoft.Boogie
         {Proc = callee};
     }
 
+    public static CallCmd CallCmd(Procedure callee, List<Variable> ins, List<Variable> outs)
+    {
+      return CallCmd(callee, ins.Select(Expr.Ident).ToList<Expr>(), outs.Select(Expr.Ident).ToList());
+    }
+
     public static AssumeCmd AssumeCmd(Expr expr)
     {
       return new AssumeCmd(Token.NoToken, expr);

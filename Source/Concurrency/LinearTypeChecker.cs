@@ -1183,15 +1183,14 @@ namespace Microsoft.Boogie
       }
 
       // Create blocks
-      List<Block> blocks = new List<Block>();
+      List<Block> blocks = new List<Block>()
       {
-        CallCmd cmd = new CallCmd(Token.NoToken, impl.Name,
-          inputs.Select(Expr.Ident).ToList<Expr>(),
-          outputs.Select(Expr.Ident).ToList());
-        cmd.Proc = action.proc;
-        Block block = new Block(Token.NoToken, "entry", new List<Cmd> {cmd}, new ReturnCmd(Token.NoToken));
-        blocks.Add(block);
-      }
+        new Block(
+          Token.NoToken,
+          "entry",
+          new List<Cmd> {CmdHelper.CallCmd(action.proc, inputs, outputs)},
+          CmdHelper.ReturnCmd)
+      };
 
       // Create the whole check procedure
       string checkerName = $"LinearityChecker_{action.proc.Name}";

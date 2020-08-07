@@ -179,17 +179,18 @@ namespace Microsoft.Boogie
 
     private IEnumerable<Variable> FilterInParams(IEnumerable<Variable> locals)
     {
-      Predicate<LinearKind> isLinear = x => x == LinearKind.LINEAR || x == LinearKind.LINEAR_IN;
-      return locals.Where(v =>
-        isLinear(linearTypeChecker.FindLinearKind(v)) &&
-        civlTypeChecker.LocalVariableLayerRange(v).Contains(layerNum));
+      return Filter(locals, x => x == LinearKind.LINEAR || x == LinearKind.LINEAR_IN);
     }
 
     private IEnumerable<Variable> FilterInOutParams(IEnumerable<Variable> locals)
     {
-      Predicate<LinearKind> isLinear = x => x == LinearKind.LINEAR || x == LinearKind.LINEAR_OUT;
+      return Filter(locals, x => x == LinearKind.LINEAR || x == LinearKind.LINEAR_OUT);
+    }
+
+    private IEnumerable<Variable> Filter(IEnumerable<Variable> locals, Predicate<LinearKind> pred)
+    {
       return locals.Where(v =>
-        isLinear(linearTypeChecker.FindLinearKind(v)) &&
+        pred(linearTypeChecker.FindLinearKind(v)) &&
         civlTypeChecker.LocalVariableLayerRange(v).Contains(layerNum));
     }
 

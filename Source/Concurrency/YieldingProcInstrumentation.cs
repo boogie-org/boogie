@@ -30,12 +30,11 @@ namespace Microsoft.Boogie
       yieldingProcInstrumentation
         .InlineYieldRequiresAndEnsures(); // inline after creating the preconditions but before transforming the implementations
       yieldingProcInstrumentation.TransformImpls(yieldingProcs, implToPreconditions);
-      List<Declaration> decls = new List<Declaration>(yieldingProcInstrumentation.noninterferenceCheckerDecls);
-      foreach (Procedure proc in yieldingProcInstrumentation.parallelCallAggregators.Values)
-      {
-        decls.Add(proc);
-      }
 
+      List<Declaration> decls = new List<Declaration>();
+      decls.AddRange(yieldingProcInstrumentation.noninterferenceCheckerDecls);
+      decls.AddRange(yieldingProcInstrumentation.parallelCallAggregators.Values);
+      decls.AddRange(yieldingProcInstrumentation.PendingAsyncNoninterferenceCheckers());
       decls.Add(yieldingProcInstrumentation.wrapperNoninterferenceCheckerProc);
       decls.Add(yieldingProcInstrumentation.WrapperNoninterferenceCheckerImpl());
       return decls;
@@ -89,6 +88,24 @@ namespace Microsoft.Boogie
         $"Wrapper_NoninterferenceChecker_{layerNum}", new List<TypeVariable>(),
         inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
       CivlUtil.AddInlineAttribute(wrapperNoninterferenceCheckerProc);
+
+      // initialize globalSnapshotInstrumentation
+      globalSnapshotInstrumentation = new GlobalSnapshotInstrumentation(civlTypeChecker);
+
+      // initialize noninterferenceInstrumentation
+      if (CommandLineOptions.Clo.TrustNoninterference)
+      {
+        noninterferenceInstrumentation = new NoneNoninterferenceInstrumentation();
+      }
+      else
+      {
+        noninterferenceInstrumentation = new SomeNoninterferenceInstrumentation(
+          civlTypeChecker,
+          linearTypeChecker,
+          linearPermissionInstrumentation,
+          globalSnapshotInstrumentation.OldGlobalMap,
+          wrapperNoninterferenceCheckerProc);
+      }
     }
 
     private YieldingProc GetYieldingProc(Implementation impl)
@@ -325,9 +342,6 @@ namespace Microsoft.Boogie
 
     private void TransformImpl(Implementation impl, List<Cmd> preconditions)
     {
-      // initialize globalSnapshotInstrumentation
-      globalSnapshotInstrumentation = new GlobalSnapshotInstrumentation(civlTypeChecker);
-
       // initialize refinementInstrumentation
       var yieldingProc = GetYieldingProc(impl);
       if (yieldingProc.upperLayer == this.layerNum)
@@ -341,21 +355,6 @@ namespace Microsoft.Boogie
       else
       {
         refinementInstrumentation = new RefinementInstrumentation();
-      }
-
-      // initialize noninterferenceInstrumentation
-      if (CommandLineOptions.Clo.TrustNoninterference)
-      {
-        noninterferenceInstrumentation = new NoneNoninterferenceInstrumentation();
-      }
-      else
-      {
-        noninterferenceInstrumentation = new SomeNoninterferenceInstrumentation(
-          civlTypeChecker,
-          linearTypeChecker,
-          linearPermissionInstrumentation,
-          globalSnapshotInstrumentation.OldGlobalMap,
-          wrapperNoninterferenceCheckerProc);
       }
 
       DesugarConcurrency(impl, preconditions);
@@ -792,6 +791,40 @@ namespace Microsoft.Boogie
         {
           splitDone = true;
         }
+      }
+    }
+
+    private IEnumerable<Declaration> PendingAsyncNoninterferenceCheckers()
+    {
+      if (CommandLineOptions.Clo.TrustNoninterference) yield break;
+
+      HashSet<AtomicAction> pendingAsyncsToCheck = new HashSet<AtomicAction>(
+        civlTypeChecker.procToAtomicAction.Values
+          .Where(a => a.layerRange.Contains(layerNum) && a.HasPendingAsyncs)
+          .SelectMany(a => a.pendingAsyncs));
+
+      foreach (var action in pendingAsyncsToCheck)
+      {
+        var name = $"PendingAsyncNoninterferenceChecker_{action.proc.Name}_{layerNum}";
+        var inputs = action.impl.InParams;
+        var outputs = action.impl.OutParams;
+        var requires = action.gate.Select(a => new Requires(false, a.Expr)).ToList();
+        var ensures = new List<Ensures>();
+        var modifies = civlTypeChecker.GlobalVariables.Select(Expr.Ident).ToList();
+        var locals = globalSnapshotInstrumentation.NewLocalVars.Union(noninterferenceInstrumentation.NewLocalVars).ToList();
+        var cmds = new List<Cmd>();
+        var typeVars = new List<TypeVariable>();
+
+        cmds.AddRange(globalSnapshotInstrumentation.CreateInitCmds());
+        cmds.AddRange(noninterferenceInstrumentation.CreateInitCmds(action.impl));
+        cmds.Add(CmdHelper.CallCmd(action.proc, inputs, outputs));
+        cmds.AddRange(noninterferenceInstrumentation.CreateCallToYieldProc());
+        var blocks = new List<Block> { new Block(Token.NoToken, "entry", cmds, new ReturnCmd(Token.NoToken)) };
+
+        var proc = new Procedure(Token.NoToken, name, typeVars, inputs, outputs, requires, modifies, ensures);
+        var impl = new Implementation(Token.NoToken, name, typeVars, inputs, outputs, locals, blocks) { Proc = proc };
+        yield return proc;
+        yield return impl;
       }
     }
   }
