@@ -50,6 +50,7 @@ namespace Microsoft.Boogie
     {
       this.checkingContext = new CheckingContext(null);
       this.program = program;
+      this.linearTypeChecker = new LinearTypeChecker(this);
 
       this.globalVarToLayerRange = new Dictionary<Variable, LayerRange>();
       this.localVarToLayerRange = new Dictionary<Variable, LayerRange>();
@@ -100,7 +101,6 @@ namespace Microsoft.Boogie
       if (checkingContext.ErrorCount > 0)
         return;
 
-      linearTypeChecker = new LinearTypeChecker(this);
       linearTypeChecker.TypeCheck();
       if (checkingContext.ErrorCount > 0)
         return;
@@ -431,6 +431,11 @@ namespace Microsoft.Boogie
         foreach (var param in proc.InParams)
         {
           localVarToLayerRange[param] = new LayerRange(yieldInvariant.LayerNum);
+          var linearKind = linearTypeChecker.FindLinearKind(param);
+          if (linearKind == LinearKind.LINEAR_IN || linearKind == LinearKind.LINEAR_OUT)
+          {
+            Error(param, "Parameter to yield invariant can only be :linear");
+          }
         }
       }
 
@@ -449,58 +454,56 @@ namespace Microsoft.Boogie
         return null;
       }
 
-      if (kv.Params[0] is string yieldInvariantProcName)
-      {
-        var yieldingProc =
-          this.procToYieldInvariant.Keys.FirstOrDefault(proc => proc.Name == yieldInvariantProcName);
-        if (yieldingProc == null)
-        {
-          Error(kv, $"Yield invariant {yieldInvariantProcName} does not exist");
-          return null;
-        }
-
-        var exprs = new List<Expr>();
-        for (int i = 1; i < kv.Params.Count; i++)
-        {
-          if (kv.Params[i] is Expr expr)
-          {
-            exprs.Add(expr);
-          }
-          else
-          {
-            Error(kv, $"Illegal expression at position {i}");
-          }
-        }
-
-        if (exprs.Count + 1 != kv.Params.Count)
-        {
-          // Error added in the loop above
-          return null;
-        }
-
-        if (exprs.Count != yieldingProc.InParams.Count)
-        {
-          Error(kv, $"Incorrect number of arguments to yield invariant {yieldingProc.Name}");
-          return null;
-        }
-
-        var callCmd = new CallCmd(kv.tok, yieldingProc.Name, exprs, new List<IdentifierExpr>());
-        callCmd.Proc = yieldingProc;
-        if (CivlUtil.ResolveAndTypecheck(callCmd) == 0)
-        {
-          linearTypeChecker.VisitCallCmd(callCmd);
-          return callCmd;
-        }
-        else
-        {
-          return null;
-        }
-      }
-      else
+      if (!(kv.Params[0] is string yieldInvariantProcName))
       {
         Error(kv, "Name of a yield invariant must be provided at position 1");
         return null;
       }
+      
+      var yieldingProc =
+        this.procToYieldInvariant.Keys.FirstOrDefault(proc => proc.Name == yieldInvariantProcName);
+      if (yieldingProc == null)
+      {
+        Error(kv, $"Yield invariant {yieldInvariantProcName} does not exist");
+        return null;
+      }
+
+      var exprs = new List<Expr>();
+      for (int i = 1; i < kv.Params.Count; i++)
+      {
+        if (kv.Params[i] is Expr expr)
+        {
+          exprs.Add(expr);
+        }
+        else
+        {
+          Error(kv, $"Illegal expression at position {i}");
+        }
+      }
+
+      if (exprs.Count + 1 != kv.Params.Count)
+      {
+        // Error added in the loop above
+        return null;
+      }
+
+      if (exprs.Count != yieldingProc.InParams.Count)
+      {
+        Error(kv, $"Incorrect number of arguments to yield invariant {yieldingProc.Name}");
+        return null;
+      }
+
+      var callCmd = new CallCmd(kv.tok, yieldingProc.Name, exprs, new List<IdentifierExpr>()) { Proc = yieldingProc };
+      if (CivlUtil.ResolveAndTypecheck(callCmd) == 0)
+      {
+        linearTypeChecker.VisitCallCmd(callCmd);
+        if (linearTypeChecker.checkingContext.ErrorCount == 0)
+        {
+          return callCmd;
+        }
+      }
+
+      return null;
     }
 
     private bool TypeCheckYieldingPrePostDecls(Procedure proc,
