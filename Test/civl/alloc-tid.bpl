@@ -26,8 +26,7 @@ main()
 }
 
 procedure {:yields} {:layer 2}
-{:yield_requires "Yield1"}
-{:yield_ensures "Yield1"}
+{:yield_preserves "Yield1"}
 {:yield_requires "Yield2", tid, a[tid]}
 {:yield_ensures "Yield2", tid, old(a)[tid] + 1}
 P({:layer 1,2} {:linear "tid"} tid: int, i: int)
@@ -48,8 +47,7 @@ modifies unallocated;
 }
 
 procedure {:yields} {:layer 1} {:refines "AtomicAllocate"}
-{:yield_requires "Yield1"}
-{:yield_ensures "Yield1"}
+{:yield_preserves "Yield1"}
 Allocate() returns ({:layer 1} {:linear "tid"} tid: int, i: int)
 ensures {:layer 1} tid == i;
 {
@@ -63,8 +61,7 @@ procedure {:atomic} {:layer 2,2} AtomicRead({:linear "tid"} tid: int, i: int) re
 }
 
 procedure {:yields} {:layer 1} {:refines "AtomicRead"}
-{:yield_requires "Yield1"}
-{:yield_ensures "Yield1"}
+{:yield_preserves "Yield1"}
 Read({:layer 1} {:linear "tid"} tid: int, i: int) returns (val: int)
 requires {:layer 1} tid == i;
 {
@@ -78,8 +75,7 @@ modifies a;
 }
 
 procedure {:yields} {:layer 1} {:refines "AtomicWrite"}
-{:yield_requires "Yield1"}
-{:yield_ensures "Yield1"}
+{:yield_preserves "Yield1"}
 Write({:layer 1} {:linear "tid"} tid: int, i: int, val: int)
 requires {:layer 1} tid == i;
 {

@@ -102,8 +102,7 @@ procedure {:atomic} {:layer 1} AtomicWaitBarrier()
 procedure {:yields} {:layer 0} {:refines "AtomicWaitBarrier"} WaitBarrier();
 
 procedure {:yields} {:layer 1}
-{:yield_requires "BarrierInv"}
-{:yield_ensures  "BarrierInv"}
+{:yield_preserves "BarrierInv"}
 Mutator({:linear "perm"} i: int)
 requires {:layer 1} IsMutator(i);
 {
@@ -123,8 +122,7 @@ requires {:layer 1} IsMutator(i);
 }
 
 procedure {:yields} {:layer 1}
-{:yield_requires "BarrierInv"}
-{:yield_ensures  "BarrierInv"}
+{:yield_preserves "BarrierInv"}
 Collector({:linear "perm"} i: int)
 requires {:layer 1} i == 0;
 {

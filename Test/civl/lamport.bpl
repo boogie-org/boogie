@@ -26,8 +26,7 @@ var {:layer 1} done : [int]bool;
 
 // Main procedures that spawns all processes
 procedure {:yields} {:layer 1}
-{:yield_requires "yield_ind_inv"}
-{:yield_ensures "yield_ind_inv"}
+{:yield_preserves "yield_ind_inv"}
 Main()
 {
   var i: int;
@@ -44,8 +43,7 @@ Main()
 
 // Code of process i
 procedure {:yields} {:layer 1}
-{:yield_requires "yield_ind_inv"}
-{:yield_ensures "yield_ind_inv"}
+{:yield_preserves "yield_ind_inv"}
 Proc(i: int)
 {
   call update_x(i);

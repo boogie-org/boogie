@@ -24,8 +24,7 @@ function {:inline} PoolInv(unallocated:[int]bool, pool:lmap) : (bool)
 }
 
 procedure {:yields} {:layer 2}
-{:yield_requires "Yield"}
-{:yield_ensures "Yield"}
+{:yield_preserves "Yield"}
 Main ()
 {
   var {:layer 1,2} {:linear "mem"} l:lmap;
@@ -88,8 +87,7 @@ modifies pool;
 }
 
 procedure {:yields} {:layer 1} {:refines "atomic_Free"}
-{:yield_requires "Yield"}
-{:yield_ensures "Yield"}
+{:yield_preserves "Yield"}
 Free({:layer 1} {:linear_in "mem"} l:lmap, i:int)
 requires {:layer 1} dom(l)[i];
 {

@@ -55,8 +55,7 @@ requires {:layer 1} xls == mapconstbool(true);
 }
 
 procedure {:yields} {:layer 1}
-{:yield_requires "Yield"}
-{:yield_ensures "Yield"}
+{:yield_preserves "Yield"}
 Thread({:linear "tid"} tid: X)
 requires {:layer 1} tid != nil;
 {
@@ -95,8 +94,7 @@ COPY_TO_BUFFER:
 }
 
 procedure {:yields} {:layer 1}
-{:yield_requires "Yield"}
-{:yield_ensures "Yield"}
+{:yield_preserves "Yield"}
 {:yield_requires "YieldToWriteCache", tid, currsize, newsize}
 {:yield_ensures "YieldToWriteCache", tid, old(currsize), old(newsize)}
 WriteCache({:linear "tid"} tid: X, index: int)
@@ -114,8 +112,7 @@ WriteCache({:linear "tid"} tid: X, index: int)
 }
 
 procedure {:yields} {:layer 1}
-{:yield_requires "Yield"}
-{:yield_ensures "Yield"}
+{:yield_preserves "Yield"}
 {:yield_requires "YieldToReadCache", tid, currsize}
 {:yield_ensures "YieldToReadCache", tid, old(currsize)}
 ReadCache({:linear "tid"} tid: X, start: int, bytesRead: int)

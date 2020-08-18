@@ -18,8 +18,7 @@ main ()
 }
 
 procedure {:yields}{:layer 1}
-{:yield_requires "Inv"}
-{:yield_ensures  "Inv"}
+{:yield_preserves "Inv"}
 incdec()
 {
   call geq0_inc();

@@ -5,8 +5,7 @@ var {:layer 0,1} x: int;
 var {:layer 0,1} y: int;
 
 procedure {:yields} {:layer 1}
-{:yield_requires "yield_x", _x}
-{:yield_ensures  "yield_x", _x}
+{:yield_preserves "yield_x", _x}
 incr_x(_x: int)
 {
     call _incr_x();
@@ -18,8 +17,7 @@ procedure {:layer 1} {:yield_invariant} yield_x(_x: int);
 requires _x <= x;
 
 procedure {:yields} {:layer 1}
-{:yield_requires "yield_y", _y}
-{:yield_ensures  "yield_y", _y}
+{:yield_preserves  "yield_y", _y}
 incr_y(_y: int)
 {
     call _incr_y();

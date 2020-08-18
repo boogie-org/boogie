@@ -31,10 +31,8 @@ procedure {:yield_invariant} {:layer 3} InvMem();
 requires dom(g)[p] && dom(g)[p+4] && map(g)[p] == map(g)[p+4];
 
 procedure {:yields} {:layer 3}
-{:yield_requires "InvLock"}
-{:yield_ensures "InvLock"}
-{:yield_requires "InvMem"}
-{:yield_ensures "InvMem"}
+{:yield_preserves "InvLock"}
+{:yield_preserves "InvMem"}
 P({:linear "tid"} tid: X)
 requires {:layer 1,3} tid != nil;
 {
@@ -56,8 +54,7 @@ modifies g;
 { assert tid != nil && lock == tid; g := l; }
 
 procedure {:yields} {:layer 2} {:refines "AtomicTransferToGlobalProtected"}
-{:yield_requires "InvLock"}
-{:yield_ensures "InvLock"}
+{:yield_preserves "InvLock"}
 TransferToGlobalProtected({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap)
 {
   call TransferToGlobal(tid, l);
@@ -68,8 +65,7 @@ modifies g;
 { assert tid != nil && lock == tid; l := g; g := emptyDom(g); }
 
 procedure {:yields} {:layer 2} {:refines "AtomicTransferFromGlobalProtected"}
-{:yield_requires "InvLock"}
-{:yield_ensures "InvLock"}
+{:yield_preserves "InvLock"}
 TransferFromGlobalProtected({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap)
 {
   call l := TransferFromGlobal(tid);
@@ -80,8 +76,7 @@ modifies lock;
 { assert tid != nil; assume lock == nil; lock := tid; }
 
 procedure {:yields} {:layer 2} {:refines "AtomicAcquireProtected"}
-{:yield_requires "InvLock"}
-{:yield_ensures "InvLock"}
+{:yield_preserves "InvLock"}
 AcquireProtected({:linear "tid"} tid: X)
 requires {:layer 1} tid != nil;
 {
@@ -93,8 +88,7 @@ modifies lock;
 { assert tid != nil && lock == tid; lock := nil; }
 
 procedure {:yields} {:layer 2} {:refines "AtomicReleaseProtected"}
-{:yield_requires "InvLock"}
-{:yield_ensures "InvLock"}
+{:yield_preserves "InvLock"}
 ReleaseProtected({:linear "tid"} tid: X)
 {
   call Release(tid);
@@ -105,8 +99,7 @@ modifies lock;
 { assume lock == nil; lock := tid; }
 
 procedure {:yields} {:layer 1} {:refines "AtomicAcquire"}
-{:yield_requires "InvLock"}
-{:yield_ensures "InvLock"}
+{:yield_preserves "InvLock"}
 Acquire({:linear "tid"} tid: X)
 requires {:layer 1} tid != nil;
 {
@@ -128,8 +121,7 @@ modifies lock;
 { lock := nil; }
 
 procedure {:yields} {:layer 1} {:refines "AtomicRelease"}
-{:yield_requires "InvLock"}
-{:yield_ensures "InvLock"}
+{:yield_preserves "InvLock"}
 Release({:linear "tid"} tid: X)
 {
     call CLEAR(tid, false);

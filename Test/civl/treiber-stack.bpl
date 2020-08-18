@@ -100,8 +100,7 @@ modifies Stack, TopOfStack;
 { assert dom(x_lmap)[x]; Stack := Add(Stack, x, TopOfStack); TopOfStack := x; }
 
 procedure {:yields} {:layer 1} {:refines "atomic_push"}
-{:yield_requires "YieldInv"}
-{:yield_ensures "YieldInv"}
+{:yield_preserves "YieldInv"}
 push(x: int, {:linear_in "Node"} x_lmap: lmap)
 requires {:layer 1} dom(x_lmap)[x];
 {
@@ -128,8 +127,7 @@ modifies Used, TopOfStack, Stack;
 { assert Inv(TopOfStack, Stack); assume TopOfStack != null; t := TopOfStack; Used[t] := true; TopOfStack := map(Stack)[t]; Stack := Remove(Stack, t); }
 
 procedure {:yields} {:layer 1} {:refines "atomic_pop"}
-{:yield_requires "YieldInv"}
-{:yield_ensures "YieldInv"}
+{:yield_preserves "YieldInv"}
 pop() returns (t: int)
 {
   var g: bool;

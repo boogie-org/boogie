@@ -8,8 +8,7 @@ var {:layer 0,2} b: bool;
 var {:layer 1,3} lock: X;
 
 procedure {:yields} {:layer 3}
-{:yield_requires "Yield", tid}
-{:yield_ensures "Yield", tid}
+{:yield_preserves "Yield", tid}
 Customer({:linear "tid"} tid: X)
 {
   while (*)
@@ -31,8 +30,7 @@ modifies lock;
 { assume lock == nil && tid != nil; lock := tid; }
 
 procedure {:yields} {:layer 2} {:refines "AtomicEnter"}
-{:yield_requires "Yield", tid}
-{:yield_ensures "Yield", tid}
+{:yield_preserves "Yield", tid}
 Enter({:linear "tid"} tid: X)
 {
   call LowerEnter(tid);
@@ -43,8 +41,7 @@ modifies lock;
 { assert lock == tid && tid != nil; lock := nil; }
 
 procedure {:yields} {:layer 2} {:refines "AtomicLeave"}
-{:yield_requires "Yield", tid}
-{:yield_ensures "Yield", tid}
+{:yield_preserves "Yield", tid}
 Leave({:linear "tid"} tid:X)
 {
   call LowerLeave();
