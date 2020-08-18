@@ -446,104 +446,40 @@ namespace Microsoft.Boogie
       }
     }
 
-    private CallCmd TypeCheckYieldInvariantCall(QKeyValue kv)
-    {
-      if (kv.Params.Count == 0)
-      {
-        Error(kv, "A yield invariant name must be provided");
-        return null;
-      }
-
-      if (!(kv.Params[0] is string yieldInvariantProcName))
-      {
-        Error(kv, "Name of a yield invariant must be provided at position 1");
-        return null;
-      }
-      
-      var yieldingProc =
-        this.procToYieldInvariant.Keys.FirstOrDefault(proc => proc.Name == yieldInvariantProcName);
-      if (yieldingProc == null)
-      {
-        Error(kv, $"Yield invariant {yieldInvariantProcName} does not exist");
-        return null;
-      }
-
-      var exprs = new List<Expr>();
-      for (int i = 1; i < kv.Params.Count; i++)
-      {
-        if (kv.Params[i] is Expr expr)
-        {
-          exprs.Add(expr);
-        }
-        else
-        {
-          Error(kv, $"Illegal expression at position {i}");
-        }
-      }
-
-      if (exprs.Count + 1 != kv.Params.Count)
-      {
-        // Error added in the loop above
-        return null;
-      }
-
-      if (exprs.Count != yieldingProc.InParams.Count)
-      {
-        Error(kv, $"Incorrect number of arguments to yield invariant {yieldingProc.Name}");
-        return null;
-      }
-
-      var callCmd = new CallCmd(kv.tok, yieldingProc.Name, exprs, new List<IdentifierExpr>()) { Proc = yieldingProc };
-      if (CivlUtil.ResolveAndTypecheck(callCmd) == 0)
-      {
-        linearTypeChecker.VisitCallCmd(callCmd);
-        if (linearTypeChecker.checkingContext.ErrorCount == 0)
-        {
-          return callCmd;
-        }
-      }
-
-      return null;
-    }
-
-    private bool TypeCheckYieldingPrePostDecls(Procedure proc,
+    private void TypeCheckYieldingPrePostDecls(Procedure proc,
       out List<CallCmd> yieldRequires,
       out List<CallCmd> yieldEnsures)
     {
-      var ok = true;
       yieldRequires = new List<CallCmd>();
       yieldEnsures = new List<CallCmd>();
+      
       foreach (var attr in CivlAttributes.FindAllAttributes(proc, CivlAttributes.YIELD_REQUIRES))
       {
-        var callCmd = TypeCheckYieldInvariantCall(attr);
-        if (callCmd != null &&
-            new YieldInvariantCallVisitor(this, false).Check(callCmd) &&
-            linearTypeChecker.TypeCheckYieldRequires(proc, callCmd))
+        var callCmd = YieldInvariantCallChecker.CheckRequires(this, attr, proc);
+        if (callCmd != null)
         {
           yieldRequires.Add(callCmd);
-        }
-        else
-        {
-          ok = false;
         }
       }
 
       foreach (var attr in CivlAttributes.FindAllAttributes(proc, CivlAttributes.YIELD_ENSURES))
       {
-        var callCmd = TypeCheckYieldInvariantCall(attr);
-        if (callCmd != null &&
-            new YieldInvariantCallVisitor(this, true).Check(callCmd) &&
-            linearTypeChecker.TypeCheckYieldEnsures(proc, callCmd))
+        var callCmd = YieldInvariantCallChecker.CheckEnsures(this, attr, proc);
+        if (callCmd != null)
         {
           yieldEnsures.Add(callCmd);
         }
-        else
-        {
-          ok = false;
-        }
       }
 
-      return ok;
+      foreach (var attr in CivlAttributes.FindAllAttributes(proc, CivlAttributes.YIELD_PRESERVES))
+      {
+        var callCmd = YieldInvariantCallChecker.CheckPreserves(this, attr, proc);
+        if (callCmd != null)
+        {
+          yieldRequires.Add(callCmd);
+          yieldEnsures.Add(callCmd);
+        }
+      }
     }
 
     private void TypeCheckYieldingProcedureDecls()
@@ -576,10 +512,7 @@ namespace Microsoft.Boogie
         }
 
         List<CallCmd> yieldRequires, yieldEnsures;
-        if (!TypeCheckYieldingPrePostDecls(proc, out yieldRequires, out yieldEnsures))
-        {
-          continue;
-        }
+        TypeCheckYieldingPrePostDecls(proc, out yieldRequires, out yieldEnsures);
 
         if (refinesName != null) // proc is an action procedure
         {
@@ -703,16 +636,12 @@ namespace Microsoft.Boogie
           {
             foreach (var attr in CivlAttributes.FindAllAttributes(predCmd, CivlAttributes.YIELD_LOOP))
             {
-              var callCmd = TypeCheckYieldInvariantCall(attr);
+              var callCmd = YieldInvariantCallChecker.CheckLoop(this, attr, header);
               if (callCmd == null) continue;
               var calleeLayerNum = procToYieldInvariant[callCmd.Proc].LayerNum;
               if (yieldingLayers.Contains(calleeLayerNum))
               {
-                if (new YieldInvariantCallVisitor(this, true).Check(callCmd) &&
-                    linearTypeChecker.TypeCheckYieldLoop(header, callCmd))
-                {
-                  yieldInvariants.Add(callCmd);
-                }
+                yieldInvariants.Add(callCmd);
               }
               else
               {
@@ -1419,32 +1348,138 @@ namespace Microsoft.Boogie
       }
     }
 
-    class YieldInvariantCallVisitor : ReadOnlyVisitor
+    class YieldInvariantCallChecker : ReadOnlyVisitor
     {
       private CivlTypeChecker civlTypeChecker;
       private bool allowOldExpr;
       private int insideOldExpr;
-      private bool ok;
+      private int initialErrorCount;
+      private QKeyValue attr;
+      private CallCmd callCmd;
+      private ISet<Variable> availableLinearVars;
 
-      public YieldInvariantCallVisitor(CivlTypeChecker civlTypeChecker, bool allowOldExpr)
+      private bool ShouldAbort => callCmd == null || civlTypeChecker.checkingContext.ErrorCount != initialErrorCount;
+
+      static List<LinearKind> RequiresAvailable = new List<LinearKind> { LinearKind.LINEAR, LinearKind.LINEAR_IN };
+      static List<LinearKind> EnsuresAvailable = new List<LinearKind> { LinearKind.LINEAR, LinearKind.LINEAR_OUT };
+      static List<LinearKind> PreservesAvailable = new List<LinearKind> { LinearKind.LINEAR };
+
+      public static CallCmd CheckRequires(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller)
       {
-        this.civlTypeChecker = civlTypeChecker;
-        this.allowOldExpr = allowOldExpr;
-        this.insideOldExpr = 0;
-        this.ok = true;
+        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, false, caller, RequiresAvailable);
+        return v.callCmd;
       }
 
-      public bool Check(CallCmd callCmd)
+      public static CallCmd CheckEnsures(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller)
       {
+        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, true, caller, EnsuresAvailable);
+        return v.callCmd;
+      }
+
+      public static CallCmd CheckPreserves(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller)
+      {
+        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, false, caller, PreservesAvailable);
+        return v.callCmd;
+      }
+
+      public static CallCmd CheckLoop(CivlTypeChecker civlTypeChecker, QKeyValue attr, Block loopHeader)
+      {
+        var availableLinearVars = civlTypeChecker.linearTypeChecker.AvailableLinearVars(loopHeader);
+        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, true, availableLinearVars);
+        return v.callCmd;
+      }
+
+      private YieldInvariantCallChecker(CivlTypeChecker civlTypeChecker, QKeyValue attr, bool allowOldExpr, ISet<Variable> availableLinearVars)
+      {
+        this.civlTypeChecker = civlTypeChecker;
+        this.attr = attr;
+        this.allowOldExpr = allowOldExpr;
+        this.availableLinearVars = availableLinearVars;
+        this.insideOldExpr = 0;
+        this.initialErrorCount = civlTypeChecker.checkingContext.ErrorCount;
+        this.callCmd = null;
+
+        Check();
+      }
+
+      private YieldInvariantCallChecker(CivlTypeChecker civlTypeChecker, QKeyValue attr, bool allowOldExpr, Procedure caller, List<LinearKind> kinds)
+        : this(civlTypeChecker, attr, allowOldExpr,
+            new HashSet<Variable>(
+              caller.InParams.Union(caller.OutParams).Where(p => kinds.Contains(civlTypeChecker.linearTypeChecker.FindLinearKind(p)))
+            )
+          ) {}
+
+      private void Check()
+      {
+        ParseAttribute();
+        if (ShouldAbort) { callCmd = null; return; }
+        civlTypeChecker.linearTypeChecker.VisitCallCmd(callCmd);
+        if (ShouldAbort) { callCmd = null; return; }
         Visit(callCmd);
-        return ok;
+        if (ShouldAbort) { callCmd = null; return; }
+        CheckLinearParameters();
+        if (ShouldAbort) { callCmd = null; return; }
+      }
+
+      private void ParseAttribute()
+      {
+        if (attr.Params.Count == 0)
+        {
+          civlTypeChecker.Error(attr, "A yield invariant name must be provided");
+          return;
+        }
+
+        if (!(attr.Params[0] is string yieldInvariantProcName))
+        {
+          civlTypeChecker.Error(attr, "Name of a yield invariant must be provided at position 1");
+          return;
+        }
+
+        var yieldingProc =
+          civlTypeChecker.procToYieldInvariant.Keys.FirstOrDefault(proc => proc.Name == yieldInvariantProcName);
+        if (yieldingProc == null)
+        {
+          civlTypeChecker.Error(attr, $"Yield invariant {yieldInvariantProcName} does not exist");
+          return;
+        }
+
+        var exprs = new List<Expr>();
+        for (int i = 1; i < attr.Params.Count; i++)
+        {
+          if (attr.Params[i] is Expr expr)
+          {
+            exprs.Add(expr);
+          }
+          else
+          {
+            civlTypeChecker.Error(attr, $"Illegal expression at position {i}");
+          }
+        }
+
+        if (exprs.Count + 1 != attr.Params.Count)
+        {
+          // Error added in the loop above
+          return;
+        }
+
+        if (exprs.Count != yieldingProc.InParams.Count)
+        {
+          civlTypeChecker.Error(attr, $"Incorrect number of arguments to yield invariant {yieldingProc.Name}");
+          return;
+        }
+
+        callCmd = new CallCmd(attr.tok, yieldingProc.Name, exprs, new List<IdentifierExpr>()) { Proc = yieldingProc };
+
+        if (CivlUtil.ResolveAndTypecheck(callCmd) != 0)
+        {
+          callCmd = null;
+        }
       }
 
       public override Expr VisitOldExpr(OldExpr node)
       {
         if (!allowOldExpr)
         {
-          ok = false;
           civlTypeChecker.Error(node, "Old expression not allowed only in this context");
           return node;
         }
@@ -1459,11 +1494,25 @@ namespace Microsoft.Boogie
       {
         if (node.Decl is GlobalVariable && allowOldExpr && insideOldExpr == 0)
         {
-          ok = false;
           civlTypeChecker.Error(node, "Global variable cannot be accessed in this context");
         }
 
         return node;
+      }
+
+      private void CheckLinearParameters()
+      {
+        foreach (var (actual, formal) in callCmd.Ins.Zip(callCmd.Proc.InParams))
+        {
+          if (civlTypeChecker.linearTypeChecker.FindDomainName(formal) != null)
+          {
+            var decl = ((IdentifierExpr) actual).Decl;
+            if (!availableLinearVars.Contains(decl))
+            {
+              civlTypeChecker.Error(actual, "Argument must be available");
+            }
+          }
+        }
       }
     }
 

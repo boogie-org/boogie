@@ -260,7 +260,7 @@ requires sweepPtr == memHi;
 requires SweepInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
 requires (forall x: int :: memAddr(x) ==> !Black(Color[x]));
 
-procedure {:yield_invariant} {:layer 100} Yield_Initialize_100({:linear_in "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool);
+procedure {:yield_invariant} {:layer 100} Yield_Initialize_100({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool);
 requires {:layer 100} gcAndMutatorTids(tid, mutatorTids);
 requires {:layer 100} (forall x: idx :: rootAddr(x) ==> rootAbs[x] == Int(0));
 
