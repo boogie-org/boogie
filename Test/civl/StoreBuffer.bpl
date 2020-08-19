@@ -58,8 +58,7 @@ modifies lock;
 { assert mutatorOrGcTid(tid); assume lock == 0; lock := tid; }
 
 procedure {:yields} {:layer 1} {:refines "AtomicLockAcquire"}
-{:yield_requires "YieldLock"}
-{:yield_ensures  "YieldLock"}
+{:yield_preserves "YieldLock"}
 LockAcquire({:linear "tid"} tid: int)
 requires {:layer 1} mutatorOrGcTid(tid);
 {
@@ -80,10 +79,8 @@ modifies lock;
 { assert mutatorOrGcTid(tid); assert lock == tid; lock := 0; }
 
 procedure {:yields} {:layer 1} {:refines "AtomicLockRelease"}
-{:yield_requires "YieldLock"}
-{:yield_requires "YieldStoreBufferLockAddrAbsent", tid}
-{:yield_ensures  "YieldLock"}
-{:yield_ensures  "YieldStoreBufferLockAddrAbsent", tid}
+{:yield_preserves "YieldLock"}
+{:yield_preserves "YieldStoreBufferLockAddrAbsent", tid}
 LockRelease({:linear "tid"} tid:int)
 requires {:layer 1} mutatorOrGcTid(tid);
 {
@@ -96,8 +93,7 @@ procedure {:atomic} {:layer 2} AtomicReadCollectorPhaseLocked({:linear "tid"} ti
 { assert mutatorOrGcTid(tid); assert lock == tid; phase := collectorPhase; }
 
 procedure {:yields} {:layer 1} {:refines "AtomicReadCollectorPhaseLocked"}
-{:yield_requires "YieldLock"}
-{:yield_ensures  "YieldLock"}
+{:yield_preserves "YieldLock"}
 ReadCollectorPhaseLocked({:linear "tid"} tid: int) returns (phase: int)
 requires {:layer 1} mutatorOrGcTid(tid);
 {
@@ -108,8 +104,7 @@ procedure {:atomic} {:layer 2} AtomicReadCollectorPhaseUnlocked({:linear "tid"} 
 { assert mutatorOrGcTid(tid); assert lock != tid; phase := collectorPhaseDelayed; }
 
 procedure {:yields} {:layer 1} {:refines "AtomicReadCollectorPhaseUnlocked"}
-{:yield_requires "YieldLock"}
-{:yield_ensures  "YieldLock"}
+{:yield_preserves "YieldLock"}
 ReadCollectorPhaseUnlocked({:linear "tid"} tid: int) returns (phase: int)
 requires {:layer 1} mutatorOrGcTid(tid);
 {
@@ -121,8 +116,7 @@ modifies collectorPhase;
 { assert mutatorOrGcTid(tid); assert lock == tid; assert collectorPhase == collectorPhaseDelayed; collectorPhase := phase; }
 
 procedure {:yields} {:layer 1} {:refines "AtomicSetCollectorPhase"}
-{:yield_requires "YieldLock"}
-{:yield_ensures  "YieldLock"}
+{:yield_preserves "YieldLock"}
 SetCollectorPhase({:linear "tid"} tid: int, phase: int)
 requires {:layer 1} mutatorOrGcTid(tid);
 {
@@ -134,8 +128,7 @@ modifies collectorPhaseDelayed;
 { collectorPhaseDelayed := collectorPhase; }
 
 procedure {:yields} {:layer 1} {:refines "AtomicSyncCollectorPhase"}
-{:yield_requires "YieldLock"}
-{:yield_ensures  "YieldLock"}
+{:yield_preserves "YieldLock"}
 SyncCollectorPhase({:linear "tid"} tid: int)
 {
     call FlushStoreBufferEntryForCollectorPhase();
@@ -145,8 +138,7 @@ procedure {:atomic} {:layer 2} AtomicBarrier({:linear "tid"} tid: int)
 { assert mutatorOrGcTid(tid); assert lock == tid; assume collectorPhase == collectorPhaseDelayed; }
 
 procedure {:yields} {:layer 1} {:refines "AtomicBarrier"}
-{:yield_requires "YieldLock"}
-{:yield_ensures  "YieldLock"}
+{:yield_preserves "YieldLock"}
 Barrier({:linear "tid"} tid: int)
 requires {:layer 1} mutatorOrGcTid(tid);
 {

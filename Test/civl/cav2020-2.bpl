@@ -19,8 +19,7 @@ modifies count;
     count := count + 1;
 }
 procedure {:yields} {:layer 2} {:refines "IncrSpec"}
-{:yield_requires "LockInv"}
-{:yield_ensures  "LockInv"}
+{:yield_preserves "LockInv"}
 Incr({:layer 1,2} {:hide} {:linear "tid"} tid: Tid)
 {
     var t: int;
@@ -38,8 +37,7 @@ modifies l;
     l := Some(tid);
 }
 procedure {:yields} {:layer 1} {:refines "AcquireSpec"}
-{:yield_requires "LockInv"}
-{:yield_ensures  "LockInv"}
+{:yield_preserves "LockInv"}
 Acquire({:layer 1} {:linear "tid"} tid: Tid)
 {
     var t: bool;
@@ -59,8 +57,7 @@ modifies l;
     l := None();
 }
 procedure {:yields} {:layer 1} {:refines "ReleaseSpec"}
-{:yield_requires "LockInv"}
-{:yield_ensures  "LockInv"}
+{:yield_preserves "LockInv"}
 Release({:layer 1} {:linear "tid"} tid: Tid)
 {
     var t: bool;

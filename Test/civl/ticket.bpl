@@ -81,11 +81,9 @@ requires {:layer 2} tid != nil;
 }
 
 procedure {:yields} {:layer 2}
-{:yield_requires "Yield1"}
-{:yield_requires "Yield2"}
-{:yield_ensures "Yield1"}
-{:yield_ensures "Yield2"}
-{:yield_ensures "YieldSpec", tid}
+{:yield_preserves "Yield1"}
+{:yield_preserves "Yield2"}
+{:yield_ensures   "YieldSpec", tid}
 Enter ({:linear "tid"} tid: X)
 requires {:layer 2} tid != nil;
 {

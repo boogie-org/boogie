@@ -227,12 +227,9 @@ modifies state;
 }
 
 procedure {:yields} {:layer 10} {:refines "atomic_Coordinator_TransactionReq"}
-{:yield_requires "YieldInv_8"}
-{:yield_ensures  "YieldInv_8"}
-{:yield_requires "YieldConsistent_9"}
-{:yield_ensures  "YieldConsistent_9"}
-{:yield_requires "YieldConsistent_10"}
-{:yield_ensures  "YieldConsistent_10"}
+{:yield_preserves "YieldInv_8"}
+{:yield_preserves "YieldConsistent_9"}
+{:yield_preserves "YieldConsistent_10"}
 Coordinator_TransactionReq () returns (xid: Xid)
 {
   var {:linear "pair"} pair: Pair;

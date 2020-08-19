@@ -95,8 +95,7 @@ ensures {:layer 1} Bs == old(Bs);
 ensures {:layer 1} x == old(x);
 
 procedure {:yields}{:layer 1}
-{:yield_requires "Inv"}
-{:yield_ensures  "Inv"}
+{:yield_preserves "Inv"}
 incdec({:linear_in "perm"} ab:AB)
 {
   var {:linear "perm"} a:A;

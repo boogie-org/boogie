@@ -413,58 +413,6 @@ namespace Microsoft.Boogie
         new TypedIdent(Token.NoToken, "linear_" + domainName + "_available", linearDomains[domainName].mapTypeBool));
     }
 
-    public bool TypeCheckYieldRequires(Procedure callerProc, CallCmd callCmd)
-    {
-      var ok = true;
-      callCmd.Ins.Zip(callCmd.Proc.InParams)
-        .Where(pair => FindDomainName(pair.Item2) != null)
-        .Iter(
-          pair =>
-          {
-            if (FindLinearKind(((IdentifierExpr) pair.Item1).Decl) == LinearKind.LINEAR_OUT)
-            {
-              Error(pair.Item1, "Argument must be linear or linear_in");
-              ok = false;
-            }
-          });
-      return ok;
-    }
-
-    public bool TypeCheckYieldEnsures(Procedure callerProc, CallCmd callCmd)
-    {
-      var ok = true;
-      callCmd.Ins.Zip(callCmd.Proc.InParams)
-        .Where(pair => FindDomainName(pair.Item2) != null)
-        .Iter(
-          pair =>
-          {
-            if (FindLinearKind(((IdentifierExpr) pair.Item1).Decl) == LinearKind.LINEAR_IN)
-            {
-              Error(pair.Item1, "Argument must be linear or linear_out");
-              ok = false;
-            }
-          });
-      return ok;
-    }
-
-    public bool TypeCheckYieldLoop(Block loopHeader, CallCmd callCmd)
-    {
-      var ok = true;
-      callCmd.Ins.Zip(callCmd.Proc.InParams)
-        .Where(pair => FindDomainName(pair.Item2) != null)
-        .Iter(
-          pair =>
-          {
-            var decl = ((IdentifierExpr) pair.Item1).Decl;
-            if (!AvailableLinearVars(loopHeader).Contains(decl))
-            {
-              Error(pair.Item1, "Argument must be available");
-              ok = false;
-            }
-          });
-      return ok;
-    }
-
     public void TypeCheck()
     {
       this.VisitProgram(program);
@@ -885,26 +833,26 @@ namespace Microsoft.Boogie
         IdentifierExpr actual = node.Ins[i] as IdentifierExpr;
         if (actual == null)
         {
-          Error(node, $"Only variable can be passed to linear parameter {formal.Name}");
+          Error(node.Ins[i], $"Only variable can be passed to linear parameter {formal.Name}");
           continue;
         }
 
         string actualDomainName = FindDomainName(actual.Decl);
         if (actualDomainName == null)
         {
-          Error(node, $"Only a linear argument can be passed to linear parameter {formal.Name}");
+          Error(actual, $"Only a linear argument can be passed to linear parameter {formal.Name}");
           continue;
         }
 
         if (domainName != actualDomainName)
         {
-          Error(node, "The domains of formal and actual parameters must be the same");
+          Error(actual, "The domains of formal and actual parameters must be the same");
           continue;
         }
 
         if (actual.Decl is GlobalVariable)
         {
-          Error(node, "Only local linear variable can be an actual input parameter of a procedure call");
+          Error(actual, "Only local linear variable can be an actual input parameter of a procedure call");
           continue;
         }
 
@@ -1023,7 +971,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public IEnumerable<Variable> AvailableLinearVars(Absy absy)
+    public ISet<Variable> AvailableLinearVars(Absy absy)
     {
       if (availableLinearVars.ContainsKey(absy))
       {
