@@ -476,8 +476,15 @@ namespace Microsoft.Boogie
         var callCmd = YieldInvariantCallChecker.CheckPreserves(this, attr, proc);
         if (callCmd != null)
         {
+          // For global variable g
+          //     yield_preserves Inv(g)
+          // is translated into
+          //     yield_requires Inv(g)
+          //     yield_ensures  Inv(old(g))
+          // That is, all occurences of global variables are wrapped in old(.) in the postcondition.
           yieldRequires.Add(callCmd);
-          yieldEnsures.Add(callCmd);
+          var globalToOldSubst = GlobalVariables.ToDictionary(v => v, v => (Expr) ExprHelper.Old(Expr.Ident(v)));
+          yieldEnsures.Add((CallCmd) SubstitutionHelper.Apply(globalToOldSubst, callCmd));
         }
       }
     }

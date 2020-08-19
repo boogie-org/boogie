@@ -328,8 +328,7 @@ procedure {:both} {:layer 11,20} AtomicVC.Leq({:linear "tid"} tid: Tid, v1: Shad
 
 procedure {:yields} {:layer 10} {:refines "AtomicVC.Leq"}
 {:yield_preserves "Yield_FTRepOk_10"}
-{:yield_requires  "Yield_FTPreserved_10", tid, shadow.Lock, shadow.VC, sx.W, sx.R}
-{:yield_ensures   "Yield_FTPreserved_10", tid, old(shadow.Lock), old(shadow.VC), old(sx.W), old(sx.R)}
+{:yield_preserves "Yield_FTPreserved_10", tid, shadow.Lock, shadow.VC, sx.W, sx.R}
 VC.Leq({:linear "tid"} tid: Tid, v1: Shadowable, v2: Shadowable) returns (res: bool)
 {
   var vc1, vc2: VC;
@@ -735,12 +734,10 @@ modifies sx.W;
 
 procedure {:yields} {:layer 20} {:refines "AtomicWrite"}
 {:yield_preserves "Yield_FTRepOk_10"}
-{:yield_requires  "Yield_FTPreserved_10", tid, shadow.Lock, shadow.VC, sx.W, sx.R}
-{:yield_ensures   "Yield_FTPreserved_10", tid, old(shadow.Lock), old(shadow.VC), old(sx.W), old(sx.R)}
+{:yield_preserves "Yield_FTPreserved_10", tid, shadow.Lock, shadow.VC, sx.W, sx.R}
 {:yield_preserves "Yield_FTRepOk_20"}
 {:yield_requires  "Yield_Lock_20", tid, ShadowableTid(tid)}
-{:yield_requires  "Yield_FTPreserved_20", tid, shadow.Lock, shadow.VC, sx.W, sx.R}
-{:yield_ensures   "Yield_FTPreserved_20", tid, old(shadow.Lock), old(shadow.VC), old(sx.W), old(sx.R)}
+{:yield_preserves "Yield_FTPreserved_20", tid, shadow.Lock, shadow.VC, sx.W, sx.R}
 Write({:linear "tid"} tid:Tid, x : Var) returns (ok : bool)
 {
   var e, w, vw, r, vr: Epoch;
@@ -844,12 +841,10 @@ modifies sx.R, shadow.VC;
 
 procedure {:yields} {:layer 20} {:refines "AtomicRead"}
 {:yield_preserves "Yield_FTRepOk_10"}
-{:yield_requires  "Yield_FTPreserved_10", tid, shadow.Lock, shadow.VC, sx.W, sx.R}
-{:yield_ensures   "Yield_FTPreserved_10", tid, old(shadow.Lock), old(shadow.VC), old(sx.W), old(sx.R)}
+{:yield_preserves "Yield_FTPreserved_10", tid, shadow.Lock, shadow.VC, sx.W, sx.R}
 {:yield_preserves "Yield_FTRepOk_20"}
 {:yield_requires  "Yield_Lock_20", tid, ShadowableTid(tid)}
-{:yield_requires  "Yield_FTPreserved_20", tid, shadow.Lock, shadow.VC, sx.W, sx.R}
-{:yield_ensures   "Yield_FTPreserved_20", tid, old(shadow.Lock), old(shadow.VC), old(sx.W), old(sx.R)}
+{:yield_preserves "Yield_FTPreserved_20", tid, shadow.Lock, shadow.VC, sx.W, sx.R}
 Read({:linear "tid"} tid:Tid, x : Var) returns (ok : bool)
 {
   var e, w, vw, r, vr: Epoch;
