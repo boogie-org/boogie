@@ -110,15 +110,16 @@ namespace Microsoft.Boogie
 
     private class PerLayerYieldSufficiencyTypeChecker
     {
-      CivlTypeChecker civlTypeChecker;
-      YieldingProc yieldingProc;
-      Implementation impl;
-      int currLayerNum;
-      Graph<Block> implGraph;
+      private CivlTypeChecker civlTypeChecker;
+      private YieldingProc yieldingProc;
+      private Implementation impl;
+      private int currLayerNum;
+      private Graph<Block> implGraph;
       private Graph<MoverProc> moverProcedureCallGraph;
-      List<Tuple<Absy, string, Absy>> implEdges;
-      Absy initialState;
-      HashSet<Absy> finalStates;
+
+      private Dictionary<Tuple<Absy, Absy>, string> atomicityLabels;
+      private Absy initialState;
+      private HashSet<Absy> finalStates;
 
       public PerLayerYieldSufficiencyTypeChecker(CivlTypeChecker civlTypeChecker, YieldingProc yieldingProc,
         Implementation impl, int currLayerNum, Graph<Block> implGraph, Graph<MoverProc> moverProcedureCallGraph)
@@ -129,9 +130,6 @@ namespace Microsoft.Boogie
         this.currLayerNum = currLayerNum;
         this.implGraph = implGraph;
         this.moverProcedureCallGraph = moverProcedureCallGraph;
-        this.initialState = impl.Blocks[0];
-        this.finalStates = new HashSet<Absy>();
-        this.implEdges = new List<Tuple<Absy, string, Absy>>();
       }
 
       public void TypeCheckLayer()
@@ -143,15 +141,10 @@ namespace Microsoft.Boogie
 
       private void LoopCheck()
       {
-        var edgeLabel = new Dictionary<Tuple<Absy, Absy>, string>();
-        var graph = new Graph<Absy>();
-        graph.AddSource(impl.Blocks[0]);
-        implEdges.ForEach(e =>
-        {
-          graph.AddEdge(e.Item1, e.Item3);
-          edgeLabel[new Tuple<Absy, Absy>(e.Item1, e.Item3)] = e.Item2;
-        });
+        var graph = new Graph<Absy>(new HashSet<Tuple<Absy,Absy>>(atomicityLabels.Keys));
+        graph.AddSource(initialState);
         graph.ComputeLoops();
+
         var edgeToLoopHeader = new Dictionary<Tuple<Absy, Absy>, Block>();
         foreach (Block header in graph.SortHeadersByDominance())
         {
@@ -201,7 +194,7 @@ namespace Microsoft.Boogie
         {
           var header = edgeToLoopHeader[edge];
           if (yieldingLoopHeaders.Contains(header)) continue;
-          if (edgeLabel[edge] == Y)
+          if (atomicityLabels[edge] == Y)
           {
             civlTypeChecker.Error(header,
               $"Loop header must be yielding at layer {currLayerNum}");
@@ -232,7 +225,7 @@ namespace Microsoft.Boogie
         }
 
         var simulationRelation =
-          new SimulationRelation<Absy, int, string>(implEdges, AtomicitySpec, initialConstraints)
+          new SimulationRelation<Absy, int, string>(LabelsToLabeledEdges(atomicityLabels), AtomicitySpec, initialConstraints)
             .ComputeSimulationRelation();
 
         if (IsMoverProcedure)
@@ -299,15 +292,15 @@ namespace Microsoft.Boogie
 
       private void ComputeGraph()
       {
-        // Internal representation
-        // At the end of the method, we translate to List<Tuple<Absy, int, Absy>>
-        Dictionary<Tuple<Absy, Absy>, string> edgeLabels = new Dictionary<Tuple<Absy, Absy>, string>();
+        atomicityLabels = new Dictionary<Tuple<Absy, Absy>, string>();
+        initialState = impl.Blocks[0];
+        finalStates = new HashSet<Absy>();
 
         foreach (Block block in impl.Blocks)
         {
           // Block entry edge
           Absy blockEntry = block.Cmds.Count == 0 ? (Absy) block.TransferCmd : (Absy) block.Cmds[0];
-          edgeLabels[new Tuple<Absy, Absy>(block, blockEntry)] =
+          atomicityLabels[new Tuple<Absy, Absy>(block, blockEntry)] =
             civlTypeChecker.IsYieldingLoopHeader(block, currLayerNum) ? Y : P;
 
           // Block exit edges
@@ -315,7 +308,7 @@ namespace Microsoft.Boogie
           {
             foreach (Block successor in gotoCmd.labelTargets)
             {
-              edgeLabels[new Tuple<Absy, Absy>(block.TransferCmd, successor)] = P;
+              atomicityLabels[new Tuple<Absy, Absy>(block.TransferCmd, successor)] = P;
             }
           }
           else if (block.TransferCmd is ReturnCmd)
@@ -331,27 +324,32 @@ namespace Microsoft.Boogie
             Tuple<Absy, Absy> edge = new Tuple<Absy, Absy>(cmd, next);
             if (cmd is CallCmd callCmd)
             {
-              edgeLabels[edge] = CallCmdLabel(callCmd);
+              atomicityLabels[edge] = CallCmdLabel(callCmd);
             }
             else if (cmd is ParCallCmd parCallCmd)
             {
-              AddParCallCmdLabels(edgeLabels, parCallCmd, next);
+              AddParCallCmdLabels(atomicityLabels, parCallCmd, next);
             }
             else if (cmd is YieldCmd)
             {
-              edgeLabels[edge] = Y;
+              atomicityLabels[edge] = Y;
             }
             else
             {
-              edgeLabels[edge] = P;
+              atomicityLabels[edge] = P;
             }
           }
         }
+      }
 
-        foreach (Tuple<Absy, Absy> e in edgeLabels.Keys)
+      private static List<Tuple<Absy, string, Absy>> LabelsToLabeledEdges(Dictionary<Tuple<Absy, Absy>, string> labels)
+      {
+        var edges = new List<Tuple<Absy, string, Absy>>();
+        foreach (Tuple<Absy, Absy> e in labels.Keys)
         {
-          implEdges.Add(new Tuple<Absy, string, Absy>(e.Item1, edgeLabels[e], e.Item2));
+          edges.Add(new Tuple<Absy, string, Absy>(e.Item1, labels[e], e.Item2));
         }
+        return edges;
       }
 
       private string CallCmdLabel(CallCmd callCmd)
