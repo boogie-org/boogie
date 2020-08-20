@@ -118,6 +118,7 @@ namespace Microsoft.Boogie
       private Graph<MoverProc> moverProcedureCallGraph;
 
       private Dictionary<Tuple<Absy, Absy>, string> atomicityLabels;
+      private Dictionary<Tuple<Absy, Absy>, string> asyncLabels;
       private Absy initialState;
       private HashSet<Absy> finalStates;
 
@@ -293,6 +294,7 @@ namespace Microsoft.Boogie
       private void ComputeGraph()
       {
         atomicityLabels = new Dictionary<Tuple<Absy, Absy>, string>();
+        asyncLabels = new Dictionary<Tuple<Absy, Absy>, string>();
         initialState = impl.Blocks[0];
         finalStates = new HashSet<Absy>();
 
@@ -300,15 +302,19 @@ namespace Microsoft.Boogie
         {
           // Block entry edge
           Absy blockEntry = block.Cmds.Count == 0 ? (Absy) block.TransferCmd : (Absy) block.Cmds[0];
-          atomicityLabels[new Tuple<Absy, Absy>(block, blockEntry)] =
-            civlTypeChecker.IsYieldingLoopHeader(block, currLayerNum) ? Y : P;
+          var entryEdge = new Tuple<Absy, Absy>(block, blockEntry);
+          var entryLabel = civlTypeChecker.IsYieldingLoopHeader(block, currLayerNum) ? Y : P;
+          atomicityLabels[entryEdge] = entryLabel;
+          asyncLabels[entryEdge] = entryLabel;
 
           // Block exit edges
           if (block.TransferCmd is GotoCmd gotoCmd)
           {
             foreach (Block successor in gotoCmd.labelTargets)
             {
-              atomicityLabels[new Tuple<Absy, Absy>(block.TransferCmd, successor)] = P;
+              var edge = new Tuple<Absy, Absy>(block.TransferCmd, successor);
+              atomicityLabels[edge] = P;
+              asyncLabels[edge] = P;
             }
           }
           else if (block.TransferCmd is ReturnCmd)
@@ -321,22 +327,27 @@ namespace Microsoft.Boogie
           {
             Cmd cmd = block.Cmds[i];
             Absy next = (i + 1 == block.Cmds.Count) ? (Absy) block.TransferCmd : block.Cmds[i + 1];
-            Tuple<Absy, Absy> edge = new Tuple<Absy, Absy>(cmd, next);
+            var edge = new Tuple<Absy, Absy>(cmd, next);
+
             if (cmd is CallCmd callCmd)
             {
               atomicityLabels[edge] = CallCmdLabel(callCmd);
+              // TODO: asyncLabels
             }
             else if (cmd is ParCallCmd parCallCmd)
             {
               AddParCallCmdLabels(atomicityLabels, parCallCmd, next);
+              // TODO: asyncLabels
             }
             else if (cmd is YieldCmd)
             {
               atomicityLabels[edge] = Y;
+              asyncLabels[edge] = Y;
             }
             else
             {
               atomicityLabels[edge] = P;
+              asyncLabels[edge] = P;
             }
           }
         }
