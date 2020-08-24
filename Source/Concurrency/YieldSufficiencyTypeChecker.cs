@@ -15,10 +15,9 @@ namespace Microsoft.Boogie
     private const string B = "B"; // both mover action
     private const string L = "L"; // left mover action
     private const string R = "R"; // right mover action
-    private const string A = "A"; // atomic (non mover) action
-    private const string P = "P"; // private (local variable) access
-    private const string I = "I"; // introduction action
-
+    private const string N = "N"; // non mover action
+    private const string P = "P"; // private access (local variable, introduction action, lemma, ...)
+    
     // States of Atomicity Automaton (check that transactions are separated by yields)
     private const int RM = 0;
     private const int LM = 1;
@@ -28,14 +27,12 @@ namespace Microsoft.Boogie
     {
       // initial: {RM, LM}, final: {RM, LM}
       new Tuple<int, string, int>(RM, P, RM),
-      new Tuple<int, string, int>(RM, I, RM),
       new Tuple<int, string, int>(RM, B, RM),
       new Tuple<int, string, int>(RM, R, RM),
       new Tuple<int, string, int>(RM, Y, RM),
       new Tuple<int, string, int>(RM, L, LM),
-      new Tuple<int, string, int>(RM, A, LM),
+      new Tuple<int, string, int>(RM, N, LM),
       new Tuple<int, string, int>(LM, P, LM),
-      new Tuple<int, string, int>(LM, I, LM),
       new Tuple<int, string, int>(LM, B, LM),
       new Tuple<int, string, int>(LM, L, LM),
       new Tuple<int, string, int>(LM, Y, RM),
@@ -45,8 +42,8 @@ namespace Microsoft.Boogie
     {
       switch (moverType)
       {
-        case MoverType.Atomic:
-          return A;
+        case MoverType.Non:
+          return N;
         case MoverType.Both:
           return B;
         case MoverType.Left:
@@ -255,7 +252,7 @@ namespace Microsoft.Boogie
 
       private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)
       {
-        if (yieldingProc.moverType == MoverType.Atomic && simulationRelation[initialState].Count == 0)
+        if (yieldingProc.moverType == MoverType.Non && simulationRelation[initialState].Count == 0)
           return false;
         if (yieldingProc.IsRightMover && (!simulationRelation[initialState].Contains(RM) ||
                                           finalStates.Any(f => !simulationRelation[f].Contains(RM))))
@@ -368,7 +365,7 @@ namespace Microsoft.Boogie
         if (civlTypeChecker.procToIntroductionAction.ContainsKey(callCmd.Proc) ||
             civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc))
         {
-          return I;
+          return P;
         }
 
         if (civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc))
@@ -379,20 +376,32 @@ namespace Microsoft.Boogie
         YieldingProc callee = civlTypeChecker.procToYieldingProc[callCmd.Proc];
         if (callCmd.IsAsync)
         {
+          if (callee is MoverProc && callee.upperLayer == currLayerNum)
+          {
+            return MoverTypeToLabel(callee.moverType);
+          }
+
+          if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum && callCmd.HasAttribute(CivlAttributes.SYNC))
+          {
+            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).moverType);
+          }
+
           return L;
         }
-
-        if (callee is MoverProc && callee.upperLayer == currLayerNum)
+        else
         {
-          return MoverTypeToLabel(callee.moverType);
-        }
+          if (callee is MoverProc && callee.upperLayer == currLayerNum)
+          {
+            return MoverTypeToLabel(callee.moverType);
+          }
 
-        if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum)
-        {
-          return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).moverType);
-        }
+          if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum)
+          {
+            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).moverType);
+          }
 
-        return Y;
+          return Y;
+        }
       }
 
       private enum ParallelCallPhase
@@ -409,7 +418,6 @@ namespace Microsoft.Boogie
         foreach (var callCmd in parCallCmd.CallCmds)
         {
           var label = CallCmdLabel(callCmd);
-          Debug.Assert(label != I);
           if (label == P || label == Y || label == B) continue;
           switch (phase)
           {
@@ -436,7 +444,7 @@ namespace Microsoft.Boogie
         foreach (var callCmd in parCallCmd.CallCmds)
         {
           var label = CallCmdLabel(callCmd);
-          Debug.Assert(label != I && label != A);
+          Debug.Assert(label != N);
           if (label == P || label == Y && civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc)
           ) continue;
           switch (phase)
@@ -482,7 +490,7 @@ namespace Microsoft.Boogie
                                                !civlTypeChecker.procToYieldInvariant.ContainsKey(
                                                  callCmd.Proc)))
         {
-          if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == A))
+          if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == N))
           {
             civlTypeChecker.Error(parCallCmd,
               $"Parallel call contains both non-mover and yielding procedure at layer {currLayerNum}");
