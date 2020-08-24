@@ -10,13 +10,15 @@ namespace Microsoft.Boogie
 {
   public static class YieldSufficiencyTypeChecker
   {
-    // Edge labels of the automaton that abstracts the code of a procedure
+    // Edge labels for the automata that abstract the code of a procedure
     private const string Y = "Y"; // yield
     private const string B = "B"; // both mover action
     private const string L = "L"; // left mover action
     private const string R = "R"; // right mover action
     private const string N = "N"; // non mover action
     private const string P = "P"; // private access (local variable, introduction action, lemma, ...)
+    private const string M = "M"; // modification of global variables
+    private const string A = "A"; // async call
     
     // States of Atomicity Automaton (check that transactions are separated by yields)
     private const int RM = 0;
@@ -26,16 +28,32 @@ namespace Microsoft.Boogie
     static List<Tuple<int, string, int>> AtomicitySpec = new List<Tuple<int, string, int>>
     {
       // initial: {RM, LM}, final: {RM, LM}
-      new Tuple<int, string, int>(RM, P, RM),
-      new Tuple<int, string, int>(RM, B, RM),
-      new Tuple<int, string, int>(RM, R, RM),
-      new Tuple<int, string, int>(RM, Y, RM),
-      new Tuple<int, string, int>(RM, L, LM),
-      new Tuple<int, string, int>(RM, N, LM),
-      new Tuple<int, string, int>(LM, P, LM),
-      new Tuple<int, string, int>(LM, B, LM),
-      new Tuple<int, string, int>(LM, L, LM),
-      new Tuple<int, string, int>(LM, Y, RM),
+      Tuple.Create(RM, P, RM),
+      Tuple.Create(RM, B, RM),
+      Tuple.Create(RM, R, RM),
+      Tuple.Create(RM, Y, RM),
+      Tuple.Create(RM, L, LM),
+      Tuple.Create(RM, N, LM),
+      Tuple.Create(LM, P, LM),
+      Tuple.Create(LM, B, LM),
+      Tuple.Create(LM, L, LM),
+      Tuple.Create(LM, Y, RM),
+    };
+
+    // States of Async Automaton (check that there is no global update between async and next yield)
+    private const int BEFORE = 0;
+    private const int AFTER = 1;
+
+    // Transitions of Async Automaton
+    static List<Tuple<int, string, int>> AsyncSpec = new List<Tuple<int, string, int>>
+    {
+      Tuple.Create(BEFORE, P, BEFORE),
+      Tuple.Create(BEFORE, M, BEFORE),
+      Tuple.Create(BEFORE, Y, BEFORE),
+      Tuple.Create(BEFORE, A, AFTER),
+      Tuple.Create(AFTER, P, AFTER),
+      Tuple.Create(AFTER, A, AFTER),
+      Tuple.Create(AFTER, Y, BEFORE),
     };
 
     private static string MoverTypeToLabel(MoverType moverType)
@@ -135,6 +153,7 @@ namespace Microsoft.Boogie
         ComputeGraph();
         LoopCheck();
         AtomicityCheck();
+        AsyncCheck();
       }
 
       private void LoopCheck()
@@ -197,6 +216,19 @@ namespace Microsoft.Boogie
             civlTypeChecker.Error(header,
               $"Loop header must be yielding at layer {currLayerNum}");
           }
+        }
+      }
+
+      private void AsyncCheck()
+      {
+        var simulationRelation =
+          new SimulationRelation<Absy, int, string>(LabelsToLabeledEdges(asyncLabels), AsyncSpec, new Dictionary<Absy, HashSet<int>>())
+            .ComputeSimulationRelation();
+
+        if (simulationRelation[initialState].Count == 0)
+        {
+          civlTypeChecker.Error(impl,
+            $"Implementation {impl.Name} fails async check at layer {currLayerNum}.");
         }
       }
 
@@ -329,12 +361,13 @@ namespace Microsoft.Boogie
             if (cmd is CallCmd callCmd)
             {
               atomicityLabels[edge] = CallCmdLabel(callCmd);
-              // TODO: asyncLabels
+              asyncLabels[edge] = CallCmdLabelAsync(callCmd);
             }
             else if (cmd is ParCallCmd parCallCmd)
             {
+              CheckParCallCmd(parCallCmd);
               AddParCallCmdLabels(atomicityLabels, parCallCmd, next);
-              // TODO: asyncLabels
+              AddParCallCmdLabelsAsync(asyncLabels, parCallCmd, next);
             }
             else if (cmd is YieldCmd)
             {
@@ -401,6 +434,116 @@ namespace Microsoft.Boogie
           }
 
           return Y;
+        }
+      }
+
+      private void AddParCallCmdLabels(Dictionary<Tuple<Absy, Absy>, string> edgeLabels, ParCallCmd parCallCmd,
+        Absy next)
+      {
+        edgeLabels[new Tuple<Absy, Absy>(parCallCmd, parCallCmd.CallCmds[0])] = P;
+        for (int i = 0; i < parCallCmd.CallCmds.Count; i++)
+        {
+          var callCmd = parCallCmd.CallCmds[i];
+          var edge = new Tuple<Absy, Absy>(callCmd,
+            i + 1 < parCallCmd.CallCmds.Count ? parCallCmd.CallCmds[i + 1] : next);
+          var label = CallCmdLabel(callCmd);
+          edgeLabels[edge] = label;
+        }
+      }
+
+      public static string ModifiesGlobalLabel<T>(IEnumerable<T> modifiedGlobalVars)
+      {
+        if (modifiedGlobalVars.Any())
+        {
+          return M;
+        }
+        else
+        {
+          return P;
+        }
+      }
+
+      private string CallCmdLabelAsync(CallCmd callCmd)
+      {
+        if (civlTypeChecker.procToIntroductionAction.ContainsKey(callCmd.Proc) ||
+            civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc))
+        {
+          return P;
+        }
+
+        if (civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc))
+        {
+          return civlTypeChecker.procToYieldInvariant[callCmd.Proc].LayerNum == currLayerNum ? Y : P;
+        }
+
+        YieldingProc callee = civlTypeChecker.procToYieldingProc[callCmd.Proc];
+        if (callCmd.IsAsync)
+        {
+          if (callee is MoverProc && callee.upperLayer == currLayerNum)
+          {
+            return ModifiesGlobalLabel(callee.proc.Modifies);
+          }
+
+          if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum)
+          {
+            if (callCmd.HasAttribute(CivlAttributes.SYNC))
+            {
+              return ModifiesGlobalLabel(actionProc.RefinedActionAtLayer(currLayerNum).modifiedGlobalVars);
+            }
+            else
+            {
+              return P;
+            }
+          }
+
+          return A;
+        }
+        else
+        {
+          if (callee is MoverProc && callee.upperLayer == currLayerNum)
+          {
+            return ModifiesGlobalLabel(callee.proc.Modifies);
+          }
+
+          if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum)
+          {
+            return ModifiesGlobalLabel(actionProc.RefinedActionAtLayer(currLayerNum).modifiedGlobalVars);
+          }
+
+          return Y;
+        }
+      }
+
+      private void AddParCallCmdLabelsAsync(Dictionary<Tuple<Absy, Absy>, string> edgeLabels, ParCallCmd parCallCmd,
+        Absy next)
+      {
+        edgeLabels[new Tuple<Absy, Absy>(parCallCmd, parCallCmd.CallCmds[0])] = P;
+        for (int i = 0; i < parCallCmd.CallCmds.Count; i++)
+        {
+          var callCmd = parCallCmd.CallCmds[i];
+          var edge = new Tuple<Absy, Absy>(callCmd,
+            i + 1 < parCallCmd.CallCmds.Count ? parCallCmd.CallCmds[i + 1] : next);
+          var label = CallCmdLabelAsync(callCmd);
+          edgeLabels[edge] = label;
+        }
+      }
+
+      private void CheckParCallCmd(ParCallCmd parCallCmd)
+      {
+        CheckNonMoverCondition(parCallCmd);
+        if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == Y &&
+                                               !civlTypeChecker.procToYieldInvariant.ContainsKey(
+                                                 callCmd.Proc)))
+        {
+          if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == N))
+          {
+            civlTypeChecker.Error(parCallCmd,
+              $"Parallel call contains both non-mover and yielding procedure at layer {currLayerNum}");
+          }
+          else
+          {
+            CheckYieldingProcCondition(parCallCmd);
+          }
         }
       }
 
@@ -479,36 +622,6 @@ namespace Microsoft.Boogie
                 $"Mover types in parallel call do not match (left)*(yielding-proc)*(right)* at layer {currLayerNum}");
               break;
           }
-        }
-      }
-
-      private void AddParCallCmdLabels(Dictionary<Tuple<Absy, Absy>, string> edgeLabels, ParCallCmd parCallCmd,
-        Absy next)
-      {
-        CheckNonMoverCondition(parCallCmd);
-        if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == Y &&
-                                               !civlTypeChecker.procToYieldInvariant.ContainsKey(
-                                                 callCmd.Proc)))
-        {
-          if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == N))
-          {
-            civlTypeChecker.Error(parCallCmd,
-              $"Parallel call contains both non-mover and yielding procedure at layer {currLayerNum}");
-          }
-          else
-          {
-            CheckYieldingProcCondition(parCallCmd);
-          }
-        }
-
-        edgeLabels[new Tuple<Absy, Absy>(parCallCmd, parCallCmd.CallCmds[0])] = P;
-        for (int i = 0; i < parCallCmd.CallCmds.Count; i++)
-        {
-          var callCmd = parCallCmd.CallCmds[i];
-          var edge = new Tuple<Absy, Absy>(callCmd,
-            i + 1 < parCallCmd.CallCmds.Count ? parCallCmd.CallCmds[i + 1] : next);
-          var label = CallCmdLabel(callCmd);
-          edgeLabels[edge] = label;
         }
       }
 
