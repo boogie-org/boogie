@@ -487,7 +487,6 @@ requires {:layer 1} sellerID(pid);
 
   call old_QuoteCH := Snapshot_QuoteCH();
   call receive_req();
-  async call sellerFinish(pid);
   i := 1;
   while (i <= n)
   invariant {:layer 1}{:terminates} true;
@@ -497,6 +496,7 @@ requires {:layer 1} sellerID(pid);
     call send_quote(i, price);
     i := i + 1;
   }
+  async call sellerFinish(pid);
 }
 
 procedure {:yields}{:layer 1}{:refines "SellerFinish"}
