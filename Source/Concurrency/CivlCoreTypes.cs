@@ -6,7 +6,7 @@ namespace Microsoft.Boogie
 {
   public enum MoverType
   {
-    Atomic,
+    Non,
     Right,
     Left,
     Both

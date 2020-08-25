@@ -129,8 +129,7 @@ namespace Microsoft.Boogie
       if (checkingContext.ErrorCount > 0)
         return;
 
-      var yieldSufficiencyTypeChecker = new YieldSufficiencyTypeChecker(this);
-      yieldSufficiencyTypeChecker.TypeCheck();
+      YieldSufficiencyTypeChecker.TypeCheck(this);
     }
 
     private void TypeCheckRefinementLayers()
@@ -1000,7 +999,7 @@ namespace Microsoft.Boogie
     private MoverType GetActionMoverType(Procedure proc)
     {
       if (proc.HasAttribute(CivlAttributes.IS_INVARIANT))
-        return MoverType.Atomic;
+        return MoverType.Non;
       else if (proc.HasAttribute(CivlAttributes.IS_ABSTRACTION))
         return MoverType.Left;
       else
@@ -1019,7 +1018,7 @@ namespace Microsoft.Boogie
         {
           MoverType? x = null;
           if (kv.Key == CivlAttributes.ATOMIC)
-            x = MoverType.Atomic;
+            x = MoverType.Non;
           else if (kv.Key == CivlAttributes.RIGHT)
             x = MoverType.Right;
           else if (kv.Key == CivlAttributes.LEFT)
