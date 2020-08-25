@@ -35,7 +35,7 @@ script:
   # Run unit tests
   - dotnet test --no-build -c ${CONFIGURATION} ${SOLUTION}
   # Run lit test suite
-  - lit -v --timeout=120 -D dotnet -D configuration=${CONFIGURATION} Test
+  - lit -v --timeout=120 -D configuration=${CONFIGURATION} Test
   # Do not deploy if GitVersionTask could not be used to extract the correct version number
   - test ! -e Source/BoogieDriver/bin/${CONFIGURATION}/Boogie.1.0.0.nupkg
 deploy:

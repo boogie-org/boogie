@@ -45,7 +45,7 @@ Boogie releases are packaged as a .NET Core global tool available at
 $ dotnet tool install --global boogie
 ```
 
-To run Boogie, a supported SMT solver has to be available (see below).
+To run Boogie, a supported SMT solver has to be available (see [below](#backend-smt-solver)).
 
 ## Building
 
@@ -53,7 +53,7 @@ The preferred way to build (and run) Boogie today is using .NET Core.
 Historically, Boogie can also be built using the classic .NET Framework (on
 Windows) and Mono (on Linux/OSX), but this might not be supported in the future.
 
-To run Boogie, a supported SMT solver has to be available (see below).
+To run Boogie, a supported SMT solver has to be available (see [below](#backend-smt-solver)).
 
 ### .NET Core
 
@@ -72,6 +72,8 @@ for a local installation.
 
 ### Windows (requires Visual Studio)
 
+:warning: This build is deprecated. Use [.NET Core](#net-core) if possible.
+
 1. Open ``Source\Boogie.sln`` in Visual Studio.
 2. Right click the ``Boogie`` solution in the Solution Explorer and click ``Restore NuGet Packages``.
 3. Click ``Build > Build Solution``.
@@ -79,6 +81,8 @@ for a local installation.
 The compiled Boogie binary is `Binaries\Boogie.exe`.
 
 ### Linux/OSX (requires Mono)
+
+:warning: This build is deprecated. Use [.NET Core](#net-core) if possible.
 
 Either open ``Source\Boogie.sln`` in MonoDevelop and perform the same steps as
 described for Visual Studio above, of compile on the command line as follows.
@@ -97,6 +101,13 @@ $ msbuild Source/Boogie.sln
 
 The compiled Boogie binary is `Binaries/Boogie.exe`, which can be executed with
 `mono` or using the wrapper script `Binaries/boogie`.
+
+### Troubleshooting
+
+The .NET Core and .NET Framework builds conflict with each other, and thus it is
+not possible to run both builds in the same directory. If you want to switch
+between builds (or encounter mysterious erros as described in #190), remove all
+build outputs (e.g., using `git clean -dfx`).
 
 ## Backend SMT Solver
 
@@ -147,8 +158,8 @@ each time commits are pushed to the master branch (including PR merges). By
 default, the created tag increments the patch version number from the previous
 tag. For example, if the last tagged commit were `v2.4.3`, then pushing to
 master would tag the latest commit with `v2.4.4`. If incrementing minor or major
-number is desired instead of patch, simply add `#minor` or `#major` to the first
-line of the commit message. For instance:
+number is desired instead of patch, simply add `#minor` or `#major` anywhere in
+the commit message. For instance:
 
 > Adding the next greatest feature. #minor
 
