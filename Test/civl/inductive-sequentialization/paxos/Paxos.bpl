@@ -78,7 +78,7 @@ function {:inline} SingletonNode(node: Node): NodeSet { NoNodes()[node := true] 
 function Cardinality(q: NodeSet): int;
 axiom Cardinality(NoNodes()) == 0;
 
-function {:inline} IsQuorum(ns: NodeSet): bool {
+function IsQuorum(ns: NodeSet): bool {
   2 * Cardinality(ns) > numNodes &&
   (forall n: Node :: ns[n] ==> Node(n))
 }
