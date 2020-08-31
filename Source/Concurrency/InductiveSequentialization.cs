@@ -6,6 +6,7 @@ namespace Microsoft.Boogie
 {
   public class InductiveSequentialization
   {
+    public CivlTypeChecker civlTypeChecker;
     public AtomicAction inputAction;
     public AtomicAction outputAction;
     public AtomicAction invariantAction;
@@ -17,9 +18,10 @@ namespace Microsoft.Boogie
     private IdentifierExpr newPAs;
     private string checkName;
 
-    public InductiveSequentialization(AtomicAction inputAction, AtomicAction outputAction,
+    public InductiveSequentialization(CivlTypeChecker civlTypeChecker, AtomicAction inputAction, AtomicAction outputAction,
       AtomicAction invariantAction, Dictionary<AtomicAction, AtomicAction> elim)
     {
+      this.civlTypeChecker = civlTypeChecker;
       this.inputAction = inputAction;
       this.outputAction = outputAction;
       this.invariantAction = invariantAction;
@@ -34,14 +36,14 @@ namespace Microsoft.Boogie
       this.frame = new HashSet<Variable>(frameVars);
       this.modifies = frame.Select(Expr.Ident).ToList();
 
-      newPAs = Expr.Ident(VarHelper.LocalVariable("newPAs", PendingAsyncMultisetType));
+      newPAs = Expr.Ident(civlTypeChecker.LocalVariable("newPAs", PendingAsyncMultisetType));
       if (HasChoice)
       {
         choice = Expr.Ident(invariantAction.impl.OutParams.Last());
       }
       else
       {
-        choice = Expr.Ident(VarHelper.LocalVariable("choice", PendingAsyncType));
+        choice = Expr.Ident(civlTypeChecker.LocalVariable("choice", PendingAsyncType));
       }
     }
 
@@ -180,7 +182,7 @@ namespace Microsoft.Boogie
     {
       var proc = new Procedure(
         Token.NoToken,
-        $"IS_{checkName}_{inputAction.proc.Name}{suffix}",
+        civlTypeChecker.AddNamePrefix($"IS_{checkName}_{inputAction.proc.Name}{suffix}"),
         new List<TypeVariable>(),
         invariantAction.impl.InParams,
         invariantAction.impl.OutParams,
@@ -213,7 +215,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        var paBound = VarHelper.BoundVariable("pa", PendingAsyncType);
+        var paBound = civlTypeChecker.BoundVariable("pa", PendingAsyncType);
         var pa = Expr.Ident(paBound);
         var expr = Expr.Eq(Expr.Select(PAs, pa), Expr.Literal(0));
         expr.Typecheck(new TypecheckingContext(null));
@@ -225,7 +227,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        var paBound = VarHelper.BoundVariable("pa", PendingAsyncType);
+        var paBound = civlTypeChecker.BoundVariable("pa", PendingAsyncType);
         var pa = Expr.Ident(paBound);
         var expr = Expr.Imp(
           Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0)),
@@ -239,7 +241,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        var paBound = VarHelper.BoundVariable("pa", PendingAsyncType);
+        var paBound = civlTypeChecker.BoundVariable("pa", PendingAsyncType);
         var pa = Expr.Ident(paBound);
         return new ExistsExpr(Token.NoToken, new List<Variable> { paBound }, ElimPendingAsyncExpr(pa));
       }
@@ -286,7 +288,7 @@ namespace Microsoft.Boogie
 
     private Expr GetTransitionRelation(AtomicAction action)
     {
-      var tr = TransitionRelationComputation.Refinement(action, frame);
+      var tr = TransitionRelationComputation.Refinement(civlTypeChecker, action, frame);
       if (action == invariantAction && HasChoice)
       {
         return new ChoiceEraser(invariantAction.impl.OutParams.Last()).VisitExpr(tr);
@@ -321,34 +323,34 @@ namespace Microsoft.Boogie
 
   public static class InductiveSequentializationChecker
   {
-    public static void AddChecks(CivlTypeChecker ctc)
+    public static void AddCheckers(CivlTypeChecker civlTypeChecker)
     {
-      foreach (var x in ctc.inductiveSequentializations)
+      foreach (var x in civlTypeChecker.inductiveSequentializations)
       {
-        AddCheck(ctc, x.GenerateBaseCaseChecker());
-        AddCheck(ctc, x.GenerateConclusionChecker());
+        AddCheck(civlTypeChecker, x.GenerateBaseCaseChecker());
+        AddCheck(civlTypeChecker, x.GenerateConclusionChecker());
         if (x.HasChoice)
         {
-          AddCheck(ctc, x.GenerateChoiceChecker());
+          AddCheck(civlTypeChecker, x.GenerateChoiceChecker());
         }
         foreach (var elim in x.elim.Keys)
         {
-          AddCheck(ctc, x.GenerateStepChecker(elim, ctc.pendingAsyncAdd));
+          AddCheck(civlTypeChecker, x.GenerateStepChecker(elim, civlTypeChecker.pendingAsyncAdd));
         }
       }
 
-      var absChecks = ctc.inductiveSequentializations
+      var absChecks = civlTypeChecker.inductiveSequentializations
         .SelectMany(x => x.elim)
         .Where(kv => kv.Key != kv.Value)
         .Distinct();
       
       foreach (var absCheck in absChecks)
       {
-        AddCheck(ctc, GenerateAbstractionChecker(absCheck.Key, absCheck.Value));
+        AddCheck(civlTypeChecker, GenerateAbstractionChecker(civlTypeChecker, absCheck.Key, absCheck.Value));
       }
     }
 
-    private static Tuple<Procedure, Implementation> GenerateAbstractionChecker(AtomicAction action, AtomicAction abs)
+    private static Tuple<Procedure, Implementation> GenerateAbstractionChecker(CivlTypeChecker civlTypeChecker, AtomicAction action, AtomicAction abs)
     {
       var requires = abs.gate.Select(g => new Requires(false, g.Expr)).ToList();
       // TODO: check frame computation
@@ -357,7 +359,7 @@ namespace Microsoft.Boogie
         .Union(action.gateUsedGlobalVars)
         .Union(abs.modifiedGlobalVars)
         .Union(abs.gateUsedGlobalVars));
-      var tr = TransitionRelationComputation.Refinement(abs, frame);
+      var tr = TransitionRelationComputation.Refinement(civlTypeChecker, abs, frame);
       var ensures = new List<Ensures> {
         new Ensures(false, tr)
           { ErrorData = $"Abstraction {abs.proc.Name} does not summarize {action.proc.Name}" }
@@ -376,7 +378,7 @@ namespace Microsoft.Boogie
 
       var proc = new Procedure(
         Token.NoToken,
-        $"AbstractionCheck_{action.proc.Name}_{abs.proc.Name}",
+        civlTypeChecker.AddNamePrefix($"AbstractionCheck_{action.proc.Name}_{abs.proc.Name}"),
         new List<TypeVariable>(),
         abs.impl.InParams,
         abs.impl.OutParams,
@@ -395,10 +397,10 @@ namespace Microsoft.Boogie
       return Tuple.Create(proc, impl);
     }
 
-    private static void AddCheck(CivlTypeChecker ctc, Tuple<Procedure, Implementation> t)
+    private static void AddCheck(CivlTypeChecker civlTypeChecker, Tuple<Procedure, Implementation> t)
     {
-      ctc.program.AddTopLevelDeclaration(t.Item1);
-      ctc.program.AddTopLevelDeclaration(t.Item2);
+      civlTypeChecker.program.AddTopLevelDeclaration(t.Item1);
+      civlTypeChecker.program.AddTopLevelDeclaration(t.Item2);
     }
   }
 }

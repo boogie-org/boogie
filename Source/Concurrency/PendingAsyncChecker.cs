@@ -5,9 +5,9 @@ namespace Microsoft.Boogie
 {
   public static class PendingAsyncChecker
   {
-    public static void AddCheckers(CivlTypeChecker ctc)
+    public static void AddCheckers(CivlTypeChecker civlTypeChecker)
     {
-      foreach (var action in ctc.AllAtomicActions.Where(a => a.HasPendingAsyncs))
+      foreach (var action in civlTypeChecker.AllAtomicActions.Where(a => a.HasPendingAsyncs))
       {
         var requires = action.gate.Select(g => new Requires(false, g.Expr)).ToList();
         var cmds = new List<Cmd>
@@ -19,8 +19,8 @@ namespace Microsoft.Boogie
         };
         var blocks = new List<Block>() {new Block(Token.NoToken, "init", cmds, CmdHelper.ReturnCmd)};
 
-        var PAs = Expr.Ident(action.impl.OutParams.Last(p => p.TypedIdent.Type.Equals(ctc.pendingAsyncMultisetType)));
-        var paBound = VarHelper.BoundVariable("pa", ctc.pendingAsyncType);
+        var PAs = Expr.Ident(action.impl.OutParams.Last(p => p.TypedIdent.Type.Equals(civlTypeChecker.pendingAsyncMultisetType)));
+        var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
         var pa = Expr.Ident(paBound);
 
         var nonnegativeExpr =
@@ -40,15 +40,15 @@ namespace Microsoft.Boogie
 
         CivlUtil.ResolveAndTypecheck(ensures);
 
-        var proc = new Procedure(Token.NoToken, $"PendingAsyncChecker_{action.proc.Name}", new List<TypeVariable>(),
+        var proc = new Procedure(Token.NoToken, civlTypeChecker.AddNamePrefix($"PendingAsyncChecker_{action.proc.Name}"), new List<TypeVariable>(),
           action.impl.InParams, action.impl.OutParams,
           requires, action.proc.Modifies, ensures);
         var impl = new Implementation(Token.NoToken, proc.Name, proc.TypeParameters,
             proc.InParams, proc.OutParams, new List<Variable>(), blocks)
           {Proc = proc};
 
-        ctc.program.AddTopLevelDeclaration(proc);
-        ctc.program.AddTopLevelDeclaration(impl);
+        civlTypeChecker.program.AddTopLevelDeclaration(proc);
+        civlTypeChecker.program.AddTopLevelDeclaration(impl);
       }
     }
   }

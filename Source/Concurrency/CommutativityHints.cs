@@ -98,22 +98,22 @@ namespace Microsoft.Boogie
     private const string SecondProcInputPrefix = "second_";
     private const string PostStateSuffix = "'";
 
-    private readonly CivlTypeChecker ctc;
+    private readonly CivlTypeChecker civlTypeChecker;
     public CommutativityHints commutativityHints;
 
     private AtomicAction firstAction;
     private AtomicAction secondAction;
     private List<Expr> args;
 
-    public CommutativityHintVisitor(CivlTypeChecker ctc)
+    public CommutativityHintVisitor(CivlTypeChecker civlTypeChecker)
     {
-      this.ctc = ctc;
+      this.civlTypeChecker = civlTypeChecker;
       commutativityHints = new CommutativityHints();
     }
 
     public void VisitFunctions()
     {
-      foreach (var f in ctc.program.Functions)
+      foreach (var f in civlTypeChecker.program.Functions)
       {
         VisitFunction(f);
       }
@@ -132,16 +132,16 @@ namespace Microsoft.Boogie
             kv.Params[0] is string firstActionName &&
             kv.Params[1] is string secondActionName)
         {
-          firstAction = ctc.FindAtomicActionOrAbstraction(firstActionName);
-          secondAction = ctc.FindAtomicActionOrAbstraction(secondActionName);
+          firstAction = civlTypeChecker.FindAtomicActionOrAbstraction(firstActionName);
+          secondAction = civlTypeChecker.FindAtomicActionOrAbstraction(secondActionName);
           if (firstAction == null)
           {
-            ctc.Error(kv, $"Could not find atomic action {firstActionName}");
+            civlTypeChecker.Error(kv, $"Could not find atomic action {firstActionName}");
           }
 
           if (secondAction == null)
           {
-            ctc.Error(kv, $"Could not find atomic action {secondActionName}");
+            civlTypeChecker.Error(kv, $"Could not find atomic action {secondActionName}");
           }
 
           if (firstAction != null && secondAction != null)
@@ -153,7 +153,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          ctc.Error(kv, "Commutativity attribute expects two action names as parameters");
+          civlTypeChecker.Error(kv, "Commutativity attribute expects two action names as parameters");
         }
       }
 
@@ -165,14 +165,14 @@ namespace Microsoft.Boogie
           if (kv.Params.Count == 1 &&
               kv.Params[0] is string witnessedVariableName)
           {
-            Variable witnessedVariable = ctc.GlobalVariables.First(v => v.Name == witnessedVariableName);
+            Variable witnessedVariable = civlTypeChecker.GlobalVariables.First(v => v.Name == witnessedVariableName);
             if (witnessedVariable == null)
             {
-              ctc.Error(kv, $"Could not find shared variable {witnessedVariableName}");
+              civlTypeChecker.Error(kv, $"Could not find shared variable {witnessedVariableName}");
             }
             else if (!function.OutParams[0].TypedIdent.Type.Equals(witnessedVariable.TypedIdent.Type))
             {
-              ctc.Error(function, "Result type does not match witnessed variable");
+              civlTypeChecker.Error(function, "Result type does not match witnessed variable");
             }
             else
             {
@@ -181,7 +181,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            ctc.Error(kv, "Witness attribute expects the name of a global variable as parameter");
+            civlTypeChecker.Error(kv, "Witness attribute expects the name of a global variable as parameter");
           }
 
           break;
@@ -192,7 +192,7 @@ namespace Microsoft.Boogie
           {
             if (!function.OutParams[0].TypedIdent.Type.Equals(Type.Bool))
             {
-              ctc.Error(function, "Result type of lemma must be bool");
+              civlTypeChecker.Error(function, "Result type of lemma must be bool");
             }
             else
             {
@@ -201,7 +201,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            ctc.Error(kv, "Lemma attribute does not expect any parameters");
+            civlTypeChecker.Error(kv, "Lemma attribute does not expect any parameters");
           }
 
           break;
@@ -239,7 +239,7 @@ namespace Microsoft.Boogie
       if (var != null)
         return Expr.Ident(var);
       var name = param.Name.Remove(0, prefix.Length);
-      ctc.Error(param, $"Action {impl.Name} does not have parameter {name}:{param.TypedIdent.Type}");
+      civlTypeChecker.Error(param, $"Action {impl.Name} does not have parameter {name}:{param.TypedIdent.Type}");
       return null;
     }
 
@@ -249,7 +249,7 @@ namespace Microsoft.Boogie
       var name = param.Name;
       if (postState)
         name = name.Substring(0, name.Length - 1);
-      var var = FindVariable(name, param.TypedIdent.Type, ctc.GlobalVariables);
+      var var = FindVariable(name, param.TypedIdent.Type, civlTypeChecker.GlobalVariables);
       if (var != null)
       {
         if (!postState)
@@ -258,7 +258,7 @@ namespace Microsoft.Boogie
           return Expr.Ident(var);
       }
 
-      ctc.Error(param, $"No shared variable {name}:{param.TypedIdent.Type}");
+      civlTypeChecker.Error(param, $"No shared variable {name}:{param.TypedIdent.Type}");
       return null;
     }
 

@@ -15,6 +15,7 @@ namespace Microsoft.Boogie
     // Use public access methods.
     private Dictionary<Variable, LayerRange> globalVarToLayerRange;
     private Dictionary<Variable, LayerRange> localVarToLayerRange;
+    private string namePrefix;
 
     public Dictionary<Block, YieldingLoop> yieldingLoops;
     public Dictionary<Block, HashSet<int>> terminatingLoopHeaders;
@@ -68,9 +69,20 @@ namespace Microsoft.Boogie
       this.implToPendingAsyncCollector = new Dictionary<Implementation, Variable>();
       this.inductiveSequentializations = new List<InductiveSequentialization>();
 
+      IEnumerable<string> declNames = program.TopLevelDeclarations.OfType<NamedDeclaration>().Select(x => x.Name);
+      IEnumerable<string> localVarNames = VariableNameCollector.Collect(program);
+      IEnumerable<string> blockLabels = program.TopLevelDeclarations.OfType<Implementation>()
+        .SelectMany(x => x.Blocks.Select(y => y.Label));
+      var allNames = new[] {declNames, localVarNames, blockLabels}.SelectMany(x => x);
+      namePrefix = "Civl";
+      while (allNames.Any(x => x.StartsWith(namePrefix)))
+      {
+        namePrefix = namePrefix + "$";
+      }
+
       var skipProcedure = new Procedure(
         Token.NoToken,
-        "Skip",
+        AddNamePrefix("Skip"),
         new List<TypeVariable>(),
         new List<Variable>(),
         new List<Variable>(),
@@ -79,14 +91,52 @@ namespace Microsoft.Boogie
         new List<Ensures>());
       var skipImplementation = new Implementation(
           Token.NoToken,
-          "Skip",
+          skipProcedure.Name,
           new List<TypeVariable>(),
           new List<Variable>(),
           new List<Variable>(),
           new List<Variable>(),
-          new List<Block> {new Block(Token.NoToken, "Init", new List<Cmd>(), new ReturnCmd(Token.NoToken))})
+          new List<Block> {new Block(Token.NoToken, "init", new List<Cmd>(), new ReturnCmd(Token.NoToken))})
         {Proc = skipProcedure};
       SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both);
+    }
+
+    public string AddNamePrefix(string name)
+    {
+      return $"{namePrefix}_{name}";
+    }
+    
+    public LocalVariable LocalVariable(string name, Type type)
+    {
+      return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, $"{namePrefix}_{name}", type));
+    }
+
+    public BoundVariable BoundVariable(string name, Type type)
+    {
+      return new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, $"{namePrefix}_{name}", type));
+    }
+
+    public Formal Formal(string name, Type type, bool incoming)
+    {
+      return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, $"{namePrefix}_{name}", type), incoming);
+    }
+    
+    private class VariableNameCollector : ReadOnlyVisitor
+    {
+      private HashSet<string> localVarNames = new HashSet<string>();
+
+      public static HashSet<string> Collect(Program program)
+      {
+        var collector = new VariableNameCollector();
+        collector.VisitProgram(program);
+        return collector.localVarNames;
+      }
+
+      public override Variable VisitVariable(Variable node)
+      {
+        localVarNames.Add(node.Name);
+        return node;
+      }
     }
 
     public void TypeCheck()
@@ -375,7 +425,7 @@ namespace Microsoft.Boogie
           if (checkingContext.ErrorCount == 0)
           {
             inductiveSequentializations.Add(
-              new InductiveSequentialization(action, action.refinedAction, invariantAction, elim));
+              new InductiveSequentialization(this, action, action.refinedAction, invariantAction, elim));
           }
         }
       }

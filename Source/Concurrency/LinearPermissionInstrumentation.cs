@@ -7,7 +7,6 @@ namespace Microsoft.Boogie
   public class LinearPermissionInstrumentation
   {
     private CivlTypeChecker civlTypeChecker;
-    private LinearTypeChecker linearTypeChecker;
     private int layerNum;
     private Dictionary<Absy, Absy> absyMap;
     private Dictionary<string, Variable> domainNameToHoleVar;
@@ -15,14 +14,12 @@ namespace Microsoft.Boogie
 
     public LinearPermissionInstrumentation(
       CivlTypeChecker civlTypeChecker,
-      LinearTypeChecker linearTypeChecker,
       int layerNum,
       Dictionary<Absy, Absy> absyMap,
       Dictionary<string, Variable> domainNameToHoleVar,
       Dictionary<Variable, Variable> localVarMap)
     {
       this.civlTypeChecker = civlTypeChecker;
-      this.linearTypeChecker = linearTypeChecker;
       this.layerNum = layerNum;
       this.absyMap = absyMap;
       this.domainNameToHoleVar = domainNameToHoleVar;
@@ -31,12 +28,10 @@ namespace Microsoft.Boogie
 
     public LinearPermissionInstrumentation(
       CivlTypeChecker civlTypeChecker,
-      LinearTypeChecker linearTypeChecker,
       int layerNum,
       Dictionary<Absy, Absy> absyMap)
     {
       this.civlTypeChecker = civlTypeChecker;
-      this.linearTypeChecker = linearTypeChecker;
       this.layerNum = layerNum;
       this.absyMap = absyMap;
       this.domainNameToHoleVar = new Dictionary<string, Variable>();
@@ -65,6 +60,7 @@ namespace Microsoft.Boogie
 
     public Dictionary<string, Expr> PermissionExprs(Absy absy)
     {
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       var domainNameToScope = new Dictionary<string, HashSet<Variable>>();
       foreach (var domainName in linearTypeChecker.linearDomains.Keys)
       {
@@ -128,6 +124,7 @@ namespace Microsoft.Boogie
 
     private List<Expr> DisjointnessExprs(IEnumerable<Variable> availableVars)
     {
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       var domainNameToScope = new Dictionary<string, HashSet<Variable>>();
       foreach (var domainName in linearTypeChecker.linearDomains.Keys)
       {
@@ -172,7 +169,7 @@ namespace Microsoft.Boogie
         return FilterInParams((MapAbsy(proc) as Procedure).InParams);
       }
 
-      return linearTypeChecker.AvailableLinearVars(MapAbsy(absy)).Where(v =>
+      return civlTypeChecker.linearTypeChecker.AvailableLinearVars(MapAbsy(absy)).Where(v =>
         !(v is GlobalVariable) &&
         civlTypeChecker.LocalVariableLayerRange(v).Contains(layerNum));
     }
@@ -190,12 +187,13 @@ namespace Microsoft.Boogie
     private IEnumerable<Variable> Filter(IEnumerable<Variable> locals, Predicate<LinearKind> pred)
     {
       return locals.Where(v =>
-        pred(linearTypeChecker.FindLinearKind(v)) &&
+        pred(civlTypeChecker.linearTypeChecker.FindLinearKind(v)) &&
         civlTypeChecker.LocalVariableLayerRange(v).Contains(layerNum));
     }
 
     private IEnumerable<Variable> LinearGlobalVars()
     {
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       return linearTypeChecker.program.GlobalVariables.Where(v =>
         linearTypeChecker.FindLinearKind(v) == LinearKind.LINEAR &&
         civlTypeChecker.GlobalVariableLayerRange(v).Contains(layerNum));

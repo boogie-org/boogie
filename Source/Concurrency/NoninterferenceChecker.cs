@@ -9,12 +9,12 @@ namespace Microsoft.Boogie
   {
     public static List<Declaration> CreateNoninterferenceCheckers(
       CivlTypeChecker civlTypeChecker,
-      LinearTypeChecker linearTypeChecker,
       int layerNum,
       Dictionary<Absy, Absy> absyMap,
       DeclWithFormals decl,
       List<Variable> declLocalVariables)
     {
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       Dictionary<string, Variable> domainNameToHoleVar = new Dictionary<string, Variable>();
       Dictionary<Variable, Variable> localVarMap = new Dictionary<Variable, Variable>();
       Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
@@ -39,15 +39,15 @@ namespace Microsoft.Boogie
       Dictionary<Variable, Expr> assumeMap = new Dictionary<Variable, Expr>(map);
       foreach (Variable g in civlTypeChecker.GlobalVariables)
       {
-        var copy = OldLocalLocal(g);
+        var copy = OldGlobalLocal(civlTypeChecker, g);
         locals.Add(copy);
         oldLocalMap[g] = Expr.Ident(copy);
-        Formal f = OldGlobalFormal(g);
+        Formal f = SnapshotGlobalFormal(civlTypeChecker, g);
         inputs.Add(f);
         assumeMap[g] = Expr.Ident(f);
       }
 
-      var linearPermissionInstrumentation = new LinearPermissionInstrumentation(civlTypeChecker, linearTypeChecker,
+      var linearPermissionInstrumentation = new LinearPermissionInstrumentation(civlTypeChecker,
         layerNum, absyMap, domainNameToHoleVar, localVarMap);
       List<YieldInfo> yieldInfos = null;
       if (decl is Implementation impl)
@@ -151,9 +151,9 @@ namespace Microsoft.Boogie
         new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
 
       // Create the yield checker procedure
-      var noninterferenceCheckerName = decl is Procedure
+      var noninterferenceCheckerName = civlTypeChecker.AddNamePrefix(decl is Procedure
         ? $"NoninterferenceChecker_proc_{decl.Name}"
-        : $"NoninterferenceChecker_impl_{decl.Name}";
+        : $"NoninterferenceChecker_impl_{decl.Name}");
       var noninterferenceCheckerProc = new Procedure(Token.NoToken, noninterferenceCheckerName, decl.TypeParameters,
         inputs,
         new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
@@ -217,19 +217,17 @@ namespace Microsoft.Boogie
 
     private static LocalVariable CopyLocal(Variable v)
     {
-      return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type));
+      return VarHelper.LocalVariable(v.Name, v.TypedIdent.Type);
     }
 
-    private static Formal OldGlobalFormal(Variable v)
+    private static Formal SnapshotGlobalFormal(CivlTypeChecker civlTypeChecker, Variable v)
     {
-      return new Formal(Token.NoToken,
-        new TypedIdent(Token.NoToken, $"civl_global_old_{v.Name}", v.TypedIdent.Type), true);
+      return civlTypeChecker.Formal($"snapshot_{v.Name}", v.TypedIdent.Type, true);
     }
 
-    private static LocalVariable OldLocalLocal(Variable v)
+    private static LocalVariable OldGlobalLocal(CivlTypeChecker civlTypeChecker, Variable v)
     {
-      return new LocalVariable(Token.NoToken,
-        new TypedIdent(Token.NoToken, $"civl_local_old_{v.Name}", v.TypedIdent.Type));
+      return civlTypeChecker.LocalVariable($"old_{v.Name}", v.TypedIdent.Type);
     }
   }
 
