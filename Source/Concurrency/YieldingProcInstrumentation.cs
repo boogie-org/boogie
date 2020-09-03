@@ -170,7 +170,6 @@ namespace Microsoft.Boogie
     private void AddNoninterferenceCheckers()
     {
       if (CommandLineOptions.Clo.TrustNoninterference) return;
-      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       foreach (var proc in civlTypeChecker.procToYieldInvariant.Keys)
       {
         var yieldInvariant = civlTypeChecker.procToYieldInvariant[proc];
