@@ -585,6 +585,8 @@ namespace Microsoft.Boogie.TypeErasure
     }
 
     public abstract Object /*!*/ Clone();
+    
+    public abstract VCExpr Cast(VCExpr expr, Type toType);
   }
 
   [ContractClassFor(typeof(TypeAxiomBuilder))]
@@ -827,7 +829,7 @@ namespace Microsoft.Boogie.TypeErasure
              type.IsRegEx;
     }
 
-    public VCExpr Cast(VCExpr expr, Type toType)
+    public override VCExpr Cast(VCExpr expr, Type toType)
     {
       Contract.Requires(toType != null);
       Contract.Requires(expr != null);
