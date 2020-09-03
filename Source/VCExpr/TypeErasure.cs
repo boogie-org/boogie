@@ -155,7 +155,7 @@ namespace Microsoft.Boogie.TypeErasure
   // concrete in two subclasses, one for type erasure with type
   // premisses in quantifiers (the semantic approach), and one for
   // type erasure with explicit type arguments of polymorphic
-  // functions (the syntacted approach).
+  // functions (the syntactic approach).
   [ContractClass(typeof(TypeAxiomBuilderContracts))]
   public abstract class TypeAxiomBuilder : ICloneable
   {
@@ -585,6 +585,8 @@ namespace Microsoft.Boogie.TypeErasure
     }
 
     public abstract Object /*!*/ Clone();
+    
+    public abstract VCExpr Cast(VCExpr expr, Type toType);
   }
 
   [ContractClassFor(typeof(TypeAxiomBuilder))]
@@ -827,7 +829,7 @@ namespace Microsoft.Boogie.TypeErasure
              type.IsRegEx;
     }
 
-    public VCExpr Cast(VCExpr expr, Type toType)
+    public override VCExpr Cast(VCExpr expr, Type toType)
     {
       Contract.Requires(toType != null);
       Contract.Requires(expr != null);

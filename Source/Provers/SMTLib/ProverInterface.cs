@@ -2413,21 +2413,27 @@ namespace Microsoft.Boogie.SMTLib
         //  Console.Write("Linearising ... ");
 
         // handle the types in the VCExpr
-        TypeEraser eraser;
+        VCExpr exprWithoutTypes;
         switch (CommandLineOptions.Clo.TypeEncodingMethod)
         {
           case CommandLineOptions.TypeEncoding.Arguments:
-            eraser = new TypeEraserArguments((TypeAxiomBuilderArguments) AxBuilder, gen);
+          {
+            TypeEraser eraser = new TypeEraserArguments((TypeAxiomBuilderArguments) AxBuilder, gen);
+            exprWithoutTypes = AxBuilder.Cast(eraser.Erase(expr, polarity), Type.Bool);
             break;
+          }
           case CommandLineOptions.TypeEncoding.Monomorphic:
-            eraser = null;
+          {
+            exprWithoutTypes = expr;
             break;
+          }
           default:
-            eraser = new TypeEraserPremisses((TypeAxiomBuilderPremisses) AxBuilder, gen);
+          {
+            TypeEraser eraser = new TypeEraserPremisses((TypeAxiomBuilderPremisses) AxBuilder, gen);
+            exprWithoutTypes =  AxBuilder.Cast(eraser.Erase(expr, polarity), Type.Bool);
             break;
+          }
         }
-
-        VCExpr exprWithoutTypes = eraser == null ? expr : eraser.Erase(expr, polarity);
         Contract.Assert(exprWithoutTypes != null);
 
         LetBindingSorter letSorter = new LetBindingSorter(gen);
