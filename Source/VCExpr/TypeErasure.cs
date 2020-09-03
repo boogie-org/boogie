@@ -155,7 +155,7 @@ namespace Microsoft.Boogie.TypeErasure
   // concrete in two subclasses, one for type erasure with type
   // premisses in quantifiers (the semantic approach), and one for
   // type erasure with explicit type arguments of polymorphic
-  // functions (the syntacted approach).
+  // functions (the syntactic approach).
   [ContractClass(typeof(TypeAxiomBuilderContracts))]
   public abstract class TypeAxiomBuilder : ICloneable
   {
