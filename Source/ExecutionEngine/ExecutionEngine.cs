@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using VC;
 using BoogiePL = Microsoft.Boogie;
 using System.Runtime.Caching;
+using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
@@ -1858,50 +1859,55 @@ namespace Microsoft.Boogie
         cause = "Out of resource on";
       }
 
-      var callError = error as CallCounterexample;
-      var returnError = error as ReturnCounterexample;
-      var assertError = error as AssertCounterexample;
-      if (callError != null)
+      if (error is CallCounterexample callError)
       {
-        errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok,
-          callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.",
-          callError.RequestId, callError.OriginalRequestId, cause);
-        errorInfo.BoogieErrorCode = "BP5002";
-        errorInfo.Kind = ErrorKind.Precondition;
-        errorInfo.AddAuxInfo(callError.FailingRequires.tok,
-          callError.FailingRequires.ErrorData as string ?? "This is the precondition that might not hold.",
-          "Related location");
-
-        if (!CommandLineOptions.Clo.ForceBplErrors && callError.FailingRequires.ErrorMessage != null)
+        if (callError.FailingRequires.ErrorMessage == null || CommandLineOptions.Clo.ForceBplErrors)
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok, callError.FailingRequires.ErrorMessage,
+          errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok,
+            callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.",
+            callError.RequestId, callError.OriginalRequestId, cause);
+          errorInfo.BoogieErrorCode = "BP5002";
+          errorInfo.Kind = ErrorKind.Precondition;
+          errorInfo.AddAuxInfo(callError.FailingRequires.tok,
+            callError.FailingRequires.ErrorData as string ?? "This is the precondition that might not hold.",
+            "Related location");
+        }
+        else
+        {
+          errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok,
+            callError.FailingRequires.ErrorMessage,
             callError.RequestId, callError.OriginalRequestId, cause);
         }
       }
-      else if (returnError != null)
+      else if (error is ReturnCounterexample returnError)
       {
-        errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok,
-          "A postcondition might not hold on this return path.", returnError.RequestId, returnError.OriginalRequestId,
-          cause);
-        errorInfo.BoogieErrorCode = "BP5003";
-        errorInfo.Kind = ErrorKind.Postcondition;
-        errorInfo.AddAuxInfo(returnError.FailingEnsures.tok,
-          returnError.FailingEnsures.ErrorData as string ?? "This is the postcondition that might not hold.",
-          "Related location");
-
-        if (!CommandLineOptions.Clo.ForceBplErrors && returnError.FailingEnsures.ErrorMessage != null)
+        if (returnError.FailingEnsures.ErrorMessage == null || CommandLineOptions.Clo.ForceBplErrors)
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok, returnError.FailingEnsures.ErrorMessage,
+          errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok,
+            "A postcondition might not hold on this return path.",
+            returnError.RequestId, returnError.OriginalRequestId, cause);
+          errorInfo.BoogieErrorCode = "BP5003";
+          errorInfo.Kind = ErrorKind.Postcondition;
+          errorInfo.AddAuxInfo(returnError.FailingEnsures.tok,
+            returnError.FailingEnsures.ErrorData as string ?? "This is the postcondition that might not hold.",
+            "Related location");
+        }
+        else
+        {
+          errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok,
+            returnError.FailingEnsures.ErrorMessage,
             returnError.RequestId, returnError.OriginalRequestId, cause);
         }
       }
       else // error is AssertCounterexample
       {
+        Debug.Assert(error is AssertCounterexample);
+        var assertError = (AssertCounterexample)error;
         if (assertError.FailingAssert is LoopInitAssertCmd)
         {
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok,
-            "This loop invariant might not hold on entry.", assertError.RequestId, assertError.OriginalRequestId,
-            cause);
+            "This loop invariant might not hold on entry.",
+            assertError.RequestId, assertError.OriginalRequestId, cause);
           errorInfo.BoogieErrorCode = "BP5004";
           errorInfo.Kind = ErrorKind.InvariantEntry;
           if ((assertError.FailingAssert.ErrorData as string) != null)
@@ -1913,8 +1919,8 @@ namespace Microsoft.Boogie
         else if (assertError.FailingAssert is LoopInvMaintainedAssertCmd)
         {
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok,
-            "This loop invariant might not be maintained by the loop.", assertError.RequestId,
-            assertError.OriginalRequestId, cause);
+            "This loop invariant might not be maintained by the loop.",
+            assertError.RequestId, assertError.OriginalRequestId, cause);
           errorInfo.BoogieErrorCode = "BP5005";
           errorInfo.Kind = ErrorKind.InvariantMaintainance;
           if ((assertError.FailingAssert.ErrorData as string) != null)
@@ -1925,9 +1931,18 @@ namespace Microsoft.Boogie
         }
         else
         {
-          var msg = assertError.FailingAssert.ErrorData as string;
-          var tok = assertError.FailingAssert.tok;
-          if (!CommandLineOptions.Clo.ForceBplErrors && assertError.FailingAssert.ErrorMessage != null)
+          string msg = null;
+          string bec = null;
+          if (assertError.FailingAssert.ErrorMessage == null || CommandLineOptions.Clo.ForceBplErrors)
+          {
+            msg = assertError.FailingAssert.ErrorData as string;
+            if (msg == null)
+            {
+              msg = "This assertion might not hold.";
+              bec = "BP5001";
+            }
+          }
+          else
           {
             msg = assertError.FailingAssert.ErrorMessage;
             if (cause == "Error")
@@ -1936,15 +1951,8 @@ namespace Microsoft.Boogie
             }
           }
 
-          string bec = null;
-          if (msg == null)
-          {
-            msg = "This assertion might not hold.";
-            bec = "BP5001";
-          }
-
-          errorInfo = errorInformationFactory.CreateErrorInformation(tok, msg, assertError.RequestId,
-            assertError.OriginalRequestId, cause);
+          errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg,
+            assertError.RequestId, assertError.OriginalRequestId, cause);
           errorInfo.BoogieErrorCode = bec;
           errorInfo.Kind = ErrorKind.Assertion;
         }
