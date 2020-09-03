@@ -1966,6 +1966,10 @@ namespace Microsoft.Boogie
        to the next split_here as separate pieces.  May help with timeouts.
        May also occasionally double-report errors.
 
+     {:msg <string>}
+       Prints <string> rather than the standard message for assertion failure.
+       Also applicable to requires and ensures declarations. 
+
   ---- The end ---------------------------------------------------------------
 ");
     }

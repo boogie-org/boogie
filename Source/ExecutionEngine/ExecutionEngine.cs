@@ -1874,7 +1874,7 @@ namespace Microsoft.Boogie
 
         if (!CommandLineOptions.Clo.ForceBplErrors && callError.FailingRequires.ErrorMessage != null)
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(null, callError.FailingRequires.ErrorMessage,
+          errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok, callError.FailingRequires.ErrorMessage,
             callError.RequestId, callError.OriginalRequestId, cause);
         }
       }
@@ -1891,7 +1891,7 @@ namespace Microsoft.Boogie
 
         if (!CommandLineOptions.Clo.ForceBplErrors && returnError.FailingEnsures.ErrorMessage != null)
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(null, returnError.FailingEnsures.ErrorMessage,
+          errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok, returnError.FailingEnsures.ErrorMessage,
             returnError.RequestId, returnError.OriginalRequestId, cause);
         }
       }
@@ -1930,7 +1930,6 @@ namespace Microsoft.Boogie
           if (!CommandLineOptions.Clo.ForceBplErrors && assertError.FailingAssert.ErrorMessage != null)
           {
             msg = assertError.FailingAssert.ErrorMessage;
-            tok = null;
             if (cause == "Error")
             {
               cause = null;
