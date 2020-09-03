@@ -73,11 +73,14 @@ namespace Microsoft.Boogie
       IEnumerable<string> localVarNames = VariableNameCollector.Collect(program);
       IEnumerable<string> blockLabels = program.TopLevelDeclarations.OfType<Implementation>()
         .SelectMany(x => x.Blocks.Select(y => y.Label));
-      var allNames = new[] {declNames, localVarNames, blockLabels}.SelectMany(x => x);
-      namePrefix = "Civl";
-      while (allNames.Any(x => x.StartsWith(namePrefix)))
+      var allNames = declNames.Union(localVarNames).Union(blockLabels);
+      namePrefix = "Civl_";
+      foreach (var name in allNames)
       {
-        namePrefix = namePrefix + "$";
+        while (name.StartsWith(namePrefix))
+        {
+          namePrefix = namePrefix + "_";
+        }
       }
 
       var skipProcedure = new Procedure(
@@ -103,22 +106,22 @@ namespace Microsoft.Boogie
 
     public string AddNamePrefix(string name)
     {
-      return $"{namePrefix}_{name}";
+      return $"{namePrefix}{name}";
     }
     
     public LocalVariable LocalVariable(string name, Type type)
     {
-      return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, $"{namePrefix}_{name}", type));
+      return VarHelper.LocalVariable($"{namePrefix}{name}", type);
     }
 
     public BoundVariable BoundVariable(string name, Type type)
     {
-      return new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, $"{namePrefix}_{name}", type));
+      return VarHelper.BoundVariable($"{namePrefix}{name}", type);
     }
 
     public Formal Formal(string name, Type type, bool incoming)
     {
-      return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, $"{namePrefix}_{name}", type), incoming);
+      return VarHelper.Formal($"{namePrefix}{name}", type, incoming);
     }
     
     private class VariableNameCollector : ReadOnlyVisitor
