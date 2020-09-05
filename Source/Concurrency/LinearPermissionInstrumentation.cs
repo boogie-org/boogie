@@ -8,14 +8,14 @@ namespace Microsoft.Boogie
   {
     private CivlTypeChecker civlTypeChecker;
     private int layerNum;
-    private Dictionary<Absy, Absy> absyMap;
+    private AbsyMap absyMap;
     private Dictionary<string, Variable> domainNameToHoleVar;
     private Dictionary<Variable, Variable> localVarMap;
 
     public LinearPermissionInstrumentation(
       CivlTypeChecker civlTypeChecker,
       int layerNum,
-      Dictionary<Absy, Absy> absyMap,
+      AbsyMap absyMap,
       Dictionary<string, Variable> domainNameToHoleVar,
       Dictionary<Variable, Variable> localVarMap)
     {
@@ -29,7 +29,7 @@ namespace Microsoft.Boogie
     public LinearPermissionInstrumentation(
       CivlTypeChecker civlTypeChecker,
       int layerNum,
-      Dictionary<Absy, Absy> absyMap)
+      AbsyMap absyMap)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.layerNum = layerNum;
@@ -161,15 +161,15 @@ namespace Microsoft.Boogie
     {
       if (absy is Implementation impl)
       {
-        return FilterInParams((MapAbsy(impl) as Implementation).InParams);
+        return FilterInParams(absyMap.OriginalOrInput(impl).InParams);
       }
 
       if (absy is Procedure proc)
       {
-        return FilterInParams((MapAbsy(proc) as Procedure).InParams);
+        return FilterInParams(absyMap.OriginalOrInput(proc).InParams);
       }
 
-      return civlTypeChecker.linearTypeChecker.AvailableLinearVars(MapAbsy(absy)).Where(v =>
+      return civlTypeChecker.linearTypeChecker.AvailableLinearVars(absyMap[absy]).Where(v =>
         !(v is GlobalVariable) &&
         civlTypeChecker.LocalVariableLayerRange(v).Contains(layerNum));
     }
@@ -202,11 +202,6 @@ namespace Microsoft.Boogie
     private Variable MapVariable(Variable v)
     {
       return localVarMap.ContainsKey(v) ? localVarMap[v] : v;
-    }
-
-    private Absy MapAbsy(Absy absy)
-    {
-      return absyMap.ContainsKey(absy) ? absyMap[absy] : absy;
     }
   }
 }

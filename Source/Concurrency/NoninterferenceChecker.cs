@@ -10,7 +10,7 @@ namespace Microsoft.Boogie
     public static List<Declaration> CreateNoninterferenceCheckers(
       CivlTypeChecker civlTypeChecker,
       int layerNum,
-      Dictionary<Absy, Absy> absyMap,
+      AbsyMap absyMap,
       DeclWithFormals decl,
       List<Variable> declLocalVariables)
     {
@@ -50,8 +50,10 @@ namespace Microsoft.Boogie
       var linearPermissionInstrumentation = new LinearPermissionInstrumentation(civlTypeChecker,
         layerNum, absyMap, domainNameToHoleVar, localVarMap);
       List<YieldInfo> yieldInfos = null;
+      string noninterferenceCheckerName = null;
       if (decl is Implementation impl)
       {
+        noninterferenceCheckerName = $"impl_{absyMap.Original(impl).Name}_{layerNum}";
         yieldInfos = CollectYields(civlTypeChecker, absyMap, layerNum, impl).Select(kv =>
           new YieldInfo(linearPermissionInstrumentation.DisjointnessAssumeCmds(kv.Key, false), kv.Value)).ToList();
       }
@@ -60,6 +62,7 @@ namespace Microsoft.Boogie
         yieldInfos = new List<YieldInfo>();
         if (civlTypeChecker.procToYieldInvariant.ContainsKey(proc))
         {
+          noninterferenceCheckerName = $"yield_{proc.Name}";
           if (proc.Requires.Count > 0)
           {
             var disjointnessCmds = linearPermissionInstrumentation.ProcDisjointnessAssumeCmds(proc, true);
@@ -72,6 +75,7 @@ namespace Microsoft.Boogie
         }
         else
         {
+          noninterferenceCheckerName = $"proc_{absyMap.Original(proc).Name}_{layerNum}";
           if (proc.Requires.Count > 0)
           {
             var entryDisjointnessCmds =
@@ -151,9 +155,7 @@ namespace Microsoft.Boogie
         new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
 
       // Create the yield checker procedure
-      var noninterferenceCheckerName = civlTypeChecker.AddNamePrefix(decl is Procedure
-        ? $"NoninterferenceChecker_proc_{decl.Name}"
-        : $"NoninterferenceChecker_impl_{decl.Name}");
+      noninterferenceCheckerName = civlTypeChecker.AddNamePrefix($"NoninterferenceChecker_{noninterferenceCheckerName}");
       var noninterferenceCheckerProc = new Procedure(Token.NoToken, noninterferenceCheckerName, decl.TypeParameters,
         inputs,
         new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
@@ -169,14 +171,14 @@ namespace Microsoft.Boogie
     }
 
     private static Dictionary<Absy, List<PredicateCmd>> CollectYields(CivlTypeChecker civlTypeChecker,
-      Dictionary<Absy, Absy> absyMap, int layerNum, Implementation impl)
+      AbsyMap absyMap, int layerNum, Implementation impl)
     {
       var allYieldPredicates = new Dictionary<Absy, List<PredicateCmd>>();
       List<PredicateCmd> yieldPredicates = new List<PredicateCmd>();
       foreach (Block b in impl.Blocks)
       {
         Absy absy = null;
-        var originalBlock = (Block) absyMap[b];
+        var originalBlock = absyMap.Original(b);
         if (civlTypeChecker.yieldingLoops.ContainsKey(originalBlock) &&
             civlTypeChecker.yieldingLoops[originalBlock].layers.Contains(layerNum))
         {

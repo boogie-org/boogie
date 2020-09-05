@@ -17,7 +17,7 @@ namespace Microsoft.Boogie
     private int layerNum;
 
     private Dictionary<Procedure, Procedure> procToDuplicate; /* Original -> Duplicate */
-    private Dictionary<Absy, Absy> absyMap; /* Duplicate -> Original */
+    private AbsyMap absyMap; /* Duplicate -> Original */
     private HashSet<Procedure> yieldingProcs;
     private Dictionary<string, Procedure> asyncCallPreconditionCheckers;
 
@@ -29,7 +29,7 @@ namespace Microsoft.Boogie
       this.civlTypeChecker = civlTypeChecker;
       this.layerNum = layerNum;
       this.procToDuplicate = new Dictionary<Procedure, Procedure>();
-      this.absyMap = new Dictionary<Absy, Absy>();
+      this.absyMap = new AbsyMap();
       this.yieldingProcs = new HashSet<Procedure>();
       this.asyncCallPreconditionCheckers = new Dictionary<string, Procedure>();
       this.refinementBlocks = new Dictionary<CallCmd, Block>();
@@ -601,6 +601,42 @@ namespace Microsoft.Boogie
         yieldingProcs,
         refinementBlocks));
       return decls;
+    }
+  }
+
+  public class AbsyMap
+  {
+    private Dictionary<Absy, Absy> absyMap;
+
+    public AbsyMap()
+    {
+      this.absyMap = new Dictionary<Absy, Absy>();
+    }
+
+    public Absy this[Absy absy]
+    {
+      get { return this.absyMap[absy]; }
+      set { this.absyMap[absy] = value; }
+    }
+
+    public T Original<T>(T absy) where T : Absy
+    {
+      return (T)absyMap[absy];
+    }
+
+    public T OriginalOrInput<T>(T absy) where T : Absy
+    {
+      return absyMap.ContainsKey(absy) ? (T)absyMap[absy] : absy;
+    }
+
+    public IEnumerable<Absy> Keys
+    {
+      get { return absyMap.Keys; }
+    }
+
+    public bool ContainsKey(Absy key)
+    {
+      return absyMap.ContainsKey(key);
     }
   }
 }

@@ -11,7 +11,7 @@ namespace Microsoft.Boogie
     public static List<Declaration> TransformImplementations(
       CivlTypeChecker civlTypeChecker,
       int layerNum,
-      Dictionary<Absy, Absy> absyMap,
+      AbsyMap absyMap,
       HashSet<Procedure> yieldingProcs,
       Dictionary<CallCmd, Block> refinementBlocks)
     {
@@ -40,7 +40,7 @@ namespace Microsoft.Boogie
 
     private CivlTypeChecker civlTypeChecker;
     private int layerNum;
-    private Dictionary<Absy, Absy> absyMap;
+    private AbsyMap absyMap;
 
     private Dictionary<string, Procedure> parallelCallAggregators;
     private List<Declaration> noninterferenceCheckerDecls;
@@ -57,7 +57,7 @@ namespace Microsoft.Boogie
       CivlTypeChecker civlTypeChecker,
       LinearPermissionInstrumentation linearPermissionInstrumentation,
       int layerNum,
-      Dictionary<Absy, Absy> absyMap,
+      AbsyMap absyMap,
       Dictionary<CallCmd, Block> refinementBlocks)
     {
       this.civlTypeChecker = civlTypeChecker;
@@ -106,7 +106,7 @@ namespace Microsoft.Boogie
 
     private YieldingProc GetYieldingProc(Implementation impl)
     {
-      var originalImpl = (Implementation) absyMap[impl];
+      var originalImpl = absyMap.Original(impl);
       return civlTypeChecker.procToYieldingProc[originalImpl.Proc];
     }
 
@@ -177,20 +177,24 @@ namespace Microsoft.Boogie
         {
           noninterferenceCheckerDecls.AddRange(
             NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
-              layerNum, new Dictionary<Absy, Absy>(), proc, new List<Variable>()));
+              layerNum, absyMap, proc, new List<Variable>()));
         }
       }
 
       foreach (var impl in absyMap.Keys.OfType<Implementation>())
       {
-        var yieldingProc = GetYieldingProc(impl);
         noninterferenceCheckerDecls.AddRange(
-          NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, layerNum,
-            absyMap, impl, impl.LocVars));
+          NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
+          layerNum, absyMap, impl, impl.LocVars));
+      }
+
+      foreach (var proc in absyMap.Keys.OfType<Procedure>())
+      {
+        var yieldingProc = civlTypeChecker.procToYieldingProc[absyMap.Original(proc)];
         if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum) continue;
         noninterferenceCheckerDecls.AddRange(
           NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
-            layerNum, new Dictionary<Absy, Absy>(), impl.Proc, new List<Variable>()));
+            layerNum, absyMap, proc, new List<Variable>()));
       }
     }
 
@@ -345,7 +349,7 @@ namespace Microsoft.Boogie
         refinementInstrumentation = new ActionRefinementInstrumentation(
           civlTypeChecker,
           impl,
-          (Implementation) absyMap[impl],
+          absyMap.Original(impl),
           globalSnapshotInstrumentation.OldGlobalMap);
       }
       else
@@ -374,7 +378,7 @@ namespace Microsoft.Boogie
     private bool IsYieldingLoopHeader(Block b)
     {
       if (!absyMap.ContainsKey(b)) return false;
-      var originalBlock = (Block) absyMap[b];
+      var originalBlock = absyMap.Original(b);
       if (!civlTypeChecker.yieldingLoops.ContainsKey(originalBlock)) return false;
       return civlTypeChecker.yieldingLoops[originalBlock].layers.Contains(layerNum);
     }
@@ -448,7 +452,7 @@ namespace Microsoft.Boogie
         newCmds.AddRange(firstCmds);
         newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
         newCmds.AddRange(
-          InlineYieldLoopInvariants(civlTypeChecker.yieldingLoops[(Block) absyMap[header]].yieldInvariants));
+          InlineYieldLoopInvariants(civlTypeChecker.yieldingLoops[absyMap.Original(header)].yieldInvariants));
         newCmds.AddRange(YieldingLoopDummyAssignment());
         newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
         newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
@@ -696,8 +700,7 @@ namespace Microsoft.Boogie
       foreach (CallCmd callCmd in parCallCmd.CallCmds)
       {
         // Use original procedure names to make aggregated name more readable
-        var name = absyMap.ContainsKey(callCmd.Proc) ? ((Procedure)absyMap[callCmd.Proc]).Name : callCmd.Proc.Name;
-        procName = procName + "_" + name;
+        procName = procName + "_" + absyMap.OriginalOrInput(callCmd.Proc).Name;
         ins.AddRange(callCmd.Ins);
         outs.AddRange(callCmd.Outs);
       }
