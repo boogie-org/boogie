@@ -17,6 +17,9 @@ function {:inline} {:linear "perm"} ABCollector(ab: AB) : [int]bool
 function {:inline} {:linear "perm"} ABSetCollector(abs: [AB]bool) : [int]bool
 { (lambda i:int :: (exists ab:AB :: abs[ab] && (i == x#AB(ab) || i == -x#AB(ab)))) }
 
+// This axiom is needed to prove linearity preservation for TRANSFER_AB
+axiom (forall abs:[AB]bool, x:int :: {abs[AB(x) := false]} ABSetCollector(abs[AB(x) := false]) == ABSetCollector(abs)[x := false][-x := false]);
+
 function {:inline} {:linear "perm"} ACollector(a: A) : [int]bool
 { MapConstBool(false)[x#A(a) := true] }
 function {:inline} {:linear "perm"} ASetCollector(as: [A]bool) : [int]bool
@@ -80,7 +83,7 @@ requires {:layer 1} all_abs == (lambda ab:AB :: true);
   i := 1;
   while (*)
   invariant {:yields}{:layer 1}{:yield_loop "Inv"} true;
-  invariant {:layer 1} (forall x:int :: x >= i ==> abs[AB(x)]);
+  invariant {:layer 1} i >= 1 && (forall x:int :: x >= i ==> abs[AB(x)]);
   {
     call ab, abs := transfer_ab(i, abs);
     async call incdec(ab);
@@ -92,10 +95,12 @@ procedure {:both}{:layer 1} TRANSFER_AB (x:int, {:linear_in "perm"} abs:[AB]bool
 {
   assert abs[AB(x)];
   abs' := abs[AB(x) := false];
+  ab := AB(x);
 }
 
 procedure {:both}{:layer 1} SPLIT_AB ({:linear_in "perm"} ab:AB) returns ({:linear "perm"} a:A, {:linear "perm"} b:B)
 {
+  assert x#AB(ab) != 0;
   a := A(x#AB(ab));
   b := B(x#AB(ab));
 }
@@ -103,6 +108,7 @@ procedure {:both}{:layer 1} SPLIT_AB ({:linear_in "perm"} ab:AB) returns ({:line
 procedure {:yields}{:layer 1}
 {:yield_preserves "Inv"}
 incdec({:linear_in "perm"} ab:AB)
+requires {:layer 1} x#AB(ab) != 0;
 {
   var {:linear "perm"} a:A;
   var {:linear "perm"} b:B;
