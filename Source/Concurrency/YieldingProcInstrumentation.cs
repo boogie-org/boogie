@@ -695,11 +695,13 @@ namespace Microsoft.Boogie
       string procName = "ParallelCall";
       foreach (CallCmd callCmd in parCallCmd.CallCmds)
       {
-        procName = procName + "_" + callCmd.Proc.Name;
+        // Use original procedure names to make aggregated name more readable
+        var name = absyMap.ContainsKey(callCmd.Proc) ? ((Procedure)absyMap[callCmd.Proc]).Name : callCmd.Proc.Name;
+        procName = procName + "_" + name;
         ins.AddRange(callCmd.Ins);
         outs.AddRange(callCmd.Outs);
       }
-      procName = civlTypeChecker.AddNamePrefix(procName);
+      procName = civlTypeChecker.AddNamePrefix(procName) + "_" + layerNum;
 
       if (!parallelCallAggregators.ContainsKey(procName))
       {
