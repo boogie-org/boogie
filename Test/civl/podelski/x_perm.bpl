@@ -15,20 +15,17 @@ function {:builtin "MapConst"} MapConstBool(bool): [int]bool;
 function {:inline} {:linear "perm"} ABCollector(ab: AB) : [int]bool
 { MapConstBool(false)[x#AB(ab) := true][-x#AB(ab) := true] }
 function {:inline} {:linear "perm"} ABSetCollector(abs: [AB]bool) : [int]bool
-{ (lambda i:int :: (exists ab:AB :: abs[ab] && (i == x#AB(ab) || i == -x#AB(ab)))) }
-
-// This axiom is needed to prove linearity preservation for TRANSFER_AB
-axiom (forall abs:[AB]bool, x:int :: {abs[AB(x) := false]} ABSetCollector(abs[AB(x) := false]) == ABSetCollector(abs)[x := false][-x := false]);
+{ (lambda i:int :: abs[AB(i)] || abs[AB(-i)]) }
 
 function {:inline} {:linear "perm"} ACollector(a: A) : [int]bool
 { MapConstBool(false)[x#A(a) := true] }
 function {:inline} {:linear "perm"} ASetCollector(as: [A]bool) : [int]bool
-{ (lambda i:int :: (exists a:A :: as[a] && (i == x#A(a)))) }
+{ (lambda i:int :: as[A(i)]) }
 
 function {:inline} {:linear "perm"} BCollector(b: B) : [int]bool
 { MapConstBool(false)[-x#B(b) := true] }
 function {:inline} {:linear "perm"} BSetCollector(bs: [B]bool) : [int]bool
-{ (lambda i:int :: (exists b:B :: bs[b] && (i == -x#B(b)))) }
+{ (lambda i:int :: bs[B(-i)]) }
 
 function {:inline} bToA (b:B) : A { A(x#B(b)) }
 
@@ -74,7 +71,7 @@ ensures cardAs(As) > cardBs(Bs);
 procedure {:yields}{:layer 1}
 {:yield_requires "Inv"}
 main ({:linear_in "perm"} all_abs: [AB]bool)
-requires {:layer 1} all_abs == (lambda ab:AB :: true);
+requires {:layer 1} all_abs == (lambda v:AB :: 1 <= x#AB(v));
 {
   var i:int;
   var {:linear "perm"} abs: [AB]bool;
@@ -83,7 +80,8 @@ requires {:layer 1} all_abs == (lambda ab:AB :: true);
   i := 1;
   while (*)
   invariant {:yields}{:layer 1}{:yield_loop "Inv"} true;
-  invariant {:layer 1} i >= 1 && (forall x:int :: x >= i ==> abs[AB(x)]);
+  invariant {:layer 1} 1 <= i;
+  invariant {:layer 1} abs == (lambda v:AB :: i <= x#AB(v));
   {
     call ab, abs := transfer_ab(i, abs);
     async call incdec(ab);
@@ -93,6 +91,7 @@ requires {:layer 1} all_abs == (lambda ab:AB :: true);
 
 procedure {:both}{:layer 1} TRANSFER_AB (x:int, {:linear_in "perm"} abs:[AB]bool) returns ({:linear "perm"} ab:AB, {:linear "perm"} abs':[AB]bool)
 {
+  assert !abs[AB(-x)];
   assert abs[AB(x)];
   abs' := abs[AB(x) := false];
   ab := AB(x);
