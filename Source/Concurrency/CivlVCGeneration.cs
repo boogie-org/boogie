@@ -21,16 +21,16 @@ namespace Microsoft.Boogie
       List<Declaration> decls = new List<Declaration>();
       if (!CommandLineOptions.Clo.TrustMoverTypes)
       {
-        MoverCheck.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
+        MoverCheck.AddCheckers(civlTypeChecker, decls);
       }
 
       // Desugaring of yielding procedures
-      YieldingProcChecker.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
+      YieldingProcChecker.AddCheckers(civlTypeChecker, decls);
 
       // Linear type checks
-      LinearTypeChecker.AddCheckers(linearTypeChecker, civlTypeChecker, decls);
+      LinearTypeChecker.AddCheckers(civlTypeChecker, decls);
 
-      InductiveSequentializationChecker.AddChecks(civlTypeChecker);
+      InductiveSequentializationChecker.AddCheckers(civlTypeChecker);
       PendingAsyncChecker.AddCheckers(civlTypeChecker);
 
       foreach (AtomicAction action in civlTypeChecker.procToAtomicAction.Values.Union(civlTypeChecker

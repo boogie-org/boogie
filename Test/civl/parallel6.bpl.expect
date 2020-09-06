@@ -6,6 +6,6 @@ Execution trace:
     parallel6.bpl(10,5): anon0_0
     parallel6.bpl(28,7): inline$atomic_incr$2$anon0
     parallel6.bpl(28,7): inline$atomic_incr$3$anon0
-    (0,0): ReturnChecker
+    (0,0): Civl_ReturnChecker
 
 Boogie program verifier finished with 7 verified, 1 error

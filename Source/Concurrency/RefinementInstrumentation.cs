@@ -50,6 +50,7 @@ namespace Microsoft.Boogie
 
   class ActionRefinementInstrumentation : RefinementInstrumentation
   {
+    private CivlTypeChecker civlTypeChecker;
     private Dictionary<Variable, Variable> oldGlobalMap;
     private Dictionary<Variable, Variable> oldOutputMap;
     private List<Variable> newLocalVars;
@@ -66,6 +67,7 @@ namespace Microsoft.Boogie
       Implementation originalImpl,
       Dictionary<Variable, Variable> oldGlobalMap)
     {
+      this.civlTypeChecker = civlTypeChecker;
       this.oldGlobalMap = new Dictionary<Variable, Variable>();
       ActionProc actionProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc;
       int layerNum = actionProc.upperLayer;
@@ -79,9 +81,9 @@ namespace Microsoft.Boogie
       }
 
       this.newLocalVars = new List<Variable>();
-      pc = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "civl_pc", Type.Bool));
+      pc = civlTypeChecker.LocalVariable("pc", Type.Bool);
       newLocalVars.Add(pc);
-      ok = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "civl_ok", Type.Bool));
+      ok = civlTypeChecker.LocalVariable("ok", Type.Bool);
       newLocalVars.Add(ok);
 
       this.transitionRelationCache = new Dictionary<AtomicAction, Expr>();
@@ -266,7 +268,7 @@ namespace Microsoft.Boogie
       if (!transitionRelationCache.ContainsKey(atomicAction))
       {
         transitionRelationCache[atomicAction] =
-          TransitionRelationComputation.Refinement(atomicAction, new HashSet<Variable>(this.oldGlobalMap.Keys));
+          TransitionRelationComputation.Refinement(civlTypeChecker, atomicAction, new HashSet<Variable>(this.oldGlobalMap.Keys));
       }
 
       return transitionRelationCache[atomicAction];
@@ -284,8 +286,7 @@ namespace Microsoft.Boogie
 
     private LocalVariable Old(Variable v)
     {
-      return new LocalVariable(Token.NoToken,
-        new TypedIdent(Token.NoToken, $"civl_old_{v.Name}", v.TypedIdent.Type));
+      return civlTypeChecker.LocalVariable($"old_{v.Name}", v.TypedIdent.Type);
     }
   }
 }

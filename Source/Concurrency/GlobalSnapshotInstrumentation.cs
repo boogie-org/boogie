@@ -4,11 +4,13 @@ namespace Microsoft.Boogie
 {
   class GlobalSnapshotInstrumentation
   {
+    private CivlTypeChecker civlTypeChecker;
     private Dictionary<Variable, Variable> oldGlobalMap;
     private List<Variable> newLocalVars;
 
     public GlobalSnapshotInstrumentation(CivlTypeChecker civlTypeChecker)
     {
+      this.civlTypeChecker = civlTypeChecker;
       newLocalVars = new List<Variable>();
       oldGlobalMap = new Dictionary<Variable, Variable>();
       foreach (Variable g in civlTypeChecker.GlobalVariables)
@@ -63,8 +65,7 @@ namespace Microsoft.Boogie
 
     private LocalVariable OldGlobalLocal(Variable v)
     {
-      return new LocalVariable(Token.NoToken,
-        new TypedIdent(Token.NoToken, $"civl_global_old_{v.Name}", v.TypedIdent.Type));
+      return civlTypeChecker.LocalVariable($"global_old_{v.Name}", v.TypedIdent.Type);
     }
   }
 }

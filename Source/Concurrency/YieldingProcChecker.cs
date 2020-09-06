@@ -4,10 +4,9 @@ namespace Microsoft.Boogie
 {
   public class YieldingProcChecker
   {
-    public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker,
-      List<Declaration> decls)
+    public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
-      Program program = linearTypeChecker.program;
+      Program program = civlTypeChecker.program;
 
       // Generate the refinement checks for every layer
       foreach (int layerNum in civlTypeChecker.allRefinementLayers)
@@ -15,7 +14,7 @@ namespace Microsoft.Boogie
         if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum ||
             layerNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
 
-        YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, linearTypeChecker, layerNum);
+        YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum);
 
         foreach (var procToYieldingProc in civlTypeChecker.procToYieldingProc)
         {

@@ -7,6 +7,7 @@ namespace Microsoft.Boogie
 {
   public class TransitionRelationComputation
   {
+    private CivlTypeChecker civlTypeChecker;
     private readonly Implementation first, second;
     private readonly Dictionary<Variable, Function> triggers;
     private readonly HashSet<Variable> frame;
@@ -34,11 +35,13 @@ namespace Microsoft.Boogie
     private IEnumerable<Variable> FrameWithWitnesses => frame.Intersect(globalVarToWitnesses.Keys);
 
     private TransitionRelationComputation(
+      CivlTypeChecker civlTypeChecker,
       Implementation first, Implementation second,
       IEnumerable<Variable> frame, IEnumerable<CommutativityWitness> witnesses, Dictionary<Variable, Function> triggers,
       bool ignorePostState,
       string messagePrefix)
     {
+      this.civlTypeChecker = civlTypeChecker;
       this.first = first;
       this.second = second;
       this.triggers = triggers;
@@ -76,12 +79,13 @@ namespace Microsoft.Boogie
     }
 
     private static Expr ComputeTransitionRelation(
+      CivlTypeChecker civlTypeChecker,
       Implementation first, Implementation second,
       IEnumerable<Variable> frame, Dictionary<Variable, Function> triggers, IEnumerable<CommutativityWitness> witnesses,
       bool ignorePostState,
       string messagePrefix)
     {
-      var trc = new TransitionRelationComputation(first, second, frame, witnesses, triggers, ignorePostState,
+      var trc = new TransitionRelationComputation(civlTypeChecker, first, second, frame, witnesses, triggers, ignorePostState,
         messagePrefix);
       trc.EnumeratePaths();
       var transitionRelation = Expr.Or(trc.pathTranslations);
@@ -90,27 +94,32 @@ namespace Microsoft.Boogie
       return transitionRelation;
     }
 
-    public static Expr Commutativity(AtomicAction first, AtomicAction second,
+    public static Expr Commutativity(
+      CivlTypeChecker civlTypeChecker, 
+      AtomicAction first, AtomicAction second,
       HashSet<Variable> frame, IEnumerable<CommutativityWitness> witnesses)
     {
       var triggers = first.triggerFunctions.Union(second.triggerFunctions).ToDictionary(kv => kv.Key, kv => kv.Value);
       return ComputeTransitionRelation(
+        civlTypeChecker,
         first.secondImpl, second.firstImpl,
         frame, triggers, witnesses, false,
         string.Format("Transition relation of {0} ∘ {1}", first.proc.Name, second.proc.Name));
     }
 
-    public static Expr Refinement(AtomicAction action, HashSet<Variable> frame)
+    public static Expr Refinement(CivlTypeChecker civlTypeChecker, AtomicAction action, HashSet<Variable> frame)
     {
       return ComputeTransitionRelation(
+        civlTypeChecker,
         action.impl, null,
         frame, null, null, false,
         string.Format("Transition relation of {0}", action.proc.Name));
     }
 
-    public static Expr Nonblocking(Action action, HashSet<Variable> frame)
+    public static Expr Nonblocking(CivlTypeChecker civlTypeChecker, Action action, HashSet<Variable> frame)
     {
       return ComputeTransitionRelation(
+        civlTypeChecker,
         action.impl, null,
         frame, null, null, true,
         string.Format("Nonblocking expression of {0}", action.proc.Name));
@@ -237,7 +246,7 @@ namespace Microsoft.Boogie
       private void MakeNewCopy(Variable v)
       {
         int id = varCopies[v].Count;
-        var copyVar = VarHelper.LocalVariable(string.Format(copierFormat, v.Name, id), v.TypedIdent.Type);
+        var copyVar = trc.civlTypeChecker.LocalVariable(string.Format(copierFormat, v.Name, id), v.TypedIdent.Type);
         varCopies[v].Add(copyVar);
         copyToOriginalVar[copyVar] = v;
       }

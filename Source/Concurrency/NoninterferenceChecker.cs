@@ -9,12 +9,12 @@ namespace Microsoft.Boogie
   {
     public static List<Declaration> CreateNoninterferenceCheckers(
       CivlTypeChecker civlTypeChecker,
-      LinearTypeChecker linearTypeChecker,
       int layerNum,
-      Dictionary<Absy, Absy> absyMap,
+      AbsyMap absyMap,
       DeclWithFormals decl,
       List<Variable> declLocalVariables)
     {
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       Dictionary<string, Variable> domainNameToHoleVar = new Dictionary<string, Variable>();
       Dictionary<Variable, Variable> localVarMap = new Dictionary<Variable, Variable>();
       Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
@@ -39,19 +39,21 @@ namespace Microsoft.Boogie
       Dictionary<Variable, Expr> assumeMap = new Dictionary<Variable, Expr>(map);
       foreach (Variable g in civlTypeChecker.GlobalVariables)
       {
-        var copy = OldLocalLocal(g);
+        var copy = OldGlobalLocal(civlTypeChecker, g);
         locals.Add(copy);
         oldLocalMap[g] = Expr.Ident(copy);
-        Formal f = OldGlobalFormal(g);
+        Formal f = SnapshotGlobalFormal(civlTypeChecker, g);
         inputs.Add(f);
         assumeMap[g] = Expr.Ident(f);
       }
 
-      var linearPermissionInstrumentation = new LinearPermissionInstrumentation(civlTypeChecker, linearTypeChecker,
+      var linearPermissionInstrumentation = new LinearPermissionInstrumentation(civlTypeChecker,
         layerNum, absyMap, domainNameToHoleVar, localVarMap);
       List<YieldInfo> yieldInfos = null;
+      string noninterferenceCheckerName = null;
       if (decl is Implementation impl)
       {
+        noninterferenceCheckerName = $"impl_{absyMap.Original(impl).Name}_{layerNum}";
         yieldInfos = CollectYields(civlTypeChecker, absyMap, layerNum, impl).Select(kv =>
           new YieldInfo(linearPermissionInstrumentation.DisjointnessAssumeCmds(kv.Key, false), kv.Value)).ToList();
       }
@@ -60,6 +62,7 @@ namespace Microsoft.Boogie
         yieldInfos = new List<YieldInfo>();
         if (civlTypeChecker.procToYieldInvariant.ContainsKey(proc))
         {
+          noninterferenceCheckerName = $"yield_{proc.Name}";
           if (proc.Requires.Count > 0)
           {
             var disjointnessCmds = linearPermissionInstrumentation.ProcDisjointnessAssumeCmds(proc, true);
@@ -72,6 +75,7 @@ namespace Microsoft.Boogie
         }
         else
         {
+          noninterferenceCheckerName = $"proc_{absyMap.Original(proc).Name}_{layerNum}";
           if (proc.Requires.Count > 0)
           {
             var entryDisjointnessCmds =
@@ -151,9 +155,7 @@ namespace Microsoft.Boogie
         new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
 
       // Create the yield checker procedure
-      var noninterferenceCheckerName = decl is Procedure
-        ? $"NoninterferenceChecker_proc_{decl.Name}"
-        : $"NoninterferenceChecker_impl_{decl.Name}";
+      noninterferenceCheckerName = civlTypeChecker.AddNamePrefix($"NoninterferenceChecker_{noninterferenceCheckerName}");
       var noninterferenceCheckerProc = new Procedure(Token.NoToken, noninterferenceCheckerName, decl.TypeParameters,
         inputs,
         new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
@@ -169,14 +171,14 @@ namespace Microsoft.Boogie
     }
 
     private static Dictionary<Absy, List<PredicateCmd>> CollectYields(CivlTypeChecker civlTypeChecker,
-      Dictionary<Absy, Absy> absyMap, int layerNum, Implementation impl)
+      AbsyMap absyMap, int layerNum, Implementation impl)
     {
       var allYieldPredicates = new Dictionary<Absy, List<PredicateCmd>>();
       List<PredicateCmd> yieldPredicates = new List<PredicateCmd>();
       foreach (Block b in impl.Blocks)
       {
         Absy absy = null;
-        var originalBlock = (Block) absyMap[b];
+        var originalBlock = absyMap.Original(b);
         if (civlTypeChecker.yieldingLoops.ContainsKey(originalBlock) &&
             civlTypeChecker.yieldingLoops[originalBlock].layers.Contains(layerNum))
         {
@@ -217,19 +219,17 @@ namespace Microsoft.Boogie
 
     private static LocalVariable CopyLocal(Variable v)
     {
-      return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type));
+      return VarHelper.LocalVariable(v.Name, v.TypedIdent.Type);
     }
 
-    private static Formal OldGlobalFormal(Variable v)
+    private static Formal SnapshotGlobalFormal(CivlTypeChecker civlTypeChecker, Variable v)
     {
-      return new Formal(Token.NoToken,
-        new TypedIdent(Token.NoToken, $"civl_global_old_{v.Name}", v.TypedIdent.Type), true);
+      return civlTypeChecker.Formal($"snapshot_{v.Name}", v.TypedIdent.Type, true);
     }
 
-    private static LocalVariable OldLocalLocal(Variable v)
+    private static LocalVariable OldGlobalLocal(CivlTypeChecker civlTypeChecker, Variable v)
     {
-      return new LocalVariable(Token.NoToken,
-        new TypedIdent(Token.NoToken, $"civl_local_old_{v.Name}", v.TypedIdent.Type));
+      return civlTypeChecker.LocalVariable($"old_{v.Name}", v.TypedIdent.Type);
     }
   }
 

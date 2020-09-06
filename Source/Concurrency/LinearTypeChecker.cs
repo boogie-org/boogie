@@ -403,14 +403,12 @@ namespace Microsoft.Boogie
 
     public Formal LinearDomainInFormal(string domainName)
     {
-      return new Formal(Token.NoToken,
-        new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", linearDomains[domainName].mapTypeBool), true);
+      return civlTypeChecker.Formal("linear_" + domainName + "_in", linearDomains[domainName].mapTypeBool, true);
     }
 
     public LocalVariable LinearDomainAvailableLocal(string domainName)
     {
-      return new LocalVariable(Token.NoToken,
-        new TypedIdent(Token.NoToken, "linear_" + domainName + "_available", linearDomains[domainName].mapTypeBool));
+      return civlTypeChecker.LocalVariable("linear_" + domainName + "_available", linearDomains[domainName].mapTypeBool);
     }
 
     public void TypeCheck()
@@ -1070,18 +1068,18 @@ namespace Microsoft.Boogie
 
     #region Linearity Invariant Checker
 
-    public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker,
-      List<Declaration> decls)
+    public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
       foreach (var action in Enumerable.Concat<Action>(civlTypeChecker.procToAtomicAction.Values,
         civlTypeChecker.procToIntroductionAction.Values))
       {
-        AddChecker(action, linearTypeChecker, decls);
+        AddChecker(civlTypeChecker, action, decls);
       }
     }
 
-    private static void AddChecker(Action action, LinearTypeChecker linearTypeChecker, List<Declaration> decls)
+    private static void AddChecker(CivlTypeChecker civlTypeChecker, Action action, List<Declaration> decls)
     {
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       // Note: The implementation should be used as the variables in the
       //       gate are bound to implementation and not to the procedure.
       Implementation impl = action.impl;
@@ -1135,13 +1133,13 @@ namespace Microsoft.Boogie
       {
         new Block(
           Token.NoToken,
-          "entry",
+          "init",
           new List<Cmd> {CmdHelper.CallCmd(action.proc, inputs, outputs)},
           CmdHelper.ReturnCmd)
       };
 
       // Create the whole check procedure
-      string checkerName = $"LinearityChecker_{action.proc.Name}";
+      string checkerName = civlTypeChecker.AddNamePrefix($"LinearityChecker_{action.proc.Name}");
       Procedure linCheckerProc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(),
         inputs, outputs, requires, action.proc.Modifies, ensures);
       Implementation linCheckImpl = new Implementation(Token.NoToken, checkerName,

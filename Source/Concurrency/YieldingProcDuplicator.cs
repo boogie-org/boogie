@@ -14,27 +14,24 @@ namespace Microsoft.Boogie
      * YieldProcInstrumentation.
      */
     private CivlTypeChecker civlTypeChecker;
-    private LinearTypeChecker linearTypeChecker;
     private int layerNum;
 
     private Dictionary<Procedure, Procedure> procToDuplicate; /* Original -> Duplicate */
-    private Dictionary<Absy, Absy> absyMap; /* Duplicate -> Original */
+    private AbsyMap absyMap; /* Duplicate -> Original */
     private HashSet<Procedure> yieldingProcs;
     private Dictionary<string, Procedure> asyncCallPreconditionCheckers;
 
     private Dictionary<CallCmd, CallCmd> refinementCallCmds; // rewritten -> original
     private Dictionary<CallCmd, Block> refinementBlocks; // rewritten -> block
 
-    public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, LinearTypeChecker linearTypeChecker, int layerNum)
+    public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, int layerNum)
     {
       this.civlTypeChecker = civlTypeChecker;
-      this.linearTypeChecker = linearTypeChecker;
       this.layerNum = layerNum;
       this.procToDuplicate = new Dictionary<Procedure, Procedure>();
-      this.absyMap = new Dictionary<Absy, Absy>();
+      this.absyMap = new AbsyMap();
       this.yieldingProcs = new HashSet<Procedure>();
       this.asyncCallPreconditionCheckers = new Dictionary<string, Procedure>();
-
       this.refinementBlocks = new Dictionary<CallCmd, Block>();
     }
 
@@ -49,7 +46,7 @@ namespace Microsoft.Boogie
         Debug.Assert(layerNum <= yieldingProc.upperLayer);
 
         Procedure proc = (Procedure) node.Clone();
-        proc.Name = $"{node.Name}_{layerNum}";
+        proc.Name = civlTypeChecker.AddNamePrefix($"{node.Name}_{layerNum}");
         proc.InParams = this.VisitVariableSeq(node.InParams);
         proc.OutParams = this.VisitVariableSeq(node.OutParams);
         proc.Requires = this.VisitRequiresSeq(node.Requires);
@@ -122,7 +119,7 @@ namespace Microsoft.Boogie
       get
       {
         if (returnedPAs == null)
-          returnedPAs = VarHelper.LocalVariable("returnedPAs", civlTypeChecker.pendingAsyncMultisetType);
+          returnedPAs = civlTypeChecker.LocalVariable("returnedPAs", civlTypeChecker.pendingAsyncMultisetType);
         return returnedPAs;
       }
     }
@@ -133,7 +130,7 @@ namespace Microsoft.Boogie
       {
         if (!civlTypeChecker.implToPendingAsyncCollector.TryGetValue(enclosingImpl, out var collectedPAs))
         {
-          collectedPAs = VarHelper.LocalVariable("collectedPAs", civlTypeChecker.pendingAsyncMultisetType);
+          collectedPAs = civlTypeChecker.LocalVariable("collectedPAs", civlTypeChecker.pendingAsyncMultisetType);
           civlTypeChecker.implToPendingAsyncCollector[enclosingImpl] = collectedPAs;
         }
 
@@ -161,7 +158,7 @@ namespace Microsoft.Boogie
         var actionProc = (ActionProc) civlTypeChecker.procToYieldingProc[originalCallCmd.Proc];
         newCmdSeq = new List<Cmd>();
         AddActionCall(originalCallCmd, actionProc);
-        var block = new Block(Token.NoToken, $"call_refinement_{refinementBlocks.Count}", newCmdSeq,
+        var block = new Block(Token.NoToken, civlTypeChecker.AddNamePrefix($"call_refinement_{refinementBlocks.Count}"), newCmdSeq,
           new GotoCmd(Token.NoToken, new List<string>(), new List<Block>()));
         refinementBlocks.Add(rewrittenCallCmd, block);
         newCmdSeq = null;
@@ -175,7 +172,7 @@ namespace Microsoft.Boogie
       {
         // TODO: This was copied from InductiveSequentialization property NoPendingAsyncs.
         // Unify pending async stuff in something like PendingAsyncInstrumentation?
-        var paBound = VarHelper.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
+        var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
         var pa = Expr.Ident(paBound);
         var expr = Expr.Eq(Expr.Select(Expr.Ident(CollectedPAs), pa), Expr.Literal(0));
         var forallExpr = new ForallExpr(Token.NoToken, new List<Variable> {paBound}, expr);
@@ -508,7 +505,7 @@ namespace Microsoft.Boogie
       {
         // TODO: As above, this was copied from InductiveSequentialization property NoPendingAsyncs.
         // Unify pending async stuff in something like PendingAsyncInstrumentation?
-        var paBound = VarHelper.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
+        var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
         var pa = Expr.Ident(paBound);
         var expr = Expr.Eq(Expr.Select(Expr.Ident(ReturnedPAs), pa), Expr.Literal(0));
         var forallExpr = new ForallExpr(Token.NoToken, new List<Variable> {paBound}, expr);
@@ -540,7 +537,7 @@ namespace Microsoft.Boogie
       if (!asyncCallPreconditionCheckers.ContainsKey(newCall.Proc.Name))
       {
         asyncCallPreconditionCheckers[newCall.Proc.Name] = new Procedure(Token.NoToken,
-          $"AsyncCall_{newCall.Proc.Name}_{layerNum}",
+          civlTypeChecker.AddNamePrefix($"AsyncCall_{newCall.Proc.Name}_{layerNum}"),
           newCall.Proc.TypeParameters, newCall.Proc.InParams, newCall.Proc.OutParams,
           procToDuplicate[newCall.Proc].Requires, new List<IdentifierExpr>(), new List<Ensures>());
       }
@@ -599,12 +596,47 @@ namespace Microsoft.Boogie
       decls.AddRange(asyncCallPreconditionCheckers.Values);
       decls.AddRange(YieldingProcInstrumentation.TransformImplementations(
         civlTypeChecker,
-        linearTypeChecker,
         layerNum,
         absyMap,
         yieldingProcs,
         refinementBlocks));
       return decls;
+    }
+  }
+
+  public class AbsyMap
+  {
+    private Dictionary<Absy, Absy> absyMap;
+
+    public AbsyMap()
+    {
+      this.absyMap = new Dictionary<Absy, Absy>();
+    }
+
+    public Absy this[Absy absy]
+    {
+      get { return this.absyMap[absy]; }
+      set { this.absyMap[absy] = value; }
+    }
+
+    public T Original<T>(T absy) where T : Absy
+    {
+      return (T)absyMap[absy];
+    }
+
+    public T OriginalOrInput<T>(T absy) where T : Absy
+    {
+      return absyMap.ContainsKey(absy) ? (T)absyMap[absy] : absy;
+    }
+
+    public IEnumerable<Absy> Keys
+    {
+      get { return absyMap.Keys; }
+    }
+
+    public bool ContainsKey(Absy key)
+    {
+      return absyMap.ContainsKey(key);
     }
   }
 }

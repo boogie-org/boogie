@@ -10,17 +10,15 @@ namespace Microsoft.Boogie
   {
     public static List<Declaration> TransformImplementations(
       CivlTypeChecker civlTypeChecker,
-      LinearTypeChecker linearTypeChecker,
       int layerNum,
-      Dictionary<Absy, Absy> absyMap,
+      AbsyMap absyMap,
       HashSet<Procedure> yieldingProcs,
       Dictionary<CallCmd, Block> refinementBlocks)
     {
       var linearPermissionInstrumentation =
-        new LinearPermissionInstrumentation(civlTypeChecker, linearTypeChecker, layerNum, absyMap);
+        new LinearPermissionInstrumentation(civlTypeChecker, layerNum, absyMap);
       var yieldingProcInstrumentation = new YieldingProcInstrumentation(
         civlTypeChecker,
-        linearTypeChecker,
         linearPermissionInstrumentation,
         layerNum,
         absyMap,
@@ -41,9 +39,8 @@ namespace Microsoft.Boogie
     }
 
     private CivlTypeChecker civlTypeChecker;
-    private LinearTypeChecker linearTypeChecker;
     private int layerNum;
-    private Dictionary<Absy, Absy> absyMap;
+    private AbsyMap absyMap;
 
     private Dictionary<string, Procedure> parallelCallAggregators;
     private List<Declaration> noninterferenceCheckerDecls;
@@ -58,14 +55,12 @@ namespace Microsoft.Boogie
 
     private YieldingProcInstrumentation(
       CivlTypeChecker civlTypeChecker,
-      LinearTypeChecker linearTypeChecker,
       LinearPermissionInstrumentation linearPermissionInstrumentation,
       int layerNum,
-      Dictionary<Absy, Absy> absyMap,
+      AbsyMap absyMap,
       Dictionary<CallCmd, Block> refinementBlocks)
     {
       this.civlTypeChecker = civlTypeChecker;
-      this.linearTypeChecker = linearTypeChecker;
       this.layerNum = layerNum;
       this.absyMap = absyMap;
       this.linearPermissionInstrumentation = linearPermissionInstrumentation;
@@ -73,6 +68,7 @@ namespace Microsoft.Boogie
       parallelCallAggregators = new Dictionary<string, Procedure>();
       noninterferenceCheckerDecls = new List<Declaration>();
 
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       List<Variable> inputs = new List<Variable>();
       foreach (string domainName in linearTypeChecker.linearDomains.Keys)
       {
@@ -85,7 +81,7 @@ namespace Microsoft.Boogie
       }
 
       wrapperNoninterferenceCheckerProc = new Procedure(Token.NoToken,
-        $"Wrapper_NoninterferenceChecker_{layerNum}", new List<TypeVariable>(),
+        civlTypeChecker.AddNamePrefix($"Wrapper_NoninterferenceChecker_{layerNum}"), new List<TypeVariable>(),
         inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
       CivlUtil.AddInlineAttribute(wrapperNoninterferenceCheckerProc);
 
@@ -110,12 +106,13 @@ namespace Microsoft.Boogie
 
     private YieldingProc GetYieldingProc(Implementation impl)
     {
-      var originalImpl = (Implementation) absyMap[impl];
+      var originalImpl = absyMap.Original(impl);
       return civlTypeChecker.procToYieldingProc[originalImpl.Proc];
     }
 
     private Implementation WrapperNoninterferenceCheckerImpl()
     {
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       List<Variable> inputs = new List<Variable>();
       foreach (string domainName in linearTypeChecker.linearDomains.Keys)
       {
@@ -167,8 +164,7 @@ namespace Microsoft.Boogie
 
     private Formal OldGlobalFormal(Variable v)
     {
-      return new Formal(Token.NoToken,
-        new TypedIdent(Token.NoToken, $"civl_global_old_{v.Name}", v.TypedIdent.Type), true);
+      return civlTypeChecker.Formal($"global_old_{v.Name}", v.TypedIdent.Type, true);
     }
 
     private void AddNoninterferenceCheckers()
@@ -180,21 +176,25 @@ namespace Microsoft.Boogie
         if (layerNum == yieldInvariant.LayerNum)
         {
           noninterferenceCheckerDecls.AddRange(
-            NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker,
-              layerNum, new Dictionary<Absy, Absy>(), proc, new List<Variable>()));
+            NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
+              layerNum, absyMap, proc, new List<Variable>()));
         }
       }
 
       foreach (var impl in absyMap.Keys.OfType<Implementation>())
       {
-        var yieldingProc = GetYieldingProc(impl);
         noninterferenceCheckerDecls.AddRange(
-          NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker, layerNum,
-            absyMap, impl, impl.LocVars));
+          NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
+          layerNum, absyMap, impl, impl.LocVars));
+      }
+
+      foreach (var proc in absyMap.Keys.OfType<Procedure>())
+      {
+        var yieldingProc = civlTypeChecker.procToYieldingProc[absyMap.Original(proc)];
         if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum) continue;
         noninterferenceCheckerDecls.AddRange(
-          NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker, linearTypeChecker,
-            layerNum, new Dictionary<Absy, Absy>(), impl.Proc, new List<Variable>()));
+          NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
+            layerNum, absyMap, proc, new List<Variable>()));
       }
     }
 
@@ -349,7 +349,7 @@ namespace Microsoft.Boogie
         refinementInstrumentation = new ActionRefinementInstrumentation(
           civlTypeChecker,
           impl,
-          (Implementation) absyMap[impl],
+          absyMap.Original(impl),
           globalSnapshotInstrumentation.OldGlobalMap);
       }
       else
@@ -372,13 +372,13 @@ namespace Microsoft.Boogie
       initCmds.AddRange(noninterferenceInstrumentation.CreateInitCmds(impl));
       var gotoCmd = new GotoCmd(Token.NoToken, new List<String> {impl.Blocks[0].Label},
         new List<Block> {impl.Blocks[0]});
-      return new Block(Token.NoToken, "civl_init", initCmds, gotoCmd);
+      return new Block(Token.NoToken, civlTypeChecker.AddNamePrefix("init"), initCmds, gotoCmd);
     }
 
     private bool IsYieldingLoopHeader(Block b)
     {
       if (!absyMap.ContainsKey(b)) return false;
-      var originalBlock = (Block) absyMap[b];
+      var originalBlock = absyMap.Original(b);
       if (!civlTypeChecker.yieldingLoops.ContainsKey(originalBlock)) return false;
       return civlTypeChecker.yieldingLoops[originalBlock].layers.Contains(layerNum);
     }
@@ -423,7 +423,7 @@ namespace Microsoft.Boogie
       var refinementCheckerBlock = CreateRefinementCheckerBlock();
       var refinementCheckerForYieldingLoopsBlock = CreateRefinementCheckerBlockForYieldingLoops();
       var returnCheckerBlock = CreateReturnCheckerBlock();
-      var returnBlock = new Block(Token.NoToken, "UnifiedReturn", new List<Cmd>(), new ReturnCmd(Token.NoToken));
+      var returnBlock = new Block(Token.NoToken, civlTypeChecker.AddNamePrefix("UnifiedReturn"), new List<Cmd>(), new ReturnCmd(Token.NoToken));
       SplitBlocks(impl);
 
       HashSet<Block> yieldingLoopHeaders;
@@ -452,7 +452,7 @@ namespace Microsoft.Boogie
         newCmds.AddRange(firstCmds);
         newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
         newCmds.AddRange(
-          InlineYieldLoopInvariants(civlTypeChecker.yieldingLoops[(Block) absyMap[header]].yieldInvariants));
+          InlineYieldLoopInvariants(civlTypeChecker.yieldingLoops[absyMap.Original(header)].yieldInvariants));
         newCmds.AddRange(YieldingLoopDummyAssignment());
         newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
         newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
@@ -616,7 +616,7 @@ namespace Microsoft.Boogie
       var newCmds = new List<Cmd>();
       newCmds.AddRange(noninterferenceInstrumentation.CreateCallToYieldProc());
       newCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
-      return new Block(Token.NoToken, "NoninterferenceChecker", newCmds, new ReturnCmd(Token.NoToken));
+      return new Block(Token.NoToken, civlTypeChecker.AddNamePrefix("NoninterferenceChecker"), newCmds, new ReturnCmd(Token.NoToken));
     }
 
     private Block CreateRefinementCheckerBlock()
@@ -624,7 +624,7 @@ namespace Microsoft.Boogie
       var newCmds = new List<Cmd>();
       newCmds.AddRange(refinementInstrumentation.CreateAssertCmds());
       newCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
-      return new Block(Token.NoToken, "RefinementChecker", newCmds, new ReturnCmd(Token.NoToken));
+      return new Block(Token.NoToken, civlTypeChecker.AddNamePrefix("RefinementChecker"), newCmds, new ReturnCmd(Token.NoToken));
     }
 
     private Block CreateRefinementCheckerBlockForYieldingLoops()
@@ -633,7 +633,7 @@ namespace Microsoft.Boogie
       newCmds.AddRange(refinementInstrumentation.CreateUnchangedGlobalsAssertCmds());
       newCmds.AddRange(refinementInstrumentation.CreateUnchangedOutputsAssertCmds());
       newCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
-      return new Block(Token.NoToken, "RefinementCheckerForYieldingLoops", newCmds, new ReturnCmd(Token.NoToken));
+      return new Block(Token.NoToken, civlTypeChecker.AddNamePrefix("RefinementCheckerForYieldingLoops"), newCmds, new ReturnCmd(Token.NoToken));
     }
 
     private Block CreateReturnCheckerBlock()
@@ -643,7 +643,7 @@ namespace Microsoft.Boogie
       returnBlockCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars(false));
       returnBlockCmds.AddRange(refinementInstrumentation.CreateReturnAssertCmds());
       returnBlockCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
-      return new Block(Token.NoToken, "ReturnChecker", returnBlockCmds, new ReturnCmd(Token.NoToken));
+      return new Block(Token.NoToken, civlTypeChecker.AddNamePrefix("ReturnChecker"), returnBlockCmds, new ReturnCmd(Token.NoToken));
     }
 
     private void DesugarYieldCmdInBlock(Block block, bool isBlockInYieldingLoop)
@@ -699,10 +699,12 @@ namespace Microsoft.Boogie
       string procName = "ParallelCall";
       foreach (CallCmd callCmd in parCallCmd.CallCmds)
       {
-        procName = procName + "_" + callCmd.Proc.Name;
+        // Use original procedure names to make aggregated name more readable
+        procName = procName + "_" + absyMap.OriginalOrInput(callCmd.Proc).Name;
         ins.AddRange(callCmd.Ins);
         outs.AddRange(callCmd.Outs);
       }
+      procName = civlTypeChecker.AddNamePrefix(procName) + "_" + layerNum;
 
       if (!parallelCallAggregators.ContainsKey(procName))
       {
@@ -764,8 +766,7 @@ namespace Microsoft.Boogie
 
     private Formal ParCallDesugarFormal(Variable v, int count, bool incoming)
     {
-      return new Formal(Token.NoToken,
-        new TypedIdent(Token.NoToken, $"civl_{count}_{v.Name}", v.TypedIdent.Type), incoming);
+      return civlTypeChecker.Formal($"{count}_{v.Name}", v.TypedIdent.Type, incoming);
     }
 
     private void SplitCmds(List<Cmd> cmds, out List<Cmd> firstCmds, out List<Cmd> secondCmds)
@@ -805,7 +806,6 @@ namespace Microsoft.Boogie
 
       foreach (var action in pendingAsyncsToCheck)
       {
-        var name = $"PendingAsyncNoninterferenceChecker_{action.proc.Name}_{layerNum}";
         var inputs = action.impl.InParams;
         var outputs = action.impl.OutParams;
         var requires = action.gate.Select(a => new Requires(false, a.Expr)).ToList();
@@ -819,8 +819,9 @@ namespace Microsoft.Boogie
         cmds.AddRange(noninterferenceInstrumentation.CreateInitCmds(action.impl));
         cmds.Add(CmdHelper.CallCmd(action.proc, inputs, outputs));
         cmds.AddRange(noninterferenceInstrumentation.CreateCallToYieldProc());
-        var blocks = new List<Block> { new Block(Token.NoToken, "entry", cmds, new ReturnCmd(Token.NoToken)) };
+        var blocks = new List<Block> { new Block(Token.NoToken, "init", cmds, new ReturnCmd(Token.NoToken)) };
 
+        var name = civlTypeChecker.AddNamePrefix($"PendingAsyncNoninterferenceChecker_{action.proc.Name}_{layerNum}");
         var proc = new Procedure(Token.NoToken, name, typeVars, inputs, outputs, requires, modifies, ensures);
         var impl = new Implementation(Token.NoToken, name, typeVars, inputs, outputs, locals, blocks) { Proc = proc };
         yield return proc;

@@ -6,7 +6,6 @@ namespace Microsoft.Boogie
 {
   public class MoverCheck
   {
-    LinearTypeChecker linearTypeChecker;
     CivlTypeChecker civlTypeChecker;
     List<Declaration> decls;
 
@@ -14,9 +13,8 @@ namespace Microsoft.Boogie
     HashSet<Tuple<AtomicAction, AtomicAction>> gatePreservationCheckerCache;
     HashSet<Tuple<AtomicAction, AtomicAction>> failurePreservationCheckerCache;
 
-    private MoverCheck(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
+    private MoverCheck(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
-      this.linearTypeChecker = linearTypeChecker;
       this.civlTypeChecker = civlTypeChecker;
       this.decls = decls;
       this.commutativityCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
@@ -24,10 +22,9 @@ namespace Microsoft.Boogie
       this.failurePreservationCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
     }
 
-    public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker,
-      List<Declaration> decls)
+    public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
-      MoverCheck moverChecking = new MoverCheck(linearTypeChecker, civlTypeChecker, decls);
+      MoverCheck moverChecking = new MoverCheck(civlTypeChecker, decls);
 
       // TODO: make enumeration of mover checks more efficient / elegant
 
@@ -80,12 +77,13 @@ namespace Microsoft.Boogie
 
     private Requires DisjointnessRequires(IEnumerable<Variable> paramVars, HashSet<Variable> frame)
     {
-      return new Requires(false, Expr.And(linearTypeChecker.DisjointnessExprForEachDomain(paramVars.Union(frame))));
+      return new Requires(false, Expr.And(civlTypeChecker.linearTypeChecker.DisjointnessExprForEachDomain(paramVars.Union(frame))));
     }
 
     private void AddChecker(string checkerName, List<Variable> inputs, List<Variable> outputs, List<Variable> locals,
       List<Requires> requires, List<Ensures> ensures, List<Block> blocks)
     {
+      checkerName = civlTypeChecker.AddNamePrefix(checkerName);
       Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires,
         civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList(), ensures);
       Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs,
@@ -125,6 +123,7 @@ namespace Microsoft.Boogie
       frame.UnionWith(second.gateUsedGlobalVars);
       frame.UnionWith(second.actionUsedGlobalVars);
 
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       List<Requires> requires = new List<Requires>
       {
         DisjointnessRequires(
@@ -136,7 +135,7 @@ namespace Microsoft.Boogie
         requires.Add(new Requires(false, assertCmd.Expr));
 
       var witnesses = civlTypeChecker.commutativityHints.GetWitnesses(first, second);
-      var transitionRelation = TransitionRelationComputation.Commutativity(second, first, frame, witnesses);
+      var transitionRelation = TransitionRelationComputation.Commutativity(civlTypeChecker, second, first, frame, witnesses);
 
       List<Cmd> cmds = new List<Cmd>
       {
@@ -191,6 +190,7 @@ namespace Microsoft.Boogie
       frame.UnionWith(second.gateUsedGlobalVars);
       frame.UnionWith(second.actionUsedGlobalVars);
 
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       List<Requires> requires = new List<Requires>
       {
         DisjointnessRequires(
@@ -245,6 +245,7 @@ namespace Microsoft.Boogie
       frame.UnionWith(second.gateUsedGlobalVars);
       frame.UnionWith(second.actionUsedGlobalVars);
 
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       List<Requires> requires = new List<Requires>
       {
         DisjointnessRequires(
@@ -298,7 +299,7 @@ namespace Microsoft.Boogie
 
       List<Requires> requires = new List<Requires>
       {
-        DisjointnessRequires(impl.InParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT),
+        DisjointnessRequires(impl.InParams.Where(v => civlTypeChecker.linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT),
           frame)
       };
       foreach (AssertCmd assertCmd in action.gate)
@@ -306,7 +307,7 @@ namespace Microsoft.Boogie
         requires.Add(new Requires(false, assertCmd.Expr));
       }
 
-      Expr nonBlockingExpr = TransitionRelationComputation.Nonblocking(action, frame);
+      Expr nonBlockingExpr = TransitionRelationComputation.Nonblocking(civlTypeChecker, action, frame);
       AssertCmd nonBlockingAssert = new AssertCmd(action.proc.tok, nonBlockingExpr)
       {
         ErrorData = $"Non-blocking check for {action.proc.Name} failed"
