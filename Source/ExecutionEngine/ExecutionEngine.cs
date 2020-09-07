@@ -1932,35 +1932,24 @@ namespace Microsoft.Boogie
         else
         {
           string msg = null;
-          string bec = null;
           if (assertError.FailingAssert.ErrorMessage == null || CommandLineOptions.Clo.ForceBplErrors)
           {
-            msg = assertError.FailingAssert.ErrorData as string;
-            if (msg == null)
-            {
-              msg = "This assertion might not hold.";
-              bec = "BP5001";
-            }
+            msg = assertError.FailingAssert.ErrorData as string ?? "This assertion might not hold.";
           }
           else
           {
             msg = assertError.FailingAssert.ErrorMessage;
-            if (cause == "Error")
-            {
-              cause = null;
-            }
           }
 
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg,
             assertError.RequestId, assertError.OriginalRequestId, cause);
-          errorInfo.BoogieErrorCode = bec;
+          errorInfo.BoogieErrorCode = "BP5001";
           errorInfo.Kind = ErrorKind.Assertion;
         }
       }
 
       return errorInfo;
     }
-
 
     private static void WriteErrorInformationToXmlSink(ErrorInformation errorInfo, List<Block> trace)
     {

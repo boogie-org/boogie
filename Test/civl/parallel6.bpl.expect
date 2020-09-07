@@ -1,4 +1,4 @@
-(0,0): Error: Transition invariant violated in final state
+(0,0): Error BP5001: Transition invariant violated in final state
 Execution trace:
     parallel6.bpl(10,5): anon0
     parallel6.bpl(28,7): inline$atomic_incr$0$anon0
