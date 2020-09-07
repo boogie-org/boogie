@@ -1932,9 +1932,12 @@ namespace Microsoft.Boogie
         else
         {
           string msg = null;
+          string bec = null;
+
           if (assertError.FailingAssert.ErrorMessage == null || CommandLineOptions.Clo.ForceBplErrors)
           {
             msg = assertError.FailingAssert.ErrorData as string ?? "This assertion might not hold.";
+            bec = "BP5001";
           }
           else
           {
@@ -1943,7 +1946,7 @@ namespace Microsoft.Boogie
 
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg,
             assertError.RequestId, assertError.OriginalRequestId, cause);
-          errorInfo.BoogieErrorCode = "BP5001";
+          errorInfo.BoogieErrorCode = bec;
           errorInfo.Kind = ErrorKind.Assertion;
         }
       }
