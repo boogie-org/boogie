@@ -10,7 +10,7 @@ Execution trace:
     left-mover.bpl(19,32): inline$init$0$Entry
     left-mover.bpl(8,5): inline$inc$0$anon0
     left-mover.bpl(6,30): inline$inc$0$Return
-left-mover.bpl(26,30): Error: Non-blocking check for block failed
+left-mover.bpl(26,30): Error BP5001: Non-blocking check for block failed
 Execution trace:
     left-mover.bpl(26,30): L
 
