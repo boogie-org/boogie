@@ -952,15 +952,14 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		while (StartOf(7)) {
 			if (StartOf(8)) {
 				LabelOrCmd(out c, out label);
+				Contract.Assert(c == null || label == null);
 				if (c != null) {
 				 // LabelOrCmd read a Cmd
-				 Contract.Assert(label == null);
 				 if (startToken == null) { startToken = c.tok;  cs = new List<Cmd>(); }
 				 Contract.Assert(cs != null);
 				 cs.Add(c);
-				} else {
+				} else if (label != null) {
 				 // LabelOrCmd read a label
-				 Contract.Assert(label != null);
 				 if (startToken != null) {
 				   Contract.Assert(cs != null);
 				   // dump the built-up state into a BigBlock
@@ -2082,11 +2081,10 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		Expect(12);
 		while (StartOf(8)) {
 			LabelOrCmd(out c, out label);
+			Contract.Assert(c == null || label == null);
 			if (c != null) {
-			 Contract.Assert(label == null);
 			 cs.Add(c);
-			} else {
-			 Contract.Assert(label != null);
+			} else if (label != null) {
 			 SemErr("SpecBlock's can only have one label");
 			}
 			
