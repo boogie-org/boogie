@@ -818,6 +818,26 @@ namespace Microsoft.Boogie
   }
 
   /// <summary>
+  /// VarDeclOnceStandardVisitor is like StandardVisitor, except
+  ///   -- it does not visit a variable's declaration when visiting an `IdentifierExpr`, and
+  ///   -- it visits the `where` clause (if any) when visiting a `TypedIdent`.
+  /// </summary>
+  public abstract class VarDeclOnceStandardVisitor : StandardVisitor
+  {
+    public override Expr VisitIdentifierExpr(IdentifierExpr node) {
+      return node;
+    }
+
+    public override TypedIdent VisitTypedIdent(TypedIdent node) {
+      node = base.VisitTypedIdent(node);
+      if (node.WhereExpr != null) {
+        node.WhereExpr = (Expr) Visit(node.WhereExpr);
+      }
+      return node;
+    }
+  }
+
+  /// <summary>
   /// A ReadOnlyVisitor visits all the nodes of a given Absy.  The visitor may collect information from
   /// the nodes, may change fields contained in the data structure, but may not replace any nodes in the
   /// data structure.  To enforce this, all Visit...(node) methods have a postcondition that says that
