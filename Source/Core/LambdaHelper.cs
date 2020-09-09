@@ -91,7 +91,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private class LambdaVisitor : StandardVisitor
+    private class LambdaVisitor : VarDeclOnceStandardVisitor
     {
       private readonly Dictionary<Expr, FunctionCall> liftedLambdas =
         new Dictionary<Expr, FunctionCall>(new AlphaEquality());
