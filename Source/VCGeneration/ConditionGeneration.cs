@@ -147,21 +147,7 @@ namespace VC
       Helpers.ExtraTraceInformation("Finished implementation verification");
       return outcome;
     }
-
-    /// <summary>
-    /// Takes an implementation and constructs a verification condition and sends
-    /// it to the theorem prover.
-    /// Returns null if "impl" is correct.  Otherwise, returns a list of counterexamples,
-    /// each counterexample consisting of an array of labels.
-    /// </summary>
-    /// <param name="impl"></param>
-    public Outcome VerifyImplementation(Implementation impl, out List<Counterexample> errors)
-    {
-      Contract.Ensures(Contract.Result<Outcome>() != Outcome.Errors || Contract.ValueAtReturn(out errors) != null);
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-      return VerifyImplementation(impl, out errors);
-    }
-
+    
     public abstract Outcome VerifyImplementation(Implementation impl, VerifierCallback callback);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
