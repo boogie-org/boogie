@@ -620,7 +620,7 @@ Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
   | { Spec<pre, mods, post> }
     ImplBody<out locals, out stmtList>
     (.
-      impl = new Implementation(x, x.val, new List<TypeVariable>(typeParams.Select(x => new TypeVariable(x.tok, x.Name))),
+      impl = new Implementation(x, x.val, typeParams.ConvertAll(x => new TypeVariable(x.tok, x.Name)),
                                 Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
     .)
   )
