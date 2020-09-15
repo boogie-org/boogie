@@ -511,7 +511,7 @@ private class BvBounds : Expr {
 				Spec(pre, mods, post);
 			}
 			ImplBody(out locals, out stmtList);
-			impl = new Implementation(x, x.val, typeParams,
+			impl = new Implementation(x, x.val, typeParams.ConvertAll(x => new TypeVariable(x.tok, x.Name)),
 			                         Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
 		} else SynErr(110);

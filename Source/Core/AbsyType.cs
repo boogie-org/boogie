@@ -848,7 +848,7 @@ namespace Microsoft.Boogie
     // Return true if some type parameters appear only among "moreArgumentTypes" and
     // not in "argumentTypes".
     [Pure]
-    public static bool CheckBoundVariableOccurrences(List<TypeVariable> /*!*/ typeParams,
+    public static void CheckBoundVariableOccurrences(List<TypeVariable> /*!*/ typeParams,
       List<Type> /*!*/ argumentTypes,
       List<Type> moreArgumentTypes,
       IToken /*!*/ resolutionSubject,
@@ -861,21 +861,19 @@ namespace Microsoft.Boogie
       Contract.Requires(subjectName != null);
       Contract.Requires(rc != null);
       List<TypeVariable> freeVarsInArgs = FreeVariablesIn(argumentTypes);
-      List<TypeVariable> moFreeVarsInArgs = moreArgumentTypes == null ? null : FreeVariablesIn(moreArgumentTypes);
-      bool someTypeParamsAppearOnlyAmongMo = false;
+      List<TypeVariable> moreFreeVarsInArgs = moreArgumentTypes == null ? new List<TypeVariable>() : FreeVariablesIn(moreArgumentTypes);
       foreach (TypeVariable /*!*/ var in typeParams)
       {
         Contract.Assert(var != null);
-        if (rc.LookUpTypeBinder(var.Name) == var
-        ) // avoid to complain twice about variables that are bound multiple times
+        if (rc.LookUpTypeBinder(var.Name) == var) // avoid to complain twice about variables that are bound multiple times
         {
           if (freeVarsInArgs.Contains(var))
           {
-            // cool
+            // ok
           }
-          else if (moFreeVarsInArgs != null && moFreeVarsInArgs.Contains(var))
+          else if (moreFreeVarsInArgs.Contains(var))
           {
-            someTypeParamsAppearOnlyAmongMo = true;
+            // ok
           }
           else
           {
@@ -885,8 +883,6 @@ namespace Microsoft.Boogie
           }
         }
       }
-
-      return someTypeParamsAppearOnlyAmongMo;
     }
 
     [Pure]

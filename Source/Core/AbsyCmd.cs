@@ -3008,43 +3008,7 @@ namespace Microsoft.Boogie
           return;
         }
       }
-
-      // Check that type parameters can be determined using the given
-      // actual i/o arguments. This is done already during resolution
-      // because CheckBoundVariableOccurrences needs a resolution
-      // context
-      List<Type> /*!*/
-        formalInTypes = new List<Type>();
-      List<Type> /*!*/
-        formalOutTypes = new List<Type>();
-      for (int i = 0; i < Ins.Count; ++i)
-        if (Ins[i] != null)
-          formalInTypes.Add(cce.NonNull(Proc.InParams[i]).TypedIdent.Type);
-      for (int i = 0; i < Outs.Count; ++i)
-        if (Outs[i] != null)
-          formalOutTypes.Add(cce.NonNull(Proc.OutParams[i]).TypedIdent.Type);
-
-      // we need to bind the type parameters for this
-      // (this is expected by CheckBoundVariableOccurrences)
-      int previousTypeBinderState = rc.TypeBinderState;
-      try
-      {
-        foreach (TypeVariable /*!*/ v in Proc.TypeParameters)
-        {
-          Contract.Assert(v != null);
-          rc.AddTypeBinder(v);
-        }
-
-        Type.CheckBoundVariableOccurrences(Proc.TypeParameters,
-          formalInTypes, formalOutTypes,
-          this.tok, "types of given arguments",
-          rc);
-      }
-      finally
-      {
-        rc.TypeBinderState = previousTypeBinderState;
-      }
-
+      
       var id = QKeyValue.FindStringAttribute(Attributes, "id");
       if (id != null)
       {
@@ -3076,7 +3040,7 @@ namespace Microsoft.Boogie
         vars.Add(AssignedAssumptionVariable);
       }
     }
-
+    
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
