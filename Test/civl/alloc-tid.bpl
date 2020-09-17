@@ -27,7 +27,7 @@ main()
 
 procedure {:yields} {:layer 2}
 {:yield_preserves "Yield1"}
-{:yield_requires "Yield2", tid, a[tid]}
+{:yield_requires "Yield2", tid, old(a)[tid]}
 {:yield_ensures  "Yield2", tid, old(a)[tid] + 1}
 P({:layer 1,2} {:linear "tid"} tid: int, i: int)
 requires {:layer 1} tid == i;
