@@ -871,19 +871,19 @@ namespace Microsoft.Boogie
 
     private void TypeCheckPendingAsyncMachinery()
     {
-      foreach (var typeCtorDecl in program.TopLevelDeclarations.OfType<TypeCtorDecl>())
+      foreach (var datatypeTypeCtorDecl in program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>())
       {
-        if (typeCtorDecl.HasAttribute(CivlAttributes.PENDING_ASYNC))
+        if (datatypeTypeCtorDecl.HasAttribute(CivlAttributes.PENDING_ASYNC))
         {
           if (pendingAsyncType == null)
           {
-            pendingAsyncType = new CtorType(typeCtorDecl.tok, typeCtorDecl, new List<Type>());
+            pendingAsyncType = new CtorType(datatypeTypeCtorDecl.tok, datatypeTypeCtorDecl, new List<Type>());
             pendingAsyncMultisetType = new MapType(Token.NoToken, new List<TypeVariable>(),
               new List<Type> {pendingAsyncType}, Type.Int);
           }
           else
           {
-            Error(typeCtorDecl, $"Duplicate pending async type {typeCtorDecl.Name}");
+            Error(datatypeTypeCtorDecl, $"Duplicate pending async type {datatypeTypeCtorDecl.Name}");
           }
         }
       }
@@ -907,31 +907,27 @@ namespace Microsoft.Boogie
         }
 
         program.AddTopLevelDeclaration(pendingAsyncAdd);
-      }
 
-      foreach (var ctor in program.TopLevelDeclarations.OfType<DatatypeConstructor>())
-      {
-        string actionName = QKeyValue.FindStringAttribute(ctor.Attributes, CivlAttributes.PENDING_ASYNC);
-        if (actionName != null)
+        var pendingAsyncDatatypeTypeCtorDecl = pendingAsyncType.Decl as DatatypeTypeCtorDecl; 
+        foreach (var ctor in pendingAsyncDatatypeTypeCtorDecl.Constructors)
         {
-          AtomicAction action = FindAtomicAction(actionName);
-          if (!ctor.OutParams[0].TypedIdent.Type.Equals(pendingAsyncType))
+          string actionName = QKeyValue.FindStringAttribute(ctor.Attributes, CivlAttributes.PENDING_ASYNC);
+          if (actionName != null)
           {
-            Error(ctor, "Pending async constructor is of incorrect type");
-          }
-
-          if (action == null)
-          {
-            Error(ctor, $"{actionName} is not an atomic action");
-          }
-          else
-          {
-            if (action.pendingAsyncCtor != null)
-              Error(ctor, $"Duplicate pending async constructor for action {actionName}");
-            if (action.proc.HasAttribute(CivlAttributes.IS))
-              Error(ctor, "Actions transformed by IS cannot be pending asyncs");
-            CheckPendingAsyncSignature(action, ctor);
-            action.pendingAsyncCtor = ctor;
+            AtomicAction action = FindAtomicAction(actionName);
+            if (action == null)
+            {
+              Error(ctor, $"{actionName} is not an atomic action");
+            }
+            else
+            {
+              if (action.pendingAsyncCtor != null)
+                Error(ctor, $"Duplicate pending async constructor for action {actionName}");
+              if (action.proc.HasAttribute(CivlAttributes.IS))
+                Error(ctor, "Actions transformed by IS cannot be pending asyncs");
+              CheckPendingAsyncSignature(action, ctor);
+              action.pendingAsyncCtor = ctor;
+            }
           }
         }
       }

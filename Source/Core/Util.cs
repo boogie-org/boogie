@@ -68,6 +68,19 @@ namespace Microsoft.Boogie
     {
       return source1.Zip(source2, (e1, e2) => new Tuple<TSource1, TSource2>(e1, e2));
     }
+    
+    /// <summary>
+    /// Creates a map from telems to uelems.  telems and uelems must have the same number of elements.
+    /// </summary>
+    /// <param name="telems"></param>
+    /// <param name="uelems"></param>
+    /// <typeparam name="T"></typeparam>
+    /// <typeparam name="U"></typeparam>
+    /// <returns></returns>
+    public static Dictionary<T, U> Map<T,U>(IEnumerable<T> telems, IEnumerable<U> uelems)
+    {
+      return telems.Zip(uelems).ToDictionary(x => x.Item1, x => x.Item2);
+    }
   }
 
   public class TokenTextWriter : IDisposable

@@ -3397,7 +3397,7 @@ Contract.Requires(that != null);
 
   //=====================================================================
 
-  // Used to annotate types with type synoyms that were used in the
+  // Used to annotate types with type synonyms that were used in the
   // original unresolved types. Such types should be considered as
   // equivalent to ExpandedType, the annotations are only used to enable
   // better pretty-printing
@@ -3774,7 +3774,7 @@ Contract.Requires(that != null);
 
     public bool IsDatatype()
     {
-      return QKeyValue.FindBoolAttribute(Decl.Attributes, "datatype");
+      return Decl is DatatypeTypeCtorDecl;
     }
 
     // This attribute is used to tell Boogie that this type is built into SMT-LIB and should
@@ -3782,14 +3782,6 @@ Contract.Requires(that != null);
     public string GetBuiltin()
     {
       return this.Decl.FindStringAttribute("builtin");
-    }
-
-    // This attribute can be used to tell Boogie that a datatype depends on another datatype
-    // in case Boogie can't figure this out itself (as may happen, for example when a type
-    // has the ":builtin" attribute).
-    public string GetTypeDependency()
-    {
-      return this.Decl.FindStringAttribute("dependson");
     }
 
     //-----------  Cloning  ----------------------------------

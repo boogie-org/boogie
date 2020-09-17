@@ -1,0 +1,27 @@
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+function {:inline} foo<T>(x: T): T {
+    x
+}
+
+function {:inline} bar1<T>(x: T): T {
+    foo(x)
+}
+
+function {:inline} bar2<T>(x: T): T {
+    foo(x)
+}
+
+procedure A(a: int) returns (a': int)
+ensures a' == a;
+{
+    a' := foo(a);
+}
+
+procedure B(a: int) returns (a': int)
+ensures a' == a;
+{
+    a' := bar1(a);
+    a' := bar2(a');
+}
