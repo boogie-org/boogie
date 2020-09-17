@@ -510,7 +510,7 @@ namespace Microsoft.Boogie
         var callCmd = YieldInvariantCallChecker.CheckRequires(this, attr, proc);
         if (callCmd != null)
         {
-          yieldRequires.Add(callCmd);
+          yieldRequires.Add(StripOld(callCmd));
         }
       }
 
@@ -528,17 +528,16 @@ namespace Microsoft.Boogie
         var callCmd = YieldInvariantCallChecker.CheckPreserves(this, attr, proc);
         if (callCmd != null)
         {
-          // For global variable g
-          //     yield_preserves Inv(g)
-          // is translated into
-          //     yield_requires Inv(g)
-          //     yield_ensures  Inv(old(g))
-          // That is, all occurences of global variables are wrapped in old(.) in the postcondition.
-          yieldRequires.Add(callCmd);
-          var globalToOldSubst = GlobalVariables.ToDictionary(v => v, v => (Expr) ExprHelper.Old(Expr.Ident(v)));
-          yieldEnsures.Add((CallCmd) SubstitutionHelper.Apply(globalToOldSubst, callCmd));
+          yieldRequires.Add(StripOld(callCmd));
+          yieldEnsures.Add(callCmd);
         }
       }
+    }
+
+    private T StripOld<T>(T cmd) where T : Cmd
+    {
+      var identity = Substituter.SubstitutionFromHashtable(GlobalVariables.ToDictionary(v => v, v => (Expr) Expr.Ident(v)));
+      return (T) Substituter.ApplyReplacingOldExprs(identity, identity, cmd);
     }
 
     private void TypeCheckYieldingProcedureDecls()
@@ -1410,7 +1409,6 @@ namespace Microsoft.Boogie
     class YieldInvariantCallChecker : ReadOnlyVisitor
     {
       private CivlTypeChecker civlTypeChecker;
-      private bool allowOldExpr;
       private int insideOldExpr;
       private int initialErrorCount;
       private QKeyValue attr;
@@ -1425,34 +1423,33 @@ namespace Microsoft.Boogie
 
       public static CallCmd CheckRequires(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller)
       {
-        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, false, caller, RequiresAvailable);
+        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, caller, RequiresAvailable);
         return v.callCmd;
       }
 
       public static CallCmd CheckEnsures(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller)
       {
-        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, true, caller, EnsuresAvailable);
+        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, caller, EnsuresAvailable);
         return v.callCmd;
       }
 
       public static CallCmd CheckPreserves(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller)
       {
-        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, false, caller, PreservesAvailable);
+        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, caller, PreservesAvailable);
         return v.callCmd;
       }
 
       public static CallCmd CheckLoop(CivlTypeChecker civlTypeChecker, QKeyValue attr, Block loopHeader)
       {
         var availableLinearVars = civlTypeChecker.linearTypeChecker.AvailableLinearVars(loopHeader);
-        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, true, availableLinearVars);
+        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, availableLinearVars);
         return v.callCmd;
       }
 
-      private YieldInvariantCallChecker(CivlTypeChecker civlTypeChecker, QKeyValue attr, bool allowOldExpr, ISet<Variable> availableLinearVars)
+      private YieldInvariantCallChecker(CivlTypeChecker civlTypeChecker, QKeyValue attr, ISet<Variable> availableLinearVars)
       {
         this.civlTypeChecker = civlTypeChecker;
         this.attr = attr;
-        this.allowOldExpr = allowOldExpr;
         this.availableLinearVars = availableLinearVars;
         this.insideOldExpr = 0;
         this.initialErrorCount = civlTypeChecker.checkingContext.ErrorCount;
@@ -1461,8 +1458,8 @@ namespace Microsoft.Boogie
         Check();
       }
 
-      private YieldInvariantCallChecker(CivlTypeChecker civlTypeChecker, QKeyValue attr, bool allowOldExpr, Procedure caller, List<LinearKind> kinds)
-        : this(civlTypeChecker, attr, allowOldExpr,
+      private YieldInvariantCallChecker(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller, List<LinearKind> kinds)
+        : this(civlTypeChecker, attr,
             new HashSet<Variable>(
               caller.InParams.Union(caller.OutParams).Where(p => kinds.Contains(civlTypeChecker.linearTypeChecker.FindLinearKind(p)))
             )
@@ -1537,12 +1534,6 @@ namespace Microsoft.Boogie
 
       public override Expr VisitOldExpr(OldExpr node)
       {
-        if (!allowOldExpr)
-        {
-          civlTypeChecker.Error(node, "Old expression not allowed only in this context");
-          return node;
-        }
-
         insideOldExpr++;
         base.VisitOldExpr(node);
         insideOldExpr--;
@@ -1551,9 +1542,9 @@ namespace Microsoft.Boogie
 
       public override Expr VisitIdentifierExpr(IdentifierExpr node)
       {
-        if (node.Decl is GlobalVariable && allowOldExpr && insideOldExpr == 0)
+        if (node.Decl is GlobalVariable && insideOldExpr == 0)
         {
-          civlTypeChecker.Error(node, "Global variable cannot be accessed in this context");
+          civlTypeChecker.Error(node, "Global variable must be wrapped inside old expression");
         }
 
         return node;

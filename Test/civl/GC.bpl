@@ -266,7 +266,7 @@ requires {:layer 100} (forall x: idx :: rootAddr(x) ==> rootAbs[x] == Int(0));
 
 procedure {:yields} {:layer 100}
 {:yield_requires "Yield_Initialize_100", tid, mutatorTids}
-{:yield_requires "Yield_InitVars99", mutatorTids, MapConstBool(false), rootScanBarrier}
+{:yield_requires "Yield_InitVars99", mutatorTids, MapConstBool(false), old(rootScanBarrier)}
 {:yield_ensures "Yield_Iso"}
 {:yield_ensures "Yield_RootScanBarrierInv"}
 {:yield_ensures "Yield_InitVars99", mutatorTids, MapConstBool(false), numMutators}
@@ -389,10 +389,10 @@ requires {:layer 97,98,99,100} tid == GcTid;
 
 procedure {:yields} {:layer 100}
 {:yield_preserves "Yield_Iso"}
-{:yield_requires  "YieldMarkBegin", tid, Color}
+{:yield_requires  "YieldMarkBegin", tid, old(Color)}
 {:yield_ensures   "YieldMarkEnd", tid}
 {:yield_preserves "Yield_MsWellFormed", tid, 0}
-{:yield_preserves "Yield_CollectorPhase_98", tid, collectorPhase}
+{:yield_preserves "Yield_CollectorPhase_98", tid, old(collectorPhase)}
 {:yield_preserves "Yield_RootScanBarrierInv"}
 MarkOuterLoop({:linear "tid"} tid:Tid)
 {
@@ -418,9 +418,9 @@ MarkOuterLoop({:linear "tid"} tid:Tid)
 
 procedure {:yields} {:layer 100}
 {:yield_preserves "Yield_Iso"}
-{:yield_preserves "YieldMark", tid, Color}
+{:yield_preserves "YieldMark", tid, old(Color)}
 {:yield_preserves "Yield_MsWellFormed", tid, 0}
-{:yield_preserves "Yield_CollectorPhase_98", tid, collectorPhase}
+{:yield_preserves "Yield_CollectorPhase_98", tid, old(collectorPhase)}
 {:yield_preserves "Yield_RootScanBarrierInv"}
 MarkInnerLoop({:linear "tid"} tid:Tid)
 {
@@ -466,7 +466,7 @@ procedure {:yields} {:layer 100}
 {:yield_preserves "Yield_Iso"}
 {:yield_preserves "Yield_MsWellFormed", tid, 0}
 {:yield_preserves "Yield_RootScanBarrierInv"}
-{:yield_requires  "YieldSweepBegin", tid, false, Color}
+{:yield_requires  "YieldSweepBegin", tid, false, old(Color)}
 {:yield_ensures   "YieldSweepEnd", tid}
 Sweep({:linear "tid"} tid:Tid)
 requires {:layer 98,99,100} tid == GcTid;
@@ -529,7 +529,7 @@ requires mutatorsInRootScanBarrier[i#Tid(tid)];
 
 procedure {:yields} {:layer 99}
 {:yield_ensures  "Yield_InitVars98", tid, mutatorTids, 0}
-{:yield_requires "Yield_InitVars99", mutatorTids, mutatorsInRootScanBarrier, rootScanBarrier}
+{:yield_requires "Yield_InitVars99", mutatorTids, old(mutatorsInRootScanBarrier), old(rootScanBarrier)}
 {:yield_ensures  "Yield_InitVars99", mutatorTids, old(mutatorsInRootScanBarrier), numMutators}
 InitVars99({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
 requires {:layer 98,99} gcAndMutatorTids(tid, mutatorTids);
@@ -571,7 +571,7 @@ modifies Color;
 
 procedure {:yields} {:layer 99} {:refines "AtomicCanMarkStop"}
 {:yield_preserves "Yield_MsWellFormed", tid, 0}
-{:yield_preserves "Yield_CollectorPhase_98", tid, collectorPhase}
+{:yield_preserves "Yield_CollectorPhase_98", tid, old(collectorPhase)}
 {:yield_preserves "Yield_RootScanBarrierInv"}
 CanMarkStop({:linear "tid"} tid:Tid) returns (canStop: bool)
 requires {:layer 99} tid == GcTid;
@@ -741,7 +741,7 @@ requires gcAndMutatorTids(tid, mutatorTids);
 requires MarkStackPtr == tick_MarkStackPtr;
 
 procedure {:yields} {:layer 98}
-{:yield_requires "Yield_InitVars98", tid, mutatorTids, MarkStackPtr}
+{:yield_requires "Yield_InitVars98", tid, mutatorTids, old(MarkStackPtr)}
 {:yield_ensures  "Yield_InitVars98", tid, mutatorTids, 0}
 InitVars98({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
 {
@@ -824,7 +824,7 @@ procedure {:left} {:layer 99} AtomicNoGrayInRootScanBarrier({:linear "tid"} tid:
 
 procedure {:yields} {:layer 98} {:refines "AtomicNoGrayInRootScanBarrier"}
 {:yield_preserves "Yield_MsWellFormed", tid, 0}
-{:yield_preserves "Yield_CollectorPhase_98", tid, collectorPhase}
+{:yield_preserves "Yield_CollectorPhase_98", tid, old(collectorPhase)}
 NoGrayInRootScanBarrier({:linear "tid"} tid:Tid) returns (noGray: bool)
 {
     call noGray := MsIsEmpty(tid);
@@ -842,7 +842,7 @@ modifies Color;
 
 procedure {:yields} {:layer 98} {:refines "AtomicInsertIntoSetIfWhiteInRootScanBarrier"}
 {:yield_preserves "Yield_MsWellFormed", tid, 0}
-{:yield_preserves "Yield_CollectorPhase_98", tid, collectorPhase}
+{:yield_preserves "Yield_CollectorPhase_98", tid, old(collectorPhase)}
 InsertIntoSetIfWhiteInRootScanBarrier({:linear "tid"} tid:Tid, memLocal:int)
 {
     call MsPushByCollector(tid, memLocal);
@@ -861,7 +861,7 @@ modifies Color;
 
 procedure {:yields} {:layer 98} {:refines "AtomicSET_InsertIntoSetIfWhite"}
 {:yield_preserves "Yield_MsWellFormed", tid, parent}
-{:yield_preserves "Yield_CollectorPhase_98", tid, collectorPhase}
+{:yield_preserves "Yield_CollectorPhase_98", tid, old(collectorPhase)}
 SET_InsertIntoSetIfWhite({:linear "tid"} tid:Tid, parent: int, child:int)
 requires {:layer 98} memAddr(parent) && memAddr(child);
 {
@@ -884,7 +884,7 @@ procedure {:right} {:layer 99,100} AtomicSET_Peek({:linear "tid"} tid:Tid) retur
 procedure {:yields} {:layer 98} {:refines "AtomicSET_Peek"}
 {:yield_requires  "Yield_MsWellFormed", tid, 0}
 {:yield_ensures   "Yield_MsWellFormed", tid, if isEmpty then 0 else val}
-{:yield_preserves "Yield_CollectorPhase_98", tid, collectorPhase}
+{:yield_preserves "Yield_CollectorPhase_98", tid, old(collectorPhase)}
 SET_Peek({:linear "tid"} tid:Tid) returns (isEmpty: bool, val:int)
 {
     assert {:layer 98} MST(MarkStackPtr - 1);
