@@ -534,10 +534,10 @@ namespace Microsoft.Boogie
       }
     }
 
-    private T StripOld<T>(T cmd) where T : Cmd
+    private static T StripOld<T>(T cmd) where T : Cmd
     {
-      var identity = Substituter.SubstitutionFromHashtable(GlobalVariables.ToDictionary(v => v, v => (Expr) Expr.Ident(v)));
-      return (T) Substituter.ApplyReplacingOldExprs(identity, identity, cmd);
+      var emptySubst = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
+      return (T) Substituter.ApplyReplacingOldExprs(emptySubst, emptySubst, cmd);
     }
 
     private void TypeCheckYieldingProcedureDecls()
