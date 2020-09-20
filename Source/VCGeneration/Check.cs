@@ -207,7 +207,7 @@ namespace Microsoft.Boogie
 
     private void SetRlimit(int rlimit)
     {
-      TheoremProver.SetRlimit(rlimit);
+      TheoremProver.SetRlimit(rlimit * 1000);
     }
 
     private void SetRandomSeed(int? randomSeed)
@@ -363,6 +363,10 @@ namespace Microsoft.Boogie
       this.handler = handler;
 
       thmProver.Reset(gen);
+      if (0 < rlimit)
+      {
+        timeout = 0;
+      }
       SetTimeout(timeout);
       SetRlimit(rlimit);
       SetRandomSeed(randomSeed);

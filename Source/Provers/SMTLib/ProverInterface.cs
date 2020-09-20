@@ -2355,6 +2355,8 @@ namespace Microsoft.Boogie.SMTLib
           {
             switch (resp[0].Name)
             {
+              case "(incomplete quantifiers)":
+                break;
               case "memout":
                 currentErrorHandler.OnResourceExceeded("memory");
                 result = Outcome.OutOfMemory;
@@ -2386,11 +2388,14 @@ namespace Microsoft.Boogie.SMTLib
                 result = Outcome.OutOfResource;
                 break;
               default:
+                result = Outcome.Undetermined;
+                HandleProverError("Unexpected prover response (getting info about 'unknown' response): " + resp.ToString());
                 break;
             }
           }
           else
           {
+            result = Outcome.Undetermined;
             HandleProverError("Unexpected prover response (getting info about 'unknown' response): " + resp.ToString());
           }
         }
