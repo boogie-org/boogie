@@ -1,27 +1,27 @@
-// This test shows the usage of the rlimit command-line option and attribute.
-// Maintaining appropriate timeout values got tedious, so we do not run
-// this test as part of the regressions anymore.
-
-// UNSUPPORTED: true
-// RUN: %boogie -rlimit:100 "%s" | %OutputCheck "%s"
-
-procedure TestRlimit0(in: [int]int, len: int) returns (out: [int]int);
+// RUN: %boogie -rlimit:800 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// RUN: %boogie -rlimit:800 -proverLog:%t "%s"
+// RUN: %OutputCheck --file-to-check "%t" "%s"
+// CHECK-L: (set-option :timeout 0)
+// CHECK-L: (set-option :rlimit 800000)
+// CHECK-L: (set-option :timeout 0)
+// CHECK-L: (set-option :rlimit 900000)
+// CHECK-L: (set-option :timeout 0)
+// CHECK-L: (set-option :rlimit 1000000)
+procedure {:timeLimit 4} /* timeLimit overridden by rlimit */ TestTimeouts0(in: [int]int, len: int) returns (out: [int]int)
   requires in[0] == 0 && (forall i: int :: 0 <= i ==> in[i + 1] == in[i] + 1);
   requires 0 < len;
-  ensures (forall j: int :: 0 <= j && j < len ==> out[j] == in[j]);
-
-implementation TestRlimit0(in: [int]int, len: int) returns (out: [int]int)
+  ensures (forall j: int :: 0 <= j && j < len ==> out[j] == j);
 {
-    // CHECK-L: ${CHECKFILE_NAME}(${LINE:-2},16): Verification out of resource (TestRlimit0)
     var i : int;
 
     i := 0;
     out[i] := 0;
     while (i < len)
       invariant 0 <= i && i <= len;
-      invariant out[0] == 0 && (forall j: int :: 0 <= j && j < i ==> out[j] == in[j]);
+      invariant out[0] == 0 && (forall j: int :: 0 <= j && j < i ==> out[j + 1] == out[j] + 1);
     {
-        out[i] := in[i];
+        out[i + 1] := out[i] + 1;
         i := i + 1;
     }
 
@@ -34,12 +34,13 @@ implementation TestRlimit0(in: [int]int, len: int) returns (out: [int]int)
     }
 }
 
-procedure TestRlimit1(in: [int]int, len: int) returns (out: [int]int);
+
+procedure TestTimeouts1(in: [int]int, len: int) returns (out: [int]int);
   requires in[0] == 0 && (forall i: int :: 0 <= i ==> in[i + 1] == in[i] + 1);
   requires 0 < len;
-  ensures (forall j: int :: 0 <= j && j < len ==> out[j] == in[j]);
+  ensures (forall j: int :: 0 <= j && j < len ==> out[j] == j);
 
-implementation {:rlimit 6000000} TestRlimit1(in: [int]int, len: int) returns (out: [int]int)
+implementation {:rlimit 900} TestTimeouts1(in: [int]int, len: int) returns (out: [int]int)
 {
     var i : int;
 
@@ -47,9 +48,9 @@ implementation {:rlimit 6000000} TestRlimit1(in: [int]int, len: int) returns (ou
     out[i] := 0;
     while (i < len)
       invariant 0 <= i && i <= len;
-      invariant out[0] == 0 && (forall j: int :: 0 <= j && j < i ==> out[j] == in[j]);
+      invariant out[0] == 0 && (forall j: int :: 0 <= j && j < i ==> out[j + 1] == out[j] + 1);
     {
-        out[i] := in[i];
+        out[i + 1] := out[i] + 1;
         i := i + 1;
     }
 
@@ -62,23 +63,23 @@ implementation {:rlimit 6000000} TestRlimit1(in: [int]int, len: int) returns (ou
     }
 }
 
-procedure TestRlimit2(in: [int]int, len: int) returns (out: [int]int);
+
+procedure TestTimeouts2(in: [int]int, len: int) returns (out: [int]int);
   requires in[0] == 0 && (forall i: int :: 0 <= i ==> in[i + 1] == in[i] + 1);
   requires 0 < len;
-  ensures (forall j: int :: 0 <= j && j < len ==> out[j] == in[j]);
+  ensures (forall j: int :: 0 <= j && j < len ==> out[j] == j);
 
-implementation {:rlimit 200} TestRlimit2(in: [int]int, len: int) returns (out: [int]int)
+implementation {:rlimit 1000} TestTimeouts2(in: [int]int, len: int) returns (out: [int]int)
 {
-    // CHECK-L: ${CHECKFILE_NAME}(${LINE:-2},30): Verification out of resource (TestRlimit2)
     var i : int;
 
     i := 0;
     out[i] := 0;
     while (i < len)
       invariant 0 <= i && i <= len;
-      invariant out[0] == 0 && (forall j: int :: 0 <= j && j < i ==> out[j] == in[j]);
+      invariant out[0] == 0 && (forall j: int :: 0 <= j && j < i ==> out[j + 1] == out[j] + 1);
     {
-        out[i] := in[i];
+        out[i + 1] := out[i] + 1;
         i := i + 1;
     }
 
@@ -90,4 +91,3 @@ implementation {:rlimit 200} TestRlimit2(in: [int]int, len: int) returns (out: [
         i := i + 1;
     }
 }
-// CHECK-L: Boogie program verifier finished with 1 verified, 0 errors, 2 out of resource
