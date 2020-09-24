@@ -2369,7 +2369,7 @@ namespace Microsoft.Boogie
       foreach (Variable /*!*/ v in Locals)
       {
         Contract.Assert(v != null);
-        rc.AddVariable(v, false);
+        rc.AddVariable(v);
       }
 
       foreach (Cmd /*!*/ cmd in Cmds)

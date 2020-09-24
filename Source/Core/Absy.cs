@@ -2405,7 +2405,7 @@ namespace Microsoft.Boogie
     public override void Register(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      rc.AddVariable(this, true);
+      rc.AddVariable(this);
     }
 
     public override void Resolve(ResolutionContext rc)
@@ -2497,7 +2497,7 @@ namespace Microsoft.Boogie
     public override void Register(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      rc.AddVariable(this, true);
+      rc.AddVariable(this);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
@@ -2535,7 +2535,7 @@ namespace Microsoft.Boogie
     public override void Register(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      rc.AddVariable(this, false);
+      rc.AddVariable(this);
     }
 
     /// <summary>
@@ -2591,7 +2591,7 @@ namespace Microsoft.Boogie
     public override void Register(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      rc.AddVariable(this, false);
+      rc.AddVariable(this);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
@@ -2645,7 +2645,7 @@ namespace Microsoft.Boogie
     public override void Register(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      rc.AddVariable(this, false);
+      rc.AddVariable(this);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
@@ -2961,7 +2961,7 @@ namespace Microsoft.Boogie
         Contract.Assert(f != null);
         if (f.Name != TypedIdent.NoName)
         {
-          rc.AddVariable(f, false);
+          rc.AddVariable(f);
         }
 
         f.Resolve(rc);
