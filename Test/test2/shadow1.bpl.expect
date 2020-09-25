@@ -1,0 +1,5 @@
+shadow1.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    shadow1.bpl(9,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
