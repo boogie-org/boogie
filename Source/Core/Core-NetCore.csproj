@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <AssemblyName>BoogieCore</AssemblyName>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <DefineConstants>COREFX_SUBSET</DefineConstants>
   </PropertyGroup>
 
