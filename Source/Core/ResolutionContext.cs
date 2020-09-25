@@ -420,10 +420,10 @@ namespace Microsoft.Boogie
       StatementIds.Add(name);
     }
 
-    public void AddVariable(Variable var, bool global)
+    public void AddVariable(Variable var)
     {
       Contract.Requires(var != null);
-      var previous = FindVariable(cce.NonNull(var.Name), !global);
+      var previous = FindVariable(cce.NonNull(var.Name), true);
       if (previous == null)
       {
         varContext.VarSymbols.Add(var.Name, var);
@@ -454,19 +454,13 @@ namespace Microsoft.Boogie
       return FindVariable(name, false);
     }
 
-    Variable FindVariable(string name, bool ignoreTopLevelVars)
+    Variable FindVariable(string name, bool lookInCurrentScopeOnly)
     {
       Contract.Requires(name != null);
       VarContextNode c = varContext;
       bool lookOnlyForConstants = false;
       do
       {
-        if (ignoreTopLevelVars && c.ParentContext == null)
-        {
-          // this is the top level and we're asked to ignore the top level; hence, we're done
-          break;
-        }
-
         Variable var = (Variable) c.VarSymbols[name];
         if (var != null && (!lookOnlyForConstants || var is Constant))
         {
@@ -479,10 +473,15 @@ namespace Microsoft.Boogie
           // from here on, only constants can be looked up
           lookOnlyForConstants = true;
         }
-
+        
+        if (lookInCurrentScopeOnly)
+        {
+          // we're asked to look only in the current scope; hence, we're done
+          break;
+        }
+        
         c = c.ParentContext;
       } while (c != null);
-
       // not present in the relevant levels
       return null;
     }
