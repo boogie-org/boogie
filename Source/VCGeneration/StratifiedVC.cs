@@ -2627,7 +2627,7 @@ namespace VC
               }
 
               Counterexample newCounterexample =
-                AssertCmdToCounterexample(acmd, transferCmd, trace, errModel, mvInfo, theoremProver.Context);
+                AssertCmdToCounterexample(acmd, transferCmd, trace, null, errModel, mvInfo, theoremProver.Context);
               newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
               return newCounterexample;
             }
@@ -3002,7 +3002,7 @@ namespace VC
       translator.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
       var implVc = gen.Not(GenerateVCAux(impl, null, label2absy, prover.Context));
 
-      handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, incarnationOriginMap, collector,
+      handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, debugInfos, collector,
         mvInfo, prover.Context, program);
 
       prover.Assert(implVc, true);

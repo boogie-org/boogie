@@ -851,7 +851,13 @@ namespace Microsoft.Boogie
         {
           return cmd;
         }
-        return BoundVarAndReplacingOldSubstituter.Apply(substMap, oldSubstMap, prefix, cmd);
+        var newCmd = BoundVarAndReplacingOldSubstituter.Apply(substMap, oldSubstMap, prefix, cmd);
+        if (cmd is ICarriesAttributes attrCmd && attrCmd.Attributes != null)
+        {
+          var attrCopy = (QKeyValue) attrCmd.Attributes.Clone();
+          ((ICarriesAttributes) newCmd).Attributes = Substituter.ApplyReplacingOldExprs(Subst, OldSubst, attrCopy);
+        }
+        return newCmd;
       }
 
       public Expr CopyExpr(Expr expr)

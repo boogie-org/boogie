@@ -1266,7 +1266,7 @@ namespace VC
             Contract.Assert(c != null);
             if (c is AssertCmd)
             {
-              return AssertCmdToCounterexample((AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, context);
+              return AssertCmdToCounterexample((AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context);
             }
           }
         }
@@ -1696,7 +1696,7 @@ namespace VC
           exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
         VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
         vc = exprGen.Implies(eqExpr, vc);
-        reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback,
+        reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.debugInfos, callback,
           mvInfo, this.Checker.TheoremProver.Context, parent.program);
 
         if (CommandLineOptions.Clo.TraceVerify && no >= 0)
@@ -2331,20 +2331,15 @@ namespace VC
 
     public class ErrorReporter : ProverInterface.ErrorHandler
     {
-      Dictionary<TransferCmd, ReturnCmd> /*!*/
-        gotoCmdOrigins;
+      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins;
 
-      Dictionary<int, Absy> /*!*/
-        label2absy;
+      Dictionary<int, Absy> label2absy;
 
-      List<Block /*!*/> /*!*/
-        blocks;
+      List<Block> blocks;
 
-      protected Dictionary<Incarnation, Absy /*!*/> /*!*/
-        incarnationOriginMap;
+      protected Dictionary<Cmd, List<object>> debugInfos;
 
-      protected VerifierCallback /*!*/
-        callback;
+      protected VerifierCallback callback;
 
       protected ModelViewInfo MvInfo;
       internal string resourceExceededMessage;
@@ -2355,17 +2350,14 @@ namespace VC
         Contract.Invariant(gotoCmdOrigins != null);
         Contract.Invariant(label2absy != null);
         Contract.Invariant(cce.NonNullElements(blocks));
-        Contract.Invariant(cce.NonNullDictionaryAndValues(incarnationOriginMap));
         Contract.Invariant(callback != null);
         Contract.Invariant(context != null);
         Contract.Invariant(program != null);
       }
 
-      protected ProverContext /*!*/
-        context;
+      protected ProverContext context;
 
-      Program /*!*/
-        program;
+      Program program;
 
       public IEnumerable<string> NecessaryAssumes
       {
@@ -2380,7 +2372,7 @@ namespace VC
       public ErrorReporter(Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
         Dictionary<int, Absy> /*!*/ label2absy,
         List<Block /*!*/> /*!*/ blocks,
-        Dictionary<Incarnation, Absy /*!*/> /*!*/ incarnationOriginMap,
+        Dictionary<Cmd, List<object>> debugInfos,
         VerifierCallback /*!*/ callback,
         ModelViewInfo mvInfo,
         ProverContext /*!*/ context,
@@ -2389,14 +2381,13 @@ namespace VC
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(label2absy != null);
         Contract.Requires(cce.NonNullElements(blocks));
-        Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
         Contract.Requires(callback != null);
         Contract.Requires(context != null);
         Contract.Requires(program != null);
         this.gotoCmdOrigins = gotoCmdOrigins;
         this.label2absy = label2absy;
         this.blocks = blocks;
-        this.incarnationOriginMap = incarnationOriginMap;
+        this.debugInfos = debugInfos;
         this.callback = callback;
         this.MvInfo = mvInfo;
 
@@ -2427,7 +2418,7 @@ namespace VC
         trace.Add(entryBlock);
 
         Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, model, MvInfo,
-          incarnationOriginMap, context, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
+          debugInfos, context, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
 
         if (newCounterexample == null)
           return;
@@ -2473,7 +2464,7 @@ namespace VC
           foreach (var cmd in assertCmds)
           {
             Counterexample cex =
-              AssertCmdToCounterexample(cmd.Item1, cmd.Item2, new List<Block>(), null, null, context);
+              AssertCmdToCounterexample(cmd.Item1, cmd.Item2, new List<Block>(), new List<object>(), null, null, context);
             cex.IsAuxiliaryCexForDiagnosingTimeouts = true;
             callback.OnCounterexample(cex, msg);
           }
@@ -3675,18 +3666,18 @@ namespace VC
 
     static Counterexample TraceCounterexample(
       Block /*!*/ b, Hashtable /*!*/ traceNodes, List<Block> /*!*/ trace, Model errModel, ModelViewInfo mvInfo,
-      Dictionary<Incarnation, Absy /*!*/> /*!*/ incarnationOriginMap,
+      Dictionary<Cmd, List<object>> debugInfos,
       ProverContext /*!*/ context,
       Dictionary<TraceLocation /*!*/, CalleeCounterexampleInfo /*!*/> /*!*/ calleeCounterexamples)
     {
       Contract.Requires(b != null);
       Contract.Requires(traceNodes != null);
       Contract.Requires(trace != null);
-      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
       Contract.Requires(context != null);
       Contract.Requires(cce.NonNullDictionaryAndValues(calleeCounterexamples));
       // After translation, all potential errors come from asserts.
 
+      List<object> augmentedTrace = new List<object>();
       while (true)
       {
         List<Cmd> cmds = b.Cmds;
@@ -3696,11 +3687,32 @@ namespace VC
         {
           Cmd cmd = cce.NonNull(cmds[i]);
 
+          // update augmentedTrace
+          if (errModel != null && debugInfos != null && debugInfos.ContainsKey(cmd))
+          {
+            foreach (var expr in debugInfos[cmd])
+            {
+              if (expr is LiteralExpr literalExpr)
+              {
+                augmentedTrace.Add(literalExpr.Val);
+              }
+              else if (expr is IdentifierExpr identifierExpr)
+              {
+                var func = errModel.GetFunc(identifierExpr.Name);
+                augmentedTrace.Add(func.GetConstant());
+              }
+              else
+              {
+                augmentedTrace.Add(expr);
+              }
+            }
+          }
+          
           // Skip if 'cmd' not contained in the trace or not an assert
           if (cmd is AssertCmd && traceNodes.Contains(cmd))
           {
             Counterexample newCounterexample =
-              AssertCmdToCounterexample((AssertCmd) cmd, transferCmd, trace, errModel, mvInfo, context);
+              AssertCmdToCounterexample((AssertCmd) cmd, transferCmd, trace, augmentedTrace, errModel, mvInfo, context);
             Contract.Assert(newCounterexample != null);
             newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
             return newCounterexample;
@@ -3726,7 +3738,7 @@ namespace VC
       }
     }
 
-    public static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, List<Block> trace,
+    public static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, List<Block> trace, List<object> augmentedTrace,
       Model errModel, ModelViewInfo mvInfo, ProverContext context)
     {
       Contract.Requires(cmd != null);
@@ -3735,31 +3747,26 @@ namespace VC
       Contract.Requires(context != null);
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
-      List<string> relatedInformation = new List<string>();
-
       // See if it is a special assert inserted in translation
       if (cmd is AssertRequiresCmd)
       {
         AssertRequiresCmd assertCmd = (AssertRequiresCmd) cmd;
         Contract.Assert(assertCmd != null);
-        CallCounterexample cc = new CallCounterexample(trace, assertCmd.Call, assertCmd.Requires, errModel, mvInfo,
+        CallCounterexample cc = new CallCounterexample(trace, augmentedTrace, assertCmd.Call, assertCmd.Requires, errModel, mvInfo,
           context, assertCmd.Checksum);
-        cc.relatedInformation = relatedInformation;
         return cc;
       }
       else if (cmd is AssertEnsuresCmd)
       {
         AssertEnsuresCmd assertCmd = (AssertEnsuresCmd) cmd;
         Contract.Assert(assertCmd != null);
-        ReturnCounterexample rc = new ReturnCounterexample(trace, transferCmd, assertCmd.Ensures, errModel, mvInfo,
+        ReturnCounterexample rc = new ReturnCounterexample(trace, augmentedTrace, transferCmd, assertCmd.Ensures, errModel, mvInfo,
           context, cmd.Checksum);
-        rc.relatedInformation = relatedInformation;
         return rc;
       }
       else
       {
-        AssertCounterexample ac = new AssertCounterexample(trace, (AssertCmd) cmd, errModel, mvInfo, context);
-        ac.relatedInformation = relatedInformation;
+        AssertCounterexample ac = new AssertCounterexample(trace, augmentedTrace, (AssertCmd) cmd, errModel, mvInfo, context);
         return ac;
       }
     }
@@ -3776,20 +3783,18 @@ namespace VC
       Contract.Requires(gotoCmdOrigins != null);
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
-      List<string> relatedInformation = new List<string>();
-
       Counterexample cc;
       if (assrt is AssertRequiresCmd)
       {
         var aa = (AssertRequiresCmd) assrt;
-        cc = new CallCounterexample(cex.Trace, aa.Call, aa.Requires, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
+        cc = new CallCounterexample(cex.Trace, cex.AugmentedTrace, aa.Call, aa.Requires, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
       }
       else if (assrt is AssertEnsuresCmd && cex is ReturnCounterexample)
       {
         var aa = (AssertEnsuresCmd) assrt;
         var oldCex = (ReturnCounterexample) cex;
-        // The first three parameters of ReturnCounterexample are: List<Block> trace, TransferCmd failingReturn, Ensures failingEnsures.
-        // We have the "aa" version of failingEnsures, namely aa.Ensures.  The first two parameters take more work to reconstruct.
+        // The first three parameters of ReturnCounterexample are: List<Block> trace, List<object> augmentedTrace, TransferCmd failingReturn, Ensures failingEnsures.
+        // We have the "aa" version of failingEnsures, namely aa.Ensures.  The first and third parameters take more work to reconstruct.
         // (The code here assumes the labels of blocks remain the same. If that's not the case, then it is possible that the trace
         // computed does not lead to where the error is, but at least the error will not be masked.)
         List<Block> reconstructedTrace = null;
@@ -3864,15 +3869,14 @@ namespace VC
           }
         }
 
-        cc = new ReturnCounterexample(reconstructedTrace ?? cex.Trace, returnCmd ?? oldCex.FailingReturn, aa.Ensures,
+        cc = new ReturnCounterexample(reconstructedTrace ?? cex.Trace, cex.AugmentedTrace, returnCmd ?? oldCex.FailingReturn, aa.Ensures,
           cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
       }
       else
       {
-        cc = new AssertCounterexample(cex.Trace, assrt, cex.Model, cex.MvInfo, cex.Context);
+        cc = new AssertCounterexample(cex.Trace, cex.AugmentedTrace, assrt, cex.Model, cex.MvInfo, cex.Context);
       }
-
-      cc.relatedInformation = relatedInformation;
+      
       return cc;
     }
 

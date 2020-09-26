@@ -66,15 +66,14 @@ namespace Microsoft.Boogie
     {
       Contract.Invariant(Trace != null);
       Contract.Invariant(Context != null);
-      Contract.Invariant(cce.NonNullElements(relatedInformation));
       Contract.Invariant(cce.NonNullDictionaryAndValues(calleeCounterexamples));
     }
 
     [Peer] public List<Block> Trace;
+    public List<object> AugmentedTrace;
     public Model Model;
     public VC.ModelViewInfo MvInfo;
     public ProverContext Context;
-    [Peer] public List<string> /*!>!*/ relatedInformation;
     public string OriginalRequestId;
     public string RequestId;
     public abstract byte[] Checksum { get; }
@@ -83,15 +82,15 @@ namespace Microsoft.Boogie
 
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
-    internal Counterexample(List<Block> trace, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
+    internal Counterexample(List<Block> trace, List<object> augmentedTrace, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
     {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
       this.Trace = trace;
+      this.AugmentedTrace = augmentedTrace;
       this.Model = model;
       this.MvInfo = mvInfo;
       this.Context = context;
-      this.relatedInformation = new List<string>();
       this.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
     }
 
@@ -429,9 +428,9 @@ namespace Microsoft.Boogie
     }
 
 
-    public AssertCounterexample(List<Block> trace, AssertCmd failingAssert, Model model, VC.ModelViewInfo mvInfo,
+    public AssertCounterexample(List<Block> trace, List<object> augmentedTrace, AssertCmd failingAssert, Model model, VC.ModelViewInfo mvInfo,
       ProverContext context)
-      : base(trace, model, mvInfo, context)
+      : base(trace, augmentedTrace, model, mvInfo, context)
     {
       Contract.Requires(trace != null);
       Contract.Requires(failingAssert != null);
@@ -451,7 +450,7 @@ namespace Microsoft.Boogie
 
     public override Counterexample Clone()
     {
-      var ret = new AssertCounterexample(Trace, FailingAssert, Model, MvInfo, Context);
+      var ret = new AssertCounterexample(Trace, AugmentedTrace, FailingAssert, Model, MvInfo, Context);
       ret.calleeCounterexamples = calleeCounterexamples;
       return ret;
     }
@@ -470,9 +469,9 @@ namespace Microsoft.Boogie
     }
 
 
-    public CallCounterexample(List<Block> trace, CallCmd failingCall, Requires failingRequires, Model model,
+    public CallCounterexample(List<Block> trace, List<object> augmentedTrace, CallCmd failingCall, Requires failingRequires, Model model,
       VC.ModelViewInfo mvInfo, ProverContext context, byte[] checksum = null)
-      : base(trace, model, mvInfo, context)
+      : base(trace, augmentedTrace, model, mvInfo, context)
     {
       Contract.Requires(!failingRequires.Free);
       Contract.Requires(trace != null);
@@ -499,7 +498,7 @@ namespace Microsoft.Boogie
 
     public override Counterexample Clone()
     {
-      var ret = new CallCounterexample(Trace, FailingCall, FailingRequires, Model, MvInfo, Context, Checksum);
+      var ret = new CallCounterexample(Trace, AugmentedTrace, FailingCall, FailingRequires, Model, MvInfo, Context, Checksum);
       ret.calleeCounterexamples = calleeCounterexamples;
       return ret;
     }
@@ -518,9 +517,9 @@ namespace Microsoft.Boogie
     }
 
 
-    public ReturnCounterexample(List<Block> trace, TransferCmd failingReturn, Ensures failingEnsures, Model model,
+    public ReturnCounterexample(List<Block> trace, List<object> augmentedTrace, TransferCmd failingReturn, Ensures failingEnsures, Model model,
       VC.ModelViewInfo mvInfo, ProverContext context, byte[] checksum)
-      : base(trace, model, mvInfo, context)
+      : base(trace, augmentedTrace, model, mvInfo, context)
     {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
@@ -549,7 +548,7 @@ namespace Microsoft.Boogie
 
     public override Counterexample Clone()
     {
-      var ret = new ReturnCounterexample(Trace, FailingReturn, FailingEnsures, Model, MvInfo, Context, checksum);
+      var ret = new ReturnCounterexample(Trace, AugmentedTrace, FailingReturn, FailingEnsures, Model, MvInfo, Context, checksum);
       ret.calleeCounterexamples = calleeCounterexamples;
       return ret;
     }
