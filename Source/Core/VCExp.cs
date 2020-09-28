@@ -316,7 +316,7 @@ The generic options may or may not be used by the prover plugin.
       Assembly asm = cce.NonNull(Assembly.LoadFrom(path));
       string name = cce.NonNull(asm.GetName().Name);
       System.Type factoryType =
-        cce.NonNull(asm.GetType("Microsoft.Boogie." + name.Replace("Provers.", "") + ".Factory"));
+        cce.NonNull(asm.GetType("Microsoft.Boogie." + name.Replace("Boogie.Provers.", "") + ".Factory"));
       return cce.NonNull((ProverFactory /*!*/) Activator.CreateInstance(factoryType));
     }
   }
