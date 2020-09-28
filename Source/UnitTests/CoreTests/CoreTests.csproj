@@ -58,10 +58,6 @@
       <Project>{B230A69C-C466-4065-B9C1-84D80E76D802}</Project>
       <Name>Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\ParserHelper\ParserHelper.csproj">
-      <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
-      <Name>ParserHelper</Name>
-    </ProjectReference>
     <ProjectReference Include="..\TestUtil\TestUtil.csproj">
       <Project>{59118E35-4236-495E-AF6E-0D641302ED2C}</Project>
       <Name>TestUtil</Name>

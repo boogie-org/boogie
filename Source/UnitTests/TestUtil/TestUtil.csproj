@@ -52,10 +52,6 @@
       <Project>{b230a69c-c466-4065-b9c1-84d80e76d802}</Project>
       <Name>Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\ParserHelper\ParserHelper.csproj">
-      <Project>{fcd3ac7f-9dfd-46c8-ab1e-09f0b0f16dc5}</Project>
-      <Name>ParserHelper</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

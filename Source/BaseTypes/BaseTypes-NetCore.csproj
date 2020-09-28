@@ -3,11 +3,6 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <AssemblyName>BoogieBaseTypes</AssemblyName>
-    <RootNamespace>BaseTypes-NetCore</RootNamespace>
-    <PackageId>BoogieBaseTypes</PackageId>
-    <Authors>BoogieBaseTypes</Authors>
-    <Company>BoogieBaseTypes</Company>
-    <Product>BoogieBaseTypes</Product>
   </PropertyGroup>
 
   <ItemGroup>

@@ -147,10 +147,6 @@
       <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
       <Name>Graph</Name>
     </ProjectReference>
-    <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
-      <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
-      <Name>ParserHelper</Name>
-    </ProjectReference>
     <ProjectReference Include="..\VCGeneration\VCGeneration.csproj">
       <Project>{E1F10180-C7B9-4147-B51F-FA1B701966DC}</Project>
       <Name>VCGeneration</Name>

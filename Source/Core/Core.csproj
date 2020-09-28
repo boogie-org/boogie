@@ -156,9 +156,11 @@
     <Compile Include="LoopUnroll.cs" />
     <Compile Include="OOLongUtil.cs" />
     <Compile Include="Parser.cs" />
+    <Compile Include="ParserHelper.cs" />
     <Compile Include="ResolutionContext.cs" />
     <Compile Include="Scanner.cs" />
     <Compile Include="StandardVisitor.cs" />
+    <Compile Include="Token.cs" />
     <Compile Include="TypeAmbiguitySeeker.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="VariableDependenceAnalyser.cs" />
@@ -180,10 +182,6 @@
     <ProjectReference Include="..\Graph\Graph.csproj">
       <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
       <Name>Graph</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
-      <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
-      <Name>ParserHelper</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

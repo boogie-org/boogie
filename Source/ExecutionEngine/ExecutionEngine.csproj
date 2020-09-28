@@ -162,10 +162,6 @@
       <Project>{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}</Project>
       <Name>Model</Name>
     </ProjectReference>
-    <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
-      <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
-      <Name>ParserHelper</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Predication\Predication.csproj">
       <Project>{AFAA5CE1-C41B-44F0-88F8-FD8A43826D44}</Project>
       <Name>Predication</Name>

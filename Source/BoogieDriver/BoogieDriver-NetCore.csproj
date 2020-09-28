@@ -24,7 +24,6 @@
     <ProjectReference Include="..\ExecutionEngine\ExecutionEngine-NetCore.csproj" />
     <ProjectReference Include="..\Graph\Graph-NetCore.csproj" />
     <ProjectReference Include="..\Houdini\Houdini-NetCore.csproj" />
-    <ProjectReference Include="..\ParserHelper\ParserHelper-NetCore.csproj" />
     <ProjectReference Include="..\Predication\Predication-NetCore.csproj" />
     <ProjectReference Include="..\Provers\SMTLib\SMTLib-NetCore.csproj" />
     <ProjectReference Include="..\VCExpr\VCExpr-NetCore.csproj" />
