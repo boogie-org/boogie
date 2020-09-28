@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>BoogieConcurrency</AssemblyName>
+    <AssemblyName>Boogie.Concurrency</AssemblyName>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 

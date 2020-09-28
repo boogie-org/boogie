@@ -2,12 +2,9 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>BoogieBaseTypes</AssemblyName>
+    <AssemblyName>Boogie.BaseTypes</AssemblyName>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <RootNamespace>BaseTypes-NetCore</RootNamespace>
-    <PackageId>BoogieBaseTypes</PackageId>
-    <Authors>BoogieBaseTypes</Authors>
-    <Company>BoogieBaseTypes</Company>
-    <Product>BoogieBaseTypes</Product>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 

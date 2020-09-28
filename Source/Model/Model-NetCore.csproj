@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>BoogieModel</AssemblyName>
+    <AssemblyName>Boogie.Model</AssemblyName>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 

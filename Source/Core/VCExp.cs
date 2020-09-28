@@ -310,7 +310,7 @@ The generic options may or may not be used by the prover plugin.
       {
         string codebase = cce.NonNull(System.IO.Path.GetDirectoryName(
           cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location)));
-        path = System.IO.Path.Combine(codebase, "Provers." + proverName + ".dll");
+        path = System.IO.Path.Combine(codebase, "Boogie.Provers." + proverName + ".dll");
       }
 
       Assembly asm = cce.NonNull(Assembly.LoadFrom(path));

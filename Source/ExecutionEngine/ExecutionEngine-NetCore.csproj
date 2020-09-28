@@ -1,16 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Authors>Boogie</Authors>
+    <OutputType>Library</OutputType>
+    <AssemblyName>Boogie.ExecutionEngine</AssemblyName>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>Contains the API for Boogie</Description>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <RepositoryUrl>https://github.com/boogie-org/boogie</RepositoryUrl>
-  </PropertyGroup>
-  
-  <PropertyGroup>
-    <OutputType>Library</OutputType>
-    <AssemblyName>BoogieExecutionEngine</AssemblyName>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Boogie</Authors>
   </PropertyGroup>
 
   <ItemGroup>
