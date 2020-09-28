@@ -6,4 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
+  <ItemGroup>
+      <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
+  </ItemGroup>
 </Project>

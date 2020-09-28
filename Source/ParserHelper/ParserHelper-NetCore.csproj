@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>BoogieModel</AssemblyName>
+    <AssemblyName>BoogieParserHelper</AssemblyName>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 

@@ -30,4 +30,7 @@
     <ProjectReference Include="..\VCGeneration\VCGeneration-NetCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+      <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
+  </ItemGroup>
 </Project>

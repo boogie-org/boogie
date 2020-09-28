@@ -10,4 +10,7 @@
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+      <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
+  </ItemGroup>
 </Project>

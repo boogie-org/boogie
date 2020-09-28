@@ -12,4 +12,7 @@
     <ProjectReference Include="..\Core\Core-NetCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+      <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
+  </ItemGroup>
 </Project>
