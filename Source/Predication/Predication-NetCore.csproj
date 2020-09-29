@@ -3,8 +3,6 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <AssemblyName>Boogie.Predication</AssemblyName>
-    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,9 +11,5 @@
     <ProjectReference Include="..\Core\Core-NetCore.csproj" />
     <ProjectReference Include="..\Graph\Graph-NetCore.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration-NetCore.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-      <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
   </ItemGroup>
 </Project>

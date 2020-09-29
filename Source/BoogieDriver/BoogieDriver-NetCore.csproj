@@ -2,16 +2,12 @@
 
   <PropertyGroup>
     <PackageId>Boogie</PackageId>
-    <Authors>Boogie</Authors>
     <Description>An SMT-based program verifier.</Description>
-    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-    <RepositoryUrl>https://github.com/boogie-org/boogie</RepositoryUrl>
   </PropertyGroup>
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <AssemblyName>BoogieDriver</AssemblyName>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>boogie</ToolCommandName>
   </PropertyGroup>
@@ -28,10 +24,6 @@
     <ProjectReference Include="..\Provers\SMTLib\SMTLib-NetCore.csproj" />
     <ProjectReference Include="..\VCExpr\VCExpr-NetCore.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration-NetCore.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-      <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
   </ItemGroup>
 
 </Project>

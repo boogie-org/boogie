@@ -3,11 +3,7 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <AssemblyName>Boogie.ExecutionEngine</AssemblyName>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>Contains the API for Boogie</Description>
-    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-    <RepositoryUrl>https://github.com/boogie-org/boogie</RepositoryUrl>
-    <Authors>Boogie</Authors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,9 +21,5 @@
     <ProjectReference Include="..\Model\Model-NetCore.csproj" />
     <ProjectReference Include="..\Predication\Predication-NetCore.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration-NetCore.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-      <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
   </ItemGroup>
 </Project>

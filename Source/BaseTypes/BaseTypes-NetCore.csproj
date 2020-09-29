@@ -3,17 +3,11 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <AssemblyName>Boogie.BaseTypes</AssemblyName>
-    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <RootNamespace>BaseTypes-NetCore</RootNamespace>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-      <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
   </ItemGroup>
 
 </Project>

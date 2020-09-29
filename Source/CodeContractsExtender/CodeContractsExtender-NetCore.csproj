@@ -3,11 +3,5 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <AssemblyName>Boogie.CodeContractsExtender</AssemblyName>
-    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
-
-  <ItemGroup>
-      <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
-  </ItemGroup>
 </Project>

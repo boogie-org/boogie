@@ -3,8 +3,6 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <AssemblyName>Boogie.Provers.SMTLib</AssemblyName>
-    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,9 +13,5 @@
     <ProjectReference Include="..\..\Model\Model-NetCore.csproj" />
     <ProjectReference Include="..\..\VCExpr\VCExpr-NetCore.csproj" />
     <ProjectReference Include="..\..\VCGeneration\VCGeneration-NetCore.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-      <None Include="..\..\..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
   </ItemGroup>
 </Project>

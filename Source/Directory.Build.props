@@ -3,6 +3,11 @@
   <!-- Configure target framework for .NET Core build -->
   <PropertyGroup Condition="$(MSBuildProjectName.Contains('-NetCore'))">
     <TargetFramework>netcoreapp3.1</TargetFramework>
+
+    <Authors>Boogie</Authors>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <RepositoryUrl>https://github.com/boogie-org/boogie</RepositoryUrl>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
   </PropertyGroup>
 
   <!-- Configure GitVersionTask -->
@@ -17,6 +22,8 @@
   <ItemGroup Condition="$(MSBuildProjectName.Contains('-NetCore'))">
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.118" />
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json" />
+
+    <None Include="$(MSBuildThisFileDirectory)..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
   </ItemGroup>
 
   <!-- Configure StyleCop analysis rules -->
