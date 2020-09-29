@@ -1035,7 +1035,7 @@ namespace Microsoft.Boogie.Houdini
     public class HoudiniState
     {
       public WorkQueue _workQueue;
-      public HashSet<string> denylist;
+      public HashSet<string> denyList;
       public Dictionary<Variable, bool> _assignment;
       public Implementation _implementation;
       public HoudiniOutcome _outcome;
@@ -1046,7 +1046,7 @@ namespace Microsoft.Boogie.Houdini
         this._assignment = currentAssignment;
         this._implementation = null;
         this._outcome = new HoudiniOutcome();
-        this.denylist = new HashSet<string>();
+        this.denyList = new HashSet<string>();
       }
 
       public WorkQueue WorkQueue
@@ -1072,12 +1072,12 @@ namespace Microsoft.Boogie.Houdini
 
       public bool isDenyListed(string funcName)
       {
-        return denylist.Contains(funcName);
+        return denyList.Contains(funcName);
       }
 
       public void addToDenyList(string funcName)
       {
-        denylist.Add(funcName);
+        denyList.Add(funcName);
       }
     }
 
