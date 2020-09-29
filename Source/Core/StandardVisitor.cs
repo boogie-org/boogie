@@ -86,7 +86,7 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.Lhss.Count; ++i)
       {
         node.SetLhs(i, cce.NonNull((AssignLhs) this.Visit(node.Lhss[i])));
-        node.SetRhs(i, cce.NonNull((Expr /*!*/) this.Visit(node.Rhss[i])));
+        node.SetRhs(i, cce.NonNull((Expr /*!*/) this.VisitExpr(node.Rhss[i])));
       }
 
       return node;
@@ -501,7 +501,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<AssignLhs>() != null);
       node.Map = cce.NonNull((AssignLhs) this.Visit(node.Map));
       for (int i = 0; i < node.Indexes.Count; ++i)
-        node.Indexes[i] = cce.NonNull((Expr) this.Visit(node.Indexes[i]));
+        node.Indexes[i] = cce.NonNull((Expr) this.VisitExpr(node.Indexes[i]));
       return node;
     }
 
@@ -873,7 +873,7 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.Lhss.Count; ++i)
       {
         this.Visit(node.Lhss[i]);
-        this.Visit(node.Rhss[i]);
+        this.VisitExpr(node.Rhss[i]);
       }
 
       return node;
@@ -1213,7 +1213,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<AssignLhs>() == node);
       this.Visit(node.Map);
       for (int i = 0; i < node.Indexes.Count; ++i)
-        this.Visit(node.Indexes[i]);
+        this.VisitExpr(node.Indexes[i]);
       return node;
     }
 
