@@ -1931,7 +1931,7 @@ namespace Microsoft.Boogie
               if (continuation_stack.Count == 0)
               {
                 Counterexample newCounterexample =
-                  AssertCmdToCounterexample((AssertCmd) cmd, transferCmd, trace, new Microsoft.Boogie.Model(),
+                  AssertCmdToCounterexample((AssertCmd) cmd, transferCmd, trace, null, new Microsoft.Boogie.Model(),
                     info.mvInfo,
                     boogieContext);
                 newCounterexample.AddCalleeCounterexample(calleeCounterexamples);

@@ -1,0 +1,38 @@
+trace0.bpl(18,1): Error BP5003: A postcondition might not hold on this return path.
+trace0.bpl(5,1): Related location: This is the postcondition that might not hold.
+Execution trace:
+    trace0.bpl(7,5): anon0
+    trace0.bpl(10,9): anon5_Then
+    trace0.bpl(14,9): anon6_Then
+    trace0.bpl(17,5): anon4
+Augmented execution trace:
+line 22
+i = 42
+line 25
+o = 42
+line 29
+o = 43
+just to show off
+exit of foo
+o = 44
+trace0.bpl(33,1): Error BP5003: A postcondition might not hold on this return path.
+trace0.bpl(22,1): Related location: This is the postcondition that might not hold.
+Execution trace:
+    trace0.bpl(24,5): anon0
+    trace0.bpl(37,5): inline$FirstIncr$0$anon0
+    trace0.bpl(27,9): anon5_Then$1
+    trace0.bpl(43,5): inline$SecondIncr$0$anon0
+    trace0.bpl(30,9): anon6_Then$1
+    trace0.bpl(32,5): anon4
+Augmented execution trace:
+line 22
+i = 42
+line 25
+o = 42
+line 29
+o = 43
+just to show off
+exit of foo
+o = 44
+
+Boogie program verifier finished with 0 verified, 2 errors

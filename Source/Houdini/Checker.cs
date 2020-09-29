@@ -181,7 +181,7 @@ namespace Microsoft.Boogie.Houdini
         new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false));
       proverInterface.DefineMacro(macro, conjecture);
       conjecture = exprGen.Function(macro);
-      handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector,
+      handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.debugInfos, collector,
         mvInfo, proverInterface.Context, program);
     }
 

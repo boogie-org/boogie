@@ -1970,6 +1970,16 @@ namespace Microsoft.Boogie
        Prints <string> rather than the standard message for assertion failure.
        Also applicable to requires and ensures declarations. 
 
+---- On statements --------------------------------------------------
+
+     {:print e0, e1, e2, ...}
+       Indicates that expressions e0, e1, e2, ... must be printed.  Must be used 
+       in conjunction with /enhancedErrorMessages:n command-line option.  
+
+     {:captureState s}
+       Indicates that state must be captured under the name s.  Must be used
+       together with /mv:<string> command-line option.
+
   ---- The end ---------------------------------------------------------------
 ");
     }

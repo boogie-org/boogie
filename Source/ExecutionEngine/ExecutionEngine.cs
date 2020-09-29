@@ -1798,19 +1798,18 @@ namespace Microsoft.Boogie
             WriteErrorInformationToXmlSink(errorInfo, error.Trace);
           }
 
-          if (CommandLineOptions.Clo.EnhancedErrorMessages == 1)
-          {
-            foreach (string info in error.relatedInformation)
-            {
-              Contract.Assert(info != null);
-              errorInfo.Out.WriteLine("       " + info);
-            }
-          }
-
           if (CommandLineOptions.Clo.ErrorTrace > 0)
           {
             errorInfo.Out.WriteLine("Execution trace:");
             error.Print(4, errorInfo.Out, b => { errorInfo.AddAuxInfo(b.tok, b.Label, "Execution trace"); });
+            if (CommandLineOptions.Clo.EnhancedErrorMessages == 1 && error.AugmentedTrace != null && error.AugmentedTrace.Count > 0)
+            {
+              errorInfo.Out.WriteLine("Augmented execution trace:");
+              foreach (var elem in error.AugmentedTrace)
+              {
+                errorInfo.Out.Write(elem);
+              }
+            }
             if (CommandLineOptions.Clo.PrintErrorModel >= 1 && error.Model != null)
             {
               error.Model.Write(ExecutionEngine.ModelWriter == null ? errorInfo.Out : ExecutionEngine.ModelWriter);

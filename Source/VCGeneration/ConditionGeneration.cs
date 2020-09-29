@@ -95,9 +95,10 @@ namespace VC
     // shared across each implementation; created anew for each implementation
     protected Dictionary<Variable, int> variable2SequenceNumber;
 
-    public Dictionary<Incarnation, Absy> /*!>!*/
-      incarnationOriginMap = new Dictionary<Incarnation, Absy>();
+    public Dictionary<Incarnation, Absy> incarnationOriginMap = new Dictionary<Incarnation, Absy>();
 
+    public Dictionary<Cmd, List<object>> debugInfos = new Dictionary<Cmd, List<object>>();
+    
     public Program program;
 
     protected string /*?*/
@@ -910,7 +911,7 @@ namespace VC
         ChecksumHelper.ComputeChecksums(c, currentImplementation, variableCollector.UsedVariables, currentChecksum);
         variableCollector.Visit(c);
         currentChecksum = c.Checksum;
-        TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, b);
+        TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
       }
 
       b.Checksum = currentChecksum;
@@ -1135,21 +1136,63 @@ namespace VC
         Interlocked.Increment(ref CachingActionCounts[(int) action]);
       }
     }
-
+    
+    private void AddDebugInfo(Cmd c, Dictionary<Variable, Expr> incarnationMap, List<Cmd> passiveCmds)
+    {
+      if (c is ICarriesAttributes cmd)
+      {
+        var debugExprs = new List<object>();
+        QKeyValue current = cmd.Attributes;
+        while (current != null)
+        {
+          if (current.Key == "print")
+          {
+            foreach (var param in current.Params)
+            {
+              if (param is IdentifierExpr identifierExpr)
+              {
+                if (incarnationMap.ContainsKey(identifierExpr.Decl))
+                {
+                  debugExprs.Add(incarnationMap[identifierExpr.Decl]);
+                }
+                else
+                {
+                  debugExprs.Add(identifierExpr);
+                }
+              }
+              else
+              {
+                debugExprs.Add(param);
+              }
+            }
+            debugExprs.Add("\n");
+          }
+          current = current.Next;
+        }
+        if (debugExprs.Count == 0)
+        {
+          return;
+        }
+        var debugCmd = new AssumeCmd(Token.NoToken, Expr.True);
+        passiveCmds.Add(debugCmd);
+        debugInfos.Add(debugCmd, debugExprs);
+      }
+    }
+    
     /// <summary>
     /// Turn a command into a passive command, and it remembers the previous step, to see if it is a havoc or not. In the case, it remembers the incarnation map BEFORE the havoc
     /// Meanwhile, record any information needed to later reconstruct a model view.
     /// </summary>
     protected void TurnIntoPassiveCmd(Cmd c, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst,
-      List<Cmd> passiveCmds, ModelViewInfo mvInfo, Block containingBlock)
+      List<Cmd> passiveCmds, ModelViewInfo mvInfo)
     {
       Contract.Requires(c != null);
       Contract.Requires(incarnationMap != null);
       Contract.Requires(oldFrameSubst != null);
       Contract.Requires(passiveCmds != null);
       Contract.Requires(mvInfo != null);
-      Contract.Requires(containingBlock != null);
 
+      AddDebugInfo(c, incarnationMap, passiveCmds);
       Substitution incarnationSubst = Substituter.SubstitutionFromHashtable(incarnationMap);
 
       #region assert/assume P |--> assert/assume P[x := in(x)], out := in
@@ -1518,11 +1561,11 @@ namespace VC
         Contract.Assert(sug != null);
         Cmd cmd = sug.Desugaring;
         Contract.Assert(cmd != null);
-        TurnIntoPassiveCmd(cmd, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, containingBlock);
+        TurnIntoPassiveCmd(cmd, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
       }
       else if (c is StateCmd)
       {
-        this.preHavocIncarnationMap = null; // we do not need to remeber the previous incarnations
+        this.preHavocIncarnationMap = null; // we do not need to remember the previous incarnations
         StateCmd st = (StateCmd) c;
         Contract.Assert(st != null);
         // account for any where clauses among the local variables
@@ -1540,7 +1583,7 @@ namespace VC
         foreach (Cmd s in st.Cmds)
         {
           Contract.Assert(s != null);
-          TurnIntoPassiveCmd(s, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, containingBlock);
+          TurnIntoPassiveCmd(s, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
         }
 
         // remove the local variables from the incarnation map
