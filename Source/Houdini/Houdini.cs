@@ -863,7 +863,7 @@ namespace Microsoft.Boogie.Houdini
       foreach (Implementation implementation in FindImplementationsToEnqueue(refutedAnnotation,
         refutedAnnotation.RefutationSite))
       {
-        if (!currentHoudiniState.isBlackListed(implementation.Name))
+        if (!currentHoudiniState.isDenyListed(implementation.Name))
         {
           currentHoudiniState.WorkQueue.Enqueue(implementation);
           this.NotifyEnqueue(implementation);
@@ -942,7 +942,7 @@ namespace Microsoft.Boogie.Houdini
             this.NotifyConstant(v.Name);
           }
 
-          currentHoudiniState.addToBlackList(currentHoudiniState.Implementation.Name);
+          currentHoudiniState.addToDenyList(currentHoudiniState.Implementation.Name);
           break;
       }
 
@@ -1035,7 +1035,7 @@ namespace Microsoft.Boogie.Houdini
     public class HoudiniState
     {
       public WorkQueue _workQueue;
-      public HashSet<string> blackList;
+      public HashSet<string> denyList;
       public Dictionary<Variable, bool> _assignment;
       public Implementation _implementation;
       public HoudiniOutcome _outcome;
@@ -1046,7 +1046,7 @@ namespace Microsoft.Boogie.Houdini
         this._assignment = currentAssignment;
         this._implementation = null;
         this._outcome = new HoudiniOutcome();
-        this.blackList = new HashSet<string>();
+        this.denyList = new HashSet<string>();
       }
 
       public WorkQueue WorkQueue
@@ -1070,14 +1070,14 @@ namespace Microsoft.Boogie.Houdini
         get { return this._outcome; }
       }
 
-      public bool isBlackListed(string funcName)
+      public bool isDenyListed(string funcName)
       {
-        return blackList.Contains(funcName);
+        return denyList.Contains(funcName);
       }
 
-      public void addToBlackList(string funcName)
+      public void addToDenyList(string funcName)
       {
-        blackList.Add(funcName);
+        denyList.Add(funcName);
       }
     }
 
@@ -1101,7 +1101,7 @@ namespace Microsoft.Boogie.Houdini
 
       foreach (Implementation impl in vcgenFailures)
       {
-        currentHoudiniState.addToBlackList(impl.Name);
+        currentHoudiniState.addToDenyList(impl.Name);
       }
 
       while (currentHoudiniState.WorkQueue.Count > 0)
