@@ -739,16 +739,27 @@ namespace Microsoft.Boogie
         Console.WriteLine("{0} type checking errors detected in {1}", errorCount, GetFileNameForConsole(bplFileName));
         return PipelineOutcome.TypeCheckingError;
       }
-      
-      if (MonomorphizationVisitor.Monomorphize(program))
+
+      if (PolymorphismChecker.IsMonomorphic(program))
       {
         CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
+      }
+      else if (CommandLineOptions.Clo.Monomorphize)
+      {
+        if (MonomorphizationVisitor.Monomorphize(program))
+        {
+          CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
+        }
+        else
+        {
+          Console.WriteLine("Unable to monomorphize input program {0}");
+          return PipelineOutcome.FatalError;
+        }
       }
       else if (CommandLineOptions.Clo.UseArrayTheory)
       {
         Console.WriteLine(
-          "Option /useArrayTheory only supported for monomorphic programs and polymorphism is detected in {0}",
-          GetFileNameForConsole(bplFileName));
+          "Option /useArrayTheory only supported for monomorphic programs and polymorphism is detected in input program");
         return PipelineOutcome.FatalError;
       }
 

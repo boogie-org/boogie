@@ -5,7 +5,7 @@ using System.Reflection.Metadata;
 
 namespace Microsoft.Boogie
 {
-  class PolymorphismChecker : ReadOnlyVisitor
+  public class PolymorphismChecker : ReadOnlyVisitor
   {
     public static bool IsMonomorphic(Program program)
     {
@@ -501,10 +501,6 @@ namespace Microsoft.Boogie
   {
     public static bool Monomorphize(Program program)
     {
-      if (PolymorphismChecker.IsMonomorphic(program))
-      {
-        return true;
-      }
       var axiomsToBeInstantiated = MonomorphizableChecker.IsMonomorphizable(program);
       if (axiomsToBeInstantiated != null)
       {

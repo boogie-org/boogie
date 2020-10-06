@@ -1,5 +1,5 @@
 
-// RUN: %boogie /useArrayTheory "%s" > "%t"
+// RUN: %boogie /monomorphize /useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function {:builtin "MapConst"} MapConst<T,U>(U): [T]U;
