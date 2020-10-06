@@ -187,6 +187,7 @@ namespace Microsoft.Boogie
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes;
     private Dictionary<TypeVariable, Type> typeParamInstantiation;
     private Dictionary<Variable, Variable> variableMapping;
+    private Dictionary<Variable, Variable> boundVarSubst;
 
     public ExprMonomorphizationVisitor(
       Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations,
@@ -200,6 +201,7 @@ namespace Microsoft.Boogie
       this.newTriggerTypes = newTriggerTypes;
       typeParamInstantiation = new Dictionary<TypeVariable, Type>();
       variableMapping = new Dictionary<Variable, Variable>();
+      boundVarSubst = new Dictionary<Variable, Variable>();
     }
 
     private ExprMonomorphizationVisitor(
@@ -207,15 +209,15 @@ namespace Microsoft.Boogie
       Dictionary<DatatypeTypeCtorDecl, Dictionary<List<Type>, DatatypeTypeCtorDecl>> datatypeInstantiations,
       Dictionary<TypeCtorDecl, HashSet<CtorType>> triggerTypes,
       Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes,
-      Dictionary<TypeVariable, Type> typeParamInstantiation,
-      Dictionary<Variable, Variable> variableMapping)
+      Dictionary<TypeVariable, Type> typeParamInstantiation)
     {
       this.functionInstantiations = functionInstantiations;
       this.datatypeInstantiations = datatypeInstantiations;
       this.triggerTypes = triggerTypes;
       this.newTriggerTypes = newTriggerTypes;
       this.typeParamInstantiation = typeParamInstantiation;
-      this.variableMapping = variableMapping;
+      variableMapping = new Dictionary<Variable, Variable>();
+      boundVarSubst = new Dictionary<Variable, Variable>();
     }
 
     public static List<Axiom> InstantiateAxiom(
@@ -231,9 +233,10 @@ namespace Microsoft.Boogie
       {
         var forallExpr = (ForallExpr) axiom.Expr;
         var visitor = new ExprMonomorphizationVisitor(functionInstantiations, datatypeInstantiations, triggerTypes, newTriggerTypes,
-          LinqExtender.Map(forallExpr.TypeParameters, trigger.Arguments),
-          new Dictionary<Variable, Variable>());
-        var newAxiom = new Axiom(axiom.tok, visitor.VisitExpr(forallExpr.Body), axiom.Comment, axiom.Attributes);
+          LinqExtender.Map(forallExpr.TypeParameters, trigger.Arguments));
+        forallExpr = (ForallExpr) visitor.VisitExpr(forallExpr);
+        forallExpr.TypeParameters = new List<TypeVariable>();
+        var newAxiom = new Axiom(axiom.tok, forallExpr.Dummies.Count == 0 ? forallExpr.Body : forallExpr, axiom.Comment, axiom.Attributes);
         instantiatedAxioms.Add(newAxiom);
       }
       return instantiatedAxioms;
@@ -431,11 +434,66 @@ namespace Microsoft.Boogie
 
     public override Expr VisitIdentifierExpr(IdentifierExpr node)
     {
-      if (!variableMapping.ContainsKey(node.Decl))
+      if (variableMapping.ContainsKey(node.Decl))
       {
-        return base.VisitIdentifierExpr(node);
+        return new IdentifierExpr(node.tok, variableMapping[node.Decl], node.Immutable);
       }
-      return new IdentifierExpr(node.tok, variableMapping[node.Decl], node.Immutable);
+      if (boundVarSubst.ContainsKey(node.Decl))
+      {
+        return new IdentifierExpr(node.tok, boundVarSubst[node.Decl], node.Immutable);
+      }
+      return base.VisitIdentifierExpr(node);
+    }
+
+    public override BinderExpr VisitBinderExpr(BinderExpr node)
+    {
+      var oldToNew = node.Dummies.ToDictionary(x => x,
+        x => new BoundVariable(x.tok, new TypedIdent(x.tok, x.Name, VisitType(x.TypedIdent.Type)),
+          x.Attributes));
+      foreach (var x in node.Dummies)
+      {
+        boundVarSubst.Add(x, oldToNew[x]);
+      }
+      BinderExpr expr = base.VisitBinderExpr(node);
+      expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
+      // We process triggers of quantifier expressions here, because otherwise the
+      // substitutions for bound variables have to be leaked outside this procedure.
+      if (node is QuantifierExpr quantifierExpr)
+      {
+        if (quantifierExpr.Triggers != null)
+        {
+          ((QuantifierExpr) expr).Triggers = this.VisitTrigger(quantifierExpr.Triggers);
+        }
+      }
+      foreach (var x in node.Dummies)
+      {
+        boundVarSubst.Remove(x);
+      }
+      return expr;
+    }
+
+    public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
+    {
+      // Don't remove this implementation! Triggers should be duplicated in VisitBinderExpr.
+      return (QuantifierExpr) this.VisitBinderExpr(node);
+    }
+
+    public override Expr VisitLetExpr(LetExpr node)
+    {
+      var oldToNew = node.Dummies.ToDictionary(x => x,
+        x => new BoundVariable(x.tok, new TypedIdent(x.tok, x.Name, VisitType(x.TypedIdent.Type)),
+          x.Attributes));
+      foreach (var x in node.Dummies)
+      {
+        boundVarSubst.Add(x, oldToNew[x]);
+      }
+      var expr = (LetExpr) base.VisitLetExpr(node);
+      expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
+      foreach (var x in node.Dummies)
+      {
+        boundVarSubst.Remove(x);
+      }
+      return expr;
     }
   }
 
@@ -482,10 +540,10 @@ namespace Microsoft.Boogie
       axiomInstantiations = new List<Axiom>();
       triggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
       newTriggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
-      axiomsToBeInstantiated.Iter(axiom =>
+      axiomsToBeInstantiated.Select(axiom => GetTypeCtorDecl(axiom)).ToHashSet().Iter(typeCtorDecl =>
       {
-        triggerTypes.Add(GetTypeCtorDecl(axiom), new HashSet<CtorType>());
-        newTriggerTypes.Add(GetTypeCtorDecl(axiom), new HashSet<CtorType>());
+        triggerTypes.Add(typeCtorDecl, new HashSet<CtorType>());
+        newTriggerTypes.Add(typeCtorDecl, new HashSet<CtorType>());
       });
     }
 
