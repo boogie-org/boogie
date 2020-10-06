@@ -810,6 +810,16 @@ namespace Microsoft.Boogie
         return oldSubstMap[v];
       }
       
+      public Expr PartialSubst(Variable v)
+      {
+        return substMap.ContainsKey(v) ? substMap[v] : null;
+      }
+      
+      public Expr PartialOldSubst(Variable v)
+      {
+        return oldSubstMap.ContainsKey(v) ? oldSubstMap[v] : null;
+      }
+      
       public List<Cmd> CopyCmdSeq(List<Cmd> cmds)
       {
         Contract.Requires(cmds != null);
@@ -855,7 +865,7 @@ namespace Microsoft.Boogie
         if (cmd is ICarriesAttributes attrCmd && attrCmd.Attributes != null)
         {
           var attrCopy = (QKeyValue) attrCmd.Attributes.Clone();
-          ((ICarriesAttributes) newCmd).Attributes = Substituter.ApplyReplacingOldExprs(Subst, OldSubst, attrCopy);
+          ((ICarriesAttributes) newCmd).Attributes = Substituter.ApplyReplacingOldExprs(PartialSubst, PartialOldSubst, attrCopy);
         }
         return newCmd;
       }

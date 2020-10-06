@@ -229,19 +229,19 @@ namespace Microsoft.Boogie
       }
     }
 
-    void ApplyRedirections(Model m)
+    void ApplyRedirections()
     {
       var mapping = new Dictionary<Model.Element, Model.Element>();
       foreach (var name in new string[] {"U_2_bool", "U_2_int"})
       {
-        Model.Func f = m.TryGetFunc(name);
+        Model.Func f = Model.TryGetFunc(name);
         if (f != null && f.Arity == 1)
         {
           foreach (var ft in f.Apps) mapping[ft.Args[0]] = ft.Result;
         }
       }
 
-      m.Substitute(mapping);
+      Model.Substitute(mapping);
     }
 
     public void PopulateModelWithStates()
@@ -249,7 +249,7 @@ namespace Microsoft.Boogie
       Contract.Requires(Model != null);
 
       Model m = Model;
-      ApplyRedirections(m);
+      ApplyRedirections();
 
       var mvstates = m.TryGetFunc("$mv_state");
       if (MvInfo == null || mvstates == null || (mvstates.Arity == 1 && mvstates.Apps.Count() == 0))
@@ -259,7 +259,7 @@ namespace Microsoft.Boogie
 
       foreach (Variable v in MvInfo.AllVariables)
       {
-        m.InitialState.AddBinding(v.Name, GetModelValue(m, v));
+        m.InitialState.AddBinding(v.Name, GetModelValue(v));
       }
 
       var states = new List<int>();
@@ -290,7 +290,7 @@ namespace Microsoft.Boogie
             if (e is IdentifierExpr)
             {
               IdentifierExpr ide = (IdentifierExpr) e;
-              elt = GetModelValue(m, ide.Decl);
+              elt = GetModelValue(ide.Decl);
             }
             else if (e is LiteralExpr)
             {
@@ -312,7 +312,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private Model.Element GetModelValue(Model m, Variable v)
+    public Model.Element GetModelValue(Variable v)
     {
       Model.Element elt;
       // first, get the unique name
@@ -327,10 +327,10 @@ namespace Microsoft.Boogie
         uniqueName = Context.Lookup(vvar);
       }
 
-      var f = m.TryGetFunc(uniqueName);
+      var f = Model.TryGetFunc(uniqueName);
       if (f == null)
       {
-        f = m.MkFunc(uniqueName, 0);
+        f = Model.MkFunc(uniqueName, 0);
       }
 
       elt = f.GetConstant();

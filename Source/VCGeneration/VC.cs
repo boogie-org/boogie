@@ -3690,22 +3690,7 @@ namespace VC
           // update augmentedTrace
           if (errModel != null && debugInfos != null && debugInfos.ContainsKey(cmd))
           {
-            foreach (var expr in debugInfos[cmd])
-            {
-              if (expr is LiteralExpr literalExpr)
-              {
-                augmentedTrace.Add(literalExpr.Val);
-              }
-              else if (expr is IdentifierExpr identifierExpr)
-              {
-                var func = errModel.GetFunc(identifierExpr.Name);
-                augmentedTrace.Add(func.GetConstant());
-              }
-              else
-              {
-                augmentedTrace.Add(expr);
-              }
-            }
+            augmentedTrace.AddRange(debugInfos[cmd]);
           }
           
           // Skip if 'cmd' not contained in the trace or not an assert
