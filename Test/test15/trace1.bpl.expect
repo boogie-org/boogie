@@ -1,0 +1,11 @@
+trace1.bpl(12,1): Error BP5003: A postcondition might not hold on this return path.
+trace1.bpl(8,1): Related location: This is the postcondition that might not hold.
+Execution trace:
+    trace1.bpl(11,5): anon0
+    trace1.bpl(17,5): inline$foo$0$anon0
+    trace1.bpl(11,5): anon0$1
+Augmented execution trace:
+g (before increment) = 0
+g (after increment) = 1
+
+Boogie program verifier finished with 0 verified, 1 error

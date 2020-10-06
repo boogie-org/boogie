@@ -384,7 +384,10 @@ namespace Microsoft.Boogie
         if (Arity != 0)
           throw new ArgumentException();
         if (apps.Count == 0)
-          SetConstant(Model.MkElement("**" + Name));
+        {
+          // value missing in the returned model
+          return null;
+        }
         return apps[0].Result;
       }
 

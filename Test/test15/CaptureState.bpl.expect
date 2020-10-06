@@ -8,12 +8,12 @@ Execution trace:
 $mv_state_const -> 3
 F -> T@FieldName!val!0
 Heap -> |T@[Ref,FieldName]Int!val!0|
-m -> **m
+m ->
 m@0 -> (- 8)
 m@1 -> (- 7)
 m@2 -> 0
 m@3 -> (- 7)
-r -> **r
+r ->
 r@0 -> (- 14)
 this -> T@Ref!val!0
 x -> 40
@@ -44,8 +44,8 @@ tickleBool -> {
 }
 *** STATE <initial>
   Heap -> |T@[Ref,FieldName]Int!val!0|
-  m -> **m
-  r -> **r
+  m ->
+  r ->
   this -> T@Ref!val!0
   x -> 40
   y -> 0
