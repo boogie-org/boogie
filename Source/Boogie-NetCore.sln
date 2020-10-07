@@ -25,8 +25,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeContractsExtender-NetCo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Model-NetCore", "Model\Model-NetCore.csproj", "{6DCA25DC-CE2D-499B-9217-8CA21FA3A084}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParserHelper-NetCore", "ParserHelper\ParserHelper-NetCore.csproj", "{EF7F77AC-AE10-4388-92DD-D7988011D158}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Houdini-NetCore", "Houdini\Houdini-NetCore.csproj", "{76BF0C63-9A33-4B65-8A56-1B52E042725E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Predication-NetCore", "Predication\Predication-NetCore.csproj", "{7A4B3721-D902-4265-94DB-CA8B0BB295B7}"

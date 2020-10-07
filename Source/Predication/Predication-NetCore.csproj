@@ -10,7 +10,6 @@
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
     <ProjectReference Include="..\Core\Core-NetCore.csproj" />
     <ProjectReference Include="..\Graph\Graph-NetCore.csproj" />
-    <ProjectReference Include="..\ParserHelper\ParserHelper-NetCore.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration-NetCore.csproj" />
   </ItemGroup>
 

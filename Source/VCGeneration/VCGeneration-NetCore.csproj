@@ -11,7 +11,6 @@
     <ProjectReference Include="..\Core\Core-NetCore.csproj" />
     <ProjectReference Include="..\Graph\Graph-NetCore.csproj" />
     <ProjectReference Include="..\Model\Model-NetCore.csproj" />
-    <ProjectReference Include="..\ParserHelper\ParserHelper-NetCore.csproj" />
     <ProjectReference Include="..\VCExpr\VCExpr-NetCore.csproj" />
   </ItemGroup>
 

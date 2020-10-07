@@ -93,10 +93,6 @@
       <Project>{69a2b0b8-bcac-4101-ae7a-556fcc58c06e}</Project>
       <Name>Graph</Name>
     </ProjectReference>
-    <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
-      <Project>{fcd3ac7f-9dfd-46c8-ab1e-09f0b0f16dc5}</Project>
-      <Name>ParserHelper</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Service References\" />

@@ -30,8 +30,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelViewer", "ModelViewer\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Model", "Model\Model.csproj", "{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParserHelper", "ParserHelper\ParserHelper.csproj", "{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Houdini", "Houdini\Houdini.csproj", "{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Predication", "Predication\Predication.csproj", "{AFAA5CE1-C41B-44F0-88F8-FD8A43826D44}"

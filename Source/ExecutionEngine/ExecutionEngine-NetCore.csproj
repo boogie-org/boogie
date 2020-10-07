@@ -18,7 +18,6 @@
     <ProjectReference Include="..\Graph\Graph-NetCore.csproj" />
     <ProjectReference Include="..\Houdini\Houdini-NetCore.csproj" />
     <ProjectReference Include="..\Model\Model-NetCore.csproj" />
-    <ProjectReference Include="..\ParserHelper\ParserHelper-NetCore.csproj" />
     <ProjectReference Include="..\Predication\Predication-NetCore.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration-NetCore.csproj" />
   </ItemGroup>

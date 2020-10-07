@@ -117,10 +117,6 @@
       <Project>{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}</Project>
       <Name>Model</Name>
     </ProjectReference>
-    <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
-      <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
-      <Name>ParserHelper</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj">
       <Project>{9B163AA3-36BC-4AFB-88AB-79BC9E97E401}</Project>
       <Name>SMTLib</Name>
