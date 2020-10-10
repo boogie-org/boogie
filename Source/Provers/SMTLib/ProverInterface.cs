@@ -227,7 +227,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private void FindDependentTypes(Type type, List<CtorType> dependentTypes)
+    private void FindDependentTypes(Type type, List<DatatypeTypeCtorDecl> dependentTypes)
     {
       MapType mapType = type as MapType;
       if (mapType != null)
@@ -241,18 +241,18 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       CtorType ctorType = type as CtorType;
-      if (ctorType != null && ctx.KnownDatatypeConstructors.ContainsKey(ctorType))
+      if (ctorType != null && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl && ctx.KnownDatatypes.Contains(datatypeTypeCtorDecl))
       {
-        dependentTypes.Add(ctorType);
+        dependentTypes.Add(datatypeTypeCtorDecl);
       }
     }
 
     private void PrepareDataTypes()
     {
-      if (ctx.KnownDatatypeConstructors.Count > 0)
+      if (ctx.KnownDatatypes.Count > 0)
       {
-        GraphUtil.Graph<CtorType> dependencyGraph = new GraphUtil.Graph<CtorType>();
-        foreach (CtorType datatype in ctx.KnownDatatypeConstructors.Keys)
+        GraphUtil.Graph<DatatypeTypeCtorDecl> dependencyGraph = new GraphUtil.Graph<DatatypeTypeCtorDecl>();
+        foreach (var datatype in ctx.KnownDatatypes)
         {
           dependencyGraph.AddSource(datatype);
           // Check for user-specified dependency (using ":dependson" attribute).
@@ -262,34 +262,33 @@ namespace Microsoft.Boogie.SMTLib
             dependencyGraph.AddEdge(datatype, ctx.LookupDatatype(userDependency));
           }
 
-          foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
+          foreach (Function f in datatype.Constructors)
           {
-            List<CtorType> dependentTypes = new List<CtorType>();
+            var dependentTypes = new List<DatatypeTypeCtorDecl>();
             foreach (Variable v in f.InParams)
             {
               FindDependentTypes(v.TypedIdent.Type, dependentTypes);
             }
-
-            foreach (CtorType result in dependentTypes)
+            foreach (var result in dependentTypes)
             {
               dependencyGraph.AddEdge(datatype, result);
             }
           }
         }
 
-        GraphUtil.StronglyConnectedComponents<CtorType> sccs =
-          new GraphUtil.StronglyConnectedComponents<CtorType>(dependencyGraph.Nodes, dependencyGraph.Predecessors,
+        GraphUtil.StronglyConnectedComponents<DatatypeTypeCtorDecl> sccs =
+          new GraphUtil.StronglyConnectedComponents<DatatypeTypeCtorDecl>(dependencyGraph.Nodes, dependencyGraph.Predecessors,
             dependencyGraph.Successors);
         sccs.Compute();
-        foreach (GraphUtil.SCC<CtorType> scc in sccs)
+        foreach (GraphUtil.SCC<DatatypeTypeCtorDecl> scc in sccs)
         {
           string datatypesString = "";
           string datatypeConstructorsString = "";
-          foreach (CtorType datatype in scc)
+          foreach (var datatype in scc)
           {
-            datatypesString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " 0)";
+            datatypesString += "(" + SMTLibExprLineariser.TypeToString(new CtorType(Token.NoToken, datatype, new List<Type>())) + " 0)";
             string datatypeConstructorString = "";
-            foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
+            foreach (Function f in datatype.Constructors)
             {
               string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
               datatypeConstructorString += "(" + quotedConstructorName + " ";
@@ -650,7 +649,7 @@ namespace Microsoft.Boogie.SMTLib
         TypeDecls.Clear();
         AxiomsAreSetup = false;
         ctx.Reset();
-        ctx.KnownDatatypeConstructors.Clear();
+        ctx.KnownDatatypes.Clear();
         ctx.parent = this;
         DeclCollector.Reset();
         NamedAssumes.Clear();
@@ -3177,10 +3176,9 @@ namespace Microsoft.Boogie.SMTLib
   public class SMTLibProverContext : DeclFreeProverContext
   {
     internal SMTLibProcessTheoremProver parent;
-
-    public readonly Dictionary<CtorType, List<Function>> KnownDatatypeConstructors =
-      new Dictionary<CtorType, List<Function>>();
-
+    
+    public readonly HashSet<DatatypeTypeCtorDecl> KnownDatatypes = new HashSet<DatatypeTypeCtorDecl>();
+    
     public readonly Dictionary<Function, VCExprNAry> DefinedFunctions = new Dictionary<Function, VCExprNAry>();
 
     public SMTLibProverContext(VCExpressionGenerator gen,
@@ -3212,14 +3210,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void DeclareFunction(Function f, string attributes)
     {
-      if (f is DatatypeConstructor)
-      {
-        CtorType datatype = (CtorType) f.OutParams[0].TypedIdent.Type;
-        if (!KnownDatatypeConstructors.ContainsKey(datatype))
-          KnownDatatypeConstructors[datatype] = new List<Function>();
-        KnownDatatypeConstructors[datatype].Add(f);
-      }
-      else if (f.DefinitionBody != null)
+      if (f.DefinitionBody != null)
       {
         DefinedFunctions.Add(f, (VCExprNAry) translator.Translate(f.DefinitionBody));
       }
@@ -3227,10 +3218,23 @@ namespace Microsoft.Boogie.SMTLib
       base.DeclareFunction(f, attributes);
     }
 
-    // Return the datatype of the given name if there is one, null otherwise.
-    public CtorType LookupDatatype(string name)
+    public override void DeclareType(TypeCtorDecl t, string attributes)
     {
-      foreach (CtorType datatype in KnownDatatypeConstructors.Keys)
+      if (t is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
+      {
+        if (datatypeTypeCtorDecl.Arity > 0)
+        {
+          throw new ProverException("Polymorphic datatypes are not supported");
+        }
+        KnownDatatypes.Add(datatypeTypeCtorDecl);
+      }
+      base.DeclareType(t, attributes);
+    }
+
+    // Return the datatype of the given name if there is one, null otherwise.
+    public DatatypeTypeCtorDecl LookupDatatype(string name)
+    {
+      foreach (var datatype in KnownDatatypes)
       {
         if (name == datatype.ToString())
         {

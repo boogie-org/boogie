@@ -827,6 +827,8 @@ namespace Microsoft.Boogie
 
     public TypeEncoding TypeEncodingMethod = TypeEncoding.Predicates;
 
+    public bool Monomorphize = false;
+
     public bool ReflectAdd = false;
 
     public int LiveVariableAnalysis = 1;
@@ -1481,7 +1483,7 @@ namespace Microsoft.Boogie
           }
 
           return true;
-
+        
         case "typeEncoding":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1501,6 +1503,14 @@ namespace Microsoft.Boogie
             }
           }
 
+          return true;
+
+        case "monomorphize":
+          if (ps.ConfirmArgumentCount(0))
+          {
+            Monomorphize = true;
+          }
+          
           return true;
 
         case "instrumentInfer":
@@ -2173,6 +2183,9 @@ namespace Microsoft.Boogie
                    a = arguments
                 Boogie automatically detects monomorphic programs and enables
                 monomorphic VC generation, thereby overriding the above option.
+  /monomorphize
+                Try to monomorphize program. An error is reported if
+                monomorphization is not possible. This feature is experimental!
   /useArrayTheory
                 Use the SMT theory of arrays (as opposed to axioms). Supported
                 only for monomorphic programs.

@@ -1,6 +1,12 @@
 
 type {:sourcefile "test.ssc"} T;
 
+type ref;
+
+type any;
+
+type name;
+
 function {:source "test.scc"} f(int) : int;
 
 const {:description "The largest integer value"} unique MAXINT: int;
@@ -30,12 +36,6 @@ implementation {:id 2} foo(x: int) returns (n: int)
 }
 
 
-
-type ref;
-
-type any;
-
-type name;
 
 procedure {:myAttribute "h\n\"ello\"", "again", "and\\" a\"gain\"", again} P();
 
