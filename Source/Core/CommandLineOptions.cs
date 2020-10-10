@@ -2184,7 +2184,8 @@ namespace Microsoft.Boogie
                 Boogie automatically detects monomorphic programs and enables
                 monomorphic VC generation, thereby overriding the above option.
   /monomorphize
-                Monomorphize program
+                Try to monomorphize program. An error is reported if
+                monomorphization is not possible. This feature is experimental!
   /useArrayTheory
                 Use the SMT theory of arrays (as opposed to axioms). Supported
                 only for monomorphic programs.
