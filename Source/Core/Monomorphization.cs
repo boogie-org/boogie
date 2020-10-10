@@ -1,7 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics.Contracts;
-using System.Reflection.Metadata;
+using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
@@ -63,6 +64,49 @@ namespace Microsoft.Boogie
     }
   }
 
+  class TypeDependencyVisitor : ReadOnlyVisitor
+  {
+    private Graph<TypeVariable> typeVariableDependencyGraph;
+    private HashSet<Tuple<TypeVariable, TypeVariable>> strongDependencyEdges;
+    private TypeVariable formal;
+    private int insideContructedType;
+    
+    public TypeDependencyVisitor(Graph<TypeVariable> typeVariableDependencyGraph,
+      HashSet<Tuple<TypeVariable, TypeVariable>> strongDependencyEdges, TypeVariable formal)
+    {
+      this.typeVariableDependencyGraph = typeVariableDependencyGraph;
+      this.strongDependencyEdges = strongDependencyEdges;
+      this.formal = formal;
+      this.insideContructedType = 0;
+    }
+
+    public override CtorType VisitCtorType(CtorType node)
+    {
+      insideContructedType++;
+      base.VisitCtorType(node);
+      insideContructedType--;
+      return node;
+    }
+
+    public override MapType VisitMapType(MapType node)
+    {
+      insideContructedType++;
+      base.VisitMapType(node);
+      insideContructedType--;
+      return node;
+    }
+
+    public override Type VisitTypeVariable(TypeVariable node)
+    {
+      typeVariableDependencyGraph.AddEdge(node, formal);
+      if (insideContructedType > 0)
+      {
+        strongDependencyEdges.Add(new Tuple<TypeVariable, TypeVariable>(node, formal));
+      }
+      return base.VisitTypeVariable(node);
+    }
+  }
+  
   class MonomorphizableChecker : ReadOnlyVisitor
   {
     public static bool IsMonomorphizable(Program program, out HashSet<Axiom> axiomsToBeInstantiated, out HashSet<Axiom> polymorphicFunctionAxioms)
@@ -71,14 +115,16 @@ namespace Microsoft.Boogie
       checker.VisitProgram(program);
       axiomsToBeInstantiated = checker.axiomsToBeInstantiated;
       polymorphicFunctionAxioms = checker.polymorphicFunctionAxioms;
-      return checker.isMonomorphizable;
+      return checker.isMonomorphizable && checker.IsFinitelyInstantiable();
     }
     
     private Program program;
     private bool isMonomorphizable;
     private HashSet<Axiom> axiomsToBeInstantiated;
     private HashSet<Axiom> polymorphicFunctionAxioms;
-    
+    private Graph<TypeVariable> typeVariableDependencyGraph; // (T,U) in this graph iff T flows to U
+    private HashSet<Tuple<TypeVariable, TypeVariable>> strongDependencyEdges; // (T,U) in this set iff a type constructed from T flows into U
+
     private MonomorphizableChecker(Program program)
     {
       this.program = program;
@@ -86,8 +132,27 @@ namespace Microsoft.Boogie
       this.polymorphicFunctionAxioms = program.TopLevelDeclarations.OfType<Function>().Where(f => f.TypeParameters.Count > 0 && f.DefinitionAxiom != null)
         .Select(f => f.DefinitionAxiom).ToHashSet();
       this.axiomsToBeInstantiated = new HashSet<Axiom>();
+      this.typeVariableDependencyGraph = new Graph<TypeVariable>();
+      this.strongDependencyEdges = new HashSet<Tuple<TypeVariable, TypeVariable>>();
     }
 
+    private bool IsFinitelyInstantiable()
+    {
+      var sccs = new StronglyConnectedComponents<TypeVariable>(typeVariableDependencyGraph.Nodes, typeVariableDependencyGraph.Predecessors, typeVariableDependencyGraph.Successors);
+      sccs.Compute();
+      foreach (var scc in sccs)
+      {
+        foreach (var edge in strongDependencyEdges)
+        {
+          if (scc.Contains(edge.Item1) && scc.Contains(edge.Item2))
+          {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+    
     public override BinderExpr VisitBinderExpr(BinderExpr node)
     {
       if (node.TypeParameters.Count > 0)
@@ -99,10 +164,17 @@ namespace Microsoft.Boogie
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      BinaryOperator op = node.Fun as BinaryOperator;
-      if (op != null && op.Op == BinaryOperator.Opcode.Subtype)
+      if (node.Fun is BinaryOperator op && op.Op == BinaryOperator.Opcode.Subtype)
       {
         isMonomorphizable = false;
+      }
+      else if (node.Fun is FunctionCall functionCall)
+      {
+        functionCall.Func.TypeParameters.Iter(t =>
+        {
+          var visitor = new TypeDependencyVisitor(typeVariableDependencyGraph, strongDependencyEdges, t);
+          visitor.Visit(node.TypeParameters[t]);
+        });
       }
       return base.VisitNAryExpr(node);
     }
@@ -157,6 +229,18 @@ namespace Microsoft.Boogie
       }
       CheckTypeCtorInstantiatedAxiom(node, typeCtorName);
       return node;
+    }
+
+    public override Function VisitFunction(Function node)
+    {
+      if (polymorphicFunctionAxioms.Contains(node.DefinitionAxiom))
+      {
+        var forallExpr = (ForallExpr) node.DefinitionAxiom.Expr;
+        LinqExtender.Map(node.TypeParameters, forallExpr.TypeParameters)
+          .Iter(x => typeVariableDependencyGraph.AddEdge(x.Key, x.Value));
+        VisitExpr(forallExpr.Body);
+      }
+      return base.VisitFunction(node);
     }
   }
   
@@ -241,7 +325,7 @@ namespace Microsoft.Boogie
       return new Axiom(axiom.tok, forallExpr.Dummies.Count == 0 ? forallExpr.Body : forallExpr, axiom.Comment, axiom.Attributes);
     }
     
-    private Function InstantiateFunction(Function func, List<Type> funcTypeParamInstantiations, Dictionary<TypeVariable, Type> funcTypeParamInstantiation)
+    private Function InstantiateFunction(Function func, List<Type> funcTypeParamInstantiations)
     {
       if (!functionInstantiations.ContainsKey(func))
       {
@@ -249,31 +333,40 @@ namespace Microsoft.Boogie
       }
       if (!functionInstantiations[func].ContainsKey(funcTypeParamInstantiations))
       {
+        var funcTypeParamInstantiation = LinqExtender.Map(func.TypeParameters, funcTypeParamInstantiations);
         var instantiatedFunction = InstantiateFunctionSignature(func, funcTypeParamInstantiations, funcTypeParamInstantiation);
         functionInstantiations[func][funcTypeParamInstantiations] = instantiatedFunction;
-        var savedTypeParamInstantiation = this.typeParamInstantiation;
-        this.typeParamInstantiation = funcTypeParamInstantiation;
-        var savedVariableMapping = this.variableMapping;
-        this.variableMapping = LinqExtender.Map(func.InParams, instantiatedFunction.InParams);
         if (func.Body != null)
         {
-          instantiatedFunction.Body = VisitExpr(func.Body);
+          instantiatedFunction.Body = InstantiateBody(func.Body, funcTypeParamInstantiation,
+            LinqExtender.Map(func.InParams, instantiatedFunction.InParams));
         }
         else if (func.DefinitionBody != null)
         {
-          instantiatedFunction.DefinitionBody = (NAryExpr) VisitExpr(func.DefinitionBody);
+          instantiatedFunction.DefinitionBody = (NAryExpr) InstantiateBody(func.DefinitionBody,
+            funcTypeParamInstantiation, LinqExtender.Map(func.InParams, instantiatedFunction.InParams));
         }
         else if (func.DefinitionAxiom != null)
         {
           instantiatedFunction.DefinitionAxiom =
             this.InstantiateAxiom(func.DefinitionAxiom, funcTypeParamInstantiations);
         }
-        this.variableMapping = savedVariableMapping;
-        this.typeParamInstantiation = savedTypeParamInstantiation;
       }
       return functionInstantiations[func][funcTypeParamInstantiations];
     }
 
+    private Expr InstantiateBody(Expr expr, Dictionary<TypeVariable, Type> funcTypeParamInstantiation, Dictionary<Variable, Variable> funcVariableMapping)
+    {
+      var savedTypeParamInstantiation = this.typeParamInstantiation;
+      this.typeParamInstantiation = funcTypeParamInstantiation;
+      var savedVariableMapping = this.variableMapping;
+      this.variableMapping = funcVariableMapping;
+      var newExpr = VisitExpr(expr);
+      this.variableMapping = savedVariableMapping;
+      this.typeParamInstantiation = savedTypeParamInstantiation;
+      return newExpr;
+    }
+    
     private Function InstantiateFunctionSignature(Function func, List<Type> funcTypeParamInstantiations, Dictionary<TypeVariable, Type> funcTypeParamInstantiation)
     {
       var savedTypeParamInstantiation = this.typeParamInstantiation;
@@ -343,42 +436,40 @@ namespace Microsoft.Boogie
       {
         return returnExpr.Args[0];
       }
-      if (returnExpr.Fun is FunctionCall functionCall)
+
+      if (returnExpr.Fun is FunctionCall functionCall && functionCall.Func.TypeParameters.Count > 0)
       {
-        if (functionCall.Func.TypeParameters.Count > 0)
+        var typeParamInstantiations =
+          returnExpr.TypeParameters.FormalTypeParams.Select(x =>
+            TypeProxy.FollowProxy(returnExpr.TypeParameters[x]).Substitute(typeParamInstantiation)).ToList();
+        if (functionCall.Func is DatatypeMembership membership)
         {
-          var typeParamInstantiations =
-            returnExpr.TypeParameters.FormalTypeParams.Select(x =>
-              TypeProxy.FollowProxy(returnExpr.TypeParameters[x]).Substitute(typeParamInstantiation)).ToList();
-          if (functionCall.Func is DatatypeMembership membership)
-          {
-            InstantiateDatatype(membership.constructor.datatypeTypeCtorDecl, typeParamInstantiations);
-            var datatypeTypeCtorDecl =
-              datatypeInstantiations[membership.constructor.datatypeTypeCtorDecl][typeParamInstantiations];
-            returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[membership.constructor.index].membership);
-          }
-          else if (functionCall.Func is DatatypeSelector selector)
-          {
-            InstantiateDatatype(selector.constructor.datatypeTypeCtorDecl, typeParamInstantiations);
-            var datatypeTypeCtorDecl =
-              datatypeInstantiations[selector.constructor.datatypeTypeCtorDecl][typeParamInstantiations];
-            returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[selector.constructor.index].selectors[selector.index]);
-          }
-          else if (functionCall.Func is DatatypeConstructor constructor)
-          {
-            InstantiateDatatype(constructor.datatypeTypeCtorDecl, typeParamInstantiations);
-            var datatypeTypeCtorDecl =
-              datatypeInstantiations[constructor.datatypeTypeCtorDecl][typeParamInstantiations];
-            returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[constructor.index]);
-          }
-          else
-          {
-            var funcTypeParamInstantiation = LinqExtender.Map(returnExpr.TypeParameters.FormalTypeParams, typeParamInstantiations);
-            returnExpr.Fun = new FunctionCall(InstantiateFunction(functionCall.Func, typeParamInstantiations, funcTypeParamInstantiation));
-          }
-          returnExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
-          returnExpr.Type = TypeProxy.FollowProxy(returnExpr.Type);
+          InstantiateDatatype(membership.constructor.datatypeTypeCtorDecl, typeParamInstantiations);
+          var datatypeTypeCtorDecl =
+            datatypeInstantiations[membership.constructor.datatypeTypeCtorDecl][typeParamInstantiations];
+          returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[membership.constructor.index].membership);
         }
+        else if (functionCall.Func is DatatypeSelector selector)
+        {
+          InstantiateDatatype(selector.constructor.datatypeTypeCtorDecl, typeParamInstantiations);
+          var datatypeTypeCtorDecl =
+            datatypeInstantiations[selector.constructor.datatypeTypeCtorDecl][typeParamInstantiations];
+          returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[selector.constructor.index]
+            .selectors[selector.index]);
+        }
+        else if (functionCall.Func is DatatypeConstructor constructor)
+        {
+          InstantiateDatatype(constructor.datatypeTypeCtorDecl, typeParamInstantiations);
+          var datatypeTypeCtorDecl =
+            datatypeInstantiations[constructor.datatypeTypeCtorDecl][typeParamInstantiations];
+          returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[constructor.index]);
+        }
+        else
+        {
+          returnExpr.Fun = new FunctionCall(InstantiateFunction(functionCall.Func, typeParamInstantiations));
+        }
+        returnExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+        returnExpr.Type = TypeProxy.FollowProxy(returnExpr.Type);
       }
       return returnExpr;
     }
