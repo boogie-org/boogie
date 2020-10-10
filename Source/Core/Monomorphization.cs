@@ -65,21 +65,26 @@ namespace Microsoft.Boogie
 
   class MonomorphizableChecker : ReadOnlyVisitor
   {
-    public static HashSet<Axiom> IsMonomorphizable(Program program)
+    public static bool IsMonomorphizable(Program program, out HashSet<Axiom> axiomsToBeInstantiated, out HashSet<Axiom> polymorphicFunctionAxioms)
     {
       var checker = new MonomorphizableChecker(program);
       checker.VisitProgram(program);
-      return checker.isMonomorphizable ? checker.axiomsToBeInstantiated : null;
+      axiomsToBeInstantiated = checker.axiomsToBeInstantiated;
+      polymorphicFunctionAxioms = checker.polymorphicFunctionAxioms;
+      return checker.isMonomorphizable;
     }
     
     private Program program;
     private bool isMonomorphizable;
     private HashSet<Axiom> axiomsToBeInstantiated;
-
+    private HashSet<Axiom> polymorphicFunctionAxioms;
+    
     private MonomorphizableChecker(Program program)
     {
       this.program = program;
       this.isMonomorphizable = true;
+      this.polymorphicFunctionAxioms = program.TopLevelDeclarations.OfType<Function>().Where(f => f.TypeParameters.Count > 0 && f.DefinitionAxiom != null)
+        .Select(f => f.DefinitionAxiom).ToHashSet();
       this.axiomsToBeInstantiated = new HashSet<Axiom>();
     }
 
@@ -141,6 +146,10 @@ namespace Microsoft.Boogie
 
     public override Axiom VisitAxiom(Axiom node)
     {
+      if (polymorphicFunctionAxioms.Contains(node))
+      {
+        return node;
+      }
       var typeCtorName = node.FindStringAttribute("ctor");
       if (typeCtorName == null || !(node.Expr is ForallExpr))
       {
@@ -203,23 +212,7 @@ namespace Microsoft.Boogie
       variableMapping = new Dictionary<Variable, Variable>();
       boundVarSubst = new Dictionary<Variable, Variable>();
     }
-
-    private ExprMonomorphizationVisitor(
-      Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations,
-      Dictionary<DatatypeTypeCtorDecl, Dictionary<List<Type>, DatatypeTypeCtorDecl>> datatypeInstantiations,
-      Dictionary<TypeCtorDecl, HashSet<CtorType>> triggerTypes,
-      Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes,
-      Dictionary<TypeVariable, Type> typeParamInstantiation)
-    {
-      this.functionInstantiations = functionInstantiations;
-      this.datatypeInstantiations = datatypeInstantiations;
-      this.triggerTypes = triggerTypes;
-      this.newTriggerTypes = newTriggerTypes;
-      this.typeParamInstantiation = typeParamInstantiation;
-      variableMapping = new Dictionary<Variable, Variable>();
-      boundVarSubst = new Dictionary<Variable, Variable>();
-    }
-
+    
     public static List<Axiom> InstantiateAxiom(
       Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations,
       Dictionary<DatatypeTypeCtorDecl, Dictionary<List<Type>, DatatypeTypeCtorDecl>> datatypeInstantiations,
@@ -229,19 +222,25 @@ namespace Microsoft.Boogie
       HashSet<CtorType> triggers)
     {
       var instantiatedAxioms = new List<Axiom>();
-      foreach (var trigger in triggers)
+      var visitor = new ExprMonomorphizationVisitor(functionInstantiations, datatypeInstantiations, triggerTypes, newTriggerTypes);
+      triggers.Iter(trigger =>
       {
-        var forallExpr = (ForallExpr) axiom.Expr;
-        var visitor = new ExprMonomorphizationVisitor(functionInstantiations, datatypeInstantiations, triggerTypes, newTriggerTypes,
-          LinqExtender.Map(forallExpr.TypeParameters, trigger.Arguments));
-        forallExpr = (ForallExpr) visitor.VisitExpr(forallExpr);
-        forallExpr.TypeParameters = new List<TypeVariable>();
-        var newAxiom = new Axiom(axiom.tok, forallExpr.Dummies.Count == 0 ? forallExpr.Body : forallExpr, axiom.Comment, axiom.Attributes);
-        instantiatedAxioms.Add(newAxiom);
-      }
+        instantiatedAxioms.Add(visitor.InstantiateAxiom(axiom, trigger.Arguments));
+      });
       return instantiatedAxioms;
     }
-
+    
+    private Axiom InstantiateAxiom(Axiom axiom, List<Type> funcTypeParamInstantiations)
+    {
+      var forallExpr = (ForallExpr) axiom.Expr;
+      var savedTypeParamInstantiation = this.typeParamInstantiation;
+      this.typeParamInstantiation = LinqExtender.Map(forallExpr.TypeParameters, funcTypeParamInstantiations);
+      forallExpr = (ForallExpr) VisitExpr(forallExpr);
+      this.typeParamInstantiation = savedTypeParamInstantiation;
+      forallExpr.TypeParameters = new List<TypeVariable>();
+      return new Axiom(axiom.tok, forallExpr.Dummies.Count == 0 ? forallExpr.Body : forallExpr, axiom.Comment, axiom.Attributes);
+    }
+    
     private Function InstantiateFunction(Function func, List<Type> funcTypeParamInstantiations, Dictionary<TypeVariable, Type> funcTypeParamInstantiation)
     {
       if (!functionInstantiations.ContainsKey(func))
@@ -251,6 +250,7 @@ namespace Microsoft.Boogie
       if (!functionInstantiations[func].ContainsKey(funcTypeParamInstantiations))
       {
         var instantiatedFunction = InstantiateFunctionSignature(func, funcTypeParamInstantiations, funcTypeParamInstantiation);
+        functionInstantiations[func][funcTypeParamInstantiations] = instantiatedFunction;
         var savedTypeParamInstantiation = this.typeParamInstantiation;
         this.typeParamInstantiation = funcTypeParamInstantiation;
         var savedVariableMapping = this.variableMapping;
@@ -263,9 +263,13 @@ namespace Microsoft.Boogie
         {
           instantiatedFunction.DefinitionBody = (NAryExpr) VisitExpr(func.DefinitionBody);
         }
+        else if (func.DefinitionAxiom != null)
+        {
+          instantiatedFunction.DefinitionAxiom =
+            this.InstantiateAxiom(func.DefinitionAxiom, funcTypeParamInstantiations);
+        }
         this.variableMapping = savedVariableMapping;
         this.typeParamInstantiation = savedTypeParamInstantiation;
-        functionInstantiations[func][funcTypeParamInstantiations] = instantiatedFunction;
       }
       return functionInstantiations[func][funcTypeParamInstantiations];
     }
@@ -501,16 +505,21 @@ namespace Microsoft.Boogie
   {
     public static bool Monomorphize(Program program)
     {
-      var axiomsToBeInstantiated = MonomorphizableChecker.IsMonomorphizable(program);
-      if (axiomsToBeInstantiated != null)
+      HashSet<Axiom> axiomsToBeInstantiated, polymorphicFunctionAxioms;
+      var isMonomorphizable = MonomorphizableChecker.IsMonomorphizable(program, out axiomsToBeInstantiated, out polymorphicFunctionAxioms);
+      if (isMonomorphizable)
       {
-        var visitor = new MonomorphizationVisitor(program, axiomsToBeInstantiated);
+        var visitor = new MonomorphizationVisitor(program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
         visitor.VisitProgram(program);
         visitor.InstantiateAxioms(axiomsToBeInstantiated);
         program.RemoveTopLevelDeclarations(x => x is Function && ((Function) x).TypeParameters.Count > 0);
-        program.RemoveTopLevelDeclarations(x => axiomsToBeInstantiated.Contains(x));
+        program.RemoveTopLevelDeclarations(x => axiomsToBeInstantiated.Contains(x) || polymorphicFunctionAxioms.Contains(x));
         program.RemoveTopLevelDeclarations(x => x is DatatypeTypeCtorDecl y && y.Arity > 0);
-        visitor.functionInstantiations.Values.Iter(x => program.AddTopLevelDeclarations(x.Values));
+        visitor.functionInstantiations.Values.Iter(x =>
+        {
+          program.AddTopLevelDeclarations(x.Values);
+          x.Values.Where(y => y.DefinitionAxiom != null).Iter(y => program.AddTopLevelDeclaration(y.DefinitionAxiom));
+        });
         program.AddTopLevelDeclarations(visitor.axiomInstantiations);
         visitor.datatypeInstantiations.Values.Iter(x => program.AddTopLevelDeclarations(x.Values));
         Contract.Assert(PolymorphismChecker.IsMonomorphic(program));
@@ -521,16 +530,18 @@ namespace Microsoft.Boogie
     
     private Program program;
     private HashSet<Axiom> axiomsToBeInstantiated;
+    private HashSet<Axiom> polymorphicFunctionAxioms;
     private Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations;
     private Dictionary<DatatypeTypeCtorDecl, Dictionary<List<Type>, DatatypeTypeCtorDecl>> datatypeInstantiations;
     private List<Axiom> axiomInstantiations;
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> triggerTypes;
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes;
     
-    private MonomorphizationVisitor(Program program, HashSet<Axiom> axiomsToBeInstantiated)
+    private MonomorphizationVisitor(Program program, HashSet<Axiom> axiomsToBeInstantiated, HashSet<Axiom> polymorphicFunctionAxioms)
     {
       this.program = program;
       this.axiomsToBeInstantiated = axiomsToBeInstantiated;
+      this.polymorphicFunctionAxioms = polymorphicFunctionAxioms;
       functionInstantiations = new Dictionary<Function, Dictionary<List<Type>, Function>>();
       datatypeInstantiations = new Dictionary<DatatypeTypeCtorDecl, Dictionary<List<Type>, DatatypeTypeCtorDecl>>();
       axiomInstantiations = new List<Axiom>();
@@ -588,7 +599,7 @@ namespace Microsoft.Boogie
 
     public override Axiom VisitAxiom(Axiom node)
     {
-      if (axiomsToBeInstantiated.Contains(node))
+      if (axiomsToBeInstantiated.Contains(node) || polymorphicFunctionAxioms.Contains(node))
       {
         return node;
       }

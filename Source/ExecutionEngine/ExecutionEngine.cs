@@ -752,7 +752,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          Console.WriteLine("Unable to monomorphize input program {0}");
+          Console.WriteLine("Unable to monomorphize input program");
           return PipelineOutcome.FatalError;
         }
       }
