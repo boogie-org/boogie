@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>BoogieCore</AssemblyName>
+    <AssemblyName>Boogie.Core</AssemblyName>
     <DefineConstants>COREFX_SUBSET</DefineConstants>
   </PropertyGroup>
 
@@ -11,5 +11,5 @@
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
     <ProjectReference Include="..\Graph\Graph-NetCore.csproj" />
   </ItemGroup>
-
+  
 </Project>

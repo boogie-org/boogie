@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>BoogieHoudini</AssemblyName>
+    <AssemblyName>Boogie.Houdini</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

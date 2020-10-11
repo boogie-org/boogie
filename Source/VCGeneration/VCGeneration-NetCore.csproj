@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>BoogieVCGeneration</AssemblyName>
+    <AssemblyName>Boogie.VCGeneration</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

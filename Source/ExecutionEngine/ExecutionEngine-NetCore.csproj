@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>BoogieExecutionEngine</AssemblyName>
+    <AssemblyName>Boogie.ExecutionEngine</AssemblyName>
+    <Description>Contains the API for Boogie</Description>
   </PropertyGroup>
 
   <ItemGroup>

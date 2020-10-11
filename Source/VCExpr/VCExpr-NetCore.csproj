@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>BoogieVCExpr</AssemblyName>
+    <AssemblyName>Boogie.VCExpr</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>BoogieBaseTypes</AssemblyName>
+    <AssemblyName>Boogie.BaseTypes</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>BoogieCodeContractsExtender</AssemblyName>
+    <AssemblyName>Boogie.CodeContractsExtender</AssemblyName>
   </PropertyGroup>
-
+  
 </Project>

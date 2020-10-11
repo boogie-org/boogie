@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>Provers.SMTLib</AssemblyName>
+    <AssemblyName>Boogie.Provers.SMTLib</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

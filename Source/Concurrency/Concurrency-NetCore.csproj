@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>BoogieConcurrency</AssemblyName>
+    <AssemblyName>Boogie.Concurrency</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
