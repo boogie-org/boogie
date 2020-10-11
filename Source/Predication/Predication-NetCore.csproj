@@ -12,4 +12,5 @@
     <ProjectReference Include="..\Graph\Graph-NetCore.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration-NetCore.csproj" />
   </ItemGroup>
+
 </Project>

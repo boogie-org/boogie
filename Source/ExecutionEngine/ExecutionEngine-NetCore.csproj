@@ -22,4 +22,5 @@
     <ProjectReference Include="..\Predication\Predication-NetCore.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration-NetCore.csproj" />
   </ItemGroup>
+
 </Project>

@@ -4,4 +4,5 @@
     <OutputType>Library</OutputType>
     <AssemblyName>Boogie.CodeContractsExtender</AssemblyName>
   </PropertyGroup>
+  
 </Project>

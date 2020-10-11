@@ -11,4 +11,5 @@
     <ProjectReference Include="..\Core\Core-NetCore.csproj" />
     <ProjectReference Include="..\Graph\Graph-NetCore.csproj" />
   </ItemGroup>
+
 </Project>

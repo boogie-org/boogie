@@ -13,4 +13,5 @@
     <ProjectReference Include="..\Model\Model-NetCore.csproj" />
     <ProjectReference Include="..\VCExpr\VCExpr-NetCore.csproj" />
   </ItemGroup>
+
 </Project>

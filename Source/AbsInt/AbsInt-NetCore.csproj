@@ -10,5 +10,5 @@
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
     <ProjectReference Include="..\Core\Core-NetCore.csproj" />
   </ItemGroup>
-  
+
 </Project>

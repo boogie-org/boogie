@@ -11,4 +11,5 @@
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
     <ProjectReference Include="..\Graph\Graph-NetCore.csproj" />
   </ItemGroup>
+  
 </Project>
