@@ -20,6 +20,8 @@ using Bpl = Microsoft.Boogie;
 
 using System;
 using System.Diagnostics.Contracts;
+using System.Linq;
+using System.Reflection;
 
 namespace Microsoft.Boogie {
 
@@ -57,11 +59,22 @@ readonly List<Expr>/*!*/ dummyExprSeq;
 readonly TransferCmd/*!*/ dummyTransferCmd;
 readonly StructuredCmd/*!*/ dummyStructuredCmd;
 
+public static int ParseLibraryDefinitions(out Program program)
+{
+	string libraryDefinitionsFileName = "LibraryDefinitions.bpl";
+	Assembly asm = Assembly.GetExecutingAssembly();
+	var resourceName = asm.GetManifestResourceNames().First(s => s.EndsWith(libraryDefinitionsFileName, StringComparison.CurrentCultureIgnoreCase));
+	using (Stream resourceStream = asm.GetManifestResourceStream(resourceName))
+	{
+		return Parse(new StreamReader(resourceStream), libraryDefinitionsFileName, new List<string>(), out program);
+	}
+}
+
 ///<summary>
 ///Returns the number of parsing errors encountered.  If 0, "program" returns as
 ///the parsed program.
 ///</summary>
-public static int Parse (string/*!*/ filename, List<string/*!*/> defines, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
+public static int Parse(string/*!*/ filename, List<string/*!*/> defines, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
   Contract.Requires(filename != null);
   Contract.Requires(cce.NonNullElements(defines,true));
 
@@ -82,7 +95,7 @@ public static int Parse(TextReader stream, string/*!*/ filename, List<string> de
   return Parse(preprocessedSource, filename, out program, useBaseName);
 }
 
-public static int Parse (string s, string/*!*/ filename, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
+public static int Parse(string s, string/*!*/ filename, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
   Contract.Requires(s != null);
   Contract.Requires(filename != null);
 
