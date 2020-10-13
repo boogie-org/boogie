@@ -848,6 +848,8 @@ namespace Microsoft.Boogie
       }
     }
 
+    public bool UseLibrary = false;
+    
     // Note that procsToCheck stores all patterns <p> supplied with /proc:<p>
     // (and similarly procsToIgnore for /noProc:<p>). Thus, if procsToCheck
     // is empty it means that all procedures should be checked.
@@ -944,6 +946,14 @@ namespace Microsoft.Boogie
 
           return true;
 
+        case "lib":
+          if (ps.ConfirmArgumentCount(0))
+          {
+            this.UseLibrary = true;
+          }
+
+          return true;
+        
         case "proc":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -2012,6 +2022,7 @@ namespace Microsoft.Boogie
   Multiple .bpl files supplied on the command line are concatenated into one
   Boogie program.
 
+  /lib           : Include library definitions
   /proc:<p>      : Only check procedures matched by pattern <p>. This option
                    may be specified multiple times to match multiple patterns.
                    The pattern <p> matches the whole procedure name and may

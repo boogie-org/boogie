@@ -11,5 +11,10 @@
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender-NetCore.csproj" />
     <ProjectReference Include="..\Graph\Graph-NetCore.csproj" />
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <None Remove="LibraryDefinitions.bpl" />
+    <EmbeddedResource Include="LibraryDefinitions.bpl" />
+  </ItemGroup>
+
 </Project>

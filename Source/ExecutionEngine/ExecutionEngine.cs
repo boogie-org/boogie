@@ -624,6 +624,10 @@ namespace Microsoft.Boogie
       Contract.Requires(cce.NonNullElements(fileNames));
 
       Program program = null;
+      if (CommandLineOptions.Clo.UseLibrary)
+      {
+        Parser.ParseLibraryDefinitions(out program);
+      }
       bool okay = true;
       for (int fileId = 0; fileId < fileNames.Count; fileId++)
       {

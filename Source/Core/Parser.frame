@@ -27,6 +27,7 @@ Coco/R itself) does not fall under the GNU General Public License.
 -->begin
 using System;
 using System.Diagnostics.Contracts;
+using System.Reflection;
 
 -->namespace
 
