@@ -2022,7 +2022,7 @@ namespace Microsoft.Boogie
   Multiple .bpl files supplied on the command line are concatenated into one
   Boogie program.
 
-  /lib           : Include definitions in LibraryDefinitions.bpl
+  /lib           : Include library definitions
   /proc:<p>      : Only check procedures matched by pattern <p>. This option
                    may be specified multiple times to match multiple patterns.
                    The pattern <p> matches the whole procedure name and may
