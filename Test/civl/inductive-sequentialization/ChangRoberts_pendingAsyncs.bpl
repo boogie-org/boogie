@@ -1,6 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
+type {:linear "pid"} Pid =int;
 const n:int;
 axiom n >= 1;
 
@@ -60,7 +61,7 @@ function {:inline} SingletonPA(pa:PA): [PA]int { NoPAs()[pa := 1] }
 function {:inline} Init(pids:[int]bool, channel:[int][int]int,
   pendingAsyncs:[PA]int, id:[int]int, leader:[int]bool) : bool
 {
-  pids == MapConstBool(true) &&
+  pids == MapConst(true) &&
   channel == (lambda i:int :: EmptyChannel()) &&
   pendingAsyncs == NoPAs() &&
   leader == (lambda i:int :: false) &&
@@ -98,7 +99,7 @@ modifies channel, pendingAsyncs, leader;
   assume (forall i:int, msg:int :: pid(i) && channel[i][msg] > 0 ==> msg <= id[max(id)] && (forall j:int:: betweenLeftEqual(i,j,max(id)) ==> msg != id[j]));
   assume (forall i:int :: pid(i) && i != max(id) ==> !leader[i]);
 
-  pendingAsyncs := MapAddPA(pendingAsyncs, PAs);
+  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
 }
 
 procedure {:IS_abstraction}{:layer 3}
@@ -138,8 +139,8 @@ modifies channel, pendingAsyncs, leader;
     }
   }
 
-  pendingAsyncs := MapAddPA(pendingAsyncs, PAs);
-  pendingAsyncs := MapSubPA(pendingAsyncs, SingletonPA(P_PA(pid)));
+  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
+  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(P_PA(pid)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +160,7 @@ modifies channel, pendingAsyncs;
   assume (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
   assume (forall i:int, msg:int :: pid(i) && channel[i][msg] > 0 ==> msg == id[prev(i)]);
   PAs := (lambda pa:PA ::  if is#P_PA(pa) && pid(pid#P_PA(pa)) then 1 else 0);
-  pendingAsyncs := MapAddPA(pendingAsyncs, PAs);
+  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
 }
 
 procedure {:IS_invariant}{:layer 2}
@@ -182,7 +183,7 @@ modifies channel, pendingAsyncs;
     (k < n ==> PAs[PInit_PA(n)] > 0)   // Hint for the prover for the conclusion check
   );
 
-  pendingAsyncs := MapAddPA(pendingAsyncs, PAs);
+  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -196,7 +197,7 @@ modifies pendingAsyncs;
   assert Init(pids, channel, pendingAsyncs, id, leader);
   assert trigger(0);
   PAs := (lambda pa:PA :: if is#PInit_PA(pa) && pid(pid#PInit_PA(pa)) then 1 else 0);
-  pendingAsyncs := MapAddPA(pendingAsyncs, PAs);
+  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
 }
 
 procedure {:left}{:layer 2}
@@ -208,8 +209,8 @@ modifies channel, pendingAsyncs;
   assert pendingAsyncs[PInit_PA(pid)] > 0;
   channel[next(pid)][id[pid]] := channel[next(pid)][id[pid]] + 1;
   PAs := NoPAs()[P_PA(pid) := 1];
-  pendingAsyncs := MapAddPA(pendingAsyncs, PAs);
-  pendingAsyncs := MapSubPA(pendingAsyncs, SingletonPA(PInit_PA(pid)));
+  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
+  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(PInit_PA(pid)));
 }
 
 procedure {:atomic}{:layer 2, 3}
@@ -248,8 +249,8 @@ modifies channel, pendingAsyncs, leader;
     }
   }
 
-  pendingAsyncs := MapAddPA(pendingAsyncs, PAs);
-  pendingAsyncs := MapSubPA(pendingAsyncs, SingletonPA(P_PA(pid)));
+  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
+  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(P_PA(pid)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -319,13 +320,13 @@ requires {:layer 1} pid(pid);
 procedure {:intro}{:layer 1} AddPendingAsyncs(PAs: [PA]int)
 modifies pendingAsyncs;
 {
-  pendingAsyncs := MapAddPA(pendingAsyncs, PAs);
+  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
 }
 
 procedure {:intro}{:layer 1} RemovePendingAsyncs(PAs: [PA]int)
 modifies pendingAsyncs;
 {
-  pendingAsyncs := MapSubPA(pendingAsyncs, PAs);
+  pendingAsyncs := MapSub(pendingAsyncs, PAs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -370,21 +371,3 @@ returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool)
 
 procedure {:yields}{:layer 0}{:refines "LINEAR_TRANSFER"} linear_transfer(i:int, {:linear_in "pid"} pids:[int]bool)
 returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool);
-
-////////////////////////////////////////////////////////////////////////////////
-
-function {:builtin "MapAdd"} MapAddPA([PA]int, [PA]int): [PA]int;
-function {:builtin "MapSub"} MapSubPA([PA]int, [PA]int): [PA]int;
-
-function {:builtin "MapConst"} MapConstBool (bool) : [int]bool;
-function {:builtin "MapOr"} MapOr ([int]bool, [int]bool) : [int]bool;
-
-function {:inline}{:linear "pid"} PidCollector (pid:int) : [int]bool
-{
-  MapConstBool(false)[pid := true]
-}
-
-function {:inline}{:linear "pid"} PidSetCollector (pids:[int]bool) : [int]bool
-{
-  pids
-}

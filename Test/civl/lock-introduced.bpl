@@ -1,7 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type X;
+type {:linear "tid"} X;
 const nil: X;
 
 var {:layer 0,2} b: bool;
@@ -97,9 +97,3 @@ modifies b;
 
 procedure {:yields} {:layer 0} {:refines "AtomicCAS"} CAS(prev: bool, next: bool) returns (status: bool);
 procedure {:yields} {:layer 0} {:refines "AtomicSET"} SET(next: bool);
-
-function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
-function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
-{
-  MapConstBool(false)[x := true]
-}

@@ -41,13 +41,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * Proof of VerifiedFT correctness in CIVL.
  */
 
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 /*
  * Tid
  */
-type Tid = int;  // make int so you can iterate over Tids
+type {:linear "tid"} Tid = int;  // make int so you can iterate over Tids
 const unique nil: Tid;
 
 function {:inline} ValidTid(tid : Tid): bool {
@@ -1069,24 +1069,8 @@ modifies shadow.Lock;
     shadow.Lock[ShadowableLock(l)] := nil;
 }
 
-
-
-
-
-
-// needed for linear Tids --- don't forget...
-function {:builtin "MapConst"} TidMapConstBool(bool): [Tid]bool;
-
-function {:inline} {:linear "tid"} TidCollector(x: Tid) : [Tid]bool
-{
-  TidMapConstBool(false)[x := true]
-}
-
 // for matching quantifiers
 function {:inline false} f(i: int): bool {  true  }
-
-
-
 
 function
 {:witness "shadow.VC"}

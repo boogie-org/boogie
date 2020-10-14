@@ -1,37 +1,26 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:datatype} Perm;
+type {:linear "perm"} {:datatype} Perm;
 function {:constructor} Left(i: int): Perm;
 function {:constructor} Right(i: int): Perm;
 
-function {:builtin "MapConst"} PermSetConst(bool): [Perm]bool;
-function {:builtin "MapOr"} PermSetUnion([Perm]bool, [Perm]bool) : [Perm]bool;
-
 function {:inline} {:linear "perm"} IntCollector(i: int) : [Perm]bool
 {
-  PermSetConst(false)[Left(i) := true][Right(i) := true]
+  MapConst(false)[Left(i) := true][Right(i) := true]
 }
 function {:inline} {:linear "perm"} IntSetCollector(iset: [int]bool) : [Perm]bool
 {
   (lambda p: Perm :: is#Left(p) && iset[i#Left(p)])
 }
-function {:inline} {:linear "perm"} PermCollector(p: Perm) : [Perm]bool
-{
-  PermSetConst(false)[p := true]
-}
 
-function {:builtin "MapConst"} IntSetConst(bool): [int]bool;
-function {:builtin "MapOr"} IntSetUnion([int]bool, [int]bool): [int]bool;
-function {:builtin "MapImp"} IntSetImp([int]bool, [int]bool): [int]bool;
-function {:builtin "MapIff"} IntSetIff([int]bool, [int]bool): [int]bool;
 function {:inline} IntSetSubset(X: [int]bool, Y: [int]bool): bool
 {
-    IntSetImp(X, Y) == IntSetConst(true)
+    MapImp(X, Y) == MapConst(true)
 }
 function {:inline} IntSetEq(X: [int]bool, Y: [int]bool): bool
 {
-    IntSetIff(X, Y) == IntSetConst(true)
+    MapIff(X, Y) == MapConst(true)
 }
 
 function size(set: [int]bool): int;

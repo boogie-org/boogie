@@ -1,6 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
+type {:linear "pid"} Pid = int;
 var {:layer 0,3} C:[int]int; // FIFO channel
 var {:layer 0,3} head:int;   // head index of the channel
 var {:layer 0,3} tail:int;   // tail index of the channel
@@ -203,18 +204,3 @@ procedure {:both}{:layer 1} ASSERT_EQ (a:int, b:int)
 procedure {:yields}{:layer 0}{:refines "SEND"} send (m:int);
 procedure {:yields}{:layer 0}{:refines "RECEIVE"} receive () returns (m:int);
 procedure {:yields}{:layer 0}{:refines "ASSERT_EQ"} assert_eq (a:int, b:int);
-
-////////////////////////////////////////////////////////////////////////////////
-
-function {:builtin "MapConst"} MapConstBool (bool) : [int]bool;
-function {:builtin "MapOr"} MapOr ([int]bool, [int]bool) : [int]bool;
-
-function {:inline}{:linear "pid"} PidCollector (pid:int) : [int]bool
-{
-  MapConstBool(false)[pid := true]
-}
-
-function {:inline}{:linear "pid"} PidSetCollector (pids:[int]bool) : [int]bool
-{
-  pids
-}

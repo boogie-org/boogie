@@ -1,4 +1,4 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function RightOpen (n: int) : [int]bool;
@@ -6,7 +6,7 @@ function RightClosed (n: int) : [int]bool;
 axiom (forall x: int, y: int :: RightOpen(x)[y] <==> y < x);
 axiom (forall x: int, y: int :: RightClosed(x)[y] <==> y <= x);
 
-type X;
+type {:linear "tid"} X;
 const nil: X;
 var {:layer 0,1} t: int;       // next ticket to issue
 var {:layer 0,2} s: int;       // current ticket permitted to critical section
@@ -43,7 +43,7 @@ requires Inv2(T, s, cs);
 // Main program
 
 procedure {:yields} {:layer 2} main ({:linear_in "tid"} xls':[X]bool)
-requires {:layer 2} xls' == MapConstBool(true);
+requires {:layer 2} xls' == MapConst(true);
 {
   var {:linear "tid"} tid: X;
   var {:linear "tid"} xls: [X]bool;
@@ -100,7 +100,7 @@ requires {:layer 2} tid != nil;
 
 procedure {:atomic} {:layer 2} AtomicInitAbstract ({:linear "tid"} xls:[X]bool)
 modifies cs, s, T;
-{ assert xls == MapConstBool(true); cs := nil; s := 0; T := RightOpen(0); }
+{ assert xls == MapConst(true); cs := nil; s := 0; T := RightOpen(0); }
 
 procedure {:yields} {:layer 1} {:refines "AtomicInitAbstract"} InitAbstract ({:linear "tid"} xls:[X]bool)
 ensures  {:layer 1} Inv1(T, t);
@@ -126,7 +126,7 @@ ensures  {:layer 1} Inv1(T, t);
 
 procedure {:atomic} {:layer 1} AtomicInit ({:linear "tid"} xls:[X]bool)
 modifies cs, t, s, T;
-{ assert xls == MapConstBool(true); cs := nil; t := 0; s := 0; T := RightOpen(0); }
+{ assert xls == MapConst(true); cs := nil; t := 0; s := 0; T := RightOpen(0); }
 
 procedure {:yields} {:layer 0} {:refines "AtomicInit"} Init ({:linear "tid"} xls:[X]bool);
 
@@ -152,16 +152,3 @@ procedure {:atomic} {:layer 1,2} AtomicAllocateLow ({:linear_in "tid"} xls':[X]b
 { assume xl != nil && xls'[xl]; xls := xls'[xl := false]; }
 
 procedure {:yields} {:layer 0} {:refines "AtomicAllocateLow"} AllocateLow ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
-
-// ###########################################################################
-// Collectors for linear domains
-
-function {:builtin "MapConst"} MapConstBool (bool) : [X]bool;
-function {:inline} {:linear "tid"} TidCollector (x: X) : [X]bool
-{
-  MapConstBool(false)[x := true]
-}
-function {:inline} {:linear "tid"} TidSetCollector (x: [X]bool) : [X]bool
-{
-  x
-}

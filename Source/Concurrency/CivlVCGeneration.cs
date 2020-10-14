@@ -44,8 +44,7 @@ namespace Microsoft.Boogie
       program.AddTopLevelDeclarations(decls);
 
       BackwardAssignmentSubstituter.SubstituteBackwardAssignments(civlTypeChecker.procToAtomicAction.Values);
-
-      linearTypeChecker.AddDeclarations();
+      
       linearTypeChecker.EraseLinearAnnotations();
     }
   }

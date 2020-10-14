@@ -1,14 +1,9 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type X;
+type {:linear "tid"} X;
 const nil: X;
 
-function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
-function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
-{
-  MapConstBool(false)[x := true]
-}
-
+type {:linear "mem"} Int = int;
 type lmap;
 function {:linear "mem"} dom(lmap): [int]bool;
 function map(lmap): [int]int;

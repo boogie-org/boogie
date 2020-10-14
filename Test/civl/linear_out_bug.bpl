@@ -1,6 +1,6 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-
+type {:linear "addr"} X = int;
 var {:layer 0,2} {:linear "addr"} Addrs:[int]bool;
 
 // This test exposed an unsoundness due to linearity assumes. In particular, the
@@ -27,11 +27,3 @@ modifies Addrs;
 {
     Addrs[i] := false;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-
-function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
-function {:inline} {:linear "addr"} AddrCollector(x: int) : [int]bool
-{ MapConstBool(false)[x := true] }
-function {:inline} {:linear "addr"} AddrsCollector(xs: [int]bool) : [int]bool
-{ xs }

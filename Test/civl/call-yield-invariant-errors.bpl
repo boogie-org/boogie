@@ -1,7 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+type {:linear "lin"} X = int;
 var {:layer 0,1} x:int;
-
 procedure {:yield_invariant} {:layer 1} linear_yield_x({:linear "lin"} n: int);
 requires x >= n;
 

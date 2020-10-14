@@ -302,13 +302,13 @@ modifies voteInfo;
 procedure {:intro}{:layer 1} AddPendingAsyncs(PAs: [PA]int)
 modifies pendingAsyncs;
 {
-  pendingAsyncs := MapAddPA(pendingAsyncs, PAs);
+  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
 }
 
 procedure {:intro}{:layer 1} RemovePendingAsyncs(PAs: [PA]int)
 modifies pendingAsyncs;
 {
-  pendingAsyncs := MapSubPA(pendingAsyncs, PAs);
+  pendingAsyncs := MapSub(pendingAsyncs, PAs);
 }
 
 // Trusted lemmas for the proof of Propose and Conclude
@@ -322,7 +322,7 @@ ensures Cardinality(q') == Cardinality(q) + 1;
 
 procedure {:lemma} MaxRoundLemma(voteInfo:[Round]OptionVoteInfo, r: Round, ns1: NodeSet, ns2: NodeSet);
 requires Round(r);
-ensures MaxRound(r, MapOrNode(ns1, ns2), voteInfo) ==
+ensures MaxRound(r, MapOr(ns1, ns2), voteInfo) ==
          if (MaxRound(r, ns1, voteInfo) < MaxRound(r, ns2, voteInfo))
          then MaxRound(r, ns2, voteInfo)
          else MaxRound(r, ns1, voteInfo);
@@ -487,7 +487,7 @@ returns ({:linear "perm"} ps': [Permission]bool, {:linear "perm"} p: Permission)
 procedure {:intro}{:layer 1} InitializePermissions()
 returns ({:linear "perm"} receivedPermissions: [Permission]bool)
 {
-  receivedPermissions := MapConstPermission(false);
+  receivedPermissions := MapConst(false);
 }
 
 procedure {:intro}{:layer 1} AddPermission({:linear_in "perm"} receivedPermissions: [Permission]bool, {:linear_in "perm"} p: Permission)

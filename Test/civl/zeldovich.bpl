@@ -1,7 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type Tid;
+type {:linear "tid"} Tid;
 const nil:Tid;
 
 var {:layer 0,1} lock_x:Tid;

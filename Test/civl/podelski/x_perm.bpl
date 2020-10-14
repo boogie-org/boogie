@@ -1,4 +1,4 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // Permission types
@@ -10,20 +10,20 @@ type {:datatype} B;
 function {:constructor} B (x:int) : B;
 
 // Linear collectors
-function {:builtin "MapConst"} MapConstBool(bool): [int]bool;
+type {:linear "perm"} Perm = int;
 
 function {:inline} {:linear "perm"} ABCollector(ab: AB) : [int]bool
-{ MapConstBool(false)[x#AB(ab) := true][-x#AB(ab) := true] }
+{ MapConst(false)[x#AB(ab) := true][-x#AB(ab) := true] }
 function {:inline} {:linear "perm"} ABSetCollector(abs: [AB]bool) : [int]bool
 { (lambda i:int :: abs[AB(i)] || abs[AB(-i)]) }
 
 function {:inline} {:linear "perm"} ACollector(a: A) : [int]bool
-{ MapConstBool(false)[x#A(a) := true] }
+{ MapConst(false)[x#A(a) := true] }
 function {:inline} {:linear "perm"} ASetCollector(as: [A]bool) : [int]bool
 { (lambda i:int :: as[A(i)]) }
 
 function {:inline} {:linear "perm"} BCollector(b: B) : [int]bool
-{ MapConstBool(false)[-x#B(b) := true] }
+{ MapConst(false)[-x#B(b) := true] }
 function {:inline} {:linear "perm"} BSetCollector(bs: [B]bool) : [int]bool
 { (lambda i:int :: bs[B(-i)]) }
 

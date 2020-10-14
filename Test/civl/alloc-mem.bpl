@@ -1,6 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
+
+type {:linear "mem"} Ref = int;
 
 type lmap;
 function {:linear "mem"} dom(lmap) : [int]bool;
@@ -10,7 +11,7 @@ axiom (forall x:[int]bool, y:[int]int :: {cons(x,y)} dom(cons(x, y)) == x && map
 axiom (forall x: lmap :: {dom(x)} {map(x)} cons(dom(x), map(x)) == x);
 
 function Empty(m:[int]int) : lmap;
-axiom (forall m: [int]int :: Empty(m) == cons(MapConstBool(false), m));
+axiom (forall m: [int]int :: Empty(m) == cons(MapConst(false), m));
 
 function Add(x:lmap, i:int): lmap;
 axiom (forall x:lmap, i:int :: dom(Add(x, i)) == dom(x)[i:=true] && map(Add(x, i)) == map(x));

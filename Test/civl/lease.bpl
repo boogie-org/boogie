@@ -1,6 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
+type {:linear "me"} X = int;
 // datatype lockMsg = transfer(epoch:int) | locked(epoch:int)
 type{:datatype} lockMsg;
 function{:constructor} transfer(epoch:int):lockMsg;
@@ -182,8 +183,3 @@ procedure CheckInitInv(network:[msg]bool, nodes:[int]node, history:history)
  ensures  Inv(network, nodes, history);
 {
 }
-
-//////////////////////////////////////////////////////////////////////////////////////////
-
-function {:builtin "MapConst"} MapConstBool(bool):[int]bool;
-function {:linear "me"} IntCollector(x:int):[int]bool { MapConstBool(false)[x := true] }

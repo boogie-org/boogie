@@ -1,9 +1,9 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // Insertion into a sorted array
 
-type Tid;
+type {:linear "tid"} Tid;
 const nil:Tid;
 
 var {:layer 0,2} A:[int]int;
@@ -133,10 +133,3 @@ procedure {:yields}{:layer 0}{:refines "WRITE_COUNT"} write_count ({:linear "tid
 procedure {:yields}{:layer 0}{:refines "ACQUIRE"} acquire ({:linear "tid"} tid:Tid);
 procedure {:yields}{:layer 0}{:refines "RELEASE"} release ({:linear "tid"} tid:Tid);
 
-// =============================================================================
-
-function {:builtin "MapConst"} MapConstBool(bool) : [Tid]bool;
-function {:inline}{:linear "tid"} TidCollector(tid:Tid) : [Tid]bool
-{
-  MapConstBool(false)[tid := true]
-}

@@ -1,13 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-function {:builtin "MapConst"} mapconstbool(x:bool): [int]bool;
-
+type {:linear "Perm"} X = int;
 var {:layer 0,1} g:int;
-
-function {:inline} {:linear "Perm"} SetCollectorPerm(x: [int]bool) : [int]bool
-{
-  x
-}
 
 procedure {:yields} {:layer 1} PB({:linear_in "Perm"} permVar_in:[int]bool)
 requires {:layer 1} permVar_in[0] && g == 0;
@@ -26,7 +20,7 @@ requires {:layer 1} permVar_in[0] && g == 0;
 }
 
 procedure {:yields} {:layer 1} Main({:linear_in "Perm"} Permissions: [int]bool)
-requires {:layer 1} Permissions == mapconstbool(true);
+requires {:layer 1} Permissions == MapConst(true);
 {
   call SetG(0);
   async call PB(Permissions);

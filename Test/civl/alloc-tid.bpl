@@ -1,5 +1,8 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+
+type {:linear "tid"} Tid = int;
+
 var {:layer 0,2} a:[int]int;
 var {:layer 0,1} count: int;
 var {:layer 1,2} {:linear "tid"} unallocated:[int]bool;
@@ -118,16 +121,3 @@ modifies unallocated;
   tid := i;
   unallocated := unallocated[i := false];
 }
-
-function {:builtin "MapConst"} MapConstBool(bool): [int]bool;
-function {:builtin "MapOr"} MapOr([int]bool, [int]bool) : [int]bool;
-
-function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
-{
-  MapConstBool(false)[x := true]
-}
-function {:inline} {:linear "tid"} TidSetCollector(x: [int]bool) : [int]bool
-{
-  x
-}
-

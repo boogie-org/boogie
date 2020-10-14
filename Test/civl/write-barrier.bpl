@@ -1,7 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type Tid;
+type {:linear "tid"} Tid;
 const unique nil: Tid;
 
 var {:layer 0,3} Color:int;
@@ -89,15 +89,3 @@ procedure {:yields} {:layer 0} {:refines "AtomicReleaseLock"} ReleaseLock({:line
 procedure {:yields} {:layer 0} {:refines "AtomicSetColorLocked"} SetColorLocked({:linear "tid"} tid:Tid, newCol:int);
 procedure {:yields} {:layer 0} {:refines "AtomicGetColorLocked"} GetColorLocked({:linear "tid"} tid:Tid) returns (col:int);
 procedure {:yields} {:layer 0} {:refines "AtomicGetColorNoLock"} GetColorNoLock() returns (col:int);
-
-function {:builtin "MapConst"} MapConstBool(bool): [Tid]bool;
-function {:builtin "MapOr"} MapOr([Tid]bool, [Tid]bool) : [Tid]bool;
-
-function {:inline} {:linear "tid"} TidCollector(x: Tid) : [Tid]bool
-{
-  MapConstBool(false)[x := true]
-}
-function {:inline} {:linear "tid"} TidSetCollector(x: [Tid]bool) : [Tid]bool
-{
-  x
-}

@@ -1,11 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-function {:builtin "MapConst"} MapConstBool(bool): [int]bool;
-function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
-{
-  MapConstBool(false)[x := true]
-}
+type {:linear "tid"} Tid = int;
 
 var {:layer 0,5} x: int;
 const unique p: int;

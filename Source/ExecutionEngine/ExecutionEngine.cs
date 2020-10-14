@@ -750,7 +750,7 @@ namespace Microsoft.Boogie
       }
       else if (CommandLineOptions.Clo.Monomorphize)
       {
-        if (MonomorphizationVisitor.Monomorphize(program))
+        if (Monomorphizer.Monomorphize(program))
         {
           CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
         }

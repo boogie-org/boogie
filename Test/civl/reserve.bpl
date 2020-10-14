@@ -10,24 +10,12 @@ function {:inline} mutatorAddr(i: int) returns (bool) { 1 <= i && i <= numMutato
 const GcTid: int;
 axiom GcTid > numMutators;
 
-function {:builtin "MapConst"} MapConstBool(bool): [X]bool;
-function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
-{
-  MapConstBool(false)[x := true]
-}
-function {:inline} {:linear "tid"} TidSetCollector(x: [X]bool) : [X]bool
-{
-  x
-}
-
-function {:builtin "MapOr"} MapOr([X]bool, [X]bool) : [X]bool;
-function {:builtin "MapNot"} MapNot(x: [int]bool) : [int]bool;
 function {:inline} Subset(X: [int]bool, Y: [int]bool) : (bool)
 {
-    MapOr(MapNot(X), Y) == MapConstBool(true)
+    MapOr(MapNot(X), Y) == MapConst(true)
 }
 
-type X = int;
+type {:linear "tid"} X = int;
 
 var {:layer 0,1} Free: [int]bool;
 var {:layer 0,1} freeSpace: int;

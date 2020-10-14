@@ -1,16 +1,6 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
-
-function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
-{
-  MapConstBool(false)[x := true]
-}
-
-function {:inline} {:linear "addr"} AddrCollector(x: int) : [int]bool
-{
-  MapConstBool(false)[x := true]
-}
+type {:linear "tid", "addr"} X = int;
 
 const numMutators: int;
 axiom 0 < numMutators;
@@ -37,7 +27,7 @@ function {:inline} LockInv(StoreBufferPresent:[int][int]bool, StoreBufferVal:[in
 {
   (Mem[lockAddr] == 0 <==> lock == 0) &&
   (forall i:int :: mutatorOrGcTid(i) && StoreBufferPresent[i][lockAddr] ==> StoreBufferVal[i][lockAddr] == 0) &&
-  (forall i:int :: mutatorOrGcTid(i) ==> lock == i || StoreBufferPresent[i] == MapConstBool(false)) &&
+  (forall i:int :: mutatorOrGcTid(i) ==> lock == i || StoreBufferPresent[i] == MapConst(false)) &&
   (Mem[collectorPhaseAddr] == collectorPhase || (exists i:int :: mutatorOrGcTid(i) && StoreBufferPresent[i][collectorPhaseAddr])) &&
   (forall i:int :: mutatorOrGcTid(i) && StoreBufferPresent[i][collectorPhaseAddr] ==> StoreBufferVal[i][collectorPhaseAddr] == collectorPhase) &&
   collectorPhaseDelayed == Mem[collectorPhaseAddr]
@@ -171,7 +161,7 @@ procedure {:atomic} {:layer 1} AtomicFlushStoreBufferEntryForLock(tid: int)
 modifies Mem, StoreBufferPresent, lock;
 {
   assert StoreBufferPresent[tid][lockAddr];
-  assume StoreBufferPresent[tid] == MapConstBool(false)[lockAddr := true];
+  assume StoreBufferPresent[tid] == MapConst(false)[lockAddr := true];
   Mem[lockAddr] := StoreBufferVal[tid][lockAddr];
   StoreBufferPresent[tid][lockAddr] := false;
   lock := 0;
@@ -209,6 +199,6 @@ modifies Mem, StoreBufferPresent, collectorPhaseDelayed;
 procedure {:yields} {:layer 0} {:refines "AtomicFlushStoreBufferEntryForCollectorPhase"} FlushStoreBufferEntryForCollectorPhase();
 
 procedure {:atomic} {:layer 1} AtomicWaitForFlush(tid: int)
-{ assume StoreBufferPresent[tid] == MapConstBool(false); }
+{ assume StoreBufferPresent[tid] == MapConst(false); }
 
 procedure {:yields} {:layer 0} {:refines "AtomicWaitForFlush"} WaitForFlush(tid: int);

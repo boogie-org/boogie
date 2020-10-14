@@ -1,6 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
+type {:linear "pid"} Pid = int;
 var {:layer 0,3} ping_channel:[int]int; // Incoming channel of Ping
 var {:layer 0,3} pong_channel:[int]int; // Incoming channel of Pong
 
@@ -260,18 +261,3 @@ procedure {:yields}{:layer 0}{:refines "SEND_PONG_CHANNEL"} send_pong_channel (m
 procedure {:yields}{:layer 0}{:refines "RECEIVE_PING_CHANNEL"} receive_ping_channel () returns (m:int);
 procedure {:yields}{:layer 0}{:refines "RECEIVE_PONG_CHANNEL"} receive_pong_channel () returns (m:int);
 procedure {:yields}{:layer 0}{:refines "ASSERT_EQ"} assert_eq (a:int, b:int);
-
-////////////////////////////////////////////////////////////////////////////////
-
-function {:builtin "MapConst"} MapConstBool (bool) : [int]bool;
-function {:builtin "MapOr"} MapOr ([int]bool, [int]bool) : [int]bool;
-
-function {:inline}{:linear "pid"} PidCollector (pid:int) : [int]bool
-{
-  MapConstBool(false)[pid := true]
-}
-
-function {:inline}{:linear "pid"} PidSetCollector (pids:[int]bool) : [int]bool
-{
-  pids
-}
