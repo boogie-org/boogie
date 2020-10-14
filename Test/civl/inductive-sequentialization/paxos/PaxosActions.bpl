@@ -6,10 +6,10 @@ modifies pendingAsyncs;
   assert Round(r);
   assert pendingAsyncs[StartRound_PA(r, r_lin)] > 0;
 
-  PAs := MapAddPA(JoinPAs(r), SingletonPA(Propose_PA(r, ProposePermissions(r))));
+  PAs := MapAdd(JoinPAs(r), SingletonPA(Propose_PA(r, ProposePermissions(r))));
 
-  pendingAsyncs := MapAddPA(pendingAsyncs, PAs);
-  pendingAsyncs := MapSubPA(pendingAsyncs, SingletonPA(StartRound_PA(r, r_lin)));
+  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
+  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(StartRound_PA(r, r_lin)));
 }
 
 procedure {:atomic}{:layer 2} A_Propose(r: Round, {:linear_in "perm"} ps: [Permission]bool)
@@ -33,13 +33,13 @@ modifies voteInfo, pendingAsyncs;
       maxValue := value#SomeVoteInfo(voteInfo[maxRound]);
     }
     voteInfo[r] := SomeVoteInfo(maxValue, NoNodes());
-    PAs := MapAddPA(VotePAs(r, maxValue), SingletonPA(Conclude_PA(r, maxValue, ConcludePerm(r))));
+    PAs := MapAdd(VotePAs(r, maxValue), SingletonPA(Conclude_PA(r, maxValue, ConcludePerm(r))));
   } else {
     PAs := NoPAs();
   }
 
-  pendingAsyncs := MapAddPA(pendingAsyncs, PAs);
-  pendingAsyncs := MapSubPA(pendingAsyncs, SingletonPA(Propose_PA(r, ps)));
+  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
+  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(Propose_PA(r, ps)));
 }
 
 procedure {:atomic}{:layer 2} A_Conclude(r: Round, v: Value, {:linear_in "perm"} p: Permission)
@@ -58,7 +58,7 @@ modifies decision, pendingAsyncs;
     decision[r] := SomeValue(v);
   }
 
-  pendingAsyncs := MapSubPA(pendingAsyncs, SingletonPA(Conclude_PA(r, v, p)));
+  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(Conclude_PA(r, v, p)));
 }
 
 procedure {:atomic}{:layer 2} A_Join(r: Round, n: Node, {:linear_in "perm"} p: Permission)
@@ -73,7 +73,7 @@ modifies joinedNodes, pendingAsyncs;
     joinedNodes[r][n] := true;
   }
 
-  pendingAsyncs := MapSubPA(pendingAsyncs, SingletonPA(Join_PA(r, n, p)));
+  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(Join_PA(r, n, p)));
 }
 
 procedure {:atomic}{:layer 2} A_Vote(r: Round, n: Node, v: Value, {:linear_in "perm"} p: Permission)
@@ -92,7 +92,7 @@ modifies joinedNodes, voteInfo, pendingAsyncs;
     joinedNodes[r][n] := true;
   }
 
-  pendingAsyncs := MapSubPA(pendingAsyncs, SingletonPA(Vote_PA(r, n, v, p)));
+  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(Vote_PA(r, n, v, p)));
 }
 
 // Local Variables:

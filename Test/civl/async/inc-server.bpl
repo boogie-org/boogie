@@ -1,13 +1,10 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // ###########################################################################
 // Linear permissions
 
-function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
-
-function {:inline} {:linear "lin"} LinCollector(x : int) : [int]bool
-{ MapConstBool(false)[x := true] }
+type {:linear "lin"} Perm = int;
 
 function {:inline} perm (p : int) : bool
 { p == 0 }

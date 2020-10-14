@@ -1,11 +1,11 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 const n:int;
 axiom n >= 1;
 
 type val = int;
-type pid = int;
+type {:linear "collect", "broadcast"} pid = int;
 
 function {:inline} pid(i:int) : bool { 1 <= i && i <= n }
 
@@ -20,7 +20,7 @@ function {:inline} NoPAs () : [PA]int
 
 function {:inline} InitialPAs (k:pid) : [PA]int
 {
-  MapAddPA(
+  MapAdd(
     (lambda pa:PA :: if is#BROADCAST_PA(pa) && pid(i#BROADCAST_PA(pa)) && i#BROADCAST_PA(pa) < k then 1 else 0),
     (lambda pa:PA :: if is#COLLECT_PA(pa) && pid(i#COLLECT_PA(pa)) && i#COLLECT_PA(pa) < k then 1 else 0)
   )
@@ -139,7 +139,7 @@ returns ({:pending_async "BROADCAST","COLLECT"} PAs:[PA]int)
   assert CH == MultisetEmpty;
   assert trigger(0);
 
-  PAs := MapAddPA(AllBroadcasts(), AllCollects());
+  PAs := MapAdd(AllBroadcasts(), AllCollects());
 }
 
 procedure {:IS_invariant}{:layer 2}
@@ -157,7 +157,7 @@ modifies CH;
     CH == (lambda v:val :: value_card(v, value, 1, k)) &&
     card(CH) == k &&
     MultisetSubsetEq(MultisetEmpty, CH) &&
-    PAs == MapAddPA(RemainingBroadcasts(k), AllCollects()) &&
+    PAs == MapAdd(RemainingBroadcasts(k), AllCollects()) &&
     choice == BROADCAST_PA(k+1) &&
     (k < n ==> PAs[BROADCAST_PA(n)] > 0) // help for the prover
   );
@@ -238,7 +238,7 @@ requires {:layer 1} CH == MultisetEmpty;
     async call Collect(r);
     i := i + 1;
   }
-  assert {:layer 1} PAs == MapAddPA(AllBroadcasts(), AllCollects());
+  assert {:layer 1} PAs == MapAdd(AllBroadcasts(), AllCollects());
 }
 
 procedure {:yields}{:layer 1}{:refines "BROADCAST"} Broadcast({:linear_in "broadcast"} i:pid)
@@ -338,18 +338,8 @@ returns ({:linear "broadcast"} s:pid, {:linear "collect"} r:pid, {:linear "broad
 
 ////////////////////////////////////////////////////////////////////////////////
 
-function {:builtin "MapConst"} MapConstInt(int) : [val]int;
-function {:builtin "MapConst"} MapConstBool(bool) : [val]bool;
-function {:builtin "MapOr"} MapOr([int]bool, [int]bool) : [int]bool;
-function {:builtin "MapAdd"} MapAdd([val]int, [val]int) : [val]int;
-function {:builtin "MapSub"} MapSub([val]int, [val]int) : [val]int;
-function {:builtin "MapLt"} MapLt([val]int, [val]int) : [val]bool;
-function {:builtin "MapLe"} MapLe([val]int, [val]int) : [val]bool;
-
-function {:builtin "MapAdd"} MapAddPA([PA]int, [PA]int) : [PA]int;
-
 const MultisetEmpty:[val]int;
-axiom MultisetEmpty == MapConstInt(0);
+axiom MultisetEmpty == MapConst(0);
 
 function {:inline} MultisetSingleton(v:val) : [val]int
 {
@@ -358,7 +348,7 @@ function {:inline} MultisetSingleton(v:val) : [val]int
 
 function {:inline} MultisetSubsetEq(a:[val]int, b:[val]int) : bool
 {
-  MapLe(a, b) == MapConstBool(true)
+  MapLe(a, b) == MapConst(true)
 }
 
 function {:inline} MultisetPlus(a:[val]int, b:[val]int) : [val]int
@@ -369,23 +359,4 @@ function {:inline} MultisetPlus(a:[val]int, b:[val]int) : [val]int
 function {:inline} MultisetMinus(a:[val]int, b:[val]int) : [val]int
 {
   MapSub(a, b)
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-function {:inline}{:linear "broadcast"} BroadcastCollector (pid:pid) : [int]bool
-{
-  MapConstBool(false)[pid := true]
-}
-function {:inline}{:linear "collect"} CollectCollector (pid:pid) : [int]bool
-{
-  MapConstBool(false)[pid := true]
-}
-function {:inline}{:linear "broadcast"} BroadcastSetCollector (pids:[pid]bool) : [int]bool
-{
-  pids
-}
-function {:inline}{:linear "collect"} CollectSetCollector (pids:[pid]bool) : [int]bool
-{
-  pids
 }

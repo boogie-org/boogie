@@ -1,8 +1,8 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // XFAIL: *
 
-type Tid = int;
+type {:linear "tid"} Tid = int;
 
 const nil:Tid;
 var {:layer 0,3} l:Tid;
@@ -12,7 +12,7 @@ procedure {:atomic}{:layer 5} Client_atomic ({:linear_in "tid"} tid:Tid)
 modifies x;
 {
   x := x + 1;
-} 
+}
 
 procedure {:yields}{:layer 4}{:refines "Client_atomic"} Client ({:linear_in "tid"} tid:Tid)
 requires {:layer 3} tid != nil;
@@ -23,7 +23,7 @@ requires {:layer 3} tid != nil;
 procedure {:left}{:layer 4} GetLockAbstract_atomic({:linear_in "tid"} tid:Tid)
 modifies x;
 {
-  x := x + 1; 
+  x := x + 1;
 }
 
 procedure {:yields}{:layer 3}{:refines "GetLockAbstract_atomic"} GetLockAbstract({:linear_in "tid"} tid:Tid)
@@ -127,14 +127,3 @@ modifies l;
 
 procedure {:yields}{:layer 0}{:refines "cas_l_atomic"} cas_l (oldval:Tid, newval:Tid) returns (success:bool);
 procedure {:yields}{:layer 0}{:refines "write_l_atomic"} write_l (v:Tid);
-
-// ###########################################################################
-// Collectors for linear domains
-
-function {:builtin "MapConst"} MapConstBool (bool) : [Tid]bool;
-
-function {:inline} {:linear "tid"} TidCollector (x:Tid) : [Tid]bool
-{ MapConstBool(false)[x := true] }
-
-function {:inline} {:linear "tid"} TidSetCollector (x:[Tid]bool) : [Tid]bool
-{ x }

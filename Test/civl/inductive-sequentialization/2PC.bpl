@@ -1,5 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+
+type {:linear "pid"} Pid = int;
 
 // A type for vote messages of participants
 type {:datatype} vote;
@@ -49,7 +51,7 @@ function trigger(x:int) : bool { true }
 function {:inline} Init(pids:[int]bool, ReqCH:[int]int, VoteCH:[vote]int,
   DecCH:[int][decision]int, decisions:[int]decision) : bool
 {
-  pids == MapConstBool(true) &&
+  pids == MapConst(true) &&
   ReqCH == (lambda i:int :: 0) &&
   VoteCH == (lambda v:vote :: 0) &&
   DecCH == (lambda i:int :: (lambda d:decision :: 0)) &&
@@ -529,18 +531,3 @@ returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool)
 
 procedure {:yields}{:layer 0}{:refines "LINEAR_TRANSFER"} linear_transfer(i:int, {:linear_in "pid"} pids:[int]bool)
 returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool);
-
-////////////////////////////////////////////////////////////////////////////////
-
-function {:builtin "MapConst"} MapConstBool (bool) : [int]bool;
-function {:builtin "MapOr"} MapOr ([int]bool, [int]bool) : [int]bool;
-
-function {:inline}{:linear "pid"} PidCollector (pid:int) : [int]bool
-{
-  MapConstBool(false)[pid := true]
-}
-
-function {:inline}{:linear "pid"} PidSetCollector (pids:[int]bool) : [int]bool
-{
-  pids
-}

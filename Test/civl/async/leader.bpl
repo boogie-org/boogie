@@ -1,4 +1,4 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 const N : int;
@@ -7,7 +7,7 @@ axiom N > 0;
 type Pid = int;
 function is_pid (pid:Pid) : bool { 1 <= pid && pid <= N }
 
-type {:datatype} Perm;
+type {:datatype} {:linear "Perm"} Perm;
 function {:constructor} Perm (s:Pid, r:Pid) : Perm;
 
 function {:inline} is_perm (s:Pid, r:Pid, p:Perm) : bool
@@ -91,7 +91,7 @@ modifies col_dom, col_val, dec_dom, dec_val;
   var v:int;
   var {:linear "Perm"} p:Perm;
   var {:linear "Perm"} perms':[Perm]bool;
-  
+
   perms' := perms;
   r := 1;
   call v := read_init_val(s);
@@ -144,18 +144,3 @@ procedure {:yields}{:layer 1}{:both} split_perms_receiver (s:Pid, r:Pid, {:linea
 requires {:layer 1} perms_in ==  s_r_perms_geq(s,r);
 ensures {:layer 1} perms_out_1 == s_r_perms_geq(s,r+1);
 ensures {:layer 1} is_perm(s,r,perms_out_2);
-
-// ###########################################################################
-// Collectors for linear domains
-
-function {:builtin "MapConst"} MapConstBool(bool) : [Perm]bool;
-function {:builtin "MapOr"} MapOr([Perm]bool, [Perm]bool) : [Perm]bool;
-
-function {:inline}{:linear "Perm"} PermCollector(p:Perm) : [Perm]bool
-{
-  MapConstBool(false)[p := true]
-}
-function {:inline}{:linear "Perm"} PermSetCollector(perms:[Perm]bool) : [Perm]bool
-{
-  perms
-}

@@ -36,7 +36,7 @@ function {:constructor} VoteResponse(from: Node): VoteResponse;
 type {:datatype} VoteResponseChannel;
 function {:constructor} VoteResponseChannel(domain: [Permission]bool, contents: [Permission]VoteResponse): VoteResponseChannel;
 
-type {:datatype} Permission;
+type {:datatype} {:linear "perm"} Permission;
 function {:constructor} JoinPerm(r:Round, n: Node): Permission;
 function {:constructor} VotePerm(r:Round, n: Node): Permission;
 function {:constructor} ConcludePerm(r: Round): Permission;
@@ -49,30 +49,12 @@ function {:pending_async "A_Vote"}{:constructor} Vote_PA(round: Round, node: Nod
 function {:pending_async "A_Conclude"}{:constructor} Conclude_PA(round: Round, value: Value, p: Permission) : PA;
 
 ////////////////////////////////////////////////////////////////////////////////
-//// Generalized array theory imports
-
-function {:builtin "MapConst"} MapConstPermission(bool): [Permission]bool;
-function {:builtin "MapOr"} MapOrPermission([Permission]bool, [Permission]bool): [Permission]bool;
-function {:builtin "MapConst"} MapConstNode(bool): NodeSet;
-function {:builtin "MapOr"} MapOrNode(NodeSet, NodeSet): NodeSet;
-function {:builtin "MapAnd"} MapAndNode(NodeSet, NodeSet): NodeSet;
-function {:builtin "MapImp"} MapImpNode(NodeSet, NodeSet) : NodeSet;
-function {:builtin "MapConst"} MapConstPA(int): [PA]int;
-function {:builtin "MapAdd"} MapAddPA([PA]int, [PA]int): [PA]int;
-function {:builtin "MapSub"} MapSubPA([PA]int, [PA]int): [PA]int;
-function {:builtin "MapConst"} MapConstBool(bool) : [Permission]bool;
-function {:builtin "MapOr"} MapOr([Permission]bool, [Permission]bool) : [Permission]bool;
-function {:builtin "MapConst"} MapConstVoteResponse(int): [VoteResponse]int;
-function {:builtin "MapAdd"} MapAddVoteResponse([VoteResponse]int, [VoteResponse]int): [VoteResponse]int;
-function {:builtin "MapSub"} MapSubVoteResponse([VoteResponse]int, [VoteResponse]int): [VoteResponse]int;
-
-////////////////////////////////////////////////////////////////////////////////
 //// Functions
 
-function {:inline} NoPAs(): [PA]int { MapConstPA(0) }
+function {:inline} NoPAs(): [PA]int { MapConst(0) }
 function {:inline} SingletonPA(pa:PA): [PA]int { NoPAs()[pa := 1] }
 
-function {:inline} NoNodes(): NodeSet { MapConstNode(false) }
+function {:inline} NoNodes(): NodeSet { MapConst(false) }
 function {:inline} SingletonNode(node: Node): NodeSet { NoNodes()[node := true] }
 
 function Cardinality(q: NodeSet): int;
@@ -84,11 +66,11 @@ function IsQuorum(ns: NodeSet): bool {
 }
 
 function {:inline} IsSubset(ns1:NodeSet, ns2:NodeSet) : bool {
-  MapImpNode(ns1, ns2) == MapConstNode(true)
+  MapImp(ns1, ns2) == MapConst(true)
 }
 
 function {:inline} IsDisjoint(ns1:NodeSet, ns2:NodeSet) : bool {
-  MapAndNode(ns1, ns2) == MapConstNode(false)
+  MapAnd(ns1, ns2) == MapConst(false)
 }
 
 // MaxRound(r, ns, voteInfo) returns the highest round less than r that some node in ns voted for.
@@ -189,22 +171,12 @@ function {:inline} InitLow (
   (forall n: Node :: lastJoinRound#AcceptorState(acceptorState[n]) == 0 && lastVoteRound#AcceptorState(acceptorState[n]) == 0) &&
   (forall r: Round, jr: JoinResponse :: joinChannel[r][jr] == 0) &&
   (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] == 0) &&
-  domain#JoinResponseChannel(permJoinChannel) == MapConstPermission(false) &&
-  domain#VoteResponseChannel(permVoteChannel) == MapConstPermission(false)
+  domain#JoinResponseChannel(permJoinChannel) == MapConst(false) &&
+  domain#VoteResponseChannel(permVoteChannel) == MapConst(false)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Linear collectors
-
-function {:inline}{:linear "perm"} PermissionCollector (p: Permission) : [Permission]bool
-{
-  MapConstBool(false)[p := true]
-}
-
-function {:inline}{:linear "perm"} PermissionSetCollector (ps: [Permission]bool) : [Permission]bool
-{
-  ps
-}
 
 function {:inline}{:linear "perm"} RoundCollector (round: Round) : [Permission]bool
 {

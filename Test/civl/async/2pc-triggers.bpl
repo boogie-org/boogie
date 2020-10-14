@@ -1,4 +1,4 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // ###########################################################################
@@ -16,7 +16,7 @@ const numParticipants : int;
 axiom 0 < numParticipants;
 function participantMid (mid : Mid) : bool { 1 <= mid && mid <= numParticipants }
 
-type {:datatype} Pair;
+type {:datatype} {:linear "pair"} Pair;
 function {:constructor} Pair (xid: Xid, mid: Mid) : Pair;
 
 function {:inline} pair (xid: Xid, mid: Mid, p: Pair) : bool
@@ -472,17 +472,6 @@ procedure {:both} {:layer 8,10} atomic_TransferPair (xid: Xid, mid: Mid, {:linea
 // ###########################################################################
 // Collectors for linear domains
 
-function {:builtin "MapConst"} MapConstBool(bool): [Pair]bool;
-function {:builtin "MapOr"} MapOr([Pair]bool, [Pair]bool) : [Pair]bool;
-
-function {:inline} {:linear "pair"} PairCollector(x: Pair) : [Pair]bool
-{
-  MapConstBool(false)[x := true]
-}
-function {:inline} {:linear "pair"} PairSetCollector(x: [Pair]bool) : [Pair]bool
-{
-  x
-}
 function {:inline} {:linear "pair"} XidSetCollector(xids: [Xid]bool) : [Pair]bool
 {
   (lambda p: Pair :: xids[xid#Pair(p)])
