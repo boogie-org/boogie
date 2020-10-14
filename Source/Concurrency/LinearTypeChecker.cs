@@ -49,23 +49,23 @@ namespace Microsoft.Boogie
         Type.Bool);
       this.mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> {this.permissionType},
         Type.Int);
-      
-      this.mapConstBool = program.monomorphizer.Monomorphize("MapConst", 
-        LinqExtender.Map(new string[] {"T", "U"}, new Type[] {permissionType, Type.Bool}));
-      this.mapConstInt = program.monomorphizer.Monomorphize("MapConst", 
-        LinqExtender.Map(new string[] {"T", "U"}, new Type[] {permissionType, Type.Int}));
-      this.mapOrBool = program.monomorphizer.Monomorphize("MapOr", 
-        LinqExtender.Map(new string[] {"T"}, new Type[] {permissionType}));
-      this.mapImpBool = program.monomorphizer.Monomorphize("MapImp", 
-        LinqExtender.Map(new string[] {"T"}, new Type[] {permissionType}));
-      this.mapEqInt = program.monomorphizer.Monomorphize("MapEq", 
-        LinqExtender.Map(new string[] {"T", "U"}, new Type[] {permissionType, Type.Int}));
-      this.mapAddInt = program.monomorphizer.Monomorphize("MapAdd", 
-        LinqExtender.Map(new string[] {"T"}, new Type[] {permissionType}));
-      this.mapIteInt = program.monomorphizer.Monomorphize("MapIte", 
-        LinqExtender.Map(new string[] {"T", "U"}, new Type[] {permissionType, Type.Int}));
-      this.mapLeInt = program.monomorphizer.Monomorphize("MapLe", 
-        LinqExtender.Map(new string[] {"T"}, new Type[] {permissionType}));
+
+      this.mapConstBool = program.monomorphizer.Monomorphize("MapConst",
+        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Bool} });
+      this.mapConstInt = program.monomorphizer.Monomorphize("MapConst",
+        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
+      this.mapOrBool = program.monomorphizer.Monomorphize("MapOr",
+        new Dictionary<string, Type>() { {"T", permissionType} });
+      this.mapImpBool = program.monomorphizer.Monomorphize("MapImp",
+        new Dictionary<string, Type>() { {"T", permissionType} });
+      this.mapEqInt = program.monomorphizer.Monomorphize("MapEq",
+        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
+      this.mapAddInt = program.monomorphizer.Monomorphize("MapAdd",
+        new Dictionary<string, Type>() { {"T", permissionType} });
+      this.mapIteInt = program.monomorphizer.Monomorphize("MapIte",
+        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
+      this.mapLeInt = program.monomorphizer.Monomorphize("MapLe",
+        new Dictionary<string, Type>() { {"T", permissionType} });
     }
   }
 
@@ -191,34 +191,62 @@ namespace Microsoft.Boogie
     public void TypeCheck()
     {
       this.VisitProgram(program);
-      var permissionTypes = new Dictionary<string, Type>();
-      program.TopLevelDeclarations.Where(decl => decl is TypeCtorDecl || decl is TypeSynonymDecl).Iter(
-        decl =>
+      
+      var permissionTypes = GetPermissionTypes();
+      ProcessCollectors(permissionTypes);
+      
+      if (checkingContext.ErrorCount > 0)
+      {
+        return;
+      }
+      foreach ((var domainName, var collectors) in domainNameToCollectors)
+      {
+        if (collectors.Count != 0)
         {
-          foreach (var domainName in FindDomainNames(decl.Attributes))
+          this.linearDomains[domainName] =
+            new LinearDomain(program, domainName, permissionTypes[domainName], collectors);
+        }
+      }
+      foreach (Absy absy in this.availableLinearVars.Keys)
+      {
+        availableLinearVars[absy].RemoveWhere(v => v is GlobalVariable);
+      }
+    }
+
+    private Dictionary<string, Type> GetPermissionTypes()
+    {
+      var permissionTypes = new Dictionary<string, Type>();
+      foreach (var decl in program.TopLevelDeclarations.Where(decl => decl is TypeCtorDecl || decl is TypeSynonymDecl))
+      {
+        foreach (var domainName in FindDomainNames(decl.Attributes))
+        {
+          if (permissionTypes.ContainsKey(domainName))
           {
-            if (permissionTypes.ContainsKey(domainName))
+            Error(decl, $"Duplicate permission type for domain {domainName}");
+          }
+          else if (decl is TypeCtorDecl typeCtorDecl)
+          {
+            if (typeCtorDecl.Arity > 0)
             {
-              Error(decl, $"Duplicate permission type for domain {domainName}");
-            }
-            else if (decl is TypeCtorDecl typeCtorDecl)
-            {
-              if (typeCtorDecl.Arity > 0)
-              {
-                Error(decl, "Permission type must be fully instantiated");
-              }
-              else
-              {
-                permissionTypes[domainName] = new CtorType(Token.NoToken, typeCtorDecl, new List<Type>());
-              }
+              Error(decl, "Permission type must be fully instantiated");
             }
             else
             {
-              permissionTypes[domainName] =
-                new TypeSynonymAnnotation(Token.NoToken, (TypeSynonymDecl) decl, new List<Type>());
+              permissionTypes[domainName] = new CtorType(Token.NoToken, typeCtorDecl, new List<Type>());
             }
           }
-        });
+          else
+          {
+            permissionTypes[domainName] =
+              new TypeSynonymAnnotation(Token.NoToken, (TypeSynonymDecl) decl, new List<Type>());
+          }
+        }
+      }
+      return permissionTypes;
+    }
+
+    private void ProcessCollectors(Dictionary<string, Type> permissionTypes)
+    {
       foreach (var variable in varToDomainName.Keys)
       {
         string domainName = FindDomainName(variable);
@@ -239,33 +267,19 @@ namespace Microsoft.Boogie
           {
             // add unit collector
             domainNameToCollectors[domainName][variableType] =
-              program.monomorphizer.Monomorphize("MapUnit", LinqExtender.Map(new string[] {"T"}, new Type[] {variableType}));
+              program.monomorphizer.Monomorphize("MapUnit", new Dictionary<string, Type>() { {"T", variableType} });
           }
           else if (variableType.Equals(new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type>{permissionType}, Type.Bool)))
           {
             // add identity collector
             domainNameToCollectors[domainName][variableType] =
-              program.monomorphizer.Monomorphize("Id", LinqExtender.Map(new string[] {"T"}, new Type[] {variableType}));
+              program.monomorphizer.Monomorphize("Id", new Dictionary<string, Type>() { {"T", variableType} });
           }
           else
           {
             Error(variable, "Missing collector for linear variable " + variable.Name);
           }
         }
-      }
-      if (checkingContext.ErrorCount > 0)
-      {
-        return;
-      }
-      foreach (string domainName in domainNameToCollectors.Keys)
-      {
-        var collectors = domainNameToCollectors[domainName];
-        if (collectors.Count == 0) continue;
-        this.linearDomains[domainName] = new LinearDomain(program, domainName, permissionTypes[domainName], collectors);
-      }
-      foreach (Absy absy in this.availableLinearVars.Keys)
-      {
-        availableLinearVars[absy].RemoveWhere(v => v is GlobalVariable);
       }
     }
 
