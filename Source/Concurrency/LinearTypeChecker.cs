@@ -49,23 +49,23 @@ namespace Microsoft.Boogie
         Type.Bool);
       this.mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> {this.permissionType},
         Type.Int);
-      
-      this.mapConstBool = program.monomorphizer.Monomorphize("MapConst", 
-        LinqExtender.Map(new string[] {"T", "U"}, new Type[] {permissionType, Type.Bool}));
-      this.mapConstInt = program.monomorphizer.Monomorphize("MapConst", 
-        LinqExtender.Map(new string[] {"T", "U"}, new Type[] {permissionType, Type.Int}));
-      this.mapOrBool = program.monomorphizer.Monomorphize("MapOr", 
-        LinqExtender.Map(new string[] {"T"}, new Type[] {permissionType}));
-      this.mapImpBool = program.monomorphizer.Monomorphize("MapImp", 
-        LinqExtender.Map(new string[] {"T"}, new Type[] {permissionType}));
-      this.mapEqInt = program.monomorphizer.Monomorphize("MapEq", 
-        LinqExtender.Map(new string[] {"T", "U"}, new Type[] {permissionType, Type.Int}));
-      this.mapAddInt = program.monomorphizer.Monomorphize("MapAdd", 
-        LinqExtender.Map(new string[] {"T"}, new Type[] {permissionType}));
-      this.mapIteInt = program.monomorphizer.Monomorphize("MapIte", 
-        LinqExtender.Map(new string[] {"T", "U"}, new Type[] {permissionType, Type.Int}));
-      this.mapLeInt = program.monomorphizer.Monomorphize("MapLe", 
-        LinqExtender.Map(new string[] {"T"}, new Type[] {permissionType}));
+
+      this.mapConstBool = program.monomorphizer.Monomorphize("MapConst",
+        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Bool} });
+      this.mapConstInt = program.monomorphizer.Monomorphize("MapConst",
+        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
+      this.mapOrBool = program.monomorphizer.Monomorphize("MapOr",
+        new Dictionary<string, Type>() { {"T", permissionType} });
+      this.mapImpBool = program.monomorphizer.Monomorphize("MapImp",
+        new Dictionary<string, Type>() { {"T", permissionType} });
+      this.mapEqInt = program.monomorphizer.Monomorphize("MapEq",
+        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
+      this.mapAddInt = program.monomorphizer.Monomorphize("MapAdd",
+        new Dictionary<string, Type>() { {"T", permissionType} });
+      this.mapIteInt = program.monomorphizer.Monomorphize("MapIte",
+        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
+      this.mapLeInt = program.monomorphizer.Monomorphize("MapLe",
+        new Dictionary<string, Type>() { {"T", permissionType} });
     }
   }
 
@@ -239,13 +239,13 @@ namespace Microsoft.Boogie
           {
             // add unit collector
             domainNameToCollectors[domainName][variableType] =
-              program.monomorphizer.Monomorphize("MapUnit", LinqExtender.Map(new string[] {"T"}, new Type[] {variableType}));
+              program.monomorphizer.Monomorphize("MapUnit", new Dictionary<string, Type>() { {"T", variableType} });
           }
           else if (variableType.Equals(new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type>{permissionType}, Type.Bool)))
           {
             // add identity collector
             domainNameToCollectors[domainName][variableType] =
-              program.monomorphizer.Monomorphize("Id", LinqExtender.Map(new string[] {"T"}, new Type[] {variableType}));
+              program.monomorphizer.Monomorphize("Id", new Dictionary<string, Type>() { {"T", variableType} });
           }
           else
           {
