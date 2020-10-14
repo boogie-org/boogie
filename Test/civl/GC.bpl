@@ -2,16 +2,13 @@
 // Copyright (c) Microsoft Corporation.  All rights reserved.
 //
 
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type X = int;
-function {:builtin "MapConst"} MapConstBool(bool): [X]bool;
-function {:builtin "MapOr"} MapOr([X]bool, [X]bool) : [X]bool;
-function {:builtin "MapNot"} MapNot(x: [X]bool) : [X]bool;
+type {:linear "tid"} X = int;
 function {:inline} Subset(X: [X]bool, Y: [X]bool) : (bool)
 {
-    MapOr(MapNot(X), Y) == MapConstBool(true)
+    MapOr(MapNot(X), Y) == MapConst(true)
 }
 
 // Tid(i, left, right) represents a linear thread id for thread number i, where i > 0.
@@ -24,12 +21,7 @@ function{:constructor} Tid(i:int, left:bool, right:bool):Tid;
 
 function {:inline} {:linear "tid"} TidCollector(x: Tid) : [X]bool
 {
-    MapConstBool(false)[-i#Tid(x) := left#Tid(x)][i#Tid(x) := right#Tid(x)]
-}
-
-function {:inline} {:linear "tid"} TidSetCollector(x: [X]bool) : [X]bool
-{
-    x
+    MapConst(false)[-i#Tid(x) := left#Tid(x)][i#Tid(x) := right#Tid(x)]
 }
 
 const numMutators: int;
@@ -50,7 +42,7 @@ function gcAndMutatorTids(tid: Tid, mutatorTids: [int]bool) : bool
 function Size([int]bool) returns (int);
 const Mutators: [int]bool;
 axiom Size(Mutators) == numMutators;
-axiom Size(MapConstBool(false)) == 0;
+axiom Size(MapConst(false)) == 0;
 axiom (forall X, Y: [int]bool :: Subset(X, Y) ==> Size(X) < Size(Y) || X == Y);
 axiom (forall X: [int]bool, x: int ::{Size(X[x := false]), Size(X[x := true])} Size(X[x := false]) + 1 == Size(X[x := true]));
 axiom (forall x: int :: Mutators[x] <==> 1 <= x && x <= numMutators);
@@ -266,10 +258,10 @@ requires {:layer 100} (forall x: idx :: rootAddr(x) ==> rootAbs[x] == Int(0));
 
 procedure {:yields} {:layer 100}
 {:yield_requires "Yield_Initialize_100", tid, mutatorTids}
-{:yield_requires "Yield_InitVars99", mutatorTids, MapConstBool(false), old(rootScanBarrier)}
+{:yield_requires "Yield_InitVars99", mutatorTids, MapConst(false), old(rootScanBarrier)}
 {:yield_ensures "Yield_Iso"}
 {:yield_ensures "Yield_RootScanBarrierInv"}
-{:yield_ensures "Yield_InitVars99", mutatorTids, MapConstBool(false), numMutators}
+{:yield_ensures "Yield_InitVars99", mutatorTids, MapConst(false), numMutators}
 Initialize({:linear_in "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
 requires {:layer 97,98,99} gcAndMutatorTids(tid, mutatorTids);
 {

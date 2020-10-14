@@ -1,10 +1,10 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // Write (although lock-protected) is a non-mover, becaues of the unprotected
 // read action ReadNoLock.
 
-type Tid;
+type {:linear "tid"} Tid;
 const nil:Tid;
 
 var {:layer 0,1} lock:Tid;
@@ -29,11 +29,3 @@ procedure {:both} {:layer 1} ReadLock({:linear "tid"} tid:Tid) returns (val:int)
 
 procedure {:atomic} {:layer 1} ReadNoLock() returns (val:int)
 { val := x; }
-
-////////////////////////////////////////////////////////////////////////////////
-
-function {:builtin "MapConst"} MapConstBool(bool) : [Tid]bool;
-function {:inline} {:linear "tid"} TidCollector(tid:Tid) : [Tid]bool
-{
-  MapConstBool(false)[tid := true]
-}

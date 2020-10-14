@@ -1478,6 +1478,8 @@ namespace Microsoft.Boogie
         invariant.Attributes = new QKeyValue(Token.NoToken, "tag", new List<object>(new object[] {tag}), null);
       return invariant;
     }
+
+    public Monomorphizer monomorphizer;
   }
 
   //---------------------------------------------------------------------

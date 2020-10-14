@@ -1,32 +1,15 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type X;
-function {:builtin "MapConst"} MapConstInt(int) : [X]int;
-function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
-function {:builtin "MapOr"} MapOr([X]bool, [X]bool) : [X]bool;
-function {:builtin "MapAnd"} MapAnd([X]bool, [X]bool) : [X]bool;
+type {:linear "x", "tid"} X;
 
 function {:inline} None() : [X]bool
 {
-    MapConstBool(false)
+    MapConst(false)
 }
 
 function {:inline} All() : [X]bool
 {
-    MapConstBool(true)
-}
-
-function {:inline} {:linear "x"} XCollector(xs: [X]bool) : [X]bool
-{
-  xs
-}
-function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
-{
-  MapConstBool(false)[x := true]
-}
-function {:inline} {:linear "tid"} TidSetCollector(x: [X]bool) : [X]bool
-{
-  x
+    MapConst(true)
 }
 
 var {:layer 0,1} x: int;

@@ -1,23 +1,13 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type X;
-function {:builtin "MapConst"} mapconstbool(bool): [X]bool;
+type {:linear "tid"} X;
+
 const nil: X;
 var {:layer 0,1} ghostLock: X;
 var {:layer 0,1} lock: X;
 var {:layer 0,1} currsize: int;
 var {:layer 0,1} newsize: int;
 var {:layer 0,1}{:linear "tid"} unallocated:[X]bool;
-
-function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
-function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
-{
-  MapConstBool(false)[x := true]
-}
-function {:inline} {:linear "tid"} TidSetCollector(x: [X]bool) : [X]bool
-{
-  x
-}
 
 function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
 {
@@ -41,7 +31,7 @@ ensures {:layer 1} xl != nil;
 }
 
 procedure {:yields} {:layer 1} main({:linear_in "tid"} xls: [X]bool)
-requires {:layer 1} xls == mapconstbool(true);
+requires {:layer 1} xls == MapConst(true);
 {
     var {:linear "tid"} tid: X;
 
@@ -132,7 +122,7 @@ requires {:layer 1} (bytesRead == 0 || start + bytesRead <= currsize);
 
 procedure {:atomic} {:layer 1} AtomicInit({:linear_in "tid"} xls:[X]bool)
 modifies currsize, newsize, lock, ghostLock;
-{ assert xls == mapconstbool(true); currsize := 0; newsize := 0; lock := nil; ghostLock := nil; }
+{ assert xls == MapConst(true); currsize := 0; newsize := 0; lock := nil; ghostLock := nil; }
 
 procedure {:yields} {:layer 0} {:refines "AtomicInit"} Init({:linear_in "tid"} xls:[X]bool);
 

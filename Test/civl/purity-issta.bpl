@@ -1,13 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type X;
+type {:linear "tid"} X;
 const nil: X;
-
-function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
-function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
-{
-  MapConstBool(false)[x := true]
-}
 
 const max: int;
 axiom 0 <= max;

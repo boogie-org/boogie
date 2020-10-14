@@ -37,12 +37,17 @@ namespace Microsoft.Boogie
     }
   }
 
-  // Handy syntactic suggar missing in Expr
+  // Handy syntactic sugar missing in Expr
   public static class ExprHelper
   {
     public static NAryExpr FunctionCall(Function f, params Expr[] args)
     {
-      return new NAryExpr(Token.NoToken, new FunctionCall(f), args);
+      var expr = new NAryExpr(Token.NoToken, new FunctionCall(f), args);
+      var rc = new ResolutionContext(null);
+      rc.StateMode = ResolutionContext.State.Two;
+      expr.Resolve(rc);
+      expr.Typecheck(new TypecheckingContext(null));
+      return expr;
     }
 
     public static NAryExpr IfThenElse(Expr ifExpr, Expr thenExpr, Expr elseExpr)

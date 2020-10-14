@@ -1,7 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type Tid;
+type {:linear "tid"} Tid;
 type {:datatype} OptionTid;
 function {:constructor} None(): OptionTid;
 function {:constructor} Some(tid: Tid): OptionTid;
@@ -114,16 +114,4 @@ procedure {:inline} {:intro} {:layer 1} set_l(v: OptionTid)
 modifies l;
 {
     l := v;
-}
-
-function {:builtin "MapConst"} MapConstBool(bool): [Tid]bool;
-function {:builtin "MapOr"} MapOr([Tid]bool, [Tid]bool) : [Tid]bool;
-
-function {:inline} {:linear "tid"} TidCollector(x: Tid) : [Tid]bool
-{
-  MapConstBool(false)[x := true]
-}
-function {:inline} {:linear "tid"} TidSetCollector(x: [Tid]bool) : [Tid]bool
-{
-  x
 }

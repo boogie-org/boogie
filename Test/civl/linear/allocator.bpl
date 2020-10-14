@@ -1,18 +1,17 @@
-// RUN: %boogie -useArrayTheory -doModSetAnalysis "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
-function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
-{
-  MapConstBool(false)[x := true]
-}
+
+
+
+
+type {:linear "tid"} X = int;
 
 procedure A({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int);
   ensures i == i';
 
-procedure B({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int) 
+procedure B({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
 {
   i := i';
   call i := A(i);
   assert false;
 }
-

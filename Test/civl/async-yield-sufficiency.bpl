@@ -1,6 +1,6 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-
+type {:linear "tid"} Tid = int;
 var {:layer 0,1} x:int;
 
 procedure {:yields}{:layer 1} P({:linear_in "tid"} tid1:int, {:linear "tid"} tid2:int)
@@ -32,11 +32,3 @@ procedure {:atomic}{:layer 1} ASSERTION()
 
 procedure {:yields}{:layer 0}{:refines "WRITE"} write();
 procedure {:yields}{:layer 0}{:refines "ASSERTION"} assertion();
-
-function {:builtin "MapConst"} MapConstBool(bool): [int]bool;
-function {:builtin "MapOr"} MapOr([int]bool, [int]bool) : [int]bool;
-
-function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
-{
-  MapConstBool(false)[x := true]
-}

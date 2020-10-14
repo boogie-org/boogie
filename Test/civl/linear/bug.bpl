@@ -1,7 +1,7 @@
-// RUN: %boogie -useArrayTheory -doModSetAnalysis "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
-function {:inline} {:linear ""} LinearIntDistinctness(x:int) : [int]bool { MapConstBool(false)[x := true] }
+
+type {:linear ""} X = int;
 
 var {:linear ""} g:int;
 

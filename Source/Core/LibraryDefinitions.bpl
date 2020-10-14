@@ -17,3 +17,13 @@ function {:builtin "MapGt"} MapGt<T>([T]int, [T]int) : [T]bool;
 function {:builtin "MapGe"} MapGe<T>([T]int, [T]int) : [T]bool;
 function {:builtin "MapLt"} MapLt<T>([T]int, [T]int) : [T]bool;
 function {:builtin "MapLe"} MapLe<T>([T]int, [T]int) : [T]bool;
+
+function {:inline} MapUnit<T>(t: T): [T]bool
+{
+  MapConst(false)[t := true]
+}
+
+function {:inline} Id<T>(t: T): T
+{
+  t
+}

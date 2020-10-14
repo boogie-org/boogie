@@ -1,7 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type X;
+type {:linear "tid"} X;
 const unique MainTid: X;
 const unique Nil: X;
 
@@ -47,7 +47,7 @@ procedure {:yields} {:layer 3} {:refines "AtomicIncr"} Incr({:linear "tid"} tid:
 requires {:layer 3} tid != Nil;
 {
   var t: int;
-  
+
   call acq(tid);
   call t := read(tid);
   call write(tid, t+1);
@@ -62,7 +62,7 @@ procedure {:yields} {:layer 4} {:refines "AtomicIncrBy2"} IncrBy2()
 {
   var {:linear "tid"} tid1: X;
   var {:linear "tid"} tid2: X;
-  
+
   call tid1 := AllocTid();
   call tid2 := AllocTid();
   par Incr(tid1) | Incr(tid2);
@@ -73,14 +73,4 @@ requires {:layer 5} tid == MainTid && x == 0;
 ensures  {:layer 5} x == 2;
 {
   call IncrBy2();
-}
-
-function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
-function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
-{
-  MapConstBool(false)[x := true]
-}
-function {:inline} {:linear "tid"} TidSetCollector(x: [X]bool) : [X]bool
-{
-  x
 }

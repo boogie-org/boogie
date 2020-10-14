@@ -26,6 +26,10 @@ namespace Microsoft.Boogie
   public class LinearDomain
   {
     public string domainName;
+    public Type permissionType;
+    public Dictionary<Type, Function> collectors;
+    public MapType mapTypeBool;
+    public MapType mapTypeInt;
     public Function mapConstBool;
     public Function mapConstInt;
     public Function mapOrBool;
@@ -34,278 +38,34 @@ namespace Microsoft.Boogie
     public Function mapAddInt;
     public Function mapIteInt;
     public Function mapLeInt;
-    public List<Axiom> axioms;
-    public Type elementType;
-    public MapType mapTypeBool;
-    public MapType mapTypeInt;
-    public Dictionary<Type, Function> collectors;
 
-    public LinearDomain(Program program, string domainName, Dictionary<Type, Function> collectors)
+    public LinearDomain(Program program, string domainName, Type permissionType, Dictionary<Type, Function> collectors)
     {
       this.domainName = domainName;
+      this.permissionType = permissionType;
       this.collectors = collectors;
-      this.axioms = new List<Axiom>();
 
-      MapType setType = (MapType) collectors.First().Value.OutParams[0].TypedIdent.Type;
-      this.elementType = setType.Arguments[0];
-      this.mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> {this.elementType},
+      this.mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> {this.permissionType},
         Type.Bool);
-      this.mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> {this.elementType},
+      this.mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> {this.permissionType},
         Type.Int);
-
-      MapConstBool();
-      MapConstInt();
-      MapOrBool();
-      MapImpBool();
-      MapEqInt();
-      MapAddInt();
-      MapIteInt();
-      MapLeInt();
-
-      foreach (var axiom in axioms)
-      {
-        axiom.Expr.Resolve(new ResolutionContext(null));
-        axiom.Expr.Typecheck(new TypecheckingContext(null));
-      }
-    }
-
-    private struct AxiomVariable
-    {
-      public readonly BoundVariable Bound;
-      public readonly IdentifierExpr Ident;
-
-      public AxiomVariable(string name, Type type)
-      {
-        Bound = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, name, type));
-        Ident = Expr.Ident(Bound);
-      }
-    }
-
-    private void MapConstBool()
-    {
-      this.mapConstBool = new Function(Token.NoToken, "linear_" + domainName + "_MapConstBool",
-        new List<Variable> {new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", Type.Bool), true)},
-        new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
-      if (CommandLineOptions.Clo.UseArrayTheory)
-      {
-        this.mapConstBool.AddAttribute("builtin", "MapConst");
-      }
-      else
-      {
-        AxiomVariable x = new AxiomVariable("x", elementType);
-        var trueTerm = Expr.Select(ExprHelper.FunctionCall(mapConstBool, Expr.True), x.Ident);
-        var trueAxiomExpr = new ForallExpr(Token.NoToken, new List<Variable> {x.Bound}, trueTerm);
-        trueAxiomExpr.Typecheck(new TypecheckingContext(null));
-        axioms.Add(new Axiom(Token.NoToken, trueAxiomExpr));
-        var falseTerm = Expr.Select(ExprHelper.FunctionCall(mapConstBool, Expr.False), x.Ident);
-        var falseAxiomExpr = new ForallExpr(Token.NoToken, new List<Variable> {x.Bound},
-          Expr.Unary(Token.NoToken, UnaryOperator.Opcode.Not, falseTerm));
-        falseAxiomExpr.Typecheck(new TypecheckingContext(null));
-        axioms.Add(new Axiom(Token.NoToken, falseAxiomExpr));
-      }
-    }
-
-    private void MapConstInt()
-    {
-      this.mapConstInt = new Function(Token.NoToken, "linear_" + domainName + "_MapConstInt",
-        new List<Variable> {new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", Type.Int), true)},
-        new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeInt), false));
-      if (CommandLineOptions.Clo.UseArrayTheory)
-      {
-        this.mapConstInt.AddAttribute("builtin", "MapConst");
-      }
-      else
-      {
-        AxiomVariable a = new AxiomVariable("a", Type.Int);
-        AxiomVariable x = new AxiomVariable("x", elementType);
-        var lhsTerm = Expr.Select(ExprHelper.FunctionCall(mapConstInt, a.Ident), x.Ident);
-        var axiomExpr = new ForallExpr(Token.NoToken, new List<Variable> {a.Bound, x.Bound}, Expr.Eq(lhsTerm, a.Ident));
-        axiomExpr.Typecheck(new TypecheckingContext(null));
-        axioms.Add(new Axiom(Token.NoToken, axiomExpr));
-      }
-    }
-
-    private void MapOrBool()
-    {
-      this.mapOrBool = new Function(Token.NoToken, "linear_" + domainName + "_MapOr",
-        new List<Variable>
-        {
-          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
-          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true)
-        },
-        new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
-      if (CommandLineOptions.Clo.UseArrayTheory)
-      {
-        this.mapOrBool.AddAttribute("builtin", "MapOr");
-      }
-      else
-      {
-        AxiomVariable a = new AxiomVariable("a", mapTypeBool);
-        AxiomVariable b = new AxiomVariable("b", mapTypeBool);
-        AxiomVariable x = new AxiomVariable("x", elementType);
-        var mapApplTerm = ExprHelper.FunctionCall(mapOrBool, a.Ident, b.Ident);
-        var lhsTerm = Expr.Select(mapApplTerm, x.Ident);
-        var rhsTerm = Expr.Or(Expr.Select(a.Ident, x.Ident), Expr.Select(b.Ident, x.Ident));
-        var axiomExpr = new ForallExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable> {a.Bound, b.Bound},
-          null,
-          new Trigger(Token.NoToken, true, new List<Expr> {mapApplTerm}),
-          new ForallExpr(Token.NoToken, new List<Variable> {x.Bound}, Expr.Eq(lhsTerm, rhsTerm)));
-        axiomExpr.Typecheck(new TypecheckingContext(null));
-        axioms.Add(new Axiom(Token.NoToken, axiomExpr));
-      }
-    }
-
-    private void MapImpBool()
-    {
-      this.mapImpBool = new Function(Token.NoToken, "linear_" + domainName + "_MapImp",
-        new List<Variable>
-        {
-          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
-          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true)
-        },
-        new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
-      if (CommandLineOptions.Clo.UseArrayTheory)
-      {
-        this.mapImpBool.AddAttribute("builtin", "MapImp");
-      }
-      else
-      {
-        AxiomVariable a = new AxiomVariable("a", mapTypeBool);
-        AxiomVariable b = new AxiomVariable("b", mapTypeBool);
-        AxiomVariable x = new AxiomVariable("x", elementType);
-        var mapApplTerm = ExprHelper.FunctionCall(mapImpBool, a.Ident, b.Ident);
-        var lhsTerm = Expr.Select(mapApplTerm, x.Ident);
-        var rhsTerm = Expr.Imp(Expr.Select(a.Ident, x.Ident), Expr.Select(b.Ident, x.Ident));
-        var axiomExpr = new ForallExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable> {a.Bound, b.Bound},
-          null,
-          new Trigger(Token.NoToken, true, new List<Expr> {mapApplTerm}),
-          new ForallExpr(Token.NoToken, new List<Variable> {x.Bound}, Expr.Eq(lhsTerm, rhsTerm)));
-        axiomExpr.Typecheck(new TypecheckingContext(null));
-        axioms.Add(new Axiom(Token.NoToken, axiomExpr));
-      }
-    }
-
-    private void MapEqInt()
-    {
-      this.mapEqInt = new Function(Token.NoToken, "linear_" + domainName + "_MapEq",
-        new List<Variable>
-        {
-          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt), true),
-          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true)
-        },
-        new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
-      if (CommandLineOptions.Clo.UseArrayTheory)
-      {
-        this.mapEqInt.AddAttribute("builtin", "MapEq");
-      }
-      else
-      {
-        AxiomVariable a = new AxiomVariable("a", mapTypeInt);
-        AxiomVariable b = new AxiomVariable("b", mapTypeInt);
-        AxiomVariable x = new AxiomVariable("x", elementType);
-        var mapApplTerm = ExprHelper.FunctionCall(mapEqInt, a.Ident, b.Ident);
-        var lhsTerm = Expr.Select(mapApplTerm, x.Ident);
-        var rhsTerm = Expr.Eq(Expr.Select(a.Ident, x.Ident), Expr.Select(b.Ident, x.Ident));
-        var axiomExpr = new ForallExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable> {a.Bound, b.Bound},
-          null,
-          new Trigger(Token.NoToken, true, new List<Expr> {mapApplTerm}),
-          new ForallExpr(Token.NoToken, new List<Variable> {x.Bound}, Expr.Eq(lhsTerm, rhsTerm)));
-        axiomExpr.Typecheck(new TypecheckingContext(null));
-        axioms.Add(new Axiom(Token.NoToken, axiomExpr));
-      }
-    }
-
-    private void MapAddInt()
-    {
-      this.mapAddInt = new Function(Token.NoToken, "linear_" + domainName + "_MapAdd",
-        new List<Variable>
-        {
-          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt), true),
-          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true)
-        },
-        new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeInt), false));
-      if (CommandLineOptions.Clo.UseArrayTheory)
-      {
-        this.mapAddInt.AddAttribute("builtin", "MapAdd");
-      }
-      else
-      {
-        AxiomVariable a = new AxiomVariable("a", mapTypeInt);
-        AxiomVariable b = new AxiomVariable("b", mapTypeInt);
-        AxiomVariable x = new AxiomVariable("x", elementType);
-        var mapApplTerm = ExprHelper.FunctionCall(mapAddInt, a.Ident, b.Ident);
-        var lhsTerm = Expr.Select(mapApplTerm, x.Ident);
-        var rhsTerm = Expr.Add(Expr.Select(a.Ident, x.Ident), Expr.Select(b.Ident, x.Ident));
-        var axiomExpr = new ForallExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable> {a.Bound, b.Bound},
-          null,
-          new Trigger(Token.NoToken, true, new List<Expr> {mapApplTerm}),
-          new ForallExpr(Token.NoToken, new List<Variable> {x.Bound}, Expr.Eq(lhsTerm, rhsTerm)));
-        axiomExpr.Typecheck(new TypecheckingContext(null));
-        axioms.Add(new Axiom(Token.NoToken, axiomExpr));
-      }
-    }
-
-    private void MapIteInt()
-    {
-      this.mapIteInt = new Function(Token.NoToken, "linear_" + domainName + "_MapIteInt",
-        new List<Variable>
-        {
-          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
-          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true),
-          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeInt), true)
-        },
-        new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "d", mapTypeInt), false));
-      if (CommandLineOptions.Clo.UseArrayTheory)
-      {
-        this.mapIteInt.AddAttribute("builtin", "MapIte");
-      }
-      else
-      {
-        AxiomVariable a = new AxiomVariable("a", mapTypeBool);
-        AxiomVariable b = new AxiomVariable("b", mapTypeInt);
-        AxiomVariable c = new AxiomVariable("c", mapTypeInt);
-        AxiomVariable x = new AxiomVariable("x", elementType);
-        var mapApplTerm = ExprHelper.FunctionCall(mapIteInt, a.Ident, b.Ident, c.Ident);
-        var lhsTerm = Expr.Select(mapApplTerm, x.Ident);
-        var rhsTerm = ExprHelper.IfThenElse(Expr.Select(a.Ident, x.Ident), Expr.Select(b.Ident, x.Ident),
-          Expr.Select(c.Ident, x.Ident));
-        var axiomExpr = new ForallExpr(Token.NoToken, new List<TypeVariable>(),
-          new List<Variable> {a.Bound, b.Bound, c.Bound}, null,
-          new Trigger(Token.NoToken, true, new List<Expr> {mapApplTerm}),
-          new ForallExpr(Token.NoToken, new List<Variable> {x.Bound}, Expr.Eq(lhsTerm, rhsTerm)));
-        axiomExpr.Typecheck(new TypecheckingContext(null));
-        axioms.Add(new Axiom(Token.NoToken, axiomExpr));
-      }
-    }
-
-    private void MapLeInt()
-    {
-      this.mapLeInt = new Function(Token.NoToken, "linear_" + domainName + "_MapLe",
-        new List<Variable>
-        {
-          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt), true),
-          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true)
-        },
-        new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
-      if (CommandLineOptions.Clo.UseArrayTheory)
-      {
-        this.mapLeInt.AddAttribute("builtin", "MapLe");
-      }
-      else
-      {
-        AxiomVariable a = new AxiomVariable("a", mapTypeInt);
-        AxiomVariable b = new AxiomVariable("b", mapTypeInt);
-        AxiomVariable x = new AxiomVariable("x", elementType);
-        var mapApplTerm = ExprHelper.FunctionCall(mapLeInt, a.Ident, b.Ident);
-        var lhsTerm = Expr.Select(mapApplTerm, x.Ident);
-        var rhsTerm = Expr.Le(Expr.Select(a.Ident, x.Ident), Expr.Select(b.Ident, x.Ident));
-        var axiomExpr = new ForallExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable> {a.Bound, b.Bound},
-          null,
-          new Trigger(Token.NoToken, true, new List<Expr> {mapApplTerm}),
-          new ForallExpr(Token.NoToken, new List<Variable> {x.Bound}, Expr.Eq(lhsTerm, rhsTerm)));
-        axiomExpr.Typecheck(new TypecheckingContext(null));
-        axioms.Add(new Axiom(Token.NoToken, axiomExpr));
-      }
+      
+      this.mapConstBool = program.monomorphizer.Monomorphize("MapConst", 
+        LinqExtender.Map(new string[] {"T", "U"}, new Type[] {permissionType, Type.Bool}));
+      this.mapConstInt = program.monomorphizer.Monomorphize("MapConst", 
+        LinqExtender.Map(new string[] {"T", "U"}, new Type[] {permissionType, Type.Int}));
+      this.mapOrBool = program.monomorphizer.Monomorphize("MapOr", 
+        LinqExtender.Map(new string[] {"T"}, new Type[] {permissionType}));
+      this.mapImpBool = program.monomorphizer.Monomorphize("MapImp", 
+        LinqExtender.Map(new string[] {"T"}, new Type[] {permissionType}));
+      this.mapEqInt = program.monomorphizer.Monomorphize("MapEq", 
+        LinqExtender.Map(new string[] {"T", "U"}, new Type[] {permissionType, Type.Int}));
+      this.mapAddInt = program.monomorphizer.Monomorphize("MapAdd", 
+        LinqExtender.Map(new string[] {"T"}, new Type[] {permissionType}));
+      this.mapIteInt = program.monomorphizer.Monomorphize("MapIte", 
+        LinqExtender.Map(new string[] {"T", "U"}, new Type[] {permissionType, Type.Int}));
+      this.mapLeInt = program.monomorphizer.Monomorphize("MapLe", 
+        LinqExtender.Map(new string[] {"T"}, new Type[] {permissionType}));
     }
   }
 
@@ -411,26 +171,98 @@ namespace Microsoft.Boogie
       return civlTypeChecker.LocalVariable("linear_" + domainName + "_available", linearDomains[domainName].mapTypeBool);
     }
 
+    private static List<string> FindDomainNames(QKeyValue kv)
+    {
+      List<string> domains = new List<string>();
+      for (; kv != null; kv = kv.Next)
+      {
+        if (kv.Key != CivlAttributes.LINEAR) continue;
+        foreach (var o in kv.Params)
+        {
+          if (o is string s)
+          {
+            domains.Add(s);
+          }
+        }
+      }
+      return domains;
+    }
+    
     public void TypeCheck()
     {
       this.VisitProgram(program);
+      var permissionTypes = new Dictionary<string, Type>();
+      program.TopLevelDeclarations.Where(decl => decl is TypeCtorDecl || decl is TypeSynonymDecl).Iter(
+        decl =>
+        {
+          foreach (var domainName in FindDomainNames(decl.Attributes))
+          {
+            if (permissionTypes.ContainsKey(domainName))
+            {
+              Error(decl, $"Duplicate permission type for domain {domainName}");
+            }
+            else if (decl is TypeCtorDecl typeCtorDecl)
+            {
+              if (typeCtorDecl.Arity > 0)
+              {
+                Error(decl, "Permission type must be fully instantiated");
+              }
+              else
+              {
+                permissionTypes[domainName] = new CtorType(Token.NoToken, typeCtorDecl, new List<Type>());
+              }
+            }
+            else
+            {
+              permissionTypes[domainName] =
+                new TypeSynonymAnnotation(Token.NoToken, (TypeSynonymDecl) decl, new List<Type>());
+            }
+          }
+        });
       foreach (var variable in varToDomainName.Keys)
       {
         string domainName = FindDomainName(variable);
-        if (!domainNameToCollectors.ContainsKey(domainName) ||
-            !domainNameToCollectors[domainName].ContainsKey(variable.TypedIdent.Type))
+        if (!permissionTypes.ContainsKey(domainName))
         {
-          Error(variable, "Missing collector for linear variable " + variable.Name);
+          Error(variable, $"Permission type not declared for domain {domainName}");
+          continue;
+        }
+        var permissionType = permissionTypes[domainName];
+        if (!domainNameToCollectors.ContainsKey(domainName))
+        {
+          domainNameToCollectors[domainName] = new Dictionary<Type, Function>();
+        }
+        var variableType = variable.TypedIdent.Type;
+        if (!domainNameToCollectors[domainName].ContainsKey(variableType))
+        {
+          if (variableType.Equals(permissionType))
+          {
+            // add unit collector
+            domainNameToCollectors[domainName][variableType] =
+              program.monomorphizer.Monomorphize("MapUnit", LinqExtender.Map(new string[] {"T"}, new Type[] {variableType}));
+          }
+          else if (variableType.Equals(new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type>{permissionType}, Type.Bool)))
+          {
+            // add identity collector
+            domainNameToCollectors[domainName][variableType] =
+              program.monomorphizer.Monomorphize("Id", LinqExtender.Map(new string[] {"T"}, new Type[] {variableType}));
+          }
+          else
+          {
+            Error(variable, "Missing collector for linear variable " + variable.Name);
+          }
         }
       }
-
+      if (checkingContext.ErrorCount > 0)
+      {
+        return;
+      }
       foreach (string domainName in domainNameToCollectors.Keys)
       {
         var collectors = domainNameToCollectors[domainName];
         if (collectors.Count == 0) continue;
-        this.linearDomains[domainName] = new LinearDomain(program, domainName, collectors);
+        this.linearDomains[domainName] = new LinearDomain(program, domainName, permissionTypes[domainName], collectors);
       }
-
       foreach (Absy absy in this.availableLinearVars.Keys)
       {
         availableLinearVars[absy].RemoveWhere(v => v is GlobalVariable);
@@ -949,26 +781,6 @@ namespace Microsoft.Boogie
     #endregion
 
     #region Useful public methods
-
-    public void AddDeclarations()
-    {
-      foreach (LinearDomain domain in linearDomains.Values)
-      {
-        program.AddTopLevelDeclaration(domain.mapConstBool);
-        program.AddTopLevelDeclaration(domain.mapConstInt);
-        program.AddTopLevelDeclaration(domain.mapEqInt);
-        program.AddTopLevelDeclaration(domain.mapImpBool);
-        program.AddTopLevelDeclaration(domain.mapOrBool);
-        program.AddTopLevelDeclaration(domain.mapAddInt);
-        program.AddTopLevelDeclaration(domain.mapLeInt);
-        program.AddTopLevelDeclaration(domain.mapIteInt);
-        foreach (Axiom axiom in domain.axioms)
-        {
-          program.AddTopLevelDeclaration(axiom);
-        }
-      }
-    }
-
     public ISet<Variable> AvailableLinearVars(Absy absy)
     {
       if (availableLinearVars.ContainsKey(absy))

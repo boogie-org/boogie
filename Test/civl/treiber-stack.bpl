@@ -1,6 +1,7 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
+type {:linear "Node"} X = int;
 const null: int;
 type lmap;
 function {:linear "Node"} dom(lmap): [int]bool;

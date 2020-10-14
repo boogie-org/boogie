@@ -1,6 +1,6 @@
-// RUN: %boogie -useArrayTheory -doModSetAnalysis "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-function {:builtin "MapConst"} mapconstbool(bool) : [int]bool;
+type {:linear "1"} X = int;
 const {:existential true} b0: bool;
 const {:existential true} b1: bool;
 const {:existential true} b2: bool;
@@ -26,28 +26,28 @@ function {:inline} {:linear "1"} SetCollector1(x: [int]bool) : [int]bool
   x
 }
 
-procedure main({:linear_in "1"} x_in: [int]bool) 
-  requires b0 ==> x_in == mapconstbool(true);
-  requires b1 ==> x_in != mapconstbool(false);
+procedure main({:linear_in "1"} x_in: [int]bool)
+  requires b0 ==> x_in == MapConst(true);
+  requires b1 ==> x_in != MapConst(false);
 {
    var {:linear "1"} x: [int] bool;
    x := x_in;
 
    call foo(x);
-   
-   assert b6 ==> x == mapconstbool(true);
-   assert b7 ==> x != mapconstbool(false);
-   assert b8 ==> x == mapconstbool(false);
+
+   assert b6 ==> x == MapConst(true);
+   assert b7 ==> x != MapConst(false);
+   assert b8 ==> x == MapConst(false);
 }
 
 procedure foo({:linear_in "1"} x_in: [int]bool)
-  requires b2 ==> x_in == mapconstbool(true);
-  requires b3 ==> x_in != mapconstbool(false);
+  requires b2 ==> x_in == MapConst(true);
+  requires b3 ==> x_in != MapConst(false);
 {
    var {:linear "1"} x: [int] bool;
    x := x_in;
 
-   assert b4 ==> x == mapconstbool(true);
-   assert b5 ==> x != mapconstbool(false);
+   assert b4 ==> x == MapConst(true);
+   assert b5 ==> x != MapConst(false);
 
 }

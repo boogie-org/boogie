@@ -1,7 +1,7 @@
-// RUN: %boogie -useArrayTheory  "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type X;
-
+type {:linear "A", "B", "C", "D", "D2", "x", "", "lin"} Lin = int;
 function {:inline} none() : [int]bool { (lambda i:int :: false) }
 function {:inline} {:linear "A"} A_X_Collector(a: X) : [int]bool { none() }
 function {:inline} {:linear "A"} A_int_Collector(a: int) : [int]bool { none() }
@@ -144,9 +144,3 @@ var {:layer 0,1} x:int;
 
 procedure {:yield_invariant} {:layer 1} linear_yield_x({:linear "lin"} n: int);
 requires x >= n;
-
-function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
-function {:inline} {:linear "lin"} TidCollector(x: int) : [int]bool
-{
-  MapConstBool(false)[x := true]
-}

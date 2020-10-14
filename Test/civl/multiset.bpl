@@ -1,6 +1,6 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type X;
+type {:linear "tid"} X;
 
 const unique null : int;
 const unique nil: X;
@@ -11,12 +11,6 @@ var {:layer 0,3} valid : [int]bool;
 var {:layer 0,3} lock : [int]X;
 var {:layer 0,3} owner : [int]X;
 const max : int;
-
-function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
-function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
-{
-  MapConstBool(false)[x := true]
-}
 
 axiom (max > 0);
 

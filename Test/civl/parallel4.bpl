@@ -1,14 +1,14 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+
+
+
+
+type {:linear "tid"} X = int;
+
 var {:layer 0,1} a:int;
 
 procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} tid: int);
-
-function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
-function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
-{
-  MapConstBool(false)[x := true]
-}
 
 procedure {:yields} {:layer 1} main()
 {
