@@ -37,6 +37,7 @@ function {:inline} Len<T>(v: Vec T): int
 {
   len#Vec(v)
 }
+
 procedure test0()
 {
   var s: Vec int;
@@ -112,7 +113,7 @@ ensures (forall i, j: int :: 0 <= i && i <= j && j < Len(s') ==> Nth(s', i) <= N
 
 procedure sorted_insert(s: Vec int, x: int) returns (s': Vec int)
 requires (forall i, j: int :: 0 <= i && i <= j && j < Len(s) ==> Nth(s, i) <= Nth(s, j));
-ensures (forall i, j: int :: 0 <= i && i <= j && j < Len(s) ==> Nth(s, i) <= Nth(s, j));
+ensures (forall i, j: int :: 0 <= i && i <= j && j < Len(s') ==> Nth(s', i) <= Nth(s', j));
 {
   var pos: int;
   var val: int;
@@ -137,4 +138,53 @@ ensures (forall i, j: int :: 0 <= i && i <= j && j < Len(s) ==> Nth(s, i) <= Nth
     pos := pos + 1;
   }
   s' := Append(s', val);
+}
+
+type {:datatype} Value;
+function {:constructor} Integer(i: int): Value;
+function {:constructor} Vector(v: Vec Value): Value;
+
+procedure test3(val: Value) returns (val': Value)
+requires is#Vector(val) && Len(v#Vector(val)) == 1 && Nth(v#Vector(val), 0) == Integer(0);
+ensures val == val';
+{
+  var s: Vec Value;
+
+  s := Empty();
+  s := Append(s, Integer(0));
+  val' := Vector(s);
+}
+
+function has_zero(val: Value): (bool)
+{
+  if (is#Integer(val))
+  then val == Integer(0)
+  else (exists i: int :: 0 <= i && i < Len(v#Vector(val)) && has_zero(Nth(v#Vector(val), i)))
+}
+
+procedure traverse(val: Value) returns (b: bool)
+ensures b == has_zero(val);
+{
+  var s: Vec Value;
+  var i: int;
+
+  b := false;
+  if (is#Integer(val)) {
+      b := val == Integer(0);
+      return;
+  }
+  s := v#Vector(val);
+  i := 0;
+  while (i < Len(s))
+  invariant !b;
+  invariant 0 <= i;
+  invariant (forall j: int :: 0 <= j && j < i ==> !has_zero(Nth(s, j)));
+  {
+    call b := traverse(Nth(s, i));
+    if (b) {
+        return;
+    }
+    assert !has_zero(Nth(s, i));
+    i := i + 1;
+  }
 }
