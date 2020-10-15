@@ -7,6 +7,10 @@ function {:builtin "MapAnd"} MapAnd<T>([T]bool, [T]bool) : [T]bool;
 function {:builtin "MapNot"} MapNot<T>([T]bool) : [T]bool;
 function {:builtin "MapImp"} MapImp<T>([T]bool, [T]bool) : [T]bool;
 function {:builtin "MapIff"} MapIff<T>([T]bool, [T]bool) : [T]bool;
+function {:inline} MapDiff<T>(a: [T]bool, b: [T]bool) : [T]bool
+{
+  MapAnd(a, MapNot(b))
+}
 
 function {:builtin "MapAdd"} MapAdd<T>([T]int, [T]int) : [T]int;
 function {:builtin "MapSub"} MapSub<T>([T]int, [T]int) : [T]int;
