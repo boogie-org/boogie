@@ -641,7 +641,16 @@ namespace Microsoft.Boogie
     {
       return exprMonomorphizationVisitor.VisitExpr(node);
     }
-    
+
+    public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
+    {
+      if (node is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
+      {
+        datatypeTypeCtorDecl.Constructors.Iter(constructor => VisitFunction(constructor));
+      }
+      return base.VisitTypeCtorDecl(node);
+    }
+
     private class TypeInstantiationComparer : IEqualityComparer<List<Type>>
     {
       public bool Equals(List<Type> l1, List<Type> l2)
