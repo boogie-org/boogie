@@ -1,4 +1,4 @@
-// RUN: %boogie /noVerify /printModel:4 "%s" > "%t"
+// RUN: %boogie /noVerify /printModel:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure test0(n: int)

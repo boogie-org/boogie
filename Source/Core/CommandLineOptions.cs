@@ -649,7 +649,7 @@ namespace Microsoft.Boogie
     [ContractInvariantMethod]
     void ObjectInvariant3()
     {
-      Contract.Invariant((0 <= PrintErrorModel && PrintErrorModel <= 2) || PrintErrorModel == 4);
+      Contract.Invariant(0 <= PrintErrorModel && PrintErrorModel <= 1);
       Contract.Invariant(0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2);
       Contract.Invariant(0 <= Ai.StepsBeforeWidening && Ai.StepsBeforeWidening <= 9);
       Contract.Invariant(-1 <= this.bracketIdsInVC && this.bracketIdsInVC <= 1);
@@ -1131,12 +1131,6 @@ namespace Microsoft.Boogie
                 break;
               case "1":
                 PrintErrorModel = 1;
-                break;
-              case "2":
-                PrintErrorModel = 2;
-                break;
-              case "4":
-                PrintErrorModel = 4;
                 break;
               default:
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
@@ -2060,11 +2054,10 @@ namespace Microsoft.Boogie
   /printModel:<n>
                 0 (default) - do not print Z3's error model
                 1 - print Z3's error model
-                2 - print Z3's error model plus reverse mappings
-                4 - print Z3's error model in a more human readable way
   /printModelToFile:<file>
                 print model to <file> instead of console
-  /mv:<file>    Specify file where to save the model in BVD format
+  /mv:<file>    Specify file to save the model with captured states 
+                (see documentation for :captureState attribute)
   /enhancedErrorMessages:<n>
                 0 (default) - no enhanced error messages
                 1 - Z3 error model enhanced error messages
