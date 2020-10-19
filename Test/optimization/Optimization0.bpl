@@ -1,4 +1,4 @@
-// RUN: %boogie /printModel:4 "%s" > "%t"
+// RUN: %boogie /printModel:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function may_fail(f: int) : bool;

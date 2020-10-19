@@ -1,4 +1,4 @@
-// RUN: %boogie -printModel:2 "%s" > "%t"
+// RUN: %boogie -printModel:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure M (s : ref, r : ref) {
   var  i : int, j : int;
