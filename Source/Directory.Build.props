@@ -1,17 +1,21 @@
 <Project>
 
-  <!-- Configure target framework for .NET Core build -->
-  <PropertyGroup Condition="$(MSBuildProjectName.Contains('-NetCore'))">
+  <!-- Target framework and package configuration -->
+  <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-
-    <Authors>Boogie</Authors>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Boogie</Authors>
     <RepositoryUrl>https://github.com/boogie-org/boogie</RepositoryUrl>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
   </PropertyGroup>
 
+  <!-- Include license file -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
+  </ItemGroup>
+
   <!-- Configure GitVersionTask -->
-  <ItemGroup Condition="$(MSBuildProjectName.Contains('-NetCore')) AND Exists('$(MSBuildThisFileDirectory)\..\.git') AND $(BOOGIE_NO_GITVERSION) != 1">
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)\..\.git') AND $(BOOGIE_NO_GITVERSION) != 1">
     <PackageReference Include="GitVersionTask" Version="5.1.2">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -19,15 +23,13 @@
   </ItemGroup>
 
   <!-- Use StyleCop to check for consistent code formatting -->
-  <ItemGroup Condition="$(MSBuildProjectName.Contains('-NetCore'))">
+  <ItemGroup Condition="'$(Configuration)' != 'Release'">
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.118" />
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json" />
-
-    <None Include="$(MSBuildThisFileDirectory)..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
   </ItemGroup>
 
   <!-- Configure StyleCop analysis rules -->
-  <PropertyGroup Condition="$(MSBuildProjectName.Contains('-NetCore'))">
+  <PropertyGroup Condition="'$(Configuration)' != 'Release'">
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)StyleCop.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 

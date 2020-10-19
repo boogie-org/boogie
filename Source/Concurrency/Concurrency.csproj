@@ -1,108 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{D07B8E38-E172-47F4-AD02-0373014A46D3}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Concurrency</RootNamespace>
-    <AssemblyName>BoogieConcurrency</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
+    <AssemblyName>Boogie.Concurrency</AssemblyName>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup>
-    <StartupObject />
-  </PropertyGroup>
-  <PropertyGroup>
-    <SignAssembly>true</SignAssembly>
-  </PropertyGroup>
-  <PropertyGroup>
-    <AssemblyOriginatorKeyFile>..\InterimKey.snk</AssemblyOriginatorKeyFile>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
+    <ProjectReference Include="..\BaseTypes\BaseTypes.csproj" />
+    <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender.csproj" />
+    <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\Graph\Graph.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="GlobalSnapshotInstrumentation.cs" />
-    <Compile Include="LinearPermissionInstrumentation.cs" />
-    <Compile Include="NoninterferenceChecker.cs" />
-    <Compile Include="YieldingProcInstrumentation.cs" />
-    <Compile Include="LinearTypeChecker.cs" />
-    <Compile Include="MoverCheck.cs" />
-    <Compile Include="YieldingProcChecker.cs" />
-    <Compile Include="CivlVCGeneration.cs" />
-    <Compile Include="RefinementInstrumentation.cs" />
-    <Compile Include="SimulationRelation.cs" />
-    <Compile Include="CivlTypeChecker.cs" />
-    <Compile Include="TransitionRelationComputation.cs" />
-    <Compile Include="NoninterferenceInstrumentation.cs" />
-    <Compile Include="YieldingProcDuplicator.cs" />
-    <Compile Include="YieldSufficiencyTypeChecker.cs" />
-    <Compile Include="CivlUtil.cs" />
-    <Compile Include="CommutativityHints.cs" />
-    <Compile Include="CivlCoreTypes.cs" />
-    <Compile Include="InductiveSequentialization.cs" />
-    <Compile Include="PendingAsyncChecker.cs" />
-    <Compile Include="..\version.cs">
-      <Link>version.cs</Link>
-    </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\BaseTypes\BaseTypes.csproj">
-      <Project>{43dfad18-3e35-4558-9be2-caff6b5ba8a0}</Project>
-      <Name>BaseTypes</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Core\Core.csproj">
-      <Project>{b230a69c-c466-4065-b9c1-84d80e76d802}</Project>
-      <Name>Core</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Graph\Graph.csproj">
-      <Project>{69a2b0b8-bcac-4101-ae7a-556fcc58c06e}</Project>
-      <Name>Graph</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <WCFMetadata Include="Service References\" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
 </Project>

@@ -78,51 +78,6 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(msg != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      if (System.Type.GetType("Mono.Runtime") != null)
-      {
-        // MONO
-        // something in mono seems to be broken so that calling
-        // NamedDeclarations.ToString (and similar ToString methods)
-        // causes a stack overflow. We therefore convert those to
-        // strings by hand
-        object[] fixedArgs = new object[cce.NonNull(args).Length];
-        for (int i = 0; i < args.Length; ++i)
-        {
-          if (args[i] is NamedDeclaration)
-          {
-            fixedArgs[i] = cce.NonNull((NamedDeclaration) args[i]).Name;
-          }
-          else if (args[i] is Type)
-          {
-            System.IO.StringWriter buffer = new System.IO.StringWriter();
-            using (TokenTextWriter stream =
-              new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false))
-            {
-              cce.NonNull((Type) args[i]).Emit(stream);
-            }
-
-            fixedArgs[i] = buffer.ToString();
-          }
-          else if (args[i] is Expr)
-          {
-            System.IO.StringWriter buffer = new System.IO.StringWriter();
-            using (TokenTextWriter stream =
-              new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false))
-            {
-              cce.NonNull((Expr /*!*/) args[i]).Emit(stream, 0, false);
-            }
-
-            fixedArgs[i] = buffer.ToString();
-          }
-          else
-          {
-            fixedArgs[i] = args[i];
-          }
-        }
-
-        args = fixedArgs;
-      }
-
       return string.Format(msg, args);
     }
 

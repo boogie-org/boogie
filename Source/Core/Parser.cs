@@ -62,7 +62,7 @@ public static int ParseLibraryDefinitions(out Program program)
 {
   string libraryDefinitionsFileName = "LibraryDefinitions.bpl";
   Assembly asm = Assembly.GetExecutingAssembly();
-  var resourceName = "Core-NetCore.LibraryDefinitions.bpl";
+  var resourceName = "Core.LibraryDefinitions.bpl";
   using (Stream resourceStream = asm.GetManifestResourceStream(resourceName))
   {
     return Parse(new StreamReader(resourceStream), libraryDefinitionsFileName, new List<string>(), out program);
