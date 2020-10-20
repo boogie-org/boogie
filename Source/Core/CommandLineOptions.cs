@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Diagnostics.Contracts;
 using System.Text.RegularExpressions;
-using System.Diagnostics; // required for Mono Build
 
 namespace Microsoft.Boogie
 {
@@ -832,21 +831,6 @@ namespace Microsoft.Boogie
     public bool ReflectAdd = false;
 
     public int LiveVariableAnalysis = 1;
-
-    // Static constructor
-    static CommandLineOptions()
-    {
-      if (System.Type.GetType("Mono.Runtime") == null)
-      {
-        // MONO
-#if !COREFX_SUBSET
-        TraceListenerCollection/*!*/ dbl = Debug.Listeners;
-        Contract.Assert(dbl != null);
-        Contract.Assume(cce.IsPeerConsistent(dbl));  // hangs off static field
-        dbl.Add(new DefaultTraceListener());
-#endif
-      }
-    }
 
     public bool UseLibrary = false;
     

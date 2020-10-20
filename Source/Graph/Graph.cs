@@ -49,33 +49,6 @@ namespace Microsoft.Boogie.GraphUtil
     }
   }
 
-  // own struct to represent possibly undefined values, because Mono does
-  // not like arrays with element type T! or T?
-  public struct Maybe<T>
-  {
-    private T Value;
-    public bool IsSet; // initialised with false by the default ctor
-
-    public T Val
-    {
-      get
-      {
-        Contract.Assume(IsSet);
-        return Value;
-      }
-      set
-      {
-        Value = value;
-        IsSet = true;
-      }
-    }
-
-    public void UnSet()
-    {
-      IsSet = false;
-    }
-  }
-
   public class DomRelation<Node>
   {
     // doms maps (unique) node numbers to the node numbers of the immediate dominator
@@ -83,7 +56,7 @@ namespace Microsoft.Boogie.GraphUtil
     private int[] doms; // 0 is unused: means undefined
 
     // here are the two mappings
-    private Maybe<Node>[] postOrderNumberToNode;
+    private Node[] postOrderNumberToNode;
     private Dictionary<Node, int> nodeToPostOrderNumber;
     private int sourceNum; // (number for) root of the graph
     private Node source; // root of the graph
@@ -126,7 +99,7 @@ namespace Microsoft.Boogie.GraphUtil
         if (currentNodeNum == this.sourceNum)
           return false;
         if (path != null)
-          path.Add(postOrderNumberToNode[currentNodeNum].Val);
+          path.Add(postOrderNumberToNode[currentNodeNum]);
         currentNodeNum = this.doms[currentNodeNum];
       }
     }
@@ -150,12 +123,12 @@ namespace Microsoft.Boogie.GraphUtil
           List<Node> dominators = new List<Node>();
           while (currentNodeNum != this.sourceNum)
           {
-            dominators.Add(this.postOrderNumberToNode[currentNodeNum].Val);
+            dominators.Add(this.postOrderNumberToNode[currentNodeNum]);
             currentNodeNum = this.doms[currentNodeNum];
           }
 
-          dominators.Add(this.postOrderNumberToNode[this.sourceNum].Val);
-          domMap.Add(this.postOrderNumberToNode[i].Val, dominators);
+          dominators.Add(this.postOrderNumberToNode[this.sourceNum]);
+          domMap.Add(this.postOrderNumberToNode[i], dominators);
         }
       }
 
@@ -230,7 +203,7 @@ namespace Microsoft.Boogie.GraphUtil
     private void NewComputeDominators()
     {
       int n = this.graph.Nodes.Count;
-      this.postOrderNumberToNode = new Maybe<Node>[n + 1];
+      this.postOrderNumberToNode = new Node[n + 1];
       this.nodeToPostOrderNumber = new Dictionary<Node, int>();
       //HashSet<Node> visited = new HashSet<Node>();
       //int currentNumber = 1;
@@ -250,7 +223,7 @@ namespace Microsoft.Boogie.GraphUtil
         // for all nodes, b, in reverse postorder (except start_node)
         for (int nodeNum = n - 1; 1 <= nodeNum; nodeNum--)
         {
-          Node b = this.postOrderNumberToNode[nodeNum].Val;
+          Node b = this.postOrderNumberToNode[nodeNum];
           IEnumerable<Node> predecessors = this.graph.Predecessors(b);
           // find a predecessor (i.e., a higher number) for which
           // the doms array has been set
@@ -301,8 +274,8 @@ namespace Microsoft.Boogie.GraphUtil
       immediateDominatorMap = new Dictionary<Node, List<Node>>();
       for (int i = 1; i <= n; i++)
       {
-        Node node = this.postOrderNumberToNode[i].Val;
-        Node idomNode = this.postOrderNumberToNode[this.doms[i]].Val;
+        Node node = this.postOrderNumberToNode[i];
+        Node idomNode = this.postOrderNumberToNode[this.doms[i]];
         if (i == sourceNum && this.doms[i] == sourceNum)
         {
           continue;
@@ -357,7 +330,7 @@ namespace Microsoft.Boogie.GraphUtil
 
       Contract.Assume(this.postOrderNumberToNode != null);
       Contract.Assume(this.nodeToPostOrderNumber != null);
-      this.postOrderNumberToNode[currentNumber].Val = n;
+      this.postOrderNumberToNode[currentNumber] = n;
       this.nodeToPostOrderNumber[n] = currentNumber;
       currentNumber++;
       return;
@@ -384,7 +357,7 @@ namespace Microsoft.Boogie.GraphUtil
         {
           Contract.Assume(this.postOrderNumberToNode != null);
           Contract.Assume(this.nodeToPostOrderNumber != null);
-          this.postOrderNumberToNode[currentNumber].Val = curr;
+          this.postOrderNumberToNode[currentNumber] = curr;
           this.nodeToPostOrderNumber[curr] = currentNumber;
           currentNumber++;
         }
@@ -409,7 +382,7 @@ namespace Microsoft.Boogie.GraphUtil
     {
       int num1 = nodeToPostOrderNumber[n1], num2 = nodeToPostOrderNumber[n2];
       int lca = intersect(num1, num2, this.doms);
-      return postOrderNumberToNode[lca].Val;
+      return postOrderNumberToNode[lca];
     }
   }
 
@@ -658,11 +631,11 @@ namespace Microsoft.Boogie.GraphUtil
       // need an arbitrary numbering for the nodes to use as indices into
       // the arrays used within this algorithm
       Dictionary<Node, int> nodeToNumber = new Dictionary<Node, int>(n);
-      Maybe<Node>[] numberToNode = new Maybe<Node>[n];
+      Node[] numberToNode = new Node[n];
       int counter = 0;
       foreach (Node node in this.Nodes)
       {
-        numberToNode[counter].Val = node;
+        numberToNode[counter] = node;
         nodeToNumber[node] = counter;
         counter++;
       }
@@ -714,7 +687,7 @@ namespace Microsoft.Boogie.GraphUtil
 
         // mark root so it won't be used again
         incomingEdges[rootIndex] = -1;
-        Node root = numberToNode[rootIndex].Val;
+        Node root = numberToNode[rootIndex];
         sorted.Add(root);
         ++sortedIndex;
         foreach (Node s in this.Successors(root))

@@ -36,6 +36,11 @@ You can ask questions and report issues on our [issue tracker](https://github.co
 
 We are happy to receive contributions via [pull requests](https://github.com/boogie-org/boogie/pulls).
 
+## Dependencies
+
+Boogie requires [.NET Core](https://dotnet.microsoft.com) and a supported SMT
+solver (see [below](#backend-smt-solver)).
+
 ## Installation
 
 Boogie releases are packaged as a .NET Core global tool available at
@@ -45,20 +50,12 @@ Boogie releases are packaged as a .NET Core global tool available at
 $ dotnet tool install --global boogie
 ```
 
-To run Boogie, a supported SMT solver has to be available (see [below](#backend-smt-solver)).
-
 ## Building
 
-The preferred way to build (and run) Boogie today is using .NET Core.
-Historically, Boogie can also be built using the classic .NET Framework (on
-Windows) and Mono (on Linux/OSX), but this might not be supported in the future.
-
-To run Boogie, a supported SMT solver has to be available (see [below](#backend-smt-solver)).
-
-### .NET Core
+To build Boogie run:
 
 ```
-$ dotnet build Source/Boogie-NetCore.sln
+$ dotnet build Source/Boogie.sln
 ```
 
 > :warning: There is currently a know build problem with .NET Core and
@@ -69,45 +66,6 @@ The compiled Boogie binary is
 `Source/BoogieDriver/bin/${CONFIGURATION}/${FRAMEWORK}/BoogieDriver`. Also, a
 NuGet package is placed in `Source/BoogieDriver/bin/Debug/` which can be used
 for a local installation.
-
-### Windows (requires Visual Studio)
-
-:warning: This build is deprecated. Use [.NET Core](#net-core) if possible.
-
-1. Open ``Source\Boogie.sln`` in Visual Studio.
-2. Right click the ``Boogie`` solution in the Solution Explorer and click ``Restore NuGet Packages``.
-3. Click ``Build > Build Solution``.
-
-The compiled Boogie binary is `Binaries\Boogie.exe`.
-
-### Linux/OSX (requires Mono)
-
-:warning: This build is deprecated. Use [.NET Core](#net-core) if possible.
-
-Either open ``Source\Boogie.sln`` in MonoDevelop and perform the same steps as
-described for Visual Studio above, of compile on the command line as follows.
-
-Fetch the NuGet packages that Boogie depends on:
-
-```
-$ nuget restore Source/Boogie.sln
-```
-
-Build Boogie:
-
-```
-$ msbuild Source/Boogie.sln
-```
-
-The compiled Boogie binary is `Binaries/Boogie.exe`, which can be executed with
-`mono` or using the wrapper script `Binaries/boogie`.
-
-### Troubleshooting
-
-The .NET Core and .NET Framework builds conflict with each other, and thus it is
-not possible to run both builds in the same directory. If you want to switch
-between builds (or encounter mysterious erros as described in #190), remove all
-build outputs (e.g., using `git clean -dfx`).
 
 ## Backend SMT Solver
 
