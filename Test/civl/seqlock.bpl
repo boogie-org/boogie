@@ -2,9 +2,11 @@
 // RUN: %diff "%s.expect" "%t"
 
 type {:linear "tid"} Tid;
-const nil:Tid;
+type {:datatype} OptionTid;
+function {:constructor} None() : OptionTid;
+function {:constructor} Some(tid:Tid) : OptionTid;
 
-var {:layer 0,2} lock:Tid;
+var {:layer 0,2} lock:OptionTid;
 var {:layer 0,2} seq:int;
 var {:layer 0,3} x:int;
 var {:layer 0,3} y:int;
@@ -22,7 +24,7 @@ procedure {:atomic}{:layer 3} READ () returns (v:int, w:int)
   w := y;
 }
 
-procedure {:atomic}{:layer 3} WRITE ({:linear "tid"} tid:Tid, v:int, w:int)
+procedure {:atomic}{:layer 3} WRITE (v:int, w:int)
 modifies x, y;
 {
   x := v;
@@ -48,21 +50,24 @@ procedure {:layer 2}{:yields}{:refines "READ"} read () returns (v:int, w:int)
   }
 }
 
-procedure {:layer 2}{:yields}{:refines "WRITE"} write ({:linear "tid"} tid:Tid, v:int, w:int)
-requires {:layer 2} tid != nil;
-requires {:layer 2} lock == nil <==> isEven(seq);
-ensures  {:layer 2} lock == nil <==> isEven(seq);
+procedure {:layer 2}{:yields}{:refines "WRITE"}
+{:yield_preserves "SeqLockInv"}
+write ({:hide}{:linear "tid"} tid:Tid, v:int, w:int)
 {
   call acquire(tid);
   call locked_inc_seq(tid);
   call locked_write_x(tid, v);
   call locked_write_y(tid, w);
-  yield;
-  assert {:layer 2} tid != nil && lock == tid;
-  assert {:layer 2} lock == nil <==> isEven(seq);
+  par SeqLockInv() | HoldLock(tid);
   call locked_inc_seq(tid);
   call release(tid);
 }
+
+procedure {:yield_invariant}{:layer 2} SeqLockInv ();
+requires lock == None() <==> isEven(seq);
+
+procedure {:yield_invariant}{:layer 2} HoldLock ({:linear "tid"} tid:Tid);
+requires lock == Some(tid);
 
 // =============================================================================
 // Abstractions of atomic actions with stronger mover types
@@ -98,7 +103,7 @@ procedure {:right}{:layer 2} STALE_READ_Y (seq1:int) returns (r:int)
 procedure {:atomic}{:layer 2} LOCKED_INC_SEQ ({:linear "tid"} tid:Tid)
 modifies seq;
 {
-  assert tid != nil && lock == tid;
+  assert lock == Some(tid);
   seq := seq + 1;
 }
 
@@ -106,7 +111,7 @@ procedure {:both}{:layer 2} LOCKED_WRITE_X ({:linear "tid"} tid:Tid, v:int)
 modifies x;
 {
   assert isOdd(seq);
-  assert tid != nil && lock == tid;
+  assert lock == Some(tid);
   x := v;
 }
 
@@ -114,7 +119,7 @@ procedure {:both}{:layer 2} LOCKED_WRITE_Y ({:linear "tid"} tid:Tid, v:int)
 modifies y;
 {
   assert isOdd(seq);
-  assert tid != nil && lock == tid;
+  assert lock == Some(tid);
   y := v;
 }
 
@@ -173,16 +178,15 @@ modifies seq;
 procedure {:right}{:layer 1,2} ACQUIRE ({:linear "tid"} tid:Tid)
 modifies lock;
 {
-  assert tid != nil;
-  assume lock == nil;
-  lock := tid;
+  assume lock == None();
+  lock := Some(tid);
 }
 
 procedure {:left}{:layer 1,2} RELEASE ({:linear "tid"} tid:Tid)
 modifies lock;
 {
-  assert tid != nil && lock == tid;
-  lock := nil;
+  assert lock == Some(tid);
+  lock := None();
 }
 
 procedure {:yields}{:layer 0}{:refines "READ_X"} read_x () returns (r:int);
