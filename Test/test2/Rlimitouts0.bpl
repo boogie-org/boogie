@@ -1,5 +1,3 @@
-// RUN: %boogie -rlimit:800 "%s" > "%t"
-// RUN: %diff "%s.expect" "%t"
 // RUN: %boogie -rlimit:800 -proverLog:%t "%s"
 // RUN: %OutputCheck --file-to-check "%t" "%s"
 // CHECK-L: (set-option :timeout 0)

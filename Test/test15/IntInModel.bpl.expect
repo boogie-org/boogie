@@ -4,10 +4,10 @@ Execution trace:
 *** MODEL
 i -> 0
 ControlFlow -> {
-  0 0 -> 50
-  0 24 -> (- 51)
-  0 50 -> 24
-  else -> (- 51)
+  0 0 -> 51
+  0 25 -> (- 52)
+  0 51 -> 25
+  else -> (- 52)
 }
 tickleBool -> {
   false -> true

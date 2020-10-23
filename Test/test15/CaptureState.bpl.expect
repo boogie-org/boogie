@@ -8,12 +8,12 @@ Execution trace:
 $mv_state_const -> 3
 F -> T@FieldName!val!0
 Heap -> |T@[Ref,FieldName]Int!val!0|
-m ->
+m -> 
 m@0 -> (- 8)
 m@1 -> (- 7)
 m@2 -> 0
 m@3 -> (- 7)
-r ->
+r -> 
 r@0 -> (- 14)
 this -> T@Ref!val!0
 x -> 40
@@ -26,12 +26,12 @@ $mv_state -> {
   else -> true
 }
 ControlFlow -> {
-  0 0 -> 180
-  0 137 -> 139
-  0 139 -> 143
-  0 143 -> (- 405)
-  0 180 -> 137
-  else -> (- 405)
+  0 0 -> 181
+  0 138 -> 140
+  0 140 -> 144
+  0 144 -> (- 406)
+  0 181 -> 138
+  else -> (- 406)
 }
 Select_[Ref,FieldName]$int -> {
   |T@[Ref,FieldName]Int!val!0| T@Ref!val!0 T@FieldName!val!0 -> (- 8)
@@ -44,8 +44,8 @@ tickleBool -> {
 }
 *** STATE <initial>
   Heap -> |T@[Ref,FieldName]Int!val!0|
-  m ->
-  r ->
+  m -> 
+  r -> 
   this -> T@Ref!val!0
   x -> 40
   y -> 0
