@@ -623,12 +623,9 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(cce.NonNullElements(fileNames));
 
-      Program program = null;
-      if (CommandLineOptions.Clo.UseLibrary)
-      {
-        Parser.ParseLibraryDefinitions(out program);
-      }
+      Program program = new Program();
       bool okay = true;
+      
       for (int fileId = 0; fileId < fileNames.Count; fileId++)
       {
         string bplFileName = fileNames[fileId];
@@ -645,18 +642,19 @@ namespace Microsoft.Boogie
           }
         }
 
-        Program programSnippet;
-        int errorCount;
         try
         {
           var defines = new List<string>() {"FILE_" + fileId};
-          errorCount = Parser.Parse(bplFileName, defines, out programSnippet,
+          int errorCount = Parser.Parse(bplFileName, defines, out Program programSnippet,
             CommandLineOptions.Clo.UseBaseNameForFileName);
           if (programSnippet == null || errorCount != 0)
           {
             Console.WriteLine("{0} parse errors detected in {1}", errorCount, GetFileNameForConsole(bplFileName));
             okay = false;
-            continue;
+          }
+          else
+          {
+            program.AddTopLevelDeclarations(programSnippet.TopLevelDeclarations);
           }
         }
         catch (IOException e)
@@ -664,16 +662,6 @@ namespace Microsoft.Boogie
           printer.ErrorWriteLine(Console.Out, "Error opening file \"{0}\": {1}", GetFileNameForConsole(bplFileName),
             e.Message);
           okay = false;
-          continue;
-        }
-
-        if (program == null)
-        {
-          program = programSnippet;
-        }
-        else if (programSnippet != null)
-        {
-          program.AddTopLevelDeclarations(programSnippet.TopLevelDeclarations);
         }
       }
 
@@ -681,12 +669,14 @@ namespace Microsoft.Boogie
       {
         return null;
       }
-      else if (program == null)
-      {
-        return new Program();
-      }
       else
       {
+        if (CommandLineOptions.Clo.UseLibrary)
+        {
+          var library = Parser.ParseLibraryDefinitions();
+          program.AddTopLevelDeclarations(library.TopLevelDeclarations);
+        }
+
         return program;
       }
     }

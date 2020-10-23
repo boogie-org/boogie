@@ -58,14 +58,15 @@ readonly List<Expr>/*!*/ dummyExprSeq;
 readonly TransferCmd/*!*/ dummyTransferCmd;
 readonly StructuredCmd/*!*/ dummyStructuredCmd;
 
-public static int ParseLibraryDefinitions(out Program program)
+public static Program ParseLibraryDefinitions()
 {
   string libraryDefinitionsFileName = "LibraryDefinitions.bpl";
   Assembly asm = Assembly.GetExecutingAssembly();
   var resourceName = "Core.LibraryDefinitions.bpl";
   using (Stream resourceStream = asm.GetManifestResourceStream(resourceName))
   {
-    return Parse(new StreamReader(resourceStream), libraryDefinitionsFileName, new List<string>(), out program);
+    Parse(new StreamReader(resourceStream), libraryDefinitionsFileName, new List<string>(), out Program program);
+    return program;
   }
 }
 
