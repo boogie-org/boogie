@@ -1,4 +1,4 @@
-// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 var {:linear "lin"} {:layer 1,2} set : [int]bool;

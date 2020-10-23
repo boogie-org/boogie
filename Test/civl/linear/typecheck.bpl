@@ -1,4 +1,4 @@
-// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type X;
 type {:linear "A", "B", "C", "D", "D2", "x", "", "lin"} Lin = int;
