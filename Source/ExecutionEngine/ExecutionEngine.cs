@@ -671,6 +671,13 @@ namespace Microsoft.Boogie
       }
       else
       {
+        if (program.TopLevelDeclarations.Any(d => d.HasCivlAttribute()))
+        {
+          CommandLineOptions.Clo.UseLibrary = true;
+          CommandLineOptions.Clo.UseArrayTheory = true;
+          CommandLineOptions.Clo.Monomorphize = true;
+        }
+
         if (CommandLineOptions.Clo.UseLibrary)
         {
           var library = Parser.ParseLibraryDefinitions();
