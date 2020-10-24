@@ -1,4 +1,4 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure {:atomic} {:layer 1} AtomicX() { }
 

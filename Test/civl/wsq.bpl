@@ -1,4 +1,4 @@
-// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type {:linear "tid"} Tid;
 const nil: Tid;

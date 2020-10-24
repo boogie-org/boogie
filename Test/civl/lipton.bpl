@@ -1,4 +1,4 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // The semaphor operations P and V used in [Lipton 1975]

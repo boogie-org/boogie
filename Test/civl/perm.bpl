@@ -1,4 +1,4 @@
-// RUN: %boogie -useArrayTheory -lib -monomorphize "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type {:linear "Perm"} X = int;
 var {:layer 0,1} x: int;
