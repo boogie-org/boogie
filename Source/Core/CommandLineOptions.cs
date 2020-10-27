@@ -494,8 +494,6 @@ namespace Microsoft.Boogie
       clo = options;
     }
 
-    public const long Megabyte = 1048576;
-
     // Flags and arguments
 
     public bool RunningBoogieFromCommandLine = false; // "false" means running Boogie from the plug-in
@@ -589,7 +587,6 @@ namespace Microsoft.Boogie
     public bool
       UseProverEvaluate = false; // Use ProverInterface's Evaluate method, instead of model to get variable values
 
-    public bool UseUncheckedContracts = false;
     public bool SoundnessSmokeTest = false;
     public int KInductionDepth = -1;
     public int EnableUnSatCoreExtract = 0;
@@ -621,7 +618,6 @@ namespace Microsoft.Boogie
     }
 
     public ProverWarnings PrintProverWarnings = ProverWarnings.None;
-    public int ProverShutdownLimit = 0;
 
     public enum SubsumptionOption
     {
@@ -754,27 +750,6 @@ namespace Microsoft.Boogie
       }
     }
 
-    // Maximum amount of virtual memory (in bytes) for the prover to use
-    //
-    // Non-positive number indicates unbounded.
-    public long MaxProverMemory = 100 * Megabyte;
-
-    // Minimum number of prover calls before restart
-    public int MinNumOfProverCalls = 5;
-
-    public enum PlatformType
-    {
-      notSpecified,
-      v1,
-      v11,
-      v2,
-      cli1
-    }
-
-    public PlatformType TargetPlatform;
-    public string TargetPlatformLocation;
-    public string StandardLibraryLocation;
-
     // whether procedure inlining is enabled at call sites.
     public enum Inlining
     {
@@ -791,7 +766,6 @@ namespace Microsoft.Boogie
     public string SecureVcGen = null;
     public int StratifiedInlining = 0;
     public string FixedPointEngine = null;
-    public int StratifiedInliningOption = 0;
     public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
     public int StratifiedInliningVerbose = 0; // verbosity level
     public int RecursionBound = 500;
@@ -1026,10 +1000,6 @@ namespace Microsoft.Boogie
             LogPrefix += s.Replace('/', '-').Replace('\\', '-');
           }
 
-          return true;
-
-        case "proverShutdownLimit":
-          ps.GetNumericArgument(ref ProverShutdownLimit);
           return true;
 
         case "errorTrace":
@@ -1456,14 +1426,6 @@ namespace Microsoft.Boogie
           }
 
           return true;
-        case "stratifiedInlineOption":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            StratifiedInliningOption = Int32.Parse(cce.NonNull(args[ps.i]));
-          }
-
-          return true;
-
         case "inferLeastForUnsat":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1548,17 +1510,6 @@ namespace Microsoft.Boogie
           ps.GetNumericArgument(ref bracketIdsInVC, 2);
           return true;
 
-        case "proverMemoryLimit":
-        {
-          int d = 0;
-          if (ps.GetNumericArgument(ref d))
-          {
-            MaxProverMemory = d * Megabyte;
-          }
-
-          return true;
-        }
-
         case "vcsMaxCost":
           ps.GetNumericArgument(ref VcsMaxCost);
           return true;
@@ -1641,37 +1592,6 @@ namespace Microsoft.Boogie
 
         case "traceCaching":
           ps.GetNumericArgument(ref TraceCaching, 4);
-          return true;
-
-        case "platform":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            StringCollection platformOptions = this.ParseNamedArgumentList(args[ps.i]);
-            if (platformOptions != null && platformOptions.Count > 0)
-            {
-              try
-              {
-                this.TargetPlatform =
-                  (PlatformType) cce.NonNull(Enum.Parse(typeof(PlatformType), cce.NonNull(platformOptions[0])));
-              }
-              catch
-              {
-                ps.Error("Bad /platform type '{0}'", platformOptions[0]);
-                break;
-              }
-
-              if (platformOptions.Count > 1)
-              {
-                this.TargetPlatformLocation = platformOptions[1];
-                if (!Directory.Exists(platformOptions[1]))
-                {
-                  ps.Error("/platform directory '{0}' does not exist", platformOptions[1]);
-                  break;
-                }
-              }
-            }
-          }
-
           return true;
 
         case "kInductionDepth":
@@ -1782,7 +1702,6 @@ namespace Microsoft.Boogie
         TypeEncodingMethod = TypeEncoding.Monomorphic;
         UseArrayTheory = true;
         UseAbstractInterpretation = false;
-        MaxProverMemory = 0; // no max: avoids restarts
         if (ProverDllName == "SMTLib")
         {
           ErrorLimit = 1;
@@ -2282,17 +2201,8 @@ namespace Microsoft.Boogie
   /proverWarnings
                 0 (default) - don't print, 1 - print to stdout,
                 2 - print to stderr
-  /proverMemoryLimit:<num>
-                Limit on the virtual memory for prover before
-                restart in MB (default:100MB)
   /restartProver
                 Restart the prover after each query
-  /proverShutdownLimit<num>
-                Time between closing the stream to the prover and
-                killing the prover process (default: 0s)
-  /platform:<ptype>,<location>
-                ptype = v11,v2,cli1
-                location = platform libraries directory
 ");
     }
   }
