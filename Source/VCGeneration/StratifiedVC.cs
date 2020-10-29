@@ -1027,9 +1027,6 @@ namespace VC
       // Record current time
       var startTime = DateTime.UtcNow;
 
-      // No Max: avoids theorem prover restarts
-      CommandLineOptions.Clo.MaxProverMemory = 0;
-
       // Initialize cache
       satQueryCache = new Dictionary<int, List<HashSet<string>>>();
       unsatQueryCache = new Dictionary<int, List<HashSet<string>>>();
