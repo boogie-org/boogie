@@ -1815,8 +1815,8 @@ namespace Microsoft.Boogie
        it, and the second one disables all verification after.
 
      {:priority N}
-       Assign a positive priority 'N' to an implementation to control the order
-       in which implementations are verified (default: N = 1).
+       Assign a positive priority 'N' to an implementation to control the
+       order in which implementations are verified (default: N = 1).
 
      {:id <string>}
        Assign a unique ID to an implementation to be used for verification
@@ -1887,15 +1887,100 @@ namespace Microsoft.Boogie
        Prints <string> rather than the standard message for assertion failure.
        Also applicable to requires and ensures declarations. 
 
----- On statements --------------------------------------------------
+  ---- On statements ---------------------------------------------------------
 
      {:print e0, e1, e2, ...}
-       Indicates that expressions e0, e1, e2, ... must be printed.  Must be used 
-       in conjunction with /enhancedErrorMessages:n command-line option.  
+       Indicates that expressions e0, e1, e2, ... must be printed.  Must be
+       used in conjunction with /enhancedErrorMessages:n command-line option.
 
      {:captureState s}
        Indicates that state must be captured under the name s.  Must be used
        together with /mv:<string> command-line option.
+
+  ---- CIVL ------------------------------------------------------------------
+
+     {:yields}
+       Yielding procedure.
+
+     {:atomic}
+     {:right}
+     {:left}
+     {:both}
+       Mover type of atomic action or mover procedure.
+
+     {:intro}
+       Introduction action.
+
+     {:lemma}
+       Lemma procedure.
+
+     {:yield_invariant}
+       Yield invariant.
+
+     {:layer N}
+     {:layer M, N}
+     {:layer N1, N2, ...}
+       Layer number, layer range, or set of layer numbers, respectively.
+
+     {:hide}
+       Hidden input/output parameter.
+
+     {:yield_requires ""inv"", e0, e1, ...}
+     {:yield_ensures ""inv"", e0, e1, ...}
+     {:yield_preserves ""inv"", e0, e1, ...}
+     {:yield_loop ""inv"", e0, e1, ...}
+       Invocation of yield invariant.
+
+     {:refines ""action""}
+       Refined atomic action of a yielding procedure.
+
+     {:terminates}
+       Terminating loop.
+
+     {:linear ""domain""}
+       Permission type for domain.
+       Collector function for domain.
+       Linear variable (both global and local).
+
+     {:linear_in ""domain""}
+     {:linear_out ""domain""}
+       Linear input/output parameter.
+
+     {:witness ""g""}
+     {:commutativity ""A"", ""B""}
+       Function provides witness for global variable g in commutativity check
+       between action A and action B. Multiple declarations of :commutativity
+       are supported.
+
+     {:pending_async}
+       Pending async datatype.
+       Local variable collecting pending asyncs in yielding procedure.
+     {:pending_async ""action""}
+       Pending async datatype constructor for action.
+     {:pending_async ""action1"", ""action2"", ...}
+       Output parameter of atomic action.
+
+     {:sync}
+       Synchronized async call.
+
+     {:IS ""B"", ""I""}
+       Apply inductive sequentialization to convert an action into action B
+       using invariant action I
+     {:elim ""A""}
+     {:elim ""A"", ""A'""}
+       by eliminating multiple actions A (optionally using abstraction A')
+     {:choice}
+       and optionally using an output parameter to indicate the selected
+       pending async.
+
+     {:IS_invariant}
+     {:IS_abstraction}
+       Actions that are only used as invariant actions or abstractions in
+       inductive sequentialization. These are exempt from the overall pool of
+       actions for commutativity checking.
+
+     {:backward}
+       Backward assignment in atomic action.
 
   ---- The end ---------------------------------------------------------------
 ");
