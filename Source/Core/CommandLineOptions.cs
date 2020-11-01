@@ -847,6 +847,8 @@ namespace Microsoft.Boogie
 
     public List<ConcurrentHoudiniOptions> Cho = new List<ConcurrentHoudiniOptions>();
 
+    public bool SplitLinearityChecks = false;
+
     protected override bool ParseOption(string name, CommandLineOptionEngine.CommandLineParseState ps)
     {
       var args = ps.args; // convenient synonym
@@ -1650,7 +1652,8 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustNoninterference", ref TrustNoninterference) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting) ||
-              ps.CheckBooleanFlag("warnNotEliminatedVars", ref WarnNotEliminatedVars)
+              ps.CheckBooleanFlag("warnNotEliminatedVars", ref WarnNotEliminatedVars) ||
+              ps.CheckBooleanFlag("splitlin", ref SplitLinearityChecks)
           )
           {
             // one of the boolean flags matched

@@ -53,3 +53,11 @@ returns ({:linear "pid"} pid_out:int, {:pending_async "A"} PAs:[PA]int)
   pid_out := pid;
   PAs := NoPAs()[A_PA(pid) := 1];
 }
+
+procedure {:atomic}{:layer 1}
+M6 ({:linear_in "pid"} pid1:int, {:linear_in "pid"} pid2:int, {:linear_in "pid"} pid3:int)
+returns ({:linear "pid"} pid_out:int, {:pending_async "A","B"} PAs:[PA]int)
+{
+  pid_out := pid3;
+  PAs := NoPAs()[A_PA(pid1) := 1][B_PA(pid2) := 1];
+}
