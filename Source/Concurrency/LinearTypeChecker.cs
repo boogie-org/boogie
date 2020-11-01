@@ -32,12 +32,12 @@ namespace Microsoft.Boogie
     public MapType mapTypeInt;
     public Function mapConstBool;
     public Function mapConstInt;
-    public Function mapOrBool;
-    public Function mapImpBool;
+    public Function mapOr;
+    public Function mapImp;
     public Function mapEqInt;
-    public Function mapAddInt;
+    public Function mapAdd;
     public Function mapIteInt;
-    public Function mapLeInt;
+    public Function mapLe;
 
     public LinearDomain(Program program, string domainName, Type permissionType, Dictionary<Type, Function> collectors)
     {
@@ -54,18 +54,28 @@ namespace Microsoft.Boogie
         new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Bool} });
       this.mapConstInt = program.monomorphizer.Monomorphize("MapConst",
         new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
-      this.mapOrBool = program.monomorphizer.Monomorphize("MapOr",
+      this.mapOr = program.monomorphizer.Monomorphize("MapOr",
         new Dictionary<string, Type>() { {"T", permissionType} });
-      this.mapImpBool = program.monomorphizer.Monomorphize("MapImp",
+      this.mapImp = program.monomorphizer.Monomorphize("MapImp",
         new Dictionary<string, Type>() { {"T", permissionType} });
       this.mapEqInt = program.monomorphizer.Monomorphize("MapEq",
         new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
-      this.mapAddInt = program.monomorphizer.Monomorphize("MapAdd",
+      this.mapAdd = program.monomorphizer.Monomorphize("MapAdd",
         new Dictionary<string, Type>() { {"T", permissionType} });
       this.mapIteInt = program.monomorphizer.Monomorphize("MapIte",
         new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
-      this.mapLeInt = program.monomorphizer.Monomorphize("MapLe",
+      this.mapLe = program.monomorphizer.Monomorphize("MapLe",
         new Dictionary<string, Type>() { {"T", permissionType} });
+    }
+
+    public Expr MapConstInt(int value)
+    {
+      return ExprHelper.FunctionCall(mapConstInt, Expr.Literal(value));
+    }
+
+    public Expr MapEqTrue(Expr expr)
+    {
+      return Expr.Eq(expr, ExprHelper.FunctionCall(mapConstBool, Expr.True));
     }
   }
 
@@ -873,7 +883,7 @@ namespace Microsoft.Boogie
       var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new Expr[] {Expr.False});
       foreach (Expr e in permissionExprs)
       {
-        expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> {e, expr});
+        expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOr), new List<Expr> {e, expr});
       }
 
       expr.Resolve(new ResolutionContext(null));
@@ -885,7 +895,7 @@ namespace Microsoft.Boogie
     {
       Expr e = ExprHelper.FunctionCall(domain.mapConstInt, Expr.Literal(partitionCount));
       e = ExprHelper.FunctionCall(domain.mapEqInt, Expr.Ident(partition), e);
-      e = ExprHelper.FunctionCall(domain.mapImpBool, ie, e);
+      e = ExprHelper.FunctionCall(domain.mapImp, ie, e);
       e = Expr.Eq(e, ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
       return e;
     }
@@ -903,6 +913,9 @@ namespace Microsoft.Boogie
       }
     }
 
+    private static LinearKind[] InKinds = {LinearKind.LINEAR, LinearKind.LINEAR_IN};
+    private static LinearKind[] OutKinds = {LinearKind.LINEAR, LinearKind.LINEAR_OUT};
+
     private static void AddChecker(CivlTypeChecker civlTypeChecker, Action action, List<Declaration> decls)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
@@ -912,48 +925,107 @@ namespace Microsoft.Boogie
       List<Variable> inputs = impl.InParams;
       List<Variable> outputs = impl.OutParams;
 
-      // Linear out vars
-      List<Variable> outVars;
-      {
-        LinearKind[] validKinds = {LinearKind.LINEAR, LinearKind.LINEAR_OUT};
-        outVars = inputs.Union(outputs).Union(action.modifiedGlobalVars)
-          .Where(x => validKinds.Contains(linearTypeChecker.FindLinearKind(x)))
-          .ToList();
-      }
-
-      if (outVars.Count == 0) return;
-
-      // Linear in vars
-      List<Variable> inVars;
-      {
-        LinearKind[] validKinds = {LinearKind.LINEAR, LinearKind.LINEAR_IN};
-        inVars = inputs.Union(action.modifiedGlobalVars)
-          .Where(x => validKinds.Contains(linearTypeChecker.FindLinearKind(x)))
-          .ToList();
-      }
-
       List<Requires> requires = action.gate.Select(a => new Requires(false, a.Expr)).ToList();
       List<Ensures> ensures = new List<Ensures>();
 
-      // Generate linearity checks
-      IEnumerable<string> domainNames = outVars.Select(linearTypeChecker.FindDomainName).Distinct();
-      foreach (var domainName in domainNames)
+      foreach (var domain in linearTypeChecker.linearDomains.Values)
       {
-        LinearDomain domain = linearTypeChecker.linearDomains[domainName];
-        Expr inMultiset = linearTypeChecker.PermissionMultiset(domain, inVars, true);
-        Expr outMultiset = linearTypeChecker.PermissionMultiset(domain, outVars);
-        Expr subsetExpr = ExprHelper.FunctionCall(domain.mapLeInt, outMultiset, inMultiset);
-        Expr eqExpr = Expr.Eq(subsetExpr, ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
+        // Linear in vars
+        var inVars = inputs.Union(action.modifiedGlobalVars)
+          .Where(x => linearTypeChecker.FindDomainName(x) == domain.domainName)
+          .Where(x => InKinds.Contains(linearTypeChecker.FindLinearKind(x)))
+          .Select(Expr.Ident)
+          .ToList();
+        
+        // Linear out vars
+        var outVars = inputs.Union(outputs).Union(action.modifiedGlobalVars)
+          .Where(x => linearTypeChecker.FindDomainName(x) == domain.domainName)
+          .Where(x => OutKinds.Contains(linearTypeChecker.FindLinearKind(x)))
+          .Select(Expr.Ident)
+          .ToList();
 
-        Ensures ensureCheck = new Ensures(action.proc.tok, false, eqExpr, null);
-        ensureCheck.ErrorData = $"Linearity invariant for domain {domainName} is not preserved by {action.proc.Name}.";
-        ResolutionContext rc = new ResolutionContext(null);
-        rc.StateMode = ResolutionContext.State.Two;
-        ensureCheck.Resolve(rc);
-        ensureCheck.Typecheck(new TypecheckingContext(null));
-        ensures.Add(ensureCheck);
+        if (outVars.Count > 0)
+        {
+          var outSubsetInExpr = Foo(domain, inVars, outVars);
+          Ensures ensureCheck = new Ensures(action.proc.tok, false, outSubsetInExpr, null)
+            { ErrorData = $"Linearity invariant for domain {domain.domainName} is not preserved by {action.proc.Name}." };
+          CivlUtil.ResolveAndTypecheck(ensureCheck, ResolutionContext.State.Two);
+          ensures.Add(ensureCheck);
+        }
+
+        if (action is AtomicAction atomicAction && atomicAction.HasPendingAsyncs)
+        {
+          foreach (var pendingAsync in atomicAction.pendingAsyncs)
+          {
+            var PAs = Expr.Ident(atomicAction.impl.OutParams.Last());
+            var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
+            var pa = Expr.Ident(paBound);
+            var pendingAsyncLinearParams = Bar(linearTypeChecker, domain, pendingAsync, pa);
+
+            if (pendingAsyncLinearParams.Count == 0) continue;
+
+            var outSubsetInExpr = Foo(domain, inVars, pendingAsyncLinearParams.Union(outVars));
+            var condition = Expr.And(
+              ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa),
+              Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0)));
+            var check = new ForallExpr(Token.NoToken, new List<Variable> { paBound }, Expr.Imp(condition, outSubsetInExpr));
+
+            Ensures ensureCheck = new Ensures(action.proc.tok, false, check, null)
+              { ErrorData = $"Linearity 222 invariant for domain {domain.domainName} is not preserved by {action.proc.Name}." };
+            CivlUtil.ResolveAndTypecheck(ensureCheck, ResolutionContext.State.Two);
+            ensures.Add(ensureCheck);
+          }
+
+          var pendingAsyncs = atomicAction.pendingAsyncs.ToList();
+          for (int i = 0; i < pendingAsyncs.Count; i++)
+          {
+            var pendingAsync1 = pendingAsyncs[i];
+            for (int j = i; j < pendingAsyncs.Count; j++)
+            {
+              var pendingAsync2 = pendingAsyncs[j];
+
+              var PAs = Expr.Ident(atomicAction.impl.OutParams.Last());
+              var paBound1 = civlTypeChecker.BoundVariable("pa1", civlTypeChecker.pendingAsyncType);
+              var paBound2 = civlTypeChecker.BoundVariable("pa2", civlTypeChecker.pendingAsyncType);
+              var pa1 = Expr.Ident(paBound1);
+              var pa2 = Expr.Ident(paBound2);
+              var pendingAsyncLinearParams1 = Bar(linearTypeChecker, domain, pendingAsync1, pa1);
+              var pendingAsyncLinearParams2 = Bar(linearTypeChecker, domain, pendingAsync2, pa2);
+              
+              if (pendingAsyncLinearParams1.Count == 0 || pendingAsyncLinearParams2.Count == 0) continue;
+
+              var membership = Expr.And(
+                ExprHelper.FunctionCall(pendingAsync1.pendingAsyncCtor.membership, pa1),
+                ExprHelper.FunctionCall(pendingAsync2.pendingAsyncCtor.membership, pa2));
+
+              var sub =
+                ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncSub,
+                  ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncSub, PAs,
+                    Expr.Store(ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncMapConstInt, Expr.Literal(0)), pa1, Expr.Literal(1))),
+                  Expr.Store(ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncMapConstInt, Expr.Literal(0)), pa2, Expr.Literal(1)));
+              var existing = Expr.Eq(
+                ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncGe, sub, ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncMapConstInt, Expr.Literal(0))),
+                ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncMapConstBool, Expr.Literal(true)));
+
+              var atMostOne = domain.MapEqTrue(
+                ExprHelper.FunctionCall(domain.mapLe,
+                  PermissionMultiset(domain, pendingAsyncLinearParams1.Union(pendingAsyncLinearParams2)),
+                  domain.MapConstInt(1)));
+
+              var check = new ForallExpr(Token.NoToken, new List<Variable> { paBound1, paBound2 }, Expr.Imp(Expr.And(membership, existing), atMostOne));
+
+              Ensures ensureCheck = new Ensures(action.proc.tok, false, check, null)
+                { ErrorData = $"Linearity 333 invariant for domain {domain.domainName} is not preserved by {action.proc.Name}." };
+              CivlUtil.ResolveAndTypecheck(ensureCheck, ResolutionContext.State.Two);
+              ensures.Add(ensureCheck);
+              
+            }
+          }
+        }
       }
 
+      if (ensures.Count == 0) return;
+      
       // Create blocks
       List<Block> blocks = new List<Block>()
       {
@@ -975,28 +1047,42 @@ namespace Microsoft.Boogie
       decls.Add(linCheckerProc);
     }
 
-    private Expr PermissionMultiset(LinearDomain domain, IEnumerable<Variable> vars, bool useOldExpr = false)
+    private static List<Expr> Bar(LinearTypeChecker linearTypeChecker, LinearDomain domain, AtomicAction pendingAsync, IdentifierExpr pa)
     {
-      Expr mapConstInt0 = ExprHelper.FunctionCall(domain.mapConstInt, Expr.Literal(0));
-      Expr mapConstInt1 = ExprHelper.FunctionCall(domain.mapConstInt, Expr.Literal(1));
+      var pendingAsyncLinearParams = new List<Expr>();
 
-      var terms = vars.Where(x => FindDomainName(x) == domain.domainName).Select(x =>
-        ExprHelper.FunctionCall(domain.mapIteInt,
-          CollectedLinearVariable(x, domain.collectors[x.TypedIdent.Type], useOldExpr),
-          mapConstInt1,
-          mapConstInt0)).ToList<Expr>();
+      for (int i = 0; i < pendingAsync.proc.InParams.Count; i++)
+      {
+        var foo = pendingAsync.proc.InParams[i];
+        if (linearTypeChecker.FindDomainName(foo) == domain.domainName && InKinds.Contains(linearTypeChecker.FindLinearKind(foo)))
+        {
+          var pendingAsyncParam = ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.selectors[i], pa);
+          pendingAsyncLinearParams.Add(pendingAsyncParam);
+        }
+      }
 
-      if (terms.Count == 0)
-        return mapConstInt0;
-      return terms.Aggregate((x, y) => ExprHelper.FunctionCall(domain.mapAddInt, x, y));
+      return pendingAsyncLinearParams;
     }
 
-    private Expr CollectedLinearVariable(Variable v, Function collector, bool useOldExpr = false)
+    private static Expr Foo(LinearDomain domain, IEnumerable<Expr> ins, IEnumerable<Expr> outs)
     {
-      Expr arg = Expr.Ident(v);
-      if (useOldExpr)
-        arg = ExprHelper.Old(arg);
-      return ExprHelper.FunctionCall(collector, arg);
+      Expr inMultiset = ExprHelper.Old(PermissionMultiset(domain, ins));
+      Expr outMultiset = PermissionMultiset(domain, outs);
+      Expr subsetExpr = ExprHelper.FunctionCall(domain.mapLe, outMultiset, inMultiset);
+      return Expr.Eq(subsetExpr, ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
+    }
+
+    private static Expr PermissionMultiset(LinearDomain domain, IEnumerable<Expr> vars)
+    {
+      var terms = vars.Select(x =>
+        ExprHelper.FunctionCall(domain.mapIteInt,
+          ExprHelper.FunctionCall(domain.collectors[x.Type], x),
+          domain.MapConstInt(1),
+          domain.MapConstInt(0))).ToList<Expr>();
+
+      if (terms.Count == 0)
+        return domain.MapConstInt(0);
+      return terms.Aggregate((x, y) => ExprHelper.FunctionCall(domain.mapAdd, x, y));
     }
 
     #endregion
