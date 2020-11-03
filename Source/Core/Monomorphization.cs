@@ -259,14 +259,13 @@ namespace Microsoft.Boogie
       Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations,
       Dictionary<DatatypeTypeCtorDecl, Dictionary<List<Type>, DatatypeTypeCtorDecl>> datatypeInstantiations,
       Dictionary<TypeCtorDecl, HashSet<CtorType>> triggerTypes,
-      Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes,
-      HashSet<Declaration> newInstantiatedDeclarations)
+      Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes)
     {
       this.functionInstantiations = functionInstantiations;
       this.datatypeInstantiations = datatypeInstantiations;
       this.triggerTypes = triggerTypes;
       this.newTriggerTypes = newTriggerTypes;
-      this.newInstantiatedDeclarations = newInstantiatedDeclarations;
+      newInstantiatedDeclarations = new HashSet<Declaration>();
       typeParamInstantiation = new Dictionary<TypeVariable, Type>();
       variableMapping = new Dictionary<Variable, Variable>();
       boundVarSubst = new Dictionary<Variable, Variable>();
@@ -312,6 +311,12 @@ namespace Microsoft.Boogie
       return functionInstantiations[func][funcTypeParamInstantiations];
     }
 
+    public void AddInstantiatedDeclarations(Program program)
+    {
+      program.AddTopLevelDeclarations(newInstantiatedDeclarations);
+      newInstantiatedDeclarations = new HashSet<Declaration>();
+    }
+    
     private Expr InstantiateBody(Expr expr, Dictionary<TypeVariable, Type> funcTypeParamInstantiation, Dictionary<Variable, Variable> funcVariableMapping)
     {
       var savedTypeParamInstantiation = this.typeParamInstantiation;
@@ -552,7 +557,7 @@ namespace Microsoft.Boogie
       var monomorphizationVisitor = new MonomorphizationVisitor(program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
       monomorphizationVisitor.VisitProgram(program);
       monomorphizationVisitor.InstantiateAxioms();
-      monomorphizationVisitor.AddInstantiatedDeclarations();
+      monomorphizationVisitor.exprMonomorphizationVisitor.AddInstantiatedDeclarations(program);
       Contract.Assert(PolymorphismChecker.IsMonomorphic(program));
       return monomorphizationVisitor;
     }
@@ -567,7 +572,7 @@ namespace Microsoft.Boogie
       var typeParamInstantiations = function.TypeParameters.Select(tp => typeParamInstantiationMap[tp.Name]).ToList();
       var instantiatedFunction = exprMonomorphizationVisitor.InstantiateFunction(function, typeParamInstantiations);
       InstantiateAxioms();
-      AddInstantiatedDeclarations();
+      exprMonomorphizationVisitor.AddInstantiatedDeclarations(program);
       return instantiatedFunction;
     }
 
@@ -578,7 +583,6 @@ namespace Microsoft.Boogie
     private Dictionary<DatatypeTypeCtorDecl, Dictionary<List<Type>, DatatypeTypeCtorDecl>> datatypeInstantiations;
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> triggerTypes;
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes;
-    private HashSet<Declaration> newInstantiatedDeclarations;
     private ExprMonomorphizationVisitor exprMonomorphizationVisitor;
     
     private MonomorphizationVisitor(Program program, Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, HashSet<Axiom> polymorphicFunctionAxioms)
@@ -603,19 +607,12 @@ namespace Microsoft.Boogie
         triggerTypes.Add(typeCtorDecl, new HashSet<CtorType>());
         newTriggerTypes.Add(typeCtorDecl, new HashSet<CtorType>());
       });
-      newInstantiatedDeclarations = new HashSet<Declaration>();
-      exprMonomorphizationVisitor = new ExprMonomorphizationVisitor(functionInstantiations, datatypeInstantiations, triggerTypes, newTriggerTypes, newInstantiatedDeclarations);
+      exprMonomorphizationVisitor = new ExprMonomorphizationVisitor(functionInstantiations, datatypeInstantiations, triggerTypes, newTriggerTypes);
 
       program.RemoveTopLevelDeclarations(decl => 
         decl is Function function && functionInstantiations.ContainsKey(function) ||
         decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl && datatypeInstantiations.ContainsKey(datatypeTypeCtorDecl) ||
         decl is Axiom axiom && (axiomsToBeInstantiated.ContainsKey(axiom) || polymorphicFunctionAxioms.Contains(axiom)));
-    }
-    
-    private void AddInstantiatedDeclarations()
-    {
-      program.AddTopLevelDeclarations(newInstantiatedDeclarations);
-      newInstantiatedDeclarations = new HashSet<Declaration>();
     }
 
     public void InstantiateAxioms()
