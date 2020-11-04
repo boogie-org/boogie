@@ -921,12 +921,14 @@ namespace Microsoft.Boogie
       public Expr assume;
       public Expr assert;
       public string message;
+      public string name;
 
-      public LinearityCheck(Expr assume, Expr assert, string message)
+      public LinearityCheck(Expr assume, Expr assert, string message, string name)
       {
         this.assume = assume;
         this.assert = assert;
         this.message = message;
+        this.name = name;
       }
     }
 
@@ -977,7 +979,8 @@ namespace Microsoft.Boogie
           linearityChecks.Add(new LinearityCheck(
             null,
             OutPermsSubsetInPerms(domain, inVars, outVars),
-            $"Potential linearity violation in outputs for domain {domain.domainName}."));
+            $"Potential linearity violation in outputs for domain {domain.domainName}.",
+            "variables"));
         }
 
         if (action is AtomicAction atomicAction && atomicAction.HasPendingAsyncs)
@@ -1000,7 +1003,8 @@ namespace Microsoft.Boogie
             linearityChecks.Add(new LinearityCheck(
               exactlyOnePA,
               outSubsetInExpr,
-              $"Potential linearity violation in outputs and pending async of {pendingAsync.proc.Name} for domain {domain.domainName}."));
+              $"Potential linearity violation in outputs and pending async of {pendingAsync.proc.Name} for domain {domain.domainName}.",
+              $"single_{pendingAsync.proc.Name}"));
 
             // Third kind
             // If there are two identical pending asyncs, then their input permissions mut be empty.
@@ -1011,7 +1015,8 @@ namespace Microsoft.Boogie
             linearityChecks.Add(new LinearityCheck(
               twoIdenticalPAs,
               emptyPerms,
-              $"Potential linearity violation in identical pending asyncs of {pendingAsync.proc.Name} for domain {domain.domainName}."));
+              $"Potential linearity violation in identical pending asyncs of {pendingAsync.proc.Name} for domain {domain.domainName}.",
+              $"identical_{pendingAsync.proc.Name}"));
           }
 
           var pendingAsyncs = atomicAction.pendingAsyncs.ToList();
@@ -1045,7 +1050,8 @@ namespace Microsoft.Boogie
               linearityChecks.Add(new LinearityCheck(
                 Expr.And(membership, existing),
                 noDuplication,
-                $"Potential lnearity violation in pending asyncs of {pendingAsync1.proc.Name} and {pendingAsync2.proc.Name} for domain {domain.domainName}."));
+                $"Potential lnearity violation in pending asyncs of {pendingAsync1.proc.Name} and {pendingAsync2.proc.Name} for domain {domain.domainName}.",
+                $"distinct_{pendingAsync1.proc.Name}_{pendingAsync2.proc.Name}"));
             }
           }
         }
@@ -1055,7 +1061,6 @@ namespace Microsoft.Boogie
 
       // Create checker blocks
       List<Block> checkerBlocks = new List<Block>(linearityChecks.Count);
-      int cnt = 1;
       foreach (var lc in linearityChecks)
       {
         List<Cmd> cmds = new List<Cmd>(2);
@@ -1064,7 +1069,7 @@ namespace Microsoft.Boogie
           cmds.Add(CmdHelper.AssumeCmd(lc.assume));
         }
         cmds.Add(new AssertCmd(action.proc.tok, lc.assert) { ErrorData = lc.message });
-        var block = new Block(Token.NoToken, $"L{cnt++}", cmds, CmdHelper.ReturnCmd);
+        var block = new Block(Token.NoToken, lc.name, cmds, CmdHelper.ReturnCmd);
         CivlUtil.ResolveAndTypecheck(block, ResolutionContext.State.Two);
         checkerBlocks.Add(block);
       }
