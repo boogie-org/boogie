@@ -916,18 +916,43 @@ namespace Microsoft.Boogie
     private static LinearKind[] InKinds = {LinearKind.LINEAR, LinearKind.LINEAR_IN};
     private static LinearKind[] OutKinds = {LinearKind.LINEAR, LinearKind.LINEAR_OUT};
 
+    private class LinearityCheck
+    {
+      public Expr assume;
+      public Expr assert;
+      public string message;
+
+      public LinearityCheck(Expr assume, Expr assert, string message)
+      {
+        this.assume = assume;
+        this.assert = assert;
+        this.message = message;
+      }
+    }
+
     private static void AddChecker(CivlTypeChecker civlTypeChecker, Action action, List<Declaration> decls)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var token = action.proc.tok;
       // Note: The implementation should be used as the variables in the
       //       gate are bound to implementation and not to the procedure.
       Implementation impl = action.impl;
       List<Variable> inputs = impl.InParams;
       List<Variable> outputs = impl.OutParams;
 
+      List<Variable> locals = new List<Variable>(2);
+      var paLocal1 = civlTypeChecker.LocalVariable("pa1", civlTypeChecker.pendingAsyncType);
+      var paLocal2 = civlTypeChecker.LocalVariable("pa2", civlTypeChecker.pendingAsyncType);
+      var pa1 = Expr.Ident(paLocal1);
+      var pa2 = Expr.Ident(paLocal2);
+      
+      if (civlTypeChecker.pendingAsyncType != null)
+      {
+        locals.Add(paLocal1);
+        locals.Add(paLocal2);
+      }
+
       List<Requires> requires = action.gate.Select(a => new Requires(false, a.Expr)).ToList();
-      List<Ensures> ensures = new List<Ensures>();
+      List<LinearityCheck> linearityChecks = new List<LinearityCheck>();
 
       foreach (var domain in linearTypeChecker.linearDomains.Values)
       {
@@ -946,47 +971,47 @@ namespace Microsoft.Boogie
           .ToList();
 
         // First kind
+        // Permissions in linear output variables are a subset of permissions in linear input variables.
         if (outVars.Count > 0)
         {
-          AddEnsures(
+          linearityChecks.Add(new LinearityCheck(
+            null,
             OutPermsSubsetInPerms(domain, inVars, outVars),
-            $"Potential linearity violation in outputs for domain {domain.domainName}.",
-            token,
-            ensures);
+            $"Potential linearity violation in outputs for domain {domain.domainName}."));
         }
 
         if (action is AtomicAction atomicAction && atomicAction.HasPendingAsyncs)
         {
+          var PAs = Expr.Ident(atomicAction.impl.OutParams.Last());
+          
           foreach (var pendingAsync in atomicAction.pendingAsyncs)
           {
-            var PAs = Expr.Ident(atomicAction.impl.OutParams.Last());
-            var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
-            var pa = Expr.Ident(paBound);
-            var pendingAsyncLinearParams = PendingAsyncLinearParams(linearTypeChecker, domain, pendingAsync, pa);
+            var pendingAsyncLinearParams = PendingAsyncLinearParams(linearTypeChecker, domain, pendingAsync, pa1);
 
             if (pendingAsyncLinearParams.Count == 0) continue;
 
             // Second kind
+            // Permissions in linear output variables + linear inputs of a single pending async
+            // are a subset of permissions in linear input variables.
             var exactlyOnePA = Expr.And(
-              ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa),
-              Expr.Eq(Expr.Select(PAs, pa), Expr.Literal(1)));
+              ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa1),
+              Expr.Eq(Expr.Select(PAs, pa1), Expr.Literal(1)));
             var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams.Union(outVars));
-            AddEnsures(
-              new ForallExpr(Token.NoToken, new List<Variable> { paBound }, Expr.Imp(exactlyOnePA, outSubsetInExpr)),
-              $"Potential linearity violation in outputs and pending async of {pendingAsync.proc.Name} for domain {domain.domainName}.",
-              token,
-              ensures);
+            linearityChecks.Add(new LinearityCheck(
+              exactlyOnePA,
+              outSubsetInExpr,
+              $"Potential linearity violation in outputs and pending async of {pendingAsync.proc.Name} for domain {domain.domainName}."));
 
             // Third kind
+            // If there are two identical pending asyncs, then their input permissions mut be empty.
             var twoIdenticalPAs = Expr.And(
-              ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa),
-              Expr.Ge(Expr.Select(PAs, pa), Expr.Literal(2)));
+              ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa1),
+              Expr.Ge(Expr.Select(PAs, pa1), Expr.Literal(2)));
             var emptyPerms = OutPermsSubsetInPerms(domain, Enumerable.Empty<Expr>(), pendingAsyncLinearParams);
-            AddEnsures(
-              new ForallExpr(Token.NoToken, new List<Variable> { paBound }, Expr.Imp(twoIdenticalPAs, emptyPerms)),
-              $"Potential linearity violation in identical pending asyncs of {pendingAsync.proc.Name} for domain {domain.domainName}.",
-              token,
-              ensures);
+            linearityChecks.Add(new LinearityCheck(
+              twoIdenticalPAs,
+              emptyPerms,
+              $"Potential linearity violation in identical pending asyncs of {pendingAsync.proc.Name} for domain {domain.domainName}."));
           }
 
           var pendingAsyncs = atomicAction.pendingAsyncs.ToList();
@@ -997,17 +1022,14 @@ namespace Microsoft.Boogie
             {
               var pendingAsync2 = pendingAsyncs[j];
 
-              var PAs = Expr.Ident(atomicAction.impl.OutParams.Last());
-              var paBound1 = civlTypeChecker.BoundVariable("pa1", civlTypeChecker.pendingAsyncType);
-              var paBound2 = civlTypeChecker.BoundVariable("pa2", civlTypeChecker.pendingAsyncType);
-              var pa1 = Expr.Ident(paBound1);
-              var pa2 = Expr.Ident(paBound2);
               var pendingAsyncLinearParams1 = PendingAsyncLinearParams(linearTypeChecker, domain, pendingAsync1, pa1);
               var pendingAsyncLinearParams2 = PendingAsyncLinearParams(linearTypeChecker, domain, pendingAsync2, pa2);
               
               if (pendingAsyncLinearParams1.Count == 0 || pendingAsyncLinearParams2.Count == 0) continue;
 
               // Fourth kind
+              // Input permissions of two non-identical pending asyncs (possibly of the same action)
+              // are a subset of permissions in linear input variables.
               var membership = Expr.And(
                 Expr.Neq(pa1, pa2),
                 Expr.And(
@@ -1020,45 +1042,52 @@ namespace Microsoft.Boogie
 
               var noDuplication = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams1.Union(pendingAsyncLinearParams2));
 
-              AddEnsures(
-                new ForallExpr(Token.NoToken, new List<Variable> { paBound1, paBound2 }, Expr.Imp(Expr.And(membership, existing), noDuplication)),
-                $"Potential linearity violation in pending asyncs of {pendingAsync1.proc.Name} and {pendingAsync2.proc.Name} for domain {domain.domainName}.",
-                token,
-                ensures);
+              linearityChecks.Add(new LinearityCheck(
+                Expr.And(membership, existing),
+                noDuplication,
+                $"Potential lnearity violation in pending asyncs of {pendingAsync1.proc.Name} and {pendingAsync2.proc.Name} for domain {domain.domainName}."));
             }
           }
         }
       }
 
-      if (ensures.Count == 0) return;
-      
-      // Create blocks
-      List<Block> blocks = new List<Block>()
+      if (linearityChecks.Count == 0) return;
+
+      // Create checker blocks
+      List<Block> checkerBlocks = new List<Block>(linearityChecks.Count);
+      int cnt = 1;
+      foreach (var lc in linearityChecks)
       {
+        List<Cmd> cmds = new List<Cmd>(2);
+        if (lc.assume != null)
+        {
+          cmds.Add(CmdHelper.AssumeCmd(lc.assume));
+        }
+        cmds.Add(new AssertCmd(action.proc.tok, lc.assert) { ErrorData = lc.message });
+        var block = new Block(Token.NoToken, $"L{cnt++}", cmds, CmdHelper.ReturnCmd);
+        CivlUtil.ResolveAndTypecheck(block, ResolutionContext.State.Two);
+        checkerBlocks.Add(block);
+      }
+      
+      // Create init blocks
+      List<Block> blocks = new List<Block>(linearityChecks.Count + 1);
+      blocks.Add(
         new Block(
           Token.NoToken,
           "init",
-          new List<Cmd> {CmdHelper.CallCmd(action.proc, inputs, outputs)},
-          CmdHelper.ReturnCmd)
-      };
+          new List<Cmd> { CmdHelper.CallCmd(action.proc, inputs, outputs) },
+          new GotoCmd(Token.NoToken, checkerBlocks)));
+      blocks.AddRange(checkerBlocks);
 
       // Create the whole check procedure
       string checkerName = civlTypeChecker.AddNamePrefix($"LinearityChecker_{action.proc.Name}");
       Procedure linCheckerProc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(),
-        inputs, outputs, requires, action.proc.Modifies, ensures);
+        inputs, outputs, requires, action.proc.Modifies, new List<Ensures>());
       Implementation linCheckImpl = new Implementation(Token.NoToken, checkerName,
-        new List<TypeVariable>(), inputs, outputs, new List<Variable> { }, blocks);
+        new List<TypeVariable>(), inputs, outputs, locals, blocks);
       linCheckImpl.Proc = linCheckerProc;
       decls.Add(linCheckImpl);
       decls.Add(linCheckerProc);
-    }
-
-    private static void AddEnsures(Expr check, string msg, IToken token, List<Ensures> ensures)
-    {
-      Ensures ensureCheck = new Ensures(token, false, check, null)
-        { ErrorData = msg };
-      CivlUtil.ResolveAndTypecheck(ensureCheck, ResolutionContext.State.Two);
-      ensures.Add(ensureCheck);
     }
 
     private static List<Expr> PendingAsyncLinearParams(LinearTypeChecker linearTypeChecker, LinearDomain domain, AtomicAction pendingAsync, IdentifierExpr pa)
