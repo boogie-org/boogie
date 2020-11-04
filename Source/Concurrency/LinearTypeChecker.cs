@@ -909,14 +909,7 @@ namespace Microsoft.Boogie
       foreach (var action in Enumerable.Concat<Action>(civlTypeChecker.procToAtomicAction.Values,
         civlTypeChecker.procToIntroductionAction.Values))
       {
-        if (CommandLineOptions.Clo.SplitLinearityChecks)
-        {
-          AddCheckerSplit(civlTypeChecker, action, decls);
-        }
-        else
-        {
-          AddChecker(civlTypeChecker, action, decls);
-        }
+        AddChecker(civlTypeChecker, action, decls);
       }
     }
 
@@ -926,6 +919,7 @@ namespace Microsoft.Boogie
     private static void AddChecker(CivlTypeChecker civlTypeChecker, Action action, List<Declaration> decls)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
+      var token = action.proc.tok;
       // Note: The implementation should be used as the variables in the
       //       gate are bound to implementation and not to the procedure.
       Implementation impl = action.impl;
@@ -951,13 +945,14 @@ namespace Microsoft.Boogie
           .Select(Expr.Ident)
           .ToList();
 
+        // First kind
         if (outVars.Count > 0)
         {
-          var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, outVars);
-          Ensures ensureCheck = new Ensures(action.proc.tok, false, outSubsetInExpr, null)
-            { ErrorData = $"Linearity invariant for domain {domain.domainName} is not preserved by {action.proc.Name}." };
-          CivlUtil.ResolveAndTypecheck(ensureCheck, ResolutionContext.State.Two);
-          ensures.Add(ensureCheck);
+          AddEnsures(
+            OutPermsSubsetInPerms(domain, inVars, outVars),
+            $"Potential linearity violation in outputs for domain {domain.domainName}.",
+            token,
+            ensures);
         }
 
         if (action is AtomicAction atomicAction && atomicAction.HasPendingAsyncs)
@@ -971,16 +966,27 @@ namespace Microsoft.Boogie
 
             if (pendingAsyncLinearParams.Count == 0) continue;
 
-            var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams.Union(outVars));
-            var condition = Expr.And(
+            // Second kind
+            var exactlyOnePA = Expr.And(
               ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa),
-              Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0)));
-            var check = new ForallExpr(Token.NoToken, new List<Variable> { paBound }, Expr.Imp(condition, outSubsetInExpr));
+              Expr.Eq(Expr.Select(PAs, pa), Expr.Literal(1)));
+            var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams.Union(outVars));
+            AddEnsures(
+              new ForallExpr(Token.NoToken, new List<Variable> { paBound }, Expr.Imp(exactlyOnePA, outSubsetInExpr)),
+              $"Potential linearity violation in outputs and pending async of {pendingAsync.proc.Name} for domain {domain.domainName}.",
+              token,
+              ensures);
 
-            Ensures ensureCheck = new Ensures(action.proc.tok, false, check, null)
-              { ErrorData = $"Linearity 222 invariant for domain {domain.domainName} is not preserved by {action.proc.Name}." };
-            CivlUtil.ResolveAndTypecheck(ensureCheck, ResolutionContext.State.Two);
-            ensures.Add(ensureCheck);
+            // Third kind
+            var twoIdenticalPAs = Expr.And(
+              ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa),
+              Expr.Ge(Expr.Select(PAs, pa), Expr.Literal(2)));
+            var emptyPerms = OutPermsSubsetInPerms(domain, Enumerable.Empty<Expr>(), pendingAsyncLinearParams);
+            AddEnsures(
+              new ForallExpr(Token.NoToken, new List<Variable> { paBound }, Expr.Imp(twoIdenticalPAs, emptyPerms)),
+              $"Potential linearity violation in identical pending asyncs of {pendingAsync.proc.Name} for domain {domain.domainName}.",
+              token,
+              ensures);
           }
 
           var pendingAsyncs = atomicAction.pendingAsyncs.ToList();
@@ -1001,31 +1007,24 @@ namespace Microsoft.Boogie
               
               if (pendingAsyncLinearParams1.Count == 0 || pendingAsyncLinearParams2.Count == 0) continue;
 
+              // Fourth kind
               var membership = Expr.And(
-                ExprHelper.FunctionCall(pendingAsync1.pendingAsyncCtor.membership, pa1),
-                ExprHelper.FunctionCall(pendingAsync2.pendingAsyncCtor.membership, pa2));
+                Expr.Neq(pa1, pa2),
+                Expr.And(
+                  ExprHelper.FunctionCall(pendingAsync1.pendingAsyncCtor.membership, pa1),
+                  ExprHelper.FunctionCall(pendingAsync2.pendingAsyncCtor.membership, pa2)));
 
-              var sub =
-                ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncSub,
-                  ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncSub, PAs,
-                    Expr.Store(ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncMapConstInt, Expr.Literal(0)), pa1, Expr.Literal(1))),
-                  Expr.Store(ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncMapConstInt, Expr.Literal(0)), pa2, Expr.Literal(1)));
-              var existing = Expr.Eq(
-                ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncGe, sub, ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncMapConstInt, Expr.Literal(0))),
-                ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncMapConstBool, Expr.Literal(true)));
+              var existing = Expr.And(
+                Expr.Ge(Expr.Select(PAs, pa1), Expr.Literal(1)),
+                Expr.Ge(Expr.Select(PAs, pa2), Expr.Literal(1)));
 
-              // var atMostOne = domain.MapEqTrue(
-              //   ExprHelper.FunctionCall(domain.mapLe,
-              //     PermissionMultiset(domain, pendingAsyncLinearParams1.Union(pendingAsyncLinearParams2)),
-              //     domain.MapConstInt(1)));
-              var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams1.Union(pendingAsyncLinearParams2));
+              var noDuplication = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams1.Union(pendingAsyncLinearParams2));
 
-              var check = new ForallExpr(Token.NoToken, new List<Variable> { paBound1, paBound2 }, Expr.Imp(Expr.And(membership, existing), outSubsetInExpr));
-
-              Ensures ensureCheck = new Ensures(action.proc.tok, false, check, null)
-                { ErrorData = $"Linearity 333 invariant for domain {domain.domainName} is not preserved by {action.proc.Name}." };
-              CivlUtil.ResolveAndTypecheck(ensureCheck, ResolutionContext.State.Two);
-              ensures.Add(ensureCheck);
+              AddEnsures(
+                new ForallExpr(Token.NoToken, new List<Variable> { paBound1, paBound2 }, Expr.Imp(Expr.And(membership, existing), noDuplication)),
+                $"Potential linearity violation in pending asyncs of {pendingAsync1.proc.Name} and {pendingAsync2.proc.Name} for domain {domain.domainName}.",
+                token,
+                ensures);
             }
           }
         }
@@ -1054,138 +1053,12 @@ namespace Microsoft.Boogie
       decls.Add(linCheckerProc);
     }
 
-    private static void AddCheckerSplit(CivlTypeChecker civlTypeChecker, Action action, List<Declaration> decls)
+    private static void AddEnsures(Expr check, string msg, IToken token, List<Ensures> ensures)
     {
-      cnt = 0;
-      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      // Note: The implementation should be used as the variables in the
-      //       gate are bound to implementation and not to the procedure.
-      Implementation impl = action.impl;
-      List<Variable> inputs = impl.InParams;
-      List<Variable> outputs = impl.OutParams;
-
-      List<Requires> requires = action.gate.Select(a => new Requires(false, a.Expr)).ToList();
-
-      foreach (var domain in linearTypeChecker.linearDomains.Values)
-      {
-        // Linear in vars
-        var inVars = inputs.Union(action.modifiedGlobalVars)
-          .Where(x => linearTypeChecker.FindDomainName(x) == domain.domainName)
-          .Where(x => InKinds.Contains(linearTypeChecker.FindLinearKind(x)))
-          .Select(Expr.Ident)
-          .ToList();
-        
-        // Linear out vars
-        var outVars = inputs.Union(outputs).Union(action.modifiedGlobalVars)
-          .Where(x => linearTypeChecker.FindDomainName(x) == domain.domainName)
-          .Where(x => OutKinds.Contains(linearTypeChecker.FindLinearKind(x)))
-          .Select(Expr.Ident)
-          .ToList();
-
-        if (outVars.Count > 0)
-        {
-          var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, outVars);
-          Ensures ensureCheck = new Ensures(action.proc.tok, false, outSubsetInExpr, null)
-            { ErrorData = $"Linearity invariant for domain {domain.domainName} is not preserved by {action.proc.Name}." };
-          CivlUtil.ResolveAndTypecheck(ensureCheck, ResolutionContext.State.Two);
-          MakeChecker(civlTypeChecker, action, inputs, outputs, requires, ensureCheck, decls);
-        }
-
-        if (action is AtomicAction atomicAction && atomicAction.HasPendingAsyncs)
-        {
-          foreach (var pendingAsync in atomicAction.pendingAsyncs)
-          {
-            var PAs = Expr.Ident(atomicAction.impl.OutParams.Last());
-            var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
-            var pa = Expr.Ident(paBound);
-            var pendingAsyncLinearParams = PendingAsyncLinearParams(linearTypeChecker, domain, pendingAsync, pa);
-
-            if (pendingAsyncLinearParams.Count == 0) continue;
-
-            var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams.Union(outVars));
-            var condition = Expr.And(
-              ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa),
-              Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0)));
-            var check = new ForallExpr(Token.NoToken, new List<Variable> { paBound }, Expr.Imp(condition, outSubsetInExpr));
-
-            Ensures ensureCheck = new Ensures(action.proc.tok, false, check, null)
-              { ErrorData = $"Linearity 222 invariant for domain {domain.domainName} is not preserved by {action.proc.Name}." };
-            CivlUtil.ResolveAndTypecheck(ensureCheck, ResolutionContext.State.Two);
-            MakeChecker(civlTypeChecker, action, inputs, outputs, requires, ensureCheck, decls);
-          }
-
-          var pendingAsyncs = atomicAction.pendingAsyncs.ToList();
-          for (int i = 0; i < pendingAsyncs.Count; i++)
-          {
-            var pendingAsync1 = pendingAsyncs[i];
-            for (int j = i; j < pendingAsyncs.Count; j++)
-            {
-              var pendingAsync2 = pendingAsyncs[j];
-
-              var PAs = Expr.Ident(atomicAction.impl.OutParams.Last());
-              var paBound1 = civlTypeChecker.BoundVariable("pa1", civlTypeChecker.pendingAsyncType);
-              var paBound2 = civlTypeChecker.BoundVariable("pa2", civlTypeChecker.pendingAsyncType);
-              var pa1 = Expr.Ident(paBound1);
-              var pa2 = Expr.Ident(paBound2);
-              var pendingAsyncLinearParams1 = PendingAsyncLinearParams(linearTypeChecker, domain, pendingAsync1, pa1);
-              var pendingAsyncLinearParams2 = PendingAsyncLinearParams(linearTypeChecker, domain, pendingAsync2, pa2);
-              
-              if (pendingAsyncLinearParams1.Count == 0 || pendingAsyncLinearParams2.Count == 0) continue;
-
-              var membership = Expr.And(
-                ExprHelper.FunctionCall(pendingAsync1.pendingAsyncCtor.membership, pa1),
-                ExprHelper.FunctionCall(pendingAsync2.pendingAsyncCtor.membership, pa2));
-
-              var sub =
-                ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncSub,
-                  ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncSub, PAs,
-                    Expr.Store(ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncMapConstInt, Expr.Literal(0)), pa1, Expr.Literal(1))),
-                  Expr.Store(ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncMapConstInt, Expr.Literal(0)), pa2, Expr.Literal(1)));
-              var existing = Expr.Eq(
-                ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncGe, sub, ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncMapConstInt, Expr.Literal(0))),
-                ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncMapConstBool, Expr.Literal(true)));
-
-              // var atMostOne = domain.MapEqTrue(
-              //   ExprHelper.FunctionCall(domain.mapLe,
-              //     PermissionMultiset(domain, pendingAsyncLinearParams1.Union(pendingAsyncLinearParams2)),
-              //     domain.MapConstInt(1)));
-              var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams1.Union(pendingAsyncLinearParams2));
-
-              var check = new ForallExpr(Token.NoToken, new List<Variable> { paBound1, paBound2 }, Expr.Imp(Expr.And(membership, existing), outSubsetInExpr));
-
-              Ensures ensureCheck = new Ensures(action.proc.tok, false, check, null)
-                { ErrorData = $"Linearity 333 invariant for domain {domain.domainName} is not preserved by {action.proc.Name}." };
-              CivlUtil.ResolveAndTypecheck(ensureCheck, ResolutionContext.State.Two);
-              MakeChecker(civlTypeChecker, action, inputs, outputs, requires, ensureCheck, decls);
-            }
-          }
-        }
-      }
-    }
-
-    private static int cnt = 0;
-
-    private static void MakeChecker(CivlTypeChecker civlTypeChecker, Action action, List<Variable> inputs, List<Variable> outputs, List<Requires> requires, Ensures ensures, List<Declaration> decls)
-    {
-      // Create blocks
-      List<Block> blocks = new List<Block>()
-      {
-        new Block(
-          Token.NoToken,
-          "init",
-          new List<Cmd> {CmdHelper.CallCmd(action.proc, inputs, outputs)},
-          CmdHelper.ReturnCmd)
-      };
-
-      // Create the whole check procedure
-      string checkerName = civlTypeChecker.AddNamePrefix($"LinearityChecker_{action.proc.Name}_{cnt++}");
-      Procedure linCheckerProc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(),
-        inputs, outputs, requires, action.proc.Modifies, new List<Ensures> {ensures});
-      Implementation linCheckImpl = new Implementation(Token.NoToken, checkerName,
-        new List<TypeVariable>(), inputs, outputs, new List<Variable> { }, blocks);
-      linCheckImpl.Proc = linCheckerProc;
-      decls.Add(linCheckImpl);
-      decls.Add(linCheckerProc);
+      Ensures ensureCheck = new Ensures(token, false, check, null)
+        { ErrorData = msg };
+      CivlUtil.ResolveAndTypecheck(ensureCheck, ResolutionContext.State.Two);
+      ensures.Add(ensureCheck);
     }
 
     private static List<Expr> PendingAsyncLinearParams(LinearTypeChecker linearTypeChecker, LinearDomain domain, AtomicAction pendingAsync, IdentifierExpr pa)
@@ -1213,9 +1086,9 @@ namespace Microsoft.Boogie
       return Expr.Eq(subsetExpr, ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
     }
 
-    private static Expr PermissionMultiset(LinearDomain domain, IEnumerable<Expr> vars)
+    private static Expr PermissionMultiset(LinearDomain domain, IEnumerable<Expr> exprs)
     {
-      var terms = vars.Select(x =>
+      var terms = exprs.Select(x =>
         ExprHelper.FunctionCall(domain.mapIteInt,
           ExprHelper.FunctionCall(domain.collectors[x.Type], x),
           domain.MapConstInt(1),

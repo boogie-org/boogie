@@ -37,10 +37,7 @@ namespace Microsoft.Boogie
     public CtorType pendingAsyncType;
     public MapType pendingAsyncMultisetType;
     public Function pendingAsyncAdd;
-    public Function pendingAsyncSub;
-    public Function pendingAsyncGe;
-    public Function pendingAsyncMapConstBool;
-    public Function pendingAsyncMapConstInt;
+    
     public Dictionary<Implementation, Variable> implToPendingAsyncCollector;
 
     // These collections are for convenience in later phases and are only initialized at the end of type checking.
@@ -896,14 +893,6 @@ namespace Microsoft.Boogie
       {
         pendingAsyncAdd = program.monomorphizer.Monomorphize("MapAdd",
           new Dictionary<string, Type>() { {"T", pendingAsyncType} });
-        pendingAsyncSub = program.monomorphizer.Monomorphize("MapSub",
-          new Dictionary<string, Type>() { {"T", pendingAsyncType} });
-        pendingAsyncGe = program.monomorphizer.Monomorphize("MapGe",
-          new Dictionary<string, Type>() { {"T", pendingAsyncType} });
-        pendingAsyncMapConstBool = program.monomorphizer.Monomorphize("MapConst",
-          new Dictionary<string, Type>() { {"T", pendingAsyncType}, {"U", Type.Bool} });
-        pendingAsyncMapConstInt = program.monomorphizer.Monomorphize("MapConst",
-          new Dictionary<string, Type>() { {"T", pendingAsyncType}, {"U", Type.Int} });
 
         var pendingAsyncDatatypeTypeCtorDecl = pendingAsyncType.Decl as DatatypeTypeCtorDecl; 
         foreach (var ctor in pendingAsyncDatatypeTypeCtorDecl.Constructors)
