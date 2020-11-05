@@ -25,6 +25,21 @@ namespace Microsoft.Boogie
       return tc.ErrorCount;
     }
 
+    public static int ResolveAndTypecheck(Absy absy, ResolutionContext.State state)
+    {
+      var rc = new ResolutionContext(null);
+      rc.StateMode = state;
+      absy.Resolve(rc);
+      if (rc.ErrorCount != 0)
+      {
+        return rc.ErrorCount;
+      }
+
+      var tc = new TypecheckingContext(null);
+      absy.Typecheck(tc);
+      return tc.ErrorCount;
+    }
+
     public static int ResolveAndTypecheck(IEnumerable<Absy> absys)
     {
       int errorCount = 0;

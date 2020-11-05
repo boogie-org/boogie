@@ -11,8 +11,7 @@ Execution trace:
     linear_out_bug.bpl(17,30): inline$RemoveAddr_1$0$Entry
     linear_out_bug.bpl(20,5): inline$RemoveAddr_1$0$anon0
     linear_out_bug.bpl(17,30): inline$RemoveAddr_1$0$Return
-(0,0): Error BP5003: A postcondition might not hold on this return path.
-linear_out_bug.bpl(25,30): Related location: Linearity invariant for domain addr is not preserved by RemoveAddr_2.
+linear_out_bug.bpl(25,30): Error BP5001: Potential linearity violation in outputs for domain addr.
 Execution trace:
     linear_out_bug.bpl(25,30): inline$RemoveAddr_2$0$Entry
     linear_out_bug.bpl(28,14): inline$RemoveAddr_2$0$anon0

@@ -1,0 +1,27 @@
+pending-async-linearity.bpl(22,1): Error BP5001: Potential linearity violation in outputs and pending async of A for domain pid.
+Execution trace:
+    pending-async-linearity.bpl(22,1): inline$M0$0$Entry
+    pending-async-linearity.bpl(25,7): inline$M0$0$anon0
+    (0,0): single_A
+pending-async-linearity.bpl(36,1): Error BP5001: Potential linearity violation in outputs and pending async of A for domain pid.
+Execution trace:
+    pending-async-linearity.bpl(36,1): inline$M2$0$Entry
+    pending-async-linearity.bpl(39,7): inline$M2$0$anon0
+    (0,0): single_A
+pending-async-linearity.bpl(50,1): Error BP5001: Potential lnearity violation in pending asyncs of A and B for domain pid.
+Execution trace:
+    pending-async-linearity.bpl(50,1): inline$M4$0$Entry
+    pending-async-linearity.bpl(53,7): inline$M4$0$anon0
+    (0,0): distinct_A_B
+pending-async-linearity.bpl(57,1): Error BP5001: Potential linearity violation in outputs and pending async of A for domain pid.
+Execution trace:
+    pending-async-linearity.bpl(57,1): inline$M5$0$Entry
+    pending-async-linearity.bpl(60,11): inline$M5$0$anon0
+    (0,0): single_A
+pending-async-linearity.bpl(81,1): Error BP5001: Potential linearity violation in outputs and pending async of A for domain pid.
+Execution trace:
+    pending-async-linearity.bpl(81,1): inline$M8$0$Entry
+    pending-async-linearity.bpl(84,3): inline$M8$0$anon0
+    (0,0): single_A
+
+Boogie program verifier finished with 13 verified, 5 errors

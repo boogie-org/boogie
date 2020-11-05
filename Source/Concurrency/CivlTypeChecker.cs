@@ -890,23 +890,8 @@ namespace Microsoft.Boogie
 
       if (pendingAsyncType != null)
       {
-        pendingAsyncAdd = new Function(Token.NoToken, "AddPAs",
-          new List<Variable>
-          {
-            VarHelper.Formal("a", pendingAsyncMultisetType, true),
-            VarHelper.Formal("b", pendingAsyncMultisetType, true)
-          },
-          VarHelper.Formal("c", pendingAsyncMultisetType, false));
-        if (CommandLineOptions.Clo.UseArrayTheory)
-        {
-          pendingAsyncAdd.AddAttribute("builtin", "MapAdd");
-        }
-        else
-        {
-          throw new NotSupportedException("Pending asyncs need array theory");
-        }
-
-        program.AddTopLevelDeclaration(pendingAsyncAdd);
+        pendingAsyncAdd = program.monomorphizer.Monomorphize("MapAdd",
+          new Dictionary<string, Type>() { {"T", pendingAsyncType} });
 
         var pendingAsyncDatatypeTypeCtorDecl = pendingAsyncType.Decl as DatatypeTypeCtorDecl; 
         foreach (var ctor in pendingAsyncDatatypeTypeCtorDecl.Constructors)

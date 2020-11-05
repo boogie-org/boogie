@@ -36,14 +36,14 @@ namespace Microsoft.Boogie
       this.frame = new HashSet<Variable>(frameVars);
       this.modifies = frame.Select(Expr.Ident).ToList();
 
-      newPAs = Expr.Ident(civlTypeChecker.LocalVariable("newPAs", PendingAsyncMultisetType));
+      newPAs = Expr.Ident(civlTypeChecker.LocalVariable("newPAs", civlTypeChecker.pendingAsyncMultisetType));
       if (HasChoice)
       {
         choice = Expr.Ident(invariantAction.impl.OutParams.Last());
       }
       else
       {
-        choice = Expr.Ident(civlTypeChecker.LocalVariable("choice", PendingAsyncType));
+        choice = Expr.Ident(civlTypeChecker.LocalVariable("choice", civlTypeChecker.pendingAsyncType));
       }
     }
 
@@ -201,10 +201,6 @@ namespace Microsoft.Boogie
       return Tuple.Create(proc, impl);
     }
 
-    private MapType PendingAsyncMultisetType => inputAction.impl.OutParams.Last().TypedIdent.Type as MapType;
-
-    private Type PendingAsyncType => PendingAsyncMultisetType.Arguments[0];
-
     public bool HasChoice => invariantAction.hasChoice;
 
     private IdentifierExpr PAs => Expr.Ident(HasChoice
@@ -215,7 +211,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        var paBound = civlTypeChecker.BoundVariable("pa", PendingAsyncType);
+        var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
         var pa = Expr.Ident(paBound);
         var expr = Expr.Eq(Expr.Select(PAs, pa), Expr.Literal(0));
         expr.Typecheck(new TypecheckingContext(null));
@@ -227,7 +223,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        var paBound = civlTypeChecker.BoundVariable("pa", PendingAsyncType);
+        var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
         var pa = Expr.Ident(paBound);
         var expr = Expr.Imp(
           Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0)),
@@ -241,7 +237,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        var paBound = civlTypeChecker.BoundVariable("pa", PendingAsyncType);
+        var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
         var pa = Expr.Ident(paBound);
         return new ExistsExpr(Token.NoToken, new List<Variable> { paBound }, ElimPendingAsyncExpr(pa));
       }
