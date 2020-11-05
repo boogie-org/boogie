@@ -37,7 +37,6 @@ namespace Microsoft.Boogie
     public CtorType pendingAsyncType;
     public MapType pendingAsyncMultisetType;
     public Function pendingAsyncAdd;
-    
     public Dictionary<Implementation, Variable> implToPendingAsyncCollector;
 
     // These collections are for convenience in later phases and are only initialized at the end of type checking.
