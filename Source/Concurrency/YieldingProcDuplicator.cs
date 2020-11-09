@@ -158,8 +158,10 @@ namespace Microsoft.Boogie
         var actionProc = (ActionProc) civlTypeChecker.procToYieldingProc[originalCallCmd.Proc];
         newCmdSeq = new List<Cmd>();
         AddActionCall(originalCallCmd, actionProc);
-        var block = new Block(Token.NoToken, civlTypeChecker.AddNamePrefix($"call_refinement_{refinementBlocks.Count}"), newCmdSeq,
-          new GotoCmd(Token.NoToken, new List<string>(), new List<Block>()));
+        var block = BlockHelper.Block(
+          civlTypeChecker.AddNamePrefix($"call_refinement_{refinementBlocks.Count}"),
+          newCmdSeq,
+          new List<Block>());
         refinementBlocks.Add(rewrittenCallCmd, block);
         newCmdSeq = null;
       }
@@ -175,7 +177,7 @@ namespace Microsoft.Boogie
         var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
         var pa = Expr.Ident(paBound);
         var expr = Expr.Eq(Expr.Select(Expr.Ident(CollectedPAs), pa), Expr.Literal(0));
-        var forallExpr = new ForallExpr(Token.NoToken, new List<Variable> {paBound}, expr);
+        var forallExpr = ExprHelper.ForallExpr(new List<Variable> {paBound}, expr);
         forallExpr.Typecheck(new TypecheckingContext(null));
         newImpl.Blocks.First().Cmds.Insert(0, CmdHelper.AssumeCmd(forallExpr));
 
@@ -483,8 +485,8 @@ namespace Microsoft.Boogie
         if (assume)
           newCmdSeq.Add(new AssumeCmd(assertCmd.tok, expr));
         else
-          newCmdSeq.Add(new AssertCmd(assertCmd.tok, expr)
-            {ErrorData = $"This gate of {action.proc.Name} might not hold."});
+          newCmdSeq.Add(CmdHelper.AssertCmd(assertCmd.tok, expr,
+            $"This gate of {action.proc.Name} might not hold."));
       }
 
       newCmdSeq.Add(new CommentCmd("injected gate >>>"));
@@ -508,10 +510,10 @@ namespace Microsoft.Boogie
         var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
         var pa = Expr.Ident(paBound);
         var expr = Expr.Eq(Expr.Select(Expr.Ident(ReturnedPAs), pa), Expr.Literal(0));
-        var forallExpr = new ForallExpr(Token.NoToken, new List<Variable> {paBound}, expr);
+        var forallExpr = ExprHelper.ForallExpr(new List<Variable> {paBound}, expr);
         forallExpr.Typecheck(new TypecheckingContext(null));
-        newCmdSeq.Add(new AssertCmd(newCall.tok, forallExpr)
-          {ErrorData = "Pending asyncs created by this call are not summarized"});
+        newCmdSeq.Add(CmdHelper.AssertCmd(newCall.tok, forallExpr,
+          "Pending asyncs created by this call are not summarized"));
       }
     }
 
@@ -536,9 +538,9 @@ namespace Microsoft.Boogie
     {
       if (!asyncCallPreconditionCheckers.ContainsKey(newCall.Proc.Name))
       {
-        asyncCallPreconditionCheckers[newCall.Proc.Name] = new Procedure(Token.NoToken,
+        asyncCallPreconditionCheckers[newCall.Proc.Name] = DeclHelper.Procedure(
           civlTypeChecker.AddNamePrefix($"AsyncCall_{newCall.Proc.Name}_{layerNum}"),
-          newCall.Proc.TypeParameters, newCall.Proc.InParams, newCall.Proc.OutParams,
+          newCall.Proc.InParams, newCall.Proc.OutParams,
           procToDuplicate[newCall.Proc].Requires, new List<IdentifierExpr>(), new List<Ensures>());
       }
 
@@ -580,8 +582,8 @@ namespace Microsoft.Boogie
       }
       else
       {
-        newCmdSeq.Add(new AssertCmd(newCall.tok, Expr.False)
-          {ErrorData = "This pending async is not summarized"});
+        newCmdSeq.Add(CmdHelper.AssertCmd(newCall.tok, Expr.False,
+          "This pending async is not summarized"));
       }
     }
 

@@ -68,18 +68,18 @@ namespace Microsoft.Boogie
     public List<Cmd> CreateInitCmds(Implementation impl)
     {
       Dictionary<string, Expr> domainNameToExpr = linearPermissionInstrumentation.PermissionExprs(impl);
-      List<AssignLhs> lhss = new List<AssignLhs>();
+      List<IdentifierExpr> lhss = new List<IdentifierExpr>();
       List<Expr> rhss = new List<Expr>();
       foreach (string domainName in linearTypeChecker.linearDomains.Keys)
       {
-        lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(domainNameToHoleVar[domainName])));
+        lhss.Add(Expr.Ident(domainNameToHoleVar[domainName]));
         rhss.Add(domainNameToExpr[domainName]);
       }
 
       var initCmds = new List<Cmd>();
       if (lhss.Count > 0)
       {
-        initCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
+        initCmds.Add(CmdHelper.AssignCmd(lhss, rhss));
       }
 
       return initCmds;
@@ -88,18 +88,18 @@ namespace Microsoft.Boogie
     public List<Cmd> CreateUpdatesToPermissionCollector(Absy absy)
     {
       Dictionary<string, Expr> domainNameToExpr = linearPermissionInstrumentation.PermissionExprs(absy);
-      List<AssignLhs> lhss = new List<AssignLhs>();
+      List<IdentifierExpr> lhss = new List<IdentifierExpr>();
       List<Expr> rhss = new List<Expr>();
       foreach (var domainName in linearTypeChecker.linearDomains.Keys)
       {
-        lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(domainNameToHoleVar[domainName])));
+        lhss.Add(Expr.Ident(domainNameToHoleVar[domainName]));
         rhss.Add(domainNameToExpr[domainName]);
       }
 
       var cmds = new List<Cmd>();
       if (lhss.Count > 0)
       {
-        cmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
+        cmds.Add(CmdHelper.AssignCmd(lhss, rhss));
       }
 
       return cmds;
@@ -107,19 +107,18 @@ namespace Microsoft.Boogie
 
     public List<Cmd> CreateCallToYieldProc()
     {
-      List<Expr> exprSeq = new List<Expr>();
+      List<Variable> inputs = new List<Variable>();
       foreach (string domainName in linearTypeChecker.linearDomains.Keys)
       {
-        exprSeq.Add(Expr.Ident(domainNameToHoleVar[domainName]));
+        inputs.Add(domainNameToHoleVar[domainName]);
       }
 
       foreach (Variable g in civlTypeChecker.GlobalVariables)
       {
-        exprSeq.Add(Expr.Ident(oldGlobalMap[g]));
+        inputs.Add(oldGlobalMap[g]);
       }
 
-      CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
-      yieldCallCmd.Proc = yieldProc;
+      CallCmd yieldCallCmd = CmdHelper.CallCmd(yieldProc, inputs, new List<Variable>());
       return new List<Cmd> {yieldCallCmd};
     }
   }

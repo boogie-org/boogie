@@ -1,5 +1,5 @@
 intro-nonblocking.bpl(4,30): Error BP5001: Non-blocking check for intro failed
 Execution trace:
-    intro-nonblocking.bpl(4,30): L
+    (0,0): init
 
 Boogie program verifier finished with 1 verified, 1 error

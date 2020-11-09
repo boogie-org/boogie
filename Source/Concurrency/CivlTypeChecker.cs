@@ -83,24 +83,19 @@ namespace Microsoft.Boogie
         }
       }
 
-      var skipProcedure = new Procedure(
-        Token.NoToken,
+      var skipProcedure = DeclHelper.Procedure(
         AddNamePrefix("Skip"),
-        new List<TypeVariable>(),
         new List<Variable>(),
         new List<Variable>(),
         new List<Requires>(),
         new List<IdentifierExpr>(),
         new List<Ensures>());
-      var skipImplementation = new Implementation(
-          Token.NoToken,
-          skipProcedure.Name,
-          new List<TypeVariable>(),
-          new List<Variable>(),
-          new List<Variable>(),
-          new List<Variable>(),
-          new List<Block> {new Block(Token.NoToken, "init", new List<Cmd>(), new ReturnCmd(Token.NoToken))})
-        {Proc = skipProcedure};
+      var skipImplementation = DeclHelper.Implementation(
+        skipProcedure,
+        new List<Variable>(),
+        new List<Variable>(),
+        new List<Variable>(),
+        new List<Block> {BlockHelper.Block("init", new List<Cmd>())});
       SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both);
     }
 

@@ -28,8 +28,8 @@ var {:layer 1, 1} p : int;
 const c: int;
 
 function {:inline} Invariant(i: int, p: int, c: int, x: [int]int) : bool {
-  IsProcId(i) && 
-  IsProcId(p) && 
+  IsProcId(i) &&
+  IsProcId(p) &&
   IsProcId(c) &&
   (p == c || x[c] == 1)
 }
@@ -75,7 +75,7 @@ requires {:layer 1} Invariant(i, p, c, x);
 	call update_x(i);
 	call backward_assign_p(i);
   yield;
-	assert {:layer 1} x[c] == 1;	
+	assert {:layer 1} x[c] == 1;
   call update_y(i);
   yield;
 }
@@ -107,7 +107,7 @@ procedure {:layer 1}{:atomic} atomic_update_x(i: int)
 modifies x;
 {
   x[i] := 1;
-} 
+}
 
 procedure {:layer 1}{:atomic} atomic_update_y(i: int)
 modifies y;

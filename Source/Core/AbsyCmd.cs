@@ -4241,6 +4241,18 @@ namespace Microsoft.Boogie
       this.labelNames.Add(b.Label);
     }
 
+    public void AddTargets(IEnumerable<Block> blocks)
+    {
+      Contract.Requires(blocks != null);
+      Contract.Requires(cce.NonNullElements(blocks));
+      Contract.Requires(this.labelTargets != null);
+      Contract.Requires(this.labelNames != null);
+      foreach (var block in blocks)
+      {
+        AddTarget(block);
+      }
+    }
+
     public override void Emit(TokenTextWriter stream, int level)
     {
       //Contract.Requires(stream != null);

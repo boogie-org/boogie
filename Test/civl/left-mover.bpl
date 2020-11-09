@@ -9,19 +9,19 @@ modifies x;
 
 // Error: Gate failure of ass_eq_1 not preserved by inc
 procedure {:atomic} {:layer 1} ass_eq_1 ()
-{ assert x == 1; } 
+{ assert x == 1; }
 
 // Correct
 procedure {:atomic} {:layer 1} ass_leq_1 ()
-{ assert x <= 1; }   
+{ assert x <= 1; }
 
 // Error: init and inc do not commute
 procedure {:atomic} {:layer 1} init ()
 modifies x;
-{ x := 0; }          
+{ x := 0; }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 // Error block is blocking
 procedure {:left} {:layer 2} block ()
-{ assume x >= 0; } 
+{ assume x >= 0; }

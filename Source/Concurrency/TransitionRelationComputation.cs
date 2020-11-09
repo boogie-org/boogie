@@ -440,7 +440,7 @@ namespace Microsoft.Boogie
             }
           }
 
-          TransitionRelationExpr = new ExistsExpr(Token.NoToken,
+          TransitionRelationExpr = ExprHelper.ExistsExpr(
             existsVarMap.Values.ToList<Variable>(), trigger, TransitionRelationExpr);
         }
       }
@@ -470,7 +470,7 @@ namespace Microsoft.Boogie
       private void AddBoundVariablesForRemainingVars()
       {
         var remainingVars = NotEliminatedVars.Except(IntermediateFrameWithWitnesses);
-        existsVarMap = remainingVars.ToDictionary(v => (Variable) VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
+        existsVarMap = remainingVars.ToDictionary(v => v, v => (Variable) VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
         pathExprs = SubstitutionHelper.Apply(existsVarMap, pathExprs).ToList();
       }
 
@@ -571,8 +571,8 @@ namespace Microsoft.Boogie
                 assumeExprs.Add(Expr.Eq(lhss[k].AsExpr, rhss[k]));
               }
 
-              cmds.Add(new AssumeCmd(Token.NoToken, Expr.And(assumeExprs)));
-              cmds.Add(new HavocCmd(Token.NoToken, lhss.Select(x => x.DeepAssignedIdentifier).ToList()));
+              cmds.Add(CmdHelper.AssumeCmd(Expr.And(assumeExprs)));
+              cmds.Add(CmdHelper.HavocCmd(lhss.Select(x => x.DeepAssignedIdentifier).ToList()));
             }
           }
           else

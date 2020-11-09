@@ -6,7 +6,7 @@ procedure{:atomic}{:layer 95} skip() { }
 procedure{:yields}{:layer 94} {:refines "skip"} H()
 {
 }
-  
+
 procedure{:yields}{:layer 94} {:refines "skip"} A()
 {
 }
