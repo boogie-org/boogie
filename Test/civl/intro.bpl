@@ -24,7 +24,7 @@ requires {:layer 1} x == y;
   call set_y_to_x();
 }
 
-procedure {:intro} {:layer 1,1} set_y_to_x ()
+procedure {:intro} {:layer 1} set_y_to_x ()
 modifies y;
 {
   y := x;

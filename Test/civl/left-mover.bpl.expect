@@ -1,17 +1,15 @@
-(0,0): Error BP5003: A postcondition might not hold on this return path.
-left-mover.bpl(11,32): Related location: Gate failure of ass_eq_1 not preserved by inc
+left-mover.bpl(11,32): Error BP5001: Gate failure of ass_eq_1 not preserved by inc
 Execution trace:
     left-mover.bpl(6,30): inline$inc$0$Entry
     left-mover.bpl(8,5): inline$inc$0$anon0
     left-mover.bpl(6,30): inline$inc$0$Return
-(0,0): Error BP5003: A postcondition might not hold on this return path.
-left-mover.bpl(19,32): Related location: Commutativity check between init and inc failed
+left-mover.bpl(19,32): Error BP5001: Commutativity check between init and inc failed
 Execution trace:
     left-mover.bpl(19,32): inline$init$0$Entry
     left-mover.bpl(8,5): inline$inc$0$anon0
     left-mover.bpl(6,30): inline$inc$0$Return
 left-mover.bpl(26,30): Error BP5001: Non-blocking check for block failed
 Execution trace:
-    left-mover.bpl(26,30): L
+    (0,0): init
 
 Boogie program verifier finished with 1 verified, 3 errors

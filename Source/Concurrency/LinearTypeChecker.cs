@@ -845,8 +845,7 @@ namespace Microsoft.Boogie
       var domain = linearDomains[domainName];
       foreach (Variable v in scope)
       {
-        Expr expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.collectors[v.TypedIdent.Type]),
-          new List<Expr> {Expr.Ident(v)});
+        Expr expr = ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v));
         expr.Resolve(new ResolutionContext(null));
         expr.Typecheck(new TypecheckingContext(null));
         yield return expr;
@@ -861,15 +860,14 @@ namespace Microsoft.Boogie
         int count = 0;
         List<Expr> subsetExprs = new List<Expr>();
         LinearDomain domain = linearDomains[domainName];
-        BoundVariable partition = new BoundVariable(Token.NoToken,
-          new TypedIdent(Token.NoToken, $"partition_{domainName}", domain.mapTypeInt));
+        BoundVariable partition = civlTypeChecker.BoundVariable($"partition_{domainName}", domain.mapTypeInt);
         foreach (Expr e in permissionsExprs)
         {
           subsetExprs.Add(SubsetExpr(domain, e, partition, count));
           count++;
         }
 
-        expr = new ExistsExpr(Token.NoToken, new List<Variable> {partition}, Expr.And(subsetExprs));
+        expr = ExprHelper.ExistsExpr(new List<Variable> {partition}, Expr.And(subsetExprs));
       }
 
       expr.Resolve(new ResolutionContext(null));
@@ -880,10 +878,10 @@ namespace Microsoft.Boogie
     public Expr UnionExprForPermissions(string domainName, IEnumerable<Expr> permissionExprs)
     {
       var domain = linearDomains[domainName];
-      var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new Expr[] {Expr.False});
+      var expr = ExprHelper.FunctionCall(domain.mapConstBool, Expr.False);
       foreach (Expr e in permissionExprs)
       {
-        expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOr), new List<Expr> {e, expr});
+        expr = ExprHelper.FunctionCall(domain.mapOr, e, expr);
       }
 
       expr.Resolve(new ResolutionContext(null));
@@ -1068,8 +1066,8 @@ namespace Microsoft.Boogie
         {
           cmds.Add(CmdHelper.AssumeCmd(lc.assume));
         }
-        cmds.Add(new AssertCmd(action.proc.tok, lc.assert) { ErrorData = lc.message });
-        var block = new Block(Token.NoToken, lc.name, cmds, CmdHelper.ReturnCmd);
+        cmds.Add(CmdHelper.AssertCmd(action.proc.tok, lc.assert, lc.message));
+        var block = BlockHelper.Block(lc.name, cmds);
         CivlUtil.ResolveAndTypecheck(block, ResolutionContext.State.Two);
         checkerBlocks.Add(block);
       }
@@ -1077,20 +1075,18 @@ namespace Microsoft.Boogie
       // Create init blocks
       List<Block> blocks = new List<Block>(linearityChecks.Count + 1);
       blocks.Add(
-        new Block(
-          Token.NoToken,
+        BlockHelper.Block(
           "init",
           new List<Cmd> { CmdHelper.CallCmd(action.proc, inputs, outputs) },
-          new GotoCmd(Token.NoToken, checkerBlocks)));
+          checkerBlocks));
       blocks.AddRange(checkerBlocks);
 
       // Create the whole check procedure
       string checkerName = civlTypeChecker.AddNamePrefix($"LinearityChecker_{action.proc.Name}");
-      Procedure linCheckerProc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(),
+      Procedure linCheckerProc = DeclHelper.Procedure(checkerName,
         inputs, outputs, requires, action.proc.Modifies, new List<Ensures>());
-      Implementation linCheckImpl = new Implementation(Token.NoToken, checkerName,
-        new List<TypeVariable>(), inputs, outputs, locals, blocks);
-      linCheckImpl.Proc = linCheckerProc;
+      Implementation linCheckImpl = DeclHelper.Implementation(linCheckerProc,
+        inputs, outputs, locals, blocks);
       decls.Add(linCheckImpl);
       decls.Add(linCheckerProc);
     }

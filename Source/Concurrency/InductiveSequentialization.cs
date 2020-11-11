@@ -51,14 +51,13 @@ namespace Microsoft.Boogie
     {
       this.checkName = "base";
       var requires = invariantAction.gate.Select(g => new Requires(false, g.Expr)).ToList();
-      var ensures = new List<Ensures> { GetEnsures(GetTransitionRelation(invariantAction)) };
-
+      
       var subst = GetSubstitution(inputAction, invariantAction);
       List<Cmd> cmds = GetGateAsserts(inputAction, subst).ToList<Cmd>();
       cmds.Add(GetCallCmd(inputAction));
-      var blocks = new List<Block> { new Block(Token.NoToken, checkName, cmds, CmdHelper.ReturnCmd) };
+      cmds.Add(GetCheck(GetTransitionRelation(invariantAction)));
 
-      return GetCheckerTuple(requires, ensures, new List<Variable>(), blocks);
+      return GetCheckerTuple(requires, new List<Variable>(), cmds);
     }
 
     public Tuple<Procedure, Implementation> GenerateConclusionChecker()
@@ -66,42 +65,42 @@ namespace Microsoft.Boogie
       this.checkName = "conclusion";
       var subst = GetSubstitution(outputAction, invariantAction);
       var requires = outputAction.gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
-      var ensures = new List<Ensures> { GetEnsures(Substituter.Apply(subst, GetTransitionRelation(outputAction))) };
-      if (!outputAction.HasPendingAsyncs)
-      {
-        ensures.Add(new Ensures(false, NoPendingAsyncs));
-      }
-
+      
       List<Cmd> cmds = GetGateAsserts(invariantAction, null).ToList<Cmd>();
       cmds.Add(GetCallCmd(invariantAction));
-      cmds.Add(new AssumeCmd(Token.NoToken, PendingAsyncsEliminatedExpr));
-      var blocks = new List<Block> { new Block(Token.NoToken, checkName, cmds, CmdHelper.ReturnCmd) };
+      cmds.Add(CmdHelper.AssumeCmd(PendingAsyncsEliminatedExpr));
+      cmds.Add(GetCheck(Substituter.Apply(subst, GetTransitionRelation(outputAction))));
+      if (!outputAction.HasPendingAsyncs)
+      {
+        cmds.Add(CmdHelper.AssertCmd(
+          inputAction.proc.tok,
+          NoPendingAsyncs,
+          $"IS leaves pending asyncs not summarized by ${outputAction.proc.Name}"));
+      }
 
-      return GetCheckerTuple(requires, ensures, new List<Variable>(), blocks);
+      return GetCheckerTuple(requires, new List<Variable>(), cmds);
     }
 
     public Tuple<Procedure, Implementation> GenerateChoiceChecker()
     {
       this.checkName = "choice";
       var requires = invariantAction.gate.Select(g => new Requires(false, g.Expr)).ToList();
-      var ensures = new List<Ensures> {
-        new Ensures(false, ElimPendingAsyncExpr(choice))
-          { ErrorData = $"Failed to validate choice in IS of {inputAction.proc.Name}" }
-      };
 
       List<Cmd> cmds = new List<Cmd>();
       cmds.Add(GetCallCmd(invariantAction));
-      cmds.Add(new AssumeCmd(Token.NoToken, ExistsElimPendingAsyncExpr));
-      var blocks = new List<Block> { new Block(Token.NoToken, checkName, cmds, CmdHelper.ReturnCmd) };
+      cmds.Add(CmdHelper.AssumeCmd(ExistsElimPendingAsyncExpr));
+      cmds.Add(CmdHelper.AssertCmd(
+        invariantAction.proc.tok,
+        ElimPendingAsyncExpr(choice),
+        $"Failed to validate choice in IS of {inputAction.proc.Name}"));
 
-      return GetCheckerTuple(requires, ensures, new List<Variable>(), blocks);
+      return GetCheckerTuple(requires, new List<Variable>(), cmds);
     }
 
     public Tuple<Procedure, Implementation> GenerateStepChecker(AtomicAction pendingAsync, Function pendingAsyncAdd)
     {
       this.checkName = "step";
       var requires = invariantAction.gate.Select(g => new Requires(false, g.Expr)).ToList();
-      var ensures = new List<Ensures> { GetEnsures(GetTransitionRelation(invariantAction)) };
       var locals = new List<Variable>();
 
       if (!HasChoice)
@@ -138,24 +137,28 @@ namespace Microsoft.Boogie
       {
         cmds.Add(AddNewPAs(pendingAsyncAdd));
       }
-      var blocks = new List<Block> { new Block(Token.NoToken, pendingAsync.proc.Name, cmds, CmdHelper.ReturnCmd) };
 
-      return GetCheckerTuple(requires, ensures, locals, blocks, "_" + abs.proc.Name);
+      cmds.Add(GetCheck(GetTransitionRelation(invariantAction)));
+
+      return GetCheckerTuple(requires, locals, cmds, "_" + abs.proc.Name);
     }
 
     private CallCmd GetCallCmd(AtomicAction callee)
     {
       return CmdHelper.CallCmd(
         callee.proc,
-        invariantAction.impl.InParams.Select(Expr.Ident).ToList<Expr>(),
-        invariantAction.impl.OutParams.GetRange(0, callee.impl.OutParams.Count).Select(Expr.Ident).ToList()
+        invariantAction.impl.InParams,
+        invariantAction.impl.OutParams.GetRange(0, callee.impl.OutParams.Count)
       );
     }
 
-    private Ensures GetEnsures(Expr expr)
+    private AssertCmd GetCheck(Expr expr)
     {
       expr.Typecheck(new TypecheckingContext(null));
-      return new Ensures(false, expr) { ErrorData = $"IS {checkName} of {inputAction.proc.Name} failed" };
+      return CmdHelper.AssertCmd(
+        inputAction.proc.tok,
+        expr,
+        $"IS {checkName} of {inputAction.proc.Name} failed");
     }
 
     public static IEnumerable<AssertCmd> GetGateAsserts(AtomicAction action, Substitution subst, string msg)
@@ -178,26 +181,21 @@ namespace Microsoft.Boogie
     }
 
     private Tuple<Procedure, Implementation> GetCheckerTuple(
-      List<Requires> requires, List<Ensures> ensures, List<Variable> locals, List<Block> blocks, string suffix = "")
+      List<Requires> requires, List<Variable> locals, List<Cmd> cmds, string suffix = "")
     {
-      var proc = new Procedure(
-        Token.NoToken,
+      var proc = DeclHelper.Procedure(
         civlTypeChecker.AddNamePrefix($"IS_{checkName}_{inputAction.proc.Name}{suffix}"),
-        new List<TypeVariable>(),
         invariantAction.impl.InParams,
         invariantAction.impl.OutParams,
         requires,
         modifies,
-        ensures);
-      var impl = new Implementation(
-        Token.NoToken,
-        proc.Name,
-        new List<TypeVariable>(),
+        new List<Ensures>());
+      var impl = DeclHelper.Implementation(
+        proc,
         proc.InParams,
         proc.OutParams,
         locals,
-        blocks)
-        { Proc = proc };
+        new List<Block> { BlockHelper.Block(checkName, cmds) });
       return Tuple.Create(proc, impl);
     }
 
@@ -215,7 +213,7 @@ namespace Microsoft.Boogie
         var pa = Expr.Ident(paBound);
         var expr = Expr.Eq(Expr.Select(PAs, pa), Expr.Literal(0));
         expr.Typecheck(new TypecheckingContext(null));
-        return new ForallExpr(Token.NoToken, new List<Variable> { paBound }, expr);
+        return ExprHelper.ForallExpr(new List<Variable> { paBound }, expr);
       }
     }
 
@@ -229,7 +227,7 @@ namespace Microsoft.Boogie
           Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0)),
           Expr.And(elim.Keys.Select(a => Expr.Not(ExprHelper.FunctionCall(a.pendingAsyncCtor.membership, pa)))));
         expr.Typecheck(new TypecheckingContext(null));
-        return new ForallExpr(Token.NoToken, new List<Variable> { paBound }, expr);
+        return ExprHelper.ForallExpr(new List<Variable> { paBound }, expr);
       }
     }
 
@@ -239,7 +237,7 @@ namespace Microsoft.Boogie
       {
         var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
         var pa = Expr.Ident(paBound);
-        return new ExistsExpr(Token.NoToken, new List<Variable> { paBound }, ElimPendingAsyncExpr(pa));
+        return ExprHelper.ExistsExpr(new List<Variable> { paBound }, ElimPendingAsyncExpr(pa));
       }
     }
 
@@ -355,11 +353,6 @@ namespace Microsoft.Boogie
         .Union(action.gateUsedGlobalVars)
         .Union(abs.modifiedGlobalVars)
         .Union(abs.gateUsedGlobalVars));
-      var tr = TransitionRelationComputation.Refinement(civlTypeChecker, abs, frame);
-      var ensures = new List<Ensures> {
-        new Ensures(false, tr)
-          { ErrorData = $"Abstraction {abs.proc.Name} does not summarize {action.proc.Name}" }
-      };
 
       var subst = InductiveSequentialization.GetSubstitution(action, abs);
       List<Cmd> cmds = InductiveSequentialization.GetGateAsserts(action, subst,
@@ -367,29 +360,31 @@ namespace Microsoft.Boogie
       cmds.Add(
         CmdHelper.CallCmd(
           action.proc,
-          abs.impl.InParams.Select(Expr.Ident).ToList<Expr>(),
-          abs.impl.OutParams.Select(Expr.Ident).ToList()
+          abs.impl.InParams,
+          abs.impl.OutParams
         ));
-      var blocks = new List<Block> { new Block(Token.NoToken, "init", cmds, CmdHelper.ReturnCmd) };
+      cmds.Add(
+        CmdHelper.AssertCmd(
+          abs.proc.tok,
+          TransitionRelationComputation.Refinement(civlTypeChecker, abs, frame),
+          $"Abstraction {abs.proc.Name} does not summarize {action.proc.Name}"
+        ));
 
-      var proc = new Procedure(
-        Token.NoToken,
+      var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
+
+      var proc = DeclHelper.Procedure(
         civlTypeChecker.AddNamePrefix($"AbstractionCheck_{action.proc.Name}_{abs.proc.Name}"),
-        new List<TypeVariable>(),
         abs.impl.InParams,
         abs.impl.OutParams,
         requires,
         action.proc.Modifies,
-        ensures);
-      var impl = new Implementation(
-        Token.NoToken,
-        proc.Name,
-        new List<TypeVariable>(),
+        new List<Ensures>());
+      var impl = DeclHelper.Implementation(
+        proc,
         proc.InParams,
         proc.OutParams,
         new List<Variable>(),
-        blocks)
-        { Proc = proc };
+        blocks);
       return Tuple.Create(proc, impl);
     }
 

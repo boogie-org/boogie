@@ -43,13 +43,13 @@ namespace Microsoft.Boogie
       IEnumerable<Variable> availableVars = atEntry
         ? FilterInParams(proc.InParams)
         : FilterInOutParams(proc.InParams.Union(proc.OutParams));
-      return DisjointnessExprs(availableVars).Select(expr => new AssumeCmd(Token.NoToken, expr)).ToList<Cmd>();
+      return DisjointnessExprs(availableVars).Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
     }
 
     public List<Cmd> DisjointnessAssumeCmds(Absy absy, bool addGlobals)
     {
       var availableVars = AvailableLinearLocalVars(absy).Union(addGlobals ? LinearGlobalVars() : new List<Variable>());
-      return DisjointnessExprs(availableVars).Select(expr => new AssumeCmd(Token.NoToken, expr)).ToList<Cmd>();
+      return DisjointnessExprs(availableVars).Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
     }
 
     public List<Expr> DisjointnessExprs(Absy absy, bool addGlobals)

@@ -10,42 +10,43 @@ namespace Microsoft.Boogie
       foreach (var action in civlTypeChecker.AllAtomicActions.Where(a => a.HasPendingAsyncs))
       {
         var requires = action.gate.Select(g => new Requires(false, g.Expr)).ToList();
-        var cmds = new List<Cmd>
-        {
-          CmdHelper.CallCmd(
-            action.proc,
-            action.impl.InParams.Select(Expr.Ident).ToList<Expr>(),
-            action.impl.OutParams.Select(Expr.Ident).ToList())
-        };
-        var blocks = new List<Block>() {new Block(Token.NoToken, "init", cmds, CmdHelper.ReturnCmd)};
 
         var PAs = Expr.Ident(action.impl.OutParams.Last(p => p.TypedIdent.Type.Equals(civlTypeChecker.pendingAsyncMultisetType)));
         var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
         var pa = Expr.Ident(paBound);
 
         var nonnegativeExpr =
-          new ForallExpr(Token.NoToken, new List<Variable> {paBound},
+          ExprHelper.ForallExpr(new List<Variable> {paBound},
             Expr.Ge(Expr.Select(PAs, pa), Expr.Literal(0)));
-        var correctTypeExpr = new ForallExpr(Token.NoToken, new List<Variable> {paBound},
+        var correctTypeExpr = ExprHelper.ForallExpr(new List<Variable> {paBound},
           Expr.Imp(
             Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0)),
             Expr.Or(action.pendingAsyncs.Select(a => ExprHelper.FunctionCall(a.pendingAsyncCtor.membership, pa)))));
-        var ensures = new List<Ensures>
+
+        CivlUtil.ResolveAndTypecheck(nonnegativeExpr);
+        CivlUtil.ResolveAndTypecheck(correctTypeExpr);
+
+        var cmds = new List<Cmd>
         {
-          new Ensures(false, nonnegativeExpr)
-            {ErrorData = $"Action {action.proc.Name} might create negative pending asyncs"},
-          new Ensures(false, correctTypeExpr)
-            {ErrorData = $"Action {action.proc.Name} might create undeclared pending asyncs"},
+          CmdHelper.CallCmd(
+            action.proc,
+            action.impl.InParams.Select(Expr.Ident).ToList<Expr>(),
+            action.impl.OutParams.Select(Expr.Ident).ToList()),
+          CmdHelper.AssertCmd(
+            action.proc.tok,
+            nonnegativeExpr,
+            $"Action {action.proc.Name} might create negative pending asyncs"),
+          CmdHelper.AssertCmd(
+            action.proc.tok,
+            correctTypeExpr,
+            $"Action {action.proc.Name} might create undeclared pending asyncs")
         };
+        var blocks = new List<Block>() { BlockHelper.Block("init", cmds) };
 
-        CivlUtil.ResolveAndTypecheck(ensures);
-
-        var proc = new Procedure(Token.NoToken, civlTypeChecker.AddNamePrefix($"PendingAsyncChecker_{action.proc.Name}"), new List<TypeVariable>(),
+        var proc = DeclHelper.Procedure(civlTypeChecker.AddNamePrefix($"PendingAsyncChecker_{action.proc.Name}"),
           action.impl.InParams, action.impl.OutParams,
-          requires, action.proc.Modifies, ensures);
-        var impl = new Implementation(Token.NoToken, proc.Name, proc.TypeParameters,
-            proc.InParams, proc.OutParams, new List<Variable>(), blocks)
-          {Proc = proc};
+          requires, action.proc.Modifies, new List<Ensures>());
+        var impl = DeclHelper.Implementation(proc, proc.InParams, proc.OutParams, new List<Variable>(), blocks);
 
         civlTypeChecker.program.AddTopLevelDeclaration(proc);
         civlTypeChecker.program.AddTopLevelDeclaration(impl);

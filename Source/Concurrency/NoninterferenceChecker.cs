@@ -115,11 +115,8 @@ namespace Microsoft.Boogie
       Substitution oldSubst = Substituter.SubstitutionFromHashtable(oldLocalMap);
       Substitution subst = Substituter.SubstitutionFromHashtable(map);
       List<Block> noninterferenceCheckerBlocks = new List<Block>();
-      List<String> labels = new List<String>();
       List<Block> labelTargets = new List<Block>();
-      Block noninterferenceCheckerBlock =
-        new Block(Token.NoToken, "exit", new List<Cmd>(), new ReturnCmd(Token.NoToken));
-      labels.Add(noninterferenceCheckerBlock.Label);
+      Block noninterferenceCheckerBlock = BlockHelper.Block("exit", new List<Cmd>());
       labelTargets.Add(noninterferenceCheckerBlock);
       noninterferenceCheckerBlocks.Add(noninterferenceCheckerBlock);
       int yieldCount = 0;
@@ -129,7 +126,7 @@ namespace Microsoft.Boogie
         foreach (var predCmd in kv.invariantCmds)
         {
           var newExpr = Substituter.ApplyReplacingOldExprs(assumeSubst, oldSubst, predCmd.Expr);
-          newCmds.Add(new AssumeCmd(Token.NoToken, newExpr));
+          newCmds.Add(new AssumeCmd(predCmd.tok, newExpr));
         }
 
         foreach (var predCmd in kv.invariantCmds)
@@ -143,29 +140,23 @@ namespace Microsoft.Boogie
           }
         }
 
-        newCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
-        noninterferenceCheckerBlock =
-          new Block(Token.NoToken, "L" + yieldCount++, newCmds, new ReturnCmd(Token.NoToken));
-        labels.Add(noninterferenceCheckerBlock.Label);
+        newCmds.Add(CmdHelper.AssumeCmd(Expr.False));
+        noninterferenceCheckerBlock = BlockHelper.Block("L" + yieldCount++, newCmds);
         labelTargets.Add(noninterferenceCheckerBlock);
         noninterferenceCheckerBlocks.Add(noninterferenceCheckerBlock);
       }
 
-      noninterferenceCheckerBlocks.Insert(0,
-        new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
+      noninterferenceCheckerBlocks.Insert(0, BlockHelper.Block("enter", new List<Cmd>(), labelTargets));
 
       // Create the yield checker procedure
       noninterferenceCheckerName = civlTypeChecker.AddNamePrefix($"NoninterferenceChecker_{noninterferenceCheckerName}");
-      var noninterferenceCheckerProc = new Procedure(Token.NoToken, noninterferenceCheckerName, decl.TypeParameters,
-        inputs,
-        new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+      var noninterferenceCheckerProc = DeclHelper.Procedure(noninterferenceCheckerName,
+        inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
       CivlUtil.AddInlineAttribute(noninterferenceCheckerProc);
 
       // Create the yield checker implementation
-      var noninterferenceCheckerImpl = new Implementation(Token.NoToken, noninterferenceCheckerName,
-        decl.TypeParameters, inputs,
-        new List<Variable>(), locals, noninterferenceCheckerBlocks);
-      noninterferenceCheckerImpl.Proc = noninterferenceCheckerProc;
+      var noninterferenceCheckerImpl = DeclHelper.Implementation(noninterferenceCheckerProc,
+        inputs, new List<Variable>(), locals, noninterferenceCheckerBlocks);
       CivlUtil.AddInlineAttribute(noninterferenceCheckerImpl);
       return new List<Declaration> {noninterferenceCheckerProc, noninterferenceCheckerImpl};
     }

@@ -14,7 +14,7 @@ procedure {:yields}{:layer 1}{:refines "SKIP"} b ()
   var i':int;
   var {:layer 0} r:real;
   var {:layer 0} r':real;
-  
+
   i := 1;
   call b', i', r' := a(b, i, r);
   // at layer 1 this call must be rewritten to

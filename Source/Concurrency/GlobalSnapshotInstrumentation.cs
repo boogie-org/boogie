@@ -27,18 +27,18 @@ namespace Microsoft.Boogie
 
     public List<Cmd> CreateUpdatesToOldGlobalVars()
     {
-      List<AssignLhs> lhss = new List<AssignLhs>();
+      List<IdentifierExpr> lhss = new List<IdentifierExpr>();
       List<Expr> rhss = new List<Expr>();
       foreach (Variable g in oldGlobalMap.Keys)
       {
-        lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldGlobalMap[g])));
+        lhss.Add(Expr.Ident(oldGlobalMap[g]));
         rhss.Add(Expr.Ident(g));
       }
 
       var cmds = new List<Cmd>();
       if (lhss.Count > 0)
       {
-        cmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
+        cmds.Add(CmdHelper.AssignCmd(lhss, rhss));
       }
 
       return cmds;
@@ -46,18 +46,18 @@ namespace Microsoft.Boogie
 
     public List<Cmd> CreateInitCmds()
     {
-      List<AssignLhs> lhss = new List<AssignLhs>();
+      List<IdentifierExpr> lhss = new List<IdentifierExpr>();
       List<Expr> rhss = new List<Expr>();
       foreach (Variable g in oldGlobalMap.Keys)
       {
-        lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldGlobalMap[g])));
+        lhss.Add(Expr.Ident(oldGlobalMap[g]));
         rhss.Add(Expr.Ident(g));
       }
 
       var initCmds = new List<Cmd>();
       if (lhss.Count > 0)
       {
-        initCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
+        initCmds.Add(CmdHelper.AssignCmd(lhss, rhss));
       }
 
       return initCmds;

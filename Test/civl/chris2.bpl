@@ -11,8 +11,8 @@ procedure{:yields}{:layer 20} {:refines "atomic_p_gt1_lower"} p_gt1_lower();
 procedure{:both}{:layer 26,40} atomic_p_gt1()
 modifies x;
 { x := x + 1; }
-  
-procedure{:yields}{:layer 25} {:refines "atomic_p_gt1"} p_gt1()  
+
+procedure{:yields}{:layer 25} {:refines "atomic_p_gt1"} p_gt1()
 {
   call p_gt1_lower();
 }

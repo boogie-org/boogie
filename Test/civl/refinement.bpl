@@ -27,8 +27,13 @@ procedure {:yields}{:layer 1}{:refines "INCR"} r ()
   yield;
   call incr();
   call incr();
-  call decr(); 
+  call decr();
   call decr(); // SKIP
+}
+
+procedure {:yields}{:layer 1}{:refines "INCR"} s ()
+{
+  // Error: Failed to execute atomic action before procedure return
 }
 
 procedure {:both} {:layer 1,2} INCR ()
@@ -36,7 +41,6 @@ modifies x;
 {
   x := x + 1;
 }
-
 
 procedure {:both} {:layer 1,2} DECR ()
 modifies x;
