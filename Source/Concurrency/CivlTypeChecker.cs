@@ -210,9 +210,9 @@ namespace Microsoft.Boogie
       {
         var layerRange = GlobalVariableLayerRange(g);
         if (allInductiveSequentializationLayers.Contains(layerRange.lowerLayerNum))
-          Error(g, $"Shared variable {g.Name} cannot be introduced at layer with IS");
+          Error(g, $"Global variable {g.Name} cannot be introduced at layer with IS");
         if (allInductiveSequentializationLayers.Contains(layerRange.upperLayerNum))
-          Error(g, $"Shared variable {g.Name} cannot be hidden at layer with IS");
+          Error(g, $"Global variable {g.Name} cannot be hidden at layer with IS");
       }
     }
 
@@ -1275,15 +1275,15 @@ namespace Microsoft.Boogie
       {
         if (node.Decl is GlobalVariable)
         {
-          var sharedVarLayerRange = civlTypeChecker.GlobalVariableLayerRange(node.Decl);
-          if (!action.layerRange.Subset(sharedVarLayerRange) ||
-              (sharedVarLayerRange.lowerLayerNum == action.layerRange.lowerLayerNum &&
+          var globalVarLayerRange = civlTypeChecker.GlobalVariableLayerRange(node.Decl);
+          if (!action.layerRange.Subset(globalVarLayerRange) ||
+              (globalVarLayerRange.lowerLayerNum == action.layerRange.lowerLayerNum &&
                action is AtomicAction))
-            // a shared variable introduced at layer n is visible to an atomic action only at layer n+1 or higher
-            // thus, a shared variable with layer range [n,n] is not accessible by an atomic action
-            // however, an introduction action may access the shared variable at layer n
+            // a global variable introduced at layer n is visible to an atomic action only at layer n+1 or higher
+            // thus, a global variable with layer range [n,n] is not accessible by an atomic action
+            // however, an introduction action may access the global variable at layer n
           {
-            civlTypeChecker.checkingContext.Error(node, "Shared variable {0} is not available in action specification",
+            civlTypeChecker.checkingContext.Error(node, "Global variable {0} is not available in action specification",
               node.Decl.Name);
           }
         }
@@ -1630,7 +1630,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            civlTypeChecker.Error(node, "Shared variables cannot be accessed in this context");
+            civlTypeChecker.Error(node, "Global variables cannot be accessed in this context");
           }
         }
         else if (node.Decl is Formal || node.Decl is LocalVariable)

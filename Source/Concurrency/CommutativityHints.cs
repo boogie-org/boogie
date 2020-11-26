@@ -168,7 +168,7 @@ namespace Microsoft.Boogie
             Variable witnessedVariable = civlTypeChecker.GlobalVariables.First(v => v.Name == witnessedVariableName);
             if (witnessedVariable == null)
             {
-              civlTypeChecker.Error(kv, $"Could not find shared variable {witnessedVariableName}");
+              civlTypeChecker.Error(kv, $"Could not find global variable {witnessedVariableName}");
             }
             else if (!function.OutParams[0].TypedIdent.Type.Equals(witnessedVariable.TypedIdent.Type))
             {
@@ -258,7 +258,7 @@ namespace Microsoft.Boogie
           return Expr.Ident(var);
       }
 
-      civlTypeChecker.Error(param, $"No shared variable {name}:{param.TypedIdent.Type}");
+      civlTypeChecker.Error(param, $"No global variable {name}:{param.TypedIdent.Type}");
       return null;
     }
 
