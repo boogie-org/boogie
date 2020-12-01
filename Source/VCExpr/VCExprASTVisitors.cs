@@ -1235,7 +1235,7 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       if (!changed)
-        return triggers;
+        return new List<VCTrigger>(triggers);
       return newTriggers;
     }
 
