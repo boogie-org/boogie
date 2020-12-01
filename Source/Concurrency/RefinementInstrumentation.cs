@@ -27,12 +27,7 @@ namespace Microsoft.Boogie
       return new List<Cmd>();
     }
 
-    public virtual List<Cmd> CreateUnchangedGlobalsAssertCmds()
-    {
-      return new List<Cmd>();
-    }
-
-    public virtual List<Cmd> CreateUnchangedOutputsAssertCmds()
+    public virtual List<Cmd> CreateUnchangedAssertCmds()
     {
       return new List<Cmd>();
     }
@@ -59,6 +54,7 @@ namespace Microsoft.Boogie
     private Expr gate;
     private Expr transitionRelation;
     private IToken tok;
+    private int layerNum;
 
     private Dictionary<AtomicAction, Expr> transitionRelationCache;
 
@@ -72,7 +68,7 @@ namespace Microsoft.Boogie
       this.tok = impl.tok;
       this.oldGlobalMap = new Dictionary<Variable, Variable>();
       ActionProc actionProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc;
-      int layerNum = actionProc.upperLayer;
+      this.layerNum = actionProc.upperLayer;
       foreach (Variable v in civlTypeChecker.GlobalVariables)
       {
         var layerRange = civlTypeChecker.GlobalVariableLayerRange(v);
@@ -173,14 +169,14 @@ namespace Microsoft.Boogie
       var skipOrTransitionRelationAssertCmd = CmdHelper.AssertCmd(
         tok,
         Expr.Or(Expr.Ident(pc), Expr.Or(OldEqualityExprForGlobals(), transitionRelation)),
-        "Transition invariant violated in initial state");
+        $"A yield-to-yield fragment modifies layer-{layerNum + 1} state in a way that does not match the refined atomic action");
       CivlUtil.ResolveAndTypecheck(skipOrTransitionRelationAssertCmd);
 
       // assert pc ==> g_old == g && o_old == o;
       AssertCmd skipAssertCmd = CmdHelper.AssertCmd(
         tok,
         Expr.Imp(Expr.Ident(pc), Expr.And(OldEqualityExprForGlobals(), OldEqualityExprForOutputs())),
-        "Transition invariant violated in final state");
+        $"A yield-to-yield fragment modifies layer-{layerNum + 1} state subsequent to a yield-to-yield fragment that already modified layer-{layerNum + 1} state");
       CivlUtil.ResolveAndTypecheck(skipAssertCmd);
       
       return new List<Cmd> {skipOrTransitionRelationAssertCmd, skipAssertCmd};
@@ -191,29 +187,26 @@ namespace Microsoft.Boogie
       AssertCmd assertCmd = CmdHelper.AssertCmd(
         tok,
         Expr.Ident(ok),
-        "Failed to execute atomic action before procedure return");
+        "On some path no yield-to-yield fragment matched the refined atomic action");
       return new List<Cmd> {assertCmd};
     }
 
-    public override List<Cmd> CreateUnchangedGlobalsAssertCmds()
+    public override List<Cmd> CreateUnchangedAssertCmds()
     {
-      AssertCmd skipAssertCmd = CmdHelper.AssertCmd(
+      AssertCmd globalsAssertCmd = CmdHelper.AssertCmd(
         tok,
         Expr.And(this.oldGlobalMap.Select(kvPair => Expr.Eq(Expr.Ident(kvPair.Key), Expr.Ident(kvPair.Value)))),
-        "Globals must not be modified");
-      CivlUtil.ResolveAndTypecheck(skipAssertCmd);
-      return new List<Cmd> {skipAssertCmd};
-    }
+        $"A yield-to-yield fragment illegally modifies layer-{layerNum + 1} globals");
+      CivlUtil.ResolveAndTypecheck(globalsAssertCmd);
 
-    public override List<Cmd> CreateUnchangedOutputsAssertCmds()
-    {
       // assert pc ==> o_old == o;
-      AssertCmd skipAssertCmd = CmdHelper.AssertCmd(
+      AssertCmd outputsAssertCmd = CmdHelper.AssertCmd(
         tok,
         Expr.Imp(Expr.Ident(pc), OldEqualityExprForOutputs()),
-        "Outputs must not be modified");
-      CivlUtil.ResolveAndTypecheck(skipAssertCmd);
-      return new List<Cmd> {skipAssertCmd};
+        $"A yield-to-yield fragment illegally modifies layer-{layerNum + 1} outputs");
+      CivlUtil.ResolveAndTypecheck(outputsAssertCmd);
+
+      return new List<Cmd> {globalsAssertCmd, outputsAssertCmd};
     }
 
     public override List<Cmd> CreateUpdatesToRefinementVars(bool isMarkedCall)
@@ -224,7 +217,7 @@ namespace Microsoft.Boogie
       {
         // assert !pc;
         // pc, ok := true, true;
-        cmds.Add(CmdHelper.AssertCmd(tok, Expr.Not(Expr.Ident(pc)), "Visible state changed before marked call"));
+        cmds.Add(CmdHelper.AssertCmd(tok, Expr.Not(Expr.Ident(pc)), $"Layer-{layerNum + 1} state modified before marked call"));
         var pcOkUpdateRHS = new List<Expr> {Expr.True, Expr.True};
         cmds.Add(CmdHelper.AssignCmd(pcOkUpdateLHS, pcOkUpdateRHS));
       }

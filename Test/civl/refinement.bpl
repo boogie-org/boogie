@@ -7,15 +7,14 @@ procedure {:yields}{:layer 1}{:refines "INCR"} p ()
 {
   call incr(); // Refined action INCR occurred
   yield;
-  call incr(); // State changed again
-               // Error: Transition invariant in final state violated
+  call incr(); // Error: State changed again
 }
 
 procedure {:yields}{:layer 1}{:refines "INCR"} q ()
 {
-  call decr(); // State changed, but not according to INCR
-  yield;       // Error: Transition invariant in initial state violated
-  call incr();
+  call decr(); // Error: State changed, but not according to INCR
+  yield;
+  call incr(); // Error: State changed again
 }
 
 procedure {:yields}{:layer 1}{:refines "INCR"} r ()
@@ -33,7 +32,18 @@ procedure {:yields}{:layer 1}{:refines "INCR"} r ()
 
 procedure {:yields}{:layer 1}{:refines "INCR"} s ()
 {
-  // Error: Failed to execute atomic action before procedure return
+  // Error: Refined action INCR never occurs
+}
+
+procedure {:yields}{:layer 1}{:refines "INCR"} t ()
+{
+  call incr();
+  yield;
+  while (*)
+  invariant {:layer 1}{:yields} true;
+  {
+    call incr(); // Error: State change inside yielding loop
+  }
 }
 
 procedure {:both} {:layer 1,2} INCR ()
