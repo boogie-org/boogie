@@ -1,4 +1,4 @@
-pending-async-1.bpl(48,49): Error BP5001: Failed to execute atomic action before procedure return
+pending-async-1.bpl(48,49): Error BP5001: On some path no yield-to-yield fragment matched the refined atomic action
 Execution trace:
     pending-async-1.bpl(50,3): anon0
     pending-async-1.bpl(16,7): inline$B$0$anon0

@@ -412,7 +412,7 @@ namespace Microsoft.Boogie
     {
       var noninterferenceCheckerBlock = CreateNoninterferenceCheckerBlock();
       var refinementCheckerBlock = CreateRefinementCheckerBlock();
-      var refinementCheckerForYieldingLoopsBlock = CreateRefinementCheckerBlockForYieldingLoops();
+      var unchangedCheckerBlock = CreateUnchangedCheckerBlock();
       var returnCheckerBlock = CreateReturnCheckerBlock();
       var returnBlock = BlockHelper.Block(civlTypeChecker.AddNamePrefix("UnifiedReturn"), new List<Cmd>());
       SplitBlocks(impl);
@@ -428,7 +428,7 @@ namespace Microsoft.Boogie
           AddEdge(gotoCmd, noninterferenceCheckerBlock);
           if (blocksInYieldingLoops.Contains(pred))
           {
-            AddEdge(gotoCmd, refinementCheckerForYieldingLoopsBlock);
+            AddEdge(gotoCmd, unchangedCheckerBlock);
           }
           else
           {
@@ -479,7 +479,7 @@ namespace Microsoft.Boogie
                     FixUpImplRefinementCheckingBlock(targetBlock,
                       IsCallMarked(callCmd)
                         ? returnCheckerBlock
-                        : refinementCheckerForYieldingLoopsBlock);
+                        : unchangedCheckerBlock);
                     targetBlocks.Add(targetBlock);
                     implRefinementCheckingBlocks.Add(targetBlock);
                   }
@@ -496,7 +496,7 @@ namespace Microsoft.Boogie
             AddEdge(gotoCmd, noninterferenceCheckerBlock);
             AddEdge(gotoCmd,
               blocksInYieldingLoops.Contains(b)
-                ? refinementCheckerForYieldingLoopsBlock
+                ? unchangedCheckerBlock
                 : refinementCheckerBlock);
           }
         }
@@ -526,7 +526,7 @@ namespace Microsoft.Boogie
 
       impl.Blocks.Add(noninterferenceCheckerBlock);
       impl.Blocks.Add(refinementCheckerBlock);
-      impl.Blocks.Add(refinementCheckerForYieldingLoopsBlock);
+      impl.Blocks.Add(unchangedCheckerBlock);
       impl.Blocks.Add(returnCheckerBlock);
       impl.Blocks.Add(returnBlock);
       impl.Blocks.AddRange(implRefinementCheckingBlocks);
@@ -614,13 +614,12 @@ namespace Microsoft.Boogie
       return BlockHelper.Block(civlTypeChecker.AddNamePrefix("RefinementChecker"), newCmds);
     }
 
-    private Block CreateRefinementCheckerBlockForYieldingLoops()
+    private Block CreateUnchangedCheckerBlock()
     {
       var newCmds = new List<Cmd>();
-      newCmds.AddRange(refinementInstrumentation.CreateUnchangedGlobalsAssertCmds());
-      newCmds.AddRange(refinementInstrumentation.CreateUnchangedOutputsAssertCmds());
+      newCmds.AddRange(refinementInstrumentation.CreateUnchangedAssertCmds());
       newCmds.Add(CmdHelper.AssumeCmd(Expr.False));
-      return BlockHelper.Block(civlTypeChecker.AddNamePrefix("RefinementCheckerForYieldingLoops"), newCmds);
+      return BlockHelper.Block(civlTypeChecker.AddNamePrefix("UnchangedChecker"), newCmds);
     }
 
     private Block CreateReturnCheckerBlock()
