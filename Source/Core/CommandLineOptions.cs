@@ -1935,7 +1935,7 @@ namespace Microsoft.Boogie
        Refined atomic action of a yielding procedure.
 
      {:cooperates}
-       Cooperating loop.
+       Cooperating loop or mover procedure.
 
      {:linear ""domain""}
        Permission type for domain.
