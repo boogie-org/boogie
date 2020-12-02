@@ -239,7 +239,7 @@ namespace Microsoft.Boogie
         foreach (Block header in implGraph.Headers)
         {
           if (civlTypeChecker.IsYieldingLoopHeader(header, currLayerNum) ||
-              civlTypeChecker.IsTerminatingLoopHeader(header, currLayerNum)) continue;
+              civlTypeChecker.IsCooperatingLoopHeader(header, currLayerNum)) continue;
           initialConstraints[header] = new HashSet<int> {RM};
         }
 
@@ -247,7 +247,7 @@ namespace Microsoft.Boogie
         {
           foreach (var call in impl.Blocks.SelectMany(b => b.cmds).OfType<CallCmd>())
           {
-            if (!IsTerminatingCall(call))
+            if (!IsCooperatingCall(call))
             {
               initialConstraints[call] = new HashSet<int> {RM};
             }
@@ -277,9 +277,9 @@ namespace Microsoft.Boogie
         get { return yieldingProc is MoverProc && yieldingProc.upperLayer == currLayerNum; }
       }
 
-      private bool IsTerminatingCall(CallCmd call)
+      private bool IsCooperatingCall(CallCmd call)
       {
-        return !IsRecursiveMoverProcedureCall(call) || civlTypeChecker.IsTerminatingProcedure(call.Proc);
+        return !IsRecursiveMoverProcedureCall(call) || civlTypeChecker.IsCooperatingProcedure(call.Proc);
       }
 
       private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)

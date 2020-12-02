@@ -58,7 +58,7 @@ namespace Microsoft.Boogie
       // Here we include IS abstractions
       foreach (var atomicAction in civlTypeChecker.AllAtomicActions.Where(a => a.IsLeftMover))
       {
-        moverChecking.CreateNonBlockingChecker(atomicAction);
+        moverChecking.CreateCooperationChecker(atomicAction);
       }
 
       // IS abstractions are marked left movers, so here we select regular atomic actions
@@ -66,12 +66,12 @@ namespace Microsoft.Boogie
       foreach (var atomicAction in civlTypeChecker.inductiveSequentializations.SelectMany(IS => IS.elim.Values)
         .Where(a => !a.IsLeftMover).Distinct())
       {
-        moverChecking.CreateNonBlockingChecker(atomicAction);
+        moverChecking.CreateCooperationChecker(atomicAction);
       }
 
       foreach (var introductionAction in civlTypeChecker.procToIntroductionAction.Values)
       {
-        moverChecking.CreateNonBlockingChecker(introductionAction);
+        moverChecking.CreateCooperationChecker(introductionAction);
       }
     }
 
@@ -269,11 +269,11 @@ namespace Microsoft.Boogie
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
 
-    private void CreateNonBlockingChecker(Action action)
+    private void CreateCooperationChecker(Action action)
     {
       if (!action.HasAssumeCmd) return;
 
-      string checkerName = $"NonBlockingChecker_{action.proc.Name}";
+      string checkerName = $"CooperationChecker_{action.proc.Name}";
 
       Implementation impl = action.impl;
       HashSet<Variable> frame = new HashSet<Variable>();
@@ -290,13 +290,13 @@ namespace Microsoft.Boogie
         requires.Add(new Requires(false, assertCmd.Expr));
       }
 
-      AssertCmd nonBlockingCheck = CmdHelper.AssertCmd(
+      AssertCmd cooperationCheck = CmdHelper.AssertCmd(
         action.proc.tok,
-        TransitionRelationComputation.Nonblocking(civlTypeChecker, action, frame),
-        $"Non-blocking check for {action.proc.Name} failed");
+        TransitionRelationComputation.Cooperation(civlTypeChecker, action, frame),
+        $"Cooperation check for {action.proc.Name} failed");
 
       AddChecker(checkerName, new List<Variable>(impl.InParams), new List<Variable>(),
-        new List<Variable>(), requires, new List<Cmd> { nonBlockingCheck });
+        new List<Variable>(), requires, new List<Cmd> { cooperationCheck });
     }
   }
 }

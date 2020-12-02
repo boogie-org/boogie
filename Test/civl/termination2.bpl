@@ -9,7 +9,7 @@ procedure {:yields} {:layer 0} Y();
 procedure {:yields} {:layer 1} main() {
   call X();
   while (*)
-  invariant {:terminates} {:layer 1} true;
+  invariant {:cooperates} {:layer 1} true;
   {
     call Y();
   }

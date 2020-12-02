@@ -344,7 +344,7 @@ requires {:layer 1} Init(pids, ReqCH, VoteCH, DecCH, decisions);
   async call coordinator1(pid);
   i := 1;
   while (i <= n)
-  invariant {:layer 1}{:terminates} true;
+  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} (forall ii:int :: pid(ii) && ii >= i ==> pids'[ii]);
   invariant {:layer 1} PAs == MapAddPA(SingletonPA(Coordinator1(0)), (lambda pa:PA :: if is#Participant1(pa) && pid(pid#Participant1(pa)) && pid#Participant1(pa) < i then 1 else 0));
@@ -392,7 +392,7 @@ requires {:layer 1} (forall vv:vote :: VoteCH[vv] >= 0);
   call old_ReqCH := Snapshot_ReqCH();
   i := 1;
   while (i <= n)
-  invariant {:layer 1}{:terminates} true;
+  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} ReqCH == (lambda ii:int :: if pid(ii) && ii < i then old_ReqCH[ii] + 1 else old_ReqCH[ii]);
   {
@@ -434,7 +434,7 @@ requires {:layer 1} (forall vv:vote :: VoteCH[vv] >= 0);
   call set_decision(pid, d);
   i := 1;
   while (i <= n)
-  invariant {:layer 1}{:terminates} true;
+  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} DecCH == (lambda ii:int :: (lambda dd:decision :: if pid(ii) && ii < i && dd == d then old_DecCH[ii][dd] + 1 else old_DecCH[ii][dd]));
   {

@@ -86,7 +86,7 @@ procedure {:yields}{:layer 1}{:refines "TEST5"} test5 ()
 
   i := 0;
   while (i < 10)
-  invariant {:layer 1}{:terminates} true;
+  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 0 <= i && i <= 10;
   invariant {:layer 1} PAs == NoPAs()[A_PA() := i];
   {

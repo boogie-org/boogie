@@ -45,7 +45,7 @@ requires {:layer 1} IsProcId(p) && IsProcId(c) && p == c;
   yield;
   assert {:layer 1} Invariant(i, p, c, x);
   while (i < N)
-  invariant {:terminates} {:layer 0,1,2} true;
+  invariant {:cooperates} {:layer 0,1,2} true;
   invariant {:layer 1} (IsProcId(i) || i == N) && IsProcId(p) && IsProcId(c) && (p == c || x[c] == 1);
   invariant {:layer 2} (IsProcId(i) || i == N) && IsProcId(c) && (i <= (c+1) mod N || y[(c+1) mod N] == 1);
   {

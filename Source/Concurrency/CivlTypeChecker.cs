@@ -18,8 +18,8 @@ namespace Microsoft.Boogie
     private string namePrefix;
 
     public Dictionary<Block, YieldingLoop> yieldingLoops;
-    public Dictionary<Block, HashSet<int>> terminatingLoopHeaders;
-    public HashSet<Procedure> terminatingProcedures;
+    public Dictionary<Block, HashSet<int>> cooperatingLoopHeaders;
+    public HashSet<Procedure> cooperatingProcedures;
 
     public Dictionary<Procedure, AtomicAction> procToAtomicAction;
     public Dictionary<Procedure, AtomicAction> procToIsInvariant;
@@ -56,8 +56,8 @@ namespace Microsoft.Boogie
       this.globalVarToLayerRange = new Dictionary<Variable, LayerRange>();
       this.localVarToLayerRange = new Dictionary<Variable, LayerRange>();
       this.yieldingLoops = new Dictionary<Block, YieldingLoop>();
-      this.terminatingLoopHeaders = new Dictionary<Block, HashSet<int>>();
-      this.terminatingProcedures = new HashSet<Procedure>();
+      this.cooperatingLoopHeaders = new Dictionary<Block, HashSet<int>>();
+      this.cooperatingProcedures = new HashSet<Procedure>();
       this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
       this.procToAtomicAction = new Dictionary<Procedure, AtomicAction>();
       this.procToIsInvariant = new Dictionary<Procedure, AtomicAction>();
@@ -627,9 +627,9 @@ namespace Microsoft.Boogie
 
         YieldingProcVisitor visitor = new YieldingProcVisitor(this, yieldRequires, yieldEnsures);
         visitor.VisitProcedure(proc);
-        if (proc.HasAttribute(CivlAttributes.TERMINATES))
+        if (proc.HasAttribute(CivlAttributes.COOPERATES))
         {
-          terminatingProcedures.Add(proc);
+          cooperatingProcedures.Add(proc);
         }
       }
 
@@ -664,7 +664,7 @@ namespace Microsoft.Boogie
         foreach (var header in graph.Headers)
         {
           var yieldingLayers = new HashSet<int>();
-          var terminatingLayers = new HashSet<int>();
+          var cooperatingLayers = new HashSet<int>();
           foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
           {
             if (predCmd.HasAttribute(CivlAttributes.YIELDS))
@@ -672,15 +672,15 @@ namespace Microsoft.Boogie
               yieldingLayers.UnionWith(absyToLayerNums[predCmd]);
             }
 
-            if (predCmd.HasAttribute(CivlAttributes.TERMINATES))
+            if (predCmd.HasAttribute(CivlAttributes.COOPERATES))
             {
-              terminatingLayers.UnionWith(absyToLayerNums[predCmd]);
+              cooperatingLayers.UnionWith(absyToLayerNums[predCmd]);
             }
           }
 
-          if (yieldingLayers.Intersect(terminatingLayers).Count() != 0)
+          if (yieldingLayers.Intersect(cooperatingLayers).Count() != 0)
           {
-            Error(header, "Loop cannot be both yielding and terminating on the same layer.");
+            Error(header, "Loop cannot be both yielding and cooperating on the same layer.");
             continue;
           }
 
@@ -704,7 +704,7 @@ namespace Microsoft.Boogie
           }
 
           yieldingLoops[header] = new YieldingLoop(yieldingLayers, yieldInvariants);
-          terminatingLoopHeaders[header] = terminatingLayers;
+          cooperatingLoopHeaders[header] = cooperatingLayers;
         }
       }
     }
@@ -1168,19 +1168,19 @@ namespace Microsoft.Boogie
       return yieldingLoops[block].layers.Contains(layerNum);
     }
 
-    public bool IsTerminatingLoopHeader(Block block, int layerNum)
+    public bool IsCooperatingLoopHeader(Block block, int layerNum)
     {
-      if (!terminatingLoopHeaders.ContainsKey(block))
+      if (!cooperatingLoopHeaders.ContainsKey(block))
       {
         return false;
       }
 
-      return terminatingLoopHeaders[block].Contains(layerNum);
+      return cooperatingLoopHeaders[block].Contains(layerNum);
     }
 
-    public bool IsTerminatingProcedure(Procedure proc)
+    public bool IsCooperatingProcedure(Procedure proc)
     {
-      return terminatingProcedures.Contains(proc);
+      return cooperatingProcedures.Contains(proc);
     }
 
     public LayerRange GlobalVariableLayerRange(Variable g)
