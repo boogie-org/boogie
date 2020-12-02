@@ -25,7 +25,7 @@ ensures {:layer 1} x == old(x) + N;
 
   i := 0;
   while (i != N)
-  invariant {:layer 1} {:terminates} true;
+  invariant {:layer 1} {:cooperates} true;
   invariant {:layer 1} x == old(x) + i;
   {
     i := i + 1;
@@ -42,7 +42,7 @@ ensures {:layer 1} x == old(x) - N;
 
   i := 0;
   while (i != N)
-  invariant {:layer 1} {:terminates} true;
+  invariant {:layer 1} {:cooperates} true;
   invariant {:layer 1} x == old(x) - i;
   {
     i := i + 1;

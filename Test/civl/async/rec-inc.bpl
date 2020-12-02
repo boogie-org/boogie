@@ -13,7 +13,7 @@ requires {:layer 1} n >= 0;
   call inc(n);
 }
 
-procedure {:yields} {:left} {:layer 1} {:terminates}  inc (i : int)
+procedure {:yields} {:left} {:layer 1} {:cooperates}  inc (i : int)
 modifies x;
 requires {:layer 1} i >= 0;
 ensures {:layer 1} x == old(x) + i;

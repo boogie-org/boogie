@@ -264,7 +264,7 @@ requires {:layer 1} Init(pids, channel, terminated, id, leader);
   pids' := pids;
   i := 1;
   while (i <= n)
-  invariant {:layer 1}{:terminates} true;
+  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} (forall ii:int :: pid(ii) && ii >= i ==> pids'[ii]);
   invariant {:layer 1} PAs == (lambda pa:PA :: if is#PInit_PA(pa) && pid(pid#PInit_PA(pa)) && pid#PInit_PA(pa) < i then 1 else 0);

@@ -22,7 +22,7 @@ procedure {:yields} {:layer 1} {:refines "skip"} Main ()
   i := 0;
   call old_x := snapshot_x();
   while (i != N)
-  invariant {:layer 1} {:terminates} true;
+  invariant {:layer 1} {:cooperates} true;
   invariant {:layer 1} x == old_x;
   {
     async call {:sync} inc();

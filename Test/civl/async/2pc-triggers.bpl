@@ -242,7 +242,7 @@ Coordinator_TransactionReq () returns (xid: Xid)
   call snapshot := GhostRead_10();
   i := 1;
   while (i <= numParticipants)
-  invariant {:terminates} {:layer 8,9,10} true;
+  invariant {:cooperates} {:layer 8,9,10} true;
   invariant {:layer 8} Inv_8(state, B, votes);
   invariant {:layer 8,10} pairs == (lambda p: Pair :: pair(xid, mid#Pair(p), p) && i <= mid#Pair(p));
   invariant {:layer 8} votes[xid] == -1 || (forall p: Pair :: pairs[p] ==> UndecidedOrCommitted(state[xid][mid#Pair(p)]));
@@ -326,7 +326,7 @@ Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
     assert {:layer 8} xUndecidedOrCommitted(state[xid]);
     i := 1;
     while (i <= numParticipants)
-    invariant {:layer 8} {:terminates} true;
+    invariant {:layer 8} {:cooperates} true;
     invariant {:layer 8} 1 <= i && i <= numParticipants + 1;
     invariant {:layer 8} Inv_8(state, B, votes);
     invariant {:layer 8} ExistsMonotoneExtension(snapshot, state, xid);
@@ -370,7 +370,7 @@ Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
   {
     i := 1;
     while (i <= numParticipants)
-    invariant {:layer 8} {:terminates} true;
+    invariant {:layer 8} {:cooperates} true;
     invariant {:layer 8} 1 <= i && i <= numParticipants + 1;
     invariant {:layer 8} Aborted(state[xid][CoordinatorMid]);
     invariant {:layer 8} xUndecidedOrAborted(state[xid]);

@@ -5,7 +5,7 @@ var {:layer 0,2} b: int;
 procedure {:yields} {:layer 2} main()
 {
     while (*)
-    invariant {:terminates} {:layer 1,2} true;
+    invariant {:cooperates} {:layer 1,2} true;
     {
         async call Customer();
     }

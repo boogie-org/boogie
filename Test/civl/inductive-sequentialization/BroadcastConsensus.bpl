@@ -228,7 +228,7 @@ requires {:layer 1} CH == MultisetEmpty;
   rr := pidsCollect;
   i := 1;
   while (i <= n)
-  invariant {:layer 1}{:terminates} true;
+  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n + 1;
   invariant {:layer 1} ss == (lambda ii:pid :: pid(ii) && ii >= i) && ss == rr;
   invariant {:layer 1} PAs == InitialPAs(i);
@@ -252,7 +252,7 @@ requires {:layer 1} pid(i);
   call v := get_value(i);
   j := 1;
   while (j <= n)
-  invariant {:layer 1}{:terminates} true;
+  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= j && j <= n+1;
   invariant {:layer 1} CH_low == (lambda jj: pid :: (if pid(jj) && jj < j then MultisetPlus(old_CH_low[jj], MultisetSingleton(value[i])) else old_CH_low[jj]));
   {

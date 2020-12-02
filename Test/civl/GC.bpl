@@ -473,7 +473,7 @@ requires {:layer 98,99,100} tid == GcTid;
     call snapColor := GhostReadColor100();
     while (localSweepPtr < memHi)
     invariant {:layer 95,96}{:yields} true;
-    invariant {:terminates} {:layer 97,98,99,100} true;
+    invariant {:cooperates} {:layer 97,98,99,100} true;
     invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
     invariant {:layer 100} Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
     invariant {:layer 100} SweepPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
@@ -585,7 +585,7 @@ requires {:layer 99} tid == GcTid;
     {:yield_loop "Yield_MsWellFormed", tid, 0}
     {:yield_loop "Yield_CollectorPhase_98", tid, old(collectorPhase)}
     true;
-    invariant {:terminates}{:layer 99} true;
+    invariant {:cooperates}{:layer 99} true;
     invariant {:layer 99} Mutators == mutatorsInRootScanBarrier && rootScanOn;
     invariant {:layer 99} 0 <= i && i <= numRoots;
     invariant {:layer 99} Color == (lambda u: int :: if memAddr(u) && White(snapColor[u]) && (exists k: int :: 0 <= k && k < i && root[k] == u) then GRAY() else snapColor[u]);

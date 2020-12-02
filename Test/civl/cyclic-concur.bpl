@@ -15,7 +15,7 @@ procedure {:yields} {:layer 1} {:refines "MAIN"} main ()
   async call {:sync} a();
 }
 
-procedure {:yields} {:layer 1} {:left} {:terminates} a ()
+procedure {:yields} {:layer 1} {:left} {:cooperates} a ()
 modifies x;
 ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 0;
 {
@@ -23,7 +23,7 @@ ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 0;
   async call {:sync} b();
 }
 
-procedure {:yields} {:layer 1} {:left} {:terminates} b ()
+procedure {:yields} {:layer 1} {:left} {:cooperates} b ()
 modifies x;
 ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 5;
 {
@@ -31,7 +31,7 @@ ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 5;
   async call {:sync} c();
 }
 
-procedure {:yields} {:layer 1} {:left} {:terminates} c ()
+procedure {:yields} {:layer 1} {:left} {:cooperates} c ()
 modifies x;
 ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 3;
 {

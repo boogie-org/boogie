@@ -64,7 +64,7 @@ procedure {:yields} {:layer 1} {:refines "AtomicMain"} Main({:linear_in "tid"} t
     tids' := tids;
     call snapshot := StatusSnapshot();
     while (i < n)
-    invariant {:terminates} {:layer 1} true;
+    invariant {:cooperates} {:layer 1} true;
     invariant {:layer 1} 0 <= i && i <= n;
     invariant {:layer 1} (forall j: int :: i <= j && j < n <==> tids'[j]);
     invariant {:layer 1} status == (lambda j: int :: if (0 <= j && j < i) then FINISHED else snapshot[j]);
