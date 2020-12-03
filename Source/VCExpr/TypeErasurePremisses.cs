@@ -1340,7 +1340,7 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Assert(cce.NonNullElements(furtherTriggers));
       Contract.Assert(typePremisses != null);
       List<VCTrigger /*!*/> /*!*/
-        newTriggers = MutateTriggers(node.Triggers, bindings);
+        newTriggers = new List<VCTrigger>(MutateTriggers(node.Triggers, bindings));
       Contract.Assert(cce.NonNullElements(newTriggers));
       newTriggers.AddRange(furtherTriggers);
       newTriggers = AddLets2Triggers(newTriggers, typeVarBindings);
