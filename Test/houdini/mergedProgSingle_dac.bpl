@@ -1,4 +1,4 @@
-// RUN: %boogie /nologo /contractInfer /inlineDepth:1 /printAssignment "%s" > "%t"
+// RUN: %boogie /contractInfer /inlineDepth:1 /printAssignment "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function _v2.ite(b: bool, x: int, y: int) : int;

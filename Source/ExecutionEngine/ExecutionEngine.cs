@@ -440,7 +440,7 @@ namespace Microsoft.Boogie
 
     static TextWriter ModelWriter = null;
 
-    public static void ProcessFiles(List<string> fileNames, bool lookForSnapshots = true, string programId = null)
+    public static void ProcessFiles(IList<string> fileNames, bool lookForSnapshots = true, string programId = null)
     {
       Contract.Requires(cce.NonNullElements(fileNames));
 
@@ -619,7 +619,7 @@ namespace Microsoft.Boogie
     /// Parse the given files into one Boogie program.  If an I/O or parse error occurs, an error will be printed
     /// and null will be returned.  On success, a non-null program is returned.
     /// </summary>
-    public static Program ParseBoogieProgram(List<string> fileNames, bool suppressTraceOutput)
+    public static Program ParseBoogieProgram(IList<string> fileNames, bool suppressTraceOutput)
     {
       Contract.Requires(cce.NonNullElements(fileNames));
 

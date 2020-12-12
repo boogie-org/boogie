@@ -53,8 +53,9 @@ namespace Microsoft.Boogie
       }
     }
 
+    public bool VersionRequested = false;
     public bool HelpRequested = false;
-    public bool AttrHelpRequested = false;
+    public bool AttributeHelpRequested = false;
 
     public CommandLineOptionEngine(string toolName, string descriptiveName)
     {
@@ -130,25 +131,12 @@ namespace Microsoft.Boogie
       Contract.Requires(name != null);
       Contract.Requires(ps != null);
 
-      switch (name)
+      if (ps.CheckBooleanFlag("version", ref VersionRequested) ||
+          ps.CheckBooleanFlag("help", ref HelpRequested) ||
+          ps.CheckBooleanFlag("?", ref HelpRequested) ||
+          ps.CheckBooleanFlag("attrHelp", ref AttributeHelpRequested))
       {
-        case "help":
-        case "?":
-          if (ps.ConfirmArgumentCount(0))
-          {
-            HelpRequested = true;
-          }
-
-          return true;
-        case "attrHelp":
-          if (ps.ConfirmArgumentCount(0))
-          {
-            AttrHelpRequested = true;
-          }
-
-          return true;
-        default:
-          break;
+        return true;
       }
 
       return false; // unrecognized option
@@ -360,27 +348,43 @@ namespace Microsoft.Boogie
       }
     }
 
-    public virtual void Usage()
-    {
-      Console.WriteLine("{0}: usage:  {0} [ option ... ] [ filename ... ]", ToolName);
-      Console.WriteLine(@"  where <option> is one of
+    public virtual string Help =>
+      $"Usage: {ToolName} [ option ... ] [ filename ... ]" + @"
 
   ---- General options -------------------------------------------------------
 
-  /help         this message
-  /attrHelp     print a message about declaration attributes supported by
-                this implementation");
-    }
+  /version      print the " + ToolName + @" version number
+  /help         print this message
+  /attrHelp     print a message about supported declaration attributes";
 
-    public virtual void AttributeUsage()
-    {
-    }
+    public virtual string AttributeHelp => "";
 
     /// <summary>
     /// This method is called after all parsing is done, if no parse errors were encountered.
     /// </summary>
     public virtual void ApplyDefaultOptions()
     {
+    }
+
+    public virtual bool ProcessInfoFlags()
+    {
+      if (VersionRequested)
+      {
+        Console.WriteLine(Version);
+        return true;
+      }
+      if (HelpRequested)
+      {
+        Console.WriteLine(Help);
+        return true;
+      }
+      if (AttributeHelpRequested)
+      {
+        Console.WriteLine(AttributeHelp);
+        return true;
+      }
+      
+      return false;
     }
 
     /// <summary>
@@ -438,21 +442,9 @@ namespace Microsoft.Boogie
         ps.i = ps.nextIndex;
       }
 
-      if (HelpRequested)
-      {
-        Usage();
-      }
-      else if (AttrHelpRequested)
-      {
-        AttributeUsage();
-      }
-      else if (ps.EncounteredErrors)
-      {
-        Console.WriteLine("Use /help for available options");
-      }
-
       if (ps.EncounteredErrors)
       {
+        Console.Error.WriteLine("Use /help for available options");
         return false;
       }
       else
@@ -465,7 +457,7 @@ namespace Microsoft.Boogie
 
   /// <summary>
   /// Boogie command-line options (other tools can subclass this class in order to support a
-  /// superset of Boogie's options.
+  /// superset of Boogie's options).
   /// </summary>
   public class CommandLineOptions : CommandLineOptionEngine
   {
@@ -638,7 +630,6 @@ namespace Microsoft.Boogie
     }
 
     public ShowEnvironment ShowEnv = ShowEnvironment.DuringPrint;
-    public bool DontShowLogo = false;
     public bool ShowVerifiedProcedureCount = true;
 
     [ContractInvariantMethod]
@@ -648,7 +639,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2);
       Contract.Invariant(0 <= Ai.StepsBeforeWidening && Ai.StepsBeforeWidening <= 9);
       Contract.Invariant(-1 <= this.bracketIdsInVC && this.bracketIdsInVC <= 1);
-      Contract.Invariant(cce.NonNullElements(this.proverOptions));
+      Contract.Invariant(cce.NonNullElements(this.ProverOptions));
     }
 
     public int LoopUnrollCount = -1; // -1 means don't unroll loops
@@ -684,24 +675,7 @@ namespace Microsoft.Boogie
     [Rep] public ProverFactory TheProverFactory;
     public string ProverDllName;
     public bool ProverHelpRequested = false;
-    [Peer] private List<string> proverOptions = new List<string>();
-
-    public IEnumerable<string> ProverOptions
-    {
-      set
-      {
-        Contract.Requires(cce.NonNullElements(value));
-
-        this.proverOptions = new List<string>(value);
-      }
-      get
-      {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<string>>()));
-
-        foreach (string s in this.proverOptions)
-          yield return s;
-      }
-    }
+    public List<string> ProverOptions = new List<string>();
 
     private int bracketIdsInVC = -1; // -1 - not specified, 0 - no, 1 - yes
 
@@ -1274,15 +1248,7 @@ namespace Microsoft.Boogie
         case "proverOpt":
           if (ps.ConfirmArgumentCount(1))
           {
-            ProverOptions = ProverOptions.Concat1(cce.NonNull(args[ps.i]));
-          }
-
-          return true;
-
-        case "proverHelp":
-          if (ps.ConfirmArgumentCount(0))
-          {
-            ProverHelpRequested = true;
+            ProverOptions.Add(cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -1620,7 +1586,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("noVerify", ref Verify, false) ||
               ps.CheckBooleanFlag("traceverify", ref TraceVerify) ||
               ps.CheckBooleanFlag("alwaysAssumeFreeLoopInvariants", ref AlwaysAssumeFreeLoopInvariants, true) ||
-              ps.CheckBooleanFlag("nologo", ref DontShowLogo) ||
+              ps.CheckBooleanFlag("proverHelp", ref ProverHelpRequested) ||
               ps.CheckBooleanFlag("proverLogAppend", ref ProverLogFileAppend) ||
               ps.CheckBooleanFlag("soundLoopUnrolling", ref SoundLoopUnrolling) ||
               ps.CheckBooleanFlag("checkInfer", ref InstrumentWithAsserts) ||
@@ -1687,11 +1653,6 @@ namespace Microsoft.Boogie
         TheProverFactory = ProverFactory.Load(ProverDllName);
       }
 
-      if (ProverHelpRequested)
-      {
-        Console.WriteLine(TheProverFactory.BlankProverOptions().Help);
-      }
-
       if (inferLeastForUnsat != null)
       {
         StratifiedInlining = 1;
@@ -1717,6 +1678,21 @@ namespace Microsoft.Boogie
       }
     }
 
+    public override bool ProcessInfoFlags()
+    {
+      if (base.ProcessInfoFlags())
+      {
+        return true;
+      }
+
+      if (ProverHelpRequested)
+      {
+        Console.WriteLine(ProverHelp);
+        return true;
+      }
+
+      return false;
+    }
 
     public bool UserWantsToCheckRoutine(string methodFullname)
     {
@@ -1724,6 +1700,9 @@ namespace Microsoft.Boogie
       Func<string, bool> match = s => Regex.IsMatch(methodFullname, "^" + Regex.Escape(s).Replace(@"\*", ".*") + "$");
       return (procsToCheck.Count == 0 || procsToCheck.Any(match)) && !procsToIgnore.Any(match);
     }
+
+    // Used by Dafny to decide if it should perform compilation
+    public bool UserConstrainedProcsToCheck => procsToCheck.Count > 0 || procsToIgnore.Count > 0;
 
     public virtual StringCollection ParseNamedArgumentList(string argList)
     {
@@ -1765,10 +1744,10 @@ namespace Microsoft.Boogie
       return semicolonIndex;
     }
 
-    public override void AttributeUsage()
-    {
-      Console.WriteLine(
-        @"Boogie: The following attributes are supported by this implementation.
+    public string ProverHelp => TheProverFactory.BlankProverOptions().Help;
+
+    public override string AttributeHelp =>
+@"Boogie: The following attributes are supported by this version.
 
   ---- On top-level declarations ---------------------------------------------
 
@@ -1980,16 +1959,10 @@ namespace Microsoft.Boogie
        actions for commutativity checking.
 
      {:backward}
-       Backward assignment in atomic action.
+       Backward assignment in atomic action.";
 
-  ---- The end ---------------------------------------------------------------
-");
-    }
-
-    public override void Usage()
-    {
-      Console.WriteLine(@"
-  /nologo       suppress printing of version number, copyright message
+    public override string Help =>
+      base.Help + @"
   /env:<n>      print command line arguments
                   0 - never, 1 (default) - during BPL print and prover log,
                   2 - like 1 and also to standard output
@@ -2287,8 +2260,6 @@ namespace Microsoft.Boogie
                 0 (default) - don't print, 1 - print to stdout,
                 2 - print to stderr
   /restartProver
-                Restart the prover after each query
-");
-    }
+                Restart the prover after each query";
   }
 }
