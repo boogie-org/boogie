@@ -1,4 +1,4 @@
-// RUN: %boogie /nologo /contractInfer /inlineDepth:1 /printAssignment "%s" > "%t"
+// RUN: %boogie /contractInfer /inlineDepth:1 /printAssignment "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 var _v2.control_flag: int;

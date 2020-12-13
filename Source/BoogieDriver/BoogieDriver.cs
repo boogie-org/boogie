@@ -14,17 +14,28 @@ namespace Microsoft.Boogie
       ExecutionEngine.printer = new ConsolePrinter();
 
       CommandLineOptions.Install(new CommandLineOptions());
-
       CommandLineOptions.Clo.RunningBoogieFromCommandLine = true;
+
       if (!CommandLineOptions.Clo.Parse(args))
       {
-        goto END;
+        return 1;
+      }
+      
+      if (CommandLineOptions.Clo.ProcessInfoFlags())
+      {
+        return 0;
       }
 
       if (CommandLineOptions.Clo.Files.Count == 0)
       {
         ExecutionEngine.printer.ErrorWriteLine(Console.Out, "*** Error: No input files were specified.");
-        goto END;
+        return 1;
+      }
+
+      List<string> fileList = GetFileList();
+      if (fileList == null)
+      {
+        return 1;
       }
 
       if (CommandLineOptions.Clo.XmlSink != null)
@@ -33,13 +44,8 @@ namespace Microsoft.Boogie
         if (errMsg != null)
         {
           ExecutionEngine.printer.ErrorWriteLine(Console.Out, "*** Error: " + errMsg);
-          goto END;
+          return 1;
         }
-      }
-
-      if (!CommandLineOptions.Clo.DontShowLogo)
-      {
-        Console.WriteLine(CommandLineOptions.Clo.Version);
       }
 
       if (CommandLineOptions.Clo.ShowEnv == CommandLineOptions.ShowEnvironment.Always)
@@ -56,6 +62,24 @@ namespace Microsoft.Boogie
 
       Helpers.ExtraTraceInformation("Becoming sentient");
 
+      ExecutionEngine.ProcessFiles(fileList);
+
+      if (CommandLineOptions.Clo.XmlSink != null)
+      {
+        CommandLineOptions.Clo.XmlSink.Close();
+      }
+
+      if (CommandLineOptions.Clo.Wait)
+      {
+        Console.WriteLine("Press Enter to exit.");
+        Console.ReadLine();
+      }
+
+      return 0;
+    }
+
+    private static List<string> GetFileList()
+    {
       List<string> fileList = new List<string>();
       foreach (string file in CommandLineOptions.Clo.Files)
       {
@@ -93,26 +117,11 @@ namespace Microsoft.Boogie
             "*** Error: '{0}': Filename extension '{1}' is not supported. Input files must be BoogiePL programs (.bpl).",
             file,
             extension == null ? string.Empty : extension);
-          goto END;
+          return null;
         }
       }
 
-      ExecutionEngine.ProcessFiles(fileList);
-      return 0;
-
-      END:
-      if (CommandLineOptions.Clo.XmlSink != null)
-      {
-        CommandLineOptions.Clo.XmlSink.Close();
-      }
-
-      if (CommandLineOptions.Clo.Wait)
-      {
-        Console.WriteLine("Press Enter to exit.");
-        Console.ReadLine();
-      }
-
-      return 1;
+      return fileList;
     }
   }
 }
