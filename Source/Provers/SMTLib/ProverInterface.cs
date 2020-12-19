@@ -2354,6 +2354,7 @@ namespace Microsoft.Boogie.SMTLib
           {
             switch (resp[0].Name)
             {
+              case "incomplete":
               case "(incomplete quantifiers)":
                 break;
               case "memout":
