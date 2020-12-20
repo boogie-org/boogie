@@ -59,9 +59,7 @@ $ dotnet build Source/Boogie.sln
 ```
 
 The compiled Boogie binary is
-`Source/BoogieDriver/bin/${CONFIGURATION}/${FRAMEWORK}/BoogieDriver`. Also, a
-NuGet package is placed in `Source/BoogieDriver/bin/Debug/` which can be used
-for a local installation.
+`Source/BoogieDriver/bin/${CONFIGURATION}/${FRAMEWORK}/BoogieDriver`.
 
 ## Backend SMT Solver
 
