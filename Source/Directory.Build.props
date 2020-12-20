@@ -16,7 +16,7 @@
 
   <!-- Configure GitVersionTask -->
   <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)\..\.git') AND $(BOOGIE_NO_GITVERSION) != 1">
-    <PackageReference Include="GitVersionTask" Version="5.1.2">
+    <PackageReference Include="GitVersionTask" Version="5.5.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
