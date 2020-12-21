@@ -3,7 +3,7 @@
   <!-- Target framework and package configuration -->
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Authors>Boogie</Authors>
     <RepositoryUrl>https://github.com/boogie-org/boogie</RepositoryUrl>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
@@ -15,8 +15,8 @@
   </ItemGroup>
 
   <!-- Configure GitVersionTask -->
-  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)\..\.git') AND $(BOOGIE_NO_GITVERSION) != 1">
-    <PackageReference Include="GitVersionTask" Version="5.1.2">
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)\..\.git') AND $(BOOGIE_GITVERSION) == 1">
+    <PackageReference Include="GitVersionTask" Version="5.5.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>

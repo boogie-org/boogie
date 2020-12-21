@@ -58,14 +58,8 @@ To build Boogie run:
 $ dotnet build Source/Boogie.sln
 ```
 
-> :warning: There is currently a know build problem with .NET Core and
-> GitVersionTask (see #213). The workaround is to set the environment variable
-> `MSBUILDSINGLELOADCONTEXT=1` and run `dotnet build-server shutdown`.
-
 The compiled Boogie binary is
-`Source/BoogieDriver/bin/${CONFIGURATION}/${FRAMEWORK}/BoogieDriver`. Also, a
-NuGet package is placed in `Source/BoogieDriver/bin/Debug/` which can be used
-for a local installation.
+`Source/BoogieDriver/bin/${CONFIGURATION}/${FRAMEWORK}/BoogieDriver`.
 
 ## Backend SMT Solver
 
