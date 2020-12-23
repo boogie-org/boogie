@@ -3866,6 +3866,7 @@ namespace VC
     }
 
     /*
+     * 
      * Encoding control flow in VC generation:
      *
      * A function ControlFlow is declared globally and used in each verification condition.
@@ -3883,6 +3884,7 @@ namespace VC
      * (1) While translating block A, we have wlp(assert E, Phi) = (f(A) == Id(assert E) ==> E) && Phi
      *
      * In the description above, I am only explaining one of the options for translating assert statements.
+     * 
      */
     
     static VCExpr LetVC(List<Block> blocks,
