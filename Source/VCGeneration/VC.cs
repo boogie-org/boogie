@@ -3865,6 +3865,28 @@ namespace VC
       return cc;
     }
 
+    /*
+     * 
+     * Encoding control flow in VC generation:
+     *
+     * A function ControlFlow is declared globally and used in each verification condition.
+     * The function ControlFlow has two arguments:
+     * (0) The first argument is a placeholder that is fixed to the constant 0 in all applications
+     * of VC generation except in stratified inlining which uses different numbers to distinguish
+     * different copies of the VC for different inlining contexts.
+     * (1) The second argument is a unique identifier for any Absy; the VC generation only uses identifiers
+     * corresponding to blocks and assert commands.
+     *
+     * Passification is done normally.
+     *
+     * While generating the equations for a block, ControlFlow pops up in two places:
+     * (0) For each block A, we generate Correct_A = wlp(A, /\_{B in succ(A)} ControlFlow(0, Id(A)) == Id(B) ==> Correct_B)
+     * (1) While translating block A, we have wlp(assert E, Phi) = (f(A) == Id(assert E) ==> E) && Phi
+     *
+     * In the description above, I am only explaining one of the options for translating assert statements.
+     * 
+     */
+    
     static VCExpr LetVC(List<Block> blocks,
       VCExpr controlFlowVariableExpr,
       Dictionary<int, Absy> label2absy,
