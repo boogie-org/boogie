@@ -1027,16 +1027,14 @@ namespace Microsoft.Boogie
       {
         ae.Handle(e =>
         {
-          var pe = e as ProverException;
-          if (pe != null)
+          if (e is ProverException)
           {
-            printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e);
+            printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e.Message);
             outcome = PipelineOutcome.FatalError;
             return true;
           }
 
-          var oce = e as OperationCanceledException;
-          if (oce != null)
+          if (e is OperationCanceledException)
           {
             return true;
           }

@@ -181,7 +181,7 @@ The generic options may or may not be used by the prover plugin.
     protected void ReportError(string msg)
     {
       Contract.Requires(msg != null);
-      throw new ProverOptionException(msg + "\n\n" + Help);
+      throw new ProverOptionException(msg);
     }
 
     protected virtual bool ParseString(string opt, string name, ref string field)
@@ -341,7 +341,7 @@ The generic options may or may not be used by the prover plugin.
     }
   }
 
-  public class ProverOptionException : Exception
+  public class ProverOptionException : ProverException
   {
     public ProverOptionException(string msg)
       : base(msg)

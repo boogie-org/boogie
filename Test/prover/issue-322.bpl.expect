@@ -1,0 +1,2 @@
+Fatal Error: ProverException: Cannot find specified prover: bogus-path
+Fatal Error: ProverException: Unrecognised prover option: bogus-option
