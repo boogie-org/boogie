@@ -1,0 +1,23 @@
+IncompleteArithmetic-RealTypes.bpl(3130,9): Error BP5001: This assertion might not hold.
+Execution trace:
+    IncompleteArithmetic-RealTypes.bpl(3104,13): anon0
+    IncompleteArithmetic-RealTypes.bpl(3126,9): anon6_Then
+IncompleteArithmetic-RealTypes.bpl(3139,9): Error BP5001: This assertion might not hold.
+Execution trace:
+    IncompleteArithmetic-RealTypes.bpl(3104,13): anon0
+    IncompleteArithmetic-RealTypes.bpl(3136,9): anon7_Then
+IncompleteArithmetic-RealTypes.bpl(3200,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    IncompleteArithmetic-RealTypes.bpl(3187,13): anon0
+    IncompleteArithmetic-RealTypes.bpl(3192,5): anon3_Else
+    IncompleteArithmetic-RealTypes.bpl(3197,5): anon2
+IncompleteArithmetic-RealTypes.bpl(3202,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    IncompleteArithmetic-RealTypes.bpl(3187,13): anon0
+    IncompleteArithmetic-RealTypes.bpl(3192,5): anon3_Else
+    IncompleteArithmetic-RealTypes.bpl(3197,5): anon2
+IncompleteArithmetic-RealTypes.bpl(3257,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    IncompleteArithmetic-RealTypes.bpl(3243,13): anon0
+
+Boogie program verifier finished with 2 verified, 5 errors

@@ -2356,6 +2356,8 @@ namespace Microsoft.Boogie.SMTLib
             {
               case "incomplete":
               case "(incomplete quantifiers)":
+              case "(incomplete (theory arithmetic))":
+              case "smt tactic failed to show goal to be sat/unsat (incomplete (theory arithmetic))":
                 break;
               case "memout":
                 currentErrorHandler.OnResourceExceeded("memory");
