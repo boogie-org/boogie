@@ -4,6 +4,6 @@ Processing command (at Snapshots29.v0.bpl(14,5)) assert i == 0;
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots29.v1.bpl(14,5)) assert i == 0;
   >>> DoNothingToAssert
-Snapshots29.v1.bpl(14,5): Error BP5001: This assertion might not hold.
+Snapshots29.v1.bpl(14,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error

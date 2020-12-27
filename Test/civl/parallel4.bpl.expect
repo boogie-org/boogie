@@ -1,4 +1,4 @@
-parallel4.bpl(26,3): Error BP5001: This assertion might not hold.
+parallel4.bpl(26,3): Error: This assertion might not hold.
 Execution trace:
     parallel4.bpl(24,5): anon0
     parallel4.bpl(24,5): anon0_0

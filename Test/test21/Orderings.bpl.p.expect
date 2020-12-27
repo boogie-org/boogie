@@ -1,4 +1,4 @@
-Orderings.bpl(18,3): Error BP5001: This assertion might not hold.
+Orderings.bpl(18,3): Error: This assertion might not hold.
 Execution trace:
     Orderings.bpl(13,3): anon0
 

@@ -1,10 +1,10 @@
-Maps0.bpl(27,3): Error BP5001: This assertion might not hold.
+Maps0.bpl(27,3): Error: This assertion might not hold.
 Execution trace:
     Maps0.bpl(18,3): anon0
-Maps0.bpl(36,3): Error BP5001: This assertion might not hold.
+Maps0.bpl(36,3): Error: This assertion might not hold.
 Execution trace:
     Maps0.bpl(36,3): anon0
-Maps0.bpl(57,3): Error BP5001: This assertion might not hold.
+Maps0.bpl(57,3): Error: This assertion might not hold.
 Execution trace:
     Maps0.bpl(45,9): anon0
 

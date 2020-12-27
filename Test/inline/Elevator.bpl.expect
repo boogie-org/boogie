@@ -1,4 +1,4 @@
-Elevator.bpl(20,5): Error BP5005: This loop invariant might not be maintained by the loop.
+Elevator.bpl(20,5): Error: This loop invariant might not be maintained by the loop.
 Execution trace:
     Elevator.bpl(18,3): anon0
     Elevator.bpl(18,3): anon0$1
@@ -8,7 +8,7 @@ Execution trace:
     Elevator.bpl(27,7): anon13_Then$1
 
 Boogie program verifier finished with 1 verified, 1 error
-Elevator.bpl(20,5): Error BP5005: This loop invariant might not be maintained by the loop.
+Elevator.bpl(20,5): Error: This loop invariant might not be maintained by the loop.
 Execution trace:
     Elevator.bpl(18,3): anon0
     Elevator.bpl(71,23): inline$Initialize$0$Entry

@@ -1,4 +1,4 @@
-git-issue80.bpl(11,3): Error BP5001: This assertion might not hold.
+git-issue80.bpl(11,3): Error: This assertion might not hold.
 Execution trace:
     git-issue80.bpl(11,3): anon0
 

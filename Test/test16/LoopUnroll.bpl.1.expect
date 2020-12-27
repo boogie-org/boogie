@@ -1,4 +1,4 @@
-LoopUnroll.bpl(62,5): Error BP5001: This assertion might not hold.
+LoopUnroll.bpl(62,5): Error: This assertion might not hold.
 Execution trace:
     LoopUnroll.bpl(58,5): anon0#1
     LoopUnroll.bpl(61,5): anon2_LoopBody#1

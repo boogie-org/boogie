@@ -1,4 +1,4 @@
-bla1.bpl(2097,5): Error BP5001: This assertion might not hold.
+bla1.bpl(2097,5): Error: This assertion might not hold.
 Execution trace:
     bla1.bpl(751,3): start#1
     bla1.bpl(791,3): anon10_Then#1

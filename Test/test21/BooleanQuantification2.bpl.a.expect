@@ -1,4 +1,4 @@
-BooleanQuantification2.bpl(17,3): Error BP5001: This assertion might not hold.
+BooleanQuantification2.bpl(17,3): Error: This assertion might not hold.
 Execution trace:
     BooleanQuantification2.bpl(14,3): anon0
 

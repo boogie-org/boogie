@@ -1,4 +1,4 @@
-Boxing.bpl(24,3): Error BP5001: This assertion might not hold.
+Boxing.bpl(24,3): Error: This assertion might not hold.
 Execution trace:
     Boxing.bpl(19,6): anon0
 

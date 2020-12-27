@@ -1,7 +1,7 @@
-noProc.bpl(10,3): Error BP5001: This assertion might not hold.
+noProc.bpl(10,3): Error: This assertion might not hold.
 Execution trace:
     noProc.bpl(10,3): anon0
-noProc.bpl(15,3): Error BP5001: This assertion might not hold.
+noProc.bpl(15,3): Error: This assertion might not hold.
 Execution trace:
     noProc.bpl(15,3): anon0
 

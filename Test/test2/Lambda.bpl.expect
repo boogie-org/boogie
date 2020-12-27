@@ -1,7 +1,7 @@
-Lambda.bpl(41,3): Error BP5001: This assertion might not hold.
+Lambda.bpl(41,3): Error: This assertion might not hold.
 Execution trace:
     Lambda.bpl(40,5): anon0
-Lambda.bpl(42,3): Error BP5001: This assertion might not hold.
+Lambda.bpl(42,3): Error: This assertion might not hold.
 Execution trace:
     Lambda.bpl(40,5): anon0
 

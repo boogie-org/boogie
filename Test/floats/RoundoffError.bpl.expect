@@ -1,4 +1,4 @@
-RoundoffError.bpl(21,3): Error BP5001: This assertion might not hold.
+RoundoffError.bpl(21,3): Error: This assertion might not hold.
 Execution trace:
     RoundoffError.bpl(12,8): anon0
     RoundoffError.bpl(16,3): anon3_LoopDone

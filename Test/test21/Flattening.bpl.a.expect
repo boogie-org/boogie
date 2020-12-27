@@ -1,4 +1,4 @@
-Flattening.bpl(16,3): Error BP5001: This assertion might not hold.
+Flattening.bpl(16,3): Error: This assertion might not hold.
 Execution trace:
     Flattening.bpl(16,3): anon0
 

@@ -1,28 +1,28 @@
 Processing command (at Snapshots0.v0.bpl(41,5)) assert false;
   >>> DoNothingToAssert
-Snapshots0.v0.bpl(41,5): Error BP5001: This assertion might not hold.
+Snapshots0.v0.bpl(41,5): Error: This assertion might not hold.
 Processing command (at Snapshots0.v0.bpl(8,5)) assert false;
   >>> DoNothingToAssert
-Snapshots0.v0.bpl(8,5): Error BP5001: This assertion might not hold.
+Snapshots0.v0.bpl(8,5): Error: This assertion might not hold.
 Processing command (at Snapshots0.v0.bpl(19,5)) assert false;
   >>> DoNothingToAssert
-Snapshots0.v0.bpl(19,5): Error BP5001: This assertion might not hold.
+Snapshots0.v0.bpl(19,5): Error: This assertion might not hold.
 Processing command (at Snapshots0.v0.bpl(30,5)) assert false;
   >>> DoNothingToAssert
-Snapshots0.v0.bpl(30,5): Error BP5001: This assertion might not hold.
+Snapshots0.v0.bpl(30,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 4 errors
-Snapshots0.v0.bpl(41,5): Error BP5001: This assertion might not hold.
+Snapshots0.v0.bpl(41,5): Error: This assertion might not hold.
 Processing command (at Snapshots0.v1.bpl(19,5)) assert true;
   >>> DoNothingToAssert
 Processing command (at Snapshots0.v1.bpl(30,5)) assert false;
   >>> DoNothingToAssert
-Snapshots0.v1.bpl(30,5): Error BP5001: This assertion might not hold.
+Snapshots0.v1.bpl(30,5): Error: This assertion might not hold.
 Processing command (at Snapshots0.v1.bpl(41,5)) assert true;
   >>> DoNothingToAssert
 
 Boogie program verifier finished with 2 verified, 2 errors
-Snapshots0.v0.bpl(41,5): Error BP5001: This assertion might not hold.
+Snapshots0.v0.bpl(41,5): Error: This assertion might not hold.
 Processing command (at Snapshots0.v2.bpl(19,5)) assert true;
   >>> DoNothingToAssert
 Processing command (at Snapshots0.v2.bpl(30,5)) assert true;
@@ -31,12 +31,12 @@ Processing command (at Snapshots0.v2.bpl(30,5)) assert true;
 Boogie program verifier finished with 2 verified, 1 error
 Processing command (at Snapshots1.v0.bpl(13,5)) assert 1 != 1;
   >>> DoNothingToAssert
-Snapshots1.v0.bpl(13,5): Error BP5001: This assertion might not hold.
+Snapshots1.v0.bpl(13,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 1 verified, 1 error
 Processing command (at Snapshots1.v1.bpl(13,5)) assert 2 != 2;
   >>> DoNothingToAssert
-Snapshots1.v1.bpl(13,5): Error BP5001: This assertion might not hold.
+Snapshots1.v1.bpl(13,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 1 verified, 1 error
 Processing call to procedure P2 in implementation P1 (at Snapshots1.v2.bpl(5,5)):
@@ -47,7 +47,7 @@ Processing command (at Snapshots1.v2.bpl(5,5)) assert false;
   >>> DoNothingToAssert
 Processing command (at <unknown location>) a##cached##0 := a##cached##0 && true;
   >>> AssumeNegationOfAssumptionVariable
-Snapshots1.v2.bpl(5,5): Error BP5002: A precondition for this call might not hold.
+Snapshots1.v2.bpl(5,5): Error: A precondition for this call might not hold.
 Snapshots1.v2.bpl(10,3): Related location: This is the precondition that might not hold.
 Processing command (at Snapshots1.v2.bpl(14,5)) assert 2 != 2;
   >>> DoNothingToAssert
@@ -98,7 +98,7 @@ Processing implementation P0 (at Snapshots3.v1.bpl(4,51)):
   >>> added after assuming the current precondition: a##cached##0 := a##cached##0 && false;
 Processing command (at Snapshots3.v1.bpl(2,1)) assert G();
   >>> DoNothingToAssert
-Snapshots3.v1.bpl(6,1): Error BP5003: A postcondition might not hold on this return path.
+Snapshots3.v1.bpl(6,1): Error: A postcondition might not hold on this return path.
 Snapshots3.v1.bpl(2,1): Related location: This is the postcondition that might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
@@ -108,10 +108,10 @@ Processing call to procedure P2 in implementation P1 (at Snapshots4.v1.bpl(14,5)
   >>> added after: a##cached##0 := a##cached##0 && false;
 Processing command (at Snapshots4.v1.bpl(23,5)) assert false;
   >>> DoNothingToAssert
-Snapshots4.v1.bpl(23,5): Error BP5001: This assertion might not hold.
+Snapshots4.v1.bpl(23,5): Error: This assertion might not hold.
 Processing command (at Snapshots4.v1.bpl(28,3)) assert G();
   >>> DoNothingToAssert
-Snapshots4.v1.bpl(33,1): Error BP5003: A postcondition might not hold on this return path.
+Snapshots4.v1.bpl(33,1): Error: A postcondition might not hold on this return path.
 Snapshots4.v1.bpl(28,3): Related location: This is the postcondition that might not hold.
 
 Boogie program verifier finished with 2 verified, 2 errors
@@ -123,7 +123,7 @@ Processing implementation P0 (at Snapshots5.v1.bpl(3,51)):
   >>> added after assuming the current precondition: a##cached##0 := a##cached##0 && false;
 Processing command (at Snapshots5.v1.bpl(5,5)) assert false;
   >>> DoNothingToAssert
-Snapshots5.v1.bpl(5,5): Error BP5001: This assertion might not hold.
+Snapshots5.v1.bpl(5,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots6.v0.bpl(13,5)) assert y == 0;
@@ -138,7 +138,7 @@ Processing command (at <unknown location>) a##cached##0 := a##cached##0 && ##ext
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots6.v1.bpl(13,5)) assert y == 0;
   >>> MarkAsPartiallyVerified
-Snapshots6.v1.bpl(13,5): Error BP5001: This assertion might not hold.
+Snapshots6.v1.bpl(13,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots7.v0.bpl(14,5)) assert y < 0;
@@ -224,7 +224,7 @@ Processing command (at Snapshots11.v0.bpl(7,5)) assert 0 < call0formal#AT#n;
   >>> DoNothingToAssert
 Processing command (at Snapshots11.v0.bpl(9,5)) assert 0 <= x;
   >>> DoNothingToAssert
-Snapshots11.v0.bpl(7,5): Error BP5002: A precondition for this call might not hold.
+Snapshots11.v0.bpl(7,5): Error: A precondition for this call might not hold.
 Snapshots11.v0.bpl(13,3): Related location: This is the precondition that might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
@@ -239,7 +239,7 @@ Processing command (at Snapshots11.v1.bpl(7,5)) assert 0 < call0formal#AT#n;
   >>> RecycleError
 Processing command (at Snapshots11.v1.bpl(9,5)) assert 0 <= x;
   >>> MarkAsPartiallyVerified
-Snapshots11.v0.bpl(7,5): Error BP5002: A precondition for this call might not hold.
+Snapshots11.v0.bpl(7,5): Error: A precondition for this call might not hold.
 Snapshots11.v0.bpl(13,3): Related location: This is the precondition that might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
@@ -251,7 +251,7 @@ Processing call to procedure N in implementation M (at Snapshots12.v1.bpl(5,5)):
   >>> added after: a##cached##0 := a##cached##0 && false;
 Processing command (at Snapshots12.v1.bpl(7,5)) assert false;
   >>> DoNothingToAssert
-Snapshots12.v1.bpl(7,5): Error BP5001: This assertion might not hold.
+Snapshots12.v1.bpl(7,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots13.v0.bpl(7,5)) assert false;
@@ -262,7 +262,7 @@ Processing call to procedure N in implementation M (at Snapshots13.v1.bpl(5,5)):
   >>> added after: a##cached##0 := a##cached##0 && false;
 Processing command (at Snapshots13.v1.bpl(7,5)) assert false;
   >>> DoNothingToAssert
-Snapshots13.v1.bpl(7,5): Error BP5001: This assertion might not hold.
+Snapshots13.v1.bpl(7,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots14.v0.bpl(7,5)) assert false;
@@ -276,7 +276,7 @@ Processing command (at <unknown location>) a##cached##0 := a##cached##0 && ##ext
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots14.v1.bpl(7,5)) assert false;
   >>> MarkAsPartiallyVerified
-Snapshots14.v1.bpl(7,5): Error BP5001: This assertion might not hold.
+Snapshots14.v1.bpl(7,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots15.v0.bpl(5,5)) assert true;
@@ -297,7 +297,7 @@ Processing command (at Snapshots15.v1.bpl(9,5)) assert true;
   >>> MarkAsPartiallyVerified
 Processing command (at Snapshots15.v1.bpl(13,5)) assert false;
   >>> MarkAsPartiallyVerified
-Snapshots15.v1.bpl(13,5): Error BP5001: This assertion might not hold.
+Snapshots15.v1.bpl(13,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots16.v0.bpl(14,5)) assert F(0) == 1;
@@ -306,7 +306,7 @@ Processing command (at Snapshots16.v0.bpl(14,5)) assert F(0) == 1;
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots16.v1.bpl(14,5)) assert F(0) == 1;
   >>> DoNothingToAssert
-Snapshots16.v1.bpl(14,5): Error BP5001: This assertion might not hold.
+Snapshots16.v1.bpl(14,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots17.v0.bpl(28,5)) assert true;
@@ -333,8 +333,8 @@ Processing command (at Snapshots17.v1.bpl(12,13)) assert true;
   >>> MarkAsFullyVerified
 Processing command (at Snapshots17.v1.bpl(20,13)) assert x == 1;
   >>> MarkAsPartiallyVerified
-Snapshots17.v1.bpl(20,13): Error BP5001: This assertion might not hold.
-Snapshots17.v1.bpl(25,9): Error BP5001: This assertion might not hold.
+Snapshots17.v1.bpl(20,13): Error: This assertion might not hold.
+Snapshots17.v1.bpl(25,9): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors
 Processing command (at Snapshots18.v0.bpl(7,9)) assert 0 == 0;
@@ -355,15 +355,15 @@ Processing command (at Snapshots18.v1.bpl(17,9)) assert 1 != 1;
   >>> MarkAsPartiallyVerified
 Processing command (at Snapshots18.v1.bpl(20,5)) assert 2 != 2;
   >>> MarkAsPartiallyVerified
-Snapshots18.v1.bpl(17,9): Error BP5001: This assertion might not hold.
-Snapshots18.v1.bpl(20,5): Error BP5001: This assertion might not hold.
+Snapshots18.v1.bpl(17,9): Error: This assertion might not hold.
+Snapshots18.v1.bpl(20,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors
 Processing command (at Snapshots19.v0.bpl(5,5)) assert 2 == 2;
   >>> DoNothingToAssert
 Processing command (at Snapshots19.v0.bpl(7,5)) assert 1 != 1;
   >>> DoNothingToAssert
-Snapshots19.v0.bpl(7,5): Error BP5001: This assertion might not hold.
+Snapshots19.v0.bpl(7,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing call to procedure N in implementation M (at Snapshots19.v1.bpl(5,5)):
@@ -376,7 +376,7 @@ Processing command (at Snapshots19.v1.bpl(5,5)) assert 2 == 2;
   >>> MarkAsFullyVerified
 Processing command (at Snapshots19.v1.bpl(7,5)) assert 1 != 1;
   >>> DoNothingToAssert
-Snapshots19.v1.bpl(7,5): Error BP5001: This assertion might not hold.
+Snapshots19.v1.bpl(7,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots20.v0.bpl(9,9)) assert 1 != 1;
@@ -385,7 +385,7 @@ Processing command (at Snapshots20.v0.bpl(13,9)) assert 2 != 2;
   >>> DoNothingToAssert
 Processing command (at Snapshots20.v0.bpl(16,5)) assert 3 != 3;
   >>> DoNothingToAssert
-Snapshots20.v0.bpl(13,9): Error BP5001: This assertion might not hold.
+Snapshots20.v0.bpl(13,9): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing call to procedure N in implementation M (at Snapshots20.v1.bpl(7,9)):
@@ -397,8 +397,8 @@ Processing command (at Snapshots20.v1.bpl(13,9)) assert 2 != 2;
   >>> RecycleError
 Processing command (at Snapshots20.v1.bpl(16,5)) assert 3 != 3;
   >>> MarkAsPartiallyVerified
-Snapshots20.v1.bpl(9,9): Error BP5001: This assertion might not hold.
-Snapshots20.v0.bpl(13,9): Error BP5001: This assertion might not hold.
+Snapshots20.v1.bpl(9,9): Error: This assertion might not hold.
+Snapshots20.v0.bpl(13,9): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors
 Processing command (at Snapshots21.v0.bpl(7,9)) assert 1 != 1;
@@ -407,8 +407,8 @@ Processing command (at Snapshots21.v0.bpl(11,9)) assert 2 != 2;
   >>> DoNothingToAssert
 Processing command (at Snapshots21.v0.bpl(14,5)) assert 3 != 3;
   >>> DoNothingToAssert
-Snapshots21.v0.bpl(7,9): Error BP5001: This assertion might not hold.
-Snapshots21.v0.bpl(11,9): Error BP5001: This assertion might not hold.
+Snapshots21.v0.bpl(7,9): Error: This assertion might not hold.
+Snapshots21.v0.bpl(11,9): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors
 Processing command (at Snapshots21.v1.bpl(7,9)) assert 1 == 1;
@@ -417,8 +417,8 @@ Processing command (at Snapshots21.v1.bpl(11,9)) assert 2 != 2;
   >>> RecycleError
 Processing command (at Snapshots21.v1.bpl(14,5)) assert 3 != 3;
   >>> DoNothingToAssert
-Snapshots21.v0.bpl(11,9): Error BP5001: This assertion might not hold.
-Snapshots21.v1.bpl(14,5): Error BP5001: This assertion might not hold.
+Snapshots21.v0.bpl(11,9): Error: This assertion might not hold.
+Snapshots21.v1.bpl(14,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors
 Processing command (at Snapshots22.v0.bpl(7,9)) assert 1 != 1;
@@ -427,7 +427,7 @@ Processing command (at Snapshots22.v0.bpl(11,9)) assert 2 == 2;
   >>> DoNothingToAssert
 Processing command (at Snapshots22.v0.bpl(14,5)) assert 3 == 3;
   >>> DoNothingToAssert
-Snapshots22.v0.bpl(7,9): Error BP5001: This assertion might not hold.
+Snapshots22.v0.bpl(7,9): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots22.v1.bpl(7,9)) assert 1 == 1;
@@ -444,10 +444,10 @@ Processing command (at Snapshots23.v0.bpl(11,9)) assert 2 == 2;
   >>> DoNothingToAssert
 Processing command (at Snapshots23.v0.bpl(14,5)) assert 3 == 3;
   >>> DoNothingToAssert
-Snapshots23.v0.bpl(7,9): Error BP5001: This assertion might not hold.
+Snapshots23.v0.bpl(7,9): Error: This assertion might not hold.
 
 Boogie program verifier finished with 1 verified, 1 error
-Snapshots23.v0.bpl(7,9): Error BP5001: This assertion might not hold.
+Snapshots23.v0.bpl(7,9): Error: This assertion might not hold.
 Processing command (at Snapshots23.v1.bpl(22,5)) assert 4 == 4;
   >>> DoNothingToAssert
 
@@ -456,7 +456,7 @@ Processing command (at Snapshots23.v2.bpl(8,9)) assert 1 != 1;
   >>> RecycleError
 Processing command (at Snapshots23.v2.bpl(12,9)) assert 2 == 2;
   >>> MarkAsFullyVerified
-Snapshots23.v0.bpl(7,9): Error BP5001: This assertion might not hold.
+Snapshots23.v0.bpl(7,9): Error: This assertion might not hold.
 
 Boogie program verifier finished with 1 verified, 1 error
 Processing command (at Snapshots24.v0.bpl(7,9)) assert {:subsumption 0} 1 != 1;
@@ -473,9 +473,9 @@ Processing command (at Snapshots24.v0.bpl(21,9)) assert 5 == 5;
   >>> DoNothingToAssert
 Processing command (at Snapshots24.v0.bpl(24,5)) assert {:subsumption 0} 3 == 3;
   >>> DoNothingToAssert
-Snapshots24.v0.bpl(7,9): Error BP5001: This assertion might not hold.
-Snapshots24.v0.bpl(11,9): Error BP5001: This assertion might not hold.
-Snapshots24.v0.bpl(15,9): Error BP5001: This assertion might not hold.
+Snapshots24.v0.bpl(7,9): Error: This assertion might not hold.
+Snapshots24.v0.bpl(11,9): Error: This assertion might not hold.
+Snapshots24.v0.bpl(15,9): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 3 errors
 Processing command (at Snapshots24.v1.bpl(7,9)) assert {:subsumption 0} 1 == 1;
@@ -492,49 +492,49 @@ Processing command (at Snapshots24.v1.bpl(21,9)) assert 5 == 5;
   >>> MarkAsFullyVerified
 Processing command (at Snapshots24.v1.bpl(24,5)) assert {:subsumption 0} 3 == 3;
   >>> DoNothingToAssert
-Snapshots24.v0.bpl(15,9): Error BP5001: This assertion might not hold.
+Snapshots24.v0.bpl(15,9): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots25.v0.bpl(12,5)) assert 0 == 0;
   >>> DoNothingToAssert
 Processing command (at Snapshots25.v0.bpl(13,5)) assert x != x;
   >>> DoNothingToAssert
-Snapshots25.v0.bpl(13,5): Error BP5001: This assertion might not hold.
+Snapshots25.v0.bpl(13,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots25.v1.bpl(12,5)) assert 0 == 0;
   >>> MarkAsFullyVerified
 Processing command (at Snapshots25.v1.bpl(13,5)) assert x != x;
   >>> RecycleError
-Snapshots25.v0.bpl(13,5): Error BP5001: This assertion might not hold.
+Snapshots25.v0.bpl(13,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots26.v0.bpl(12,5)) assert 0 == 0;
   >>> DoNothingToAssert
 Processing command (at Snapshots26.v0.bpl(13,5)) assert x != x;
   >>> DoNothingToAssert
-Snapshots26.v0.bpl(13,5): Error BP5001: This assertion might not hold.
+Snapshots26.v0.bpl(13,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots26.v1.bpl(13,5)) assert 0 == 0;
   >>> MarkAsFullyVerified
 Processing command (at Snapshots26.v1.bpl(14,5)) assert x != x;
   >>> RecycleError
-Snapshots26.v0.bpl(13,5): Error BP5001: This assertion might not hold.
+Snapshots26.v0.bpl(13,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots27.v0.bpl(12,5)) assert 0 == 0;
   >>> DoNothingToAssert
 Processing command (at Snapshots27.v0.bpl(13,5)) assert x != x;
   >>> DoNothingToAssert
-Snapshots27.v0.bpl(13,5): Error BP5001: This assertion might not hold.
+Snapshots27.v0.bpl(13,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots27.v1.bpl(14,5)) assert 0 == 0;
   >>> MarkAsFullyVerified
 Processing command (at Snapshots27.v1.bpl(15,5)) assert x != x;
   >>> RecycleError
-Snapshots27.v0.bpl(13,5): Error BP5001: This assertion might not hold.
+Snapshots27.v0.bpl(13,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots28.v0.bpl(13,5)) assert 0 == 0;
@@ -547,7 +547,7 @@ Processing command (at Snapshots28.v1.bpl(14,5)) assert 0 == 0;
   >>> DoNothingToAssert
 Processing command (at Snapshots28.v1.bpl(15,5)) assert x == 0;
   >>> DoNothingToAssert
-Snapshots28.v1.bpl(15,5): Error BP5001: This assertion might not hold.
+Snapshots28.v1.bpl(15,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots30.v0.bpl(5,5)) assert 0 == 0;
@@ -560,7 +560,7 @@ Processing command (at Snapshots30.v0.bpl(5,5)) assert 3 == 3;
   >>> DoNothingToAssert
 Processing command (at Snapshots30.v0.bpl(5,5)) assert 4 == 4;
   >>> DoNothingToAssert
-Snapshots30.v0.bpl(5,5): Error BP5002: A precondition for this call might not hold.
+Snapshots30.v0.bpl(5,5): Error: A precondition for this call might not hold.
 Snapshots30.v0.bpl(11,3): Related location: This is the precondition that might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
@@ -576,7 +576,7 @@ Processing command (at Snapshots30.v1.bpl(5,5)) assert 4 == 4;
   >>> MarkAsFullyVerified
 Processing command (at Snapshots30.v1.bpl(6,5)) assert 5 == 5;
   >>> DoNothingToAssert
-Snapshots30.v0.bpl(5,5): Error BP5002: A precondition for this call might not hold.
+Snapshots30.v0.bpl(5,5): Error: A precondition for this call might not hold.
 Snapshots30.v0.bpl(11,3): Related location: This is the precondition that might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
@@ -591,7 +591,7 @@ Processing command (at <unknown location>) a##cached##0 := a##cached##0 && ##ext
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots31.v1.bpl(10,5)) assert 0 < g;
   >>> MarkAsPartiallyVerified
-Snapshots31.v1.bpl(10,5): Error BP5001: This assertion might not hold.
+Snapshots31.v1.bpl(10,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots32.v0.bpl(10,5)) assert 0 < g;
@@ -606,7 +606,7 @@ Processing command (at <unknown location>) a##cached##0 := a##cached##0 && ##ext
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots32.v1.bpl(9,5)) assert 0 < g;
   >>> MarkAsPartiallyVerified
-Snapshots32.v1.bpl(9,5): Error BP5001: This assertion might not hold.
+Snapshots32.v1.bpl(9,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots33.v0.bpl(10,5)) assert 0 < g;
@@ -631,7 +631,7 @@ Processing command (at <unknown location>) a##cached##0 := a##cached##0 && ##ext
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots34.v1.bpl(5,5)) assert 1 != 1;
   >>> MarkAsPartiallyVerified
-Snapshots34.v1.bpl(5,5): Error BP5001: This assertion might not hold.
+Snapshots34.v1.bpl(5,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots35.v0.bpl(6,5)) assert p;
@@ -645,7 +645,7 @@ Processing command (at <unknown location>) a##cached##0 := a##cached##0 && ##ext
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots35.v1.bpl(5,5)) assert p;
   >>> MarkAsPartiallyVerified
-Snapshots35.v1.bpl(5,5): Error BP5001: This assertion might not hold.
+Snapshots35.v1.bpl(5,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots36.v0.bpl(13,5)) assert l[0];
@@ -654,7 +654,7 @@ Processing command (at Snapshots36.v0.bpl(13,5)) assert l[0];
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots36.v1.bpl(13,5)) assert l[0];
   >>> DoNothingToAssert
-Snapshots36.v1.bpl(13,5): Error BP5001: This assertion might not hold.
+Snapshots36.v1.bpl(13,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots37.v0.bpl(8,5)) assert l[0];
@@ -663,7 +663,7 @@ Processing command (at Snapshots37.v0.bpl(8,5)) assert l[0];
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots37.v1.bpl(8,5)) assert l[0];
   >>> DoNothingToAssert
-Snapshots37.v1.bpl(8,5): Error BP5001: This assertion might not hold.
+Snapshots37.v1.bpl(8,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots38.v0.bpl(7,5)) assert 0 <= call0formal#AT#n;
@@ -678,7 +678,7 @@ Processing command (at Snapshots38.v1.bpl(8,5)) assert r != 0;
   >>> MarkAsFullyVerified
 Processing command (at Snapshots38.v1.bpl(9,5)) assert 42 <= r;
   >>> DoNothingToAssert
-Snapshots38.v1.bpl(9,5): Error BP5001: This assertion might not hold.
+Snapshots38.v1.bpl(9,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing call to procedure Sum in implementation Callee (at Snapshots38.v2.bpl(7,5)):
@@ -708,7 +708,7 @@ Processing command (at Snapshots39.v1.bpl(8,5)) assert r != 0;
   >>> MarkAsFullyVerified
 Processing command (at Snapshots39.v1.bpl(9,5)) assert r == 42 * 43 div 2;
   >>> DoNothingToAssert
-Snapshots39.v1.bpl(9,5): Error BP5001: This assertion might not hold.
+Snapshots39.v1.bpl(9,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing call to procedure Sum in implementation Callee (at Snapshots39.v2.bpl(7,5)):
@@ -732,7 +732,7 @@ Processing command (at Snapshots40.v0.bpl(8,5)) assert 0 <= call0formal#AT#n;
   >>> DoNothingToAssert
 Processing command (at Snapshots40.v0.bpl(9,5)) assert r != 0;
   >>> DoNothingToAssert
-Snapshots40.v0.bpl(7,5): Error BP5001: This assertion might not hold.
+Snapshots40.v0.bpl(7,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots40.v1.bpl(7,5)) assert b;
@@ -743,8 +743,8 @@ Processing command (at Snapshots40.v1.bpl(9,5)) assert r != 0;
   >>> MarkAsFullyVerified
 Processing command (at Snapshots40.v1.bpl(10,5)) assert r == 42 * 43 div 2;
   >>> DoNothingToAssert
-Snapshots40.v0.bpl(7,5): Error BP5001: This assertion might not hold.
-Snapshots40.v1.bpl(10,5): Error BP5001: This assertion might not hold.
+Snapshots40.v0.bpl(7,5): Error: This assertion might not hold.
+Snapshots40.v1.bpl(10,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors
 Processing call to procedure Sum in implementation Foo (at Snapshots40.v2.bpl(8,5)):
@@ -762,7 +762,7 @@ Processing command (at Snapshots40.v2.bpl(9,5)) assert r != 0;
   >>> MarkAsPartiallyVerified
 Processing command (at Snapshots40.v2.bpl(10,5)) assert r == 42 * 43 div 2;
   >>> DoNothingToAssert
-Snapshots40.v0.bpl(7,5): Error BP5001: This assertion might not hold.
+Snapshots40.v0.bpl(7,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots41.v0.bpl(3,23)) assert x < 20 || 10 <= x;
@@ -771,16 +771,16 @@ Processing command (at Snapshots41.v0.bpl(4,3)) assert x < 10;
   >>> DoNothingToAssert
 Processing command (at Snapshots41.v0.bpl(5,3)) assert 0 <= call0formal#AT#y;
   >>> DoNothingToAssert
-Snapshots41.v0.bpl(4,3): Error BP5001: This assertion might not hold.
-Snapshots41.v0.bpl(5,3): Error BP5002: A precondition for this call might not hold.
+Snapshots41.v0.bpl(4,3): Error: This assertion might not hold.
+Snapshots41.v0.bpl(5,3): Error: A precondition for this call might not hold.
 Snapshots41.v0.bpl(9,3): Related location: This is the precondition that might not hold.
 Processing command (at Snapshots41.v0.bpl(15,3)) assert 2 <= z;
   >>> DoNothingToAssert
-Snapshots41.v0.bpl(22,3): Error BP5003: A postcondition might not hold on this return path.
+Snapshots41.v0.bpl(22,3): Error: A postcondition might not hold on this return path.
 Snapshots41.v0.bpl(15,3): Related location: This is the postcondition that might not hold.
 Processing command (at Snapshots41.v0.bpl(28,3)) assert u != 53;
   >>> DoNothingToAssert
-Snapshots41.v0.bpl(28,3): Error BP5001: This assertion might not hold.
+Snapshots41.v0.bpl(28,3): Error: This assertion might not hold.
 Processing command (at Snapshots41.v0.bpl(34,3)) assert true;
   >>> DoNothingToAssert
 
@@ -793,18 +793,18 @@ Processing command (at Snapshots41.v1.bpl(7,3)) assert 0 <= call0formal#AT#y;
   >>> RecycleError
 Processing command (at Snapshots41.v1.bpl(8,3)) assert x == 7;
   >>> DoNothingToAssert
-Snapshots41.v1.bpl(6,8): Error BP5001: This assertion might not hold.
-Snapshots41.v1.bpl(7,3): Error BP5002: A precondition for this call might not hold.
+Snapshots41.v1.bpl(6,8): Error: This assertion might not hold.
+Snapshots41.v1.bpl(7,3): Error: A precondition for this call might not hold.
 Snapshots41.v1.bpl(13,10): Related location: This is the precondition that might not hold.
-Snapshots41.v1.bpl(8,3): Error BP5001: This assertion might not hold.
+Snapshots41.v1.bpl(8,3): Error: This assertion might not hold.
 Processing command (at Snapshots41.v1.bpl(27,5)) assert true;
   >>> DoNothingToAssert
 Processing command (at Snapshots41.v1.bpl(21,3)) assert 2 <= z;
   >>> DoNothingToAssert
-Snapshots41.v1.bpl(29,3): Error BP5003: A postcondition might not hold on this return path.
+Snapshots41.v1.bpl(29,3): Error: A postcondition might not hold on this return path.
 Snapshots41.v1.bpl(21,3): Related location: This is the postcondition that might not hold.
 Processing command (at Snapshots41.v1.bpl(35,8)) assert u != 53;
   >>> RecycleError
-Snapshots41.v1.bpl(35,8): Error BP5001: This assertion might not hold.
+Snapshots41.v1.bpl(35,8): Error: This assertion might not hold.
 
 Boogie program verifier finished with 2 verified, 5 errors

@@ -1,4 +1,4 @@
-(0,0): Error BP5001: This assertion might not hold.
+(0,0): Error: This assertion might not hold.
 Execution trace:
     t1.bpl(19,3): anon0
     t1.bpl(24,3): anon3_LoopHead

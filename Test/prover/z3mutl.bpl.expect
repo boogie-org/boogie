@@ -1,4 +1,4 @@
-z3mutl.bpl(22,5): Error BP5001: This assertion might not hold.
+z3mutl.bpl(22,5): Error: This assertion might not hold.
 Execution trace:
     z3mutl.bpl(7,1): start
     z3mutl.bpl(13,1): L2

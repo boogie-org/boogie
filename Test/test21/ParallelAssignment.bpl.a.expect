@@ -1,10 +1,10 @@
-ParallelAssignment.bpl(30,3): Error BP5001: This assertion might not hold.
+ParallelAssignment.bpl(30,3): Error: This assertion might not hold.
 Execution trace:
     ParallelAssignment.bpl(19,5): anon0
-ParallelAssignment.bpl(39,3): Error BP5001: This assertion might not hold.
+ParallelAssignment.bpl(39,3): Error: This assertion might not hold.
 Execution trace:
     ParallelAssignment.bpl(19,5): anon0
-ParallelAssignment.bpl(58,3): Error BP5001: This assertion might not hold.
+ParallelAssignment.bpl(58,3): Error: This assertion might not hold.
 Execution trace:
     ParallelAssignment.bpl(44,11): anon0
 

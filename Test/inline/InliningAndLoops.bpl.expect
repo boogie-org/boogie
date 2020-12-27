@@ -1,4 +1,4 @@
-InliningAndLoops.bpl(14,5): Error BP5001: This assertion might not hold.
+InliningAndLoops.bpl(14,5): Error: This assertion might not hold.
 Execution trace:
     InliningAndLoops.bpl(7,10): anon0#3
     InliningAndLoops.bpl(10,5): anon4_LoopBody#3

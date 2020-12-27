@@ -1,4 +1,4 @@
-ModelTest.bpl(9,3): Error BP5001: This assertion might not hold.
+ModelTest.bpl(9,3): Error: This assertion might not hold.
 Execution trace:
     ModelTest.bpl(5,5): anon0
 *** MODEL

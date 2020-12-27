@@ -1,4 +1,4 @@
-chris6.bpl(11,3): Error BP5001: This assertion might not hold.
+chris6.bpl(11,3): Error: This assertion might not hold.
 Execution trace:
     chris6.bpl(11,3): anon0
 

@@ -1,4 +1,4 @@
-LoopInvAssume.bpl(20,7): Error BP5001: This assertion might not hold.
+LoopInvAssume.bpl(20,7): Error: This assertion might not hold.
 Execution trace:
     LoopInvAssume.bpl(10,4): entry
     LoopInvAssume.bpl(18,4): exit
