@@ -1,8 +1,8 @@
-Real.bpl(30,5): Error BP5001: This assertion might not hold.
+Real.bpl(30,5): Error: This assertion might not hold.
 Execution trace:
     Real.bpl(27,5): anon0
     Real.bpl(30,5): anon3_Then
-Real.bpl(45,5): Error BP5001: This assertion might not hold.
+Real.bpl(45,5): Error: This assertion might not hold.
 Execution trace:
     Real.bpl(38,3): anon0
     Real.bpl(45,5): anon3_Else

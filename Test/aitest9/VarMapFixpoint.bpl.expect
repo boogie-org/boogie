@@ -1,4 +1,4 @@
-VarMapFixpoint.bpl(13,5): Error BP5005: This loop invariant might not be maintained by the loop.
+VarMapFixpoint.bpl(13,5): Error: This loop invariant might not be maintained by the loop.
 Execution trace:
     VarMapFixpoint.bpl(7,3): start
     VarMapFixpoint.bpl(12,3): LoopHead

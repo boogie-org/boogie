@@ -295,7 +295,7 @@ implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: in
 }
 
 
-<console>(70,4): Error BP5003: A postcondition might not hold on this return path.
+<console>(70,4): Error: A postcondition might not hold on this return path.
 <console>(78,2): Related location: This is the postcondition that might not hold.
 Execution trace:
     <console>(19,0): anon0
@@ -304,7 +304,7 @@ Execution trace:
     <console>(43,0): inline$check$0$Entry
     <console>(54,0): inline$check$0$anon4_Else
     <console>(67,0): inline$check$0$Return
-<console>(109,4): Error BP5001: This assertion might not hold.
+<console>(109,4): Error: This assertion might not hold.
 Execution trace:
     <console>(19,0): anon0
     <console>(29,0): inline$find$0$anon0
@@ -314,7 +314,7 @@ Execution trace:
     <console>(67,0): inline$check$0$Return
     <console>(79,0): inline$find$0$anon5_Then
     <console>(107,0): anon3_Then
-<console>(51,4): Error BP5003: A postcondition might not hold on this return path.
+<console>(51,4): Error: A postcondition might not hold on this return path.
 <console>(78,2): Related location: This is the postcondition that might not hold.
 Execution trace:
     <console>(10,0): anon0
@@ -322,7 +322,7 @@ Execution trace:
     <console>(24,0): inline$check$0$Entry
     <console>(35,0): inline$check$0$anon4_Else
     <console>(48,0): inline$check$0$Return
-<console>(99,0): Error BP5003: A postcondition might not hold on this return path.
+<console>(99,0): Error: A postcondition might not hold on this return path.
 <console>(78,2): Related location: This is the postcondition that might not hold.
 Execution trace:
     <console>(85,0): anon0

@@ -1,4 +1,4 @@
-chris5.bpl(7,3): Error BP5001: This gate of P might not hold.
+chris5.bpl(7,3): Error: This gate of P might not hold.
 Execution trace:
     chris5.bpl(12,3): anon0
 

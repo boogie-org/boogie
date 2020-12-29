@@ -1,4 +1,4 @@
-codeexpr.bpl(42,5): Error BP5001: This assertion might not hold.
+codeexpr.bpl(42,5): Error: This assertion might not hold.
 Execution trace:
     codeexpr.bpl(41,7): anon0
 

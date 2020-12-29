@@ -1,4 +1,4 @@
-Maps1.bpl(35,3): Error BP5001: This assertion might not hold.
+Maps1.bpl(35,3): Error: This assertion might not hold.
 Execution trace:
     Maps1.bpl(23,3): anon0
 

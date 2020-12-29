@@ -1,4 +1,4 @@
-FunAxioms.bpl(34,3): Error BP5001: This assertion might not hold.
+FunAxioms.bpl(34,3): Error: This assertion might not hold.
 Execution trace:
     FunAxioms.bpl(22,3): anon0
 

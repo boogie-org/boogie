@@ -1,4 +1,4 @@
-t2.bpl(25,3): Error BP5001: This assertion might not hold.
+t2.bpl(25,3): Error: This assertion might not hold.
 Execution trace:
     t2.bpl(18,3): anon0
 

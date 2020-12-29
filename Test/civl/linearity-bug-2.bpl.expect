@@ -1,4 +1,4 @@
-linearity-bug-2.bpl(6,32): Error BP5001: Potential linearity violation in outputs for domain lin.
+linearity-bug-2.bpl(6,32): Error: Potential linearity violation in outputs for domain lin.
 Execution trace:
     linearity-bug-2.bpl(6,32): inline$atomic_foo$0$Entry
     linearity-bug-2.bpl(8,10): inline$atomic_foo$0$anon0

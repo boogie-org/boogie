@@ -1,10 +1,10 @@
-NullaryMaps.bpl(30,3): Error BP5001: This assertion might not hold.
+NullaryMaps.bpl(30,3): Error: This assertion might not hold.
 Execution trace:
     NullaryMaps.bpl(30,3): anon0
-NullaryMaps.bpl(32,3): Error BP5001: This assertion might not hold.
+NullaryMaps.bpl(32,3): Error: This assertion might not hold.
 Execution trace:
     NullaryMaps.bpl(30,3): anon0
-NullaryMaps.bpl(38,3): Error BP5001: This assertion might not hold.
+NullaryMaps.bpl(38,3): Error: This assertion might not hold.
 Execution trace:
     NullaryMaps.bpl(38,3): anon0
 

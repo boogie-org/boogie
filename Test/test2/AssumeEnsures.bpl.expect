@@ -1,10 +1,10 @@
-AssumeEnsures.bpl(30,9): Error BP5001: This assertion might not hold.
+AssumeEnsures.bpl(30,9): Error: This assertion might not hold.
 Execution trace:
     AssumeEnsures.bpl(28,5): entry
-AssumeEnsures.bpl(49,9): Error BP5001: This assertion might not hold.
+AssumeEnsures.bpl(49,9): Error: This assertion might not hold.
 Execution trace:
     AssumeEnsures.bpl(48,5): entry
-AssumeEnsures.bpl(64,9): Error BP5001: This assertion might not hold.
+AssumeEnsures.bpl(64,9): Error: This assertion might not hold.
 Execution trace:
     AssumeEnsures.bpl(62,5): entry
 

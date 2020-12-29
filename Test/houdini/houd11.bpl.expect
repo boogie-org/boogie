@@ -1,5 +1,5 @@
 Assignment computed by Houdini:
-houd11.bpl(10,3): Error BP5001: This assertion might not hold.
+houd11.bpl(10,3): Error: This assertion might not hold.
 Execution trace:
     houd11.bpl(9,9): anon0
 

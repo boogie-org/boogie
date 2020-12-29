@@ -1,4 +1,4 @@
-shadow1.bpl(10,3): Error BP5001: This assertion might not hold.
+shadow1.bpl(10,3): Error: This assertion might not hold.
 Execution trace:
     shadow1.bpl(9,3): anon0
 

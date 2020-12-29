@@ -1,10 +1,10 @@
-NeverPattern.bpl(18,3): Error BP5001: This assertion might not hold.
+NeverPattern.bpl(18,3): Error: This assertion might not hold.
 Execution trace:
     NeverPattern.bpl(17,3): anon0
-NeverPattern.bpl(24,3): Error BP5001: This assertion might not hold.
+NeverPattern.bpl(24,3): Error: This assertion might not hold.
 Execution trace:
     NeverPattern.bpl(23,3): anon0
-NeverPattern.bpl(30,3): Error BP5001: This assertion might not hold.
+NeverPattern.bpl(30,3): Error: This assertion might not hold.
 Execution trace:
     NeverPattern.bpl(29,3): anon0
 

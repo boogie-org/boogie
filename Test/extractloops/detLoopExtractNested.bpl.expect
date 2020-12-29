@@ -1,4 +1,4 @@
-(0,0): Error BP5001: This assertion might not hold.
+(0,0): Error: This assertion might not hold.
 Execution trace:
     detLoopExtractNested.bpl(12,12): anon0
     detLoopExtractNested.bpl(14,8): anon5_LoopBody

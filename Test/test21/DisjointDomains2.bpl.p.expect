@@ -1,19 +1,19 @@
-DisjointDomains2.bpl(15,5): Error BP5001: This assertion might not hold.
+DisjointDomains2.bpl(15,5): Error: This assertion might not hold.
 Execution trace:
     DisjointDomains2.bpl(13,3): start
-DisjointDomains2.bpl(22,5): Error BP5001: This assertion might not hold.
+DisjointDomains2.bpl(22,5): Error: This assertion might not hold.
 Execution trace:
     DisjointDomains2.bpl(20,3): start
-DisjointDomains2.bpl(36,5): Error BP5001: This assertion might not hold.
+DisjointDomains2.bpl(36,5): Error: This assertion might not hold.
 Execution trace:
     DisjointDomains2.bpl(34,3): start
-DisjointDomains2.bpl(43,5): Error BP5001: This assertion might not hold.
+DisjointDomains2.bpl(43,5): Error: This assertion might not hold.
 Execution trace:
     DisjointDomains2.bpl(41,3): start
-DisjointDomains2.bpl(53,5): Error BP5001: This assertion might not hold.
+DisjointDomains2.bpl(53,5): Error: This assertion might not hold.
 Execution trace:
     DisjointDomains2.bpl(49,3): start
-DisjointDomains2.bpl(67,5): Error BP5001: This assertion might not hold.
+DisjointDomains2.bpl(67,5): Error: This assertion might not hold.
 Execution trace:
     DisjointDomains2.bpl(62,3): start
 

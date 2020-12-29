@@ -1,4 +1,4 @@
-yield-invariant-fails.bpl(7,1): Error BP5001: Non-interference check failed
+yield-invariant-fails.bpl(7,1): Error: Non-interference check failed
 Execution trace:
     yield-invariant-fails.bpl(11,5): anon0
     yield-invariant-fails.bpl(18,7): inline$atomic_A$0$anon0

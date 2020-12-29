@@ -1,4 +1,4 @@
-issue110.bpl(5,3): Error BP5001: This assertion might not hold.
+issue110.bpl(5,3): Error: This assertion might not hold.
 Execution trace:
     issue110.bpl(5,3): anon0
 *** MODEL

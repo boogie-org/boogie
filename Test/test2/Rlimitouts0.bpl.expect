@@ -1,4 +1,4 @@
-Rlimitouts0.bpl(29,5): Error BP5003: A postcondition might not hold on this return path.
+Rlimitouts0.bpl(29,5): Error: A postcondition might not hold on this return path.
 Rlimitouts0.bpl(14,3): Related location: This is the postcondition that might not hold.
 Execution trace:
     Rlimitouts0.bpl(18,7): anon0
@@ -6,14 +6,14 @@ Execution trace:
     Rlimitouts0.bpl(20,5): anon4_LoopDone
     Rlimitouts0.bpl(29,5): anon5_LoopHead
     Rlimitouts0.bpl(29,5): anon5_LoopDone
-Rlimitouts0.bpl(31,7): Error BP5005: This loop invariant might not be maintained by the loop.
+Rlimitouts0.bpl(31,7): Error: This loop invariant might not be maintained by the loop.
 Execution trace:
     Rlimitouts0.bpl(18,7): anon0
     Rlimitouts0.bpl(20,5): anon4_LoopHead
     Rlimitouts0.bpl(20,5): anon4_LoopDone
     Rlimitouts0.bpl(29,5): anon5_LoopHead
     Rlimitouts0.bpl(33,11): anon5_LoopBody
-Rlimitouts0.bpl(58,5): Error BP5003: A postcondition might not hold on this return path.
+Rlimitouts0.bpl(58,5): Error: A postcondition might not hold on this return path.
 Rlimitouts0.bpl(41,3): Related location: This is the postcondition that might not hold.
 Execution trace:
     Rlimitouts0.bpl(47,7): anon0
@@ -21,14 +21,14 @@ Execution trace:
     Rlimitouts0.bpl(49,5): anon4_LoopDone
     Rlimitouts0.bpl(58,5): anon5_LoopHead
     Rlimitouts0.bpl(58,5): anon5_LoopDone
-Rlimitouts0.bpl(60,7): Error BP5005: This loop invariant might not be maintained by the loop.
+Rlimitouts0.bpl(60,7): Error: This loop invariant might not be maintained by the loop.
 Execution trace:
     Rlimitouts0.bpl(47,7): anon0
     Rlimitouts0.bpl(49,5): anon4_LoopHead
     Rlimitouts0.bpl(49,5): anon4_LoopDone
     Rlimitouts0.bpl(58,5): anon5_LoopHead
     Rlimitouts0.bpl(62,11): anon5_LoopBody
-Rlimitouts0.bpl(87,5): Error BP5003: A postcondition might not hold on this return path.
+Rlimitouts0.bpl(87,5): Error: A postcondition might not hold on this return path.
 Rlimitouts0.bpl(70,3): Related location: This is the postcondition that might not hold.
 Execution trace:
     Rlimitouts0.bpl(76,7): anon0
@@ -36,7 +36,7 @@ Execution trace:
     Rlimitouts0.bpl(78,5): anon4_LoopDone
     Rlimitouts0.bpl(87,5): anon5_LoopHead
     Rlimitouts0.bpl(87,5): anon5_LoopDone
-Rlimitouts0.bpl(89,7): Error BP5005: This loop invariant might not be maintained by the loop.
+Rlimitouts0.bpl(89,7): Error: This loop invariant might not be maintained by the loop.
 Execution trace:
     Rlimitouts0.bpl(76,7): anon0
     Rlimitouts0.bpl(78,5): anon4_LoopHead

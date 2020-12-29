@@ -1,4 +1,4 @@
-stack_overflow.bpl(97944,5): Error BP5001: This assertion might not hold.
+stack_overflow.bpl(97944,5): Error: This assertion might not hold.
 Execution trace:
     stack_overflow.bpl(1143,3): start#1
     stack_overflow.bpl(1199,3): inline$storm_IoAllocateIrp$0$label_8_case_1#1

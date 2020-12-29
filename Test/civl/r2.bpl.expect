@@ -1,10 +1,10 @@
-r2.bpl(10,57): Error BP5001: On some path no yield-to-yield fragment matched the refined atomic action
+r2.bpl(10,57): Error: On some path no yield-to-yield fragment matched the refined atomic action
 Execution trace:
     r2.bpl(11,5): anon0
     (0,0): Civl_call_refinement_4
     r2.bpl(21,34): inline$atomic_nop$0$Return
     (0,0): Civl_ReturnChecker
-r2.bpl(10,57): Error BP5001: A yield-to-yield fragment illegally modifies layer-2 globals
+r2.bpl(10,57): Error: A yield-to-yield fragment illegally modifies layer-2 globals
 Execution trace:
     r2.bpl(11,5): anon0
     (0,0): Civl_call_refinement_3

@@ -1,4 +1,4 @@
-(0,0): Error BP5001: This assertion might not hold.
+(0,0): Error: This assertion might not hold.
 Execution trace:
     bar10.bpl(37,5): anon0
     Inlined call to procedure bar1 begins

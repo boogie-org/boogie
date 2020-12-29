@@ -1,11 +1,11 @@
 MapOutputTypeParams.bpl(33,3): Warning: type parameter a is ambiguous, instantiating to int
-MapOutputTypeParams.bpl(17,3): Error BP5001: This assertion might not hold.
+MapOutputTypeParams.bpl(17,3): Error: This assertion might not hold.
 Execution trace:
     MapOutputTypeParams.bpl(11,9): anon0
-MapOutputTypeParams.bpl(28,3): Error BP5001: This assertion might not hold.
+MapOutputTypeParams.bpl(28,3): Error: This assertion might not hold.
 Execution trace:
     MapOutputTypeParams.bpl(23,9): anon0
-MapOutputTypeParams.bpl(36,3): Error BP5001: This assertion might not hold.
+MapOutputTypeParams.bpl(36,3): Error: This assertion might not hold.
 Execution trace:
     MapOutputTypeParams.bpl(32,8): anon0
 

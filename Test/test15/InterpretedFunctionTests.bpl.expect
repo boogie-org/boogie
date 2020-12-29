@@ -1,10 +1,10 @@
-InterpretedFunctionTests.bpl(6,3): Error BP5001: This assertion might not hold.
+InterpretedFunctionTests.bpl(6,3): Error: This assertion might not hold.
 Execution trace:
     InterpretedFunctionTests.bpl(4,3): anon0
-InterpretedFunctionTests.bpl(12,3): Error BP5001: This assertion might not hold.
+InterpretedFunctionTests.bpl(12,3): Error: This assertion might not hold.
 Execution trace:
     InterpretedFunctionTests.bpl(10,3): anon0
-InterpretedFunctionTests.bpl(18,3): Error BP5001: This assertion might not hold.
+InterpretedFunctionTests.bpl(18,3): Error: This assertion might not hold.
 Execution trace:
     InterpretedFunctionTests.bpl(16,3): anon0
 

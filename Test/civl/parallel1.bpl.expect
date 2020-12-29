@@ -1,4 +1,4 @@
-parallel1.bpl(23,1): Error BP5001: Non-interference check failed
+parallel1.bpl(23,1): Error: Non-interference check failed
 Execution trace:
     parallel1.bpl(7,3): anon0
     parallel1.bpl(12,5): inline$AtomicIncr$0$anon0

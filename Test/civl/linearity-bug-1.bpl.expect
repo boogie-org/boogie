@@ -1,4 +1,4 @@
-linearity-bug-1.bpl(19,31): Error BP5001: Commutativity check between atomic_read_n and atomic_inc_n failed
+linearity-bug-1.bpl(19,31): Error: Commutativity check between atomic_read_n and atomic_inc_n failed
 Execution trace:
     linearity-bug-1.bpl(19,31): inline$atomic_read_n$0$Entry
     linearity-bug-1.bpl(15,3): inline$atomic_inc_n$0$anon0

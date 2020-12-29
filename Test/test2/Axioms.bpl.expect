@@ -1,4 +1,4 @@
-Axioms.bpl(21,5): Error BP5001: This assertion might not hold.
+Axioms.bpl(21,5): Error: This assertion might not hold.
 Execution trace:
     Axioms.bpl(20,3): start
 

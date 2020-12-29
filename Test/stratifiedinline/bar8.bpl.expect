@@ -1,4 +1,4 @@
-(0,0): Error BP5001: This assertion might not hold.
+(0,0): Error: This assertion might not hold.
 Execution trace:
     bar8.bpl(36,5): anon0
     bar8.bpl(38,5): anon4_Then

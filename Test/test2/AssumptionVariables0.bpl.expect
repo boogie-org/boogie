@@ -1,10 +1,10 @@
-AssumptionVariables0.bpl(17,5): Error BP5001: This assertion might not hold.
+AssumptionVariables0.bpl(17,5): Error: This assertion might not hold.
 Execution trace:
     AssumptionVariables0.bpl(15,8): anon0
-AssumptionVariables0.bpl(27,5): Error BP5001: This assertion might not hold.
+AssumptionVariables0.bpl(27,5): Error: This assertion might not hold.
 Execution trace:
     AssumptionVariables0.bpl(25,5): anon0
-AssumptionVariables0.bpl(39,5): Error BP5001: This assertion might not hold.
+AssumptionVariables0.bpl(39,5): Error: This assertion might not hold.
 Execution trace:
     AssumptionVariables0.bpl(37,9): anon0
 

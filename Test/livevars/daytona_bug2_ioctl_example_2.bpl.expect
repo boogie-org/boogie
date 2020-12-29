@@ -1,3 +1,3 @@
-daytona_bug2_ioctl_example_2.bpl(4835,5): Error BP5001: This assertion might not hold.
+daytona_bug2_ioctl_example_2.bpl(4835,5): Error: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error

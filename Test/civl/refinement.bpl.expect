@@ -1,27 +1,27 @@
-refinement.bpl(6,48): Error BP5001: A yield-to-yield fragment modifies layer-2 state subsequent to a yield-to-yield fragment that already modified layer-2 state
+refinement.bpl(6,48): Error: A yield-to-yield fragment modifies layer-2 state subsequent to a yield-to-yield fragment that already modified layer-2 state
 Execution trace:
     refinement.bpl(8,3): anon0
     refinement.bpl(52,5): inline$INCR$0$anon0
     refinement.bpl(8,3): anon0_0
     refinement.bpl(52,5): inline$INCR$1$anon0
     (0,0): Civl_ReturnChecker
-refinement.bpl(13,48): Error BP5001: A yield-to-yield fragment modifies layer-2 state in a way that does not match the refined atomic action
+refinement.bpl(13,48): Error: A yield-to-yield fragment modifies layer-2 state in a way that does not match the refined atomic action
 Execution trace:
     refinement.bpl(15,3): anon0
     refinement.bpl(58,5): inline$DECR$0$anon0
     (0,0): Civl_RefinementChecker
-refinement.bpl(13,48): Error BP5001: A yield-to-yield fragment modifies layer-2 state subsequent to a yield-to-yield fragment that already modified layer-2 state
+refinement.bpl(13,48): Error: A yield-to-yield fragment modifies layer-2 state subsequent to a yield-to-yield fragment that already modified layer-2 state
 Execution trace:
     refinement.bpl(15,3): anon0
     refinement.bpl(58,5): inline$DECR$0$anon0
     refinement.bpl(15,3): anon0_0
     refinement.bpl(52,5): inline$INCR$0$anon0
     (0,0): Civl_ReturnChecker
-refinement.bpl(33,48): Error BP5001: On some path no yield-to-yield fragment matched the refined atomic action
+refinement.bpl(33,48): Error: On some path no yield-to-yield fragment matched the refined atomic action
 Execution trace:
     refinement.bpl(36,1): anon0
     (0,0): Civl_ReturnChecker
-refinement.bpl(38,48): Error BP5001: A yield-to-yield fragment illegally modifies layer-2 globals
+refinement.bpl(38,48): Error: A yield-to-yield fragment illegally modifies layer-2 globals
 Execution trace:
     refinement.bpl(40,3): anon0
     refinement.bpl(52,5): inline$INCR$0$anon0
