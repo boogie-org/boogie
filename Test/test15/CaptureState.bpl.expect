@@ -1,4 +1,4 @@
-CaptureState.bpl(30,1): Error BP5003: A postcondition might not hold on this return path.
+CaptureState.bpl(30,1): Error: A postcondition might not hold on this return path.
 CaptureState.bpl(11,3): Related location: This is the postcondition that might not hold.
 Execution trace:
     CaptureState.bpl(15,3): anon0

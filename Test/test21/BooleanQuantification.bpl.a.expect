@@ -1,7 +1,7 @@
-BooleanQuantification.bpl(23,3): Error BP5001: This assertion might not hold.
+BooleanQuantification.bpl(23,3): Error: This assertion might not hold.
 Execution trace:
     BooleanQuantification.bpl(22,3): anon0
-BooleanQuantification.bpl(35,3): Error BP5001: This assertion might not hold.
+BooleanQuantification.bpl(35,3): Error: This assertion might not hold.
 Execution trace:
     BooleanQuantification.bpl(33,3): anon0
 

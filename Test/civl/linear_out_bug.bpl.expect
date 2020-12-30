@@ -1,15 +1,15 @@
-linear_out_bug.bpl(10,34): Error BP5001: Commutativity check between AddAddr and RemoveAddr_2 failed
+linear_out_bug.bpl(10,34): Error: Commutativity check between AddAddr and RemoveAddr_2 failed
 Execution trace:
     linear_out_bug.bpl(10,34): inline$AddAddr$0$Entry
     linear_out_bug.bpl(13,14): inline$AddAddr$0$anon0
     linear_out_bug.bpl(28,14): inline$RemoveAddr_2$0$anon0
     linear_out_bug.bpl(25,30): inline$RemoveAddr_2$0$Return
-linear_out_bug.bpl(20,5): Error BP5001: Gate of RemoveAddr_1 not preserved by RemoveAddr_1
+linear_out_bug.bpl(20,5): Error: Gate of RemoveAddr_1 not preserved by RemoveAddr_1
 Execution trace:
     linear_out_bug.bpl(17,30): inline$RemoveAddr_1$0$Entry
     linear_out_bug.bpl(20,5): inline$RemoveAddr_1$0$anon0
     linear_out_bug.bpl(17,30): inline$RemoveAddr_1$0$Return
-linear_out_bug.bpl(25,30): Error BP5001: Potential linearity violation in outputs for domain addr.
+linear_out_bug.bpl(25,30): Error: Potential linearity violation in outputs for domain addr.
 Execution trace:
     linear_out_bug.bpl(25,30): inline$RemoveAddr_2$0$Entry
     linear_out_bug.bpl(28,14): inline$RemoveAddr_2$0$anon0

@@ -1,4 +1,4 @@
-pending-async-noninterference-fail.bpl(7,1): Error BP5001: Non-interference check failed
+pending-async-noninterference-fail.bpl(7,1): Error: Non-interference check failed
 Execution trace:
     pending-async-noninterference-fail.bpl(15,31): inline$A$0$Entry
     pending-async-noninterference-fail.bpl(18,5): inline$A$0$anon0

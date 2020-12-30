@@ -1,4 +1,4 @@
-Old.bpl(31,5): Error BP5003: A postcondition might not hold on this return path.
+Old.bpl(31,5): Error: A postcondition might not hold on this return path.
 Old.bpl(28,3): Related location: This is the postcondition that might not hold.
 Execution trace:
     Old.bpl(30,3): start

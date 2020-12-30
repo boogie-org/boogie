@@ -1,7 +1,7 @@
-FormulaTerm2.bpl(41,5): Error BP5001: This assertion might not hold.
+FormulaTerm2.bpl(41,5): Error: This assertion might not hold.
 Execution trace:
     FormulaTerm2.bpl(38,3): start
-FormulaTerm2.bpl(49,5): Error BP5001: This assertion might not hold.
+FormulaTerm2.bpl(49,5): Error: This assertion might not hold.
 Execution trace:
     FormulaTerm2.bpl(47,3): start
 

@@ -9,7 +9,7 @@ tickleBool -> {
   else -> true
 }
 *** END_MODEL
-Optimization3.bpl(10,5): Error BP5001: This assertion might not hold.
+Optimization3.bpl(10,5): Error: This assertion might not hold.
 Execution trace:
     Optimization3.bpl(8,5): anon0
 *** MODEL
@@ -24,7 +24,7 @@ tickleBool -> {
   else -> true
 }
 *** END_MODEL
-Optimization3.bpl(19,5): Error BP5001: This assertion might not hold.
+Optimization3.bpl(19,5): Error: This assertion might not hold.
 Execution trace:
     Optimization3.bpl(17,5): anon0
 

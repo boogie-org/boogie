@@ -66,17 +66,17 @@ implementation foo(a: ref)
 }
 
 
-<console>(16,4): Error BP5001: This assertion might not hold.
+<console>(16,4): Error: This assertion might not hold.
 Execution trace:
     <console>(15,0): anon0
-<console>(17,4): Error BP5001: This assertion might not hold.
+<console>(17,4): Error: This assertion might not hold.
 Execution trace:
     <console>(15,0): anon0
-<console>(13,4): Error BP5001: This assertion might not hold.
+<console>(13,4): Error: This assertion might not hold.
 Execution trace:
     <console>(5,0): anon0
     <console>(12,0): inline$b$0$anon0
-<console>(14,4): Error BP5001: This assertion might not hold.
+<console>(14,4): Error: This assertion might not hold.
 Execution trace:
     <console>(5,0): anon0
     <console>(12,0): inline$b$0$anon0

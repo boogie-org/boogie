@@ -1,7 +1,7 @@
-PolyList.bpl(46,3): Error BP5001: This assertion might not hold.
+PolyList.bpl(46,3): Error: This assertion might not hold.
 Execution trace:
     PolyList.bpl(31,7): anon0
-PolyList.bpl(64,3): Error BP5001: This assertion might not hold.
+PolyList.bpl(64,3): Error: This assertion might not hold.
 Execution trace:
     PolyList.bpl(53,7): anon0
 

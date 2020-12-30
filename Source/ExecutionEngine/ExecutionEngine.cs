@@ -254,7 +254,6 @@ namespace Microsoft.Boogie
     public readonly IToken Tok;
     public string Msg;
     public string Category { get; set; }
-    public string BoogieErrorCode { get; set; }
     public readonly List<AuxErrorInfo> Aux = new List<AuxErrorInfo>();
     public string OriginalRequestId { get; set; }
     public string RequestId { get; set; }
@@ -267,13 +266,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        var prefix = Category;
-        if (BoogieErrorCode != null)
-        {
-          prefix = prefix == null ? BoogieErrorCode : prefix + " " + BoogieErrorCode;
-        }
-
-        return prefix != null ? string.Format("{0}: {1}", prefix, Msg) : Msg;
+        return Category != null ? string.Format("{0}: {1}", Category, Msg) : Msg;
       }
     }
 
@@ -1027,16 +1020,14 @@ namespace Microsoft.Boogie
       {
         ae.Handle(e =>
         {
-          var pe = e as ProverException;
-          if (pe != null)
+          if (e is ProverException)
           {
-            printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e);
+            printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e.Message);
             outcome = PipelineOutcome.FatalError;
             return true;
           }
 
-          var oce = e as OperationCanceledException;
-          if (oce != null)
+          if (e is OperationCanceledException)
           {
             return true;
           }
@@ -1241,7 +1232,6 @@ namespace Microsoft.Boogie
           {
             var errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok,
               String.Format("{0} (encountered in implementation {1}).", e.Message, impl.Name), requestId, "Error");
-            errorInfo.BoogieErrorCode = "BP5010";
             errorInfo.ImplementationName = impl.Name;
             printer.WriteErrorInformation(errorInfo, output);
             if (er != null)
@@ -1814,12 +1804,6 @@ namespace Microsoft.Boogie
 
     private static ErrorInformation CreateErrorInformation(Counterexample error, VC.VCGen.Outcome outcome)
     {
-      // BP1xxx: Parsing errors
-      // BP2xxx: Name resolution errors
-      // BP3xxx: Typechecking errors
-      // BP4xxx: Abstract interpretation errors (Is there such a thing?)
-      // BP5xxx: Verification errors
-
       ErrorInformation errorInfo;
       var cause = "Error";
       if (outcome == VCGen.Outcome.TimedOut)
@@ -1842,7 +1826,6 @@ namespace Microsoft.Boogie
           errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok,
             callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.",
             callError.RequestId, callError.OriginalRequestId, cause);
-          errorInfo.BoogieErrorCode = "BP5002";
           errorInfo.Kind = ErrorKind.Precondition;
           errorInfo.AddAuxInfo(callError.FailingRequires.tok,
             callError.FailingRequires.ErrorData as string ?? "This is the precondition that might not hold.",
@@ -1862,7 +1845,6 @@ namespace Microsoft.Boogie
           errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok,
             "A postcondition might not hold on this return path.",
             returnError.RequestId, returnError.OriginalRequestId, cause);
-          errorInfo.BoogieErrorCode = "BP5003";
           errorInfo.Kind = ErrorKind.Postcondition;
           errorInfo.AddAuxInfo(returnError.FailingEnsures.tok,
             returnError.FailingEnsures.ErrorData as string ?? "This is the postcondition that might not hold.",
@@ -1884,7 +1866,6 @@ namespace Microsoft.Boogie
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok,
             "This loop invariant might not hold on entry.",
             assertError.RequestId, assertError.OriginalRequestId, cause);
-          errorInfo.BoogieErrorCode = "BP5004";
           errorInfo.Kind = ErrorKind.InvariantEntry;
           if ((assertError.FailingAssert.ErrorData as string) != null)
           {
@@ -1897,7 +1878,6 @@ namespace Microsoft.Boogie
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok,
             "This loop invariant might not be maintained by the loop.",
             assertError.RequestId, assertError.OriginalRequestId, cause);
-          errorInfo.BoogieErrorCode = "BP5005";
           errorInfo.Kind = ErrorKind.InvariantMaintainance;
           if ((assertError.FailingAssert.ErrorData as string) != null)
           {
@@ -1908,12 +1888,10 @@ namespace Microsoft.Boogie
         else
         {
           string msg = null;
-          string bec = null;
 
           if (assertError.FailingAssert.ErrorMessage == null || CommandLineOptions.Clo.ForceBplErrors)
           {
             msg = assertError.FailingAssert.ErrorData as string ?? "This assertion might not hold.";
-            bec = "BP5001";
           }
           else
           {
@@ -1922,7 +1900,6 @@ namespace Microsoft.Boogie
 
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg,
             assertError.RequestId, assertError.OriginalRequestId, cause);
-          errorInfo.BoogieErrorCode = bec;
           errorInfo.Kind = ErrorKind.Assertion;
         }
       }

@@ -1,4 +1,4 @@
-pending-async-1.bpl(48,49): Error BP5001: On some path no yield-to-yield fragment matched the refined atomic action
+pending-async-1.bpl(48,49): Error: On some path no yield-to-yield fragment matched the refined atomic action
 Execution trace:
     pending-async-1.bpl(50,3): anon0
     pending-async-1.bpl(16,7): inline$B$0$anon0
@@ -6,7 +6,7 @@ Execution trace:
     pending-async-1.bpl(16,7): inline$B$1$anon0
     pending-async-1.bpl(50,3): anon0$2
     (0,0): Civl_ReturnChecker
-pending-async-1.bpl(64,3): Error BP5001: Pending asyncs created by this call are not summarized
+pending-async-1.bpl(64,3): Error: Pending asyncs created by this call are not summarized
 Execution trace:
     pending-async-1.bpl(64,3): anon0
     pending-async-1.bpl(21,7): inline$C$0$anon0

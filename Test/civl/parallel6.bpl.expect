@@ -1,4 +1,4 @@
-parallel6.bpl(8,64): Error BP5001: A yield-to-yield fragment modifies layer-2 state subsequent to a yield-to-yield fragment that already modified layer-2 state
+parallel6.bpl(8,64): Error: A yield-to-yield fragment modifies layer-2 state subsequent to a yield-to-yield fragment that already modified layer-2 state
 Execution trace:
     parallel6.bpl(10,5): anon0
     parallel6.bpl(28,7): inline$atomic_incr$0$anon0

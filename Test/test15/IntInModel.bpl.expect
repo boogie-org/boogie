@@ -1,4 +1,4 @@
-IntInModel.bpl(4,3): Error BP5001: This assertion might not hold.
+IntInModel.bpl(4,3): Error: This assertion might not hold.
 Execution trace:
     IntInModel.bpl(4,3): anon0
 *** MODEL

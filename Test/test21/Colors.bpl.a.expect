@@ -1,7 +1,7 @@
-Colors.bpl(17,3): Error BP5001: This assertion might not hold.
+Colors.bpl(17,3): Error: This assertion might not hold.
 Execution trace:
     Colors.bpl(16,3): anon0
-Colors.bpl(24,3): Error BP5001: This assertion might not hold.
+Colors.bpl(24,3): Error: This assertion might not hold.
 Execution trace:
     Colors.bpl(23,3): anon0
 

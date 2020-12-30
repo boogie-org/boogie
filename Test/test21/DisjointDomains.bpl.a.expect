@@ -1,10 +1,10 @@
-DisjointDomains.bpl(18,5): Error BP5001: This assertion might not hold.
+DisjointDomains.bpl(18,5): Error: This assertion might not hold.
 Execution trace:
     DisjointDomains.bpl(15,3): start
-DisjointDomains.bpl(25,5): Error BP5001: This assertion might not hold.
+DisjointDomains.bpl(25,5): Error: This assertion might not hold.
 Execution trace:
     DisjointDomains.bpl(24,3): start
-DisjointDomains.bpl(31,5): Error BP5001: This assertion might not hold.
+DisjointDomains.bpl(31,5): Error: This assertion might not hold.
 Execution trace:
     DisjointDomains.bpl(30,3): start
 

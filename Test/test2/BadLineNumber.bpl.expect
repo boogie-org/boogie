@@ -1,4 +1,4 @@
-BadLineNumber.bpl(15,1): Error BP5003: A postcondition might not hold on this return path.
+BadLineNumber.bpl(15,1): Error: A postcondition might not hold on this return path.
 BadLineNumber.bpl(5,3): Related location: This is the postcondition that might not hold.
 Execution trace:
     BadLineNumber.bpl(9,5): anon0

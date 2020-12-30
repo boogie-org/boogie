@@ -1,7 +1,7 @@
-Triggers0.bpl(43,3): Error BP5001: This assertion might not hold.
+Triggers0.bpl(43,3): Error: This assertion might not hold.
 Execution trace:
     Triggers0.bpl(43,3): anon0
-Triggers0.bpl(47,3): Error BP5001: This assertion might not hold.
+Triggers0.bpl(47,3): Error: This assertion might not hold.
 Execution trace:
     Triggers0.bpl(43,3): anon0
 

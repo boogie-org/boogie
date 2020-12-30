@@ -1,4 +1,4 @@
-EmptySetBug.bpl(33,3): Error BP5001: This assertion might not hold.
+EmptySetBug.bpl(33,3): Error: This assertion might not hold.
 Execution trace:
     EmptySetBug.bpl(29,5): anon0
 

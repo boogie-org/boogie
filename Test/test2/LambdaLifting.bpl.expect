@@ -1,13 +1,13 @@
-LambdaLifting.bpl(14,2): Error BP5001: This assertion might not hold.
+LambdaLifting.bpl(14,2): Error: This assertion might not hold.
 Execution trace:
     LambdaLifting.bpl(8,4): anon0
-LambdaLifting.bpl(24,2): Error BP5001: This assertion might not hold.
+LambdaLifting.bpl(24,2): Error: This assertion might not hold.
 Execution trace:
     LambdaLifting.bpl(22,4): anon0
-LambdaLifting.bpl(32,2): Error BP5001: This assertion might not hold.
+LambdaLifting.bpl(32,2): Error: This assertion might not hold.
 Execution trace:
     LambdaLifting.bpl(30,4): anon0
-LambdaLifting.bpl(51,2): Error BP5001: This assertion might not hold.
+LambdaLifting.bpl(51,2): Error: This assertion might not hold.
 Execution trace:
     LambdaLifting.bpl(47,4): anon0
 

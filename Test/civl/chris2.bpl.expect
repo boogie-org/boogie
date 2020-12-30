@@ -1,19 +1,19 @@
-chris2.bpl(21,3): Error BP5001: Gate of atomic_p_gt2 not preserved by atomic_p_gt1_lower
+chris2.bpl(21,3): Error: Gate of atomic_p_gt2 not preserved by atomic_p_gt1_lower
 Execution trace:
     chris2.bpl(5,32): inline$atomic_p_gt1_lower$0$Entry
     chris2.bpl(7,5): inline$atomic_p_gt1_lower$0$anon0
     chris2.bpl(5,32): inline$atomic_p_gt1_lower$0$Return
-chris2.bpl(21,3): Error BP5001: Gate of atomic_p_gt2 not preserved by atomic_p_gt1
+chris2.bpl(21,3): Error: Gate of atomic_p_gt2 not preserved by atomic_p_gt1
 Execution trace:
     chris2.bpl(11,32): inline$atomic_p_gt1$0$Entry
     chris2.bpl(13,5): inline$atomic_p_gt1$0$anon0
     chris2.bpl(11,32): inline$atomic_p_gt1$0$Return
-chris2.bpl(20,32): Error BP5001: Gate failure of atomic_p_gt2 not preserved by atomic_p_gt1_lower
+chris2.bpl(20,32): Error: Gate failure of atomic_p_gt2 not preserved by atomic_p_gt1_lower
 Execution trace:
     chris2.bpl(5,32): inline$atomic_p_gt1_lower$0$Entry
     chris2.bpl(7,5): inline$atomic_p_gt1_lower$0$anon0
     chris2.bpl(5,32): inline$atomic_p_gt1_lower$0$Return
-chris2.bpl(20,32): Error BP5001: Gate failure of atomic_p_gt2 not preserved by atomic_p_gt1
+chris2.bpl(20,32): Error: Gate failure of atomic_p_gt2 not preserved by atomic_p_gt1
 Execution trace:
     chris2.bpl(11,32): inline$atomic_p_gt1$0$Entry
     chris2.bpl(13,5): inline$atomic_p_gt1$0$anon0

@@ -1,4 +1,4 @@
-Havoc.bpl(17,3): Error BP5001: This assertion might not hold.
+Havoc.bpl(17,3): Error: This assertion might not hold.
 Execution trace:
     Havoc.bpl(16,3): anon0
 

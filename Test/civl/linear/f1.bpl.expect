@@ -1,4 +1,4 @@
-f1.bpl(40,4): Error BP5001: This assertion might not hold.
+f1.bpl(40,4): Error: This assertion might not hold.
 Execution trace:
     f1.bpl(34,6): anon0
 

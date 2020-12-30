@@ -1,40 +1,40 @@
-ManyErrors.bpl(6,9): Error BP5001: This assertion might not hold.
+ManyErrors.bpl(6,9): Error: This assertion might not hold.
 Execution trace:
     ManyErrors.bpl(5,5): L0
     ManyErrors.bpl(6,5): L1
-ManyErrors.bpl(7,9): Error BP5001: This assertion might not hold.
+ManyErrors.bpl(7,9): Error: This assertion might not hold.
 Execution trace:
     ManyErrors.bpl(5,5): L0
     ManyErrors.bpl(7,5): L2
-ManyErrors.bpl(8,9): Error BP5001: This assertion might not hold.
+ManyErrors.bpl(8,9): Error: This assertion might not hold.
 Execution trace:
     ManyErrors.bpl(5,5): L0
     ManyErrors.bpl(8,5): L3
-ManyErrors.bpl(9,9): Error BP5001: This assertion might not hold.
+ManyErrors.bpl(9,9): Error: This assertion might not hold.
 Execution trace:
     ManyErrors.bpl(5,5): L0
     ManyErrors.bpl(9,5): L4
-ManyErrors.bpl(10,9): Error BP5001: This assertion might not hold.
+ManyErrors.bpl(10,9): Error: This assertion might not hold.
 Execution trace:
     ManyErrors.bpl(5,5): L0
     ManyErrors.bpl(10,5): L5
-ManyErrors.bpl(11,9): Error BP5001: This assertion might not hold.
+ManyErrors.bpl(11,9): Error: This assertion might not hold.
 Execution trace:
     ManyErrors.bpl(5,5): L0
     ManyErrors.bpl(11,5): L6
-ManyErrors.bpl(12,9): Error BP5001: This assertion might not hold.
+ManyErrors.bpl(12,9): Error: This assertion might not hold.
 Execution trace:
     ManyErrors.bpl(5,5): L0
     ManyErrors.bpl(12,5): L7
-ManyErrors.bpl(13,9): Error BP5001: This assertion might not hold.
+ManyErrors.bpl(13,9): Error: This assertion might not hold.
 Execution trace:
     ManyErrors.bpl(5,5): L0
     ManyErrors.bpl(13,5): L8
-ManyErrors.bpl(14,9): Error BP5001: This assertion might not hold.
+ManyErrors.bpl(14,9): Error: This assertion might not hold.
 Execution trace:
     ManyErrors.bpl(5,5): L0
     ManyErrors.bpl(14,5): L9
-ManyErrors.bpl(15,10): Error BP5001: This assertion might not hold.
+ManyErrors.bpl(15,10): Error: This assertion might not hold.
 Execution trace:
     ManyErrors.bpl(5,5): L0
     ManyErrors.bpl(15,5): L10

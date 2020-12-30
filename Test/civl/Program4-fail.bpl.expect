@@ -1,4 +1,4 @@
-Program4-fail.bpl(26,1): Error BP5003: A postcondition might not hold on this return path.
+Program4-fail.bpl(26,1): Error: A postcondition might not hold on this return path.
 Program4-fail.bpl(6,1): Related location: This is the postcondition that might not hold.
 Execution trace:
     Program4-fail.bpl(23,3): anon0

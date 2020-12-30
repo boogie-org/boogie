@@ -1,4 +1,4 @@
-foo.bpl(23,1): Error BP5001: Non-interference check failed
+foo.bpl(23,1): Error: Non-interference check failed
 Execution trace:
     foo.bpl(7,3): anon0
     foo.bpl(12,5): inline$AtomicIncr$0$anon0

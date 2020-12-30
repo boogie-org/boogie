@@ -1,4 +1,4 @@
-t1.bpl(55,5): Error BP5001: Non-interference check failed
+t1.bpl(55,5): Error: Non-interference check failed
 Execution trace:
     t1.bpl(74,13): anon0
     t1.bpl(74,13): anon0_1
