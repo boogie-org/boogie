@@ -1,7 +1,7 @@
 // RUN: %boogie -timeLimit:4 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// RUN: %boogie -timeLimit:4 -proverLog:%t "%s"
-// RUN: %OutputCheck --file-to-check "%t" "%s"
+// RUN: %boogie -timeLimit:4 -proverLog:"%t.smt2" "%s"
+// RUN: %OutputCheck --file-to-check "%t.smt2" "%s"
 // CHECK-L: (set-option :timeout 4000)
 // CHECK-L: (set-option :timeout 8000)
 // CHECK-L: (set-option :timeout 2000)

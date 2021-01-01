@@ -1,5 +1,5 @@
-// RUN: %boogie -rlimit:800 -proverLog:%t "%s"
-// RUN: %OutputCheck --file-to-check "%t" "%s"
+// RUN: %boogie -rlimit:800 -proverLog:"%t.smt2" "%s"
+// RUN: %OutputCheck --file-to-check "%t.smt2" "%s"
 // CHECK-L: (set-option :timeout 0)
 // CHECK-L: (set-option :rlimit 800000)
 // CHECK-L: (set-option :timeout 0)
