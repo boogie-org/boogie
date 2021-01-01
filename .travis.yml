@@ -29,9 +29,11 @@ script:
   - diff --strip-trailing-cr Source/Core/Parser.cs Source/Core/Parser.cs.old
   - diff --strip-trailing-cr Source/Core/Scanner.cs Source/Core/Scanner.cs.old
   # Build Boogie
-  - dotnet pack -c ${CONFIGURATION} ${SOLUTION}
+  - dotnet build -c ${CONFIGURATION} ${SOLUTION}
+  # Create packages
+  - dotnet pack --no-build -c ${CONFIGURATION} ${SOLUTION}
   # Run unit tests
-  - dotnet test -c ${CONFIGURATION} ${SOLUTION}
+  - dotnet test --no-build -c ${CONFIGURATION} ${SOLUTION}
   # Run lit test suite
   - lit -v --timeout=120 -D configuration=${CONFIGURATION} Test
   # Do not deploy if GitVersionTask could not be used to extract the correct version number
