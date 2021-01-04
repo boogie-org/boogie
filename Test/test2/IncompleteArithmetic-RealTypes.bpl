@@ -2,12 +2,20 @@
 // RUN: %diff "%s.expect" "%t"
 
 // This file is generated from $DAFNY/Test/dafny0/RealTypes.dfy using Dafny.
-// It once caused a "Prover error: Unexpected prover response" in Boogie,
-// a smaller form of which was reported in https://github.com/boogie-org/boogie/issues/321.
-// Apparently, the :reason-unknown reported by Z3 v.4.8.9 is different in
-// the small repro in the bug report than it is for this file. Therefore, both
-// this file and IncompleteArithmetic-git-issue-321.bpl have been added to the Boogie
-// test suite to provoke both behaviors of Z3.
+// Note that Dafny currently uses smt.arith.solver=2, which is part of this test
+// (see the top line of this file).
+//
+// This test once caused a "Prover error: Unexpected prover response" in Boogie
+// when using Z3 v4.8.8 and Z3 v4.8.9 (and perhaps other versions of Z3 as well).
+// The response that was unexpected is:
+//   (:reason-unknown "(incomplete (theory arithmetic))")
+// Boogie now treats this response in the same way as some other
+// ":reason-unknown ...incomplete..." responses (e.g., incomplete quantifiers).
+//
+// Note, when Z3 reports this :reason-unknown, it also makes a model available.
+// Boogie uses that model in the usual way when reporting an error.
+// A related :reason-unknown (where Z3 v4.8.9 does NOT give a model) is tested in
+// IncompleteArithmetic-git-issue-321.bpl.
 
 type Ty;
 

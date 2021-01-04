@@ -1722,7 +1722,7 @@ namespace Microsoft.Boogie.SMTLib
                 labels = CalculatePath(handler.StartingProcId());
                 if (labels.Length == 0)
                 {
-                  // With a path to an error, we don't know what to report
+                  // Without a path to an error, we don't know what to report
                   globalResult = Outcome.Undetermined;
                   break;
                 }
