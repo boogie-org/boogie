@@ -1,5 +1,5 @@
-// RUN: %boogie -proverOpt:O:smt.random_seed=55 -proverLog:%t "%s"
-// RUN: %OutputCheck --file-to-check "%t" "%s"
+// RUN: %boogie -proverOpt:O:smt.random_seed=55 -proverLog:"%t.smt2" "%s"
+// RUN: %OutputCheck --file-to-check "%t.smt2" "%s"
 // CHECK-L: (set-info :boogie-vc-id WithRandomSeed0)
 // CHECK-L: (set-option :smt.random_seed 100)
 // CHECK-L: (set-option :smt.random_seed 55)
