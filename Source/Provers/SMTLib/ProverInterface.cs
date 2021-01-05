@@ -1720,6 +1720,12 @@ namespace Microsoft.Boogie.SMTLib
               else
               {
                 labels = CalculatePath(handler.StartingProcId());
+                if (labels.Length == 0)
+                {
+                  // Without a path to an error, we don't know what to report
+                  globalResult = Outcome.Undetermined;
+                  break;
+                }
               }
 
               handler.OnModel(labels, model, result);
@@ -2356,6 +2362,8 @@ namespace Microsoft.Boogie.SMTLib
             {
               case "incomplete":
               case "(incomplete quantifiers)":
+              case "(incomplete (theory arithmetic))":
+              case "smt tactic failed to show goal to be sat/unsat (incomplete (theory arithmetic))":
                 break;
               case "memout":
                 currentErrorHandler.OnResourceExceeded("memory");

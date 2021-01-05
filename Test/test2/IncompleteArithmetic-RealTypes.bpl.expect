@@ -1,0 +1,23 @@
+IncompleteArithmetic-RealTypes.bpl(3138,9): Error: This assertion might not hold.
+Execution trace:
+    IncompleteArithmetic-RealTypes.bpl(3112,13): anon0
+    IncompleteArithmetic-RealTypes.bpl(3134,9): anon6_Then
+IncompleteArithmetic-RealTypes.bpl(3147,9): Error: This assertion might not hold.
+Execution trace:
+    IncompleteArithmetic-RealTypes.bpl(3112,13): anon0
+    IncompleteArithmetic-RealTypes.bpl(3144,9): anon7_Then
+IncompleteArithmetic-RealTypes.bpl(3208,5): Error: This assertion might not hold.
+Execution trace:
+    IncompleteArithmetic-RealTypes.bpl(3195,13): anon0
+    IncompleteArithmetic-RealTypes.bpl(3200,5): anon3_Else
+    IncompleteArithmetic-RealTypes.bpl(3205,5): anon2
+IncompleteArithmetic-RealTypes.bpl(3210,5): Error: This assertion might not hold.
+Execution trace:
+    IncompleteArithmetic-RealTypes.bpl(3195,13): anon0
+    IncompleteArithmetic-RealTypes.bpl(3200,5): anon3_Else
+    IncompleteArithmetic-RealTypes.bpl(3205,5): anon2
+IncompleteArithmetic-RealTypes.bpl(3265,5): Error: This assertion might not hold.
+Execution trace:
+    IncompleteArithmetic-RealTypes.bpl(3251,13): anon0
+
+Boogie program verifier finished with 2 verified, 5 errors

@@ -163,10 +163,14 @@ namespace Microsoft.Boogie.SMTLib
           if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId)
             if (resp.Arguments[0].Name.Contains("max. resource limit exceeded"))
               return resp;
-            else
+            else {
               HandleError(resp.Arguments[0].Name);
-          else
+              return null;
+            }
+          else {
             HandleError(resp.ToString());
+            return null;
+          }
         }
         else if (resp.Name == "progress")
         {
