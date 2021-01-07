@@ -6,10 +6,9 @@ const null: int;
 type lmap;
 function {:linear "Node"} dom(lmap): [int]bool;
 function map(lmap): [int]int;
-function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
 
 function EmptyLmap(): (lmap);
-axiom (dom(EmptyLmap()) == MapConstBool(false));
+axiom (dom(EmptyLmap()) == MapConst(false));
 
 function Add(x: lmap, i: int, v: int): (lmap);
 axiom (forall x: lmap, i: int, v: int :: dom(Add(x, i, v)) == dom(x)[i:=true] && map(Add(x, i, v)) == map(x)[i := v]);
@@ -18,23 +17,21 @@ function Remove(x: lmap, i: int): (lmap);
 axiom (forall x: lmap, i: int :: dom(Remove(x, i)) == dom(x)[i:=false] && map(Remove(x, i)) == map(x));
 
 procedure {:right} {:layer 1} AtomicReadTopOfStack() returns (v:int)
-{ assume v == null || dom(Stack)[v] || Used[v]; }
-
+{ assume v == null || dom(Stack)[v]; }
 procedure {:yields} {:layer 0} {:refines "AtomicReadTopOfStack"} ReadTopOfStack() returns (v:int);
 
 procedure {:right} {:layer 1} AtomicLoad(i:int) returns (v:int)
 {
-  assert dom(Stack)[i] || Used[i];
-  if (dom(Stack)[i]) {
-    v := map(Stack)[i];
-  }
+  assert dom(Stack)[i];
+  v := map(Stack)[i];
 }
-
 procedure {:yields} {:layer 0} {:refines "AtomicLoad"} Load(i:int) returns (v:int);
 
 procedure {:both} {:layer 1} AtomicStore({:linear_in "Node"} l_in:lmap, i:int, v:int) returns ({:linear "Node"} l_out:lmap)
-{ assert dom(l_in)[i]; l_out := Add(l_in, i, v); }
-
+{
+  assert dom(l_in)[i];
+  l_out := Add(l_in, i, v);
+}
 procedure {:yields} {:layer 0} {:refines "AtomicStore"} Store({:linear_in "Node"} l_in:lmap, i:int, v:int) returns ({:linear "Node"} l_out:lmap);
 
 procedure {:atomic} {:layer 1} AtomicTransferToStack(oldVal: int, newVal: int, {:linear_in "Node"} l_in:lmap) returns (r: bool, {:linear "Node"} l_out:lmap)
@@ -51,45 +48,31 @@ modifies TopOfStack, Stack;
     r := false;
   }
 }
-
 procedure {:yields} {:layer 0} {:refines "AtomicTransferToStack"} TransferToStack(oldVal: int, newVal: int, {:linear_in "Node"} l_in:lmap) returns (r: bool, {:linear "Node"} l_out:lmap);
 
 procedure {:atomic} {:layer 1} AtomicTransferFromStack(oldVal: int, newVal: int) returns (r: bool)
-modifies TopOfStack, Used, Stack;
+modifies TopOfStack, Stack;
 {
-  assert oldVal != null;
-  assert Inv(TopOfStack, Stack);
   if (oldVal == TopOfStack) {
     TopOfStack := newVal;
-    Used[oldVal] := true;
-    Stack := Remove(Stack, oldVal);
     r := true;
   }
   else {
     r := false;
   }
 }
-
 procedure {:yields} {:layer 0} {:refines "AtomicTransferFromStack"} TransferFromStack(oldVal: int, newVal: int) returns (r: bool);
 
 var {:layer 0,2} TopOfStack: int;
 var {:linear "Node"} {:layer 0,2} Stack: lmap;
 
-
-function {:inline} Inv(TopOfStack: int, Stack: lmap) : (bool)
-{
-  BetweenSet(map(Stack), TopOfStack, null)[TopOfStack] &&
-  Subset(BetweenSet(map(Stack), TopOfStack, null), Union(Singleton(null), dom(Stack)))
-}
-
 procedure {:yield_invariant} {:layer 1} YieldInv();
-requires Inv(TopOfStack, Stack);
-
-var {:linear "Node"} {:layer 0,2} Used: [int]bool;
+requires BetweenSet(map(Stack), TopOfStack, null)[TopOfStack];
+requires Subset(BetweenSet(map(Stack), TopOfStack, null), Union(Singleton(null), dom(Stack)));
 
 function {:inline} {:linear "Node"} NodeCollector(x: int) : [int]bool
 {
-  MapConstBool(false)[x := true]
+  MapConst(false)[x := true]
 }
 function {:inline} {:linear "Node"} NodeSetCollector(x: [int]bool) : [int]bool
 {
@@ -124,8 +107,8 @@ requires {:layer 1} dom(x_lmap)[x];
 }
 
 procedure {:atomic} {:layer 2} atomic_pop() returns (t: int)
-modifies Used, TopOfStack, Stack;
-{ assert Inv(TopOfStack, Stack); assume TopOfStack != null; t := TopOfStack; Used[t] := true; TopOfStack := map(Stack)[t]; Stack := Remove(Stack, t); }
+modifies TopOfStack, Stack;
+{ assume TopOfStack != null; t := TopOfStack; TopOfStack := map(Stack)[t]; }
 
 procedure {:yields} {:layer 1} {:refines "atomic_pop"}
 {:yield_preserves "YieldInv"}

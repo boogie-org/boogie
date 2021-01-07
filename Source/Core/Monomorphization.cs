@@ -639,6 +639,11 @@ namespace Microsoft.Boogie
       return exprMonomorphizationVisitor.VisitExpr(node);
     }
 
+    public override Expr VisitIdentifierExpr(IdentifierExpr node)
+    {
+      return exprMonomorphizationVisitor.VisitExpr(node);
+    }
+
     public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
     {
       if (node is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
