@@ -13,7 +13,7 @@ modifies pendingAsyncs;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]OptionVoteInfo, acceptorState: [Node]AcceptorState,
+function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acceptorState: [Node]AcceptorState,
               permJoinChannel: JoinResponseChannel, permVoteChannel: VoteResponseChannel) : bool
 {
   (forall p: Permission :: domain#JoinResponseChannel(permJoinChannel)[p] ==> is#JoinPerm(p) &&
@@ -24,8 +24,8 @@ function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]OptionVoteInfo, acce
         n == from &&
         joinedNodes[r][from] &&
         0 <= maxRound && maxRound < r &&
-        (maxRound == 0 || (is#SomeVoteInfo(voteInfo[maxRound]) && ns#SomeVoteInfo(voteInfo[maxRound])[from] && value#SomeVoteInfo(voteInfo[maxRound]) == maxValue)) &&
-        (forall r': Round :: maxRound < r' && r' < r && is#SomeVoteInfo(voteInfo[r']) ==> !ns#SomeVoteInfo(voteInfo[r'])[from]) &&
+        (maxRound == 0 || (is#Some(voteInfo[maxRound]) && ns#VoteInfo(t#Some(voteInfo[maxRound]))[from] && value#VoteInfo(t#Some(voteInfo[maxRound])) == maxValue)) &&
+        (forall r': Round :: maxRound < r' && r' < r && is#Some(voteInfo[r']) ==> !ns#VoteInfo(t#Some(voteInfo[r']))[from]) &&
         r <= lastJoinRound#AcceptorState(acceptorState[from])
       )
     )
@@ -37,8 +37,8 @@ function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]OptionVoteInfo, acce
       (
         var from := from#VoteResponse(voteResponse);
         n == from &&
-        is#SomeVoteInfo(voteInfo[r]) &&
-        ns#SomeVoteInfo(voteInfo[r])[from]
+        is#Some(voteInfo[r]) &&
+        ns#VoteInfo(t#Some(voteInfo[r]))[from]
       )
     )
   )
@@ -49,8 +49,8 @@ function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]OptionVoteInfo, acce
       lastVoteRound <= lastJoinRound &&
       (lastJoinRound == 0 || (Round(lastJoinRound) && joinedNodes[lastJoinRound][n])) &&
       (forall r: Round :: lastJoinRound < r && Round(r) ==> !joinedNodes[r][n]) &&
-      (lastVoteRound == 0 || (Round(lastVoteRound) && is#SomeVoteInfo(voteInfo[lastVoteRound]) && ns#SomeVoteInfo(voteInfo[lastVoteRound])[n] && value#SomeVoteInfo(voteInfo[lastVoteRound]) == lastVoteValue)) &&
-      (forall r: Round :: lastVoteRound < r && Round(r) && is#SomeVoteInfo(voteInfo[r]) ==> !ns#SomeVoteInfo(voteInfo[r])[n])
+      (lastVoteRound == 0 || (Round(lastVoteRound) && is#Some(voteInfo[lastVoteRound]) && ns#VoteInfo(t#Some(voteInfo[lastVoteRound]))[n] && value#VoteInfo(t#Some(voteInfo[lastVoteRound])) == lastVoteValue)) &&
+      (forall r: Round :: lastVoteRound < r && Round(r) && is#Some(voteInfo[r]) ==> !ns#VoteInfo(t#Some(voteInfo[r]))[n])
     )
   )
 }
@@ -136,7 +136,7 @@ requires {:layer 1} Round(r);
 requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
 requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
 ensures {:layer 1} maxRound == MaxRound(r, ns, voteInfo);
-ensures {:layer 1} Round(maxRound) ==> maxValue == value#SomeVoteInfo(voteInfo[maxRound]);
+ensures {:layer 1} Round(maxRound) ==> maxValue == value#VoteInfo(t#Some(voteInfo[maxRound]));
 ensures {:layer 1} IsSubset(ns, joinedNodes[r]) && IsQuorum(ns);
 ensures {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
 ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
@@ -157,7 +157,7 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
   invariant {:layer 1} IsSubset(ns, joinedNodes[r]);
   invariant {:layer 1} receivedPermissions == (lambda x: Permission :: is#JoinPerm(x) && r#JoinPerm(x) == r && ns[n#JoinPerm(x)]);
   invariant {:layer 1} maxRound == MaxRound(r, ns, voteInfo);
-  invariant {:layer 1} Round(maxRound) ==> maxValue == value#SomeVoteInfo(voteInfo[maxRound]);
+  invariant {:layer 1} Round(maxRound) ==> maxValue == value#VoteInfo(t#Some(voteInfo[maxRound]));
   invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
   invariant {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
   {
@@ -228,7 +228,7 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
   while (true)
   invariant {:layer 1} count == Cardinality(q);
   invariant {:layer 1} (forall x: Node :: q[x] ==> Node(x));
-  invariant {:layer 1} IsSubset(q, ns#SomeVoteInfo(voteInfo[r]));
+  invariant {:layer 1} IsSubset(q, ns#VoteInfo(t#Some(voteInfo[r])));
   invariant {:layer 1} receivedPermissions == (lambda x: Permission :: is#VotePerm(x) && r#VotePerm(x) == r && q[n#VotePerm(x)]);
   invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
   invariant {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
@@ -290,13 +290,13 @@ modifies joinedNodes;
 procedure {:intro}{:layer 1} ProposeIntro(r: Round, v: Value)
 modifies voteInfo;
 {
-  voteInfo[r] := SomeVoteInfo(v, NoNodes());
+  voteInfo[r] := Some(VoteInfo(v, NoNodes()));
 }
 
 procedure {:intro}{:layer 1} VoteIntro(r: Round, n: Node)
 modifies voteInfo;
 {
-  voteInfo[r] := SomeVoteInfo(value#SomeVoteInfo(voteInfo[r]), ns#SomeVoteInfo(voteInfo[r])[n := true]);
+  voteInfo[r] := Some(VoteInfo(value#VoteInfo(t#Some(voteInfo[r])), ns#VoteInfo(t#Some(voteInfo[r]))[n := true]));
 }
 
 procedure {:intro}{:layer 1} AddPendingAsyncs(PAs: [PA]int)
@@ -320,7 +320,7 @@ requires !q[n];
 ensures q' == q[n := true];
 ensures Cardinality(q') == Cardinality(q) + 1;
 
-procedure {:lemma} MaxRoundLemma(voteInfo:[Round]OptionVoteInfo, r: Round, ns1: NodeSet, ns2: NodeSet);
+procedure {:lemma} MaxRoundLemma(voteInfo:[Round]Option VoteInfo, r: Round, ns1: NodeSet, ns2: NodeSet);
 requires Round(r);
 ensures MaxRound(r, MapOr(ns1, ns2), voteInfo) ==
          if (MaxRound(r, ns1, voteInfo) < MaxRound(r, ns2, voteInfo))
@@ -332,7 +332,7 @@ ensures MaxRound(r, MapOr(ns1, ns2), voteInfo) ==
 procedure {:atomic}{:layer 1} A_SetDecision(round: Round, value: Value)
 modifies decision;
 {
-  decision[round] := SomeValue(value);
+  decision[round] := Some(value);
 }
 
 procedure {:atomic}{:layer 1} A_JoinUpdate(r: Round, n: Node)

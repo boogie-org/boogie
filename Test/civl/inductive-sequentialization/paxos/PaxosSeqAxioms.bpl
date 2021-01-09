@@ -1,18 +1,18 @@
 function {:inline}{:lemma}{:commutativity "A_Propose", "A_Propose'"}
-CommutativityLemma_A_Propose_A_Propose'(voteInfo: [Round]OptionVoteInfo, first_r: Round, second_r: Round) : bool
+CommutativityLemma_A_Propose_A_Propose'(voteInfo: [Round]Option VoteInfo, first_r: Round, second_r: Round) : bool
 {
   Lemma_MaxRound_InitVote(voteInfo, first_r, second_r) &&
   Lemma_MaxRound_InitVote(voteInfo, second_r, first_r)
 }
 
 function {:inline}{:lemma}{:commutativity "A_Vote", "A_Propose'"}
-CommutativityLemma_A_Vote_A_Propose'(voteInfo: [Round]OptionVoteInfo, first_r: Round, second_r: Round, first_n: Node) : bool
+CommutativityLemma_A_Vote_A_Propose'(voteInfo: [Round]Option VoteInfo, first_r: Round, second_r: Round, first_n: Node) : bool
 {
   Lemma_MaxRound_AddNodeToVote(voteInfo, second_r, first_r, first_n)
 }
 
 function {:inline}{:lemma}{:commutativity "A_Propose", "A_Vote'"}
-CommutativityLemma_A_Propose_A_Vote'(voteInfo: [Round]OptionVoteInfo, first_r: Round, second_r: Round, second_n: Node) : bool
+CommutativityLemma_A_Propose_A_Vote'(voteInfo: [Round]Option VoteInfo, first_r: Round, second_r: Round, second_n: Node) : bool
 {
   Lemma_MaxRound_AddNodeToVote(voteInfo, first_r, second_r, second_n)
 }

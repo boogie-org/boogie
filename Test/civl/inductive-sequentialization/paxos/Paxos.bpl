@@ -13,13 +13,12 @@ type NodeSet = [Node]bool;
 
 type Value;
 
-type {:datatype} OptionValue;
-function {:constructor} SomeValue(value: Value): OptionValue;
-function {:constructor} NoneValue(): OptionValue;
+type {:datatype} Option _;
+function {:constructor} None<T>(): Option T;
+function {:constructor} Some<T>(t: T): Option T;
 
-type {:datatype} OptionVoteInfo;
-function {:constructor} NoneVoteInfo(): OptionVoteInfo;
-function {:constructor} SomeVoteInfo(value: Value, ns: NodeSet): OptionVoteInfo;
+type {:datatype} VoteInfo;
+function {:constructor} VoteInfo(value: Value, ns: NodeSet): VoteInfo;
 
 type {:datatype} AcceptorState;
 /* 0 <= lastVoteRound, lastJoinRound <= numRounds */
@@ -75,33 +74,33 @@ function {:inline} IsDisjoint(ns1:NodeSet, ns2:NodeSet) : bool {
 
 // MaxRound(r, ns, voteInfo) returns the highest round less than r that some node in ns voted for.
 // If no node in ns has voted for a round less than r, then it returns 0.
-function MaxRound(r: Round, ns: NodeSet, voteInfo: [Round]OptionVoteInfo): int;
-axiom (forall r: Round, ns: NodeSet, voteInfo: [Round]OptionVoteInfo :: { MaxRound(r, ns, voteInfo) }
+function MaxRound(r: Round, ns: NodeSet, voteInfo: [Round]Option VoteInfo): int;
+axiom (forall r: Round, ns: NodeSet, voteInfo: [Round]Option VoteInfo :: { MaxRound(r, ns, voteInfo) }
   Round(r) ==>
   (
     var ret := MaxRound(r, ns, voteInfo);
     0 <= ret && ret < r &&
-    (forall r': Round :: ret < r' && r' < r && is#SomeVoteInfo(voteInfo[r']) ==> IsDisjoint(ns, ns#SomeVoteInfo(voteInfo[r']))) &&
-    (Round(ret) ==> is#SomeVoteInfo(voteInfo[ret]) && !IsDisjoint(ns, ns#SomeVoteInfo(voteInfo[ret])))
+    (forall r': Round :: ret < r' && r' < r && is#Some(voteInfo[r']) ==> IsDisjoint(ns, ns#VoteInfo(t#Some(voteInfo[r'])))) &&
+    (Round(ret) ==> is#Some(voteInfo[ret]) && !IsDisjoint(ns, ns#VoteInfo(t#Some(voteInfo[ret]))))
   )
 );
 
-function {:inline} Lemma_MaxRound_InitVote(voteInfo: [Round]OptionVoteInfo, r: Round, r': Round) : bool
+function {:inline} Lemma_MaxRound_InitVote(voteInfo: [Round]Option VoteInfo, r: Round, r': Round) : bool
 {
   (forall ns: NodeSet, v': Value ::
-    is#NoneVoteInfo(voteInfo[r']) ==>
+    is#None(voteInfo[r']) ==>
       MaxRound(r, ns, voteInfo) ==
-      MaxRound(r, ns, voteInfo[r' := SomeVoteInfo(v', NoNodes())]))
+      MaxRound(r, ns, voteInfo[r' := Some(VoteInfo(v', NoNodes()))]))
 }
 
-function {:inline} Lemma_MaxRound_AddNodeToVote(voteInfo: [Round]OptionVoteInfo, r: Round, r': Round, n: Node) : bool
+function {:inline} Lemma_MaxRound_AddNodeToVote(voteInfo: [Round]Option VoteInfo, r: Round, r': Round, n: Node) : bool
 {
   (forall ns: NodeSet ::
-    is#SomeVoteInfo(voteInfo[r']) && (!ns[n] || r <= r') ==>
+    is#Some(voteInfo[r']) && (!ns[n] || r <= r') ==>
     (
-      var v', ns' := value#SomeVoteInfo(voteInfo[r']), ns#SomeVoteInfo(voteInfo[r']);
+      var v', ns' := value#VoteInfo(t#Some(voteInfo[r'])), ns#VoteInfo(t#Some(voteInfo[r']));
       MaxRound(r, ns, voteInfo) ==
-      MaxRound(r, ns, voteInfo[r' := SomeVoteInfo(v', ns'[n:=true])])
+      MaxRound(r, ns, voteInfo[r' := Some(VoteInfo(v', ns'[n:=true]))])
     )
   )
 }
@@ -135,14 +134,14 @@ function {:inline} VotePAs(r: Round, v: Value) : [PA]int
 //// Global variables
 // Abstract
 var {:layer 1,3} joinedNodes: [Round]NodeSet;
-var {:layer 1,3} voteInfo: [Round]OptionVoteInfo;
+var {:layer 1,3} voteInfo: [Round]Option VoteInfo;
 var {:layer 1,3} pendingAsyncs: [PA]int;
 
 // Concrete
 var {:layer 0,1} acceptorState: [Node]AcceptorState;
 var {:layer 0,1} joinChannel: [Round][JoinResponse]int;
 var {:layer 0,1} voteChannel: [Round][VoteResponse]int;
-var {:layer 0,3} decision: [Round]OptionValue; // spec
+var {:layer 0,3} decision: [Round]Option Value; // spec
 
 // Intermediate channel representation
 var {:layer 1,1} {:linear "perm"} permJoinChannel: JoinResponseChannel;
@@ -151,13 +150,13 @@ var {:layer 1,1} {:linear "perm"} permVoteChannel: VoteResponseChannel;
 ////////////////////////////////////////////////////////////////////////////////
 
 function {:inline} Init (
-  rs: [Round]bool, joinedNodes:[Round]NodeSet, voteInfo: [Round]OptionVoteInfo,
-  decision:[Round]OptionValue, pendingAsyncs: [PA]int) : bool
+  rs: [Round]bool, joinedNodes:[Round]NodeSet, voteInfo: [Round]Option VoteInfo,
+  decision:[Round]Option Value, pendingAsyncs: [PA]int) : bool
 {
   rs == (lambda r: Round :: true) &&
   (forall r: Round :: joinedNodes[r] == NoNodes()) &&
-  (forall r: Round :: is#NoneVoteInfo(voteInfo[r])) &&
-  (forall r: Round :: is#NoneValue(decision[r])) &&
+  (forall r: Round :: is#None(voteInfo[r])) &&
+  (forall r: Round :: is#None(decision[r])) &&
   (forall pa: PA :: pendingAsyncs[pa] == 0)
 }
 
