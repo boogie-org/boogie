@@ -4,7 +4,7 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
 {
   assert Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
   havoc joinedNodes, voteInfo, decision, pendingAsyncs;
-  assume (forall r1: Round, r2: Round :: is#SomeValue(decision[r1]) && is#SomeValue(decision[r2]) ==> decision[r1] == decision[r2]);
+  assume (forall r1: Round, r2: Round :: is#Some(decision[r1]) && is#Some(decision[r2]) ==> decision[r1] == decision[r2]);
 }
 
 procedure {:atomic}{:layer 2}
@@ -87,14 +87,14 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
         PAs == FirstCasePAs(k, numRounds) &&
         choice == StartRound_PA(k+1, k+1) &&
         (forall r: Round :: r < 1 || r > k ==> joinedNodes[r] == NoNodes()) &&
-        (forall r: Round :: r < 1 || r > k ==> is#NoneVoteInfo(voteInfo[r])) &&
-        (forall r: Round :: r < 1 || r > k ==> is#NoneValue(decision[r]))
+        (forall r: Round :: r < 1 || r > k ==> is#None(voteInfo[r])) &&
+        (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]))
       )
       ||
       (
         (forall r: Round :: r < 1 || r > k+1 ==> joinedNodes[r] == NoNodes()) &&
-        (forall r: Round :: r < 1 || r > k ==> is#NoneVoteInfo(voteInfo[r])) &&
-        (forall r: Round :: r < 1 || r > k ==> is#NoneValue(decision[r])) &&
+        (forall r: Round :: r < 1 || r > k ==> is#None(voteInfo[r])) &&
+        (forall r: Round :: r < 1 || r > k ==> is#None(decision[r])) &&
         (exists m: Node :: {triggerNode(m)} 0 <= m && m <= numNodes &&
           (forall n: Node :: n < 1 || n > m ==> !joinedNodes[k+1][n]) &&
           PAs == SecondCasePAs(k, m, numRounds) &&
@@ -103,14 +103,14 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
       )
       ||
       (
-        is#SomeVoteInfo(voteInfo[k+1]) &&
+        is#Some(voteInfo[k+1]) &&
         (forall r: Round :: r < 1 || r > k+1 ==> joinedNodes[r] == NoNodes()) &&
-        (forall r: Round :: r < 1 || r > k+1 ==> is#NoneVoteInfo(voteInfo[r])) &&
-        (forall r: Round :: r < 1 || r > k ==> is#NoneValue(decision[r])) &&
+        (forall r: Round :: r < 1 || r > k+1 ==> is#None(voteInfo[r])) &&
+        (forall r: Round :: r < 1 || r > k ==> is#None(decision[r])) &&
         (exists m: Node :: {triggerNode(m)} 0 <= m && m <= numNodes &&
-          (forall n: Node :: n < 1 || n > m ==> !ns#SomeVoteInfo(voteInfo[k+1])[n]) &&
-          PAs == ThirdCasePAs(k, m, value#SomeVoteInfo(voteInfo[k+1]), numRounds) &&
-          choice == ThirdCaseChoice(k, m, value#SomeVoteInfo(voteInfo[k+1]))
+          (forall n: Node :: n < 1 || n > m ==> !ns#VoteInfo(t#Some(voteInfo[k+1]))[n]) &&
+          PAs == ThirdCasePAs(k, m, value#VoteInfo(t#Some(voteInfo[k+1])), numRounds) &&
+          choice == ThirdCaseChoice(k, m, value#VoteInfo(t#Some(voteInfo[k+1])))
         )
       )
     )
@@ -118,17 +118,17 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
 
   // If there was a decision for some value, then there must have been a
   // proposal of the same value and a quorum of nodes that voted for it.
-  assume (forall r: Round :: is#SomeValue(decision[r]) ==>
-    is#SomeVoteInfo(voteInfo[r]) &&
-    value#SomeVoteInfo(voteInfo[r]) == value#SomeValue(decision[r]) &&
-    (exists q: NodeSet :: { IsSubset(q, ns#SomeVoteInfo(voteInfo[r])), IsQuorum(q) }
-      IsSubset(q, ns#SomeVoteInfo(voteInfo[r])) && IsQuorum(q)));
+  assume (forall r: Round :: is#Some(decision[r]) ==>
+    is#Some(voteInfo[r]) &&
+    value#VoteInfo(t#Some(voteInfo[r])) == t#Some(decision[r]) &&
+    (exists q: NodeSet :: { IsSubset(q, ns#VoteInfo(t#Some(voteInfo[r]))), IsQuorum(q) }
+      IsSubset(q, ns#VoteInfo(t#Some(voteInfo[r]))) && IsQuorum(q)));
 
   // This is the main invariant to prove
-  assume (forall r1: Round, r2: Round :: is#SomeValue(decision[r1]) && r1 <= r2 && is#SomeVoteInfo(voteInfo[r2]) ==> value#SomeVoteInfo(voteInfo[r2]) == value#SomeValue(decision[r1]));
+  assume (forall r1: Round, r2: Round :: is#Some(decision[r1]) && r1 <= r2 && is#Some(voteInfo[r2]) ==> value#VoteInfo(t#Some(voteInfo[r2])) == t#Some(decision[r1]));
 
   // This is the main property to prove
-  assume (forall r1: Round, r2: Round :: is#SomeValue(decision[r1]) && is#SomeValue(decision[r2]) ==> decision[r1] == decision[r2]);
+  assume (forall r1: Round, r2: Round :: is#Some(decision[r1]) && is#Some(decision[r2]) ==> decision[r1] == decision[r2]);
 
   pendingAsyncs := PAs;
 }

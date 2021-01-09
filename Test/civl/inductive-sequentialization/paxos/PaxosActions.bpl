@@ -23,16 +23,16 @@ modifies voteInfo, pendingAsyncs;
   assert Round(r);
   assert pendingAsyncs[Propose_PA(r, ps)] > 0;
   assert ps == ProposePermissions(r);
-  assert is#NoneVoteInfo(voteInfo[r]);
+  assert is#None(voteInfo[r]);
 
   if (*) {
     assume IsSubset(ns, joinedNodes[r]) && IsQuorum(ns);
     maxRound := MaxRound(r, ns, voteInfo);
     if (maxRound != 0)
     {
-      maxValue := value#SomeVoteInfo(voteInfo[maxRound]);
+      maxValue := value#VoteInfo(t#Some(voteInfo[maxRound]));
     }
-    voteInfo[r] := SomeVoteInfo(maxValue, NoNodes());
+    voteInfo[r] := Some(VoteInfo(maxValue, NoNodes()));
     PAs := MapAdd(VotePAs(r, maxValue), SingletonPA(Conclude_PA(r, maxValue, ConcludePerm(r))));
   } else {
     PAs := NoPAs();
@@ -50,12 +50,12 @@ modifies decision, pendingAsyncs;
   assert Round(r);
   assert pendingAsyncs[Conclude_PA(r, v, p)] > 0;
   assert p == ConcludePerm(r);
-  assert is#SomeVoteInfo(voteInfo[r]);
-  assert value#SomeVoteInfo(voteInfo[r]) == v;
+  assert is#Some(voteInfo[r]);
+  assert value#VoteInfo(t#Some(voteInfo[r])) == v;
 
   if (*) {
-    assume IsSubset(q, ns#SomeVoteInfo(voteInfo[r])) && IsQuorum(q);
-    decision[r] := SomeValue(v);
+    assume IsSubset(q, ns#VoteInfo(t#Some(voteInfo[r]))) && IsQuorum(q);
+    decision[r] := Some(v);
   }
 
   pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(Conclude_PA(r, v, p)));
@@ -82,13 +82,13 @@ modifies joinedNodes, voteInfo, pendingAsyncs;
   assert Round(r);
   assert p == VotePerm(r, n);
   assert pendingAsyncs[Vote_PA(r, n, v, p)] > 0;
-  assert is#SomeVoteInfo(voteInfo[r]);
-  assert value#SomeVoteInfo(voteInfo[r]) == v;
-  assert !ns#SomeVoteInfo(voteInfo[r])[n];
+  assert is#Some(voteInfo[r]);
+  assert value#VoteInfo(t#Some(voteInfo[r])) == v;
+  assert !ns#VoteInfo(t#Some(voteInfo[r]))[n];
 
   if (*) {
     assume (forall r': Round :: Round(r') && joinedNodes[r'][n] ==> r' <= r);
-    voteInfo[r] := SomeVoteInfo(v, ns#SomeVoteInfo(voteInfo[r])[n := true]);
+    voteInfo[r] := Some(VoteInfo(v, ns#VoteInfo(t#Some(voteInfo[r]))[n := true]));
     joinedNodes[r][n] := true;
   }
 
