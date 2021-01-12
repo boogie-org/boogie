@@ -136,7 +136,8 @@ namespace Microsoft.Boogie
       Contract.Invariant(types != null);
       Contract.Invariant(cce.NonNullElements(typeBinders));
       Contract.Invariant(varContext != null);
-      Contract.Invariant(funcdures != null);
+      Contract.Invariant(functions != null);
+      Contract.Invariant(procedures != null);
     }
 
 
@@ -484,35 +485,60 @@ namespace Microsoft.Boogie
 
     // ------------------------------  Functions/Procedures  ------------------------------
 
-    // uninterpreted function symbols, procedures
-    Hashtable /*string->DeclWithFormals*/ /*!*/
-      funcdures = new Hashtable /*string->DeclWithFormals*/();
+    // uninterpreted function symbols
+    private Dictionary<string, DeclWithFormals> functions = new Dictionary<string, DeclWithFormals>();
+    public void AddFunction(Function func)
+    {
+      Contract.Requires(func != null);
+      Contract.Requires(func.Name != null);
 
-    public void AddProcedure(DeclWithFormals proc)
+      string name = func.Name;
+      if (!functions.ContainsKey(name))
+      {
+        functions.Add(name, func);
+      }
+      else
+      {
+        var previous = functions[name];
+        var r = (DeclWithFormals) SelectNonExtern(func, previous);
+        if (r == null)
+        {
+          Error(func, "more than one declaration of function name: {0}", name);
+        }
+        else
+        {
+          functions[name] = r;
+        }
+      }
+    }
+
+    // procedures
+    private Dictionary<string, DeclWithFormals> procedures = new Dictionary<string, DeclWithFormals>();
+    public void AddProcedure(Procedure proc)
     {
       Contract.Requires(proc != null);
       Contract.Requires(proc.Name != null);
 
       string name = proc.Name;
-      var previous = (DeclWithFormals) funcdures[name];
-      if (previous == null)
+      if (!procedures.ContainsKey(name))
       {
-        funcdures.Add(name, proc);
+        procedures.Add(name, proc);
       }
       else
       {
+        var previous = procedures[name];
         var r = (DeclWithFormals) SelectNonExtern(proc, previous);
         if (r == null)
         {
-          Error(proc, "more than one declaration of function/procedure name: {0}", name);
+          Error(proc, "more than one declaration of procedure name: {0}", name);
         }
         else
         {
-          funcdures[name] = r;
+          procedures[name] = r;
         }
       }
     }
-
+    
     /// <summary>
     /// If both "a" and "b" have an ":extern" attribute, returns either one.
     /// If one of "a" and "b" has an ":extern" attribute, returns that one.
@@ -549,17 +575,29 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Returns the declaration of the named function/procedure, or null if
-    /// no such function or procedure is declared.
+    /// Returns the declaration of the named function, or null if
+    /// no such function is declared.
+    /// </summary>
+    /// <param name="name"></param>
+    /// <returns></returns>
+    public DeclWithFormals LookUpFunction(string name)
+    {
+      Contract.Requires(name != null);
+      return functions[name];
+    }
+
+    /// <summary>
+    /// Returns the declaration of the named procedure, or null if
+    /// no such procedure is declared.
     /// </summary>
     /// <param name="name"></param>
     /// <returns></returns>
     public DeclWithFormals LookUpProcedure(string name)
     {
       Contract.Requires(name != null);
-      return (DeclWithFormals) funcdures[name];
+      return procedures[name];
     }
-
+    
     // ------------------------------  Blocks  ------------------------------
 
     class ProcedureContext

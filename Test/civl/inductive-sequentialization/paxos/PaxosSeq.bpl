@@ -23,43 +23,43 @@ modifies pendingAsyncs;
   assert triggerRound(0);
   assume 0 <= numRounds;
   assume triggerRound(numRounds);
-  PAs := (lambda pa: PA :: if is#StartRound_PA(pa) && round#StartRound_PA(pa) == round_lin#StartRound_PA(pa) && Round(round#StartRound_PA(pa)) && round#StartRound_PA(pa) <= numRounds then 1 else 0);
+  PAs := (lambda pa: PA :: if is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && Round(round#A_StartRound(pa)) && round#A_StartRound(pa) <= numRounds then 1 else 0);
   pendingAsyncs := PAs;
 }
 
 function {:inline} FirstCasePAs(k: int, numRounds: int) : [PA]int
 {
-  (lambda pa: PA :: if (is#StartRound_PA(pa) && round#StartRound_PA(pa) == round_lin#StartRound_PA(pa) && k < round#StartRound_PA(pa) && round#StartRound_PA(pa) <= numRounds) then 1 else 0)
+  (lambda pa: PA :: if (is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && k < round#A_StartRound(pa) && round#A_StartRound(pa) <= numRounds) then 1 else 0)
 }
 
 function {:inline} SecondCasePAs(k: int, m: Node, numRounds: int) : [PA]int
 {
   (lambda pa : PA ::
-    if (is#StartRound_PA(pa) && round#StartRound_PA(pa) == round_lin#StartRound_PA(pa) && k+1 < round#StartRound_PA(pa) && round#StartRound_PA(pa) <= numRounds) ||
-       (pa == Propose_PA(k+1, ProposePermissions(k+1))) ||
-       (is#Join_PA(pa) && round#Join_PA(pa) == k+1 && m < node#Join_PA(pa) && node#Join_PA(pa) <= numNodes &&
-         p#Join_PA(pa) == JoinPerm(k+1, node#Join_PA(pa)))
+    if (is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && k+1 < round#A_StartRound(pa) && round#A_StartRound(pa) <= numRounds) ||
+       (pa == A_Propose(k+1, ProposePermissions(k+1))) ||
+       (is#A_Join(pa) && round#A_Join(pa) == k+1 && m < node#A_Join(pa) && node#A_Join(pa) <= numNodes &&
+         p#A_Join(pa) == JoinPerm(k+1, node#A_Join(pa)))
     then 1 else 0)
 }
 
 function {:inline} SecondCaseChoice(k: int, m: Node) : PA
 {
-  if m == numNodes then Propose_PA(k+1, ProposePermissions(k+1)) else Join_PA(k+1, m+1, JoinPerm(k+1, m+1))
+  if m == numNodes then A_Propose(k+1, ProposePermissions(k+1)) else A_Join(k+1, m+1, JoinPerm(k+1, m+1))
 }
 
 function {:inline} ThirdCasePAs(k: int, m: Node, v: Value, numRounds: int) : [PA]int
 {
   ( lambda pa: PA ::
-    if (is#StartRound_PA(pa) && round#StartRound_PA(pa) == round_lin#StartRound_PA(pa) && k+1 < round#StartRound_PA(pa) && round#StartRound_PA(pa) <= numRounds) ||
-       (pa == Conclude_PA(k+1, v, ConcludePerm(k+1))) ||
-       (is#Vote_PA(pa) && round#Vote_PA(pa) == k+1 && m < node#Vote_PA(pa) && node#Vote_PA(pa) <= numNodes &&
-         value#Vote_PA(pa) == v && p#Vote_PA(pa) == VotePerm(k+1, node#Vote_PA(pa)))
+    if (is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && k+1 < round#A_StartRound(pa) && round#A_StartRound(pa) <= numRounds) ||
+       (pa == A_Conclude(k+1, v, ConcludePerm(k+1))) ||
+       (is#A_Vote(pa) && round#A_Vote(pa) == k+1 && m < node#A_Vote(pa) && node#A_Vote(pa) <= numNodes &&
+         value#A_Vote(pa) == v && p#A_Vote(pa) == VotePerm(k+1, node#A_Vote(pa)))
     then 1 else 0)
 }
 
 function {:inline} ThirdCaseChoice(k: int, m: Node, v: Value) : PA
 {
-  if m == numNodes then Conclude_PA(k+1, v, ConcludePerm(k+1)) else Vote_PA(k+1, m+1, v, VotePerm(k+1, m+1))
+  if m == numNodes then A_Conclude(k+1, v, ConcludePerm(k+1)) else A_Vote(k+1, m+1, v, VotePerm(k+1, m+1))
 }
 
 procedure {:IS_invariant}{:layer 2} INV({:linear_in "perm"} rs: [Round]bool)
@@ -85,7 +85,7 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
     (
       (
         PAs == FirstCasePAs(k, numRounds) &&
-        choice == StartRound_PA(k+1, k+1) &&
+        choice == A_StartRound(k+1, k+1) &&
         (forall r: Round :: r < 1 || r > k ==> joinedNodes[r] == NoNodes()) &&
         (forall r: Round :: r < 1 || r > k ==> is#None(voteInfo[r])) &&
         (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]))

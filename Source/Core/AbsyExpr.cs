@@ -2656,7 +2656,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      Func = rc.LookUpProcedure(name.Name) as Function;
+      Func = rc.LookUpFunction(name.Name) as Function;
       if (Func == null)
       {
         rc.Error(this.name, "use of undeclared function: {0}", name.Name);
