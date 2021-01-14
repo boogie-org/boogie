@@ -1565,12 +1565,14 @@ namespace Microsoft.Boogie
                   }
                   else
                   {
-                    msg = assertError.FailingAssert.ErrorData as string;
-                    if (!CommandLineOptions.Clo.ForceBplErrors && assertError.FailingAssert.ErrorMessage != null)
+                    if (assertError.FailingAssert.ErrorMessage == null || CommandLineOptions.Clo.ForceBplErrors)
+                    {
+                      msg = assertError.FailingAssert.ErrorData as string;
+                    }
+                    else
                     {
                       msg = assertError.FailingAssert.ErrorMessage;
                     }
-
                     if (msg == null)
                     {
                       msg = "This assertion might not hold.";
@@ -1833,9 +1835,9 @@ namespace Microsoft.Boogie
         }
         else
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok,
+          errorInfo = errorInformationFactory.CreateErrorInformation(null,
             callError.FailingRequires.ErrorMessage,
-            callError.RequestId, callError.OriginalRequestId, cause);
+            callError.RequestId, callError.OriginalRequestId);
         }
       }
       else if (error is ReturnCounterexample returnError)
@@ -1852,9 +1854,9 @@ namespace Microsoft.Boogie
         }
         else
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok,
+          errorInfo = errorInformationFactory.CreateErrorInformation(null,
             returnError.FailingEnsures.ErrorMessage,
-            returnError.RequestId, returnError.OriginalRequestId, cause);
+            returnError.RequestId, returnError.OriginalRequestId);
         }
       }
       else // error is AssertCounterexample
@@ -1887,20 +1889,19 @@ namespace Microsoft.Boogie
         }
         else
         {
-          string msg = null;
-
           if (assertError.FailingAssert.ErrorMessage == null || CommandLineOptions.Clo.ForceBplErrors)
           {
-            msg = assertError.FailingAssert.ErrorData as string ?? "This assertion might not hold.";
+            string msg = assertError.FailingAssert.ErrorData as string ?? "This assertion might not hold.";
+            errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg,
+              assertError.RequestId, assertError.OriginalRequestId, cause);
+            errorInfo.Kind = ErrorKind.Assertion;
           }
           else
           {
-            msg = assertError.FailingAssert.ErrorMessage;
+            errorInfo = errorInformationFactory.CreateErrorInformation(null, 
+              assertError.FailingAssert.ErrorMessage,
+              assertError.RequestId, assertError.OriginalRequestId);
           }
-
-          errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg,
-            assertError.RequestId, assertError.OriginalRequestId, cause);
-          errorInfo.Kind = ErrorKind.Assertion;
         }
       }
 
