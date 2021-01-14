@@ -4457,9 +4457,8 @@ namespace Microsoft.Boogie
         return;
       }
 
-      DeclWithFormals dwf = rc.LookUpProcedure(cce.NonNull(this.Name));
-      Proc = dwf as Procedure;
-      if (dwf == null)
+      Proc = rc.LookUpProcedure(cce.NonNull(this.Name));
+      if (Proc == null)
       {
         rc.Error(this, "implementation given for undeclared procedure: {0}", this.Name);
       }

@@ -2943,7 +2943,7 @@ namespace Microsoft.Boogie
       }
 
       ResolveAttributes(Attributes, rc);
-      Proc = rc.LookUpProcedure(callee) as Procedure;
+      Proc = rc.LookUpProcedure(callee);
       if (Proc == null)
       {
         rc.Error(this, "call to undeclared procedure: {0}", callee);

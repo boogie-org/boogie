@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using System;
 using System.Linq;
@@ -127,8 +126,7 @@ namespace Microsoft.Boogie
     // ------------------------------  Boogie 2 Types  -------------------------
 
     // user-defined types, which can be either TypeCtorDecl or TypeSynonymDecl
-    Hashtable /*string->NamedDeclaration*/ /*!*/
-      types = new Hashtable /*string->NamedDeclaration*/();
+    Dictionary<string, NamedDeclaration> types = new Dictionary<string, NamedDeclaration>();
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -171,14 +169,14 @@ namespace Microsoft.Boogie
       if (CheckBvNameClashes(td, name))
         return; // error has already been reported
 
-      var previous = (NamedDeclaration) types[name];
-      if (previous == null)
+      if (!types.ContainsKey(name))
       {
         types.Add(name, td);
       }
       else
       {
-        var r = (NamedDeclaration) SelectNonExtern(td, previous);
+        var previous = types[name];
+        var r = SelectNonExtern(td, previous);
         if (r == null)
         {
           Error(td, "more than one declaration of type name: {0}", name);
@@ -201,13 +199,15 @@ namespace Microsoft.Boogie
     public TypeCtorDecl LookUpType(string name)
     {
       Contract.Requires(name != null);
-      return types[name] as TypeCtorDecl;
+      var type = types.GetValueOrDefault(name, null);
+      return type as TypeCtorDecl;
     }
 
     public TypeSynonymDecl LookUpTypeSynonym(string name)
     {
       Contract.Requires(name != null);
-      return types[name] as TypeSynonymDecl;
+      var type = types.GetValueOrDefault(name, null);
+      return type as TypeSynonymDecl;
     }
 
     // ------------------------------  Boogie 2 Type Binders  ------------------------------
@@ -254,10 +254,8 @@ namespace Microsoft.Boogie
     public TypeVariable LookUpTypeBinder(string name)
     {
       Contract.Requires(name != null);
-      for (int i = typeBinders.Count; 0 <= --i;)
+      foreach (var td in typeBinders)
       {
-        TypeVariable /*!*/
-          td = typeBinders[i];
         Contract.Assert(td != null);
         if (td.Name == name)
         {
@@ -278,8 +276,7 @@ namespace Microsoft.Boogie
         Contract.Invariant(VarSymbols != null);
       }
 
-      public readonly Hashtable /*string->Variable*/ /*!*/
-        VarSymbols = new Hashtable /*string->Variable*/();
+      public readonly Dictionary<string, Variable> VarSymbols = new Dictionary<string, Variable>();
 
       public /*maybe null*/ VarContextNode ParentContext;
       public readonly bool Opaque;
@@ -307,7 +304,7 @@ namespace Microsoft.Boogie
       {
         Contract.Requires(name != null);
 
-        if (VarSymbols.Contains(name))
+        if (VarSymbols.ContainsKey(name))
         {
           if (assignedAssumptionVariables.Contains(name))
           {
@@ -386,7 +383,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        var r = (Variable) SelectNonExtern(var, previous);
+        var r = SelectNonExtern(var, previous);
         if (r == null)
         {
           Error(var, "more than one declaration of variable name: {0}", var.Name);
@@ -417,7 +414,7 @@ namespace Microsoft.Boogie
       bool lookOnlyForConstants = false;
       do
       {
-        Variable var = (Variable) c.VarSymbols[name];
+        c.VarSymbols.TryGetValue(name, out Variable var);
         if (var != null && (!lookOnlyForConstants || var is Constant))
         {
           return var;
@@ -457,21 +454,22 @@ namespace Microsoft.Boogie
       Contract.Assume(success);
     }
 
-    Hashtable axioms = new Hashtable();
+    Dictionary<string, Axiom> axioms = new Dictionary<string, Axiom>();
 
     public void AddAxiom(Axiom axiom)
     {
       string axiomName = QKeyValue.FindStringAttribute(axiom.Attributes, "name");
       if (axiomName == null)
         return;
-      var previous = (Axiom) axioms[axiomName];
-      if (previous == null)
+
+      if (!axioms.ContainsKey(axiomName))
       {
         axioms.Add(axiomName, axiom);
       }
       else
       {
-        var r = (Axiom) SelectNonExtern(axiom, previous);
+        var previous = axioms[axiomName];
+        var r = SelectNonExtern(axiom, previous);
         if (r == null)
         {
           Error(axiom, "more than one declaration of axiom name: {0}", axiomName);
@@ -486,7 +484,7 @@ namespace Microsoft.Boogie
     // ------------------------------  Functions/Procedures  ------------------------------
 
     // uninterpreted function symbols
-    private Dictionary<string, DeclWithFormals> functions = new Dictionary<string, DeclWithFormals>();
+    private Dictionary<string, Function> functions = new Dictionary<string, Function>();
     public void AddFunction(Function func)
     {
       Contract.Requires(func != null);
@@ -500,7 +498,7 @@ namespace Microsoft.Boogie
       else
       {
         var previous = functions[name];
-        var r = (DeclWithFormals) SelectNonExtern(func, previous);
+        var r = SelectNonExtern(func, previous);
         if (r == null)
         {
           Error(func, "more than one declaration of function name: {0}", name);
@@ -513,7 +511,7 @@ namespace Microsoft.Boogie
     }
 
     // procedures
-    private Dictionary<string, DeclWithFormals> procedures = new Dictionary<string, DeclWithFormals>();
+    private Dictionary<string, Procedure> procedures = new Dictionary<string, Procedure>();
     public void AddProcedure(Procedure proc)
     {
       Contract.Requires(proc != null);
@@ -527,7 +525,7 @@ namespace Microsoft.Boogie
       else
       {
         var previous = procedures[name];
-        var r = (DeclWithFormals) SelectNonExtern(proc, previous);
+        var r = SelectNonExtern(proc, previous);
         if (r == null)
         {
           Error(proc, "more than one declaration of procedure name: {0}", name);
@@ -546,14 +544,14 @@ namespace Microsoft.Boogie
     /// If a non-value value is returned, this method also adds the ":ignore"
     /// attribute to the declaration NOT returned.
     /// </summary>
-    Declaration SelectNonExtern(Declaration a, Declaration b)
+    T SelectNonExtern<T>(T a, T b) where T : Declaration 
     {
       Contract.Requires(a != null);
       Contract.Requires(b != null);
-      Contract.Ensures(Contract.Result<Declaration>() == null || Contract.Result<Declaration>() == a ||
-                       Contract.Result<Declaration>() == b);
+      Contract.Ensures(Contract.Result<T>() == null || Contract.Result<T>() == a ||
+                       Contract.Result<T>() == b);
 
-      Declaration ignore, keep;
+      T ignore, keep;
       if (QKeyValue.FindBoolAttribute(a.Attributes, "extern"))
       {
         ignore = a;
@@ -580,10 +578,10 @@ namespace Microsoft.Boogie
     /// </summary>
     /// <param name="name"></param>
     /// <returns></returns>
-    public DeclWithFormals LookUpFunction(string name)
+    public Function LookUpFunction(string name)
     {
       Contract.Requires(name != null);
-      return functions.ContainsKey(name) ? functions[name] : null;
+      return functions.GetValueOrDefault(name, null);
     }
 
     /// <summary>
@@ -592,10 +590,10 @@ namespace Microsoft.Boogie
     /// </summary>
     /// <param name="name"></param>
     /// <returns></returns>
-    public DeclWithFormals LookUpProcedure(string name)
+    public Procedure LookUpProcedure(string name)
     {
       Contract.Requires(name != null);
-      return procedures.ContainsKey(name) ? procedures[name] : null;
+      return procedures.GetValueOrDefault(name, null);
     }
     
     // ------------------------------  Blocks  ------------------------------
@@ -608,14 +606,13 @@ namespace Microsoft.Boogie
         Contract.Invariant(Blocks != null);
       }
 
-      public readonly Hashtable /*!*/ /*string->Block!*/
-        Blocks;
+      public readonly Dictionary<string, Block> Blocks;
 
       public readonly ProcedureContext Next;
 
       public ProcedureContext(ProcedureContext next)
       {
-        Blocks = new Hashtable /*string->Block!*/();
+        Blocks = new Dictionary<string, Block>();
         Next = next;
       }
     }
@@ -656,10 +653,9 @@ namespace Microsoft.Boogie
       Contract.Requires(block != null);
       Contract.Requires(HasProcedureContext);
       Contract.Assert(procedureContext != null); // follows from precondition
-      Hashtable /*!*/ /*string->Block!*/
-        blocks = procedureContext.Blocks;
+      var blocks = procedureContext.Blocks;
       Contract.Assert(blocks != null);
-      if (blocks[block.Label] != null)
+      if (blocks.ContainsKey(block.Label))
       {
         Error(block, "more than one declaration of block name: {0}", block.Label);
       }
@@ -681,10 +677,8 @@ namespace Microsoft.Boogie
       Contract.Requires(name != null);
       Contract.Requires(HasProcedureContext);
       Contract.Assert(procedureContext != null); // follows from precondition
-      Hashtable /*!*/ /*string->Block!*/
-        blocks = procedureContext.Blocks;
-      Contract.Assert(blocks != null);
-      return (Block) blocks[name];
+      Contract.Assert(procedureContext.Blocks != null);
+      return procedureContext.Blocks.GetValueOrDefault(name, null);
     }
 
     // ------------------------------  Flags  ------------------------------
