@@ -5,8 +5,8 @@ const n:int;
 axiom n > 0;
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "A"}{:constructor} A() : PA;
-function {:pending_async "B"}{:constructor} B() : PA;
+function {:constructor} A() : PA;
+function {:constructor} B() : PA;
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }

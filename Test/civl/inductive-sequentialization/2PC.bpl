@@ -31,10 +31,10 @@ var {:layer 0,6} votes:[int]vote;          // Participant votes
 var {:layer 0,6} decisions:[int]decision;  // Coordinator and participant decisions
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "COORDINATOR1"}{:constructor} COORDINATOR1(pid:int) : PA;
-function {:pending_async "COORDINATOR2"}{:constructor} COORDINATOR2(pid:int) : PA;
-function {:pending_async "PARTICIPANT1"}{:constructor} PARTICIPANT1(pid:int) : PA;
-function {:pending_async "PARTICIPANT2"}{:constructor} PARTICIPANT2(pid:int) : PA;
+function {:constructor} COORDINATOR1(pid:int) : PA;
+function {:constructor} COORDINATOR2(pid:int) : PA;
+function {:constructor} PARTICIPANT1(pid:int) : PA;
+function {:constructor} PARTICIPANT2(pid:int) : PA;
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }

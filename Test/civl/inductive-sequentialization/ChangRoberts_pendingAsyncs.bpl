@@ -46,8 +46,8 @@ axiom (forall id:[int]int :: pid(max(id)) && (forall i:int :: pid(i) && i != max
 
 // A type for keeping track of pending asyncs
 type {:pending_async}{:datatype} PA;
-function {:pending_async "P"}{:constructor} P(pid:int) : PA;
-function {:pending_async "PInit"}{:constructor} PInit(pid:int) : PA;
+function {:constructor} P(pid:int) : PA;
+function {:constructor} PInit(pid:int) : PA;
 
 // A dummy trigger function to use in quantified formulae
 function trigger(x:int) : bool { true }

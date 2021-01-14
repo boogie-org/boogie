@@ -10,8 +10,8 @@ const unique prod_id:int;
 const unique cons_id:int;
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "PRODUCER"}{:constructor} PRODUCER(x:int, pid:int) : PA;
-function {:pending_async "CONSUMER"}{:constructor} CONSUMER(x:int, pid:int) : PA;
+function {:constructor} PRODUCER(x:int, pid:int) : PA;
+function {:constructor} CONSUMER(x:int, pid:int) : PA;
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }

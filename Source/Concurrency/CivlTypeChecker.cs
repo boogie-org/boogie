@@ -888,26 +888,21 @@ namespace Microsoft.Boogie
         pendingAsyncAdd = program.monomorphizer.Monomorphize("MapAdd",
           new Dictionary<string, Type>() { {"T", pendingAsyncType} });
 
-        var pendingAsyncDatatypeTypeCtorDecl = pendingAsyncType.Decl as DatatypeTypeCtorDecl; 
+        var pendingAsyncDatatypeTypeCtorDecl = pendingAsyncType.Decl as DatatypeTypeCtorDecl;
         foreach (var ctor in pendingAsyncDatatypeTypeCtorDecl.Constructors)
         {
-          string actionName = QKeyValue.FindStringAttribute(ctor.Attributes, CivlAttributes.PENDING_ASYNC);
-          if (actionName != null)
+          string actionName = ctor.Name;
+          AtomicAction action = FindAtomicAction(actionName);
+          if (action == null)
           {
-            AtomicAction action = FindAtomicAction(actionName);
-            if (action == null)
-            {
-              Error(ctor, $"{actionName} is not an atomic action");
-            }
-            else
-            {
-              if (action.pendingAsyncCtor != null)
-                Error(ctor, $"Duplicate pending async constructor for action {actionName}");
-              if (action.proc.HasAttribute(CivlAttributes.IS))
-                Error(ctor, "Actions transformed by IS cannot be pending asyncs");
-              CheckPendingAsyncSignature(action, ctor);
-              action.pendingAsyncCtor = ctor;
-            }
+            Error(ctor, $"{actionName} is not an atomic action");
+          }
+          else
+          {
+            if (action.proc.HasAttribute(CivlAttributes.IS))
+              Error(ctor, "Action transformed by IS cannot be a pending async");
+            CheckPendingAsyncSignature(action, ctor);
+            action.pendingAsyncCtor = ctor;
           }
         }
       }

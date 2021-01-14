@@ -9,8 +9,8 @@ const unique ping_id:int;
 const unique pong_id:int;
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "PING"}{:constructor} PING(x:int, pid:int) : PA;
-function {:pending_async "PONG"}{:constructor} PONG(x:int, pid:int) : PA;
+function {:constructor} PING(x:int, pid:int) : PA;
+function {:constructor} PONG(x:int, pid:int) : PA;
 
 function trigger(x:int) : bool { true }
 

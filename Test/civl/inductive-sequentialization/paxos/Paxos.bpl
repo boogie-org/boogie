@@ -41,11 +41,11 @@ function {:constructor} VotePerm(r:Round, n: Node): Permission;
 function {:constructor} ConcludePerm(r: Round): Permission;
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "A_StartRound"}{:constructor} A_StartRound(round: Round, round_lin: Round) : PA;
-function {:pending_async "A_Join"}{:constructor} A_Join(round: Round, node: Node, p: Permission) : PA;
-function {:pending_async "A_Propose"}{:constructor} A_Propose(round: Round, ps: [Permission]bool) : PA;
-function {:pending_async "A_Vote"}{:constructor} A_Vote(round: Round, node: Node, value: Value, p: Permission) : PA;
-function {:pending_async "A_Conclude"}{:constructor} A_Conclude(round: Round, value: Value, p: Permission) : PA;
+function {:constructor} A_StartRound(round: Round, round_lin: Round) : PA;
+function {:constructor} A_Join(round: Round, node: Node, p: Permission) : PA;
+function {:constructor} A_Propose(round: Round, ps: [Permission]bool) : PA;
+function {:constructor} A_Vote(round: Round, node: Node, value: Value, p: Permission) : PA;
+function {:constructor} A_Conclude(round: Round, value: Value, p: Permission) : PA;
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Functions

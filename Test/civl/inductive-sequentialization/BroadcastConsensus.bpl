@@ -10,8 +10,8 @@ type {:linear "collect", "broadcast"} pid = int;
 function {:inline} pid(i:int) : bool { 1 <= i && i <= n }
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "BROADCAST"}{:constructor} BROADCAST(i:pid) : PA;
-function {:pending_async "COLLECT"}{:constructor} COLLECT(i:pid) : PA;
+function {:constructor} BROADCAST(i:pid) : PA;
+function {:constructor} COLLECT(i:pid) : PA;
 
 function trigger(x:int) : bool { true }
 

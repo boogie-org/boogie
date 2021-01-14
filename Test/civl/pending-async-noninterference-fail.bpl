@@ -7,7 +7,7 @@ procedure {:yield_invariant} {:layer 1} yield_x(n: int);
 requires x >= n;
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "A"}{:constructor} A() : PA;
+function {:constructor} A() : PA;
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }

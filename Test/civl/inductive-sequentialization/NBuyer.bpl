@@ -25,12 +25,12 @@ function {:inline} nextBuyer(pid:int) : int { pid + 1 }
 function {:inline} min (x:int, y:int) : int {if x < y then x else y}
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "FirstBuyerInit"}{:constructor} FirstBuyerInit(pid:int) : PA;
-function {:pending_async "FirstBuyer"}{:constructor} FirstBuyer(pid:int) : PA;
-function {:pending_async "MiddleBuyer"}{:constructor} MiddleBuyer(pid:int) : PA;
-function {:pending_async "LastBuyer"}{:constructor} LastBuyer(pid:int) : PA;
-function {:pending_async "SellerInit"}{:constructor} SellerInit(pid:int) : PA;
-function {:pending_async "SellerFinish"}{:constructor} SellerFinish(pid:int) : PA;
+function {:constructor} FirstBuyerInit(pid:int) : PA;
+function {:constructor} FirstBuyer(pid:int) : PA;
+function {:constructor} MiddleBuyer(pid:int) : PA;
+function {:constructor} LastBuyer(pid:int) : PA;
+function {:constructor} SellerInit(pid:int) : PA;
+function {:constructor} SellerFinish(pid:int) : PA;
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }
