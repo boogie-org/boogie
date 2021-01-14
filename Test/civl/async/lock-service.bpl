@@ -10,7 +10,7 @@ const nil:Tid;
 var {:layer 0,4} l:Tid;
 var {:layer 0,5} x:int;
 
-procedure {:atomic}{:layer 4} A_Client ()
+procedure {:atomic}{:layer 5} A_Client ()
 modifies x;
 {
   x := x + 1;
