@@ -1,3 +1,5 @@
-My error message
+My error message for assertion failure
+My error message for precondition failure
+My error message for precondition failure
 
-Boogie program verifier finished with 0 verified, 1 error
+Boogie program verifier finished with 1 verified, 3 errors
