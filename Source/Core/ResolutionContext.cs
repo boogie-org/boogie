@@ -583,7 +583,7 @@ namespace Microsoft.Boogie
     public DeclWithFormals LookUpFunction(string name)
     {
       Contract.Requires(name != null);
-      return functions[name];
+      return functions.ContainsKey(name) ? functions[name] : null;
     }
 
     /// <summary>
@@ -595,7 +595,7 @@ namespace Microsoft.Boogie
     public DeclWithFormals LookUpProcedure(string name)
     {
       Contract.Requires(name != null);
-      return procedures[name];
+      return procedures.ContainsKey(name) ? procedures[name] : null;
     }
     
     // ------------------------------  Blocks  ------------------------------
