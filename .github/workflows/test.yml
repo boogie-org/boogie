@@ -56,5 +56,5 @@ jobs:
           # Do not deploy if GitVersionTask could not be used to extract the correct version number
           test ! -e Source/BoogieDriver/bin/${{ matrix.configuration }}/Boogie.1.0.0.nupkg
       - name: Deploy to nuget
-        if: ${{ matrix.configuration }} == Release && ${{ env.GITHUB_TAG }} =~ ^v.*$
+        if: ${{ matrix.configuration }} == Release && startsWith(github.ref, 'refs/tags/v')
         run: dotnet nuget push "Source/**/bin/${{ matrix.configuration }}/Boogie*.nupkg" -k ${NUGET_API_KEY} -s https://api.nuget.org/v3/index.json
