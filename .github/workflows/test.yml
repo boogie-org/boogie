@@ -46,9 +46,9 @@ jobs:
           diff --strip-trailing-cr Source/Core/Parser.cs Source/Core/Parser.cs.old
           diff --strip-trailing-cr Source/Core/Scanner.cs Source/Core/Scanner.cs.old
           # Build Boogie
-          dotnet build --disable-parallel -c ${{ matrix.configuration }} ${SOLUTION}
+          dotnet build -c ${{ matrix.configuration }} ${SOLUTION}
           # Create packages
-          dotnet pack --disable-parallel --no-build -c ${{ matrix.configuration }} ${SOLUTION}
+          dotnet pack --no-build -c ${{ matrix.configuration }} ${SOLUTION}
           # Run unit tests
           dotnet test --no-build -c ${{ matrix.configuration }} ${SOLUTION}
           # Run lit test suite
@@ -56,20 +56,5 @@ jobs:
           # Do not deploy if GitVersionTask could not be used to extract the correct version number
           test ! -e Source/BoogieDriver/bin/${{ matrix.configuration }}/Boogie.1.0.0.nupkg
       - name: Deploy to nuget
-        if: ${{ matrix.configuration }} = Release && ${{ env.GITHUB_TAG }} =~ ^v.*$
+        if: ${{ matrix.configuration }} == Release && ${{ env.GITHUB_TAG }} =~ ^v.*$
         run: dotnet nuget push "Source/**/bin/${{ matrix.configuration }}/Boogie*.nupkg" -k ${NUGET_API_KEY} -s https://api.nuget.org/v3/index.json
-      - name: Create github release
-        if: ${{ matrix.configuration }} = Release && ${{ env.GITHUB_TAG }} =~ ^v.*$
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: |
-            Changes in this Release
-            - First Change
-            - Second Change
-          draft: false
-          prerelease: false
