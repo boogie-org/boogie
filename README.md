@@ -2,7 +2,6 @@
 
 [![License][license-badge]](LICENSE.txt)
 [![NuGet package][nuget-badge]][nuget]
-[![Travis build status][travis-badge]][travis]
 
 Boogie is an intermediate verification language (IVL), intended as a layer on
 which to build program verifiers for other languages. Several program verifiers
@@ -103,32 +102,16 @@ See the [Driver test documentation](Test/README.md)
 
 See the [Unit test documentation](Source/UnitTests/README.md)
 
-## Versioning and Release Automation
+## Versioning and Release
 
-The [Bump workflow](.github/workflows/main.yml) will create and push a new tag
-each time commits are pushed to the master branch (including PR merges). By
-default, the created tag increments the patch version number from the previous
-tag. For example, if the last tagged commit were `v2.4.3`, then pushing to
-master would tag the latest commit with `v2.4.4`. If incrementing minor or major
-number is desired instead of patch, simply add `#minor` or `#major` anywhere in
-the commit message. For instance:
+The current version of Boogie is noted in a [build property](Source/Directory.Build.props).
+To push a new version to nuget, perform the following steps:
 
-> Adding the next greatest feature. #minor
+- Update the version (e.g., x.y.z) and commit the change
+- git tag vx.y.z
+- git push vx.y.z
 
-If the last tagged commit were `v2.4.3`, then pushing this commit would generate
-the tag `v2.5.0`.
-
-For pull-request merges, if minor or major version increments are desired, the
-first line of the merge commit message can be changed to include `#minor` or
-`#major`.
-
-Note that on each push to `master`, the following will happen:
-* A travis build for `master` is triggered.
-* The GitHub workflow is also triggered.
-* Once the workflow pushes a new tag `vX.Y.Z`, another travis build for `vX.Y.Z`
-  is triggered.
-* The travis build for `vX.Y.Z` in Release configuration publishes releases to
-  GitHub and [NuGet.org][nuget].
+The [CI workflow](.github/workflows/test.yml) will build and push the packages.
 
 ## License
 
@@ -137,7 +120,3 @@ Boogie is licensed under the MIT License (see [LICENSE.txt](LICENSE.txt)).
 [license-badge]: https://img.shields.io/github/license/boogie-org/boogie?color=blue
 [nuget]:         https://www.nuget.org/packages/Boogie
 [nuget-badge]:   https://img.shields.io/nuget/v/Boogie
-[travis]:        https://travis-ci.com/boogie-org/boogie
-[travis-badge]:  https://travis-ci.com/boogie-org/boogie.svg?branch=master
-[jenkins]:       #FIXME
-[jenkins-badge]: https://pmbuilds.inf.ethz.ch/buildStatus/icon?job=boogie
