@@ -10,8 +10,8 @@ type {:linear "collect", "broadcast"} pid = int;
 function {:inline} pid(i:int) : bool { 1 <= i && i <= n }
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "BROADCAST"}{:constructor} BROADCAST_PA(i:pid) : PA;
-function {:pending_async "COLLECT"}{:constructor} COLLECT_PA(i:pid) : PA;
+function {:constructor} BROADCAST(i:pid) : PA;
+function {:constructor} COLLECT(i:pid) : PA;
 
 function trigger(x:int) : bool { true }
 
@@ -21,22 +21,22 @@ function {:inline} NoPAs () : [PA]int
 function {:inline} InitialPAs (k:pid) : [PA]int
 {
   MapAdd(
-    (lambda pa:PA :: if is#BROADCAST_PA(pa) && pid(i#BROADCAST_PA(pa)) && i#BROADCAST_PA(pa) < k then 1 else 0),
-    (lambda pa:PA :: if is#COLLECT_PA(pa) && pid(i#COLLECT_PA(pa)) && i#COLLECT_PA(pa) < k then 1 else 0)
+    (lambda pa:PA :: if is#BROADCAST(pa) && pid(i#BROADCAST(pa)) && i#BROADCAST(pa) < k then 1 else 0),
+    (lambda pa:PA :: if is#COLLECT(pa) && pid(i#COLLECT(pa)) && i#COLLECT(pa) < k then 1 else 0)
   )
 }
 
 function {:inline} AllBroadcasts () : [PA]int
-{ (lambda pa:PA :: if is#BROADCAST_PA(pa) && pid(i#BROADCAST_PA(pa)) then 1 else 0) }
+{ (lambda pa:PA :: if is#BROADCAST(pa) && pid(i#BROADCAST(pa)) then 1 else 0) }
 
 function {:inline} AllCollects () : [PA]int
-{ (lambda pa:PA :: if is#COLLECT_PA(pa) && pid(i#COLLECT_PA(pa)) then 1 else 0) }
+{ (lambda pa:PA :: if is#COLLECT(pa) && pid(i#COLLECT(pa)) then 1 else 0) }
 
 function {:inline} RemainingBroadcasts (k:pid) : [PA]int
-{ (lambda pa:PA :: if is#BROADCAST_PA(pa) && k < i#BROADCAST_PA(pa) && i#BROADCAST_PA(pa) <= n then 1 else 0) }
+{ (lambda pa:PA :: if is#BROADCAST(pa) && k < i#BROADCAST(pa) && i#BROADCAST(pa) <= n then 1 else 0) }
 
 function {:inline} RemainingCollects (k:pid) : [PA]int
-{ (lambda pa:PA :: if is#COLLECT_PA(pa) && k < i#COLLECT_PA(pa) && i#COLLECT_PA(pa) <= n then 1 else 0) }
+{ (lambda pa:PA :: if is#COLLECT(pa) && k < i#COLLECT(pa) && i#COLLECT(pa) <= n then 1 else 0) }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -107,8 +107,8 @@ modifies CH, decision;
     // (forall i:pid :: 1 <= i && i <= k ==> decision[i] == max(CH)) &&
     decision == (lambda i:pid :: if 1 <= i && i <= k then max(CH) else old(decision)[i]) &&
     PAs == RemainingCollects(k) &&
-    choice == COLLECT_PA(k+1) &&
-    (k < n ==> PAs[COLLECT_PA(n)] > 0) // help for the prover
+    choice == COLLECT(k+1) &&
+    (k < n ==> PAs[COLLECT(n)] > 0) // help for the prover
   );
 }
 
@@ -158,8 +158,8 @@ modifies CH;
     card(CH) == k &&
     MultisetSubsetEq(MultisetEmpty, CH) &&
     PAs == MapAdd(RemainingBroadcasts(k), AllCollects()) &&
-    choice == BROADCAST_PA(k+1) &&
-    (k < n ==> PAs[BROADCAST_PA(n)] > 0) // help for the prover
+    choice == BROADCAST(k+1) &&
+    (k < n ==> PAs[BROADCAST(n)] > 0) // help for the prover
   );
 }
 

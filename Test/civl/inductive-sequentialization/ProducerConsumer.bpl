@@ -10,8 +10,8 @@ const unique prod_id:int;
 const unique cons_id:int;
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "PRODUCER"}{:constructor} PRODUCER_PA(x:int, pid:int) : PA;
-function {:pending_async "CONSUMER"}{:constructor} CONSUMER_PA(x:int, pid:int) : PA;
+function {:constructor} PRODUCER(x:int, pid:int) : PA;
+function {:constructor} CONSUMER(x:int, pid:int) : PA;
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }
@@ -26,7 +26,7 @@ returns ({:pending_async "PRODUCER","CONSUMER"} PAs:[PA]int)
   assert prod_pid == prod_id;
   assert cons_pid == cons_id;
   assert head == tail;
-  PAs := NoPAs()[PRODUCER_PA(1, prod_pid) := 1][CONSUMER_PA(1, cons_pid) := 1];
+  PAs := NoPAs()[PRODUCER(1, prod_pid) := 1][CONSUMER(1, cons_pid) := 1];
 }
 
 procedure {:atomic}{:layer 3}
@@ -55,16 +55,16 @@ modifies C, head, tail;
   (exists c:int ::  c > 0 &&
     (
       (head == tail &&
-       PAs == NoPAs()[PRODUCER_PA(c, prod_pid) := 1][CONSUMER_PA(c, cons_pid) := 1] &&
-       choice == PRODUCER_PA(c, prod_pid))
+       PAs == NoPAs()[PRODUCER(c, prod_pid) := 1][CONSUMER(c, cons_pid) := 1] &&
+       choice == PRODUCER(c, prod_pid))
       ||
       (tail == head + 1 && C[head] == 0 &&
-       PAs == NoPAs()[CONSUMER_PA(c, cons_pid) := 1] &&
-       choice == CONSUMER_PA(c, cons_pid))
+       PAs == NoPAs()[CONSUMER(c, cons_pid) := 1] &&
+       choice == CONSUMER(c, cons_pid))
       ||
       (tail == head + 1 && C[head] == c &&
-       PAs == NoPAs()[PRODUCER_PA(c+1, prod_pid) := 1][CONSUMER_PA(c, cons_pid) := 1] &&
-       choice == CONSUMER_PA(c, cons_pid))
+       PAs == NoPAs()[PRODUCER(c+1, prod_pid) := 1][CONSUMER(c, cons_pid) := 1] &&
+       choice == CONSUMER(c, cons_pid))
       ||
       (head == tail &&
        PAs == NoPAs())
@@ -85,7 +85,7 @@ modifies C, tail;
   {
     C[tail] := x;
     tail := tail + 1;
-    PAs := NoPAs()[PRODUCER_PA(x+1, pid) := 1];
+    PAs := NoPAs()[PRODUCER(x+1, pid) := 1];
   }
   else
   {
@@ -110,7 +110,7 @@ modifies head;
   head := head + 1;
   if (x' != 0)
   {
-    PAs := NoPAs()[CONSUMER_PA(x'+1, pid) := 1];
+    PAs := NoPAs()[CONSUMER(x'+1, pid) := 1];
   }
   else
   {
@@ -135,7 +135,7 @@ modifies head;
   head := head + 1;
   if (x' != 0)
   {
-    PAs := NoPAs()[CONSUMER_PA(x'+1, pid) := 1];
+    PAs := NoPAs()[CONSUMER(x'+1, pid) := 1];
   }
   else
   {

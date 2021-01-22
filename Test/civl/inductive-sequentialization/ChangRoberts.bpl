@@ -46,8 +46,8 @@ axiom (forall id:[int]int :: pid(max(id)) && (forall i:int :: pid(i) && i != max
 
 // A type for keeping track of pending asyncs
 type {:pending_async}{:datatype} PA;
-function {:pending_async "P"}{:constructor} P_PA(pid:int) : PA;
-function {:pending_async "PInit"}{:constructor} PInit_PA(pid:int) : PA;
+function {:constructor} P(pid:int) : PA;
+function {:constructor} PInit(pid:int) : PA;
 
 // A dummy trigger function to use in quantified formulae
 function trigger(x:int) : bool { true }
@@ -90,13 +90,13 @@ modifies channel, terminated, leader;
 
   assume
   (exists k:int :: {trigger(k)} trigger(k) && trigger(next(k)) && trigger(n+1) &&
-    choice == P_PA(k) &&
+    choice == P(k) &&
     //(k == next(max(id)) ==> (forall i:int, msg:int :: pid(i) && channel[i][msg] > 0 ==> msg == id[prev(i)])) &&  // A helper to the prover for the base case of IS
     (
       (pid(k) &&
        (forall i:int :: pid(i) && between(max(id),i,k) ==> terminated[i]) &&
        (forall i:int :: pid(i) && !between(max(id),i,k) ==> !terminated[i]) &&
-       PAs == (lambda pa:PA :: if is#P_PA(pa) && pid(pid#P_PA(pa)) && !between(max(id), pid#P_PA(pa), k) then 1 else 0))
+       PAs == (lambda pa:PA :: if is#P(pa) && pid(pid#P(pa)) && !between(max(id), pid#P(pa), k) then 1 else 0))
       ||
       (k == n + 1 &&
        (forall i:int :: pid(i) ==> terminated[i]) &&
@@ -144,7 +144,7 @@ modifies channel, terminated, leader;
       {
         channel[next(pid)][msg] := channel[next(pid)][msg] + 1;
       }
-      PAs := NoPAs()[P_PA(pid) := 1];
+      PAs := NoPAs()[P(pid) := 1];
     }
   }
 }
@@ -164,7 +164,7 @@ modifies channel;
 
   assume (forall i:int :: 1 <= i && i <= n ==> channel[next(i)] == EmptyChannel()[id[i] := 1 ]);
   assume (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
-  PAs := (lambda pa:PA ::  if is#P_PA(pa) && pid(pid#P_PA(pa)) then 1 else 0);
+  PAs := (lambda pa:PA ::  if is#P(pa) && pid(pid#P(pa)) then 1 else 0);
   assume (forall i:int, msg:int :: pid(i) && channel[i][msg] > 0 ==> msg == id[prev(i)]);
 }
 
@@ -182,10 +182,10 @@ modifies channel;
     (forall i:int :: 1 <= i && i <= k ==> channel[next(i)] == EmptyChannel()[id[i] := 1 ]) &&
     (forall i:int :: k < i && i <= n ==> channel[next(i)] == EmptyChannel()) &&
     (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel()) &&
-    PAs == (lambda pa:PA :: if is#PInit_PA(pa) && k < pid#PInit_PA(pa) && pid#PInit_PA(pa) <= n then 1
-              else if is#P_PA(pa) &&  1 <= pid#P_PA(pa) && pid#P_PA(pa) <= k  then 1 else 0) &&
-    choice == PInit_PA(k+1) &&
-    (k < n ==> PAs[PInit_PA(n)] > 0)   // Hint for the prover for the conclusion check
+    PAs == (lambda pa:PA :: if is#PInit(pa) && k < pid#PInit(pa) && pid#PInit(pa) <= n then 1
+              else if is#P(pa) &&  1 <= pid#P(pa) && pid#P(pa) <= k  then 1 else 0) &&
+    choice == PInit(k+1) &&
+    (k < n ==> PAs[PInit(n)] > 0)   // Hint for the prover for the conclusion check
   );
 }
 
@@ -198,7 +198,7 @@ returns ({:pending_async "PInit"} PAs:[PA]int)
 {
   assert Init(pids, channel, terminated, id, leader);
   assert trigger(0);
-  PAs := (lambda pa:PA :: if is#PInit_PA(pa) && pid(pid#PInit_PA(pa)) then 1 else 0);
+  PAs := (lambda pa:PA :: if is#PInit(pa) && pid(pid#PInit(pa)) then 1 else 0);
 }
 
 procedure {:left}{:layer 2}
@@ -208,7 +208,7 @@ modifies channel;
 {
   assert pid(pid);
   channel[next(pid)][id[pid]] := channel[next(pid)][id[pid]] + 1;
-  PAs := NoPAs()[P_PA(pid) := 1];
+  PAs := NoPAs()[P(pid) := 1];
 }
 
 procedure {:atomic}{:layer 2, 3}
@@ -245,7 +245,7 @@ modifies channel, terminated, leader;
       {
         channel[next(pid)][msg] := channel[next(pid)][msg] + 1;
       }
-      PAs := NoPAs()[P_PA(pid) := 1];
+      PAs := NoPAs()[P(pid) := 1];
     }
   }
 }
@@ -267,7 +267,7 @@ requires {:layer 1} Init(pids, channel, terminated, id, leader);
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} (forall ii:int :: pid(ii) && ii >= i ==> pids'[ii]);
-  invariant {:layer 1} PAs == (lambda pa:PA :: if is#PInit_PA(pa) && pid(pid#PInit_PA(pa)) && pid#PInit_PA(pa) < i then 1 else 0);
+  invariant {:layer 1} PAs == (lambda pa:PA :: if is#PInit(pa) && pid(pid#PInit(pa)) && pid#PInit(pa) < i then 1 else 0);
   {
     call pid, pids' := linear_transfer(i, pids');
     async call pinit(pid);

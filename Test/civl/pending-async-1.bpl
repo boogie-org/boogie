@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "A"}{:constructor} A_PA() : PA;
+function {:constructor} A() : PA;
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }
@@ -13,14 +13,14 @@ procedure {:atomic}{:layer 1,2} A () {}
 
 procedure {:left}{:layer 1} B () returns ({:pending_async "A"} PAs:[PA]int)
 {
-  PAs := NoPAs()[A_PA() := 1];
+  PAs := NoPAs()[A() := 1];
 }
 
 procedure {:left}{:layer 1} C (flag:bool) returns ({:pending_async "A"} PAs:[PA]int)
 {
   PAs := NoPAs();
   if (flag) {
-    PAs := PAs[A_PA() := 1];
+    PAs := PAs[A() := 1];
   }
 }
 
@@ -39,7 +39,7 @@ procedure {:yields}{:layer 1}{:refines "TEST1"} test1 ()
 
 procedure {:atomic}{:layer 2} TEST1 () returns ({:pending_async "A"} PAs:[PA]int)
 {
-  PAs := NoPAs()[A_PA() := 2];
+  PAs := NoPAs()[A() := 2];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,7 +53,7 @@ procedure {:yields}{:layer 1}{:refines "TEST2"} test2 ()
 
 procedure {:atomic}{:layer 2} TEST2 () returns ({:pending_async "A"} PAs:[PA]int)
 {
-  PAs := NoPAs()[A_PA() := 1];
+  PAs := NoPAs()[A() := 1];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,7 +88,7 @@ procedure {:yields}{:layer 1}{:refines "TEST5"} test5 ()
   while (i < 10)
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 0 <= i && i <= 10;
-  invariant {:layer 1} PAs == NoPAs()[A_PA() := i];
+  invariant {:layer 1} PAs == NoPAs()[A() := i];
   {
     call b();
     i := i + 1;
@@ -97,5 +97,5 @@ procedure {:yields}{:layer 1}{:refines "TEST5"} test5 ()
 
 procedure {:atomic}{:layer 2} TEST5 () returns ({:pending_async "A"} PAs:[PA]int)
 {
-  PAs := NoPAs()[A_PA() := 10];
+  PAs := NoPAs()[A() := 10];
 }

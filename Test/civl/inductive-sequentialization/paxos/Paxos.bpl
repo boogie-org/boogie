@@ -41,11 +41,11 @@ function {:constructor} VotePerm(r:Round, n: Node): Permission;
 function {:constructor} ConcludePerm(r: Round): Permission;
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "A_StartRound"}{:constructor} StartRound_PA(round: Round, round_lin: Round) : PA;
-function {:pending_async "A_Join"}{:constructor} Join_PA(round: Round, node: Node, p: Permission) : PA;
-function {:pending_async "A_Propose"}{:constructor} Propose_PA(round: Round, ps: [Permission]bool) : PA;
-function {:pending_async "A_Vote"}{:constructor} Vote_PA(round: Round, node: Node, value: Value, p: Permission) : PA;
-function {:pending_async "A_Conclude"}{:constructor} Conclude_PA(round: Round, value: Value, p: Permission) : PA;
+function {:constructor} A_StartRound(round: Round, round_lin: Round) : PA;
+function {:constructor} A_Join(round: Round, node: Node, p: Permission) : PA;
+function {:constructor} A_Propose(round: Round, ps: [Permission]bool) : PA;
+function {:constructor} A_Vote(round: Round, node: Node, value: Value, p: Permission) : PA;
+function {:constructor} A_Conclude(round: Round, value: Value, p: Permission) : PA;
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Functions
@@ -122,12 +122,12 @@ function {:inline} VotePermissions(r: Round) : [Permission]bool
 
 function {:inline} JoinPAs(r: Round) : [PA]int
 {
-  (lambda pa: PA :: if is#Join_PA(pa) && round#Join_PA(pa) == r && Node(node#Join_PA(pa)) && p#Join_PA(pa) == JoinPerm(r, node#Join_PA(pa)) then 1 else 0)
+  (lambda pa: PA :: if is#A_Join(pa) && round#A_Join(pa) == r && Node(node#A_Join(pa)) && p#A_Join(pa) == JoinPerm(r, node#A_Join(pa)) then 1 else 0)
 }
 
 function {:inline} VotePAs(r: Round, v: Value) : [PA]int
 {
-  (lambda pa: PA :: if is#Vote_PA(pa) && round#Vote_PA(pa) == r && Node(node#Vote_PA(pa)) && value#Vote_PA(pa) == v && p#Vote_PA(pa) == VotePerm(r, node#Vote_PA(pa)) then 1 else 0)
+  (lambda pa: PA :: if is#A_Vote(pa) && round#A_Vote(pa) == r && Node(node#A_Vote(pa)) && value#A_Vote(pa) == v && p#A_Vote(pa) == VotePerm(r, node#A_Vote(pa)) then 1 else 0)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

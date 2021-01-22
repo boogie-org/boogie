@@ -46,8 +46,8 @@ axiom (forall id:[int]int :: pid(max(id)) && (forall i:int :: pid(i) && i != max
 
 // A type for keeping track of pending asyncs
 type {:pending_async}{:datatype} PA;
-function {:pending_async "P"}{:constructor} P_PA(pid:int) : PA;
-function {:pending_async "PInit"}{:constructor} PInit_PA(pid:int) : PA;
+function {:constructor} P(pid:int) : PA;
+function {:constructor} PInit(pid:int) : PA;
 
 // A dummy trigger function to use in quantified formulae
 function trigger(x:int) : bool { true }
@@ -92,8 +92,8 @@ modifies channel, pendingAsyncs, leader;
   assume
   (exists k:int :: {trigger(k)} trigger(k) && trigger(next(k)) && trigger(n+1) &&
     1 <= k && k <= n+1 &&
-    PAs == (lambda pa:PA :: if is#P_PA(pa) && pid(pid#P_PA(pa)) && pid(k) && !between(max(id), pid#P_PA(pa), k) then 1 else 0) &&
-    choice == P_PA(k)
+    PAs == (lambda pa:PA :: if is#P(pa) && pid(pid#P(pa)) && pid(k) && !between(max(id), pid#P(pa), k) then 1 else 0) &&
+    choice == P(k)
   );
 
   assume (forall i:int, msg:int :: pid(i) && channel[i][msg] > 0 ==> msg <= id[max(id)] && (forall j:int:: betweenLeftEqual(i,j,max(id)) ==> msg != id[j]));
@@ -110,10 +110,10 @@ modifies channel, pendingAsyncs, leader;
   var msg:int;
 
   assert pid(pid);
-  assert pendingAsyncs[P_PA(pid)] > 0;
+  assert pendingAsyncs[P(pid)] > 0;
   assert (forall m:int :: channel[pid][m] > 0 ==> m <= id[max(id)]);
 
-  assert (forall j:int :: pid(j) && between(max(id), j, pid) ==> pendingAsyncs[P_PA(j)] == 0);
+  assert (forall j:int :: pid(j) && between(max(id), j, pid) ==> pendingAsyncs[P(j)] == 0);
 
   if (*)
   {
@@ -135,12 +135,12 @@ modifies channel, pendingAsyncs, leader;
       {
         channel[next(pid)][msg] := channel[next(pid)][msg] + 1;
       }
-      PAs := NoPAs()[P_PA(pid) := 1];
+      PAs := NoPAs()[P(pid) := 1];
     }
   }
 
   pendingAsyncs := MapAdd(pendingAsyncs, PAs);
-  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(P_PA(pid)));
+  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(P(pid)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +159,7 @@ modifies channel, pendingAsyncs;
   assume (forall i:int :: 1 <= i && i <= n ==> channel[next(i)] == EmptyChannel()[id[i] := 1 ]);
   assume (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
   assume (forall i:int, msg:int :: pid(i) && channel[i][msg] > 0 ==> msg == id[prev(i)]);
-  PAs := (lambda pa:PA ::  if is#P_PA(pa) && pid(pid#P_PA(pa)) then 1 else 0);
+  PAs := (lambda pa:PA ::  if is#P(pa) && pid(pid#P(pa)) then 1 else 0);
   pendingAsyncs := MapAdd(pendingAsyncs, PAs);
 }
 
@@ -177,10 +177,10 @@ modifies channel, pendingAsyncs;
     (forall i:int :: 1 <= i && i <= k ==> channel[next(i)] == EmptyChannel()[id[i] := 1 ]) &&
     (forall i:int :: k < i && i <= n ==> channel[next(i)] == EmptyChannel()) &&
     (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel()) &&
-    PAs == (lambda pa:PA :: if is#PInit_PA(pa) && k < pid#PInit_PA(pa) && pid#PInit_PA(pa) <= n then 1
-              else if is#P_PA(pa) &&  1 <= pid#P_PA(pa) && pid#P_PA(pa) <= k  then 1 else 0) &&
-    choice == PInit_PA(k+1) &&
-    (k < n ==> PAs[PInit_PA(n)] > 0)   // Hint for the prover for the conclusion check
+    PAs == (lambda pa:PA :: if is#PInit(pa) && k < pid#PInit(pa) && pid#PInit(pa) <= n then 1
+              else if is#P(pa) &&  1 <= pid#P(pa) && pid#P(pa) <= k  then 1 else 0) &&
+    choice == PInit(k+1) &&
+    (k < n ==> PAs[PInit(n)] > 0)   // Hint for the prover for the conclusion check
   );
 
   pendingAsyncs := MapAdd(pendingAsyncs, PAs);
@@ -196,7 +196,7 @@ modifies pendingAsyncs;
 {
   assert Init(pids, channel, pendingAsyncs, id, leader);
   assert trigger(0);
-  PAs := (lambda pa:PA :: if is#PInit_PA(pa) && pid(pid#PInit_PA(pa)) then 1 else 0);
+  PAs := (lambda pa:PA :: if is#PInit(pa) && pid(pid#PInit(pa)) then 1 else 0);
   pendingAsyncs := MapAdd(pendingAsyncs, PAs);
 }
 
@@ -206,11 +206,11 @@ returns ({:pending_async "P"} PAs:[PA]int)
 modifies channel, pendingAsyncs;
 {
   assert pid(pid);
-  assert pendingAsyncs[PInit_PA(pid)] > 0;
+  assert pendingAsyncs[PInit(pid)] > 0;
   channel[next(pid)][id[pid]] := channel[next(pid)][id[pid]] + 1;
-  PAs := NoPAs()[P_PA(pid) := 1];
+  PAs := NoPAs()[P(pid) := 1];
   pendingAsyncs := MapAdd(pendingAsyncs, PAs);
-  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(PInit_PA(pid)));
+  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(PInit(pid)));
 }
 
 procedure {:atomic}{:layer 2, 3}
@@ -221,7 +221,7 @@ modifies channel, pendingAsyncs, leader;
   var msg:int;
 
   assert pid(pid);
-  assert pendingAsyncs[P_PA(pid)] > 0;
+  assert pendingAsyncs[P(pid)] > 0;
   assert (forall m:int :: channel[pid][m] > 0 ==> m <= id[max(id)]);
 
   if (*)
@@ -245,12 +245,12 @@ modifies channel, pendingAsyncs, leader;
       {
         channel[next(pid)][msg] := channel[next(pid)][msg] + 1;
       }
-      PAs := NoPAs()[P_PA(pid) := 1];
+      PAs := NoPAs()[P(pid) := 1];
     }
   }
 
   pendingAsyncs := MapAdd(pendingAsyncs, PAs);
-  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(P_PA(pid)));
+  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(P(pid)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,7 +270,7 @@ requires {:layer 1} Init(pids, channel, pendingAsyncs, id, leader);
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} (forall ii:int :: pid(ii) && ii >= i ==> pids'[ii]);
-  invariant {:layer 1} PAs == (lambda pa:PA :: if is#PInit_PA(pa) && pid(pid#PInit_PA(pa)) && pid#PInit_PA(pa) < i then 1 else 0);
+  invariant {:layer 1} PAs == (lambda pa:PA :: if is#PInit(pa) && pid(pid#PInit(pa)) && pid#PInit(pa) < i then 1 else 0);
   {
     call pid, pids' := linear_transfer(i, pids');
     async call pinit(pid);
@@ -288,8 +288,8 @@ requires {:layer 1} pid(pid);
   call m := get_id(pid);
   call send(next(pid), m);
   async call p(pid);
-  call AddPendingAsyncs(SingletonPA(P_PA(pid)));
-  call RemovePendingAsyncs(SingletonPA(PInit_PA(pid)));
+  call AddPendingAsyncs(SingletonPA(P(pid)));
+  call RemovePendingAsyncs(SingletonPA(PInit(pid)));
 }
 
 procedure {:yields}{:layer 1}{:refines "P"}
@@ -312,9 +312,9 @@ requires {:layer 1} pid(pid);
       call send(next(pid), m);
     }
     async call p(pid);
-    call AddPendingAsyncs(SingletonPA(P_PA(pid)));
+    call AddPendingAsyncs(SingletonPA(P(pid)));
   }
-  call RemovePendingAsyncs(SingletonPA(P_PA(pid)));
+  call RemovePendingAsyncs(SingletonPA(P(pid)));
 }
 
 procedure {:intro}{:layer 1} AddPendingAsyncs(PAs: [PA]int)

@@ -2,11 +2,11 @@
 // RUN: %diff "%s.expect" "%t"
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "A"}{:constructor} A_PA(i:int) : PA;
+function {:constructor} A(i:int) : PA;
 
 procedure {:atomic}{:layer 1,2} SPEC () returns ({:pending_async "A"} PAs:[PA]int)
 {
-  PAs := (lambda pa:PA :: 0)[A_PA(1) := 1];
+  PAs := (lambda pa:PA :: 0)[A(1) := 1];
 }
 
 procedure {:yields}{:layer 1}{:refines "SPEC"} b ()

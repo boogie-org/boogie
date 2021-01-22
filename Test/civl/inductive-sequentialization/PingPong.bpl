@@ -9,8 +9,8 @@ const unique ping_id:int;
 const unique pong_id:int;
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "PING"}{:constructor} PING_PA(x:int, pid:int) : PA;
-function {:pending_async "PONG"}{:constructor} PONG_PA(x:int, pid:int) : PA;
+function {:constructor} PING(x:int, pid:int) : PA;
+function {:constructor} PONG(x:int, pid:int) : PA;
 
 function trigger(x:int) : bool { true }
 
@@ -47,16 +47,16 @@ modifies ping_channel, pong_channel;
   (exists c:int :: {trigger(c)} c > 0 && trigger(c) && trigger(c+1) &&
     (
       (pong_channel == EmptyChannel()[c := 1] && ping_channel == EmptyChannel() &&
-       PAs == NoPAs()[PONG_PA(c, pong_pid) := 1][PING_PA(c, ping_pid) := 1] &&
-       choice == PONG_PA(c, pong_pid))
+       PAs == NoPAs()[PONG(c, pong_pid) := 1][PING(c, ping_pid) := 1] &&
+       choice == PONG(c, pong_pid))
       ||
       (pong_channel == EmptyChannel()[0 := 1] && ping_channel == EmptyChannel() &&
-       PAs == NoPAs()[PONG_PA(c, pong_pid) := 1] &&
-       choice == PONG_PA(c, pong_pid))
+       PAs == NoPAs()[PONG(c, pong_pid) := 1] &&
+       choice == PONG(c, pong_pid))
       ||
       (ping_channel == EmptyChannel()[c := 1] && pong_channel == EmptyChannel() &&
-       PAs == NoPAs()[PONG_PA(c+1, pong_pid) := 1][PING_PA(c, ping_pid) := 1] &&
-       choice == PING_PA(c, ping_pid))
+       PAs == NoPAs()[PONG(c+1, pong_pid) := 1][PING(c, ping_pid) := 1] &&
+       choice == PING(c, ping_pid))
       ||
       (ping_channel == EmptyChannel() && pong_channel == EmptyChannel() &&
        PAs == NoPAs())
@@ -82,7 +82,7 @@ modifies ping_channel, pong_channel;
   if (*)
   {
     pong_channel[x+1] := pong_channel[x+1] + 1;
-    PAs := NoPAs()[PING_PA(x+1, pid) := 1];
+    PAs := NoPAs()[PING(x+1, pid) := 1];
   }
   else
   {
@@ -106,7 +106,7 @@ modifies ping_channel, pong_channel;
     assume pong_channel[y] > 0;
     pong_channel[y] := pong_channel[y] - 1;
     ping_channel[y] := ping_channel[y] + 1;
-    PAs := NoPAs()[PONG_PA(y+1, pid) := 1];
+    PAs := NoPAs()[PONG(y+1, pid) := 1];
   }
   else
   {
@@ -130,7 +130,7 @@ modifies pong_channel;
   assert pong_channel == EmptyChannel();
   assert trigger(1);
   pong_channel[1] := pong_channel[1] + 1;
-  PAs := NoPAs()[PING_PA(1, ping_pid) := 1][PONG_PA(1, pong_pid) := 1];
+  PAs := NoPAs()[PING(1, ping_pid) := 1][PONG(1, pong_pid) := 1];
 }
 
 procedure {:atomic}{:layer 2}
@@ -148,7 +148,7 @@ modifies ping_channel, pong_channel;
   if (*)
   {
     pong_channel[x+1] := pong_channel[x+1] + 1;
-    PAs := NoPAs()[PING_PA(x+1, pid) := 1];
+    PAs := NoPAs()[PING(x+1, pid) := 1];
   }
   else
   {
@@ -171,7 +171,7 @@ modifies ping_channel, pong_channel;
     assume pong_channel[y] > 0;
     pong_channel[y] := pong_channel[y] - 1;
     ping_channel[y] := ping_channel[y] + 1;
-    PAs := NoPAs()[PONG_PA(y+1, pid) := 1];
+    PAs := NoPAs()[PONG(y+1, pid) := 1];
   }
   else
   {

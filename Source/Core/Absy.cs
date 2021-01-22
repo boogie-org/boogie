@@ -3334,7 +3334,7 @@ namespace Microsoft.Boogie
     public override void Register(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      rc.AddProcedure(this);
+      rc.AddFunction(this);
     }
 
     public override void Resolve(ResolutionContext rc)
@@ -4457,15 +4457,10 @@ namespace Microsoft.Boogie
         return;
       }
 
-      DeclWithFormals dwf = rc.LookUpProcedure(cce.NonNull(this.Name));
-      Proc = dwf as Procedure;
-      if (dwf == null)
+      Proc = rc.LookUpProcedure(cce.NonNull(this.Name));
+      if (Proc == null)
       {
         rc.Error(this, "implementation given for undeclared procedure: {0}", this.Name);
-      }
-      else if (Proc == null)
-      {
-        rc.Error(this, "implementations given for function, not procedure: {0}", this.Name);
       }
 
       int previousTypeBinderState = rc.TypeBinderState;

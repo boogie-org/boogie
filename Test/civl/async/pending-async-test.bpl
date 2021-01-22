@@ -1,28 +1,40 @@
 // RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// XFAIL: *
 
 var {:layer 0,3} x:int;
 
-procedure {:both}{:layer 3} Client_atomic ()
-modifies x;
-{ x := x + 1; }
+type {:pending_async}{:datatype} PA;
+function {:constructor} A_Callback() : PA;
 
-procedure {:yields}{:layer 2}{:refines "Client_atomic"} Client ()
+procedure {:yields}{:layer 2}{:refines "A_Callback"} Client ()
 {
   call Service();
 }
 
-procedure {:atomic}{:layer 1,2} Service_atomic ()
-{ async call Callback(); }
+procedure {:IS_invariant}{:layer 1} INV() returns ({:pending_async "A_Callback"} PAs: [PA]int)
+modifies x;
+{
+  PAs := MapConst(0);
+  if (*) {
+    PAs[A_Callback()] := 1;
+  } else {
+    x := x + 1;
+  }
+}
 
-procedure {:yields}{:layer 0}{:refines "Service_atomic"} Service ()
+procedure {:atomic}{:layer 1}
+{:IS "A_Callback","INV"}{:elim "A_Callback"}
+A_Service() returns ({:pending_async "A_Callback"} PAs: [PA]int)
+{
+  PAs := MapConst(0);
+  PAs[A_Callback()] := 1;
+}
+procedure {:yields}{:layer 0}{:refines "A_Service"} Service ()
 {
   async call Callback();
 }
 
-procedure {:both}{:layer 2} Callback_atomic ()
+procedure {:both}{:layer 1,3} A_Callback ()
 modifies x;
 { x := x + 1; }
-
-procedure {:yields}{:layer 1}{:refines "Callback_atomic"} Callback ();
+procedure {:yields}{:layer 0}{:refines "A_Callback"} Callback ();

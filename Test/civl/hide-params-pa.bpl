@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "SKIP"}{:constructor} SKIP_PA() : PA;
+function {:constructor} SKIP() : PA;
 
 procedure {:atomic}{:layer 2} SKIP () returns () { }
 

@@ -7,7 +7,7 @@ procedure {:yield_invariant} {:layer 1} yield_x({:linear "tid"} tid:int);
 requires x[tid] == 0;
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "A"}{:constructor} A_PA(tid:int) : PA;
+function {:constructor} A(tid:int) : PA;
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }
@@ -20,7 +20,7 @@ modifies x;
 
 procedure {:left}{:layer 1} ASYNC_A ({:linear_in "tid"} tid:int) returns ({:pending_async "A"} PAs:[PA]int)
 {
-  PAs := NoPAs()[A_PA(tid) := 1];
+  PAs := NoPAs()[A(tid) := 1];
 }
 
 procedure {:yields}{:layer 1} dummy () {}

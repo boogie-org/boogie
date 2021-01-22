@@ -25,12 +25,12 @@ function {:inline} nextBuyer(pid:int) : int { pid + 1 }
 function {:inline} min (x:int, y:int) : int {if x < y then x else y}
 
 type {:pending_async}{:datatype} PA;
-function {:pending_async "FirstBuyerInit"}{:constructor} FirstBuyerInitPA(pid:int) : PA;
-function {:pending_async "FirstBuyer"}{:constructor} FirstBuyerPA(pid:int) : PA;
-function {:pending_async "MiddleBuyer"}{:constructor} MiddleBuyerPA(pid:int) : PA;
-function {:pending_async "LastBuyer"}{:constructor} LastBuyerPA(pid:int) : PA;
-function {:pending_async "SellerInit"}{:constructor} SellerInitPA(pid:int) : PA;
-function {:pending_async "SellerFinish"}{:constructor} SellerFinishPA(pid:int) : PA;
+function {:constructor} FirstBuyerInit(pid:int) : PA;
+function {:constructor} FirstBuyer(pid:int) : PA;
+function {:constructor} MiddleBuyer(pid:int) : PA;
+function {:constructor} LastBuyer(pid:int) : PA;
+function {:constructor} SellerInit(pid:int) : PA;
+function {:constructor} SellerFinish(pid:int) : PA;
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }
@@ -89,7 +89,7 @@ modifies DecCH, contribution;
   if (*)
   {
     DecCH := (lambda b:bool :: if b == (sum(contribution, 1, n) == price) then 1 else 0);
-    PAs := SingletonPA(SellerFinishPA(0));
+    PAs := SingletonPA(SellerFinish(0));
   }
   else
   {
@@ -119,7 +119,7 @@ modifies DecCH, contribution;
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
   havoc contribution;
   DecCH := (lambda b:bool :: if b == (sum(contribution, 1, n) == price) then 1 else 0);
-  PAs := SingletonPA(SellerFinishPA(0));
+  PAs := SingletonPA(SellerFinish(0));
 }
 
 procedure {:IS_invariant}{:layer 4}
@@ -134,8 +134,8 @@ modifies QuoteCH, RemCH, DecCH, contribution;
   if (*)
   {
     QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && q == price then 1 else 0));
-    PAs := MapAddPA4(SellerFinishPA(0), FirstBuyerPA(1), LastBuyerPA(n), (lambda pa:PA :: if is#MiddleBuyerPA(pa) && middleBuyerID(pid#MiddleBuyerPA(pa)) then 1 else 0));
-    choice := FirstBuyerPA(1);
+    PAs := MapAddPA4(SellerFinish(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) then 1 else 0));
+    choice := FirstBuyer(1);
     assume trigger(1);
   }
   else if (*)
@@ -146,8 +146,8 @@ modifies QuoteCH, RemCH, DecCH, contribution;
       QuoteCH == (lambda i:int :: (lambda q:int :: if buyerID(i) && i > k && q == price then 1 else 0)) &&
       0 <= sum(contribution, 1, k) && sum(contribution, 1, k) <= price &&
       RemCH == (lambda i:int :: (lambda r:int :: if i == k+1 && r == price - sum(contribution, 1, k) then 1 else 0)) &&
-      PAs == MapAddPA3(SellerFinishPA(0), LastBuyerPA(n), (lambda pa:PA :: if is#MiddleBuyerPA(pa) && middleBuyerID(pid#MiddleBuyerPA(pa)) && pid#MiddleBuyerPA(pa) > k then 1 else 0)) &&
-      (choice == if lastBuyerID(k+1) then LastBuyerPA(k+1) else MiddleBuyerPA(k+1))
+      PAs == MapAddPA3(SellerFinish(0), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) && pid#MiddleBuyer(pa) > k then 1 else 0)) &&
+      (choice == if lastBuyerID(k+1) then LastBuyer(k+1) else MiddleBuyer(k+1))
     );
   }
   else if (*)
@@ -155,13 +155,13 @@ modifies QuoteCH, RemCH, DecCH, contribution;
     QuoteCH := (lambda i:int :: (lambda q:int :: if lastBuyerID(i) && q == price then 1 else 0));
     assume 0 <= sum(contribution, 1, n-1) && sum(contribution, 1, n-1) <= price;
     RemCH := (lambda i:int :: (lambda r:int :: if i == n && r == price - sum(contribution, 1, n-1) then 1 else 0));
-    PAs := MapAddPA(SingletonPA(SellerFinishPA(0)), SingletonPA(LastBuyerPA(n)));
-    choice := LastBuyerPA(n);
+    PAs := MapAddPA(SingletonPA(SellerFinish(0)), SingletonPA(LastBuyer(n)));
+    choice := LastBuyer(n);
   }
   else
   {
     DecCH := (lambda b:bool :: if b == (sum(contribution, 1, n) == price) then 1 else 0);
-    PAs := SingletonPA(SellerFinishPA(0));
+    PAs := SingletonPA(SellerFinish(0));
   }
 }
 
@@ -262,7 +262,7 @@ modifies QuoteCH;
 {
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
   QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && q == price then 1 else 0));
-  PAs := MapAddPA4(SellerFinishPA(0), FirstBuyerPA(1), LastBuyerPA(n), (lambda pa:PA :: if is#MiddleBuyerPA(pa) && middleBuyerID(pid#MiddleBuyerPA(pa)) then 1 else 0));
+  PAs := MapAddPA4(SellerFinish(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) then 1 else 0));
 }
 
 procedure {:IS_invariant}{:layer 3}
@@ -274,12 +274,12 @@ modifies ReqCH, QuoteCH;
   if (*)
   {
     ReqCH := 1;
-    PAs := MapAddPA4(SellerInitPA(0), FirstBuyerPA(1), LastBuyerPA(n), (lambda pa:PA :: if is#MiddleBuyerPA(pa) && middleBuyerID(pid#MiddleBuyerPA(pa)) then 1 else 0));
+    PAs := MapAddPA4(SellerInit(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) then 1 else 0));
   }
   else
   {
     QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && q == price then 1 else 0));
-    PAs := MapAddPA4(SellerFinishPA(0), FirstBuyerPA(1), LastBuyerPA(n), (lambda pa:PA :: if is#MiddleBuyerPA(pa) && middleBuyerID(pid#MiddleBuyerPA(pa)) then 1 else 0));
+    PAs := MapAddPA4(SellerFinish(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) then 1 else 0));
   }
 }
 
@@ -295,7 +295,7 @@ modifies ReqCH, QuoteCH;
   ReqCH := ReqCH - 1;
 
   QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && q == price then QuoteCH[i][q] + 1 else QuoteCH[i][q]));
-  PAs := SingletonPA(SellerFinishPA(pid));
+  PAs := SingletonPA(SellerFinish(pid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -308,7 +308,7 @@ modifies ReqCH;
 {
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
   ReqCH := 1;
-  PAs := MapAddPA4(SellerInitPA(0), FirstBuyerPA(1), LastBuyerPA(n), (lambda pa:PA :: if is#MiddleBuyerPA(pa) && middleBuyerID(pid#MiddleBuyerPA(pa)) then 1 else 0));
+  PAs := MapAddPA4(SellerInit(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) then 1 else 0));
 }
 
 procedure {:IS_invariant}{:layer 2}
@@ -319,12 +319,12 @@ modifies ReqCH;
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
   if (*)
   {
-    PAs := MapAddPA4(SellerInitPA(0), FirstBuyerInitPA(1), LastBuyerPA(n), (lambda pa:PA :: if is#MiddleBuyerPA(pa) && middleBuyerID(pid#MiddleBuyerPA(pa)) then 1 else 0));
+    PAs := MapAddPA4(SellerInit(0), FirstBuyerInit(1), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) then 1 else 0));
   }
   else
   {
     ReqCH := 1;
-    PAs := MapAddPA4(SellerInitPA(0), FirstBuyerPA(1), LastBuyerPA(n), (lambda pa:PA :: if is#MiddleBuyerPA(pa) && middleBuyerID(pid#MiddleBuyerPA(pa)) then 1 else 0));
+    PAs := MapAddPA4(SellerInit(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) then 1 else 0));
   }
 }
 
@@ -336,7 +336,7 @@ MAIN1 ({:linear_in "pid"} pids:[int]bool)
 returns ({:pending_async "SellerInit","FirstBuyerInit","MiddleBuyer","LastBuyer"} PAs:[PA]int)
 {
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
-  PAs := MapAddPA4(SellerInitPA(0), FirstBuyerInitPA(1), LastBuyerPA(n), (lambda pa:PA :: if is#MiddleBuyerPA(pa) && middleBuyerID(pid#MiddleBuyerPA(pa)) then 1 else 0));
+  PAs := MapAddPA4(SellerInit(0), FirstBuyerInit(1), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) then 1 else 0));
 }
 
 procedure {:atomic}{:layer 2,3}
@@ -350,7 +350,7 @@ modifies ReqCH, QuoteCH;
   ReqCH := ReqCH - 1;
 
   QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && q == price then QuoteCH[i][q] + 1 else QuoteCH[i][q]));
-  PAs := SingletonPA(SellerFinishPA(pid));
+  PAs := SingletonPA(SellerFinish(pid));
 }
 
 procedure {:atomic}{:layer 2,5}
@@ -372,7 +372,7 @@ modifies ReqCH;
 {
   assert firstBuyerID(pid);
   ReqCH := ReqCH + 1;
-  PAs := SingletonPA(FirstBuyerPA(pid));
+  PAs := SingletonPA(FirstBuyer(pid));
 }
 
 procedure {:atomic}{:layer 2,4}
@@ -471,7 +471,7 @@ requires {:layer 1} Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 2 <= i && i <= n;
   invariant {:layer 1} (forall ii:int :: middleBuyerID(ii) && ii >= i ==> pids'[ii]);
-  invariant {:layer 1} PAs == MapAddPA4(SellerInitPA(0), FirstBuyerInitPA(1), LastBuyerPA(n), (lambda pa:PA :: if is#MiddleBuyerPA(pa) && middleBuyerID(pid#MiddleBuyerPA(pa)) && pid#MiddleBuyerPA(pa) < i then 1 else 0));
+  invariant {:layer 1} PAs == MapAddPA4(SellerInit(0), FirstBuyerInit(1), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) && pid#MiddleBuyer(pa) < i then 1 else 0));
   {
     call pid, pids' := linear_transfer(i, pids');
     async call middleBuyer(pid);
