@@ -122,9 +122,7 @@ namespace Microsoft.Boogie
       : base(errorSink)
     {
     }
-
-    // ------------------------------  Boogie 2 Types  -------------------------
-
+    
     // user-defined types, which can be either TypeCtorDecl or TypeSynonymDecl
     Dictionary<string, NamedDeclaration> types = new Dictionary<string, NamedDeclaration>();
 
@@ -209,8 +207,6 @@ namespace Microsoft.Boogie
       var type = types.GetValueOrDefault(name, null);
       return type as TypeSynonymDecl;
     }
-
-    // ------------------------------  Boogie 2 Type Binders  ------------------------------
 
     List<TypeVariable /*!*/> /*!*/
       typeBinders = new List<TypeVariable /*!*/>(5);

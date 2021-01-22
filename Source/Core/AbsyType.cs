@@ -2722,7 +2722,7 @@ Contract.Requires(that != null);
   /// This means that the size of a BvTypeProxy p is constrained not only by p.minBits, but also
   /// by the size of various t0 and t1 types that are transitively part of BvTypeProxy constraints.
   /// If such a t0 or t1 were to get its ProxyFor field defined, then p would have to be further
-  /// constrained too.  This doesn't seem like it would ever occur in a Boogie 2 program, because:
+  /// constrained too.  This doesn't seem like it would ever occur in a Boogie program, because:
   ///   the only place where a BvTypeProxy with constraints can occur is as the type of a
   ///   BvConcatExpr, and
   ///   the types of all local variables are explicitly declared, which means that the types of
