@@ -1,0 +1,58 @@
+name: Boogie CI
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - master
+
+env:
+  SOLUTION: Source/Boogie.sln
+  Z3URL: https://github.com/Z3Prover/z3/releases/download/z3-4.8.8/z3-4.8.8-x64-ubuntu-16.04.zip
+
+jobs:
+  job0:
+    name: Boogie CI
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 3.1
+      - name: Checkout Boogie
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Install tools, build Boogie, test Boogie
+        run: |
+          # Download a Z3 release
+          wget ${Z3URL}
+          unzip z3*.zip
+          export PATH="$(find $PWD/z3* -name bin -type d):$PATH"
+          # Install python tools
+          sudo pip install lit OutputCheck pyyaml psutil
+          # Change directory to Boogie root folder
+          cd $GITHUB_WORKSPACE
+          # Restore dotnet tools
+          dotnet tool restore
+          # Check that generated scanner and parser are consistent with attributed grammar
+          dotnet tool run coco Source/Core/BoogiePL.atg -namespace Microsoft.Boogie -frames Source/Core/
+          diff --strip-trailing-cr Source/Core/Parser.cs Source/Core/Parser.cs.old
+          diff --strip-trailing-cr Source/Core/Scanner.cs Source/Core/Scanner.cs.old
+          # Build Boogie
+          dotnet build -c ${{ matrix.configuration }} ${SOLUTION}
+          # Create packages
+          dotnet pack --no-build -c ${{ matrix.configuration }} ${SOLUTION}
+          # Run unit tests
+          dotnet test --no-build -c ${{ matrix.configuration }} ${SOLUTION}
+          # Run lit test suite
+          lit -v --timeout=120 -D configuration=${{ matrix.configuration }} Test
+      - name: Deploy to nuget
+        if: matrix.configuration == 'Release' && startsWith(github.ref, 'refs/tags/v')
+        run: dotnet nuget push "Source/**/bin/${{ matrix.configuration }}/Boogie*.nupkg" -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
