@@ -2,6 +2,7 @@
 
   <!-- Target framework and package configuration -->
   <PropertyGroup>
+    <Version>2.8.23</Version>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Authors>Boogie</Authors>
@@ -12,14 +13,6 @@
   <!-- Include license file -->
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)..\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
-  </ItemGroup>
-
-  <!-- Configure GitVersionTask -->
-  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)\..\.git') AND $(BOOGIE_GITVERSION) == 1">
-    <PackageReference Include="GitVersionTask" Version="5.5.1">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
   </ItemGroup>
 
   <!-- Use StyleCop to check for consistent code formatting -->
