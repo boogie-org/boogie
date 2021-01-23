@@ -26,7 +26,7 @@ MAIN' (n: int)
 modifies x;
 {
   assert n >= 0;
-  x := x + ((n * (n+1)) div 2);
+  x := x + (n * (n+1)) div 2;
 }
 
 procedure {:IS_invariant}{:layer 1}
