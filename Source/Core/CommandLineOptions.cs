@@ -1873,8 +1873,14 @@ namespace Microsoft.Boogie
        used in conjunction with /enhancedErrorMessages:n command-line option.
 
      {:captureState s}
-       Indicates that state must be captured under the name s.  Must be used
-       together with /mv:<string> command-line option.
+       When this attribute is applied to assume commands, it causes the 
+       /mv:<string> command-line option to group each counterexample model
+       into a sequence of states. In particular, this sequence of states
+       shows the values of variables at each {:captureState ...} point in
+       the counterexample trace. The argument 's' is to be a string, and it
+       will be printed as part of /mv's output.
+       Note, the use of :captureState and /mv have not been implemented for
+       use with procedure inlining.
 
   ---- CIVL ------------------------------------------------------------------
 

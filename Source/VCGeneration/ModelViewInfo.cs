@@ -11,6 +11,8 @@ namespace VC
     public readonly List<Variable> AllVariables = new List<Variable>();
     public readonly List<Mapping> CapturePoints = new List<Mapping>();
 
+    public readonly Dictionary<Block, List<(AssumeCmd, Mapping)>> BlockToCapturePointIndex = new Dictionary<Block, List<(AssumeCmd, Mapping)>>();
+
     public static readonly Function MVState_FunctionDef = new Function(Token.NoToken, "$mv_state",
       new List<Variable>
       {

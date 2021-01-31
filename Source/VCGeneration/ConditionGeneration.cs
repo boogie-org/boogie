@@ -911,7 +911,7 @@ namespace VC
         ChecksumHelper.ComputeChecksums(c, currentImplementation, variableCollector.UsedVariables, currentChecksum);
         variableCollector.Visit(c);
         currentChecksum = c.Checksum;
-        TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
+        TurnIntoPassiveCmd(c, b, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
       }
 
       b.Checksum = currentChecksum;
@@ -1180,13 +1180,15 @@ namespace VC
     }
     
     /// <summary>
-    /// Turn a command into a passive command, and it remembers the previous step, to see if it is a havoc or not. In the case, it remembers the incarnation map BEFORE the havoc
+    /// Turn a command into a passive command, and it remembers the previous step, to see if it is a havoc or not.
+    /// In that case, it remembers the incarnation map BEFORE the havoc.
     /// Meanwhile, record any information needed to later reconstruct a model view.
     /// </summary>
-    protected void TurnIntoPassiveCmd(Cmd c, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst,
+    protected void TurnIntoPassiveCmd(Cmd c, Block enclosingBlock, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst,
       List<Cmd> passiveCmds, ModelViewInfo mvInfo)
     {
       Contract.Requires(c != null);
+      Contract.Requires(enclosingBlock != null);
       Contract.Requires(incarnationMap != null);
       Contract.Requires(oldFrameSubst != null);
       Contract.Requires(passiveCmds != null);
@@ -1229,7 +1231,7 @@ namespace VC
         }
 
         Expr copy = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, pc.Expr);
-        if (CommandLineOptions.Clo.ModelViewFile != null && pc is AssumeCmd)
+        if (CommandLineOptions.Clo.ModelViewFile != null && pc is AssumeCmd captureStateAssumeCmd)
         {
           string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
           if (description != null)
@@ -1238,8 +1240,13 @@ namespace VC
               new List<Expr>
                 {Expr.Ident(ModelViewInfo.MVState_ConstantDef), Expr.Literal(mvInfo.CapturePoints.Count)});
             copy = Expr.And(mv, copy);
-            mvInfo.CapturePoints.Add(new ModelViewInfo.Mapping(description,
-              new Dictionary<Variable, Expr>(incarnationMap)));
+            if (!mvInfo.BlockToCapturePointIndex.TryGetValue(enclosingBlock, out var points)) {
+              points = new List<(AssumeCmd, ModelViewInfo.Mapping)>();
+              mvInfo.BlockToCapturePointIndex[enclosingBlock] = points;
+            }
+            var mapping = new ModelViewInfo.Mapping(description, new Dictionary<Variable, Expr>(incarnationMap));
+            points.Add((captureStateAssumeCmd, mapping));
+            mvInfo.CapturePoints.Add(mapping);
           }
         }
 
@@ -1555,19 +1562,16 @@ namespace VC
       {
         // comments are just for debugging and don't affect verification
       }
-      else if (c is SugaredCmd)
+      else if (c is SugaredCmd sug)
       {
-        SugaredCmd sug = (SugaredCmd) c;
-        Contract.Assert(sug != null);
         Cmd cmd = sug.Desugaring;
         Contract.Assert(cmd != null);
-        TurnIntoPassiveCmd(cmd, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
+        TurnIntoPassiveCmd(cmd, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
       }
-      else if (c is StateCmd)
+      else if (c is StateCmd st)
       {
         this.preHavocIncarnationMap = null; // we do not need to remember the previous incarnations
-        StateCmd st = (StateCmd) c;
-        Contract.Assert(st != null);
+        
         // account for any where clauses among the local variables
         foreach (Variable v in st.Locals)
         {
@@ -1583,7 +1587,7 @@ namespace VC
         foreach (Cmd s in st.Cmds)
         {
           Contract.Assert(s != null);
-          TurnIntoPassiveCmd(s, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
+          TurnIntoPassiveCmd(s, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
         }
 
         // remove the local variables from the incarnation map
