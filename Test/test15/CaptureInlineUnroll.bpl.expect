@@ -1,0 +1,171 @@
+CaptureInlineUnroll.bpl(33,3): Error: This assertion might not hold.
+Execution trace:
+    CaptureInlineUnroll.bpl(23,5): anon0#2
+*** MODEL
+$mv_state_const -> 5
+call1formal@y@0 -> (- 3)
+call1formal@y@0@@0 -> 4
+u -> 
+u@0 -> 0
+$mv_state -> {
+  5 0 -> true
+  5 1 -> true
+  5 2 -> true
+  else -> true
+}
+ControlFlow -> {
+  0 0 -> 322
+  0 180 -> (- 412)
+  0 322 -> 180
+  else -> (- 412)
+}
+tickleBool -> {
+  false -> true
+  true -> true
+  else -> true
+}
+*** STATE <initial>
+  u -> 
+*** END_STATE
+*** STATE 0 calls$renamed$Caller$0
+  u -> 0
+*** END_STATE
+*** STATE 1 call$renamed$Caller$1
+  u -> (- 3)
+*** END_STATE
+*** STATE 2 calls$renamed$Caller$2
+  u -> 4
+*** END_STATE
+*** END_MODEL
+CaptureInlineUnroll.bpl(40,3): Error: This assertion might not hold.
+Execution trace:
+    CaptureInlineUnroll.bpl(38,3): anon0#2
+*** MODEL
+$mv_state_const -> 4
+x -> 2
+y -> 
+y@0 -> 3
+$mv_state -> {
+  4 0 -> true
+  else -> true
+}
+ControlFlow -> {
+  0 0 -> 422
+  0 188 -> (- 444)
+  0 422 -> 188
+  else -> (- 444)
+}
+tickleBool -> {
+  false -> true
+  true -> true
+  else -> true
+}
+*** STATE <initial>
+  x -> 2
+  y -> 
+*** END_STATE
+*** STATE Increment entry$renamed$Increment$0
+*** END_STATE
+*** END_MODEL
+
+Boogie program verifier finished with 1 verified, 2 errors
+CaptureInlineUnroll.bpl(13,5): Error: This assertion might not hold.
+Execution trace:
+    CaptureInlineUnroll.bpl(9,3): anon0#3
+    CaptureInlineUnroll.bpl(12,5): anon3_LoopBody#3
+    CaptureInlineUnroll.bpl(12,5): anon3_LoopBody#2
+    CaptureInlineUnroll.bpl(12,5): anon3_LoopBody#1
+*** MODEL
+$mv_state_const -> 5
+i -> 
+i@0 -> 1
+i@1 -> 2
+i@2 -> 0
+i@3 -> 0
+n -> 3
+$mv_state -> {
+  5 0 -> true
+  5 1 -> true
+  5 2 -> true
+  5 3 -> true
+  else -> true
+}
+ControlFlow -> {
+  0 0 -> 429
+  0 360 -> (- 531)
+  0 364 -> 360
+  0 368 -> 364
+  0 372 -> 368
+  0 429 -> 372
+  else -> (- 531)
+}
+tickleBool -> {
+  false -> true
+  true -> true
+  else -> true
+}
+*** STATE <initial>
+  i -> 
+  n -> 3
+*** END_STATE
+*** STATE procedure entry$renamed$LoopUnroll$0
+*** END_STATE
+*** STATE loop entry$renamed$LoopUnroll$1
+  i -> 0
+*** END_STATE
+*** STATE loop entry$renamed$LoopUnroll$2
+  i -> 1
+*** END_STATE
+*** STATE loop entry$renamed$LoopUnroll$3
+  i -> 2
+*** END_STATE
+*** END_MODEL
+CaptureInlineUnroll.bpl(40,3): Error: This assertion might not hold.
+Execution trace:
+    CaptureInlineUnroll.bpl(23,5): anon0#3
+    CaptureInlineUnroll.bpl(38,3): inline$Increment$0$anon0#3
+*** MODEL
+$mv_state_const -> 2
+inline$Increment$0$x -> 
+inline$Increment$0$y -> 
+inline$Increment$0$y@0 -> 
+inline$Increment$0$y@1 -> 1
+inline$Increment$1$x -> 
+inline$Increment$1$y -> 
+inline$Increment$1$y@1 -> 0
+u -> 
+u@0 -> 0
+$mv_state -> {
+  2 0 -> true
+  2 1 -> true
+  else -> true
+}
+ControlFlow -> {
+  0 0 -> 585
+  0 396 -> (- 635)
+  0 400 -> 396
+  0 585 -> 400
+  else -> (- 635)
+}
+tickleBool -> {
+  false -> true
+  true -> true
+  else -> true
+}
+*** STATE <initial>
+  inline$Increment$0$x -> 
+  inline$Increment$0$y -> 
+  inline$Increment$1$x -> 
+  inline$Increment$1$y -> 
+  u -> 
+*** END_STATE
+*** STATE 0 calls$renamed$Caller$0
+  u -> 0
+*** END_STATE
+*** STATE Increment entry$renamed$Caller$1
+  inline$Increment$0$x -> 0
+  inline$Increment$0$y -> 
+*** END_STATE
+*** END_MODEL
+
+Boogie program verifier finished with 0 verified, 2 errors
