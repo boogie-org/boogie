@@ -1,0 +1,69 @@
+MoreCapturedStates.bpl(34,1): Error: A postcondition might not hold on this return path.
+MoreCapturedStates.bpl(6,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    MoreCapturedStates.bpl(8,3): anon0
+    MoreCapturedStates.bpl(17,3): LabelB
+    MoreCapturedStates.bpl(32,3): Done
+MoreCapturedStates.bpl(53,3): Error: A precondition for this call might not hold.
+MoreCapturedStates.bpl(62,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    MoreCapturedStates.bpl(40,3): anon0
+    MoreCapturedStates.bpl(49,3): LabelB
+MoreCapturedStates.bpl(79,3): Error: This assertion might not hold.
+Execution trace:
+    MoreCapturedStates.bpl(67,3): anon0
+MoreCapturedStates.bpl(85,3): Error: This assertion might not hold.
+Execution trace:
+    MoreCapturedStates.bpl(67,3): anon0
+
+Boogie program verifier finished with 0 verified, 4 errors
+*** STATE <initial>
+*** END_STATE
+*** STATE structure.dfyl(3,0): initial state
+*** END_STATE
+*** STATE structure.dfyl(5,2): else branch
+*** END_STATE
+*** STATE structure.dfyl(6,2): y is x
+*** END_STATE
+*** STATE structure.dfyl(8,2): y is 5 more than x
+*** END_STATE
+*** STATE structure.dfyl(9,2): no change to y
+*** END_STATE
+*** STATE structure.dfy(10,0): done
+*** END_STATE
+*** STATE <initial>
+*** END_STATE
+*** STATE structure.dfyl(100,0): initial state
+*** END_STATE
+*** STATE structure.dfyl(102,2): else branch
+*** END_STATE
+*** STATE <initial>
+*** END_STATE
+*** STATE structure.dfyl(200,0): initial state
+*** END_STATE
+*** STATE structure.dfyl(201,2): then branch
+*** END_STATE
+*** STATE structure.dfyl(202,2): then branch
+*** END_STATE
+*** STATE structure.dfyl(203,2): then branch
+*** END_STATE
+*** STATE structure.dfyl(204,2): then branch
+*** END_STATE
+*** STATE <initial>
+*** END_STATE
+*** STATE structure.dfyl(200,0): initial state
+*** END_STATE
+*** STATE structure.dfyl(201,2): then branch
+*** END_STATE
+*** STATE structure.dfyl(202,2): then branch
+*** END_STATE
+*** STATE structure.dfyl(203,2): then branch
+*** END_STATE
+*** STATE structure.dfyl(204,2): then branch
+*** END_STATE
+*** STATE structure.dfyl(205,2): then branch
+*** END_STATE
+*** STATE structure.dfyl(206,2): then branch
+*** END_STATE
+*** STATE structure.dfyl(207,2): then branch
+*** END_STATE

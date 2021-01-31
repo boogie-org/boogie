@@ -1787,7 +1787,7 @@ namespace Microsoft.Boogie
 
           if (CommandLineOptions.Clo.ModelViewFile != null)
           {
-            error.PrintModel(errorInfo.Model);
+            error.PrintModel(errorInfo.Model, error);
           }
 
           printer.WriteErrorInformation(errorInfo, tw);

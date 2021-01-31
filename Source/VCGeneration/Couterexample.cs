@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Diagnostics.Contracts;
@@ -203,14 +204,23 @@ namespace Microsoft.Boogie
 
     public static bool firstModelFile = true;
 
-    public void PrintModel(TextWriter tw)
+    public void PrintModel(TextWriter tw, Counterexample counterexample)
     {
+      Contract.Requires(counterexample != null);
+
       var filename = CommandLineOptions.Clo.ModelViewFile;
       if (Model == null || filename == null || CommandLineOptions.Clo.StratifiedInlining > 0) return;
 
       if (!Model.ModelHasStatesAlready)
       {
-        PopulateModelWithStates();
+        if (counterexample is AssertCounterexample assertError) {
+          PopulateModelWithStates(counterexample.Trace, assertError.FailingAssert);
+        } else if (counterexample is CallCounterexample callError) {
+          PopulateModelWithStates(counterexample.Trace, callError.FailingCall);
+        } else {
+          Contract.Assert(counterexample is ReturnCounterexample);
+          PopulateModelWithStates(counterexample.Trace, null);
+        }
         Model.ModelHasStatesAlready = true;
       }
 
@@ -244,57 +254,82 @@ namespace Microsoft.Boogie
       Model.Substitute(mapping);
     }
 
-    public void PopulateModelWithStates()
+    public void PopulateModelWithStates(List<Block> trace, Cmd/*?*/ failingCmd)
     {
       Contract.Requires(Model != null);
+      Contract.Requires(trace != null);
 
       Model m = Model;
       ApplyRedirections();
 
-      var mvstates = m.TryGetFunc("$mv_state");
-      if (MvInfo == null || mvstates == null || (mvstates.Arity == 1 && mvstates.Apps.Count() == 0))
+      if (MvInfo == null) {
         return;
-
-      Contract.Assert(mvstates.Arity == 2);
+      }
 
       foreach (Variable v in MvInfo.AllVariables)
       {
         m.InitialState.AddBinding(v.Name, GetModelValue(v));
       }
 
-      var states = new List<int>();
-      foreach (var t in mvstates.Apps)
-        states.Add(t.Args[1].AsInt());
-
-      states.Sort();
-
-      for (int i = 0; i < states.Count; ++i)
+      var prevInc = new Dictionary<Variable, Expr>();
+      for (int i = 0; i < trace.Count; ++i)
       {
-        var s = states[i];
-        if (0 <= s && s < MvInfo.CapturePoints.Count)
-        {
-          VC.ModelViewInfo.Mapping map = MvInfo.CapturePoints[s];
-          var prevInc = i > 0 ? MvInfo.CapturePoints[states[i - 1]].IncarnationMap : new Dictionary<Variable, Expr>();
+        if (!MvInfo.BlockToCapturePointIndex.TryGetValue(trace[i], out var points)) {
+          continue;
+        }
+        int cmdIndexlimit;
+        if (i < trace.Count - 1 || failingCmd == null) {
+          cmdIndexlimit = trace[i].Cmds.Count;
+        } else {
+          // this is the last block, so we only want to consider :captureState markers before
+          // the error
+          for (cmdIndexlimit = 0; cmdIndexlimit < trace[i].Cmds.Count; cmdIndexlimit++) {
+            var cmd = trace[i].Cmds[cmdIndexlimit];
+            if (cmd is AssertRequiresCmd arc && arc.Call == failingCmd) {
+              break;
+            } else if (cmd == failingCmd) {
+              break;
+            }
+          }
+        }
+        var index = 0;
+        foreach (var (captureStateAssumeCmd, map) in points) {
+          if (i == trace.Count - 1 && failingCmd != null) {
+            // Don't go past the error in this block
+            // Continue looking through the commands in block trace[i] to see which one we'll
+            // find next, the capture-state command or the error command.
+            for (; index < trace[i].Cmds.Count; index++) {
+              var cmd = trace[i].Cmds[index];
+              if (cmd == captureStateAssumeCmd) {
+                // yes, include MvInfo.CapturePoints[capturePointIndex]
+                break;
+              } else if ((cmd is AssertRequiresCmd arc && arc.Call == failingCmd) || cmd == failingCmd) {
+                // don't include any further captured points
+                return;
+              }
+            }
+          }
+          
           var cs = m.MkState(map.Description);
 
           foreach (Variable v in MvInfo.AllVariables)
           {
-            Expr e = map.IncarnationMap.ContainsKey(v) ? map.IncarnationMap[v] : null;
-            if (e == null) continue;
+            if (!map.IncarnationMap.TryGetValue(v, out var e)) {
+              continue; // not in the current state
+            }
+            Contract.Assert(e != null);
 
-            Expr prevIncV = prevInc.ContainsKey(v) ? prevInc[v] : null;
-            if (prevIncV == e) continue; // skip unchanged variables
+            if (prevInc.TryGetValue(v, out var prevIncV) && e == prevIncV) {
+              continue; // skip unchanged variables
+            }
 
             Model.Element elt;
-
-            if (e is IdentifierExpr)
+            if (e is IdentifierExpr ide)
             {
-              IdentifierExpr ide = (IdentifierExpr) e;
               elt = GetModelValue(ide.Decl);
             }
-            else if (e is LiteralExpr)
+            else if (e is LiteralExpr lit)
             {
-              LiteralExpr lit = (LiteralExpr) e;
               elt = m.MkElement(lit.Val.ToString());
             }
             else
@@ -304,10 +339,8 @@ namespace Microsoft.Boogie
 
             cs.AddBinding(v.Name, elt);
           }
-        }
-        else
-        {
-          Contract.Assume(false);
+
+          prevInc = map.IncarnationMap;
         }
       }
     }
