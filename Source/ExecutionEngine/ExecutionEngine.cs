@@ -489,19 +489,16 @@ namespace Microsoft.Boogie
           }
         }
 
-        if (CommandLineOptions.Clo.StratifiedInlining == 0)
+        CivlVCGeneration.Transform(civlTypeChecker);
+        if (CommandLineOptions.Clo.CivlDesugaredFile != null)
         {
-          CivlVCGeneration.Transform(civlTypeChecker);
-          if (CommandLineOptions.Clo.CivlDesugaredFile != null)
-          {
-            int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-            CommandLineOptions.Clo.PrintUnstructured = 1;
-            PrintBplFile(CommandLineOptions.Clo.CivlDesugaredFile, program, false, false,
-              CommandLineOptions.Clo.PrettyPrint);
-            CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
-          }
+          int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+          CommandLineOptions.Clo.PrintUnstructured = 1;
+          PrintBplFile(CommandLineOptions.Clo.CivlDesugaredFile, program, false, false,
+            CommandLineOptions.Clo.PrettyPrint);
+          CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
         }
-
+        
         EliminateDeadVariables(program);
 
         CoalesceBlocks(program);

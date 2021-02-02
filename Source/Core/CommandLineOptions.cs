@@ -1293,25 +1293,6 @@ namespace Microsoft.Boogie
           if (ps.ConfirmArgumentCount(1))
             SecureVcGen = args[ps.i];
           return true;
-        case "stratifiedInline":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            switch (args[ps.i])
-            {
-              case "0":
-                StratifiedInlining = 0;
-                break;
-              case "1":
-                StratifiedInlining = 1;
-                break;
-              default:
-                StratifiedInlining = Int32.Parse(cce.NonNull(args[ps.i]));
-                //ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                break;
-            }
-          }
-
-          return true;
         case "fixedPointEngine":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -2096,8 +2077,6 @@ namespace Microsoft.Boogie
   /printInlined
                 print the implementation after inlining calls to
                 procedures with the :inline attribute (works with /inline)
-  /stratifiedInline:1
-                Use the stratified inlining algorithm
   /fixedPointEngine:<engine>
                 Use the specified fixed point engine for inference
   /recursionBound:<n>
