@@ -182,7 +182,7 @@ namespace Microsoft.Boogie
               {
                 var cmd = getTraceCmd(loc);
                 var calleeName = getCalledProcName(cmd);
-                if (calleeName.StartsWith(VC.StratifiedVCGen.recordProcName) &&
+                if (calleeName.StartsWith(VC.StratifiedVCGenBase.recordProcName) &&
                     CommandLineOptions.Clo.StratifiedInlining > 0)
                 {
                   Contract.Assert(calleeCounterexamples[loc].args.Count == 1);

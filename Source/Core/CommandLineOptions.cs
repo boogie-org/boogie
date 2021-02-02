@@ -745,7 +745,6 @@ namespace Microsoft.Boogie
     public int RecursionBound = 500;
     public bool NonUniformUnfolding = false;
     public int StackDepthBound = 0;
-    public string inferLeastForUnsat = null;
 
     // Inference mode for fixed point engine
     public enum FixedPointInferenceMode
@@ -1392,13 +1391,6 @@ namespace Microsoft.Boogie
           }
 
           return true;
-        case "inferLeastForUnsat":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            inferLeastForUnsat = args[ps.i];
-          }
-
-          return true;
         
         case "typeEncoding":
           if (ps.ConfirmArgumentCount(1))
@@ -1651,11 +1643,6 @@ namespace Microsoft.Boogie
       {
         ProverDllName = "SMTLib";
         TheProverFactory = ProverFactory.Load(ProverDllName);
-      }
-
-      if (inferLeastForUnsat != null)
-      {
-        StratifiedInlining = 1;
       }
 
       if (StratifiedInlining > 0)
@@ -2134,11 +2121,6 @@ namespace Microsoft.Boogie
   /recursionBound:<n>
                 Set the recursion bound for stratified inlining to
                 be n (default 500)
-  /inferLeastForUnsat:<str>
-                Infer the least number of constants (whose names
-                are prefixed by <str>) that need to be set to
-                true for the program to be correct. This turns
-                on stratified inlining.
   /smoke        Soundness Smoke Test: try to stick assert false; in some
                 places in the BPL and see if we can still prove it
   /smokeTimeout:<n>
