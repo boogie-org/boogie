@@ -312,6 +312,12 @@ namespace Microsoft.Boogie
             fn.SetConstant(GetElt(lastWord));
           }
         }
+        else if (words.Count == 2 && words[1] is string && ((string)words[1]) == "->")
+        {
+          // This line says that words[0] has no value in the model.
+          // Ignore this line.
+          continue;
+        }
         else
         {
           BadModel("unidentified line");
