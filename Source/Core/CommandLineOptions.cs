@@ -741,10 +741,7 @@ namespace Microsoft.Boogie
     public int StratifiedInlining = 0;
     public string FixedPointEngine = null;
     public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
-    public int StratifiedInliningVerbose = 0; // verbosity level
     public int RecursionBound = 500;
-    public bool NonUniformUnfolding = false;
-    public int StackDepthBound = 0;
 
     // Inference mode for fixed point engine
     public enum FixedPointInferenceMode
@@ -1363,13 +1360,6 @@ namespace Microsoft.Boogie
           }
 
           return true;
-        case "siVerbose":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            StratifiedInliningVerbose = Int32.Parse(cce.NonNull(args[ps.i]));
-          }
-
-          return true;
         case "recursionBound":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1381,13 +1371,6 @@ namespace Microsoft.Boogie
           if (ps.ConfirmArgumentCount(1))
           {
             EnableUnSatCoreExtract = Int32.Parse(cce.NonNull(args[ps.i]));
-          }
-
-          return true;
-        case "stackDepthBound":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            StackDepthBound = Int32.Parse(cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -1601,7 +1584,6 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
               ps.CheckBooleanFlag("printNecessaryAssumes", ref PrintNecessaryAssumes) ||
               ps.CheckBooleanFlag("useProverEvaluate", ref UseProverEvaluate) ||
-              ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
               ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
               ps.CheckBooleanFlag("trustMoverTypes", ref TrustMoverTypes) ||
