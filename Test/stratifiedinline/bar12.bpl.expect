@@ -1,5 +1,0 @@
-(0,0): Error: This assertion might not hold.
-Execution trace:
-    bar12.bpl(8,4): anon0
-
-Boogie program verifier finished with 0 verified, 1 error
