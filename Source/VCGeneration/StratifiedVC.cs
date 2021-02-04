@@ -649,6 +649,7 @@ namespace VC
     }
   }
 
+  // This class is derived and used by Corral to create VCs for Stratified Inlining.
   public abstract class StratifiedVCGenBase : VCGen
   {
     public readonly static string recordProcName = "boogie_si_record";

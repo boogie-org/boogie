@@ -738,9 +738,17 @@ namespace Microsoft.Boogie
     public bool ExtractLoops = false;
     public bool DeterministicExtractLoops = false;
     public string SecureVcGen = null;
-    public int StratifiedInlining = 0;
+    // Turns on FixedPointVC generation (Duality algorithm)
     public string FixedPointEngine = null;
-    public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
+
+    // Enables VC generation for Stratified Inlining. 
+    // Set programmatically by Corral.
+    public int StratifiedInlining = 0;
+
+    // disable model generation, used by Corral/SI
+    public bool StratifiedInliningWithoutModels = false; 
+
+    // Sets the recursion bound, used for loop extraction, fixedpoint vc, etc.
     public int RecursionBound = 500;
 
     // Inference mode for fixed point engine
