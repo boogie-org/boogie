@@ -738,14 +738,18 @@ namespace Microsoft.Boogie
     public bool ExtractLoops = false;
     public bool DeterministicExtractLoops = false;
     public string SecureVcGen = null;
-    public int StratifiedInlining = 0;
+    // Turns on FixedPointVC generation (Duality algorithm)
     public string FixedPointEngine = null;
-    public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
-    public int StratifiedInliningVerbose = 0; // verbosity level
+
+    // Enables VC generation for Stratified Inlining. 
+    // Set programmatically by Corral.
+    public int StratifiedInlining = 0;
+
+    // disable model generation, used by Corral/SI
+    public bool StratifiedInliningWithoutModels = false; 
+
+    // Sets the recursion bound, used for loop extraction, fixedpoint vc, etc.
     public int RecursionBound = 500;
-    public bool NonUniformUnfolding = false;
-    public int StackDepthBound = 0;
-    public string inferLeastForUnsat = null;
 
     // Inference mode for fixed point engine
     public enum FixedPointInferenceMode
@@ -1297,25 +1301,6 @@ namespace Microsoft.Boogie
           if (ps.ConfirmArgumentCount(1))
             SecureVcGen = args[ps.i];
           return true;
-        case "stratifiedInline":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            switch (args[ps.i])
-            {
-              case "0":
-                StratifiedInlining = 0;
-                break;
-              case "1":
-                StratifiedInlining = 1;
-                break;
-              default:
-                StratifiedInlining = Int32.Parse(cce.NonNull(args[ps.i]));
-                //ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                break;
-            }
-          }
-
-          return true;
         case "fixedPointEngine":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1364,13 +1349,6 @@ namespace Microsoft.Boogie
           }
 
           return true;
-        case "siVerbose":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            StratifiedInliningVerbose = Int32.Parse(cce.NonNull(args[ps.i]));
-          }
-
-          return true;
         case "recursionBound":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1382,20 +1360,6 @@ namespace Microsoft.Boogie
           if (ps.ConfirmArgumentCount(1))
           {
             EnableUnSatCoreExtract = Int32.Parse(cce.NonNull(args[ps.i]));
-          }
-
-          return true;
-        case "stackDepthBound":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            StackDepthBound = Int32.Parse(cce.NonNull(args[ps.i]));
-          }
-
-          return true;
-        case "inferLeastForUnsat":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            inferLeastForUnsat = args[ps.i];
           }
 
           return true;
@@ -1609,7 +1573,6 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
               ps.CheckBooleanFlag("printNecessaryAssumes", ref PrintNecessaryAssumes) ||
               ps.CheckBooleanFlag("useProverEvaluate", ref UseProverEvaluate) ||
-              ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
               ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
               ps.CheckBooleanFlag("trustMoverTypes", ref TrustMoverTypes) ||
@@ -1651,11 +1614,6 @@ namespace Microsoft.Boogie
       {
         ProverDllName = "SMTLib";
         TheProverFactory = ProverFactory.Load(ProverDllName);
-      }
-
-      if (inferLeastForUnsat != null)
-      {
-        StratifiedInlining = 1;
       }
 
       if (StratifiedInlining > 0)
@@ -2127,18 +2085,11 @@ namespace Microsoft.Boogie
   /printInlined
                 print the implementation after inlining calls to
                 procedures with the :inline attribute (works with /inline)
-  /stratifiedInline:1
-                Use the stratified inlining algorithm
   /fixedPointEngine:<engine>
                 Use the specified fixed point engine for inference
   /recursionBound:<n>
                 Set the recursion bound for stratified inlining to
                 be n (default 500)
-  /inferLeastForUnsat:<str>
-                Infer the least number of constants (whose names
-                are prefixed by <str>) that need to be set to
-                true for the program to be correct. This turns
-                on stratified inlining.
   /smoke        Soundness Smoke Test: try to stick assert false; in some
                 places in the BPL and see if we can still prove it
   /smokeTimeout:<n>

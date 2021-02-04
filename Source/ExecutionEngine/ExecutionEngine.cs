@@ -489,19 +489,16 @@ namespace Microsoft.Boogie
           }
         }
 
-        if (CommandLineOptions.Clo.StratifiedInlining == 0)
+        CivlVCGeneration.Transform(civlTypeChecker);
+        if (CommandLineOptions.Clo.CivlDesugaredFile != null)
         {
-          CivlVCGeneration.Transform(civlTypeChecker);
-          if (CommandLineOptions.Clo.CivlDesugaredFile != null)
-          {
-            int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-            CommandLineOptions.Clo.PrintUnstructured = 1;
-            PrintBplFile(CommandLineOptions.Clo.CivlDesugaredFile, program, false, false,
-              CommandLineOptions.Clo.PrettyPrint);
-            CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
-          }
+          int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+          CommandLineOptions.Clo.PrintUnstructured = 1;
+          PrintBplFile(CommandLineOptions.Clo.CivlDesugaredFile, program, false, false,
+            CommandLineOptions.Clo.PrettyPrint);
+          CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
         }
-
+        
         EliminateDeadVariables(program);
 
         CoalesceBlocks(program);
@@ -1196,37 +1193,19 @@ namespace Microsoft.Boogie
 
           try
           {
-            if (CommandLineOptions.Clo.inferLeastForUnsat != null)
+            verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId);
+            if (CommandLineOptions.Clo.ExtractLoops && verificationResult.Errors != null)
             {
-              var svcgen = vcgen as VC.StratifiedVCGen;
-              Contract.Assert(svcgen != null);
-              var ss = new HashSet<string>();
-              foreach (var c in program.Constants)
+              var vcg = vcgen as VCGen;
+              if (vcg != null)
               {
-                if (!c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
-                ss.Add(c.Name);
-              }
-
-              verificationResult.Outcome = svcgen.FindLeastToVerify(impl, ref ss);
-              verificationResult.Errors = new List<Counterexample>();
-              output.WriteLine("Result: {0}", string.Join(" ", ss));
-            }
-            else
-            {
-              verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId);
-              if (CommandLineOptions.Clo.ExtractLoops && verificationResult.Errors != null)
-              {
-                var vcg = vcgen as VCGen;
-                if (vcg != null)
+                for (int i = 0; i < verificationResult.Errors.Count; i++)
                 {
-                  for (int i = 0; i < verificationResult.Errors.Count; i++)
-                  {
-                    verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name,
-                      program, extractLoopMappingInfo);
-                  }
+                  verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name,
+                    program, extractLoopMappingInfo);
                 }
               }
-            }
+            }            
           }
           catch (VCGenException e)
           {
@@ -1339,11 +1318,6 @@ namespace Microsoft.Boogie
       if (CommandLineOptions.Clo.FixedPointEngine != null)
       {
         vcgen = new FixedpointVC(program, CommandLineOptions.Clo.ProverLogFilePath,
-          CommandLineOptions.Clo.ProverLogFileAppend, checkers);
-      }
-      else if (CommandLineOptions.Clo.StratifiedInlining > 0)
-      {
-        vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.ProverLogFilePath,
           CommandLineOptions.Clo.ProverLogFileAppend, checkers);
       }
       else if (CommandLineOptions.Clo.SecureVcGen != null)
