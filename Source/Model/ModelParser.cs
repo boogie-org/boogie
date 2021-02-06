@@ -223,6 +223,11 @@ namespace Microsoft.Boogie
             {
               cs.AddBinding((string) tuple[0], GetElt(tuple[2]));
             }
+            else if (tuple.Count == 2 && tuple[1] is string && ((string)tuple[1]) == "->")
+            {
+              // This line says that words[0] has no value in the model.
+              // Ignore this line.
+            }
             else
             {
               BadModel("invalid state tuple definition");
@@ -316,7 +321,6 @@ namespace Microsoft.Boogie
         {
           // This line says that words[0] has no value in the model.
           // Ignore this line.
-          continue;
         }
         else
         {
