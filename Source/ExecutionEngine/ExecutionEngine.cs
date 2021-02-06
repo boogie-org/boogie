@@ -1094,9 +1094,6 @@ namespace Microsoft.Boogie
 
       #endregion
 
-      if (SecureVCGen.outfile != null)
-        SecureVCGen.outfile.Close();
-
       return outcome;
     }
 
@@ -1318,11 +1315,6 @@ namespace Microsoft.Boogie
       if (CommandLineOptions.Clo.FixedPointEngine != null)
       {
         vcgen = new FixedpointVC(program, CommandLineOptions.Clo.ProverLogFilePath,
-          CommandLineOptions.Clo.ProverLogFileAppend, checkers);
-      }
-      else if (CommandLineOptions.Clo.SecureVcGen != null)
-      {
-        vcgen = new SecureVCGen(program, CommandLineOptions.Clo.ProverLogFilePath,
           CommandLineOptions.Clo.ProverLogFileAppend, checkers);
       }
       else

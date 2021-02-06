@@ -737,7 +737,6 @@ namespace Microsoft.Boogie
     public bool PrintInlined = false;
     public bool ExtractLoops = false;
     public bool DeterministicExtractLoops = false;
-    public string SecureVcGen = null;
     // Turns on FixedPointVC generation (Duality algorithm)
     public string FixedPointEngine = null;
 
@@ -1296,10 +1295,6 @@ namespace Microsoft.Boogie
             }
           }
 
-          return true;
-        case "secure":
-          if (ps.ConfirmArgumentCount(1))
-            SecureVcGen = args[ps.i];
           return true;
         case "fixedPointEngine":
           if (ps.ConfirmArgumentCount(1))
