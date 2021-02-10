@@ -7,6 +7,7 @@ using System.Threading;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
+using System.Reflection.Metadata;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
@@ -1888,37 +1889,9 @@ namespace VC
       Console.WriteLine("ignoring ill-formed {:{0} ...} attribute on {1}, parameter should be an int", name, impl.Name);
     }
 
-    public override Outcome VerifyImplementation(Implementation /*!*/ impl, VerifierCallback /*!*/ callback)
+    // If "expand" attribute is supplied, expand any assertion of conjunctions into multiple assertions, one per conjunct
+    void ExpandAsserts(Implementation impl)
     {
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-
-      if (impl.SkipVerification)
-      {
-        return Outcome.Inconclusive; // not sure about this one
-      }
-
-      callback.OnProgress("VCgen", 0, 0, 0.0);
-
-      Stopwatch watch = new Stopwatch();
-#if PRINT_TIME
-      Console.WriteLine("Checking function {0}", impl.Name);
-      watch.Reset();
-      watch.Start();
-#endif
-
-      ConvertCFG2DAG(impl);
-
-      SmokeTester smoke_tester = null;
-      if (CommandLineOptions.Clo.SoundnessSmokeTest)
-      {
-        smoke_tester = new SmokeTester(this, impl, callback);
-        smoke_tester.Copy();
-      }
-
-      ModelViewInfo mvInfo;
-      var gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
-
-      // If "expand" attribute is supplied, expand any assertion of conjunctions into multiple assertions, one per conjunct
       foreach (var b in impl.Blocks)
       {
         List<Cmd> newCmds = new List<Cmd>();
@@ -2055,6 +2028,39 @@ namespace VC
 
         if (changed) b.Cmds = newCmds;
       }
+    }
+    
+    public override Outcome VerifyImplementation(Implementation /*!*/ impl, VerifierCallback /*!*/ callback)
+    {
+      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+
+      if (impl.SkipVerification)
+      {
+        return Outcome.Inconclusive; // not sure about this one
+      }
+
+      callback.OnProgress("VCgen", 0, 0, 0.0);
+
+      Stopwatch watch = new Stopwatch();
+#if PRINT_TIME
+      Console.WriteLine("Checking function {0}", impl.Name);
+      watch.Reset();
+      watch.Start();
+#endif
+
+      ConvertCFG2DAG(impl);
+
+      SmokeTester smoke_tester = null;
+      if (CommandLineOptions.Clo.SoundnessSmokeTest)
+      {
+        smoke_tester = new SmokeTester(this, impl, callback);
+        smoke_tester.Copy();
+      }
+
+      ModelViewInfo mvInfo;
+      var gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
+
+      ExpandAsserts(impl);
 
       double max_vc_cost = CommandLineOptions.Clo.VcsMaxCost;
       int tmp_max_vc_cost = -1,
