@@ -2029,39 +2029,10 @@ namespace VC
         if (changed) b.Cmds = newCmds;
       }
     }
-    
-    public override Outcome VerifyImplementation(Implementation /*!*/ impl, VerifierCallback /*!*/ callback)
+
+    void SplitAndVerify(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins,  VerifierCallback callback, ModelViewInfo mvInfo, ref Outcome outcome)
     {
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-
-      if (impl.SkipVerification)
-      {
-        return Outcome.Inconclusive; // not sure about this one
-      }
-
-      callback.OnProgress("VCgen", 0, 0, 0.0);
-
-      Stopwatch watch = new Stopwatch();
-#if PRINT_TIME
-      Console.WriteLine("Checking function {0}", impl.Name);
-      watch.Reset();
-      watch.Start();
-#endif
-
-      ConvertCFG2DAG(impl);
-
-      SmokeTester smoke_tester = null;
-      if (CommandLineOptions.Clo.SoundnessSmokeTest)
-      {
-        smoke_tester = new SmokeTester(this, impl, callback);
-        smoke_tester.Copy();
-      }
-
-      ModelViewInfo mvInfo;
-      var gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
-
-      ExpandAsserts(impl);
-
+      Cores = CommandLineOptions.Clo.VcsCores;
       double max_vc_cost = CommandLineOptions.Clo.VcsMaxCost;
       int tmp_max_vc_cost = -1,
         max_splits = CommandLineOptions.Clo.VcsMaxSplits,
@@ -2073,38 +2044,6 @@ namespace VC
       {
         max_vc_cost = tmp_max_vc_cost;
       }
-
-      Outcome outcome = Outcome.Correct;
-
-      // Report all recycled failing assertions for this implementation.
-      if (impl.RecycledFailingAssertions != null && impl.RecycledFailingAssertions.Any())
-      {
-        outcome = Outcome.Errors;
-        foreach (var a in impl.RecycledFailingAssertions)
-        {
-          var checksum = a.Checksum;
-          var oldCex = impl.ErrorChecksumToCachedError[checksum] as Counterexample;
-          if (oldCex != null)
-          {
-            if (CommandLineOptions.Clo.VerifySnapshots < 3)
-            {
-              callback.OnCounterexample(oldCex, null);
-            }
-            else
-            {
-              // If possible, we use the old counterexample, but with the location information of "a"
-              var cex = AssertCmdToCloneCounterexample(a, oldCex, impl.Blocks[0], gotoCmdOrigins);
-              callback.OnCounterexample(cex, null);
-              // OnCounterexample may have had side effects on the RequestId and OriginalRequestId fields.  We make
-              // any such updates available in oldCex. (Is this really a good design? --KRML)
-              oldCex.RequestId = cex.RequestId;
-              oldCex.OriginalRequestId = cex.OriginalRequestId;
-            }
-          }
-        }
-      }
-
-      Cores = CommandLineOptions.Clo.VcsCores;
       Stack<Split> work = new Stack<Split>();
       List<Split> currently_running = new List<Split>();
       ResetPredecessors(impl.Blocks);
@@ -2318,7 +2257,72 @@ namespace VC
           }
         }
       }
+    }
+    
+    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback)
+    {
+      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
+      if (impl.SkipVerification)
+      {
+        return Outcome.Inconclusive; // not sure about this one
+      }
+
+      callback.OnProgress("VCgen", 0, 0, 0.0);
+
+      Stopwatch watch = new Stopwatch();
+#if PRINT_TIME
+      Console.WriteLine("Checking function {0}", impl.Name);
+      watch.Reset();
+      watch.Start();
+#endif
+
+      ConvertCFG2DAG(impl);
+
+      SmokeTester smoke_tester = null;
+      if (CommandLineOptions.Clo.SoundnessSmokeTest)
+      {
+        smoke_tester = new SmokeTester(this, impl, callback);
+        smoke_tester.Copy();
+      }
+
+      ModelViewInfo mvInfo;
+      var gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
+
+      ExpandAsserts(impl);
+      
+      Outcome outcome = Outcome.Correct;
+
+      // Report all recycled failing assertions for this implementation.
+      if (impl.RecycledFailingAssertions != null && impl.RecycledFailingAssertions.Any())
+      {
+        outcome = Outcome.Errors;
+        foreach (var a in impl.RecycledFailingAssertions)
+        {
+          var checksum = a.Checksum;
+          var oldCex = impl.ErrorChecksumToCachedError[checksum] as Counterexample;
+          if (oldCex != null)
+          {
+            if (CommandLineOptions.Clo.VerifySnapshots < 3)
+            {
+              callback.OnCounterexample(oldCex, null);
+            }
+            else
+            {
+              // If possible, we use the old counterexample, but with the location information of "a"
+              var cex = AssertCmdToCloneCounterexample(a, oldCex, impl.Blocks[0], gotoCmdOrigins);
+              callback.OnCounterexample(cex, null);
+              // OnCounterexample may have had side effects on the RequestId and OriginalRequestId fields.  We make
+              // any such updates available in oldCex. (Is this really a good design? --KRML)
+              oldCex.RequestId = cex.RequestId;
+              oldCex.OriginalRequestId = cex.OriginalRequestId;
+            }
+          }
+        }
+      }
+
+      SplitAndVerify(impl, gotoCmdOrigins, callback, mvInfo, ref outcome);
+      
       if (outcome == Outcome.Correct && smoke_tester != null)
       {
         smoke_tester.Test();
