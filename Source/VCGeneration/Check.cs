@@ -546,13 +546,6 @@ namespace Microsoft.Boogie
 
     public abstract void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler);
 
-    public virtual Outcome CheckRPFP(string descriptiveName, RPFP vc, ErrorHandler handler,
-      out RPFP.Node cex,
-      Dictionary<int, Dictionary<string, string>> varSubst, Dictionary<string, int> extra_bound = null)
-    {
-      throw new System.NotImplementedException();
-    }
-
     [NoDefaultContract]
     public abstract Outcome CheckOutcome(ErrorHandler handler, int taskID = -1);
 
@@ -686,28 +679,9 @@ namespace Microsoft.Boogie
     {
       throw new NotImplementedException();
     }
-
-    //////////////////////
-    // For interpolation queries
-    //////////////////////
-
+    
     // Assert vc tagged with a name
     public virtual void AssertNamed(VCExpr vc, bool polarity, string name)
-    {
-      throw new NotImplementedException();
-    }
-
-    // Returns Interpolant(A,B)
-    public virtual VCExpr ComputeInterpolant(VCExpr A, VCExpr B)
-    {
-      throw new NotImplementedException();
-    }
-
-    // Returns for each l, Interpolant(root + (leaves - l), l)
-    // Preconditions:
-    //    leaves cannot have subformulas with same variable names
-    //    Both root and leaves should have been previously named via AssertNamed
-    public virtual List<VCExpr> GetTreeInterpolant(List<string> root, List<string> leaves)
     {
       throw new NotImplementedException();
     }
