@@ -7,7 +7,6 @@ using System.Threading;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
-using System.Reflection.Metadata;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
