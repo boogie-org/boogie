@@ -1863,8 +1863,7 @@ namespace VC
 
       VCExpr vc;
       int assertionCount;
-      if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags ||
-          CommandLineOptions.Clo.FixedPointEngine != null)
+      if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags)
       {
         vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy,
           new Hashtable /*<Block, VCExpr!>*/(), proverContext, out assertionCount);

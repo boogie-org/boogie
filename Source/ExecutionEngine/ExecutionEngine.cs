@@ -1307,25 +1307,11 @@ namespace Microsoft.Boogie
         }
       }
     }
-
-
+    
     private static ConditionGeneration CreateVCGen(Program program, List<Checker> checkers)
     {
-      ConditionGeneration vcgen = null;
-      if (CommandLineOptions.Clo.FixedPointEngine != null)
-      {
-        vcgen = new FixedpointVC(program, CommandLineOptions.Clo.ProverLogFilePath,
-          CommandLineOptions.Clo.ProverLogFileAppend, checkers);
-      }
-      else
-      {
-        vcgen = new VCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend,
-          checkers);
-      }
-
-      return vcgen;
+      return new VCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, checkers);
     }
-
 
     #region Houdini
 

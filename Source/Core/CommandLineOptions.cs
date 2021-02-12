@@ -737,8 +737,6 @@ namespace Microsoft.Boogie
     public bool PrintInlined = false;
     public bool ExtractLoops = false;
     public bool DeterministicExtractLoops = false;
-    // Turns on FixedPointVC generation (Duality algorithm)
-    public string FixedPointEngine = null;
 
     // Enables VC generation for Stratified Inlining. 
     // Set programmatically by Corral.
@@ -747,24 +745,8 @@ namespace Microsoft.Boogie
     // disable model generation, used by Corral/SI
     public bool StratifiedInliningWithoutModels = false; 
 
-    // Sets the recursion bound, used for loop extraction, fixedpoint vc, etc.
+    // Sets the recursion bound, used for loop extraction, etc.
     public int RecursionBound = 500;
-
-    // Inference mode for fixed point engine
-    public enum FixedPointInferenceMode
-    {
-      Corral,
-      OldCorral,
-      Flat,
-      Procedure,
-      Call
-    }
-
-    public FixedPointInferenceMode FixedPointMode = FixedPointInferenceMode.Procedure;
-
-    public string PrintFixedPoint = null;
-
-    public string PrintConjectures = null;
 
     public bool ExtractLoopsUnrollIrreducible = true; // unroll irreducible loops? (set programmatically)
 
@@ -1293,54 +1275,6 @@ namespace Microsoft.Boogie
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
                 break;
             }
-          }
-
-          return true;
-        case "fixedPointEngine":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            FixedPointEngine = args[ps.i];
-          }
-
-          return true;
-        case "fixedPointInfer":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            switch (args[ps.i])
-            {
-              case "corral":
-                FixedPointMode = FixedPointInferenceMode.Corral;
-                break;
-              case "oldCorral":
-                FixedPointMode = FixedPointInferenceMode.OldCorral;
-                break;
-              case "flat":
-                FixedPointMode = FixedPointInferenceMode.Flat;
-                break;
-              case "procedure":
-                FixedPointMode = FixedPointInferenceMode.Procedure;
-                break;
-              case "call":
-                FixedPointMode = FixedPointInferenceMode.Call;
-                break;
-              default:
-                ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                break;
-            }
-          }
-
-          return true;
-        case "printFixedPoint":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            PrintFixedPoint = args[ps.i];
-          }
-
-          return true;
-        case "printConjectures":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            PrintConjectures = args[ps.i];
           }
 
           return true;
@@ -2080,8 +2014,6 @@ namespace Microsoft.Boogie
   /printInlined
                 print the implementation after inlining calls to
                 procedures with the :inline attribute (works with /inline)
-  /fixedPointEngine:<engine>
-                Use the specified fixed point engine for inference
   /recursionBound:<n>
                 Set the recursion bound for stratified inlining to
                 be n (default 500)
