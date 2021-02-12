@@ -626,7 +626,7 @@ namespace Microsoft.Boogie
 
   public static class Substituter
   {
-    public static Substitution SubstitutionFromHashtable(Dictionary<Variable, Expr> map, bool fallBackOnName = false,
+    public static Substitution SubstitutionFromDictionary(Dictionary<Variable, Expr> map, bool fallBackOnName = false,
       Procedure proc = null)
     {
       Contract.Requires(map != null);
@@ -915,7 +915,7 @@ namespace Microsoft.Boogie
       {
         Contract.Requires(subst != null);
         this.always = subst;
-        this.forold = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
+        this.forold = Substituter.SubstitutionFromDictionary(new Dictionary<Variable, Expr>());
       }
 
       public NormalSubstituter(Substitution subst, Substitution forold)

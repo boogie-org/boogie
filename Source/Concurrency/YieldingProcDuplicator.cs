@@ -474,7 +474,7 @@ namespace Microsoft.Boogie
         map[action.impl.InParams[i]] = callCmd.Ins[i];
       }
 
-      Substitution subst = Substituter.SubstitutionFromHashtable(map);
+      Substitution subst = Substituter.SubstitutionFromDictionary(map);
 
       // Important: Do not remove CommentCmd!
       // It separates the injected gate from yield assertions.

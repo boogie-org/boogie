@@ -123,7 +123,7 @@ namespace Microsoft.Boogie
         map[abs.impl.InParams[i]] = pendingAsyncParam;
         inputExprs.Add(pendingAsyncParam);
       }
-      var subst = Substituter.SubstitutionFromHashtable(map);
+      var subst = Substituter.SubstitutionFromDictionary(map);
       cmds.AddRange(GetGateAsserts(abs, subst));
 
       List<IdentifierExpr> outputVars = new List<IdentifierExpr>();
@@ -277,7 +277,7 @@ namespace Microsoft.Boogie
       {
         map[from.impl.OutParams[i]] = Expr.Ident(to.impl.OutParams[i]);
       }
-      return Substituter.SubstitutionFromHashtable(map);
+      return Substituter.SubstitutionFromDictionary(map);
     }
 
     private Expr GetTransitionRelation(AtomicAction action)

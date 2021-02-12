@@ -157,7 +157,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
           foreach (var impl in procedureImplementations[proc])
           {
             // add the precondition to the axioms
-            Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+            Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap());
             var start = initialElement;
             foreach (Requires pre in proc.Requires)
             {

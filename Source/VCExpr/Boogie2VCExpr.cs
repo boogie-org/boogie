@@ -51,8 +51,7 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
 
-  public delegate VCExpr /*!*/ CodeExprConverter(CodeExpr /*!*/ codeExpr,
-    Hashtable /*<Block, VCExprVar!>*/ /*!*/ blockVariables, List<VCExprLetBinding> bindings, bool isPositiveContext);
+  public delegate VCExpr CodeExprConverter(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext);
 
   public class Boogie2VCExprTranslator : ReadOnlyVisitor, ICloneable
   {
@@ -833,16 +832,14 @@ namespace Microsoft.Boogie.VCExprAST
       this.codeExprConverter = f;
     }
 
-    public override Expr /*!*/ VisitCodeExpr(CodeExpr /*!*/ codeExpr)
+    public override Expr VisitCodeExpr(CodeExpr codeExpr)
     {
       //Contract.Requires(codeExpr != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
       Contract.Assume(codeExprConverter != null);
-
-      Hashtable /*<Block, LetVariable!>*/
-        blockVariables = new Hashtable /*<Block, LetVariable!!>*/();
-      List<VCExprLetBinding /*!*/> bindings = new List<VCExprLetBinding /*!*/>();
-      VCExpr e = codeExprConverter(codeExpr, blockVariables, bindings, isPositiveContext);
+      
+      List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
+      VCExpr e = codeExprConverter(codeExpr, bindings, isPositiveContext);
       Push(e);
       return codeExpr;
     }

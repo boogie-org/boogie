@@ -84,7 +84,7 @@ namespace Microsoft.Boogie
         }
 
         node.Dummies = this.VisitVariableSeq(newBound);
-        node.Body = this.VisitExpr(Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), node.Body));
+        node.Body = this.VisitExpr(Substituter.Apply(Substituter.SubstitutionFromDictionary(subst), node.Body));
         return node;
       }
 

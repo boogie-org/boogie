@@ -202,12 +202,12 @@ namespace Microsoft.Boogie
   {
     public static Substitution FromVariableMap(Dictionary<Variable, Variable> map)
     {
-      return Substituter.SubstitutionFromHashtable(map.ToDictionary(kv => kv.Key, kv => (Expr) Expr.Ident(kv.Value)));
+      return Substituter.SubstitutionFromDictionary(map.ToDictionary(kv => kv.Key, kv => (Expr) Expr.Ident(kv.Value)));
     }
 
     public static Expr Apply(Dictionary<Variable, Expr> map, Expr expr)
     {
-      return Substituter.Apply(Substituter.SubstitutionFromHashtable(map), expr);
+      return Substituter.Apply(Substituter.SubstitutionFromDictionary(map), expr);
     }
 
     public static Expr Apply(Dictionary<Variable, Variable> map, Expr expr)
@@ -217,7 +217,7 @@ namespace Microsoft.Boogie
 
     public static Cmd Apply(Dictionary<Variable, Expr> map, Cmd cmd)
     {
-      return Substituter.Apply(Substituter.SubstitutionFromHashtable(map), cmd);
+      return Substituter.Apply(Substituter.SubstitutionFromDictionary(map), cmd);
     }
 
     public static Cmd Apply(Dictionary<Variable, Variable> map, Cmd cmd)
@@ -232,7 +232,7 @@ namespace Microsoft.Boogie
 
     public static IEnumerable<Expr> Apply(Dictionary<Variable, Expr> map, IEnumerable<Expr> exprs)
     {
-      var subst = Substituter.SubstitutionFromHashtable(map);
+      var subst = Substituter.SubstitutionFromDictionary(map);
       return Apply(subst, exprs);
     }
 
@@ -249,7 +249,7 @@ namespace Microsoft.Boogie
 
     public static IEnumerable<Cmd> Apply(Dictionary<Variable, Expr> map, IEnumerable<Cmd> cmds)
     {
-      var subst = Substituter.SubstitutionFromHashtable(map);
+      var subst = Substituter.SubstitutionFromDictionary(map);
       return Apply(subst, cmds);
     }
 

@@ -1795,8 +1795,7 @@ namespace VC
         this.ctx = ctx;
       }
 
-      public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, Hashtable blockVariables,
-        List<VCExprLetBinding> bindings, bool isPositiveContext)
+      public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext)
       {
         VCGen vcgen = new VCGen(new Program(), null, false, new List<Checker>());
         vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
@@ -1866,7 +1865,7 @@ namespace VC
       if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags)
       {
         vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy,
-          new Hashtable /*<Block, VCExpr!>*/(), proverContext, out assertionCount);
+          new Dictionary<Block, VCExpr>(), proverContext, out assertionCount);
       }
       else
       {
@@ -2408,16 +2407,16 @@ namespace VC
         // no counter examples reported.
         if (labels.Count == 0) return;
 
-        Hashtable traceNodes = new Hashtable();
+        var traceNodes = new HashSet<Absy>();
         foreach (string s in labels)
         {
           Contract.Assert(s != null);
           Absy absy = Label2Absy(s);
           Contract.Assert(absy != null);
-          if (traceNodes.ContainsKey(absy))
+          if (traceNodes.Contains(absy))
             System.Console.WriteLine("Warning: duplicate label: " + s + " read while tracing nodes");
           else
-            traceNodes.Add(absy, null);
+            traceNodes.Add(absy);
         }
 
         List<Block> trace = new List<Block>();
@@ -3673,10 +3672,10 @@ namespace VC
     }
 
     static Counterexample TraceCounterexample(
-      Block /*!*/ b, Hashtable /*!*/ traceNodes, List<Block> /*!*/ trace, Model errModel, ModelViewInfo mvInfo,
+      Block b, HashSet<Absy> traceNodes, List<Block> trace, Model errModel, ModelViewInfo mvInfo,
       Dictionary<Cmd, List<object>> debugInfos,
-      ProverContext /*!*/ context,
-      Dictionary<TraceLocation /*!*/, CalleeCounterexampleInfo /*!*/> /*!*/ calleeCounterexamples)
+      ProverContext context,
+      Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples)
     {
       Contract.Requires(b != null);
       Contract.Requires(traceNodes != null);
@@ -3989,7 +3988,7 @@ namespace VC
     static VCExpr DagVC(Block block,
       VCExpr controlFlowVariableExpr,
       Dictionary<int, Absy> label2absy,
-      Hashtable /*<Block, VCExpr!>*/ blockEquations,
+      Dictionary<Block, VCExpr> blockEquations,
       ProverContext proverCtxt,
       out int assertionCount)
     {
@@ -4002,7 +4001,7 @@ namespace VC
       assertionCount = 0;
       VCExpressionGenerator gen = proverCtxt.ExprGen;
       Contract.Assert(gen != null);
-      VCExpr vc = (VCExpr) blockEquations[block];
+      VCExpr vc = blockEquations[block];
       if (vc != null)
       {
         return vc;
@@ -4209,23 +4208,6 @@ namespace VC
           startBlock.tok = renameInfo[startBlock].tok;
           startBlock.Label = renameInfo[startBlock].Label;
         }
-      }
-    }
-
-    static void DumpMap(Hashtable /*Variable->Expr*/ map)
-    {
-      Contract.Requires(map != null);
-      foreach (DictionaryEntry de in map)
-      {
-        Variable v = (Variable) de.Key;
-        Contract.Assert(v != null);
-        Expr e = (Expr) de.Value;
-        Contract.Assert(e != null);
-        Console.Write("  ");
-        v.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false), 0);
-        Console.Write("  --> ");
-        e.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false));
-        Console.WriteLine();
       }
     }
   }

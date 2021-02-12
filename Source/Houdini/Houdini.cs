@@ -1513,7 +1513,7 @@ namespace Microsoft.Boogie.Houdini
               Variable cVarProg = prog.Variables.Where(item => item.Name.Equals(c)).ToList()[0];
               cToTrue[cVarProg] = Expr.True;
               newCmds.Add(new AssumeCmd(assertCmd.tok,
-                Substituter.Apply(Substituter.SubstitutionFromHashtable(cToTrue), assertCmd.Expr),
+                Substituter.Apply(Substituter.SubstitutionFromDictionary(cToTrue), assertCmd.Expr),
                 assertCmd.Attributes));
             }
           }
@@ -1541,7 +1541,7 @@ namespace Microsoft.Boogie.Houdini
               Dictionary<Variable, Expr> subst = new Dictionary<Variable, Expr>();
               subst[cVarProg] = Expr.True;
               newRequires.Add(new Requires(Token.NoToken, true,
-                Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), r.Condition),
+                Substituter.Apply(Substituter.SubstitutionFromDictionary(subst), r.Condition),
                 r.Comment, r.Attributes));
             }
           }
@@ -1566,7 +1566,7 @@ namespace Microsoft.Boogie.Houdini
               Dictionary<Variable, Expr> subst = new Dictionary<Variable, Expr>();
               subst[cVarProg] = Expr.True;
               newEnsures.Add(new Ensures(Token.NoToken, true,
-                Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), e.Condition),
+                Substituter.Apply(Substituter.SubstitutionFromDictionary(subst), e.Condition),
                 e.Comment, e.Attributes));
             }
           }

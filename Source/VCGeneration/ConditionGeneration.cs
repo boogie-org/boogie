@@ -238,7 +238,7 @@ namespace VC
         debugWriter.WriteLine("Effective precondition:");
       }
 
-      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap());
       string blockLabel = "PreconditionGeneratedEntry";
 
       Block origStartBlock = impl.Blocks[0];
@@ -303,7 +303,7 @@ namespace VC
         debugWriter.WriteLine("Effective postcondition:");
       }
 
-      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap());
 
       // (free and checked) ensures clauses
       foreach (Ensures ens in impl.Proc.Ensures)
@@ -350,7 +350,7 @@ namespace VC
         debugWriter.WriteLine("Effective precondition:");
       }
 
-      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap());
       List<Cmd> pre = new List<Cmd>();
 
       // (free and checked) requires clauses
@@ -392,7 +392,7 @@ namespace VC
       }
 
       // Construct an Expr for the post-condition
-      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap());
       List<Cmd> post = new List<Cmd>();
       foreach (Ensures ens in impl.Proc.Ensures)
       {
@@ -440,7 +440,7 @@ namespace VC
         debugWriter.WriteLine("Effective precondition from where-clauses:");
       }
 
-      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap());
       List<Cmd> whereClauses = new List<Cmd>();
 
       // where clauses of in-parameters
@@ -920,7 +920,7 @@ namespace VC
       if (b.TransferCmd is ReturnExprCmd)
       {
         ReturnExprCmd rec = (ReturnExprCmd) b.TransferCmd.Clone();
-        Substitution incarnationSubst = Substituter.SubstitutionFromHashtable(incarnationMap);
+        Substitution incarnationSubst = Substituter.SubstitutionFromDictionary(incarnationMap);
         rec.Expr = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, rec.Expr);
         b.TransferCmd = rec;
       }
@@ -1101,7 +1101,7 @@ namespace VC
           oldFrameMap.Add(ie.Decl, ie);
       }
 
-      return Substituter.SubstitutionFromHashtable(oldFrameMap);
+      return Substituter.SubstitutionFromDictionary(oldFrameMap);
     }
 
     public enum CachingAction : byte
@@ -1195,7 +1195,7 @@ namespace VC
       Contract.Requires(mvInfo != null);
 
       AddDebugInfo(c, incarnationMap, passiveCmds);
-      Substitution incarnationSubst = Substituter.SubstitutionFromHashtable(incarnationMap);
+      Substitution incarnationSubst = Substituter.SubstitutionFromDictionary(incarnationMap);
 
       #region assert/assume P |--> assert/assume P[x := in(x)], out := in
 
@@ -1527,7 +1527,7 @@ namespace VC
         }
 
         // Then, perform the assume of the where clauses, using the updated incarnations
-        Substitution updatedIncarnationSubst = Substituter.SubstitutionFromHashtable(incarnationMap);
+        Substitution updatedIncarnationSubst = Substituter.SubstitutionFromDictionary(incarnationMap);
         foreach (IdentifierExpr ie in havocVars)
         {
           Contract.Assert(ie != null);

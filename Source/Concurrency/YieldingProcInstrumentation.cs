@@ -216,7 +216,7 @@ namespace Microsoft.Boogie
         {
           Dictionary<Variable, Expr> map = callCmd.Proc.InParams.Zip(callCmd.Ins)
             .ToDictionary(x => x.Item1, x => x.Item2);
-          Substitution subst = Substituter.SubstitutionFromHashtable(map);
+          Substitution subst = Substituter.SubstitutionFromDictionary(map);
           foreach (Requires req in callCmd.Proc.Requires)
           {
             var newExpr = Substituter.Apply(subst, req.Condition);
@@ -249,7 +249,7 @@ namespace Microsoft.Boogie
           linearPermissionInstrumentation.DisjointnessExprs(impl, true).ForEach(
             expr => initCmds.Add(CmdHelper.AssumeCmd(expr)));
 
-          Substitution procToImplInParams = Substituter.SubstitutionFromHashtable(impl.Proc.InParams
+          Substitution procToImplInParams = Substituter.SubstitutionFromDictionary(impl.Proc.InParams
             .Zip(impl.InParams).ToDictionary(x => x.Item1, x => (Expr) Expr.Ident(x.Item2)));
 
           impl.Proc.Requires.ForEach(req =>
@@ -260,7 +260,7 @@ namespace Microsoft.Boogie
             var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
             if (layerNum == yieldInvariant.LayerNum)
             {
-              Substitution callFormalsToActuals = Substituter.SubstitutionFromHashtable(callCmd.Proc.InParams
+              Substitution callFormalsToActuals = Substituter.SubstitutionFromDictionary(callCmd.Proc.InParams
                 .Zip(callCmd.Ins)
                 .ToDictionary(x => x.Item1, x => (Expr) ExprHelper.Old(x.Item2)));
               callCmd.Proc.Requires.ForEach(req => initCmds.Add(new AssumeCmd(req.tok,
@@ -288,7 +288,7 @@ namespace Microsoft.Boogie
           {
             Dictionary<Variable, Expr> map = callCmd.Proc.InParams.Zip(callCmd.Ins)
               .ToDictionary(x => x.Item1, x => x.Item2);
-            Substitution subst = Substituter.SubstitutionFromHashtable(map);
+            Substitution subst = Substituter.SubstitutionFromDictionary(map);
             foreach (Requires req in callCmd.Proc.Requires)
             {
               impl.Proc.Requires.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition),
@@ -305,7 +305,7 @@ namespace Microsoft.Boogie
           {
             Dictionary<Variable, Expr> map = callCmd.Proc.InParams.Zip(callCmd.Ins)
               .ToDictionary(x => x.Item1, x => x.Item2);
-            Substitution subst = Substituter.SubstitutionFromHashtable(map);
+            Substitution subst = Substituter.SubstitutionFromDictionary(map);
             foreach (Requires req in callCmd.Proc.Requires)
             {
               impl.Proc.Ensures.Add(new Ensures(req.tok, req.Free, Substituter.Apply(subst, req.Condition),
@@ -705,7 +705,7 @@ namespace Microsoft.Boogie
           }
 
           Contract.Assume(callCmd.Proc.TypeParameters.Count == 0);
-          Substitution subst = Substituter.SubstitutionFromHashtable(map);
+          Substitution subst = Substituter.SubstitutionFromDictionary(map);
           foreach (Requires req in callCmd.Proc.Requires)
           {
             requiresSeq.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition), null,

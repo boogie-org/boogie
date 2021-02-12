@@ -392,7 +392,7 @@ namespace Microsoft.Boogie
             }
           }
 
-          Substitution sub = Substituter.SubstitutionFromHashtable(varToExpr);
+          Substitution sub = Substituter.SubstitutionFromDictionary(varToExpr);
           foreach (var assignment in remainingAssignments)
           {
             assignment.Expr = Substituter.Apply(sub, assignment.Expr);
