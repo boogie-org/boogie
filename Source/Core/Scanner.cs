@@ -256,7 +256,7 @@ public class Scanner {
 	int col;          // column number of current character
 	int line;         // line number of current character
 	int oldEols;      // EOLs that appeared in a comment;
-	static readonly Hashtable/*!*/ start; // maps first token character to start state
+	static readonly Dictionary<int, int>/*!*/ start; // maps first token character to start state
 
 	Token/*!*/ tokens;     // list of tokens already peeked (first token is a dummy)
 	Token/*!*/ pt;         // current peek token
@@ -268,7 +268,7 @@ public class Scanner {
 	private Errors/*!*/ errorHandler;
 
 	static Scanner() {
-		start = new Hashtable(128);
+		start = new Dictionary<int, int>(128);
 		for (int i = 35; i <= 36; ++i) start[i] = 2;
 		for (int i = 39; i <= 39; ++i) start[i] = 2;
 		for (int i = 46; i <= 46; ++i) start[i] = 2;
@@ -582,7 +582,6 @@ public class Scanner {
 		t.filename = this.Filename;
 		int state;
 		if (start.ContainsKey(ch)) {
-			Contract.Assert(start[ch] != null);
 			state = (int) start[ch];
 		}
 		else { state = 0; }

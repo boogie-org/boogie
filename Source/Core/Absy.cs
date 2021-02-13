@@ -1011,7 +1011,7 @@ namespace Microsoft.Boogie
         Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
         HashSet<string> dummyBlocks = new HashSet<string>();
 
-        var subst = Substituter.SubstitutionFromHashtable(loopHeaderToSubstMap[header]); // fix me
+        var subst = Substituter.SubstitutionFromDictionary(loopHeaderToSubstMap[header]); // fix me
         List<Variable> inputs = loopHeaderToInputs[header];
         List<Variable> outputs = loopHeaderToOutputs[header];
         int si_unique_loc = 1; // Added by AL: to distinguish the back edges
@@ -1321,56 +1321,15 @@ namespace Microsoft.Boogie
 
     public Graph<Block> ProcessLoops(Implementation impl)
     {
-      while (true)
+      impl.PruneUnreachableBlocks();
+      impl.ComputePredecessorsForBlocks();
+      Graph<Block> g = GraphFromImpl(impl);
+      g.ComputeLoops();
+      if (g.Reducible)
       {
-        impl.PruneUnreachableBlocks();
-        impl.ComputePredecessorsForBlocks();
-        Graph<Block /*!*/> /*!*/
-          g = GraphFromImpl(impl);
-        g.ComputeLoops();
-        if (g.Reducible)
-        {
-          return g;
-        }
-
-        throw new IrreducibleLoopException();
-#if USED_CODE
-        System.Diagnostics.Debug.Assert(g.SplitCandidates.Count > 0);
-        Block splitCandidate = null;
-        foreach (Block b in g.SplitCandidates) {
-          if (b.Predecessors.Length > 1) {
-            splitCandidate = b;
-            break;
-          }
-        }
-        System.Diagnostics.Debug.Assert(splitCandidate != null);
-        int count = 0;
-        foreach (Block b in splitCandidate.Predecessors) {
-          GotoCmd gotoCmd = (GotoCmd)b.TransferCmd;
-          gotoCmd.labelNames.Remove(splitCandidate.Label);
-          gotoCmd.labelTargets.Remove(splitCandidate);
-
-          CodeCopier codeCopier = new CodeCopier(new Hashtable(), new Hashtable());
-          List<Cmd> newCmdSeq = codeCopier.CopyCmdSeq(splitCandidate.Cmds);
-          TransferCmd newTransferCmd;
-          GotoCmd splitGotoCmd = splitCandidate.TransferCmd as GotoCmd;
-          if (splitGotoCmd == null) {
-            newTransferCmd = new ReturnCmd(splitCandidate.tok);
-          }
-          else {
-            List<String> newLabelNames = new List<String>();
-            newLabelNames.AddRange(splitGotoCmd.labelNames);
-            List<Block> newLabelTargets = new List<Block>();
-            newLabelTargets.AddRange(splitGotoCmd.labelTargets);
-            newTransferCmd = new GotoCmd(splitCandidate.tok, newLabelNames, newLabelTargets);
-          }
-          Block copy = new Block(splitCandidate.tok, splitCandidate.Label + count++, newCmdSeq, newTransferCmd);
-
-          impl.Blocks.Add(copy);
-          gotoCmd.AddTarget(copy);
-        }
-#endif
+        return g;
       }
+      throw new IrreducibleLoopException();
     }
 
     public Dictionary<string, Dictionary<string, Block>> ExtractLoops()

@@ -133,8 +133,8 @@ namespace Microsoft.Boogie
         oldOutputMap[collectedPAs] = copy;
       }
 
-      Substitution always = Substituter.SubstitutionFromHashtable(alwaysMap);
-      Substitution forold = Substituter.SubstitutionFromHashtable(foroldMap);
+      Substitution always = Substituter.SubstitutionFromDictionary(alwaysMap);
+      Substitution forold = Substituter.SubstitutionFromDictionary(foroldMap);
       Expr transitionRelationExpr = GetTransitionRelation(atomicAction);
       transitionRelation = Substituter.ApplyReplacingOldExprs(always, forold, transitionRelationExpr);
       Expr gateExpr = Expr.And(atomicAction.gate.Select(g => g.Expr));

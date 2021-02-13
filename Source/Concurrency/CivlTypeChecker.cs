@@ -531,7 +531,7 @@ namespace Microsoft.Boogie
 
     private static T StripOld<T>(T cmd) where T : Cmd
     {
-      var emptySubst = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
+      var emptySubst = Substituter.SubstitutionFromDictionary(new Dictionary<Variable, Expr>());
       return (T) Substituter.ApplyReplacingOldExprs(emptySubst, emptySubst, cmd);
     }
 

@@ -170,12 +170,12 @@ namespace Microsoft.Boogie
         }
 
         var lambdaBody = Substituter.ApplyReplacingOldExprs(
-          Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>()),
-          Substituter.SubstitutionFromHashtable(oldSubst),
+          Substituter.SubstitutionFromDictionary(new Dictionary<Variable, Expr>()),
+          Substituter.SubstitutionFromDictionary(oldSubst),
           lambda.Body);
         var lambdaAttrs = Substituter.ApplyReplacingOldExprs(
-          Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>()),
-          Substituter.SubstitutionFromHashtable(oldSubst),
+          Substituter.SubstitutionFromDictionary(new Dictionary<Variable, Expr>()),
+          Substituter.SubstitutionFromDictionary(oldSubst),
           lambda.Attributes);
 
         if (0 < CommandLineOptions.Clo.VerifySnapshots &&
@@ -268,7 +268,7 @@ namespace Microsoft.Boogie
 
           Function fn = new Function(tok, FreshLambdaFunctionName(), freshTypeVars, formals, res,
             "auto-generated lambda function",
-            Substituter.Apply(Substituter.SubstitutionFromHashtable(substFnAttrs), lambdaAttrs));
+            Substituter.Apply(Substituter.SubstitutionFromDictionary(substFnAttrs), lambdaAttrs));
           fn.OriginalLambdaExprAsString = lam_str;
 
           fcall = new FunctionCall(new IdentifierExpr(tok, fn.Name));
@@ -299,7 +299,7 @@ namespace Microsoft.Boogie
           forallTypeVariables.AddRange(freeTypeVars);
           select.TypeParameters = SimpleTypeParamInstantiation.From(lambda.TypeParameters, selectTypeParamActuals);
 
-          Expr bb = Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), lambdaBody);
+          Expr bb = Substituter.Apply(Substituter.SubstitutionFromDictionary(subst), lambdaBody);
           NAryExpr body = Expr.Eq(select, bb);
           body.Type = Type.Bool;
           body.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
@@ -307,7 +307,7 @@ namespace Microsoft.Boogie
 
           lambdaFunctions.Add(fn);
           lambdaAxioms.Add(new ForallExpr(tok, forallTypeVariables, dummies,
-            Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), lambdaAttrs),
+            Substituter.Apply(Substituter.SubstitutionFromDictionary(subst), lambdaAttrs),
             trig, body));
         }
 
@@ -354,12 +354,12 @@ namespace Microsoft.Boogie
           }
 
         var lambdaBody = Substituter.ApplyReplacingOldExprs(
-          Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>()),
-          Substituter.SubstitutionFromHashtable(oldSubst),
+          Substituter.SubstitutionFromDictionary(new Dictionary<Variable, Expr>()),
+          Substituter.SubstitutionFromDictionary(oldSubst),
           lambda.Body);
         var lambdaAttrs = Substituter.ApplyReplacingOldExprs(
-          Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>()),
-          Substituter.SubstitutionFromHashtable(oldSubst),
+          Substituter.SubstitutionFromDictionary(new Dictionary<Variable, Expr>()),
+          Substituter.SubstitutionFromDictionary(oldSubst),
           lambda.Attributes);
         var newLambda =
           new LambdaExpr(lambda.tok, lambda.TypeParameters, lambda.Dummies, lambdaAttrs, lambdaBody)

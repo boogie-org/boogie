@@ -111,9 +111,9 @@ namespace Microsoft.Boogie
         return new List<Declaration>();
       }
 
-      Substitution assumeSubst = Substituter.SubstitutionFromHashtable(assumeMap);
-      Substitution oldSubst = Substituter.SubstitutionFromHashtable(oldLocalMap);
-      Substitution subst = Substituter.SubstitutionFromHashtable(map);
+      Substitution assumeSubst = Substituter.SubstitutionFromDictionary(assumeMap);
+      Substitution oldSubst = Substituter.SubstitutionFromDictionary(oldLocalMap);
+      Substitution subst = Substituter.SubstitutionFromDictionary(map);
       List<Block> noninterferenceCheckerBlocks = new List<Block>();
       List<Block> labelTargets = new List<Block>();
       Block noninterferenceCheckerBlock = BlockHelper.Block("exit", new List<Cmd>());

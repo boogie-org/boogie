@@ -114,9 +114,9 @@ namespace Microsoft.Boogie
         var canUseSpecs = DependencyCollector.CanExpressOldSpecs(oldProc, Program, true);
         if (canUseSpecs && oldProc.SignatureEquals(currentImplementation.Proc))
         {
-          var always = Substituter.SubstitutionFromHashtable(currentImplementation.GetImplFormalMap(), true,
+          var always = Substituter.SubstitutionFromDictionary(currentImplementation.GetImplFormalMap(), true,
             currentImplementation.Proc);
-          var forOld = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
+          var forOld = Substituter.SubstitutionFromDictionary(new Dictionary<Variable, Expr>());
           var clauses = oldProc.Requires.Select(r =>
             Substituter.FunctionCallReresolvingApply(always, forOld, r.Condition, Program));
           var conj = Expr.And(clauses, true);
