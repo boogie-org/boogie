@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using Microsoft.Boogie;
 
 class QuantifierInstantiationEngine
 {
-  private Dictionary<Function, ForallExpr> lambdaAxiomExpr;
+  //private Dictionary<Function, ForallExpr> lambdaAxiomExpr;
   private Dictionary<PredicateCmd, Expr> rewrittenCmdExpr;
   private Dictionary<Axiom, Expr> rewrittenAxiomExpr;
   private Dictionary<BoundVariable, string> instantiationLabel;
@@ -24,5 +25,22 @@ class QuantifierInstantiationEngine
    */
 
   private Dictionary<string, HashSet<Expr>> labelToInstances;
-  private Dictionary<Function, HashSet<List<Expr>>> lambdaToInstances;
+  //private Dictionary<Function, HashSet<List<Expr>>> lambdaToInstances;
+
+  public static void Instantiate(Implementation impl)
+  {
+    var qiEngine = new QuantifierInstantiationEngine(impl);
+    qiEngine.Execute();
+    // collect instances and create assumes in block 0
+  }
+
+  private QuantifierInstantiationEngine(Implementation impl)
+  {
+    
+  }
+
+  private void Execute()
+  {
+    
+  }
 }
