@@ -1197,6 +1197,16 @@ namespace Microsoft.Boogie
       }
     }
 
+    public IEnumerable<Block> Exits()
+    {
+      GotoCmd g = TransferCmd as GotoCmd;
+      if (g != null)
+      {
+        return cce.NonNull(g.labelTargets);
+      }
+      return new List<Block>();
+    }
+    
     [Rep] //PM: needed to verify Traverse.Visit
     public TransferCmd
       TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)

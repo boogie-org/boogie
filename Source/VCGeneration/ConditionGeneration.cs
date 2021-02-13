@@ -624,7 +624,7 @@ namespace VC
       }
     }
 
-    protected static void EmitImpl(Implementation impl, bool printDesugarings)
+    public static void EmitImpl(Implementation impl, bool printDesugarings)
     {
       Contract.Requires(impl != null);
       int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
@@ -705,24 +705,12 @@ namespace VC
       foreach (Block b in blocks)
       {
         Contract.Assert(b != null);
-        foreach (Block ch in Exits(b))
+        foreach (Block ch in b.Exits())
         {
           Contract.Assert(ch != null);
           ch.Predecessors.Add(b);
         }
       }
-    }
-
-    protected static IEnumerable Exits(Block b)
-    {
-      Contract.Requires(b != null);
-      GotoCmd g = b.TransferCmd as GotoCmd;
-      if (g != null)
-      {
-        return cce.NonNull(g.labelTargets);
-      }
-
-      return new List<Block>();
     }
 
     protected Variable CreateIncarnation(Variable x, Absy a)
