@@ -7,3 +7,9 @@ procedure A()
     assert {:inst "L", 0} F(0);
     assert (forall {:inst "L", y+1} y: int :: F(y+1));
 }
+
+procedure B()
+{
+    var x: [int]bool;
+    x := (lambda i: int :: true);
+}

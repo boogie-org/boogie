@@ -145,6 +145,7 @@ namespace VC
       {
         predicateCmd.Expr = LetConvert(predicateCmd.Expr);
       }));
+      impl.LocVars.AddRange(skolemConstants);
     }
 
     private Expr LetConvert(Expr expr)
@@ -309,13 +310,24 @@ namespace VC
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
+      if (instStatus == InstStatus.None)
+      {
+        return base.VisitNAryExpr(node);
+      }
       var savedInstStatus = instStatus;
-      var op = node.Fun as UnaryOperator;
-      if (op != null && op.Op == UnaryOperator.Opcode.Not && instStatus != InstStatus.None)
+      var unaryOperator = node.Fun as UnaryOperator;
+      if (unaryOperator != null && unaryOperator.Op == UnaryOperator.Opcode.Not)
       {
         instStatus = instStatus == InstStatus.SkolemizeExists ? InstStatus.SkolemizeForall : InstStatus.SkolemizeExists;
       }
-
+      var binaryOperator = node.Fun as BinaryOperator;
+      if (binaryOperator != null &&
+          (binaryOperator.Op == BinaryOperator.Opcode.Iff ||
+           binaryOperator.Op == BinaryOperator.Opcode.Imp ||
+           binaryOperator.Op == BinaryOperator.Opcode.Eq && node.Args[0].Type.Equals(Type.Bool)))
+      {
+        instStatus = InstStatus.None;
+      }
       var returnExpr = base.VisitNAryExpr(node);
       instStatus = savedInstStatus;
       return returnExpr;
