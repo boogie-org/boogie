@@ -595,11 +595,11 @@ namespace Microsoft.Boogie
         function =>
         {
           nameToFunction.Add(function.Name, function);
-          functionInstantiations.Add(function, new Dictionary<List<Type>, Function>(new TypeInstantiationComparer()));
+          functionInstantiations.Add(function, new Dictionary<List<Type>, Function>(new ListComparer<Type>()));
         });
       datatypeInstantiations = new Dictionary<DatatypeTypeCtorDecl, Dictionary<List<Type>, DatatypeTypeCtorDecl>>();
       program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>().Where(datatypeTypeCtorDecl => datatypeTypeCtorDecl.Arity > 0).Iter(datatypeTypeCtorDecl => 
-        datatypeInstantiations.Add(datatypeTypeCtorDecl, new Dictionary<List<Type>, DatatypeTypeCtorDecl>(new TypeInstantiationComparer())));
+        datatypeInstantiations.Add(datatypeTypeCtorDecl, new Dictionary<List<Type>, DatatypeTypeCtorDecl>(new ListComparer<Type>())));
       triggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
       newTriggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
       axiomsToBeInstantiated.Values.ToHashSet().Iter(typeCtorDecl =>
@@ -651,34 +651,6 @@ namespace Microsoft.Boogie
         datatypeTypeCtorDecl.Constructors.Iter(constructor => VisitFunction(constructor));
       }
       return base.VisitTypeCtorDecl(node);
-    }
-
-    private class TypeInstantiationComparer : IEqualityComparer<List<Type>>
-    {
-      public bool Equals(List<Type> l1, List<Type> l2)
-      {
-        if (l1.Count != l2.Count)
-        {
-          return false;
-        }
-
-        for (int i = 0; i < l1.Count; i++)
-        {
-          if (!l1[i].Equals(l2[i]))
-          {
-            return false;
-          }
-        }
-
-        return true;
-      }
-
-      public int GetHashCode(List<Type> l)
-      {
-        int hCode = 0;
-        l.Iter(x => { hCode = hCode ^ x.GetHashCode(); });
-        return hCode.GetHashCode();
-      }
     }
   }
   

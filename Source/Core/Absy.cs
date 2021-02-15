@@ -2253,6 +2253,7 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(rc != null);
       this.TypedIdent.Resolve(rc);
+      ResolveAttributes(rc);
     }
 
     public void ResolveWhere(ResolutionContext rc)
