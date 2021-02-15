@@ -2268,8 +2268,6 @@ namespace Microsoft.Boogie
       {
         this.TypedIdent.WhereExpr.Resolve(rc);
       }
-
-      ResolveAttributes(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
