@@ -37,7 +37,7 @@ namespace Core
     private readonly Dictionary<Expr, FunctionCall> _liftedLambdas;
     private readonly String _freshFnName;
     private readonly List<Function> _lambdaFunctions;
-    private readonly List<Expr> _lambdaAxioms;
+    private readonly List<Axiom> _lambdaAxioms;
     private int _freshVarCount;
 
     private readonly Dictionary<Absy, LambdaLiftingTemplate> _templates = new Dictionary<Absy, LambdaLiftingTemplate>();
@@ -47,7 +47,7 @@ namespace Core
       Dictionary<Expr, FunctionCall> liftedLambdas,
       string freshFnName,
       List<Function> lambdaFunctions,
-      List<Expr> lambdaAxioms,
+      List<Axiom> lambdaAxioms,
       int freshVarCount = 0
     )
     {
@@ -306,8 +306,8 @@ namespace Core
       var replDummies = allReplacementExprs.Zip(typedIdents,
         (replExpr, typedIdent) => (Variable) new BoundVariable(replExpr.tok, typedIdent)).ToList();
       var replDummyIds = (from dummy in replDummies select (Expr) new IdentifierExpr(dummy.tok, dummy)).ToList();
-      var dummies = new List<Variable>(_lambda.Dummies);
-      dummies.AddRange(replDummies);
+      var dummies = new List<Variable>(replDummies);
+      dummies.AddRange(_lambda.Dummies);
 
 
       var lambdaAttrs = _lambda.Attributes;
@@ -395,15 +395,15 @@ namespace Core
 
         forallTypeVariables.AddRange(freeTypeVars);
         select.TypeParameters = SimpleTypeParamInstantiation.From(_lambda.TypeParameters, selectTypeParamActuals);
-
-
+        
         NAryExpr body = Expr.Eq(select, liftedLambda.Body);
         body.Type = Type.Bool;
         body.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
         var trig = new Trigger(select.tok, true, new List<Expr> {select});
 
         _lambdaFunctions.Add(fn);
-        _lambdaAxioms.Add(new ForallExpr(tok, forallTypeVariables, dummies, liftedLambda.Attributes, trig, body));
+        fn.DefinitionAxiom = new Axiom(tok, new ForallExpr(tok, forallTypeVariables, dummies, liftedLambda.Attributes, trig, body));
+        _lambdaAxioms.Add(fn.DefinitionAxiom);
       }
 
       NAryExpr call = new NAryExpr(tok, fcall, allReplacementExprs.ToList())

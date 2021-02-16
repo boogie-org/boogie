@@ -8,8 +8,10 @@ procedure A()
     assert (forall {:inst "L", y+1} y: int :: F(y+1));
 }
 
-procedure B()
+procedure B(j: int)
+requires j > 0;
 {
     var x: [int]bool;
-    x := (lambda i: int :: true);
+    x := (lambda {:inst_label "M"} i: int :: if (i < j) then true else false);
+    assert {:inst "M", 0} x[0];
 }

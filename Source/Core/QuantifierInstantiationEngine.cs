@@ -7,7 +7,7 @@ namespace VC
 {
   public class QuantifierInstantiationEngine
   {
-    class QuantifierInstantiationInfo
+    private class QuantifierInstantiationInfo
     {
       public Dictionary<Variable, HashSet<string>> boundVariableToLabels;
       public HashSet<string> relevantLabels;
@@ -23,26 +23,24 @@ namespace VC
 
     private Implementation impl;
     private Dictionary<Variable, QuantifierExpr> quantifierBinding;
+    private Dictionary<Function, QuantifierExpr> lambdaDefinition;
     private Dictionary<QuantifierExpr, QuantifierInstantiationInfo> quantifierInstantiationInfo;
     private HashSet<Variable> skolemConstants;
     private Dictionary<string, HashSet<Expr>> labelToInstances;
     private Dictionary<string, HashSet<Expr>> accLabelToInstances;
+    private Dictionary<Function, HashSet<List<Expr>>> lambdaToInstances;
+    private Dictionary<Function, HashSet<List<Expr>>> accLambdaToInstances;
     private string quantifierBindingNamePrefix;
     private string skolemConstantNamePrefix;
-
-    //private Dictionary<Function, ForallExpr> lambdaAxiomExpr;
-    //private Dictionary<Function, HashSet<List<Expr>>> lambdaToInstances;
-
-    private static void AddInstancesForLabels(Dictionary<string, HashSet<Expr>> @from,
-      Dictionary<string, HashSet<Expr>> to)
+    
+    private static void AddInstances<T,U>(Dictionary<T, HashSet<U>> @from, Dictionary<T, HashSet<U>> to)
     {
       @from.Iter(kv =>
       {
         if (!to.ContainsKey(kv.Key))
         {
-          to[kv.Key] = new HashSet<Expr>();
+          to[kv.Key] = new HashSet<U>();
         }
-
         to[kv.Key].UnionWith(@from[kv.Key]);
       });
     }
@@ -55,39 +53,17 @@ namespace VC
       qiEngine.Finish();
     }
 
-    private QuantifierInstantiationEngine(Implementation impl)
+    public static void SubstituteIncarnationInInstantiationAttribute(Cmd cmd, Substitution incarnationSubst, Substitution oldFrameSubst)
     {
-      this.impl = impl;
-      this.quantifierBinding = new Dictionary<Variable, QuantifierExpr>();
-      this.quantifierInstantiationInfo = new Dictionary<QuantifierExpr, QuantifierInstantiationInfo>();
-      this.skolemConstants = new HashSet<Variable>();
-      this.labelToInstances = new Dictionary<string, HashSet<Expr>>();
-      this.accLabelToInstances = new Dictionary<string, HashSet<Expr>>();
-      this.quantifierBindingNamePrefix = "quantifierBinding";
-      this.skolemConstantNamePrefix = "skolemConstant";
-    }
-
-    private static HashSet<string> FindLabels(ICarriesAttributes o)
-    {
-      var labels = new HashSet<string>();
-      var iter = o.Attributes;
-      while (iter != null)
+      QKeyValue iter = null;
+      if (cmd is AssignCmd assignCmd)
       {
-        if (iter.Key == "inst_label")
-        {
-          iter.Params.OfType<string>().Iter(x => labels.Add(x));
-        }
-
-        iter = iter.Next;
+        iter = assignCmd.Attributes;
       }
-
-      return labels;
-    }
-
-    private static Dictionary<string, HashSet<Expr>> FindInstancesForLabels(ICarriesAttributes o)
-    {
-      var freshInstances = new Dictionary<string, HashSet<Expr>>();
-      var iter = o.Attributes;
+      else if (cmd is PredicateCmd predicateCmd)
+      {
+        iter = predicateCmd.Attributes;
+      }
       while (iter != null)
       {
         if (iter.Key == "inst")
@@ -96,131 +72,32 @@ namespace VC
           var instance = iter.Params[1] as Expr;
           if (label != null && instance != null)
           {
-            if (!freshInstances.ContainsKey(label))
-            {
-              freshInstances[label] = new HashSet<Expr>();
-            }
-
-            freshInstances[label].Add(instance);
+            instance = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, instance);
+            iter.ClearParams();
+            iter.AddParams(new List<object> {label, instance});
           }
         }
-
         iter = iter.Next;
       }
-
-      return freshInstances;
     }
-
-    private void Start()
+    
+    public bool BindLambdaFunction(Function lambdaFunction)
     {
-      impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().Iter(predicateCmd =>
+      if (lambdaDefinition.ContainsKey(lambdaFunction))
       {
-        AddInstancesForLabels(FindInstancesForLabels(predicateCmd), this.labelToInstances);
-        predicateCmd.Expr = Skolemizer.Skolemize(this,
-          predicateCmd is AssumeCmd ? InstStatus.SkolemizeExists : InstStatus.SkolemizeForall, predicateCmd.Expr);
-      }));
-    }
-
-    private void Execute()
-    {
-      while (labelToInstances.Count > 0)
-      {
-        var currLabelToInstances = this.labelToInstances;
-        this.labelToInstances = new Dictionary<string, HashSet<Expr>>();
-        AddInstancesForLabels(currLabelToInstances, this.accLabelToInstances);
-        foreach (var quantifier in quantifierInstantiationInfo.Keys)
-        {
-          var quantifierInfo = quantifierInstantiationInfo[quantifier];
-          if (quantifierInfo.relevantLabels.Overlaps(currLabelToInstances.Keys))
-          {
-            InstantiateQuantifier(quantifier);
-          }
-        }
+        return true;
       }
-    }
-
-    private void Finish()
-    {
-      impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().Iter(predicateCmd =>
+      var lambdaDefinitionExpr = lambdaFunction.DefinitionAxiom.Expr as QuantifierExpr;
+      var boundVariableToLabels = lambdaDefinitionExpr.Dummies.ToDictionary(x => x, x => FindLabels(x));
+      if (Enumerable
+          .Range(lambdaFunction.InParams.Count, lambdaDefinitionExpr.Dummies.Count - lambdaFunction.InParams.Count)
+          .All(i => boundVariableToLabels[lambdaDefinitionExpr.Dummies[i]].Count > 0))
       {
-        predicateCmd.Expr = LetConvert(predicateCmd.Expr);
-      }));
-      impl.LocVars.AddRange(skolemConstants);
-    }
-
-    private Expr LetConvert(Expr expr)
-    {
-      var bindings = BindingCollector.CollectBindings(this, expr).ToList();
-      if (bindings.Count == 0)
-      {
-        return expr;
+        lambdaDefinition[lambdaFunction] = lambdaDefinitionExpr;
+        quantifierInstantiationInfo[lambdaDefinitionExpr] = new QuantifierInstantiationInfo(boundVariableToLabels);
+        return true;
       }
-      var rhss = new List<Expr>();
-      foreach (var binding in bindings)
-      {
-        rhss.Add(LetConvert(this.AugmentWithInstances(quantifierBinding[binding])));
-      }
-      return new LetExpr(Token.NoToken, bindings, rhss, null, expr);
-    }
-
-    private Expr AugmentWithInstances(QuantifierExpr quantifierExpr)
-    {
-      if (quantifierExpr is ForallExpr)
-      {
-        return Expr.And(quantifierExpr, Expr.And(quantifierInstantiationInfo[quantifierExpr].instances.Values));
-      }
-      else
-      {
-        return Expr.Or(quantifierExpr, Expr.Or(quantifierInstantiationInfo[quantifierExpr].instances.Values));
-      }
-    }
-
-    private void InstantiateQuantifier(QuantifierExpr quantifierExpr)
-    {
-      var quantifierInstantiationInfo = this.quantifierInstantiationInfo[quantifierExpr];
-      var boundVariableToExprs = quantifierInstantiationInfo.boundVariableToLabels.Keys.ToDictionary(
-        boundVariable => boundVariable,
-        boundVariable =>
-          quantifierInstantiationInfo
-            .boundVariableToLabels[boundVariable]
-            .SelectMany(label => accLabelToInstances[label]).ToHashSet());
-      ConstructInstances(quantifierExpr, boundVariableToExprs, 0, new List<Expr>());
-    }
-
-    private void ConstructInstances(QuantifierExpr quantifierExpr,
-      Dictionary<Variable, HashSet<Expr>> boundVariableToExprs, int n, List<Expr> instance)
-    {
-      if (quantifierExpr.Dummies.Count == n)
-      {
-        InstantiateQuantifierAtInstance(quantifierExpr, instance);
-        return;
-      }
-
-      var boundVariable = quantifierExpr.Dummies[n];
-      foreach (var expr in boundVariableToExprs[boundVariable])
-      {
-        instance.Add(expr);
-        ConstructInstances(quantifierExpr, boundVariableToExprs, n + 1, instance);
-        instance.RemoveAt(n);
-      }
-    }
-
-    private void InstantiateQuantifierAtInstance(QuantifierExpr quantifierExpr, List<Expr> instance)
-    {
-      var quantifierInstantiationInfo = this.quantifierInstantiationInfo[quantifierExpr];
-      if (quantifierInstantiationInfo.instances.ContainsKey(instance))
-      {
-        return;
-      }
-
-      var subst = Substituter.SubstitutionFromDictionary(
-        Enumerable.Range(0, quantifierExpr.Dummies.Count).ToDictionary(
-          x => quantifierExpr.Dummies[x],
-          x => instance[x]));
-      var instantiation = Substituter.Apply(subst, quantifierExpr.Body);
-      quantifierInstantiationInfo.instances[new List<Expr>(instance)] = Skolemizer.Skolemize(this,
-        quantifierExpr is ForallExpr ? InstStatus.SkolemizeExists : InstStatus.SkolemizeForall, instantiation);
-      quantifierExpr.Dummies.Iter(variable => AddInstancesForLabels(variable, subst));
+      return false;
     }
 
     public Expr BindQuantifier(QuantifierExpr quantifierExpr)
@@ -257,6 +134,206 @@ namespace VC
       return this.quantifierBinding.ContainsKey(variable);
     }
 
+    private QuantifierInstantiationEngine(Implementation impl)
+    {
+      this.impl = impl;
+      this.quantifierBinding = new Dictionary<Variable, QuantifierExpr>();
+      this.lambdaDefinition = new Dictionary<Function, QuantifierExpr>();
+      this.quantifierInstantiationInfo = new Dictionary<QuantifierExpr, QuantifierInstantiationInfo>();
+      this.skolemConstants = new HashSet<Variable>();
+      this.labelToInstances = new Dictionary<string, HashSet<Expr>>();
+      this.accLabelToInstances = new Dictionary<string, HashSet<Expr>>();
+      this.lambdaToInstances = new Dictionary<Function, HashSet<List<Expr>>>();
+      this.accLambdaToInstances = new Dictionary<Function, HashSet<List<Expr>>>();
+      this.quantifierBindingNamePrefix = "quantifierBinding";
+      this.skolemConstantNamePrefix = "skolemConstant";
+    }
+
+    private static HashSet<string> FindLabels(ICarriesAttributes o)
+    {
+      var labels = new HashSet<string>();
+      var iter = o.Attributes;
+      while (iter != null)
+      {
+        if (iter.Key == "inst_label")
+        {
+          iter.Params.OfType<string>().Iter(x => labels.Add(x));
+        }
+        iter = iter.Next;
+      }
+      return labels;
+    }
+
+    private static Dictionary<string, HashSet<Expr>> FindInstancesForLabels(ICarriesAttributes o)
+    {
+      var freshInstances = new Dictionary<string, HashSet<Expr>>();
+      var iter = o.Attributes;
+      while (iter != null)
+      {
+        if (iter.Key == "inst")
+        {
+          var label = iter.Params[0] as string;
+          var instance = iter.Params[1] as Expr;
+          if (label != null && instance != null)
+          {
+            if (!freshInstances.ContainsKey(label))
+            {
+              freshInstances[label] = new HashSet<Expr>();
+            }
+            freshInstances[label].Add(instance);
+          }
+        }
+        iter = iter.Next;
+      }
+      return freshInstances;
+    }
+
+    private void Start()
+    {
+      impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().Iter(predicateCmd =>
+      {
+        AddInstances(FindInstancesForLabels(predicateCmd), labelToInstances);
+        predicateCmd.Expr = Skolemizer.Skolemize(this,
+          predicateCmd is AssumeCmd ? InstStatus.SkolemizeExists : InstStatus.SkolemizeForall, predicateCmd.Expr);
+        AddInstances(LambdaInstanceCollector.CollectInstances(this, predicateCmd.Expr), lambdaToInstances);
+      }));
+    }
+
+    private void Execute()
+    {
+      while (labelToInstances.Count > 0)
+      {
+        var currLabelToInstances = this.labelToInstances;
+        this.labelToInstances = new Dictionary<string, HashSet<Expr>>();
+        AddInstances(currLabelToInstances, accLabelToInstances);
+
+        var currLambdaToInstances = this.lambdaToInstances;
+        this.lambdaToInstances = new Dictionary<Function, HashSet<List<Expr>>>();
+        AddInstances(currLambdaToInstances, accLambdaToInstances);
+        
+        foreach (var quantifierExpr in quantifierBinding.Values)
+        {
+          var quantifierInfo = quantifierInstantiationInfo[quantifierExpr];
+          if (quantifierInfo.relevantLabels.Overlaps(currLabelToInstances.Keys))
+          {
+            InstantiateQuantifier(quantifierExpr);
+          }
+        }
+
+        foreach (var lambdaFunction in lambdaDefinition.Keys)
+        {
+          var quantifierExpr = lambdaDefinition[lambdaFunction];
+          var quantifierInfo = quantifierInstantiationInfo[quantifierExpr];
+          if (quantifierInfo.relevantLabels.Overlaps(currLabelToInstances.Keys) || currLambdaToInstances[lambdaFunction].Count > 0)
+          {
+            InstantiateLambdaDefinition(lambdaFunction);
+          }
+        }
+      }
+    }
+
+    private void Finish()
+    {
+      impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().Iter(predicateCmd =>
+      {
+        predicateCmd.Expr = LetConvert(predicateCmd.Expr);
+      }));
+      impl.LocVars.AddRange(skolemConstants);
+      var cmds = lambdaDefinition.Values.SelectMany(quantifierExpr => quantifierInstantiationInfo[quantifierExpr].instances.Values)
+        .Select(expr => new AssumeCmd(Token.NoToken, expr)).ToList<Cmd>();
+      cmds.AddRange(impl.Blocks[0].Cmds);
+      impl.Blocks[0].Cmds = cmds;
+    }
+
+    private Expr LetConvert(Expr expr)
+    {
+      var bindings = BindingCollector.CollectBindings(this, expr).ToList();
+      if (bindings.Count == 0)
+      {
+        return expr;
+      }
+      var rhss = new List<Expr>();
+      foreach (var binding in bindings)
+      {
+        rhss.Add(LetConvert(this.AugmentWithInstances(quantifierBinding[binding])));
+      }
+      return new LetExpr(Token.NoToken, bindings, rhss, null, expr);
+    }
+
+    private Expr AugmentWithInstances(QuantifierExpr quantifierExpr)
+    {
+      if (quantifierExpr is ForallExpr)
+      {
+        return Expr.And(quantifierExpr, Expr.And(quantifierInstantiationInfo[quantifierExpr].instances.Values));
+      }
+      else
+      {
+        return Expr.Or(quantifierExpr, Expr.Or(quantifierInstantiationInfo[quantifierExpr].instances.Values));
+      }
+    }
+
+    private void InstantiateLambdaDefinition(Function lambdaFunction)
+    {
+      var quantifierExpr = lambdaDefinition[lambdaFunction];
+      var quantifierInstantiationInfo = this.quantifierInstantiationInfo[quantifierExpr];
+      var boundVariableToExprs = quantifierInstantiationInfo.boundVariableToLabels.Keys.ToDictionary(
+        boundVariable => boundVariable,
+        boundVariable =>
+          quantifierInstantiationInfo
+            .boundVariableToLabels[boundVariable]
+            .SelectMany(label => accLabelToInstances[label]).ToHashSet());
+      foreach (var instance in accLambdaToInstances[lambdaFunction])
+      {
+        ConstructInstances(quantifierExpr, boundVariableToExprs, lambdaFunction.InParams.Count, instance);
+      }
+    }
+
+    private void InstantiateQuantifier(QuantifierExpr quantifierExpr)
+    {
+      var quantifierInstantiationInfo = this.quantifierInstantiationInfo[quantifierExpr];
+      var boundVariableToExprs = quantifierInstantiationInfo.boundVariableToLabels.Keys.ToDictionary(
+        boundVariable => boundVariable,
+        boundVariable =>
+          quantifierInstantiationInfo
+            .boundVariableToLabels[boundVariable]
+            .SelectMany(label => accLabelToInstances[label]).ToHashSet());
+      ConstructInstances(quantifierExpr, boundVariableToExprs, 0, new List<Expr>());
+    }
+
+    private void ConstructInstances(QuantifierExpr quantifierExpr,
+      Dictionary<Variable, HashSet<Expr>> boundVariableToExprs, int n, List<Expr> instance)
+    {
+      if (quantifierExpr.Dummies.Count == n)
+      {
+        InstantiateQuantifierAtInstance(quantifierExpr, instance);
+        return;
+      }
+      var boundVariable = quantifierExpr.Dummies[n];
+      foreach (var expr in boundVariableToExprs[boundVariable])
+      {
+        instance.Add(expr);
+        ConstructInstances(quantifierExpr, boundVariableToExprs, n + 1, instance);
+        instance.RemoveAt(n);
+      }
+    }
+
+    private void InstantiateQuantifierAtInstance(QuantifierExpr quantifierExpr, List<Expr> instance)
+    {
+      var quantifierInstantiationInfo = this.quantifierInstantiationInfo[quantifierExpr];
+      if (quantifierInstantiationInfo.instances.ContainsKey(instance))
+      {
+        return;
+      }
+      var subst = Substituter.SubstitutionFromDictionary(
+        Enumerable.Range(0, quantifierExpr.Dummies.Count).ToDictionary(
+          x => quantifierExpr.Dummies[x],
+          x => instance[x]));
+      var instantiation = Substituter.Apply(subst, quantifierExpr.Body);
+      quantifierInstantiationInfo.instances[new List<Expr>(instance)] = Skolemizer.Skolemize(this,
+        quantifierExpr is ForallExpr ? InstStatus.SkolemizeExists : InstStatus.SkolemizeForall, instantiation);
+      quantifierExpr.Dummies.Iter(variable => AddInstancesForLabels(variable, subst));
+    }
+    
     private void AddInstancesForLabels(Variable variable, Substitution subst)
     {
       FindInstancesForLabels(variable).Iter(kv =>
@@ -452,6 +529,42 @@ namespace VC
       }
 
       return base.VisitIdentifierExpr(node);
+    }
+  }
+
+  class LambdaInstanceCollector : ReadOnlyVisitor
+  {
+    public static Dictionary<Function, HashSet<List<Expr>>> CollectInstances(QuantifierInstantiationEngine qiEngine, Expr expr)
+    {
+      var lambdaInstanceCollector = new LambdaInstanceCollector(qiEngine);
+      lambdaInstanceCollector.VisitExpr(expr);
+      return lambdaInstanceCollector.instances;
+    }
+
+    private LambdaInstanceCollector(QuantifierInstantiationEngine qiEngine)
+    {
+      this.qiEngine = qiEngine;
+      this.instances = new Dictionary<Function, HashSet<List<Expr>>>();
+    }
+
+    private QuantifierInstantiationEngine qiEngine;
+    private Dictionary<Function, HashSet<List<Expr>>> instances;
+
+    public override Expr VisitNAryExpr(NAryExpr node)
+    {
+      if (node.Fun is FunctionCall functionCall)
+      {
+        var function = functionCall.Func;
+        if (function.OriginalLambdaExprAsString != null && qiEngine.BindLambdaFunction(function))
+        {
+          if (!instances.ContainsKey(function))
+          {
+            instances[function] = new HashSet<List<Expr>>(new ListComparer<Expr>());
+          }
+          instances[function].Add(node.Args.ToList());
+        }
+      }
+      return base.VisitNAryExpr(node);
     }
   }
 }
