@@ -16,7 +16,7 @@ SUM (n: int)
 returns ({:pending_async "ADD"} PAs:[PA]int)
 modifies x;
 {
-  assert n >= 0;
+  assert {:inst "A", 0} n >= 0;
   assert trigger(0); // base hint
   PAs := (lambda pa: PA :: if is#ADD(pa) && 1 <= i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
 }
@@ -34,13 +34,13 @@ INV (n: int)
 returns ({:pending_async "ADD"} PAs:[PA]int, {:choice} choice:PA)
 modifies x;
 {
-  var i: int;
+  var {:inst_label "A"} {:inst "A", i} {:inst "A", i+1} i: int;
 
   assert n >= 0;
-  
-  assume 0 <= i && i <= n;
+
+  assume {:inst "B", ADD(n)} 0 <= i && i <= n;
   x := x + (i * (i+1)) div 2;
-  PAs := (lambda pa: PA :: if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
+  PAs := (lambda {:inst_label "B"} pa: PA :: if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
   choice := ADD(i+1);
 
   assume trigger(i);                // the pattern we hope Z3 to put as a trigger
