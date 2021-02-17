@@ -281,7 +281,7 @@ namespace VC
         boundVariable =>
           quantifierInstantiationInfo
             .boundVariableToLabels[boundVariable]
-            .SelectMany(label => accLabelToInstances[label]).ToHashSet());
+            .SelectMany(label => accLabelToInstances.ContainsKey(label) ? accLabelToInstances[label] : new HashSet<Expr>()).ToHashSet());
       foreach (var instance in accLambdaToInstances[lambdaFunction])
       {
         ConstructInstances(quantifierExpr, boundVariableToExprs, lambdaFunction.InParams.Count, instance);
@@ -296,7 +296,7 @@ namespace VC
         boundVariable =>
           quantifierInstantiationInfo
             .boundVariableToLabels[boundVariable]
-            .SelectMany(label => accLabelToInstances[label]).ToHashSet());
+            .SelectMany(label => accLabelToInstances.ContainsKey(label) ? accLabelToInstances[label] : new HashSet<Expr>()).ToHashSet());
       ConstructInstances(quantifierExpr, boundVariableToExprs, 0, new List<Expr>());
     }
 
@@ -555,7 +555,9 @@ namespace VC
       if (node.Fun is FunctionCall functionCall)
       {
         var function = functionCall.Func;
-        if (function.OriginalLambdaExprAsString != null && qiEngine.BindLambdaFunction(function))
+        if (function.OriginalLambdaExprAsString != null && 
+            !VariableCollector.Collect(node.Args).OfType<BoundVariable>().Any() &&
+            qiEngine.BindLambdaFunction(function))
         {
           if (!instances.ContainsKey(function))
           {

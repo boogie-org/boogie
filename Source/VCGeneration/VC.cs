@@ -622,7 +622,7 @@ namespace VC
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       
       QuantifierInstantiationEngine.Instantiate(impl);
-
+      
       TypecheckingContext tc = new TypecheckingContext(null);
       impl.Typecheck(tc);
 

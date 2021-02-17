@@ -78,6 +78,18 @@ namespace Microsoft.Boogie
       }
     }
 
+    private static QKeyValue CloneAttributes(QKeyValue kv, Dictionary<Variable, Variable> substMap)
+    {
+      if (kv == null)
+      {
+        return null;
+      }
+      return new QKeyValue(kv.tok, kv.Key,
+        kv.Params.Select(p => p is Expr ? SubstitutionHelper.Apply(substMap, (Expr) p) : p).ToList(),
+        CloneAttributes(kv.Next, substMap));
+    }
+    
+    
     private static Expr ComputeTransitionRelation(
       CivlTypeChecker civlTypeChecker,
       Implementation first, Implementation second,
@@ -471,6 +483,8 @@ namespace Microsoft.Boogie
       {
         var remainingVars = NotEliminatedVars.Except(IntermediateFrameWithWitnesses);
         existsVarMap = remainingVars.ToDictionary(v => v, v => (Variable) VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
+        var substMap = remainingVars.ToDictionary(v => copyToOriginalVar[v], v => existsVarMap[v]);
+        existsVarMap.Iter(kv => kv.Value.Attributes = CloneAttributes(copyToOriginalVar[kv.Key].Attributes, substMap));
         pathExprs = SubstitutionHelper.Apply(existsVarMap, pathExprs).ToList();
       }
 
