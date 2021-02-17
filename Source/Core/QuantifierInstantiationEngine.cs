@@ -33,18 +33,6 @@ namespace VC
     private string quantifierBindingNamePrefix;
     private string skolemConstantNamePrefix;
     
-    private static void AddInstances<T,U>(Dictionary<T, HashSet<U>> @from, Dictionary<T, HashSet<U>> to)
-    {
-      @from.Iter(kv =>
-      {
-        if (!to.ContainsKey(kv.Key))
-        {
-          to[kv.Key] = new HashSet<U>();
-        }
-        to[kv.Key].UnionWith(@from[kv.Key]);
-      });
-    }
-
     public static void Instantiate(Implementation impl)
     {
       var qiEngine = new QuantifierInstantiationEngine(impl);
@@ -88,33 +76,38 @@ namespace VC
         return true;
       }
       var lambdaDefinitionExpr = lambdaFunction.DefinitionAxiom.Expr as QuantifierExpr;
+      if (lambdaDefinitionExpr.TypeParameters.Count > 0)
+      {
+        return false;
+      }
       var boundVariableToLabels = lambdaDefinitionExpr.Dummies.ToDictionary(x => x, x => FindLabels(x));
       if (Enumerable
-          .Range(lambdaFunction.InParams.Count, lambdaDefinitionExpr.Dummies.Count - lambdaFunction.InParams.Count)
-          .All(i => boundVariableToLabels[lambdaDefinitionExpr.Dummies[i]].Count > 0))
+        .Range(lambdaFunction.InParams.Count, lambdaDefinitionExpr.Dummies.Count - lambdaFunction.InParams.Count)
+        .Any(i => boundVariableToLabels[lambdaDefinitionExpr.Dummies[i]].Count == 0))
       {
-        lambdaDefinition[lambdaFunction] = lambdaDefinitionExpr;
-        quantifierInstantiationInfo[lambdaDefinitionExpr] = new QuantifierInstantiationInfo(boundVariableToLabels);
-        return true;
+        return false;
       }
-      return false;
+      lambdaDefinition[lambdaFunction] = lambdaDefinitionExpr;
+      quantifierInstantiationInfo[lambdaDefinitionExpr] = new QuantifierInstantiationInfo(boundVariableToLabels);
+      return true;
     }
 
     public Expr BindQuantifier(QuantifierExpr quantifierExpr)
     {
-      var boundVariableToLabels = quantifierExpr.Dummies.ToDictionary(x => x, x => FindLabels(x));
-      if (boundVariableToLabels.All(kv => kv.Value.Count > 0))
-      {
-        var v = new BoundVariable(Token.NoToken,
-          new TypedIdent(Token.NoToken, $"{quantifierBindingNamePrefix}{quantifierBinding.Count}", Type.Bool));
-        quantifierBinding[v] = quantifierExpr;
-        quantifierInstantiationInfo[quantifierExpr] = new QuantifierInstantiationInfo(boundVariableToLabels);
-        return Expr.Ident(v);
-      }
-      else
+      if (quantifierExpr.TypeParameters.Count > 0)
       {
         return quantifierExpr;
       }
+      var boundVariableToLabels = quantifierExpr.Dummies.ToDictionary(x => x, x => FindLabels(x));
+      if (boundVariableToLabels.Any(kv => kv.Value.Count == 0))
+      {
+        return quantifierExpr;
+      }
+      var v = new BoundVariable(Token.NoToken,
+        new TypedIdent(Token.NoToken, $"{quantifierBindingNamePrefix}{quantifierBinding.Count}", Type.Bool));
+      quantifierBinding[v] = quantifierExpr;
+      quantifierInstantiationInfo[quantifierExpr] = new QuantifierInstantiationInfo(boundVariableToLabels);
+      return Expr.Ident(v);
     }
 
     public Variable FreshSkolemConstant(Variable variable)
@@ -149,6 +142,18 @@ namespace VC
       this.skolemConstantNamePrefix = "skolemConstant";
     }
 
+    private static void AddInstances<T,U>(Dictionary<T, HashSet<U>> @from, Dictionary<T, HashSet<U>> to)
+    {
+      @from.Iter(kv =>
+      {
+        if (!to.ContainsKey(kv.Key))
+        {
+          to[kv.Key] = new HashSet<U>();
+        }
+        to[kv.Key].UnionWith(@from[kv.Key]);
+      });
+    }
+    
     private static HashSet<string> FindLabels(ICarriesAttributes o)
     {
       var labels = new HashSet<string>();
@@ -342,7 +347,6 @@ namespace VC
         {
           labelToInstances[kv.Key] = new HashSet<Expr>();
         }
-
         kv.Value.Iter(expr => { labelToInstances[kv.Key].Add(Substituter.Apply(subst, expr)); });
       });
     }
