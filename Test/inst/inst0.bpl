@@ -1,3 +1,6 @@
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
 function F(int): bool;
 
 procedure A()

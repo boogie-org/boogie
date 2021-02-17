@@ -1,3 +1,6 @@
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
 type {:datatype} PA;
 function {:constructor} ADD(i: int) : PA;
 
