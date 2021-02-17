@@ -31,13 +31,13 @@ INV (n: int)
 returns ({:pending_async "ADD"} PAs:[PA]int, {:choice} choice:PA)
 modifies x;
 {
-  var {:inst_label "A"} i: int;
+  var {:inst_at "A"} i: int;
 
   assert n >= 0;
 
   assume {:inst "A", i} {:inst "A", i+1} {:inst "B", ADD(n)} 0 <= i && i <= n;
   x := x + (i * (i+1)) div 2;
-  PAs := (lambda {:inst_label "B"} pa: PA :: if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
+  PAs := (lambda {:inst_at "B"} pa: PA :: if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
   choice := ADD(i+1);
 }
 

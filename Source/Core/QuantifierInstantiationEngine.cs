@@ -110,18 +110,23 @@ namespace VC
       return Expr.Ident(v);
     }
 
-    public Variable FreshSkolemConstant(Variable variable)
+    public Dictionary<Variable, Expr> FreshSkolemConstants(BinderExpr binderExpr)
     {
-      var type = variable.TypedIdent.Type;
-      var skolemConstant = new LocalVariable(Token.NoToken,
-        new TypedIdent(Token.NoToken, $"{skolemConstantNamePrefix}{skolemConstants.Count}", type));
-      skolemConstants.Add(skolemConstant);
-      var subst = Substituter.SubstitutionFromDictionary(
-        new Dictionary<Variable, Expr> {{variable, Expr.Ident(skolemConstant)}});
-      AddInstancesForLabels(variable, subst);
-      return skolemConstant;
+      var variableMapping = binderExpr.Dummies.ToDictionary(v => v, v => FreshSkolemConstant(v));
+      var substMap = variableMapping.ToDictionary(kv => kv.Key, kv => (Expr) Expr.Ident(kv.Value));
+      var subst = Substituter.SubstitutionFromDictionary(substMap);
+      binderExpr.Dummies.Iter(v => AddInstancesForLabels(v, subst));
+      return substMap;
     }
 
+    private Variable FreshSkolemConstant(Variable variable)
+    {
+      var skolemConstant = new LocalVariable(Token.NoToken,
+        new TypedIdent(Token.NoToken, $"{skolemConstantNamePrefix}{skolemConstants.Count}", variable.TypedIdent.Type));
+      skolemConstants.Add(skolemConstant);
+      return skolemConstant;
+    }
+    
     public bool IsQuantifierBinding(Variable variable)
     {
       return this.quantifierBinding.ContainsKey(variable);
@@ -160,7 +165,7 @@ namespace VC
       var iter = o.Attributes;
       while (iter != null)
       {
-        if (iter.Key == "inst_label")
+        if (iter.Key == "inst_at")
         {
           iter.Params.OfType<string>().Iter(x => labels.Add(x));
         }
@@ -452,19 +457,16 @@ namespace VC
 
     private Expr PerformSkolemization(BinderExpr node)
     {
-      var oldToNew = node.Dummies.ToDictionary(x => x,
-        x => qiEngine.FreshSkolemConstant(x));
+      var oldToNew = qiEngine.FreshSkolemConstants(node);
       foreach (var x in node.Dummies)
       {
-        bound.Add(x, Expr.Ident(oldToNew[x]));
+        bound.Add(x, oldToNew[x]);
       }
-
       var expr = base.VisitExpr(node.Body);
       foreach (var x in node.Dummies)
       {
         bound.Remove(x);
       }
-
       return expr;
     }
   }

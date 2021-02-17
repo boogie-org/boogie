@@ -8,8 +8,8 @@ procedure INV0(n: int)
 
   assume 0 <= i;
   assume i <= n;
-  assume (forall {:inst_label "A"} pa: PA :: PAs[pa] == if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
-  assume (forall {:inst_label "A"} pa: PA :: PAs[pa] == 0);
+  assume (forall {:inst_at "A"} pa: PA :: PAs[pa] == if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
+  assume (forall {:inst_at "A"} pa: PA :: PAs[pa] == 0);
   assert {:inst "A", ADD(n)} i == n;
 }
 
@@ -21,8 +21,8 @@ procedure INV1(n: int)
 
   assume 0 <= i;
   assume i <= n;
-  assume (forall {:inst_label "A"} pa: PA :: PAs[pa] == if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
-  assume (forall {:inst_label "A"} pa: PA :: PAs[pa] == 0);
+  assume (forall {:inst_at "A"} pa: PA :: PAs[pa] == if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
+  assume (forall {:inst_at "A"} pa: PA :: PAs[pa] == 0);
   m := n + 1;
   m := m + 1;
   assert {:inst "A", ADD(m-2)} i == n;
@@ -35,7 +35,7 @@ procedure INV2(n: int)
 
   assume 0 <= i;
   assume i <= n;
-  PAs := (lambda {:inst_label "A"} pa: PA :: if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
-  assume (forall {:inst_label "A"} pa: PA :: PAs[pa] == 0);
+  PAs := (lambda {:inst_at "A"} pa: PA :: if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
+  assume (forall {:inst_at "A"} pa: PA :: PAs[pa] == 0);
   assert {:inst "A", ADD(n)} i == n;
 }
