@@ -115,7 +115,7 @@ namespace VC
       var variableMapping = binderExpr.Dummies.ToDictionary(v => v, v => FreshSkolemConstant(v));
       var substMap = variableMapping.ToDictionary(kv => kv.Key, kv => (Expr) Expr.Ident(kv.Value));
       var subst = Substituter.SubstitutionFromDictionary(substMap);
-      binderExpr.Dummies.Iter(v => AddInstancesForLabels(v, subst));
+      AddInstancesForLabels(binderExpr, subst);
       return substMap;
     }
 
@@ -341,12 +341,12 @@ namespace VC
       var instantiation = Substituter.Apply(subst, quantifierExpr.Body);
       quantifierInstantiationInfo.instances[new List<Expr>(instance)] = Skolemizer.Skolemize(this,
         quantifierExpr is ForallExpr ? InstStatus.SkolemizeExists : InstStatus.SkolemizeForall, instantiation);
-      quantifierExpr.Dummies.Iter(variable => AddInstancesForLabels(variable, subst));
+      AddInstancesForLabels(quantifierExpr, subst);
     }
     
-    private void AddInstancesForLabels(Variable variable, Substitution subst)
+    private void AddInstancesForLabels(ICarriesAttributes o, Substitution subst)
     {
-      FindInstancesForLabels(variable).Iter(kv =>
+      FindInstancesForLabels(o).Iter(kv =>
       {
         if (!labelToInstances.ContainsKey(kv.Key))
         {

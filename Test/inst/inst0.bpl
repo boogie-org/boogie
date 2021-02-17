@@ -5,7 +5,7 @@ procedure A()
     assume (forall {:inst_at "L"} x: int :: F(x));
     assert {:inst "L", 0} F(0);
     assert {:inst "L", 0} F(0);
-    assert (forall {:inst "L", y+1} y: int :: F(y+1));
+    assert (forall y: int :: {:inst "L", y+1} F(y+1));
 }
 
 procedure B(j: int)
