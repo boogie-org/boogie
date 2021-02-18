@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using Microsoft.Boogie;
 using Type = Microsoft.Boogie.Type;
@@ -7,6 +8,27 @@ namespace VC
 {
   public class QuantifierInstantiationEngine
   {
+    /*
+     * The algorithm implemented by QuantifierInstantiationEngine is a fixpoint. There are three phases.
+     *
+     * Start:
+     *   - find instantiation sources in commands
+     *   - skolemize quantifiers in the expressions in commands
+     *
+     * At this point, a collection of quantifiers to be instantiated and a collection of instantiation sources
+     * are installed.
+     *
+     * Execute: Repeatedly, instantiate quantifiers based on instantiation sources, skolemize and install new quantifiers
+     * that are discovered, and install new instantiation sources.
+     *
+     * Finish:
+     *   - Rewrite quantifiers based on the discovered instances. Forall quantifiers are rewritten as a conjunction of
+     *     the original quantifier and the instances. Exists quantifiers are rewritten as a disjunction of the original
+     *     quantifier and the instances.
+     *   - Add all skolem constants generated as local variables of impl.
+     *   - Add instances of the axioms for lambdas as assume statements in the starting block of impl.
+     */
+    
     private class QuantifierInstantiationInfo
     {
       public Dictionary<Variable, HashSet<string>> boundVariableToLabels;
@@ -35,131 +57,17 @@ namespace VC
     
     public static void Instantiate(Implementation impl)
     {
+      if (!InstantiationSourceChecker.HasInstantiationSources(impl))
+      {
+        return;
+      }
       var qiEngine = new QuantifierInstantiationEngine(impl);
-      qiEngine.Start();
-      qiEngine.Execute();
-      qiEngine.Finish();
+      qiEngine.Start();     // initialize data structures
+      qiEngine.Execute();   // execute fixpoint
+      qiEngine.Finish();    // install generated instances in impl  
     }
 
-    public static void SubstituteIncarnationInInstantiationAttribute(Cmd cmd, Substitution incarnationSubst, Substitution oldFrameSubst)
-    {
-      QKeyValue iter = null;
-      if (cmd is AssignCmd assignCmd)
-      {
-        iter = assignCmd.Attributes;
-      }
-      else if (cmd is PredicateCmd predicateCmd)
-      {
-        iter = predicateCmd.Attributes;
-      }
-      while (iter != null)
-      {
-        if (iter.Key == "inst")
-        {
-          var label = iter.Params[0] as string;
-          var instance = iter.Params[1] as Expr;
-          if (label != null && instance != null)
-          {
-            instance = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, instance);
-            iter.ClearParams();
-            iter.AddParams(new List<object> {label, instance});
-          }
-        }
-        iter = iter.Next;
-      }
-    }
-    
-    public bool BindLambdaFunction(Function lambdaFunction)
-    {
-      if (lambdaDefinition.ContainsKey(lambdaFunction))
-      {
-        return true;
-      }
-      var lambdaDefinitionExpr = lambdaFunction.DefinitionAxiom.Expr as QuantifierExpr;
-      if (lambdaDefinitionExpr.TypeParameters.Count > 0)
-      {
-        return false;
-      }
-      var boundVariableToLabels = lambdaDefinitionExpr.Dummies.ToDictionary(x => x, x => FindLabels(x));
-      if (Enumerable
-        .Range(lambdaFunction.InParams.Count, lambdaDefinitionExpr.Dummies.Count - lambdaFunction.InParams.Count)
-        .Any(i => boundVariableToLabels[lambdaDefinitionExpr.Dummies[i]].Count == 0))
-      {
-        return false;
-      }
-      lambdaDefinition[lambdaFunction] = lambdaDefinitionExpr;
-      quantifierInstantiationInfo[lambdaDefinitionExpr] = new QuantifierInstantiationInfo(boundVariableToLabels);
-      return true;
-    }
-
-    public Expr BindQuantifier(QuantifierExpr quantifierExpr)
-    {
-      if (quantifierExpr.TypeParameters.Count > 0)
-      {
-        return quantifierExpr;
-      }
-      var boundVariableToLabels = quantifierExpr.Dummies.ToDictionary(x => x, x => FindLabels(x));
-      if (boundVariableToLabels.Any(kv => kv.Value.Count == 0))
-      {
-        return quantifierExpr;
-      }
-      var v = new BoundVariable(Token.NoToken,
-        new TypedIdent(Token.NoToken, $"{quantifierBindingNamePrefix}{quantifierBinding.Count}", Type.Bool));
-      quantifierBinding[v] = quantifierExpr;
-      quantifierInstantiationInfo[quantifierExpr] = new QuantifierInstantiationInfo(boundVariableToLabels);
-      return Expr.Ident(v);
-    }
-
-    public Dictionary<Variable, Expr> FreshSkolemConstants(BinderExpr binderExpr)
-    {
-      var variableMapping = binderExpr.Dummies.ToDictionary(v => v, v => FreshSkolemConstant(v));
-      var substMap = variableMapping.ToDictionary(kv => kv.Key, kv => (Expr) Expr.Ident(kv.Value));
-      var subst = Substituter.SubstitutionFromDictionary(substMap);
-      AddInstancesForLabels(binderExpr, subst);
-      return substMap;
-    }
-
-    private Variable FreshSkolemConstant(Variable variable)
-    {
-      var skolemConstant = new LocalVariable(Token.NoToken,
-        new TypedIdent(Token.NoToken, $"{skolemConstantNamePrefix}{skolemConstants.Count}", variable.TypedIdent.Type));
-      skolemConstants.Add(skolemConstant);
-      return skolemConstant;
-    }
-    
-    public bool IsQuantifierBinding(Variable variable)
-    {
-      return this.quantifierBinding.ContainsKey(variable);
-    }
-
-    private QuantifierInstantiationEngine(Implementation impl)
-    {
-      this.impl = impl;
-      this.quantifierBinding = new Dictionary<Variable, QuantifierExpr>();
-      this.lambdaDefinition = new Dictionary<Function, QuantifierExpr>();
-      this.quantifierInstantiationInfo = new Dictionary<QuantifierExpr, QuantifierInstantiationInfo>();
-      this.skolemConstants = new HashSet<Variable>();
-      this.labelToInstances = new Dictionary<string, HashSet<Expr>>();
-      this.accLabelToInstances = new Dictionary<string, HashSet<Expr>>();
-      this.lambdaToInstances = new Dictionary<Function, HashSet<List<Expr>>>();
-      this.accLambdaToInstances = new Dictionary<Function, HashSet<List<Expr>>>();
-      this.quantifierBindingNamePrefix = "quantifierBinding";
-      this.skolemConstantNamePrefix = "skolemConstant";
-    }
-
-    private static void AddInstances<T,U>(Dictionary<T, HashSet<U>> @from, Dictionary<T, HashSet<U>> to)
-    {
-      @from.Iter(kv =>
-      {
-        if (!to.ContainsKey(kv.Key))
-        {
-          to[kv.Key] = new HashSet<U>();
-        }
-        to[kv.Key].UnionWith(@from[kv.Key]);
-      });
-    }
-    
-    private static HashSet<string> FindLabels(ICarriesAttributes o)
+    public static HashSet<string> FindInstantiationHints(ICarriesAttributes o)
     {
       var labels = new HashSet<string>();
       var iter = o.Attributes;
@@ -174,7 +82,7 @@ namespace VC
       return labels;
     }
 
-    private static Dictionary<string, HashSet<Expr>> FindInstancesForLabels(ICarriesAttributes o)
+    public static Dictionary<string, HashSet<Expr>> FindInstantiationSources(ICarriesAttributes o)
     {
       var freshInstances = new Dictionary<string, HashSet<Expr>>();
       var iter = o.Attributes;
@@ -198,14 +106,132 @@ namespace VC
       return freshInstances;
     }
 
+    public static void SubstituteIncarnationInInstantiationSources(Cmd cmd, Substitution incarnationSubst)
+    {
+      QKeyValue iter = null;
+      if (cmd is AssignCmd assignCmd)
+      {
+        iter = assignCmd.Attributes;
+      }
+      else if (cmd is PredicateCmd predicateCmd)
+      {
+        iter = predicateCmd.Attributes;
+      }
+      while (iter != null)
+      {
+        if (iter.Key == "inst")
+        {
+          var label = iter.Params[0] as string;
+          var instance = iter.Params[1] as Expr;
+          if (label != null && instance != null)
+          {
+            instance = Substituter.Apply(incarnationSubst, instance);
+            iter.ClearParams();
+            iter.AddParams(new List<object> {label, instance});
+          }
+        }
+        iter = iter.Next;
+      }
+    }
+    
+    public bool BindLambdaFunction(Function lambdaFunction)
+    {
+      if (lambdaDefinition.ContainsKey(lambdaFunction))
+      {
+        return true;
+      }
+      var lambdaDefinitionExpr = lambdaFunction.DefinitionAxiom.Expr as QuantifierExpr;
+      if (lambdaDefinitionExpr.TypeParameters.Count > 0)
+      {
+        return false;
+      }
+      var boundVariableToLabels = lambdaDefinitionExpr.Dummies.ToDictionary(x => x, x => FindInstantiationHints(x));
+      if (Enumerable
+        .Range(lambdaFunction.InParams.Count, lambdaDefinitionExpr.Dummies.Count - lambdaFunction.InParams.Count)
+        .Any(i => boundVariableToLabels[lambdaDefinitionExpr.Dummies[i]].Count == 0))
+      {
+        return false;
+      }
+      lambdaDefinition[lambdaFunction] = lambdaDefinitionExpr;
+      quantifierInstantiationInfo[lambdaDefinitionExpr] = new QuantifierInstantiationInfo(boundVariableToLabels);
+      return true;
+    }
+
+    public Expr BindQuantifier(QuantifierExpr quantifierExpr)
+    {
+      if (quantifierExpr.TypeParameters.Count > 0)
+      {
+        return quantifierExpr;
+      }
+      var boundVariableToLabels = quantifierExpr.Dummies.ToDictionary(x => x, x => FindInstantiationHints(x));
+      if (boundVariableToLabels.Any(kv => kv.Value.Count == 0))
+      {
+        return quantifierExpr;
+      }
+      var v = new BoundVariable(Token.NoToken,
+        new TypedIdent(Token.NoToken, $"{quantifierBindingNamePrefix}{quantifierBinding.Count}", Type.Bool));
+      quantifierBinding[v] = quantifierExpr;
+      quantifierInstantiationInfo[quantifierExpr] = new QuantifierInstantiationInfo(boundVariableToLabels);
+      return Expr.Ident(v);
+    }
+
+    public Dictionary<Variable, Expr> FreshSkolemConstants(BinderExpr binderExpr)
+    {
+      var variableMapping = binderExpr.Dummies.ToDictionary(v => v, v => FreshSkolemConstant(v));
+      var substMap = variableMapping.ToDictionary(kv => kv.Key, kv => (Expr) Expr.Ident(kv.Value));
+      var subst = Substituter.SubstitutionFromDictionary(substMap);
+      AddInstancesForLabels(binderExpr, subst);
+      return substMap;
+    }
+
+    public bool IsQuantifierBinding(Variable variable)
+    {
+      return this.quantifierBinding.ContainsKey(variable);
+    }
+
+    private Variable FreshSkolemConstant(Variable variable)
+    {
+      var skolemConstant = new LocalVariable(Token.NoToken,
+        new TypedIdent(Token.NoToken, $"{skolemConstantNamePrefix}{skolemConstants.Count}", variable.TypedIdent.Type));
+      skolemConstants.Add(skolemConstant);
+      return skolemConstant;
+    }
+    
+    private QuantifierInstantiationEngine(Implementation impl)
+    {
+      this.impl = impl;
+      this.quantifierBinding = new Dictionary<Variable, QuantifierExpr>();
+      this.lambdaDefinition = new Dictionary<Function, QuantifierExpr>();
+      this.quantifierInstantiationInfo = new Dictionary<QuantifierExpr, QuantifierInstantiationInfo>();
+      this.skolemConstants = new HashSet<Variable>();
+      this.labelToInstances = new Dictionary<string, HashSet<Expr>>();
+      this.accLabelToInstances = new Dictionary<string, HashSet<Expr>>();
+      this.lambdaToInstances = new Dictionary<Function, HashSet<List<Expr>>>();
+      this.accLambdaToInstances = new Dictionary<Function, HashSet<List<Expr>>>();
+      this.quantifierBindingNamePrefix = "quantifierBinding";
+      this.skolemConstantNamePrefix = "skolemConstant";
+    }
+
+    private static void AddDictionary<T,U>(Dictionary<T, HashSet<U>> @from, Dictionary<T, HashSet<U>> to)
+    {
+      @from.Iter(kv =>
+      {
+        if (!to.ContainsKey(kv.Key))
+        {
+          to[kv.Key] = new HashSet<U>();
+        }
+        to[kv.Key].UnionWith(@from[kv.Key]);
+      });
+    }
+    
     private void Start()
     {
       impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().Iter(predicateCmd =>
       {
-        AddInstances(FindInstancesForLabels(predicateCmd), labelToInstances);
+        AddDictionary(FindInstantiationSources(predicateCmd), labelToInstances);
         predicateCmd.Expr = Skolemizer.Skolemize(this,
           predicateCmd is AssumeCmd ? InstStatus.SkolemizeExists : InstStatus.SkolemizeForall, predicateCmd.Expr);
-        AddInstances(LambdaInstanceCollector.CollectInstances(this, predicateCmd.Expr), lambdaToInstances);
+        AddDictionary(LambdaInstanceCollector.CollectInstances(this, predicateCmd.Expr), lambdaToInstances);
       }));
     }
 
@@ -215,11 +241,11 @@ namespace VC
       {
         var currLabelToInstances = this.labelToInstances;
         this.labelToInstances = new Dictionary<string, HashSet<Expr>>();
-        AddInstances(currLabelToInstances, accLabelToInstances);
+        AddDictionary(currLabelToInstances, accLabelToInstances);
 
         var currLambdaToInstances = this.lambdaToInstances;
         this.lambdaToInstances = new Dictionary<Function, HashSet<List<Expr>>>();
-        AddInstances(currLambdaToInstances, accLambdaToInstances);
+        AddDictionary(currLambdaToInstances, accLambdaToInstances);
         
         foreach (var quantifierExpr in quantifierBinding.Values)
         {
@@ -346,7 +372,7 @@ namespace VC
     
     private void AddInstancesForLabels(ICarriesAttributes o, Substitution subst)
     {
-      FindInstancesForLabels(o).Iter(kv =>
+      FindInstantiationSources(o).Iter(kv =>
       {
         if (!labelToInstances.ContainsKey(kv.Key))
         {
@@ -359,18 +385,30 @@ namespace VC
 
   enum InstStatus
   {
-    SkolemizeForall,
-    SkolemizeExists,
-    None,
+    SkolemizeForall,  // skolemize forall quantifiers
+    SkolemizeExists,  // skolemize exists quantifiers
+    None,             // do not skolemize quantifiers
   }
 
   class Skolemizer : Duplicator
   {
+    /*
+     * The method Skolemize performs best-effort skolemization of the input expression expr.
+     * If instStatus = InstStatus.Forall, a quantifier F embedded in expr is skolemized
+     * provided it can be proved that F is a forall quantifier in the NNF version of expr.
+     * If instStatus = InstStatus.Exists, a quantifier F embedded in expr is skolemized
+     * provided it can be proved that F is an exists quantifier in the NNF version of expr.
+     *
+     * Factorization is performed on the resulting expression.
+     */
     public static Expr Skolemize(QuantifierInstantiationEngine qiEngine, InstStatus instStatus, Expr expr)
     {
+      Contract.Requires(instStatus != InstStatus.None);
       var skolemizer = new Skolemizer(qiEngine, instStatus);
       var skolemizedExpr = skolemizer.VisitExpr(expr);
-      return Factorizer.Factorize(qiEngine, instStatus, skolemizedExpr);
+      return Factorizer.Factorize(qiEngine,
+        instStatus == InstStatus.SkolemizeExists ? InstStatus.SkolemizeForall : InstStatus.SkolemizeExists,
+        skolemizedExpr);
     }
 
     private Skolemizer(QuantifierInstantiationEngine qiEngine, InstStatus instStatus)
@@ -414,7 +452,21 @@ namespace VC
       {
         instStatus = InstStatus.None;
       }
+      var ifThenElse = node.Fun as IfThenElse;
+      if (ifThenElse != null)
+      {
+        instStatus = InstStatus.None;
+      }
       var returnExpr = base.VisitNAryExpr(node);
+      instStatus = savedInstStatus;
+      return returnExpr;
+    }
+
+    public override Expr VisitLetExpr(LetExpr node)
+    {
+      var savedInstStatus = instStatus;
+      instStatus = InstStatus.None;
+      var returnExpr = base.VisitLetExpr(node);
       instStatus = savedInstStatus;
       return returnExpr;
     }
@@ -473,11 +525,19 @@ namespace VC
 
   class Factorizer : Duplicator
   {
+    /* 
+     * The method Factorize factors out quantified expressions in expr replacing them with a bound variable.
+     * The binding between the bound variable and the quantifier replaced by it is registered in qiEngine.
+     * If instStatus == InstStatus.Forall, forall quantifiers are factorized.
+     * If instStatus == InstStatus.Exists, exists quantifiers are factorized.
+     */
+    
     private QuantifierInstantiationEngine qiEngine;
     private InstStatus instStatus;
 
     public static Expr Factorize(QuantifierInstantiationEngine qiEngine, InstStatus instStatus, Expr expr)
     {
+      Contract.Assert(instStatus != InstStatus.None);
       var factorizer = new Factorizer(qiEngine, instStatus);
       return factorizer.VisitExpr(expr);
     }
@@ -490,7 +550,7 @@ namespace VC
 
     public override Expr VisitForallExpr(ForallExpr node)
     {
-      if (instStatus != InstStatus.SkolemizeForall)
+      if (instStatus == InstStatus.SkolemizeForall)
       {
         return qiEngine.BindQuantifier(node);
       }
@@ -500,7 +560,7 @@ namespace VC
 
     public override Expr VisitExistsExpr(ExistsExpr node)
     {
-      if (instStatus != InstStatus.SkolemizeExists)
+      if (instStatus == InstStatus.SkolemizeExists)
       {
         return qiEngine.BindQuantifier(node);
       }
@@ -573,6 +633,42 @@ namespace VC
         }
       }
       return base.VisitNAryExpr(node);
+    }
+  }
+
+  class InstantiationSourceChecker : ReadOnlyVisitor
+  {
+    private bool hasInstances;
+
+    public static bool HasInstantiationSources(Implementation impl)
+    {
+      var instanceChecker = new InstantiationSourceChecker();
+      instanceChecker.VisitImplementation(impl);
+      return instanceChecker.hasInstances;
+    }
+
+    private InstantiationSourceChecker()
+    {
+      this.hasInstances = false;
+    }
+    
+    public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
+    {
+      if (QuantifierInstantiationEngine.FindInstantiationSources(node).Count > 0)
+      {
+        hasInstances = true;
+      }
+      return base.VisitQuantifierExpr(node);
+    }
+
+    public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
+    {
+      if (cmdSeq.OfType<ICarriesAttributes>()
+        .Any(cmd => QuantifierInstantiationEngine.FindInstantiationSources(cmd).Count > 0))
+      {
+        hasInstances = true;
+      }
+      return base.VisitCmdSeq(cmdSeq);
     }
   }
 }
