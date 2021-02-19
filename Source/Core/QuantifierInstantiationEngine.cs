@@ -230,7 +230,7 @@ namespace VC
       {
         AddDictionary(FindInstantiationSources(predicateCmd), labelToInstances);
         predicateCmd.Expr = Skolemizer.Skolemize(this,
-          predicateCmd is AssumeCmd ? InstStatus.SkolemizeExists : InstStatus.SkolemizeForall, predicateCmd.Expr);
+          predicateCmd is AssumeCmd ? QuantifierStatus.Exists : QuantifierStatus.Forall, predicateCmd.Expr);
         AddDictionary(LambdaInstanceCollector.CollectInstances(this, predicateCmd.Expr), lambdaToInstances);
       }));
     }
@@ -366,7 +366,7 @@ namespace VC
           x => instance[x]));
       var instantiation = Substituter.Apply(subst, quantifierExpr.Body);
       quantifierInstantiationInfo.instances[new List<Expr>(instance)] = Skolemizer.Skolemize(this,
-        quantifierExpr is ForallExpr ? InstStatus.SkolemizeExists : InstStatus.SkolemizeForall, instantiation);
+        quantifierExpr is ForallExpr ? QuantifierStatus.Exists : QuantifierStatus.Forall, instantiation);
       AddInstancesForLabels(quantifierExpr, subst);
     }
     
@@ -383,43 +383,43 @@ namespace VC
     }
   }
 
-  enum InstStatus
+  enum QuantifierStatus
   {
-    SkolemizeForall,  // skolemize forall quantifiers
-    SkolemizeExists,  // skolemize exists quantifiers
-    None,             // do not skolemize quantifiers
+    Exists,
+    Forall,
+    None,
   }
 
   class Skolemizer : Duplicator
   {
     /*
      * The method Skolemize performs best-effort skolemization of the input expression expr.
-     * If instStatus = InstStatus.Forall, a quantifier F embedded in expr is skolemized
+     * If quantifierStatus = QuantifierStatus.Forall, a quantifier F embedded in expr is skolemized
      * provided it can be proved that F is a forall quantifier in the NNF version of expr.
-     * If instStatus = InstStatus.Exists, a quantifier F embedded in expr is skolemized
+     * If quantifierStatus = QuantifierStatus.Exists, a quantifier F embedded in expr is skolemized
      * provided it can be proved that F is an exists quantifier in the NNF version of expr.
      *
      * Factorization is performed on the resulting expression.
      */
-    public static Expr Skolemize(QuantifierInstantiationEngine qiEngine, InstStatus instStatus, Expr expr)
+    public static Expr Skolemize(QuantifierInstantiationEngine qiEngine, QuantifierStatus quantifierStatus, Expr expr)
     {
-      Contract.Requires(instStatus != InstStatus.None);
-      var skolemizer = new Skolemizer(qiEngine, instStatus);
+      Contract.Requires(quantifierStatus != QuantifierStatus.None);
+      var skolemizer = new Skolemizer(qiEngine, quantifierStatus);
       var skolemizedExpr = skolemizer.VisitExpr(expr);
       return Factorizer.Factorize(qiEngine,
-        instStatus == InstStatus.SkolemizeExists ? InstStatus.SkolemizeForall : InstStatus.SkolemizeExists,
+        quantifierStatus == QuantifierStatus.Exists ? QuantifierStatus.Forall : QuantifierStatus.Exists,
         skolemizedExpr);
     }
 
-    private Skolemizer(QuantifierInstantiationEngine qiEngine, InstStatus instStatus)
+    private Skolemizer(QuantifierInstantiationEngine qiEngine, QuantifierStatus quantifierStatus)
     {
       this.qiEngine = qiEngine;
-      this.instStatus = instStatus;
+      this.quantifierStatus = quantifierStatus;
       this.bound = new Dictionary<Variable, Expr>();
     }
 
     private QuantifierInstantiationEngine qiEngine;
-    private InstStatus instStatus;
+    private QuantifierStatus quantifierStatus;
     private Dictionary<Variable, Expr> bound;
 
     public override Expr VisitIdentifierExpr(IdentifierExpr node)
@@ -428,21 +428,20 @@ namespace VC
       {
         return bound[node.Decl];
       }
-
       return base.VisitIdentifierExpr(node);
     }
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      if (instStatus == InstStatus.None)
+      if (quantifierStatus == QuantifierStatus.None)
       {
         return base.VisitNAryExpr(node);
       }
-      var savedInstStatus = instStatus;
+      var savedQuantifierStatus = quantifierStatus;
       var unaryOperator = node.Fun as UnaryOperator;
       if (unaryOperator != null && unaryOperator.Op == UnaryOperator.Opcode.Not)
       {
-        instStatus = instStatus == InstStatus.SkolemizeExists ? InstStatus.SkolemizeForall : InstStatus.SkolemizeExists;
+        quantifierStatus = quantifierStatus == QuantifierStatus.Exists ? QuantifierStatus.Forall : QuantifierStatus.Exists;
       }
       var binaryOperator = node.Fun as BinaryOperator;
       if (binaryOperator != null &&
@@ -450,60 +449,56 @@ namespace VC
            binaryOperator.Op == BinaryOperator.Opcode.Imp ||
            binaryOperator.Op == BinaryOperator.Opcode.Eq && node.Args[0].Type.Equals(Type.Bool)))
       {
-        instStatus = InstStatus.None;
+        quantifierStatus = QuantifierStatus.None;
       }
       var ifThenElse = node.Fun as IfThenElse;
       if (ifThenElse != null)
       {
-        instStatus = InstStatus.None;
+        quantifierStatus = QuantifierStatus.None;
       }
       var returnExpr = base.VisitNAryExpr(node);
-      instStatus = savedInstStatus;
+      quantifierStatus = savedQuantifierStatus;
       return returnExpr;
     }
 
     public override Expr VisitLetExpr(LetExpr node)
     {
-      var savedInstStatus = instStatus;
-      instStatus = InstStatus.None;
+      var savedQuantifierStatus = quantifierStatus;
+      quantifierStatus = QuantifierStatus.None;
       var returnExpr = base.VisitLetExpr(node);
-      instStatus = savedInstStatus;
+      quantifierStatus = savedQuantifierStatus;
       return returnExpr;
     }
 
     public override Expr VisitForallExpr(ForallExpr node)
     {
-      if (instStatus == InstStatus.SkolemizeForall)
+      if (quantifierStatus == QuantifierStatus.Forall)
       {
         return PerformSkolemization(node);
       }
-
-      var savedInstStatus = instStatus;
-      if (instStatus != InstStatus.None)
+      var savedQuantifierStatus = quantifierStatus;
+      if (quantifierStatus != QuantifierStatus.None)
       {
-        instStatus = InstStatus.None;
+        quantifierStatus = QuantifierStatus.None;
       }
-
       var returnExpr = base.VisitForallExpr(node);
-      instStatus = savedInstStatus;
+      quantifierStatus = savedQuantifierStatus;
       return returnExpr;
     }
 
     public override Expr VisitExistsExpr(ExistsExpr node)
     {
-      if (instStatus == InstStatus.SkolemizeExists)
+      if (quantifierStatus == QuantifierStatus.Exists)
       {
         return PerformSkolemization(node);
       }
-
-      var savedInstStatus = instStatus;
-      if (instStatus != InstStatus.None)
+      var savedQuantifierStatus = quantifierStatus;
+      if (quantifierStatus != QuantifierStatus.None)
       {
-        instStatus = InstStatus.None;
+        quantifierStatus = QuantifierStatus.None;
       }
-
       var returnExpr = base.VisitExistsExpr(node);
-      instStatus = savedInstStatus;
+      quantifierStatus = savedQuantifierStatus;
       return returnExpr;
     }
 
@@ -528,43 +523,41 @@ namespace VC
     /* 
      * The method Factorize factors out quantified expressions in expr replacing them with a bound variable.
      * The binding between the bound variable and the quantifier replaced by it is registered in qiEngine.
-     * If instStatus == InstStatus.Forall, forall quantifiers are factorized.
-     * If instStatus == InstStatus.Exists, exists quantifiers are factorized.
+     * If quantifierStatus == QuantifierStatus.Forall, forall quantifiers are factorized.
+     * If quantifierStatus == QuantifierStatus.Exists, exists quantifiers are factorized.
      */
     
     private QuantifierInstantiationEngine qiEngine;
-    private InstStatus instStatus;
+    private QuantifierStatus quantifierStatus;
 
-    public static Expr Factorize(QuantifierInstantiationEngine qiEngine, InstStatus instStatus, Expr expr)
+    public static Expr Factorize(QuantifierInstantiationEngine qiEngine, QuantifierStatus quantifierStatus, Expr expr)
     {
-      Contract.Assert(instStatus != InstStatus.None);
-      var factorizer = new Factorizer(qiEngine, instStatus);
+      Contract.Assert(quantifierStatus != QuantifierStatus.None);
+      var factorizer = new Factorizer(qiEngine, quantifierStatus);
       return factorizer.VisitExpr(expr);
     }
 
-    private Factorizer(QuantifierInstantiationEngine qiEngine, InstStatus instStatus)
+    private Factorizer(QuantifierInstantiationEngine qiEngine, QuantifierStatus quantifierStatus)
     {
       this.qiEngine = qiEngine;
-      this.instStatus = instStatus;
+      this.quantifierStatus = quantifierStatus;
     }
 
     public override Expr VisitForallExpr(ForallExpr node)
     {
-      if (instStatus == InstStatus.SkolemizeForall)
+      if (quantifierStatus == QuantifierStatus.Forall)
       {
         return qiEngine.BindQuantifier(node);
       }
-
       return base.VisitForallExpr(node);
     }
 
     public override Expr VisitExistsExpr(ExistsExpr node)
     {
-      if (instStatus == InstStatus.SkolemizeExists)
+      if (quantifierStatus == QuantifierStatus.Exists)
       {
         return qiEngine.BindQuantifier(node);
       }
-
       return base.VisitExistsExpr(node);
     }
   }
@@ -593,7 +586,6 @@ namespace VC
       {
         bindings.Add(node.Decl);
       }
-
       return base.VisitIdentifierExpr(node);
     }
   }
