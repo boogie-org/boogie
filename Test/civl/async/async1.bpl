@@ -1,14 +1,13 @@
 // RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-var {:layer 0,2} x: int;
+var {:layer 0,2} x:int;
 
-procedure {:left} {:layer 1,2} AtomicIncr()
+procedure {:yields}{:layer 1}{:refines "A_Inc"} Service ()
+{
+  async call {:sync} Callback();
+}
+
+procedure {:both}{:layer 1,2} A_Inc ()
 modifies x;
 { x := x + 1; }
-
-procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();
-
-procedure {:yields} {:layer 1} {:refines "AtomicIncr"} AsyncIncr()
-{
-  async call {:sync} Incr();
-}
+procedure {:yields}{:layer 0}{:refines "A_Inc"} Callback ();

@@ -2253,6 +2253,7 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(rc != null);
       this.TypedIdent.Resolve(rc);
+      ResolveAttributes(rc);
     }
 
     public void ResolveWhere(ResolutionContext rc)
@@ -2267,8 +2268,6 @@ namespace Microsoft.Boogie
       {
         this.TypedIdent.WhereExpr.Resolve(rc);
       }
-
-      ResolveAttributes(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)

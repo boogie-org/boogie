@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
@@ -621,7 +620,9 @@ namespace VC
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-
+      
+      QuantifierInstantiationEngine.Instantiate(impl);
+      
       TypecheckingContext tc = new TypecheckingContext(null);
       impl.Typecheck(tc);
 
