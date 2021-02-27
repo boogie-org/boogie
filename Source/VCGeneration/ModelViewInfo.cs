@@ -9,20 +9,8 @@ namespace VC
   public class ModelViewInfo
   {
     public readonly List<Variable> AllVariables = new List<Variable>();
-    public readonly List<Mapping> CapturePoints = new List<Mapping>();
 
     public readonly Dictionary<Block, List<(AssumeCmd, Mapping)>> BlockToCapturePointIndex = new Dictionary<Block, List<(AssumeCmd, Mapping)>>();
-
-    public static readonly Function MVState_FunctionDef = new Function(Token.NoToken, "$mv_state",
-      new List<Variable>
-      {
-        new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true),
-        new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true)
-      },
-      new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Bool), false));
-
-    public static readonly Constant MVState_ConstantDef =
-      new Constant(Token.NoToken, new TypedIdent(Token.NoToken, "$mv_state_const", Bpl.Type.Int));
 
     public ModelViewInfo(Program program, Implementation impl)
     {

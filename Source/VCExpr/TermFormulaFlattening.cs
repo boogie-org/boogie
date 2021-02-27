@@ -111,7 +111,7 @@ namespace Microsoft.Boogie.VCExprAST
       {
         Contract.Assert(cce.NonNullElements(pair));
         coll.Collect(pair.Key);
-        if (boundVars.Any(var => coll.FreeTermVars.ContainsKey(var)) ||
+        if (boundVars.Any(var => coll.FreeTermVars.Contains(var)) ||
             boundTypeVars.Any(var => coll.FreeTypeVars.Contains(var)))
           res.Add(Gen.LetBinding(pair.Value, pair.Key));
         coll.Reset();

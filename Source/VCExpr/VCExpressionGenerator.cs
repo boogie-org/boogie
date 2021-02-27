@@ -715,7 +715,7 @@ namespace Microsoft.Boogie
       }
 
       return Quantify(Quantifier.ALL, new List<TypeVariable /*!*/>(), vars,
-        triggers, new VCQuantifierInfos(qid, -1, false, kv), body);
+        triggers, new VCQuantifierInfos(qid, -1, kv), body);
     }
 
     public VCExpr Forall(List<VCExprVar /*!*/> /*!*/ vars, List<VCTrigger /*!*/> /*!*/ triggers, VCExpr body)
@@ -725,7 +725,7 @@ namespace Microsoft.Boogie
       Contract.Requires(cce.NonNullElements(vars));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Quantify(Quantifier.ALL, new List<TypeVariable /*!*/>(), vars,
-        triggers, new VCQuantifierInfos(null, -1, false, null), body);
+        triggers, new VCQuantifierInfos(null, -1, null), body);
     }
 
     public VCExpr Forall(VCExprVar var, VCTrigger trigger, VCExpr body)
@@ -756,7 +756,7 @@ namespace Microsoft.Boogie
       Contract.Requires(cce.NonNullElements(vars));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Quantify(Quantifier.EX, new List<TypeVariable /*!*/>(), vars,
-        triggers, new VCQuantifierInfos(null, -1, false, null), body);
+        triggers, new VCQuantifierInfos(null, -1,null), body);
     }
 
     public VCExpr Exists(VCExprVar var, VCTrigger trigger, VCExpr body)

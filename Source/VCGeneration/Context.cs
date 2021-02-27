@@ -17,7 +17,7 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(ProverContextContracts))]
   public abstract class ProverContext : ICloneable
   {
-    public int TimoutDiagnosticsCount { get; set; }
+    public int TimeoutDiagnosticsCount { get; set; }
 
     public readonly Dictionary<int, Tuple<AssertCmd, TransferCmd>> TimeoutDiagnosticIDToAssertion =
       new Dictionary<int, Tuple<AssertCmd, TransferCmd>>();
