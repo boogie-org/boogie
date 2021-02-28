@@ -1690,6 +1690,17 @@ namespace Microsoft.Boogie.VCExprAST
     public readonly int uniqueId;
     public QKeyValue attributes;
     
+    // The entries in instantiationLabels are in 1-1 correspondence with the
+    // bound variables of the quantifier to which this instance is attached.
+    // The i-th bound variable may be instantiated by terms in the pool associated
+    // with labels in instantiationLabels[i].
+    public readonly List<HashSet<string>> instantiationLabels;
+
+    // When the quantifier to which this instance is attached is skolemized,
+    // each expression in instantiationExprs[L] is added to the pool of
+    // expressions for label L.
+    public readonly Dictionary<string, List<VCExpr>> instantiationExprs;
+    
     public VCQuantifierInfos(string qid, int uniqueId, QKeyValue attributes)
     {
       this.qid = qid;
