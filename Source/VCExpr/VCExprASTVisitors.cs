@@ -387,8 +387,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       //Contract.Requires(node != null);
       Result res = StandardResult(node, arg);
-
-
+      
       if (node.TypeParamArity == 0 &&
           (node.Op == VCExpressionGenerator.AndOp ||
            node.Op == VCExpressionGenerator.OrOp ||
@@ -876,16 +875,14 @@ namespace Microsoft.Boogie.VCExprAST
   // the result and argument (of type bool) are not used currently
   public class FreeVariableCollector : BoundVarTraversingVCExprVisitor<bool, bool>
   {
-    public readonly Dictionary<VCExprVar /*!*/, object> /*!*/
-      FreeTermVars = new Dictionary<VCExprVar /*!*/, object>();
+    public readonly HashSet<VCExprVar> FreeTermVars = new HashSet<VCExprVar>();
 
-    public readonly List<TypeVariable /*!*/> /*!*/
-      FreeTypeVars = new List<TypeVariable /*!*/>();
+    public readonly List<TypeVariable> FreeTypeVars = new List<TypeVariable>();
 
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(FreeTermVars != null && Contract.ForAll(FreeTermVars, entry => entry.Key != null));
+      Contract.Invariant(FreeTermVars != null && Contract.ForAll(FreeTermVars, entry => entry != null));
       Contract.Invariant(cce.NonNullElements(FreeTypeVars));
     }
 
@@ -897,7 +894,7 @@ namespace Microsoft.Boogie.VCExprAST
       return true;
     }
 
-    public static Dictionary<VCExprVar /*!*/, object> /*!*/ FreeTermVariables(VCExpr node)
+    public static HashSet<VCExprVar> FreeTermVariables(VCExpr node)
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Dictionary<VCExprVar, object>>() != null);
@@ -907,7 +904,7 @@ namespace Microsoft.Boogie.VCExprAST
       return collector.FreeTermVars;
     }
 
-    public static List<TypeVariable /*!*/> /*!*/ FreeTypeVariables(VCExpr node)
+    public static List<TypeVariable> FreeTypeVariables(VCExpr node)
     {
       Contract.Requires(node != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
@@ -960,9 +957,9 @@ namespace Microsoft.Boogie.VCExprAST
     public override bool Visit(VCExprVar node, bool arg)
     {
       Contract.Requires(node != null);
-      if (!BoundTermVars.Contains(node) && !FreeTermVars.ContainsKey(node))
+      if (!BoundTermVars.Contains(node) && !FreeTermVars.Contains(node))
       {
-        FreeTermVars.Add(node, null);
+        FreeTermVars.Add(node);
         Collect(node.Type);
       }
 
@@ -1016,8 +1013,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       Contract.Invariant(Gen != null);
     }
-
-
+    
     public MutatingVCExprVisitor(VCExpressionGenerator gen)
     {
       Contract.Requires(gen != null);
@@ -1550,7 +1546,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Assert(coll != null);
       // variables could be captured when applying the substitution
       return typeParams.Any(var => coll.FreeTypeVars.Contains(var)) ||
-             boundVars.Any(var => coll.FreeTermVars.ContainsKey(var));
+             boundVars.Any(var => coll.FreeTermVars.Contains(var));
     }
 
     // can be overwritten if names of bound variables are to be changed

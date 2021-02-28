@@ -1174,7 +1174,7 @@ namespace Microsoft.Boogie.TypeErasure
 
       List<VCExprVar /*!*/> occurringVars = new List<VCExprVar /*!*/>(node.BoundVars.Count);
       foreach (VCExprVar var in node.BoundVars)
-        if (coll.FreeTermVars.ContainsKey(var))
+        if (coll.FreeTermVars.Contains(var))
           occurringVars.Add(var);
 
       occurringVars.TrimExcess();
@@ -1396,11 +1396,9 @@ namespace Microsoft.Boogie.TypeErasure
         foreach (VCExpr /*!*/ e in t.Exprs)
         {
           Contract.Assert(e != null);
-          Dictionary<VCExprVar /*!*/, object> /*!*/
-            freeVars =
-              FreeVariableCollector.FreeTermVariables(e);
-          Contract.Assert(freeVars != null && cce.NonNullElements(freeVars.Keys));
-          if (typeVarBindings.Any(b => freeVars.ContainsKey(b.V)))
+          HashSet<VCExprVar> freeVars = FreeVariableCollector.FreeTermVariables(e);
+          Contract.Assert(freeVars != null && cce.NonNullElements(freeVars));
+          if (typeVarBindings.Any(b => freeVars.Contains(b.V)))
           {
             exprsWithLets.Add(Gen.Let(typeVarBindings, e));
             changed = true;

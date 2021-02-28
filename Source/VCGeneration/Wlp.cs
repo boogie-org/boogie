@@ -118,19 +118,19 @@ namespace VC
 
             if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
             {
-              ctxt.Ctxt.TimeoutDiagnosticIDToAssertion[ctxt.Ctxt.TimoutDiagnosticsCount] =
+              ctxt.Ctxt.TimeoutDiagnosticIDToAssertion[ctxt.Ctxt.TimeoutDiagnosticsCount] =
                 new Tuple<AssertCmd, TransferCmd>(ac, b.TransferCmd);
               VU = gen.Or(VU,
                 gen.Function(VCExpressionGenerator.TimeoutDiagnosticsOp,
-                  gen.Integer(BigNum.FromInt(ctxt.Ctxt.TimoutDiagnosticsCount++))));
+                  gen.Integer(BigNum.FromInt(ctxt.Ctxt.TimeoutDiagnosticsCount++))));
             }
           }
           else if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
           {
-            ctxt.Ctxt.TimeoutDiagnosticIDToAssertion[ctxt.Ctxt.TimoutDiagnosticsCount] =
+            ctxt.Ctxt.TimeoutDiagnosticIDToAssertion[ctxt.Ctxt.TimeoutDiagnosticsCount] =
               new Tuple<AssertCmd, TransferCmd>(ac, b.TransferCmd);
             VU = gen.Function(VCExpressionGenerator.TimeoutDiagnosticsOp,
-              gen.Integer(BigNum.FromInt(ctxt.Ctxt.TimoutDiagnosticsCount++)));
+              gen.Integer(BigNum.FromInt(ctxt.Ctxt.TimeoutDiagnosticsCount++)));
           }
 
           ctxt.Ctxt.BoogieExprTranslator.isPositiveContext = !ctxt.Ctxt.BoogieExprTranslator.isPositiveContext;

@@ -367,7 +367,6 @@ namespace VC
       var instantiation = Substituter.Apply(subst, quantifierExpr.Body);
       quantifierInstantiationInfo.instances[new List<Expr>(instance)] = Skolemizer.Skolemize(this,
         quantifierExpr is ForallExpr ? QuantifierStatus.Exists : QuantifierStatus.Forall, instantiation);
-      AddInstancesForLabels(quantifierExpr, subst);
     }
     
     private void AddInstancesForLabels(ICarriesAttributes o, Substitution subst)

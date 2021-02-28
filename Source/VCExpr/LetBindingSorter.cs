@@ -26,7 +26,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
       FreeVarCollector.Collect(expr);
       List<VCExprVar /*!*/> /*!*/
-        freeVars = new List<VCExprVar /*!*/>(FreeVarCollector.FreeTermVars.Keys);
+        freeVars = new List<VCExprVar /*!*/>(FreeVarCollector.FreeTermVars);
       FreeVarCollector.Reset();
       return freeVars;
     }

@@ -1688,14 +1688,12 @@ namespace Microsoft.Boogie.VCExprAST
   {
     public readonly string qid;
     public readonly int uniqueId;
-    public readonly bool bvZ3Native;
     public QKeyValue attributes;
-
-    public VCQuantifierInfos(string qid, int uniqueId, bool bvZ3Native, QKeyValue attributes)
+    
+    public VCQuantifierInfos(string qid, int uniqueId, QKeyValue attributes)
     {
       this.qid = qid;
       this.uniqueId = uniqueId;
-      this.bvZ3Native = bvZ3Native;
       this.attributes = attributes;
     }
   }
@@ -1717,12 +1715,11 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Invariant(cce.NonNullElements(Triggers));
     }
 
-
     public readonly List<VCTrigger /*!*/> /*!*/
       Triggers;
 
     public readonly VCQuantifierInfos Infos;
-
+    
     // Equality is /not/ modulo bound renaming at this point
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]

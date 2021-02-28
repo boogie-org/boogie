@@ -1226,17 +1226,12 @@ namespace VC
           string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
           if (description != null)
           {
-            Expr mv = new NAryExpr(pc.tok, new FunctionCall(ModelViewInfo.MVState_FunctionDef),
-              new List<Expr>
-                {Expr.Ident(ModelViewInfo.MVState_ConstantDef), Expr.Literal(mvInfo.CapturePoints.Count)});
-            copy = Expr.And(mv, copy);
             if (!mvInfo.BlockToCapturePointIndex.TryGetValue(enclosingBlock, out var points)) {
               points = new List<(AssumeCmd, ModelViewInfo.Mapping)>();
               mvInfo.BlockToCapturePointIndex[enclosingBlock] = points;
             }
             var mapping = new ModelViewInfo.Mapping(description, new Dictionary<Variable, Expr>(incarnationMap));
             points.Add((captureStateAssumeCmd, mapping));
-            mvInfo.CapturePoints.Add(mapping);
           }
         }
 

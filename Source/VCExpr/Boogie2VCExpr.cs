@@ -644,7 +644,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCQuantifierInfos>() != null);
       string qid = getQidNameFromQKeyValue(node.Dummies, node.Attributes);
-      return new VCQuantifierInfos(qid, node.SkolemId, false, node.Attributes);
+      return new VCQuantifierInfos(qid, node.SkolemId, node.Attributes);
     }
 
     private string getQidNameFromQKeyValue(List<Variable> vars, QKeyValue attributes)
