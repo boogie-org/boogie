@@ -1689,7 +1689,7 @@ namespace Microsoft.Boogie.VCExprAST
     public readonly string qid;
     public readonly int uniqueId;
     public QKeyValue attributes;
-    
+
     public VCQuantifierInfos(string qid, int uniqueId, QKeyValue attributes)
     {
       this.qid = qid;
