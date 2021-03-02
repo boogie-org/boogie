@@ -606,26 +606,26 @@ namespace Microsoft.Boogie.VCExprAST
         if (options.QuantifierIds)
         {
           // only needed for Z3
-          VCQuantifierInfos infos = node.Infos;
-          Contract.Assert(infos != null);
-          if (infos.qid != null)
+          VCQuantifierInfo info = node.Info;
+          Contract.Assert(info != null);
+          if (info.qid != null)
           {
             wr.Write("(QID ");
-            wr.Write(infos.qid);
+            wr.Write(info.qid);
             wr.Write(") ");
           }
 
-          if (0 <= infos.uniqueId)
+          if (0 <= info.uniqueId)
           {
             wr.Write("(SKOLEMID ");
-            wr.Write(infos.uniqueId);
+            wr.Write(info.uniqueId);
             wr.Write(") ");
           }
         }
 
         if (options.UseWeights)
         {
-          int weight = QKeyValue.FindIntAttribute(node.Infos.attributes, "weight", 1);
+          int weight = node.Info.weight;
           if (weight != 1)
           {
             wr.Write("(WEIGHT ");

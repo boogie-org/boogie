@@ -123,7 +123,7 @@ namespace Microsoft.Boogie.TypeErasure
       VCExpr /*!*/
         matrix = Gen.ImpliesSimp(premiss, eq);
       Contract.Assert(matrix != null);
-      return Gen.Forall(HelperFuns.ToList(var), triggers, "cast:" + castFromU.Name, -1, matrix);
+      return Gen.Forall(HelperFuns.ToList(var), triggers, "cast:" + castFromU.Name, 1, matrix);
     }
 
     protected override VCExpr GenCastTypeAxioms(Function castToU, Function castFromU)
@@ -569,7 +569,7 @@ namespace Microsoft.Boogie.TypeErasure
       {
         List<VCTrigger /*!*/> triggers = HelperFuns.ToList(Gen.Trigger(true, HelperFuns.ToList(funApp)));
         Contract.Assert(cce.NonNullElements(triggers));
-        return Gen.Forall(boundVars, triggers, "funType:" + fun.Name, -1, conclusionWithPremisses);
+        return Gen.Forall(boundVars, triggers, "funType:" + fun.Name, 1, conclusionWithPremisses);
       }
       else
       {
@@ -1371,7 +1371,7 @@ namespace Microsoft.Boogie.TypeErasure
       }
 
       return Gen.Quantify(node.Quan, new List<TypeVariable /*!*/>(), newBoundVars,
-        newTriggers, node.Infos, bodyWithPremisses);
+        newTriggers, node.Info, bodyWithPremisses);
     }
 
     // check whether we need to add let-binders for any of the type

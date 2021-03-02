@@ -1585,6 +1585,11 @@ namespace Microsoft.Boogie.VCExprAST
       //Contract.Requires(visitor != null);
       return visitor.Visit(this, arg);
     }
+    
+    // For VCExprVar, equality is based on reference comparison.
+    // Two different heap-allocated variables with the same name 
+    // are considered semantically-different variables.
+    // Name clashes are handled in NameClashResolver.cs.
   }
 
   public class VCExprConstant : VCExprVar
@@ -1684,17 +1689,49 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
 
-  public class VCQuantifierInfos
+  public class VCQuantifierInfo
   {
     public readonly string qid;
     public readonly int uniqueId;
-    public QKeyValue attributes;
+    public readonly int weight;
 
-    public VCQuantifierInfos(string qid, int uniqueId, QKeyValue attributes)
+    // The entries in instantiationLabels correspond to the
+    // bound variables of the quantifier to which this info is attached.
+    // The bound variable v may be instantiated by terms in the pool associated
+    // with any label in instantiationLabels[v].
+    public readonly Dictionary<VCExprVar, HashSet<string>> instantiationLabels;
+
+    // When the quantifier to which this info is attached is skolemized,
+    // each expression in instantiationExprs[L] is added to the pool of
+    // expressions for label L.
+    public readonly Dictionary<string, HashSet<VCExpr>> instantiationExprs;
+    
+    public VCQuantifierInfo(string qid, int uniqueId)
     {
       this.qid = qid;
       this.uniqueId = uniqueId;
-      this.attributes = attributes;
+      this.weight = 1;
+      this.instantiationLabels = new Dictionary<VCExprVar, HashSet<string>>();
+      this.instantiationExprs = new Dictionary<string, HashSet<VCExpr>>();
+    }
+
+    public VCQuantifierInfo(string qid, int uniqueId, int weight)
+    {
+      this.qid = qid;
+      this.uniqueId = uniqueId;
+      this.weight = weight;
+      this.instantiationLabels = new Dictionary<VCExprVar, HashSet<string>>();
+      this.instantiationExprs = new Dictionary<string, HashSet<VCExpr>>();
+    }
+
+    public VCQuantifierInfo(string qid, int uniqueId, int weight,
+      Dictionary<VCExprVar, HashSet<string>> instantiationLabels, Dictionary<string, HashSet<VCExpr>> instantiationExprs)
+    {
+      this.qid = qid;
+      this.uniqueId = uniqueId;
+      this.weight = weight;
+      this.instantiationLabels = instantiationLabels;
+      this.instantiationExprs = instantiationExprs;
     }
   }
 
@@ -1711,14 +1748,14 @@ namespace Microsoft.Boogie.VCExprAST
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(Infos != null);
+      Contract.Invariant(Info != null);
       Contract.Invariant(cce.NonNullElements(Triggers));
     }
 
     public readonly List<VCTrigger /*!*/> /*!*/
       Triggers;
 
-    public readonly VCQuantifierInfos Infos;
+    public readonly VCQuantifierInfo Info;
     
     // Equality is /not/ modulo bound renaming at this point
     [Pure]
@@ -1751,18 +1788,18 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     internal VCExprQuantifier(Quantifier kind, List<TypeVariable /*!*/> /*!*/ typeParams,
-      List<VCExprVar /*!*/> /*!*/ boundVars, List<VCTrigger /*!*/> /*!*/ triggers, VCQuantifierInfos infos, VCExpr body)
+      List<VCExprVar /*!*/> /*!*/ boundVars, List<VCTrigger /*!*/> /*!*/ triggers, VCQuantifierInfo info, VCExpr body)
       : base(typeParams, boundVars, body)
     {
       Contract.Requires(body != null);
-      Contract.Requires(infos != null);
+      Contract.Requires(info != null);
       Contract.Requires(cce.NonNullElements(triggers));
       Contract.Requires(cce.NonNullElements(boundVars));
       Contract.Requires(cce.NonNullElements(typeParams));
 
       this.Quan = kind;
       this.Triggers = triggers;
-      this.Infos = infos;
+      this.Info = info;
     }
 
     public override Result Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg)

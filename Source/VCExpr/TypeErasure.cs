@@ -246,7 +246,7 @@ namespace Microsoft.Boogie.TypeErasure
         return eq;
 
       return Gen.Forall(quantifiedVars, new List<VCTrigger /*!*/>(),
-        "ctor:" + typeRepr.Name, -1, eq);
+        "ctor:" + typeRepr.Name, 1, eq);
     }
 
     // generate an axiom (forall x0, x1, ... :: invFun(fun(x0, x1, ...) == xi)
@@ -271,7 +271,7 @@ namespace Microsoft.Boogie.TypeErasure
       List<VCTrigger /*!*/> /*!*/
         triggers = HelperFuns.ToList(Gen.Trigger(true, HelperFuns.ToList(funApp)));
       Contract.Assert(cce.NonNullElements(triggers));
-      return Gen.Forall(quantifiedVars, triggers, "typeInv:" + invFun.Name, -1, eq);
+      return Gen.Forall(quantifiedVars, triggers, "typeInv:" + invFun.Name, 1, eq);
     }
 
     ///////////////////////////////////////////////////////////////////////////

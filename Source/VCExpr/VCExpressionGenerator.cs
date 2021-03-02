@@ -676,27 +676,27 @@ namespace Microsoft.Boogie
     // Quantifiers
 
     public VCExpr Quantify(Quantifier quan, List<TypeVariable /*!*/> /*!*/ typeParams, List<VCExprVar /*!*/> /*!*/ vars,
-      List<VCTrigger /*!*/> /*!*/ triggers, VCQuantifierInfos infos, VCExpr body)
+      List<VCTrigger /*!*/> /*!*/ triggers, VCQuantifierInfo info, VCExpr body)
     {
       Contract.Requires(body != null);
-      Contract.Requires(infos != null);
+      Contract.Requires(info != null);
       Contract.Requires(cce.NonNullElements(triggers));
       Contract.Requires(cce.NonNullElements(vars));
       Contract.Requires(cce.NonNullElements(typeParams));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return new VCExprQuantifier(quan, typeParams, vars, triggers, infos, body);
+      return new VCExprQuantifier(quan, typeParams, vars, triggers, info, body);
     }
 
     public VCExpr Forall(List<TypeVariable /*!*/> /*!*/ typeParams, List<VCExprVar /*!*/> /*!*/ vars,
-      List<VCTrigger /*!*/> /*!*/ triggers, VCQuantifierInfos infos, VCExpr body)
+      List<VCTrigger /*!*/> /*!*/ triggers, VCQuantifierInfo info, VCExpr body)
     {
       Contract.Requires(body != null);
-      Contract.Requires(infos != null);
+      Contract.Requires(info != null);
       Contract.Requires(cce.NonNullElements(triggers));
       Contract.Requires(cce.NonNullElements(vars));
       Contract.Requires(cce.NonNullElements(typeParams));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Quantify(Quantifier.ALL, typeParams, vars, triggers, infos, body);
+      return Quantify(Quantifier.ALL, typeParams, vars, triggers, info, body);
     }
 
     public VCExpr Forall(List<VCExprVar /*!*/> /*!*/ vars, List<VCTrigger /*!*/> /*!*/ triggers, string qid, int weight,
@@ -707,15 +707,8 @@ namespace Microsoft.Boogie
       Contract.Requires(cce.NonNullElements(triggers));
       Contract.Requires(cce.NonNullElements(vars));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      QKeyValue kv = null;
-      if (0 <= weight)
-      {
-        kv = new QKeyValue(Token.NoToken, "weight",
-          new List<object>() {new LiteralExpr(Token.NoToken, BigNum.FromInt(0))}, null);
-      }
-
       return Quantify(Quantifier.ALL, new List<TypeVariable /*!*/>(), vars,
-        triggers, new VCQuantifierInfos(qid, -1, kv), body);
+        triggers, new VCQuantifierInfo(qid, -1, weight), body);
     }
 
     public VCExpr Forall(List<VCExprVar /*!*/> /*!*/ vars, List<VCTrigger /*!*/> /*!*/ triggers, VCExpr body)
@@ -725,7 +718,7 @@ namespace Microsoft.Boogie
       Contract.Requires(cce.NonNullElements(vars));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Quantify(Quantifier.ALL, new List<TypeVariable /*!*/>(), vars,
-        triggers, new VCQuantifierInfos(null, -1, null), body);
+        triggers, new VCQuantifierInfo(null, -1), body);
     }
 
     public VCExpr Forall(VCExprVar var, VCTrigger trigger, VCExpr body)
@@ -738,15 +731,15 @@ namespace Microsoft.Boogie
     }
 
     public VCExpr Exists(List<TypeVariable /*!*/> /*!*/ typeParams, List<VCExprVar /*!*/> /*!*/ vars,
-      List<VCTrigger /*!*/> /*!*/ triggers, VCQuantifierInfos infos, VCExpr body)
+      List<VCTrigger /*!*/> /*!*/ triggers, VCQuantifierInfo info, VCExpr body)
     {
       Contract.Requires(body != null);
-      Contract.Requires(infos != null);
+      Contract.Requires(info != null);
       Contract.Requires(cce.NonNullElements(triggers));
       Contract.Requires(cce.NonNullElements(vars));
       Contract.Requires(cce.NonNullElements(typeParams));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Quantify(Quantifier.EX, typeParams, vars, triggers, infos, body);
+      return Quantify(Quantifier.EX, typeParams, vars, triggers, info, body);
     }
 
     public VCExpr Exists(List<VCExprVar /*!*/> /*!*/ vars, List<VCTrigger /*!*/> /*!*/ triggers, VCExpr body)
@@ -756,7 +749,7 @@ namespace Microsoft.Boogie
       Contract.Requires(cce.NonNullElements(vars));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Quantify(Quantifier.EX, new List<TypeVariable /*!*/>(), vars,
-        triggers, new VCQuantifierInfos(null, -1,null), body);
+        triggers, new VCQuantifierInfo(null, -1), body);
     }
 
     public VCExpr Exists(VCExprVar var, VCTrigger trigger, VCExpr body)

@@ -59,7 +59,7 @@ namespace Microsoft.Boogie.TypeErasure
         var;
       VCExpr /*!*/
         eq = GenReverseCastEq(castToU, castFromU, out var, out triggers);
-      return Gen.Forall(HelperFuns.ToList(var), triggers, "cast:" + castFromU.Name, -1, eq);
+      return Gen.Forall(HelperFuns.ToList(var), triggers, "cast:" + castFromU.Name, 1, eq);
     }
 
     protected override VCExpr GenCastTypeAxioms(Function castToU, Function castFromU)
@@ -567,7 +567,7 @@ namespace Microsoft.Boogie.TypeErasure
       if (newBoundVars.Count == 0) // might happen that no bound variables are left
         return newBody;
       return Gen.Quantify(node.Quan, new List<TypeVariable /*!*/>(), newBoundVars,
-        newTriggers, node.Infos, newBody);
+        newTriggers, node.Info, newBody);
     }
   }
 

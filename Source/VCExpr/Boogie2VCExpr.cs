@@ -602,8 +602,8 @@ namespace Microsoft.Boogie.VCExprAST
           triggers = TranslateTriggers(node.Triggers);
         VCExpr /*!*/
           body = Translate(node.Body);
-        VCQuantifierInfos /*!*/
-          infos = GenerateQuantifierInfos(node);
+        VCQuantifierInfo /*!*/
+          info = GenerateQuantifierInfo(node, boundVars);
 
         Quantifier quan;
         if (node is ForallExpr)
@@ -616,7 +616,7 @@ namespace Microsoft.Boogie.VCExprAST
           throw new cce.UnreachableException();
         }
 
-        return Gen.Quantify(quan, typeParams, boundVars, triggers, infos, body);
+        return Gen.Quantify(quan, typeParams, boundVars, triggers, info, body);
       }
       finally
       {
@@ -639,18 +639,24 @@ namespace Microsoft.Boogie.VCExprAST
       return res;
     }
 
-    private VCQuantifierInfos GenerateQuantifierInfos(QuantifierExpr node)
+    private VCQuantifierInfo GenerateQuantifierInfo(QuantifierExpr node, List<VCExprVar> boundVars)
     {
       Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<VCQuantifierInfos>() != null);
-      string qid = getQidNameFromQKeyValue(node.Dummies, node.Attributes);
-      return new VCQuantifierInfos(qid, node.SkolemId, node.Attributes);
+      Contract.Ensures(Contract.Result<VCQuantifierInfo>() != null);
+      return new VCQuantifierInfo(
+        GetQid(node), 
+        node.SkolemId,
+        QKeyValue.FindIntAttribute(node.Attributes, "weight", 1), 
+        Enumerable.Range(0, boundVars.Count)
+          .ToDictionary(x => boundVars[x], x => FindInstantiationHints(node.Dummies[x])),
+        FindInstantiationSources(node));
     }
 
-    private string getQidNameFromQKeyValue(List<Variable> vars, QKeyValue attributes)
+    private string GetQid(QuantifierExpr node)
     {
-      Contract.Requires(vars != null);
-      // Check for a 'qid, name' pair in keyvalues
+      List<Variable> vars = node.Dummies;
+      QKeyValue attributes = node.Attributes;
+      // Check for a 'qid, name' pair in attributes
       string qid = QKeyValue.FindStringAttribute(attributes, "qid");
       if (qid == null && vars.Count != 0)
       {
@@ -660,11 +666,15 @@ namespace Microsoft.Boogie.VCExprAST
         StringBuilder buf = new StringBuilder(20);
         string filename = v.tok.filename;
         if (filename == null)
+        {
           filename = "unknown";
+        }
         for (int i = 0; i < filename.Length; ++i)
         {
           if (filename[i] == '/' || filename[i] == '\\')
+          {
             buf.Length = 0;
+          }
           if (char.IsLetterOrDigit(filename[i]))
           {
             if (buf.Length == 0 && char.IsDigit(filename[i]))
@@ -672,18 +682,54 @@ namespace Microsoft.Boogie.VCExprAST
               // Z3 does not like QID's to start with a digit, so we prepend another character
               buf.Append('_');
             }
-
             buf.Append(filename[i]);
           }
         }
-
         buf.Append('.').Append(v.Line).Append(':').Append(v.Col);
         qid = buf.ToString();
       }
-
       return qid;
     }
 
+    private HashSet<string> FindInstantiationHints(ICarriesAttributes o)
+    {
+      var labels = new HashSet<string>();
+      var iter = o.Attributes;
+      while (iter != null)
+      {
+        if (iter.Key == "inst_at")
+        {
+          iter.Params.OfType<string>().Iter(x => labels.Add(x));
+        }
+        iter = iter.Next;
+      }
+      return labels;
+    }
+    
+    private Dictionary<string, HashSet<VCExpr>> FindInstantiationSources(ICarriesAttributes o)
+    {
+      var freshInstances = new Dictionary<string, HashSet<VCExpr>>();
+      var iter = o.Attributes;
+      while (iter != null)
+      {
+        if (iter.Key == "inst")
+        {
+          var label = iter.Params[0] as string;
+          var instance = iter.Params[1] as Expr;
+          if (label != null && instance != null)
+          {
+            if (!freshInstances.ContainsKey(label))
+            {
+              freshInstances[label] = new HashSet<VCExpr>();
+            }
+            freshInstances[label].Add(Translate(instance));
+          }
+        }
+        iter = iter.Next;
+      }
+      return freshInstances;
+    }
+    
     public override Expr VisitLetExpr(LetExpr node)
     {
       Contract.Ensures(Contract.Result<Expr>() != null);

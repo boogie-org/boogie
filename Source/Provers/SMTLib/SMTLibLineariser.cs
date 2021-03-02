@@ -372,11 +372,11 @@ namespace Microsoft.Boogie.SMTLib
 
         wr.Write(") ");
 
-        VCQuantifierInfos infos = node.Infos;
-        var weight = QKeyValue.FindIntAttribute(infos.attributes, "weight", 1);
+        VCQuantifierInfo info = node.Info;
+        var weight = info.weight;
         if (!ProverOptions.UseWeights)
           weight = 1;
-        var hasAttrs = node.Triggers.Count > 0 || infos.qid != null || weight != 1 || infos.uniqueId != -1;
+        var hasAttrs = node.Triggers.Count > 0 || info.qid != null || weight != 1 || info.uniqueId != -1;
 
         if (hasAttrs)
           wr.Write("(! ");
@@ -386,12 +386,12 @@ namespace Microsoft.Boogie.SMTLib
         if (hasAttrs)
         {
           wr.Write("\n");
-          if (infos.qid != null)
-            wr.Write(" :qid {0}\n", SMTLibNamer.QuoteId(infos.qid));
+          if (info.qid != null)
+            wr.Write(" :qid {0}\n", SMTLibNamer.QuoteId(info.qid));
           if (weight != 1)
             wr.Write(" :weight {0}\n", weight);
-          if (infos.uniqueId != -1)
-            wr.Write(" :skolemid |{0}|\n", infos.uniqueId);
+          if (info.uniqueId != -1)
+            wr.Write(" :skolemid |{0}|\n", info.uniqueId);
           WriteTriggers(node.Triggers, options);
 
           wr.Write(")");
