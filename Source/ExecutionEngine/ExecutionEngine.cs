@@ -341,6 +341,7 @@ namespace Microsoft.Boogie
     public readonly string ImplementationName;
     public readonly IToken ImplementationToken;
     public readonly string ProgramId;
+    public readonly string MessageIfVerifies;
 
     public DateTime Start { get; set; }
     public DateTime End { get; set; }
@@ -367,6 +368,7 @@ namespace Microsoft.Boogie
       ImplementationToken = implementation.tok;
       ProgramId = programId;
       AssertionChecksums = implementation.AssertionChecksums;
+      MessageIfVerifies = implementation.FindStringAttribute("msg_if_verifies");
     }
   }
   
@@ -1249,7 +1251,7 @@ namespace Microsoft.Boogie
 
       ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats,
         output, impl.TimeLimit, er, verificationResult.ImplementationName, verificationResult.ImplementationToken,
-        verificationResult.RequestId, wasCached);
+        verificationResult.RequestId, verificationResult.MessageIfVerifies, wasCached);
 
       ProcessErrors(verificationResult.Errors, verificationResult.Outcome, output, er, impl);
 
@@ -1441,7 +1443,7 @@ namespace Microsoft.Boogie
 
     private static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
       PipelineStatistics stats, TextWriter tw, int timeLimit, ErrorReporterDelegate er = null, string implName = null,
-      IToken implTok = null, string requestId = null, bool wasCached = false)
+      IToken implTok = null, string requestId = null, string msgIfVerifies = null, bool wasCached = false)
     {
       Contract.Requires(stats != null);
 
@@ -1449,17 +1451,23 @@ namespace Microsoft.Boogie
 
       printer.Inform(timeIndication + OutcomeIndication(outcome, errors), tw);
 
-      ReportOutcome(outcome, er, implName, implTok, requestId, tw, timeLimit, errors);
+      ReportOutcome(outcome, er, implName, implTok, requestId, msgIfVerifies, tw, timeLimit, errors);
     }
 
 
     private static void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, string implName,
-      IToken implTok, string requestId, TextWriter tw, int timeLimit, List<Counterexample> errors)
+      IToken implTok, string requestId, string msgIfVerifies, TextWriter tw, int timeLimit, List<Counterexample> errors)
     {
       ErrorInformation errorInfo = null;
 
       switch (outcome)
       {
+        case VCGen.Outcome.Correct:
+          if (msgIfVerifies != null)
+          {
+            tw.WriteLine(msgIfVerifies); 
+          }
+          break;
         case VCGen.Outcome.ReachedBound:
           tw.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}",
             CommandLineOptions.Clo.RecursionBound));

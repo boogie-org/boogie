@@ -21,3 +21,8 @@ ensures {:msg "My error message for postcondition failure"} false;
 {
     call Foo1();
 }
+
+procedure {:msg_if_verifies "Are you sure this procedure should verify?"} Foo3()
+{
+
+}

@@ -1,5 +1,6 @@
 My error message for assertion failure
 My error message for precondition failure
 My error message for precondition failure
+Are you sure this procedure should verify?
 
-Boogie program verifier finished with 1 verified, 3 errors
+Boogie program verifier finished with 2 verified, 3 errors
