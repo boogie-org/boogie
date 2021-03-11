@@ -99,26 +99,13 @@ namespace Microsoft.Boogie.VCExprAST
       return v;
     }
 
-    public Dictionary<VCExprVar, VCExpr> FreshSkolemConstants(VCExprQuantifier node)
+    public void AddTerm(string label, VCExpr term)
     {
-      var variableMapping = node.BoundVars.ToDictionary(v => v, v => (VCExpr) FreshSkolemConstant(v));
-      var subst =
-        new VCExprSubstitution(variableMapping, new Dictionary<TypeVariable, Type>());
-      AddInstancesForLabels(node, subst);
-      return variableMapping;
-    }
-
-    private void AddInstancesForLabels(VCExprQuantifier node, VCExprSubstitution subst)
-    {
-      var substituter = new SubstitutingVCExprVisitor(vcExprGen);
-      node.Info.instantiationExprs.Iter(kv =>
+      if (!labelToInstances.ContainsKey(label))
       {
-        if (!labelToInstances.ContainsKey(kv.Key))
-        {
-          labelToInstances[kv.Key] = new HashSet<VCExpr>();
-        }
-        kv.Value.Iter(expr => { labelToInstances[kv.Key].Add(substituter.Mutate(expr, subst)); });
-      });
+        labelToInstances[label] = new HashSet<VCExpr>();
+      }
+      labelToInstances[label].Add(term);
     }
 
     public bool IsQuantifierBinding(VCExprVar vcExprVar)
@@ -126,7 +113,7 @@ namespace Microsoft.Boogie.VCExprAST
       return this.quantifierBinding.ContainsKey(vcExprVar);
     }
 
-    private VCExprVar FreshSkolemConstant(VCExprVar variable)
+    public VCExprVar FreshSkolemConstant(VCExprVar variable)
     {
       var skolemConstant = new VCExprVar($"{skolemConstantNamePrefix}{skolemConstants.Count}", variable.Type);
       skolemConstants.Add(skolemConstant);
@@ -158,7 +145,22 @@ namespace Microsoft.Boogie.VCExprAST
       return true;
     }
 
-    private Dictionary<string, HashSet<VCExpr>> FindInstantiationSources(ICarriesAttributes o)
+    public static HashSet<string> FindInstantiationHints(ICarriesAttributes o)
+    {
+      var labels = new HashSet<string>();
+      var iter = o.Attributes;
+      while (iter != null)
+      {
+        if (iter.Key == "inst_at")
+        {
+          iter.Params.OfType<string>().Iter(x => labels.Add(x));
+        }
+        iter = iter.Next;
+      }
+      return labels;
+    }
+    
+    public static Dictionary<string, HashSet<VCExpr>> FindInstantiationSources(ICarriesAttributes o, Boogie2VCExprTranslator exprTranslator)
     {
       var freshInstances = new Dictionary<string, HashSet<VCExpr>>();
       var iter = o.Attributes;
@@ -174,7 +176,6 @@ namespace Microsoft.Boogie.VCExprAST
             {
               freshInstances[label] = new HashSet<VCExpr>();
             }
-
             freshInstances[label].Add(exprTranslator.Translate(instance));
           }
         }
@@ -182,7 +183,7 @@ namespace Microsoft.Boogie.VCExprAST
       }
       return freshInstances;
     }
-
+    
     private static void AddDictionary<T, U>(Dictionary<T, HashSet<U>> @from, Dictionary<T, HashSet<U>> to)
     {
       @from.Iter(kv =>
@@ -195,13 +196,25 @@ namespace Microsoft.Boogie.VCExprAST
       });
     }
     
+    private static void AddDictionary<T, U>(Dictionary<T, HashSet<List<U>>> @from, Dictionary<T, HashSet<List<U>>> to)
+    {
+      @from.Iter(kv =>
+      {
+        if (!to.ContainsKey(kv.Key))
+        {
+          to[kv.Key] = new HashSet<List<U>>(new ListComparer<U>());
+        }
+        to[kv.Key].UnionWith(@from[kv.Key]);
+      });
+    }
+    
     private VCExpr Execute(Implementation impl, VCExpr vcExpr)
     {
       impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().Iter(predicateCmd =>
       {
-        AddDictionary(FindInstantiationSources(predicateCmd), labelToInstances);
+        AddDictionary(FindInstantiationSources(predicateCmd, exprTranslator), labelToInstances);
       }));
-      vcExpr = Skolemizer.Skolemize(this, QuantifierStatus.Forall, vcExpr);
+      vcExpr = Skolemizer.Skolemize(this, Polarity.Negative, vcExpr);
       lambdaToInstances = LambdaInstanceCollector.CollectInstances(this, vcExpr);
       while (labelToInstances.Count > 0)
       {
@@ -213,23 +226,36 @@ namespace Microsoft.Boogie.VCExprAST
         lambdaToInstances = new Dictionary<Function, HashSet<List<VCExpr>>>();
         AddDictionary(currLambdaToInstances, accLambdaToInstances);
 
-        foreach (var quantifierExpr in quantifierBinding.Values)
+        var visitedQuantifierBindings = new HashSet<VCExprVar>();
+        while (visitedQuantifierBindings.Count < quantifierBinding.Count)
         {
-          var quantifierInfo = quantifierInstantiationInfo[quantifierExpr];
-          if (quantifierInfo.relevantLabels.Overlaps(currLabelToInstances.Keys))
+          foreach (var v in quantifierBinding.Keys)
           {
-            InstantiateQuantifier(quantifierExpr);
+            if (visitedQuantifierBindings.Contains(v)) continue;
+            visitedQuantifierBindings.Add(v);
+            var quantifierExpr = quantifierBinding[v];
+            var quantifierInfo = quantifierInstantiationInfo[quantifierExpr];
+            if (quantifierInfo.relevantLabels.Overlaps(currLabelToInstances.Keys))
+            {
+              InstantiateQuantifier(quantifierExpr);
+            }
           }
         }
 
-        foreach (var lambdaFunction in lambdaDefinition.Keys)
+        var visitedLambdaFunctions = new HashSet<Function>();
+        while (visitedLambdaFunctions.Count < lambdaDefinition.Count)
         {
-          var quantifierExpr = lambdaDefinition[lambdaFunction];
-          var quantifierInfo = quantifierInstantiationInfo[quantifierExpr];
-          if (quantifierInfo.relevantLabels.Overlaps(currLabelToInstances.Keys) ||
-              currLambdaToInstances[lambdaFunction].Count > 0)
+          foreach (var lambdaFunction in lambdaDefinition.Keys)
           {
-            InstantiateLambdaDefinition(lambdaFunction);
+            if (visitedLambdaFunctions.Contains(lambdaFunction)) continue;
+            visitedLambdaFunctions.Add(lambdaFunction);
+            var quantifierExpr = lambdaDefinition[lambdaFunction];
+            var quantifierInfo = quantifierInstantiationInfo[quantifierExpr];
+            if (quantifierInfo.relevantLabels.Overlaps(currLabelToInstances.Keys) ||
+                currLambdaToInstances[lambdaFunction].Count > 0)
+            {
+              InstantiateLambdaDefinition(lambdaFunction);
+            }
           }
         }
       }
@@ -327,39 +353,173 @@ namespace Microsoft.Boogie.VCExprAST
           x => instance[x]), new Dictionary<TypeVariable, Type>());
       var substituter = new SubstitutingVCExprVisitor(vcExprGen);
       var instantiation = substituter.Mutate(quantifierExpr.Body, subst);
-      quantifierInstantiationInfo.instances[new List<VCExpr>(instance)] = Skolemizer.Skolemize(this,
-        quantifierExpr.Quan == Quantifier.ALL ? QuantifierStatus.Exists : QuantifierStatus.Forall, instantiation);
+      quantifierInstantiationInfo.instances[new List<VCExpr>(instance)] =
+        Skolemizer.Skolemize(this, quantifierExpr.Quan == Quantifier.ALL ? Polarity.Positive : Polarity.Negative,
+          instantiation);
     }
   }
 
-  enum QuantifierStatus
+  enum Polarity
   {
-    Exists,
-    Forall,
-    None,
+    Positive,
+    Negative,
+    Unknown,
+  }
+  
+  class QuantifierCollector : BoundVarTraversingVCExprVisitor<Dictionary<VCExprVar, Polarity>, Polarity>
+  {
+    public static HashSet<VCExprQuantifier> CollectQuantifiers(VCExpr vcExpr, Polarity polarity)
+    {
+      var visitor = new QuantifierCollector();
+      visitor.Traverse(vcExpr, polarity);
+      return visitor.quantifiers;
+    }
+
+    public static Polarity Flip(Polarity polarity)
+    {
+      switch (polarity)
+      {
+        case Polarity.Positive:
+          return Polarity.Negative;
+        case Polarity.Negative:
+          return Polarity.Positive;
+        case Polarity.Unknown:
+          return Polarity.Unknown;
+      }
+      Contract.Assert(false);
+      return Polarity.Unknown;
+    }
+
+    private HashSet<VCExprQuantifier> quantifiers = new HashSet<VCExprQuantifier>();
+    
+    private static Polarity Join(Polarity first, Polarity second)
+    {
+      if (first == second)
+      {
+        return first;
+      }
+      return Polarity.Unknown;
+    }
+
+    private static Dictionary<VCExprVar, Polarity> Join(IEnumerable<Dictionary<VCExprVar, Polarity>> elems)
+    {
+      var result = new Dictionary<VCExprVar, Polarity>();
+      foreach (var elem in elems)
+      {
+        foreach (var x in elem.Keys)
+        {
+          if (result.ContainsKey(x))
+          {
+            result[x] = Join(result[x], elem[x]);
+          }
+          else
+          {
+            result[x] = elem[x];
+          }
+        }
+      }
+      return result;
+    }
+    
+    private static Dictionary<VCExprVar, Polarity> Join(params Dictionary<VCExprVar, Polarity>[] elems)
+    {
+      return Join(elems.Select(x => x));
+    }
+    
+    public override Dictionary<VCExprVar, Polarity> Visit(VCExprNAry node, Polarity arg)
+    {
+      if (arg != Polarity.Unknown)
+      {
+        if (node.Op.Equals(VCExpressionGenerator.NotOp))
+        {
+          return node[0].Accept(this, Flip(arg));
+        }
+        if (node.Op.Equals(VCExpressionGenerator.AndOp) || node.Op.Equals(VCExpressionGenerator.OrOp))
+        {
+          return Join(node[0].Accept(this, arg), node[1].Accept(this, arg));
+        }
+        if (node.Op.Equals(VCExpressionGenerator.ImpliesOp))
+        {
+          return Join(node[0].Accept(this, Flip(arg)), node[1].Accept(this, arg));
+        }
+      }
+      return Join(node.UniformArguments.Select(x => x.Accept(this, Polarity.Unknown)));
+    }
+
+    public override Dictionary<VCExprVar, Polarity> Visit(VCExprVar node, Polarity arg)
+    {
+      return new Dictionary<VCExprVar, Polarity> {{node, arg}};
+    }
+
+    protected override Dictionary<VCExprVar, Polarity> VisitAfterBinding(VCExprLet node, Polarity arg)
+    {
+      var result = node.Body.Accept(this, arg);
+      for (int i = node.Length - 1; i >= 0; i--)
+      {
+        if (result.ContainsKey(node[i].V))
+        {
+          result = Join(result, node[i].E.Accept(this, result[node[i].V]));
+        }
+      }
+      foreach (var x in node.BoundVars)
+      {
+        result.Remove(x);
+      }
+      return result;
+    }
+
+    protected override Dictionary<VCExprVar, Polarity> VisitAfterBinding(VCExprQuantifier node, Polarity arg)
+    {
+      var result = node.Body.Accept(this, arg);
+      foreach (var x in node.BoundVars)
+      {
+        result.Remove(x);
+      }
+      return result;
+    }
+
+    public override Dictionary<VCExprVar, Polarity> Visit(VCExprQuantifier node, Polarity arg)
+    {
+      var result = base.Visit(node, arg);
+      if (arg != Polarity.Unknown && !result.Keys.Intersect(BoundTermVars).Any())
+      {
+        if ((arg == Polarity.Positive) == (node.Quan == Quantifier.EX))
+        {
+          quantifiers.Add(node);
+        }
+      }
+      return result;
+    }
+
+    protected override Dictionary<VCExprVar, Polarity> StandardResult(VCExpr node, Polarity arg)
+    {
+      return null;
+    }
+
+    public override Dictionary<VCExprVar, Polarity> Visit(VCExprLiteral node, Polarity arg)
+    {
+      return new Dictionary<VCExprVar, Polarity>();
+    }
   }
   
   class Skolemizer : MutatingVCExprVisitor<bool>
   {
-    public static VCExpr Skolemize(QuantifierInstantiationEngine qiEngine, QuantifierStatus quantifierStatus, VCExpr vcExpr)
+    public static VCExpr Skolemize(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr)
     {
-      Contract.Requires(quantifierStatus != QuantifierStatus.None);
-      var skolemizer = new Skolemizer(qiEngine, quantifierStatus);
+      var skolemizer = new Skolemizer(qiEngine, polarity, vcExpr);
       var skolemizedExpr = skolemizer.Mutate(vcExpr, true);
-      return Factorizer.Factorize(qiEngine,
-        quantifierStatus == QuantifierStatus.Exists ? Quantifier.ALL : Quantifier.EX,
-        skolemizedExpr);
+      return Factorizer.Factorize(qiEngine, QuantifierCollector.Flip(polarity), skolemizedExpr);
     }
 
-    private Skolemizer(QuantifierInstantiationEngine qiEngine, QuantifierStatus quantifierStatus) : base(qiEngine.vcExprGen)
+    private Skolemizer(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr) : base(qiEngine.vcExprGen)
     {
       this.qiEngine = qiEngine;
-      this.quantifierStatus = quantifierStatus;
+      this.quantifiers = QuantifierCollector.CollectQuantifiers(vcExpr, polarity);
       this.bound = new Dictionary<VCExprVar, VCExpr>();
     }
 
     private QuantifierInstantiationEngine qiEngine;
-    private QuantifierStatus quantifierStatus;
+    private HashSet<VCExprQuantifier> quantifiers;
     private Dictionary<VCExprVar, VCExpr> bound;
 
     public override VCExpr Visit(VCExprVar node, bool arg)
@@ -371,97 +531,55 @@ namespace Microsoft.Boogie.VCExprAST
       return base.Visit(node, arg);
     }
 
-    public override VCExpr Visit(VCExprNAry node, bool arg)
-    {
-      if (quantifierStatus == QuantifierStatus.None)
-      {
-        return base.Visit(node, arg);
-      }
-      var savedQuantifierStatus = quantifierStatus;
-      if (node.Op.Equals(VCExpressionGenerator.NotOp))
-      {
-        quantifierStatus = quantifierStatus == QuantifierStatus.Exists ? QuantifierStatus.Forall : QuantifierStatus.Exists;
-      }
-      if (node.Op.Equals(VCExpressionGenerator.ImpliesOp))
-      {
-        quantifierStatus = QuantifierStatus.None;
-      }
-      if (node.Op.Equals(VCExpressionGenerator.EqOp) || node.Op.Equals(VCExpressionGenerator.NeqOp))
-      {
-        if (node[0].Type.Equals(Type.Bool))
-        {
-          quantifierStatus = QuantifierStatus.None;
-        }
-      }
-      if (node.Op.Equals(VCExpressionGenerator.IfThenElseOp))
-      {
-        quantifierStatus = QuantifierStatus.None;
-      }
-      var returnExpr = base.Visit(node, arg);
-      quantifierStatus = savedQuantifierStatus;
-      return returnExpr;
-    }
-
-    public override VCExpr Visit(VCExprLet node, bool arg)
-    {
-      var savedQuantifierStatus = quantifierStatus;
-      quantifierStatus = QuantifierStatus.None;
-      var returnExpr = base.Visit(node, arg);
-      quantifierStatus = savedQuantifierStatus;
-      return returnExpr;
-    }
-
     public override VCExpr Visit(VCExprQuantifier node, bool arg)
     {
-      if (node.TypeParameters.Count == 0 && 
-          (node.Quan == Quantifier.ALL && quantifierStatus == QuantifierStatus.Forall ||
-          node.Quan == Quantifier.EX && quantifierStatus == QuantifierStatus.Exists))
+      if (node.TypeParameters.Count == 0 && quantifiers.Contains(node))
       {
         return PerformSkolemization(node, arg);
       }
-      var savedQuantifierStatus = quantifierStatus;
-      quantifierStatus = QuantifierStatus.None;
-      var returnExpr = base.Visit(node, arg);
-      quantifierStatus = savedQuantifierStatus;
-      return returnExpr;
+      return base.Visit(node, arg);
     }
 
     private VCExpr PerformSkolemization(VCExprQuantifier node, bool arg)
     {
-      var oldToNew = qiEngine.FreshSkolemConstants(node);
+      var oldToNew = node.BoundVars.ToDictionary(v => v, v => (VCExpr) qiEngine.FreshSkolemConstant(v));
       foreach (var x in node.BoundVars)
       {
         bound.Add(x, oldToNew[x]);
       }
-      var expr = base.Visit(node, arg);
+      var retExpr = (VCExprQuantifier) base.Visit(node, arg);
+      retExpr.Info.instantiationExprs.Iter(kv =>
+      {
+        kv.Value.Iter(expr => { qiEngine.AddTerm(kv.Key, expr.Accept(this, arg)); });
+      });
       foreach (var x in node.BoundVars)
       {
         bound.Remove(x);
       }
-      return expr;
+      return retExpr.Body;
     }
   }
   
   class Factorizer : MutatingVCExprVisitor<bool>
   {
     private QuantifierInstantiationEngine qiEngine;
-    private Quantifier quantifier;
+    private HashSet<VCExprQuantifier> quantifiers;
 
-    public static VCExpr Factorize(QuantifierInstantiationEngine qiEngine, Quantifier quantifier, VCExpr vcExpr)
+    public static VCExpr Factorize(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr)
     {
-      var factorizer = new Factorizer(qiEngine, quantifier);
+      var factorizer = new Factorizer(qiEngine, polarity, vcExpr);
       return factorizer.Mutate(vcExpr, true);
     }
 
-    private Factorizer(QuantifierInstantiationEngine qiEngine, Quantifier quantifier) : base(qiEngine.vcExprGen)
+    private Factorizer(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr) : base(qiEngine.vcExprGen)
     {
       this.qiEngine = qiEngine;
-      this.quantifier = quantifier;
+      this.quantifiers = QuantifierCollector.CollectQuantifiers(vcExpr, polarity);
     }
 
     public override VCExpr Visit(VCExprQuantifier node, bool arg)
     {
-      if (node.Quan == quantifier)
+      if (quantifiers.Contains(node))
       {
         return qiEngine.BindQuantifier(node);
       }
@@ -514,7 +632,7 @@ namespace Microsoft.Boogie.VCExprAST
         var function = (instance.Op as VCExprBoogieFunctionOp).Func;
         if (!lambdaFunctionToInstances.ContainsKey(function))
         {
-          lambdaFunctionToInstances[function] = new HashSet<List<VCExpr>>();
+          lambdaFunctionToInstances[function] = new HashSet<List<VCExpr>>(new ListComparer<VCExpr>());
         }
         lambdaFunctionToInstances[function].Add(instance.UniformArguments.ToList());
       }

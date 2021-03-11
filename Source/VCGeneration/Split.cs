@@ -1152,6 +1152,11 @@ namespace VC
 
         VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
         Contract.Assert(vc != null);
+        
+        if (InstantiationSourceChecker.HasInstantiationSources(impl))
+        {
+          vc = Microsoft.Boogie.VCExprAST.QuantifierInstantiationEngine.Instantiate(impl, exprGen, bet, vc);
+        }
 
         VCExpr controlFlowFunctionAppl =
           exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));

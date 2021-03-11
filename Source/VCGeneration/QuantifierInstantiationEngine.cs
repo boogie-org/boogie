@@ -224,6 +224,18 @@ namespace VC
       });
     }
     
+    private static void AddDictionary<T,U>(Dictionary<T, HashSet<List<U>>> @from, Dictionary<T, HashSet<List<U>>> to)
+    {
+      @from.Iter(kv =>
+      {
+        if (!to.ContainsKey(kv.Key))
+        {
+          to[kv.Key] = new HashSet<List<U>>();
+        }
+        to[kv.Key].UnionWith(@from[kv.Key]);
+      });
+    }
+    
     private void Start()
     {
       impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().Iter(predicateCmd =>
@@ -548,7 +560,11 @@ namespace VC
       {
         return qiEngine.BindQuantifier(node);
       }
-      return base.VisitForallExpr(node);
+      var savedQuantifierStatus = quantifierStatus;
+      quantifierStatus = QuantifierStatus.None;
+      var returnExpr =  base.VisitForallExpr(node);
+      quantifierStatus = savedQuantifierStatus;
+      return returnExpr;
     }
 
     public override Expr VisitExistsExpr(ExistsExpr node)
@@ -557,7 +573,20 @@ namespace VC
       {
         return qiEngine.BindQuantifier(node);
       }
-      return base.VisitExistsExpr(node);
+      var savedQuantifierStatus = quantifierStatus;
+      quantifierStatus = QuantifierStatus.None;
+      var returnExpr = base.VisitExistsExpr(node);
+      quantifierStatus = savedQuantifierStatus;
+      return returnExpr;
+    }
+
+    public override Expr VisitLetExpr(LetExpr node)
+    {
+      var savedQuantifierStatus = quantifierStatus;
+      quantifierStatus = QuantifierStatus.None;
+      var returnExpr = base.VisitLetExpr(node);
+      quantifierStatus = savedQuantifierStatus;
+      return returnExpr;
     }
   }
 

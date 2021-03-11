@@ -648,8 +648,8 @@ namespace Microsoft.Boogie.VCExprAST
         node.SkolemId,
         QKeyValue.FindIntAttribute(node.Attributes, "weight", 1), 
         Enumerable.Range(0, boundVars.Count)
-          .ToDictionary(x => boundVars[x], x => FindInstantiationHints(node.Dummies[x])),
-        FindInstantiationSources(node));
+          .ToDictionary(x => boundVars[x], x => QuantifierInstantiationEngine.FindInstantiationHints(node.Dummies[x])),
+        QuantifierInstantiationEngine.FindInstantiationSources(node, this));
     }
 
     private string GetQid(QuantifierExpr node)
@@ -691,45 +691,6 @@ namespace Microsoft.Boogie.VCExprAST
       return qid;
     }
 
-    private HashSet<string> FindInstantiationHints(ICarriesAttributes o)
-    {
-      var labels = new HashSet<string>();
-      var iter = o.Attributes;
-      while (iter != null)
-      {
-        if (iter.Key == "inst_at")
-        {
-          iter.Params.OfType<string>().Iter(x => labels.Add(x));
-        }
-        iter = iter.Next;
-      }
-      return labels;
-    }
-    
-    private Dictionary<string, HashSet<VCExpr>> FindInstantiationSources(ICarriesAttributes o)
-    {
-      var freshInstances = new Dictionary<string, HashSet<VCExpr>>();
-      var iter = o.Attributes;
-      while (iter != null)
-      {
-        if (iter.Key == "inst")
-        {
-          var label = iter.Params[0] as string;
-          var instance = iter.Params[1] as Expr;
-          if (label != null && instance != null)
-          {
-            if (!freshInstances.ContainsKey(label))
-            {
-              freshInstances[label] = new HashSet<VCExpr>();
-            }
-            freshInstances[label].Add(Translate(instance));
-          }
-        }
-        iter = iter.Next;
-      }
-      return freshInstances;
-    }
-    
     public override Expr VisitLetExpr(LetExpr node)
     {
       Contract.Ensures(Contract.Result<Expr>() != null);

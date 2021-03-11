@@ -609,8 +609,6 @@ namespace Microsoft.Boogie.VCExprAST
   public abstract class BoundVarTraversingVCExprVisitor<Result, Arg>
     : TraversingVCExprVisitor<Result, Arg>
   {
-    // Maps with all variables bound above a certain location in the VCExpression.
-    // The value of the map tells how often a particular symbol was bound
     private readonly ISet<VCExprVar> BoundTermVarsSet = new HashSet<VCExprVar>();
 
     [ContractInvariantMethod]

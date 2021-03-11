@@ -621,7 +621,7 @@ namespace VC
       Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       
-      QuantifierInstantiationEngine.Instantiate(impl);
+      //QuantifierInstantiationEngine.Instantiate(impl);
       
       TypecheckingContext tc = new TypecheckingContext(null);
       impl.Typecheck(tc);
