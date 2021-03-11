@@ -33,6 +33,10 @@ namespace Microsoft.Boogie.VCExprAST
 
     public static VCExpr Instantiate(Implementation impl, VCExpressionGenerator vcExprGen, Boogie2VCExprTranslator exprTranslator, VCExpr vcExpr)
     {
+      if (!InstantiationSourceChecker.HasInstantiationSources(impl))
+      {
+        return vcExpr;
+      }
       var qiEngine = new QuantifierInstantiationEngine(vcExprGen, exprTranslator);
       return qiEngine.Execute(impl, vcExpr);
     }
@@ -682,6 +686,53 @@ namespace Microsoft.Boogie.VCExprAST
         }
       }
       return base.Visit(node, arg);
+    }
+  }
+  
+  class InstantiationSourceChecker : ReadOnlyVisitor
+  {
+    private bool hasInstances;
+
+    private void FindInstantiationSources(ICarriesAttributes o)
+    {
+      var iter = o.Attributes;
+      while (iter != null)
+      {
+        if (iter.Key == "inst")
+        {
+          var label = iter.Params[0] as string;
+          var instance = iter.Params[1] as Expr;
+          if (label != null && instance != null)
+          {
+            hasInstances = true;
+          }
+        }
+        iter = iter.Next;
+      }
+    }
+    
+    public static bool HasInstantiationSources(Implementation impl)
+    {
+      var instanceChecker = new InstantiationSourceChecker();
+      instanceChecker.VisitImplementation(impl);
+      return instanceChecker.hasInstances;
+    }
+
+    private InstantiationSourceChecker()
+    {
+      this.hasInstances = false;
+    }
+    
+    public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
+    {
+      FindInstantiationSources(node);
+      return base.VisitQuantifierExpr(node);
+    }
+
+    public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
+    {
+      cmdSeq.OfType<ICarriesAttributes>().Iter(cmd => FindInstantiationSources(cmd));
+      return base.VisitCmdSeq(cmdSeq);
     }
   }
 }
