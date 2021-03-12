@@ -13,7 +13,7 @@ procedure INV0(n: int)
   assume i <= n;
   assume (forall {:inst_at "A"} pa: PA :: PAs[pa] == if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
   assume (forall {:inst_at "A"} pa: PA :: PAs[pa] == 0);
-  assert {:inst_add"A", ADD(n)} i == n;
+  assert {:inst_add "A", ADD(n)} i == n;
 }
 
 procedure INV1(n: int)
@@ -28,7 +28,7 @@ procedure INV1(n: int)
   assume (forall {:inst_at "A"} pa: PA :: PAs[pa] == 0);
   m := n + 1;
   m := m + 1;
-  assert {:inst_add"A", ADD(m-2)} i == n;
+  assert {:inst_add "A", ADD(m-2)} i == n;
 }
 
 procedure INV2(n: int)
@@ -40,5 +40,5 @@ procedure INV2(n: int)
   assume i <= n;
   PAs := (lambda {:inst_at "A"} pa: PA :: if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
   assume (forall {:inst_at "A"} pa: PA :: PAs[pa] == 0);
-  assert {:inst_add"A", ADD(n)} i == n;
+  assert {:inst_add "A", ADD(n)} i == n;
 }
