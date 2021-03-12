@@ -70,7 +70,7 @@ namespace Microsoft.Boogie.VCExprAST
       }
       while (iter != null)
       {
-        if (iter.Key == "inst")
+        if (iter.Key == "inst_add")
         {
           var label = iter.Params[0] as string;
           var instance = iter.Params[1] as Expr;
@@ -170,7 +170,7 @@ namespace Microsoft.Boogie.VCExprAST
       var iter = o.Attributes;
       while (iter != null)
       {
-        if (iter.Key == "inst")
+        if (iter.Key == "inst_add")
         {
           var label = iter.Params[0] as string;
           var instance = iter.Params[1] as Expr;
@@ -698,7 +698,7 @@ namespace Microsoft.Boogie.VCExprAST
       var iter = o.Attributes;
       while (iter != null)
       {
-        if (iter.Key == "inst")
+        if (iter.Key == "inst_add")
         {
           var label = iter.Params[0] as string;
           var instance = iter.Params[1] as Expr;
