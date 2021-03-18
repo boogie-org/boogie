@@ -88,11 +88,13 @@ namespace Microsoft.Boogie
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
       this.Trace = trace;
-      this.AugmentedTrace = augmentedTrace;
       this.Model = model;
       this.MvInfo = mvInfo;
       this.Context = context;
       this.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
+      // the call to instance method GetModelValue in the following code requires the fields Model and Context to be initialized
+      this.AugmentedTrace = augmentedTrace
+        .Select(elem => elem is IdentifierExpr identifierExpr ? GetModelValue(identifierExpr.Decl) : elem).ToList();
     }
 
     // Create a shallow copy of the counterexample
