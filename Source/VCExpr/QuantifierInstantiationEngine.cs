@@ -6,6 +6,26 @@ namespace Microsoft.Boogie.VCExprAST
 {
   public class QuantifierInstantiationEngine
   {
+    /*
+     * The algorithm implemented by QuantifierInstantiationEngine is a fixpoint. There are three phases.
+     *
+     * Start:
+     *   - find instantiation sources in commands
+     *   - skolemize quantifiers in the verification condition
+     *
+     * At this point, a collection of quantifiers to be instantiated and a collection of instances
+     * are installed.
+     *
+     * Execute: Repeatedly, instantiate quantifiers based on existing instances, skolemize and install new quantifiers
+     * that are discovered, and install new instances discovered.
+     *
+     * Finish:
+     *   - Rewrite quantifiers based on the discovered instances. Forall quantifiers are rewritten as a conjunction of
+     *     the original quantifier and the instances. Exists quantifiers are rewritten as a disjunction of the original
+     *     quantifier and the instances.
+     *   - Add instances of the axioms for lambdas as assume statements in the starting block of impl.
+     */
+
     private class QuantifierInstantiationInfo
     {
       public HashSet<string> relevantLabels;
@@ -263,9 +283,11 @@ namespace Microsoft.Boogie.VCExprAST
           }
         }
       }
-      return vcExprGen.And(LetConvert(vcExpr), vcExprGen.NAry(VCExpressionGenerator.AndOp, lambdaDefinition.Values
+
+      var lambdaAxioms = vcExprGen.NAry(VCExpressionGenerator.AndOp, lambdaDefinition.Values
         .SelectMany(quantifierExpr =>
-          quantifierInstantiationInfo[quantifierExpr].instances.Values.ToList()).ToList()));
+          quantifierInstantiationInfo[quantifierExpr].instances.Values.ToList()).ToList());
+      return vcExprGen.Implies(lambdaAxioms, LetConvert(vcExpr));
     }
     
     private VCExpr LetConvert(VCExpr vcExpr)
@@ -508,6 +530,15 @@ namespace Microsoft.Boogie.VCExprAST
   
   class Skolemizer : MutatingVCExprVisitor<bool>
   {
+    /*
+     * The method Skolemize performs best-effort skolemization of the input expression expr.
+     * If polarity == Polarity.Negative, a quantifier F embedded in expr is skolemized
+     * provided it can be proved that F is a forall quantifier in the NNF version of expr.
+     * If polarity == Polarity.Positive, a quantifier F embedded in expr is skolemized
+     * provided it can be proved that F is an exists quantifier in the NNF version of expr.
+     *
+     * Factorization is performed on the resulting expression.
+     */
     public static VCExpr Skolemize(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr)
     {
       var skolemizer = new Skolemizer(qiEngine, polarity, vcExpr);
@@ -566,6 +597,13 @@ namespace Microsoft.Boogie.VCExprAST
   
   class Factorizer : MutatingVCExprVisitor<bool>
   {
+    /* 
+     * The method Factorize factors out quantified expressions in expr replacing them with a bound variable.
+     * The binding between the bound variable and the quantifier replaced by it is registered in qiEngine.
+     * If polarity == Polarity.Positive, forall quantifiers are factorized.
+     * If polarity == Polarity.Negative, exists quantifiers are factorized.
+     */
+    
     private QuantifierInstantiationEngine qiEngine;
     private HashSet<VCExprQuantifier> quantifiers;
 

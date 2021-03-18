@@ -184,7 +184,7 @@ modifies decision;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-function Inv(CH_low:[pid][val]int, CH:[val]int) : bool
+function {:inline} Inv(CH_low:[pid][val]int, CH:[val]int) : bool
 {
   (forall i:pid :: MultisetSubsetEq(MultisetEmpty, CH_low[i]) && MultisetSubsetEq(CH_low[i], CH))
 }
