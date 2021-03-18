@@ -109,7 +109,7 @@ To push a new version to nuget, perform the following steps:
 
 - Update the version (e.g., x.y.z) and commit the change
 - git tag vx.y.z
-- git push vx.y.z
+- git push --tags
 
 The [CI workflow](.github/workflows/test.yml) will build and push the packages.
 
