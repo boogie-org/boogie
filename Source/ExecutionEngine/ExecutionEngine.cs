@@ -1727,17 +1727,7 @@ namespace Microsoft.Boogie
             if (CommandLineOptions.Clo.EnhancedErrorMessages == 1 && error.AugmentedTrace != null && error.AugmentedTrace.Count > 0)
             {
               errorInfo.Out.WriteLine("Augmented execution trace:");
-              foreach (var elem in error.AugmentedTrace)
-              {
-                if (elem is IdentifierExpr identifierExpr)
-                {
-                  errorInfo.Out.Write(error.GetModelValue(identifierExpr.Decl));
-                }
-                else
-                {
-                  errorInfo.Out.Write(elem);
-                }
-              }
+              error.AugmentedTrace.Iter(elem => errorInfo.Out.Write(elem));
             }
             if (CommandLineOptions.Clo.PrintErrorModel >= 1 && error.Model != null)
             {
