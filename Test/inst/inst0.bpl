@@ -38,6 +38,36 @@ procedure A4()
     assert (forall y0, y1: int :: {:inst_add "L0", y0+1} {:inst_add "L1", y1+1} G(y0, y1));
 }
 
+procedure A5()
+{
+    assume (var a := (forall {:inst_at "L"} x: int :: F(x-1)); a);
+    assert {:inst_add "L", 1} F(0);
+    assert (var b := (forall y: int :: {:inst_add "L", y+1} F(y)); b);
+}
+
+procedure A6()
+{
+    assume !(exists {:inst_at "L"} x: int :: !F(x-1));
+    assert {:inst_add "L", 1} F(0);
+    assert !(exists y: int :: {:inst_add "L", y+1} !F(y));
+}
+
+procedure A7()
+{
+    var a: bool;
+    assume a ==> (forall {:inst_at "L"} x: int :: F(x-1));
+    assert {:inst_add "L", 1} a ==> F(0);
+    assert a ==> (forall y: int :: {:inst_add "L", y+1} F(y));
+}
+
+procedure A8()
+{
+    var a: bool;
+    assume (exists {:inst_at "L"} x: int :: F(x-1)) ==> a;
+    assert {:inst_add "L", 1} F(0) ==> a;
+    assert (exists y: int :: {:inst_add "L", y+1} F(y)) ==> a;
+}
+
 function P(int, int): bool;
 
 procedure B0()

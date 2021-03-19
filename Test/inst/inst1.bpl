@@ -38,6 +38,7 @@ procedure INV2(n: int)
 
   assume 0 <= i;
   assume i <= n;
+  // add all labels used in inst_at attributes on bound variables to the body of the lambda
   PAs := (lambda {:inst_at "A2"} pa: PA :: {:labels "A2"} if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
   assume (forall pa: PA :: PAs[pa] == 0);
   assert {:inst_add "A2", ADD(n)} i == n;
@@ -57,6 +58,7 @@ procedure INV3(n: int)
 
 procedure {:inline 1} CreateLambda(i: int, n: int) returns (PAs: [PA]int)
 {
+  // add all labels used in inst_at attributes on bound variables to the body of the lambda
   PAs := (lambda {:inst_at "A3"} pa: PA :: {:labels "A3"} if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
 }
 
