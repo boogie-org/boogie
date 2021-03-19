@@ -2,6 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 
 function F(int): bool;
+function G(int, int):bool;
 
 procedure A0()
 {
@@ -23,41 +24,29 @@ procedure A2()
     assert false;
 }
 
-procedure B(j: int)
-requires j > 0;
+procedure A3()
 {
-    var x: [int]bool;
-    x := (lambda {:inst_at "M"} i: int :: if (i < j) then true else false);
-    assert {:inst_add "M", 0} x[0];
+    assume (forall {:inst_at "L"} x0: int, {:inst_at "L"} x1: int :: G(x0-1, x1-1));
+    assert {:inst_add "L", 1} G(0, 0);
+    assert (forall y0, y1: int :: {:inst_add "L", y0+1} {:inst_add "L", y1+1} G(y0, y1));
 }
 
-procedure C(j: int)
-requires j > 0;
+procedure A4()
 {
-    var x: [int]bool;
-    call x := CreateLambda(j);
-    call LookupLambda(x);
-}
-
-procedure {:inline 1} CreateLambda(j: int) returns (x: [int]bool)
-{
-    x := (lambda {:inst_at "M"} i: int :: if (i < j) then true else false);
-}
-
-procedure {:inline 1} LookupLambda(x: [int]bool)
-{
-    assert {:inst_add "M", 0} x[0];
+    assume (forall {:inst_at "L0"} x0: int, {:inst_at "L1"} x1: int :: G(x0-1, x1-1));
+    assert {:inst_add "L0", 1} {:inst_add "L1", 1} G(0, 0);
+    assert (forall y0, y1: int :: {:inst_add "L0", y0+1} {:inst_add "L1", y1+1} G(y0, y1));
 }
 
 function P(int, int): bool;
 
-procedure D0()
+procedure B0()
 {
     assume (exists x: int :: (forall {:inst_at "A"} y: int :: P(x,y)));
     assert (forall y: int :: {:inst_add "A", y} (exists x: int :: P(x,y)));
 }
 
-procedure D1()
+procedure B1()
 {
     assume (exists x: int :: {:inst_add "B", x+1} (forall {:inst_at "A"} y: int :: P(x,y)));
     assert (forall y: int :: {:inst_add "A", y} (exists {:inst_at "B"} x: int :: P(x-1,y)));
