@@ -1185,7 +1185,7 @@ namespace VC
       AddDebugInfo(c, incarnationMap, passiveCmds);
       Substitution incarnationSubst = Substituter.SubstitutionFromDictionary(incarnationMap);
       
-      QuantifierInstantiationEngine.SubstituteIncarnationInInstantiationSources(c, incarnationSubst);
+      Microsoft.Boogie.VCExprAST.QuantifierInstantiationEngine.SubstituteIncarnationInInstantiationSources(c, incarnationSubst);
 
       #region assert/assume P |--> assert/assume P[x := in(x)], out := in
 

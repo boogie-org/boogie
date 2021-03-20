@@ -2,63 +2,82 @@
 // RUN: %diff "%s.expect" "%t"
 
 function F(int): bool;
+function G(int, int):bool;
 
 procedure A0()
 {
     assume (forall {:inst_at "L"} x: int :: F(x-1));
-    assert {:inst "L", 1} F(0);
-    assert (forall y: int :: {:inst "L", y+1} F(y));
+    assert {:inst_add "L", 1} F(0);
+    assert (forall y: int :: {:inst_add "L", y+1} F(y));
 }
 
 procedure A1()
 {
-    assume (exists x: int :: {:inst "L", x+1} F(x));
+    assume (exists x: int :: {:inst_add "L", x+1} F(x));
     assert (exists {:inst_at "L"} y: int :: F(y-1));
 }
 
 procedure A2()
 {
-    assume (exists x: int :: {:inst "L", x+1} F(x));
+    assume (exists x: int :: {:inst_add "L", x+1} F(x));
     assume (forall {:inst_at "L"} y: int :: !F(y-1));
     assert false;
 }
 
-procedure B(j: int)
-requires j > 0;
+procedure A3()
 {
-    var x: [int]bool;
-    x := (lambda {:inst_at "M"} i: int :: if (i < j) then true else false);
-    assert {:inst "M", 0} x[0];
+    assume (forall {:inst_at "L"} x0: int, {:inst_at "L"} x1: int :: G(x0-1, x1-1));
+    assert {:inst_add "L", 1} G(0, 0);
+    assert (forall y0, y1: int :: {:inst_add "L", y0+1} {:inst_add "L", y1+1} G(y0, y1));
 }
 
-procedure C(j: int)
-requires j > 0;
+procedure A4()
 {
-    var x: [int]bool;
-    call x := CreateLambda(j);
-    call LookupLambda(x);
+    assume (forall {:inst_at "L0"} x0: int, {:inst_at "L1"} x1: int :: G(x0-1, x1-1));
+    assert {:inst_add "L0", 1} {:inst_add "L1", 1} G(0, 0);
+    assert (forall y0, y1: int :: {:inst_add "L0", y0+1} {:inst_add "L1", y1+1} G(y0, y1));
 }
 
-procedure {:inline 1} CreateLambda(j: int) returns (x: [int]bool)
+procedure A5()
 {
-    x := (lambda {:inst_at "M"} i: int :: if (i < j) then true else false);
+    assume (var a := (forall {:inst_at "L"} x: int :: F(x-1)); a);
+    assert {:inst_add "L", 1} F(0);
+    assert (var b := (forall y: int :: {:inst_add "L", y+1} F(y)); b);
 }
 
-procedure {:inline 1} LookupLambda(x: [int]bool)
+procedure A6()
 {
-    assert {:inst "M", 0} x[0];
+    assume !(exists {:inst_at "L"} x: int :: !F(x-1));
+    assert {:inst_add "L", 1} F(0);
+    assert !(exists y: int :: {:inst_add "L", y+1} !F(y));
+}
+
+procedure A7()
+{
+    var a: bool;
+    assume a ==> (forall {:inst_at "L"} x: int :: F(x-1));
+    assert {:inst_add "L", 1} a ==> F(0);
+    assert a ==> (forall y: int :: {:inst_add "L", y+1} F(y));
+}
+
+procedure A8()
+{
+    var a: bool;
+    assume (exists {:inst_at "L"} x: int :: F(x-1)) ==> a;
+    assert {:inst_add "L", 1} F(0) ==> a;
+    assert (exists y: int :: {:inst_add "L", y+1} F(y)) ==> a;
 }
 
 function P(int, int): bool;
 
-procedure D0()
+procedure B0()
 {
     assume (exists x: int :: (forall {:inst_at "A"} y: int :: P(x,y)));
-    assert (forall y: int :: {:inst "A", y} (exists x: int :: P(x,y)));
+    assert (forall y: int :: {:inst_add "A", y} (exists x: int :: P(x,y)));
 }
 
-procedure D1()
+procedure B1()
 {
-    assume (exists x: int :: {:inst "B", x+1} (forall {:inst_at "A"} y: int :: P(x,y)));
-    assert (forall y: int :: {:inst "A", y} (exists {:inst_at "B"} x: int :: P(x-1,y)));
+    assume (exists x: int :: {:inst_add "B", x+1} (forall {:inst_at "A"} y: int :: P(x,y)));
+    assert (forall y: int :: {:inst_add "A", y} (exists {:inst_at "B"} x: int :: P(x-1,y)));
 }

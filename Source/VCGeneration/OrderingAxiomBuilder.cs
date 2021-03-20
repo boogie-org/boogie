@@ -161,7 +161,7 @@ namespace Microsoft.Boogie
       // reflexivity
       boundVars.Add(x);
       AddAxiom(Gen.Forall(typeParams, boundVars, triggers,
-        new VCQuantifierInfos("bg:subtype-refl", -1, null),
+        new VCQuantifierInfo("bg:subtype-refl", -1),
         Gen.AtMost(x, x)));
 
       // transitivity
@@ -175,7 +175,7 @@ namespace Microsoft.Boogie
         Gen.AtMost(x, z));
       Contract.Assert(body != null);
       AddAxiom(Gen.Forall(typeParams, boundVars, triggers,
-        new VCQuantifierInfos("bg:subtype-trans", -1, null),
+        new VCQuantifierInfo("bg:subtype-trans", -1),
         body));
 
       // anti-symmetry
@@ -187,7 +187,7 @@ namespace Microsoft.Boogie
       body = Gen.Implies(Gen.And(Gen.AtMost(x, y), Gen.AtMost(y, x)),
         Gen.Eq(x, y));
       AddAxiom(Gen.Forall(typeParams, boundVars, triggers,
-        new VCQuantifierInfos("bg:subtype-antisymm", -1, null),
+        new VCQuantifierInfo("bg:subtype-antisymm", -1),
         body));
     }
 
