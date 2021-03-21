@@ -666,12 +666,12 @@ namespace Microsoft.Boogie
         if (program.TopLevelDeclarations.Any(d => d.HasCivlAttribute()))
         {
           CommandLineOptions.Clo.UseLibrary = true;
-          CommandLineOptions.Clo.UseArrayTheory = true;
-          CommandLineOptions.Clo.Monomorphize = true;
         }
 
         if (CommandLineOptions.Clo.UseLibrary)
         {
+          CommandLineOptions.Clo.UseArrayTheory = true;
+          CommandLineOptions.Clo.Monomorphize = true;
           var library = Parser.ParseLibraryDefinitions();
           program.AddTopLevelDeclarations(library.TopLevelDeclarations);
         }
@@ -752,7 +752,13 @@ namespace Microsoft.Boogie
       else if (CommandLineOptions.Clo.UseArrayTheory)
       {
         Console.WriteLine(
-          "Option /useArrayTheory only supported for monomorphic programs and polymorphism is detected in input program");
+          "Option /useArrayTheory only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
+        return PipelineOutcome.FatalError;
+      } 
+      else if (program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>().Any())
+      {
+        Console.WriteLine(
+          "Datatypes only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
         return PipelineOutcome.FatalError;
       }
 

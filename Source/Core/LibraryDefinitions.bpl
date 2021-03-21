@@ -31,3 +31,41 @@ function {:inline} Id<T>(t: T): T
 {
   t
 }
+
+function Default<T>(): T;
+
+type {:datatype} Vec _;
+function {:constructor} Vec<T>(contents: [int]T, len: int): Vec T;
+
+const Identity: [int]int;
+axiom (forall x: int :: Identity[x] == x);
+function {:inline} AtLeast(x: int): [int]bool
+{
+  MapLe(MapConst(x), Identity)
+}
+function {:inline} Range(from: int, n: int): [int]bool {
+  MapDiff(AtLeast(from), AtLeast(from + n))
+}
+axiom {:ctor "Vec"} (forall<T> x: Vec T :: {len#Vec(x)}{contents#Vec(x)} MapIte(Range(0, len#Vec(x)), MapConst(Default()), contents#Vec(x)) == MapConst(Default()));
+axiom {:ctor "Vec"} (forall<T> x: Vec T :: {len#Vec(x)} len#Vec(x) >= 0);
+
+function {:inline} Vec_Empty<T>(): Vec T
+{
+  Vec(MapConst(Default()), 0)
+}
+function {:inline} Vec_Append<T>(v: Vec T, x: T) : Vec T
+{
+  Vec(contents#Vec(v)[len#Vec(v) := x], len#Vec(v) + 1)
+}
+function {:inline} Vec_Update<T>(v: Vec T, i: int, x: T) : Vec T
+{
+  if (0 <= i && i < len#Vec(v)) then Vec(contents#Vec(v)[i := x], len#Vec(v)) else v
+}
+function {:inline} Vec_Nth<T>(v: Vec T, i: int): T
+{
+  contents#Vec(v)[i]
+}
+function {:inline} Vec_Len<T>(v: Vec T): int
+{
+  len#Vec(v)
+}
