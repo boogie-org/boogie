@@ -23,7 +23,11 @@ function {:inline} IsProcId(i: int) : bool { 0 <= i && i < N }
 var {:layer 0, 1} x : [int]int;
 var {:layer 0, 3} y : [int]int;
 
-// Prophecy variable and associated constant
+// Prophecy variable p and associated constant c.
+// For soundness, p must be havoced in the backward assignment that introduces it.
+// We capture the prophecy p in a constant c to make the prophecy available
+// even after the havoc of p.
+// Initial condition IsProcId(p) && p == c implies the precondition of Main.
 var {:layer 1, 1} p : int;
 const c: int;
 
@@ -33,26 +37,27 @@ function {:inline} Invariant(i: int, p: int, c: int, x: [int]int) : bool {
   IsProcId(c) &&
   (p == c || x[c] == 1)
 }
+procedure {:yield_invariant} {:layer 1} Yield(i: int);
+requires Invariant(i, p, c, x);
 
 // #############################################################################
 
 // Main procedures that spawns all processes
-procedure {:layer 2}{:yields}{:refines "atomic_main_abs"} Main()
-requires {:layer 1} IsProcId(p) && IsProcId(c) && p == c;
+procedure {:layer 2}{:yields}{:refines "atomic_main_abs"}
+{:yield_requires "Yield", 0}
+Main()
 {
   var i: int;
   i := 0;
-  yield;
-  assert {:layer 1} Invariant(i, p, c, x);
+  call Yield(i);
   while (i < N)
-  invariant {:cooperates} {:layer 0,1,2} true;
+  invariant {:cooperates} {:layer 1,2} true;
   invariant {:layer 1} (IsProcId(i) || i == N) && IsProcId(p) && IsProcId(c) && (p == c || x[c] == 1);
   invariant {:layer 2} (IsProcId(i) || i == N) && IsProcId(c) && (i <= (c+1) mod N || y[(c+1) mod N] == 1);
   {
-    async call Proc(i);
+    async call {:sync} Proc(i);
     i := i + 1;
   }
-  yield;
 }
 
 procedure {:layer 3}{:atomic} atomic_main_abs()
@@ -67,24 +72,22 @@ modifies y;
 // #############################################################################
 
 // The specification of a process
-procedure {:layer 1}{:yields}{:refines "atomic_update_y_abs"} Proc(i: int)
-requires {:layer 1} Invariant(i, p, c, x);
+procedure {:layer 1}{:yields}{:refines "atomic_update_y_abs"}
+{:yield_requires "Yield", i}
+Proc(i: int)
 {
-	yield;
-	assert {:layer 1} Invariant(i, p, c, x);
-	call update_x(i);
-	call backward_assign_p(i);
+  call update_x(i);
+  call backward_assign_p(i);
   yield;
-	assert {:layer 1} x[c] == 1;
+  assert {:layer 1} x[c] == 1;
   call update_y(i);
-  yield;
 }
 
-procedure {:layer 1}{:inline 1} backward_assign_p(i: int)
+procedure {:intro} {:layer 1} backward_assign_p(i: int)
 modifies p;
 {
-	assume p == i;
-	havoc p;
+  assume p == i;
+  havoc p;
   assume IsProcId(p);
 }
 
@@ -92,7 +95,7 @@ procedure {:layer 2}{:left} atomic_update_y_abs(i: int)
 modifies y;
 {
   if (i == (c+1) mod N) {
-	  y[i] := 1;
+    y[i] := 1;
   } else {
     havoc y;
     assume y == old(y)[i := y[i]];
