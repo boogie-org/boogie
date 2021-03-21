@@ -39,6 +39,7 @@ function {:constructor} Vec<T>(contents: [int]T, len: int): Vec T;
 
 const Identity: [int]int;
 axiom (forall x: int :: Identity[x] == x);
+
 function {:inline} AtLeast(x: int): [int]bool
 {
   MapLe(MapConst(x), Identity)
@@ -46,6 +47,7 @@ function {:inline} AtLeast(x: int): [int]bool
 function {:inline} Range(from: int, n: int): [int]bool {
   MapDiff(AtLeast(from), AtLeast(from + n))
 }
+
 axiom {:ctor "Vec"} (forall<T> x: Vec T :: {len#Vec(x)}{contents#Vec(x)} MapIte(Range(0, len#Vec(x)), MapConst(Default()), contents#Vec(x)) == MapConst(Default()));
 axiom {:ctor "Vec"} (forall<T> x: Vec T :: {len#Vec(x)} len#Vec(x) >= 0);
 
