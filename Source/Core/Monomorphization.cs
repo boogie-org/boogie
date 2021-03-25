@@ -652,6 +652,15 @@ namespace Microsoft.Boogie
       }
       return base.VisitTypeCtorDecl(node);
     }
+
+    public override Absy Visit(Absy node)
+    {
+      if (node is ICarriesAttributes attrNode && attrNode.Attributes != null)
+      {
+        VisitQKeyValue(attrNode.Attributes);
+      }
+      return base.Visit(node);
+    }
   }
   
   public class Monomorphizer

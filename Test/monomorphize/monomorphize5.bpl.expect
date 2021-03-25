@@ -1,0 +1,7 @@
+monomorphize5.bpl(21,3): Error: This assertion might not hold.
+Execution trace:
+    monomorphize5.bpl(19,5): anon0
+Augmented execution trace:
+x=(Mk_34 1)
+
+Boogie program verifier finished with 1 verified, 1 error
