@@ -386,6 +386,20 @@ namespace Microsoft.Boogie
       return name;
     }
 
+    private Type LookupType(Type type)
+    {
+      if (type is CtorType ctorType && ctorType.IsDatatype() && ctorType.Decl.Arity > 0)
+      {
+        var datatypeTypeCtorDecl = (DatatypeTypeCtorDecl) ctorType.Decl;
+        return new CtorType(Token.NoToken, datatypeInstantiations[datatypeTypeCtorDecl][ctorType.Arguments],
+          new List<Type>());
+      }
+      else
+      {
+        return type;
+      }
+    }
+
     public override Expr VisitNAryExpr(NAryExpr node)
     {
       var returnExpr = (NAryExpr) base.VisitNAryExpr(node);
@@ -398,7 +412,8 @@ namespace Microsoft.Boogie
       {
         var typeParamInstantiations =
           returnExpr.TypeParameters.FormalTypeParams.Select(x =>
-            TypeProxy.FollowProxy(returnExpr.TypeParameters[x]).Substitute(typeParamInstantiation)).ToList();
+              TypeProxy.FollowProxy(returnExpr.TypeParameters[x]).Substitute(typeParamInstantiation))
+            .Select(x => LookupType(x)).ToList();
         if (functionCall.Func is DatatypeMembership membership)
         {
           InstantiateDatatype(membership.constructor.datatypeTypeCtorDecl, typeParamInstantiations);
