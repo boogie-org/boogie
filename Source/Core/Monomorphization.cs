@@ -244,328 +244,364 @@ namespace Microsoft.Boogie
     }
   }
   
-  class ExprMonomorphizationVisitor : Duplicator
+  class MonomorphizationVisitor : StandardVisitor
   {
-    private Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations;
-    private Dictionary<DatatypeTypeCtorDecl, Dictionary<List<Type>, DatatypeTypeCtorDecl>> datatypeInstantiations;
-    private Dictionary<TypeCtorDecl, HashSet<CtorType>> triggerTypes;
-    private Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes;
-    private HashSet<Declaration> newInstantiatedDeclarations;
-    private Dictionary<TypeVariable, Type> typeParamInstantiation;
-    private Dictionary<Variable, Variable> variableMapping;
-    private Dictionary<Variable, Variable> boundVarSubst;
+    class ExprMonomorphizationVisitor : Duplicator
+    {
+      private MonomorphizationVisitor monomorphizationVisitor;
+      private HashSet<Declaration> newInstantiatedDeclarations;
+      private Dictionary<TypeVariable, Type> typeParamInstantiation;
+      private Dictionary<Variable, Variable> variableMapping;
+      private Dictionary<Variable, Variable> boundVarSubst;
 
-    public ExprMonomorphizationVisitor(
-      Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations,
-      Dictionary<DatatypeTypeCtorDecl, Dictionary<List<Type>, DatatypeTypeCtorDecl>> datatypeInstantiations,
-      Dictionary<TypeCtorDecl, HashSet<CtorType>> triggerTypes,
-      Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes)
-    {
-      this.functionInstantiations = functionInstantiations;
-      this.datatypeInstantiations = datatypeInstantiations;
-      this.triggerTypes = triggerTypes;
-      this.newTriggerTypes = newTriggerTypes;
-      newInstantiatedDeclarations = new HashSet<Declaration>();
-      typeParamInstantiation = new Dictionary<TypeVariable, Type>();
-      variableMapping = new Dictionary<Variable, Variable>();
-      boundVarSubst = new Dictionary<Variable, Variable>();
-    }
-
-    public Axiom InstantiateAxiom(Axiom axiom, List<Type> funcTypeParamInstantiations)
-    {
-      var forallExpr = (ForallExpr) axiom.Expr;
-      var savedTypeParamInstantiation = this.typeParamInstantiation;
-      this.typeParamInstantiation = LinqExtender.Map(forallExpr.TypeParameters, funcTypeParamInstantiations);
-      forallExpr = (ForallExpr) VisitExpr(forallExpr);
-      this.typeParamInstantiation = savedTypeParamInstantiation;
-      forallExpr.TypeParameters = new List<TypeVariable>();
-      var instantiatedAxiom = new Axiom(axiom.tok, forallExpr.Dummies.Count == 0 ? forallExpr.Body : forallExpr, axiom.Comment, axiom.Attributes);
-      newInstantiatedDeclarations.Add(instantiatedAxiom);
-      return instantiatedAxiom;
-    }
-    
-    public Function InstantiateFunction(Function func, List<Type> funcTypeParamInstantiations)
-    {
-      if (!functionInstantiations[func].ContainsKey(funcTypeParamInstantiations))
+      public ExprMonomorphizationVisitor(MonomorphizationVisitor monomorphizationVisitor)
       {
-        var funcTypeParamInstantiation = LinqExtender.Map(func.TypeParameters, funcTypeParamInstantiations);
-        var instantiatedFunction = InstantiateFunctionSignature(func, funcTypeParamInstantiations, funcTypeParamInstantiation);
-        newInstantiatedDeclarations.Add(instantiatedFunction);
-        functionInstantiations[func][funcTypeParamInstantiations] = instantiatedFunction;
-        if (func.Body != null)
+        this.monomorphizationVisitor = monomorphizationVisitor;
+        newInstantiatedDeclarations = new HashSet<Declaration>();
+        typeParamInstantiation = new Dictionary<TypeVariable, Type>();
+        variableMapping = new Dictionary<Variable, Variable>();
+        boundVarSubst = new Dictionary<Variable, Variable>();
+      }
+
+      public Axiom InstantiateAxiom(Axiom axiom, List<Type> funcTypeParamInstantiations)
+      {
+        var forallExpr = (ForallExpr) axiom.Expr;
+        var savedTypeParamInstantiation = this.typeParamInstantiation;
+        this.typeParamInstantiation = LinqExtender.Map(forallExpr.TypeParameters, funcTypeParamInstantiations);
+        forallExpr = (ForallExpr) VisitExpr(forallExpr);
+        this.typeParamInstantiation = savedTypeParamInstantiation;
+        forallExpr.TypeParameters = new List<TypeVariable>();
+        var instantiatedAxiom = new Axiom(axiom.tok, forallExpr.Dummies.Count == 0 ? forallExpr.Body : forallExpr,
+          axiom.Comment, axiom.Attributes);
+        newInstantiatedDeclarations.Add(instantiatedAxiom);
+        return instantiatedAxiom;
+      }
+
+      public Function InstantiateFunction(Function func, List<Type> funcTypeParamInstantiations)
+      {
+        if (!monomorphizationVisitor.functionInstantiations[func].ContainsKey(funcTypeParamInstantiations))
         {
-          instantiatedFunction.Body = InstantiateBody(func.Body, funcTypeParamInstantiation,
-            LinqExtender.Map(func.InParams, instantiatedFunction.InParams));
+          var funcTypeParamInstantiation = LinqExtender.Map(func.TypeParameters, funcTypeParamInstantiations);
+          var instantiatedFunction =
+            InstantiateFunctionSignature(func, funcTypeParamInstantiations, funcTypeParamInstantiation);
+          newInstantiatedDeclarations.Add(instantiatedFunction);
+          monomorphizationVisitor.functionInstantiations[func][funcTypeParamInstantiations] = instantiatedFunction;
+          if (func.Body != null)
+          {
+            instantiatedFunction.Body = InstantiateBody(func.Body, funcTypeParamInstantiation,
+              LinqExtender.Map(func.InParams, instantiatedFunction.InParams));
+          }
+          else if (func.DefinitionBody != null)
+          {
+            instantiatedFunction.DefinitionBody = (NAryExpr) InstantiateBody(func.DefinitionBody,
+              funcTypeParamInstantiation, LinqExtender.Map(func.InParams, instantiatedFunction.InParams));
+          }
+          else if (func.DefinitionAxiom != null)
+          {
+            instantiatedFunction.DefinitionAxiom =
+              this.InstantiateAxiom(func.DefinitionAxiom, funcTypeParamInstantiations);
+          }
         }
-        else if (func.DefinitionBody != null)
+        return monomorphizationVisitor.functionInstantiations[func][funcTypeParamInstantiations];
+      }
+
+      public void AddInstantiatedDeclarations(Program program)
+      {
+        program.AddTopLevelDeclarations(newInstantiatedDeclarations);
+        newInstantiatedDeclarations = new HashSet<Declaration>();
+      }
+
+      private Expr InstantiateBody(Expr expr, Dictionary<TypeVariable, Type> funcTypeParamInstantiation,
+        Dictionary<Variable, Variable> funcVariableMapping)
+      {
+        var savedTypeParamInstantiation = this.typeParamInstantiation;
+        this.typeParamInstantiation = funcTypeParamInstantiation;
+        var savedVariableMapping = this.variableMapping;
+        this.variableMapping = funcVariableMapping;
+        var newExpr = VisitExpr(expr);
+        this.variableMapping = savedVariableMapping;
+        this.typeParamInstantiation = savedTypeParamInstantiation;
+        return newExpr;
+      }
+
+      private Function InstantiateFunctionSignature(Function func, List<Type> funcTypeParamInstantiations,
+        Dictionary<TypeVariable, Type> funcTypeParamInstantiation)
+      {
+        var savedTypeParamInstantiation = this.typeParamInstantiation;
+        this.typeParamInstantiation = funcTypeParamInstantiation;
+        var instantiatedInParams =
+          func.InParams.Select(x =>
+              new Formal(x.tok, new TypedIdent(x.TypedIdent.tok, x.TypedIdent.Name, VisitType(x.TypedIdent.Type)),
+                true))
+            .ToList<Variable>();
+        var instantiatedOutParams =
+          func.OutParams.Select(x =>
+              new Formal(x.tok, new TypedIdent(x.TypedIdent.tok, x.TypedIdent.Name, VisitType(x.TypedIdent.Type)),
+                false))
+            .ToList<Variable>();
+        var instantiatedFunction = new Function(
+          func.tok,
+          MkInstanceName(func.Name, funcTypeParamInstantiations),
+          new List<TypeVariable>(),
+          instantiatedInParams,
+          instantiatedOutParams.First(),
+          func.Comment,
+          func.Attributes);
+        this.typeParamInstantiation = savedTypeParamInstantiation;
+        return instantiatedFunction;
+      }
+
+      private void InstantiateDatatype(DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<Type> typeParamInstantiations)
+      {
+        if (!monomorphizationVisitor.datatypeInstantiations[datatypeTypeCtorDecl].ContainsKey(typeParamInstantiations))
         {
-          instantiatedFunction.DefinitionBody = (NAryExpr) InstantiateBody(func.DefinitionBody,
-            funcTypeParamInstantiation, LinqExtender.Map(func.InParams, instantiatedFunction.InParams));
+          var newDatatypeTypeCtorDecl = new DatatypeTypeCtorDecl(
+            new TypeCtorDecl(datatypeTypeCtorDecl.tok,
+              MkInstanceName(datatypeTypeCtorDecl.Name, typeParamInstantiations),
+              0, datatypeTypeCtorDecl.Attributes));
+          newInstantiatedDeclarations.Add(newDatatypeTypeCtorDecl);
+          monomorphizationVisitor.datatypeInstantiations[datatypeTypeCtorDecl].Add(typeParamInstantiations, newDatatypeTypeCtorDecl);
+          datatypeTypeCtorDecl.Constructors.Iter(constructor =>
+            InstantiateDatatypeConstructor(newDatatypeTypeCtorDecl, constructor, typeParamInstantiations));
         }
-        else if (func.DefinitionAxiom != null)
+      }
+
+      private void InstantiateDatatypeConstructor(DatatypeTypeCtorDecl newDatatypeTypeCtorDecl,
+        DatatypeConstructor constructor, List<Type> typeParamInstantiations)
+      {
+        var newConstructor = new DatatypeConstructor(newDatatypeTypeCtorDecl,
+          InstantiateFunctionSignature(constructor, typeParamInstantiations,
+            LinqExtender.Map(constructor.TypeParameters, typeParamInstantiations)));
+        newConstructor.membership = DatatypeMembership.NewDatatypeMembership(newConstructor);
+        for (int i = 0; i < newConstructor.InParams.Count; i++)
         {
-          instantiatedFunction.DefinitionAxiom =
-            this.InstantiateAxiom(func.DefinitionAxiom, funcTypeParamInstantiations);
+          newConstructor.selectors.Add(DatatypeSelector.NewDatatypeSelector(newConstructor, i));
         }
       }
-      return functionInstantiations[func][funcTypeParamInstantiations];
-    }
 
-    public void AddInstantiatedDeclarations(Program program)
-    {
-      program.AddTopLevelDeclarations(newInstantiatedDeclarations);
-      newInstantiatedDeclarations = new HashSet<Declaration>();
-    }
-    
-    private Expr InstantiateBody(Expr expr, Dictionary<TypeVariable, Type> funcTypeParamInstantiation, Dictionary<Variable, Variable> funcVariableMapping)
-    {
-      var savedTypeParamInstantiation = this.typeParamInstantiation;
-      this.typeParamInstantiation = funcTypeParamInstantiation;
-      var savedVariableMapping = this.variableMapping;
-      this.variableMapping = funcVariableMapping;
-      var newExpr = VisitExpr(expr);
-      this.variableMapping = savedVariableMapping;
-      this.typeParamInstantiation = savedTypeParamInstantiation;
-      return newExpr;
-    }
-    
-    private Function InstantiateFunctionSignature(Function func, List<Type> funcTypeParamInstantiations, Dictionary<TypeVariable, Type> funcTypeParamInstantiation)
-    {
-      var savedTypeParamInstantiation = this.typeParamInstantiation;
-      this.typeParamInstantiation = funcTypeParamInstantiation;
-      var instantiatedInParams =
-        func.InParams.Select(x =>
-            new Formal(x.tok, new TypedIdent(x.TypedIdent.tok, x.TypedIdent.Name, VisitType(x.TypedIdent.Type)),
-              true))
-          .ToList<Variable>();
-      var instantiatedOutParams =
-        func.OutParams.Select(x =>
-            new Formal(x.tok, new TypedIdent(x.TypedIdent.tok, x.TypedIdent.Name, VisitType(x.TypedIdent.Type)),
-              false))
-          .ToList<Variable>();
-      var instantiatedFunction = new Function(
-        func.tok, 
-        MkInstanceName(func.Name, funcTypeParamInstantiations),
-        new List<TypeVariable>(),
-        instantiatedInParams, 
-        instantiatedOutParams.First(), 
-        func.Comment, 
-        func.Attributes); 
-      this.typeParamInstantiation = savedTypeParamInstantiation;
-      return instantiatedFunction;
-    }
-
-    private void InstantiateDatatype(DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<Type> typeParamInstantiations)
-    {
-      if (!datatypeInstantiations[datatypeTypeCtorDecl].ContainsKey(typeParamInstantiations))
+      private static string MkInstanceName(string name, List<Type> typeParamInstantiations)
       {
-        var newDatatypeTypeCtorDecl = new DatatypeTypeCtorDecl(
-          new TypeCtorDecl(datatypeTypeCtorDecl.tok, MkInstanceName(datatypeTypeCtorDecl.Name, typeParamInstantiations),
-            0, datatypeTypeCtorDecl.Attributes));
-        newInstantiatedDeclarations.Add(newDatatypeTypeCtorDecl);
-        datatypeInstantiations[datatypeTypeCtorDecl].Add(typeParamInstantiations, newDatatypeTypeCtorDecl);
-        datatypeTypeCtorDecl.Constructors.Iter(constructor =>
-          InstantiateDatatypeConstructor(newDatatypeTypeCtorDecl, constructor, typeParamInstantiations));
-      }
-    }
-
-    private void InstantiateDatatypeConstructor(DatatypeTypeCtorDecl newDatatypeTypeCtorDecl, DatatypeConstructor constructor, List<Type> typeParamInstantiations)
-    {
-      var newConstructor = new DatatypeConstructor(newDatatypeTypeCtorDecl,
-        InstantiateFunctionSignature(constructor, typeParamInstantiations, LinqExtender.Map(constructor.TypeParameters, typeParamInstantiations)));
-      newConstructor.membership = DatatypeMembership.NewDatatypeMembership(newConstructor);
-      for (int i = 0; i < newConstructor.InParams.Count; i++)
-      {
-        newConstructor.selectors.Add(DatatypeSelector.NewDatatypeSelector(newConstructor, i));
-      }
-    }
-    
-    private static string MkInstanceName(string name, List<Type> typeParamInstantiations)
-    {
-      typeParamInstantiations.Iter(x => name = $"{name}_{x.UniqueId}");
-      return name;
-    }
-
-    private Type LookupType(Type type)
-    {
-      if (type is CtorType ctorType && ctorType.IsDatatype() && ctorType.Decl.Arity > 0)
-      {
-        var datatypeTypeCtorDecl = (DatatypeTypeCtorDecl) ctorType.Decl;
-        return new CtorType(Token.NoToken, datatypeInstantiations[datatypeTypeCtorDecl][ctorType.Arguments],
-          new List<Type>());
-      }
-      else
-      {
-        return type;
-      }
-    }
-
-    public override Expr VisitNAryExpr(NAryExpr node)
-    {
-      var returnExpr = (NAryExpr) base.VisitNAryExpr(node);
-      if (returnExpr.Fun is TypeCoercion)
-      {
-        return returnExpr.Args[0];
+        typeParamInstantiations.Iter(x => name = $"{name}_{x.UniqueId}");
+        return name;
       }
 
-      if (returnExpr.Fun is FunctionCall functionCall && functionCall.Func.TypeParameters.Count > 0)
+      private Type LookupType(Type type)
       {
-        var typeParamInstantiations =
-          returnExpr.TypeParameters.FormalTypeParams.Select(x =>
-              TypeProxy.FollowProxy(returnExpr.TypeParameters[x]).Substitute(typeParamInstantiation))
-            .Select(x => LookupType(x)).ToList();
-        if (functionCall.Func is DatatypeMembership membership)
+        if (type is CtorType ctorType && ctorType.IsDatatype() && ctorType.Decl.Arity > 0)
         {
-          InstantiateDatatype(membership.constructor.datatypeTypeCtorDecl, typeParamInstantiations);
-          var datatypeTypeCtorDecl =
-            datatypeInstantiations[membership.constructor.datatypeTypeCtorDecl][typeParamInstantiations];
-          returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[membership.constructor.index].membership);
-        }
-        else if (functionCall.Func is DatatypeSelector selector)
-        {
-          InstantiateDatatype(selector.constructor.datatypeTypeCtorDecl, typeParamInstantiations);
-          var datatypeTypeCtorDecl =
-            datatypeInstantiations[selector.constructor.datatypeTypeCtorDecl][typeParamInstantiations];
-          returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[selector.constructor.index]
-            .selectors[selector.index]);
-        }
-        else if (functionCall.Func is DatatypeConstructor constructor)
-        {
-          InstantiateDatatype(constructor.datatypeTypeCtorDecl, typeParamInstantiations);
-          var datatypeTypeCtorDecl =
-            datatypeInstantiations[constructor.datatypeTypeCtorDecl][typeParamInstantiations];
-          returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[constructor.index]);
+          var datatypeTypeCtorDecl = (DatatypeTypeCtorDecl) ctorType.Decl;
+          return new CtorType(Token.NoToken, monomorphizationVisitor.datatypeInstantiations[datatypeTypeCtorDecl][ctorType.Arguments],
+            new List<Type>());
         }
         else
         {
-          returnExpr.Fun = new FunctionCall(InstantiateFunction(functionCall.Func, typeParamInstantiations));
+          return type;
         }
-        returnExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
-        returnExpr.Type = TypeProxy.FollowProxy(returnExpr.Type);
       }
-      return returnExpr;
-    }
-    
-    public override Type VisitTypeVariable(TypeVariable node)
-    {
-      if (typeParamInstantiation.Count == 0)
+
+      public override Expr VisitNAryExpr(NAryExpr node)
       {
+        var returnExpr = (NAryExpr) base.VisitNAryExpr(node);
+        if (returnExpr.Fun is TypeCoercion)
+        {
+          return returnExpr.Args[0];
+        }
+
+        if (returnExpr.Fun is FunctionCall functionCall)
+        {
+          // a non-generic function must be processed to rewrite any generic types it uses
+          // to the corresponding instantiated types
+          if (functionCall.Func.TypeParameters.Count == 0)
+          {
+            if (functionCall.Func is DatatypeMembership membership)
+            {
+              monomorphizationVisitor.VisitTypeCtorDecl(membership.constructor.datatypeTypeCtorDecl);
+            }
+            else if (functionCall.Func is DatatypeSelector selector)
+            {
+              monomorphizationVisitor.VisitTypeCtorDecl(selector.constructor.datatypeTypeCtorDecl);
+            }
+            else if (functionCall.Func is DatatypeConstructor constructor)
+            {
+              monomorphizationVisitor.VisitTypeCtorDecl(constructor.datatypeTypeCtorDecl);
+            }
+            else
+            {
+              monomorphizationVisitor.VisitFunction(functionCall.Func);
+            }
+            returnExpr.Fun = new FunctionCall(functionCall.Func);
+          }
+          else
+          {
+            var typeParamInstantiations =
+              returnExpr.TypeParameters.FormalTypeParams.Select(x =>
+                  TypeProxy.FollowProxy(returnExpr.TypeParameters[x]).Substitute(typeParamInstantiation))
+                .Select(x => LookupType(x)).ToList();
+            if (functionCall.Func is DatatypeMembership membership)
+            {
+              InstantiateDatatype(membership.constructor.datatypeTypeCtorDecl, typeParamInstantiations);
+              var datatypeTypeCtorDecl =
+                monomorphizationVisitor.datatypeInstantiations[membership.constructor.datatypeTypeCtorDecl][typeParamInstantiations];
+              returnExpr.Fun =
+                new FunctionCall(datatypeTypeCtorDecl.Constructors[membership.constructor.index].membership);
+            }
+            else if (functionCall.Func is DatatypeSelector selector)
+            {
+              InstantiateDatatype(selector.constructor.datatypeTypeCtorDecl, typeParamInstantiations);
+              var datatypeTypeCtorDecl =
+                monomorphizationVisitor.datatypeInstantiations[selector.constructor.datatypeTypeCtorDecl][typeParamInstantiations];
+              returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[selector.constructor.index]
+                .selectors[selector.index]);
+            }
+            else if (functionCall.Func is DatatypeConstructor constructor)
+            {
+              InstantiateDatatype(constructor.datatypeTypeCtorDecl, typeParamInstantiations);
+              var datatypeTypeCtorDecl =
+                monomorphizationVisitor.datatypeInstantiations[constructor.datatypeTypeCtorDecl][typeParamInstantiations];
+              returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[constructor.index]);
+            }
+            else
+            {
+              returnExpr.Fun = new FunctionCall(InstantiateFunction(functionCall.Func, typeParamInstantiations));
+            }
+            returnExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+            returnExpr.Type = TypeProxy.FollowProxy(returnExpr.Type);
+          }
+        }
+
+        return returnExpr;
+      }
+
+      public override Type VisitTypeVariable(TypeVariable node)
+      {
+        if (typeParamInstantiation.Count == 0)
+        {
+          return node;
+        }
+
+        return typeParamInstantiation[node];
+      }
+
+      public override MapType VisitMapType(MapType node)
+      {
+        node = (MapType) node.Clone();
+        for (int i = 0; i < node.Arguments.Count; ++i)
+        {
+          node.Arguments[i] = (Type) this.Visit(node.Arguments[i]);
+        }
+
+        node.Result = (Type) this.Visit(node.Result);
         return node;
       }
-      return typeParamInstantiation[node];
-    }
 
-    public override MapType VisitMapType(MapType node)
-    {
-      node = (MapType) node.Clone();
-      for (int i = 0; i < node.Arguments.Count; ++i)
+      public override CtorType VisitCtorType(CtorType node)
       {
-        node.Arguments[i] = (Type) this.Visit(node.Arguments[i]);
-      }
-      node.Result = (Type) this.Visit(node.Result);
-      return node;
-    }
-
-    public override CtorType VisitCtorType(CtorType node)
-    {
-      node = (CtorType) node.Clone();
-      for (int i = 0; i < node.Arguments.Count; ++i)
-      {
-        node.Arguments[i] = (Type) this.Visit(node.Arguments[i]);
-      }
-      var typeCtorDecl = node.Decl;
-      if (triggerTypes.ContainsKey(typeCtorDecl) && !triggerTypes[typeCtorDecl].Contains(node))
-      {
-        triggerTypes[typeCtorDecl].Add(node);
-        newTriggerTypes[typeCtorDecl].Add(node);
-      }
-      if (typeCtorDecl is DatatypeTypeCtorDecl datatypeTypeCtorDecl && typeCtorDecl.Arity > 0)
-      {
-        InstantiateDatatype(datatypeTypeCtorDecl, node.Arguments);
-        return new CtorType(node.tok, datatypeInstantiations[datatypeTypeCtorDecl][node.Arguments], new List<Type>());
-      }
-      return node;
-    }
-
-    public override Type VisitType(Type node)
-    {
-      return (Type) Visit(node);
-    }
-
-    public override Expr VisitExpr(Expr node)
-    {
-      node = base.VisitExpr(node);
-      node.Type = VisitType(node.Type);
-      return node;
-    }
-
-    public override Expr VisitIdentifierExpr(IdentifierExpr node)
-    {
-      if (variableMapping.ContainsKey(node.Decl))
-      {
-        return new IdentifierExpr(node.tok, variableMapping[node.Decl], node.Immutable);
-      }
-      if (boundVarSubst.ContainsKey(node.Decl))
-      {
-        return new IdentifierExpr(node.tok, boundVarSubst[node.Decl], node.Immutable);
-      }
-      return base.VisitIdentifierExpr(node);
-    }
-
-    public override BinderExpr VisitBinderExpr(BinderExpr node)
-    {
-      var oldToNew = node.Dummies.ToDictionary(x => x,
-        x => new BoundVariable(x.tok, new TypedIdent(x.tok, x.Name, VisitType(x.TypedIdent.Type)),
-          x.Attributes));
-      foreach (var x in node.Dummies)
-      {
-        boundVarSubst.Add(x, oldToNew[x]);
-      }
-      BinderExpr expr = base.VisitBinderExpr(node);
-      expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
-      // We process triggers of quantifier expressions here, because otherwise the
-      // substitutions for bound variables have to be leaked outside this procedure.
-      if (node is QuantifierExpr quantifierExpr)
-      {
-        if (quantifierExpr.Triggers != null)
+        node = (CtorType) node.Clone();
+        for (int i = 0; i < node.Arguments.Count; ++i)
         {
-          ((QuantifierExpr) expr).Triggers = this.VisitTrigger(quantifierExpr.Triggers);
+          node.Arguments[i] = (Type) this.Visit(node.Arguments[i]);
         }
+
+        var typeCtorDecl = node.Decl;
+        if (monomorphizationVisitor.triggerTypes.ContainsKey(typeCtorDecl) && !monomorphizationVisitor.triggerTypes[typeCtorDecl].Contains(node))
+        {
+          monomorphizationVisitor.triggerTypes[typeCtorDecl].Add(node);
+          monomorphizationVisitor.newTriggerTypes[typeCtorDecl].Add(node);
+        }
+
+        if (typeCtorDecl is DatatypeTypeCtorDecl datatypeTypeCtorDecl && typeCtorDecl.Arity > 0)
+        {
+          InstantiateDatatype(datatypeTypeCtorDecl, node.Arguments);
+          return new CtorType(node.tok, monomorphizationVisitor.datatypeInstantiations[datatypeTypeCtorDecl][node.Arguments], new List<Type>());
+        }
+
+        return node;
       }
-      foreach (var x in node.Dummies)
+
+      public override Type VisitType(Type node)
       {
-        boundVarSubst.Remove(x);
+        return (Type) Visit(node);
       }
-      return expr;
+
+      public override Expr VisitExpr(Expr node)
+      {
+        node = base.VisitExpr(node);
+        node.Type = VisitType(node.Type);
+        return node;
+      }
+
+      public override Expr VisitIdentifierExpr(IdentifierExpr node)
+      {
+        if (variableMapping.ContainsKey(node.Decl))
+        {
+          return new IdentifierExpr(node.tok, variableMapping[node.Decl], node.Immutable);
+        }
+
+        if (boundVarSubst.ContainsKey(node.Decl))
+        {
+          return new IdentifierExpr(node.tok, boundVarSubst[node.Decl], node.Immutable);
+        }
+
+        return base.VisitIdentifierExpr(node);
+      }
+
+      public override BinderExpr VisitBinderExpr(BinderExpr node)
+      {
+        var oldToNew = node.Dummies.ToDictionary(x => x,
+          x => new BoundVariable(x.tok, new TypedIdent(x.tok, x.Name, VisitType(x.TypedIdent.Type)),
+            x.Attributes));
+        foreach (var x in node.Dummies)
+        {
+          boundVarSubst.Add(x, oldToNew[x]);
+        }
+
+        BinderExpr expr = base.VisitBinderExpr(node);
+        expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
+        // We process triggers of quantifier expressions here, because otherwise the
+        // substitutions for bound variables have to be leaked outside this procedure.
+        if (node is QuantifierExpr quantifierExpr)
+        {
+          if (quantifierExpr.Triggers != null)
+          {
+            ((QuantifierExpr) expr).Triggers = this.VisitTrigger(quantifierExpr.Triggers);
+          }
+        }
+
+        foreach (var x in node.Dummies)
+        {
+          boundVarSubst.Remove(x);
+        }
+
+        return expr;
+      }
+
+      public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
+      {
+        // Don't remove this implementation! Triggers should be duplicated in VisitBinderExpr.
+        return (QuantifierExpr) this.VisitBinderExpr(node);
+      }
+
+      public override Expr VisitLetExpr(LetExpr node)
+      {
+        var oldToNew = node.Dummies.ToDictionary(x => x,
+          x => new BoundVariable(x.tok, new TypedIdent(x.tok, x.Name, VisitType(x.TypedIdent.Type)),
+            x.Attributes));
+        foreach (var x in node.Dummies)
+        {
+          boundVarSubst.Add(x, oldToNew[x]);
+        }
+
+        var expr = (LetExpr) base.VisitLetExpr(node);
+        expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
+        foreach (var x in node.Dummies)
+        {
+          boundVarSubst.Remove(x);
+        }
+
+        return expr;
+      }
     }
 
-    public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
-    {
-      // Don't remove this implementation! Triggers should be duplicated in VisitBinderExpr.
-      return (QuantifierExpr) this.VisitBinderExpr(node);
-    }
-
-    public override Expr VisitLetExpr(LetExpr node)
-    {
-      var oldToNew = node.Dummies.ToDictionary(x => x,
-        x => new BoundVariable(x.tok, new TypedIdent(x.tok, x.Name, VisitType(x.TypedIdent.Type)),
-          x.Attributes));
-      foreach (var x in node.Dummies)
-      {
-        boundVarSubst.Add(x, oldToNew[x]);
-      }
-      var expr = (LetExpr) base.VisitLetExpr(node);
-      expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
-      foreach (var x in node.Dummies)
-      {
-        boundVarSubst.Remove(x);
-      }
-      return expr;
-    }
-  }
-
-  class MonomorphizationVisitor : StandardVisitor
-  {
     public static MonomorphizationVisitor Initialize(Program program, Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated,
       HashSet<Axiom> polymorphicFunctionAxioms)
     {
@@ -598,6 +634,8 @@ namespace Microsoft.Boogie
     private Dictionary<DatatypeTypeCtorDecl, Dictionary<List<Type>, DatatypeTypeCtorDecl>> datatypeInstantiations;
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> triggerTypes;
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes;
+    private HashSet<TypeCtorDecl> visitedTypeCtorDecls;
+    private HashSet<Function> visitedFunctions;
     private ExprMonomorphizationVisitor exprMonomorphizationVisitor;
     
     private MonomorphizationVisitor(Program program, Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, HashSet<Axiom> polymorphicFunctionAxioms)
@@ -622,7 +660,9 @@ namespace Microsoft.Boogie
         triggerTypes.Add(typeCtorDecl, new HashSet<CtorType>());
         newTriggerTypes.Add(typeCtorDecl, new HashSet<CtorType>());
       });
-      exprMonomorphizationVisitor = new ExprMonomorphizationVisitor(functionInstantiations, datatypeInstantiations, triggerTypes, newTriggerTypes);
+      this.visitedTypeCtorDecls = new HashSet<TypeCtorDecl>();
+      this.visitedFunctions = new HashSet<Function>();
+      exprMonomorphizationVisitor = new ExprMonomorphizationVisitor(this);
 
       program.RemoveTopLevelDeclarations(decl => 
         decl is Function function && functionInstantiations.ContainsKey(function) ||
@@ -659,15 +699,30 @@ namespace Microsoft.Boogie
       return exprMonomorphizationVisitor.VisitExpr(node);
     }
 
+    // this function may be called directly by exprMonomorphizationVisitor
+    // if a non-generic call to a datatype constructor/selector/membership
+    // is discovered in an expression
     public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
     {
+      if (visitedTypeCtorDecls.Contains(node))
+      {
+        return node;
+      }
+      visitedTypeCtorDecls.Add(node);
       if (node is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
       {
-        datatypeTypeCtorDecl.Constructors.Iter(constructor => VisitFunction(constructor));
+        datatypeTypeCtorDecl.Constructors.Iter(constructor => VisitConstructor(constructor));
       }
       return base.VisitTypeCtorDecl(node);
     }
 
+    private void VisitConstructor(DatatypeConstructor constructor)
+    {
+      base.VisitFunction(constructor);
+      base.VisitFunction(constructor.membership);
+      constructor.selectors.Iter(selector => base.VisitFunction(selector));
+    }
+    
     public override Absy Visit(Absy node)
     {
       if (node is ICarriesAttributes attrNode && attrNode.Attributes != null)
@@ -675,6 +730,18 @@ namespace Microsoft.Boogie
         VisitQKeyValue(attrNode.Attributes);
       }
       return base.Visit(node);
+    }
+
+    // this function may be called directly by exprMonomorphizationVisitor
+    // if a non-generic function call is discovered in an expression
+    public override Function VisitFunction(Function node)
+    {
+      if (visitedFunctions.Contains(node))
+      {
+        return node;
+      }
+      visitedFunctions.Add(node);
+      return base.VisitFunction(node);
     }
   }
   
