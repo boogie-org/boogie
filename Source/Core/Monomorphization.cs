@@ -351,18 +351,30 @@ namespace Microsoft.Boogie
         return instantiatedFunction;
       }
 
-      private void InstantiateDatatype(DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<Type> typeParamInstantiations)
+      private void InstantiateType(TypeCtorDecl typeCtorDecl, List<Type> typeParamInstantiations)
       {
-        if (!monomorphizationVisitor.datatypeInstantiations[datatypeTypeCtorDecl].ContainsKey(typeParamInstantiations))
+        if (!monomorphizationVisitor.typeInstantiations[typeCtorDecl].ContainsKey(typeParamInstantiations))
         {
-          var newDatatypeTypeCtorDecl = new DatatypeTypeCtorDecl(
-            new TypeCtorDecl(datatypeTypeCtorDecl.tok,
-              MkInstanceName(datatypeTypeCtorDecl.Name, typeParamInstantiations),
-              0, datatypeTypeCtorDecl.Attributes));
-          newInstantiatedDeclarations.Add(newDatatypeTypeCtorDecl);
-          monomorphizationVisitor.datatypeInstantiations[datatypeTypeCtorDecl].Add(typeParamInstantiations, newDatatypeTypeCtorDecl);
-          datatypeTypeCtorDecl.Constructors.Iter(constructor =>
-            InstantiateDatatypeConstructor(newDatatypeTypeCtorDecl, constructor, typeParamInstantiations));
+          if (typeCtorDecl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
+          {
+            var newDatatypeTypeCtorDecl = new DatatypeTypeCtorDecl(
+              new TypeCtorDecl(datatypeTypeCtorDecl.tok,
+                MkInstanceName(datatypeTypeCtorDecl.Name, typeParamInstantiations), 0,
+                datatypeTypeCtorDecl.Attributes));
+            newInstantiatedDeclarations.Add(newDatatypeTypeCtorDecl);
+            monomorphizationVisitor.typeInstantiations[datatypeTypeCtorDecl]
+              .Add(typeParamInstantiations, newDatatypeTypeCtorDecl);
+            datatypeTypeCtorDecl.Constructors.Iter(constructor =>
+              InstantiateDatatypeConstructor(newDatatypeTypeCtorDecl, constructor, typeParamInstantiations));
+          }
+          else
+          {
+            var newTypeCtorDecl =
+              new TypeCtorDecl(typeCtorDecl.tok, MkInstanceName(typeCtorDecl.Name, typeParamInstantiations), 0,
+                typeCtorDecl.Attributes);
+            newInstantiatedDeclarations.Add(newTypeCtorDecl);
+            monomorphizationVisitor.typeInstantiations[typeCtorDecl].Add(typeParamInstantiations, newTypeCtorDecl);
+          }
         }
       }
 
@@ -387,10 +399,9 @@ namespace Microsoft.Boogie
 
       private Type LookupType(Type type)
       {
-        if (type is CtorType ctorType && ctorType.IsDatatype() && ctorType.Decl.Arity > 0)
+        if (type is CtorType ctorType && ctorType.Decl.Arity > 0)
         {
-          var datatypeTypeCtorDecl = (DatatypeTypeCtorDecl) ctorType.Decl;
-          return new CtorType(Token.NoToken, monomorphizationVisitor.datatypeInstantiations[datatypeTypeCtorDecl][ctorType.Arguments],
+          return new CtorType(Token.NoToken, monomorphizationVisitor.typeInstantiations[ctorType.Decl][ctorType.Arguments],
             new List<Type>());
         }
         else
@@ -439,25 +450,25 @@ namespace Microsoft.Boogie
                 .Select(x => LookupType(x)).ToList();
             if (functionCall.Func is DatatypeMembership membership)
             {
-              InstantiateDatatype(membership.constructor.datatypeTypeCtorDecl, typeParamInstantiations);
+              InstantiateType(membership.constructor.datatypeTypeCtorDecl, typeParamInstantiations);
               var datatypeTypeCtorDecl =
-                monomorphizationVisitor.datatypeInstantiations[membership.constructor.datatypeTypeCtorDecl][typeParamInstantiations];
+                (DatatypeTypeCtorDecl) monomorphizationVisitor.typeInstantiations[membership.constructor.datatypeTypeCtorDecl][typeParamInstantiations];
               returnExpr.Fun =
                 new FunctionCall(datatypeTypeCtorDecl.Constructors[membership.constructor.index].membership);
             }
             else if (functionCall.Func is DatatypeSelector selector)
             {
-              InstantiateDatatype(selector.constructor.datatypeTypeCtorDecl, typeParamInstantiations);
+              InstantiateType(selector.constructor.datatypeTypeCtorDecl, typeParamInstantiations);
               var datatypeTypeCtorDecl =
-                monomorphizationVisitor.datatypeInstantiations[selector.constructor.datatypeTypeCtorDecl][typeParamInstantiations];
+                (DatatypeTypeCtorDecl) monomorphizationVisitor.typeInstantiations[selector.constructor.datatypeTypeCtorDecl][typeParamInstantiations];
               returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[selector.constructor.index]
                 .selectors[selector.index]);
             }
             else if (functionCall.Func is DatatypeConstructor constructor)
             {
-              InstantiateDatatype(constructor.datatypeTypeCtorDecl, typeParamInstantiations);
+              InstantiateType(constructor.datatypeTypeCtorDecl, typeParamInstantiations);
               var datatypeTypeCtorDecl =
-                monomorphizationVisitor.datatypeInstantiations[constructor.datatypeTypeCtorDecl][typeParamInstantiations];
+                (DatatypeTypeCtorDecl) monomorphizationVisitor.typeInstantiations[constructor.datatypeTypeCtorDecl][typeParamInstantiations];
               returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[constructor.index]);
             }
             else
@@ -501,20 +512,17 @@ namespace Microsoft.Boogie
         {
           node.Arguments[i] = (Type) this.Visit(node.Arguments[i]);
         }
-
         var typeCtorDecl = node.Decl;
         if (monomorphizationVisitor.triggerTypes.ContainsKey(typeCtorDecl) && !monomorphizationVisitor.triggerTypes[typeCtorDecl].Contains(node))
         {
           monomorphizationVisitor.triggerTypes[typeCtorDecl].Add(node);
           monomorphizationVisitor.newTriggerTypes[typeCtorDecl].Add(node);
         }
-
-        if (typeCtorDecl is DatatypeTypeCtorDecl datatypeTypeCtorDecl && typeCtorDecl.Arity > 0)
+        if (typeCtorDecl.Arity > 0)
         {
-          InstantiateDatatype(datatypeTypeCtorDecl, node.Arguments);
-          return new CtorType(node.tok, monomorphizationVisitor.datatypeInstantiations[datatypeTypeCtorDecl][node.Arguments], new List<Type>());
+          InstantiateType(typeCtorDecl, node.Arguments);
+          return new CtorType(node.tok, monomorphizationVisitor.typeInstantiations[typeCtorDecl][node.Arguments], new List<Type>());
         }
-
         return node;
       }
 
@@ -631,7 +639,7 @@ namespace Microsoft.Boogie
     private Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated;
     private Dictionary<string, Function> nameToFunction;
     private Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations;
-    private Dictionary<DatatypeTypeCtorDecl, Dictionary<List<Type>, DatatypeTypeCtorDecl>> datatypeInstantiations;
+    private Dictionary<TypeCtorDecl, Dictionary<List<Type>, TypeCtorDecl>> typeInstantiations;
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> triggerTypes;
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes;
     private HashSet<TypeCtorDecl> visitedTypeCtorDecls;
@@ -650,9 +658,9 @@ namespace Microsoft.Boogie
           nameToFunction.Add(function.Name, function);
           functionInstantiations.Add(function, new Dictionary<List<Type>, Function>(new ListComparer<Type>()));
         });
-      datatypeInstantiations = new Dictionary<DatatypeTypeCtorDecl, Dictionary<List<Type>, DatatypeTypeCtorDecl>>();
-      program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>().Where(datatypeTypeCtorDecl => datatypeTypeCtorDecl.Arity > 0).Iter(datatypeTypeCtorDecl => 
-        datatypeInstantiations.Add(datatypeTypeCtorDecl, new Dictionary<List<Type>, DatatypeTypeCtorDecl>(new ListComparer<Type>())));
+      typeInstantiations = new Dictionary<TypeCtorDecl, Dictionary<List<Type>, TypeCtorDecl>>();
+      program.TopLevelDeclarations.OfType<TypeCtorDecl>().Where(typeCtorDecl => typeCtorDecl.Arity > 0).Iter(typeCtorDecl => 
+        typeInstantiations.Add(typeCtorDecl, new Dictionary<List<Type>, TypeCtorDecl>(new ListComparer<Type>())));
       triggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
       newTriggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
       axiomsToBeInstantiated.Values.ToHashSet().Iter(typeCtorDecl =>
@@ -666,7 +674,7 @@ namespace Microsoft.Boogie
 
       program.RemoveTopLevelDeclarations(decl => 
         decl is Function function && functionInstantiations.ContainsKey(function) ||
-        decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl && datatypeInstantiations.ContainsKey(datatypeTypeCtorDecl) ||
+        decl is TypeCtorDecl typeCtorDecl && typeInstantiations.ContainsKey(typeCtorDecl) ||
         decl is Axiom axiom && (axiomsToBeInstantiated.ContainsKey(axiom) || polymorphicFunctionAxioms.Contains(axiom)));
     }
 
