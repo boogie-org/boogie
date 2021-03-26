@@ -28,7 +28,6 @@ namespace Microsoft.Boogie
       {
         isMonomorphic = false;
       }
-
       return base.VisitDeclWithFormals(node);
     }
 
@@ -38,7 +37,6 @@ namespace Microsoft.Boogie
       {
         isMonomorphic = false;
       }
-
       return base.VisitBinderExpr(node);
     }
 
@@ -48,7 +46,6 @@ namespace Microsoft.Boogie
       {
         isMonomorphic = false;
       }
-
       return base.VisitMapType(node);
     }
 
@@ -59,8 +56,16 @@ namespace Microsoft.Boogie
       {
         isMonomorphic = false;
       }
-
       return base.VisitNAryExpr(node);
+    }
+
+    public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
+    {
+      if (node.Arity > 0)
+      {
+        isMonomorphic = false;
+      }
+      return base.VisitTypeCtorDecl(node);
     }
   }
 
