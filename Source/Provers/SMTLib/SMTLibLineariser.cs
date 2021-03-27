@@ -168,6 +168,10 @@ namespace Microsoft.Boogie.SMTLib
       {
         return "(RegEx String)";
       }
+      else if (t.IsSeq)
+      {
+        return "(Seq " + TypeToString(t.AsCtor.Arguments[0]) + ")";
+      }
       else
       {
         StringBuilder sb = new StringBuilder();
@@ -908,7 +912,11 @@ namespace Microsoft.Boogie.SMTLib
         var datatype = ExtractDatatype(op.Func);
         if (builtin != null)
         {
-          printedName = CheckMapApply(builtin, node);
+          printedName = CheckSeqApply(builtin, node);
+          if (printedName == null)
+          {
+            printedName = CheckMapApply(builtin, node);
+          }
         }
         else if (datatype != null)
         {
@@ -939,6 +947,20 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
+      private static string CheckSeqApply(string name, VCExprNAry node)
+      {
+        if (name == "seq.empty")
+        {
+          Type type = node.Type;
+          string s = TypeToString(type);
+          return "(as seq.empty " + s + ")";
+        }
+        else
+        {
+          return null;
+        }
+      }
+      
       public static HashSet<string> ArrayOps = new HashSet<string>(new string[]
       {
         "MapConst", "MapAdd", "MapSub", "MapMul", "MapDiv", "MapMod", "MapEq", "MapIff", "MapGt", "MapGe", "MapLt",

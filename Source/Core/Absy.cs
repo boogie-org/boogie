@@ -1918,14 +1918,6 @@ namespace Microsoft.Boogie
       this.constructors = new List<DatatypeConstructor>();
     }
     
-    // This attribute can be used to tell Boogie that a datatype depends on another datatype
-    // in case Boogie can't figure this out itself (as may happen, for example when a type
-    // has the ":builtin" attribute).
-    public string GetTypeDependency()
-    {
-      return FindStringAttribute("dependson");
-    }
-
     public override void Emit(TokenTextWriter stream, int level)
     {
       base.Emit(stream, level);

@@ -71,3 +71,11 @@ function {:inline} Vec_Len<T>(v: Vec T): int
 {
   len#Vec(v)
 }
+
+type {:builtin "Seq"} Seq _;
+function {:builtin "seq.empty"} Seq_Empty<T>(): Seq T;
+function {:builtin "seq.len"} Seq_Len<T>(a: Seq T): int;
+function {:builtin "seq.++"} Seq_Concat<T>(a: Seq T, b: Seq T): Seq T;
+function {:builtin "seq.unit"} Seq_Unit<T>(v: T): Seq T;
+function {:builtin "seq.nth"} Seq_Nth<T>(a: Seq T, i: int): T;
+function {:builtin "seq.extract"} Seq_Extract<T>(a: Seq T, pos: int, length: int): Seq T;

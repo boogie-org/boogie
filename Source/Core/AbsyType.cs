@@ -271,6 +271,11 @@ namespace Microsoft.Boogie
       get { return false; }
     }
 
+    public virtual bool IsSeq
+    {
+      get { return false; }
+    }
+    
     public virtual bool IsVariable
     {
       get { return false; }
@@ -3775,6 +3780,11 @@ Contract.Requires(that != null);
     public bool IsDatatype()
     {
       return Decl is DatatypeTypeCtorDecl;
+    }
+
+    public override bool IsSeq
+    {
+      get { return GetBuiltin() == "Seq"; }
     }
 
     // This attribute is used to tell Boogie that this type is built into SMT-LIB and should

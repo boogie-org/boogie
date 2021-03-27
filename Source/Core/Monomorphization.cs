@@ -8,6 +8,11 @@ namespace Microsoft.Boogie
 {
   public class PolymorphismChecker : ReadOnlyVisitor
   {
+    public static bool DoesTypeCtorDeclNeedMonomorphization(TypeCtorDecl typeCtorDecl)
+    {
+      return typeCtorDecl.Arity > 0 && typeCtorDecl.FindStringAttribute("builtin") == null;
+    }
+
     public static bool IsMonomorphic(Program program)
     {
       var checker = new PolymorphismChecker();
@@ -61,7 +66,7 @@ namespace Microsoft.Boogie
 
     public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
     {
-      if (node.Arity > 0)
+      if (DoesTypeCtorDeclNeedMonomorphization(node))
       {
         isMonomorphic = false;
       }
@@ -401,10 +406,10 @@ namespace Microsoft.Boogie
         typeParamInstantiations.Iter(x => name = $"{name}_{x.UniqueId}");
         return name;
       }
-
+      
       private Type LookupType(Type type)
       {
-        if (type is CtorType ctorType && ctorType.Decl.Arity > 0)
+        if (type is CtorType ctorType && PolymorphismChecker.DoesTypeCtorDeclNeedMonomorphization(ctorType.Decl))
         {
           return new CtorType(Token.NoToken, monomorphizationVisitor.typeInstantiations[ctorType.Decl][ctorType.Arguments],
             new List<Type>());
@@ -523,10 +528,11 @@ namespace Microsoft.Boogie
           monomorphizationVisitor.triggerTypes[typeCtorDecl].Add(node);
           monomorphizationVisitor.newTriggerTypes[typeCtorDecl].Add(node);
         }
-        if (typeCtorDecl.Arity > 0)
+        if (PolymorphismChecker.DoesTypeCtorDeclNeedMonomorphization(typeCtorDecl))
         {
           InstantiateType(typeCtorDecl, node.Arguments);
-          return new CtorType(node.tok, monomorphizationVisitor.typeInstantiations[typeCtorDecl][node.Arguments], new List<Type>());
+          return new CtorType(node.tok, monomorphizationVisitor.typeInstantiations[typeCtorDecl][node.Arguments],
+            new List<Type>());
         }
         return node;
       }
@@ -664,8 +670,10 @@ namespace Microsoft.Boogie
           functionInstantiations.Add(function, new Dictionary<List<Type>, Function>(new ListComparer<Type>()));
         });
       typeInstantiations = new Dictionary<TypeCtorDecl, Dictionary<List<Type>, TypeCtorDecl>>();
-      program.TopLevelDeclarations.OfType<TypeCtorDecl>().Where(typeCtorDecl => typeCtorDecl.Arity > 0).Iter(typeCtorDecl => 
-        typeInstantiations.Add(typeCtorDecl, new Dictionary<List<Type>, TypeCtorDecl>(new ListComparer<Type>())));
+      program.TopLevelDeclarations.OfType<TypeCtorDecl>()
+        .Where(typeCtorDecl => PolymorphismChecker.DoesTypeCtorDeclNeedMonomorphization(typeCtorDecl)).Iter(
+          typeCtorDecl =>
+            typeInstantiations.Add(typeCtorDecl, new Dictionary<List<Type>, TypeCtorDecl>(new ListComparer<Type>())));
       triggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
       newTriggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
       axiomsToBeInstantiated.Values.ToHashSet().Iter(typeCtorDecl =>

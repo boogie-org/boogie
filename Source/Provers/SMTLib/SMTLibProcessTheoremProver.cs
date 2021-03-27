@@ -221,6 +221,10 @@ namespace Microsoft.Boogie.SMTLib
 
     private void FindDependentTypes(Type type, List<DatatypeTypeCtorDecl> dependentTypes)
     {
+      if (type.IsSeq)
+      {
+        FindDependentTypes(type.AsCtor.Arguments[0], dependentTypes);
+      }
       MapType mapType = type as MapType;
       if (mapType != null)
       {
@@ -228,12 +232,10 @@ namespace Microsoft.Boogie.SMTLib
         {
           FindDependentTypes(t, dependentTypes);
         }
-
         FindDependentTypes(mapType.Result, dependentTypes);
       }
-
-      CtorType ctorType = type as CtorType;
-      if (ctorType != null && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl && ctx.KnownDatatypes.Contains(datatypeTypeCtorDecl))
+      if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl &&
+          ctx.KnownDatatypes.Contains(datatypeTypeCtorDecl))
       {
         dependentTypes.Add(datatypeTypeCtorDecl);
       }
@@ -247,13 +249,6 @@ namespace Microsoft.Boogie.SMTLib
         foreach (var datatype in ctx.KnownDatatypes)
         {
           dependencyGraph.AddSource(datatype);
-          // Check for user-specified dependency (using ":dependson" attribute).
-          string userDependency = datatype.GetTypeDependency();
-          if (userDependency != null)
-          {
-            dependencyGraph.AddEdge(datatype, ctx.LookupDatatype(userDependency));
-          }
-
           foreach (Function f in datatype.Constructors)
           {
             var dependentTypes = new List<DatatypeTypeCtorDecl>();
