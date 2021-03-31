@@ -1151,6 +1151,18 @@ namespace Microsoft.Boogie
         CivlAttributes.RemoveLinearAttributes(node);
         return base.VisitFunction(node);
       }
+
+      public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
+      {
+        CivlAttributes.RemoveLinearAttributes(node);
+        return base.VisitTypeCtorDecl(node);
+      }
+
+      public override Declaration VisitTypeSynonymDecl(TypeSynonymDecl node)
+      {
+        CivlAttributes.RemoveLinearAttributes(node);
+        return base.VisitTypeSynonymDecl(node);
+      }
     }
 
     #endregion
