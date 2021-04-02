@@ -607,6 +607,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         this.gen = gen;
         SendThisVC("(reset)");
+        SendThisVC("(set-option :" + Z3.RlimitOption + " 0)");
 
         if (0 < common.Length)
         {
@@ -628,6 +629,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         this.gen = gen;
         SendThisVC("(reset)");
+        SendThisVC("(set-option :" + Z3.RlimitOption + " 0)");
         Namer.Reset();
         common.Clear();
         SetupAxiomBuilder(gen);
