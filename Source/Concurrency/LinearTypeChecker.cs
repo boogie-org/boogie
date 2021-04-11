@@ -89,7 +89,7 @@ namespace Microsoft.Boogie
   ///    and their union.
   /// 3) Generation of linearity-invariant checker procedures for atomic actions.
   /// 4) Erasure procedure to remove all linearity attributes
-  ///    (invoked after all other CIVL transformations).
+  ///    (invoked after all other Civl transformations).
   /// </summary>
   public class LinearTypeChecker : ReadOnlyVisitor
   {

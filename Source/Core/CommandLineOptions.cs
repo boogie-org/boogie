@@ -1767,7 +1767,22 @@ namespace Microsoft.Boogie
        the counterexample trace. The argument 's' is to be a string, and it
        will be printed as part of /mv's output.
 
-  ---- CIVL ------------------------------------------------------------------
+  ---- Pool-based quantifier instantiation -----------------------------------
+
+     {:pool ""name""}
+       Used on a bound variable of a quantifier or lambda.  Indicates that 
+       expressions in pool name should be used for instantiating that variable.
+
+     {:add_to_pool ""name"", e}
+       Used on a command.  Adds the expression e, after substituting variables
+       with their incarnations just before the command, to pool name.
+
+     {:skolem_add_to_pool ""name"", e}
+       Used on a quantifier.  Adds the expression e, after substituting the 
+       bound variables with fresh skolem constants, whenever the quantifier is
+       skolemized. 
+ 
+  ---- Civl ------------------------------------------------------------------
 
      {:yields}
        Yielding procedure.
@@ -1953,7 +1968,7 @@ namespace Microsoft.Boogie
                 (also included in the /trace output)
   /break        launch and break into debugger
 
-  ---- CIVL options ----------------------------------------------------------
+  ---- Civl options ----------------------------------------------------------
 
   /trustMoverTypes
                 do not verify mover type annotations on atomic action declarations

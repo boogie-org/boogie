@@ -6,78 +6,78 @@ function G(int, int):bool;
 
 procedure A0()
 {
-    assume (forall {:inst_at "L"} x: int :: F(x-1));
-    assert {:inst_add "L", 1} F(0);
-    assert (forall y: int :: {:inst_add "L", y+1} F(y));
+    assume (forall {:pool "L"} x: int :: F(x-1));
+    assert {:add_to_pool "L", 1} F(0);
+    assert (forall y: int :: {:skolem_add_to_pool "L", y+1} F(y));
 }
 
 procedure A1()
 {
-    assume (exists x: int :: {:inst_add "L", x+1} F(x));
-    assert (exists {:inst_at "L"} y: int :: F(y-1));
+    assume (exists x: int :: {:skolem_add_to_pool "L", x+1} F(x));
+    assert (exists {:pool "L"} y: int :: F(y-1));
 }
 
 procedure A2()
 {
-    assume (exists x: int :: {:inst_add "L", x+1} F(x));
-    assume (forall {:inst_at "L"} y: int :: !F(y-1));
+    assume (exists x: int :: {:skolem_add_to_pool "L", x+1} F(x));
+    assume (forall {:pool "L"} y: int :: !F(y-1));
     assert false;
 }
 
 procedure A3()
 {
-    assume (forall {:inst_at "L"} x0: int, {:inst_at "L"} x1: int :: G(x0-1, x1-1));
-    assert {:inst_add "L", 1} G(0, 0);
-    assert (forall y0, y1: int :: {:inst_add "L", y0+1} {:inst_add "L", y1+1} G(y0, y1));
+    assume (forall {:pool "L"} x0: int, {:pool "L"} x1: int :: G(x0-1, x1-1));
+    assert {:add_to_pool "L", 1} G(0, 0);
+    assert (forall y0, y1: int :: {:skolem_add_to_pool "L", y0+1} {:skolem_add_to_pool "L", y1+1} G(y0, y1));
 }
 
 procedure A4()
 {
-    assume (forall {:inst_at "L0"} x0: int, {:inst_at "L1"} x1: int :: G(x0-1, x1-1));
-    assert {:inst_add "L0", 1} {:inst_add "L1", 1} G(0, 0);
-    assert (forall y0, y1: int :: {:inst_add "L0", y0+1} {:inst_add "L1", y1+1} G(y0, y1));
+    assume (forall {:pool "L0"} x0: int, {:pool "L1"} x1: int :: G(x0-1, x1-1));
+    assert {:add_to_pool "L0", 1} {:add_to_pool "L1", 1} G(0, 0);
+    assert (forall y0, y1: int :: {:skolem_add_to_pool "L0", y0+1} {:skolem_add_to_pool "L1", y1+1} G(y0, y1));
 }
 
 procedure A5()
 {
-    assume (var a := (forall {:inst_at "L"} x: int :: F(x-1)); a);
-    assert {:inst_add "L", 1} F(0);
-    assert (var b := (forall y: int :: {:inst_add "L", y+1} F(y)); b);
+    assume (var a := (forall {:pool "L"} x: int :: F(x-1)); a);
+    assert {:add_to_pool "L", 1} F(0);
+    assert (var b := (forall y: int :: {:skolem_add_to_pool "L", y+1} F(y)); b);
 }
 
 procedure A6()
 {
-    assume !(exists {:inst_at "L"} x: int :: !F(x-1));
-    assert {:inst_add "L", 1} F(0);
-    assert !(exists y: int :: {:inst_add "L", y+1} !F(y));
+    assume !(exists {:pool "L"} x: int :: !F(x-1));
+    assert {:add_to_pool "L", 1} F(0);
+    assert !(exists y: int :: {:skolem_add_to_pool "L", y+1} !F(y));
 }
 
 procedure A7()
 {
     var a: bool;
-    assume a ==> (forall {:inst_at "L"} x: int :: F(x-1));
-    assert {:inst_add "L", 1} a ==> F(0);
-    assert a ==> (forall y: int :: {:inst_add "L", y+1} F(y));
+    assume a ==> (forall {:pool "L"} x: int :: F(x-1));
+    assert {:add_to_pool "L", 1} a ==> F(0);
+    assert a ==> (forall y: int :: {:skolem_add_to_pool "L", y+1} F(y));
 }
 
 procedure A8()
 {
     var a: bool;
-    assume (exists {:inst_at "L"} x: int :: F(x-1)) ==> a;
-    assert {:inst_add "L", 1} F(0) ==> a;
-    assert (exists y: int :: {:inst_add "L", y+1} F(y)) ==> a;
+    assume (exists {:pool "L"} x: int :: F(x-1)) ==> a;
+    assert {:add_to_pool "L", 1} F(0) ==> a;
+    assert (exists y: int :: {:skolem_add_to_pool "L", y+1} F(y)) ==> a;
 }
 
 function P(int, int): bool;
 
 procedure B0()
 {
-    assume (exists x: int :: (forall {:inst_at "A"} y: int :: P(x,y)));
-    assert (forall y: int :: {:inst_add "A", y} (exists x: int :: P(x,y)));
+    assume (exists x: int :: (forall {:pool "A"} y: int :: P(x,y)));
+    assert (forall y: int :: {:skolem_add_to_pool "A", y} (exists x: int :: P(x,y)));
 }
 
 procedure B1()
 {
-    assume (exists x: int :: {:inst_add "B", x+1} (forall {:inst_at "A"} y: int :: P(x,y)));
-    assert (forall y: int :: {:inst_add "A", y} (exists {:inst_at "B"} x: int :: P(x-1,y)));
+    assume (exists x: int :: {:skolem_add_to_pool "B", x+1} (forall {:pool "A"} y: int :: P(x,y)));
+    assert (forall y: int :: {:skolem_add_to_pool "A", y} (exists {:pool "B"} x: int :: P(x-1,y)));
 }
