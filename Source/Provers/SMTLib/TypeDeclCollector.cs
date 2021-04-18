@@ -81,20 +81,6 @@ namespace Microsoft.Boogie.SMTLib
     private readonly Stack<HashSet<string /*!*/> /*!*/> _KnownStoreFunctions = new Stack<HashSet<string>>();
     private readonly Stack<HashSet<string /*!*/> /*!*/> _KnownSelectFunctions = new Stack<HashSet<string>>();
 
-    // lets RPFP checker capture decls
-    public abstract class DeclHandler
-    {
-      public abstract void VarDecl(VCExprVar v);
-      public abstract void FuncDecl(Function f);
-    }
-
-    private DeclHandler declHandler = null;
-
-    public void SetDeclHandler(DeclHandler _d)
-    {
-      declHandler = _d;
-    }
-
     private void InitializeKnownDecls()
     {
       _KnownFunctions.Push(new HashSet<Function>());
@@ -198,8 +184,6 @@ namespace Microsoft.Boogie.SMTLib
       if (KnownFunctions.Contains(func))
         return;
       KnownFunctions.Add(func);
-      if (declHandler != null)
-        declHandler.FuncDecl(func);
     }
 
     public void AddKnownVariable(VCExprVar variable)
@@ -207,15 +191,6 @@ namespace Microsoft.Boogie.SMTLib
       if (KnownVariables.Contains(variable))
         return;
       KnownVariables.Add(variable);
-      if (declHandler != null)
-        declHandler.VarDecl(variable);
-    }
-
-    public void RegisterRelation(Function func)
-    {
-      if (RegisteredRelations.Contains(func))
-        return;
-      RegisteredRelations.Add(func);
     }
 
     public override bool Visit(VCExprNAry node, bool arg)
@@ -264,7 +239,6 @@ namespace Microsoft.Boogie.SMTLib
               decl = "(declare-fun " + printedName + " (" + argTypes + ") " +
                      TypeToStringReg(f.OutParams[0].TypedIdent.Type) + ")";
             AddDeclaration(decl);
-            if (declHandler != null) declHandler.FuncDecl(f);
           }
 
           KnownFunctions.Add(f);
@@ -291,8 +265,6 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         KnownVariables.Add(node);
-        if (declHandler != null)
-          declHandler.VarDecl(node);
       }
 
       return base.Visit(node, arg);
