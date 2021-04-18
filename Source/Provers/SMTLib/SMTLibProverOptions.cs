@@ -128,25 +128,33 @@ namespace Microsoft.Boogie.SMTLib
     {
       base.PostParse();
 
+      string SolverBinaryName = null;
       switch (Solver)
       {
         case SolverKind.Z3:
           Z3.SetDefaultOptions(this);
           SolverArguments.Add("-smt2 -in");
+          SolverBinaryName = Solver.ToString().ToLower();
           break;
         case SolverKind.CVC4:
           SolverArguments.Add(
             "--lang=smt --no-strict-parsing --no-condense-function-values --incremental --produce-models");
           if (Logic == null) Logic = "ALL_SUPPORTED";
+          SolverBinaryName = Solver.ToString().ToLower();
           break;
         case SolverKind.YICES2:
           SolverArguments.Add("--incremental");
           if (Logic == null) Logic = "ALL";
+          SolverBinaryName = "yices-smt2";
           break;
+        default:
+          Contract.Assert(false);
+          throw new cce.UnreachableException();
       }
 
-      if (ProverName == null)
-        ProverName = Solver.ToString().ToLower();
+      if (ProverName == null) {
+        ProverName = SolverBinaryName;
+      }
     }
 
     public override string Help
