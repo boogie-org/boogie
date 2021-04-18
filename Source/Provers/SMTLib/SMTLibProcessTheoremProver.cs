@@ -1529,7 +1529,7 @@ namespace Microsoft.Boogie.SMTLib
           HandleProverError("Expecting only one model but got many");
 
         string modelStr = null;
-        if (resp.Name == "model" && resp.ArgCount >= 1)
+        if (resp.ArgCount >= 1)
         {
           var converter = new SMTErrorModelConverter(resp, this);
           modelStr = converter.Convert();
