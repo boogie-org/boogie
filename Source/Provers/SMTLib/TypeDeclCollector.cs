@@ -341,7 +341,7 @@ namespace Microsoft.Boogie.SMTLib
       if (CommandLineOptions.Clo.UseArrayTheory)
         return;
 
-      string name = SimplifyLikeExprLineariser.SelectOpName(node);
+      string name = SMTLibExprLineariser.SelectOpName(node);
       name = Namer.GetQuotedName(name, name);
 
       if (!KnownSelectFunctions.Contains(name))
@@ -360,7 +360,7 @@ namespace Microsoft.Boogie.SMTLib
       if (CommandLineOptions.Clo.UseArrayTheory)
         return;
 
-      string name = SimplifyLikeExprLineariser.StoreOpName(node);
+      string name = SMTLibExprLineariser.StoreOpName(node);
       name = Namer.GetQuotedName(name, name);
 
       if (!KnownStoreFunctions.Contains(name))
@@ -371,7 +371,7 @@ namespace Microsoft.Boogie.SMTLib
 
         if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
         {
-          var sel = SimplifyLikeExprLineariser.SelectOpName(node);
+          var sel = SMTLibExprLineariser.SelectOpName(node);
           sel = Namer.GetQuotedName(sel, sel);
 
           if (!KnownSelectFunctions.Contains(sel))
