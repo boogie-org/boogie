@@ -409,9 +409,11 @@ namespace Microsoft.Boogie
       
       private Type LookupType(Type type)
       {
+        type = TypeProxy.FollowProxy(type);
         if (type is CtorType ctorType && PolymorphismChecker.DoesTypeCtorDeclNeedMonomorphization(ctorType.Decl))
         {
-          return new CtorType(Token.NoToken, monomorphizationVisitor.typeInstantiations[ctorType.Decl][ctorType.Arguments],
+          var instantiatedTypeArguments = ctorType.Arguments.Select(x => LookupType(x)).ToList();
+          return new CtorType(Token.NoToken, monomorphizationVisitor.typeInstantiations[ctorType.Decl][instantiatedTypeArguments],
             new List<Type>());
         }
         else
