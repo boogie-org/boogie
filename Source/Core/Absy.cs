@@ -303,9 +303,17 @@ namespace Microsoft.Boogie
       {
         if (QKeyValue.FindBoolAttribute(typeCtorDecl.Attributes, "datatype"))
         {
-          var datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(typeCtorDecl);
-          datatypeTypeCtorDecls.Add(typeCtorDecl.Name, datatypeTypeCtorDecl);
-          prunedTopLevelDeclarations.Add(datatypeTypeCtorDecl);
+          if (datatypeTypeCtorDecls.ContainsKey(typeCtorDecl.Name))
+          {
+            errors.SemErr(typeCtorDecl.tok,
+              string.Format("more than one declaration of datatype name: {0}", typeCtorDecl.Name));
+          }
+          else
+          {
+            var datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(typeCtorDecl);
+            datatypeTypeCtorDecls.Add(typeCtorDecl.Name, datatypeTypeCtorDecl);
+            prunedTopLevelDeclarations.Add(datatypeTypeCtorDecl);
+          }
         }
         else
         {
