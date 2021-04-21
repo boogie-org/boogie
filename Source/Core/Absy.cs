@@ -392,7 +392,12 @@ namespace Microsoft.Boogie
         foreach (var f in datatypeTypeCtorDecl.Constructors)
         {
           f.Register(rc);
+          int e = rc.ErrorCount;
           f.Resolve(rc);
+          if (rc.ErrorCount != e)
+          {
+            continue;
+          }
           for (int i = 0; i < f.InParams.Count; i++)
           {
             DatatypeSelector selector = DatatypeSelector.NewDatatypeSelector(f, i);
