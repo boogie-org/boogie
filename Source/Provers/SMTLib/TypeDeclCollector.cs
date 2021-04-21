@@ -407,14 +407,14 @@ namespace Microsoft.Boogie.SMTLib
           }
 
           string v = " ?x" + (node.Arity - 1);
-          ax1 += ") (= (" + sel + " (" + name + " ?x0" + argX + v + ")" + argX + ") " + v + ")";
-          ax1 += "))";
+          ax1 += ") (! (= (" + sel + " (" + name + " ?x0" + argX + v + ")" + argX + ") " + v + ")";
+          ax1 += " :weight 0)))";
 
           if (node.Arity > 3)
             dist = "(or " + dist + ")";
-          ax2 += ") (=> " + dist + " (= (" + sel + " (" + name + " ?x0" + argX + v + ")" + argY + ") (" + sel + " ?x0" +
+          ax2 += ") (! (=> " + dist + " (= (" + sel + " (" + name + " ?x0" + argX + v + ")" + argY + ") (" + sel + " ?x0" +
                  argY + ")))";
-          ax2 += "))";
+          ax2 += " :weight 0)))";
 
           AddDeclaration(ax1);
           AddDeclaration(ax2);
