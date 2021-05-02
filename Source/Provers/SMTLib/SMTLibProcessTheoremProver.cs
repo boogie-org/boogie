@@ -153,7 +153,6 @@ namespace Microsoft.Boogie.SMTLib
       get
       {
         Contract.Ensures(Contract.Result<ProverContext>() != null);
-
         return ctx;
       }
     }
@@ -646,57 +645,8 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-
-    private string StripCruft(string name)
-    {
-      if (name.Contains("@@"))
-        return name.Remove(name.LastIndexOf("@@"));
-      return name;
-    }
-
     private class BadExprFromProver : Exception
     {
-    }
-
-    private delegate VCExpr ArgGetter(int pos);
-
-    private delegate VCExpr[] ArgsGetter();
-
-    private delegate VCExprVar[] VarsGetter();
-
-    private VCExprOp VCStringToVCOp(string op)
-    {
-      switch (op)
-      {
-        case "+":
-          return VCExpressionGenerator.AddIOp;
-        case "-":
-          return VCExpressionGenerator.SubIOp;
-        case "*":
-          return VCExpressionGenerator.MulIOp;
-        case "div":
-          return VCExpressionGenerator.DivIOp;
-        case "=":
-          return VCExpressionGenerator.EqOp;
-        case "<=":
-          return VCExpressionGenerator.LeOp;
-        case "<":
-          return VCExpressionGenerator.LtOp;
-        case ">=":
-          return VCExpressionGenerator.GeOp;
-        case ">":
-          return VCExpressionGenerator.GtOp;
-        case "and":
-          return VCExpressionGenerator.AndOp;
-        case "or":
-          return VCExpressionGenerator.OrOp;
-        case "not":
-          return VCExpressionGenerator.NotOp;
-        case "ite":
-          return VCExpressionGenerator.IfThenElseOp;
-        default:
-          return null;
-      }
     }
 
     class MyFileParser : SExpr.Parser
@@ -1171,7 +1121,7 @@ namespace Microsoft.Boogie.SMTLib
         return ErrorModel.ToString();
       }
 
-      bool isConstArray(SExpr element, SExpr type)
+      bool IsConstArray(SExpr element, SExpr type)
       {
         if (type.Name != "Array")
           return false;
@@ -1185,7 +1135,7 @@ namespace Microsoft.Boogie.SMTLib
         return false;
       }
 
-      SExpr getConstArrayElement(SExpr element)
+      SExpr GetConstArrayElement(SExpr element)
       {
         if (element.Name == "__array_store_all__") // CVC4 1.4
           return element[1];
@@ -1201,7 +1151,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         if (type.Name == "Array")
         {
-          if (element.Name == "store" || isConstArray(element, type))
+          if (element.Name == "store" || IsConstArray(element, type))
           {
             NumNewArrays++;
             m.Append("as-array[k!" + NumNewArrays + ']');
@@ -1265,9 +1215,9 @@ namespace Microsoft.Boogie.SMTLib
             element = element[0];
           }
 
-          if (isConstArray(element, type))
+          if (IsConstArray(element, type))
           {
-            ConstructComplexValue(getConstArrayElement(element), type[1], m);
+            ConstructComplexValue(GetConstArrayElement(element), type[1], m);
             return;
           }
           else if (element.Name == "_" && element.ArgCount == 2 &&
@@ -1281,9 +1231,14 @@ namespace Microsoft.Boogie.SMTLib
         if (SortSet.ContainsKey(type.Name) && SortSet[type.Name] == 0)
         {
           var prefix = "@uc_T@" + type.Name.Substring(2) + "_";
-          if (element.Name.StartsWith(prefix))
+          var elementName =  element.Name;
+          if (elementName == "as")
           {
-            m.Append(type.Name + "!val!" + element.Name.Substring(prefix.Length));
+            elementName = element[0].Name;
+          }
+          if (elementName.StartsWith(prefix))
+          {
+            m.Append(type.Name + "!val!" + elementName.Substring(prefix.Length));
             return;
           }
         }
@@ -1425,41 +1380,41 @@ namespace Microsoft.Boogie.SMTLib
       {
         Debug.Assert(datatypes.Name == "declare-datatypes");
 
-        if (datatypes[0].Name != "" || datatypes[1].Name != "" || datatypes[1].ArgCount != 1)
+        if (datatypes[0].Name != "" || datatypes[1].Name != "" || datatypes[0].ArgCount != datatypes[1].ArgCount)
         {
           Parent.HandleProverError("Unexpected datatype: " + datatypes);
           throw new BadExprFromProver();
         }
 
-        SExpr typeDef = datatypes[1][0];
-        Dictionary<string, List<SExpr>> dataTypeConstructors = new Dictionary<string, List<SExpr>>();
-        for (int j = 0; j < typeDef.ArgCount; ++j)
+        for (int typeIndex = 0; typeIndex < datatypes[1].ArgCount; typeIndex++)
         {
-          var argumentTypes = new List<SExpr>();
-          for (int i = 0; i < typeDef[j].ArgCount; ++i)
+          SExpr typeDef = datatypes[1][typeIndex];
+          Dictionary<string, List<SExpr>> dataTypeConstructors = new Dictionary<string, List<SExpr>>();
+          for (int j = 0; j < typeDef.ArgCount; ++j)
           {
-            if (typeDef[j][i].ArgCount != 1)
+            var argumentTypes = new List<SExpr>();
+            for (int i = 0; i < typeDef[j].ArgCount; ++i)
             {
-              Parent.HandleProverError("Unexpected datatype constructor: " + typeDef[j]);
-              throw new BadExprFromProver();
+              if (typeDef[j][i].ArgCount != 1)
+              {
+                Parent.HandleProverError("Unexpected datatype constructor: " + typeDef[j]);
+                throw new BadExprFromProver();
+              }
+              argumentTypes.Add(typeDef[j][i][0]);
             }
-
-            argumentTypes.Add(typeDef[j][i][0]);
+            dataTypeConstructors[typeDef[j].Name] = argumentTypes;
           }
-
-          dataTypeConstructors[typeDef[j].Name] = argumentTypes;
+          DataTypes[datatypes[0][typeIndex].Name] = dataTypeConstructors;
         }
-
-        DataTypes[datatypes[0][0].Name] = dataTypeConstructors;
       }
 
       private void ConvertErrorModel(StringBuilder m)
       {
-        if (Parent.options.Solver == SolverKind.Z3)
+        if (Parent.options.Solver == SolverKind.Z3 || Parent.options.Solver == SolverKind.CVC4)
         {
-          // Datatype declarations are not returned by Z3, so parse common
-          // instead. This is not very efficient, but currently not an issue,
-          // as this not the normal way of interfacing with Z3.
+          // Datatype declarations are not returned by Z3 or CVC4, so parse common
+          // instead. This is not very efficient, but currently not an issue for interfacing
+          // with Z3 as this not the normal way of interfacing with Z3.
           var ms = new MemoryStream(Encoding.ASCII.GetBytes(Parent.common.ToString()));
           var sr = new StreamReader(ms);
           SExpr.Parser p = new MyFileParser(sr, null);
@@ -1468,6 +1423,9 @@ namespace Microsoft.Boogie.SMTLib
           {
             switch (e.Name)
             {
+              case "declare-sort":
+                SortSet[e[0].Name] = System.Convert.ToInt32(e[1].Name);
+                break;
               case "declare-datatypes":
                 ExtractDataType(e);
                 break;
@@ -1498,7 +1456,6 @@ namespace Microsoft.Boogie.SMTLib
                 Parent.HandleProverError("Unexpected top level model element: " + e.Name);
                 throw new BadExprFromProver();
               }
-
               Functions[e[0].Name] = e[2];
               break;
             case "forall":
@@ -1573,32 +1530,6 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       return theModel;
-    }
-
-    private string[] GetLabelsInfo()
-    {
-      SendThisVC("(labels)");
-      Process.Ping();
-
-      string[] res = null;
-      while (true)
-      {
-        var resp = Process.GetProverResponse();
-        if (resp == null || Process.IsPong(resp))
-          break;
-        if (res != null)
-          HandleProverError("Expecting only one sequence of labels but got many");
-        if (resp.Name == "labels")
-        {
-          res = resp.Arguments.Select(a => Namer.AbsyLabel(a.Name.Replace("|", ""))).ToArray();
-        }
-        else
-        {
-          HandleProverError("Unexpected prover response getting labels: " + resp.ToString());
-        }
-      }
-
-      return res;
     }
 
     private Outcome GetResponse()
