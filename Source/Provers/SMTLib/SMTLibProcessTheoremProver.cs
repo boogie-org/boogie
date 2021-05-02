@@ -153,7 +153,6 @@ namespace Microsoft.Boogie.SMTLib
       get
       {
         Contract.Ensures(Contract.Result<ProverContext>() != null);
-
         return ctx;
       }
     }
@@ -646,57 +645,8 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-
-    private string StripCruft(string name)
-    {
-      if (name.Contains("@@"))
-        return name.Remove(name.LastIndexOf("@@"));
-      return name;
-    }
-
     private class BadExprFromProver : Exception
     {
-    }
-
-    private delegate VCExpr ArgGetter(int pos);
-
-    private delegate VCExpr[] ArgsGetter();
-
-    private delegate VCExprVar[] VarsGetter();
-
-    private VCExprOp VCStringToVCOp(string op)
-    {
-      switch (op)
-      {
-        case "+":
-          return VCExpressionGenerator.AddIOp;
-        case "-":
-          return VCExpressionGenerator.SubIOp;
-        case "*":
-          return VCExpressionGenerator.MulIOp;
-        case "div":
-          return VCExpressionGenerator.DivIOp;
-        case "=":
-          return VCExpressionGenerator.EqOp;
-        case "<=":
-          return VCExpressionGenerator.LeOp;
-        case "<":
-          return VCExpressionGenerator.LtOp;
-        case ">=":
-          return VCExpressionGenerator.GeOp;
-        case ">":
-          return VCExpressionGenerator.GtOp;
-        case "and":
-          return VCExpressionGenerator.AndOp;
-        case "or":
-          return VCExpressionGenerator.OrOp;
-        case "not":
-          return VCExpressionGenerator.NotOp;
-        case "ite":
-          return VCExpressionGenerator.IfThenElseOp;
-        default:
-          return null;
-      }
     }
 
     class MyFileParser : SExpr.Parser
@@ -1171,7 +1121,7 @@ namespace Microsoft.Boogie.SMTLib
         return ErrorModel.ToString();
       }
 
-      bool isConstArray(SExpr element, SExpr type)
+      bool IsConstArray(SExpr element, SExpr type)
       {
         if (type.Name != "Array")
           return false;
@@ -1185,7 +1135,7 @@ namespace Microsoft.Boogie.SMTLib
         return false;
       }
 
-      SExpr getConstArrayElement(SExpr element)
+      SExpr GetConstArrayElement(SExpr element)
       {
         if (element.Name == "__array_store_all__") // CVC4 1.4
           return element[1];
@@ -1201,7 +1151,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         if (type.Name == "Array")
         {
-          if (element.Name == "store" || isConstArray(element, type))
+          if (element.Name == "store" || IsConstArray(element, type))
           {
             NumNewArrays++;
             m.Append("as-array[k!" + NumNewArrays + ']');
@@ -1265,9 +1215,9 @@ namespace Microsoft.Boogie.SMTLib
             element = element[0];
           }
 
-          if (isConstArray(element, type))
+          if (IsConstArray(element, type))
           {
-            ConstructComplexValue(getConstArrayElement(element), type[1], m);
+            ConstructComplexValue(GetConstArrayElement(element), type[1], m);
             return;
           }
           else if (element.Name == "_" && element.ArgCount == 2 &&
@@ -1580,32 +1530,6 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       return theModel;
-    }
-
-    private string[] GetLabelsInfo()
-    {
-      SendThisVC("(labels)");
-      Process.Ping();
-
-      string[] res = null;
-      while (true)
-      {
-        var resp = Process.GetProverResponse();
-        if (resp == null || Process.IsPong(resp))
-          break;
-        if (res != null)
-          HandleProverError("Expecting only one sequence of labels but got many");
-        if (resp.Name == "labels")
-        {
-          res = resp.Arguments.Select(a => Namer.AbsyLabel(a.Name.Replace("|", ""))).ToArray();
-        }
-        else
-        {
-          HandleProverError("Unexpected prover response getting labels: " + resp.ToString());
-        }
-      }
-
-      return res;
     }
 
     private Outcome GetResponse()
