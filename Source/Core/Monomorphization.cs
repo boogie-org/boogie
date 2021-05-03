@@ -539,6 +539,12 @@ namespace Microsoft.Boogie
         return node;
       }
 
+      public override Type VisitTypeSynonymAnnotation(TypeSynonymAnnotation node)
+      {
+        base.VisitTypeSynonymAnnotation(node);
+        return node.ExpandedType;
+      }
+
       public override Type VisitType(Type node)
       {
         return (Type) Visit(node);
@@ -711,7 +717,13 @@ namespace Microsoft.Boogie
     {
       return (CtorType) exprMonomorphizationVisitor.VisitType(node);
     }
-    
+
+    public override Type VisitTypeSynonymAnnotation(TypeSynonymAnnotation node)
+    {
+      base.VisitTypeSynonymAnnotation(node);
+      return node.ExpandedType;
+    }
+
     public override Expr VisitExpr(Expr node)
     {
       return exprMonomorphizationVisitor.VisitExpr(node);
