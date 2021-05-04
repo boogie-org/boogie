@@ -571,7 +571,7 @@ namespace VC
         Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks,
           new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
         int ac; // computed, but then ignored for this CodeExpr
-        VCExpr startCorrect = VCGen.LetVC(codeExpr.Blocks, null, label2absy, ctx, out ac, isPositiveContext);
+        VCExpr startCorrect = LetVC(codeExpr.Blocks, null, label2absy, ctx, out ac, isPositiveContext);
         VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
         if (vcgen.CurrentLocalVariables.Count != 0)
         {
@@ -603,7 +603,7 @@ namespace VC
     }
 
     public VCExpr GenerateVC(Implementation /*!*/ impl, VCExpr controlFlowVariableExpr,
-      out Dictionary<int, Absy> /*!*/ label2absy, ProverContext proverContext, IList<VCExprVar> namedAssumeVars = null)
+      out Dictionary<int, Absy> /*!*/ label2absy, ProverContext proverContext)
     {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
@@ -611,11 +611,11 @@ namespace VC
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       label2absy = new Dictionary<int, Absy>();
-      return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverContext, namedAssumeVars: namedAssumeVars);
+      return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverContext);
     }
 
     public VCExpr GenerateVCAux(Implementation /*!*/ impl, VCExpr controlFlowVariableExpr,
-      Dictionary<int, Absy> /*!*/ label2absy, ProverContext proverContext, IList<VCExprVar> namedAssumeVars = null)
+      Dictionary<int, Absy> /*!*/ label2absy, ProverContext proverContext)
     {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
@@ -637,6 +637,10 @@ namespace VC
       }
 
       CumulativeAssertionCount += assertionCount;
+      if (assertionCount == 0)
+      {
+        return VCExpressionGenerator.True;
+      }
       return vc;
     }
 
