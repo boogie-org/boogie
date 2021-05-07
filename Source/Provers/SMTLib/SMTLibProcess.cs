@@ -299,11 +299,14 @@ namespace Microsoft.Boogie.SMTLib
         {
           if (quoted)
           {
-            sb.Append("\n");
-            currLine = ReadProver();
-            linePos = 0;
+            do
+            {
+              sb.Append("\n");
+              currLine = ReadProver();
+            } while (currLine == "");
             if (currLine == null)
               break;
+            linePos = 0;
           }
           else break;
         }
