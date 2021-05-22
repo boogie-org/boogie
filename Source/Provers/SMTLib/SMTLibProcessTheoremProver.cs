@@ -1228,6 +1228,15 @@ namespace Microsoft.Boogie.SMTLib
           }
         }
 
+        if (type.Name == "Seq")
+        {
+          if (element.Name == "as")
+          {
+            m.Append(element[0]);
+            return;
+          }
+        }
+        
         if (SortSet.ContainsKey(type.Name) && SortSet[type.Name] == 0)
         {
           var prefix = "@uc_T@" + type.Name.Substring(2) + "_";
