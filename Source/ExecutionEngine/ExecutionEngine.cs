@@ -1448,7 +1448,7 @@ namespace Microsoft.Boogie
 
 
     private static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
-      PipelineStatistics stats, TextWriter tw, int timeLimit, ErrorReporterDelegate er = null, string implName = null,
+      PipelineStatistics stats, TextWriter tw, uint timeLimit, ErrorReporterDelegate er = null, string implName = null,
       IToken implTok = null, string requestId = null, string msgIfVerifies = null, bool wasCached = false)
     {
       Contract.Requires(stats != null);
@@ -1462,7 +1462,7 @@ namespace Microsoft.Boogie
 
 
     private static void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, string implName,
-      IToken implTok, string requestId, string msgIfVerifies, TextWriter tw, int timeLimit, List<Counterexample> errors)
+      IToken implTok, string requestId, string msgIfVerifies, TextWriter tw, uint timeLimit, List<Counterexample> errors)
     {
       ErrorInformation errorInfo = null;
 

@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.Contracts;
+using Microsoft.BaseTypes;
 using Microsoft.Boogie.GraphUtil;
 using Set = Microsoft.Boogie.GSet<object>;
 
@@ -1591,6 +1592,27 @@ namespace Microsoft.Boogie
       return false;
     }
 
+    public bool CheckUIntAttribute(string name, ref uint result)
+    {
+      Contract.Requires(name != null);
+      Expr expr = FindExprAttribute(name);
+      if (expr != null)
+      {
+        if (expr is LiteralExpr && ((LiteralExpr) expr).isBigNum)
+        {
+          BigNum big = ((LiteralExpr) expr).asBigNum;
+          if (big.IsNegative) {
+            return false;
+          }
+
+          result = (uint)big.ToIntSafe;
+          return true;
+        }
+      }
+
+      return false;
+    }
+
     public void AddAttribute(string name, params object[] vals)
     {
       Contract.Requires(name != null);
@@ -1798,12 +1820,12 @@ namespace Microsoft.Boogie
       }
     }
 
-    public int TimeLimit
+    public uint TimeLimit
     {
       get
       {
-        int tl = CommandLineOptions.Clo.TimeLimit;
-        CheckIntAttribute("timeLimit", ref tl);
+        uint tl = CommandLineOptions.Clo.TimeLimit;
+        CheckUIntAttribute("timeLimit", ref tl);
         if (tl < 0)
         {
           tl = CommandLineOptions.Clo.TimeLimit;
@@ -1812,12 +1834,12 @@ namespace Microsoft.Boogie
       }
     }
 
-    public int ResourceLimit
+    public uint ResourceLimit
     {
       get
       {
-        int rl = CommandLineOptions.Clo.ResourceLimit;
-        CheckIntAttribute("rlimit", ref rl);
+        uint rl = CommandLineOptions.Clo.ResourceLimit;
+        CheckUIntAttribute("rlimit", ref rl);
         if (rl < 0)
         {
           rl = CommandLineOptions.Clo.ResourceLimit;
