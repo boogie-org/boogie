@@ -231,5 +231,5 @@ ensures B == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A)));
     e := Vec_Nth(B, Vec_Len(A) - 1);
     B := Vec_Remove(B);
     call z := Vec_Ext(B, Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A))));
-    assume {:add_to_pool "A", z} true;
+    assume {:add_to_pool "A", z, j, j + 1, j - 1} true;
 }
