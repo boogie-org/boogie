@@ -14,6 +14,21 @@ namespace Microsoft.Boogie
     Closed
   }
 
+  public class Util
+  {
+    public static uint SafeMult(uint a, uint b) {
+      uint result = UInt32.MaxValue;
+      try {
+        checked {
+          result = a * b;
+        }
+      } catch (OverflowException) { }
+
+      return result;
+    }
+  }
+
+
   /// <summary>
   /// Interface to the theorem prover specialized to Boogie.
   ///
@@ -200,14 +215,14 @@ namespace Microsoft.Boogie
       Setup(prog, ctx);
     }
 
-    private void SetTimeout(int timeout)
+    private void SetTimeout(uint timeout)
     {
-      TheoremProver.SetTimeout(timeout * 1000);
+      TheoremProver.SetTimeout(Util.SafeMult(timeout, 1000));
     }
 
-    private void SetRlimit(int rlimit)
+    private void SetRlimit(uint rlimit)
     {
-      TheoremProver.SetRlimit(rlimit * 1000);
+      TheoremProver.SetRlimit(Util.SafeMult(rlimit, 1000));
     }
 
     private void SetRandomSeed(int? randomSeed)
@@ -350,7 +365,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, int timeout, int rlimit, int? randomSeed)
+    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, int? randomSeed)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
@@ -400,7 +415,7 @@ namespace Microsoft.Boogie
 
   public abstract class ProverInterface
   {
-    public static ProverInterface CreateProver(Program prog, string /*?*/ logFilePath, bool appendLogFile, int timeout,
+    public static ProverInterface CreateProver(Program prog, string /*?*/ logFilePath, bool appendLogFile, uint timeout,
       int taskID = -1)
     {
       Contract.Requires(prog != null);
@@ -416,7 +431,7 @@ namespace Microsoft.Boogie
 
       if (timeout > 0)
       {
-        options.TimeLimit = timeout * 1000;
+        options.TimeLimit = Util.SafeMult(timeout, 1000);
       }
 
       if (taskID >= 0)
@@ -650,11 +665,11 @@ namespace Microsoft.Boogie
     }
 
     // Set theorem prover timeout for the next "check-sat"
-    public virtual void SetTimeout(int ms)
+    public virtual void SetTimeout(uint ms)
     {
     }
 
-    public virtual void SetRlimit(int limit)
+    public virtual void SetRlimit(uint limit)
     {
     }
 

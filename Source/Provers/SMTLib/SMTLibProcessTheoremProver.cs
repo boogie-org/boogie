@@ -855,7 +855,7 @@ namespace Microsoft.Boogie.SMTLib
               var timedOut = new SortedSet<int>();
               int frac = 2;
               int queries = 0;
-              int timeLimitPerAssertion = 0 < options.TimeLimit
+              uint timeLimitPerAssertion = 0 < options.TimeLimit
                 ? (options.TimeLimit / 100) * CommandLineOptions.Clo.TimeLimitPerAssertionInPercent
                 : 1000;
               while (true)
@@ -1019,10 +1019,10 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private Outcome CheckSplit(SortedSet<int> split, ref bool popLater, int timeLimit, int timeLimitPerAssertion,
+    private Outcome CheckSplit(SortedSet<int> split, ref bool popLater, uint timeLimit, uint timeLimitPerAssertion,
       ref int queries)
     {
-      var tla = timeLimitPerAssertion * split.Count;
+      uint tla = (uint)(timeLimitPerAssertion * split.Count);
 
       if (popLater)
       {
@@ -1031,7 +1031,7 @@ namespace Microsoft.Boogie.SMTLib
 
       SendThisVC("(push 1)");
       // FIXME: Gross. Timeout should be set in one place! This is also Z3 specific!
-      int newTimeout = (0 < tla && tla < timeLimit) ? tla : timeLimit;
+      uint newTimeout = (0 < tla && tla < timeLimit) ? tla : timeLimit;
       if (newTimeout > 0)
       {
         SendThisVC(string.Format("(set-option :{0} {1})", Z3.TimeoutOption, newTimeout));
@@ -1228,6 +1228,15 @@ namespace Microsoft.Boogie.SMTLib
           }
         }
 
+        if (type.Name == "Seq")
+        {
+          if (element.Name == "as")
+          {
+            m.Append(element[0]);
+            return;
+          }
+        }
+        
         if (SortSet.ContainsKey(type.Name) && SortSet[type.Name] == 0)
         {
           var prefix = "@uc_T@" + type.Name.Substring(2) + "_";
@@ -1874,12 +1883,12 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(check-sat)");
     }
 
-    public override void SetTimeout(int ms)
+    public override void SetTimeout(uint ms)
     {
       options.TimeLimit = ms;
     }
 
-    public override void SetRlimit(int limit)
+    public override void SetRlimit(uint limit)
     {
       options.ResourceLimit = limit;
     }

@@ -1327,7 +1327,7 @@ namespace VC
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
       /// </summary>
-      public void BeginCheck(Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int no, int timeout, int rlimit)
+      public void BeginCheck(Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int no, uint timeout, uint rlimit)
       {
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
