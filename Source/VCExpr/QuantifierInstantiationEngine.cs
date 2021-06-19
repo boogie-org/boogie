@@ -7,7 +7,7 @@ namespace Microsoft.Boogie.VCExprAST
   public class QuantifierInstantiationEngine
   {
     /*
-     * The algorithm implemented by QuantifierInstantiationEngine is a fixpoint. There are three phases.
+     * The algorithm implemented by QuantifierInstantiationEngine is a fixpoint. There are two phases.
      *
      * Start:
      *   - find instantiation sources in commands
@@ -90,15 +90,23 @@ namespace Microsoft.Boogie.VCExprAST
       }
       while (iter != null)
       {
-        if (iter.Key == "add_to_pool")
+        if (iter.Key == "add_to_pool" && iter.Params.Count > 1)
         {
           var label = iter.Params[0] as string;
-          var instance = iter.Params[1] as Expr;
-          if (label != null && instance != null)
+          if (label != null)
           {
-            instance = Substituter.Apply(incarnationSubst, instance);
+            var newParams = new List<object> {label};
+            for (int i = 1; i < iter.Params.Count; i++)
+            {
+              var instance = iter.Params[i] as Expr;
+              if (instance != null)
+              {
+                instance = Substituter.Apply(incarnationSubst, instance);
+                newParams.Add(instance);
+              }
+            }
             iter.ClearParams();
-            iter.AddParams(new List<object> {label, instance});
+            iter.AddParams(newParams);
           }
         }
         iter = iter.Next;
@@ -190,17 +198,23 @@ namespace Microsoft.Boogie.VCExprAST
       var iter = o.Attributes;
       while (iter != null)
       {
-        if (iter.Key == attrName)
+        if (iter.Key == attrName && iter.Params.Count > 1)
         {
           var label = iter.Params[0] as string;
-          var instance = iter.Params[1] as Expr;
-          if (label != null && instance != null)
+          if (label != null)
           {
-            if (!freshInstances.ContainsKey(label))
+            for (int i = 1; i < iter.Params.Count; i++)
             {
-              freshInstances[label] = new HashSet<VCExpr>();
+              var instance = iter.Params[i] as Expr;
+              if (instance != null)
+              {
+                if (!freshInstances.ContainsKey(label))
+                {
+                  freshInstances[label] = new HashSet<VCExpr>();
+                }
+                freshInstances[label].Add(exprTranslator.Translate(instance));
+              }
             }
-            freshInstances[label].Add(exprTranslator.Translate(instance));
           }
         }
         iter = iter.Next;
