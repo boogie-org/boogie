@@ -13,7 +13,7 @@ namespace VC
 {
   using Bpl = Microsoft.Boogie;
   using System.Threading.Tasks;
-  
+
   class Split
     {
       class BlockStats
@@ -72,7 +72,7 @@ namespace VC
 
       readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
         stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
-      
+
       static int currentId = -1;
       Block splitBlock;
       bool assertToAssume;
@@ -742,44 +742,72 @@ namespace VC
           Console.WriteLine(i);
       }
 
-      private static Dictionary<Block, Block> ImmediateDominator (List<Block> blocks)
+    private static Dictionary<Block, Block> ImmediateDominator(List<Block> blocks)
+    {
+
+      // this function uses the DAG property of blocks
+      Dictionary<Block, HashSet<Block>> DominatorsFast(List<Block> blocks)
       {
         var dominators = new Dictionary<Block, HashSet<Block>>();
         var todo = new Queue<Block>();
         blocks.ForEach(b => dominators[b] = blocks.ToHashSet());
-        todo.Enqueue(blocks[0]);
-        while (todo.Count > 0)
+        var dag = VCGen.BlocksToDag(blocks);
+        List<Block> topoSorted = dag.TopologicalSort().ToList();
+        HashSet<Block> visited = new HashSet<Block>();
+        foreach (var b in topoSorted)
         {
-          var b = todo.Dequeue();
           var s = new HashSet<Block>();
           if (b.Predecessors.Count() != 0)
           {
             s.UnionWith(dominators[b.Predecessors[0]]);
             b.Predecessors.ForEach(blk => s.IntersectWith(dominators[blk]));
           }
+          b.Predecessors.ForEach(p => Contract.Assert(visited.Contains(p)));
+          Contract.Assert(!visited.Contains(b));
+          visited.Add(b);
           s.Add(b);
-          if (!s.Equals(dominators[b]))
-          {
-            dominators[b] = s;
-            if (b.TransferCmd is GotoCmd exit)
-              exit.labelTargets.ForEach(blk => todo.Enqueue(blk));
-          }
+          dominators[b] = s;
         }
-        var dag = VCGen.BlocksToDag(blocks);
-        List<Block> topoSorted = dag.TopologicalSort().ToList();
-        var immediateDominator = new Dictionary<Block, Block>();
-        foreach (Block b in blocks)
-        {
-          if (dominators[b].Count() > 1)
-          {
-            dominators[b].Remove(b);
-          }
-          immediateDominator[b] = topoSorted.ElementAt(dominators[b].Max(e => topoSorted.IndexOf(e)));
-        }
-        immediateDominator[blocks[0]] = blocks[0];
-        return immediateDominator;
+        return dominators;
       }
 
+      Dictionary<Block, HashSet<Block>> dominators = ImmediateFast(blocks);
+      var todo = new Queue<Block>();
+      // just for checking
+      todo.Enqueue(blocks[0]);
+      while (todo.Count > 0)
+      {
+        var b = todo.Dequeue();
+        var s = new HashSet<Block>();
+        if (b.Predecessors.Count() != 0)
+        {
+          s.UnionWith(dominators[b.Predecessors[0]]);
+          b.Predecessors.ForEach(blk => s.IntersectWith(dominators[blk]));
+        }
+        s.Add(b);
+        if (!s.SetEquals(dominators[b]))
+        {
+          Contract.Assert(false);
+          dominators[b] = s;
+          if (b.TransferCmd is GotoCmd exit)
+            exit.labelTargets.ForEach(blk => todo.Enqueue(blk));
+        }
+      }
+
+      var dag = VCGen.BlocksToDag(blocks);
+      List<Block> topoSorted = dag.TopologicalSort().ToList();
+      var immediateDominator = new Dictionary<Block, Block>();
+      foreach (Block b in blocks)
+      {
+        if (dominators[b].Count() > 1)
+        {
+          dominators[b].Remove(b);
+        }
+        immediateDominator[b] = topoSorted.ElementAt(dominators[b].Max(e => topoSorted.IndexOf(e)));
+      }
+      immediateDominator[blocks[0]] = blocks[0];
+      return immediateDominator;
+    }
       // Verify b with the last split in blockAssignments[b]
       private static Dictionary<Block, Block> PickBlocksToVerify (List<Block> blocks, Dictionary<Block, int> splitPoints)
       {
@@ -939,7 +967,7 @@ namespace VC
 
           if (!blockInternalSplit && blocksToVerifyEntirely.Contains(currentBlock))
             continue; // All reachable blocks must be checked in their entirety, so don't change anything
-          // Otherwise, we only verify a portion of the current block, so we'll need to look at each of its commands                 
+          // Otherwise, we only verify a portion of the current block, so we'll need to look at each of its commands
 
           // !verify -> convert assert to assume
           var verify =
@@ -1350,7 +1378,7 @@ namespace VC
 
         VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
         Contract.Assert(vc != null);
-        
+
         vc = QuantifierInstantiationEngine.Instantiate(impl, exprGen, bet, vc);
 
         VCExpr controlFlowFunctionAppl =
