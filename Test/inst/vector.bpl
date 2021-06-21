@@ -93,14 +93,12 @@ requires Vec_Nth(A, i) == Vec_Nth(B, Vec_Len(B) - 1);
 requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_Slice(B, 0, Vec_Len(B) - 1);
 {
     var A', B': Vec int;
-    var x: int;
 
     A' := Vec_Append(A, e);
     B' := Vec_Swap(Vec_Append(B, e), Vec_Len(B) - 1, Vec_Len(B));
 
-    assume {:add_to_pool "Slice", x}
-    Vec_Nth(Vec_Concat(Vec_Slice(A', 0, i), Vec_Slice(A', i + 1, Vec_Len(A'))), x) != Vec_Nth(Vec_Slice(B', 0, Vec_Len(B') - 1), x);
-    assert false;
+    assert (forall x: int :: {:skolem_add_to_pool "Slice", x}
+    Vec_Nth(Vec_Concat(Vec_Slice(A', 0, i), Vec_Slice(A', i + 1, Vec_Len(A'))), x) == Vec_Nth(Vec_Slice(B', 0, Vec_Len(B') - 1), x));
 }
 
 procedure Ex6a(A: Vec int, B: Vec int, i: int, e: int)
