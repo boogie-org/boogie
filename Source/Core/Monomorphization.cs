@@ -594,6 +594,11 @@ namespace Microsoft.Boogie
           }
         }
 
+        if (node.Attributes != null)
+        {
+          expr.Attributes = VisitQKeyValue(node.Attributes);
+        }
+
         foreach (var x in node.Dummies)
         {
           boundVarSubst.Remove(x);
