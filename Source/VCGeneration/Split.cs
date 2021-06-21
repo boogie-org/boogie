@@ -771,7 +771,7 @@ namespace VC
         return dominators;
       }
 
-      Dictionary<Block, HashSet<Block>> dominators = ImmediateFast(blocks);
+      Dictionary<Block, HashSet<Block>> dominators = DominatorsFast(blocks);
       var todo = new Queue<Block>();
       // just for checking
       todo.Enqueue(blocks[0]);
