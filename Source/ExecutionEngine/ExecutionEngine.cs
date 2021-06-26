@@ -733,7 +733,7 @@ namespace Microsoft.Boogie
         return PipelineOutcome.TypeCheckingError;
       }
 
-      if (PolymorphismChecker.IsMonomorphic(program))
+      if (MonomorphismChecker.IsMonomorphic(program))
       {
         CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
       }
