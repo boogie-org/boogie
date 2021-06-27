@@ -921,12 +921,12 @@ namespace Microsoft.Boogie
       public string message;
       public string name;
 
-      public LinearityCheck(Expr assume, Expr assert, string message, string name)
+      public LinearityCheck(LinearDomain domain, Expr assume, Expr assert, string message, string name)
       {
         this.assume = assume;
         this.assert = assert;
         this.message = message;
-        this.name = name;
+        this.name = $"{domain.domainName}_{name}";
       }
     }
 
@@ -936,8 +936,8 @@ namespace Microsoft.Boogie
       // Note: The implementation should be used as the variables in the
       //       gate are bound to implementation and not to the procedure.
       Implementation impl = action.impl;
-      List<Variable> inputs = impl.InParams;
-      List<Variable> outputs = impl.OutParams;
+      List<Variable> inputs = new List<Variable>(impl.InParams);
+      List<Variable> outputs = new List<Variable>(impl.OutParams);
 
       List<Variable> locals = new List<Variable>(2);
       var paLocal1 = civlTypeChecker.LocalVariable("pa1", civlTypeChecker.pendingAsyncType);
@@ -975,6 +975,7 @@ namespace Microsoft.Boogie
         if (outVars.Count > 0)
         {
           linearityChecks.Add(new LinearityCheck(
+            domain,
             null,
             OutPermsSubsetInPerms(domain, inVars, outVars),
             $"Potential linearity violation in outputs for domain {domain.domainName}.",
@@ -999,6 +1000,7 @@ namespace Microsoft.Boogie
               Expr.Eq(Expr.Select(PAs, pa1), Expr.Literal(1)));
             var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams.Union(outVars));
             linearityChecks.Add(new LinearityCheck(
+              domain,
               exactlyOnePA,
               outSubsetInExpr,
               $"Potential linearity violation in outputs and pending async of {pendingAsync.proc.Name} for domain {domain.domainName}.",
@@ -1011,6 +1013,7 @@ namespace Microsoft.Boogie
               Expr.Ge(Expr.Select(PAs, pa1), Expr.Literal(2)));
             var emptyPerms = OutPermsSubsetInPerms(domain, Enumerable.Empty<Expr>(), pendingAsyncLinearParams);
             linearityChecks.Add(new LinearityCheck(
+              domain,
               twoIdenticalPAs,
               emptyPerms,
               $"Potential linearity violation in identical pending asyncs of {pendingAsync.proc.Name} for domain {domain.domainName}.",
@@ -1046,6 +1049,7 @@ namespace Microsoft.Boogie
               var noDuplication = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams1.Union(pendingAsyncLinearParams2));
 
               linearityChecks.Add(new LinearityCheck(
+                domain,
                 Expr.And(membership, existing),
                 noDuplication,
                 $"Potential lnearity violation in pending asyncs of {pendingAsync1.proc.Name} and {pendingAsync2.proc.Name} for domain {domain.domainName}.",

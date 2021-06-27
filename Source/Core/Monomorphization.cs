@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics.Contracts;
+using System.Runtime.CompilerServices;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
@@ -198,16 +199,6 @@ namespace Microsoft.Boogie
       return base.VisitMapType(node);
     }
 
-    public override Implementation VisitImplementation(Implementation node)
-    {
-      if (node.TypeParameters.Count > 0)
-      {
-        isMonomorphizable = false;
-        return node;
-      }
-      return base.VisitImplementation(node);
-    }
-
     private void CheckTypeCtorInstantiatedAxiom(Axiom axiom, string typeCtorName)
     {
       var tcDecl = program.TopLevelDeclarations.OfType<TypeCtorDecl>().FirstOrDefault(tcd => tcd.Name == typeCtorName);
@@ -294,17 +285,17 @@ namespace Microsoft.Boogie
           var funcTypeParamInstantiation = LinqExtender.Map(func.TypeParameters, actualTypeParams);
           var instantiatedFunction =
             InstantiateFunctionSignature(func, actualTypeParams, funcTypeParamInstantiation);
+          var variableMapping = LinqExtender.Map(func.InParams, instantiatedFunction.InParams);
           newInstantiatedDeclarations.Add(instantiatedFunction);
           monomorphizationVisitor.functionInstantiations[func][actualTypeParams] = instantiatedFunction;
           if (func.Body != null)
           {
-            instantiatedFunction.Body = InstantiateBody(func.Body, funcTypeParamInstantiation,
-              LinqExtender.Map(func.InParams, instantiatedFunction.InParams));
+            instantiatedFunction.Body = (Expr) InstantiateAbsy(func.Body, funcTypeParamInstantiation, variableMapping);
           }
           else if (func.DefinitionBody != null)
           {
-            instantiatedFunction.DefinitionBody = (NAryExpr) InstantiateBody(func.DefinitionBody,
-              funcTypeParamInstantiation, LinqExtender.Map(func.InParams, instantiatedFunction.InParams));
+            instantiatedFunction.DefinitionBody =
+              (NAryExpr) InstantiateAbsy(func.DefinitionBody, funcTypeParamInstantiation, variableMapping);
           }
           else if (func.DefinitionAxiom != null)
           {
@@ -321,34 +312,83 @@ namespace Microsoft.Boogie
         newInstantiatedDeclarations = new HashSet<Declaration>();
       }
 
-      private Expr InstantiateBody(Expr expr, Dictionary<TypeVariable, Type> funcTypeParamInstantiation,
-        Dictionary<Variable, Variable> funcVariableMapping)
+      private Absy InstantiateAbsy(Absy absy, Dictionary<TypeVariable, Type> typeParamInstantiation,
+        Dictionary<Variable, Variable> variableMapping)
       {
         var savedTypeParamInstantiation = this.typeParamInstantiation;
-        this.typeParamInstantiation = funcTypeParamInstantiation;
+        this.typeParamInstantiation = typeParamInstantiation;
         var savedVariableMapping = this.variableMapping;
-        this.variableMapping = funcVariableMapping;
-        var newExpr = VisitExpr(expr);
+        this.variableMapping = variableMapping;
+        var newExpr = Visit(absy);
         this.variableMapping = savedVariableMapping;
         this.typeParamInstantiation = savedTypeParamInstantiation;
         return newExpr;
       }
 
-      private Function InstantiateFunctionSignature(Function func, List<Type> actualTypeParams,
-        Dictionary<TypeVariable, Type> funcTypeParamInstantiation)
+      public Procedure InstantiateProcedure(Procedure proc, List<Type> actualTypeParams)
+      {
+        if (!monomorphizationVisitor.procInstantiations[proc].ContainsKey(actualTypeParams))
+        {
+          var procTypeParamInstantiation = LinqExtender.Map(proc.TypeParameters, actualTypeParams);
+          var instantiatedInParams = InstantiateVariables(proc.InParams, procTypeParamInstantiation);
+          var instantiatedOutParams = InstantiateVariables(proc.OutParams, procTypeParamInstantiation);
+          var variableMapping = LinqExtender.Map(proc.InParams.Union(proc.OutParams),
+            instantiatedInParams.Union(instantiatedOutParams));
+          var requires = proc.Requires.Select(requires => new Requires(requires.tok, requires.Free,
+            (Expr) InstantiateAbsy(requires.Condition, procTypeParamInstantiation, variableMapping), requires.Comment)).ToList();
+          var modifies = proc.Modifies.Select(ie =>
+            (IdentifierExpr) InstantiateAbsy(ie, procTypeParamInstantiation, variableMapping)).ToList();
+          var ensures = proc.Ensures.Select(ensures => new Ensures(ensures.tok, ensures.Free,
+            (Expr) InstantiateAbsy(ensures.Condition, procTypeParamInstantiation, variableMapping), ensures.Comment)).ToList();
+          var instantiatedProc = new Procedure(proc.tok, MkInstanceName(proc.Name, actualTypeParams),
+            new List<TypeVariable>(), instantiatedInParams, instantiatedOutParams, requires, modifies, ensures,
+            proc.Attributes == null ? null : (QKeyValue) proc.Attributes.Clone());
+          newInstantiatedDeclarations.Add(instantiatedProc);
+          monomorphizationVisitor.procInstantiations[proc][actualTypeParams] = instantiatedProc;
+        }
+        return monomorphizationVisitor.procInstantiations[proc][actualTypeParams];
+      }
+      
+      public Implementation InstantiateImplementation(Implementation impl, List<Type> actualTypeParams)
+      {
+        if (!monomorphizationVisitor.implInstantiations[impl].ContainsKey(actualTypeParams))
+        {
+          var implTypeParamInstantiation = LinqExtender.Map(impl.TypeParameters, actualTypeParams);
+          var instantiatedInParams = InstantiateVariables(impl.InParams, implTypeParamInstantiation);
+          var instantiatedOutParams = InstantiateVariables(impl.OutParams, implTypeParamInstantiation);
+          var instantiatedLocalVariables = InstantiateVariables(impl.LocVars, implTypeParamInstantiation);
+          var variableMapping = LinqExtender.Map(impl.InParams.Union(impl.OutParams).Union(impl.LocVars),
+            instantiatedInParams.Union(instantiatedOutParams).Union(instantiatedLocalVariables));
+          var blocks = impl.Blocks
+            .Select(block => (Block) InstantiateAbsy(block, implTypeParamInstantiation, variableMapping)).ToList();
+          var instantiatedImpl = new Implementation(impl.tok, MkInstanceName(impl.Name, actualTypeParams),
+            new List<TypeVariable>(), instantiatedInParams, instantiatedOutParams, instantiatedLocalVariables, blocks,
+            impl.Attributes == null ? null : (QKeyValue) impl.Attributes.Clone());
+          instantiatedImpl.Proc = InstantiateProcedure(impl.Proc, actualTypeParams);
+          newInstantiatedDeclarations.Add(instantiatedImpl);
+          monomorphizationVisitor.implInstantiations[impl][actualTypeParams] = instantiatedImpl;
+        }
+        return monomorphizationVisitor.implInstantiations[impl][actualTypeParams];
+      }
+
+      private List<Variable> InstantiateVariables(List<Variable> variables, Dictionary<TypeVariable, Type> declTypeParamInstantiation)
       {
         var savedTypeParamInstantiation = this.typeParamInstantiation;
-        this.typeParamInstantiation = funcTypeParamInstantiation;
-        var instantiatedInParams =
-          func.InParams.Select(x =>
+        this.typeParamInstantiation = declTypeParamInstantiation;
+        var instantiatedVariables =
+          variables.Select(x =>
               new Formal(x.tok, new TypedIdent(x.TypedIdent.tok, x.TypedIdent.Name, VisitType(x.TypedIdent.Type)),
                 true))
             .ToList<Variable>();
-        var instantiatedOutParams =
-          func.OutParams.Select(x =>
-              new Formal(x.tok, new TypedIdent(x.TypedIdent.tok, x.TypedIdent.Name, VisitType(x.TypedIdent.Type)),
-                false))
-            .ToList<Variable>();
+        this.typeParamInstantiation = savedTypeParamInstantiation;
+        return instantiatedVariables;
+      }
+
+      private Function InstantiateFunctionSignature(Function func, List<Type> actualTypeParams,
+        Dictionary<TypeVariable, Type> funcTypeParamInstantiation)
+      {
+        var instantiatedInParams = InstantiateVariables(func.InParams, funcTypeParamInstantiation);
+        var instantiatedOutParams = InstantiateVariables(func.OutParams, funcTypeParamInstantiation);
         var instantiatedFunction = new Function(
           func.tok,
           MkInstanceName(func.Name, actualTypeParams),
@@ -357,7 +397,6 @@ namespace Microsoft.Boogie
           instantiatedOutParams.First(),
           func.Comment,
           func.Attributes);
-        this.typeParamInstantiation = savedTypeParamInstantiation;
         return instantiatedFunction;
       }
 
@@ -429,7 +468,6 @@ namespace Microsoft.Boogie
         {
           return returnExpr.Args[0];
         }
-
         if (returnExpr.Fun is FunctionCall functionCall)
         {
           // a non-generic function must be processed to rewrite any generic types it uses
@@ -491,8 +529,43 @@ namespace Microsoft.Boogie
             returnExpr.Type = TypeProxy.FollowProxy(returnExpr.Type);
           }
         }
-
         return returnExpr;
+      }
+
+      private static bool IsInlined(Implementation impl)
+      {
+        if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.None)
+        {
+          return false;
+        }
+        Expr inlineAttr = impl.FindExprAttribute("inline");
+        if (inlineAttr == null)
+          inlineAttr = impl.Proc.FindExprAttribute("inline");
+        return inlineAttr != null;
+      }
+
+      public override Cmd VisitCallCmd(CallCmd node)
+      {
+        var returnCallCmd = (CallCmd) base.VisitCallCmd(node);
+        if (returnCallCmd.Proc.TypeParameters.Count > 0)
+        {
+          var actualTypeParams =
+            returnCallCmd.TypeParameters.FormalTypeParams.Select(x =>
+                TypeProxy.FollowProxy(returnCallCmd.TypeParameters[x]).Substitute(typeParamInstantiation))
+              .Select(x => LookupType(x)).ToList();
+          returnCallCmd.Proc = InstantiateProcedure(node.Proc, actualTypeParams);
+          returnCallCmd.callee = returnCallCmd.Proc.Name;
+          returnCallCmd.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+          if (monomorphizationVisitor.procToImpl.ContainsKey(node.Proc))
+          {
+            var impl = monomorphizationVisitor.procToImpl[node.Proc];
+            if (IsInlined(impl))
+            {
+              InstantiateImplementation(impl, actualTypeParams);
+            }
+          }
+        }
+        return returnCallCmd;
       }
 
       public override Type VisitTypeVariable(TypeVariable node)
@@ -501,7 +574,6 @@ namespace Microsoft.Boogie
         {
           return node;
         }
-
         return typeParamInstantiation[node];
       }
 
@@ -563,12 +635,10 @@ namespace Microsoft.Boogie
         {
           return new IdentifierExpr(node.tok, variableMapping[node.Decl], node.Immutable);
         }
-
         if (boundVarSubst.ContainsKey(node.Decl))
         {
           return new IdentifierExpr(node.tok, boundVarSubst[node.Decl], node.Immutable);
         }
-
         return base.VisitIdentifierExpr(node);
       }
 
@@ -638,6 +708,15 @@ namespace Microsoft.Boogie
       HashSet<Axiom> polymorphicFunctionAxioms)
     {
       var monomorphizationVisitor = new MonomorphizationVisitor(program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
+      monomorphizationVisitor.implInstantiations.Keys.Where(impl => !impl.SkipVerification).Iter(impl =>
+      {
+        var actualTypeParams = impl.TypeParameters.Select(typeParam =>
+          (Type) new CtorType(typeParam.tok,
+            new TypeCtorDecl(typeParam.tok, $"{typeParam.Name}_{typeParam.UniqueId}", 0), new List<Type>())).ToList();
+        var instantiatedImpl =
+          monomorphizationVisitor.exprMonomorphizationVisitor.InstantiateImplementation(impl, actualTypeParams);
+        instantiatedImpl.Proc = monomorphizationVisitor.exprMonomorphizationVisitor.InstantiateProcedure(impl.Proc, actualTypeParams);
+      });
       monomorphizationVisitor.VisitProgram(program);
       monomorphizationVisitor.InstantiateAxioms();
       monomorphizationVisitor.exprMonomorphizationVisitor.AddInstantiatedDeclarations(program);
@@ -663,17 +742,32 @@ namespace Microsoft.Boogie
     private Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated;
     private Dictionary<string, Function> nameToFunction;
     private Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations;
+    private Dictionary<Implementation, Dictionary<List<Type>, Implementation>> implInstantiations;
+    private Dictionary<Procedure, Dictionary<List<Type>, Procedure>> procInstantiations;
     private Dictionary<TypeCtorDecl, Dictionary<List<Type>, TypeCtorDecl>> typeInstantiations;
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> triggerTypes;
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes;
     private HashSet<TypeCtorDecl> visitedTypeCtorDecls;
     private HashSet<Function> visitedFunctions;
     private ExprMonomorphizationVisitor exprMonomorphizationVisitor;
+    private Dictionary<Procedure, Implementation> procToImpl;
     
     private MonomorphizationVisitor(Program program, Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, HashSet<Axiom> polymorphicFunctionAxioms)
     {
       this.program = program;
       this.axiomsToBeInstantiated = axiomsToBeInstantiated;
+      implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();
+      program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).Iter(
+        impl =>
+        {
+          implInstantiations.Add(impl, new Dictionary<List<Type>, Implementation>(new ListComparer<Type>()));
+        });
+      procInstantiations = new Dictionary<Procedure, Dictionary<List<Type>, Procedure>>();
+      program.TopLevelDeclarations.OfType<Procedure>().Where(proc => proc.TypeParameters.Count > 0).Iter(
+        proc =>
+        {
+          procInstantiations.Add(proc, new Dictionary<List<Type>, Procedure>(new ListComparer<Type>()));
+        });
       functionInstantiations = new Dictionary<Function, Dictionary<List<Type>, Function>>();
       nameToFunction = new Dictionary<string, Function>();
       program.TopLevelDeclarations.OfType<Function>().Where(function => function.TypeParameters.Count > 0).Iter(
@@ -697,8 +791,11 @@ namespace Microsoft.Boogie
       this.visitedTypeCtorDecls = new HashSet<TypeCtorDecl>();
       this.visitedFunctions = new HashSet<Function>();
       exprMonomorphizationVisitor = new ExprMonomorphizationVisitor(this);
-
+      this.procToImpl = new Dictionary<Procedure, Implementation>();
+      program.TopLevelDeclarations.OfType<Implementation>().Iter(impl => this.procToImpl[impl.Proc] = impl);
       program.RemoveTopLevelDeclarations(decl => 
+        decl is Implementation impl && implInstantiations.ContainsKey(impl) ||
+        decl is Procedure proc && procInstantiations.ContainsKey(proc) ||
         decl is Function function && functionInstantiations.ContainsKey(function) ||
         decl is TypeCtorDecl typeCtorDecl && typeInstantiations.ContainsKey(typeCtorDecl) ||
         decl is Axiom axiom && (axiomsToBeInstantiated.ContainsKey(axiom) || polymorphicFunctionAxioms.Contains(axiom)));
@@ -715,6 +812,18 @@ namespace Microsoft.Boogie
         {
           nextTriggerTypes[tcDecl].Iter(trigger => exprMonomorphizationVisitor.InstantiateAxiom(axiom, trigger.Arguments));
         }
+      }
+    }
+
+    public override Cmd VisitCallCmd(CallCmd node)
+    {
+      if (node.Proc.TypeParameters.Count == 0)
+      {
+        return base.VisitCallCmd(node);
+      }
+      else
+      {
+        return exprMonomorphizationVisitor.VisitCallCmd(node);
       }
     }
 
