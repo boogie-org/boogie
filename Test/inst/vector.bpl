@@ -1,46 +1,7 @@
 // RUN: %boogie -lib "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-function {:inline} Vec_Concat<T>(v1: Vec T, v2: Vec T): Vec T {
-    Vec(
-        (lambda {:pool "Concat"} i: int ::
-            if (i < 0) then Default()
-            else if (0 <= i && i < Vec_Len(v1)) then Vec_Nth(v1, i)
-            else if (Vec_Len(v1) <= i && i < Vec_Len(v1) + Vec_Len(v2)) then Vec_Nth(v2, i - Vec_Len(v1))
-            else Default()),
-        Vec_Len(v1) + Vec_Len(v2)
-        )
-}
-
-function {:inline} Vec_Slice<T>(v: Vec T, i: int, j: int): Vec T {
-    if (0 <= i && i < j && j <= len#Vec(v)) then
-        Vec(
-            (lambda {:pool "Slice"} k: int ::
-                if (k < 0) then Default()
-                else if (0 <= k && k < j - i) then Vec_Nth(v, k + i)
-                else Default()),
-            j - i
-            )
-    else Vec_Empty()
-}
-
-function {:inline} Vec_Swap<T>(v: Vec T, i: int, j: int): Vec T {
-    if (0 <= i && i < len#Vec(v) && 0 <= j && j < len#Vec(v) && i != j)
-    then Vec(contents#Vec(v)[i := contents#Vec(v)[j]][j := contents#Vec(v)[i]], len#Vec(v))
-    else v
-}
-
-function {:inline} Vec_Remove<T>(v: Vec T): Vec T {
-    if (0 < len#Vec(v))
-    then Vec(contents#Vec(v)[len#Vec(v)-1 := Default()], len#Vec(v) - 1)
-    else Vec_Empty()
-}
-
 type Element;
-
-// extensionality lemma to be used explicitly by the programmer
-procedure Vec_Ext(A: Vec Element, B: Vec Element) returns (i: int);
-ensures A == B || Vec_Len(A) != Vec_Len(B) || Vec_Nth(A, i) != Vec_Nth(B, i);
 
 // procedures Ex0 to Ex9 are exercises to ramp up to the "real" vector procedures
 procedure Ex0(A: Vec Element, i: int)
