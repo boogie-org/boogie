@@ -342,7 +342,7 @@ namespace Microsoft.Boogie
             (Expr) InstantiateAbsy(ensures.Condition, procTypeParamInstantiation, variableMapping), ensures.Comment)).ToList();
           var instantiatedProc = new Procedure(proc.tok, MkInstanceName(proc.Name, actualTypeParams),
             new List<TypeVariable>(), instantiatedInParams, instantiatedOutParams, requires, modifies, ensures,
-            proc.Attributes == null ? null : (QKeyValue) proc.Attributes.Clone());
+            proc.Attributes == null ? null : VisitQKeyValue(proc.Attributes));
           newInstantiatedDeclarations.Add(instantiatedProc);
           monomorphizationVisitor.procInstantiations[proc][actualTypeParams] = instantiatedProc;
         }
@@ -372,7 +372,7 @@ namespace Microsoft.Boogie
           });
           var instantiatedImpl = new Implementation(impl.tok, MkInstanceName(impl.Name, actualTypeParams),
             new List<TypeVariable>(), instantiatedInParams, instantiatedOutParams, instantiatedLocalVariables, blocks,
-            impl.Attributes == null ? null : (QKeyValue) impl.Attributes.Clone());
+            impl.Attributes == null ? null : VisitQKeyValue(impl.Attributes));
           instantiatedImpl.Proc = InstantiateProcedure(impl.Proc, actualTypeParams);
           newInstantiatedDeclarations.Add(instantiatedImpl);
           monomorphizationVisitor.implInstantiations[impl][actualTypeParams] = instantiatedImpl;
@@ -722,6 +722,36 @@ namespace Microsoft.Boogie
 
         return expr;
       }
+
+      public override Cmd VisitAssumeCmd(AssumeCmd node)
+      {
+        var returnCmd = (AssumeCmd) base.VisitAssumeCmd(node);
+        if (node.Attributes != null)
+        {
+          returnCmd.Attributes = VisitQKeyValue(node.Attributes);
+        }
+        return returnCmd;
+      }
+      
+      public override Cmd VisitAssertCmd(AssertCmd node)
+      {
+        var returnCmd = (AssertCmd) base.VisitAssertCmd(node);
+        if (node.Attributes != null)
+        {
+          returnCmd.Attributes = VisitQKeyValue(node.Attributes);
+        }
+        return returnCmd;
+      }
+      
+      public override Cmd VisitAssignCmd(AssignCmd node)
+      {
+        var returnCmd = (AssignCmd) base.VisitAssignCmd(node);
+        if (node.Attributes != null)
+        {
+          returnCmd.Attributes = VisitQKeyValue(node.Attributes);
+        }
+        return returnCmd;
+      }
     }
 
     public static MonomorphizationVisitor Initialize(Program program, Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated,
@@ -855,6 +885,36 @@ namespace Microsoft.Boogie
       }
     }
 
+    public override Cmd VisitAssumeCmd(AssumeCmd node)
+    {
+      var returnCmd = (AssumeCmd) base.VisitAssumeCmd(node);
+      if (node.Attributes != null)
+      {
+        returnCmd.Attributes = VisitQKeyValue(node.Attributes);
+      }
+      return returnCmd;
+    }
+      
+    public override Cmd VisitAssertCmd(AssertCmd node)
+    {
+      var returnCmd = (AssertCmd) base.VisitAssertCmd(node);
+      if (node.Attributes != null)
+      {
+        returnCmd.Attributes = VisitQKeyValue(node.Attributes);
+      }
+      return returnCmd;
+    }
+      
+    public override Cmd VisitAssignCmd(AssignCmd node)
+    {
+      var returnCmd = (AssignCmd) base.VisitAssignCmd(node);
+      if (node.Attributes != null)
+      {
+        returnCmd.Attributes = VisitQKeyValue(node.Attributes);
+      }
+      return returnCmd;
+    }
+    
     public override CtorType VisitCtorType(CtorType node)
     {
       return (CtorType) exprMonomorphizationVisitor.VisitType(node);
