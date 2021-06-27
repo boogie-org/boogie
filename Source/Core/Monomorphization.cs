@@ -330,8 +330,8 @@ namespace Microsoft.Boogie
         if (!monomorphizationVisitor.procInstantiations[proc].ContainsKey(actualTypeParams))
         {
           var procTypeParamInstantiation = LinqExtender.Map(proc.TypeParameters, actualTypeParams);
-          var instantiatedInParams = InstantiateVariables(proc.InParams, procTypeParamInstantiation);
-          var instantiatedOutParams = InstantiateVariables(proc.OutParams, procTypeParamInstantiation);
+          var instantiatedInParams = InstantiateFormals(proc.InParams, procTypeParamInstantiation);
+          var instantiatedOutParams = InstantiateFormals(proc.OutParams, procTypeParamInstantiation);
           var variableMapping = LinqExtender.Map(proc.InParams.Union(proc.OutParams),
             instantiatedInParams.Union(instantiatedOutParams));
           var requires = proc.Requires.Select(requires => new Requires(requires.tok, requires.Free,
@@ -354,9 +354,9 @@ namespace Microsoft.Boogie
         if (!monomorphizationVisitor.implInstantiations[impl].ContainsKey(actualTypeParams))
         {
           var implTypeParamInstantiation = LinqExtender.Map(impl.TypeParameters, actualTypeParams);
-          var instantiatedInParams = InstantiateVariables(impl.InParams, implTypeParamInstantiation);
-          var instantiatedOutParams = InstantiateVariables(impl.OutParams, implTypeParamInstantiation);
-          var instantiatedLocalVariables = InstantiateVariables(impl.LocVars, implTypeParamInstantiation);
+          var instantiatedInParams = InstantiateFormals(impl.InParams, implTypeParamInstantiation);
+          var instantiatedOutParams = InstantiateFormals(impl.OutParams, implTypeParamInstantiation);
+          var instantiatedLocalVariables = InstantiateLocalVariables(impl.LocVars, implTypeParamInstantiation);
           var variableMapping = LinqExtender.Map(impl.InParams.Union(impl.OutParams).Union(impl.LocVars),
             instantiatedInParams.Union(instantiatedOutParams).Union(instantiatedLocalVariables));
           var blocks = impl.Blocks
@@ -371,24 +371,35 @@ namespace Microsoft.Boogie
         return monomorphizationVisitor.implInstantiations[impl][actualTypeParams];
       }
 
-      private List<Variable> InstantiateVariables(List<Variable> variables, Dictionary<TypeVariable, Type> declTypeParamInstantiation)
+      private List<Variable> InstantiateFormals(List<Variable> variables, Dictionary<TypeVariable, Type> declTypeParamInstantiation)
       {
         var savedTypeParamInstantiation = this.typeParamInstantiation;
         this.typeParamInstantiation = declTypeParamInstantiation;
         var instantiatedVariables =
-          variables.Select(x =>
+          variables.Select(x => (Formal) x).Select(x =>
               new Formal(x.tok, new TypedIdent(x.TypedIdent.tok, x.TypedIdent.Name, VisitType(x.TypedIdent.Type)),
-                true))
+                x.InComing))
             .ToList<Variable>();
         this.typeParamInstantiation = savedTypeParamInstantiation;
         return instantiatedVariables;
       }
 
+      private List<Variable> InstantiateLocalVariables(List<Variable> variables, Dictionary<TypeVariable, Type> declTypeParamInstantiation)
+      {
+        var savedTypeParamInstantiation = this.typeParamInstantiation;
+        this.typeParamInstantiation = declTypeParamInstantiation;
+        var instantiatedVariables =
+          variables.Select(x =>
+              new LocalVariable(x.tok, new TypedIdent(x.TypedIdent.tok, x.TypedIdent.Name, VisitType(x.TypedIdent.Type))))
+            .ToList<Variable>();
+        this.typeParamInstantiation = savedTypeParamInstantiation;
+        return instantiatedVariables;
+      }
       private Function InstantiateFunctionSignature(Function func, List<Type> actualTypeParams,
         Dictionary<TypeVariable, Type> funcTypeParamInstantiation)
       {
-        var instantiatedInParams = InstantiateVariables(func.InParams, funcTypeParamInstantiation);
-        var instantiatedOutParams = InstantiateVariables(func.OutParams, funcTypeParamInstantiation);
+        var instantiatedInParams = InstantiateFormals(func.InParams, funcTypeParamInstantiation);
+        var instantiatedOutParams = InstantiateFormals(func.OutParams, funcTypeParamInstantiation);
         var instantiatedFunction = new Function(
           func.tok,
           MkInstanceName(func.Name, actualTypeParams),
