@@ -936,8 +936,8 @@ namespace Microsoft.Boogie
       // Note: The implementation should be used as the variables in the
       //       gate are bound to implementation and not to the procedure.
       Implementation impl = action.impl;
-      List<Variable> inputs = new List<Variable>(impl.InParams);
-      List<Variable> outputs = new List<Variable>(impl.OutParams);
+      List<Variable> inputs = impl.InParams;
+      List<Variable> outputs = impl.OutParams;
 
       List<Variable> locals = new List<Variable>(2);
       var paLocal1 = civlTypeChecker.LocalVariable("pa1", civlTypeChecker.pendingAsyncType);

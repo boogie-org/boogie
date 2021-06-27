@@ -319,10 +319,10 @@ namespace Microsoft.Boogie
         this.typeParamInstantiation = typeParamInstantiation;
         var savedVariableMapping = this.variableMapping;
         this.variableMapping = variableMapping;
-        var newExpr = Visit(absy);
+        var newAbsy = Visit(absy);
         this.variableMapping = savedVariableMapping;
         this.typeParamInstantiation = savedTypeParamInstantiation;
-        return newExpr;
+        return newAbsy;
       }
 
       public Procedure InstantiateProcedure(Procedure proc, List<Type> actualTypeParams)
@@ -464,6 +464,7 @@ namespace Microsoft.Boogie
       public override Expr VisitNAryExpr(NAryExpr node)
       {
         var returnExpr = (NAryExpr) base.VisitNAryExpr(node);
+        returnExpr.Type = VisitType(node.Type);
         if (returnExpr.Fun is TypeCoercion)
         {
           return returnExpr.Args[0];
@@ -526,7 +527,6 @@ namespace Microsoft.Boogie
               returnExpr.Fun = new FunctionCall(InstantiateFunction(functionCall.Func, actualTypeParams));
             }
             returnExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
-            returnExpr.Type = TypeProxy.FollowProxy(returnExpr.Type);
           }
         }
         return returnExpr;
