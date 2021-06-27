@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics.Contracts;
-using System.Runtime.CompilerServices;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
@@ -140,7 +139,8 @@ namespace Microsoft.Boogie
     {
       this.program = program;
       this.isMonomorphizable = true;
-      this.polymorphicFunctionAxioms = program.TopLevelDeclarations.OfType<Function>().Where(f => f.TypeParameters.Count > 0 && f.DefinitionAxiom != null)
+      this.polymorphicFunctionAxioms = program.TopLevelDeclarations.OfType<Function>()
+        .Where(f => f.TypeParameters.Count > 0 && f.DefinitionAxiom != null)
         .Select(f => f.DefinitionAxiom).ToHashSet();
       this.axiomsToBeInstantiated = new Dictionary<Axiom, TypeCtorDecl>();
       this.typeVariableDependencyGraph = new Graph<TypeVariable>();
@@ -188,6 +188,16 @@ namespace Microsoft.Boogie
         });
       }
       return base.VisitNAryExpr(node);
+    }
+
+    public override Cmd VisitCallCmd(CallCmd node)
+    {
+      node.Proc.TypeParameters.Iter(t =>
+      {
+        var visitor = new TypeDependencyVisitor(typeVariableDependencyGraph, strongDependencyEdges, t);
+        visitor.Visit(node.TypeParameters[t]);
+      });
+      return base.VisitCallCmd(node);
     }
 
     public override MapType VisitMapType(MapType node)
@@ -247,7 +257,24 @@ namespace Microsoft.Boogie
   
   class MonomorphizationVisitor : StandardVisitor
   {
-    class ExprMonomorphizationVisitor : Duplicator
+    /*
+     * This class monomorphizes a Boogie program.
+     * Monomorphization starts from a traversal of monomorphic procedures.
+     * Any polymorphic functions and types encountered are monomorphized based on
+     * actual type parameters and then the bodies of those functions are recursively
+     * traversed.
+     *
+     * If the program contains polymorphic procedures, a monomorphic version of the procedure
+     * is created by substituting a fresh uninterpreted type for each type parameter.
+     *
+     * MonomorphizationVisitor uses a helper class MonomorphizationDuplicator.
+     * While the former does in-place update as a result of monomorphization,
+     * the latter creates a duplicate copy.  MonomorphizationDuplicator is needed
+     * because a polymorphic function, type, or procedure may be visited several
+     * types in different type contexts.
+     */
+    
+    class MonomorphizationDuplicator : Duplicator
     {
       private MonomorphizationVisitor monomorphizationVisitor;
       private HashSet<Declaration> newInstantiatedDeclarations;
@@ -255,7 +282,7 @@ namespace Microsoft.Boogie
       private Dictionary<Variable, Variable> variableMapping;
       private Dictionary<Variable, Variable> boundVarSubst;
 
-      public ExprMonomorphizationVisitor(MonomorphizationVisitor monomorphizationVisitor)
+      public MonomorphizationDuplicator(MonomorphizationVisitor monomorphizationVisitor)
       {
         this.monomorphizationVisitor = monomorphizationVisitor;
         newInstantiatedDeclarations = new HashSet<Declaration>();
@@ -758,6 +785,8 @@ namespace Microsoft.Boogie
       HashSet<Axiom> polymorphicFunctionAxioms)
     {
       var monomorphizationVisitor = new MonomorphizationVisitor(program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
+      // ctorTypes contains all the uninterpreted types created for monomorphizing top-level polymorphic implementations 
+      // that must be verified. The types in ctorTypes are reused across different implementations.
       var ctorTypes = new List<Type>();
       var typeCtorDecls = new HashSet<TypeCtorDecl>();
       monomorphizationVisitor.implInstantiations.Keys.Where(impl => !impl.SkipVerification).Iter(impl =>
@@ -771,12 +800,12 @@ namespace Microsoft.Boogie
         }
         var actualTypeParams = ctorTypes.GetRange(0, impl.TypeParameters.Count);
         var instantiatedImpl =
-          monomorphizationVisitor.exprMonomorphizationVisitor.InstantiateImplementation(impl, actualTypeParams);
-        instantiatedImpl.Proc = monomorphizationVisitor.exprMonomorphizationVisitor.InstantiateProcedure(impl.Proc, actualTypeParams);
+          monomorphizationVisitor.monomorphizationDuplicator.InstantiateImplementation(impl, actualTypeParams);
+        instantiatedImpl.Proc = monomorphizationVisitor.monomorphizationDuplicator.InstantiateProcedure(impl.Proc, actualTypeParams);
       });
       monomorphizationVisitor.VisitProgram(program);
       monomorphizationVisitor.InstantiateAxioms();
-      monomorphizationVisitor.exprMonomorphizationVisitor.AddInstantiatedDeclarations(program);
+      monomorphizationVisitor.monomorphizationDuplicator.AddInstantiatedDeclarations(program);
       program.AddTopLevelDeclarations(typeCtorDecls);
       Contract.Assert(MonomorphismChecker.IsMonomorphic(program));
       return monomorphizationVisitor;
@@ -790,9 +819,9 @@ namespace Microsoft.Boogie
       }
       var function = nameToFunction[functionName];
       var actualTypeParams = function.TypeParameters.Select(tp => typeParamInstantiationMap[tp.Name]).ToList();
-      var instantiatedFunction = exprMonomorphizationVisitor.InstantiateFunction(function, actualTypeParams);
+      var instantiatedFunction = monomorphizationDuplicator.InstantiateFunction(function, actualTypeParams);
       InstantiateAxioms();
-      exprMonomorphizationVisitor.AddInstantiatedDeclarations(program);
+      monomorphizationDuplicator.AddInstantiatedDeclarations(program);
       return instantiatedFunction;
     }
 
@@ -807,7 +836,7 @@ namespace Microsoft.Boogie
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes;
     private HashSet<TypeCtorDecl> visitedTypeCtorDecls;
     private HashSet<Function> visitedFunctions;
-    private ExprMonomorphizationVisitor exprMonomorphizationVisitor;
+    private MonomorphizationDuplicator monomorphizationDuplicator;
     private Dictionary<Procedure, Implementation> procToImpl;
     
     private MonomorphizationVisitor(Program program, Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, HashSet<Axiom> polymorphicFunctionAxioms)
@@ -848,7 +877,7 @@ namespace Microsoft.Boogie
       });
       this.visitedTypeCtorDecls = new HashSet<TypeCtorDecl>();
       this.visitedFunctions = new HashSet<Function>();
-      exprMonomorphizationVisitor = new ExprMonomorphizationVisitor(this);
+      monomorphizationDuplicator = new MonomorphizationDuplicator(this);
       this.procToImpl = new Dictionary<Procedure, Implementation>();
       program.TopLevelDeclarations.OfType<Implementation>().Iter(impl => this.procToImpl[impl.Proc] = impl);
       program.RemoveTopLevelDeclarations(decl => 
@@ -868,7 +897,7 @@ namespace Microsoft.Boogie
         nextTriggerTypes.Iter(x => { newTriggerTypes.Add(x.Key, new HashSet<CtorType>()); });
         foreach ((var axiom, var tcDecl) in axiomsToBeInstantiated)
         {
-          nextTriggerTypes[tcDecl].Iter(trigger => exprMonomorphizationVisitor.InstantiateAxiom(axiom, trigger.Arguments));
+          nextTriggerTypes[tcDecl].Iter(trigger => monomorphizationDuplicator.InstantiateAxiom(axiom, trigger.Arguments));
         }
       }
     }
@@ -881,7 +910,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        return exprMonomorphizationVisitor.VisitCallCmd(node);
+        return monomorphizationDuplicator.VisitCallCmd(node);
       }
     }
 
@@ -917,7 +946,7 @@ namespace Microsoft.Boogie
     
     public override CtorType VisitCtorType(CtorType node)
     {
-      return (CtorType) exprMonomorphizationVisitor.VisitType(node);
+      return (CtorType) monomorphizationDuplicator.VisitType(node);
     }
 
     public override Type VisitTypeSynonymAnnotation(TypeSynonymAnnotation node)
@@ -928,15 +957,15 @@ namespace Microsoft.Boogie
 
     public override Expr VisitExpr(Expr node)
     {
-      return exprMonomorphizationVisitor.VisitExpr(node);
+      return monomorphizationDuplicator.VisitExpr(node);
     }
 
     public override Expr VisitIdentifierExpr(IdentifierExpr node)
     {
-      return exprMonomorphizationVisitor.VisitExpr(node);
+      return monomorphizationDuplicator.VisitExpr(node);
     }
 
-    // this function may be called directly by exprMonomorphizationVisitor
+    // this function may be called directly by monomorphizationDuplicator
     // if a non-generic call to a datatype constructor/selector/membership
     // is discovered in an expression
     public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
@@ -969,7 +998,7 @@ namespace Microsoft.Boogie
       return base.Visit(node);
     }
 
-    // this function may be called directly by exprMonomorphizationVisitor
+    // this function may be called directly by monomorphizationDuplicator
     // if a non-generic function call is discovered in an expression
     public override Function VisitFunction(Function node)
     {
