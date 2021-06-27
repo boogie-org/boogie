@@ -77,3 +77,22 @@ ensures b == c;
     call j, c := AA_inline(i, b);
     call j, c := AA_spec(j, c);
 }
+
+procedure A_no_body<T>(i: T) returns (j: T);
+ensures j == i;
+
+procedure DDD(i: int, b: bool) returns (j: int, c: bool)
+ensures i == j;
+ensures b == c;
+{
+    call j := A_inline(i);
+    call j := A_no_body(j);
+    call c := A_inline(b);
+    call c := A_no_body(c);
+}
+
+procedure A_wrapper<T>(i: T) returns (j: T)
+ensures j == i;
+{
+    call j := A_no_body(i);
+}

@@ -361,6 +361,15 @@ namespace Microsoft.Boogie
             instantiatedInParams.Union(instantiatedOutParams).Union(instantiatedLocalVariables));
           var blocks = impl.Blocks
             .Select(block => (Block) InstantiateAbsy(block, implTypeParamInstantiation, variableMapping)).ToList();
+          var blockMapping = LinqExtender.Map(impl.Blocks, blocks);
+          blocks.Iter(block =>
+          {
+            if (block.TransferCmd is GotoCmd gotoCmd)
+            {
+              gotoCmd.labelTargets = gotoCmd.labelTargets.Select(target => blockMapping[target]).ToList();
+              gotoCmd.labelNames = new List<string>(gotoCmd.labelNames);
+            }
+          });
           var instantiatedImpl = new Implementation(impl.tok, MkInstanceName(impl.Name, actualTypeParams),
             new List<TypeVariable>(), instantiatedInParams, instantiatedOutParams, instantiatedLocalVariables, blocks,
             impl.Attributes == null ? null : (QKeyValue) impl.Attributes.Clone());
@@ -719,11 +728,18 @@ namespace Microsoft.Boogie
       HashSet<Axiom> polymorphicFunctionAxioms)
     {
       var monomorphizationVisitor = new MonomorphizationVisitor(program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
+      var ctorTypes = new List<Type>();
+      var typeCtorDecls = new HashSet<TypeCtorDecl>();
       monomorphizationVisitor.implInstantiations.Keys.Where(impl => !impl.SkipVerification).Iter(impl =>
       {
-        var actualTypeParams = impl.TypeParameters.Select(typeParam =>
-          (Type) new CtorType(typeParam.tok,
-            new TypeCtorDecl(typeParam.tok, $"{typeParam.Name}_{typeParam.UniqueId}", 0), new List<Type>())).ToList();
+        for (int i = ctorTypes.Count; i < impl.TypeParameters.Count; i++)
+        {
+          var typeParam = impl.TypeParameters[i];
+          var typeCtorDecl = new TypeCtorDecl(typeParam.tok, $"{typeParam.Name}_{typeParam.UniqueId}", 0);
+          typeCtorDecls.Add(typeCtorDecl);
+          ctorTypes.Add(new CtorType(typeParam.tok, typeCtorDecl,  new List<Type>()));
+        }
+        var actualTypeParams = ctorTypes.GetRange(0, impl.TypeParameters.Count);
         var instantiatedImpl =
           monomorphizationVisitor.exprMonomorphizationVisitor.InstantiateImplementation(impl, actualTypeParams);
         instantiatedImpl.Proc = monomorphizationVisitor.exprMonomorphizationVisitor.InstantiateProcedure(impl.Proc, actualTypeParams);
@@ -731,6 +747,7 @@ namespace Microsoft.Boogie
       monomorphizationVisitor.VisitProgram(program);
       monomorphizationVisitor.InstantiateAxioms();
       monomorphizationVisitor.exprMonomorphizationVisitor.AddInstantiatedDeclarations(program);
+      program.AddTopLevelDeclarations(typeCtorDecls);
       Contract.Assert(MonomorphismChecker.IsMonomorphic(program));
       return monomorphizationVisitor;
     }
