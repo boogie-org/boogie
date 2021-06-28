@@ -733,19 +733,25 @@ namespace Microsoft.Boogie
         return PipelineOutcome.TypeCheckingError;
       }
 
-      if (PolymorphismChecker.IsMonomorphic(program))
+      if (MonomorphismChecker.IsMonomorphic(program))
       {
         CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
       }
       else if (CommandLineOptions.Clo.Monomorphize)
       {
-        if (Monomorphizer.Monomorphize(program))
+        var monomorphizableStatus = Monomorphizer.Monomorphize(program);
+        if (monomorphizableStatus == MonomorphizableStatus.Monomorphizable)
         {
           CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
         }
+        else if (monomorphizableStatus == MonomorphizableStatus.UnhandledPolymorphism)
+        {
+          Console.WriteLine("Unable to monomorphize input program: unhandled polymorphic features detected");
+          return PipelineOutcome.FatalError;
+        }
         else
         {
-          Console.WriteLine("Unable to monomorphize input program");
+          Console.WriteLine("Unable to monomorphize input program: expanding type cycle detected");
           return PipelineOutcome.FatalError;
         }
       }

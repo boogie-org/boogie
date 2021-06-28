@@ -1,16 +1,14 @@
 // RUN: %boogie -lib "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type Element;
-
 // procedures Ex0 to Ex9 are exercises to ramp up to the "real" vector procedures
-procedure Ex0(A: Vec Element, i: int)
+procedure Ex0<Element>(A: Vec Element, i: int)
 requires 0 <= i && i < Vec_Len(A);
 {
     assert Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i, Vec_Len(A))) == A;
 }
 
-procedure Ex1(A: Vec Element, i: int)
+procedure Ex1<Element>(A: Vec Element, i: int)
 requires 0 <= i && i < Vec_Len(A) - 1;
 requires Vec_Nth(A, i) == Vec_Nth(A, i + 1);
 {
@@ -22,7 +20,7 @@ requires Vec_Nth(A, i) == Vec_Nth(A, i + 1);
     assert Vec_Swap(A, i, i+1) == A;
 }
 
-procedure Ex2(A: Vec Element, i: int, j: int)
+procedure Ex2<Element>(A: Vec Element, i: int, j: int)
 requires 0 <= i && i < Vec_Len(A);
 requires 0 <= j && j < Vec_Len(A);
 requires Vec_Nth(A, i) == Vec_Nth(A, j);
@@ -30,7 +28,7 @@ requires Vec_Nth(A, i) == Vec_Nth(A, j);
     assert Vec_Swap(A, i, j) == A;
 }
 
-procedure Ex3(A: Vec Element, i: int, j: int)
+procedure Ex3<Element>(A: Vec Element, i: int, j: int)
 requires 0 <= i && i < Vec_Len(A);
 requires 0 <= j && j < Vec_Len(A);
 {
@@ -40,7 +38,7 @@ requires 0 <= j && j < Vec_Len(A);
     Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j, Vec_Len(A)));
 }
 
-procedure Ex4(A: Vec Element, B: Vec Element, i: int, e: Element)
+procedure Ex4<Element>(A: Vec Element, B: Vec Element, i: int, e: Element)
 requires 0 <= i && i < Vec_Len(A);
 requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == B;
 {
@@ -52,7 +50,7 @@ requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == B;
     assert Vec_Concat(Vec_Slice(A', 0, i), Vec_Slice(A', i + 1, Vec_Len(A'))) == B';
 }
 
-procedure Ex5(A: Vec Element, B: Vec Element, i: int, e: Element)
+procedure Ex5<Element>(A: Vec Element, B: Vec Element, i: int, e: Element)
 requires 0 <= i && i < Vec_Len(A);
 requires Vec_Nth(A, i) == Vec_Nth(B, Vec_Len(B) - 1);
 requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_Slice(B, 0, Vec_Len(B) - 1);
@@ -66,7 +64,7 @@ requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_
     Vec_Nth(Vec_Concat(Vec_Slice(A', 0, i), Vec_Slice(A', i + 1, Vec_Len(A'))), x) == Vec_Nth(Vec_Slice(B', 0, Vec_Len(B') - 1), x));
 }
 
-procedure Ex6a(A: Vec Element, B: Vec Element, i: int, e: Element)
+procedure Ex6a<Element>(A: Vec Element, B: Vec Element, i: int, e: Element)
 requires 0 <= i && i < Vec_Len(A);
 requires Vec_Nth(A, i) == Vec_Nth(B, Vec_Len(B) - 1);
 requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_Slice(B, 0, Vec_Len(B) - 1);
@@ -79,7 +77,7 @@ requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_
     assert Vec_Nth(A', i) == Vec_Nth(B', Vec_Len(B') - 1);
 }
 
-procedure Ex6b(A: Vec Element, B: Vec Element, i: int, e: Element)
+procedure Ex6b<Element>(A: Vec Element, B: Vec Element, i: int, e: Element)
 requires 0 <= i && i < Vec_Len(A);
 requires Vec_Nth(A, i) == Vec_Nth(B, Vec_Len(B) - 1);
 requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_Slice(B, 0, Vec_Len(B) - 1);
@@ -95,7 +93,7 @@ requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_
     Vec_Concat(Vec_Slice(A', 0, i), Vec_Slice(A', i + 1, Vec_Len(A'))) == Vec_Slice(B', 0, Vec_Len(B') - 1);
 }
 
-procedure Ex7a(A: Vec Element, j: int, B: Vec Element, i: int)
+procedure Ex7a<Element>(A: Vec Element, j: int, B: Vec Element, i: int)
 requires 0 <= j && j <= i && i < Vec_Len(A) - 1;
 requires Vec_Nth(B, i) == Vec_Nth(A, j);
 requires Vec_Slice(B, 0, i) == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, i + 1));
@@ -110,7 +108,7 @@ requires Vec_Slice(B, i + 1, Vec_Len(B)) == Vec_Slice(A, i + 1, Vec_Len(A));
     assert Vec_Nth(B', i') == Vec_Nth(A, j);
 }
 
-procedure Ex7b(A: Vec Element, j: int, B: Vec Element, i: int)
+procedure Ex7b<Element>(A: Vec Element, j: int, B: Vec Element, i: int)
 requires 0 <= j && j <= i && i < Vec_Len(A) - 1;
 requires Vec_Nth(B, i) == Vec_Nth(A, j);
 requires Vec_Slice(B, 0, i) == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, i + 1));
@@ -128,7 +126,7 @@ requires Vec_Slice(B, i + 1, Vec_Len(B)) == Vec_Slice(A, i + 1, Vec_Len(A));
     Vec_Slice(B', 0, i') == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, i' + 1));
 }
 
-procedure Ex7c(A: Vec Element, j: int, B: Vec Element, i: int)
+procedure Ex7c<Element>(A: Vec Element, j: int, B: Vec Element, i: int)
 requires 0 <= j && j <= i && i < Vec_Len(A) - 1;
 requires Vec_Nth(B, i) == Vec_Nth(A, j);
 requires Vec_Slice(B, 0, i) == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, i + 1));
@@ -146,7 +144,7 @@ requires Vec_Slice(B, i + 1, Vec_Len(B)) == Vec_Slice(A, i + 1, Vec_Len(A));
     Vec_Slice(B', i' + 1, Vec_Len(B')) == Vec_Slice(A, i' + 1, Vec_Len(A));
 }
 
-procedure Ex8(A: Vec Element, j: int, B: Vec Element, i: int)
+procedure Ex8<Element>(A: Vec Element, j: int, B: Vec Element, i: int)
 returns (B': Vec Element, i': int)
 requires 0 <= j && j <= i && i < Vec_Len(A) - 1;
 requires Vec_Nth(B, i) == Vec_Nth(A, j);
@@ -171,7 +169,7 @@ ensures Vec_Slice(B', i' + 1, Vec_Len(B')) == Vec_Slice(A, i' + 1, Vec_Len(A));
     Vec_Slice(B', i' + 1, Vec_Len(B')) == Vec_Slice(A, i' + 1, Vec_Len(A));
 }
 
-procedure Ex9(A: Vec Element, j: int) returns (B: Vec Element, e: Element)
+procedure Ex9<Element>(A: Vec Element, j: int) returns (B: Vec Element, e: Element)
 requires 0 <= j && j < Vec_Len(A);
 ensures e == Vec_Nth(A, j);
 ensures B == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A)));
@@ -198,7 +196,7 @@ ensures B == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A)));
 }
 
 // "real" vector procedures start here
-procedure remove(A: Vec Element, j: int) returns (B: Vec Element, e: Element)
+procedure remove<Element>(A: Vec Element, j: int) returns (B: Vec Element, e: Element)
 requires 0 <= j && j < Vec_Len(A);
 ensures e == Vec_Nth(A, j);
 ensures B == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A)));
@@ -233,7 +231,7 @@ ensures B == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A)));
     assert {:split_here} true;
 }
 
-procedure swap_remove(A: Vec Element, j: int) returns (B: Vec Element)
+procedure swap_remove<Element>(A: Vec Element, j: int) returns (B: Vec Element)
 requires 0 <= j && j < Vec_Len(A);
 ensures Vec_Slice(B, 0, j) == Vec_Slice(A, 0, j);
 ensures Vec_Slice(B, j+1, Vec_Len(B)) == Vec_Slice(A, j+1, Vec_Len(B));
@@ -247,7 +245,7 @@ ensures Vec_Nth(B, j) == Vec_Nth(A, Vec_Len(A) - 1);
     assume {:add_to_pool "Slice", j, j + 1} true;
 }
 
-procedure reverse(A: Vec Element) returns (B: Vec Element)
+procedure reverse<Element>(A: Vec Element) returns (B: Vec Element)
 ensures Vec_Len(A) == Vec_Len(B);
 ensures (forall x: int :: 0 <= x && x < Vec_Len(A) ==> Vec_Nth(A, x) == Vec_Nth(B, Vec_Len(A) - 1 - x));
 {
@@ -276,7 +274,7 @@ ensures (forall x: int :: 0 <= x && x < Vec_Len(A) ==> Vec_Nth(A, x) == Vec_Nth(
     }
 }
 
-procedure append(A: Vec Element, B: Vec Element) returns (C: Vec Element)
+procedure append<Element>(A: Vec Element, B: Vec Element) returns (C: Vec Element)
 ensures C == Vec_Concat(A, B);
 {
     var R: Vec Element;
@@ -299,7 +297,7 @@ ensures C == Vec_Concat(A, B);
     }
 }
 
-procedure contains(A: Vec Element, e: Element) returns (found: bool)
+procedure contains<Element>(A: Vec Element, e: Element) returns (found: bool)
 ensures !found <==> (forall x: int :: 0 <= x && x < Vec_Len(A) ==> Vec_Nth(A, x) != e);
 {
     var i: int;
@@ -320,7 +318,7 @@ ensures !found <==> (forall x: int :: 0 <= x && x < Vec_Len(A) ==> Vec_Nth(A, x)
     }
 }
 
-procedure index_of(A: Vec Element, e: Element) returns (found: bool, pos: int)
+procedure index_of<Element>(A: Vec Element, e: Element) returns (found: bool, pos: int)
 ensures found ==> Vec_Nth(A, pos) == e;
 ensures !found ==> pos == 0 && (forall x: int :: 0 <= x && x < Vec_Len(A) ==> Vec_Nth(A, x) != e);
 {
