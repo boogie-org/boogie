@@ -116,18 +116,34 @@ namespace Microsoft.Boogie
       return base.VisitTypeVariable(node);
     }
   }
+
+  public enum MonomorphizableStatus
+  {
+    UnhandledPolymorphism,
+    ExpandingTypeCycle,
+    Monomorphizable,
+  }
   
   class MonomorphizableChecker : ReadOnlyVisitor
   {
-    public static bool IsMonomorphizable(Program program, out Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, out HashSet<Axiom> polymorphicFunctionAxioms)
+    public static MonomorphizableStatus IsMonomorphizable(Program program,
+      out Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, out HashSet<Axiom> polymorphicFunctionAxioms)
     {
       var checker = new MonomorphizableChecker(program);
       checker.VisitProgram(program);
       axiomsToBeInstantiated = checker.axiomsToBeInstantiated;
       polymorphicFunctionAxioms = checker.polymorphicFunctionAxioms;
-      return checker.isMonomorphizable && checker.IsFinitelyInstantiable();
+      if (!checker.isMonomorphizable)
+      {
+        return MonomorphizableStatus.UnhandledPolymorphism;
+      }
+      if (!checker.IsFinitelyInstantiable())
+      {
+        return MonomorphizableStatus.ExpandingTypeCycle;
+      }
+      return MonomorphizableStatus.Monomorphizable;
     }
-    
+
     private Program program;
     private bool isMonomorphizable;
     private Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated;
@@ -252,6 +268,13 @@ namespace Microsoft.Boogie
         VisitExpr(forallExpr.Body);
       }
       return base.VisitFunction(node);
+    }
+
+    public override Implementation VisitImplementation(Implementation node)
+    {
+      LinqExtender.Map(node.Proc.TypeParameters, node.TypeParameters)
+        .Iter(x => typeVariableDependencyGraph.AddEdge(x.Key, x.Value));
+      return base.VisitImplementation(node);
     }
   }
   
@@ -1013,18 +1036,17 @@ namespace Microsoft.Boogie
   
   public class Monomorphizer
   {
-    public static bool Monomorphize(Program program)
+    public static MonomorphizableStatus Monomorphize(Program program)
     {
       Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated;
       HashSet<Axiom> polymorphicFunctionAxioms;
-      var isMonomorphizable = MonomorphizableChecker.IsMonomorphizable(program, out axiomsToBeInstantiated, out polymorphicFunctionAxioms);
-      if (isMonomorphizable)
+      var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program, out axiomsToBeInstantiated, out polymorphicFunctionAxioms);
+      if (monomorphizableStatus == MonomorphizableStatus.Monomorphizable)
       {
         var monomorphizationVisitor = MonomorphizationVisitor.Initialize(program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
         program.monomorphizer = new Monomorphizer(monomorphizationVisitor);
-        return true;
       }
-      return false;
+      return monomorphizableStatus;
     }
 
     public Function Monomorphize(string functionName, Dictionary<string, Type> typeParamInstantiationMap)
