@@ -137,7 +137,7 @@ namespace Microsoft.Boogie.SMTLib
         case SolverKind.CVC4:
           SolverArguments.Add(
             "--lang=smt --no-strict-parsing --no-condense-function-values --incremental --produce-models");
-          if (Logic == null) Logic = "ALL_SUPPORTED";
+          if (Logic == null) Logic = "ALL";
           break;
         case SolverKind.YICES2:
           SolverArguments.Add("--incremental");
