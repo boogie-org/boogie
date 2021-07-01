@@ -7,7 +7,7 @@ namespace Microsoft.Boogie.VCExprAST
   public class QuantifierInstantiationEngine
   {
     /*
-     * The algorithm implemented by QuantifierInstantiationEngine is a fixpoint. There are three phases.
+     * The algorithm implemented by QuantifierInstantiationEngine is a fixpoint. There are two phases.
      *
      * Start:
      *   - find instantiation sources in commands
@@ -90,15 +90,23 @@ namespace Microsoft.Boogie.VCExprAST
       }
       while (iter != null)
       {
-        if (iter.Key == "inst_add")
+        if (iter.Key == "add_to_pool" && iter.Params.Count > 1)
         {
           var label = iter.Params[0] as string;
-          var instance = iter.Params[1] as Expr;
-          if (label != null && instance != null)
+          if (label != null)
           {
-            instance = Substituter.Apply(incarnationSubst, instance);
+            var newParams = new List<object> {label};
+            for (int i = 1; i < iter.Params.Count; i++)
+            {
+              var instance = iter.Params[i] as Expr;
+              if (instance != null)
+              {
+                instance = Substituter.Apply(incarnationSubst, instance);
+                newParams.Add(instance);
+              }
+            }
             iter.ClearParams();
-            iter.AddParams(new List<object> {label, instance});
+            iter.AddParams(newParams);
           }
         }
         iter = iter.Next;
@@ -175,7 +183,7 @@ namespace Microsoft.Boogie.VCExprAST
       var iter = o.Attributes;
       while (iter != null)
       {
-        if (iter.Key == "inst_at")
+        if (iter.Key == "pool")
         {
           iter.Params.OfType<string>().Iter(x => labels.Add(x));
         }
@@ -184,23 +192,29 @@ namespace Microsoft.Boogie.VCExprAST
       return labels;
     }
     
-    public static Dictionary<string, HashSet<VCExpr>> FindInstantiationSources(ICarriesAttributes o, Boogie2VCExprTranslator exprTranslator)
+    public static Dictionary<string, HashSet<VCExpr>> FindInstantiationSources(ICarriesAttributes o, string attrName, Boogie2VCExprTranslator exprTranslator)
     {
       var freshInstances = new Dictionary<string, HashSet<VCExpr>>();
       var iter = o.Attributes;
       while (iter != null)
       {
-        if (iter.Key == "inst_add")
+        if (iter.Key == attrName && iter.Params.Count > 1)
         {
           var label = iter.Params[0] as string;
-          var instance = iter.Params[1] as Expr;
-          if (label != null && instance != null)
+          if (label != null)
           {
-            if (!freshInstances.ContainsKey(label))
+            for (int i = 1; i < iter.Params.Count; i++)
             {
-              freshInstances[label] = new HashSet<VCExpr>();
+              var instance = iter.Params[i] as Expr;
+              if (instance != null)
+              {
+                if (!freshInstances.ContainsKey(label))
+                {
+                  freshInstances[label] = new HashSet<VCExpr>();
+                }
+                freshInstances[label].Add(exprTranslator.Translate(instance));
+              }
             }
-            freshInstances[label].Add(exprTranslator.Translate(instance));
           }
         }
         iter = iter.Next;
@@ -236,7 +250,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().Iter(predicateCmd =>
       {
-        AddDictionary(FindInstantiationSources(predicateCmd, exprTranslator), labelToInstances);
+        AddDictionary(FindInstantiationSources(predicateCmd, "add_to_pool", exprTranslator), labelToInstances);
       }));
       vcExpr = Skolemizer.Skolemize(this, Polarity.Negative, vcExpr);
       lambdaToInstances = LambdaInstanceCollector.CollectInstances(this, vcExpr);
@@ -731,12 +745,12 @@ namespace Microsoft.Boogie.VCExprAST
   {
     private bool hasInstances;
 
-    private void FindInstantiationSources(ICarriesAttributes o)
+    private void FindInstantiationSources(ICarriesAttributes o, string attrName)
     {
       var iter = o.Attributes;
       while (iter != null)
       {
-        if (iter.Key == "inst_add")
+        if (iter.Key == attrName)
         {
           var label = iter.Params[0] as string;
           var instance = iter.Params[1] as Expr;
@@ -763,13 +777,13 @@ namespace Microsoft.Boogie.VCExprAST
     
     public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
     {
-      FindInstantiationSources(node);
+      FindInstantiationSources(node, "skolem_add_to_pool");
       return base.VisitQuantifierExpr(node);
     }
 
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
     {
-      cmdSeq.OfType<ICarriesAttributes>().Iter(cmd => FindInstantiationSources(cmd));
+      cmdSeq.OfType<ICarriesAttributes>().Iter(cmd => FindInstantiationSources(cmd, "add_to_pool"));
       return base.VisitCmdSeq(cmdSeq);
     }
   }

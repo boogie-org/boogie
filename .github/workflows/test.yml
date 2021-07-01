@@ -24,7 +24,7 @@ jobs:
       - name: Setup dotnet
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 3.1
+          dotnet-version: '5.0.x'
       - name: Checkout Boogie
         uses: actions/checkout@v2
         with:
@@ -36,7 +36,8 @@ jobs:
           unzip z3*.zip
           export PATH="$(find $PWD/z3* -name bin -type d):$PATH"
           # Install python tools
-          sudo pip install lit OutputCheck pyyaml psutil
+          sudo pip3 install setuptools
+          sudo pip3 install lit OutputCheck pyyaml psutil
           # Change directory to Boogie root folder
           cd $GITHUB_WORKSPACE
           # Restore dotnet tools

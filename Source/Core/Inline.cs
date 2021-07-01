@@ -212,18 +212,17 @@ namespace Microsoft.Boogie
       Contract.Requires(impl != null);
       Contract.Ensures(impl.Proc != null);
       ResolutionContext rc = new ResolutionContext(new DummyErrorSink());
-
       foreach (var decl in program.TopLevelDeclarations)
       {
         decl.Register(rc);
       }
-
       impl.Proc = null; // to force Resolve() redo the operation
       impl.Resolve(rc);
-
+      Debug.Assert(rc.ErrorCount == 0);
+      
       TypecheckingContext tc = new TypecheckingContext(new DummyErrorSink());
-
       impl.Typecheck(tc);
+      Debug.Assert(tc.ErrorCount == 0);
     }
 
     // Redundant for this class; but gives a chance for other classes to

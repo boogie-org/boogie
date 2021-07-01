@@ -2,8 +2,8 @@
 
   <!-- Target framework and package configuration -->
   <PropertyGroup>
-    <Version>2.8.29</Version>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <Version>2.9.0</Version>
+    <TargetFramework>net5.0</TargetFramework>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Authors>Boogie</Authors>
     <RepositoryUrl>https://github.com/boogie-org/boogie</RepositoryUrl>

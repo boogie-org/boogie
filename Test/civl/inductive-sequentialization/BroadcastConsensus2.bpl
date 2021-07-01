@@ -91,7 +91,7 @@ INV_COLLECT_ELIM({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "
 returns ({:pending_async "COLLECT"} PAs:[PA]int, {:choice} choice:PA)
 modifies CH, decision;
 {
-  var {:inst_at "A"} k: int;
+  var {:pool "A"} k: int;
 
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
   assert CH == MultisetEmpty;
@@ -100,7 +100,7 @@ modifies CH, decision;
   assume card(CH) == n;
   assume MultisetSubsetEq(MultisetEmpty, CH);
 
-  assume {:inst_add "A", k} {:inst_add "A", k+1} 0 <= k && k <= n;
+  assume {:add_to_pool "A", k} {:add_to_pool "A", k+1} 0 <= k && k <= n;
   decision := (lambda i:pid :: if 1 <= i && i <= k then max(CH) else decision[i]);
   PAs := RemainingCollects(k);
   choice := COLLECT(k+1);
@@ -116,7 +116,7 @@ returns ({:pending_async "COLLECT"} PAs:[PA]int)
 modifies CH;
 {
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
-  assert {:inst_add "A", 0} CH == MultisetEmpty;
+  assert {:add_to_pool "A", 0} CH == MultisetEmpty;
 
   CH := (lambda v:val :: value_card(v, value, 1, n));
   assume card(CH) == n;
@@ -129,7 +129,7 @@ procedure {:atomic}{:layer 2}
 MAIN({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 returns ({:pending_async "BROADCAST","COLLECT"} PAs:[PA]int)
 {
-  assert {:inst_add "A", 0} pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
+  assert {:add_to_pool "A", 0} pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
   assert CH == MultisetEmpty;
 
   PAs := MapAdd(AllBroadcasts(), AllCollects());
@@ -140,12 +140,12 @@ INV_BROADCAST_ELIM({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in
 returns ({:pending_async "BROADCAST","COLLECT"} PAs:[PA]int, {:choice} choice:PA)
 modifies CH;
 {
-  var {:inst_at "A"} k: int;
+  var {:pool "A"} k: int;
 
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
   assert CH == MultisetEmpty;
 
-  assume {:inst_add "A", k} {:inst_add "A", k+1} 0 <= k && k <= n;
+  assume {:add_to_pool "A", k} {:add_to_pool "A", k+1} 0 <= k && k <= n;
   CH := (lambda v:val :: value_card(v, value, 1, k));
   assume card(CH) == k;
   assume MultisetSubsetEq(MultisetEmpty, CH);

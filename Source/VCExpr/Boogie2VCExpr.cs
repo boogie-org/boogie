@@ -649,7 +649,7 @@ namespace Microsoft.Boogie.VCExprAST
         QKeyValue.FindIntAttribute(node.Attributes, "weight", 1), 
         Enumerable.Range(0, boundVars.Count)
           .ToDictionary(x => boundVars[x], x => QuantifierInstantiationEngine.FindInstantiationHints(node.Dummies[x])),
-        QuantifierInstantiationEngine.FindInstantiationSources(node, this));
+        QuantifierInstantiationEngine.FindInstantiationSources(node, "skolem_add_to_pool", this));
     }
 
     private string GetQid(QuantifierExpr node)

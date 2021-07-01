@@ -211,6 +211,37 @@ namespace Microsoft.Boogie
         return GetNumericArgument(ref arg, a => 0 <= a);
       }
 
+      public bool GetUnsignedNumericArgument(ref uint arg, Predicate<uint> filter)
+      {
+        if (this.ConfirmArgumentCount(1))
+        {
+          try
+          {
+            Contract.Assume(args[i] != null);
+            Contract.Assert(args[i] is string); // needed to prove args[i].IsPeerConsistent
+            uint d = Convert.ToUInt32(this.args[this.i]);
+            if (filter == null || filter(d))
+            {
+              arg = d;
+              return true;
+            }
+          }
+          catch (System.FormatException)
+          {
+          }
+          catch (System.OverflowException)
+          {
+          }
+        }
+        else
+        {
+          return false;
+        }
+
+        Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
+        return false;
+      }
+
       /// <summary>
       /// If there is one argument and the filtering predicate holds, then set "arg" to that number and return "true".
       /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
@@ -656,7 +687,7 @@ namespace Microsoft.Boogie
     public bool UseArrayTheory = false;
     public bool RunDiagnosticsOnTimeout = false;
     public bool TraceDiagnosticsOnTimeout = false;
-    public int TimeLimitPerAssertionInPercent = 10;
+    public uint TimeLimitPerAssertionInPercent = 10;
     public bool SIBoolControlVC = false;
     public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
     public bool DoModSetAnalysis = false;
@@ -693,9 +724,9 @@ namespace Microsoft.Boogie
       }
     }
 
-    public int TimeLimit = 0; // 0 means no limit
-    public int ResourceLimit = 0; // default to 0
-    public int SmokeTimeout = 10; // default to 10s
+    public uint TimeLimit = 0; // 0 means no limit
+    public uint ResourceLimit = 0; // default to 0
+    public uint SmokeTimeout = 10; // default to 10s
     public int ErrorLimit = 5; // 0 means attempt to falsify each assertion in a desugared implementation 
     public bool RestartProverPerVC = false;
 
@@ -706,8 +737,8 @@ namespace Microsoft.Boogie
     public double VcsPathSplitMult = 0.5; // 0.5-always, 2-rarely do path splitting
     public int VcsMaxSplits = 1;
     public int VcsMaxKeepGoingSplits = 1;
-    public int VcsFinalAssertTimeout = 30;
-    public int VcsKeepGoingTimeout = 1;
+    public uint VcsFinalAssertTimeout = 30;
+    public uint VcsKeepGoingTimeout = 1;
     public int VcsCores = 1;
     public bool VcsDumpSplits = false;
 
@@ -1398,11 +1429,11 @@ namespace Microsoft.Boogie
           return true;
 
         case "vcsFinalAssertTimeout":
-          ps.GetNumericArgument(ref VcsFinalAssertTimeout);
+          ps.GetUnsignedNumericArgument(ref VcsFinalAssertTimeout, null);
           return true;
 
         case "vcsKeepGoingTimeout":
-          ps.GetNumericArgument(ref VcsKeepGoingTimeout);
+          ps.GetUnsignedNumericArgument(ref VcsKeepGoingTimeout, null);
           return true;
 
         case "vcsCores":
@@ -1426,19 +1457,19 @@ namespace Microsoft.Boogie
           return true;
 
         case "timeLimit":
-          ps.GetNumericArgument(ref TimeLimit);
+          ps.GetUnsignedNumericArgument(ref TimeLimit, null);
           return true;
 
         case "rlimit":
-          ps.GetNumericArgument(ref ResourceLimit);
+          ps.GetUnsignedNumericArgument(ref ResourceLimit, null);
           return true;
 
         case "timeLimitPerAssertionInPercent":
-          ps.GetNumericArgument(ref TimeLimitPerAssertionInPercent, a => 0 < a);
+          ps.GetUnsignedNumericArgument(ref TimeLimitPerAssertionInPercent, a => 0 < a);
           return true;
 
         case "smokeTimeout":
-          ps.GetNumericArgument(ref SmokeTimeout);
+          ps.GetUnsignedNumericArgument(ref SmokeTimeout, null);
           return true;
 
         case "errorLimit":
@@ -1767,7 +1798,22 @@ namespace Microsoft.Boogie
        the counterexample trace. The argument 's' is to be a string, and it
        will be printed as part of /mv's output.
 
-  ---- CIVL ------------------------------------------------------------------
+  ---- Pool-based quantifier instantiation -----------------------------------
+
+     {:pool ""name""}
+       Used on a bound variable of a quantifier or lambda.  Indicates that 
+       expressions in pool name should be used for instantiating that variable.
+
+     {:add_to_pool ""name"", e}
+       Used on a command.  Adds the expression e, after substituting variables
+       with their incarnations just before the command, to pool name.
+
+     {:skolem_add_to_pool ""name"", e}
+       Used on a quantifier.  Adds the expression e, after substituting the 
+       bound variables with fresh skolem constants, whenever the quantifier is
+       skolemized. 
+ 
+  ---- Civl ------------------------------------------------------------------
 
      {:yields}
        Yielding procedure.
@@ -1953,7 +1999,7 @@ namespace Microsoft.Boogie
                 (also included in the /trace output)
   /break        launch and break into debugger
 
-  ---- CIVL options ----------------------------------------------------------
+  ---- Civl options ----------------------------------------------------------
 
   /trustMoverTypes
                 do not verify mover type annotations on atomic action declarations

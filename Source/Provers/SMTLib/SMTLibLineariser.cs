@@ -26,6 +26,22 @@ namespace Microsoft.Boogie.SMTLib
   // Lineariser for expressions. The result (bool) is currently not used for anything
   public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions /*!*/>
   {
+    public static string StoreOpName(VCExprNAry node)
+    {
+      Contract.Requires(node != null);
+      Contract.Requires((node.Op is VCExprSelectOp) || (node.Op is VCExprStoreOp));
+      Contract.Ensures(Contract.Result<string>() != null);
+      return "Store_" + TypeToString(node[0].Type);
+    }
+
+    public static string SelectOpName(VCExprNAry node)
+    {
+      Contract.Requires(node != null);
+      Contract.Requires((node.Op is VCExprSelectOp) || (node.Op is VCExprStoreOp));
+      Contract.Ensures(Contract.Result<string>() != null);
+      return "Select_" + TypeToString(node[0].Type);
+    }
+    
     public static string ToString(VCExpr e, UniqueNamer namer, SMTLibProverOptions opts,
       ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null, ISet<VCExprVar> tryAssumes = null)
     {
@@ -668,7 +684,7 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitSelectOp(VCExprNAry node, LineariserOptions options)
       {
-        var name = SimplifyLikeExprLineariser.SelectOpName(node);
+        var name = SelectOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
         if (CommandLineOptions.Clo.UseArrayTheory)
           name = "select";
@@ -678,7 +694,7 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitStoreOp(VCExprNAry node, LineariserOptions options)
       {
-        var name = SimplifyLikeExprLineariser.StoreOpName(node);
+        var name = StoreOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
         if (CommandLineOptions.Clo.UseArrayTheory)
           name = "store";
