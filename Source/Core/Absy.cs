@@ -469,6 +469,236 @@ namespace Microsoft.Boogie
       TypeSynonymDecl.ResolveTypeSynonyms(synonymDecls, rc);
     }
 
+    class DependencyEvaluator : ReadOnlyVisitor {
+      public HashSet<Absy> outgoing;
+      public HashSet<Absy> incoming;
+      public List<HashSet<Absy>> incomingTuples;
+      public HashSet<Type> types;
+      public readonly Absy node;
+
+      public DependencyEvaluator(Absy a) {
+        node = a;
+        incoming = new HashSet<Absy>();
+        incomingTuples = new List<HashSet<Absy>>();
+        outgoing = new HashSet<Absy>();
+        types = new HashSet<Type>();
+      }
+      // returns true if there is an edge from a to b
+      public static bool depends(DependencyEvaluator a, DependencyEvaluator b) {
+        return b.incoming.Intersect(a.outgoing).Any() ||
+               b.incomingTuples.Where(s => s.IsSubsetOf(a.outgoing)).Any();
+      }
+    }
+    class FunctionVisitor : DependencyEvaluator {
+      public FunctionVisitor(Function func) : base(func)
+      {
+        incoming.Add(func);
+      }
+      public override Expr VisitExpr(Expr node)
+      {
+        if (node is IdentifierExpr iExpr && iExpr.Decl is Constant c)
+        {
+          outgoing.Add(c);
+        }
+        else if (node is NAryExpr e && e.Fun is FunctionCall f)
+        {
+          outgoing.Add(f.Func);
+        }
+        return base.VisitExpr(node);
+      }
+      public override Microsoft.Boogie.Type VisitType(Microsoft.Boogie.Type node)
+      {
+        types.Add(node);
+        return base.VisitType(node);
+      }
+    }
+    class AxiomVisitor : DependencyEvaluator {
+
+      public AxiomVisitor (Axiom a) : base(a) {}
+      private void VisitTriggerCustom(Trigger t) {
+        var incomingOld = new HashSet<Absy>(incoming);
+        incoming = new HashSet<Absy>();
+        var triggerList = t.Tr.ToList();
+        triggerList.ForEach(e => e.pos = Expr.Position.Neither);
+        triggerList.ForEach(e => VisitExpr(e));
+        if (incoming.Count() > 1) {
+          incomingTuples.Add(new HashSet<Absy>(incoming));
+          incoming = incomingOld;
+        } else {
+          incoming.UnionWith(incomingOld);
+        }
+      }
+      public override Expr VisitExpr(Expr node) {
+        if (node is IdentifierExpr iExpr && iExpr.Decl is Constant c) {
+          incoming.Add(c);
+          outgoing.Add(c);
+        } else if (node is NAryExpr e && e.Fun is FunctionCall f) {
+          incoming.Add(f.Func);
+          outgoing.Add(f.Func);
+        } else if (node is NAryExpr n) {
+          var appliable = n.Fun;
+          if (appliable is UnaryOperator op) {
+            Contract.Assert(op.Op == UnaryOperator.Opcode.Neg || op.Op == UnaryOperator.Opcode.Not);
+            Contract.Assert(n.Args.Count() == 1);
+            n.Args[0].pos = Expr.negatePosition(n.Args[0].pos);
+          } else if (appliable is BinaryOperator bin) {
+            Contract.Assert(n.Args.Count() == 2);
+            if (bin.Op == BinaryOperator.Opcode.And
+            || bin.Op == BinaryOperator.Opcode.Or) {
+            } else if (bin.Op == BinaryOperator.Opcode.Imp) {
+              n.Args[0].pos = Expr.negatePosition(n.Args[0].pos);
+            } else {
+              n.Args.ToList().ForEach(a => a.pos = Expr.Position.Neither);
+            }
+          } else {
+            n.Args.ToList().ForEach(a => a.pos = Expr.Position.Neither);
+          }
+        } else if (node is BinderExpr be && be is QuantifierExpr qe) {
+          Trigger start = qe.Triggers;
+          while(start != null) {
+            VisitTriggerCustom(start);
+            start = start.Next;
+          }
+          var discardBodyIncoming = qe is ForallExpr fa && fa.pos == Expr.Position.Pos
+                                    || qe is ExistsExpr ee && ee.pos == Expr.Position.Neg;
+          be.Body.pos = Expr.Position.Neither;
+          var incomingOld = new HashSet<Absy>(incoming);
+          VisitExpr(be.Body); // this will still edit the outgoing edges and types
+          incoming = discardBodyIncoming ? incomingOld : incoming;
+          return null;
+        } else if (node is OldExpr o) {
+          o.Expr.pos = Expr.Position.Neither;
+        } else if (node is CodeExpr) {
+          // no blocks in axioms
+          Contract.Assert(false);
+        } else if (node is BvExtractExpr bve) {
+          bve.Bitvector.pos = Expr.Position.Neither;
+        } else if (node is BvConcatExpr bvc) {
+          bvc.E0.pos = Expr.Position.Neither;
+          bvc.E1.pos = Expr.Position.Neither;
+        } else if (node is BinderExpr bexp) {
+          bexp.Body.pos = Expr.Position.Neither;
+        } else if (node is LetExpr l){
+          l.Body.pos = Expr.Position.Neither;
+        } else {
+          if(node is LiteralExpr || node is IdentifierExpr) {
+
+          } else {
+            Console.WriteLine(node);
+            Contract.Assert(false);
+          }
+        }
+        return base.VisitExpr(node);
+      }
+      public override Microsoft.Boogie.Type VisitType(Microsoft.Boogie.Type node)
+      {
+        types.Add(node);
+        return base.VisitType(node);
+      }
+    }
+
+    class ImplVisitor : DependencyEvaluator
+    {
+      public Implementation impl;
+      public ImplVisitor(Implementation i) : base(null)
+      {
+        impl = i;
+      }
+      public override Expr VisitExpr(Expr node)
+      {
+        if (node is IdentifierExpr iExpr && iExpr.Decl is Constant c) {
+          outgoing.Add(c);
+        } else if (node is NAryExpr e && e.Fun is FunctionCall f) {
+          outgoing.Add(f.Func);
+        }
+        return base.VisitExpr(node);
+      }
+      public override Microsoft.Boogie.Type VisitType(Microsoft.Boogie.Type node)
+      {
+        types.Add(node);
+        return base.VisitType(node);
+      }
+    }
+
+    private Dictionary<DependencyEvaluator, List<DependencyEvaluator>> edges;
+
+    public void initializeEdges () {
+      var getMentions = this.Axioms.Select(ax => (DependencyEvaluator)new AxiomVisitor(ax)).ToList();
+      getMentions.ForEach(ax => ((AxiomVisitor)ax).Visit(ax.node));
+      var getFunctionMentions = this.Functions.Select(f => (DependencyEvaluator)new FunctionVisitor(f)).ToList();
+      getFunctionMentions.ForEach(f => ((FunctionVisitor)f).Visit(f.node));
+      getMentions.AddRange(getFunctionMentions);
+      // foreach (var i in getMentions)
+      // {
+      //     Console.WriteLine(i.node);
+      //     Console.WriteLine("\nincoming:: ");
+      //     i.incoming.ToList().ForEach(e => Console.Write(e));
+      //     Console.WriteLine("\noutgoing:: ");
+      //     i.outgoing.ToList().ForEach(e => Console.Write(e));
+      //     Console.WriteLine("\n=====================");
+      // }
+      getMentions.ForEach(u => u.incoming = u.incoming.Where(i => !isIgnorable(i)).ToHashSet());
+      getMentions.ForEach(u => u.outgoing = u.outgoing.Where(i => !isIgnorable(i)).ToHashSet());
+      edges = new Dictionary<DependencyEvaluator, List<DependencyEvaluator>>();
+      getMentions.ForEach(u => edges[u] = getMentions.Where(v => !isIgnorable(v.node) && DependencyEvaluator.depends(u, v)).ToList());
+    }
+
+    private bool isIgnorable(Absy a) {
+      return a is Constant c
+        && c.TypedIdent.HasName
+        && (c.TypedIdent.Name == "$FunctionContextHeight"
+          || c.TypedIdent.Name == "$ModuleContextHeight");
+    }
+    public Program getSuccinctProgram (Implementation impl) {
+
+      HashSet<Declaration> computeReachability (DependencyEvaluator source,
+                                      Dictionary<DependencyEvaluator, List<DependencyEvaluator>> edges) {
+        var todo = new Stack<DependencyEvaluator>();
+        var visited = new HashSet<DependencyEvaluator>();
+        todo.Push(source);
+        while(todo.Count() != 0) {
+          var d = todo.Pop();
+          foreach (var x in edges[d].Where(t => !visited.Contains(t))) {
+            todo.Push(x);
+          }
+          visited.Add(d);
+        }
+        visited.Remove(source);
+        return visited.Select(a => (Declaration) a.node).ToHashSet();
+      }
+
+      DependencyEvaluator implHooks = new ImplVisitor(impl);
+      implHooks.Visit(impl);
+      implHooks.outgoing = implHooks.outgoing.Where(m => !isIgnorable(m)).ToHashSet();
+      var keys = edges.Keys;
+      edges[implHooks] = keys.Where(m => !isIgnorable(m.node) && DependencyEvaluator.depends(implHooks, m)).ToList();
+      var s = computeReachability(implHooks, edges);
+      Console.WriteLine("trimmed " + (keys.Count() - s.Count()).ToString() + " declarations");
+
+      bool KeepDecl(Declaration d)
+      {
+        return !(d is Axiom && d is Function) || s.Contains(d);
+      }
+
+      Program p = (Program)this.Clone();
+      p.TopLevelDeclarations = p.TopLevelDeclarations.Where(d => KeepDecl(d));
+      // p.TopLevelDeclarations = p.TopLevelDeclarations.ToHasxhSet().Intersect(s);
+      // foreach (var i in sourceVertices)
+      // {
+        // var i = implHooks;
+        // Console.WriteLine(impl);
+        // Console.WriteLine("\noutgoing:: ");
+        // i.outgoing = i.outgoing.Where(m => !isIgnorable(m)).ToHashSet();
+        // i.outgoing.ToList().ForEach(e => Console.Write(e.ToString() + " "));
+        // edges[i] = getMentions.Where(m => !isIgnorable(m.node) && DependencyEvaluator.depends(i, m)).ToList();
+        // Console.WriteLine("\n=====================");
+        // var s1 = computeReachability(i, edges);
+        // s1.ForEach(a => Console.Write(a));
+        // edges.Remove(i);
+        // Console.WriteLine("\n=====================");
+      // }
+      return p;
+    }
     public int Typecheck()
     {
       return this.Typecheck((IErrorSink) null);
@@ -525,7 +755,7 @@ namespace Microsoft.Boogie
       set
       {
         Contract.Requires(value != null);
-        // materialize the decls, in case there is any dependency 
+        // materialize the decls, in case there is any dependency
         // back on topLevelDeclarations
         var v = value.ToList();
         // remove null elements
@@ -1067,7 +1297,7 @@ namespace Microsoft.Boogie
               Contract.Assert(auxGotoCmd != null && auxGotoCmd.labelNames != null &&
                               auxGotoCmd.labelTargets != null && auxGotoCmd.labelTargets.Count >= 1);
               //BUGFIX on 10/26/15: this contains nodes present in NaturalLoops for a different backedgenode
-              var loopNodes = GetBlocksInAllNaturalLoops(header, g); //var loopNodes = g.NaturalLoops(header, source); 
+              var loopNodes = GetBlocksInAllNaturalLoops(header, g); //var loopNodes = g.NaturalLoops(header, source);
               foreach (var bl in auxGotoCmd.labelTargets)
               {
                 if (g.Nodes.Contains(bl) && //newly created blocks are not present in NaturalLoop(header, xx, g)
@@ -1076,7 +1306,7 @@ namespace Microsoft.Boogie
                   Block auxNewBlock = new Block();
                   auxNewBlock.Label = bl.Label;
                   //these blocks may have read/write locals that are not present in naturalLoops
-                  //we need to capture these variables 
+                  //we need to capture these variables
                   auxNewBlock.Cmds = Substituter.Apply(subst, bl.Cmds);
                   //add restoration code for such blocks
                   if (loopHeaderToAssignCmd.ContainsKey(header))
@@ -1860,7 +2090,7 @@ namespace Microsoft.Boogie
         return null;
       }
     }
-    
+
     public NamedDeclaration(IToken /*!*/ tok, string /*!*/ name)
       : base(tok)
     {

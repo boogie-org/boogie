@@ -33,6 +33,19 @@ namespace Microsoft.Boogie
       Contract.Requires(stream != null);
       Emit(stream, 0, false);
     }
+    public enum Position
+    {
+      Pos,
+      Neg,
+      Neither
+    }
+
+    public static Position negatePosition(Position p)
+    {
+      return p == Position.Neither ? Position.Neither : (p == Position.Neg ? Position.Pos : Position.Neg);
+    }
+
+    public Position pos = Position.Pos;
 
     /// <summary>
     /// If true the client is making a promise that this Expr will be
@@ -101,7 +114,7 @@ namespace Microsoft.Boogie
           if (Immutable && !_Type.Equals(value))
             throw new InvalidOperationException("Cannot change the Type of an Immutable Expr");
 
-          // Once the Type has been set (i.e. no longer null) we never change the reference 
+          // Once the Type has been set (i.e. no longer null) we never change the reference
           // if this Expr is immutable, even if the Type is equivalent (i.e. _Type.Equals(newType))
           if (!Immutable)
             _Type = value;
@@ -2200,7 +2213,7 @@ namespace Microsoft.Boogie
         case Opcode.Eq:
         case Opcode.Neq:
           // Comparison is allowed if the argument types are unifiable
-          // (i.e., if there is any chance that the values of the arguments are 
+          // (i.e., if there is any chance that the values of the arguments are
           // in the same domain)
           if (arg0type.Equals(arg1type))
           {

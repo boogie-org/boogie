@@ -504,7 +504,7 @@ namespace VC
     #endregion
 
 
-    protected Checker FindCheckerFor(bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
+    protected Checker FindCheckerFor(Program program, bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
     {
       Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
       Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
