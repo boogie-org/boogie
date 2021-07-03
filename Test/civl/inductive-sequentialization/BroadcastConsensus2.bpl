@@ -31,10 +31,10 @@ function {:inline} AllCollects () : [PA]int
 { (lambda pa:PA :: if is#COLLECT(pa) && pid(i#COLLECT(pa)) then 1 else 0) }
 
 function {:inline} RemainingBroadcasts (k:pid) : [PA]int
-{ (lambda pa:PA :: if is#BROADCAST(pa) && k < i#BROADCAST(pa) && i#BROADCAST(pa) <= n then 1 else 0) }
+{ (lambda {:pool "Broadcast"} pa:PA :: if is#BROADCAST(pa) && k < i#BROADCAST(pa) && i#BROADCAST(pa) <= n then 1 else 0) }
 
 function {:inline} RemainingCollects (k:pid) : [PA]int
-{ (lambda pa:PA :: if is#COLLECT(pa) && k < i#COLLECT(pa) && i#COLLECT(pa) <= n then 1 else 0) }
+{ (lambda {:pool "Collect"} pa:PA :: if is#COLLECT(pa) && k < i#COLLECT(pa) && i#COLLECT(pa) <= n then 1 else 0) }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -81,8 +81,6 @@ modifies CH, decision;
   CH := (lambda v:val :: value_card(v, value, 1, n));
   assume card(CH) == n;
   assume MultisetSubsetEq(MultisetEmpty, CH);
-  // havoc decision;
-  // assume (forall i:pid :: 1 <= i && i <= n ==> decision[i] == max(CH));
   decision := (lambda i:pid :: if pid(i) then max(CH) else old(decision)[i]);
 }
 
@@ -100,11 +98,10 @@ modifies CH, decision;
   assume card(CH) == n;
   assume MultisetSubsetEq(MultisetEmpty, CH);
 
-  assume {:add_to_pool "A", k} {:add_to_pool "A", k+1} 0 <= k && k <= n;
+  assume {:add_to_pool "A", k} {:add_to_pool "A", k+1} {:add_to_pool "Collect", COLLECT(n)} 0 <= k && k <= n;
   decision := (lambda i:pid :: if 1 <= i && i <= k then max(CH) else decision[i]);
   PAs := RemainingCollects(k);
   choice := COLLECT(k+1);
-  assume (k < n ==> PAs[COLLECT(n)] > 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,13 +142,12 @@ modifies CH;
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
   assert CH == MultisetEmpty;
 
-  assume {:add_to_pool "A", k} {:add_to_pool "A", k+1} 0 <= k && k <= n;
+  assume {:add_to_pool "A", k} {:add_to_pool "A", k+1} {:add_to_pool "Broadcast", BROADCAST(n)} 0 <= k && k <= n;
   CH := (lambda v:val :: value_card(v, value, 1, k));
   assume card(CH) == k;
   assume MultisetSubsetEq(MultisetEmpty, CH);
   PAs := MapAdd(RemainingBroadcasts(k), AllCollects());
   choice := BROADCAST(k+1);
-  assume (k < n ==> PAs[BROADCAST(n)] > 0);
 }
 
 procedure {:left}{:layer 2} BROADCAST({:linear_in "broadcast"} i:pid)
