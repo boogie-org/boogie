@@ -34,14 +34,14 @@ INV ({:linear_in "pid"} ping_pid:int, {:linear_in "pid"} pong_pid:int)
 returns ({:pending_async "PING","PONG"} PAs:[PA]int, {:choice} choice:PA)
 modifies ping_channel, pong_channel;
 {
-   var {:pool "A"} c: int;
+   var {:pool "INV"} c: int;
 
   assert ping_pid == ping_id;
   assert pong_pid == pong_id;
   assert ping_channel == EmptyChannel();
   assert pong_channel == EmptyChannel();
 
-  assume {:add_to_pool "A", c} {:add_to_pool "A", c+1} 0 < c;
+  assume {:add_to_pool "INV", c} {:add_to_pool "INV", c+1} 0 < c;
   if (*) {
     pong_channel := EmptyChannel()[c := 1];
     ping_channel := EmptyChannel();
@@ -74,7 +74,7 @@ modifies ping_channel, pong_channel;
   assert x > 0;
   assert pid == ping_id;
   assert (forall m:int :: ping_channel[m] > 0 ==> m == x);
-  assert (exists {:pool "A"} m:int :: ping_channel[m] > 0) && (forall m:int :: pong_channel[m] == 0);
+  assert (exists {:pool "INV"} m:int :: ping_channel[m] > 0) && (forall m:int :: pong_channel[m] == 0);
 
   assume ping_channel[x] > 0;
   ping_channel[x] := ping_channel[x] - 1;
@@ -99,7 +99,7 @@ modifies ping_channel, pong_channel;
   assert y > 0;
   assert pid == pong_id;
   assert (forall m:int :: pong_channel[m] > 0 ==> m == y || m == 0);
-  assert (exists {:pool "A"} m:int :: pong_channel[m] > 0) && (forall m:int :: ping_channel[m] == 0);
+  assert (exists {:pool "INV"} m:int :: pong_channel[m] > 0) && (forall m:int :: ping_channel[m] == 0);
 
   if (*)
   {
@@ -128,7 +128,7 @@ modifies pong_channel;
   assert pong_pid == pong_id;
   assert ping_channel == EmptyChannel();
   assert pong_channel == EmptyChannel();
-  pong_channel[1] := {:add_to_pool "A", 1} pong_channel[1] + 1;
+  pong_channel[1] := pong_channel[1] + 1;
   PAs := NoPAs()[PING(1, ping_pid) := 1][PONG(1, pong_pid) := 1];
 }
 
