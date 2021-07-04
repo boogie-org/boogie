@@ -49,9 +49,6 @@ type {:pending_async}{:datatype} PA;
 function {:constructor} P(pid:int) : PA;
 function {:constructor} PInit(pid:int) : PA;
 
-// A dummy trigger function to use in quantified formulae
-function trigger(x:int) : bool { true }
-
 function {:inline} EmptyChannel() : [int]int { (lambda i:int :: 0) }
 function {:inline} NoPAs() : [PA]int { (lambda pa:PA :: 0) }
 function {:inline} SingletonPA(pa:PA): [PA]int { NoPAs()[pa := 1] }
@@ -85,16 +82,14 @@ INV2 ({:linear_in "pid"} pids:[int]bool)
 returns ({:pending_async "P"} PAs:[PA]int, {:choice} choice:PA)
 modifies channel, pendingAsyncs, leader;
 {
+  var {:pool "INV2"} k: int;
   assert Init(pids, channel, pendingAsyncs, id, leader);
 
   havoc channel, leader;
 
-  assume
-  (exists k:int :: {trigger(k)} trigger(k) && trigger(next(k)) && trigger(n+1) &&
-    1 <= k && k <= n+1 &&
-    PAs == (lambda pa:PA :: if is#P(pa) && pid(pid#P(pa)) && pid(k) && !between(max(id), pid#P(pa), k) then 1 else 0) &&
-    choice == P(k)
-  );
+  assume {:add_to_pool "INV2", k, next(k), n+1} 1 <= k && k <= n+1;
+  PAs := (lambda pa:PA :: if is#P(pa) && pid(pid#P(pa)) && pid(k) && !between(max(id), pid#P(pa), k) then 1 else 0);
+  choice := P(k);
 
   assume (forall i:int, msg:int :: pid(i) && channel[i][msg] > 0 ==> msg <= id[max(id)] && (forall j:int:: betweenLeftEqual(i,j,max(id)) ==> msg != id[j]));
   assume (forall i:int :: pid(i) && i != max(id) ==> !leader[i]);
@@ -152,7 +147,7 @@ returns ({:pending_async "P"} PAs:[PA]int)
 modifies channel, pendingAsyncs;
 {
   assert Init(pids, channel, pendingAsyncs, id, leader);
-  assert trigger(next(max(id)));
+  assume {:add_to_pool "INV2", next(max(id))} true;
 
   havoc channel;
 
@@ -168,21 +163,19 @@ INV1 ({:linear_in "pid"} pids:[int]bool)
 returns ({:pending_async "PInit", "P"} PAs:[PA]int, {:choice} choice:PA)
 modifies channel, pendingAsyncs;
 {
+  var {:pool "INV1"} k: int;
   assert Init(pids, channel, pendingAsyncs, id, leader);
 
   havoc channel;
 
+  assume {:add_to_pool "INV1", k, k+1} {:add_to_pool "PInit", PInit(n)} pid(k) || k == 0;
   assume
-  (exists k:int :: {trigger(k)} (pid(k) || k == 0) && trigger(k+1) &&
     (forall i:int :: 1 <= i && i <= k ==> channel[next(i)] == EmptyChannel()[id[i] := 1 ]) &&
     (forall i:int :: k < i && i <= n ==> channel[next(i)] == EmptyChannel()) &&
-    (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel()) &&
-    PAs == (lambda pa:PA :: if is#PInit(pa) && k < pid#PInit(pa) && pid#PInit(pa) <= n then 1
-              else if is#P(pa) &&  1 <= pid#P(pa) && pid#P(pa) <= k  then 1 else 0) &&
-    choice == PInit(k+1) &&
-    (k < n ==> PAs[PInit(n)] > 0)   // Hint for the prover for the conclusion check
-  );
-
+    (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
+  PAs := (lambda {:pool "PInit"} pa:PA :: if is#PInit(pa) && k < pid#PInit(pa) && pid#PInit(pa) <= n then 1
+              else if is#P(pa) &&  1 <= pid#P(pa) && pid#P(pa) <= k  then 1 else 0);
+  choice := PInit(k+1);
   pendingAsyncs := MapAdd(pendingAsyncs, PAs);
 }
 
@@ -195,7 +188,7 @@ returns ({:pending_async "PInit"} PAs:[PA]int)
 modifies pendingAsyncs;
 {
   assert Init(pids, channel, pendingAsyncs, id, leader);
-  assert trigger(0);
+  assume {:add_to_pool "INV1", 0} true;
   PAs := (lambda pa:PA :: if is#PInit(pa) && pid(pid#PInit(pa)) then 1 else 0);
   pendingAsyncs := MapAdd(pendingAsyncs, PAs);
 }
