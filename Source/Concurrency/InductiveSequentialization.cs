@@ -319,6 +319,10 @@ namespace Microsoft.Boogie
   {
     public static void AddCheckers(CivlTypeChecker civlTypeChecker)
     {
+      if (CommandLineOptions.Clo.TrustInductiveSequentialization)
+      {
+        return;
+      }
       foreach (var x in civlTypeChecker.inductiveSequentializations)
       {
         AddCheck(civlTypeChecker, x.GenerateBaseCaseChecker());
