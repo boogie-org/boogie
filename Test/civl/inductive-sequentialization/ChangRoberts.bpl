@@ -172,20 +172,20 @@ INV1 ({:linear_in "pid"} pids:[int]bool)
 returns ({:pending_async "PInit", "P"} PAs:[PA]int, {:choice} choice:PA)
 modifies channel;
 {
+  var {:pool "A"} k: int;
   assert Init(pids, channel, terminated, id, leader);
 
   havoc channel;
 
+  assume {:add_to_pool "A", k, k+1} pid(k) || k == 0;
   assume
-  (exists k:int :: {trigger(k)} (pid(k) || k == 0) && trigger(k+1) &&
     (forall i:int :: 1 <= i && i <= k ==> channel[next(i)] == EmptyChannel()[id[i] := 1 ]) &&
     (forall i:int :: k < i && i <= n ==> channel[next(i)] == EmptyChannel()) &&
-    (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel()) &&
-    PAs == (lambda pa:PA :: if is#PInit(pa) && k < pid#PInit(pa) && pid#PInit(pa) <= n then 1
-              else if is#P(pa) &&  1 <= pid#P(pa) && pid#P(pa) <= k  then 1 else 0) &&
-    choice == PInit(k+1) &&
-    (k < n ==> PAs[PInit(n)] > 0)   // Hint for the prover for the conclusion check
-  );
+    (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
+  PAs := (lambda pa:PA :: if is#PInit(pa) && k < pid#PInit(pa) && pid#PInit(pa) <= n then 1
+              else if is#P(pa) &&  1 <= pid#P(pa) && pid#P(pa) <= k  then 1 else 0);
+  choice := PInit(k+1);
+  assume (k < n ==> PAs[PInit(n)] > 0);   // Hint for the prover for the conclusion check
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -196,7 +196,7 @@ MAIN1 ({:linear_in "pid"} pids:[int]bool)
 returns ({:pending_async "PInit"} PAs:[PA]int)
 {
   assert Init(pids, channel, terminated, id, leader);
-  assert trigger(0);
+  assume {:add_to_pool "A", 0} true;
   PAs := (lambda pa:PA :: if is#PInit(pa) && pid(pid#PInit(pa)) then 1 else 0);
 }
 
