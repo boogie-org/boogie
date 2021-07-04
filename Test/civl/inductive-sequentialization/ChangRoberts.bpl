@@ -91,7 +91,6 @@ modifies channel, terminated, leader;
   assume
   (exists k:int :: {trigger(k)} trigger(k) && trigger(next(k)) && trigger(n+1) &&
     choice == P(k) &&
-    //(k == next(max(id)) ==> (forall i:int, msg:int :: pid(i) && channel[i][msg] > 0 ==> msg == id[prev(i)])) &&  // A helper to the prover for the base case of IS
     (
       (pid(k) &&
        (forall i:int :: pid(i) && between(max(id),i,k) ==> terminated[i]) &&
