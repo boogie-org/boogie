@@ -229,7 +229,6 @@ modifies channel, terminated, leader;
   }
   else
   {
-    assume trigger(msg); // Hack for commutativity checking. Replace with proper witness feature!
     assume channel[pid][msg] > 0;
     channel[pid][msg] := channel[pid][msg] - 1;
 
