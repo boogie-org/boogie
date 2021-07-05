@@ -135,11 +135,13 @@ modifies QuoteCH, RemCH, DecCH, contribution;
   {
     QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && q == price then 1 else 0));
     PAs := MapAddPA4(SellerFinish(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) then 1 else 0));
-    choice := {:add_to_pool "INV3", 0, 1} FirstBuyer(1);
+    choice := FirstBuyer(1);
   }
   else if (*)
   {
-    assume {:add_to_pool "INV3", k, k+1} 1 <= k && k < n && 0 <= sum(contribution, 1, k) && sum(contribution, 1, k) <= price;
+    assume
+      {:add_to_pool "INV3", k, k+1}
+      1 <= k && k < n && 0 <= sum(contribution, 1, k) && sum(contribution, 1, k) <= price;
     QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && i > k && q == price then 1 else 0));
     RemCH := (lambda i:int :: (lambda r:int :: if i == k+1 && r == price - sum(contribution, 1, k) then 1 else 0));
     PAs := MapAddPA3(SellerFinish(0), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) && pid#MiddleBuyer(pa) > k then 1 else 0));

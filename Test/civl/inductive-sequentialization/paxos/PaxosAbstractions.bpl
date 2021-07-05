@@ -8,7 +8,10 @@ modifies pendingAsyncs;
 
   /**************************************************************************/
   // Hint for left mover checks
-  assert {:add_to_pool "Round", r-1} {:add_to_pool "Node", 0} RoundCollector(r)[ConcludePerm(r)];
+  assert
+    {:add_to_pool "Round", r-1}
+    {:add_to_pool "Node", 0}
+    RoundCollector(r)[ConcludePerm(r)];
   /**************************************************************************/
 
   PAs := MapAdd(JoinPAs(r), SingletonPA(A_Propose(r, ProposePermissions(r))));
@@ -34,7 +37,10 @@ modifies voteInfo, pendingAsyncs;
   assert (forall r': Round :: r' <= r ==> pendingAsyncs[A_StartRound(r', r')] == 0);
   assert (forall r': Round, n': Node, p': Permission :: r' <= r ==> pendingAsyncs[A_Join(r', n', p')] == 0);
   // Hint for commutativity w.r.t. {Paxos, Propose}
-  assert {:add_to_pool "Round", r, r-1} {:add_to_pool "Node", 0} ps[ConcludePerm(r)];
+  assert
+    {:add_to_pool "Round", r, r-1}
+    {:add_to_pool "Node", 0}
+    ps[ConcludePerm(r)];
   /**************************************************************************/
 
   if (*) {
@@ -66,8 +72,9 @@ modifies decision, pendingAsyncs;
   assert value#VoteInfo(t#Some(voteInfo[r])) == v;
 
   /**************************************************************************/
-  assert {:add_to_pool "Round", r}
-  (forall n': Node, v': Value, p': Permission :: pendingAsyncs[A_Vote(r, n', v', p')] == 0);
+  assert
+    {:add_to_pool "Round", r}
+    (forall n': Node, v': Value, p': Permission :: pendingAsyncs[A_Vote(r, n', v', p')] == 0);
   /**************************************************************************/
 
   if (*) {
@@ -92,7 +99,10 @@ modifies joinedNodes, pendingAsyncs;
   assert (forall r': Round, n': Node, v': Value, p': Permission :: r' < r ==> pendingAsyncs[A_Vote(r', n', v', p')] == 0);
   /**************************************************************************/
 
-  assume {:add_to_pool "Round", r, r-1} {:add_to_pool "Node", n} true;
+  assume
+    {:add_to_pool "Round", r, r-1}
+    {:add_to_pool "Node", n}
+    true;
   if (*) {
     assume (forall r': Round :: Round(r') && joinedNodes[r'][n] ==> r' < r);
     joinedNodes[r][n] := true;
@@ -118,7 +128,10 @@ modifies joinedNodes, voteInfo, pendingAsyncs;
   assert (forall r': Round, n': Node, v': Value, p': Permission :: r' < r ==> pendingAsyncs[A_Vote(r', n', v', p')] == 0);
   /**************************************************************************/
 
-  assume {:add_to_pool "Round", r, r-1} {:add_to_pool "Node", n} true;
+  assume
+    {:add_to_pool "Round", r, r-1}
+    {:add_to_pool "Node", n}
+    true;
   if (*) {
     assume (forall r': Round :: Round(r') && joinedNodes[r'][n] ==> r' <= r);
     voteInfo[r] := Some(VoteInfo(v, ns#VoteInfo(t#Some(voteInfo[r]))[n := true]));

@@ -98,7 +98,10 @@ modifies CH, decision;
   assume card(CH) == n;
   assume MultisetSubsetEq(MultisetEmpty, CH);
 
-  assume {:add_to_pool "INV_COLLECT", k} {:add_to_pool "INV_COLLECT", k+1} {:add_to_pool "Collect", COLLECT(n)} 0 <= k && k <= n;
+  assume
+    {:add_to_pool "INV_COLLECT", k, k+1}
+    {:add_to_pool "Collect", COLLECT(n)}
+    0 <= k && k <= n;
   decision := (lambda i:pid :: if 1 <= i && i <= k then max(CH) else decision[i]);
   PAs := RemainingCollects(k);
   choice := COLLECT(k+1);
@@ -113,7 +116,9 @@ returns ({:pending_async "COLLECT"} PAs:[PA]int)
 modifies CH;
 {
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
-  assert {:add_to_pool "INV_COLLECT", 0} CH == MultisetEmpty;
+  assert
+    {:add_to_pool "INV_COLLECT", 0}
+    CH == MultisetEmpty;
 
   CH := (lambda v:val :: value_card(v, value, 1, n));
   assume card(CH) == n;
@@ -126,7 +131,9 @@ procedure {:atomic}{:layer 2}
 MAIN({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 returns ({:pending_async "BROADCAST","COLLECT"} PAs:[PA]int)
 {
-  assert {:add_to_pool "INV_BROADCAST", 0} pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
+  assert
+    {:add_to_pool "INV_BROADCAST", 0}
+    pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
   assert CH == MultisetEmpty;
 
   PAs := MapAdd(AllBroadcasts(), AllCollects());
@@ -142,7 +149,10 @@ modifies CH;
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
   assert CH == MultisetEmpty;
 
-  assume {:add_to_pool "INV_BROADCAST", k} {:add_to_pool "INV_BROADCAST", k+1} {:add_to_pool "Broadcast", BROADCAST(n)} 0 <= k && k <= n;
+  assume
+    {:add_to_pool "INV_BROADCAST", k, k+1}
+    {:add_to_pool "Broadcast", BROADCAST(n)}
+    0 <= k && k <= n;
   CH := (lambda v:val :: value_card(v, value, 1, k));
   assume card(CH) == k;
   assume MultisetSubsetEq(MultisetEmpty, CH);

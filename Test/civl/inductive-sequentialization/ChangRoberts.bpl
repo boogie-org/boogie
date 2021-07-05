@@ -86,7 +86,9 @@ modifies channel, terminated, leader;
 
   havoc channel, terminated, leader;
 
-  assume {:add_to_pool "INV2", k, next(k), n+1} true;
+  assume
+    {:add_to_pool "INV2", k, next(k), n+1}
+    true;
 
   choice := P(k);
   if (*) {
@@ -94,12 +96,12 @@ modifies channel, terminated, leader;
       pid(k) &&
       (forall i:int :: pid(i) && between(max(id),i,k) ==> terminated[i]) &&
       (forall i:int :: pid(i) && !between(max(id),i,k) ==> !terminated[i]);
-      PAs := (lambda pa:PA :: if is#P(pa) && pid(pid#P(pa)) && !between(max(id), pid#P(pa), k) then 1 else 0);
+    PAs := (lambda pa:PA :: if is#P(pa) && pid(pid#P(pa)) && !between(max(id), pid#P(pa), k) then 1 else 0);
   } else {
     assume
       k == n + 1 &&
       (forall i:int :: pid(i) ==> terminated[i]);
-      PAs := NoPAs();
+    PAs := NoPAs();
   }
 
 
@@ -156,7 +158,9 @@ returns ({:pending_async "P"} PAs:[PA]int)
 modifies channel;
 {
   assert Init(pids, channel, terminated, id, leader);
-  assume {:add_to_pool "INV2", next(max(id))} true;
+  assume
+    {:add_to_pool "INV2", next(max(id))}
+    true;
 
   havoc channel;
 
@@ -176,7 +180,10 @@ modifies channel;
 
   havoc channel;
 
-  assume {:add_to_pool "INV1", k, k+1} {:add_to_pool "PInit", PInit(n)} pid(k) || k == 0;
+  assume
+    {:add_to_pool "INV1", k, k+1}
+    {:add_to_pool "PInit", PInit(n)}
+    pid(k) || k == 0;
   assume
     (forall i:int :: 1 <= i && i <= k ==> channel[next(i)] == EmptyChannel()[id[i] := 1 ]) &&
     (forall i:int :: k < i && i <= n ==> channel[next(i)] == EmptyChannel()) &&
@@ -194,7 +201,9 @@ MAIN1 ({:linear_in "pid"} pids:[int]bool)
 returns ({:pending_async "PInit"} PAs:[PA]int)
 {
   assert Init(pids, channel, terminated, id, leader);
-  assume {:add_to_pool "INV1", 0} true;
+  assume
+    {:add_to_pool "INV1", 0}
+    true;
   PAs := (lambda pa:PA :: if is#PInit(pa) && pid(pid#PInit(pa)) then 1 else 0);
 }
 

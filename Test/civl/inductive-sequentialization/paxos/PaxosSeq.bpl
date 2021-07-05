@@ -19,8 +19,12 @@ returns ({:pending_async "A_StartRound"} PAs:[PA]int)
 modifies pendingAsyncs;
 {
   var numRounds: int;
-  assert {:add_to_pool "Round", 0, numRounds} Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
-  assume {:add_to_pool "NumRounds", numRounds} 0 <= numRounds;
+  assert
+    {:add_to_pool "Round", 0, numRounds}
+    Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
+  assume
+    {:add_to_pool "NumRounds", numRounds}
+    0 <= numRounds;
   PAs := (lambda pa: PA :: if is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && Round(round#A_StartRound(pa)) && round#A_StartRound(pa) <= numRounds then 1 else 0);
   pendingAsyncs := PAs;
 }
@@ -79,7 +83,10 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
   // existentially quantified m denotes the number of nodes that already
   // finished in the current round.
 
-  assume {:add_to_pool "NumRounds", numRounds} {:add_to_pool "Round", k, k+1, numRounds} 0 <= k && k <= numRounds;
+  assume
+    {:add_to_pool "NumRounds", numRounds}
+    {:add_to_pool "Round", k, k+1, numRounds}
+    0 <= k && k <= numRounds;
 
   if (k == numRounds) {
       PAs := NoPAs();
@@ -95,7 +102,8 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
         (forall r: Round :: r < 1 || r > k+1 ==> joinedNodes[r] == NoNodes()) &&
         (forall r: Round :: r < 1 || r > k ==> is#None(voteInfo[r])) &&
         (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]));
-      assume {:add_to_pool "Node", m}
+      assume
+        {:add_to_pool "Node", m}
         0 <= m && m <= numNodes &&
         (forall n: Node :: n < 1 || n > m ==> !joinedNodes[k+1][n]);
       PAs := SecondCasePAs(k, m, numRounds);
@@ -106,7 +114,8 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
         (forall r: Round :: r < 1 || r > k+1 ==> joinedNodes[r] == NoNodes()) &&
         (forall r: Round :: r < 1 || r > k+1 ==> is#None(voteInfo[r])) &&
         (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]));
-      assume {:add_to_pool "Node", m}
+      assume
+        {:add_to_pool "Node", m}
         0 <= m && m <= numNodes &&
         (forall n: Node :: n < 1 || n > m ==> !ns#VoteInfo(t#Some(voteInfo[k+1]))[n]);
       PAs := ThirdCasePAs(k, m, value#VoteInfo(t#Some(voteInfo[k+1])), numRounds);

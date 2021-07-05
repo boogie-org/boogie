@@ -41,7 +41,9 @@ modifies ping_channel, pong_channel;
   assert ping_channel == EmptyChannel();
   assert pong_channel == EmptyChannel();
 
-  assume {:add_to_pool "INV", c} {:add_to_pool "INV", c+1} 0 < c;
+  assume
+    {:add_to_pool "INV", c, c+1}
+    0 < c;
   if (*) {
     pong_channel := EmptyChannel()[c := 1];
     ping_channel := EmptyChannel();
