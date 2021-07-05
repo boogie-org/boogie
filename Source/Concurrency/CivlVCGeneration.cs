@@ -30,7 +30,11 @@ namespace Microsoft.Boogie
       // Linear type checks
       LinearTypeChecker.AddCheckers(civlTypeChecker, decls);
 
-      InductiveSequentializationChecker.AddCheckers(civlTypeChecker);
+      if (!CommandLineOptions.Clo.TrustInductiveSequentialization)
+      {
+        InductiveSequentializationChecker.AddCheckers(civlTypeChecker);
+      }
+
       PendingAsyncChecker.AddCheckers(civlTypeChecker);
 
       foreach (AtomicAction action in civlTypeChecker.procToAtomicAction.Values.Union(civlTypeChecker

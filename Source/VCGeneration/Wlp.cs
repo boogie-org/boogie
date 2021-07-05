@@ -141,7 +141,10 @@ namespace VC
           if (subsumption == CommandLineOptions.SubsumptionOption.Always
               || (subsumption == CommandLineOptions.SubsumptionOption.NotForQuantifiers && !(C is VCExprQuantifier)))
           {
-            N = gen.ImpliesSimp(C, N, false);
+            // Translate ac.Expr again so that we create separate VC expressions for the two different
+            // occurrences of the translation of ac.Expr.  Pool-based quantifier instantiation assumes
+            // that the only sharing in the verification condition is via explicit let bindings.
+            N = gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N, false);
           }
 
           if (isFullyVerified)

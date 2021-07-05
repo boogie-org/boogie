@@ -206,8 +206,3 @@ function {:inline}{:linear "perm"} VoteResponseChannelCollector (permVoteChannel
 {
   domain#VoteResponseChannel(permVoteChannel)
 }
-////////////////////////////////////////////////////////////////////////////////
-//// Trigger dummies
-
-function triggerRound(r: Round) : bool { true }
-function triggerNode(n: Node) : bool { true }
