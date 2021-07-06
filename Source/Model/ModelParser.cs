@@ -268,15 +268,6 @@ namespace Microsoft.Boogie
               if (tuplePenultimate != "->")
                 BadModel("invalid function tuple definition");
               var resultName = tuple[tuple.Count - 1];
-              if (tuple0 == "else")
-              {
-                if (fn != null && !(resultName is string && ((string) resultName) == "#unspecified") && fn.Else == null)
-                {
-                  fn.Else = GetElt(resultName);
-                }
-
-                continue;
-              }
 
               if (fn == null)
               {
@@ -303,6 +294,15 @@ namespace Microsoft.Boogie
                 {
                   fn = currModel.MkFunc(funName, arity);
                 }
+              }
+
+              if (tuple0 == "else")
+              {
+                if (fn != null && !(resultName is string && ((string)resultName) == "#unspecified") && fn.Else == null)
+                {
+                  fn.Else = GetElt(resultName);
+                }
+                continue;
               }
 
               var args = new Model.Element[fn.Arity];
