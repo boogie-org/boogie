@@ -299,7 +299,7 @@ namespace Microsoft.Boogie
               if (tuple0 == "else")
               {
                 if (fn.Else != null) {
-                  BadModel("multipe else cases");
+                  BadModel("multiple else cases");
                 }
                 if (!(resultName is string && ((string) resultName) == "#unspecified"))
                 {
