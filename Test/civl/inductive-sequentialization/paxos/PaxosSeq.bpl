@@ -127,7 +127,7 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
   assume (forall r: Round :: is#Some(decision[r]) ==>
     is#Some(voteInfo[r]) &&
     value#VoteInfo(t#Some(voteInfo[r])) == t#Some(decision[r]) &&
-    (exists q: NodeSet :: { IsSubset(q, ns#VoteInfo(t#Some(voteInfo[r]))), IsQuorum(q) }
+    (exists q: NodeSet :: { IsQuorum(q) }
       IsSubset(q, ns#VoteInfo(t#Some(voteInfo[r]))) && IsQuorum(q)));
 
   // This is the main invariant to prove
