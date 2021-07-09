@@ -375,7 +375,8 @@ namespace Microsoft.Boogie
       foreach (Variable x in action.impl.LocVars)
       {
         Variable xCopy = new LocalVariable(Token.NoToken,
-          new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type));
+          new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type),
+          (QKeyValue) x.Attributes?.Clone());
         subst[x] = Expr.Ident(xCopy);
         localsCopy.Add(xCopy);
       }

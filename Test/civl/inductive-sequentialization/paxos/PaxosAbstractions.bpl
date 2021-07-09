@@ -24,9 +24,9 @@ procedure {:IS_abstraction}{:layer 2} A_Propose'(r: Round, {:linear_in "perm"} p
 returns ({:pending_async "A_Vote", "A_Conclude"} PAs:[PA]int)
 modifies voteInfo, pendingAsyncs;
 {
-  var maxRound: int;
+  var {:pool "Round"} maxRound: int;
   var maxValue: Value;
-  var ns: NodeSet;
+  var {:pool "NodeSet"} ns: NodeSet;
 
   assert Round(r);
   assert pendingAsyncs[A_Propose(r, ps)] > 0;
@@ -42,6 +42,10 @@ modifies voteInfo, pendingAsyncs;
     {:add_to_pool "Node", 0}
     ps[ConcludePerm(r)];
   /**************************************************************************/
+
+  assume
+    {:add_to_pool "NodeSet", ns}
+    true;
 
   if (*) {
     assume IsSubset(ns, joinedNodes[r]) && IsQuorum(ns);
@@ -63,7 +67,7 @@ modifies voteInfo, pendingAsyncs;
 procedure {:IS_abstraction}{:layer 2} A_Conclude'(r: Round, v: Value, {:linear_in "perm"} p: Permission)
 modifies decision, pendingAsyncs;
 {
-  var q:NodeSet;
+  var q: NodeSet;
 
   assert Round(r);
   assert pendingAsyncs[A_Conclude(r, v, p)] > 0;
