@@ -247,7 +247,7 @@ namespace Microsoft.Boogie
       {
         int id = varCopies[v].Count;
         var copyVar = trc.civlTypeChecker.LocalVariable(string.Format(copierFormat, v.Name, id), v.TypedIdent.Type);
-        copyVar.Attributes = (QKeyValue) v.Attributes?.Clone();
+        copyVar.Attributes = v.Attributes;
         varCopies[v].Add(copyVar);
         copyToOriginalVar[copyVar] = v;
       }
@@ -475,7 +475,7 @@ namespace Microsoft.Boogie
         var substMap = remainingVars.ToDictionary(v => copyToOriginalVar[v], v => existsVarMap[v]);
         existsVarMap.Iter(kv =>
         {
-          kv.Value.Attributes = (QKeyValue) copyToOriginalVar[kv.Key].Attributes?.Clone();
+          kv.Value.Attributes = copyToOriginalVar[kv.Key].Attributes;
         });
         pathExprs = SubstitutionHelper.Apply(existsVarMap, pathExprs).ToList();
       }
