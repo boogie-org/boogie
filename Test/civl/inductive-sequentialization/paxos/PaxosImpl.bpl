@@ -2,7 +2,7 @@ procedure {:atomic}{:layer 2} A_Paxos({:linear_in "perm"} rs: [Round]bool)
 returns ({:pending_async "A_StartRound"} PAs:[PA]int)
 modifies pendingAsyncs;
 {
-  var numRounds: int;
+  var {:pool "NumRounds"} numRounds: int;
   assert
     {:add_to_pool "Round", 0, numRounds}
     Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
