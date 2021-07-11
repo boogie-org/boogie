@@ -140,7 +140,7 @@ modifies QuoteCH, RemCH, DecCH, contribution;
   else if (*)
   {
     assume
-      {:add_to_pool "INV3", k, k+1}
+      {:add_to_pool "INV3", 1, k, k+1}
       1 <= k && k < n && 0 <= sum(contribution, 1, k) && sum(contribution, 1, k) <= price;
     QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && i > k && q == price then 1 else 0));
     RemCH := (lambda i:int :: (lambda r:int :: if i == k+1 && r == price - sum(contribution, 1, k) then 1 else 0));
