@@ -44,8 +44,6 @@ function {:inline} SingletonPA (pa:PA) : [PA]int
 
 function {:builtin "MapAdd"} MapAddPA([PA]int, [PA]int) : [PA]int;
 
-function trigger(x:int) : bool { true }
-
 ////////////////////////////////////////////////////////////////////////////////
 
 function {:inline} Init(pids:[int]bool, ReqCH:[int]int, VoteCH:[vote]int,
@@ -77,20 +75,21 @@ INV4 ({:linear_in "pid"} pids:[int]bool)
 returns ({:pending_async "PARTICIPANT2"} PAs:[PA]int, {:choice} choice:PA)
 modifies ReqCH, VoteCH, DecCH, votes, decisions;
 {
+  var {:pool "INV1"} k: int;
+
   assert Init(pids, ReqCH, VoteCH, DecCH, decisions);
-
-  havoc ReqCH, VoteCH, DecCH, votes, decisions;
-
   assume
-  (exists k:int :: {trigger(k)} 0 <= k && k <= n && trigger(k+1) &&
+    {:add_to_pool "INV1", k, k+1}
+    {:add_to_pool "PARTICIPANT2", PARTICIPANT2(n)}
+    0 <= k && k <= n;
+  havoc ReqCH, VoteCH, votes, decisions;
+  assume
     (decisions[0] == COMMIT() || decisions[0] == ABORT()) &&
     (decisions[0] == COMMIT() ==> (forall i:int :: pid(i) ==> votes[i] == YES())) &&
-    (forall i:int :: pidLe(i,k) ==> decisions[i] == decisions[0]) &&
-    DecCH == (lambda i:int :: (lambda d:decision :: if pidGt(i, k) && d == decisions[0] then 1 else 0)) &&
-    PAs == (lambda pa:PA :: if is#PARTICIPANT2(pa) && pidGt(pid#PARTICIPANT2(pa), k) then 1 else 0) &&
-    choice == PARTICIPANT2(k+1) &&
-    (k < n ==> PAs[PARTICIPANT2(n)] > 0)
-  );
+    (forall i:int :: pidLe(i,k) ==> decisions[i] == decisions[0]);
+  DecCH := (lambda i:int :: (lambda d:decision :: if pidGt(i, k) && d == decisions[0] then 1 else 0));
+  PAs := (lambda {:pool "PARTICIPANT2"} pa:PA :: if is#PARTICIPANT2(pa) && pidGt(pid#PARTICIPANT2(pa), k) then 1 else 0);
+  choice := PARTICIPANT2(k+1);
 }
 
 procedure {:IS_abstraction}{:layer 5}
@@ -116,8 +115,9 @@ returns ({:pending_async "PARTICIPANT2"} PAs:[PA]int)
 modifies ReqCH, VoteCH, DecCH, votes, decisions;
 {
   var dec:decision;
-  assert Init(pids, ReqCH, VoteCH, DecCH, decisions);
-  assert trigger(0);
+  assert
+    {:add_to_pool "INV1", 0}
+    Init(pids, ReqCH, VoteCH, DecCH, decisions);
   havoc ReqCH, VoteCH, votes;
   if (*) { dec := COMMIT(); } else { dec := ABORT(); }
   assume dec == COMMIT() ==> (forall i:int :: pid(i) ==> votes[i] == YES());
@@ -196,22 +196,23 @@ INV2 ({:linear_in "pid"} pids:[int]bool)
 returns ({:pending_async "COORDINATOR2","PARTICIPANT1","PARTICIPANT2"} PAs:[PA]int, {:choice} choice:PA)
 modifies ReqCH, VoteCH, votes;
 {
+  var {:pool "INV2"} k: int;
+
   assert Init(pids, ReqCH, VoteCH, DecCH, decisions);
 
   havoc ReqCH, VoteCH, votes;
-
   assume
-  (exists k:int :: {trigger(k)} 0 <= k && k <= n && trigger(k+1) &&
-    (forall i:int :: pidGt(i,k) ==> ReqCH[i] == 1) &&
+    {:add_to_pool "INV2", k, k+1}
+    {:add_to_pool "PARTICIPANT1", PARTICIPANT1(n)}
+    0 <= k && k <= n;
+  assume (forall i:int :: pidGt(i,k) ==> ReqCH[i] == 1) &&
     VoteCH[YES()] >= 0 && VoteCH[NO()] >= 0 &&
     VoteCH[YES()] + VoteCH[NO()] <= k &&
-    (VoteCH[YES()] == k ==> (forall i:int :: pidLe(i,k) ==> votes[i] == YES())) &&
-    PAs == MapAddPA(SingletonPA(COORDINATOR2(0)),
+    (VoteCH[YES()] == k ==> (forall i:int :: pidLe(i,k) ==> votes[i] == YES()));
+  PAs := MapAddPA(SingletonPA(COORDINATOR2(0)),
       MapAddPA((lambda pa:PA :: if is#PARTICIPANT2(pa) && pidLe(pid#PARTICIPANT2(pa), k) then 1 else 0),
-               (lambda pa:PA :: if is#PARTICIPANT1(pa) && pidGt(pid#PARTICIPANT1(pa), k) then 1 else 0))) &&
-    choice == PARTICIPANT1(k+1) &&
-    (k < n ==> PAs[PARTICIPANT1(n)] > 0)
-  );
+               (lambda {:pool "PARTICIPANT1"} pa:PA :: if is#PARTICIPANT1(pa) && pidGt(pid#PARTICIPANT1(pa), k) then 1 else 0)));
+  choice := PARTICIPANT1(k+1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,8 +223,9 @@ MAIN2 ({:linear_in "pid"} pids:[int]bool)
 returns ({:pending_async "COORDINATOR2","PARTICIPANT1"} PAs:[PA]int)
 modifies ReqCH;
 {
-  assert Init(pids, ReqCH, VoteCH, DecCH, decisions);
-  assert trigger(0);
+  assert
+    {:add_to_pool "INV2", 0}
+    Init(pids, ReqCH, VoteCH, DecCH, decisions);
   ReqCH := (lambda i:int :: if pid(i) then 1 else 0);
   PAs := MapAddPA(SingletonPA(COORDINATOR2(0)), (lambda pa:PA :: if is#PARTICIPANT1(pa) && pid(pid#PARTICIPANT1(pa)) then 1 else 0));
 }

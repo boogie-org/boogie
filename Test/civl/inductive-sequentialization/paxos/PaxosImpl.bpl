@@ -2,11 +2,13 @@ procedure {:atomic}{:layer 2} A_Paxos({:linear_in "perm"} rs: [Round]bool)
 returns ({:pending_async "A_StartRound"} PAs:[PA]int)
 modifies pendingAsyncs;
 {
-  var numRounds: int;
-  assert Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
-  assert triggerRound(0);
-  assume 0 <= numRounds;
-  assume triggerRound(numRounds);
+  var {:pool "NumRounds"} numRounds: int;
+  assert
+    {:add_to_pool "Round", 0, numRounds}
+    Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
+  assume
+    {:add_to_pool "NumRounds", numRounds}
+    0 <= numRounds;
   PAs := (lambda pa: PA :: if is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && Round(round#A_StartRound(pa)) && round#A_StartRound(pa) <= numRounds then 1 else 0);
   pendingAsyncs := PAs;
 }

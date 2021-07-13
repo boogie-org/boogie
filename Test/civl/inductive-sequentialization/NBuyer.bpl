@@ -44,8 +44,6 @@ function MapAddPA3(a:PA, b:PA, c:[PA]int) : [PA]int
 function MapAddPA4(a:PA, b:PA, c:PA, d:[PA]int) : [PA]int
 { MapAddPA(SingletonPA(a), MapAddPA(SingletonPA(b), MapAddPA(SingletonPA(c), d))) }
 
-function trigger(x:int) : bool { true }
-
 function sum(A:[int]int, i:int, j:int) : int
 {
   if j < i then 0 else
@@ -127,6 +125,8 @@ INV3 ({:linear_in "pid"} pids:[int]bool)
 returns ({:pending_async "SellerFinish","FirstBuyer","MiddleBuyer","LastBuyer"} PAs:[PA]int, {:choice} choice:PA)
 modifies QuoteCH, RemCH, DecCH, contribution;
 {
+  var {:pool "INV3"} k: int;
+
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
 
   havoc contribution;
@@ -136,19 +136,16 @@ modifies QuoteCH, RemCH, DecCH, contribution;
     QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && q == price then 1 else 0));
     PAs := MapAddPA4(SellerFinish(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) then 1 else 0));
     choice := FirstBuyer(1);
-    assume trigger(1);
   }
   else if (*)
   {
-    havoc QuoteCH, RemCH;
     assume
-    (exists k:int :: {trigger(k)} 1 <= k && k < n && trigger(k+1) &&
-      QuoteCH == (lambda i:int :: (lambda q:int :: if buyerID(i) && i > k && q == price then 1 else 0)) &&
-      0 <= sum(contribution, 1, k) && sum(contribution, 1, k) <= price &&
-      RemCH == (lambda i:int :: (lambda r:int :: if i == k+1 && r == price - sum(contribution, 1, k) then 1 else 0)) &&
-      PAs == MapAddPA3(SellerFinish(0), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) && pid#MiddleBuyer(pa) > k then 1 else 0)) &&
-      (choice == if lastBuyerID(k+1) then LastBuyer(k+1) else MiddleBuyer(k+1))
-    );
+      {:add_to_pool "INV3", 1, k, k+1}
+      1 <= k && k < n && 0 <= sum(contribution, 1, k) && sum(contribution, 1, k) <= price;
+    QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && i > k && q == price then 1 else 0));
+    RemCH := (lambda i:int :: (lambda r:int :: if i == k+1 && r == price - sum(contribution, 1, k) then 1 else 0));
+    PAs := MapAddPA3(SellerFinish(0), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) && pid#MiddleBuyer(pa) > k then 1 else 0));
+    choice := if lastBuyerID(k+1) then LastBuyer(k+1) else MiddleBuyer(k+1);
   }
   else if (*)
   {
