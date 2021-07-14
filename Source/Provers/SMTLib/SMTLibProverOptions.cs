@@ -167,7 +167,7 @@ namespace Microsoft.Boogie.SMTLib
 SMT-specific options:
 ~~~~~~~~~~~~~~~~~~~~~
 SOLVER=<string>           Use the given SMT solver (z3, cvc5, yices2; default: z3)
-LOGIC=<string>            Pass (set-logic <string>) to the prover (default: empty, 'ALL_SUPPORTED' for CVC5)
+LOGIC=<string>            Pass (set-logic <string>) to the prover (default: empty, 'ALL' for CVC5)
 USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas (default: true)
 VERBOSITY=<int>           1 - print prover output (default: 0)
 O:<name>=<value>          Pass (set-option :<name> <value>) to the SMT solver.
