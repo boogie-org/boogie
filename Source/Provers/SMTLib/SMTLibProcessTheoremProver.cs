@@ -220,6 +220,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private void FindDependentTypes(Type type, List<DatatypeTypeCtorDecl> dependentTypes)
     {
+      DeclCollector.TypeToStringReg(type);
       if (type.IsSeq)
       {
         FindDependentTypes(type.AsCtor.Arguments[0], dependentTypes);
