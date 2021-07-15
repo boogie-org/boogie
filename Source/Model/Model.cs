@@ -659,16 +659,24 @@ namespace Microsoft.Boogie
     public Func MkFunc(string name, int arity)
     {
       Func res;
+      Element elseBranch = null;
       if (functionsByName.TryGetValue(name, out res))
       {
-        if (res.Arity != arity)
-          throw new ArgumentException(string.Format(
-            "function '{0}' previously created with arity {1}, now trying to recreate with arity {2}", name, res.Arity,
-            arity));
-        return res;
+        if (res.Arity != arity) {
+          if (res.apps.Count > 0) {
+            throw new ArgumentException(string.Format(
+              "function '{0}' previously created with arity {1}, now trying to recreate with arity {2}", name, res.Arity,
+              arity));
+          }
+          elseBranch = res.Else;
+          functions.Remove(res);
+          functionsByName.Remove(res.Name);
+        } else 
+          return res;
       }
 
       res = new Func(this, name, arity);
+      res.Else = elseBranch;
       functionsByName.Add(name, res);
       functions.Add(res);
       return res;
