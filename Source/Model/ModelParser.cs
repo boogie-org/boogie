@@ -298,9 +298,6 @@ namespace Microsoft.Boogie
 
               if (tuple0 == "else")
               {
-                if (fn.Else != null) {
-                  BadModel("multiple else cases");
-                }
                 if (!(resultName is string && ((string) resultName) == "#unspecified"))
                 {
                   fn.Else = GetElt(resultName);
