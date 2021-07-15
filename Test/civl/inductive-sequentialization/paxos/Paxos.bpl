@@ -93,18 +93,6 @@ function {:inline} Lemma_MaxRound_InitVote(voteInfo: [Round]Option VoteInfo, r: 
       MaxRound(r, ns, voteInfo[r' := Some(VoteInfo(v', NoNodes()))]))
 }
 
-function {:inline} Lemma_MaxRound_AddNodeToVote(voteInfo: [Round]Option VoteInfo, r: Round, r': Round, n: Node) : bool
-{
-  (forall ns: NodeSet ::
-    is#Some(voteInfo[r']) && (!ns[n] || r <= r') ==>
-    (
-      var v', ns' := value#VoteInfo(t#Some(voteInfo[r'])), ns#VoteInfo(t#Some(voteInfo[r']));
-      MaxRound(r, ns, voteInfo) ==
-      MaxRound(r, ns, voteInfo[r' := Some(VoteInfo(v', ns'[n:=true]))])
-    )
-  )
-}
-
 function {:inline} JoinPermissions(r: Round) : [Permission]bool
 {
   (lambda p:Permission :: if (is#JoinPerm(p) && r#JoinPerm(p) == r) then true else false)
