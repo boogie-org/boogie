@@ -136,7 +136,6 @@ namespace Microsoft.Boogie.SMTLib
       Process.ErrorHandler += this.HandleProverError;
     }
 
-
     void PossiblyRestart()
     {
       if (Process != null && Process.NeedsRestart)
