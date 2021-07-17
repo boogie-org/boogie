@@ -24,7 +24,12 @@ namespace Microsoft.Boogie
                 if (QKeyValue.FindBoolAttribute(function.Attributes, "inline") &&
                     function.Body == null)
                 {
-                    checkingContext.Error(function.tok, "Inlined function must have a body");
+                    checkingContext.Error(function.tok, "Function with :inline attribute must have a body");
+                }
+                if (QKeyValue.FindBoolAttribute(function.Attributes, "define") &&
+                    function.DefinitionBody == null)
+                {
+                    checkingContext.Error(function.tok, "Function with :define attribute must have a body");
                 }
             });
             if (checkingContext.ErrorCount > 0)
