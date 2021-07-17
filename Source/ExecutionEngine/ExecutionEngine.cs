@@ -726,6 +726,11 @@ namespace Microsoft.Boogie
         return PipelineOutcome.Done;
       }
 
+      if (!FunctionDependencyChecker.Check(program))
+      {
+        return PipelineOutcome.TypeCheckingError;
+      }
+      
       errorCount = program.Typecheck();
       if (errorCount != 0)
       {
