@@ -537,7 +537,7 @@ namespace Microsoft.Boogie
     /// If both "a" and "b" have an ":extern" attribute, returns either one.
     /// If one of "a" and "b" has an ":extern" attribute, returns that one.
     /// If neither of "a" and "b" has an ":extern" attribute, returns null.
-    /// If a non-value value is returned, this method also adds the ":ignore"
+    /// If a non-null value is returned, this method also adds the ":ignore"
     /// attribute to the declaration NOT returned.
     /// </summary>
     T SelectNonExtern<T>(T a, T b) where T : Declaration 

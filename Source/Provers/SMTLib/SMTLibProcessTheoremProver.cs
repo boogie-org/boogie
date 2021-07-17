@@ -340,17 +340,9 @@ namespace Microsoft.Boogie.SMTLib
         {
           if (ctx.DefinedFunctions.ContainsKey(fdep) && !definitionAdded.Contains(fdep))
           {
-            if (!dependenciesComputed.Contains(fdep))
-            {
-              // Handle dependencies first
-              functionDefs.Push(fdep);
-              hasDependencies = true;
-            }
-            else
-            {
-              HandleProverError(
-                "Function definition cycle detected: " + f.ToString() + " depends on " + fdep.ToString());
-            }
+            // Handle dependencies first
+            functionDefs.Push(fdep);
+            hasDependencies = true;
           }
         }
 

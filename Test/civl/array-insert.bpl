@@ -10,7 +10,7 @@ var {:layer 0,2} A:[int]int;
 var {:layer 0,2} count:int;
 var {:layer 0,2} lock:Tid;
 
-function {:inline 1} sorted (A:[int]int, count:int) : bool
+function {:inline} sorted (A:[int]int, count:int) : bool
 { (forall i:int, j:int :: 0 <= i && i <= j && j < count ==> A[i] <= A[j]) }
 
 procedure {:atomic}{:layer 2} INSERT ({:linear "tid"} tid:Tid, v:int)
@@ -132,4 +132,3 @@ procedure {:yields}{:layer 0}{:refines "READ_COUNT"} read_count ({:linear "tid"}
 procedure {:yields}{:layer 0}{:refines "WRITE_COUNT"} write_count ({:linear "tid"} tid:Tid, c:int);
 procedure {:yields}{:layer 0}{:refines "ACQUIRE"} acquire ({:linear "tid"} tid:Tid);
 procedure {:yields}{:layer 0}{:refines "RELEASE"} release ({:linear "tid"} tid:Tid);
-

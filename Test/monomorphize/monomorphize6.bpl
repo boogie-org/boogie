@@ -8,7 +8,7 @@ function {:constructor} Cell<T>(x: T): Cell T;
 type {:datatype} OtherCell _;
 function {:constructor} OtherCell<T>(x: T): OtherCell T;
 
-function {:inline} foo<T>(): Cell T;
+function foo<T>(): Cell T;
 
 procedure p() {
   var x: Cell (OtherCell int);

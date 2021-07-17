@@ -2,8 +2,10 @@
 // RUN: %diff "%s.expect" "%t"
 
 function {:define} foo(x:int) returns(int)
-  { foo2(x) + 1 }
-function {:define} foo2(x:int) returns(int)
+  { foo1(x) + 1 }
+function foo1(x:int) returns(int)
+  { foo2(x) }
+function {:inline} foo2(x:int) returns(int)
   { foo(x) + 2 }
 
 procedure test(x:int) returns (r:int)

@@ -2,6 +2,6 @@ monomorphize6.bpl(24,3): Error: This assertion might not hold.
 Execution trace:
     monomorphize6.bpl(22,5): anon0
 Augmented execution trace:
-x=(Cell_183 (OtherCell_47 1))
+x=(Cell_182 (OtherCell_46 1))
 
 Boogie program verifier finished with 1 verified, 1 error
