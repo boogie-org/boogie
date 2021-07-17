@@ -833,12 +833,6 @@ namespace VC
       private static List<Block> DoPreAssignedManualSplit(List<Block> blocks, Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
         Block containingBlock, bool lastSplitInBlock)
       {
-        Cmd AssertIntoAssume(Cmd c)
-        {
-          if (c is AssertCmd assrt) return VCGen.AssertTurnedIntoAssume(assrt);
-          return c;
-        }
-
         bool isSplitCmd(Cmd c)
         {
           return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "split_here");
@@ -864,7 +858,7 @@ namespace VC
                 splitCount++;
                 verify = splitCount == splitNumberWithinBlock;
               }
-              newCmds.Add(verify ? c : AssertIntoAssume(c));
+              newCmds.Add(verify ? c : Split.AssertIntoAssume(c));
             }
             newBlock.Cmds = newCmds;
           }
@@ -874,13 +868,13 @@ namespace VC
             var newCmds = new List<Cmd>();
             foreach(Cmd c in currentBlock.Cmds) {
               verify = isSplitCmd(c) ? false : verify;
-              newCmds.Add(verify ? c : AssertIntoAssume(c));
+              newCmds.Add(verify ? c : Split.AssertIntoAssume(c));
             }
             newBlock.Cmds = newCmds;
           }
           else
           {
-            newBlock.Cmds = currentBlock.Cmds.Select<Cmd, Cmd>(c => AssertIntoAssume(c)).ToList();
+            newBlock.Cmds = currentBlock.Cmds.Select<Cmd, Cmd>(c => Split.AssertIntoAssume(c)).ToList();
           }
         }
         // Patch the edges between the new blocks
@@ -1140,6 +1134,90 @@ namespace VC
         return splits;
       }
 
+      public static List<Split> FocusImpl(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
+      {
+        bool isFocusCmd(Cmd c) {
+          return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "split_here");
+        }
+        List<Block> getFocusBlocks(List<Block> blocks) {
+          return blocks.Where(blk => blk.Cmds.Where(c => isFocusCmd(c)).Count() != 0).ToList();
+        }
+
+        List<Block> focusBlocks = getFocusBlocks(impl.Blocks);
+        var dag = VCGen.BlocksToDag(impl.Blocks);
+        var topoSorted = dag.TopologicalSort().ToList();
+
+        int compareBlocks(Block b1, Block b2) {
+          if (topoSorted.IndexOf(b1) < topoSorted.IndexOf(b2)) {
+            return -1;
+          } else if (topoSorted.IndexOf(b1) > topoSorted.IndexOf(b2)) {
+            return 1;
+          } else {
+            return 0;
+          }
+        }
+
+        HashSet<Block> getReachableBlocks(Block root, bool direction) {
+          var todo = new Stack<Block>();
+          var visited = new HashSet<Block> ();
+          todo.Push(root);
+          while(todo.Count() != 0) {
+            var b = todo.Pop();
+            if (visited.Contains(b)) continue;
+            var related = direction ? dag.Successors(b) : dag.Predecessors(b);
+            related.Where(b => !visited.Contains(b)).ToList().ForEach(b => todo.Push(b));
+            visited.Add(b);
+          }
+          return visited;
+        }
+
+        focusBlocks.Sort(compareBlocks);
+
+        // list of blocks in each split. In each list, every block is marked as asserting or non-asserting
+        // in non-asserting blocks, asserts are turned to assumes (but this happens later when we duplicate).
+        var s = new List<Split>();
+        var duplicator = new Duplicator();
+        void focusRec(int focusIdx, IEnumerable<Block> blocks, IEnumerable<Block> freeBlocks)
+        {
+          if (focusIdx == focusBlocks.Count()) {
+            var l = blocks.ToList();
+            l.Sort(compareBlocks);
+            Contract.Assert(l.ElementAt(0) == impl.Blocks[0]);
+            l.Reverse();
+            var newBlocks = new List<Block>();
+            var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count());
+            foreach (Block b in l)
+            {
+              var newBlock = (Block)duplicator.Visit(b);
+              newBlocks.Add(newBlock);
+              oldToNewBlockMap[b] = newBlock;
+              if(freeBlocks.Contains(b)) {
+                newBlock.Cmds = b.Cmds.Select(c => Split.AssertIntoAssume(c)).ToList();
+              }
+              if (b.TransferCmd is GotoCmd gtc) {
+                var targets = gtc.labelTargets.Where(blk => blocks.Contains(blk));
+                newBlock.TransferCmd = new GotoCmd(gtc.tok,
+                                              targets.Select(blk => oldToNewBlockMap[blk].Label).ToList(),
+                                              targets.Select(blk => oldToNewBlockMap[blk]).ToList());
+              }
+            }
+            s.Add(new Split(PostProcess(newBlocks), gotoCmdOrigins, par, impl));
+          } else if (!blocks.Contains(focusBlocks[focusIdx])) {
+            focusRec(focusIdx + 1, blocks, freeBlocks);
+          } else {
+            var b = focusBlocks[focusIdx];
+            // the first part takes all blocks except the ones dominated by the focus block
+            focusRec(focusIdx + 1, blocks.Where(blk => !dag.DominatorMap.DominatedBy(blk, b)), freeBlocks);
+            // the other part takes all predecessors, the block, and the successors.
+            var ancestors = getReachableBlocks(b, false);
+            ancestors.Remove(b);
+            var descendants = getReachableBlocks(b, true);
+            focusRec(focusIdx + 1, ancestors.Union(descendants).Intersect(blocks), ancestors.Union(freeBlocks));
+          }
+        }
+        focusRec(0, impl.Blocks, new List<Block>());
+        return s;
+      }
       public static List<Split /*!*/> /*!*/ DoSplit(Split initial, double maxCost, int max)
       {
         Contract.Requires(initial != null);
@@ -1395,7 +1473,11 @@ namespace VC
           desc += "_split" + no;
         checker.BeginCheck(desc, vc, reporter, timeout, rlimit, impl.RandomSeed);
       }
-
+      private static Cmd AssertIntoAssume(Cmd c)
+      {
+        if (c is AssertCmd assrt) return VCGen.AssertTurnedIntoAssume(assrt);
+        return c;
+      }
       private void SoundnessCheck(HashSet<List<Block> /*!*/> /*!*/ cache, Block /*!*/ orig,
         List<Block /*!*/> /*!*/ copies)
       {
