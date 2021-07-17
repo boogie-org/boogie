@@ -435,7 +435,7 @@ namespace Microsoft.Boogie
 
     static TextWriter ModelWriter = null;
 
-    public static void ProcessFiles(IList<string> fileNames, bool lookForSnapshots = true, string programId = null)
+    public static bool ProcessFiles(IList<string> fileNames, bool lookForSnapshots = true, string programId = null)
     {
       Contract.Requires(cce.NonNullElements(fileNames));
 
@@ -446,30 +446,22 @@ namespace Microsoft.Boogie
 
       if (CommandLineOptions.Clo.VerifySeparately && 1 < fileNames.Count)
       {
-        foreach (var f in fileNames)
-        {
-          ProcessFiles(new List<string> {f}, lookForSnapshots, f);
-        }
-
-        return;
+        return fileNames.All(f => ProcessFiles(new List<string> {f}, lookForSnapshots, f));
       }
 
       if (0 <= CommandLineOptions.Clo.VerifySnapshots && lookForSnapshots)
       {
         var snapshotsByVersion = LookForSnapshots(fileNames);
-        foreach (var s in snapshotsByVersion)
-        {
-          ProcessFiles(new List<string>(s), false, programId);
-        }
-
-        return;
+        return snapshotsByVersion.All(s => ProcessFiles(new List<string>(s), false, programId));
       }
 
       using (XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count - 1]))
       {
         Program program = ParseBoogieProgram(fileNames, false);
         if (program == null)
-          return;
+        {
+          return true;
+        }
         if (CommandLineOptions.Clo.PrintFile != null)
         {
           PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
@@ -478,7 +470,9 @@ namespace Microsoft.Boogie
         CivlTypeChecker civlTypeChecker;
         PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out civlTypeChecker);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
-          return;
+        {
+          return true;
+        }
 
         if (CommandLineOptions.Clo.PrintCFGPrefix != null)
         {
@@ -514,9 +508,12 @@ namespace Microsoft.Boogie
           case PipelineOutcome.Done:
           case PipelineOutcome.VerificationCompleted:
             printer.WriteTrailer(stats);
-            break;
+            return true;
+          case PipelineOutcome.FatalError:
+            return false;
           default:
-            break;
+            Debug.Assert(false, "Unreachable code");
+            return false;
         }
       }
     }
@@ -1221,7 +1218,7 @@ namespace Microsoft.Boogie
                     program, extractLoopMappingInfo);
                 }
               }
-            }            
+            }
           }
           catch (VCGenException e)
           {
@@ -1239,6 +1236,10 @@ namespace Microsoft.Boogie
 
             verificationResult.Errors = null;
             verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+          }
+          catch (ProverDiedException)
+          {
+            throw;
           }
           catch (UnexpectedProverOutputException upo)
           {
