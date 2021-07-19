@@ -472,7 +472,6 @@ namespace Microsoft.Boogie
       {
         var remainingVars = NotEliminatedVars.Except(IntermediateFrameWithWitnesses);
         existsVarMap = remainingVars.ToDictionary(v => v, v => (Variable) VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
-        var substMap = remainingVars.ToDictionary(v => copyToOriginalVar[v], v => existsVarMap[v]);
         existsVarMap.Iter(kv =>
         {
           kv.Value.Attributes = copyToOriginalVar[kv.Key].Attributes;
