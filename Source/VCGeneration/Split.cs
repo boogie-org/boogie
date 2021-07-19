@@ -1142,21 +1142,25 @@ namespace VC
         List<Block> getFocusBlocks(List<Block> blocks) {
           return blocks.Where(blk => blk.Cmds.Where(c => isFocusCmd(c)).Count() != 0).ToList();
         }
-
-        List<Block> focusBlocks = getFocusBlocks(impl.Blocks);
         var dag = VCGen.BlocksToDag(impl.Blocks);
         var topoSorted = dag.TopologicalSort().ToList();
-
+        // If reallyFocus is set to true,
+        // foci are processed in a top-down fashion --- i.e., if two foci are on the same path,
+        // the ancestor is processed first.
+        // On the other hand, if reallyFocus is false,
+        // foci are processed in a bottom-up fashion --- i.e., the descendant is processed first.
+        bool reallyFocus = true;
         int compareBlocks(Block b1, Block b2) {
-          if (topoSorted.IndexOf(b1) < topoSorted.IndexOf(b2)) {
-            return -1;
-          } else if (topoSorted.IndexOf(b1) > topoSorted.IndexOf(b2)) {
-            return 1;
-          } else {
+          if (topoSorted.IndexOf(b1) == topoSorted.IndexOf(b2)) {
             return 0;
+          } else {
+            return (topoSorted.IndexOf(b1) < topoSorted.IndexOf(b2) ^ reallyFocus) ? 1 : -1;
           }
         }
-
+        List<Block> focusBlocks = getFocusBlocks(impl.Blocks);
+        focusBlocks.Sort(compareBlocks); // if reallyFocus is true, blocks are sorted according to the topological order; otherwise they are placed in reverse topo order.
+        var s = new List<Split>();
+        var duplicator = new Duplicator();
         HashSet<Block> getReachableBlocks(Block root, bool direction) {
           var todo = new Stack<Block>();
           var visited = new HashSet<Block> ();
@@ -1170,20 +1174,18 @@ namespace VC
           }
           return visited;
         }
-
-        focusBlocks.Sort(compareBlocks);
-
-        // list of blocks in each split. In each list, every block is marked as asserting or non-asserting
-        // in non-asserting blocks, asserts are turned to assumes (but this happens later when we duplicate).
-        var s = new List<Split>();
-        var duplicator = new Duplicator();
         void focusRec(int focusIdx, IEnumerable<Block> blocks, IEnumerable<Block> freeBlocks)
         {
           if (focusIdx == focusBlocks.Count()) {
+            // freeBlocks consist of the predecessors of the relevant foci; their assertions turn into assumes;
             var l = blocks.ToList();
             l.Sort(compareBlocks);
-            Contract.Assert(l.ElementAt(0) == impl.Blocks[0]);
-            l.Reverse();
+            // assert that the root block, impl.Blocks[0], is in l
+            Contract.Assert((reallyFocus && l.ElementAt(0) == impl.Blocks[0])
+                            || (!reallyFocus && l.ElementAt(l.Count() - 1) == impl.Blocks[0]));
+            if (reallyFocus) {
+              l.Reverse();
+            }
             var newBlocks = new List<Block>();
             var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count());
             foreach (Block b in l)
@@ -1201,6 +1203,8 @@ namespace VC
                                               targets.Select(blk => oldToNewBlockMap[blk]).ToList());
               }
             }
+            newBlocks.Reverse();
+            Contract.Assert(newBlocks[0] == oldToNewBlockMap[impl.Blocks[0]]);
             s.Add(new Split(PostProcess(newBlocks), gotoCmdOrigins, par, impl));
           } else if (!blocks.Contains(focusBlocks[focusIdx])) {
             focusRec(focusIdx + 1, blocks, freeBlocks);

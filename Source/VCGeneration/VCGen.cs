@@ -816,7 +816,7 @@ namespace VC
       Stack<Split> work = new Stack<Split>();
       List<Split> currently_running = new List<Split>();
       ResetPredecessors(impl.Blocks);
-      List<Split> manual_splits = Split.FindManualSplits(impl, gotoCmdOrigins, this);
+      List<Split> manual_splits = Split.FocusImpl(impl, gotoCmdOrigins, this);
       if (manual_splits != null)
       {
         foreach (var split in manual_splits)
@@ -929,7 +929,7 @@ namespace VC
               {
                 if (prover_failed)
                 {
-                  // even if the prover fails, we have learned something, i.e., it is 
+                  // even if the prover fails, we have learned something, i.e., it is
                   // annoying to watch Boogie say Timeout, 0.00% a couple of times
                   proven_cost += s.Cost / 100;
                 }
@@ -1027,7 +1027,7 @@ namespace VC
         }
       }
     }
-    
+
     public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
