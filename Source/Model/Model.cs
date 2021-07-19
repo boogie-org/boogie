@@ -259,8 +259,27 @@ namespace Microsoft.Boogie
     {
       public readonly Model Model;
       public readonly string Name;
-      public readonly int Arity;
+      private int? TrueArity; // can be null if arity is unknown
       internal readonly List<FuncTuple> apps = new List<FuncTuple>();
+
+      public virtual int Arity {
+        get {
+          return TrueArity ?? 1;  // return 1 if arity is unknown
+        }
+        set {
+          if ((TrueArity != null) && (TrueArity != value)) {
+            throw new ArgumentException(string.Format(
+              "function '{0}' previously created with arity {1}, " +
+              "is now being assigned arity {2}", Name, TrueArity,
+              value));
+          }
+          TrueArity = value;
+        }
+      }
+
+      public bool ArityIsKnown() {
+        return TrueArity != null;
+      }
 
       public IEnumerable<FuncTuple> Apps
       {
@@ -274,11 +293,11 @@ namespace Microsoft.Boogie
 
       private Element @else;
 
-      internal Func(Model p, string n, int a)
+      internal Func(Model p, string n, int? a)
       {
         Model = p;
         Name = n;
-        Arity = a;
+        TrueArity = a;
       }
 
       public override string ToString()
@@ -492,8 +511,8 @@ namespace Microsoft.Boogie
         return r != null && !r.Value;
       }
 
-      public void AddApp(Element res, params Element[] args)
-      {
+      public void AddApp(Element res, params Element[] args) {
+        TrueArity = Arity; // fixing the arity before adding any appications
         if (Arity == 0)
           SetConstant(res);
         else
@@ -656,27 +675,16 @@ namespace Microsoft.Boogie
       return res;
     }
 
-    public Func MkFunc(string name, int arity)
+    public Func MkFunc(string name, int? arity)
     {
       Func res;
-      Element elseBranch = null;
-      if (functionsByName.TryGetValue(name, out res))
-      {
-        if (res.Arity != arity) {
-          if (res.apps.Count > 0) {
-            throw new ArgumentException(string.Format(
-              "function '{0}' previously created with arity {1}, now trying to recreate with arity {2}", name, res.Arity,
-              arity));
-          }
-          elseBranch = res.Else;
-          functions.Remove(res);
-          functionsByName.Remove(res.Name);
-        } else 
-          return res;
+      if (functionsByName.TryGetValue(name, out res)) {
+        if (arity != null)
+          res.Arity = (int) arity;
+        return res;
       }
 
       res = new Func(this, name, arity);
-      res.Else = elseBranch;
       functionsByName.Add(name, res);
       functions.Add(res);
       return res;
