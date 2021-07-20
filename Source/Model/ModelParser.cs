@@ -311,7 +311,7 @@ namespace Microsoft.Boogie
               }
 
               fn.Arity = tuple.Count - 2;
-              var args = new Model.Element[fn.Arity ?? 1]; // arity cannot be null here
+              var args = new Model.Element[(int) fn.Arity]; 
               for (int i = 0; i < fn.Arity; ++i)
                 args[i] = GetElt(tuple[i]);
               fn.AddApp(GetElt(resultName), args);
