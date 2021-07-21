@@ -174,8 +174,6 @@ namespace Microsoft.Boogie
 
     internal override void Run()
     {
-      var selectFunctions = new Dictionary<int, Model.Func>();
-      var storeFunctions = new Dictionary<int, Model.Func>();
       while (true)
       {
         var line = ReadLine();
