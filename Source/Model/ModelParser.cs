@@ -174,8 +174,6 @@ namespace Microsoft.Boogie
 
     internal override void Run()
     {
-      var selectFunctions = new Dictionary<int, Model.Func>();
-      var storeFunctions = new Dictionary<int, Model.Func>();
       while (true)
       {
         var line = ReadLine();
@@ -244,7 +242,7 @@ namespace Microsoft.Boogie
 
           if (lastWord is string && ((string) lastWord) == "{")
           {
-            fn = currModel.TryGetFunc(funName);
+            fn = currModel.MkFunc(funName, null);
             while (true)
             {
               var tuple = GetFunctionTokens(ReadLine());
@@ -255,48 +253,19 @@ namespace Microsoft.Boogie
               string tuple0 = tuple[0] as string;
               if (tuple.Count == 1)
               {
-                if (fn == null)
-                  fn = currModel.MkFunc(funName, null);
                 if (tuple0 == "}")
                   break;
-                if (fn.Else == null)
-                  fn.Else = GetElt(tuple[0]);
+                if (fn.Else != null) {
+                  BadModel("multiple else cases");
+                }
+                fn.Else = GetElt(tuple[0]);
                 continue;
               }
 
               string tuplePenultimate = tuple[tuple.Count - 2] as string;
-              if (tuplePenultimate != "->")
+              if (tuple.Count == 2 || tuplePenultimate != "->")
                 BadModel("invalid function tuple definition");
               var resultName = tuple[tuple.Count - 1];
-
-              if (fn == null)
-              {
-                int? arity = tuple0 == "else" ? null : tuple.Count - 2;
-                // TODO: arity can be null here meaning that the renaming below
-                // is not safe and can lead to name clashes
-                if (Regex.IsMatch(funName, "^MapType[0-9]*Select$"))
-                {
-                  funName = string.Format("[{0}]", arity ?? 1);
-                  if (!selectFunctions.TryGetValue(arity ?? 1, out fn))
-                  {
-                    fn = currModel.MkFunc(funName, arity);
-                    selectFunctions.Add(arity ?? 1, fn);
-                  }
-                }
-                else if (Regex.IsMatch(funName, "^MapType[0-9]*Store$"))
-                {
-                  funName = string.Format("[{0}:=]", arity ?? 1);
-                  if (!storeFunctions.TryGetValue(arity ?? 1, out fn))
-                  {
-                    fn = currModel.MkFunc(funName, arity);
-                    storeFunctions.Add(arity ?? 1, fn);
-                  }
-                }
-                else
-                {
-                  fn = currModel.MkFunc(funName, arity);
-                }
-              }
 
               if (tuple0 == "else")
               {
