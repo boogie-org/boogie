@@ -300,9 +300,8 @@ ensures C == Vec_Concat(A, B);
         e := Vec_Nth(R, Vec_Len(R) - 1);
         C := Vec_Append(C, e);
         R := Vec_Remove(R);
-        assert Vec_Len(C) == Vec_Len(Vec_Concat(A, Vec_Slice(B, 0, Vec_Len(B) - Vec_Len(R))));
         call y := Vec_Ext(C, Vec_Concat(A, Vec_Slice(B, 0, Vec_Len(B) - Vec_Len(R))));
-        assume {:add_to_pool "Slice", y, y - Vec_Len(A)} true;
+        assume {:add_to_pool "Concat", y} {:add_to_pool "Slice", y - Vec_Len(A)} true;
         assert {:split_here} true;
     }
     assert {:split_here} true;
