@@ -709,7 +709,9 @@ namespace Microsoft.Boogie
         {
           return new IdentifierExpr(node.tok, boundVarSubst[node.Decl], node.Immutable);
         }
-        return base.VisitIdentifierExpr(node);
+        var identifierExpr = base.VisitIdentifierExpr(node);
+        identifierExpr.Type = VisitType(identifierExpr.Type);
+        return identifierExpr;
       }
 
       public override BinderExpr VisitBinderExpr(BinderExpr node)
@@ -764,6 +766,7 @@ namespace Microsoft.Boogie
         }
 
         var expr = (LetExpr) base.VisitLetExpr(node);
+        expr.Type = VisitType(expr.Type);
         expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
         foreach (var x in node.Dummies)
         {

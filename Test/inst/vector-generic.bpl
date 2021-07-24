@@ -52,6 +52,7 @@ requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == B;
 
 procedure Ex5<Element>(A: Vec Element, B: Vec Element, i: int, e: Element)
 requires 0 <= i && i < Vec_Len(A);
+requires Vec_Len(A) == Vec_Len(B);
 requires Vec_Nth(A, i) == Vec_Nth(B, Vec_Len(B) - 1);
 requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_Slice(B, 0, Vec_Len(B) - 1);
 {
@@ -66,6 +67,7 @@ requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_
 
 procedure Ex6a<Element>(A: Vec Element, B: Vec Element, i: int, e: Element)
 requires 0 <= i && i < Vec_Len(A);
+requires Vec_Len(A) == Vec_Len(B);
 requires Vec_Nth(A, i) == Vec_Nth(B, Vec_Len(B) - 1);
 requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_Slice(B, 0, Vec_Len(B) - 1);
 {
@@ -79,6 +81,7 @@ requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_
 
 procedure Ex6b<Element>(A: Vec Element, B: Vec Element, i: int, e: Element)
 requires 0 <= i && i < Vec_Len(A);
+requires Vec_Len(A) == Vec_Len(B);
 requires Vec_Nth(A, i) == Vec_Nth(B, Vec_Len(B) - 1);
 requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_Slice(B, 0, Vec_Len(B) - 1);
 {
@@ -154,6 +157,7 @@ ensures i' == i + 1;
 ensures Vec_Nth(B', i') == Vec_Nth(A, j);
 ensures Vec_Slice(B', 0, i') == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, i' + 1));
 ensures Vec_Slice(B', i' + 1, Vec_Len(B')) == Vec_Slice(A, i' + 1, Vec_Len(A));
+ensures Vec_Len(B) == Vec_Len(B');
 {
     var x, y: int;
 
@@ -179,20 +183,22 @@ ensures B == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A)));
 
     B := A;
     i := j;
+    assert {:split_here} true;
     while (i < Vec_Len(A) - 1)
     invariant j <= i && i <= Vec_Len(A) - 1;
+    invariant Vec_Len(A) == Vec_Len(B);
     invariant Vec_Nth(B, i) == Vec_Nth(A, j);
     invariant Vec_Slice(B, 0, i) == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, i + 1));
     invariant Vec_Slice(B, i + 1, Vec_Len(B)) == Vec_Slice(A, i + 1, Vec_Len(A));
     {
-        assert {:split_here} true;
         call B, i := Ex8(A, j, B, i);
+        assert {:split_here} true;
     }
+    assert {:split_here} true;
     e := Vec_Nth(B, Vec_Len(A) - 1);
     B := Vec_Remove(B);
     call z := Vec_Ext(B, Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A))));
     assume {:add_to_pool "Slice", z, j, j + 1, j - 1} true;
-    assert {:split_here} true;
 }
 
 // "real" vector procedures start here
@@ -206,36 +212,37 @@ ensures B == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A)));
 
     B := A;
     i := j;
+    assert {:split_here} true;
     while (i < Vec_Len(A) - 1)
     invariant j <= i && i <= Vec_Len(A) - 1;
+    invariant Vec_Len(A) == Vec_Len(B);
     invariant Vec_Nth(B, i) == Vec_Nth(A, j);
     invariant Vec_Slice(B, 0, i) == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, i + 1));
     invariant Vec_Slice(B, i + 1, Vec_Len(B)) == Vec_Slice(A, i + 1, Vec_Len(A));
     {
-        assert {:split_here} true;
         assume {:add_to_pool "Slice", i, j} true;
-
         B := Vec_Swap(B, i, i + 1);
         i := i + 1;
-
         assume {:add_to_pool "Slice", i} true;
         call x := Vec_Ext(Vec_Slice(B, 0, i), Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, i + 1)));
         assume {:add_to_pool "Slice", 0, x + j, x - j, x, x + 1, x - 1} true;
         call y := Vec_Ext(Vec_Slice(B, i + 1, Vec_Len(B)), Vec_Slice(A, i + 1, Vec_Len(A)));
         assume {:add_to_pool "Slice", y, y + 1} true;
+        assert {:split_here} true;
     }
+    assert {:split_here} true;
     e := Vec_Nth(B, Vec_Len(A) - 1);
     B := Vec_Remove(B);
     call z := Vec_Ext(B, Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A))));
     assume {:add_to_pool "Slice", z, j, j + 1, j - 1} true;
-    assert {:split_here} true;
 }
 
 procedure swap_remove<Element>(A: Vec Element, j: int) returns (B: Vec Element)
 requires 0 <= j && j < Vec_Len(A);
 ensures Vec_Slice(B, 0, j) == Vec_Slice(A, 0, j);
 ensures Vec_Slice(B, j+1, Vec_Len(B)) == Vec_Slice(A, j+1, Vec_Len(B));
-ensures Vec_Nth(B, j) == Vec_Nth(A, Vec_Len(A) - 1);
+ensures Vec_Len(B) == Vec_Len(A) - 1;
+ensures j < Vec_Len(B) ==> Vec_Nth(B, j) == Vec_Nth(A, Vec_Len(A) - 1);
 {
     var last_idx: int;
 
@@ -283,7 +290,9 @@ ensures C == Vec_Concat(A, B);
 
     C := A;
     call R := reverse(B);
+    assert {:split_here} true;
     while (0 < Vec_Len(R))
+    invariant Vec_Len(R) <= Vec_Len(B);
     invariant (forall {:pool "L"} x: int :: {:skolem_add_to_pool "L", 0, x + 1}
     0 <= x && x < Vec_Len(R) ==> Vec_Nth(B, x + Vec_Len(B) - Vec_Len(R)) == Vec_Nth(R, Vec_Len(R) - 1 - x));
     invariant C == Vec_Concat(A, Vec_Slice(B, 0, Vec_Len(B) - Vec_Len(R)));
@@ -291,10 +300,11 @@ ensures C == Vec_Concat(A, B);
         e := Vec_Nth(R, Vec_Len(R) - 1);
         C := Vec_Append(C, e);
         R := Vec_Remove(R);
-        assert Vec_Len(C) == Vec_Len(Vec_Concat(A, Vec_Slice(B, 0, Vec_Len(B) - Vec_Len(R))));
         call y := Vec_Ext(C, Vec_Concat(A, Vec_Slice(B, 0, Vec_Len(B) - Vec_Len(R))));
-        assume {:add_to_pool "Slice", y, y - Vec_Len(A)} true;
+        assume {:add_to_pool "Concat", y} {:add_to_pool "Slice", y - Vec_Len(A)} true;
+        assert {:split_here} true;
     }
+    assert {:split_here} true;
 }
 
 procedure contains<Element>(A: Vec Element, e: Element) returns (found: bool)
