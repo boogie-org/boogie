@@ -986,6 +986,11 @@ namespace Microsoft.Boogie
       return monomorphizationDuplicator.VisitExpr(node);
     }
 
+    public override Expr VisitNAryExpr(NAryExpr node)
+    {
+      return monomorphizationDuplicator.VisitExpr(node);
+    }
+
     public override Expr VisitIdentifierExpr(IdentifierExpr node)
     {
       return monomorphizationDuplicator.VisitExpr(node);
