@@ -82,31 +82,42 @@ function {:inline} Vec_Concat<T>(v1: Vec T, v2: Vec T): Vec T {
             else if (Vec_Len(v1) <= i && i < Vec_Len(v1) + Vec_Len(v2)) then Vec_Nth(v2, i - Vec_Len(v1))
             else Default()),
         Vec_Len(v1) + Vec_Len(v2)
-        )
+       )
 }
 
 function {:inline} Vec_Slice<T>(v: Vec T, i: int, j: int): Vec T {
-    if (0 <= i && i < j && j <= len#Vec(v)) then
+    (
         Vec(
             (lambda {:pool "Slice"} k: int ::
-                if (k < 0) then Default()
-                else if (0 <= k && k < j - i) then Vec_Nth(v, k + i)
+                if (0 <= i && i < j && j <= len#Vec(v) && 0 <= k && k < j - i) then Vec_Nth(v, k + i)
                 else Default()),
-            j - i
-            )
-    else Vec_Empty()
+            if (0 <= i && i < j && j <= len#Vec(v)) then j - i else 0
+           )
+    )
 }
-
+/*
+// Monomorphization currently crashes with the following version of Vec_Slice
+function {:inline} Vec_Slice<T>(v: Vec T, i: int, j: int): Vec T {
+    (
+        var cond := 0 <= i && i < j && j <= len#Vec(v);
+        Vec(
+            (lambda {:pool "Slice"} k: int ::
+                if (cond && 0 <= k && k < j - i) then Vec_Nth(v, k + i)
+                else Default()),
+            if (cond) then j - i else 0
+           )
+    )
+}
+*/
 function {:inline} Vec_Swap<T>(v: Vec T, i: int, j: int): Vec T {
-    if (0 <= i && i < len#Vec(v) && 0 <= j && j < len#Vec(v) && i != j)
-    then Vec(contents#Vec(v)[i := contents#Vec(v)[j]][j := contents#Vec(v)[i]], len#Vec(v))
-    else v
+    (
+        var cond := 0 <= i && i < len#Vec(v) && 0 <= j && j < len#Vec(v);
+        Vec(contents#Vec(v)[i := contents#Vec(v)[if (cond) then j else i]][j := contents#Vec(v)[if (cond) then i else j]], len#Vec(v))
+    )
 }
 
 function {:inline} Vec_Remove<T>(v: Vec T): Vec T {
-    if (0 < len#Vec(v))
-    then Vec(contents#Vec(v)[len#Vec(v)-1 := Default()], len#Vec(v) - 1)
-    else Vec_Empty()
+    Vec(contents#Vec(v)[len#Vec(v)-1 := Default()], if (0 < len#Vec(v)) then len#Vec(v) - 1 else 0)
 }
 
 // extensionality lemma to be used explicitly by the programmer
