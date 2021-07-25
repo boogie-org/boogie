@@ -220,10 +220,8 @@ ensures B == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A)));
     invariant Vec_Slice(B, 0, i) == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, i + 1));
     invariant Vec_Slice(B, i + 1, Vec_Len(B)) == Vec_Slice(A, i + 1, Vec_Len(A));
     {
-        assume {:add_to_pool "Slice", i, j} true;
         B := Vec_Swap(B, i, i + 1);
         i := i + 1;
-        assume {:add_to_pool "Slice", i} true;
         call x := Vec_Ext(Vec_Slice(B, 0, i), Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, i + 1)));
         assume {:add_to_pool "Concat", x} {:add_to_pool "Slice", 0, x, x - j} true;
         call y := Vec_Ext(Vec_Slice(B, i + 1, Vec_Len(B)), Vec_Slice(A, i + 1, Vec_Len(A)));
