@@ -125,7 +125,10 @@ function {:inline} Vec_Swap<T>(v: Vec T, i: int, j: int): Vec T {
 }
 
 function {:inline} Vec_Remove<T>(v: Vec T): Vec T {
-    Vec(contents#Vec(v)[len#Vec(v)-1 := Default()], if (0 < len#Vec(v)) then len#Vec(v) - 1 else 0)
+    (
+        var cond, new_len := 0 < len#Vec(v), len#Vec(v) - 1;
+        Vec(contents#Vec(v)[new_len := if (cond) then Default() else contents#Vec(v)[new_len]], if (cond) then new_len else len#Vec(v))
+    )
 }
 
 // extensionality lemma to be used explicitly by the programmer

@@ -203,6 +203,8 @@ namespace Microsoft.Boogie
           visitor.Visit(node.TypeParameters[t]);
         });
       }
+
+      Visit(node.Type);
       return base.VisitNAryExpr(node);
     }
 
@@ -275,6 +277,28 @@ namespace Microsoft.Boogie
       LinqExtender.Map(node.Proc.TypeParameters, node.TypeParameters)
         .Iter(x => typeVariableDependencyGraph.AddEdge(x.Key, x.Value));
       return base.VisitImplementation(node);
+    }
+
+    public override Absy Visit(Absy node)
+    {
+      if (node is ICarriesAttributes attrNode && attrNode.Attributes != null)
+      {
+        VisitQKeyValue(attrNode.Attributes);
+      }
+      return base.Visit(node);
+    }
+    
+    public override Type VisitTypeProxy(TypeProxy node)
+    {
+      if (node.ProxyFor == null)
+      {
+        isMonomorphizable = false;
+      }
+      else
+      {
+        Visit(TypeProxy.FollowProxy(node));
+      }
+      return node;
     }
   }
   
@@ -692,6 +716,11 @@ namespace Microsoft.Boogie
         return (Type) Visit(node);
       }
 
+      public override Type VisitTypeProxy(TypeProxy node)
+      {
+        return VisitType(TypeProxy.FollowProxy(node));
+      }
+
       public override Expr VisitExpr(Expr node)
       {
         node = base.VisitExpr(node);
@@ -982,6 +1011,11 @@ namespace Microsoft.Boogie
     }
 
     public override Expr VisitExpr(Expr node)
+    {
+      return monomorphizationDuplicator.VisitExpr(node);
+    }
+
+    public override Expr VisitNAryExpr(NAryExpr node)
     {
       return monomorphizationDuplicator.VisitExpr(node);
     }

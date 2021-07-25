@@ -225,7 +225,7 @@ ensures B == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A)));
         i := i + 1;
         assume {:add_to_pool "Slice", i} true;
         call x := Vec_Ext(Vec_Slice(B, 0, i), Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, i + 1)));
-        assume {:add_to_pool "Slice", 0, x + j, x - j, x, x + 1, x - 1} true;
+        assume {:add_to_pool "Concat", x} {:add_to_pool "Slice", 0, x, x - j} true;
         call y := Vec_Ext(Vec_Slice(B, i + 1, Vec_Len(B)), Vec_Slice(A, i + 1, Vec_Len(A)));
         assume {:add_to_pool "Slice", y, y + 1} true;
         assert {:split_here} true;
@@ -234,7 +234,7 @@ ensures B == Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A)));
     e := Vec_Nth(B, Vec_Len(A) - 1);
     B := Vec_Remove(B);
     call z := Vec_Ext(B, Vec_Concat(Vec_Slice(A, 0, j), Vec_Slice(A, j + 1, Vec_Len(A))));
-    assume {:add_to_pool "Slice", z, j, j + 1, j - 1} true;
+    assume {:add_to_pool "Concat", z} {:add_to_pool "Slice", z, z - j} true;
 }
 
 procedure swap_remove<Element>(A: Vec Element, j: int) returns (B: Vec Element)
