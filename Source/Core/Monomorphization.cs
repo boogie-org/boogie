@@ -294,6 +294,10 @@ namespace Microsoft.Boogie
       {
         isMonomorphizable = false;
       }
+      else
+      {
+        Visit(TypeProxy.FollowProxy(node));
+      }
       return node;
     }
   }
