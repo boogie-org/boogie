@@ -692,6 +692,11 @@ namespace Microsoft.Boogie
         return (Type) Visit(node);
       }
 
+      public override Type VisitTypeProxy(TypeProxy node)
+      {
+        return VisitType(TypeProxy.FollowProxy(node));
+      }
+
       public override Expr VisitExpr(Expr node)
       {
         node = base.VisitExpr(node);
