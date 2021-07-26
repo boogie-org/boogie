@@ -320,11 +320,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
     static Expr NumberToExpr(BigInteger n, Type ty)
     {
-      if (n == null)
-      {
-        return null;
-      }
-      else if (ty.IsReal)
+      if (ty.IsReal)
       {
         return Expr.Literal(BaseTypes.BigDec.FromBigInt(n));
       }

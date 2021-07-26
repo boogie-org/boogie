@@ -93,8 +93,11 @@ namespace Microsoft.Boogie
       this.Context = context;
       this.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
       // the call to instance method GetModelValue in the following code requires the fields Model and Context to be initialized
-      this.AugmentedTrace = augmentedTrace
-        .Select(elem => elem is IdentifierExpr identifierExpr ? GetModelValue(identifierExpr.Decl) : elem).ToList();
+      if (augmentedTrace != null)
+      {
+        this.AugmentedTrace = augmentedTrace
+          .Select(elem => elem is IdentifierExpr identifierExpr ? GetModelValue(identifierExpr.Decl) : elem).ToList();
+      }
     }
 
     // Create a shallow copy of the counterexample

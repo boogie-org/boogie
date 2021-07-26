@@ -18,11 +18,13 @@ A_Paxos({:linear_in "perm"} rs: [Round]bool)
 returns ({:pending_async "A_StartRound"} PAs:[PA]int)
 modifies pendingAsyncs;
 {
-  var numRounds: int;
-  assert Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
-  assert triggerRound(0);
-  assume 0 <= numRounds;
-  assume triggerRound(numRounds);
+  var {:pool "NumRounds"} numRounds: int;
+  assert
+    {:add_to_pool "Round", 0, numRounds}
+    Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
+  assume
+    {:add_to_pool "NumRounds", numRounds}
+    0 <= numRounds;
   PAs := (lambda pa: PA :: if is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && Round(round#A_StartRound(pa)) && round#A_StartRound(pa) <= numRounds then 1 else 0);
   pendingAsyncs := PAs;
 }
@@ -66,6 +68,10 @@ procedure {:IS_invariant}{:layer 2} INV({:linear_in "perm"} rs: [Round]bool)
 returns ({:pending_async "A_StartRound","A_Propose","A_Conclude","A_Join","A_Vote"} PAs:[PA]int, {:choice} choice:PA)
 modifies joinedNodes, voteInfo, decision, pendingAsyncs;
 {
+  var {:pool "NumRounds"} numRounds: int;
+  var {:pool "Round"} k: int;
+  var {:pool "Node"} m: Node;
+
   assert Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
 
   havoc joinedNodes, voteInfo, decision;
@@ -76,52 +82,52 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
   // finished and k+1 is the round that currently executes), and similarly the
   // existentially quantified m denotes the number of nodes that already
   // finished in the current round.
-  assume (exists k, numRounds: int :: {triggerRound(k), triggerRound(numRounds)} 0 <= k && k <= numRounds && triggerRound(numRounds) &&
-    if k == numRounds then
-    (
-      PAs == NoPAs()
-    )
-    else
-    (
-      (
-        PAs == FirstCasePAs(k, numRounds) &&
-        choice == A_StartRound(k+1, k+1) &&
+
+  assume
+    {:add_to_pool "NumRounds", numRounds}
+    {:add_to_pool "Round", k, k+1, numRounds}
+    0 <= k && k <= numRounds;
+
+  if (k == numRounds) {
+      PAs := NoPAs();
+  } else if (*) {
+      assume
         (forall r: Round :: r < 1 || r > k ==> joinedNodes[r] == NoNodes()) &&
         (forall r: Round :: r < 1 || r > k ==> is#None(voteInfo[r])) &&
-        (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]))
-      )
-      ||
-      (
+        (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]));
+      PAs := FirstCasePAs(k, numRounds);
+      choice := A_StartRound(k+1, k+1);
+  } else if (*) {
+      assume
         (forall r: Round :: r < 1 || r > k+1 ==> joinedNodes[r] == NoNodes()) &&
         (forall r: Round :: r < 1 || r > k ==> is#None(voteInfo[r])) &&
-        (forall r: Round :: r < 1 || r > k ==> is#None(decision[r])) &&
-        (exists m: Node :: {triggerNode(m)} 0 <= m && m <= numNodes &&
-          (forall n: Node :: n < 1 || n > m ==> !joinedNodes[k+1][n]) &&
-          PAs == SecondCasePAs(k, m, numRounds) &&
-          choice == SecondCaseChoice(k, m)
-        )
-      )
-      ||
-      (
+        (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]));
+      assume
+        {:add_to_pool "Node", m}
+        0 <= m && m <= numNodes &&
+        (forall n: Node :: n < 1 || n > m ==> !joinedNodes[k+1][n]);
+      PAs := SecondCasePAs(k, m, numRounds);
+      choice := SecondCaseChoice(k, m);
+  } else {
+      assume
         is#Some(voteInfo[k+1]) &&
         (forall r: Round :: r < 1 || r > k+1 ==> joinedNodes[r] == NoNodes()) &&
         (forall r: Round :: r < 1 || r > k+1 ==> is#None(voteInfo[r])) &&
-        (forall r: Round :: r < 1 || r > k ==> is#None(decision[r])) &&
-        (exists m: Node :: {triggerNode(m)} 0 <= m && m <= numNodes &&
-          (forall n: Node :: n < 1 || n > m ==> !ns#VoteInfo(t#Some(voteInfo[k+1]))[n]) &&
-          PAs == ThirdCasePAs(k, m, value#VoteInfo(t#Some(voteInfo[k+1])), numRounds) &&
-          choice == ThirdCaseChoice(k, m, value#VoteInfo(t#Some(voteInfo[k+1])))
-        )
-      )
-    )
-  );
+        (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]));
+      assume
+        {:add_to_pool "Node", m}
+        0 <= m && m <= numNodes &&
+        (forall n: Node :: n < 1 || n > m ==> !ns#VoteInfo(t#Some(voteInfo[k+1]))[n]);
+      PAs := ThirdCasePAs(k, m, value#VoteInfo(t#Some(voteInfo[k+1])), numRounds);
+      choice := ThirdCaseChoice(k, m, value#VoteInfo(t#Some(voteInfo[k+1])));
+  }
 
   // If there was a decision for some value, then there must have been a
   // proposal of the same value and a quorum of nodes that voted for it.
   assume (forall r: Round :: is#Some(decision[r]) ==>
     is#Some(voteInfo[r]) &&
     value#VoteInfo(t#Some(voteInfo[r])) == t#Some(decision[r]) &&
-    (exists q: NodeSet :: { IsSubset(q, ns#VoteInfo(t#Some(voteInfo[r]))), IsQuorum(q) }
+    (exists q: NodeSet :: { IsQuorum(q) }
       IsSubset(q, ns#VoteInfo(t#Some(voteInfo[r]))) && IsQuorum(q)));
 
   // This is the main invariant to prove

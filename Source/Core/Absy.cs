@@ -3189,8 +3189,6 @@ namespace Microsoft.Boogie
       otherDefinitionAxioms.Add(axiom);
     }
 
-    public bool doingExpansion;
-
     private bool neverTrigger;
     private bool neverTriggerComputed;
 

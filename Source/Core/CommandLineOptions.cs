@@ -698,6 +698,7 @@ namespace Microsoft.Boogie
     public bool TrustNoninterference = false;
     public int TrustLayersUpto = -1;
     public int TrustLayersDownto = int.MaxValue;
+    public bool TrustInductiveSequentialization = false;
 
     public bool RemoveEmptyBlocks = true;
     public bool CoalesceBlocks = true;
@@ -1537,6 +1538,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
               ps.CheckBooleanFlag("trustMoverTypes", ref TrustMoverTypes) ||
               ps.CheckBooleanFlag("trustNoninterference", ref TrustNoninterference) ||
+              ps.CheckBooleanFlag("trustInductiveSequentialization", ref TrustInductiveSequentialization) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting) ||
               ps.CheckBooleanFlag("warnNotEliminatedVars", ref WarnNotEliminatedVars)
@@ -2009,6 +2011,8 @@ namespace Microsoft.Boogie
                 do not verify layers <n> and below
   /trustLayersDownto:<n>
                 do not verify layers <n> and above
+  /trustInductiveSequentialization
+                do not perform inductive sequentialization checks
   /civlDesugaredFile:<file>
                 print plain Boogie program to <file>
 

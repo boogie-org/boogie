@@ -130,9 +130,7 @@ namespace Microsoft.Boogie.SMTLib
         var sx = GetProverResponse();
         if (sx == null)
         {
-          this.NeedsRestart = true;
-          HandleError("Prover died");
-          return;
+          throw new ProverDiedException();
         }
 
         if (IsPong(sx))

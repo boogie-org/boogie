@@ -38,8 +38,9 @@ procedure INV2(n: int)
 
   assume 0 <= i;
   assume i <= n;
-  // add all labels used in inst_at attributes on bound variables to the body of the lambda
-  PAs := (lambda {:pool "A2"} pa: PA :: {:labels "A2"} if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
+  // add all labels used in :pool attributes on bound variables to the body of the lambda
+  // to avoid the lambda getting unified with the logically identical lambda on line 64
+  PAs := (lambda {:pool "A2"} pa: PA :: {:pool "A2"} if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
   assume (forall pa: PA :: PAs[pa] == 0);
   assert {:add_to_pool "A2", ADD(n)} i == n;
 }
@@ -58,8 +59,9 @@ procedure INV3(n: int)
 
 procedure {:inline 1} CreateLambda(i: int, n: int) returns (PAs: [PA]int)
 {
-  // add all labels used in inst_at attributes on bound variables to the body of the lambda
-  PAs := (lambda {:pool "A3"} pa: PA :: {:labels "A3"} if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
+  // add all labels used in :pool attributes on bound variables to the body of the lambda
+  // to avoid the lambda getting unified with the logically identical lambda on line 43
+  PAs := (lambda {:pool "A3"} pa: PA :: {:pool "A3"} if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
 }
 
 procedure {:inline 1} LookupLambda(i: int, n: int, PAs: [PA]int)

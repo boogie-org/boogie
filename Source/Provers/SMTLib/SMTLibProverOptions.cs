@@ -28,7 +28,7 @@ namespace Microsoft.Boogie.SMTLib
   public enum SolverKind
   {
     Z3,
-    CVC4,
+    CVC5,
     YICES2
   }
 
@@ -103,14 +103,14 @@ namespace Microsoft.Boogie.SMTLib
           case "z3":
             Solver = SolverKind.Z3;
             break;
-          case "cvc4":
-            Solver = SolverKind.CVC4;
+          case "cvc5":
+            Solver = SolverKind.CVC5;
             break;
           case "yices2":
             Solver = SolverKind.YICES2;
             break;
           default:
-            ReportError("Invalid SOLVER value; must be 'Z3' or 'CVC4' or 'Yices2'");
+            ReportError("Invalid SOLVER value; must be 'Z3' or 'CVC5' or 'Yices2'");
             return false;
         }
 
@@ -136,10 +136,10 @@ namespace Microsoft.Boogie.SMTLib
           SolverArguments.Add("-smt2 -in");
           SolverBinaryName = Solver.ToString().ToLower();
           break;
-        case SolverKind.CVC4:
+        case SolverKind.CVC5:
           SolverArguments.Add(
             "--lang=smt --no-strict-parsing --no-condense-function-values --incremental --produce-models");
-          if (Logic == null) Logic = "ALL_SUPPORTED";
+          if (Logic == null) Logic = "ALL";
           SolverBinaryName = Solver.ToString().ToLower();
           break;
         case SolverKind.YICES2:
@@ -166,8 +166,8 @@ namespace Microsoft.Boogie.SMTLib
           @"
 SMT-specific options:
 ~~~~~~~~~~~~~~~~~~~~~
-SOLVER=<string>           Use the given SMT solver (z3, cvc4, yices2; default: z3)
-LOGIC=<string>            Pass (set-logic <string>) to the prover (default: empty, 'ALL_SUPPORTED' for CVC4)
+SOLVER=<string>           Use the given SMT solver (z3, cvc5, yices2; default: z3)
+LOGIC=<string>            Pass (set-logic <string>) to the prover (default: empty, 'ALL' for CVC5)
 USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas (default: true)
 VERBOSITY=<int>           1 - print prover output (default: 0)
 O:<name>=<value>          Pass (set-option :<name> <value>) to the SMT solver.

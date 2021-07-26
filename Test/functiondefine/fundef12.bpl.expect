@@ -1,0 +1,2 @@
+fundef12.bpl(4,19): Error: Function with :inline attribute must have a body
+fundef12.bpl(6,19): Error: Function with :define attribute must have a body
