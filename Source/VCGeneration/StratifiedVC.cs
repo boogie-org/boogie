@@ -108,16 +108,7 @@ namespace VC
         foreach (Block b in impl.Blocks)
           mustReachVar[b] = vcgen.CreateNewVar(Bpl.Type.Bool);
 
-        var dag = new Graph<Block>();
-        dag.AddSource(impl.Blocks[0]);
-        foreach (Block b in impl.Blocks)
-        {
-          var gtc = b.TransferCmd as GotoCmd;
-          if (gtc != null)
-            foreach (Block dest in gtc.labelTargets)
-              dag.AddEdge(dest, b);
-        }
-
+        var dag = Program.GraphFromImpl(impl, false);
         IEnumerable sortedNodes = dag.TopologicalSort();
 
         foreach (Block currBlock in dag.TopologicalSort())
