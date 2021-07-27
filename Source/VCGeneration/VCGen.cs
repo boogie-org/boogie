@@ -2660,21 +2660,7 @@ namespace VC
 
       assertionCount = 0;
 
-      Graph<Block> dag = new Graph<Block>();
-      dag.AddSource(blocks[0]);
-      foreach (Block b in blocks)
-      {
-        GotoCmd gtc = b.TransferCmd as GotoCmd;
-        if (gtc != null)
-        {
-          Contract.Assume(gtc.labelTargets != null);
-          foreach (Block dest in gtc.labelTargets)
-          {
-            Contract.Assert(dest != null);
-            dag.AddEdge(dest, b);
-          }
-        }
-      }
+      Graph<Block> dag = Program.GraphFromBlocks(blocks, false);
 
       IEnumerable sortedNodes = dag.TopologicalSort();
       Contract.Assert(sortedNodes != null);
