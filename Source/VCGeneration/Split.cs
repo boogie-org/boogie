@@ -155,9 +155,9 @@ namespace VC
         }
       }
 
-      public void DumpDot(int no)
+      public void DumpDot(int splitNum)
       {
-        using (System.IO.StreamWriter sw = System.IO.File.CreateText(string.Format("{0}.split.{1}.dot", impl.Name, no)))
+        using (System.IO.StreamWriter sw = System.IO.File.CreateText(string.Format("{0}.split.{1}.dot", impl.Name, splitNum)))
         {
           sw.WriteLine("digraph G {");
 
@@ -188,7 +188,7 @@ namespace VC
           sw.Close();
         }
 
-        string filename = string.Format("{0}.split.{1}.bpl", impl.Name, no);
+        string filename = string.Format("{0}.split.{1}.bpl", impl.Name, splitNum);
         using (System.IO.StreamWriter sw = System.IO.File.CreateText(filename))
         {
           int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
@@ -804,6 +804,7 @@ namespace VC
         immediateDominator[blocks[0]] = blocks[0];
         return immediateDominator;
       }
+
       // Verify b with the last split in blockAssignments[b]
       private static Dictionary<Block, Block> PickBlocksToVerify (List<Block> blocks, Dictionary<Block, int> splitPoints)
       {
@@ -1049,20 +1050,22 @@ namespace VC
           }
         }
 
-        void DeleteSubSumptions (Block b)
+        void DeleteSubsumptions (Block b)
         {
-          bool isAssumeSubsumption (Cmd c) { return c is AssumeCmd ac && QKeyValue.FindBoolAttribute(ac.Attributes, "subsumption"); }
+          bool isAssumeSubsumption (Cmd c) {
+            return c is AssumeCmd ac && QKeyValue.FindBoolAttribute(ac.Attributes, "subsumption");
+          }
           b.Cmds = b.Cmds.Where(c => !isAssumeSubsumption(c)).ToList();
         }
 
         bool ContainsAssert(Block b)
         {
           bool isNonTrivialAssert (Cmd c) { return c is AssertCmd ac && !(ac.Expr is LiteralExpr le && le.asBool); }
-          return b.Cmds.Aggregate(false, (containsAssert, c) => containsAssert || isNonTrivialAssert(c));
+          return b.Cmds.Exists(cmd => isNonTrivialAssert(cmd));
         }
 
         // return blocks;
-        blocks.ForEach(b => DeleteSubSumptions(b));
+        blocks.ForEach(b => DeleteSubsumptions(b));
         blocks.ForEach(b => DeleteFalseGotos(b)); // make blocks ending in assume false leaves of the CFG-DAG -- this is probably unnecessary, may have been done previously
         var todo = new Stack<Block>();
         var peeked = new HashSet<Block>();
@@ -1075,10 +1078,9 @@ namespace VC
           peeked.Add(currentBlock);
           var interesting = false;
           var exit = currentBlock.TransferCmd as GotoCmd;
-          if (exit != null && !pop)
+          if (exit != null && !pop) {
             exit.labelTargets.ForEach(b => todo.Push(b));
-          else if (exit != null)
-          {
+          } else if (exit != null) {
             Contract.Assert(pop);
             var gtc = new GotoCmd(exit.tok, exit.labelTargets.Where(l => interestingBlocks.Contains(l)).ToList());
             currentBlock.TransferCmd = gtc;
@@ -1087,7 +1089,9 @@ namespace VC
           if (pop)
           {
             interesting = interesting || ContainsAssert(currentBlock);
-            if (interesting) interestingBlocks.Add(currentBlock);
+            if (interesting) {
+              interestingBlocks.Add(currentBlock);
+            }
             todo.Pop();
           }
         }
