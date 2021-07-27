@@ -1303,30 +1303,32 @@ namespace Microsoft.Boogie
       return callGraph;
     }
 
-    public static Graph<Block /*!*/> /*!*/ GraphFromImpl(Implementation impl)
+    public static Graph<Block> GraphFromBlocks(List<Block> blocks)
     {
-      Contract.Requires(impl != null);
-      Contract.Ensures(cce.NonNullElements(Contract.Result<Graph<Block>>().Nodes));
-      Contract.Ensures(Contract.Result<Graph<Block>>() != null);
-
-      Graph<Block /*!*/> g = new Graph<Block /*!*/>();
-      g.AddSource(impl.Blocks[0]); // there is always at least one node in the graph
-
-      foreach (Block b in impl.Blocks)
+      Graph<Block> g = new Graph<Block>();
+      g.AddSource(cce.NonNull(blocks[0])); // there is always at least one node in the graph
+      foreach (Block b in blocks)
       {
-        Contract.Assert(b != null);
-        GotoCmd gtc = b.TransferCmd as GotoCmd;
-        if (gtc != null)
+        if (b.TransferCmd is GotoCmd gtc)
         {
-          foreach (Block /*!*/ dest in cce.NonNull(gtc.labelTargets))
+          Contract.Assume(gtc.labelTargets != null);
+          foreach (Block dest in gtc.labelTargets)
           {
             Contract.Assert(dest != null);
             g.AddEdge(b, dest);
           }
         }
       }
-
       return g;
+    }
+
+    public static Graph<Block /*!*/> /*!*/ GraphFromImpl(Implementation impl)
+    {
+      Contract.Requires(impl != null);
+      Contract.Ensures(cce.NonNullElements(Contract.Result<Graph<Block>>().Nodes));
+      Contract.Ensures(Contract.Result<Graph<Block>>() != null);
+
+      return GraphFromBlocks(impl.Blocks);
     }
 
     public class IrreducibleLoopException : Exception
