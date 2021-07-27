@@ -553,7 +553,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(impl != null);
       Microsoft.Boogie.Helpers.ExtraTraceInformation("Starting live variable analysis");
-      Graph<Block> dag = Program.GraphFromImpl(impl);
+      Graph<Block> dag = Program.GraphFromBlocks(impl.Blocks, false);
       IEnumerable<Block> sortedNodes;
       if (CommandLineOptions.Clo.ModifyTopologicalSorting)
       {
