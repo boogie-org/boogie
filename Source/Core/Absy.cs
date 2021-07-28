@@ -3682,7 +3682,8 @@ namespace Microsoft.Boogie
 
     public QKeyValue Attributes { get; set; }
 
-    public bool CanAlwaysAssume () {
+    public bool CanAlwaysAssume ()
+    {
       return QKeyValue.FindBoolAttribute(this.Attributes, "alwaysAssume");
     }
 
