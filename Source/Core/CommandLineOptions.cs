@@ -1690,10 +1690,9 @@ namespace Microsoft.Boogie
 
     {:always_assume}
       On a free requires, it lets the caller assume the pre-condition. Without it,
-      the caller simply skips the free requires.
-      On a free ensures, it lets the procedure's implementation assume the
-      post-condition. Without it, the procedure's implementation
-      ignores the free ensures.
+      the caller simply skips the free requires. On a free ensures,
+      it lets the procedure's implementation assume the post-condition.
+      Without it, the procedure's implementation ignores the free ensures.
       Boogie ignores this attribute on non-free specs.
 
   ---- On implementations and procedures -------------------------------------
