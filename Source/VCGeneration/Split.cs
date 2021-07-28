@@ -1137,7 +1137,7 @@ namespace VC
       public static List<Split> FocusImpl(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
       {
         bool isFocusCmd(Cmd c) {
-          return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "split_here");
+          return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "focus");
         }
         List<Block> getFocusBlocks(List<Block> blocks) {
           return blocks.Where(blk => blk.Cmds.Where(c => isFocusCmd(c)).Count() != 0).ToList();
