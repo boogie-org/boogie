@@ -3546,6 +3546,12 @@ namespace Microsoft.Boogie
       get { return QKeyValue.FindStringAttribute(Attributes, "msg"); }
     }
 
+    public bool CanAlwaysAssume()
+    {
+      return QKeyValue.FindBoolAttribute(Attributes, "alwaysAssume");
+    }
+
+
     public Requires(IToken token, bool free, Expr condition, string comment, QKeyValue kv)
       : base(token)
     {
@@ -3668,6 +3674,10 @@ namespace Microsoft.Boogie
     }
 
     public QKeyValue Attributes { get; set; }
+
+    public bool CanAlwaysAssume () {
+      return QKeyValue.FindBoolAttribute(this.Attributes, "alwaysAssume");
+    }
 
     public Ensures(IToken token, bool free, Expr /*!*/ condition, string comment, QKeyValue kv)
       : base(token)
