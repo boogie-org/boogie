@@ -309,11 +309,9 @@ namespace VC
       foreach (Ensures ens in impl.Proc.Ensures)
       {
         Contract.Assert(ens != null);
-        if (ens.CanAlwaysAssume()) {
-          Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
-          unifiedExitBlock.Cmds.Add(new AssumeCmd(ens.tok, e));
-        } else if (!ens.Free) {
-          // skip free ensures clauses
+
+        if (!ens.Free)
+        {
           Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
           Ensures ensCopy = (Ensures) cce.NonNull(ens.Clone());
           ensCopy.Condition = e;
@@ -324,10 +322,16 @@ namespace VC
           {
             c.Emit(debugWriter, 1);
           }
-        } else {
-          // forget about it
         }
-
+        else if (ens.Free && ens.CanAlwaysAssume())
+        {
+          Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
+          unifiedExitBlock.Cmds.Add(new AssumeCmd(ens.tok, e));
+        }
+        else
+        {
+          // skip free ensures if it doesn't have the :always_assume attr
+        }
       }
 
       if (debugWriter != null)
