@@ -1686,6 +1686,12 @@ namespace Microsoft.Boogie
     {:checksum <string>}
       Attach a checksum to be used for verification result caching.
 
+  ---- On specs -------------------------------------
+
+    {:alwaysAssume}
+      On a requires, this lets the caller assume the pre-condition, instead of proving it.
+      On an ensures, this lets the procedure's implementation assume the post-condition (instead of proving it).
+
   ---- On implementations and procedures -------------------------------------
 
      {:inline N}
