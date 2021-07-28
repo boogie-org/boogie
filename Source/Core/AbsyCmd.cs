@@ -3230,7 +3230,15 @@ namespace Microsoft.Boogie
       {
         Requires /*!*/
           req = cce.NonNull(this.Proc.Requires[i]);
-        if (!req.Free && !IsFree)
+        if (req.CanAlwaysAssume())
+        {
+          // inject free requires as assume statements at the call site
+          AssumeCmd /*!*/
+            a = new AssumeCmd(req.tok, Substituter.Apply(s, req.Condition));
+          Contract.Assert(a != null);
+          newBlockBody.Add(a);
+        }
+        else if (!req.Free && !IsFree)
         {
           if (hasWildcard)
           {
