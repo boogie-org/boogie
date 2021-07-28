@@ -586,6 +586,45 @@ namespace Microsoft.Boogie.GraphUtil
       }
     }
 
+    // this function gives a simpler way to compute immediate dominators by assmuing the graph is a DAG.
+    // Note that it does not check the DAG property.
+    public Dictionary<Node, Node> ImmediateDominator()
+    {
+      List<Node> topoSorted = this.TopologicalSort().ToList();
+      Dictionary<Node, HashSet<Node>> DominatorsFast()
+      {
+        var dominators = new Dictionary<Node, HashSet<Node>>();
+        topoSorted.ForEach(u => dominators[u] = topoSorted.ToHashSet());
+        var todo = new Queue<Node>();
+        foreach (var u in topoSorted)
+        {
+          var s = new HashSet<Node>();
+          var predecessors = this.Predecessors(u).ToList();
+          if (predecessors.Count() != 0)
+          {
+            s.UnionWith(dominators[predecessors.First()]);
+            predecessors.ForEach(v => s.IntersectWith(dominators[v]));
+          }
+          s.Add(u);
+          dominators[u] = s;
+        }
+        return dominators;
+      }
+
+      Dictionary<Node, HashSet<Node>> dominators = DominatorsFast();
+      var immediateDominator = new Dictionary<Node, Node>();
+      foreach (var u in this.Nodes)
+      {
+        if (dominators[u].Count() > 1)
+        {
+          dominators[u].Remove(u);
+        }
+        immediateDominator[u] = topoSorted.ElementAt(dominators[u].Max(e => topoSorted.IndexOf(e)));
+      }
+      immediateDominator[this.source] = this.source;
+      return immediateDominator;
+    }
+
     public Dictionary<Node, List<Node>> ImmediateDominatorMap
     {
       get

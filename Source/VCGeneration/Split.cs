@@ -742,75 +742,12 @@ namespace VC
           Console.WriteLine(i);
       }
 
-      private static Dictionary<Block, Block> ImmediateDominator(List<Block> blocks)
-      {
-        // this function uses the DAG property of blocks
-        Dictionary<Block, HashSet<Block>> DominatorsFast(Graph<Block> dag)
-        {
-          var dominators = new Dictionary<Block, HashSet<Block>>();
-          var topoSorted = dag.TopologicalSort().ToList();
-          topoSorted.ForEach(b => dominators[b] = topoSorted.ToHashSet());
-          var todo = new Queue<Block>();
-          foreach (var b in topoSorted)
-          {
-            var s = new HashSet<Block>();
-            if (b.Predecessors.Count() != 0)
-            {
-              s.UnionWith(dominators[b.Predecessors[0]]);
-              b.Predecessors.ForEach(blk => s.IntersectWith(dominators[blk]));
-            }
-            s.Add(b);
-            dominators[b] = s;
-          }
-          return dominators;
-        }
-
-        var dag = VCGen.BlocksToDag(blocks);
-        Dictionary<Block, HashSet<Block>> dominators = DominatorsFast(dag);
-        var todo = new Queue<Block>();
-        // just for checking
-        {
-          todo.Enqueue(blocks[0]);
-          while (todo.Count > 0)
-          {
-            var b = todo.Dequeue();
-            var s = new HashSet<Block>();
-            if (b.Predecessors.Count() != 0)
-            {
-              s.UnionWith(dominators[b.Predecessors[0]]);
-              b.Predecessors.ForEach(blk => s.IntersectWith(dominators[blk]));
-            }
-            s.Add(b);
-            if (!s.SetEquals(dominators[b]))
-            {
-              Contract.Assert(false);
-              dominators[b] = s;
-              if (b.TransferCmd is GotoCmd exit)
-                exit.labelTargets.ForEach(blk => todo.Enqueue(blk));
-            }
-          }
-        }
-
-        List<Block> topoSorted = dag.TopologicalSort().ToList();
-        var immediateDominator = new Dictionary<Block, Block>();
-        foreach (Block b in blocks)
-        {
-          if (dominators[b].Count() > 1)
-          {
-            dominators[b].Remove(b);
-          }
-          immediateDominator[b] = topoSorted.ElementAt(dominators[b].Max(e => topoSorted.IndexOf(e)));
-        }
-        immediateDominator[blocks[0]] = blocks[0];
-        return immediateDominator;
-      }
-
       // Verify b with the last split in blockAssignments[b]
       private static Dictionary<Block, Block> PickBlocksToVerify (List<Block> blocks, Dictionary<Block, int> splitPoints)
       {
         var todo = new Stack<Block>();
         var blockAssignments = new Dictionary<Block, Block>();
-        var immediateDominator = ImmediateDominator(blocks);
+        var immediateDominator = (Program.GraphFromBlocks(blocks)).ImmediateDominator();
         todo.Push(blocks[0]);
         while(todo.Count > 0)
         {
