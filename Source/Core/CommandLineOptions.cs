@@ -1775,6 +1775,11 @@ namespace Microsoft.Boogie
      {:subsumption n}
        Overrides the /subsumption command-line setting for this assertion.
 
+     {:focus}
+      It deletes all paths that don't have the containing block, assumes code leading to the block,
+      and verifies all blocks reachable from that block. Other paths are verified separately in a different split.
+      This split does not contain the focus block and every block that it dominates.
+
      {:split_here}
        Verifies code leading to this point and code leading from this point
        to the next split_here as separate pieces.  May help with timeouts.
