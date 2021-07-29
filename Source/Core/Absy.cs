@@ -3555,7 +3555,7 @@ namespace Microsoft.Boogie
 
     public bool CanAlwaysAssume()
     {
-      return QKeyValue.FindBoolAttribute(Attributes, "always_assume");
+      return Free && QKeyValue.FindBoolAttribute(Attributes, "always_assume");
     }
 
 
@@ -3684,7 +3684,7 @@ namespace Microsoft.Boogie
 
     public bool CanAlwaysAssume ()
     {
-      return QKeyValue.FindBoolAttribute(this.Attributes, "always_assume");
+      return Free && QKeyValue.FindBoolAttribute(this.Attributes, "always_assume");
     }
 
     public Ensures(IToken token, bool free, Expr /*!*/ condition, string comment, QKeyValue kv)
