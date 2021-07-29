@@ -63,10 +63,10 @@ The compiled Boogie binary is
 ## Backend SMT Solver
 
 The default SMT solver for Boogie is [Z3](https://github.com/Z3Prover/z3).
-Support for [CVC4](https://cvc4.github.io/) and
+Support for [CVC5](https://cvc5.github.io/) and
 [Yices2](https://yices.csl.sri.com/) is experimental.
 
-By default, Boogie looks for an executable called `z3|cvc4|yices2[.exe]` in your
+By default, Boogie looks for an executable called `z3|cvc5|yices2[.exe]` in your
 `PATH` environment variable. If the solver executable is called differently on
 your system, use `/proverOpt:PROVER_NAME=<exeName>`. Alternatively, an explicit
 path can be given using `/proverOpt:PROVER_PATH=<path>`.
@@ -79,9 +79,9 @@ Boogie with `/proverHelp`.
 The current test suite assumes version 4.8.8, but earlier and newer versions may
 also work.
 
-### CVC4 (experimental)
+### CVC5 (experimental)
 
-Call Boogie with `/proverOpt:SOLVER=CVC4`.
+Call Boogie with `/proverOpt:SOLVER=CVC5`.
 
 ### Yices2 (experimental)
 

@@ -16,14 +16,18 @@ procedure {:atomic}{:layer 2} A_Propose(r: Round, {:linear_in "perm"} ps: [Permi
 returns ({:pending_async "A_Vote", "A_Conclude"} PAs:[PA]int)
 modifies voteInfo, pendingAsyncs;
 {
-  var maxRound: int;
+  var {:pool "Round"} maxRound: int;
   var maxValue: Value;
-  var ns: NodeSet;
+  var {:pool "NodeSet"} ns: NodeSet;
 
   assert Round(r);
   assert pendingAsyncs[A_Propose(r, ps)] > 0;
   assert ps == ProposePermissions(r);
   assert is#None(voteInfo[r]);
+
+  assume
+    {:add_to_pool "NodeSet", ns}
+    true;
 
   if (*) {
     assume IsSubset(ns, joinedNodes[r]) && IsQuorum(ns);
@@ -85,6 +89,11 @@ modifies joinedNodes, voteInfo, pendingAsyncs;
   assert is#Some(voteInfo[r]);
   assert value#VoteInfo(t#Some(voteInfo[r])) == v;
   assert !ns#VoteInfo(t#Some(voteInfo[r]))[n];
+
+  assume
+    {:add_to_pool "Round", r, r-1}
+    {:add_to_pool "Node", n}
+    true;
 
   if (*) {
     assume (forall r': Round :: Round(r') && joinedNodes[r'][n] ==> r' <= r);

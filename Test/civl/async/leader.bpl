@@ -130,10 +130,10 @@ procedure {:yields}{:layer 0}{:refines "read_init_val_atomic"} read_init_val (pi
 // ###########################################################################
 // Linear permissions
 
-function {:inline 1} all_perms () : [Perm]bool { (lambda p:Perm :: is_pid(s#Perm(p)) && is_pid(r#Perm(p))) }
-function {:inline 1} s_perms_eq (s:Pid) : [Perm]bool { (lambda p:Perm :: s#Perm(p) == s && is_pid(r#Perm(p))) }
-function {:inline 1} s_perms_geq (s:Pid) : [Perm]bool { (lambda p:Perm :: is_pid(s#Perm(p)) && is_pid(r#Perm(p)) && s#Perm(p) >= s) }
-function {:inline 1} s_r_perms_geq (s:Pid, r:Pid) : [Perm]bool { (lambda p:Perm :: s#Perm(p) == s && is_pid(r#Perm(p)) && r#Perm(p) >= r) }
+function {:inline} all_perms () : [Perm]bool { (lambda p:Perm :: is_pid(s#Perm(p)) && is_pid(r#Perm(p))) }
+function {:inline} s_perms_eq (s:Pid) : [Perm]bool { (lambda p:Perm :: s#Perm(p) == s && is_pid(r#Perm(p))) }
+function {:inline} s_perms_geq (s:Pid) : [Perm]bool { (lambda p:Perm :: is_pid(s#Perm(p)) && is_pid(r#Perm(p)) && s#Perm(p) >= s) }
+function {:inline} s_r_perms_geq (s:Pid, r:Pid) : [Perm]bool { (lambda p:Perm :: s#Perm(p) == s && is_pid(r#Perm(p)) && r#Perm(p) >= r) }
 
 procedure {:yields}{:layer 1}{:both} split_perms_sender (s:Pid, {:linear_in "Perm"} perms_in:[Perm]bool) returns ({:linear "Perm"} perms_out_1:[Perm]bool, {:linear "Perm"} perms_out_2:[Perm]bool);
 requires {:layer 1} perms_in == s_perms_geq(s);

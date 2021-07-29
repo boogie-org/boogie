@@ -977,22 +977,7 @@ namespace VC
 
       #region Topological sort -- need to process in a linearization of the partial order
 
-      Graph<Block> dag = new Graph<Block>();
-      dag.AddSource(cce.NonNull(blocks[0])); // there is always at least one node in the graph
-      foreach (Block b in blocks)
-      {
-        GotoCmd gtc = b.TransferCmd as GotoCmd;
-        if (gtc != null)
-        {
-          Contract.Assume(gtc.labelTargets != null);
-          foreach (Block dest in gtc.labelTargets)
-          {
-            Contract.Assert(dest != null);
-            dag.AddEdge(b, dest);
-          }
-        }
-      }
-
+      Graph<Block> dag = Program.GraphFromBlocks(blocks);
       IEnumerable sortedNodes;
       if (CommandLineOptions.Clo.ModifyTopologicalSorting)
       {

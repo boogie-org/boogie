@@ -174,8 +174,6 @@ namespace Microsoft.Boogie
 
     internal override void Run()
     {
-      var selectFunctions = new Dictionary<int, Model.Func>();
-      var storeFunctions = new Dictionary<int, Model.Func>();
       while (true)
       {
         var line = ReadLine();
@@ -244,7 +242,7 @@ namespace Microsoft.Boogie
 
           if (lastWord is string && ((string) lastWord) == "{")
           {
-            fn = currModel.TryGetFunc(funName);
+            fn = currModel.MkFunc(funName, null);
             while (true)
             {
               var tuple = GetFunctionTokens(ReadLine());
@@ -255,57 +253,34 @@ namespace Microsoft.Boogie
               string tuple0 = tuple[0] as string;
               if (tuple.Count == 1)
               {
-                if (fn == null)
-                  fn = currModel.MkFunc(funName, 1);
                 if (tuple0 == "}")
                   break;
-                if (fn.Else == null)
-                  fn.Else = GetElt(tuple[0]);
+                if (fn.Else != null) {
+                  BadModel("multiple else cases");
+                }
+                fn.Else = GetElt(tuple[0]);
                 continue;
               }
 
               string tuplePenultimate = tuple[tuple.Count - 2] as string;
-              if (tuplePenultimate != "->")
+              if (tuple.Count == 2 || tuplePenultimate != "->")
                 BadModel("invalid function tuple definition");
               var resultName = tuple[tuple.Count - 1];
+
               if (tuple0 == "else")
               {
-                if (fn != null && !(resultName is string && ((string) resultName) == "#unspecified") && fn.Else == null)
+                if (fn.Else != null) {
+                  BadModel("multiple else cases");
+                }
+                if (!(resultName is string && ((string) resultName) == "#unspecified"))
                 {
                   fn.Else = GetElt(resultName);
                 }
-
                 continue;
               }
 
-              if (fn == null)
-              {
-                var arity = tuple.Count - 2;
-                if (Regex.IsMatch(funName, "^MapType[0-9]*Select$"))
-                {
-                  funName = string.Format("[{0}]", arity);
-                  if (!selectFunctions.TryGetValue(arity, out fn))
-                  {
-                    fn = currModel.MkFunc(funName, arity);
-                    selectFunctions.Add(arity, fn);
-                  }
-                }
-                else if (Regex.IsMatch(funName, "^MapType[0-9]*Store$"))
-                {
-                  funName = string.Format("[{0}:=]", arity);
-                  if (!storeFunctions.TryGetValue(arity, out fn))
-                  {
-                    fn = currModel.MkFunc(funName, arity);
-                    storeFunctions.Add(arity, fn);
-                  }
-                }
-                else
-                {
-                  fn = currModel.MkFunc(funName, arity);
-                }
-              }
-
-              var args = new Model.Element[fn.Arity];
+              fn.Arity = tuple.Count - 2;
+              var args = new Model.Element[(int) fn.Arity]; 
               for (int i = 0; i < fn.Arity; ++i)
                 args[i] = GetElt(tuple[i]);
               fn.AddApp(GetElt(resultName), args);
