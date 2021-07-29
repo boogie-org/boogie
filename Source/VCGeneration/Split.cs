@@ -987,22 +987,12 @@ namespace VC
           }
         }
 
-        void DeleteSubsumptions (Block b)
-        {
-          bool isAssumeSubsumption (Cmd c) {
-            return c is AssumeCmd ac && QKeyValue.FindBoolAttribute(ac.Attributes, "subsumption");
-          }
-          b.Cmds = b.Cmds.Where(c => !isAssumeSubsumption(c)).ToList();
-        }
-
         bool ContainsAssert(Block b)
         {
           bool isNonTrivialAssert (Cmd c) { return c is AssertCmd ac && !(ac.Expr is LiteralExpr le && le.asBool); }
           return b.Cmds.Exists(cmd => isNonTrivialAssert(cmd));
         }
 
-        // return blocks;
-        blocks.ForEach(b => DeleteSubsumptions(b));
         blocks.ForEach(b => DeleteFalseGotos(b)); // make blocks ending in assume false leaves of the CFG-DAG -- this is probably unnecessary, may have been done previously
         var todo = new Stack<Block>();
         var peeked = new HashSet<Block>();
