@@ -323,7 +323,7 @@ namespace VC
             c.Emit(debugWriter, 1);
           }
         }
-        else if (ens.Free && ens.CanAlwaysAssume())
+        else if (ens.CanAlwaysAssume())
         {
           Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
           unifiedExitBlock.Cmds.Add(new AssumeCmd(ens.tok, e));
