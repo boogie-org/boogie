@@ -1174,10 +1174,25 @@ namespace VC
           }
           return visited;
         }
+
+        Cmd ForgetSplits(Cmd c)
+        {
+          if (c is PredicateCmd pc) {
+            for (var kv = pc.Attributes; kv != null; kv = kv.Next)
+            {
+              if (kv.Key == "split") {
+                kv.AddParam(new LiteralExpr(Token.NoToken, false));
+              }
+            }
+          }
+          return c;
+        }
+
         void focusRec(int focusIdx, IEnumerable<Block> blocks, IEnumerable<Block> freeBlocks)
         {
           if (focusIdx == focusBlocks.Count()) {
-            // freeBlocks consist of the predecessors of the relevant foci; their assertions turn into assumes;
+            // freeBlocks consist of the predecessors of the relevant foci.
+            // Their assertions turn into assumes and any splits inside them are erased.
             var l = blocks.ToList();
             l.Sort(compareBlocks);
             // assert that the root block, impl.Blocks[0], is in l
@@ -1188,13 +1203,14 @@ namespace VC
             }
             var newBlocks = new List<Block>();
             var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count());
+            // it is important for this loop to be bottom-up
             foreach (Block b in l)
             {
               var newBlock = (Block)duplicator.Visit(b);
               newBlocks.Add(newBlock);
               oldToNewBlockMap[b] = newBlock;
               if(freeBlocks.Contains(b)) {
-                newBlock.Cmds = b.Cmds.Select(c => Split.AssertIntoAssume(c)).ToList();
+                newBlock.Cmds = b.Cmds.Select(c => Split.AssertIntoAssume(c)).Select(c => ForgetSplits(c)).ToList();
               }
               if (b.TransferCmd is GotoCmd gtc) {
                 var targets = gtc.labelTargets.Where(blk => blocks.Contains(blk));
@@ -1212,16 +1228,38 @@ namespace VC
             var b = focusBlocks[focusIdx];
             // the first part takes all blocks except the ones dominated by the focus block
             focusRec(focusIdx + 1, blocks.Where(blk => !dag.DominatorMap.DominatedBy(blk, b)), freeBlocks);
-            // the other part takes all predecessors, the block, and the successors.
+            // the other part takes all predecessors, the focus block, and the successors.
             var ancestors = getReachableBlocks(b, false);
             ancestors.Remove(b);
             var descendants = getReachableBlocks(b, true);
             focusRec(focusIdx + 1, ancestors.Union(descendants).Intersect(blocks), ancestors.Union(freeBlocks));
           }
         }
+
         focusRec(0, impl.Blocks, new List<Block>());
         return s;
       }
+
+      public static List<Split> FocusAndSplit(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
+      {
+        List<Split> focussedImpl = FocusAndSplit(impl, gotoCmdOrigins, par);
+        if (focussedImpl == null) {
+          return FindManualSplits(impl, gotoCmdOrigins, par);
+        } else {
+          List<Split> splits = new List<Split>();
+          foreach (var f in focussedImpl)
+          {
+            var new_splits = FindManualSplits(f.impl, f.gotoCmdOrigins, par);
+            if (new_splits == null) {
+              splits.Add(f);
+            } else {
+              splits.AddRange(new_splits);
+            }
+          }
+          return splits;
+        }
+      }
+
       public static List<Split /*!*/> /*!*/ DoSplit(Split initial, double maxCost, int max)
       {
         Contract.Requires(initial != null);

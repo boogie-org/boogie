@@ -816,7 +816,7 @@ namespace VC
       Stack<Split> work = new Stack<Split>();
       List<Split> currently_running = new List<Split>();
       ResetPredecessors(impl.Blocks);
-      List<Split> manual_splits = Split.FocusImpl(impl, gotoCmdOrigins, this);
+      List<Split> manual_splits = Split.FocusAndSplit(impl, gotoCmdOrigins, this);
       if (manual_splits != null)
       {
         foreach (var split in manual_splits)
