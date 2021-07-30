@@ -6,7 +6,7 @@
 // RUN: %diff Ex.split.2.bpl Ex.split.2.bpl
 
 procedure Ex() returns (y: int)
-ensures y >= 0;
+  ensures y >= 0;
 {
   var x: int;
   x := 5;
