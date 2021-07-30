@@ -586,10 +586,10 @@ namespace Microsoft.Boogie.GraphUtil
       }
     }
 
-    // this function gives a simpler way to compute dominators but it assmumes the graph is a DAG.
-    // With acyclicty we can compute all dominators by traversing the graph (once) in the topological order.
+    // This method gives a simpler way to compute dominators but it assmumes the graph is a DAG.
+    // With acyclicty we can compute all dominators by traversing the graph (once) in topological order
     // (using the property: A vertex's dominator set is unaffected by vertices that come later).
-    // The function does not check the graph for the DAG property. That risk is on the caller.
+    // The method does not check the graph for the DAG property. That risk is on the caller.
     public Dictionary<Node, HashSet<Node>> DominatorsFast()
     {
       List<Node> topoSorted = this.TopologicalSort().ToList();
@@ -611,7 +611,7 @@ namespace Microsoft.Boogie.GraphUtil
       return dominators;
     }
 
-    // Only use this for DAGs because it uses DominatorsFast() for computing dominators
+    // Use this method only for DAGs because it uses DominatorsFast() for computing dominators
     public Dictionary<Node, Node> ImmediateDominator()
     {
       List<Node> topoSorted = this.TopologicalSort().ToList();
