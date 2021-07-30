@@ -490,7 +490,7 @@ namespace Microsoft.Boogie
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
-  public class CommandLineOptions : CommandLineOptionEngine
+  public class CommandLineOptions : CommandLineOptionEngine, SMTCommandLineOptions
   {
     public CommandLineOptions()
       : base("Boogie", "Boogie program verifier")
@@ -519,7 +519,7 @@ namespace Microsoft.Boogie
 
     // Flags and arguments
 
-    public bool RunningBoogieFromCommandLine = false; // "false" means running Boogie from the plug-in
+    public bool RunningBoogieFromCommandLine { get; set; }
 
     [ContractInvariantMethod]
     void ObjectInvariant2()
@@ -543,7 +543,7 @@ namespace Microsoft.Boogie
 
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
-    public string ProverPreamble = null;
+    public string ProverPreamble { get; set; }= null;
     public bool WarnNotEliminatedVars = false;
 
     public enum InstrumentationPlaces
@@ -557,7 +557,12 @@ namespace Microsoft.Boogie
     private string XmlSinkFilename = null;
     [Peer] public XmlSink XmlSink = null;
     public bool Wait = false;
-    public bool Trace = false;
+
+    public bool Trace {
+      get => trace;
+      set => trace = value;
+    }
+
     public bool TraceTimes = false;
     public bool TraceProofObligations = false;
 
@@ -586,33 +591,67 @@ namespace Microsoft.Boogie
     public int /*(0:3)*/
       ErrorTrace = 1;
     
-    public bool ContractInfer = false;
-    public bool ExplainHoudini = false;
-    public bool ReverseHoudiniWorklist = false;
-    public bool ConcurrentHoudini = false;
-    public bool ModifyTopologicalSorting = false;
-    public bool DebugConcurrentHoudini = false;
-    public bool HoudiniUseCrossDependencies = false;
-    public string StagedHoudini = null;
-    public bool DebugStagedHoudini = false;
-    public bool StagedHoudiniReachabilityAnalysis = false;
-    public bool StagedHoudiniMergeIgnoredAnnotations = false;
-    public int StagedHoudiniThreads = 1;
-    public string VariableDependenceIgnore = null;
-    public bool UseUnsatCoreForContractInfer = false;
+    public bool IntraproceduralInfer { get; set; }= true;
+
+    public bool ContractInfer {
+      get => contractInfer;
+      set => contractInfer = value;
+    }
+
+    public bool ExplainHoudini {
+      get => explainHoudini;
+      set => explainHoudini = value;
+    }
+
+    public bool ReverseHoudiniWorklist {
+      get => reverseHoudiniWorklist;
+      set => reverseHoudiniWorklist = value;
+    }
+
+    public bool ConcurrentHoudini  { get; set; } = false;
+    public bool ModifyTopologicalSorting  { get; set; } = false;
+    public bool DebugConcurrentHoudini  { get; set; } = false;
+
+    public bool HoudiniUseCrossDependencies {
+      get => houdiniUseCrossDependencies;
+      set => houdiniUseCrossDependencies = value;
+    }
+
+    public string StagedHoudini  { get; set; } = null;
+    public bool DebugStagedHoudini  { get; set; } = false;
+    public bool StagedHoudiniReachabilityAnalysis  { get; set; } = false;
+    public bool StagedHoudiniMergeIgnoredAnnotations  { get; set; } = false;
+
+    public int StagedHoudiniThreads {
+      get => stagedHoudiniThreads;
+      set => stagedHoudiniThreads = value;
+    }
+
+    public string VariableDependenceIgnore  { get; set; } = null;
+
+    public bool UseUnsatCoreForContractInfer {
+      get => useUnsatCoreForContractInfer;
+      set => useUnsatCoreForContractInfer = value;
+    }
 
     public bool PrintAssignment = false;
 
     // TODO(wuestholz): Add documentation for this flag.
-    public bool PrintNecessaryAssumes = false;
+    public bool PrintNecessaryAssumes {
+      get => printNecessaryAssumes;
+      set => printNecessaryAssumes = value;
+    }
+
     public int InlineDepth = -1;
 
-    public bool
-      UseProverEvaluate = false; // Use ProverInterface's Evaluate method, instead of model to get variable values
+    public bool UseProverEvaluate {
+      get => useProverEvaluate;
+      set => useProverEvaluate = value;
+    } // Use ProverInterface's Evaluate method, instead of model to get variable values
 
     public bool SoundnessSmokeTest = false;
     public int KInductionDepth = -1;
-    public int EnableUnSatCoreExtract = 0;
+    public int EnableUnSatCoreExtract { get; set; }= 0;
 
     private string /*!*/
       _logPrefix = "";
@@ -675,30 +714,72 @@ namespace Microsoft.Boogie
 
     public int LoopUnrollCount = -1; // -1 means don't unroll loops
     public bool SoundLoopUnrolling = false;
-    public int PrintErrorModel = 0;
+    public int PrintErrorModel { get; set; } = 0;
     public string PrintErrorModelFile = null;
 
-    public string /*?*/
-      ModelViewFile = null;
+    public string /*?*/ ModelViewFile { get; set; } = null;
 
-    public int EnhancedErrorMessages = 0;
+    public int EnhancedErrorMessages {
+      get => enhancedErrorMessages;
+      set => enhancedErrorMessages = value;
+    }
+
     public string PrintCFGPrefix = null;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
-    public bool UseArrayTheory = false;
-    public bool RunDiagnosticsOnTimeout = false;
-    public bool TraceDiagnosticsOnTimeout = false;
-    public uint TimeLimitPerAssertionInPercent = 10;
-    public bool SIBoolControlVC = false;
-    public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
-    public bool DoModSetAnalysis = false;
-    public bool UseAbstractInterpretation = false;
 
-    public string CivlDesugaredFile = null;
-    public bool TrustMoverTypes = false;
-    public bool TrustNoninterference = false;
+    public bool UseArrayTheory {
+      get => useArrayTheory;
+      set => useArrayTheory = value;
+    }
+
+    public bool RunDiagnosticsOnTimeout {
+      get => runDiagnosticsOnTimeout;
+      set => runDiagnosticsOnTimeout = value;
+    }
+
+    public bool TraceDiagnosticsOnTimeout {
+      get => traceDiagnosticsOnTimeout;
+      set => traceDiagnosticsOnTimeout = value;
+    }
+
+    public uint TimeLimitPerAssertionInPercent {
+      get => timeLimitPerAssertionInPercent;
+      set => timeLimitPerAssertionInPercent = value;
+    }
+
+    public bool SIBoolControlVC {
+      get => siBoolControlVc;
+      set => siBoolControlVc = value;
+    }
+
+    public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
+
+    public bool DoModSetAnalysis {
+      get => doModSetAnalysis;
+      set => doModSetAnalysis = value;
+    }
+
+    public bool UseAbstractInterpretation  { get; set; } = false;
+
+    public string CivlDesugaredFile  { get; set; } = null;
+
+    public bool TrustMoverTypes {
+      get => trustMoverTypes;
+      set => trustMoverTypes = value;
+    }
+
+    public bool TrustNoninterference {
+      get => trustNoninterference;
+      set => trustNoninterference = value;
+    }
+
     public int TrustLayersUpto = -1;
     public int TrustLayersDownto = int.MaxValue;
-    public bool TrustInductiveSequentialization = false;
+
+    public bool TrustInductiveSequentialization {
+      get => trustInductiveSequentialization;
+      set => trustInductiveSequentialization = value;
+    }
 
     public bool RemoveEmptyBlocks = true;
     public bool CoalesceBlocks = true;
@@ -706,8 +787,13 @@ namespace Microsoft.Boogie
 
     [Rep] public ProverFactory TheProverFactory;
     public string ProverDllName;
-    public bool ProverHelpRequested = false;
-    public List<string> ProverOptions = new List<string>();
+
+    public bool ProverHelpRequested {
+      get => proverHelpRequested;
+      set => proverHelpRequested = value;
+    }
+
+    public List<string> ProverOptions  { get; set; } = new List<string>();
 
     private int bracketIdsInVC = -1; // -1 - not specified, 0 - no, 1 - yes
 
@@ -728,8 +814,16 @@ namespace Microsoft.Boogie
     public uint TimeLimit = 0; // 0 means no limit
     public uint ResourceLimit = 0; // default to 0
     public uint SmokeTimeout = 10; // default to 10s
-    public int ErrorLimit = 5; // 0 means attempt to falsify each assertion in a desugared implementation 
-    public bool RestartProverPerVC = false;
+
+    public int ErrorLimit {
+      get => errorLimit;
+      set => errorLimit = value;
+    } // 0 means attempt to falsify each assertion in a desugared implementation 
+
+    public bool RestartProverPerVC {
+      get => restartProverPerVc;
+      set => restartProverPerVc = value;
+    }
 
     public double VcsMaxCost = 1.0;
     public double VcsPathJoinMult = 0.8;
@@ -772,10 +866,10 @@ namespace Microsoft.Boogie
 
     // Enables VC generation for Stratified Inlining. 
     // Set programmatically by Corral.
-    public int StratifiedInlining = 0;
+    public int StratifiedInlining  { get; set; } = 0;
 
     // disable model generation, used by Corral/SI
-    public bool StratifiedInliningWithoutModels = false; 
+    public bool StratifiedInliningWithoutModels { get; set; } 
 
     // Sets the recursion bound, used for loop extraction, etc.
     public int RecursionBound = 500;
@@ -789,7 +883,7 @@ namespace Microsoft.Boogie
       Monomorphic
     }
 
-    public TypeEncoding TypeEncodingMethod = TypeEncoding.Predicates;
+    public TypeEncoding TypeEncodingMethod { get; set; } = TypeEncoding.Predicates;
 
     public bool Monomorphize = false;
 
@@ -827,6 +921,29 @@ namespace Microsoft.Boogie
     public readonly AiFlags /*!*/
       Ai = new AiFlags();
 
+    private bool proverHelpRequested = false;
+    private bool restartProverPerVc = false;
+    private bool useArrayTheory = false;
+    private bool doModSetAnalysis = false;
+    private bool runDiagnosticsOnTimeout = false;
+    private bool traceDiagnosticsOnTimeout = false;
+    private bool siBoolControlVc = false;
+    private bool contractInfer = false;
+    private bool explainHoudini = false;
+    private bool reverseHoudiniWorklist = false;
+    private bool houdiniUseCrossDependencies = false;
+    private bool useUnsatCoreForContractInfer = false;
+    private bool printNecessaryAssumes = false;
+    private bool useProverEvaluate;
+    private bool trustMoverTypes = false;
+    private bool trustNoninterference = false;
+    private bool trustInductiveSequentialization = false;
+    private bool trace = false;
+    private int enhancedErrorMessages = 0;
+    private int stagedHoudiniThreads = 1;
+    private uint timeLimitPerAssertionInPercent = 10;
+    private int errorLimit = 5;
+
     public class ConcurrentHoudiniOptions
     {
       public List<string> ProverOptions = new List<string>();
@@ -836,7 +953,7 @@ namespace Microsoft.Boogie
       public bool ModifyTopologicalSorting = false;
     }
 
-    public List<ConcurrentHoudiniOptions> Cho = new List<ConcurrentHoudiniOptions>();
+    public List<ConcurrentHoudiniOptions> Cho { get; set; } = new();
 
     protected override bool ParseOption(string name, CommandLineOptionEngine.CommandLineParseState ps)
     {
@@ -1102,7 +1219,7 @@ namespace Microsoft.Boogie
           return true;
 
         case "enhancedErrorMessages":
-          ps.GetNumericArgument(ref EnhancedErrorMessages, 2);
+          ps.GetNumericArgument(ref enhancedErrorMessages, 2);
           return true;
 
         case "printCFG":
@@ -1208,7 +1325,7 @@ namespace Microsoft.Boogie
 
         case "stagedHoudiniThreads":
         {
-          ps.GetNumericArgument(ref StagedHoudiniThreads);
+          ps.GetNumericArgument(ref stagedHoudiniThreads);
           return true;
         }
 
@@ -1466,7 +1583,7 @@ namespace Microsoft.Boogie
           return true;
 
         case "timeLimitPerAssertionInPercent":
-          ps.GetUnsignedNumericArgument(ref TimeLimitPerAssertionInPercent, a => 0 < a);
+          ps.GetUnsignedNumericArgument(ref timeLimitPerAssertionInPercent, a => 0 < a);
           return true;
 
         case "smokeTimeout":
@@ -1474,7 +1591,7 @@ namespace Microsoft.Boogie
           return true;
 
         case "errorLimit":
-          ps.GetNumericArgument(ref ErrorLimit);
+          ps.GetNumericArgument(ref errorLimit);
           return true;
 
         case "verifySnapshots":
@@ -1502,7 +1619,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("printInstrumented", ref PrintInstrumented) ||
               ps.CheckBooleanFlag("printWithUniqueIds", ref PrintWithUniqueASTIds) ||
               ps.CheckBooleanFlag("wait", ref Wait) ||
-              ps.CheckBooleanFlag("trace", ref Trace) ||
+              ps.CheckBooleanFlag("trace", ref trace) ||
               ps.CheckBooleanFlag("traceTimes", ref TraceTimes) ||
               ps.CheckBooleanFlag("tracePOs", ref TraceProofObligations) ||
               ps.CheckBooleanFlag("noResolve", ref NoResolve) ||
@@ -1511,34 +1628,34 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("noVerify", ref Verify, false) ||
               ps.CheckBooleanFlag("traceverify", ref TraceVerify) ||
               ps.CheckBooleanFlag("alwaysAssumeFreeLoopInvariants", ref AlwaysAssumeFreeLoopInvariants, true) ||
-              ps.CheckBooleanFlag("proverHelp", ref ProverHelpRequested) ||
+              ps.CheckBooleanFlag("proverHelp", ref proverHelpRequested) ||
               ps.CheckBooleanFlag("proverLogAppend", ref ProverLogFileAppend) ||
               ps.CheckBooleanFlag("soundLoopUnrolling", ref SoundLoopUnrolling) ||
               ps.CheckBooleanFlag("checkInfer", ref InstrumentWithAsserts) ||
-              ps.CheckBooleanFlag("restartProver", ref RestartProverPerVC) ||
+              ps.CheckBooleanFlag("restartProver", ref restartProverPerVc) ||
               ps.CheckBooleanFlag("printInlined", ref PrintInlined) ||
               ps.CheckBooleanFlag("smoke", ref SoundnessSmokeTest) ||
               ps.CheckBooleanFlag("vcsDumpSplits", ref VcsDumpSplits) ||
               ps.CheckBooleanFlag("dbgRefuted", ref DebugRefuted) ||
               ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
-              ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
-              ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
-              ps.CheckBooleanFlag("runDiagnosticsOnTimeout", ref RunDiagnosticsOnTimeout) ||
-              ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", ref TraceDiagnosticsOnTimeout) ||
-              ps.CheckBooleanFlag("boolControlVC", ref SIBoolControlVC, true) ||
-              ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||
-              ps.CheckBooleanFlag("explainHoudini", ref ExplainHoudini) ||
-              ps.CheckBooleanFlag("reverseHoudiniWorklist", ref ReverseHoudiniWorklist) ||
-              ps.CheckBooleanFlag("crossDependencies", ref HoudiniUseCrossDependencies) ||
-              ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref UseUnsatCoreForContractInfer) ||
+              ps.CheckBooleanFlag("useArrayTheory", ref useArrayTheory) ||
+              ps.CheckBooleanFlag("doModSetAnalysis", ref doModSetAnalysis) ||
+              ps.CheckBooleanFlag("runDiagnosticsOnTimeout", ref runDiagnosticsOnTimeout) ||
+              ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", ref traceDiagnosticsOnTimeout) ||
+              ps.CheckBooleanFlag("boolControlVC", ref siBoolControlVc, true) ||
+              ps.CheckBooleanFlag("contractInfer", ref contractInfer) ||
+              ps.CheckBooleanFlag("explainHoudini", ref explainHoudini) ||
+              ps.CheckBooleanFlag("reverseHoudiniWorklist", ref reverseHoudiniWorklist) ||
+              ps.CheckBooleanFlag("crossDependencies", ref houdiniUseCrossDependencies) ||
+              ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref useUnsatCoreForContractInfer) ||
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
-              ps.CheckBooleanFlag("printNecessaryAssumes", ref PrintNecessaryAssumes) ||
-              ps.CheckBooleanFlag("useProverEvaluate", ref UseProverEvaluate) ||
+              ps.CheckBooleanFlag("printNecessaryAssumes", ref printNecessaryAssumes) ||
+              ps.CheckBooleanFlag("useProverEvaluate", ref useProverEvaluate) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
               ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
-              ps.CheckBooleanFlag("trustMoverTypes", ref TrustMoverTypes) ||
-              ps.CheckBooleanFlag("trustNoninterference", ref TrustNoninterference) ||
-              ps.CheckBooleanFlag("trustInductiveSequentialization", ref TrustInductiveSequentialization) ||
+              ps.CheckBooleanFlag("trustMoverTypes", ref trustMoverTypes) ||
+              ps.CheckBooleanFlag("trustNoninterference", ref trustNoninterference) ||
+              ps.CheckBooleanFlag("trustInductiveSequentialization", ref trustInductiveSequentialization) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting) ||
               ps.CheckBooleanFlag("warnNotEliminatedVars", ref WarnNotEliminatedVars)

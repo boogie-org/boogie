@@ -26,7 +26,14 @@ namespace Microsoft.Boogie.SMTLib
   // Lineariser for expressions. The result (bool) is currently not used for anything
   public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions /*!*/>
   {
-    public static string StoreOpName(VCExprNAry node)
+    private readonly SMTCommandLineOptions commandLineOptions;
+
+    public SMTLibExprLineariser(SMTCommandLineOptions commandLineOptions)
+    {
+      this.commandLineOptions = commandLineOptions;
+    }
+
+    public string StoreOpName(VCExprNAry node)
     {
       Contract.Requires(node != null);
       Contract.Requires((node.Op is VCExprSelectOp) || (node.Op is VCExprStoreOp));
@@ -34,7 +41,7 @@ namespace Microsoft.Boogie.SMTLib
       return "Store_" + TypeToString(node[0].Type);
     }
 
-    public static string SelectOpName(VCExprNAry node)
+    public string SelectOpName(VCExprNAry node)
     {
       Contract.Requires(node != null);
       Contract.Requires((node.Op is VCExprSelectOp) || (node.Op is VCExprStoreOp));
@@ -109,7 +116,7 @@ namespace Microsoft.Boogie.SMTLib
 
     /////////////////////////////////////////////////////////////////////////////////////
 
-    private static void TypeToStringHelper(Type t, StringBuilder sb)
+    private void TypeToStringHelper(Type t, StringBuilder sb)
     {
       Contract.Requires(t != null);
 
@@ -120,7 +127,7 @@ namespace Microsoft.Boogie.SMTLib
       }
       else
       {
-        if (t.IsMap && CommandLineOptions.Clo.UseArrayTheory)
+        if (t.IsMap && commandLineOptions.UseArrayTheory)
         {
           MapType m = t.AsMap;
           // Contract.Assert(m.MapArity == 1);
@@ -161,7 +168,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public static string TypeToString(Type t)
+    public string TypeToString(Type t)
     {
       Contract.Requires(t != null);
       Contract.Ensures(Contract.Result<string>() != null);
@@ -200,7 +207,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public static string ExtractBuiltin(Function f)
+    public string ExtractBuiltin(Function f)
     {
       Contract.Requires(f != null);
       string retVal = null;
@@ -215,7 +222,7 @@ namespace Microsoft.Boogie.SMTLib
         retVal = f.FindStringAttribute("builtin");
       }
 
-      if (retVal != null && !CommandLineOptions.Clo.UseArrayTheory && SMTLibOpLineariser.ArrayOps.Contains(retVal))
+      if (retVal != null && !commandLineOptions.UseArrayTheory && SMTLibOpLineariser.ArrayOps.Contains(retVal))
       {
         retVal = null;
       }
@@ -528,8 +535,14 @@ namespace Microsoft.Boogie.SMTLib
     // Lineariser for operator terms. The result (bool) is currently not used for anything
     internal class SMTLibOpLineariser : IVCExprOpVisitor<bool, LineariserOptions /*!*/>
     {
+      private readonly CommandLineOptions commandLineOptions;
       private readonly SMTLibExprLineariser ExprLineariser;
       private readonly TextWriter wr;
+
+      public SMTLibOpLineariser(CommandLineOptions commandLineOptions)
+      {
+        this.commandLineOptions = commandLineOptions;
+      }
 
       [ContractInvariantMethod]
       void ObjectInvariant()
@@ -684,9 +697,9 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitSelectOp(VCExprNAry node, LineariserOptions options)
       {
-        var name = SelectOpName(node);
+        var name = ExprLineariser.SelectOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
-        if (CommandLineOptions.Clo.UseArrayTheory)
+        if (commandLineOptions.UseArrayTheory)
           name = "select";
         WriteApplication(name, node, options);
         return true;
@@ -694,9 +707,9 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitStoreOp(VCExprNAry node, LineariserOptions options)
       {
-        var name = StoreOpName(node);
+        var name = ExprLineariser.StoreOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
-        if (CommandLineOptions.Clo.UseArrayTheory)
+        if (commandLineOptions.UseArrayTheory)
           name = "store";
         WriteApplication(name, node, options);
         return true;
@@ -924,7 +937,7 @@ namespace Microsoft.Boogie.SMTLib
         Contract.Assert(op != null);
         string printedName;
 
-        var builtin = ExtractBuiltin(op.Func);
+        var builtin = ExprLineariser.ExtractBuiltin(op.Func);
         var datatype = ExtractDatatype(op.Func);
         if (builtin != null)
         {
@@ -963,12 +976,12 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
-      private static string CheckSeqApply(string name, VCExprNAry node)
+      private string CheckSeqApply(string name, VCExprNAry node)
       {
         if (name == "seq.empty")
         {
           Type type = node.Type;
-          string s = TypeToString(type);
+          string s = ExprLineariser.TypeToString(type);
           return "(as seq.empty " + s + ")";
         }
         else
@@ -983,12 +996,12 @@ namespace Microsoft.Boogie.SMTLib
         "MapLe", "MapOr", "MapAnd", "MapNot", "MapImp", "MapIte"
       });
 
-      private static string CheckMapApply(string name, VCExprNAry node)
+      private string CheckMapApply(string name, VCExprNAry node)
       {
         if (name == "MapConst")
         {
           Type type = node.Type;
-          string s = TypeToString(type);
+          string s = ExprLineariser.TypeToString(type);
           return "(as const " + s + ")";
         }
         else if (name == "MapAdd")
@@ -1014,7 +1027,7 @@ namespace Microsoft.Boogie.SMTLib
         else if (name == "MapEq")
         {
           Type type = ResultType(node[0].Type);
-          string s = TypeToString(type);
+          string s = ExprLineariser.TypeToString(type);
           return "(_ map (= (" + s + " " + s + ") Bool))";
         }
         else if (name == "MapIff")
@@ -1056,7 +1069,7 @@ namespace Microsoft.Boogie.SMTLib
         else if (name == "MapIte")
         {
           Type type = ResultType(node.Type);
-          string s = TypeToString(type);
+          string s = ExprLineariser.TypeToString(type);
           return "(_ map (ite (Bool " + s + " " + s + ") " + s + "))";
         }
         else

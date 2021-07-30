@@ -11,6 +11,7 @@ namespace Microsoft.Boogie.SMTLib
 {
   public class SMTLibProcess
   {
+    private readonly SMTCommandLineOptions commandLineOptions;
     readonly Process prover;
     readonly Inspector inspector;
     readonly SMTLibProverOptions options;
@@ -22,9 +23,10 @@ namespace Microsoft.Boogie.SMTLib
     ConsoleCancelEventHandler cancelEvent;
     public bool NeedsRestart;
 
-    public SMTLibProcess(SMTLibProverOptions options)
+    public SMTLibProcess(SMTCommandLineOptions commandLineOptions, SMTLibProverOptions options)
     {
       this.options = options;
+      this.commandLineOptions = commandLineOptions;
       this.smtProcessId = smtProcessIdSeq++;
 
       var psi = new ProcessStartInfo(options.ExecutablePath(), options.SolverArguments.Concat(" "))
@@ -41,7 +43,7 @@ namespace Microsoft.Boogie.SMTLib
         this.inspector = new Inspector(options);
       }
 
-      if (cancelEvent == null && CommandLineOptions.Clo.RunningBoogieFromCommandLine)
+      if (cancelEvent == null && commandLineOptions.RunningBoogieFromCommandLine)
       {
         cancelEvent = new ConsoleCancelEventHandler(ControlCHandler);
         Console.CancelKeyPress += cancelEvent;
