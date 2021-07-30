@@ -1242,7 +1242,7 @@ namespace VC
 
       public static List<Split> FocusAndSplit(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
       {
-        List<Split> focussedImpl = FocusAndSplit(impl, gotoCmdOrigins, par);
+        List<Split> focussedImpl = FocusImpl(impl, gotoCmdOrigins, par);
         if (focussedImpl == null) {
           return FindManualSplits(impl, gotoCmdOrigins, par);
         } else {
