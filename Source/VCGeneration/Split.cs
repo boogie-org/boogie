@@ -1149,12 +1149,12 @@ namespace VC
         // the ancestor is processed first.
         // On the other hand, if reallyFocus is false,
         // foci are processed in a bottom-up fashion --- i.e., the descendant is processed first.
-        bool reallyFocus = true;
+        bool reallyFocus = false;
         int compareBlocks(Block b1, Block b2) {
           if (topoSorted.IndexOf(b1) == topoSorted.IndexOf(b2)) {
             return 0;
           } else {
-            return (topoSorted.IndexOf(b1) < topoSorted.IndexOf(b2) ^ reallyFocus) ? 1 : -1;
+            return (topoSorted.IndexOf(b1) < topoSorted.IndexOf(b2)) ^ reallyFocus ? 1 : -1;
           }
         }
         List<Block> focusBlocks = getFocusBlocks(impl.Blocks);
@@ -1178,6 +1178,28 @@ namespace VC
           }
           return visited;
         }
+
+        // finds all the blocks dominated by focusBlock in the subgraph
+        // which only contains vertices of subGraph.
+        HashSet<Block> DominatedBlocks(Block focusBlock, IEnumerable<Block> subGraph) {
+          var topoSorted = dag.TopologicalSort();
+          var dominators = new Dictionary<Block, HashSet<Block>>();
+          var todo = new Queue<Block>();
+          foreach (var b in topoSorted.Where(blk => subGraph.Contains(blk)))
+          {
+            var s = new HashSet<Block>();
+            var pred = b.Predecessors.Where(blk => subGraph.Contains(blk)).ToList();
+            if (pred.Count() != 0)
+            {
+              s.UnionWith(dominators[pred[0]]);
+              pred.ForEach(blk => s.IntersectWith(dominators[blk]));
+            }
+            s.Add(b);
+            dominators[b] = s;
+          }
+          return subGraph.Where(blk => dominators[blk].Contains(focusBlock)).ToHashSet();
+        }
+
 
         Cmd ForgetSplits(Cmd c)
         {
@@ -1230,8 +1252,9 @@ namespace VC
             focusRec(focusIdx + 1, blocks, freeBlocks);
           } else {
             var b = focusBlocks[focusIdx];
+            var dominatedBlocks = DominatedBlocks(b, blocks);
             // the first part takes all blocks except the ones dominated by the focus block
-            focusRec(focusIdx + 1, blocks.Where(blk => !dag.DominatorMap.DominatedBy(blk, b)), freeBlocks);
+            focusRec(focusIdx + 1, blocks.Where(blk => !dominatedBlocks.Contains(blk)), freeBlocks);
             // the other part takes all predecessors, the focus block, and the successors.
             var ancestors = getReachableBlocks(b, false);
             ancestors.Remove(b);
