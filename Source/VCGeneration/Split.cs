@@ -1132,7 +1132,6 @@ namespace VC
           return subGraph.Where(blk => dominators[blk].Contains(focusBlock)).ToHashSet();
         }
 
-
         Cmd ForgetSplits(Cmd c)
         {
           if (c is PredicateCmd pc) {
