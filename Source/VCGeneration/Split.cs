@@ -155,9 +155,9 @@ namespace VC
         }
       }
 
-      public void DumpDot(int no)
+      public void DumpDot(int splitNum)
       {
-        using (System.IO.StreamWriter sw = System.IO.File.CreateText(string.Format("{0}.split.{1}.dot", impl.Name, no)))
+        using (System.IO.StreamWriter sw = System.IO.File.CreateText(string.Format("{0}.split.{1}.dot", impl.Name, splitNum)))
         {
           sw.WriteLine("digraph G {");
 
@@ -188,7 +188,7 @@ namespace VC
           sw.Close();
         }
 
-        string filename = string.Format("{0}.split.{1}.bpl", impl.Name, no);
+        string filename = string.Format("{0}.split.{1}.bpl", impl.Name, splitNum);
         using (System.IO.StreamWriter sw = System.IO.File.CreateText(filename))
         {
           int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
@@ -742,74 +742,12 @@ namespace VC
           Console.WriteLine(i);
       }
 
-      private static Dictionary<Block, Block> ImmediateDominator(List<Block> blocks)
-      {
-        // this function uses the DAG property of blocks
-        Dictionary<Block, HashSet<Block>> DominatorsFast(Graph<Block> dag)
-        {
-          var dominators = new Dictionary<Block, HashSet<Block>>();
-          var topoSorted = dag.TopologicalSort().ToList();
-          topoSorted.ForEach(b => dominators[b] = topoSorted.ToHashSet());
-          var todo = new Queue<Block>();
-          foreach (var b in topoSorted)
-          {
-            var s = new HashSet<Block>();
-            if (b.Predecessors.Count() != 0)
-            {
-              s.UnionWith(dominators[b.Predecessors[0]]);
-              b.Predecessors.ForEach(blk => s.IntersectWith(dominators[blk]));
-            }
-            s.Add(b);
-            dominators[b] = s;
-          }
-          return dominators;
-        }
-
-        var dag = VCGen.BlocksToDag(blocks);
-        Dictionary<Block, HashSet<Block>> dominators = DominatorsFast(dag);
-        var todo = new Queue<Block>();
-        // just for checking
-        {
-          todo.Enqueue(blocks[0]);
-          while (todo.Count > 0)
-          {
-            var b = todo.Dequeue();
-            var s = new HashSet<Block>();
-            if (b.Predecessors.Count() != 0)
-            {
-              s.UnionWith(dominators[b.Predecessors[0]]);
-              b.Predecessors.ForEach(blk => s.IntersectWith(dominators[blk]));
-            }
-            s.Add(b);
-            if (!s.SetEquals(dominators[b]))
-            {
-              Contract.Assert(false);
-              dominators[b] = s;
-              if (b.TransferCmd is GotoCmd exit)
-                exit.labelTargets.ForEach(blk => todo.Enqueue(blk));
-            }
-          }
-        }
-
-        List<Block> topoSorted = dag.TopologicalSort().ToList();
-        var immediateDominator = new Dictionary<Block, Block>();
-        foreach (Block b in blocks)
-        {
-          if (dominators[b].Count() > 1)
-          {
-            dominators[b].Remove(b);
-          }
-          immediateDominator[b] = topoSorted.ElementAt(dominators[b].Max(e => topoSorted.IndexOf(e)));
-        }
-        immediateDominator[blocks[0]] = blocks[0];
-        return immediateDominator;
-      }
       // Verify b with the last split in blockAssignments[b]
       private static Dictionary<Block, Block> PickBlocksToVerify (List<Block> blocks, Dictionary<Block, int> splitPoints)
       {
         var todo = new Stack<Block>();
         var blockAssignments = new Dictionary<Block, Block>();
-        var immediateDominator = ImmediateDominator(blocks);
+        var immediateDominator = (Program.GraphFromBlocks(blocks)).ImmediateDominator();
         todo.Push(blocks[0]);
         while(todo.Count > 0)
         {
@@ -833,6 +771,7 @@ namespace VC
       private static List<Block> DoPreAssignedManualSplit(List<Block> blocks, Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
         Block containingBlock, bool lastSplitInBlock)
       {
+
         bool isSplitCmd(Cmd c)
         {
           return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "split_here");
@@ -1043,20 +982,12 @@ namespace VC
           }
         }
 
-        void DeleteSubSumptions (Block b)
-        {
-          bool isAssumeSubsumption (Cmd c) { return c is AssumeCmd ac && QKeyValue.FindBoolAttribute(ac.Attributes, "subsumption"); }
-          b.Cmds = b.Cmds.Where(c => !isAssumeSubsumption(c)).ToList();
-        }
-
         bool ContainsAssert(Block b)
         {
           bool isNonTrivialAssert (Cmd c) { return c is AssertCmd ac && !(ac.Expr is LiteralExpr le && le.asBool); }
-          return b.Cmds.Aggregate(false, (containsAssert, c) => containsAssert || isNonTrivialAssert(c));
+          return b.Cmds.Exists(cmd => isNonTrivialAssert(cmd));
         }
 
-        // return blocks;
-        blocks.ForEach(b => DeleteSubSumptions(b));
         blocks.ForEach(b => DeleteFalseGotos(b)); // make blocks ending in assume false leaves of the CFG-DAG -- this is probably unnecessary, may have been done previously
         var todo = new Stack<Block>();
         var peeked = new HashSet<Block>();
@@ -1069,10 +1000,9 @@ namespace VC
           peeked.Add(currentBlock);
           var interesting = false;
           var exit = currentBlock.TransferCmd as GotoCmd;
-          if (exit != null && !pop)
+          if (exit != null && !pop) {
             exit.labelTargets.ForEach(b => todo.Push(b));
-          else if (exit != null)
-          {
+          } else if (exit != null) {
             Contract.Assert(pop);
             var gtc = new GotoCmd(exit.tok, exit.labelTargets.Where(l => interestingBlocks.Contains(l)).ToList());
             currentBlock.TransferCmd = gtc;
@@ -1081,7 +1011,9 @@ namespace VC
           if (pop)
           {
             interesting = interesting || ContainsAssert(currentBlock);
-            if (interesting) interestingBlocks.Add(currentBlock);
+            if (interesting) {
+              interestingBlocks.Add(currentBlock);
+            }
             todo.Pop();
           }
         }
@@ -1542,11 +1474,13 @@ namespace VC
           desc += "_split" + no;
         checker.BeginCheck(desc, vc, reporter, timeout, rlimit, impl.RandomSeed);
       }
+
       private static Cmd AssertIntoAssume(Cmd c)
       {
         if (c is AssertCmd assrt) return VCGen.AssertTurnedIntoAssume(assrt);
         return c;
       }
+
       private void SoundnessCheck(HashSet<List<Block> /*!*/> /*!*/ cache, Block /*!*/ orig,
         List<Block /*!*/> /*!*/ copies)
       {

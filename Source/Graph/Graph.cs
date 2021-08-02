@@ -586,6 +586,49 @@ namespace Microsoft.Boogie.GraphUtil
       }
     }
 
+    // This method gives a simpler way to compute dominators but it assmumes the graph is a DAG.
+    // With acyclicty we can compute all dominators by traversing the graph (once) in topological order
+    // (using the property: A vertex's dominator set is unaffected by vertices that come later).
+    // The method does not check the graph for the DAG property. That risk is on the caller.
+    public Dictionary<Node, HashSet<Node>> DominatorsFast()
+    {
+      List<Node> topoSorted = this.TopologicalSort().ToList();
+      var dominators = new Dictionary<Node, HashSet<Node>>();
+      topoSorted.ForEach(u => dominators[u] = topoSorted.ToHashSet());
+      var todo = new Queue<Node>();
+      foreach (var u in topoSorted)
+      {
+        var s = new HashSet<Node>();
+        var predecessors = this.Predecessors(u).ToList();
+        if (predecessors.Count() != 0)
+        {
+          s.UnionWith(dominators[predecessors.First()]);
+          predecessors.ForEach(v => s.IntersectWith(dominators[v]));
+        }
+        s.Add(u);
+        dominators[u] = s;
+      }
+      return dominators;
+    }
+
+    // Use this method only for DAGs because it uses DominatorsFast() for computing dominators
+    public Dictionary<Node, Node> ImmediateDominator()
+    {
+      List<Node> topoSorted = this.TopologicalSort().ToList();
+      Dictionary<Node, HashSet<Node>> dominators = DominatorsFast();
+      var immediateDominator = new Dictionary<Node, Node>();
+      foreach (var u in this.Nodes)
+      {
+        if (dominators[u].Count() > 1)
+        {
+          dominators[u].Remove(u);
+        }
+        immediateDominator[u] = topoSorted.ElementAt(dominators[u].Max(e => topoSorted.IndexOf(e)));
+      }
+      immediateDominator[this.source] = this.source;
+      return immediateDominator;
+    }
+
     public Dictionary<Node, List<Node>> ImmediateDominatorMap
     {
       get
