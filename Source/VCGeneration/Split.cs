@@ -1158,6 +1158,10 @@ namespace VC
           }
         }
         List<Block> focusBlocks = getFocusBlocks(impl.Blocks);
+        if(focusBlocks.Count() == 0) {
+          return null;
+        }
+
         focusBlocks.Sort(compareBlocks); // if reallyFocus is true, blocks are sorted according to the topological order; otherwise they are placed in reverse topo order.
         var s = new List<Split>();
         var duplicator = new Duplicator();
