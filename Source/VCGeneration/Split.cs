@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Microsoft.Boogie;
+using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
@@ -12,7 +13,7 @@ namespace VC
 {
   using Bpl = Microsoft.Boogie;
   using System.Threading.Tasks;
-  
+
   class Split
     {
       class BlockStats
@@ -71,7 +72,7 @@ namespace VC
 
       readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
         stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
-      
+
       static int currentId = -1;
       Block splitBlock;
       bool assertToAssume;
@@ -154,9 +155,9 @@ namespace VC
         }
       }
 
-      public void DumpDot(int no)
+      public void DumpDot(int splitNum)
       {
-        using (System.IO.StreamWriter sw = System.IO.File.CreateText(string.Format("split.{0}.dot", no)))
+        using (System.IO.StreamWriter sw = System.IO.File.CreateText(string.Format("{0}.split.{1}.dot", impl.Name, splitNum)))
         {
           sw.WriteLine("digraph G {");
 
@@ -187,7 +188,7 @@ namespace VC
           sw.Close();
         }
 
-        string filename = string.Format("split.{0}.bpl", no);
+        string filename = string.Format("{0}.split.{1}.bpl", impl.Name, splitNum);
         using (System.IO.StreamWriter sw = System.IO.File.CreateText(filename))
         {
           int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
@@ -736,6 +737,111 @@ namespace VC
         throw new cce.UnreachableException();
       }
 
+      private static void PrintSet<T> (HashSet<T> s) {
+        foreach(T i in s)
+          Console.WriteLine(i);
+      }
+
+      // Verify b with the last split in blockAssignments[b]
+      private static Dictionary<Block, Block> PickBlocksToVerify (List<Block> blocks, Dictionary<Block, int> splitPoints)
+      {
+        var todo = new Stack<Block>();
+        var blockAssignments = new Dictionary<Block, Block>();
+        var immediateDominator = (Program.GraphFromBlocks(blocks)).ImmediateDominator();
+        todo.Push(blocks[0]);
+        while(todo.Count > 0)
+        {
+          var currentBlock = todo.Pop();
+          if (blockAssignments.Keys.Contains(currentBlock))
+            continue;
+          else if (immediateDominator[currentBlock] == currentBlock) // if the currentBlock doesn't have a predecessor.
+            blockAssignments[currentBlock] = currentBlock;
+          else if (splitPoints.Keys.Contains(immediateDominator[currentBlock])) // if the currentBlock's dominator has a split then it will be associated with that split
+            blockAssignments[currentBlock] = immediateDominator[currentBlock];
+          else
+          {
+            Contract.Assert(blockAssignments.Keys.Contains(immediateDominator[currentBlock]));
+            blockAssignments[currentBlock] = blockAssignments[immediateDominator[currentBlock]];
+          }
+          if (currentBlock.TransferCmd is GotoCmd exit)
+            exit.labelTargets.ForEach(blk => todo.Push(blk));
+        }
+        return blockAssignments;
+      }
+      private static List<Block> DoPreAssignedManualSplit(List<Block> blocks, Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
+        Block containingBlock, bool lastSplitInBlock)
+      {
+        Cmd AssertIntoAssume(Cmd c)
+        {
+          if (c is AssertCmd assrt) return VCGen.AssertTurnedIntoAssume(assrt);
+          return c;
+        }
+
+        bool isSplitCmd(Cmd c)
+        {
+          return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "split_here");
+        }
+
+        var newBlocks = new List<Block>(blocks.Count()); // Copies of the original blocks
+        var duplicator = new Duplicator();
+        var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count()); // Maps original blocks to their new copies in newBlocks
+        foreach (var currentBlock in blocks)
+        {
+          var newBlock = (Block)duplicator.VisitBlock(currentBlock);
+          oldToNewBlockMap[currentBlock] = newBlock;
+          newBlocks.Add(newBlock);
+          if (currentBlock == containingBlock)
+          {
+            var newCmds = new List<Cmd>();
+            var splitCount = -1;
+            var verify = splitCount == splitNumberWithinBlock;
+            foreach (Cmd c in currentBlock.Cmds)
+            {
+              if (isSplitCmd(c))
+              {
+                splitCount++;
+                verify = splitCount == splitNumberWithinBlock;
+              }
+              newCmds.Add(verify ? c : AssertIntoAssume(c));
+            }
+            newBlock.Cmds = newCmds;
+          }
+          else if (lastSplitInBlock && blockAssignments[currentBlock] == containingBlock)
+          {
+            var verify = true;
+            var newCmds = new List<Cmd>();
+            foreach(Cmd c in currentBlock.Cmds) {
+              verify = isSplitCmd(c) ? false : verify;
+              newCmds.Add(verify ? c : AssertIntoAssume(c));
+            }
+            newBlock.Cmds = newCmds;
+          }
+          else
+          {
+            newBlock.Cmds = currentBlock.Cmds.Select<Cmd, Cmd>(c => AssertIntoAssume(c)).ToList();
+          }
+        }
+        // Patch the edges between the new blocks
+        foreach (var oldBlock in blocks)
+        {
+          if (oldBlock.TransferCmd is ReturnCmd)
+            continue;
+
+          var gotoCmd = (GotoCmd)oldBlock.TransferCmd;
+          var newLabelTargets = new List<Block>(gotoCmd.labelTargets.Count());
+          var newLabelNames = new List<string>(gotoCmd.labelTargets.Count());
+          foreach (var target in gotoCmd.labelTargets)
+          {
+            newLabelTargets.Add(oldToNewBlockMap[target]);
+            newLabelNames.Add(oldToNewBlockMap[target].Label);
+          }
+
+          oldToNewBlockMap[oldBlock].TransferCmd = new GotoCmd(gotoCmd.tok, newLabelNames, newLabelTargets);
+        }
+        return newBlocks;
+      }
+
+
       /// <summary>
       /// Starting from the 0-index "split_here" annotation in begin, verifies until it reaches a subsequent "split_here" annotation
       /// Returns a list of blocks where all code not verified has asserts converted into assumes
@@ -795,7 +901,7 @@ namespace VC
 
           if (!blockInternalSplit && blocksToVerifyEntirely.Contains(currentBlock))
             continue; // All reachable blocks must be checked in their entirety, so don't change anything
-          // Otherwise, we only verify a portion of the current block, so we'll need to look at each of its commands                 
+          // Otherwise, we only verify a portion of the current block, so we'll need to look at each of its commands
 
           // !verify -> convert assert to assume
           var verify =
@@ -868,6 +974,58 @@ namespace VC
         return newBlocks;
       }
 
+      private static List<Block> PostProcess(List<Block> blocks)
+      {
+        void DeleteFalseGotos (Block b)
+        {
+          bool isAssumeFalse (Cmd c) { return c is AssumeCmd ac && ac.Expr is LiteralExpr le && !le.asBool; }
+          var firstFalseIdx = b.Cmds.FindIndex(c => isAssumeFalse(c));
+          if (firstFalseIdx != -1)
+          {
+            b.Cmds = b.Cmds.Take(firstFalseIdx + 1).ToList();
+            b.TransferCmd = (b.TransferCmd is GotoCmd) ? new ReturnCmd(b.tok) : b.TransferCmd;
+          }
+        }
+
+        bool ContainsAssert(Block b)
+        {
+          bool isNonTrivialAssert (Cmd c) { return c is AssertCmd ac && !(ac.Expr is LiteralExpr le && le.asBool); }
+          return b.Cmds.Exists(cmd => isNonTrivialAssert(cmd));
+        }
+
+        blocks.ForEach(b => DeleteFalseGotos(b)); // make blocks ending in assume false leaves of the CFG-DAG -- this is probably unnecessary, may have been done previously
+        var todo = new Stack<Block>();
+        var peeked = new HashSet<Block>();
+        var interestingBlocks = new HashSet<Block>();
+        todo.Push(blocks[0]);
+        while(todo.Count() > 0)
+        {
+          var currentBlock = todo.Peek();
+          var pop = peeked.Contains(currentBlock);
+          peeked.Add(currentBlock);
+          var interesting = false;
+          var exit = currentBlock.TransferCmd as GotoCmd;
+          if (exit != null && !pop) {
+            exit.labelTargets.ForEach(b => todo.Push(b));
+          } else if (exit != null) {
+            Contract.Assert(pop);
+            var gtc = new GotoCmd(exit.tok, exit.labelTargets.Where(l => interestingBlocks.Contains(l)).ToList());
+            currentBlock.TransferCmd = gtc;
+            interesting = interesting || gtc.labelTargets.Count() != 0;
+          }
+          if (pop)
+          {
+            interesting = interesting || ContainsAssert(currentBlock);
+            if (interesting) {
+              interestingBlocks.Add(currentBlock);
+            }
+            todo.Pop();
+          }
+        }
+        interestingBlocks.Add(blocks[0]); // must not be empty
+        return blocks.Where(b => interestingBlocks.Contains(b)).ToList(); // this is not the same as interestingBlocks.ToList() because the resulting lists will have different orders.
+      }
+
       public static List<Split /*!*/> FindManualSplits(Implementation /*!*/ impl,
         Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins, VCGen /*!*/ par)
       {
@@ -888,33 +1046,28 @@ namespace VC
             }
           }
         }
-
         if (splitPoints.Count() == 0)
         {
           // No manual split points here
           return null;
         }
-
         List<Split> splits = new List<Split>();
         Block entryPoint = impl.Blocks[0];
-        var newEntryBlocks = DoManualSplit(impl.Blocks, entryPoint, -1, splitPoints.Keys.Contains(entryPoint),
-          splitPoints.Keys);
-        splits.Add(new Split(newEntryBlocks, gotoCmdOrigins, par,
-          impl)); // REVIEW: Does gotoCmdOrigins need to be changed at all?        
-
+        var blockAssignments = PickBlocksToVerify(impl.Blocks, splitPoints);
+        var entryBlockHasSplit = splitPoints.Keys.Contains(entryPoint);
+        var baseSplitBlocks = PostProcess(DoPreAssignedManualSplit(impl.Blocks, blockAssignments, -1, entryPoint, !entryBlockHasSplit));
+        splits.Add(new Split(baseSplitBlocks, gotoCmdOrigins, par, impl));
         foreach (KeyValuePair<Block, int> pair in splitPoints)
         {
           for (int i = 0; i < pair.Value; i++)
           {
-            bool blockInternalSplit =
-              i < pair.Value - 1; // There's at least one more split, after this one, in the current block
-            var newBlocks = DoManualSplit(impl.Blocks, pair.Key, i, blockInternalSplit, splitPoints.Keys);
-            Split s = new Split(newBlocks, gotoCmdOrigins, par,
-              impl); // REVIEW: Does gotoCmdOrigins need to be changed at all?
+            bool lastSplitInBlock = i == pair.Value - 1;
+            var newBlocks = DoPreAssignedManualSplit(impl.Blocks, blockAssignments, i, pair.Key, lastSplitInBlock);
+            var processedBlocks = PostProcess(newBlocks);
+            Split s = new Split(processedBlocks, gotoCmdOrigins, par, impl); // REVIEW: Does gotoCmdOrigins need to be changed at all?
             splits.Add(s);
           }
         }
-
         return splits;
       }
 
@@ -1152,7 +1305,7 @@ namespace VC
 
         VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
         Contract.Assert(vc != null);
-        
+
         vc = QuantifierInstantiationEngine.Instantiate(impl, exprGen, bet, vc);
 
         VCExpr controlFlowFunctionAppl =

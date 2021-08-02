@@ -103,7 +103,6 @@ namespace VC
 
         DFS(initial);
       }
-
       void TopologicalSortImpl()
       {
         Graph<Block> dag = Program.GraphFromImpl(impl);
@@ -352,7 +351,7 @@ namespace VC
               Emit();
             }
 
-            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback), 
+            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback),
               CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit, null);
           }
 
@@ -911,7 +910,7 @@ namespace VC
               {
                 if (prover_failed)
                 {
-                  // even if the prover fails, we have learned something, i.e., it is 
+                  // even if the prover fails, we have learned something, i.e., it is
                   // annoying to watch Boogie say Timeout, 0.00% a couple of times
                   proven_cost += s.Cost / 100;
                 }
@@ -1009,7 +1008,7 @@ namespace VC
         }
       }
     }
-    
+
     public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -1041,7 +1040,7 @@ namespace VC
       var gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
 
       ExpandAsserts(impl);
-      
+
       Outcome outcome = Outcome.Correct;
 
       // Report all recycled failing assertions for this implementation.
@@ -1073,7 +1072,7 @@ namespace VC
       }
 
       SplitAndVerify(impl, gotoCmdOrigins, callback, mvInfo, ref outcome);
-      
+
       if (outcome == Outcome.Correct && smoke_tester != null)
       {
         smoke_tester.Test();
@@ -1420,7 +1419,7 @@ namespace VC
         {
           Block pred = cce.NonNull(header.Predecessors[predIndex]);
 
-          // Create a block between header and pred for the predicate commands if pred has more than one successor 
+          // Create a block between header and pred for the predicate commands if pred has more than one successor
           GotoCmd gotocmd = cce.NonNull((GotoCmd) pred.TransferCmd);
           Contract.Assert(gotocmd.labelNames !=
                           null); // if "pred" is really a predecessor, it may be a GotoCmd with at least one label
@@ -1992,7 +1991,7 @@ namespace VC
 //      #region Constant Folding
 //      #endregion
 //      #region Debug Tracing
-//      if (CommandLineOptions.Clo.TraceVerify) 
+//      if (CommandLineOptions.Clo.TraceVerify)
 //      {
 //        Console.WriteLine("after constant folding");
 //        EmitImpl(impl, true);
@@ -2351,7 +2350,7 @@ namespace VC
       return new CalleeCounterexampleInfo(ret, cexInfo.args);
     }
 
-    // return the position of the i^th CallCmd in the block (count only those Calls that call a procedure in inlinedProcs). 
+    // return the position of the i^th CallCmd in the block (count only those Calls that call a procedure in inlinedProcs).
     // Assert failure if there isn't any.
     // Assert that the CallCmd found calls "callee"
     private int GetCallCmdPosition(Block block, int i, HashSet<string> inlinedProcs, string callee)
@@ -2452,7 +2451,7 @@ namespace VC
           {
             augmentedTrace.AddRange(debugInfos[cmd]);
           }
-          
+
           // Skip if 'cmd' not contained in the trace or not an assert
           if (cmd is AssertCmd && traceNodes.Contains(cmd))
           {
@@ -2621,12 +2620,12 @@ namespace VC
       {
         cc = new AssertCounterexample(cex.Trace, cex.AugmentedTrace, assrt, cex.Model, cex.MvInfo, cex.Context);
       }
-      
+
       return cc;
     }
 
     /*
-     * 
+     *
      * Encoding control flow in VC generation:
      *
      * A function ControlFlow is declared globally and used in each verification condition.
@@ -2644,9 +2643,9 @@ namespace VC
      * (1) While translating block A, we have wlp(assert E, Phi) = (f(A) == Id(assert E) ==> E) && Phi
      *
      * In the description above, I am only explaining one of the options for translating assert statements.
-     * 
+     *
      */
-    
+
     static VCExpr LetVC(List<Block> blocks,
       VCExpr controlFlowVariableExpr,
       Dictionary<int, Absy> label2absy,
@@ -2746,7 +2745,7 @@ namespace VC
         return vc;
       }
 
-      /* 
+      /*
        * For block A (= block), generate:
        *   wp(A_body, (/\ S \in Successors(A) :: DagVC(S)))
        */
@@ -2788,7 +2787,7 @@ namespace VC
       return vc;
     }
 
-    /// <summary> 
+    /// <summary>
     /// Remove empty blocks reachable from the startBlock of the CFG
     /// </summary>
     static void RemoveEmptyBlocks(List<Block> blocks)
