@@ -1081,7 +1081,7 @@ namespace VC
         // the ancestor is processed first.
         // On the other hand, if reallyFocus is false,
         // foci are processed in a bottom-up fashion --- i.e., the descendant is processed first.
-        bool reallyFocus = false;
+        bool reallyFocus = true;
         int compareBlocks(Block b1, Block b2) {
           if (topoSorted.IndexOf(b1) == topoSorted.IndexOf(b2)) {
             return 0;
@@ -1180,17 +1180,18 @@ namespace VC
             newBlocks.Reverse();
             Contract.Assert(newBlocks[0] == oldToNewBlockMap[impl.Blocks[0]]);
             s.Add(new Split(PostProcess(newBlocks), gotoCmdOrigins, par, impl));
-          } else if (!blocks.Contains(focusBlocks[focusIdx])) {
+          } else if (!blocks.Contains(focusBlocks[focusIdx])
+                    || freeBlocks.Contains(focusBlocks[focusIdx])) {
             focusRec(focusIdx + 1, blocks, freeBlocks);
           } else {
             var b = focusBlocks[focusIdx];
             var dominatedBlocks = DominatedBlocks(b, blocks);
             // the first part takes all blocks except the ones dominated by the focus block
             focusRec(focusIdx + 1, blocks.Where(blk => !dominatedBlocks.Contains(blk)), freeBlocks);
-            // the other part takes all predecessors, the focus block, and the successors.
             var ancestors = getReachableBlocks(b, false);
             ancestors.Remove(b);
             var descendants = getReachableBlocks(b, true);
+            // the other part takes all the ancestors, the focus block, and the descendants.
             focusRec(focusIdx + 1, ancestors.Union(descendants).Intersect(blocks), ancestors.Union(freeBlocks));
           }
         }
