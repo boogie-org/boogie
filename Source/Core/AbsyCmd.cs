@@ -3264,7 +3264,8 @@ namespace Microsoft.Boogie
             newBlockBody.Add(a);
           }
         }
-        else if (CommandLineOptions.Clo.StratifiedInlining > 0)
+        else if (req.CanAlwaysAssume()
+                || CommandLineOptions.Clo.StratifiedInlining > 0)
         {
           // inject free requires as assume statements at the call site
           AssumeCmd /*!*/

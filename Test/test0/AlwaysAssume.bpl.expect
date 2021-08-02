@@ -1,0 +1,10 @@
+AlwaysAssume.bpl(15,3): Error: A precondition for this call might not hold.
+AlwaysAssume.bpl(6,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    AlwaysAssume.bpl(15,3): anon0
+AlwaysAssume.bpl(24,1): Error: A postcondition might not hold on this return path.
+AlwaysAssume.bpl(20,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    AlwaysAssume.bpl(24,1): anon0
+
+Boogie program verifier finished with 1 verified, 2 errors
