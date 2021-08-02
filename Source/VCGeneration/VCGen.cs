@@ -28,25 +28,6 @@ namespace VC
       this.logFilePath = logFilePath;
     }
 
-    public static Graph<Block> BlocksToDag(List<Block> blocks)
-    {
-      Graph<Block> dag = new Graph<Block>();
-      dag.AddSource(cce.NonNull(blocks[0])); // there is always at least one node in the graph
-      foreach (Block b in blocks)
-      {
-        if (b.TransferCmd is GotoCmd gtc)
-        {
-          Contract.Assume(gtc.labelTargets != null);
-          foreach (Block dest in gtc.labelTargets)
-          {
-            Contract.Assert(dest != null);
-            dag.AddEdge(b, dest);
-          }
-        }
-      }
-      return dag;
-    }
-
     public static AssumeCmd AssertTurnedIntoAssume(AssertCmd assrt)
     {
       Contract.Requires(assrt != null);

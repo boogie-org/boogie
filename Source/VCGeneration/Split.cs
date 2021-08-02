@@ -1074,7 +1074,7 @@ namespace VC
         List<Block> getFocusBlocks(List<Block> blocks) {
           return blocks.Where(blk => blk.Cmds.Where(c => isFocusCmd(c)).Count() != 0).ToList();
         }
-        var dag = VCGen.BlocksToDag(impl.Blocks);
+        var dag = Program.GraphFromImpl(impl);
         var topoSorted = dag.TopologicalSort().ToList();
         // If reallyFocus is set to true,
         // foci are processed in a top-down fashion --- i.e., if two foci are on the same path,
