@@ -1081,7 +1081,7 @@ namespace VC
         // the ancestor is processed first.
         // On the other hand, if reallyFocus is false,
         // foci are processed in a bottom-up fashion --- i.e., the descendant is processed first.
-        bool reallyFocus = true;
+        bool reallyFocus = !CommandLineOptions.Clo.LaxFocus;
         int CompareBlocks(Block b1, Block b2) {
           if (topoSorted.IndexOf(b1) == topoSorted.IndexOf(b2)) {
             return 0;
