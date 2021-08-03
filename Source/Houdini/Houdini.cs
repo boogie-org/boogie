@@ -844,8 +844,8 @@ namespace Microsoft.Boogie.Houdini
       if (CommandLineOptions.Clo.Trace)
       {
         Console.WriteLine("Removing " + refAnnot.Constant);
-        using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
-          cexWriter.WriteLine("Removing " + refAnnot.Constant);
+        using var cexWriter = new System.IO.StreamWriter(cexTraceFile, true);
+        cexWriter.WriteLine("Removing " + refAnnot.Constant);
       }
 
       currentHoudiniState.Assignment.Remove(refAnnot.Constant);
@@ -897,18 +897,15 @@ namespace Microsoft.Boogie.Houdini
 
               #region Extra debugging output
 
-              if (CommandLineOptions.Clo.Trace)
-              {
-                using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
-                {
-                  cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
-                  cexWriter.Write(error.ToString());
-                  cexWriter.WriteLine();
-                  using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter, /*pretty=*/ false))
-                    foreach (Microsoft.Boogie.Block blk in error.Trace)
-                      blk.Emit(writer, 15);
-                  //cexWriter.WriteLine(); 
-                }
+              if (CommandLineOptions.Clo.Trace) {
+                using var cexWriter = new System.IO.StreamWriter(cexTraceFile, true);
+                cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
+                cexWriter.Write(error.ToString());
+                cexWriter.WriteLine();
+                using var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter, /*pretty=*/ false);
+                foreach (Microsoft.Boogie.Block blk in error.Trace)
+                  blk.Emit(writer, 15);
+                //cexWriter.WriteLine(); 
               }
 
               #endregion

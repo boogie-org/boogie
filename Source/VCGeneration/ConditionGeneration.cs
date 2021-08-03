@@ -944,18 +944,15 @@ namespace VC
           end.Subtract(start).TotalMilliseconds);
       }
 
-      if (CommandLineOptions.Clo.TraceCachingForDebugging)
-      {
-        using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
-        {
-          var pd = CommandLineOptions.Clo.PrintDesugarings;
-          var pu = CommandLineOptions.Clo.PrintUnstructured;
-          CommandLineOptions.Clo.PrintDesugarings = true;
-          CommandLineOptions.Clo.PrintUnstructured = 1;
-          impl.Emit(tokTxtWr, 0);
-          CommandLineOptions.Clo.PrintDesugarings = pd;
-          CommandLineOptions.Clo.PrintUnstructured = pu;
-        }
+      if (CommandLineOptions.Clo.TraceCachingForDebugging) {
+        using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
+        var pd = CommandLineOptions.Clo.PrintDesugarings;
+        var pu = CommandLineOptions.Clo.PrintUnstructured;
+        CommandLineOptions.Clo.PrintDesugarings = true;
+        CommandLineOptions.Clo.PrintUnstructured = 1;
+        impl.Emit(tokTxtWr, 0);
+        CommandLineOptions.Clo.PrintDesugarings = pd;
+        CommandLineOptions.Clo.PrintUnstructured = pu;
       }
 
       currentImplementation = null;
@@ -1100,17 +1097,14 @@ namespace VC
 
     void TraceCachingAction(Cmd cmd, CachingAction action)
     {
-      if (CommandLineOptions.Clo.TraceCachingForTesting)
-      {
-        using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
-        {
-          var loc = cmd.tok != null && cmd.tok != Token.NoToken
-            ? string.Format("{0}({1},{2})", cmd.tok.filename, cmd.tok.line, cmd.tok.col)
-            : "<unknown location>";
-          Console.Write("Processing command (at {0}) ", loc);
-          cmd.Emit(tokTxtWr, 0);
-          Console.Out.WriteLine("  >>> {0}", action);
-        }
+      if (CommandLineOptions.Clo.TraceCachingForTesting) {
+        using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
+        var loc = cmd.tok != null && cmd.tok != Token.NoToken
+          ? string.Format("{0}({1},{2})", cmd.tok.filename, cmd.tok.line, cmd.tok.col)
+          : "<unknown location>";
+        Console.Write("Processing command (at {0}) ", loc);
+        cmd.Emit(tokTxtWr, 0);
+        Console.Out.WriteLine("  >>> {0}", action);
       }
 
       if (CommandLineOptions.Clo.TraceCachingForBenchmarking && CachingActionCounts != null)

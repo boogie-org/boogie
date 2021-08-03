@@ -139,27 +139,24 @@ namespace Microsoft.Boogie
           after.Add(assumed);
         }
 
-        if (CommandLineOptions.Clo.TraceCachingForTesting || CommandLineOptions.Clo.TraceCachingForBenchmarking)
-        {
-          using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
+        if (CommandLineOptions.Clo.TraceCachingForTesting || CommandLineOptions.Clo.TraceCachingForBenchmarking) {
+          using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
+          var loc = currentImplementation.tok != null && currentImplementation.tok != Token.NoToken
+            ? string.Format("{0}({1},{2})", currentImplementation.tok.filename, currentImplementation.tok.line,
+              currentImplementation.tok.col)
+            : "<unknown location>";
+          Console.Out.WriteLine("Processing implementation {0} (at {1}):", currentImplementation.Name, loc);
+          foreach (var a in axioms)
           {
-            var loc = currentImplementation.tok != null && currentImplementation.tok != Token.NoToken
-              ? string.Format("{0}({1},{2})", currentImplementation.tok.filename, currentImplementation.tok.line,
-                currentImplementation.tok.col)
-              : "<unknown location>";
-            Console.Out.WriteLine("Processing implementation {0} (at {1}):", currentImplementation.Name, loc);
-            foreach (var a in axioms)
-            {
-              Console.Out.Write("  >>> added axiom: ");
-              a.Expr.Emit(tokTxtWr);
-              Console.Out.WriteLine();
-            }
+            Console.Out.Write("  >>> added axiom: ");
+            a.Expr.Emit(tokTxtWr);
+            Console.Out.WriteLine();
+          }
 
-            foreach (var b in after)
-            {
-              Console.Out.Write("  >>> added after assuming the current precondition: ");
-              b.Emit(tokTxtWr, 0);
-            }
+          foreach (var b in after)
+          {
+            Console.Out.Write("  >>> added after assuming the current precondition: ");
+            b.Emit(tokTxtWr, 0);
           }
         }
       }
@@ -331,39 +328,36 @@ namespace Microsoft.Boogie
         }
 
         node.ExtendDesugaring(before, beforePreconditionCheck, after);
-        if (CommandLineOptions.Clo.TraceCachingForTesting || CommandLineOptions.Clo.TraceCachingForBenchmarking)
-        {
-          using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
+        if (CommandLineOptions.Clo.TraceCachingForTesting || CommandLineOptions.Clo.TraceCachingForBenchmarking) {
+          using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
+          var loc = node.tok != null && node.tok != Token.NoToken
+            ? string.Format("{0}({1},{2})", node.tok.filename, node.tok.line, node.tok.col)
+            : "<unknown location>";
+          Console.Out.WriteLine("Processing call to procedure {0} in implementation {1} (at {2}):", node.Proc.Name,
+            currentImplementation.Name, loc);
+          foreach (var a in axioms)
           {
-            var loc = node.tok != null && node.tok != Token.NoToken
-              ? string.Format("{0}({1},{2})", node.tok.filename, node.tok.line, node.tok.col)
-              : "<unknown location>";
-            Console.Out.WriteLine("Processing call to procedure {0} in implementation {1} (at {2}):", node.Proc.Name,
-              currentImplementation.Name, loc);
-            foreach (var a in axioms)
-            {
-              Console.Out.Write("  >>> added axiom: ");
-              a.Expr.Emit(tokTxtWr);
-              Console.Out.WriteLine();
-            }
+            Console.Out.Write("  >>> added axiom: ");
+            a.Expr.Emit(tokTxtWr);
+            Console.Out.WriteLine();
+          }
 
-            foreach (var b in before)
-            {
-              Console.Out.Write("  >>> added before: ");
-              b.Emit(tokTxtWr, 0);
-            }
+          foreach (var b in before)
+          {
+            Console.Out.Write("  >>> added before: ");
+            b.Emit(tokTxtWr, 0);
+          }
 
-            foreach (var b in beforePreconditionCheck)
-            {
-              Console.Out.Write("  >>> added before precondition check: ");
-              b.Emit(tokTxtWr, 0);
-            }
+          foreach (var b in beforePreconditionCheck)
+          {
+            Console.Out.Write("  >>> added before precondition check: ");
+            b.Emit(tokTxtWr, 0);
+          }
 
-            foreach (var a in after)
-            {
-              Console.Out.Write("  >>> added after: ");
-              a.Emit(tokTxtWr, 0);
-            }
+          foreach (var a in after)
+          {
+            Console.Out.Write("  >>> added after: ");
+            a.Emit(tokTxtWr, 0);
           }
         }
       }

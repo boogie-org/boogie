@@ -63,11 +63,9 @@ public static Program ParseLibraryDefinitions()
   string libraryDefinitionsFileName = "LibraryDefinitions.bpl";
   Assembly asm = Assembly.GetExecutingAssembly();
   var resourceName = "Core.LibraryDefinitions.bpl";
-  using (Stream resourceStream = asm.GetManifestResourceStream(resourceName))
-  {
-    Parse(new StreamReader(resourceStream), libraryDefinitionsFileName, new List<string>(), out Program program);
-    return program;
-  }
+  using Stream resourceStream = asm.GetManifestResourceStream(resourceName);
+  Parse(new StreamReader(resourceStream), libraryDefinitionsFileName, new List<string>(), out Program program);
+  return program;
 }
 
 ///<summary>
@@ -80,12 +78,9 @@ public static int Parse(string/*!*/ filename, List<string/*!*/> defines, out /*m
 
   if (filename == "stdin.bpl") {
     return Parse(Console.In, filename, defines, out program, useBaseName);
-  } else
-  {
-    using (FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
-    {
-      return Parse(new StreamReader(stream), filename, defines, out program, useBaseName);
-    }
+  } else {
+	  using FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+	  return Parse(new StreamReader(stream), filename, defines, out program, useBaseName);
   }
 }
 
