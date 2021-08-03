@@ -1112,6 +1112,10 @@ namespace VC
           }
           return visited;
         }
+        var Ancestors = new Dictionary<Block, HashSet<Block>>();
+        var Descendants = new Dictionary<Block, HashSet<Block>>();
+        focusBlocks.ForEach(fb => Ancestors[fb] = GetReachableBlocks(fb, false));
+        focusBlocks.ForEach(fb => Descendants[fb] = GetReachableBlocks(fb, true));
 
         // finds all the blocks dominated by focusBlock in the subgraph
         // which only contains vertices of subgraph.
@@ -1149,31 +1153,29 @@ namespace VC
           return c;
         }
 
-        void focusRec(int focusIdx, IEnumerable<Block> blocks, IEnumerable<Block> freeBlocks)
+        void FocusRec(int focusIdx, IEnumerable<Block> blocks, IEnumerable<Block> freeBlocks)
         {
-          if (focusIdx == focusBlocks.Count()) {
-            // freeBlocks consist of the predecessors of the relevant foci.
-            // Their assertions turn into assumes and any splits inside them are erased.
-            var l = blocks.ToList();
-            l.Sort(compareBlocks);
+          if (focusIdx == focusBlocks.Count())
+          {
+            // it is important for l to be consistent with reverse topological order.
+            var l = dag.TopologicalSort().Where(blk => blocks.Contains(blk)).Reverse();
             // assert that the root block, impl.Blocks[0], is in l
-            Contract.Assert((reallyFocus && l.ElementAt(0) == impl.Blocks[0])
-                            || (!reallyFocus && l.ElementAt(l.Count() - 1) == impl.Blocks[0]));
-            if (reallyFocus) {
-              l.Reverse();
-            }
+            Contract.Assert(l.ElementAt(l.Count() - 1) == impl.Blocks[0]);
             var newBlocks = new List<Block>();
             var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count());
-            // it is important for this loop to be bottom-up
             foreach (Block b in l)
             {
               var newBlock = (Block)duplicator.Visit(b);
               newBlocks.Add(newBlock);
               oldToNewBlockMap[b] = newBlock;
-              if(freeBlocks.Contains(b)) {
+              // freeBlocks consist of the predecessors of the relevant foci.
+              // Their assertions turn into assumes and any splits inside them are erased.
+              if(freeBlocks.Contains(b))
+              {
                 newBlock.Cmds = b.Cmds.Select(c => Split.AssertIntoAssume(c)).Select(c => ForgetSplits(c)).ToList();
               }
-              if (b.TransferCmd is GotoCmd gtc) {
+              if (b.TransferCmd is GotoCmd gtc)
+              {
                 var targets = gtc.labelTargets.Where(blk => blocks.Contains(blk));
                 newBlock.TransferCmd = new GotoCmd(gtc.tok,
                                               targets.Select(blk => oldToNewBlockMap[blk].Label).ToList(),
@@ -1183,23 +1185,27 @@ namespace VC
             newBlocks.Reverse();
             Contract.Assert(newBlocks[0] == oldToNewBlockMap[impl.Blocks[0]]);
             s.Add(new Split(PostProcess(newBlocks), gotoCmdOrigins, par, impl));
-          } else if (!blocks.Contains(focusBlocks[focusIdx])
-                    || freeBlocks.Contains(focusBlocks[focusIdx])) {
-            focusRec(focusIdx + 1, blocks, freeBlocks);
-          } else {
-            var b = focusBlocks[focusIdx];
-            var dominatedBlocks = DominatedBlocks(b, blocks);
+          }
+          else if (!blocks.Contains(focusBlocks[focusIdx])
+                    || freeBlocks.Contains(focusBlocks[focusIdx]))
+          {
+            FocusRec(focusIdx + 1, blocks, freeBlocks);
+          }
+          else
+          {
+            var b = focusBlocks[focusIdx]; // assert b in blocks
+            var dominatedBlocks = DominatedBlocks(b, blocks); //
             // the first part takes all blocks except the ones dominated by the focus block
-            focusRec(focusIdx + 1, blocks.Where(blk => !dominatedBlocks.Contains(blk)), freeBlocks);
-            var ancestors = getReachableBlocks(b, false);
+            FocusRec(focusIdx + 1, blocks.Where(blk => !dominatedBlocks.Contains(blk)), freeBlocks);
+            var ancestors = Ancestors[b];
             ancestors.Remove(b);
-            var descendants = getReachableBlocks(b, true);
+            var descendants = Descendants[b];
             // the other part takes all the ancestors, the focus block, and the descendants.
-            focusRec(focusIdx + 1, ancestors.Union(descendants).Intersect(blocks), ancestors.Union(freeBlocks));
+            FocusRec(focusIdx + 1, ancestors.Union(descendants).Intersect(blocks), ancestors.Union(freeBlocks));
           }
         }
 
-        focusRec(0, impl.Blocks, new List<Block>());
+        FocusRec(0, impl.Blocks, new List<Block>());
         return s;
       }
 
