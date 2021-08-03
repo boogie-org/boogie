@@ -1068,11 +1068,11 @@ namespace VC
 
       public static List<Split> FocusImpl(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
       {
-        bool isFocusCmd(Cmd c) {
+        bool IsFocusCmd(Cmd c) {
           return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "focus");
         }
-        List<Block> getFocusBlocks(List<Block> blocks) {
-          return blocks.Where(blk => blk.Cmds.Where(c => isFocusCmd(c)).Count() != 0).ToList();
+        List<Block> GetFocusBlocks(List<Block> blocks) {
+          return blocks.Where(blk => blk.Cmds.Where(c => IsFocusCmd(c)).Count() != 0).ToList();
         }
         var dag = Program.GraphFromImpl(impl);
         var topoSorted = dag.TopologicalSort().ToList();
@@ -1082,22 +1082,24 @@ namespace VC
         // On the other hand, if reallyFocus is false,
         // foci are processed in a bottom-up fashion --- i.e., the descendant is processed first.
         bool reallyFocus = true;
-        int compareBlocks(Block b1, Block b2) {
+        int CompareBlocks(Block b1, Block b2) {
           if (topoSorted.IndexOf(b1) == topoSorted.IndexOf(b2)) {
             return 0;
           } else {
             return (topoSorted.IndexOf(b1) < topoSorted.IndexOf(b2)) ^ reallyFocus ? 1 : -1;
           }
         }
-        List<Block> focusBlocks = getFocusBlocks(impl.Blocks);
-        if(focusBlocks.Count() == 0) {
+        List<Block> focusBlocks = GetFocusBlocks(impl.Blocks);
+        if(focusBlocks.Count == 0) {
           return null;
         }
 
-        focusBlocks.Sort(compareBlocks); // if reallyFocus is true, blocks are sorted according to the topological order; otherwise they are placed in reverse topo order.
+        // if reallyFocus is true, blocks are sorted according to the topological order;
+        // otherwise they are placed in reverse topo order.
+        focusBlocks.Sort(CompareBlocks);
         var s = new List<Split>();
         var duplicator = new Duplicator();
-        HashSet<Block> getReachableBlocks(Block root, bool direction) {
+        HashSet<Block> GetReachableBlocks(Block root, bool direction) {
           var todo = new Stack<Block>();
           var visited = new HashSet<Block> ();
           todo.Push(root);
@@ -1112,16 +1114,16 @@ namespace VC
         }
 
         // finds all the blocks dominated by focusBlock in the subgraph
-        // which only contains vertices of subGraph.
-        HashSet<Block> DominatedBlocks(Block focusBlock, IEnumerable<Block> subGraph) {
-          var topoSorted = dag.TopologicalSort();
+        // which only contains vertices of subgraph.
+        HashSet<Block> DominatedBlocks(Block focusBlock, IEnumerable<Block> subgraph)
+        {
           var dominators = new Dictionary<Block, HashSet<Block>>();
           var todo = new Queue<Block>();
-          foreach (var b in topoSorted.Where(blk => subGraph.Contains(blk)))
+          foreach (var b in topoSorted.Where(blk => subgraph.Contains(blk)))
           {
             var s = new HashSet<Block>();
-            var pred = b.Predecessors.Where(blk => subGraph.Contains(blk)).ToList();
-            if (pred.Count() != 0)
+            var pred = b.Predecessors.Where(blk => subgraph.Contains(blk)).ToList();
+            if (pred.Count != 0)
             {
               s.UnionWith(dominators[pred[0]]);
               pred.ForEach(blk => s.IntersectWith(dominators[blk]));
@@ -1129,15 +1131,17 @@ namespace VC
             s.Add(b);
             dominators[b] = s;
           }
-          return subGraph.Where(blk => dominators[blk].Contains(focusBlock)).ToHashSet();
+          return subgraph.Where(blk => dominators[blk].Contains(focusBlock)).ToHashSet();
         }
 
         Cmd ForgetSplits(Cmd c)
         {
-          if (c is PredicateCmd pc) {
+          if (c is PredicateCmd pc)
+          {
             for (var kv = pc.Attributes; kv != null; kv = kv.Next)
             {
-              if (kv.Key == "split") {
+              if (kv.Key == "split")
+              {
                 kv.AddParam(new LiteralExpr(Token.NoToken, false));
               }
             }
