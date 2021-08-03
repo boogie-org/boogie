@@ -1,0 +1,7 @@
+Split.bpl(19,5): Error: This assertion might not hold.
+Execution trace:
+    Split.bpl(12,5): anon0
+    Split.bpl(14,3): anon5_LoopHead
+    Split.bpl(18,7): anon5_LoopBody
+
+Boogie program verifier finished with 0 verified, 1 error

@@ -136,7 +136,6 @@ namespace Microsoft.Boogie.SMTLib
       Process.ErrorHandler += this.HandleProverError;
     }
 
-
     void PossiblyRestart()
     {
       if (Process != null && Process.NeedsRestart)
@@ -220,6 +219,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private void FindDependentTypes(Type type, List<DatatypeTypeCtorDecl> dependentTypes)
     {
+      DeclCollector.TypeToStringReg(type);
       if (type.IsSeq)
       {
         FindDependentTypes(type.AsCtor.Arguments[0], dependentTypes);
@@ -339,17 +339,9 @@ namespace Microsoft.Boogie.SMTLib
         {
           if (ctx.DefinedFunctions.ContainsKey(fdep) && !definitionAdded.Contains(fdep))
           {
-            if (!dependenciesComputed.Contains(fdep))
-            {
-              // Handle dependencies first
-              functionDefs.Push(fdep);
-              hasDependencies = true;
-            }
-            else
-            {
-              HandleProverError(
-                "Function definition cycle detected: " + f.ToString() + " depends on " + fdep.ToString());
-            }
+            // Handle dependencies first
+            functionDefs.Push(fdep);
+            hasDependencies = true;
           }
         }
 
@@ -716,7 +708,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       // Trying to match prover warnings of the form:
       // - for Z3: WARNING: warning_message
-      // - for CVC4: query.smt2:222.24: warning: warning_message
+      // - for CVC5: query.smt2:222.24: warning: warning_message
       // All other lines are considered to be errors.
 
       s = s.Replace("\r", "");
@@ -1126,10 +1118,10 @@ namespace Microsoft.Boogie.SMTLib
         if (type.Name != "Array")
           return false;
 
-        if (element.Name == "__array_store_all__") // CVC4 1.4
+        if (element.Name == "__array_store_all__")
           return true;
         else if (element.Name == "" && element[0].Name == "as" &&
-                 element[0][0].Name == "const") // CVC4 > 1.4
+                 element[0][0].Name == "const")
           return true;
 
         return false;
@@ -1137,10 +1129,10 @@ namespace Microsoft.Boogie.SMTLib
 
       SExpr GetConstArrayElement(SExpr element)
       {
-        if (element.Name == "__array_store_all__") // CVC4 1.4
+        if (element.Name == "__array_store_all__")
           return element[1];
         else if (element.Name == "" && element[0].Name == "as" &&
-                 element[0][0].Name == "const") // CVC4 > 1.4
+                 element[0][0].Name == "const")
           return element[1];
 
         Parent.HandleProverError("Unexpected value: " + element);
@@ -1419,9 +1411,9 @@ namespace Microsoft.Boogie.SMTLib
 
       private void ConvertErrorModel(StringBuilder m)
       {
-        if (Parent.options.Solver == SolverKind.Z3 || Parent.options.Solver == SolverKind.CVC4)
+        if (Parent.options.Solver == SolverKind.Z3 || Parent.options.Solver == SolverKind.CVC5)
         {
-          // Datatype declarations are not returned by Z3 or CVC4, so parse common
+          // Datatype declarations are not returned by Z3 or CVC5, so parse common
           // instead. This is not very efficient, but currently not an issue for interfacing
           // with Z3 as this not the normal way of interfacing with Z3.
           var ms = new MemoryStream(Encoding.ASCII.GetBytes(Parent.common.ToString()));
@@ -1515,7 +1507,7 @@ namespace Microsoft.Boogie.SMTLib
           switch (options.Solver)
           {
             case SolverKind.Z3:
-            case SolverKind.CVC4:
+            case SolverKind.CVC5:
               models = Model.ParseModels(new StringReader("Error model: \n" + modelStr));
               break;
             default:

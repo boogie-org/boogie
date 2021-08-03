@@ -1530,12 +1530,6 @@ namespace Microsoft.Boogie.VCExprAST
 
       lock (app.Func)
       {
-        if (app.Func.doingExpansion)
-        {
-          System.Console.WriteLine("*** detected expansion loop on {0}", app.Func);
-          return null;
-        }
-
         var exp = app.Func.Body;
         if (exp == null)
           return null;
@@ -1548,7 +1542,6 @@ namespace Microsoft.Boogie.VCExprAST
         {
           BaseTranslator.PushFormalsScope();
           BaseTranslator.PushBoundVariableScope();
-          app.Func.doingExpansion = true;
 
           // first bind the formals to VCExpr variables, which are later
           // substituted with the actual parameters
@@ -1563,7 +1556,6 @@ namespace Microsoft.Boogie.VCExprAST
         {
           BaseTranslator.PopFormalsScope();
           BaseTranslator.PopBoundVariableScope();
-          app.Func.doingExpansion = false;
         }
 
         // substitute the formals with the actual parameters in the body

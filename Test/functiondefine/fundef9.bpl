@@ -1,6 +1,6 @@
-// RUN: %boogie "%s" | %OutputCheck "%s"
+// RUN: %boogie  "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 
-// CHECK-L: Prover error: Function definition cycle detected: foo depends on foo2
 function {:define} foo(x:int) returns(int)
   { foo2(x) + 1 }
 function {:define} foo2(x:int) returns(int)
@@ -15,5 +15,3 @@ procedure test(x:int) returns (r:int)
     r := 1;
   }
 }
-
-// CHECK-L: Boogie program verifier finished with 0 verified, 0 errors, 1 inconclusive

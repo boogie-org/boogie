@@ -1891,6 +1891,7 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
+      ResolveAttributes(Attributes, rc);
       if (Lhss.Count != Rhss.Count)
         rc.Error(this,
           "number of left-hand sides does not match number of right-hand sides");
@@ -1952,6 +1953,7 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
+      TypecheckAttributes(Attributes, tc);
       foreach (AssignLhs /*!*/ e in Lhss)
       {
         Contract.Assert(e != null);
@@ -3262,7 +3264,8 @@ namespace Microsoft.Boogie
             newBlockBody.Add(a);
           }
         }
-        else if (CommandLineOptions.Clo.StratifiedInlining > 0)
+        else if (req.CanAlwaysAssume()
+                || CommandLineOptions.Clo.StratifiedInlining > 0)
         {
           // inject free requires as assume statements at the call site
           AssumeCmd /*!*/

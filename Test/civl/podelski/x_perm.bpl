@@ -43,10 +43,10 @@ procedure {:yield_invariant}{:layer 1} Inv_incdec (b:B);
 requires As[bToA(b)];
 
 // Definitions and facts about cardinality
-function {:inline} cardAs (As:[A]bool) : int;
+function cardAs (As:[A]bool) : int;
 axiom (forall As:[A]bool :: cardAs(As) >= 0);
 
-function {:inline} cardBs (Bs:[B]bool) : int;
+function cardBs (Bs:[B]bool) : int;
 axiom (forall Bs:[B]bool :: cardBs(Bs) >= 0);
 
 procedure {:lemma} Lemma_add_to_A (a: A, As: [A]bool);

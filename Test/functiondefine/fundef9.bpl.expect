@@ -1,0 +1,1 @@
+fundef9.bpl(4,19): Error: Call cycle detected among functions: foo, foo2

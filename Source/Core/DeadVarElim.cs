@@ -553,22 +553,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(impl != null);
       Microsoft.Boogie.Helpers.ExtraTraceInformation("Starting live variable analysis");
-      Graph<Block> dag = new Graph<Block>();
-      dag.AddSource(cce.NonNull(impl.Blocks[0])); // there is always at least one node in the graph
-      foreach (Block b in impl.Blocks)
-      {
-        GotoCmd gtc = b.TransferCmd as GotoCmd;
-        if (gtc != null)
-        {
-          Contract.Assume(gtc.labelTargets != null);
-          foreach (Block /*!*/ dest in gtc.labelTargets)
-          {
-            Contract.Assert(dest != null);
-            dag.AddEdge(dest, b);
-          }
-        }
-      }
-
+      Graph<Block> dag = Program.GraphFromBlocks(impl.Blocks, false);
       IEnumerable<Block> sortedNodes;
       if (CommandLineOptions.Clo.ModifyTopologicalSorting)
       {

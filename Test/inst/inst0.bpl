@@ -28,7 +28,7 @@ procedure A3()
 {
     assume (forall {:pool "L"} x0: int, {:pool "L"} x1: int :: G(x0-1, x1-1));
     assert {:add_to_pool "L", 1} G(0, 0);
-    assert (forall y0, y1: int :: {:skolem_add_to_pool "L", y0+1} {:skolem_add_to_pool "L", y1+1} G(y0, y1));
+    assert (forall y0, y1: int :: {:skolem_add_to_pool "L", y0+1, y1+1} G(y0, y1));
 }
 
 procedure A4()

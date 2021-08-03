@@ -309,9 +309,9 @@ namespace VC
       foreach (Ensures ens in impl.Proc.Ensures)
       {
         Contract.Assert(ens != null);
+
         if (!ens.Free)
         {
-          // skip free ensures clauses
           Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
           Ensures ensCopy = (Ensures) cce.NonNull(ens.Clone());
           ensCopy.Condition = e;
@@ -322,6 +322,15 @@ namespace VC
           {
             c.Emit(debugWriter, 1);
           }
+        }
+        else if (ens.CanAlwaysAssume())
+        {
+          Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
+          unifiedExitBlock.Cmds.Add(new AssumeCmd(ens.tok, e));
+        }
+        else
+        {
+          // skip free ensures if it doesn't have the :always_assume attr
         }
       }
 
@@ -977,22 +986,7 @@ namespace VC
 
       #region Topological sort -- need to process in a linearization of the partial order
 
-      Graph<Block> dag = new Graph<Block>();
-      dag.AddSource(cce.NonNull(blocks[0])); // there is always at least one node in the graph
-      foreach (Block b in blocks)
-      {
-        GotoCmd gtc = b.TransferCmd as GotoCmd;
-        if (gtc != null)
-        {
-          Contract.Assume(gtc.labelTargets != null);
-          foreach (Block dest in gtc.labelTargets)
-          {
-            Contract.Assert(dest != null);
-            dag.AddEdge(b, dest);
-          }
-        }
-      }
-
+      Graph<Block> dag = Program.GraphFromBlocks(blocks);
       IEnumerable sortedNodes;
       if (CommandLineOptions.Clo.ModifyTopologicalSorting)
       {
