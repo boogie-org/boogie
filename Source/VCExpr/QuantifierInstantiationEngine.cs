@@ -7,7 +7,7 @@ namespace Microsoft.Boogie.VCExprAST
   public class QuantifierInstantiationEngine
   {
     /*
-     * The algorithm implemented by QuantifierInstantiationEngine is a fixpoint. There are three phases.
+     * The algorithm implemented by QuantifierInstantiationEngine is a fixpoint. There are two phases.
      *
      * Start:
      *   - find instantiation sources in commands
@@ -90,15 +90,23 @@ namespace Microsoft.Boogie.VCExprAST
       }
       while (iter != null)
       {
-        if (iter.Key == "add_to_pool")
+        if (iter.Key == "add_to_pool" && iter.Params.Count > 1)
         {
           var label = iter.Params[0] as string;
-          var instance = iter.Params[1] as Expr;
-          if (label != null && instance != null)
+          if (label != null)
           {
-            instance = Substituter.Apply(incarnationSubst, instance);
+            var newParams = new List<object> {label};
+            for (int i = 1; i < iter.Params.Count; i++)
+            {
+              var instance = iter.Params[i] as Expr;
+              if (instance != null)
+              {
+                instance = Substituter.Apply(incarnationSubst, instance);
+                newParams.Add(instance);
+              }
+            }
             iter.ClearParams();
-            iter.AddParams(new List<object> {label, instance});
+            iter.AddParams(newParams);
           }
         }
         iter = iter.Next;
@@ -190,17 +198,23 @@ namespace Microsoft.Boogie.VCExprAST
       var iter = o.Attributes;
       while (iter != null)
       {
-        if (iter.Key == attrName)
+        if (iter.Key == attrName && iter.Params.Count > 1)
         {
           var label = iter.Params[0] as string;
-          var instance = iter.Params[1] as Expr;
-          if (label != null && instance != null)
+          if (label != null)
           {
-            if (!freshInstances.ContainsKey(label))
+            for (int i = 1; i < iter.Params.Count; i++)
             {
-              freshInstances[label] = new HashSet<VCExpr>();
+              var instance = iter.Params[i] as Expr;
+              if (instance != null)
+              {
+                if (!freshInstances.ContainsKey(label))
+                {
+                  freshInstances[label] = new HashSet<VCExpr>();
+                }
+                freshInstances[label].Add(exprTranslator.Translate(instance));
+              }
             }
-            freshInstances[label].Add(exprTranslator.Translate(instance));
           }
         }
         iter = iter.Next;
@@ -668,14 +682,12 @@ namespace Microsoft.Boogie.VCExprAST
     {
       var lambdaInstanceCollector = new LambdaInstanceCollector(qiEngine);
       lambdaInstanceCollector.Traverse(vcExpr, true);
-      var lambdaFunctionToInstances = new Dictionary<Function, HashSet<List<VCExpr>>>();
+      var lambdaFunctionToInstances =
+        lambdaInstanceCollector.lambdaFunctions.ToDictionary(
+          x => x, x => new HashSet<List<VCExpr>>(new ListComparer<VCExpr>()));
       foreach (var instance in lambdaInstanceCollector.instances)
       {
         var function = (instance.Op as VCExprBoogieFunctionOp).Func;
-        if (!lambdaFunctionToInstances.ContainsKey(function))
-        {
-          lambdaFunctionToInstances[function] = new HashSet<List<VCExpr>>(new ListComparer<VCExpr>());
-        }
         lambdaFunctionToInstances[function].Add(instance.UniformArguments.ToList());
       }
       return lambdaFunctionToInstances;
@@ -684,11 +696,13 @@ namespace Microsoft.Boogie.VCExprAST
     private LambdaInstanceCollector(QuantifierInstantiationEngine qiEngine)
     {
       this.qiEngine = qiEngine;
+      this.lambdaFunctions = new HashSet<Function>();
       this.instances = new HashSet<VCExprNAry>();
       this.instancesOnStack = new Stack<VCExprNAry>();
     }
 
     private QuantifierInstantiationEngine qiEngine;
+    private HashSet<Function> lambdaFunctions;
     private HashSet<VCExprNAry> instances;
     private Stack<VCExprNAry> instancesOnStack;
 
@@ -704,6 +718,7 @@ namespace Microsoft.Boogie.VCExprAST
         var function = functionOp.Func;
         if (function.OriginalLambdaExprAsString != null && qiEngine.BindLambdaFunction(function))
         {
+          lambdaFunctions.Add(function);
           instances.Add(node);
           instancesOnStack.Push(node);
           var retVal = base.Visit(node, arg);

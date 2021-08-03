@@ -62,7 +62,7 @@ namespace Microsoft.Boogie
 
       Helpers.ExtraTraceInformation("Becoming sentient");
 
-      ExecutionEngine.ProcessFiles(fileList);
+      var success = ExecutionEngine.ProcessFiles(fileList);
 
       if (CommandLineOptions.Clo.XmlSink != null)
       {
@@ -75,7 +75,7 @@ namespace Microsoft.Boogie
         Console.ReadLine();
       }
 
-      return 0;
+      return success ? 0 : 1;
     }
 
     private static List<string> GetFileList()

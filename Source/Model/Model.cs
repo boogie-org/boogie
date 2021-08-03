@@ -259,8 +259,28 @@ namespace Microsoft.Boogie
     {
       public readonly Model Model;
       public readonly string Name;
-      public readonly int Arity;
+      private int? arity; // can be null if arity is unknown
       internal readonly List<FuncTuple> apps = new List<FuncTuple>();
+
+      /// <summary>
+      /// Arity can be set to null if it is not known at the time of creation
+      /// Once set to an integer, however, an attempt to change arity leads
+      /// to an exception
+      /// </summary>
+      public virtual int? Arity {
+        get {
+          return arity; 
+        }
+        set {
+          if ((arity != null) && (value != null) && (arity != value)) {
+            throw new ArgumentException(string.Format(
+              "function '{0}' previously created with arity {1}, " +
+              "is now being assigned arity {2}", Name, arity,
+              value));
+          }
+          arity = value;
+        }
+      }
 
       public IEnumerable<FuncTuple> Apps
       {
@@ -274,16 +294,17 @@ namespace Microsoft.Boogie
 
       private Element @else;
 
-      internal Func(Model p, string n, int a)
+      internal Func(Model p, string n, int? a)
       {
         Model = p;
         Name = n;
-        Arity = a;
+        arity = a;
       }
 
-      public override string ToString()
-      {
-        return string.Format("{0}/{1}", Name, Arity);
+      public override string ToString() {
+        if (Arity != null) 
+          return string.Format("{0}/{1}", Name, Arity);
+        return string.Format("{0}/{1}", Name, "?");
       }
 
       internal void Substitute(Dictionary<Element, Element> mapping)
@@ -311,10 +332,10 @@ namespace Microsoft.Boogie
         }
       }
 
-      public void SetConstant(Element res)
-      {
-        if (Arity != 0 || apps.Count > 0)
+      public void SetConstant(Element res) {
+        if (apps.Count > 0)
           throw new ArgumentException();
+        Arity = 0; // will throw exception if arity is not null or already 0
         var t = new FuncTuple(this, res, null);
         apps.Add(t);
         res.references.Add(t);
@@ -379,10 +400,8 @@ namespace Microsoft.Boogie
       /// <summary>
       /// For a nullary function, return its value.
       /// </summary>
-      public Element GetConstant()
-      {
-        if (Arity != 0)
-          throw new ArgumentException();
+      public Element GetConstant() {
+        Arity = 0; // will throw exception if arity is not null or already 0
         if (apps.Count == 0)
         {
           // value missing in the returned model
@@ -492,14 +511,12 @@ namespace Microsoft.Boogie
         return r != null && !r.Value;
       }
 
-      public void AddApp(Element res, params Element[] args)
-      {
+      public void AddApp(Element res, params Element[] args) {
+        Arity = args.Length;
         if (Arity == 0)
           SetConstant(res);
         else
         {
-          if (args.Length != Arity)
-            throw new ArgumentException();
           var t = new FuncTuple(this, res, (Element[]) args.Clone());
           apps.Add(t);
           var u = new HashSet<Element>();
@@ -656,15 +673,11 @@ namespace Microsoft.Boogie
       return res;
     }
 
-    public Func MkFunc(string name, int arity)
+    public Func MkFunc(string name, int? arity)
     {
       Func res;
-      if (functionsByName.TryGetValue(name, out res))
-      {
-        if (res.Arity != arity)
-          throw new ArgumentException(string.Format(
-            "function '{0}' previously created with arity {1}, now trying to recreate with arity {2}", name, res.Arity,
-            arity));
+      if (functionsByName.TryGetValue(name, out res)) {
+        res.Arity = arity;
         return res;
       }
 

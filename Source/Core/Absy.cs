@@ -1303,30 +1303,37 @@ namespace Microsoft.Boogie
       return callGraph;
     }
 
-    public static Graph<Block /*!*/> /*!*/ GraphFromImpl(Implementation impl)
+    public static Graph<Block> GraphFromBlocks(List<Block> blocks, bool forward = true)
+    {
+      Graph<Block> g = new Graph<Block>();
+      void AddEdge(Block a, Block b) {
+        Contract.Assert(a != null && b != null);
+        if (forward) {
+          g.AddEdge(a, b);
+        } else {
+          g.AddEdge(b, a);
+        }
+      }
+
+      g.AddSource(cce.NonNull(blocks[0])); // there is always at least one node in the graph
+      foreach (Block b in blocks)
+      {
+        if (b.TransferCmd is GotoCmd gtc)
+        {
+          Contract.Assume(gtc.labelTargets != null);
+          gtc.labelTargets.ForEach(dest => AddEdge(b, dest));
+        }
+      }
+      return g;
+    }
+
+    public static Graph<Block /*!*/> /*!*/ GraphFromImpl(Implementation impl, bool forward = true)
     {
       Contract.Requires(impl != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<Graph<Block>>().Nodes));
       Contract.Ensures(Contract.Result<Graph<Block>>() != null);
 
-      Graph<Block /*!*/> g = new Graph<Block /*!*/>();
-      g.AddSource(impl.Blocks[0]); // there is always at least one node in the graph
-
-      foreach (Block b in impl.Blocks)
-      {
-        Contract.Assert(b != null);
-        GotoCmd gtc = b.TransferCmd as GotoCmd;
-        if (gtc != null)
-        {
-          foreach (Block /*!*/ dest in cce.NonNull(gtc.labelTargets))
-          {
-            Contract.Assert(dest != null);
-            g.AddEdge(b, dest);
-          }
-        }
-      }
-
-      return g;
+      return GraphFromBlocks(impl.Blocks, forward);
     }
 
     public class IrreducibleLoopException : Exception
@@ -3189,8 +3196,6 @@ namespace Microsoft.Boogie
       otherDefinitionAxioms.Add(axiom);
     }
 
-    public bool doingExpansion;
-
     private bool neverTrigger;
     private bool neverTriggerComputed;
 
@@ -3548,6 +3553,12 @@ namespace Microsoft.Boogie
       get { return QKeyValue.FindStringAttribute(Attributes, "msg"); }
     }
 
+    public bool CanAlwaysAssume()
+    {
+      return Free && QKeyValue.FindBoolAttribute(Attributes, "always_assume");
+    }
+
+
     public Requires(IToken token, bool free, Expr condition, string comment, QKeyValue kv)
       : base(token)
     {
@@ -3670,6 +3681,11 @@ namespace Microsoft.Boogie
     }
 
     public QKeyValue Attributes { get; set; }
+
+    public bool CanAlwaysAssume ()
+    {
+      return Free && QKeyValue.FindBoolAttribute(this.Attributes, "always_assume");
+    }
 
     public Ensures(IToken token, bool free, Expr /*!*/ condition, string comment, QKeyValue kv)
       : base(token)

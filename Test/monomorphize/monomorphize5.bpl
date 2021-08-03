@@ -5,7 +5,7 @@
 type {:datatype} Cell _;
 function {:constructor} Mk<T>(x: T): Cell T;
 
-function {:inline} foo<T>(): Cell T;
+function foo<T>(): Cell T;
 
 procedure p() {
   var x: Cell int;
