@@ -1087,25 +1087,25 @@ namespace Microsoft.Boogie.GraphUtil
       return s.ToString();
     }
 
-    public ICollection<Node> ComputeReachable()
+    public ICollection<Node> ComputeReachability(Node start, bool forward = true)
     {
-      ICollection<Node> result = new HashSet<Node>();
-      Stack<Node> stack = new Stack<Node>();
-      stack.Push(source);
-      while (!(stack.Count() == 0))
+      var todo = new Stack<Node>();
+      var visited = new HashSet<Node>();
+      todo.Push(start);
+      while (todo.Any())
       {
-        Node n = stack.Pop();
-        result.Add(n);
-        foreach (var m in Successors(n))
-        {
-          if (!result.Contains(m))
-          {
-            stack.Push(m);
-          }
-        }
+        var b = todo.Pop();
+        if (visited.Contains(b)) continue;
+        visited.Add(b);
+        var related = forward ? this.Successors(b) : this.Predecessors(b);
+        related.Where(blk => !visited.Contains(blk)).ToList().ForEach(blk => todo.Push(blk));
       }
+      return visited;
+    }
 
-      return result;
+    public ICollection<Node> Reachable()
+    {
+      return ComputeReachability(source);
     }
   } // end: class Graph
 
@@ -1134,7 +1134,7 @@ namespace Microsoft.Boogie.GraphUtil
 
       #region Dual graph may not be connected, so add an edge from the dual graph's soure node to any unreachable node
 
-      foreach (var n in dual.Nodes.Where(Item => !dual.ComputeReachable().Contains(Item)))
+      foreach (var n in dual.Nodes.Where(Item => !dual.Reachable().Contains(Item)))
       {
         dual.AddEdge(source, n);
       }

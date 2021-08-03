@@ -684,7 +684,7 @@ namespace Microsoft.Boogie
     public string PrintCFGPrefix = null;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
-    public bool LaxFocus = false;
+    public bool RelaxFocus = false;
     public bool RunDiagnosticsOnTimeout = false;
     public bool TraceDiagnosticsOnTimeout = false;
     public uint TimeLimitPerAssertionInPercent = 10;
@@ -1522,7 +1522,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("dbgRefuted", ref DebugRefuted) ||
               ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
-              ps.CheckBooleanFlag("laxFocus", ref LaxFocus) ||
+              ps.CheckBooleanFlag("relaxFocus", ref RelaxFocus) ||
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
               ps.CheckBooleanFlag("runDiagnosticsOnTimeout", ref RunDiagnosticsOnTimeout) ||
               ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", ref TraceDiagnosticsOnTimeout) ||
@@ -2104,7 +2104,7 @@ namespace Microsoft.Boogie
                 only for monomorphic programs.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
-  /laxFocus     Process foci in a bottom-up fashion. This way only generates
+  /relaxFocus   Process foci in a bottom-up fashion. This way only generates
                 a linear number of splits. The default way (top-down) is more
                 aggressive and it may create an exponential number of splits.
 

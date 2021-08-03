@@ -1071,52 +1071,22 @@ namespace VC
         bool IsFocusCmd(Cmd c) {
           return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "focus");
         }
+
         List<Block> GetFocusBlocks(List<Block> blocks) {
-          return blocks.Where(blk => blk.Cmds.Where(c => IsFocusCmd(c)).Count() != 0).ToList();
+          return blocks.Where(blk => blk.Cmds.Where(c => IsFocusCmd(c)).Any()).ToList();
         }
+
         var dag = Program.GraphFromImpl(impl);
         var topoSorted = dag.TopologicalSort().ToList();
-        // If reallyFocus is set to true,
-        // foci are processed in a top-down fashion --- i.e., if two foci are on the same path,
-        // the ancestor is processed first.
-        // On the other hand, if reallyFocus is false,
-        // foci are processed in a bottom-up fashion --- i.e., the descendant is processed first.
-        bool reallyFocus = !CommandLineOptions.Clo.LaxFocus;
-        int CompareBlocks(Block b1, Block b2) {
-          if (topoSorted.IndexOf(b1) == topoSorted.IndexOf(b2)) {
-            return 0;
-          } else {
-            return (topoSorted.IndexOf(b1) < topoSorted.IndexOf(b2)) ^ reallyFocus ? 1 : -1;
-          }
+        // By default, we process the foci in a top-down fashion, i.e., in the topological order.
+        // If the user sets the RelaxFocus flag, we use the reverse (topological) order.
+        var focusBlocks = GetFocusBlocks(topoSorted);
+        if (CommandLineOptions.Clo.RelaxFocus) {
+          focusBlocks.Reverse();
         }
-        List<Block> focusBlocks = GetFocusBlocks(impl.Blocks);
-        if(focusBlocks.Count == 0) {
+        if (!focusBlocks.Any()) {
           return null;
         }
-
-        // if reallyFocus is true, blocks are sorted according to the topological order;
-        // otherwise they are placed in reverse topo order.
-        focusBlocks.Sort(CompareBlocks);
-        var s = new List<Split>();
-        var duplicator = new Duplicator();
-        HashSet<Block> GetReachableBlocks(Block root, bool direction) {
-          var todo = new Stack<Block>();
-          var visited = new HashSet<Block> ();
-          todo.Push(root);
-          while(todo.Count() != 0) {
-            var b = todo.Pop();
-            if (visited.Contains(b)) continue;
-            var related = direction ? dag.Successors(b) : dag.Predecessors(b);
-            related.Where(b => !visited.Contains(b)).ToList().ForEach(b => todo.Push(b));
-            visited.Add(b);
-          }
-          return visited;
-        }
-        var Ancestors = new Dictionary<Block, HashSet<Block>>();
-        var Descendants = new Dictionary<Block, HashSet<Block>>();
-        focusBlocks.ForEach(fb => Ancestors[fb] = GetReachableBlocks(fb, false));
-        focusBlocks.ForEach(fb => Descendants[fb] = GetReachableBlocks(fb, true));
-
         // finds all the blocks dominated by focusBlock in the subgraph
         // which only contains vertices of subgraph.
         HashSet<Block> DominatedBlocks(Block focusBlock, IEnumerable<Block> subgraph)
@@ -1138,7 +1108,7 @@ namespace VC
           return subgraph.Where(blk => dominators[blk].Contains(focusBlock)).ToHashSet();
         }
 
-        Cmd ForgetSplits(Cmd c)
+        Cmd DisableSplits(Cmd c)
         {
           if (c is PredicateCmd pc)
           {
@@ -1153,6 +1123,12 @@ namespace VC
           return c;
         }
 
+        var Ancestors = new Dictionary<Block, HashSet<Block>>();
+        var Descendants = new Dictionary<Block, HashSet<Block>>();
+        focusBlocks.ForEach(fb => Ancestors[fb] = dag.ComputeReachability(fb, false).ToHashSet());
+        focusBlocks.ForEach(fb => Descendants[fb] = dag.ComputeReachability(fb, true).ToHashSet());
+        var s = new List<Split>();
+        var duplicator = new Duplicator();
         void FocusRec(int focusIdx, IEnumerable<Block> blocks, IEnumerable<Block> freeBlocks)
         {
           if (focusIdx == focusBlocks.Count())
@@ -1169,10 +1145,10 @@ namespace VC
               newBlocks.Add(newBlock);
               oldToNewBlockMap[b] = newBlock;
               // freeBlocks consist of the predecessors of the relevant foci.
-              // Their assertions turn into assumes and any splits inside them are erased.
+              // Their assertions turn into assumes and any splits inside them are disabled.
               if(freeBlocks.Contains(b))
               {
-                newBlock.Cmds = b.Cmds.Select(c => Split.AssertIntoAssume(c)).Select(c => ForgetSplits(c)).ToList();
+                newBlock.Cmds = b.Cmds.Select(c => Split.AssertIntoAssume(c)).Select(c => DisableSplits(c)).ToList();
               }
               if (b.TransferCmd is GotoCmd gtc)
               {
