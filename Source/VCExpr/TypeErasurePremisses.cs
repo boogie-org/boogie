@@ -106,12 +106,8 @@ namespace Microsoft.Boogie.TypeErasure
       //Contract.Requires(castFromU != null);
       //Contract.Requires(castToU != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      List<VCTrigger /*!*/> /*!*/
-        triggers;
-      VCExprVar /*!*/
-        var;
       VCExpr /*!*/
-        eq = GenReverseCastEq(castToU, castFromU, out var, out triggers);
+        eq = GenReverseCastEq(castToU, castFromU, out var var, out var triggers);
       Contract.Assert(cce.NonNullElements(triggers));
       Contract.Assert(var != null);
       Contract.Assert(eq != null);
@@ -424,8 +420,7 @@ namespace Microsoft.Boogie.TypeErasure
     internal UntypedFunction Typed2Untyped(Function fun)
     {
       Contract.Requires(fun != null);
-      UntypedFunction res;
-      if (!Typed2UntypedFunctions.TryGetValue(fun, out res))
+      if (!Typed2UntypedFunctions.TryGetValue(fun, out var res))
       {
         Contract.Assert(fun.OutParams.Count == 1);
 
@@ -447,9 +442,7 @@ namespace Microsoft.Boogie.TypeErasure
             argTypes.Add(v.TypedIdent.Type);
           }
 
-          List<TypeVariable /*!*/> /*!*/
-            implicitParams, explicitParams;
-          SeparateTypeParams(argTypes, fun.TypeParameters, out implicitParams, out explicitParams);
+          SeparateTypeParams(argTypes, fun.TypeParameters, out var implicitParams, out var explicitParams);
 
           Type[] /*!*/
             types = new Type[explicitParams.Count + fun.InParams.Count + 1];
@@ -655,15 +648,12 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(type != null);
       Contract.Ensures(Contract.Result<List<int>>() != null);
 
-      List<int> res;
-      if (!explicitSelectTypeParamsCache.TryGetValue(type, out res))
+      if (!explicitSelectTypeParamsCache.TryGetValue(type, out var res))
       {
-        List<TypeVariable /*!*/> /*!*/
-          explicitParams, implicitParams;
         TypeAxiomBuilderPremisses.SeparateTypeParams(type.Arguments.ToList(),
           type.TypeParameters,
-          out implicitParams,
-          out explicitParams);
+          out var implicitParams,
+          out var explicitParams);
         res = new List<int>(explicitParams.Count);
         foreach (TypeVariable /*!*/ var in explicitParams)
         {
@@ -697,30 +687,20 @@ namespace Microsoft.Boogie.TypeErasure
       //Contract.Requires(abstractedType != null);
       Contract.Ensures(Contract.ValueAtReturn(out select) != null);
       Contract.Ensures(Contract.ValueAtReturn(out store) != null);
-      Type /*!*/
-        mapTypeSynonym;
-      List<TypeVariable /*!*/> /*!*/
-        typeParams;
-      List<Type /*!*/> /*!*/
-        originalInTypes;
-      GenTypeAxiomParams(abstractedType, synonym, out mapTypeSynonym,
-        out typeParams, out originalInTypes);
+      GenTypeAxiomParams(abstractedType, synonym, out var mapTypeSynonym,
+        out var typeParams, out var originalInTypes);
 
       // select
-      List<TypeVariable /*!*/> /*!*/
-        explicitSelectParams, implicitSelectParams;
       select = CreateAccessFun(typeParams, originalInTypes,
         abstractedType.Result, synonym.Name + "Select",
-        out implicitSelectParams, out explicitSelectParams);
+        out var implicitSelectParams, out var explicitSelectParams);
 
       // store, which gets one further argument: the assigned rhs
       originalInTypes.Add(abstractedType.Result);
 
-      List<TypeVariable /*!*/> /*!*/
-        explicitStoreParams, implicitStoreParams;
       store = CreateAccessFun(typeParams, originalInTypes,
         mapTypeSynonym, synonym.Name + "Store",
-        out implicitStoreParams, out explicitStoreParams);
+        out var implicitStoreParams, out var explicitStoreParams);
 
       // the store function does not have any explicit type parameters
       Contract.Assert(explicitStoreParams.Count == 0);
@@ -1193,9 +1173,8 @@ namespace Microsoft.Boogie.TypeErasure
       if (!(newNode is VCExprQuantifier) || !IsUniversalQuantifier(node))
         return newNode;
 
-      VariableBindings bindings2;
       if (!RedoQuantifier(node, (VCExprQuantifier) newNode, occurringVars, oldBindings,
-        out bindings2, out newBoundVars))
+        out var bindings2, out newBoundVars))
         return newNode;
 
       return HandleQuantifier(node, occurringVars,
@@ -1329,13 +1308,11 @@ namespace Microsoft.Boogie.TypeErasure
         }
       } // else, no type antecedents are created for any variables
 
-      List<VCTrigger /*!*/> /*!*/
-        furtherTriggers;
       VCExpr /*!*/
         typePremisses =
           GenTypePremisses(varsWithTypeSpecs, newVarsWithTypeSpecs,
             bindings.TypeVariableBindings,
-            typeVarBindings, out furtherTriggers);
+            typeVarBindings, out var furtherTriggers);
 
       Contract.Assert(cce.NonNullElements(furtherTriggers));
       Contract.Assert(typePremisses != null);
@@ -1488,11 +1465,9 @@ namespace Microsoft.Boogie.TypeErasure
       MapType /*!*/
         mapType = node[0].Type.AsMap;
       Contract.Assert(mapType != null);
-      List<Type> /*!*/
-        instantiations; // not used
       Function /*!*/
         select =
-          AxBuilder.MapTypeAbstracter.Select(mapType, out instantiations);
+          AxBuilder.MapTypeAbstracter.Select(mapType, out var instantiations);
       Contract.Assert(select != null);
 
       List<int> /*!*/
@@ -1513,11 +1488,9 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(bindings != null);
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      List<Type> /*!*/
-        instantiations; // not used
       Function /*!*/
         store =
-          AxBuilder.MapTypeAbstracter.Store(node[0].Type.AsMap, out instantiations);
+          AxBuilder.MapTypeAbstracter.Store(node[0].Type.AsMap, out var instantiations);
       Contract.Assert(store != null);
       return HandleFunctionOp(store,
         // the store function never has explicit

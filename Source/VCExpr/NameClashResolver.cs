@@ -127,9 +127,8 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Ensures(Contract.Result<string>() != null);
       string /*!*/
         candidate;
-      int counter;
 
-      if (CurrentCounters.TryGetValue(baseName, out counter))
+      if (CurrentCounters.TryGetValue(baseName, out var counter))
       {
         candidate = baseName + Spacer + counter;
         counter = counter + 1;
@@ -234,8 +233,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       Contract.Requires(thingie != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      string name;
-      if (GlobalPlusLocalNames.TryGetValue(thingie, out name))
+      if (GlobalPlusLocalNames.TryGetValue(thingie, out var name))
         return name;
       return Spacer + "undefined" + Spacer + thingie.GetHashCode() + Spacer;
     }

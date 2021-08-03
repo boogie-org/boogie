@@ -603,16 +603,13 @@ namespace Microsoft.Boogie.GraphUtil
     public List<Node> ImmediatelyDominatedBy(Node /*!*/ n)
     {
       Contract.Requires(n != null);
-      List<Node> dominees;
-      this.ImmediateDominatorMap.TryGetValue(n, out dominees);
+      this.ImmediateDominatorMap.TryGetValue(n, out var dominees);
       return dominees == null ? new List<Node>() : dominees;
     }
 
     public IEnumerable<Node /*?*/> TopologicalSort(bool reversed = false)
     {
-      bool acyclic;
-      List<Node> sortedList;
-      this.TarjanTopSort(out acyclic, out sortedList, reversed);
+      this.TarjanTopSort(out var acyclic, out var sortedList, reversed);
       return acyclic ? sortedList : new List<Node>();
     }
 
@@ -763,9 +760,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     public static bool Acyclic(Graph<Node> g, Node source)
     {
-      bool acyclic;
-      List<Node> sortedList;
-      g.TarjanTopSort(out acyclic, out sortedList);
+      g.TarjanTopSort(out var acyclic, out var sortedList);
       return acyclic;
     }
 

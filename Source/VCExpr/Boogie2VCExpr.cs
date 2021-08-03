@@ -237,11 +237,10 @@ namespace Microsoft.Boogie.VCExprAST
       private VCExprVar LookupHelp(VarKind boogieVar)
       {
         Contract.Requires(boogieVar != null);
-        VCExprVar res;
         foreach (Dictionary<VarKind /*!*/, VCExprVar /*!*/> /*!*/ d in Mapping)
         {
           //Contract.Assert(cce.NonNullElements(d));
-          if (d.TryGetValue(boogieVar, out res))
+          if (d.TryGetValue(boogieVar, out var res))
           {
             Contract.Assert(res != null);
             return res;
@@ -330,9 +329,8 @@ namespace Microsoft.Boogie.VCExprAST
         return BoundVariables.Lookup(bv);
       }
 
-      VCExprVar res;
       Formal fml = boogieVar as Formal;
-      if (fml != null && Formals.TryGetValue(fml, out res))
+      if (fml != null && Formals.TryGetValue(fml, out var res))
         return cce.NonNull(res);
 
       // global variables, local variables, incarnations, etc. are
@@ -360,9 +358,8 @@ namespace Microsoft.Boogie.VCExprAST
     {
       Contract.Requires(boogieVar != null);
 
-      VCExprVar res;
       Formal fml = boogieVar as Formal;
-      if (fml != null && Formals.TryGetValue(fml, out res))
+      if (fml != null && Formals.TryGetValue(fml, out var res))
         return cce.NonNull(res);
 
       if (UnboundVariables.TryGetValue(boogieVar, out res))

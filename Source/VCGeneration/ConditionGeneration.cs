@@ -1264,8 +1264,7 @@ namespace VC
             }
             else
             {
-              bool isTrue;
-              var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
+              var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out var isTrue);
               TraceCachingAction(pc,
                 !isTrue ? CachingAction.MarkAsPartiallyVerified : CachingAction.MarkAsFullyVerified);
               var litExpr = ac.Expr as LiteralExpr;
@@ -1306,8 +1305,7 @@ namespace VC
               && currentImplementation.IsAssertionChecksumInCachedSnapshot(pc.SugaredCmdChecksum)
               && !currentImplementation.IsErrorChecksumInCachedSnapshot(pc.SugaredCmdChecksum))
           {
-            bool isTrue;
-            var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
+            var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out var isTrue);
             if (!isTrue)
             {
               copy = LiteralExpr.Imp(assmVars, copy);
@@ -1463,10 +1461,9 @@ namespace VC
             && assign.Lhss.Count == 1)
         {
           var identExpr = assign.Lhss[0].AsExpr as IdentifierExpr;
-          Expr incarnation;
           if (identExpr != null && identExpr.Decl != null &&
               QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption") &&
-              incarnationMap.TryGetValue(identExpr.Decl, out incarnation))
+              incarnationMap.TryGetValue(identExpr.Decl, out var incarnation))
           {
             TraceCachingAction(assign, CachingAction.AssumeNegationOfAssumptionVariable);
             passiveCmds.Add(new AssumeCmd(c.tok, Expr.Not(incarnation)));

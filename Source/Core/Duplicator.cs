@@ -684,8 +684,7 @@ namespace Microsoft.Boogie
           return map[v];
         }
 
-        Expr e;
-        if (nameMap != null && proc != null && nameMap.TryGetValue(UniqueName(v, proc), out e))
+        if (nameMap != null && proc != null && nameMap.TryGetValue(UniqueName(v, proc), out var e))
         {
           return e;
         }

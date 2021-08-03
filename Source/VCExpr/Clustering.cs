@@ -78,8 +78,7 @@ namespace Microsoft.Boogie.Clustering
 
       if (res)
       {
-        TermClustersSameHead clusters;
-        if (!SubtermClusters.TryGetValue(op, out clusters))
+        if (!SubtermClusters.TryGetValue(op, out var clusters))
         {
           clusters = new TermClustersSameHead(op, GlobalVariables, Gen);
           SubtermClusters.Add(op, clusters);
@@ -181,8 +180,7 @@ namespace Microsoft.Boogie.Clustering
         visitor = new AntiUnificationVisitor(Gen);
       visitor.AntiUnify(a.Generator, b.Generator);
 
-      int reprSizeA, reprSizeB;
-      visitor.RepresentationSize(GlobalVariables, out reprSizeA, out reprSizeB);
+      visitor.RepresentationSize(GlobalVariables, out var reprSizeA, out var reprSizeB);
       return (a.Size - 1) * reprSizeA + (b.Size - 1) * reprSizeB;
     }
 
@@ -273,8 +271,7 @@ namespace Microsoft.Boogie.Clustering
             visitor = new AntiUnificationVisitor(gen);
           Generator = (VCExprNAry) visitor.AntiUnify(a.Generator, b.Generator);
 
-          int reprSizeA, reprSizeB;
-          visitor.RepresentationSize(globalVars, out reprSizeA, out reprSizeB);
+          visitor.RepresentationSize(globalVars, out var reprSizeA, out var reprSizeB);
           Dist = (a.Size - 1) * reprSizeA + (b.Size - 1) * reprSizeB;
         }
       }
@@ -310,8 +307,7 @@ namespace Microsoft.Boogie.Clustering
       {
         while (true)
         {
-          int i, j;
-          int minDist = FindMinDistance(out i, out j);
+          int minDist = FindMinDistance(out var i, out var j);
 
           if (minDist > maxDist)
             return;
@@ -534,8 +530,7 @@ namespace Microsoft.Boogie.Clustering
       Contract.Ensures(Contract.Result<VCExprVar>() != null);
 
       ExprPair pair = new ExprPair(s, t);
-      VCExprVar repr;
-      if (!Representation.TryGetValue(pair, out repr))
+      if (!Representation.TryGetValue(pair, out var repr))
       {
         repr = Gen.Variable("abs" + Representation.Count, s.Type);
         Representation.Add(pair, repr);

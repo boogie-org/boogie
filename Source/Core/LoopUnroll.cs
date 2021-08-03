@@ -143,8 +143,7 @@ namespace Microsoft.Boogie
         Contract.Requires(b != null);
         Contract.Requires(cce.NonNullDictionaryAndValues(gd));
         Contract.Ensures(Contract.Result<GraphNode>() != null);
-        GraphNode g;
-        if (gd.TryGetValue(b, out g))
+        if (gd.TryGetValue(b, out var g))
         {
           Contract.Assume(from != null);
           Contract.Assert(g != null);
@@ -266,8 +265,7 @@ namespace Microsoft.Boogie
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Block>() != null);
       Block orig = node.Block;
-      Block nw;
-      if (newBlocks.TryGetValue(orig, out nw))
+      if (newBlocks.TryGetValue(orig, out var nw))
       {
         Contract.Assert(nw != null);
       }

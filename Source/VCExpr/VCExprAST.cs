@@ -765,8 +765,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       Contract.Requires(visitor != null);
       Contract.Requires(expr != null);
-      VCExpressionGenerator.SingletonOp op;
-      if (VCExpressionGenerator.SingletonOpDict.TryGetValue(this, out op))
+      if (VCExpressionGenerator.SingletonOpDict.TryGetValue(this, out var op))
       {
         switch (op)
         {
