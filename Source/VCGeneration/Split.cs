@@ -1194,7 +1194,7 @@ namespace VC
           else
           {
             var b = focusBlocks[focusIdx]; // assert b in blocks
-            var dominatedBlocks = DominatedBlocks(b, blocks); //
+            var dominatedBlocks = DominatedBlocks(b, blocks);
             // the first part takes all blocks except the ones dominated by the focus block
             FocusRec(focusIdx + 1, blocks.Where(blk => !dominatedBlocks.Contains(blk)), freeBlocks);
             var ancestors = Ancestors[b];
