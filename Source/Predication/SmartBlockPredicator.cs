@@ -647,8 +647,7 @@ namespace Microsoft.Boogie
           block.Cmds.Add(Cmd.SimpleAssign(Token.NoToken, Expr.Ident(v), Expr.False));
       }
 
-      bool hasPredicatedRegion;
-      PredicateTransferCmd(pExpr, block, block.Cmds, transferCmd, out hasPredicatedRegion);
+      PredicateTransferCmd(pExpr, block, block.Cmds, transferCmd, out var hasPredicatedRegion);
 
       if (hasPredicatedRegion)
         prevBlock = block;

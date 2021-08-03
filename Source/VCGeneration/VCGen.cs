@@ -126,8 +126,7 @@ namespace VC
         Contract.Requires(b != null);
         Contract.Ensures(Contract.Result<Block>() != null);
 
-        Block fake_res;
-        if (copies.TryGetValue(b, out fake_res))
+        if (copies.TryGetValue(b, out var fake_res))
         {
           return cce.NonNull(fake_res);
         }
@@ -158,8 +157,7 @@ namespace VC
         Contract.Requires(b != null);
         Contract.Ensures(Contract.Result<Block>() != null);
 
-        Block fake_res;
-        if (copies.TryGetValue(b, out fake_res))
+        if (copies.TryGetValue(b, out var fake_res))
         {
           // fake_res should be Block! but the compiler fails
           return cce.NonNull(fake_res);
@@ -217,8 +215,7 @@ namespace VC
             foreach (Block b in cce.NonNull(go.labelTargets))
             {
               Contract.Assert(b != null);
-              Block c;
-              if (copies.TryGetValue(b, out c))
+              if (copies.TryGetValue(b, out var c))
               {
                 copy.AddTarget(cce.NonNull(c));
               }
@@ -320,9 +317,7 @@ namespace VC
         }
 
         parent.CurrentLocalVariables = impl.LocVars;
-        ModelViewInfo mvInfo;
-        parent.PassifyImpl(impl, out mvInfo);
-        Dictionary<int, Absy> label2Absy;
+        parent.PassifyImpl(impl, out var mvInfo);
         Checker ch = parent.FindCheckerFor();
         Contract.Assert(ch != null);
 
@@ -334,7 +329,7 @@ namespace VC
             var exprGen = ch.TheoremProver.Context.ExprGen;
             VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
 
-            VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, out label2Absy, ch.TheoremProver.Context);
+            VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, out var label2Absy, ch.TheoremProver.Context);
             Contract.Assert(vc != null);
 
             VCExpr controlFlowFunctionAppl =
@@ -554,8 +549,7 @@ namespace VC
         vcgen.AddBlocksBetween(codeExpr.Blocks);
         Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks,
           new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
-        int ac; // computed, but then ignored for this CodeExpr
-        VCExpr startCorrect = LetVC(codeExpr.Blocks, null, label2absy, ctx, out ac, isPositiveContext);
+        VCExpr startCorrect = LetVC(codeExpr.Blocks, null, label2absy, ctx, out var ac, isPositiveContext);
         VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
         if (vcgen.CurrentLocalVariables.Count != 0)
         {
@@ -1036,8 +1030,7 @@ namespace VC
         smoke_tester.Copy();
       }
 
-      ModelViewInfo mvInfo;
-      var gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
+      var gotoCmdOrigins = PassifyImpl(impl, out var mvInfo);
 
       ExpandAsserts(impl);
 
@@ -1778,7 +1771,6 @@ namespace VC
 
           for (int i = 0; i < gc.labelTargets.Count(); ++i)
           {
-            Block newTarget;
             if (gc.labelTargets[i] == header)
             {
               if (nextHeader != null)
@@ -1788,7 +1780,7 @@ namespace VC
                 nextHeader.Predecessors.Add(copy);
               }
             }
-            else if (ori2CopiedBlocks.TryGetValue(gc.labelTargets[i], out newTarget))
+            else if (ori2CopiedBlocks.TryGetValue(gc.labelTargets[i], out var newTarget))
             {
               newTargets.Add(newTarget);
               newLabels.Add(newTarget.Label);
@@ -2077,8 +2069,7 @@ namespace VC
             }
             else
             {
-              HashSet<Variable> vars;
-              if (IsConjunctionOfAssumptionVariables(assertCmd.VerifiedUnder, out vars))
+              if (IsConjunctionOfAssumptionVariables(assertCmd.VerifiedUnder, out var vars))
               {
                 vu = vars;
                 // TODO(wuestholz): Maybe drop the :verified_under attribute.
@@ -2181,8 +2172,7 @@ namespace VC
           variables = new HashSet<Variable>();
           foreach (var op in andExpr.Args)
           {
-            HashSet<Variable> vars;
-            var r = IsConjunctionOfAssumptionVariables(op, out vars);
+            var r = IsConjunctionOfAssumptionVariables(op, out var vars);
             res &= r;
             variables = JoinVariableSets(variables, vars);
             if (!res)
@@ -2756,8 +2746,7 @@ namespace VC
         foreach (Block successor in cce.NonNull(gotocmd.labelTargets))
         {
           Contract.Assert(successor != null);
-          int ac;
-          VCExpr c = DagVC(successor, controlFlowVariableExpr, label2absy, blockEquations, proverCtxt, out ac);
+          VCExpr c = DagVC(successor, controlFlowVariableExpr, label2absy, blockEquations, proverCtxt, out var ac);
           assertionCount += ac;
           if (controlFlowVariableExpr != null)
           {

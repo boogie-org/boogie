@@ -2690,11 +2690,9 @@ namespace Microsoft.Boogie
       Contract.Assume(actuals.Count == Func.InParams.Count);
       Contract.Assume(Func.OutParams.Count == 1);
 
-      List<Type /*!*/> /*!*/
-        resultingTypeArgs;
       List<Type> actualResultType =
         Type.CheckArgumentTypes(Func.TypeParameters,
-          out resultingTypeArgs,
+          out var resultingTypeArgs,
           new List<Type>(Func.InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
           actuals,
           new List<Type>(Func.OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
@@ -3155,8 +3153,7 @@ namespace Microsoft.Boogie
                // typechecked and does not need to be checked again
                TypeParameters == null)
       {
-        TypeParamInstantiation tpInsts;
-        Type = Fun.Typecheck(Args, out tpInsts,
+        Type = Fun.Typecheck(Args, out var tpInsts,
           tc); // Make sure we pass Args so if this Expr is immutable it is protected
         TypeParameters = tpInsts;
       }

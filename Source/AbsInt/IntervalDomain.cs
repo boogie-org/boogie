@@ -702,8 +702,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
     /// </summary>
     E_Common Constraint(Expr expr, Node state)
     {
-      Variable v;
-      if (IsVariable(expr, out v))
+      if (IsVariable(expr, out var v))
       {
         var n = new Node(v, BigInteger.One, null);
         return new E(n);
@@ -740,8 +739,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
               E_Common c = null;
               if (IsVariable(arg0, out v))
               {
-                BigInteger? lo, hi;
-                if (PartiallyEvaluate(arg1, state, out lo, out hi))
+                if (PartiallyEvaluate(arg1, state, out var lo, out var hi))
                 {
                   var n = new Node(v, lo, hi);
                   c = new E(n);
@@ -750,8 +748,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
               if (IsVariable(arg1, out v))
               {
-                BigInteger? lo, hi;
-                if (PartiallyEvaluate(arg1, state, out lo, out hi))
+                if (PartiallyEvaluate(arg1, state, out var lo, out var hi))
                 {
                   var n = new Node(v, lo, hi);
                   c = c == null ? new E(n) : (E_Common) Meet(c, new E(n));
@@ -784,8 +781,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
               E_Common c = null;
               if (IsVariable(arg1, out v))
               {
-                BigInteger? lo, hi;
-                PartiallyEvaluate(arg0, state, out lo, out hi);
+                PartiallyEvaluate(arg0, state, out var lo, out var hi);
                 if (lo != null)
                 {
                   var n = new Node(v, lo, null);
@@ -795,8 +791,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
               if (IsVariable(arg0, out v))
               {
-                BigInteger? lo, hi;
-                PartiallyEvaluate(arg1, state, out lo, out hi);
+                PartiallyEvaluate(arg1, state, out var lo, out var hi);
                 if (hi != null)
                 {
                   var n = new Node(v, null, hi);
@@ -811,8 +806,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
               E_Common c = null;
               if (IsVariable(arg1, out v))
               {
-                BigInteger? lo, hi;
-                PartiallyEvaluate(arg0, state, out lo, out hi);
+                PartiallyEvaluate(arg0, state, out var lo, out var hi);
                 if (lo != null)
                 {
                   var n = new Node(v, v.TypedIdent.Type.IsReal ? lo : lo + 1, null);
@@ -822,8 +816,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
               if (IsVariable(arg0, out v))
               {
-                BigInteger? lo, hi;
-                PartiallyEvaluate(arg1, state, out lo, out hi);
+                PartiallyEvaluate(arg1, state, out var lo, out var hi);
                 if (hi != null)
                 {
                   var n = new Node(v, null, v.TypedIdent.Type.IsReal ? hi : hi - 1);
@@ -858,8 +851,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
     private E ConstrainNeq(Node state, Variable v, Expr arg)
     {
-      BigInteger? lo, hi;
-      if (PartiallyEvaluate(arg, state, out lo, out hi))
+      if (PartiallyEvaluate(arg, state, out var lo, out var hi))
       {
         if (!v.TypedIdent.Type.IsReal && lo != null && hi != null && lo + 1 == hi)
         {
@@ -912,9 +904,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       {
         var lhs = cmd.Lhss[i];
         var rhs = cmd.Rhss[i];
-        BigInteger? lo;
-        BigInteger? hi;
-        PartiallyEvaluate(rhs, e.N, out lo, out hi);
+        PartiallyEvaluate(rhs, e.N, out var lo, out var hi);
         nn = UpdateOne(nn, lhs.DeepAssignedVariable, lo, hi);
       }
 
@@ -962,15 +952,13 @@ namespace Microsoft.Boogie.AbstractInterpretation
         }
         else if (node.Val is BigDec)
         {
-          BigInteger floor, ceiling;
-          ((BigDec) node.Val).FloorCeiling(out floor, out ceiling);
+          ((BigDec) node.Val).FloorCeiling(out var floor, out var ceiling);
           Lo = floor;
           Hi = ceiling;
         }
         else if (node.Val is BigFloat)
         {
-          BigInteger floor, ceiling;
-          ((BigFloat) node.Val).FloorCeiling(out floor, out ceiling);
+          ((BigFloat) node.Val).FloorCeiling(out var floor, out var ceiling);
           Lo = floor;
           Hi = ceiling;
         }

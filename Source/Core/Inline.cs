@@ -53,8 +53,7 @@ namespace Microsoft.Boogie
     protected void NextInlinedProcLabel(string procName)
     {
       Contract.Requires(procName != null);
-      int currentId;
-      if (inlinedProcLblMap.TryGetValue(procName, out currentId))
+      if (inlinedProcLblMap.TryGetValue(procName, out var currentId))
       {
         inlinedProcLblMap[procName] = currentId + 1;
       }
@@ -242,8 +241,7 @@ namespace Microsoft.Boogie
       string /*!*/
         procName = impl.Name;
       Contract.Assert(procName != null);
-      int c;
-      if (recursiveProcUnrollMap.TryGetValue(procName, out c))
+      if (recursiveProcUnrollMap.TryGetValue(procName, out var c))
       {
         return c;
       }

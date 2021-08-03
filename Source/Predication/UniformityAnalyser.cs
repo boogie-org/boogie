@@ -51,8 +51,7 @@ namespace Microsoft.Boogie
                (uni.IsUniform(impl.Name, pred) && uni.IsUniform(impl.Name, block)) ||
                (!uni.IsUniform(impl.Name, pred) && !uni.IsUniform(impl.Name, block))))
           {
-            Block predMapping;
-            while (predMap.TryGetValue(pred, out predMapping))
+            while (predMap.TryGetValue(pred, out var predMapping))
               pred = predMapping;
             pred.Cmds.AddRange(block.Cmds);
             pred.TransferCmd = block.TransferCmd;

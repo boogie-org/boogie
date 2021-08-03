@@ -321,8 +321,7 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(type != null);
       Contract.Requires(type.IsBasic || type.IsBv || type.IsFloat);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      VCExpr res;
-      if (!BasicTypeReprs.TryGetValue(type, out res))
+      if (!BasicTypeReprs.TryGetValue(type, out var res))
       {
         res = Gen.Function(HelperFuns.BoogieFunction(type.ToString() + "Type", T));
         AddTypeAxiom(GenCtorAssignment(res));
@@ -344,8 +343,7 @@ namespace Microsoft.Boogie.TypeErasure
     internal TypeCtorRepr GetTypeCtorReprStruct(TypeCtorDecl decl)
     {
       Contract.Requires(decl != null);
-      TypeCtorRepr reprSet;
-      if (!TypeCtorReprs.TryGetValue(decl, out reprSet))
+      if (!TypeCtorReprs.TryGetValue(decl, out var reprSet))
       {
         Function /*!*/
           ctor = HelperFuns.UniformBoogieFunction(decl.Name + "Type", decl.Arity, T);
@@ -397,8 +395,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       Contract.Requires(var != null);
       Contract.Ensures(Contract.Result<VCExprVar>() != null);
-      VCExprVar res;
-      if (!TypeVariableMapping.TryGetValue(var, out res))
+      if (!TypeVariableMapping.TryGetValue(var, out var res))
       {
         res = new VCExprVar(var.Name, T);
         TypeVariableMapping.Add(var, res);
@@ -447,8 +444,7 @@ namespace Microsoft.Boogie.TypeErasure
     public VCExprVar TryTyped2Untyped(VCExprVar var)
     {
       Contract.Requires(var != null);
-      VCExprVar res;
-      if (Typed2UntypedVariables.TryGetValue(var, out res))
+      if (Typed2UntypedVariables.TryGetValue(var, out var res))
       {
         return res;
       }
@@ -495,8 +491,7 @@ namespace Microsoft.Boogie.TypeErasure
       else if (type.IsVariable)
       {
         //
-        VCExpr res;
-        if (!varMapping.TryGetValue(type.AsVariable, out res))
+        if (!varMapping.TryGetValue(type.AsVariable, out var res))
           // then the variable is free and we bind it at this point to a term
           // variable
           res = Typed2Untyped(type.AsVariable);
@@ -716,8 +711,7 @@ namespace Microsoft.Boogie.TypeErasure
     private TypeCastSet GetTypeCasts(Type type)
     {
       Contract.Requires(type != null);
-      TypeCastSet res;
-      if (!TypeCasts.TryGetValue(type, out res))
+      if (!TypeCasts.TryGetValue(type, out var res))
       {
         Function /*!*/
           castToU = HelperFuns.BoogieFunction(type.ToString() + "_2_U", type, U);
@@ -1034,17 +1028,14 @@ namespace Microsoft.Boogie.TypeErasure
     protected MapTypeClassRepresentation GetClassRepresentation(MapType abstractedType)
     {
       Contract.Requires(abstractedType != null);
-      MapTypeClassRepresentation res;
-      if (!ClassRepresentations.TryGetValue(abstractedType, out res))
+      if (!ClassRepresentations.TryGetValue(abstractedType, out var res))
       {
         int num = ClassRepresentations.Count;
         TypeCtorDecl /*!*/
           synonym =
             new TypeCtorDecl(Token.NoToken, "MapType" + num, abstractedType.FreeVariables.Count);
 
-        Function /*!*/
-          select, store;
-        GenSelectStoreFunctions(abstractedType, synonym, out select, out store);
+        GenSelectStoreFunctions(abstractedType, synonym, out var @select, out var store);
 
         res = new MapTypeClassRepresentation(synonym, select, store);
         ClassRepresentations.Add(abstractedType, res);
@@ -1363,8 +1354,7 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(bindings != null);
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      VCExprVar res;
-      if (!bindings.VCExprVarBindings.TryGetValue(node, out res))
+      if (!bindings.VCExprVarBindings.TryGetValue(node, out var res))
         return AxBuilder.Typed2Untyped(node);
       return cce.NonNull(res);
     }

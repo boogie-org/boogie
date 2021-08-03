@@ -87,8 +87,7 @@ namespace Microsoft.Boogie
       Contract.Requires(t != null);
       Contract.Ensures(Contract.Result<Function>() != null);
 
-      Function res;
-      if (!OneStepFuns.TryGetValue(t, out res))
+      if (!OneStepFuns.TryGetValue(t, out var res))
       {
         List<Variable> args = new List<Variable>();
         args.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "arg0", t), true));

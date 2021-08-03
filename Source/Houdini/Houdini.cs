@@ -95,8 +95,7 @@ namespace Microsoft.Boogie.Houdini
 
     public void AddTime(K key, double timeMS)
     {
-      List<double> oldList;
-      times.TryGetValue(key, out oldList);
+      times.TryGetValue(key, out var oldList);
       if (oldList == null)
       {
         oldList = new List<double>();
@@ -727,8 +726,7 @@ namespace Microsoft.Boogie.Houdini
     public bool MatchCandidate(Expr boogieExpr, out Variable candidateConstant)
     {
       candidateConstant = null;
-      string candidateString;
-      if (MatchCandidate(boogieExpr, houdiniConstants.Select(item => item.Name), out candidateString))
+      if (MatchCandidate(boogieExpr, houdiniConstants.Select(item => item.Name), out var candidateString))
       {
         candidateConstant = houdiniConstants.Where(item => item.Name.Equals(candidateString)).ToList()[0];
         return true;
@@ -829,10 +827,8 @@ namespace Microsoft.Boogie.Houdini
         currentHoudiniState.Implementation = currentHoudiniState.WorkQueue.Peek();
         this.NotifyImplementation(currentHoudiniState.Implementation);
 
-        HoudiniSession session;
-        houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out session);
-        List<Counterexample> errors;
-        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out errors);
+        houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out var session);
+        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors);
         UpdateHoudiniOutcome(currentHoudiniState.Outcome, currentHoudiniState.Implementation, outcome, errors);
         this.NotifyOutcome(outcome);
 
@@ -928,8 +924,7 @@ namespace Microsoft.Boogie.Houdini
             Console.WriteLine("Timeout/Spaceout while verifying " + currentHoudiniState.Implementation.Name);
           }
 
-          HoudiniSession houdiniSession;
-          houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out houdiniSession);
+          houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out var houdiniSession);
           foreach (Variable v in houdiniSession.houdiniAssertConstants)
           {
             if (CommandLineOptions.Clo.Trace)
@@ -1111,8 +1106,7 @@ namespace Microsoft.Boogie.Houdini
         currentHoudiniState.Implementation = currentHoudiniState.WorkQueue.Peek();
         this.NotifyImplementation(currentHoudiniState.Implementation);
 
-        HoudiniSession session;
-        this.houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out session);
+        this.houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out var session);
         HoudiniVerifyCurrent(session, stage, completedStages);
       }
 
@@ -1293,8 +1287,7 @@ namespace Microsoft.Boogie.Houdini
     private void PrintRefutedCall(CallCounterexample err, XmlSink xmlOut)
     {
       Expr cond = err.FailingRequires.Condition;
-      Variable houdiniConst;
-      if (MatchCandidate(cond, out houdiniConst))
+      if (MatchCandidate(cond, out Variable houdiniConst))
       {
         xmlOut.WriteError("precondition violation", err.FailingCall.tok, err.FailingRequires.tok, err.Trace);
       }
@@ -1303,8 +1296,7 @@ namespace Microsoft.Boogie.Houdini
     private void PrintRefutedReturn(ReturnCounterexample err, XmlSink xmlOut)
     {
       Expr cond = err.FailingEnsures.Condition;
-      Variable houdiniConst;
-      if (MatchCandidate(cond, out houdiniConst))
+      if (MatchCandidate(cond, out Variable houdiniConst))
       {
         xmlOut.WriteError("postcondition violation", err.FailingReturn.tok, err.FailingEnsures.tok, err.Trace);
       }
@@ -1313,8 +1305,7 @@ namespace Microsoft.Boogie.Houdini
     private void PrintRefutedAssert(AssertCounterexample err, XmlSink xmlOut)
     {
       Expr cond = err.FailingAssert.OrigExpr;
-      Variable houdiniConst;
-      if (MatchCandidate(cond, out houdiniConst))
+      if (MatchCandidate(cond, out Variable houdiniConst))
       {
         xmlOut.WriteError("postcondition violation", err.FailingAssert.tok, err.FailingAssert.tok, err.Trace);
       }
@@ -1431,8 +1422,7 @@ namespace Microsoft.Boogie.Houdini
         this.NotifyAssignment(currentHoudiniState.Assignment);
 
         //check the VC with the current assignment
-        List<Counterexample> errors;
-        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out errors);
+        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors);
         this.NotifyOutcome(outcome);
 
         DebugRefutedCandidates(currentHoudiniState.Implementation, errors);
@@ -1502,9 +1492,8 @@ namespace Microsoft.Boogie.Houdini
         List<Cmd> newCmds = new List<Cmd>();
         foreach (Cmd cmd in block.Cmds)
         {
-          string c;
           AssertCmd assertCmd = cmd as AssertCmd;
-          if (assertCmd != null && MatchCandidate(assertCmd.Expr, Candidates, out c))
+          if (assertCmd != null && MatchCandidate(assertCmd.Expr, Candidates, out var c))
           {
             var cVar = outcome.assignment.Keys.Where(item => item.Equals(c)).ToList()[0];
             if (outcome.assignment[cVar])
@@ -1531,8 +1520,7 @@ namespace Microsoft.Boogie.Houdini
         List<Requires> newRequires = new List<Requires>();
         foreach (Requires r in proc.Requires)
         {
-          string c;
-          if (MatchCandidate(r.Condition, Candidates, out c))
+          if (MatchCandidate(r.Condition, Candidates, out var c))
           {
             var cVar = outcome.assignment.Keys.Where(item => item.Equals(c)).ToList()[0];
             if (outcome.assignment[cVar])
@@ -1556,8 +1544,7 @@ namespace Microsoft.Boogie.Houdini
         List<Ensures> newEnsures = new List<Ensures>();
         foreach (Ensures e in proc.Ensures)
         {
-          string c;
-          if (MatchCandidate(e.Condition, Candidates, out c))
+          if (MatchCandidate(e.Condition, Candidates, out var c))
           {
             var cVar = outcome.assignment.Keys.Where(item => item.Equals(c)).ToList()[0];
             if (outcome.assignment[cVar])

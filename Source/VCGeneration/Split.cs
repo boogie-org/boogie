@@ -212,8 +212,7 @@ namespace VC
         Contract.Requires(b != null);
         Contract.Ensures(Contract.Result<BlockStats>() != null);
 
-        BlockStats s;
-        if (!stats.TryGetValue(b, out s))
+        if (!stats.TryGetValue(b, out var s))
         {
           s = new BlockStats(b, bsid++);
           stats[b] = s;
@@ -600,8 +599,7 @@ namespace VC
         Contract.Requires(b != null);
         Contract.Ensures(Contract.Result<Block>() != null);
 
-        Block res;
-        if (copies.TryGetValue(b, out res))
+        if (copies.TryGetValue(b, out var res))
         {
           return cce.NonNull(res);
         }
@@ -644,8 +642,7 @@ namespace VC
         foreach (Block b in blocks)
         {
           Contract.Assert(b != null);
-          Block tmp;
-          if (copies.TryGetValue(b, out tmp))
+          if (copies.TryGetValue(b, out var tmp))
           {
             newBlocks.Add(cce.NonNull(tmp));
             if (gotoCmdOrigins.ContainsKey(b.TransferCmd))
@@ -656,8 +653,7 @@ namespace VC
             foreach (Block p in b.Predecessors)
             {
               Contract.Assert(p != null);
-              Block tmp2;
-              if (copies.TryGetValue(p, out tmp2))
+              if (copies.TryGetValue(p, out var tmp2))
               {
                 tmp.Predecessors.Add(tmp2);
               }
@@ -1040,8 +1036,7 @@ namespace VC
             var p = c as PredicateCmd;
             if (p != null && QKeyValue.FindBoolAttribute(p.Attributes, "split_here"))
             {
-              int count;
-              splitPoints.TryGetValue(b, out count);
+              splitPoints.TryGetValue(b, out var count);
               splitPoints[b] = count + 1;
             }
           }

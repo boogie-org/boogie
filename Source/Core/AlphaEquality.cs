@@ -48,8 +48,7 @@ namespace Microsoft.Boogie
 
       public Expr Rename(Expr e)
       {
-        Expr ne;
-        if (!cache.TryGetValue(e, out ne))
+        if (!cache.TryGetValue(e, out var ne))
         {
           boundVarCount = 0;
           freeVarCount = 0;
@@ -90,13 +89,12 @@ namespace Microsoft.Boogie
 
       public override Variable VisitVariable(Variable node)
       {
-        FreeVariable fv;
         var bv = node as BoundVariable;
         if (boundVars.ContainsValue(bv))
         {
           return node;
         }
-        else if (freeVarMap.TryGetValue(node, out fv))
+        else if (freeVarMap.TryGetValue(node, out var fv))
         {
           return fv;
         }
@@ -135,8 +133,7 @@ namespace Microsoft.Boogie
         {
           get
           {
-            A v;
-            if (!vars.TryGetValue(Tuple.Create(i, t), out v))
+            if (!vars.TryGetValue(Tuple.Create(i, t), out var v))
             {
               v = Mk(new TypedIdent(Token.NoToken, Prefix + i + "#" + created++, t));
               vars[Tuple.Create(i, t)] = v;

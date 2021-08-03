@@ -1955,8 +1955,7 @@ Contract.Requires(that != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       // if this variable is mapped to some new variable, we take the new one
       // otherwise, return this
-      TypeVariable res;
-      varMap.TryGetValue(this, out res);
+      varMap.TryGetValue(this, out var res);
       if (res == null)
         return this;
       else
@@ -2011,8 +2010,7 @@ Contract.Requires(that != null);
 
       if (unifiableVariables.Contains(this))
       {
-        Type previousSubst;
-        unifier.TryGetValue(this, out previousSubst);
+        unifier.TryGetValue(this, out var previousSubst);
         if (previousSubst == null)
         {
           return addSubstitution(unifier, that);
@@ -2130,8 +2128,7 @@ Contract.Requires(that != null);
     {
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
-      Type res;
-      if (subst.TryGetValue(this, out res))
+      if (subst.TryGetValue(this, out var res))
       {
         Contract.Assert(res != null);
         return res;
@@ -4568,10 +4565,8 @@ Contract.Assert(var != null);
       Contract.Requires(opName != null);
       Contract.Requires(tc != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
-      List<Type /*!*/> /*!*/
-        actualTypeParams;
       List<Type> actualResult =
-        Type.CheckArgumentTypes(TypeParameters, out actualTypeParams, Arguments, actualArgs,
+        Type.CheckArgumentTypes(TypeParameters, out var actualTypeParams, Arguments, actualArgs,
           new List<Type> {Result}, null, typeCheckingSubject, opName, tc);
       if (actualResult == null)
       {

@@ -185,8 +185,7 @@ namespace Microsoft.Boogie
       };
       foreach (var impl in implementations)
       {
-        int priority;
-        var vr = ExecutionEngine.Cache.Lookup(impl, out priority);
+        var vr = ExecutionEngine.Cache.Lookup(impl, out var priority);
         if (vr != null && vr.ProgramId == programId)
         {
           if (priority == Priority.LOW)
@@ -386,8 +385,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        BoundVariable boundVar;
-        if (!Substitutions.TryGetValue(node.Decl, out boundVar))
+        if (!Substitutions.TryGetValue(node.Decl, out var boundVar))
         {
           boundVar = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, node.Name, node.Type));
           Substitutions[node.Decl] = boundVar;
@@ -746,8 +744,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(impl != null);
 
-      int priority;
-      Lookup(impl, out priority);
+      Lookup(impl, out var priority);
       return priority;
     }
   }

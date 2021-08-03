@@ -327,8 +327,7 @@ namespace Microsoft.Boogie
       }
       else if (name.Length > 2 && name[0] == 'b' && name[1] == 'v')
       {
-        int dummy;
-        return int.TryParse(name.Substring(2), out dummy) ? "\\" + name : name;
+        return int.TryParse(name.Substring(2), out var dummy) ? "\\" + name : name;
       }
       else if (name.Contains('@'))
       {

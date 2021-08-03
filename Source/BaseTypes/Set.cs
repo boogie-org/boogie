@@ -86,8 +86,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public void Remove(T o)
     {
-      int idx;
-      if (ht.TryGetValue(o, out idx))
+      if (ht.TryGetValue(o, out var idx))
       {
         var last = arr[arr.Count - 1];
         arr.RemoveAt(arr.Count - 1);
