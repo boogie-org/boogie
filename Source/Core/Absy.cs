@@ -4468,8 +4468,7 @@ namespace Microsoft.Boogie
     {
       return InjectedAssumptionVariables.Where(v =>
       {
-        Expr e;
-        if (incarnationMap.TryGetValue(v, out e))
+        if (incarnationMap.TryGetValue(v, out var e))
         {
           var le = e as LiteralExpr;
           return le == null || !le.IsTrue;
@@ -4485,8 +4484,7 @@ namespace Microsoft.Boogie
     {
       return DoomedInjectedAssumptionVariables.Where(v =>
       {
-        Expr e;
-        if (incarnationMap.TryGetValue(v, out e))
+        if (incarnationMap.TryGetValue(v, out var e))
         {
           var le = e as LiteralExpr;
           return le == null || !le.IsTrue;

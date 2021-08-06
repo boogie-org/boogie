@@ -226,8 +226,7 @@ namespace Microsoft.Boogie.Houdini
       {
         foreach (PredicateCmd p in impl.Blocks.SelectMany(Item => Item.Cmds).OfType<PredicateCmd>())
         {
-          string c;
-          if (Houdini.MatchCandidate(p.Expr, CandidateIdentifiers, out c))
+          if (Houdini.MatchCandidate(p.Expr, CandidateIdentifiers, out var c))
           {
             yield return new AnnotationInstance(c, impl.Name, p.Expr);
           }
@@ -246,8 +245,7 @@ namespace Microsoft.Boogie.Houdini
       {
         foreach (Requires r in proc.Requires)
         {
-          string c;
-          if (Houdini.MatchCandidate(r.Condition, CandidateIdentifiers, out c))
+          if (Houdini.MatchCandidate(r.Condition, CandidateIdentifiers, out var c))
           {
             yield return new AnnotationInstance(c, proc.Name, r.Condition);
           }
@@ -263,8 +261,7 @@ namespace Microsoft.Boogie.Houdini
 
         foreach (Ensures e in proc.Ensures)
         {
-          string c;
-          if (Houdini.MatchCandidate(e.Condition, CandidateIdentifiers, out c))
+          if (Houdini.MatchCandidate(e.Condition, CandidateIdentifiers, out var c))
           {
             yield return new AnnotationInstance(c, proc.Name, e.Condition);
           }
@@ -463,8 +460,7 @@ namespace Microsoft.Boogie.Houdini
       int Counter = 0;
       foreach (var Assertion in prog.Blocks().SelectMany(Item => Item.Cmds).OfType<AssertCmd>())
       {
-        string unused;
-        if (Houdini.MatchCandidate(Assertion.Expr, CandidateIdentifiers, out unused))
+        if (Houdini.MatchCandidate(Assertion.Expr, CandidateIdentifiers, out var unused))
         {
           continue;
         }
@@ -488,8 +484,7 @@ namespace Microsoft.Boogie.Houdini
 
       foreach (var Req in prog.NonInlinedProcedures().SelectMany(Item => Item.Requires))
       {
-        string unused;
-        if (Houdini.MatchCandidate(Req.Condition, CandidateIdentifiers, out unused))
+        if (Houdini.MatchCandidate(Req.Condition, CandidateIdentifiers, out var unused))
         {
           continue;
         }
@@ -508,8 +503,7 @@ namespace Microsoft.Boogie.Houdini
 
       foreach (var Ens in prog.NonInlinedProcedures().SelectMany(Item => Item.Ensures))
       {
-        string unused;
-        if (Houdini.MatchCandidate(Ens.Condition, CandidateIdentifiers, out unused))
+        if (Houdini.MatchCandidate(Ens.Condition, CandidateIdentifiers, out var unused))
         {
           continue;
         }
@@ -606,10 +600,9 @@ namespace Microsoft.Boogie.Houdini
         foreach (var cmd in b.Cmds)
         {
           var a = cmd as AssertCmd;
-          string c;
           if (a != null)
           {
-            if (Houdini.MatchCandidate(a.Expr, CandidateIdentifiers, out c))
+            if (Houdini.MatchCandidate(a.Expr, CandidateIdentifiers, out var c))
             {
               newCmds.Add(new AssertCmd(a.tok, Houdini.AddConditionToCandidate(a.Expr,
                 Expr.Ident(stageToActiveBoolean[Plan.StageForAnnotation(c).GetId()]), c), a.Attributes));
@@ -655,8 +648,7 @@ namespace Microsoft.Boogie.Houdini
           List<Requires> newRequires = new List<Requires>();
           foreach (Requires r in p.Requires)
           {
-            string c;
-            if (Houdini.MatchCandidate(r.Condition, CandidateIdentifiers, out c))
+            if (Houdini.MatchCandidate(r.Condition, CandidateIdentifiers, out var c))
             {
               newRequires.Add(new Requires(r.tok, false,
                 Houdini.AddConditionToCandidate(r.Condition,
@@ -697,8 +689,7 @@ namespace Microsoft.Boogie.Houdini
           List<Ensures> newEnsures = new List<Ensures>();
           foreach (Ensures e in p.Ensures)
           {
-            string c;
-            if (Houdini.MatchCandidate(e.Condition, CandidateIdentifiers, out c))
+            if (Houdini.MatchCandidate(e.Condition, CandidateIdentifiers, out var c))
             {
               int stage = Plan.StageForAnnotation(c).GetId();
               newEnsures.Add(new Ensures(e.tok, false,
@@ -919,8 +910,7 @@ namespace Microsoft.Boogie.Houdini
       {
         foreach (var assertCmd in b.Cmds.OfType<AssertCmd>())
         {
-          string c;
-          if (Houdini.MatchCandidate(assertCmd.Expr, AnnotationIdentifiers, out c))
+          if (Houdini.MatchCandidate(assertCmd.Expr, AnnotationIdentifiers, out var c))
           {
             AddAnnotationOccurrence(c, b);
           }
@@ -940,8 +930,7 @@ namespace Microsoft.Boogie.Houdini
       {
         foreach (Requires r in proc.Requires)
         {
-          string c;
-          if (Houdini.MatchCandidate(r.Condition, AnnotationIdentifiers, out c))
+          if (Houdini.MatchCandidate(r.Condition, AnnotationIdentifiers, out var c))
           {
             AddAnnotationOccurrence(c, new Tuple<string, PrePost>(proc.Name, PrePost.PRE));
           }
@@ -957,8 +946,7 @@ namespace Microsoft.Boogie.Houdini
 
         foreach (Ensures e in proc.Ensures)
         {
-          string c;
-          if (Houdini.MatchCandidate(e.Condition, AnnotationIdentifiers, out c))
+          if (Houdini.MatchCandidate(e.Condition, AnnotationIdentifiers, out var c))
           {
             AddAnnotationOccurrence(c, new Tuple<string, PrePost>(proc.Name, PrePost.POST));
           }

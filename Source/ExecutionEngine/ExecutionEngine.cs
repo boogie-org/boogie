@@ -392,8 +392,7 @@ namespace Microsoft.Boogie
     {
       if (id.StartsWith(AutoRequestIdPrefix))
       {
-        int result;
-        if (int.TryParse(id.Substring(AutoRequestIdPrefix.Length), out result))
+        if (int.TryParse(id.Substring(AutoRequestIdPrefix.Length), out var result))
         {
           return result;
         }
@@ -467,8 +466,7 @@ namespace Microsoft.Boogie
           PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
         }
 
-        CivlTypeChecker civlTypeChecker;
-        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out civlTypeChecker);
+        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out var civlTypeChecker);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
         {
           return true;
@@ -976,8 +974,7 @@ namespace Microsoft.Boogie
           var taskIndex = i;
           var id = stablePrioritizedImpls[taskIndex].Id;
 
-          CancellationTokenSource old;
-          if (ImplIdToCancellationTokenSource.TryGetValue(id, out old))
+          if (ImplIdToCancellationTokenSource.TryGetValue(id, out var old))
           {
             old.Cancel();
           }
@@ -1118,8 +1115,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(requestId != null);
 
-      CancellationTokenSource cts;
-      if (RequestIdToCancellationTokenSource.TryGetValue(requestId, out cts))
+      if (RequestIdToCancellationTokenSource.TryGetValue(requestId, out var cts))
       {
         cts.Cancel();
 
@@ -1132,8 +1128,7 @@ namespace Microsoft.Boogie
     {
       if (requestId != null)
       {
-        CancellationTokenSource old;
-        RequestIdToCancellationTokenSource.TryRemove(requestId, out old);
+        RequestIdToCancellationTokenSource.TryRemove(requestId, out var old);
       }
 
       lock (RequestIdToCancellationTokenSource)
@@ -1390,8 +1385,7 @@ namespace Microsoft.Boogie
     {
       Program p = ParseBoogieProgram(new List<string> {filename}, false);
       System.Diagnostics.Debug.Assert(p != null);
-      CivlTypeChecker civlTypeChecker;
-      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out civlTypeChecker);
+      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out var civlTypeChecker);
       System.Diagnostics.Debug.Assert(oc == PipelineOutcome.ResolvedAndTypeChecked);
       return p;
     }

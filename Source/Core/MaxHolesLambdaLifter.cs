@@ -337,7 +337,6 @@ namespace Core
       string lam_str = sw.ToString();
 
       // the resulting lifted function applied to free variables
-      FunctionCall fcall;
       IToken tok = _lambda.tok;
       Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, cce.NonNull(_lambda.Type)), false);
 
@@ -345,7 +344,7 @@ namespace Core
         (from kvp in _templates where !kvp.Value.ContainsBoundVariables() select kvp.Key).ToList(),
         replDummies, _lambda, lambdaAttrs);
 
-      if (_liftedLambdas.TryGetValue(liftedLambda, out fcall))
+      if (_liftedLambdas.TryGetValue(liftedLambda, out var fcall))
       {
         if (CommandLineOptions.Clo.TraceVerify)
         {

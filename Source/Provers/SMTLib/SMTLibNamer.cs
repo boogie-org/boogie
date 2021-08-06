@@ -157,8 +157,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private string AbsyIndexToLocalIndex(string s)
     {
-      string counter;
-      if (!LabelCounters.TryGetValue(s, out counter))
+      if (!LabelCounters.TryGetValue(s, out var counter))
       {
         counter = CurrentLabelId.ToString();
         CurrentLabelId++;

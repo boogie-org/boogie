@@ -65,8 +65,7 @@ namespace Microsoft.Boogie.Houdini
 
     private void AddHoudiniConstant(AssertCmd assertCmd)
     {
-      Variable houdiniConstant;
-      if (houdini.MatchCandidate(assertCmd.Expr, out houdiniConstant))
+      if (houdini.MatchCandidate(assertCmd.Expr, out Variable houdiniConstant))
         houdiniAssertConstants.Add(houdiniConstant);
 
       if (houdiniConstant != null && CommandLineOptions.Clo.ExplainHoudini &&
@@ -85,8 +84,7 @@ namespace Microsoft.Boogie.Houdini
 
     private void AddHoudiniConstant(AssumeCmd assumeCmd)
     {
-      Variable houdiniConstant;
-      if (houdini.MatchCandidate(assumeCmd.Expr, out houdiniConstant))
+      if (houdini.MatchCandidate(assumeCmd.Expr, out Variable houdiniConstant))
         houdiniAssumeConstants.Add(houdiniConstant);
     }
 
@@ -151,11 +149,9 @@ namespace Microsoft.Boogie.Houdini
       collector.OnProgress("HdnVCGen", 0, 0, 0.0);
 
       vcgen.ConvertCFG2DAG(impl, taskID: taskID);
-      ModelViewInfo mvInfo;
-      var gotoCmdOrigins = vcgen.PassifyImpl(impl, out mvInfo);
+      var gotoCmdOrigins = vcgen.PassifyImpl(impl, out var mvInfo);
 
-      ExistentialConstantCollector ecollector;
-      ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl, out ecollector);
+      ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl, out var ecollector);
       this.houdiniAssertConstants = ecollector.houdiniAssertConstants;
       this.houdiniAssumeConstants = ecollector.houdiniAssumeConstants;
       this.explainConstantsNegative = ecollector.explainNegative;
@@ -169,8 +165,7 @@ namespace Microsoft.Boogie.Houdini
       var exprGen = proverInterface.Context.ExprGen;
       VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
 
-      Dictionary<int, Absy> label2absy;
-      conjecture = vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, proverInterface.Context);
+      conjecture = vcgen.GenerateVC(impl, controlFlowVariableExpr, out var label2absy, proverInterface.Context);
 
       VCExpr controlFlowFunctionAppl =
         exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
@@ -369,10 +364,8 @@ namespace Microsoft.Boogie.Houdini
 
       do
       {
-        List<int> unsatisfiedSoftAssumptions;
-
         hardAssumptions.Add(controlExprNoop);
-        outcome = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions, out unsatisfiedSoftAssumptions,
+        outcome = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions, out var unsatisfiedSoftAssumptions,
           handler);
         hardAssumptions.RemoveAt(hardAssumptions.Count - 1);
 
@@ -478,8 +471,7 @@ namespace Microsoft.Boogie.Houdini
         assumptionExprs.Add(exprTranslator.LookupVariable(v));
       }
 
-      List<int> unsatCore;
-      ProverInterface.Outcome tmp = proverInterface.CheckAssumptions(assumptionExprs, out unsatCore, handler);
+      ProverInterface.Outcome tmp = proverInterface.CheckAssumptions(assumptionExprs, out var unsatCore, handler);
       System.Diagnostics.Debug.Assert(tmp == ProverInterface.Outcome.Valid);
       unsatCoreSet = new HashSet<Variable>();
       foreach (int i in unsatCore)

@@ -1043,11 +1043,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      List<Block> /*!*/
-        sortedNodes;
-      bool acyclic;
-
-      graph.TarjanTopSort(out acyclic, out sortedNodes);
+      graph.TarjanTopSort(out var acyclic, out var sortedNodes);
 
       if (!acyclic)
       {
@@ -1261,10 +1257,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      bool acyclic;
-      List<string> /*!*/
-        sortedNodes;
-      callGraph.TarjanTopSort(out acyclic, out sortedNodes);
+      callGraph.TarjanTopSort(out var acyclic, out var sortedNodes);
 
       Contract.Assert(acyclic);
 

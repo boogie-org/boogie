@@ -53,12 +53,8 @@ namespace Microsoft.Boogie.TypeErasure
       //Contract.Requires(castFromU != null);
       //Contract.Requires(castToU != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      List<VCTrigger /*!*/> /*!*/
-        triggers;
-      VCExprVar /*!*/
-        var;
       VCExpr /*!*/
-        eq = GenReverseCastEq(castToU, castFromU, out var, out triggers);
+        eq = GenReverseCastEq(castToU, castFromU, out var var, out var triggers);
       return Gen.Forall(HelperFuns.ToList(var), triggers, "cast:" + castFromU.Name, 1, eq);
     }
 
@@ -109,8 +105,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       Contract.Requires(fun != null);
       Contract.Ensures(Contract.Result<Function>() != null);
-      Function res;
-      if (!Typed2UntypedFunctions.TryGetValue(fun, out res))
+      if (!Typed2UntypedFunctions.TryGetValue(fun, out var res))
       {
         Contract.Assert(fun.OutParams.Count == 1);
 
@@ -522,10 +517,8 @@ namespace Microsoft.Boogie.TypeErasure
       if (!(newNode is VCExprQuantifier) || !IsUniversalQuantifier(node))
         return newNode;
 
-      VariableBindings /*!*/
-        bindings2;
       if (!RedoQuantifier(node, (VCExprQuantifier) newNode, node.BoundVars, oldBindings,
-        out bindings2, out newBoundVars))
+        out var bindings2, out newBoundVars))
         return newNode;
 
       GenBoundVarsForTypeParams(node.TypeParameters, newBoundVars, bindings2);
@@ -721,18 +714,15 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       OpTypesPair originalOpTypes = OriginalOpTypes(node);
-      OpTypesPair newOpTypes;
 
-      if (!NewOpCache.TryGetValue(originalOpTypes, out newOpTypes))
+      if (!NewOpCache.TryGetValue(originalOpTypes, out var newOpTypes))
       {
         MapType /*!*/
           rawType = node[0].Type.AsMap;
         Contract.Assert(rawType != null);
-        List<Type> /*!*/
-          abstractionInstantiation;
         Function /*!*/
           select =
-            AxBuilder.MapTypeAbstracter.Select(rawType, out abstractionInstantiation);
+            AxBuilder.MapTypeAbstracter.Select(rawType, out var abstractionInstantiation);
         Contract.Assert(abstractionInstantiation != null);
         newOpTypes = TypesPairForSelectStore(node, select, abstractionInstantiation);
         NewOpCache.Add(originalOpTypes, newOpTypes);
@@ -747,17 +737,14 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       OpTypesPair originalOpTypes = OriginalOpTypes(node);
-      OpTypesPair newOpTypes;
 
-      if (!NewOpCache.TryGetValue(originalOpTypes, out newOpTypes))
+      if (!NewOpCache.TryGetValue(originalOpTypes, out var newOpTypes))
       {
         MapType /*!*/
           rawType = node[0].Type.AsMap;
-        List<Type> /*!*/
-          abstractionInstantiation;
         Function /*!*/
           store =
-            AxBuilder.MapTypeAbstracter.Store(rawType, out abstractionInstantiation);
+            AxBuilder.MapTypeAbstracter.Store(rawType, out var abstractionInstantiation);
 
         newOpTypes = TypesPairForSelectStore(node, store, abstractionInstantiation);
         NewOpCache.Add(originalOpTypes, newOpTypes);
@@ -801,9 +788,8 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       OpTypesPair originalOpTypes = OriginalOpTypes(node);
-      OpTypesPair newOpTypes;
 
-      if (!NewOpCache.TryGetValue(originalOpTypes, out newOpTypes))
+      if (!NewOpCache.TryGetValue(originalOpTypes, out var newOpTypes))
       {
         Function /*!*/
           oriFun = ((VCExprBoogieFunctionOp) node.Op).Func;

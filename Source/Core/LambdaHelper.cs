@@ -74,12 +74,8 @@ namespace Microsoft.Boogie
     public static void ExpandLambdas(Program prog)
     {
       Contract.Requires(prog != null);
-      List<Axiom /*!*/> /*!*/
-        axioms;
-      List<Function /*!*/> /*!*/
-        functions;
 
-      Desugar(prog, out axioms, out functions);
+      Desugar(prog, out var axioms, out var functions);
       foreach (var f in functions)
       {
         prog.AddTopLevelDeclaration(f);
@@ -249,11 +245,10 @@ namespace Microsoft.Boogie
         lambda.Emit(wr);
         string lam_str = sw.ToString();
 
-        FunctionCall fcall;
         IToken tok = lambda.tok;
         Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, cce.NonNull(lambda.Type)), false);
 
-        if (liftedLambdas.TryGetValue(lambda, out fcall))
+        if (liftedLambdas.TryGetValue(lambda, out var fcall))
         {
           if (CommandLineOptions.Clo.TraceVerify)
           {

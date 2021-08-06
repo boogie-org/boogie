@@ -564,8 +564,7 @@ namespace Microsoft.Boogie
           continue;
         }
 
-        List<CallCmd> yieldRequires, yieldEnsures;
-        TypeCheckYieldingPrePostDecls(proc, out yieldRequires, out yieldEnsures);
+        TypeCheckYieldingPrePostDecls(proc, out var yieldRequires, out var yieldEnsures);
 
         if (refinesName != null) // proc is an action procedure
         {

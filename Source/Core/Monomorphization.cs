@@ -1075,9 +1075,7 @@ namespace Microsoft.Boogie
   {
     public static MonomorphizableStatus Monomorphize(Program program)
     {
-      Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated;
-      HashSet<Axiom> polymorphicFunctionAxioms;
-      var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program, out axiomsToBeInstantiated, out polymorphicFunctionAxioms);
+      var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program, out var axiomsToBeInstantiated, out var polymorphicFunctionAxioms);
       if (monomorphizableStatus == MonomorphizableStatus.Monomorphizable)
       {
         var monomorphizationVisitor = MonomorphizationVisitor.Initialize(program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
