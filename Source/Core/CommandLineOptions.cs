@@ -545,6 +545,7 @@ namespace Microsoft.Boogie
     public bool InstrumentWithAsserts = false;
     public string ProverPreamble = null;
     public bool WarnNotEliminatedVars = false;
+    public bool Prune = false;
 
     public enum InstrumentationPlaces
     {
@@ -1541,6 +1542,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustInductiveSequentialization", ref TrustInductiveSequentialization) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting) ||
+              ps.CheckBooleanFlag("prune", ref Prune) ||
               ps.CheckBooleanFlag("warnNotEliminatedVars", ref WarnNotEliminatedVars)
           )
           {
@@ -1673,6 +1675,10 @@ namespace Microsoft.Boogie
 
     {:ignore}
       Ignore the declaration (after checking for duplicate names).
+
+    {:exclude_dep}
+      Ignore the declaration for the purpose of pruning, i.e., do not consider
+      axioms and constants that this declaration may need.
 
     {:extern}
       If two top-level declarations introduce the same name (for example, two
@@ -2097,6 +2103,7 @@ namespace Microsoft.Boogie
                 only for monomorphic programs.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
+  /prune        Prune declarations for each implementation
 
   ---- Verification-condition splitting --------------------------------------
 

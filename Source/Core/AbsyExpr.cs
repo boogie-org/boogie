@@ -40,7 +40,7 @@ namespace Microsoft.Boogie
       Neither
     }
 
-    public static Position negatePosition(Position p)
+    public static Position NegatePosition(Position p)
     {
       return p == Position.Neither ? Position.Neither : (p == Position.Neg ? Position.Pos : Position.Neg);
     }

@@ -410,7 +410,7 @@ namespace Microsoft.Boogie
           membership.Register(rc);
         }
       }
-      
+
       foreach (var d in TopLevelDeclarations)
       {
         if (QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
@@ -469,27 +469,47 @@ namespace Microsoft.Boogie
       TypeSynonymDecl.ResolveTypeSynonyms(synonymDecls, rc);
     }
 
-    class DependencyEvaluator : ReadOnlyVisitor {
-      public HashSet<Absy> outgoing;
-      public HashSet<Absy> incoming;
-      public List<HashSet<Absy>> incomingTuples;
-      public HashSet<Type> types;
-      public readonly Absy node;
+    class DependencyEvaluator : ReadOnlyVisitor
+    {
+      // A Dependency could either be a function or a constant.
+      // For any declaration, incoming (dependency) edges consist of functions and constants
+      // that the declaration may be useful for. Most incoming edges correspond
+      // to one function or constant label, but some of them are tuples.
+      // For example, an axiom of the form:
+      //                        axiom forall x, y :: {P(x, y), Q(y)} {R(x)} P(x, y) ==> R(x)
+      // has two incoming edges: 1) the tuple (P, Q) and 2) the function R.
+      // I store tuples in the variable incomingTuples.
+      // The axiom is "useful" for any declaration that either "mentions" both P and Q or mentions function R.
+      // Mentions are recorded in the set named outgoing.
+      // Outgoing edges consist of functions and constants that a declaration mentions.
+      // For the axiom above, there are 2 outgoing edges: P and R.
+      // (notice that Q is excluded because the axiom itself does not mention it.)
+      // In this setup, a declaration A depends on B, if the outgoing edges of A match
+      // with some incoming edge of B (see method dependes).
 
-      public DependencyEvaluator(Absy a) {
-        node = a;
-        incoming = new HashSet<Absy>();
-        incomingTuples = new List<HashSet<Absy>>();
-        outgoing = new HashSet<Absy>();
+      public readonly Declaration node; // a node could either be a function or an axiom.
+      public HashSet<Declaration> outgoing; // an edge can either be a function or a constant.
+      public HashSet<Declaration> incoming;
+      public List<HashSet<Declaration>> incomingTuples;
+      public HashSet<Type> types;
+
+      public DependencyEvaluator(Declaration d)
+      {
+        node = d;
+        incoming = new HashSet<Declaration>();
+        incomingTuples = new List<HashSet<Declaration>>();
+        outgoing = new HashSet<Declaration>();
         types = new HashSet<Type>();
       }
       // returns true if there is an edge from a to b
-      public static bool depends(DependencyEvaluator a, DependencyEvaluator b) {
+      public static bool depends(DependencyEvaluator a, DependencyEvaluator b)
+      {
         return b.incoming.Intersect(a.outgoing).Any() ||
                b.incomingTuples.Where(s => s.IsSubsetOf(a.outgoing)).Any();
       }
     }
-    class FunctionVisitor : DependencyEvaluator {
+    class FunctionVisitor : DependencyEvaluator
+    {
       public FunctionVisitor(Function func) : base(func)
       {
         incoming.Add(func);
@@ -512,22 +532,25 @@ namespace Microsoft.Boogie
         return base.VisitType(node);
       }
     }
-    class AxiomVisitor : DependencyEvaluator {
 
+    class AxiomVisitor : DependencyEvaluator
+    {
       public AxiomVisitor (Axiom a) : base(a) {}
+
       private void VisitTriggerCustom(Trigger t) {
-        var incomingOld = new HashSet<Absy>(incoming);
-        incoming = new HashSet<Absy>();
+        var incomingOld = new HashSet<Declaration>(incoming);
+        incoming = new HashSet<Declaration>();
         var triggerList = t.Tr.ToList();
         triggerList.ForEach(e => e.pos = Expr.Position.Neither);
         triggerList.ForEach(e => VisitExpr(e));
         if (incoming.Count() > 1) {
-          incomingTuples.Add(new HashSet<Absy>(incoming));
+          incomingTuples.Add(new HashSet<Declaration>(incoming));
           incoming = incomingOld;
         } else {
           incoming.UnionWith(incomingOld);
         }
       }
+
       public override Expr VisitExpr(Expr node) {
         if (node is IdentifierExpr iExpr && iExpr.Decl is Constant c) {
           incoming.Add(c);
@@ -540,13 +563,13 @@ namespace Microsoft.Boogie
           if (appliable is UnaryOperator op) {
             Contract.Assert(op.Op == UnaryOperator.Opcode.Neg || op.Op == UnaryOperator.Opcode.Not);
             Contract.Assert(n.Args.Count() == 1);
-            n.Args[0].pos = Expr.negatePosition(n.Args[0].pos);
+            n.Args[0].pos = Expr.NegatePosition(n.Args[0].pos);
           } else if (appliable is BinaryOperator bin) {
             Contract.Assert(n.Args.Count() == 2);
             if (bin.Op == BinaryOperator.Opcode.And
-            || bin.Op == BinaryOperator.Opcode.Or) {
+                || bin.Op == BinaryOperator.Opcode.Or) {
             } else if (bin.Op == BinaryOperator.Opcode.Imp) {
-              n.Args[0].pos = Expr.negatePosition(n.Args[0].pos);
+              n.Args[0].pos = Expr.NegatePosition(n.Args[0].pos);
             } else {
               n.Args.ToList().ForEach(a => a.pos = Expr.Position.Neither);
             }
@@ -562,7 +585,7 @@ namespace Microsoft.Boogie
           var discardBodyIncoming = qe is ForallExpr fa && fa.pos == Expr.Position.Pos
                                     || qe is ExistsExpr ee && ee.pos == Expr.Position.Neg;
           be.Body.pos = Expr.Position.Neither;
-          var incomingOld = new HashSet<Absy>(incoming);
+          var incomingOld = new HashSet<Declaration>(incoming);
           VisitExpr(be.Body); // this will still edit the outgoing edges and types
           incoming = discardBodyIncoming ? incomingOld : incoming;
           return null;
@@ -590,6 +613,7 @@ namespace Microsoft.Boogie
         }
         return base.VisitExpr(node);
       }
+
       public override Microsoft.Boogie.Type VisitType(Microsoft.Boogie.Type node)
       {
         types.Add(node);
@@ -600,10 +624,12 @@ namespace Microsoft.Boogie
     class ImplVisitor : DependencyEvaluator
     {
       public Implementation impl;
+
       public ImplVisitor(Implementation i) : base(null)
       {
         impl = i;
       }
+
       public override Expr VisitExpr(Expr node)
       {
         if (node is IdentifierExpr iExpr && iExpr.Decl is Constant c) {
@@ -613,6 +639,7 @@ namespace Microsoft.Boogie
         }
         return base.VisitExpr(node);
       }
+
       public override Microsoft.Boogie.Type VisitType(Microsoft.Boogie.Type node)
       {
         types.Add(node);
@@ -622,13 +649,20 @@ namespace Microsoft.Boogie
 
     private Dictionary<DependencyEvaluator, List<DependencyEvaluator>> edges;
 
-    public void initializeEdges () {
-      var getMentions = this.Axioms.Select(ax => (DependencyEvaluator)new AxiomVisitor(ax)).ToList();
-      getMentions.ForEach(ax => ((AxiomVisitor)ax).Visit(ax.node));
-      var getFunctionMentions = this.Functions.Select(f => (DependencyEvaluator)new FunctionVisitor(f)).ToList();
-      getFunctionMentions.ForEach(f => ((FunctionVisitor)f).Visit(f.node));
-      getMentions.AddRange(getFunctionMentions);
-      // foreach (var i in getMentions)
+    public void InitializeEdges()
+    {
+      if (!CommandLineOptions.Clo.Prune)
+      {
+        return;
+      }
+      var nodes = this.Axioms.Select(ax => (DependencyEvaluator)new AxiomVisitor(ax)).ToList();
+      nodes.ForEach(axv => ((AxiomVisitor)axv).Visit(axv.node));
+      var functionNodes = this.Functions.Select(f => (DependencyEvaluator)new FunctionVisitor(f)).ToList();
+      functionNodes.ForEach(fv => ((FunctionVisitor)fv).Visit(fv.node));
+      nodes.AddRange(functionNodes);
+      nodes.ForEach(u => u.incoming = u.incoming.Where(i => u.node == i || !ExcludeDep(i)).ToHashSet());
+      nodes.ForEach(u => u.outgoing = u.outgoing.Where(i => !ExcludeDep(i)).ToHashSet());
+      // foreach (var i in nodes)
       // {
       //     Console.WriteLine(i.node);
       //     Console.WriteLine("\nincoming:: ");
@@ -637,68 +671,53 @@ namespace Microsoft.Boogie
       //     i.outgoing.ToList().ForEach(e => Console.Write(e));
       //     Console.WriteLine("\n=====================");
       // }
-      getMentions.ForEach(u => u.incoming = u.incoming.Where(i => !isIgnorable(i)).ToHashSet());
-      getMentions.ForEach(u => u.outgoing = u.outgoing.Where(i => !isIgnorable(i)).ToHashSet());
-      edges = new Dictionary<DependencyEvaluator, List<DependencyEvaluator>>();
-      getMentions.ForEach(u => edges[u] = getMentions.Where(v => !isIgnorable(v.node) && DependencyEvaluator.depends(u, v)).ToList());
+      this.edges = new Dictionary<DependencyEvaluator, List<DependencyEvaluator>>();
+      nodes.ForEach(u => this.edges[u] = nodes.Where(v => DependencyEvaluator.depends(u, v)).ToList());
     }
 
-    private bool isIgnorable(Absy a) {
-      return a is Constant c
-        && c.TypedIdent.HasName
-        && (c.TypedIdent.Name == "$FunctionContextHeight"
-          || c.TypedIdent.Name == "$ModuleContextHeight");
+    private bool ExcludeDep(Declaration d)
+    {
+      return d.Attributes != null &&
+              QKeyValue.FindBoolAttribute(d.Attributes, "exclude_dep");
     }
-    public Program getSuccinctProgram (Implementation impl) {
 
-      HashSet<Declaration> computeReachability (DependencyEvaluator source,
-                                      Dictionary<DependencyEvaluator, List<DependencyEvaluator>> edges) {
-        var todo = new Stack<DependencyEvaluator>();
+    public IEnumerable<Declaration> GetSuccinctDecl(Implementation impl)
+    {
+      if (impl == null || !CommandLineOptions.Clo.Prune)
+      {
+        return this.TopLevelDeclarations;
+      }
+
+      // an implementation only has outgoing edges.
+      DependencyEvaluator implNode = new ImplVisitor(impl);
+      implNode.Visit(impl);
+      var implHooks = edges.Keys.Where(m => DependencyEvaluator.depends(implNode, m));
+
+      IEnumerable<Declaration> ComputeReachability (IEnumerable<DependencyEvaluator> implHooks)
+      {
+        var todo = new Stack<DependencyEvaluator>(implHooks);
         var visited = new HashSet<DependencyEvaluator>();
-        todo.Push(source);
-        while(todo.Count() != 0) {
+        while(todo.Any())
+        {
           var d = todo.Pop();
-          foreach (var x in edges[d].Where(t => !visited.Contains(t))) {
+          foreach (var x in edges[d].Where(t => !visited.Contains(t)))
+          {
             todo.Push(x);
           }
           visited.Add(d);
         }
-        visited.Remove(source);
-        return visited.Select(a => (Declaration) a.node).ToHashSet();
+        return visited.Select(a => (Declaration) a.node);
       }
 
-      DependencyEvaluator implHooks = new ImplVisitor(impl);
-      implHooks.Visit(impl);
-      implHooks.outgoing = implHooks.outgoing.Where(m => !isIgnorable(m)).ToHashSet();
-      var keys = edges.Keys;
-      edges[implHooks] = keys.Where(m => !isIgnorable(m.node) && DependencyEvaluator.depends(implHooks, m)).ToList();
-      var s = computeReachability(implHooks, edges);
-      Console.WriteLine("trimmed " + (keys.Count() - s.Count()).ToString() + " declarations");
-
-      bool KeepDecl(Declaration d)
+      var s = ComputeReachability(implHooks);
+      bool PruneDecl(Declaration d)
       {
-        return !(d is Axiom && d is Function) || s.Contains(d);
+        return (d is Axiom || d is Function) && !s.Contains(d);
       }
-
-      Program p = (Program)this.Clone();
-      p.TopLevelDeclarations = p.TopLevelDeclarations.Where(d => KeepDecl(d));
-      // p.TopLevelDeclarations = p.TopLevelDeclarations.ToHasxhSet().Intersect(s);
-      // foreach (var i in sourceVertices)
-      // {
-        // var i = implHooks;
-        // Console.WriteLine(impl);
-        // Console.WriteLine("\noutgoing:: ");
-        // i.outgoing = i.outgoing.Where(m => !isIgnorable(m)).ToHashSet();
-        // i.outgoing.ToList().ForEach(e => Console.Write(e.ToString() + " "));
-        // edges[i] = getMentions.Where(m => !isIgnorable(m.node) && DependencyEvaluator.depends(i, m)).ToList();
-        // Console.WriteLine("\n=====================");
-        // var s1 = computeReachability(i, edges);
-        // s1.ForEach(a => Console.Write(a));
-        // edges.Remove(i);
-        // Console.WriteLine("\n=====================");
-      // }
-      return p;
+      // Console.WriteLine("trimming declarations = " + (this.TopLevelDeclarations.Count() - this.TopLevelDeclarations.Where(d => !PruneDecl(d)).Count()));
+      return this.TopLevelDeclarations.Where(d => !PruneDecl(d));
     }
+
     public int Typecheck()
     {
       return this.Typecheck((IErrorSink) null);
@@ -2189,14 +2208,14 @@ namespace Microsoft.Boogie
     {
       this.constructors = new List<DatatypeConstructor>();
     }
-    
+
     public override void Emit(TokenTextWriter stream, int level)
     {
       base.Emit(stream, level);
       constructors.Iter(constructor => constructor.Emit(stream, level));
     }
   }
-  
+
   public class TypeSynonymDecl : NamedDeclaration
   {
     private List<TypeVariable> /*!*/
@@ -3347,7 +3366,7 @@ namespace Microsoft.Boogie
       var typeVariableMapping = LinqExtender.Map(constructor.TypeParameters, newTypeVariables.Select(x => (Type)x).ToList());
       return new DatatypeSelector(constructor, index, newTypeVariables, typeVariableMapping);
     }
-    
+
     private DatatypeSelector(DatatypeConstructor constructor, int index, List<TypeVariable> newTypeVariables, Dictionary<TypeVariable, Type> typeVariableMapping)
       : base(constructor.InParams[index].tok,
         constructor.InParams[index].Name + "#" + constructor.Name,
@@ -3379,7 +3398,7 @@ namespace Microsoft.Boogie
       var typeVariableMapping = LinqExtender.Map(constructor.TypeParameters, newTypeVariables.Select(x => (Type)x).ToList());
       return new DatatypeMembership(constructor, newTypeVariables, typeVariableMapping);
     }
-    
+
     private DatatypeMembership(DatatypeConstructor constructor, List<TypeVariable> newTypeVariables, Dictionary<TypeVariable, Type> typeVariableMapping)
       : base(constructor.tok,
         "is#" + constructor.Name,

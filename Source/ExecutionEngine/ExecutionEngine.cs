@@ -957,7 +957,7 @@ namespace Microsoft.Boogie
 
       #region Verify each implementation
       // compute program dependecies
-      program.initializeEdges();
+      program.InitializeEdges();
       var outputCollector = new OutputCollector(stablePrioritizedImpls);
       var outcome = PipelineOutcome.VerificationCompleted;
 

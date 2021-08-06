@@ -323,7 +323,7 @@ namespace VC
         ModelViewInfo mvInfo;
         parent.PassifyImpl(impl, out mvInfo);
         Dictionary<int, Absy> label2Absy;
-        Checker ch = parent.FindCheckerFor(parent.program);
+        Checker ch = parent.FindCheckerFor(parent.program, true, impl);
         Contract.Assert(ch != null);
 
         ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
@@ -798,7 +798,6 @@ namespace VC
       List<Split> currently_running = new List<Split>();
       ResetPredecessors(impl.Blocks);
       List<Split> manual_splits = Split.FindManualSplits(impl, gotoCmdOrigins, this);
-      this.program.getSuccinctProgram(impl);
       if (manual_splits != null)
       {
         foreach (var split in manual_splits)
@@ -843,8 +842,7 @@ namespace VC
             var timeout = (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
               keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
               impl.TimeLimit;
-            Program succ = s.parent.program.getSuccinctProgram(impl);
-            var checker = s.parent.FindCheckerFor(succ, false);
+            var checker = s.parent.FindCheckerFor(s.parent.program, false, impl);
             try
             {
               if (checker == null)
