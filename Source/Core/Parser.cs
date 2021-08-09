@@ -78,9 +78,10 @@ public static int Parse(string/*!*/ filename, List<string/*!*/> defines, out /*m
 
   if (filename == "stdin.bpl") {
     return Parse(Console.In, filename, defines, out program, useBaseName);
-  } else {
-	  using FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
-	  return Parse(new StreamReader(stream), filename, defines, out program, useBaseName);
+  } else
+  {
+    using FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+    return Parse(new StreamReader(stream), filename, defines, out program, useBaseName);
   }
 }
 
