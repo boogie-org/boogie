@@ -4672,17 +4672,15 @@ namespace Microsoft.Boogie
         if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
         {
           Console.WriteLine("Implementation.GetImplFormalMap on {0}:", this.Name);
-          using (TokenTextWriter stream =
-            new TokenTextWriter("<console>", Console.Out, /*setTokens=*/false, /*pretty=*/ false))
+          using TokenTextWriter stream =
+            new TokenTextWriter("<console>", Console.Out, /*setTokens=*/false, /*pretty=*/ false);
+          foreach (var e in map)
           {
-            foreach (var e in map)
-            {
-              Console.Write("  ");
-              cce.NonNull((Variable /*!*/) e.Key).Emit(stream, 0);
-              Console.Write("  --> ");
-              cce.NonNull((Expr) e.Value).Emit(stream);
-              Console.WriteLine();
-            }
+            Console.Write("  ");
+            cce.NonNull((Variable /*!*/) e.Key).Emit(stream, 0);
+            Console.Write("  --> ");
+            cce.NonNull((Expr) e.Value).Emit(stream);
+            Console.WriteLine();
           }
         }
 

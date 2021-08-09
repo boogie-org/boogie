@@ -234,13 +234,10 @@ namespace Microsoft.Boogie
         Model.Write(tw);
         tw.Flush();
       }
-      else
-      {
-        using (var wr = new StreamWriter(filename, !firstModelFile))
-        {
-          firstModelFile = false;
-          Model.Write(wr);
-        }
+      else {
+        using var wr = new StreamWriter(filename, !firstModelFile);
+        firstModelFile = false;
+        Model.Write(wr);
       }
     }
 

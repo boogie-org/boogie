@@ -454,65 +454,60 @@ namespace Microsoft.Boogie
         return snapshotsByVersion.All(s => ProcessFiles(new List<string>(s), false, programId));
       }
 
-      using (XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count - 1]))
+      using XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count - 1]);
+      Program program = ParseBoogieProgram(fileNames, false);
+      if (program == null)
       {
-        Program program = ParseBoogieProgram(fileNames, false);
-        if (program == null)
-        {
-          return true;
-        }
-        if (CommandLineOptions.Clo.PrintFile != null)
-        {
-          PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
-        }
+        return true;
+      }
+      if (CommandLineOptions.Clo.PrintFile != null)
+      {
+        PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
+      }
 
-        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out var civlTypeChecker);
-        if (oc != PipelineOutcome.ResolvedAndTypeChecked)
-        {
-          return true;
-        }
+      PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out var civlTypeChecker);
+      if (oc != PipelineOutcome.ResolvedAndTypeChecked)
+      {
+        return true;
+      }
 
-        if (CommandLineOptions.Clo.PrintCFGPrefix != null)
-        {
-          foreach (var impl in program.Implementations)
-          {
-            using (StreamWriter sw = new StreamWriter(CommandLineOptions.Clo.PrintCFGPrefix + "." + impl.Name + ".dot"))
-            {
-              sw.Write(program.ProcessLoops(impl).ToDot());
-            }
-          }
+      if (CommandLineOptions.Clo.PrintCFGPrefix != null)
+      {
+        foreach (var impl in program.Implementations) {
+          using StreamWriter sw = new StreamWriter(CommandLineOptions.Clo.PrintCFGPrefix + "." + impl.Name + ".dot");
+          sw.Write(program.ProcessLoops(impl).ToDot());
         }
+      }
 
-        CivlVCGeneration.Transform(civlTypeChecker);
-        if (CommandLineOptions.Clo.CivlDesugaredFile != null)
-        {
-          int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-          CommandLineOptions.Clo.PrintUnstructured = 1;
-          PrintBplFile(CommandLineOptions.Clo.CivlDesugaredFile, program, false, false,
-            CommandLineOptions.Clo.PrettyPrint);
-          CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
-        }
+      CivlVCGeneration.Transform(civlTypeChecker);
+      if (CommandLineOptions.Clo.CivlDesugaredFile != null)
+      {
+        int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+        CommandLineOptions.Clo.PrintUnstructured = 1;
+        PrintBplFile(CommandLineOptions.Clo.CivlDesugaredFile, program, false, false,
+          CommandLineOptions.Clo.PrettyPrint);
+        CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+      }
         
-        EliminateDeadVariables(program);
+      EliminateDeadVariables(program);
 
-        CoalesceBlocks(program);
+      CoalesceBlocks(program);
 
-        Inline(program);
+      Inline(program);
 
-        var stats = new PipelineStatistics();
-        oc = InferAndVerify(program, stats, 1 < CommandLineOptions.Clo.VerifySnapshots ? programId : null);
-        switch (oc)
-        {
-          case PipelineOutcome.Done:
-          case PipelineOutcome.VerificationCompleted:
-            printer.WriteTrailer(stats);
-            return true;
-          case PipelineOutcome.FatalError:
-            return false;
-          default:
-            Debug.Assert(false, "Unreachable code");
-            return false;
-        }
+      var stats = new PipelineStatistics();
+      oc = InferAndVerify(program, stats, 1 < CommandLineOptions.Clo.VerifySnapshots ? programId : null);
+      switch (oc)
+      {
+        case PipelineOutcome.Done:
+        case PipelineOutcome.VerificationCompleted:
+          printer.WriteTrailer(stats);
+          return true;
+        case PipelineOutcome.FatalError:
+          return false;
+        default:
+          Debug.Assert(false, "Unreachable code");
+          return false;
       }
     }
 
