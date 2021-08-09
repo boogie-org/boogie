@@ -471,21 +471,20 @@ namespace Microsoft.Boogie
 
     class DependencyEvaluator : ReadOnlyVisitor
     {
-      // A Dependency could either be a function or a constant.
-      // For any declaration, incoming (dependency) edges consist of functions and constants
-      // that the declaration may be useful for. Most incoming edges correspond
-      // to one function or constant label, but some of them are tuples.
-      // For example, an axiom of the form:
+      // For each declaration, we compute incoming and outgoing dependents.
+      // Incoming dependents are functions or constants that the declaration may help the solver with.
+      // Most incoming dependents correspond to exactly one function or constant, but some of them are tuples.
+      // For example, consider an axiom of the form:
       //                        axiom forall x, y :: {P(x, y), Q(y)} {R(x)} P(x, y) ==> R(x)
-      // has two incoming edges: 1) the tuple (P, Q) and 2) the function R.
-      // I store tuples in the variable incomingTuples.
-      // The axiom is "useful" for any declaration that either "mentions" both P and Q or mentions function R.
-      // Mentions are recorded in the set named outgoing.
-      // Outgoing edges consist of functions and constants that a declaration mentions.
-      // For the axiom above, there are 2 outgoing edges: P and R.
+      // The axiom may (only) be triggerd by a declaration/implementation that either mentions
+      // both P and Q or mentions function R.
+      // Thus, it has two incoming dependents:
+      // 1) the tuple (P, Q) and 2) the function R. I store tuples in the variable incomingTuples.
+      // Outgoing dependents consist of functions and constants that a declaration mentions.
+      // For the axiom above, there are 2 outgoing dependents: P and R.
       // (notice that Q is excluded because the axiom itself does not mention it.)
-      // In this setup, a declaration A depends on B, if the outgoing edges of A match
-      // with some incoming edge of B (see method dependes).
+      // Now, a declaration A depends on B, if the outgoing dependents of A match
+      // with some incoming dependent of B (see method depends).
 
       public readonly Declaration node; // a node could either be a function or an axiom.
       public HashSet<Declaration> outgoing; // an edge can either be a function or a constant.
@@ -508,6 +507,7 @@ namespace Microsoft.Boogie
                b.incomingTuples.Where(s => s.IsSubsetOf(a.outgoing)).Any();
       }
     }
+
     class FunctionVisitor : DependencyEvaluator
     {
       public FunctionVisitor(Function func) : base(func)
@@ -662,15 +662,6 @@ namespace Microsoft.Boogie
       nodes.AddRange(functionNodes);
       nodes.ForEach(u => u.incoming = u.incoming.Where(i => u.node == i || !ExcludeDep(i)).ToHashSet());
       nodes.ForEach(u => u.outgoing = u.outgoing.Where(i => !ExcludeDep(i)).ToHashSet());
-      // foreach (var i in nodes)
-      // {
-      //     Console.WriteLine(i.node);
-      //     Console.WriteLine("\nincoming:: ");
-      //     i.incoming.ToList().ForEach(e => Console.Write(e));
-      //     Console.WriteLine("\noutgoing:: ");
-      //     i.outgoing.ToList().ForEach(e => Console.Write(e));
-      //     Console.WriteLine("\n=====================");
-      // }
       this.edges = new Dictionary<DependencyEvaluator, List<DependencyEvaluator>>();
       nodes.ForEach(u => this.edges[u] = nodes.Where(v => DependencyEvaluator.depends(u, v)).ToList());
     }
@@ -714,7 +705,7 @@ namespace Microsoft.Boogie
       {
         return (d is Axiom || d is Function) && !s.Contains(d);
       }
-      // Console.WriteLine("trimming declarations = " + (this.TopLevelDeclarations.Count() - this.TopLevelDeclarations.Where(d => !PruneDecl(d)).Count()));
+
       return this.TopLevelDeclarations.Where(d => !PruneDecl(d));
     }
 

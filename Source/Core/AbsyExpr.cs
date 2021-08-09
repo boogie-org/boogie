@@ -33,6 +33,7 @@ namespace Microsoft.Boogie
       Contract.Requires(stream != null);
       Emit(stream, 0, false);
     }
+
     public enum Position
     {
       Pos,
