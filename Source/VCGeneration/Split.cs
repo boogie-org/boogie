@@ -767,11 +767,6 @@ namespace VC
       private static List<Block> DoPreAssignedManualSplit(List<Block> blocks, Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
         Block containingBlock, bool lastSplitInBlock)
       {
-        Cmd AssertIntoAssume(Cmd c)
-        {
-          if (c is AssertCmd assrt) return VCGen.AssertTurnedIntoAssume(assrt);
-          return c;
-        }
 
         bool isSplitCmd(Cmd c)
         {
@@ -798,7 +793,7 @@ namespace VC
                 splitCount++;
                 verify = splitCount == splitNumberWithinBlock;
               }
-              newCmds.Add(verify ? c : AssertIntoAssume(c));
+              newCmds.Add(verify ? c : Split.AssertIntoAssume(c));
             }
             newBlock.Cmds = newCmds;
           }
@@ -808,13 +803,13 @@ namespace VC
             var newCmds = new List<Cmd>();
             foreach(Cmd c in currentBlock.Cmds) {
               verify = isSplitCmd(c) ? false : verify;
-              newCmds.Add(verify ? c : AssertIntoAssume(c));
+              newCmds.Add(verify ? c : Split.AssertIntoAssume(c));
             }
             newBlock.Cmds = newCmds;
           }
           else
           {
-            newBlock.Cmds = currentBlock.Cmds.Select<Cmd, Cmd>(c => AssertIntoAssume(c)).ToList();
+            newBlock.Cmds = currentBlock.Cmds.Select<Cmd, Cmd>(c => Split.AssertIntoAssume(c)).ToList();
           }
         }
         // Patch the edges between the new blocks
@@ -1064,6 +1059,145 @@ namespace VC
           }
         }
         return splits;
+      }
+
+      public static List<Split> FocusImpl(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
+      {
+        bool IsFocusCmd(Cmd c) {
+          return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "focus");
+        }
+
+        List<Block> GetFocusBlocks(List<Block> blocks) {
+          return blocks.Where(blk => blk.Cmds.Where(c => IsFocusCmd(c)).Any()).ToList();
+        }
+
+        var dag = Program.GraphFromImpl(impl);
+        var topoSorted = dag.TopologicalSort().ToList();
+        // By default, we process the foci in a top-down fashion, i.e., in the topological order.
+        // If the user sets the RelaxFocus flag, we use the reverse (topological) order.
+        var focusBlocks = GetFocusBlocks(topoSorted);
+        if (CommandLineOptions.Clo.RelaxFocus) {
+          focusBlocks.Reverse();
+        }
+        if (!focusBlocks.Any()) {
+          return null;
+        }
+        // finds all the blocks dominated by focusBlock in the subgraph
+        // which only contains vertices of subgraph.
+        HashSet<Block> DominatedBlocks(Block focusBlock, IEnumerable<Block> subgraph)
+        {
+          var dominators = new Dictionary<Block, HashSet<Block>>();
+          var todo = new Queue<Block>();
+          foreach (var b in topoSorted.Where(blk => subgraph.Contains(blk)))
+          {
+            var s = new HashSet<Block>();
+            var pred = b.Predecessors.Where(blk => subgraph.Contains(blk)).ToList();
+            if (pred.Count != 0)
+            {
+              s.UnionWith(dominators[pred[0]]);
+              pred.ForEach(blk => s.IntersectWith(dominators[blk]));
+            }
+            s.Add(b);
+            dominators[b] = s;
+          }
+          return subgraph.Where(blk => dominators[blk].Contains(focusBlock)).ToHashSet();
+        }
+
+        Cmd DisableSplits(Cmd c)
+        {
+          if (c is PredicateCmd pc)
+          {
+            for (var kv = pc.Attributes; kv != null; kv = kv.Next)
+            {
+              if (kv.Key == "split")
+              {
+                kv.AddParam(new LiteralExpr(Token.NoToken, false));
+              }
+            }
+          }
+          return c;
+        }
+
+        var Ancestors = new Dictionary<Block, HashSet<Block>>();
+        var Descendants = new Dictionary<Block, HashSet<Block>>();
+        focusBlocks.ForEach(fb => Ancestors[fb] = dag.ComputeReachability(fb, false).ToHashSet());
+        focusBlocks.ForEach(fb => Descendants[fb] = dag.ComputeReachability(fb, true).ToHashSet());
+        var s = new List<Split>();
+        var duplicator = new Duplicator();
+        void FocusRec(int focusIdx, IEnumerable<Block> blocks, IEnumerable<Block> freeBlocks)
+        {
+          if (focusIdx == focusBlocks.Count())
+          {
+            // it is important for l to be consistent with reverse topological order.
+            var l = dag.TopologicalSort().Where(blk => blocks.Contains(blk)).Reverse();
+            // assert that the root block, impl.Blocks[0], is in l
+            Contract.Assert(l.ElementAt(l.Count() - 1) == impl.Blocks[0]);
+            var newBlocks = new List<Block>();
+            var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count());
+            foreach (Block b in l)
+            {
+              var newBlock = (Block)duplicator.Visit(b);
+              newBlocks.Add(newBlock);
+              oldToNewBlockMap[b] = newBlock;
+              // freeBlocks consist of the predecessors of the relevant foci.
+              // Their assertions turn into assumes and any splits inside them are disabled.
+              if(freeBlocks.Contains(b))
+              {
+                newBlock.Cmds = b.Cmds.Select(c => Split.AssertIntoAssume(c)).Select(c => DisableSplits(c)).ToList();
+              }
+              if (b.TransferCmd is GotoCmd gtc)
+              {
+                var targets = gtc.labelTargets.Where(blk => blocks.Contains(blk));
+                newBlock.TransferCmd = new GotoCmd(gtc.tok,
+                                              targets.Select(blk => oldToNewBlockMap[blk].Label).ToList(),
+                                              targets.Select(blk => oldToNewBlockMap[blk]).ToList());
+              }
+            }
+            newBlocks.Reverse();
+            Contract.Assert(newBlocks[0] == oldToNewBlockMap[impl.Blocks[0]]);
+            s.Add(new Split(PostProcess(newBlocks), gotoCmdOrigins, par, impl));
+          }
+          else if (!blocks.Contains(focusBlocks[focusIdx])
+                    || freeBlocks.Contains(focusBlocks[focusIdx]))
+          {
+            FocusRec(focusIdx + 1, blocks, freeBlocks);
+          }
+          else
+          {
+            var b = focusBlocks[focusIdx]; // assert b in blocks
+            var dominatedBlocks = DominatedBlocks(b, blocks);
+            // the first part takes all blocks except the ones dominated by the focus block
+            FocusRec(focusIdx + 1, blocks.Where(blk => !dominatedBlocks.Contains(blk)), freeBlocks);
+            var ancestors = Ancestors[b];
+            ancestors.Remove(b);
+            var descendants = Descendants[b];
+            // the other part takes all the ancestors, the focus block, and the descendants.
+            FocusRec(focusIdx + 1, ancestors.Union(descendants).Intersect(blocks), ancestors.Union(freeBlocks));
+          }
+        }
+
+        FocusRec(0, impl.Blocks, new List<Block>());
+        return s;
+      }
+
+      public static List<Split> FocusAndSplit(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
+      {
+        List<Split> focussedImpl = FocusImpl(impl, gotoCmdOrigins, par);
+        if (focussedImpl == null) {
+          return FindManualSplits(impl, gotoCmdOrigins, par);
+        } else {
+          List<Split> splits = new List<Split>();
+          foreach (var f in focussedImpl)
+          {
+            var new_splits = FindManualSplits(f.impl, f.gotoCmdOrigins, par);
+            if (new_splits == null) {
+              splits.Add(f);
+            } else {
+              splits.AddRange(new_splits);
+            }
+          }
+          return splits;
+        }
       }
 
       public static List<Split /*!*/> /*!*/ DoSplit(Split initial, double maxCost, int max)
@@ -1320,6 +1454,12 @@ namespace VC
         if (no >= 0)
           desc += "_split" + no;
         checker.BeginCheck(desc, vc, reporter, timeout, rlimit, impl.RandomSeed);
+      }
+
+      private static Cmd AssertIntoAssume(Cmd c)
+      {
+        if (c is AssertCmd assrt) return VCGen.AssertTurnedIntoAssume(assrt);
+        return c;
       }
 
       private void SoundnessCheck(HashSet<List<Block> /*!*/> /*!*/ cache, Block /*!*/ orig,

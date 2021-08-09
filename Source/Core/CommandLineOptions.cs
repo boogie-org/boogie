@@ -414,7 +414,6 @@ namespace Microsoft.Boogie
         Console.WriteLine(AttributeHelp);
         return true;
       }
-      
       return false;
     }
 
@@ -685,6 +684,7 @@ namespace Microsoft.Boogie
     public string PrintCFGPrefix = null;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
+    public bool RelaxFocus = false;
     public bool RunDiagnosticsOnTimeout = false;
     public bool TraceDiagnosticsOnTimeout = false;
     public uint TimeLimitPerAssertionInPercent = 10;
@@ -1522,6 +1522,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("dbgRefuted", ref DebugRefuted) ||
               ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
+              ps.CheckBooleanFlag("relaxFocus", ref RelaxFocus) ||
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
               ps.CheckBooleanFlag("runDiagnosticsOnTimeout", ref RunDiagnosticsOnTimeout) ||
               ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", ref TraceDiagnosticsOnTimeout) ||
@@ -1785,6 +1786,12 @@ namespace Microsoft.Boogie
 
      {:subsumption n}
        Overrides the /subsumption command-line setting for this assertion.
+
+     {:focus}
+       Splits verification into two problems. First problem deletes all paths
+       that do not have the focus block. Second problem considers the paths
+       deleted in the first problem and does not contain either the focus block
+       or any block dominated by it.
 
      {:split_here}
        Verifies code leading to this point and code leading from this point
@@ -2097,6 +2104,9 @@ namespace Microsoft.Boogie
                 only for monomorphic programs.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
+  /relaxFocus   Process foci in a bottom-up fashion. This way only generates
+                a linear number of splits. The default way (top-down) is more
+                aggressive and it may create an exponential number of splits.
 
   ---- Verification-condition splitting --------------------------------------
 
