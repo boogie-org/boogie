@@ -30,8 +30,8 @@ namespace VC
       throw new NotImplementedException();
     }
 
-    public ConditionGenerationContracts(Program p, List<Checker> checkers)
-      : base(p, checkers)
+    public ConditionGenerationContracts(Program p, CheckerPool checkerPool)
+      : base(p, checkerPool)
     {
     }
   }
@@ -76,15 +76,11 @@ namespace VC
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(cce.NonNullElements(checkers));
       Contract.Invariant(cce.NonNullDictionaryAndValues(incarnationOriginMap));
       Contract.Invariant(program != null);
     }
 
     public int CumulativeAssertionCount; // for statistics
-
-    protected readonly List<Checker> /*!>!*/
-      checkers;
 
     private bool _disposed;
 
@@ -100,18 +96,13 @@ namespace VC
     public Dictionary<Cmd, List<object>> debugInfos = new Dictionary<Cmd, List<object>>();
 
     public Program program;
+    public CheckerPool CheckerPool { get; }
 
-    protected string /*?*/
-      logFilePath;
-
-    protected bool appendLogFile;
-
-    public ConditionGeneration(Program p, List<Checker> checkers)
+    public ConditionGeneration(Program p, CheckerPool checkerPool)
     {
-      Contract.Requires(p != null && checkers != null && cce.NonNullElements(checkers));
+      Contract.Requires(p != null && checkerPool != null);
       program = p;
-      this.checkers = checkers;
-      Cores = 1;
+      CheckerPool = checkerPool;
     }
 
     /// <summary>
@@ -511,86 +502,8 @@ namespace VC
     }
 
     #endregion
-
-
-    protected Checker FindCheckerFor(Program program, bool isBlocking, Implementation impl, int waitTimeinMs = 50, int maxRetries = 3)
-    {
-      Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
-      Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
-
-      lock (checkers)
-      {
-        retry:
-        // Look for existing checker.
-        for (int i = 0; i < checkers.Count; i++)
-        {
-          var c = checkers[i];
-          if (Monitor.TryEnter(c))
-          {
-            try
-            {
-              if (c.WillingToHandle(program) && !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
-              {
-                c.GetReady();
-                return c;
-              }
-              else if (c.IsIdle || c.IsClosed)
-              {
-                if (c.IsIdle)
-                {
-                  c.Retarget(program, c.TheoremProver.Context, impl);
-                  c.GetReady();
-                  return c;
-                }
-                else
-                {
-                  checkers.RemoveAt(i);
-                  i--;
-                  continue;
-                }
-              }
-            }
-            finally
-            {
-              Monitor.Exit(c);
-            }
-          }
-        }
-
-        if (Cores <= checkers.Count)
-        {
-          if (isBlocking || 0 < maxRetries)
-          {
-            if (0 < waitTimeinMs)
-            {
-              Monitor.Wait(checkers, waitTimeinMs);
-            }
-
-            maxRetries--;
-            goto retry;
-          }
-          else
-          {
-            return null;
-          }
-        }
-
-        // Create a new checker.
-        string log = logFilePath;
-        if (log != null && !log.Contains("@PROC@") && checkers.Count > 0)
-        {
-          log = log + "." + checkers.Count;
-        }
-
-        Checker ch = new Checker(this, program, log, appendLogFile, impl);
-        ch.GetReady();
-        checkers.Add(ch);
-        return ch;
-      }
-    }
-
-
-    virtual public void Close()
+    
+    public virtual void Close()
     {
     }
 
@@ -1711,6 +1624,5 @@ namespace VC
         _disposed = true;
       }
     }
-    public int Cores { get; set; }
   }
 }

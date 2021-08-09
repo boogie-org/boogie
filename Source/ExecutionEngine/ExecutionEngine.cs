@@ -414,7 +414,7 @@ namespace Microsoft.Boogie
       return result;
     }
 
-    static List<Checker> Checkers = new List<Checker>();
+    private static CheckerPool checkerPool;
 
     static DateTime FirstRequestStart;
 
@@ -849,6 +849,10 @@ namespace Microsoft.Boogie
       Contract.Ensures(0 <= Contract.ValueAtReturn(out stats.InconclusiveCount) &&
                        0 <= Contract.ValueAtReturn(out stats.TimeoutCount));
 
+      if (checkerPool == null) {
+        checkerPool = CheckerPool.FromOptions();
+      }
+      
       if (requestId == null)
       {
         requestId = FreshRequestId();
@@ -991,7 +995,7 @@ namespace Microsoft.Boogie
               }
 
               VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls,
-                taskIndex, outputCollector, Checkers, programId);
+                taskIndex, outputCollector, checkerPool, programId);
               ImplIdToCancellationTokenSource.TryRemove(id, out old);
             }
             finally
@@ -1118,7 +1122,6 @@ namespace Microsoft.Boogie
       }
     }
 
-
     private static void CleanupCheckers(string requestId)
     {
       if (requestId != null)
@@ -1130,13 +1133,8 @@ namespace Microsoft.Boogie
       {
         if (RequestIdToCancellationTokenSource.IsEmpty)
         {
-          lock (Checkers)
-          {
-            foreach (Checker checker in Checkers)
-            {
-              Contract.Assert(checker != null);
-              checker.Close();
-            }
+          lock (checkerPool) {
+            checkerPool.Dispose();
           }
         }
       }
@@ -1145,7 +1143,7 @@ namespace Microsoft.Boogie
 
     private static void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er,
       string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
-      Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, List<Checker> checkers,
+      Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, CheckerPool checkers,
       string programId)
     {
       Implementation impl = stablePrioritizedImpls[index];
@@ -1167,7 +1165,7 @@ namespace Microsoft.Boogie
             CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, cachedResults.Start);
           }
 
-          printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name),
+          printer.Inform($"Retrieving cached verification result for implementation {impl.Name}...",
             output);
           if (CommandLineOptions.Clo.VerifySnapshots < 3 ||
               cachedResults.Outcome == ConditionGeneration.Outcome.Correct)
@@ -1319,9 +1317,9 @@ namespace Microsoft.Boogie
       }
     }
     
-    private static ConditionGeneration CreateVCGen(Program program, List<Checker> checkers)
+    private static ConditionGeneration CreateVCGen(Program program, CheckerPool checkers)
     {
-      return new VCGen(program, CommandLineOptions.Clo.ProverLogFilePath, CommandLineOptions.Clo.ProverLogFileAppend, checkers);
+      return new VCGen(program, checkers);
     }
 
     #region Houdini
