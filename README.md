@@ -107,9 +107,9 @@ See the [Unit test documentation](Source/UnitTests/README.md)
 The current version of Boogie is noted in a [build property](Source/Directory.Build.props).
 To push a new version to nuget, perform the following steps:
 
-- Update the version (e.g., x.y.z) and commit the change
-- git tag vx.y.z
-- git push --tags
+- Update the version (e.g., x.y.z) in `Source/Directory.Build.props` and commit the change locally
+- `git tag vx.y.z`
+- `git push origin vx.y.z` where `origin` denotes the remote on the github.com
 
 The [CI workflow](.github/workflows/test.yml) will build and push the packages.
 
