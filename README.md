@@ -109,7 +109,7 @@ To push a new version to nuget, perform the following steps:
 
 - Update the version (e.g., x.y.z) in `Source/Directory.Build.props` and commit the change locally
 - `git tag vx.y.z`
-- `git push origin vx.y.z` where `origin` denotes the remote on the github.com
+- `git push origin master vx.y.z` where `origin` denotes the remote on github.com
 
 The [CI workflow](.github/workflows/test.yml) will build and push the packages.
 
