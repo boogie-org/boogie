@@ -1678,8 +1678,8 @@ namespace Microsoft.Boogie
       Ignore the declaration (after checking for duplicate names).
 
     {:exclude_dep}
-      Ignore the declaration for the purpose of pruning, i.e., do not consider
-      axioms and constants that this declaration may need.
+      Ignore the declaration for the purpose of pruning by removing it
+      from the outgoing set of all other declarations.
 
     {:extern}
       If two top-level declarations introduce the same name (for example, two
