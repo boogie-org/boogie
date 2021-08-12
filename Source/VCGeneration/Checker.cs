@@ -239,7 +239,7 @@ namespace Microsoft.Boogie
       // TODO(wuestholz): Is this lock necessary?
       lock (Program.TopLevelDeclarations)
       {
-        foreach (Declaration decl in Program.GetSuccinctDecl(impl))
+        foreach (Declaration decl in Prune.GetSuccinctDecl(prog, impl))
         {
           Contract.Assert(decl != null);
           var typeDecl = decl as TypeCtorDecl;
