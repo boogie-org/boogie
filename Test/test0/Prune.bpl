@@ -1,4 +1,4 @@
-// RUN: %boogie /prune "%s" > "%t"
+// RUN: %boogie /pruneFunctionsAndAxioms "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function {:exclude_dep} f1 (x: int) : int;

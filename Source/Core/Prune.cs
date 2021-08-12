@@ -192,7 +192,7 @@ namespace Microsoft.Boogie
 
     public static Dictionary<DependencyEvaluator, List<DependencyEvaluator>> InitializeEdges(Program p)
     {
-      if (!CommandLineOptions.Clo.Prune)
+      if (!CommandLineOptions.Clo.PruneFunctionsAndAxioms)
       {
         return null;
       }
@@ -210,7 +210,7 @@ namespace Microsoft.Boogie
 
     public static IEnumerable<Declaration> GetSuccinctDecl(Program p, Implementation impl)
     {
-      if (p.edges == null || impl == null || !CommandLineOptions.Clo.Prune)
+      if (p.edges == null || impl == null || !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
       {
         return p.TopLevelDeclarations;
       }

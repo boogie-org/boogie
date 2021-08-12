@@ -529,7 +529,7 @@ namespace VC
           {
             try
             {
-              if (c.WillingToHandle(program) && !CommandLineOptions.Clo.Prune)
+              if (c.WillingToHandle(program) && !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
               {
                 c.GetReady();
                 return c;
