@@ -119,7 +119,7 @@ namespace Microsoft.Boogie
             VisitTriggerCustom(start);
             start = start.Next;
           }
-          var discardBodyIncoming = qe is ForallExpr fa && fa.pos == Expr.Position.Pos
+          var discardBodyIncoming = (qe is ForallExpr fa && fa.pos == Expr.Position.Pos && qe.Triggers != null)
                                     || qe is ExistsExpr ee && ee.pos == Expr.Position.Neg;
           be.Body.pos = Expr.Position.Neither;
           var incomingOld = new HashSet<Declaration>(incoming);
