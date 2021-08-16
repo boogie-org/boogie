@@ -294,13 +294,11 @@ namespace Microsoft.Boogie.Houdini
 
     private void EmitProgram(string filename)
     {
-      using (TokenTextWriter writer = new TokenTextWriter(filename, true))
-      {
-        int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-        CommandLineOptions.Clo.PrintUnstructured = 2;
-        program.Emit(writer);
-        CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
-      }
+      using TokenTextWriter writer = new TokenTextWriter(filename, true);
+      int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+      CommandLineOptions.Clo.PrintUnstructured = 2;
+      program.Emit(writer);
+      CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
     }
 
 

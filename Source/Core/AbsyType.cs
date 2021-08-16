@@ -54,10 +54,8 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<string>() != null);
       System.IO.StringWriter buffer = new System.IO.StringWriter();
-      using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/false, /*pretty=*/ false))
-      {
-        this.Emit(stream);
-      }
+      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/false, /*pretty=*/ false);
+      this.Emit(stream);
 
       return buffer.ToString();
     }

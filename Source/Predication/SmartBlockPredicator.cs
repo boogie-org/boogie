@@ -328,7 +328,7 @@ namespace Microsoft.Boogie
               var condPred = FreshPredicate(ref predCount);
               predMap[block.Item1] = condPred;
               defMap[block.Item1] = condPred;
-              var headerIterator = headerDominance.GetEnumerator();
+              using var headerIterator = headerDominance.GetEnumerator();
               // Add the predicate to the loop header H that dominates the node (if one
               // exists) such that H does not dominate another header which also dominates
               // the node. Since predicates are owned by loop headers (or the program entry
