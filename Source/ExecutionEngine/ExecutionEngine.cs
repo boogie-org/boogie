@@ -371,7 +371,7 @@ namespace Microsoft.Boogie
       MessageIfVerifies = implementation.FindStringAttribute("msg_if_verifies");
     }
   }
-  
+
   public class ExecutionEngine
   {
     public static OutputPrinter printer;
@@ -949,7 +949,8 @@ namespace Microsoft.Boogie
       }
 
       #region Verify each implementation
-
+      // compute program dependecies
+      program.edges = BoogiePL.Prune.InitializeEdges(program);
       var outputCollector = new OutputCollector(stablePrioritizedImpls);
       var outcome = PipelineOutcome.VerificationCompleted;
 

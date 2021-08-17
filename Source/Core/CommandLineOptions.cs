@@ -544,6 +544,7 @@ namespace Microsoft.Boogie
     public bool InstrumentWithAsserts = false;
     public string ProverPreamble = null;
     public bool WarnNotEliminatedVars = false;
+    public bool PruneFunctionsAndAxioms = false;
 
     public enum InstrumentationPlaces
     {
@@ -584,7 +585,7 @@ namespace Microsoft.Boogie
 
     public int /*(0:3)*/
       ErrorTrace = 1;
-    
+
     public bool ContractInfer = false;
     public bool ExplainHoudini = false;
     public bool ReverseHoudiniWorklist = false;
@@ -728,7 +729,7 @@ namespace Microsoft.Boogie
     public uint TimeLimit = 0; // 0 means no limit
     public uint ResourceLimit = 0; // default to 0
     public uint SmokeTimeout = 10; // default to 10s
-    public int ErrorLimit = 5; // 0 means attempt to falsify each assertion in a desugared implementation 
+    public int ErrorLimit = 5; // 0 means attempt to falsify each assertion in a desugared implementation
     public bool RestartProverPerVC = false;
 
     public double VcsMaxCost = 1.0;
@@ -770,12 +771,12 @@ namespace Microsoft.Boogie
     public bool ExtractLoops = false;
     public bool DeterministicExtractLoops = false;
 
-    // Enables VC generation for Stratified Inlining. 
+    // Enables VC generation for Stratified Inlining.
     // Set programmatically by Corral.
     public int StratifiedInlining = 0;
 
     // disable model generation, used by Corral/SI
-    public bool StratifiedInliningWithoutModels = false; 
+    public bool StratifiedInliningWithoutModels = false;
 
     // Sets the recursion bound, used for loop extraction, etc.
     public int RecursionBound = 500;
@@ -798,7 +799,7 @@ namespace Microsoft.Boogie
     public int LiveVariableAnalysis = 1;
 
     public bool UseLibrary = false;
-    
+
     // Note that procsToCheck stores all patterns <p> supplied with /proc:<p>
     // (and similarly procsToIgnore for /noProc:<p>). Thus, if procsToCheck
     // is empty it means that all procedures should be checked.
@@ -902,7 +903,7 @@ namespace Microsoft.Boogie
           }
 
           return true;
-        
+
         case "proc":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1251,7 +1252,7 @@ namespace Microsoft.Boogie
 
           return true;
         }
-        
+
         case "proverDll":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1324,7 +1325,7 @@ namespace Microsoft.Boogie
           }
 
           return true;
-        
+
         case "typeEncoding":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1351,7 +1352,7 @@ namespace Microsoft.Boogie
           {
             Monomorphize = true;
           }
-          
+
           return true;
 
         case "instrumentInfer":
@@ -1542,6 +1543,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustInductiveSequentialization", ref TrustInductiveSequentialization) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting) ||
+              ps.CheckBooleanFlag("pruneFunctionsAndAxioms", ref PruneFunctionsAndAxioms) ||
               ps.CheckBooleanFlag("warnNotEliminatedVars", ref WarnNotEliminatedVars)
           )
           {
@@ -1675,6 +1677,10 @@ namespace Microsoft.Boogie
     {:ignore}
       Ignore the declaration (after checking for duplicate names).
 
+    {:exclude_dep}
+      Ignore the declaration for the purpose of pruning by removing it
+      from the outgoing set of all other declarations.
+
     {:extern}
       If two top-level declarations introduce the same name (for example, two
       constants with the same name or two procedures with the same name), then
@@ -1800,7 +1806,7 @@ namespace Microsoft.Boogie
 
      {:msg <string>}
        Prints <string> rather than the standard message for assertion failure.
-       Also applicable to requires and ensures declarations. 
+       Also applicable to requires and ensures declarations.
 
   ---- On statements ---------------------------------------------------------
 
@@ -1809,7 +1815,7 @@ namespace Microsoft.Boogie
        used in conjunction with /enhancedErrorMessages:n command-line option.
 
      {:captureState s}
-       When this attribute is applied to assume commands, it causes the 
+       When this attribute is applied to assume commands, it causes the
        /mv:<string> command-line option to group each counterexample model
        into a sequence of states. In particular, this sequence of states
        shows the values of variables at each {:captureState ...} point in
@@ -1819,7 +1825,7 @@ namespace Microsoft.Boogie
   ---- Pool-based quantifier instantiation -----------------------------------
 
      {:pool ""name""}
-       Used on a bound variable of a quantifier or lambda.  Indicates that 
+       Used on a bound variable of a quantifier or lambda.  Indicates that
        expressions in pool name should be used for instantiating that variable.
 
      {:add_to_pool ""name"", e}
@@ -1827,10 +1833,10 @@ namespace Microsoft.Boogie
        with their incarnations just before the command, to pool name.
 
      {:skolem_add_to_pool ""name"", e}
-       Used on a quantifier.  Adds the expression e, after substituting the 
+       Used on a quantifier.  Adds the expression e, after substituting the
        bound variables with fresh skolem constants, whenever the quantifier is
-       skolemized. 
- 
+       skolemized.
+
   ---- Civl ------------------------------------------------------------------
 
      {:yields}
@@ -1972,7 +1978,7 @@ namespace Microsoft.Boogie
                 1 - print Z3's error model
   /printModelToFile:<file>
                 print model to <file> instead of console
-  /mv:<file>    Specify file to save the model with captured states 
+  /mv:<file>    Specify file to save the model with captured states
                 (see documentation for :captureState attribute)
   /enhancedErrorMessages:<n>
                 0 (default) - no enhanced error messages
@@ -2104,6 +2110,8 @@ namespace Microsoft.Boogie
                 only for monomorphic programs.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
+  /pruneFunctionsAndAxioms
+                Prune declarations for each implementation
   /relaxFocus   Process foci in a bottom-up fashion. This way only generates
                 a linear number of splits. The default way (top-down) is more
                 aggressive and it may create an exponential number of splits.

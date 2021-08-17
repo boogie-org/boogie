@@ -98,7 +98,7 @@ namespace VC
     public Dictionary<Incarnation, Absy> incarnationOriginMap = new Dictionary<Incarnation, Absy>();
 
     public Dictionary<Cmd, List<object>> debugInfos = new Dictionary<Cmd, List<object>>();
-    
+
     public Program program;
 
     protected string /*?*/
@@ -148,7 +148,7 @@ namespace VC
       Helpers.ExtraTraceInformation("Finished implementation verification");
       return outcome;
     }
-    
+
     public abstract Outcome VerifyImplementation(Implementation impl, VerifierCallback callback);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
@@ -513,7 +513,7 @@ namespace VC
     #endregion
 
 
-    protected Checker FindCheckerFor(bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
+    protected Checker FindCheckerFor(Program program, bool isBlocking, Implementation impl, int waitTimeinMs = 50, int maxRetries = 3)
     {
       Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
       Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
@@ -529,7 +529,7 @@ namespace VC
           {
             try
             {
-              if (c.WillingToHandle(program))
+              if (c.WillingToHandle(program) && !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
               {
                 c.GetReady();
                 return c;
@@ -538,7 +538,7 @@ namespace VC
               {
                 if (c.IsIdle)
                 {
-                  c.Retarget(program, c.TheoremProver.Context);
+                  c.Retarget(program, c.TheoremProver.Context, impl);
                   c.GetReady();
                   return c;
                 }
@@ -582,7 +582,7 @@ namespace VC
           log = log + "." + checkers.Count;
         }
 
-        Checker ch = new Checker(this, program, log, appendLogFile);
+        Checker ch = new Checker(this, program, log, appendLogFile, impl);
         ch.GetReady();
         checkers.Add(ch);
         return ch;
@@ -1112,7 +1112,7 @@ namespace VC
         Interlocked.Increment(ref CachingActionCounts[(int) action]);
       }
     }
-    
+
     private void AddDebugInfo(Cmd c, Dictionary<Variable, Expr> incarnationMap, List<Cmd> passiveCmds)
     {
       if (c is ICarriesAttributes cmd)

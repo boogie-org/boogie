@@ -318,7 +318,7 @@ namespace VC
 
         parent.CurrentLocalVariables = impl.LocVars;
         parent.PassifyImpl(impl, out var mvInfo);
-        Checker ch = parent.FindCheckerFor();
+        Checker ch = parent.FindCheckerFor(parent.program, true, impl);
         Contract.Assert(ch != null);
 
         ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
@@ -836,8 +836,7 @@ namespace VC
             var timeout = (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
               keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
               impl.TimeLimit;
-
-            var checker = s.parent.FindCheckerFor(false);
+            var checker = s.parent.FindCheckerFor(s.parent.program, false, impl);
             try
             {
               if (checker == null)
