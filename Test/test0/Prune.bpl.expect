@@ -1,6 +1,10 @@
 Prune.bpl(33,1): Error: A postcondition might not hold on this return path.
-Prune.bpl(30,3): Related location: This is the postcondition that might not hold.
+Prune.bpl(28,3): Related location: This is the postcondition that might not hold.
 Execution trace:
     Prune.bpl(33,1): anon0
+Prune.bpl(72,1): Error: A postcondition might not hold on this return path.
+Prune.bpl(70,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Prune.bpl(72,1): anon0
 
-Boogie program verifier finished with 1 verified, 1 error
+Boogie program verifier finished with 1 verified, 2 errors
