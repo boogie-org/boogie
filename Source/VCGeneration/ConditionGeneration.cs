@@ -513,7 +513,7 @@ namespace VC
     #endregion
 
 
-    protected Checker FindCheckerFor(Program program, bool isBlocking, Implementation impl, int waitTimeinMs = 50, int maxRetries = 3)
+    protected Checker FindCheckerFor(Program program, bool isBlocking, Split s = null, int waitTimeinMs = 50, int maxRetries = 3)
     {
       Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
       Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
@@ -538,7 +538,7 @@ namespace VC
               {
                 if (c.IsIdle)
                 {
-                  c.Retarget(program, c.TheoremProver.Context, impl);
+                  c.Retarget(program, c.TheoremProver.Context, s);
                   c.GetReady();
                   return c;
                 }
@@ -582,7 +582,7 @@ namespace VC
           log = log + "." + checkers.Count;
         }
 
-        Checker ch = new Checker(this, program, log, appendLogFile, impl);
+        Checker ch = new Checker(this, program, log, appendLogFile, s);
         ch.GetReady();
         checkers.Add(ch);
         return ch;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 using System.Threading.Tasks;
+using VC;
 
 namespace Microsoft.Boogie
 {
@@ -140,10 +141,10 @@ namespace Microsoft.Boogie
 
     /// <summary>
     /// Constructor.  Initialize a checker with the program and log file.
-    /// Optionally, use prover context provided by parameter "ctx". 
+    /// Optionally, use prover context provided by parameter "ctx".
     /// </summary>
     public Checker(VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile,
-      Implementation impl, ProverContext ctx = null)
+      Split s, ProverContext ctx = null)
     {
       Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
@@ -181,7 +182,7 @@ namespace Microsoft.Boogie
       {
         if (ctx == null) ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
 
-        Setup(prog, ctx, impl);
+        Setup(prog, ctx, s);
 
         // we first generate the prover and then store a clone of the
         // context in the cache, so that the prover can setup stuff in
@@ -195,7 +196,7 @@ namespace Microsoft.Boogie
       this.gen = prover.VCExprGen;
     }
 
-    public void Retarget(Program prog, ProverContext ctx, Implementation impl)
+    public void Retarget(Program prog, ProverContext ctx, Split s)
     {
       lock (this)
       {
@@ -205,7 +206,7 @@ namespace Microsoft.Boogie
         handler = default(ProverInterface.ErrorHandler);
         TheoremProver.FullReset(gen);
         ctx.Reset();
-        Setup(prog, ctx, impl);
+        Setup(prog, ctx, s);
       }
     }
 
@@ -233,13 +234,14 @@ namespace Microsoft.Boogie
     /// <summary>
     /// Set up the context.
     /// </summary>
-    private void Setup(Program prog, ProverContext ctx, Implementation impl = null)
+    private void Setup(Program prog, ProverContext ctx, Split s = null)
     {
       Program = prog;
       // TODO(wuestholz): Is this lock necessary?
       lock (Program.TopLevelDeclarations)
       {
-        foreach (Declaration decl in Prune.GetSuccinctDecl(prog, impl))
+        var decls = s == null ? prog.TopLevelDeclarations : s.TopLevelDeclarations;
+        foreach (Declaration decl in decls)
         {
           Contract.Assert(decl != null);
           var typeDecl = decl as TypeCtorDecl;
