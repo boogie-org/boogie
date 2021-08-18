@@ -1016,7 +1016,7 @@ namespace VC
         // b.liveVarsBefore has served its purpose in the just-finished call to ComputeIncarnationMap; null it out.
         b.liveVarsBefore = null;
 
-        // Decrement the succCount field in each predecessor. Once the field reaches zero in any block, 
+        // Decrement the succCount field in each predecessor. Once the field reaches zero in any block,
         // all its successors have been passified.  Consequently, its entry in block2Incarnation can be removed.
         byte[] currentChecksum = null;
         var mvc = new MutableVariableCollector();
@@ -1154,7 +1154,7 @@ namespace VC
         debugInfos.Add(debugCmd, debugExprs);
       }
     }
-    
+
     /// <summary>
     /// Turn a command into a passive command, and it remembers the previous step, to see if it is a havoc or not.
     /// In that case, it remembers the incarnation map BEFORE the havoc.
@@ -1172,7 +1172,7 @@ namespace VC
 
       AddDebugInfo(c, incarnationMap, passiveCmds);
       Substitution incarnationSubst = Substituter.SubstitutionFromDictionary(incarnationMap);
-      
+
       Microsoft.Boogie.VCExprAST.QuantifierInstantiationEngine.SubstituteIncarnationInInstantiationSources(c, incarnationSubst);
 
       #region assert/assume P |--> assert/assume P[x := in(x)], out := in
@@ -1541,7 +1541,7 @@ namespace VC
       else if (c is StateCmd st)
       {
         this.preHavocIncarnationMap = null; // we do not need to remember the previous incarnations
-        
+
         // account for any where clauses among the local variables
         foreach (Variable v in st.Locals)
         {

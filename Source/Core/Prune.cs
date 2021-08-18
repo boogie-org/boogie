@@ -238,7 +238,6 @@ namespace Microsoft.Boogie
       functionNodes.ForEach(fv => ((FunctionVisitor)fv).Visit(fv.node));
       nodes.AddRange(functionNodes);
       nodes.ForEach(u => u.incoming = u.incoming.Where(i => u.node == i || !ExcludeDep(i)).ToHashSet());
-      nodes.ForEach(u => u.incoming.ToList().ForEach(f => Console.WriteLine(f)));
       nodes.ForEach(u => u.outgoing = u.outgoing.Where(i => !ExcludeDep(i)).ToHashSet());
       var edges = new Dictionary<DependencyEvaluator, List<DependencyEvaluator>>();
       nodes.ForEach(u => edges[u] = nodes.Where(v => DependencyEvaluator.depends(u, v)).ToList());

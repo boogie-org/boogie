@@ -48,7 +48,7 @@ namespace Microsoft.Boogie
     private readonly VCExpressionGenerator gen;
 
     private ProverInterface thmProver;
-    
+
     // state for the async interface
     private volatile ProverInterface.Outcome outcome;
     private volatile bool hasOutput;
@@ -283,7 +283,7 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Push a Verification Condition as an Axiom 
+    /// Push a Verification Condition as an Axiom
     /// (Required for Doomed Program Point detection)
     /// </summary>
     public void PushVCExpr(VCExpr vc)
@@ -548,7 +548,7 @@ namespace Microsoft.Boogie
 
       public virtual void OnProverError(string message)
       {
-        // no-op by default. 
+        // no-op by default.
         //Errors are always printed to console by the prover
       }
 
@@ -588,7 +588,7 @@ namespace Microsoft.Boogie
     /// MSchaef: Allows to Push a VCExpression as Axiom on the prover stack (beta)
     /// for now it is only implemented by ProcessTheoremProver and still requires some
     /// testing
-    /// </summary>    
+    /// </summary>
     public virtual void PushVCExpression(VCExpr vc)
     {
       Contract.Requires(vc != null);
@@ -678,7 +678,7 @@ namespace Microsoft.Boogie
     public virtual void SetRandomSeed(int? randomSeed)
     {
     }
-    
+
     public abstract ProverContext Context { get; }
 
     public abstract VCExpressionGenerator VCExprGen { get; }
@@ -696,7 +696,7 @@ namespace Microsoft.Boogie
     {
       throw new NotImplementedException();
     }
-    
+
     // Assert vc tagged with a name
     public virtual void AssertNamed(VCExpr vc, bool polarity, string name)
     {
