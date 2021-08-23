@@ -7,19 +7,17 @@ namespace VC
 {
   public class CheckerPool
   {
-    private readonly Program program;
     private readonly CommandLineOptions options;
 
     private readonly List<Checker> /*!>!*/ checkers = new();
     protected internal object CheckerCommonState;
     
-    public CheckerPool(Program program, CommandLineOptions options)
+    public CheckerPool(CommandLineOptions options)
     {
-      this.program = program;
       this.options = options;
     }
 
-    public Checker FindCheckerFor(Implementation impl, bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
+    public Checker FindCheckerFor(Program program, Implementation impl, bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
     {
       Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
       Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
@@ -77,11 +75,11 @@ namespace VC
           return null;
         }
 
-        return CreateNewChecker(impl);
+        return CreateNewChecker(program, impl);
       }
     }
 
-    private Checker CreateNewChecker(Implementation impl)
+    private Checker CreateNewChecker(Program program, Implementation impl)
     {
       var log = options.ProverLogFilePath;
       if (log != null && !log.Contains("@PROC@") && checkers.Count > 0) {

@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics.Contracts;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.GraphUtil;
+using Microsoft.Win32.SafeHandles;
 using Set = Microsoft.Boogie.GSet<object>;
 using DependencyEvaluator = Microsoft.Boogie.Prune.DependencyEvaluator;
 
@@ -4049,7 +4050,7 @@ namespace Microsoft.Boogie
     public void AddAssertionChecksum(byte[] checksum)
     {
       Contract.Requires(checksum != null);
-
+      
       if (AssertionChecksums != null)
       {
         AssertionChecksums.Add(checksum);
