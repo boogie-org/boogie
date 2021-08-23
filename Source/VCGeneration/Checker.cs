@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 using System.Threading.Tasks;
+using VC;
 
 namespace Microsoft.Boogie
 {
@@ -142,10 +143,10 @@ namespace Microsoft.Boogie
     /// Constructor.  Initialize a checker with the program and log file.
     /// Optionally, use prover context provided by parameter "ctx". 
     /// </summary>
-    public Checker(VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile,
+    public Checker(CheckerPool checkerPool, Program prog, string /*?*/ logFilePath, bool appendLogFile,
       Implementation impl, ProverContext ctx = null)
     {
-      Contract.Requires(vcgen != null);
+      Contract.Requires(checkerPool != null);
       Contract.Requires(prog != null);
       this.Program = prog;
 
@@ -163,13 +164,13 @@ namespace Microsoft.Boogie
       ContextCacheKey key = new ContextCacheKey(prog);
       ProverInterface prover;
 
-      if (vcgen.CheckerCommonState == null)
+      if (checkerPool.CheckerCommonState == null)
       {
-        vcgen.CheckerCommonState = new Dictionary<ContextCacheKey, ProverContext>();
+        checkerPool.CheckerCommonState = new Dictionary<ContextCacheKey, ProverContext>();
       }
 
       IDictionary<ContextCacheKey, ProverContext> /*!>!*/
-        cachedContexts = (IDictionary<ContextCacheKey, ProverContext /*!*/>) vcgen.CheckerCommonState;
+        cachedContexts = (IDictionary<ContextCacheKey, ProverContext /*!*/>) checkerPool.CheckerCommonState;
 
       if (ctx == null && cachedContexts.TryGetValue(key, out ctx))
       {

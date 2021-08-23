@@ -316,7 +316,7 @@ namespace VC
 
         parent.CurrentLocalVariables = impl.LocVars;
         parent.PassifyImpl(impl, out var mvInfo);
-        Checker ch = parent.CheckerPool.FindCheckerFor(parent, impl);
+        Checker ch = parent.CheckerPool.FindCheckerFor(impl);
         Contract.Assert(ch != null);
 
         ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
@@ -538,7 +538,7 @@ namespace VC
 
       public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext)
       {
-        VCGen vcgen = new VCGen(new Program(), CheckerPool.FromOptions());
+        VCGen vcgen = new VCGen(new Program(), new CheckerPool(new Program(), CommandLineOptions.Clo));
         vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
         vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
         vcgen.CurrentLocalVariables = codeExpr.LocVars;
@@ -833,7 +833,7 @@ namespace VC
             var timeout = (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
               keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
               impl.TimeLimit;
-            var checker = s.parent.CheckerPool.FindCheckerFor(s.parent, impl, false);
+            var checker = s.parent.CheckerPool.FindCheckerFor(impl, false);
             try
             {
               if (checker == null)

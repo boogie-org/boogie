@@ -850,7 +850,7 @@ namespace Microsoft.Boogie
                        0 <= Contract.ValueAtReturn(out stats.TimeoutCount));
 
       if (checkerPool == null) {
-        checkerPool = CheckerPool.FromOptions();
+        checkerPool = new CheckerPool(program, CommandLineOptions.Clo);
       }
       
       if (requestId == null)

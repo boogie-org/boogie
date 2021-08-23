@@ -7,33 +7,22 @@ namespace VC
 {
   public class CheckerPool
   {
-    private readonly int size;
-    private readonly string logFilePath;
-    private readonly bool appendLogFile;
+    private readonly Program program;
+    private readonly CommandLineOptions options;
 
     private readonly List<Checker> /*!>!*/ checkers = new();
-
-    public static CheckerPool FromOptions()
-    {
-      return new CheckerPool(
-        CommandLineOptions.Clo.VcsCores,
-        CommandLineOptions.Clo.ProverLogFilePath,
-        CommandLineOptions.Clo.ProverLogFileAppend);
-    }
+    protected internal object CheckerCommonState;
     
-    public CheckerPool(int size, string logFilePath, bool appendLogFile)
+    public CheckerPool(Program program, CommandLineOptions options)
     {
-      this.size = size;
-      this.logFilePath = logFilePath;
-      this.appendLogFile = appendLogFile;
+      this.program = program;
+      this.options = options;
     }
 
-    public Checker FindCheckerFor(ConditionGeneration vcgen, Implementation impl, bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
+    public Checker FindCheckerFor(Implementation impl, bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
     {
       Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
       Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
-
-      var program = vcgen.program;
       
       lock (checkers)
       {
@@ -46,7 +35,7 @@ namespace VC
           {
             try
             {
-              if (c.WillingToHandle(program) && !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
+              if (c.WillingToHandle(program) && !options.PruneFunctionsAndAxioms)
               {
                 c.GetReady();
                 return c;
@@ -73,7 +62,7 @@ namespace VC
           }
         }
 
-        if (size <= checkers.Count) {
+        if (options.VcsCores <= checkers.Count) {
           if (isBlocking || 0 < maxRetries)
           {
             if (0 < waitTimeinMs)
@@ -88,18 +77,18 @@ namespace VC
           return null;
         }
 
-        return CreateNewChecker(vcgen, impl);
+        return CreateNewChecker(impl);
       }
     }
 
-    private Checker CreateNewChecker(ConditionGeneration vcgen, Implementation impl)
+    private Checker CreateNewChecker(Implementation impl)
     {
-      var log = logFilePath;
+      var log = options.ProverLogFilePath;
       if (log != null && !log.Contains("@PROC@") && checkers.Count > 0) {
         log = log + "." + checkers.Count;
       }
 
-      Checker ch = new Checker(vcgen, vcgen.program, logFilePath, appendLogFile, impl);
+      Checker ch = new Checker(this, program, options.ProverLogFilePath, options.ProverLogFileAppend, impl);
       ch.GetReady();
       checkers.Add(ch);
       return ch;
