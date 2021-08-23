@@ -850,7 +850,7 @@ namespace Microsoft.Boogie
                        0 <= Contract.ValueAtReturn(out stats.TimeoutCount));
 
       if (checkerPool == null) {
-        checkerPool = new CheckerPool(program, CommandLineOptions.Clo);
+        checkerPool = new CheckerPool(CommandLineOptions.Clo);
       }
       
       if (requestId == null)
@@ -1133,9 +1133,7 @@ namespace Microsoft.Boogie
       {
         if (RequestIdToCancellationTokenSource.IsEmpty)
         {
-          lock (checkerPool) {
             checkerPool.Dispose();
-          }
         }
       }
     }

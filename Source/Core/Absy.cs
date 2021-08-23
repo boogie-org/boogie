@@ -4050,7 +4050,7 @@ namespace Microsoft.Boogie
     public void AddAssertionChecksum(byte[] checksum)
     {
       Contract.Requires(checksum != null);
-      
+
       if (AssertionChecksums != null)
       {
         AssertionChecksums.Add(checksum);

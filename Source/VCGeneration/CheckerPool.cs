@@ -94,10 +94,12 @@ namespace VC
 
     public void Dispose()
     {
-      foreach (Checker checker in checkers)
-      {
-        Contract.Assert(checker != null);
-        checker.Close();
+      lock (this) {
+        foreach (Checker checker in checkers)
+        {
+          Contract.Assert(checker != null);
+          checker.Close();
+        }
       }
     }
   }

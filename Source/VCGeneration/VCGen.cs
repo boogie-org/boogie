@@ -538,7 +538,7 @@ namespace VC
 
       public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext)
       {
-        VCGen vcgen = new VCGen(new Program(), new CheckerPool(new Program(), CommandLineOptions.Clo));
+        VCGen vcgen = new VCGen(new Program(), new CheckerPool(CommandLineOptions.Clo));
         vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
         vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
         vcgen.CurrentLocalVariables = codeExpr.LocVars;
