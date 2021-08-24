@@ -4,13 +4,13 @@ Execution trace:
 *** MODEL
 call1formal@y@0 -> (- 3)
 call1formal@y@0@@0 -> 1
-u -> 
+u ->
 u@0 -> 0
 ControlFlow -> {
-  0 0 -> 293
-  0 180 -> (- 368)
-  0 293 -> 180
-  else -> (- 368)
+  0 0 -> 295
+  0 180 -> (- 370)
+  0 295 -> 180
+  else -> (- 370)
 }
 tickleBool -> {
   false -> true
@@ -18,7 +18,7 @@ tickleBool -> {
   else -> true
 }
 *** STATE <initial>
-  u -> 
+  u ->
 *** END_STATE
 *** STATE 0 calls$renamed$Caller$0
   u -> 0
@@ -35,13 +35,13 @@ Execution trace:
     CaptureInlineUnroll.bpl(38,3): anon0#2
 *** MODEL
 x -> 2
-y -> 
+y ->
 y@0 -> 3
 ControlFlow -> {
-  0 0 -> 378
-  0 188 -> (- 395)
-  0 378 -> 188
-  else -> (- 395)
+  0 0 -> 380
+  0 188 -> (- 397)
+  0 380 -> 188
+  else -> (- 397)
 }
 tickleBool -> {
   false -> true
@@ -50,7 +50,7 @@ tickleBool -> {
 }
 *** STATE <initial>
   x -> 2
-  y -> 
+  y ->
 *** END_STATE
 *** STATE Increment entry$renamed$Increment$0
 *** END_STATE
@@ -64,20 +64,20 @@ Execution trace:
     CaptureInlineUnroll.bpl(12,5): anon3_LoopBody#2
     CaptureInlineUnroll.bpl(12,5): anon3_LoopBody#1
 *** MODEL
-i -> 
+i ->
 i@0 -> 1
 i@1 -> 2
 i@2 -> 0
 i@3 -> 0
 n -> 3
 ControlFlow -> {
-  0 0 -> 429
-  0 360 -> (- 502)
+  0 0 -> 430
+  0 360 -> (- 503)
   0 364 -> 360
   0 368 -> 364
   0 372 -> 368
-  0 429 -> 372
-  else -> (- 502)
+  0 430 -> 372
+  else -> (- 503)
 }
 tickleBool -> {
   false -> true
@@ -85,7 +85,7 @@ tickleBool -> {
   else -> true
 }
 *** STATE <initial>
-  i -> 
+  i ->
   n -> 3
 *** END_STATE
 *** STATE procedure entry$renamed$LoopUnroll$0
@@ -105,21 +105,21 @@ Execution trace:
     CaptureInlineUnroll.bpl(23,5): anon0#3
     CaptureInlineUnroll.bpl(38,3): inline$Increment$0$anon0#3
 *** MODEL
-inline$Increment$0$x -> 
-inline$Increment$0$y -> 
-inline$Increment$0$y@0 -> 
+inline$Increment$0$x ->
+inline$Increment$0$y ->
+inline$Increment$0$y@0 ->
 inline$Increment$0$y@1 -> 1
-inline$Increment$1$x -> 
-inline$Increment$1$y -> 
+inline$Increment$1$x ->
+inline$Increment$1$y ->
 inline$Increment$1$y@1 -> 0
-u -> 
+u ->
 u@0 -> 0
 ControlFlow -> {
-  0 0 -> 551
-  0 396 -> (- 591)
+  0 0 -> 557
+  0 396 -> (- 597)
   0 400 -> 396
-  0 551 -> 400
-  else -> (- 591)
+  0 557 -> 400
+  else -> (- 597)
 }
 tickleBool -> {
   false -> true
@@ -127,18 +127,18 @@ tickleBool -> {
   else -> true
 }
 *** STATE <initial>
-  inline$Increment$0$x -> 
-  inline$Increment$0$y -> 
-  inline$Increment$1$x -> 
-  inline$Increment$1$y -> 
-  u -> 
+  inline$Increment$0$x ->
+  inline$Increment$0$y ->
+  inline$Increment$1$x ->
+  inline$Increment$1$y ->
+  u ->
 *** END_STATE
 *** STATE 0 calls$renamed$Caller$0
   u -> 0
 *** END_STATE
 *** STATE Increment entry$renamed$Caller$1
   inline$Increment$0$x -> 0
-  inline$Increment$0$y -> 
+  inline$Increment$0$y ->
 *** END_STATE
 *** END_MODEL
 
