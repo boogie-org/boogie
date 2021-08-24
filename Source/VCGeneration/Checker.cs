@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 using System.Threading.Tasks;
-using VC;
 
 namespace Microsoft.Boogie
 {
@@ -107,10 +106,10 @@ namespace Microsoft.Boogie
     /// Constructor.  Initialize a checker with the program and log file.
     /// Optionally, use prover context provided by parameter "ctx". 
     /// </summary>
-    public Checker(CheckerPool checkerPool, Program prog, string /*?*/ logFilePath, bool appendLogFile,
+    public Checker(VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile,
       Implementation impl, ProverContext ctx = null)
     {
-      Contract.Requires(checkerPool != null);
+      Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
       this.Program = prog;
 
@@ -128,7 +127,15 @@ namespace Microsoft.Boogie
       ContextCacheKey key = new ContextCacheKey(prog);
       ProverInterface prover;
 
-      if (ctx == null && checkerPool.CheckerCommonState.TryGetValue(key, out ctx))
+      if (vcgen.CheckerCommonState == null)
+      {
+        vcgen.CheckerCommonState = new Dictionary<ContextCacheKey, ProverContext>();
+      }
+
+      IDictionary<ContextCacheKey, ProverContext> /*!>!*/
+        cachedContexts = (IDictionary<ContextCacheKey, ProverContext /*!*/>) vcgen.CheckerCommonState;
+
+      if (ctx == null && cachedContexts.TryGetValue(key, out ctx))
       {
         ctx = (ProverContext) cce.NonNull(ctx).Clone();
         prover = (ProverInterface)
@@ -145,7 +152,7 @@ namespace Microsoft.Boogie
         // the context to be cached
         prover = (ProverInterface)
           CommandLineOptions.Clo.TheProverFactory.SpawnProver(options, ctx);
-        checkerPool.CheckerCommonState.Add(key, cce.NonNull((ProverContext) ctx.Clone()));
+        cachedContexts.Add(key, cce.NonNull((ProverContext) ctx.Clone()));
       }
 
       this.thmProver = prover;

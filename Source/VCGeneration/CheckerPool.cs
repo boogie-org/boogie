@@ -17,10 +17,12 @@ namespace VC
       this.options = options;
     }
 
-    public Checker FindCheckerFor(Program program, Implementation impl, bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
+    public Checker FindCheckerFor(ConditionGeneration vcgen, Implementation impl, bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
     {
       Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
       Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
+
+      var program = vcgen.program;
       
       lock (checkers)
       {
@@ -75,18 +77,18 @@ namespace VC
           return null;
         }
 
-        return CreateNewChecker(program, impl);
+        return CreateNewChecker(vcgen, impl);
       }
     }
 
-    private Checker CreateNewChecker(Program program, Implementation impl)
+    private Checker CreateNewChecker(ConditionGeneration vcgen, Implementation impl)
     {
       var log = options.ProverLogFilePath;
       if (log != null && !log.Contains("@PROC@") && checkers.Count > 0) {
         log = log + "." + checkers.Count;
       }
 
-      Checker ch = new Checker(this, program, options.ProverLogFilePath, options.ProverLogFileAppend, impl);
+      Checker ch = new Checker(vcgen, vcgen.program, options.ProverLogFilePath, options.ProverLogFileAppend, impl);
       ch.GetReady();
       checkers.Add(ch);
       return ch;
@@ -95,7 +97,7 @@ namespace VC
     public void Dispose()
     {
       lock (this) {
-        foreach (Checker checker in checkers)
+        foreach (var checker in checkers)
         {
           Contract.Assert(checker != null);
           checker.Close();
