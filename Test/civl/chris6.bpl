@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %sequential-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure{:atomic}{:layer 2} atomic_P1() { }
 

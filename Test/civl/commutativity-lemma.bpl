@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %sequential-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // Contrived example to illustrate the injection of lemmas into commutativity checks

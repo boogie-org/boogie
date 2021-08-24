@@ -1,4 +1,4 @@
-// RUN: %boogie -lib "%s" > "%t"
+// RUN: %sequential-boogie -lib "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure test0()

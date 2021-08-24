@@ -1,4 +1,4 @@
-// RUN: %boogie /monomorphize "%s" > "%t"
+// RUN: %sequential-boogie /monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function {:inline} foo<T>(x: T): T {

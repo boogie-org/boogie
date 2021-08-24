@@ -1,6 +1,7 @@
-// RUN: %boogie -timeLimit:4 "%s" > "%t"
+// RUN: %boogie -timeLimit:4 /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// RUN: %boogie -timeLimit:4 -proverLog:"%t.smt2" "%s"
+// We use sequential-boogie here because parallel Boogie doesn't work well with -proverLog
+// RUN: %sequential-boogie -timeLimit:4 /errorTrace:0 -proverLog:"%t.smt2" "%s"
 // RUN: %OutputCheck --file-to-check "%t.smt2" "%s"
 // CHECK-L: (set-option :timeout 4000)
 // CHECK-L: (set-option :timeout 8000)
