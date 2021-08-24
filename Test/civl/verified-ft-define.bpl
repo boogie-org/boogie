@@ -41,7 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * Proof of VerifiedFT correctness in CIVL.
  */
 
-// RUN: %sequential-boogie "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 /*

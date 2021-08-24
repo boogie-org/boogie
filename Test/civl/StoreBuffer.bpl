@@ -1,4 +1,4 @@
-// RUN: %sequential-boogie "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type {:linear "tid", "addr"} X = int;
 

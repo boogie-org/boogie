@@ -1,4 +1,4 @@
-// RUN: %sequential-boogie "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 var {:layer 0,3} val_a : int;

@@ -1,4 +1,4 @@
-// RUN: %sequential-boogie "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure {:yields} {:layer 5} foo()

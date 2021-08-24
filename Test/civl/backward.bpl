@@ -1,4 +1,4 @@
-// RUN: %sequential-boogie "%s" > "%t"
+// RUN: %boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // Demonstration of backward assignments in atomic actions.
