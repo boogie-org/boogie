@@ -1,4 +1,4 @@
-// RUN: %sequential-boogie /monomorphize "%s" > "%t"
+// RUN: %boogie /monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // test for use of type synonyms
 

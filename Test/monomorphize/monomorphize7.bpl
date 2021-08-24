@@ -1,4 +1,4 @@
-// RUN: %sequential-boogie -lib "%s" > "%t"
+// RUN: %boogie -lib "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function {:inline} $Box(x: $Value): $Value {
