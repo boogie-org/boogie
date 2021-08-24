@@ -10,7 +10,7 @@ namespace VC
     private readonly CommandLineOptions options;
 
     private readonly List<Checker> /*!>!*/ checkers = new();
-    protected internal object CheckerCommonState;
+    protected internal Dictionary<ContextCacheKey, ProverContext> CheckerCommonState = new();
     
     public CheckerPool(CommandLineOptions options)
     {

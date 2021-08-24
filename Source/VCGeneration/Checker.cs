@@ -101,42 +101,6 @@ namespace Microsoft.Boogie
     /////////////////////////////////////////////////////////////////////////////////
     // We share context information for the same program between different Checkers
 
-    private struct ContextCacheKey
-    {
-      [ContractInvariantMethod]
-      void ObjectInvariant()
-      {
-        Contract.Invariant(program != null);
-      }
-
-      public readonly Program program;
-
-      public ContextCacheKey(Program prog)
-      {
-        Contract.Requires(prog != null);
-        this.program = prog;
-      }
-
-      [Pure]
-      [Reads(ReadsAttribute.Reads.Nothing)]
-      public override bool Equals(object that)
-      {
-        if (that is ContextCacheKey)
-        {
-          ContextCacheKey thatKey = (ContextCacheKey) that;
-          return this.program.Equals(thatKey.program);
-        }
-
-        return false;
-      }
-
-      [Pure]
-      public override int GetHashCode()
-      {
-        return this.program.GetHashCode();
-      }
-    }
-
     /////////////////////////////////////////////////////////////////////////////////
 
     /// <summary>
@@ -164,15 +128,7 @@ namespace Microsoft.Boogie
       ContextCacheKey key = new ContextCacheKey(prog);
       ProverInterface prover;
 
-      if (checkerPool.CheckerCommonState == null)
-      {
-        checkerPool.CheckerCommonState = new Dictionary<ContextCacheKey, ProverContext>();
-      }
-
-      IDictionary<ContextCacheKey, ProverContext> /*!>!*/
-        cachedContexts = (IDictionary<ContextCacheKey, ProverContext /*!*/>) checkerPool.CheckerCommonState;
-
-      if (ctx == null && cachedContexts.TryGetValue(key, out ctx))
+      if (ctx == null && checkerPool.CheckerCommonState.TryGetValue(key, out ctx))
       {
         ctx = (ProverContext) cce.NonNull(ctx).Clone();
         prover = (ProverInterface)
@@ -189,7 +145,7 @@ namespace Microsoft.Boogie
         // the context to be cached
         prover = (ProverInterface)
           CommandLineOptions.Clo.TheProverFactory.SpawnProver(options, ctx);
-        cachedContexts.Add(key, cce.NonNull((ProverContext) ctx.Clone()));
+        checkerPool.CheckerCommonState.Add(key, cce.NonNull((ProverContext) ctx.Clone()));
       }
 
       this.thmProver = prover;
