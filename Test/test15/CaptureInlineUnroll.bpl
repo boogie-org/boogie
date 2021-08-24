@@ -1,5 +1,5 @@
-// RUN: %boogie "%s" /mv:- /loopUnroll:2 /inline:none > "%t"
-// RUN: %boogie "%s" /mv:- /loopUnroll:3 >> "%t"
+// RUN: %sequential-boogie "%s" /mv:- /loopUnroll:2 /inline:none > "%t"
+// RUN: %sequential-boogie "%s" /mv:- /loopUnroll:3 >> "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure LoopUnroll(n: int)
