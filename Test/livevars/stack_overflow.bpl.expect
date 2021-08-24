@@ -13,7 +13,8 @@ Execution trace:
     stack_overflow.bpl(1420,3): inline$IoSetNextIrpStackLocation$0$label_3_true#1
     stack_overflow.bpl(1426,3): inline$IoSetNextIrpStackLocation$0$label_5#1
     stack_overflow.bpl(1448,3): anon12_Else#1
-    stack_overflow.bpl(1488,3): inline$IoGetCurrentIrpStackLocation$0$label_3_true#1    stack_overflow.bpl(1509,3): anon13_Else#1
+    stack_overflow.bpl(1488,3): inline$IoGetCurrentIrpStackLocation$0$label_3_true#1
+    stack_overflow.bpl(1509,3): anon13_Else#1
     stack_overflow.bpl(1571,3): inline$myInitDriver$0$anon8_Else#1
     stack_overflow.bpl(1607,3): inline$myInitDriver$0$anon9_Else#1
     stack_overflow.bpl(1643,3): inline$myInitDriver$0$anon10_Else#1
@@ -90,9 +91,6 @@ Execution trace:
     stack_overflow.bpl(89304,3): inline$BDLPnPStart$0$label_101_false#1
     stack_overflow.bpl(89315,3): inline$BDLPnPStart$0$label_102#1
     stack_overflow.bpl(89370,3): inline$BDLPnP$0$anon67_Else#1
-    stack_overflow.bpl(94595,3): inline$BDLPnP$0$label_139_true#1
-    stack_overflow.bpl(94624,3): inline$storm_IoCompleteRequest$57$label_6_true#1
-    stack_overflow.bpl(94632,3): inline$storm_IoCompleteRequest$57$anon3_Else#1
     stack_overflow.bpl(94595,3): inline$BDLPnP$0$label_139_true#1
     stack_overflow.bpl(94624,3): inline$storm_IoCompleteRequest$57$label_6_true#1
     stack_overflow.bpl(94632,3): inline$storm_IoCompleteRequest$57$anon3_Else#1
