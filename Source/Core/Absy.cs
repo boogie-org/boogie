@@ -7,7 +7,6 @@ using System.Collections.ObjectModel;
 using System.Diagnostics.Contracts;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.GraphUtil;
-using Microsoft.Win32.SafeHandles;
 using Set = Microsoft.Boogie.GSet<object>;
 using DependencyEvaluator = Microsoft.Boogie.Prune.DependencyEvaluator;
 
