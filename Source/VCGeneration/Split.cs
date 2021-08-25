@@ -14,7 +14,7 @@ namespace VC
   using Bpl = Microsoft.Boogie;
   using System.Threading.Tasks;
 
-  class Split
+  public class Split
     {
       class BlockStats
       {
@@ -67,8 +67,9 @@ namespace VC
       }
 
 
-      readonly List<Block> blocks;
+      public readonly List<Block> blocks;
       readonly List<Block> bigBlocks = new List<Block>();
+      public IEnumerable<Declaration> TopLevelDeclarations;
 
       readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
         stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
@@ -1017,14 +1018,13 @@ namespace VC
         return blocks.Where(b => interestingBlocks.Contains(b)).ToList(); // this is not the same as interestingBlocks.ToList() because the resulting lists will have different orders.
       }
 
-      public static List<Split /*!*/> FindManualSplits(Implementation /*!*/ impl,
-        Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins, VCGen /*!*/ par)
+      public static List<Split /*!*/> FindManualSplits(Split s)
       {
-        Contract.Requires(impl != null);
+        Contract.Requires(s.impl != null);
         Contract.Ensures(Contract.Result<List<Split>>() == null || cce.NonNullElements(Contract.Result<List<Split>>()));
 
         var splitPoints = new Dictionary<Block, int>();
-        foreach (var b in impl.Blocks)
+        foreach (var b in s.blocks)
         {
           foreach (Cmd c in b.Cmds)
           {
@@ -1036,26 +1036,26 @@ namespace VC
             }
           }
         }
+        List<Split> splits = new List<Split>();
         if (splitPoints.Count() == 0)
         {
-          // No manual split points here
-          return null;
+          splits.Add(s);
         }
-        List<Split> splits = new List<Split>();
-        Block entryPoint = impl.Blocks[0];
-        var blockAssignments = PickBlocksToVerify(impl.Blocks, splitPoints);
-        var entryBlockHasSplit = splitPoints.Keys.Contains(entryPoint);
-        var baseSplitBlocks = PostProcess(DoPreAssignedManualSplit(impl.Blocks, blockAssignments, -1, entryPoint, !entryBlockHasSplit));
-        splits.Add(new Split(baseSplitBlocks, gotoCmdOrigins, par, impl));
-        foreach (KeyValuePair<Block, int> pair in splitPoints)
+        else
         {
-          for (int i = 0; i < pair.Value; i++)
+          Block entryPoint = s.blocks[0];
+          var blockAssignments = PickBlocksToVerify(s.blocks, splitPoints);
+          var entryBlockHasSplit = splitPoints.Keys.Contains(entryPoint);
+          var baseSplitBlocks = PostProcess(DoPreAssignedManualSplit(s.blocks, blockAssignments, -1, entryPoint, !entryBlockHasSplit));
+          splits.Add(new Split(baseSplitBlocks, s.gotoCmdOrigins, s.parent, s.impl));
+          foreach (KeyValuePair<Block, int> pair in splitPoints)
           {
-            bool lastSplitInBlock = i == pair.Value - 1;
-            var newBlocks = DoPreAssignedManualSplit(impl.Blocks, blockAssignments, i, pair.Key, lastSplitInBlock);
-            var processedBlocks = PostProcess(newBlocks);
-            Split s = new Split(processedBlocks, gotoCmdOrigins, par, impl); // REVIEW: Does gotoCmdOrigins need to be changed at all?
-            splits.Add(s);
+            for (int i = 0; i < pair.Value; i++)
+            {
+              bool lastSplitInBlock = i == pair.Value - 1;
+              var newBlocks = DoPreAssignedManualSplit(s.blocks, blockAssignments, i, pair.Key, lastSplitInBlock);
+              splits.Add(new Split(PostProcess(newBlocks), s.gotoCmdOrigins, s.parent, s.impl)); // REVIEW: Does gotoCmdOrigins need to be changed at all?
+            }
           }
         }
         return splits;
@@ -1080,7 +1080,9 @@ namespace VC
           focusBlocks.Reverse();
         }
         if (!focusBlocks.Any()) {
-          return null;
+          var f = new List<Split>();
+          f.Add(new Split(impl.Blocks, gotoCmdOrigins, par, impl));
+          return f;
         }
         // finds all the blocks dominated by focusBlock in the subgraph
         // which only contains vertices of subgraph.
@@ -1183,21 +1185,9 @@ namespace VC
       public static List<Split> FocusAndSplit(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
       {
         List<Split> focussedImpl = FocusImpl(impl, gotoCmdOrigins, par);
-        if (focussedImpl == null) {
-          return FindManualSplits(impl, gotoCmdOrigins, par);
-        } else {
-          List<Split> splits = new List<Split>();
-          foreach (var f in focussedImpl)
-          {
-            var new_splits = FindManualSplits(f.impl, f.gotoCmdOrigins, par);
-            if (new_splits == null) {
-              splits.Add(f);
-            } else {
-              splits.AddRange(new_splits);
-            }
-          }
-          return splits;
-        }
+        var splits = focussedImpl.Select(f => FindManualSplits(f)).SelectMany(x => x).ToList();
+        splits.ForEach(split => split.TopLevelDeclarations = Prune.PruneDecl(par.program, split.blocks));
+        return splits;
       }
 
       public static List<Split /*!*/> /*!*/ DoSplit(Split initial, double maxCost, int max)
@@ -1431,7 +1421,6 @@ namespace VC
 
         var exprGen = ctx.ExprGen;
         VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
-
         VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
         Contract.Assert(vc != null);
 

@@ -316,7 +316,7 @@ namespace VC
 
         parent.CurrentLocalVariables = impl.LocVars;
         parent.PassifyImpl(impl, out var mvInfo);
-        Checker ch = parent.CheckerPool.FindCheckerFor(parent.program, impl);
+        Checker ch = parent.CheckerPool.FindCheckerFor(parent.program);
         Contract.Assert(ch != null);
 
         ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
@@ -785,21 +785,10 @@ namespace VC
       {
         max_vc_cost = tmp_max_vc_cost;
       }
-      Stack<Split> work = new Stack<Split>();
-      List<Split> currently_running = new List<Split>();
       ResetPredecessors(impl.Blocks);
       List<Split> manual_splits = Split.FocusAndSplit(impl, gotoCmdOrigins, this);
-      if (manual_splits != null)
-      {
-        foreach (var split in manual_splits)
-        {
-          work.Push(split);
-        }
-      }
-      else
-      {
-        work.Push(new Split(impl.Blocks, gotoCmdOrigins, this, impl));
-      }
+      var work = new Stack<Split>(manual_splits);
+      var currently_running = new List<Split>();
 
       bool keep_going = max_kg_splits > 1;
       int total = 0;
@@ -833,7 +822,7 @@ namespace VC
             var timeout = (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
               keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
               impl.TimeLimit;
-            var checker = s.parent.CheckerPool.FindCheckerFor(s.parent.program, impl, false);
+            var checker = s.parent.CheckerPool.FindCheckerFor(s.parent.program, false, s);
             try
             {
               if (checker == null)
@@ -1884,14 +1873,17 @@ namespace VC
         foreach (Variable lvar in impl.LocVars)
         {
           Contract.Assert(lvar != null);
+          var idExp = new IdentifierExpr(lvar.tok, lvar);
           if (lvar.TypedIdent.WhereExpr != null)
           {
-            Cmd c = new AssumeCmd(lvar.tok, lvar.TypedIdent.WhereExpr);
+            var exp = Expr.Binary(lvar.tok, BinaryOperator.Opcode.And, lvar.TypedIdent.WhereExpr, LiteralExpr.Literal(true));
+            Cmd c = new AssumeCmd(lvar.tok, exp,
+            new QKeyValue(lvar.tok, "where", new List<object>(new object [] {idExp}), null));
             cc.Add(c);
           }
           else if (QKeyValue.FindBoolAttribute(lvar.Attributes, "assumption"))
           {
-            cc.Add(new AssumeCmd(lvar.tok, new IdentifierExpr(lvar.tok, lvar),
+            cc.Add(new AssumeCmd(lvar.tok, idExp,
               new QKeyValue(lvar.tok, "assumption_variable_initialization", new List<object>(), null)));
           }
         }

@@ -18,6 +18,7 @@ procedure Ex() returns (y: int)
     invariant x*x <= 25;
   {
     x := x - 1;
+    assert {:split_here} (x+y) * (x+y) > 16; // should not lead to more than one split.
     assert {:focus} (x+y) * (x+y) > 25;
     y := y + 1;
     if (x < 3) {
@@ -25,7 +26,6 @@ procedure Ex() returns (y: int)
       assert {:focus} y*y > 4;
     }
     else {
-      assert {:focus} y*y*y < 8;
       assert 2 < 2;
     }
     assert {:focus} (x+y) * (x+y) == 25;
