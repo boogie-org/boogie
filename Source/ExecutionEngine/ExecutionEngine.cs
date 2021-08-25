@@ -1122,7 +1122,6 @@ namespace Microsoft.Boogie
       }
     }
 
-
     private static void CleanupCheckers(string requestId)
     {
       if (requestId != null)
@@ -1134,7 +1133,7 @@ namespace Microsoft.Boogie
       {
         if (RequestIdToCancellationTokenSource.IsEmpty)
         {
-          checkerPool.Dispose();
+            checkerPool.Dispose();
         }
       }
     }
@@ -1142,7 +1141,7 @@ namespace Microsoft.Boogie
 
     private static void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er,
       string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
-      Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, CheckerPool checkerPool,
+      Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, CheckerPool checkers,
       string programId)
     {
       Implementation impl = stablePrioritizedImpls[index];
@@ -1164,7 +1163,7 @@ namespace Microsoft.Boogie
             CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, cachedResults.Start);
           }
 
-          printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name),
+          printer.Inform($"Retrieving cached verification result for implementation {impl.Name}...",
             output);
           if (CommandLineOptions.Clo.VerifySnapshots < 3 ||
               cachedResults.Outcome == ConditionGeneration.Outcome.Correct)
@@ -1181,7 +1180,7 @@ namespace Microsoft.Boogie
 
         verificationResult = new VerificationResult(requestId, impl, programId);
 
-        using (var vcgen = CreateVCGen(program, checkerPool))
+        using (var vcgen = CreateVCGen(program, checkers))
         {
           vcgen.CachingActionCounts = stats.CachingActionCounts;
           verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
@@ -1316,9 +1315,9 @@ namespace Microsoft.Boogie
       }
     }
     
-    private static ConditionGeneration CreateVCGen(Program program, CheckerPool checkerPool)
+    private static ConditionGeneration CreateVCGen(Program program, CheckerPool checkers)
     {
-      return new VCGen(program, checkerPool);
+      return new VCGen(program, checkers);
     }
 
     #region Houdini

@@ -39,7 +39,6 @@ namespace VC
   [ContractClass(typeof(ConditionGenerationContracts))]
   public abstract class ConditionGeneration : IDisposable
   {
-    protected internal object CheckerCommonState;
 
     public enum Outcome
     {
