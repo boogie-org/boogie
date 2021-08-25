@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 using System.Threading.Tasks;
+using VC;
 
 namespace Microsoft.Boogie
 {
@@ -47,7 +48,7 @@ namespace Microsoft.Boogie
     private readonly VCExpressionGenerator gen;
 
     private ProverInterface thmProver;
-    
+
     // state for the async interface
     private volatile ProverInterface.Outcome outcome;
     private volatile bool hasOutput;
@@ -104,10 +105,10 @@ namespace Microsoft.Boogie
 
     /// <summary>
     /// Constructor.  Initialize a checker with the program and log file.
-    /// Optionally, use prover context provided by parameter "ctx". 
+    /// Optionally, use prover context provided by parameter "ctx".
     /// </summary>
     public Checker(VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile,
-      Implementation impl, ProverContext ctx = null)
+      Split s, ProverContext ctx = null)
     {
       Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
@@ -145,7 +146,7 @@ namespace Microsoft.Boogie
       {
         if (ctx == null) ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
 
-        Setup(prog, ctx, impl);
+        Setup(prog, ctx, s);
 
         // we first generate the prover and then store a clone of the
         // context in the cache, so that the prover can setup stuff in
@@ -159,7 +160,7 @@ namespace Microsoft.Boogie
       this.gen = prover.VCExprGen;
     }
 
-    public void Retarget(Program prog, ProverContext ctx, Implementation impl)
+    public void Retarget(Program prog, ProverContext ctx, Split s)
     {
       lock (this)
       {
@@ -169,7 +170,7 @@ namespace Microsoft.Boogie
         handler = default(ProverInterface.ErrorHandler);
         TheoremProver.FullReset(gen);
         ctx.Reset();
-        Setup(prog, ctx, impl);
+        Setup(prog, ctx, s);
       }
     }
 
@@ -197,13 +198,14 @@ namespace Microsoft.Boogie
     /// <summary>
     /// Set up the context.
     /// </summary>
-    private void Setup(Program prog, ProverContext ctx, Implementation impl = null)
+    private void Setup(Program prog, ProverContext ctx, Split s = null)
     {
       Program = prog;
       // TODO(wuestholz): Is this lock necessary?
       lock (Program.TopLevelDeclarations)
       {
-        foreach (Declaration decl in Prune.GetSuccinctDecl(prog, impl))
+        var decls = s == null ? prog.TopLevelDeclarations : s.TopLevelDeclarations;
+        foreach (Declaration decl in decls)
         {
           Contract.Assert(decl != null);
           var typeDecl = decl as TypeCtorDecl;
@@ -245,7 +247,7 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Push a Verification Condition as an Axiom 
+    /// Push a Verification Condition as an Axiom
     /// (Required for Doomed Program Point detection)
     /// </summary>
     public void PushVCExpr(VCExpr vc)
@@ -510,7 +512,7 @@ namespace Microsoft.Boogie
 
       public virtual void OnProverError(string message)
       {
-        // no-op by default. 
+        // no-op by default.
         //Errors are always printed to console by the prover
       }
 
@@ -550,7 +552,7 @@ namespace Microsoft.Boogie
     /// MSchaef: Allows to Push a VCExpression as Axiom on the prover stack (beta)
     /// for now it is only implemented by ProcessTheoremProver and still requires some
     /// testing
-    /// </summary>    
+    /// </summary>
     public virtual void PushVCExpression(VCExpr vc)
     {
       Contract.Requires(vc != null);
@@ -640,7 +642,7 @@ namespace Microsoft.Boogie
     public virtual void SetRandomSeed(int? randomSeed)
     {
     }
-    
+
     public abstract ProverContext Context { get; }
 
     public abstract VCExpressionGenerator VCExprGen { get; }
@@ -658,7 +660,7 @@ namespace Microsoft.Boogie
     {
       throw new NotImplementedException();
     }
-    
+
     // Assert vc tagged with a name
     public virtual void AssertNamed(VCExpr vc, bool polarity, string name)
     {

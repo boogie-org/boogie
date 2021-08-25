@@ -17,7 +17,8 @@ namespace VC
       this.options = options;
     }
 
-    public Checker FindCheckerFor(ConditionGeneration vcgen, Implementation impl, bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
+    public Checker FindCheckerFor(ConditionGeneration vcgen, bool isBlocking = true, Split split = null,
+      int waitTimeinMs = 50, int maxRetries = 3)
     {
       Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
       Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
@@ -44,7 +45,7 @@ namespace VC
               {
                 if (c.IsIdle)
                 {
-                  c.Retarget(program, c.TheoremProver.Context, impl);
+                  c.Retarget(program, c.TheoremProver.Context, split);
                   c.GetReady();
                   return c;
                 }
@@ -77,18 +78,18 @@ namespace VC
           return null;
         }
 
-        return CreateNewChecker(vcgen, impl);
+        return CreateNewChecker(vcgen, split);
       }
     }
 
-    private Checker CreateNewChecker(ConditionGeneration vcgen, Implementation impl)
+    private Checker CreateNewChecker(ConditionGeneration vcgen, Split split)
     {
       var log = options.ProverLogFilePath;
       if (log != null && !log.Contains("@PROC@") && checkers.Count > 0) {
         log = log + "." + checkers.Count;
       }
 
-      Checker ch = new Checker(vcgen, vcgen.program, options.ProverLogFilePath, options.ProverLogFileAppend, impl);
+      Checker ch = new Checker(vcgen, vcgen.program, options.ProverLogFilePath, options.ProverLogFileAppend, split);
       ch.GetReady();
       checkers.Add(ch);
       return ch;

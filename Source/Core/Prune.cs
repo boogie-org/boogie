@@ -51,6 +51,7 @@ namespace Microsoft.Boogie
       {
         incoming.Add(func);
       }
+
       public override Expr VisitExpr(Expr node)
       {
         if (node is IdentifierExpr iExpr && iExpr.Decl is Constant c)
@@ -158,13 +159,37 @@ namespace Microsoft.Boogie
       }
     }
 
-    private class ImplVisitor : DependencyEvaluator
+    private class AssumeVisitor : ReadOnlyVisitor
     {
-      public Implementation impl;
+      public AssumeCmd ac;
+      public HashSet<Variable> RelVars;
 
-      public ImplVisitor(Implementation i) : base(null)
+      public AssumeVisitor(AssumeCmd assumeCmd) : base(null)
       {
-        impl = i;
+        this.ac = assumeCmd;
+        this.RelVars = new HashSet<Variable>();
+      }
+
+      public override Variable VisitVariable(Variable v) {
+        RelVars.Add(v);
+        return base.VisitVariable(v);
+      }
+    }
+
+    private class BlocksVisitor : DependencyEvaluator
+    {
+      public List<Block> Blocks;
+      public HashSet<Variable> RelVars;
+
+      public BlocksVisitor(List<Block> blocks) : base(null)
+      {
+        Blocks = blocks;
+        RelVars = new HashSet<Variable>();
+      }
+
+      public override Variable VisitVariable(Variable v) {
+        RelVars.Add(v);
+        return base.VisitVariable(v);
       }
 
       public override Expr VisitExpr(Expr node)
@@ -175,6 +200,17 @@ namespace Microsoft.Boogie
           outgoing.Add(f.Func);
         }
         return base.VisitExpr(node);
+      }
+
+      public override Cmd VisitAssumeCmd(AssumeCmd ac) {
+        if (GetWhereVariable(ac) != null) {
+          var cacheVars = new HashSet<Variable> (RelVars);
+          var ex = base.VisitAssumeCmd(ac);
+          this.RelVars = cacheVars;
+          return ex;
+        } else {
+          return base.VisitAssumeCmd(ac);
+        }
       }
 
       public override Microsoft.Boogie.Type VisitType(Microsoft.Boogie.Type node)
@@ -208,18 +244,67 @@ namespace Microsoft.Boogie
       return edges;
     }
 
-    public static IEnumerable<Declaration> GetSuccinctDecl(Program p, Implementation impl)
+    private static Variable GetWhereVariable(Cmd c) {
+      if (c is AssumeCmd ac)
+      {
+        var attr = QKeyValue.FindAttribute(ac.Attributes, qkv => qkv.Key == "where" && qkv.Params.Count == 1);
+        if (attr != null)
+        {
+          var ie = (IdentifierExpr) attr.Params[0];
+          return ie.Decl;
+        }
+      }
+      return null;
+    }
+
+    public static void TrimWhereAssumes(List<Block> blocks, HashSet<Variable> liveVars) {
+      var whereAssumes = new Dictionary<Variable, AssumeVisitor> ();
+      foreach (var blk in blocks)
+      {
+        foreach(var cmd in blk.Cmds)
+        {
+          var v = GetWhereVariable(cmd);
+          if (v != null)
+          {
+            var ac = cmd as AssumeCmd;
+            whereAssumes[v] = new AssumeVisitor(ac);
+            whereAssumes[v].Visit(ac);
+          }
+        }
+      }
+
+      var todo = new Stack<Variable> (liveVars);
+      while (todo.Any())
+      {
+        var t = todo.Pop();
+        if (whereAssumes.Keys.Contains(t)) {
+          whereAssumes[t].RelVars.Where(v => !liveVars.Contains(v)).ToList().ForEach(v => todo.Push(v));
+        }
+        liveVars.Add(t);
+      }
+
+      bool DeadWhereAssumption(Cmd c)
+      {
+        var v = GetWhereVariable(c);
+        return v != null && !liveVars.Contains(v);
+      }
+
+      blocks.ForEach(blk => blk.Cmds = blk.Cmds.Where(c => !DeadWhereAssumption(c)).ToList());
+    }
+
+    public static IEnumerable<Declaration> PruneDecl(Program p, List<Block> blocks)
     {
-      if (p.edges == null || impl == null || !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
+      if (p.edges == null || blocks == null || !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
       {
         return p.TopLevelDeclarations;
       }
 
       var edges = p.edges;
       // an implementation only has outgoing edges.
-      DependencyEvaluator implNode = new ImplVisitor(impl);
-      implNode.Visit(impl);
-      var implHooks = edges.Keys.Where(m => DependencyEvaluator.depends(implNode, m));
+      BlocksVisitor bnode = new BlocksVisitor(blocks);
+      bnode.Blocks.ForEach(blk => bnode.Visit(blk));
+      TrimWhereAssumes(blocks, bnode.RelVars);
+      var implHooks = edges.Keys.Where(m => DependencyEvaluator.depends(bnode, m));
 
       IEnumerable<Declaration> ComputeReachability (IEnumerable<DependencyEvaluator> implHooks)
       {

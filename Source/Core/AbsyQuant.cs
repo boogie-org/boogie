@@ -468,22 +468,29 @@ namespace Microsoft.Boogie
       current.Next = other;
     }
 
+    public static QKeyValue FindAttribute(QKeyValue kv, Func<QKeyValue, bool> property)
+    {
+      for (; kv != null; kv = kv.Next)
+      {
+        if (property(kv))
+        {
+          return kv;
+        }
+      }
+      return null;
+    }
+
     // Look for {:name string} in list of attributes.
     [Pure]
     public static string FindStringAttribute(QKeyValue kv, string name)
     {
       Contract.Requires(name != null);
-      for (; kv != null; kv = kv.Next)
+      kv = FindAttribute(kv, qkv => qkv.Key == name && qkv.Params.Count == 1 && qkv.Params[0] is string);
+      if (kv != null)
       {
-        if (kv.Key == name)
-        {
-          if (kv.Params.Count == 1 && kv.Params[0] is string)
-          {
-            return (string) kv.Params[0];
-          }
-        }
+        Contract.Assert(kv.Params.Count == 1 && kv.Params[0] is string);
+        return (string) kv.Params[0];
       }
-
       return null;
     }
 
@@ -491,17 +498,12 @@ namespace Microsoft.Boogie
     public static Expr FindExprAttribute(QKeyValue kv, string name)
     {
       Contract.Requires(name != null);
-      for (; kv != null; kv = kv.Next)
+      kv = FindAttribute(kv, qkv => qkv.Key == name && qkv.Params.Count == 1 && qkv.Params[0] is Expr);
+      if (kv != null)
       {
-        if (kv.Key == name)
-        {
-          if (kv.Params.Count == 1 && kv.Params[0] is Expr)
-          {
-            return (Expr) kv.Params[0];
-          }
-        }
+        Contract.Assert(kv.Params.Count == 1 && kv.Params[0] is Expr);
+        return (Expr) kv.Params[0];
       }
-
       return null;
     }
 
@@ -509,16 +511,10 @@ namespace Microsoft.Boogie
     public static bool FindBoolAttribute(QKeyValue kv, string name)
     {
       Contract.Requires(name != null);
-      for (; kv != null; kv = kv.Next)
-      {
-        if (kv.Key == name)
-        {
-          return kv.Params.Count == 0 ||
-                 (kv.Params.Count == 1 && kv.Params[0] is LiteralExpr && ((LiteralExpr) kv.Params[0]).IsTrue);
-        }
-      }
-
-      return false;
+      kv = FindAttribute(kv, qkv => qkv.Key == name && (qkv.Params.Count == 0 ||
+                                    (qkv.Params.Count == 1 && qkv.Params[0] is LiteralExpr &&
+                                      ((LiteralExpr) qkv.Params[0]).IsTrue)));
+      return kv != null;
     }
 
     public static int FindIntAttribute(QKeyValue kv, string name, int defl)
