@@ -623,7 +623,7 @@ namespace VC
       return vc;
     }
 
-    void CheckIntAttributeOnImpl(Implementation impl, string name, ref int val)
+    public static void CheckIntAttributeOnImpl(Implementation impl, string name, ref int val)
     {
       Contract.Requires(impl != null);
       Contract.Requires(name != null);
@@ -828,7 +828,7 @@ namespace VC
       {
         remainingCost = work.Peek().Cost;
       }
-
+      
       while (work.Any() || currentlyRunning.Any())
       {
         bool proverFailed = false;
@@ -1076,7 +1076,8 @@ namespace VC
         }
       }
 
-      outcome = SplitAndVerify(impl, gotoCmdOrigins, callback, mvInfo, outcome).Result;
+      var worker = new SplitAndVerifyWorker(this, impl, gotoCmdOrigins, callback, mvInfo, outcome);
+      outcome = worker.WorkUntilDone().Result;
 
       if (outcome == Outcome.Correct && smoke_tester != null)
       {

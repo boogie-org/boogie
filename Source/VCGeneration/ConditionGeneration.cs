@@ -513,7 +513,7 @@ namespace VC
     #endregion
 
 
-    protected Checker FindCheckerFor(Program program, bool isBlocking, Split s = null, int waitTimeinMs = 50, int maxRetries = 3)
+    internal Checker FindCheckerFor(Program program, bool isBlocking, Split s = null, int waitTimeinMs = 50, int maxRetries = 3)
     {
       Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
       Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
@@ -702,7 +702,7 @@ namespace VC
       #endregion
     }
 
-    protected static void ResetPredecessors(List<Block> blocks)
+    internal static void ResetPredecessors(List<Block> blocks)
     {
       Contract.Requires(blocks != null);
       foreach (Block b in blocks)
