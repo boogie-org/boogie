@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
+using System.Threading;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
@@ -773,59 +774,82 @@ namespace VC
         if (changed) b.Cmds = newCmds;
       }
     }
+    
+    
+    public static Task<int> FirstSuccessfulTask(IEnumerable<Task> tasks)
+    {
+      var taskList = tasks.ToList();
+      var tcs = new TaskCompletionSource<int>();
+      int remainingTasks = taskList.Count;
+      for (var index = 0; index < taskList.Count; index++) {
+        var task = taskList[index];
+        var indexCopy = index;
+        task.ContinueWith(t =>
+        {
+          if (task.Status == TaskStatus.RanToCompletion)
+            tcs.TrySetResult(indexCopy);
+          else if (Interlocked.Decrement(ref remainingTasks) == 0)
+            tcs.SetException(new AggregateException(tasks.SelectMany(t1 => t1.Exception.InnerExceptions)));
+        });
+      }
 
-    void SplitAndVerify(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins,  VerifierCallback callback, ModelViewInfo mvInfo, ref Outcome outcome)
+      return tcs.Task;
+    }
+
+    async Task<Outcome> SplitAndVerify(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins,  VerifierCallback callback, ModelViewInfo mvInfo, Outcome outcome)
     {
       Cores = CommandLineOptions.Clo.VcsCores;
-      double max_vc_cost = CommandLineOptions.Clo.VcsMaxCost;
-      int tmp_max_vc_cost = -1,
-        max_splits = CommandLineOptions.Clo.VcsMaxSplits,
-        max_kg_splits = CommandLineOptions.Clo.VcsMaxKeepGoingSplits;
-      CheckIntAttributeOnImpl(impl, "vcs_max_cost", ref tmp_max_vc_cost);
-      CheckIntAttributeOnImpl(impl, "vcs_max_splits", ref max_splits);
-      CheckIntAttributeOnImpl(impl, "vcs_max_keep_going_splits", ref max_kg_splits);
-      if (tmp_max_vc_cost >= 0)
+      double maxVcCost = CommandLineOptions.Clo.VcsMaxCost;
+      var tmpMaxVcCost = -1;
+      var maxSplits = CommandLineOptions.Clo.VcsMaxSplits;
+      var maxKeepGoingSplits = CommandLineOptions.Clo.VcsMaxKeepGoingSplits;
+      
+      CheckIntAttributeOnImpl(impl, "vcs_max_cost", ref tmpMaxVcCost);
+      CheckIntAttributeOnImpl(impl, "vcs_max_splits", ref maxSplits);
+      CheckIntAttributeOnImpl(impl, "vcs_max_keep_going_splits", ref maxKeepGoingSplits);
+      if (tmpMaxVcCost >= 0)
       {
-        max_vc_cost = tmp_max_vc_cost;
+        maxVcCost = tmpMaxVcCost;
       }
       ResetPredecessors(impl.Blocks);
-      List<Split> manual_splits = Split.FocusAndSplit(impl, gotoCmdOrigins, this);
-      var work = new Stack<Split>(manual_splits);
-      var currently_running = new List<Split>();
+      var manualSplits = Split.FocusAndSplit(impl, gotoCmdOrigins, this);
+      var work = new Stack<Split>(manualSplits);
+      var currentlyRunning = new List<Split>();
 
-      bool keep_going = max_kg_splits > 1;
+      bool keepGoing = maxKeepGoingSplits > 1;
       int total = 0;
-      int no = max_splits == 1 && !keep_going ? -1 : 0;
-      bool first_round = true;
-      bool do_splitting = keep_going || max_splits > 1;
-      double remaining_cost = 0.0, proven_cost = 0.0;
+      int splitNumber = maxSplits == 1 && !keepGoing ? -1 : 0;
+      bool firstRound = true;
+      bool doSplitting = keepGoing || maxSplits > 1;
+      var remainingCost = 0.0;
+      var provenCost = 0.0;
 
-      if (do_splitting)
+      if (doSplitting)
       {
-        remaining_cost = work.Peek().Cost;
+        remainingCost = work.Peek().Cost;
       }
 
-      while (work.Any() || currently_running.Any())
+      while (work.Any() || currentlyRunning.Any())
       {
-        bool prover_failed = false;
-        Split s = null;
+        bool proverFailed = false;
+        Split nextSplit = null;
         var isWaiting = !work.Any();
 
         if (!isWaiting)
         {
-          s = work.Peek();
+          nextSplit = work.Peek();
 
-          if (first_round && max_splits > 1)
+          if (firstRound && maxSplits > 1)
           {
-            prover_failed = true;
-            remaining_cost -= s.Cost;
+            proverFailed = true;
+            remainingCost -= nextSplit.Cost;
           }
           else
           {
-            var timeout = (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
-              keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
+            var timeout = keepGoing && nextSplit.LastChance ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
+              keepGoing ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
               impl.TimeLimit;
-            var checker = s.parent.FindCheckerFor(s.parent.program, false, s);
+            var checker = nextSplit.parent.FindCheckerFor(nextSplit.parent.program, false, nextSplit);
             try
             {
               if (checker == null)
@@ -833,28 +857,26 @@ namespace VC
                 isWaiting = true;
                 goto waiting;
               }
-              else
+
+              nextSplit = work.Pop();
+
+              if (CommandLineOptions.Clo.Trace && splitNumber >= 0)
               {
-                s = work.Pop();
+                Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
+                  nextSplit.Stats, splitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
               }
 
-              if (CommandLineOptions.Clo.Trace && no >= 0)
-              {
-                System.Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
-                  s.Stats, no + 1, total, 100 * proven_cost / (proven_cost + remaining_cost));
-              }
+              callback.OnProgress("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
-              callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
-
-              Contract.Assert(s.parent == this);
+              Contract.Assert(nextSplit.parent == this);
               lock (checker)
               {
-                s.BeginCheck(checker, callback, mvInfo, no, timeout, impl.ResourceLimit);
+                nextSplit.BeginCheck(checker, callback, mvInfo, splitNumber, timeout, impl.ResourceLimit);
               }
 
-              no++;
+              splitNumber++;
 
-              currently_running.Add(s);
+              currentlyRunning.Add(nextSplit);
             }
             catch (Exception)
             {
@@ -868,82 +890,82 @@ namespace VC
         if (isWaiting)
         {
           // Wait for one split to terminate.
-          var tasks = currently_running.Select(splt => splt.ProverTask).ToArray();
+          var tasks = currentlyRunning.Select(split => split.ProverTask).ToArray();
 
           if (tasks.Any())
           {
             try
             {
               int index = Task.WaitAny(tasks);
-              s = currently_running[index];
-              currently_running.RemoveAt(index);
+              nextSplit = currentlyRunning[index];
+              currentlyRunning.RemoveAt(index);
 
-              if (do_splitting)
+              if (doSplitting)
               {
-                remaining_cost -= s.Cost;
+                remainingCost -= nextSplit.Cost;
               }
 
-              lock (s.Checker)
+              lock (nextSplit.Checker)
               {
-                s.ReadOutcome(ref outcome, out prover_failed);
+                nextSplit.ReadOutcome(ref outcome, out proverFailed);
               }
 
-              if (do_splitting)
+              if (doSplitting)
               {
-                if (prover_failed)
+                if (proverFailed)
                 {
                   // even if the prover fails, we have learned something, i.e., it is
                   // annoying to watch Boogie say Timeout, 0.00% a couple of times
-                  proven_cost += s.Cost / 100;
+                  provenCost += nextSplit.Cost / 100;
                 }
                 else
                 {
-                  proven_cost += s.Cost;
+                  provenCost += nextSplit.Cost;
                 }
               }
 
-              callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
+              callback.OnProgress("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
-              if (prover_failed && !first_round && s.LastChance)
+              if (proverFailed && !firstRound && nextSplit.LastChance)
               {
                 string msg = "some timeout";
-                if (s.reporter != null && s.reporter.resourceExceededMessage != null)
+                if (nextSplit.reporter != null && nextSplit.reporter.resourceExceededMessage != null)
                 {
-                  msg = s.reporter.resourceExceededMessage;
+                  msg = nextSplit.reporter.resourceExceededMessage;
                 }
 
-                callback.OnCounterexample(s.ToCounterexample(s.Checker.TheoremProver.Context), msg);
+                callback.OnCounterexample(nextSplit.ToCounterexample(nextSplit.Checker.TheoremProver.Context), msg);
                 outcome = Outcome.Errors;
                 break;
               }
             }
             finally
             {
-              s.Checker.GoBackToIdle();
+              nextSplit.Checker.GoBackToIdle();
             }
 
-            Contract.Assert(prover_failed || outcome == Outcome.Correct || outcome == Outcome.Errors ||
+            Contract.Assert(proverFailed || outcome == Outcome.Correct || outcome == Outcome.Errors ||
                             outcome == Outcome.Inconclusive);
           }
         }
 
-        if (prover_failed)
+        if (proverFailed)
         {
-          int splits = first_round && max_splits > 1 ? max_splits : max_kg_splits;
+          int splits = firstRound && maxSplits > 1 ? maxSplits : maxKeepGoingSplits;
 
           if (splits > 1)
           {
-            List<Split> tmp = Split.DoSplit(s, max_vc_cost, splits);
+            List<Split> tmp = Split.DoSplit(nextSplit, maxVcCost, splits);
             Contract.Assert(tmp != null);
-            max_vc_cost = 1.0; // for future
-            first_round = false;
+            maxVcCost = 1.0; // for future
+            firstRound = false;
             //tmp.Sort(new Comparison<Split!>(Split.Compare));
             foreach (Split a in tmp)
             {
               Contract.Assert(a != null);
               work.Push(a);
               total++;
-              remaining_cost += a.Cost;
+              remainingCost += a.Cost;
             }
 
             if (outcome != Outcome.Errors)
@@ -957,9 +979,9 @@ namespace VC
             if (outcome == Outcome.TimedOut)
             {
               string msg = "some timeout";
-              if (s.reporter != null && s.reporter.resourceExceededMessage != null)
+              if (nextSplit.reporter != null && nextSplit.reporter.resourceExceededMessage != null)
               {
-                msg = s.reporter.resourceExceededMessage;
+                msg = nextSplit.reporter.resourceExceededMessage;
               }
 
               callback.OnTimeout(msg);
@@ -967,9 +989,9 @@ namespace VC
             else if (outcome == Outcome.OutOfMemory)
             {
               string msg = "out of memory";
-              if (s.reporter != null && s.reporter.resourceExceededMessage != null)
+              if (nextSplit.reporter != null && nextSplit.reporter.resourceExceededMessage != null)
               {
-                msg = s.reporter.resourceExceededMessage;
+                msg = nextSplit.reporter.resourceExceededMessage;
               }
 
               callback.OnOutOfMemory(msg);
@@ -977,9 +999,9 @@ namespace VC
             else if (outcome == Outcome.OutOfResource)
             {
               string msg = "out of resource";
-              if (s.reporter != null && s.reporter.resourceExceededMessage != null)
+              if (nextSplit.reporter != null && nextSplit.reporter.resourceExceededMessage != null)
               {
-                msg = s.reporter.resourceExceededMessage;
+                msg = nextSplit.reporter.resourceExceededMessage;
               }
 
               callback.OnOutOfResource(msg);
@@ -989,6 +1011,8 @@ namespace VC
           }
         }
       }
+
+      return outcome;
     }
 
     public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback)
@@ -1052,7 +1076,7 @@ namespace VC
         }
       }
 
-      SplitAndVerify(impl, gotoCmdOrigins, callback, mvInfo, ref outcome);
+      outcome = SplitAndVerify(impl, gotoCmdOrigins, callback, mvInfo, outcome).Result;
 
       if (outcome == Outcome.Correct && smoke_tester != null)
       {
