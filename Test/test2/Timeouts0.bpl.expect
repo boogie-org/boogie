@@ -1,47 +1,11 @@
-Timeouts0.bpl(26,5): Error: A postcondition might not hold on this return path.
-Timeouts0.bpl(11,3): Related location: This is the postcondition that might not hold.
-Execution trace:
-    Timeouts0.bpl(15,7): anon0
-    Timeouts0.bpl(17,5): anon4_LoopHead
-    Timeouts0.bpl(17,5): anon4_LoopDone
-    Timeouts0.bpl(26,5): anon5_LoopHead
-    Timeouts0.bpl(26,5): anon5_LoopDone
-Timeouts0.bpl(28,7): Error: This loop invariant might not be maintained by the loop.
-Execution trace:
-    Timeouts0.bpl(15,7): anon0
-    Timeouts0.bpl(17,5): anon4_LoopHead
-    Timeouts0.bpl(17,5): anon4_LoopDone
-    Timeouts0.bpl(26,5): anon5_LoopHead
-    Timeouts0.bpl(30,11): anon5_LoopBody
-Timeouts0.bpl(55,5): Error: A postcondition might not hold on this return path.
-Timeouts0.bpl(38,3): Related location: This is the postcondition that might not hold.
-Execution trace:
-    Timeouts0.bpl(44,7): anon0
-    Timeouts0.bpl(46,5): anon4_LoopHead
-    Timeouts0.bpl(46,5): anon4_LoopDone
-    Timeouts0.bpl(55,5): anon5_LoopHead
-    Timeouts0.bpl(55,5): anon5_LoopDone
-Timeouts0.bpl(57,7): Error: This loop invariant might not be maintained by the loop.
-Execution trace:
-    Timeouts0.bpl(44,7): anon0
-    Timeouts0.bpl(46,5): anon4_LoopHead
-    Timeouts0.bpl(46,5): anon4_LoopDone
-    Timeouts0.bpl(55,5): anon5_LoopHead
-    Timeouts0.bpl(59,11): anon5_LoopBody
-Timeouts0.bpl(84,5): Error: A postcondition might not hold on this return path.
-Timeouts0.bpl(67,3): Related location: This is the postcondition that might not hold.
-Execution trace:
-    Timeouts0.bpl(73,7): anon0
-    Timeouts0.bpl(75,5): anon4_LoopHead
-    Timeouts0.bpl(75,5): anon4_LoopDone
-    Timeouts0.bpl(84,5): anon5_LoopHead
-    Timeouts0.bpl(84,5): anon5_LoopDone
-Timeouts0.bpl(86,7): Error: This loop invariant might not be maintained by the loop.
-Execution trace:
-    Timeouts0.bpl(73,7): anon0
-    Timeouts0.bpl(75,5): anon4_LoopHead
-    Timeouts0.bpl(75,5): anon4_LoopDone
-    Timeouts0.bpl(84,5): anon5_LoopHead
-    Timeouts0.bpl(88,11): anon5_LoopBody
+Timeouts0.bpl(27,5): Error: A postcondition might not hold on this return path.
+Timeouts0.bpl(12,3): Related location: This is the postcondition that might not hold.
+Timeouts0.bpl(29,7): Error: This loop invariant might not be maintained by the loop.
+Timeouts0.bpl(56,5): Error: A postcondition might not hold on this return path.
+Timeouts0.bpl(39,3): Related location: This is the postcondition that might not hold.
+Timeouts0.bpl(58,7): Error: This loop invariant might not be maintained by the loop.
+Timeouts0.bpl(85,5): Error: A postcondition might not hold on this return path.
+Timeouts0.bpl(68,3): Related location: This is the postcondition that might not hold.
+Timeouts0.bpl(87,7): Error: This loop invariant might not be maintained by the loop.
 
 Boogie program verifier finished with 0 verified, 6 errors

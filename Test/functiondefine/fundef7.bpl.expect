@@ -1,6 +1,3 @@
 fundef7.bpl(32,5): Error: This assertion might not hold.
-Execution trace:
-    fundef7.bpl(28,3): anon0
-    fundef7.bpl(32,5): anon3_Then
 
 Boogie program verifier finished with 1 verified, 1 error

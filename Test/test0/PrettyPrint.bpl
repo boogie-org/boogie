@@ -1,4 +1,4 @@
-// RUN: %boogie -pretty:0 -noVerify -printInstrumented "%s" > "%t"
+// RUN: %parallel-boogie -pretty:0 -noVerify -printInstrumented "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 const x: int;
 const y: int;

@@ -1,4 +1,4 @@
-// RUN: %boogie "-proc:trivial*ZZZ" "%s" > "%t"
+// RUN: %parallel-boogie "-proc:trivial*ZZZ" "%s" > "%t"
 // RUN: %OutputCheck --file-to-check "%t" "%s"
 // CHECK-L: Boogie program verifier finished with 2 verified, 0 errors
 procedure foo()

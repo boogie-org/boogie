@@ -1,4 +1,4 @@
-// RUN: %boogie -contractInfer -printAssignment -useUnsatCoreForContractInfer "%s" > "%t"
+// RUN: %parallel-boogie -contractInfer -printAssignment -useUnsatCoreForContractInfer "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // Example to exercise the unsatcore to optimize houdini

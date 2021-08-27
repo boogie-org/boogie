@@ -1,4 +1,4 @@
-// RUN: %boogie -inline:spec -print:- -env:0 -printInlined "%s" > "%t"
+// RUN: %parallel-boogie -inline:spec -print:- -env:0 -printInlined "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure Main()

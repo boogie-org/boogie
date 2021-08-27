@@ -1,4 +1,4 @@
-// RUN: %boogie -errorTrace:0 "%s" > "%t"
+// RUN: %parallel-boogie -errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure Foo(x:int)
 {

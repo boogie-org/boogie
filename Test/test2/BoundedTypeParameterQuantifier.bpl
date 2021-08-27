@@ -1,4 +1,4 @@
-// RUN: %boogie /proverWarnings:1 "%s" > "%t"
+// RUN: %parallel-boogie /proverWarnings:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function Map#Domain<QUN, YAN>(Map QUN YAN): [QUN] bool;

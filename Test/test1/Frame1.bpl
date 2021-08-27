@@ -1,4 +1,4 @@
-// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %parallel-boogie -noVerify "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 var g0: int;
 var g1: int;

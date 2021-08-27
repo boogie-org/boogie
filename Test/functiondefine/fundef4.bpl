@@ -1,4 +1,4 @@
-// RUN: %boogie  "%s" > "%t"
+// RUN: %parallel-boogie  "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function {:define} foo(x:int) returns(bool)

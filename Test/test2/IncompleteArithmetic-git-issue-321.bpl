@@ -1,4 +1,4 @@
-// RUN: %boogie "-proverOpt:O:smt.arith.solver=2" "%s" > "%t"
+// RUN: %parallel-boogie "-proverOpt:O:smt.arith.solver=2" "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // This file contains the Boogie input reported in issue https://github.com/boogie-org/boogie/issues/321.

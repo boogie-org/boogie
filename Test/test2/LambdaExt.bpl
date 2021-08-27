@@ -1,5 +1,5 @@
-// RUN: %boogie "%s" > "%t"
-// RUN: %boogie -freeVarLambdaLifting "%s" >> "%t"
+// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie -freeVarLambdaLifting "%s" >> "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure Simplest() {

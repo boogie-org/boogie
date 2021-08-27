@@ -1,4 +1,4 @@
-// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %parallel-boogie -noVerify "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // set of maps from anything to a specific type a

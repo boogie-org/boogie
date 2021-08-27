@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // A Boogie version of Turing's additive factorial program, from "Checking a large routine"
 // published in the "Report of a Conference of High Speed Automatic Calculating Machines",
