@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 function {:inline true} foo3(x:int, y:bool) returns(bool)
  { foo3(x,y) }

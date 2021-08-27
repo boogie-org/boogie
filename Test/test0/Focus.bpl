@@ -1,4 +1,4 @@
-// RUN: %boogie /vcsDumpSplits "%s" > "%t"
+// RUN: %parallel-boogie /vcsDumpSplits "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // RUN: %diff Ex.split.-1.bpl Ex.split.-1.bpl
 // RUN: %diff Ex.split.0.bpl Ex.split.0.bpl

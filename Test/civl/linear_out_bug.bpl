@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type {:linear "addr"} X = int;
 var {:layer 0,2} {:linear "addr"} Addrs:[int]bool;

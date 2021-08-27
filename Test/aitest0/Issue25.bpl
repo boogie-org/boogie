@@ -1,4 +1,4 @@
-// RUN: %boogie -infer:j "%s" > "%t"
+// RUN: %parallel-boogie -infer:j "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 const N: int;

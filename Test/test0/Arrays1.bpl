@@ -1,4 +1,4 @@
-// RUN: %boogie -noVerify "%s" | %OutputCheck "%s"
+// RUN: %parallel-boogie -noVerify "%s" | %OutputCheck "%s"
 var Q: [int,int][int]int;
 
 procedure P()

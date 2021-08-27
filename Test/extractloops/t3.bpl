@@ -1,6 +1,6 @@
-// RUN: %boogie -stratifiedInline:1 -extractLoops -removeEmptyBlocks:0 -coalesceBlocks:0 -recursionBound:2 "%s" > "%t"
+// RUN: %parallel-boogie -stratifiedInline:1 -extractLoops -removeEmptyBlocks:0 -coalesceBlocks:0 -recursionBound:2 "%s" > "%t"
 // RUN: %diff "%s.rb2.expect" "%t"
-// RUN: %boogie -stratifiedInline:1 -extractLoops -removeEmptyBlocks:0 -coalesceBlocks:0 -recursionBound:4 "%s" > "%t"
+// RUN: %parallel-boogie -stratifiedInline:1 -extractLoops -removeEmptyBlocks:0 -coalesceBlocks:0 -recursionBound:4 "%s" > "%t"
 // RUN: %diff "%s.rb4.expect" "%t"
 var g: int;
 

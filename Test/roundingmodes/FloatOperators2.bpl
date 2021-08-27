@@ -1,4 +1,4 @@
-// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %parallel-boogie -proverWarnings:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function {:builtin "fp.sqrt"} SQRT(rmode, float24e8) returns (float24e8);

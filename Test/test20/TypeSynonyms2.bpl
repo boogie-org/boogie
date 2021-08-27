@@ -1,6 +1,6 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// RUN: %boogie -noVerify -print:- -pretty:0 -env:0 -printDesugared "%s" > "%t"
+// RUN: %parallel-boogie -noVerify -print:- -pretty:0 -env:0 -printDesugared "%s" > "%t"
 // RUN: %diff "%s.print.expect" "%t"
 
 

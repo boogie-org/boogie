@@ -1,4 +1,4 @@
-// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %parallel-boogie -noVerify "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // Let's test some Boogie 2 features ...
 

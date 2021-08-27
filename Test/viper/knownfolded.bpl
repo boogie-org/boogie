@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" | %OutputCheck "%s"
+// RUN: %parallel-boogie "%s" | %OutputCheck "%s"
 // CHECK-L: Boogie program verifier finished with 2 verified, 0 errors
 
 // ==================================================

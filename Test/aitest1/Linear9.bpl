@@ -1,4 +1,4 @@
-// RUN: %boogie -infer:j -instrumentInfer:e -printInstrumented -noVerify "%s" > "%t"
+// RUN: %parallel-boogie -infer:j -instrumentInfer:e -printInstrumented -noVerify "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure foo () returns ()
 {

@@ -138,7 +138,7 @@ considered to fail.
 
 The RUN lines may use several substitutions
 
-- ``%boogie`` expands to the absolute path to the Boogie executable with any set
+- ``%parallel-boogie`` expands to the absolute path to the Boogie executable with any set
   options. This does not need to be quoted.
 
 - ``%diff`` expands to the diff tool being used. This is ``diff`` on non

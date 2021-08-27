@@ -1,4 +1,4 @@
-// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %parallel-boogie -proverWarnings:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function {:builtin "(_ to_fp 8 24)"} TO_FLOAT32_INT(rmode, int) returns (float24e8);

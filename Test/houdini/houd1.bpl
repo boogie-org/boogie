@@ -1,4 +1,4 @@
-// RUN: %boogie -contractInfer -printAssignment "%s" > "%t"
+// RUN: %parallel-boogie -contractInfer -printAssignment "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 const {:existential true} b1:bool;
 

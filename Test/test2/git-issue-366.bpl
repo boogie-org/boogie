@@ -1,4 +1,4 @@
-// RUN: %boogie -rlimit:5 /proverOpt:O:smt.qi.eager_threshold=100 "%s" > "%t"
+// RUN: %parallel-boogie -rlimit:5 /proverOpt:O:smt.qi.eager_threshold=100 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function f(i:int, j:int) returns (int)

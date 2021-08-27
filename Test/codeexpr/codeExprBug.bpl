@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure p() returns ($r: int);
   ensures |{ $bb0: return ($r == 1); }|;

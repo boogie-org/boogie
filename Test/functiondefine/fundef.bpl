@@ -1,4 +1,4 @@
-// RUN: %boogie -proverLog:"%t.smt2" -env:0 "%s"
+// RUN: %parallel-boogie -proverLog:"%t.smt2" -env:0 "%s"
 // RUN: %OutputCheck "%s" --file-to-check="%t.smt2"
 
 // CHECK-L:(define-fun foo2 ((x Int) ) Int (+ x 1))
