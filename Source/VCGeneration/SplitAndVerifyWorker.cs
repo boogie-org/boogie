@@ -93,7 +93,7 @@ namespace VC
       //   remainingCost -= nextSplit.Cost;
       // }
       
-      var checker = nextSplit.parent.FindCheckerFor(nextSplit.parent.program, false, nextSplit);
+      var checker = nextSplit.parent.CheckerPool.FindCheckerFor(nextSplit.parent, false, nextSplit);
       if (checker == null) {
         lock (this) {
           remainingWork.Push(nextSplit);

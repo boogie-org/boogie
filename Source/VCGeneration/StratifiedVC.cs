@@ -648,9 +648,9 @@ namespace VC
     public Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
     public ProverInterface prover;
 
-    public StratifiedVCGenBase(Program program, string /*?*/ logFilePath, bool appendLogFile, List<Checker> checkers,
+    public StratifiedVCGenBase(Program program, string /*?*/ logFilePath, bool appendLogFile, CheckerPool checkerPool,
       Action<Implementation> PassiveImplInstrumentation)
-      : base(program, logFilePath, appendLogFile, checkers)
+      : base(program, checkerPool)
     {
       implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
       prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.TimeLimit);

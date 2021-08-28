@@ -21,12 +21,10 @@ namespace VC
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
     [NotDelayed]
-    public VCGen(Program program, string /*?*/ logFilePath, bool appendLogFile, List<Checker> checkers)
-      : base(program, checkers)
+    public VCGen(Program program, CheckerPool checkerPool)
+      : base(program, checkerPool)
     {
       Contract.Requires(program != null);
-      this.appendLogFile = appendLogFile;
-      this.logFilePath = logFilePath;
     }
 
     public static AssumeCmd AssertTurnedIntoAssume(AssertCmd assrt)
@@ -319,7 +317,7 @@ namespace VC
 
         parent.CurrentLocalVariables = impl.LocVars;
         parent.PassifyImpl(impl, out var mvInfo);
-        Checker ch = parent.FindCheckerFor(parent.program, true);
+        Checker ch = parent.CheckerPool.FindCheckerFor(parent);
         Contract.Assert(ch != null);
 
         ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
@@ -541,7 +539,7 @@ namespace VC
 
       public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext)
       {
-        VCGen vcgen = new VCGen(new Program(), null, false, new List<Checker>());
+        VCGen vcgen = new VCGen(new Program(), new CheckerPool(CommandLineOptions.Clo));
         vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
         vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
         vcgen.CurrentLocalVariables = codeExpr.LocVars;
@@ -798,7 +796,6 @@ namespace VC
 
     async Task<Outcome> SplitAndVerify(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins,  VerifierCallback callback, ModelViewInfo mvInfo, Outcome outcome)
     {
-      Cores = CommandLineOptions.Clo.VcsCores;
       double maxVcCost = CommandLineOptions.Clo.VcsMaxCost;
       var tmpMaxVcCost = -1;
       var maxSplits = CommandLineOptions.Clo.VcsMaxSplits;
@@ -849,7 +846,7 @@ namespace VC
             var timeout = keepGoing && nextSplit.LastChance ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
               keepGoing ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
               impl.TimeLimit;
-            var checker = nextSplit.parent.FindCheckerFor(nextSplit.parent.program, false, nextSplit);
+            var checker = nextSplit.parent.CheckerPool.FindCheckerFor(nextSplit.parent, false, nextSplit);
             try
             {
               if (checker == null)
