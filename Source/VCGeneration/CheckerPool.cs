@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Boogie;
 
 namespace VC
@@ -9,100 +11,103 @@ namespace VC
   {
     private readonly CommandLineOptions options;
 
-    private readonly List<Checker> /*!>!*/ checkers = new();
-    protected internal Dictionary<ContextCacheKey, ProverContext> CheckerCommonState = new();
+    private readonly Stack<Checker> availableCheckers = new();
+    private readonly Stack<TaskCompletionSource<Checker>> checkerWaiters = new();
+    private int notCreatedCheckers;
     
     public CheckerPool(CommandLineOptions options)
     {
       this.options = options;
+      notCreatedCheckers = options.VcsCores;
     }
 
-    public Checker FindCheckerFor(ConditionGeneration vcgen, bool isBlocking = true, Split split = null,
-      int waitTimeinMs = 50, int maxRetries = 3)
+    public Task<Checker> FindCheckerFor(ConditionGeneration vcgen, Split split = null)
     {
-      Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
-      Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
+      lock (this) {
+        if (availableCheckers.TryPop(out var result)) {
+          Contract.Assert(result != null);
+          return Task.FromResult(result);
+        }
 
-      var program = vcgen.program;
-      
-      lock (checkers)
-      {
-        retry:
-        // Look for existing checker.
-        for (int i = 0; i < checkers.Count; i++)
+        int afterDec = Interlocked.Decrement(ref notCreatedCheckers);
+        if (afterDec >= 0) {
+          var checker = CreateNewChecker(vcgen, split);
+          Contract.Assert(checker != null);
+          return Task.FromResult(checker);
+        }
+
+        Interlocked.Increment(ref notCreatedCheckers);
+        var source = new TaskCompletionSource<Checker>();
+        checkerWaiters.Push(source);
+        return source.Task.ContinueWith(t =>
         {
-          var c = checkers[i];
-          if (Monitor.TryEnter(c))
-          {
-            try
-            {
-              if (c.WillingToHandle(program) && !options.PruneFunctionsAndAxioms)
-              {
-                c.GetReady();
-                return c;
-              }
-              else if (c.IsIdle || c.IsClosed)
-              {
-                if (c.IsIdle)
-                {
-                  c.Retarget(program, c.TheoremProver.Context, split);
-                  c.GetReady();
-                  return c;
-                }
-                else
-                {
-                  checkers.RemoveAt(i);
-                  i--;
-                }
-              }
-            }
-            finally
-            {
-              Monitor.Exit(c);
-            }
-          }
-        }
-
-        if (options.VcsCores <= checkers.Count) {
-          if (isBlocking || 0 < maxRetries)
-          {
-            if (0 < waitTimeinMs)
-            {
-              Monitor.Wait(checkers, waitTimeinMs);
-            }
-
-            maxRetries--;
-            goto retry;
-          }
-
-          return null;
-        }
-
-        return CreateNewChecker(vcgen, split);
+          PrepareChecker(vcgen.program, split, t.Result);
+          Contract.Assert(t.Result != null);
+          return t.Result;
+        });
       }
+      
     }
 
     private Checker CreateNewChecker(ConditionGeneration vcgen, Split split)
     {
       var log = options.ProverLogFilePath;
-      if (log != null && !log.Contains("@PROC@") && checkers.Count > 0) {
-        log = log + "." + checkers.Count;
+      if (log != null && !log.Contains("@PROC@") && availableCheckers.Count > 0) {
+        log = log + "." + availableCheckers.Count;
       }
 
-      Checker ch = new Checker(vcgen, vcgen.program, options.ProverLogFilePath, options.ProverLogFileAppend, split);
+      Checker ch = new Checker(this, vcgen, vcgen.program, options.ProverLogFilePath, options.ProverLogFileAppend, split);
       ch.GetReady();
-      checkers.Add(ch);
       return ch;
     }
 
     public void Dispose()
     {
       lock (this) {
-        foreach (var checker in checkers)
+        foreach (var checker in availableCheckers)
         {
           Contract.Assert(checker != null);
           checker.Close();
         }
+      }
+    }
+
+    void PrepareChecker(Program program, Split split, Checker checker)
+    {
+      if (checker.WillingToHandle(program) && !options.PruneFunctionsAndAxioms)
+      {
+        checker.GetReady();
+      }
+
+      if (checker.IsIdle || checker.IsClosed)
+      {
+        if (checker.IsIdle)
+        {
+          checker.Retarget(program, checker.TheoremProver.Context, split);
+          checker.GetReady();
+        }
+        else
+        {
+          throw new Exception();
+        }
+      }
+
+    }
+
+    public void AddChecker(Checker checker)
+    {
+      if (checker.IsClosed) {
+        throw new Exception();
+      }
+      lock(this)
+      {
+        if (checkerWaiters.TryPop(out var waiter)) {
+          if (waiter.TrySetResult(checker)) {
+            return;
+          }
+        }
+
+        availableCheckers.Push(checker);
       }
     }
   }

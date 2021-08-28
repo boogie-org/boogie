@@ -24,7 +24,6 @@ namespace VC
     private bool DoSplitting => KeepGoing || maxSplits > 1;
       
     private Outcome outcome;
-    private readonly Stack<Split> remainingWork;
     private int runningSplits;
     private double remainingCost;
     private double provenCost;
@@ -33,6 +32,7 @@ namespace VC
     private bool proverFailed;
     private bool halted;
     private bool firstRound = true;
+    private readonly List<Split> manualSplits;
 
     public SplitAndVerifyWorker(VCGen vcGen, Implementation implementation,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
@@ -55,69 +55,42 @@ namespace VC
       if (tmpMaxVcCost >= 0) maxVcCost = tmpMaxVcCost;
 
       ResetPredecessors(implementation.Blocks);
-      var manualSplits = Split.FocusAndSplit(implementation, gotoCmdOrigins, vcGen);
-      remainingWork = new(manualSplits);
+      manualSplits = Split.FocusAndSplit(implementation, gotoCmdOrigins, vcGen);
 
       splitNumber = maxSplits == 1 && !KeepGoing ? -1 : 0;
 
-      if (DoSplitting) {
-        if (remainingWork.TryPeek(out var split)) {
-          remainingCost = split.Cost;
-        }
-      }
+      // if (DoSplitting) {
+      //   if (remainingWork.TryPeek(out var split)) {
+      //     remainingCost = split.Cost;
+      //   }
+      // }
     }
 
     public Task<Outcome> WorkUntilDone()
     {
-      while (TryDoWork()) {
+      foreach (var manualSplit in manualSplits) {
+        DoWork(manualSplit);
       }
       CheckEnd();
 
       return tcs.Task;
     }
 
-    private bool TryDoWork()
-    {
-      Split nextSplit;
-      lock (this) {
-        if (!remainingWork.TryPop(out nextSplit)) {
-          return false;
-        }
-
-        runningSplits++;
-      }
-
-      // if (firstRound && maxSplits > 1)
-      // {
-      //   proverFailed = true;
-      //   remainingCost -= nextSplit.Cost;
-      // }
-      
-      var checker = nextSplit.parent.CheckerPool.FindCheckerFor(nextSplit.parent, false, nextSplit);
-      if (checker == null) {
-        lock (this) {
-          remainingWork.Push(nextSplit);
-          runningSplits--;
-        }
-        return false;
-      }
-
-      DoWork(nextSplit, checker).ContinueWith(_ => { });
-      return true;
-    }
-
     private void CheckEnd()
     {
       lock (this) {
-        if (halted || (remainingWork.Count == 0 && runningSplits == 0))
+        if (halted || runningSplits == 0)
         {
           tcs.TrySetResult(outcome);
         }
       }
     }
 
-    async Task DoWork(Split nextSplit, Checker checker)
+    async void DoWork(Split nextSplit)
     {
+      Interlocked.Increment(ref runningSplits);
+      var checker = await nextSplit.parent.CheckerPool.FindCheckerFor(nextSplit.parent, nextSplit);
+      Contract.Assert(checker != null);
       try {
         proverFailed = false;
         // if (firstRound && maxSplits > 1)
@@ -134,7 +107,6 @@ namespace VC
         nextSplit.Checker.GoBackToIdle();
         Interlocked.Decrement(ref runningSplits);
         CheckEnd();
-        TryDoWork();
       }
     }
 
@@ -204,9 +176,9 @@ namespace VC
             foreach (Split a in tmp)
             {
               Contract.Assert(a != null);
-              remainingWork.Push(a);
               total++;
               remainingCost += a.Cost;
+              DoWork(a);
             }
             runningSplits--;
           }

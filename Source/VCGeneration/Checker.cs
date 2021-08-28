@@ -57,6 +57,7 @@ namespace Microsoft.Boogie
     private TimeSpan proverRunTime;
     private volatile ProverInterface.ErrorHandler handler;
     private volatile CheckerStatus status;
+    private readonly CheckerPool pool;
     public volatile Program Program;
 
     public void GetReady()
@@ -71,6 +72,7 @@ namespace Microsoft.Boogie
       Contract.Requires(IsBusy);
 
       status = CheckerStatus.Idle;
+      this.pool.AddChecker(this);
     }
 
     public Task ProverTask { get; set; }
@@ -107,11 +109,12 @@ namespace Microsoft.Boogie
     /// Constructor.  Initialize a checker with the program and log file.
     /// Optionally, use prover context provided by parameter "ctx".
     /// </summary>
-    public Checker(VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile,
+    public Checker(CheckerPool pool, VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile,
       Split s, ProverContext ctx = null)
     {
       Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
+      this.pool = pool;
       this.Program = prog;
 
       ProverOptions options = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
