@@ -142,7 +142,7 @@ The RUN lines may use several substitutions
   options. This does not need to be quoted.
 
 - ``%parallel-boogie`` expands to the absolute path of the Boogie executable with any set
-  options and ```/vcsCores:2```. This does not need to be quoted.
+  options and ``/vcsCores:2``. This does not need to be quoted.
 - 
 - ``%diff`` expands to the diff tool being used. This is ``diff`` on non
   Windows platforms and ``pydiff`` on Windows. Do not use the ``fc`` tool
