@@ -1,5 +1,5 @@
-// RUN: %boogie "%s" > "%t"
-// RUN: %boogie -removeEmptyBlocks:0 "%s" >> "%t"
+// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie -removeEmptyBlocks:0 "%s" >> "%t"
 // RUN: %diff "%s.expect" "%t"
 // A Boogie version of Elevator.asml (see Boogie/Test/inline/Elevator.asml)
 

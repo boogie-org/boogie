@@ -1,4 +1,4 @@
-// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %parallel-boogie -noVerify "%s" > "%t"
 // RUN: %diff NoErrors.expect "%t"
 var one: [int]int;
 var two: [int,int]int;

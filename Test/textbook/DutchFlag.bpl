@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // The partition step of Quick Sort picks a 'pivot' element from a specified subsection
 // of a given integer array.  It then partially sorts the elements of the array so that

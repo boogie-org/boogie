@@ -1,4 +1,4 @@
-// RUN: %boogie -lib "%s" > "%t"
+// RUN: %parallel-boogie -lib "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type Element;

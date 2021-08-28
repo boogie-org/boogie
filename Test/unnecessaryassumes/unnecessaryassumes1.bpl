@@ -1,5 +1,5 @@
-// We use sequential-boogie here to fix the order of the output from /printNecessaryAssumes 
-// RUN: %sequential-boogie /printNecessaryAssumes "%s" > "%t"
+// We use boogie instead of parallel-boogie here to fix the order of the output from /printNecessaryAssumes 
+// RUN: %boogie /printNecessaryAssumes "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure test0(n: int)

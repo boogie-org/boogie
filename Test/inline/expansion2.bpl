@@ -1,4 +1,4 @@
-// RUN: %boogie "-proverLog:%T/expand2.sx" "%s" > "%t"
+// RUN: %parallel-boogie "-proverLog:%T/expand2.sx" "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // RUN: %OutputCheck "--file-to-check=%T/expand2.sx" "%s"
 function {:inline true} xxgz(x:int) returns(bool)

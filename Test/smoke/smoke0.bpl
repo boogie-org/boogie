@@ -1,4 +1,4 @@
-// RUN: %boogie -smoke "%s" > "%t"
+// RUN: %parallel-boogie -smoke "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure a(x:int)
 {

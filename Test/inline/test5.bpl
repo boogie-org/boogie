@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // test a case, where the inlined proc comes before the caller
 

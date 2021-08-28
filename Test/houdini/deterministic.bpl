@@ -1,4 +1,4 @@
-// RUN: %boogie  /contractInfer /inlineDepth:1 /printAssignment "%s" > "%t"
+// RUN: %parallel-boogie  /contractInfer /inlineDepth:1 /printAssignment "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 

@@ -1,4 +1,4 @@
-// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %parallel-boogie -proverWarnings:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type float32 = float24e8;
 

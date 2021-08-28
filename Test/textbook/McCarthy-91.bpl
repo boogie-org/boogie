@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // McCarthy 91 function
 procedure F(n: int) returns (r: int)

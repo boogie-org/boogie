@@ -1,4 +1,4 @@
-// RUN: %boogie -lib "%s" > "%t"
+// RUN: %parallel-boogie -lib "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // procedures Ex0 to Ex9 are exercises to ramp up to the "real" vector procedures

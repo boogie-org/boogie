@@ -1,4 +1,4 @@
-// RUN: %boogie -errorLimit:0 "%s" > "%t"
+// RUN: %parallel-boogie -errorLimit:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure ManyErrors()
 {

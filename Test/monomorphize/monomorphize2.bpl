@@ -1,4 +1,4 @@
-// RUN: %boogie -monomorphize "%s" > "%t"
+// RUN: %parallel-boogie -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type Vec T;

@@ -1,4 +1,4 @@
-// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %parallel-boogie -proverWarnings:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function {:builtin "(_ to_fp 8 23) RNE"} TO_FLOAT823_INT(int) returns (float23e8);

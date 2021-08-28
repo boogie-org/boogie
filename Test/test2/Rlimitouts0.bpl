@@ -1,5 +1,5 @@
-// We use sequential-boogie here because parallel Boogie doesn't work well with -proverLog
-// RUN: %sequential-boogie -rlimit:800 -proverLog:"%t.smt2" "%s"
+// We use boogie here because parallel-boogie doesn't work well with -proverLog
+// RUN: %boogie -rlimit:800 -proverLog:"%t.smt2" "%s"
 // RUN: %OutputCheck --file-to-check "%t.smt2" "%s"
 // CHECK-L: (set-option :timeout 0)
 // CHECK-L: (set-option :rlimit 800000)

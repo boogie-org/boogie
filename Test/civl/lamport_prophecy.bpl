@@ -10,7 +10,7 @@
 // algorithm has the property that once all processes have finished, at
 // least one y[j] == 1.
 
-// RUN: %boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // XFAIL: *
 

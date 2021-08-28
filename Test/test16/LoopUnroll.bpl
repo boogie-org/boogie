@@ -1,8 +1,8 @@
-// RUN: %boogie -loopUnroll:1 -logPrefix:-lu1 LoopUnroll.bpl > "%t1"
+// RUN: %parallel-boogie -loopUnroll:1 -logPrefix:-lu1 LoopUnroll.bpl > "%t1"
 // RUN: %diff "%s.1.expect" "%t1"
-// RUN: %boogie -loopUnroll:2 -logPrefix:-lu2 -proc:ManyIterations LoopUnroll.bpl > "%t2"
+// RUN: %parallel-boogie -loopUnroll:2 -logPrefix:-lu2 -proc:ManyIterations LoopUnroll.bpl > "%t2"
 // RUN: %diff "%s.2.expect" "%t2"
-// RUN: %boogie -loopUnroll:3 -logPrefix:-lu3 -proc:ManyIterations LoopUnroll.bpl > "%t3"
+// RUN: %parallel-boogie -loopUnroll:3 -logPrefix:-lu3 -proc:ManyIterations LoopUnroll.bpl > "%t3"
 // RUN: %diff "%s.3.expect" "%t3"
 procedure P()
 {
