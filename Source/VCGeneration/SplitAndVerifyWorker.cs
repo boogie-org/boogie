@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Threading;
@@ -90,7 +89,6 @@ namespace VC
     {
       Interlocked.Increment(ref runningSplits);
       var checker = await nextSplit.parent.CheckerPool.FindCheckerFor(nextSplit.parent, nextSplit);
-      Contract.Assert(checker != null);
       try {
         proverFailed = false;
         // if (firstRound && maxSplits > 1)
@@ -112,6 +110,10 @@ namespace VC
 
     private void StartCheck(Split nextSplit, Checker checker)
     {
+      lock (this) {
+        remainingCost += nextSplit.Cost;
+        total++;
+      }
       int currentSplitNumber = Interlocked.Increment(ref splitNumber) - 1;
       if (CommandLineOptions.Clo.Trace && splitNumber >= 0) {
         Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
@@ -130,20 +132,24 @@ namespace VC
     private void ProcessResult(Split nextSplit)
     {
       if (DoSplitting) {
-        remainingCost -= nextSplit.Cost;
+        lock (this) {
+          remainingCost -= nextSplit.Cost;
+        }
       }
 
       lock (nextSplit.Checker) {
         nextSplit.ReadOutcome(ref outcome, out proverFailed);
       }
 
-      if (DoSplitting) {
-        if (proverFailed) {
-          // even if the prover fails, we have learned something, i.e., it is
-          // annoying to watch Boogie say Timeout, 0.00% a couple of times
-          provenCost += nextSplit.Cost / 100;
-        } else {
-          provenCost += nextSplit.Cost;
+      lock (this) {
+        if (DoSplitting) {
+          if (proverFailed) {
+            // even if the prover fails, we have learned something, i.e., it is
+            // annoying to watch Boogie say Timeout, 0.00% a couple of times
+            provenCost += nextSplit.Cost / 100;
+          } else {
+            provenCost += nextSplit.Cost;
+          }
         }
       }
 
@@ -172,16 +178,12 @@ namespace VC
           maxVcCost = 1.0; // for future
           firstRound = false;
           //tmp.Sort(new Comparison<Split!>(Split.Compare));
-          lock (this) {
-            foreach (Split a in tmp)
-            {
-              Contract.Assert(a != null);
-              total++;
-              remainingCost += a.Cost;
-              DoWork(a);
-            }
-            runningSplits--;
+          foreach (Split a in tmp)
+          {
+            Contract.Assert(a != null);
+            DoWork(a);
           }
+          Interlocked.Decrement(ref runningSplits);
 
           if (outcome != Outcome.Errors)
           {
@@ -204,7 +206,7 @@ namespace VC
           else if (outcome == Outcome.OutOfMemory)
           {
             string msg = "out of memory";
-            if (nextSplit.reporter != null && nextSplit.reporter.resourceExceededMessage != null)
+            if (nextSplit.reporter is { resourceExceededMessage: { } })
             {
               msg = nextSplit.reporter.resourceExceededMessage;
             }
@@ -214,7 +216,7 @@ namespace VC
           else if (outcome == Outcome.OutOfResource)
           {
             string msg = "out of resource";
-            if (nextSplit.reporter != null && nextSplit.reporter.resourceExceededMessage != null)
+            if (nextSplit.reporter is { resourceExceededMessage: { } })
             {
               msg = nextSplit.reporter.resourceExceededMessage;
             }

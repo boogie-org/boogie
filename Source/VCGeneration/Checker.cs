@@ -72,7 +72,7 @@ namespace Microsoft.Boogie
       Contract.Requires(IsBusy);
 
       status = CheckerStatus.Idle;
-      this.pool.AddChecker(this);
+      pool.AddChecker(this);
     }
 
     public Task ProverTask { get; set; }
@@ -110,7 +110,7 @@ namespace Microsoft.Boogie
     /// Optionally, use prover context provided by parameter "ctx".
     /// </summary>
     public Checker(CheckerPool pool, VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile,
-      Split s, ProverContext ctx = null)
+      Split split, ProverContext ctx = null)
     {
       Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
@@ -149,7 +149,7 @@ namespace Microsoft.Boogie
       {
         if (ctx == null) ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
 
-        Setup(prog, ctx, s);
+        Setup(prog, ctx, split);
 
         // we first generate the prover and then store a clone of the
         // context in the cache, so that the prover can setup stuff in
