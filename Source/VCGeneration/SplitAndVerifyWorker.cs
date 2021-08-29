@@ -88,7 +88,16 @@ namespace VC
     async void DoWork(Split nextSplit)
     {
       Interlocked.Increment(ref runningSplits);
-      var checker = await nextSplit.parent.CheckerPool.FindCheckerFor(nextSplit.parent, nextSplit);
+      Checker checker = null;
+      try {
+        checker = await nextSplit.parent.CheckerPool.FindCheckerFor(nextSplit.parent, nextSplit);
+      }
+      catch (Exception e) {
+        tcs.SetException(e);
+        halted = true;
+        return;
+      }
+      
       try {
         proverFailed = false;
         // if (firstRound && maxSplits > 1)

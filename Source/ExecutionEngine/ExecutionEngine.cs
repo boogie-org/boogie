@@ -1028,7 +1028,7 @@ namespace Microsoft.Boogie
       }
       catch (AggregateException ae)
       {
-        ae.Handle(e =>
+        ae.Flatten().Handle(e =>
         {
           if (e is ProverException)
           {
