@@ -100,11 +100,6 @@ namespace VC
       
       try {
         proverFailed = false;
-        // if (firstRound && maxSplits > 1)
-        // {
-        //   proverFailed = true;
-        //   remainingCost -= nextSplit.Cost;
-        // }
         StartCheck(split, checker);
         await split.ProverTask;
         ProcessResult(split);
