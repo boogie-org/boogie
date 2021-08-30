@@ -14,6 +14,7 @@ namespace VC
     private readonly Stack<Checker> availableCheckers = new();
     private readonly Stack<TaskCompletionSource<Checker>> checkerWaiters = new();
     private int notCreatedCheckers;
+    private bool disposed = false;
     
     public CheckerPool(CommandLineOptions options)
     {
@@ -24,6 +25,10 @@ namespace VC
     public Task<Checker> FindCheckerFor(ConditionGeneration vcgen, Split split = null)
     {
       lock (this) {
+        if (disposed) {
+          return Task.FromException<Checker>(new Exception("CheckerPool was already disposed"));
+        }
+        
         if (availableCheckers.TryPop(out var result)) {
           Contract.Assert(result != null);
           return Task.FromResult(result);
@@ -69,6 +74,8 @@ namespace VC
           Contract.Assert(checker != null);
           checker.Close();
         }
+        availableCheckers.Clear();
+        disposed = true;
       }
     }
 

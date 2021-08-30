@@ -1519,5 +1519,11 @@ namespace VC
           SoundnessCheck(cache, exit, newcopies);
         }
       }
+
+      public void ReleaseChecker()
+      {
+        Checker.GoBackToIdle();
+        checker = null;
+      }
     }
 }

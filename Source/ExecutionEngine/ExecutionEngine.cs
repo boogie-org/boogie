@@ -450,6 +450,7 @@ namespace Microsoft.Boogie
 
       if (0 <= CommandLineOptions.Clo.VerifySnapshots && lookForSnapshots)
       {
+        // TODO report a warning if snapshots aren't found.
         var snapshotsByVersion = LookForSnapshots(fileNames);
         return snapshotsByVersion.All(s => ProcessFiles(new List<string>(s), false, programId));
       }
@@ -1135,6 +1136,7 @@ namespace Microsoft.Boogie
         if (RequestIdToCancellationTokenSource.IsEmpty)
         {
           checkerPool.Dispose();
+          checkerPool = null;
         }
       }
     }
