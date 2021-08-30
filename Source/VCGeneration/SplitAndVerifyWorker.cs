@@ -29,6 +29,7 @@ namespace VC
     private int total = 0;
     private int splitNumber;
     private bool proverFailed;
+    private bool halted;
     private bool firstRound = true;
     private readonly List<Split> manualSplits;
 
@@ -80,7 +81,7 @@ namespace VC
     private void CheckEnd()
     {
       lock (this) {
-        if (runningSplits == 0)
+        if (halted || runningSplits == 0)
         {
           tcs.TrySetResult(outcome);
         }
@@ -96,6 +97,7 @@ namespace VC
       }
       catch (Exception e) {
         tcs.SetException(e);
+        halted = true;
         return;
       }
       
@@ -159,7 +161,7 @@ namespace VC
 
         callback.OnCounterexample(split.ToCounterexample(split.Checker.TheoremProver.Context), msg);
         outcome = Outcome.Errors;
-        tcs.TrySetResult(outcome);
+        halted = true;
         return;
       }
       
@@ -220,7 +222,7 @@ namespace VC
             callback.OnOutOfResource(msg);
           }
 
-          tcs.TrySetResult(outcome);
+          halted = true;
         }
       }
     }
