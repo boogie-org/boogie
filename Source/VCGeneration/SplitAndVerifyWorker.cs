@@ -63,7 +63,7 @@ namespace VC
     {
       foreach (var manualSplit in manualSplits) {
         DoWork(manualSplit);
-      }FirstSuccessfulTask
+      }
       CheckEnd();
 
       return tcs.Task;
