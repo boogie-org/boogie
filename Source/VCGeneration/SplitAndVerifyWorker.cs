@@ -116,25 +116,25 @@ namespace VC
       }
     }
 
-    private void StartCheck(Split nextSplit, Checker checker)
+    private void StartCheck(Split split, Checker checker)
     {
       lock (this) {
-        remainingCost += nextSplit.Cost;
+        remainingCost += split.Cost;
         total++;
       }
       int currentSplitNumber = Interlocked.Increment(ref splitNumber) - 1;
       if (CommandLineOptions.Clo.Trace && splitNumber >= 0) {
         Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
-          nextSplit.Stats, splitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
+          split.Stats, splitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
       }
 
       callback.OnProgress("VCprove", splitNumber < 0 ? 0 : splitNumber, total,
         provenCost / (remainingCost + provenCost));
 
-      var timeout = KeepGoing && nextSplit.LastChance ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
+      var timeout = KeepGoing && split.LastChance ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
         KeepGoing ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
         implementation.TimeLimit;
-      nextSplit.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit);
+      split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit);
     }
 
     private void ProcessResult(Split split)
