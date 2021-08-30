@@ -60,12 +60,21 @@ namespace VC
 
     public Task<Outcome> WorkUntilDone()
     {
+      TrackSplitsCost(manualSplits);
       foreach (var manualSplit in manualSplits) {
         DoWork(manualSplit);
       }
       CheckEnd();
 
       return tcs.Task;
+    }
+
+    private void TrackSplitsCost(List<Split> splits)
+    {
+      foreach (var split in splits) {
+        remainingCost += split.Cost;
+        total++;
+      }
     }
 
     private void CheckEnd()
@@ -106,8 +115,6 @@ namespace VC
     private void StartCheck(Split split, Checker checker)
     {
       lock (this) {
-        remainingCost += split.Cost;
-        total++;
       }
       int currentSplitNumber = Interlocked.Increment(ref splitNumber) - 1;
       if (CommandLineOptions.Clo.Trace && splitNumber >= 0) {
@@ -126,10 +133,8 @@ namespace VC
 
     private void ProcessResult(Split split)
     {
-      if (DoSplitting) {
-        lock (this) {
-          remainingCost -= split.Cost;
-        }
+      lock (this) {
+        remainingCost -= split.Cost;
       }
 
       lock (split.Checker) {
@@ -137,14 +142,12 @@ namespace VC
       }
 
       lock (this) {
-        if (DoSplitting) {
-          if (proverFailed) {
-            // even if the prover fails, we have learned something, i.e., it is
-            // annoying to watch Boogie say Timeout, 0.00% a couple of times
-            provenCost += split.Cost / 100;
-          } else {
-            provenCost += split.Cost;
-          }
+        if (proverFailed) {
+          // even if the prover fails, we have learned something, i.e., it is
+          // annoying to watch Boogie say Timeout, 0.00% a couple of times
+          provenCost += split.Cost / 100;
+        } else {
+          provenCost += split.Cost;
         }
       }
 
@@ -172,11 +175,11 @@ namespace VC
           Contract.Assert(newSplits != null);
           maxVcCost = 1.0; // for future
           firstRound = false;
-          //tmp.Sort(new Comparison<Split!>(Split.Compare));
-          foreach (Split a in newSplits)
+          TrackSplitsCost(newSplits);
+          foreach (Split newSplit in newSplits)
           {
-            Contract.Assert(a != null);
-            DoWork(a);
+            Contract.Assert(newSplit != null);
+            DoWork(newSplit);
           }
           Interlocked.Decrement(ref runningSplits);
 

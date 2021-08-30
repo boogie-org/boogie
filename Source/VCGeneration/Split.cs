@@ -152,13 +152,13 @@ namespace VC
         get
         {
           ComputeBestSplit();
-          return string.Format("(cost:{0:0}/{1:0}{2})", totalCost, assertionCost, LastChance ? " last" : "");
+          return $"(cost:{totalCost:0}/{assertionCost:0}{(LastChance ? " last" : "")})";
         }
       }
 
       public void DumpDot(int splitNum)
       {
-        using (System.IO.StreamWriter sw = System.IO.File.CreateText(string.Format("{0}.split.{1}.dot", impl.Name, splitNum)))
+        using (System.IO.StreamWriter sw = System.IO.File.CreateText($"{impl.Name}.split.{splitNum}.dot"))
         {
           sw.WriteLine("digraph G {");
 
