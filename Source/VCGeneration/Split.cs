@@ -1408,41 +1408,44 @@ namespace VC
 
         splitNum = no;
 
-        impl.Blocks = blocks;
+        // Lock impl since we're setting impl.Blocks that is used to generate the VC.
+        lock (impl) {
+          impl.Blocks = blocks;
 
-        this.checker = checker;
+          this.checker = checker;
 
-        Dictionary<int, Absy> label2absy = new Dictionary<int, Absy>();
+          Dictionary<int, Absy> label2absy = new Dictionary<int, Absy>();
 
-        ProverContext ctx = checker.TheoremProver.Context;
-        Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
-        var cc = new VCGen.CodeExprConversionClosure(label2absy, ctx);
-        bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
+          ProverContext ctx = checker.TheoremProver.Context;
+          Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
+          var cc = new VCGen.CodeExprConversionClosure(label2absy, ctx);
+          bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
 
-        var exprGen = ctx.ExprGen;
-        VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
-        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
-        Contract.Assert(vc != null);
+          var exprGen = ctx.ExprGen;
+          VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
+          VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
+          Contract.Assert(vc != null);
 
-        vc = QuantifierInstantiationEngine.Instantiate(impl, exprGen, bet, vc);
+          vc = QuantifierInstantiationEngine.Instantiate(impl, exprGen, bet, vc);
 
-        VCExpr controlFlowFunctionAppl =
-          exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
-        vc = exprGen.Implies(eqExpr, vc);
-        reporter = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.debugInfos, callback,
-          mvInfo, this.Checker.TheoremProver.Context, parent.program);
+          VCExpr controlFlowFunctionAppl =
+            exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+          VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+          vc = exprGen.Implies(eqExpr, vc);
+          reporter = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.debugInfos, callback,
+            mvInfo, Checker.TheoremProver.Context, parent.program);
+          
+          if (CommandLineOptions.Clo.TraceVerify && no >= 0)
+          {
+            Console.WriteLine("-- after split #{0}", no);
+            Print();
+          }
 
-        if (CommandLineOptions.Clo.TraceVerify && no >= 0)
-        {
-          Console.WriteLine("-- after split #{0}", no);
-          Print();
+          string desc = cce.NonNull(impl.Name);
+          if (no >= 0)
+            desc += "_split" + no;
+          checker.BeginCheck(desc, vc, reporter, timeout, rlimit, impl.RandomSeed);
         }
-
-        string desc = cce.NonNull(impl.Name);
-        if (no >= 0)
-          desc += "_split" + no;
-        checker.BeginCheck(desc, vc, reporter, timeout, rlimit, impl.RandomSeed);
       }
 
       private static Cmd AssertIntoAssume(Cmd c)
