@@ -1355,7 +1355,7 @@ namespace VC
 
         if (CommandLineOptions.Clo.Trace && splitNum >= 0)
         {
-          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitNum,
+          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitNum + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 

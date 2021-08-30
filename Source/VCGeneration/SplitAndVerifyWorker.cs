@@ -114,9 +114,7 @@ namespace VC
 
     private void StartCheck(Split split, Checker checker)
     {
-      lock (this) {
-      }
-      int currentSplitNumber = Interlocked.Increment(ref splitNumber) - 1;
+      int currentSplitNumber = Interlocked.Increment(ref splitNumber);
       if (CommandLineOptions.Clo.Trace && splitNumber >= 0) {
         Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
           split.Stats, splitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
