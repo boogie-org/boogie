@@ -57,12 +57,6 @@ namespace VC
       manualSplits = Split.FocusAndSplit(implementation, gotoCmdOrigins, vcGen);
 
       splitNumber = maxSplits == 1 && !KeepGoing ? -1 : 0;
-
-      // if (DoSplitting) {
-      //   if (remainingWork.TryPeek(out var split)) {
-      //     remainingCost = split.Cost;
-      //   }
-      // }
     }
 
     public Task<Outcome> WorkUntilDone()
