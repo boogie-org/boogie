@@ -12,7 +12,7 @@ namespace VC
     private readonly CommandLineOptions options;
 
     private readonly Stack<Checker> availableCheckers = new();
-    private readonly Stack<TaskCompletionSource<Checker>> checkerWaiters = new();
+    private readonly Queue<TaskCompletionSource<Checker>> checkerWaiters = new();
     private int notCreatedCheckers;
     private bool disposed = false;
     
@@ -43,7 +43,7 @@ namespace VC
 
         Interlocked.Increment(ref notCreatedCheckers);
         var source = new TaskCompletionSource<Checker>();
-        checkerWaiters.Push(source);
+        checkerWaiters.Enqueue(source);
         return source.Task.ContinueWith(t =>
         {
           PrepareChecker(vcgen.program, split, t.Result);
@@ -108,7 +108,7 @@ namespace VC
       }
       lock(this)
       {
-        if (checkerWaiters.TryPop(out var waiter)) {
+        if (checkerWaiters.TryDequeue(out var waiter)) {
           if (waiter.TrySetResult(checker)) {
             return;
           }
