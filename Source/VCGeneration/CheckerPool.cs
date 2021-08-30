@@ -14,7 +14,7 @@ namespace VC
     private readonly Stack<Checker> availableCheckers = new();
     private readonly Queue<TaskCompletionSource<Checker>> checkerWaiters = new();
     private int notCreatedCheckers;
-    private bool disposed = false;
+    private bool disposed;
     
     public CheckerPool(CommandLineOptions options)
     {
@@ -30,6 +30,7 @@ namespace VC
         }
         
         if (availableCheckers.TryPop(out var result)) {
+          PrepareChecker(vcgen.program, split, result);
           Contract.Assert(result != null);
           return Task.FromResult(result);
         }
@@ -84,27 +85,21 @@ namespace VC
       if (checker.WillingToHandle(program) && !options.PruneFunctionsAndAxioms)
       {
         checker.GetReady();
+        return;
       }
 
-      if (checker.IsIdle || checker.IsClosed)
-      {
-        if (checker.IsIdle)
-        {
-          checker.Retarget(program, checker.TheoremProver.Context, split);
-          checker.GetReady();
-        }
-        else
-        {
-          throw new Exception();
-        }
-      }
-
+      checker.Retarget(program, checker.TheoremProver.Context, split);
+      checker.GetReady();
     }
 
     public void AddChecker(Checker checker)
     {
       if (checker.IsClosed) {
         throw new Exception();
+      }
+      if (disposed) {
+        checker.Close();
+        return;
       }
       lock(this)
       {
