@@ -772,27 +772,6 @@ namespace VC
         if (changed) b.Cmds = newCmds;
       }
     }
-    
-    
-    public static Task<int> FirstSuccessfulTask(IEnumerable<Task> tasks)
-    {
-      var taskList = tasks.ToList();
-      var tcs = new TaskCompletionSource<int>();
-      int remainingTasks = taskList.Count;
-      for (var index = 0; index < taskList.Count; index++) {
-        var task = taskList[index];
-        var indexCopy = index;
-        task.ContinueWith(t =>
-        {
-          if (task.Status == TaskStatus.RanToCompletion)
-            tcs.TrySetResult(indexCopy);
-          else if (Interlocked.Decrement(ref remainingTasks) == 0)
-            tcs.SetException(new AggregateException(tasks.SelectMany(t1 => t1.Exception.InnerExceptions)));
-        });
-      }
-
-      return tcs.Task;
-    }
 
     public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback)
     {
