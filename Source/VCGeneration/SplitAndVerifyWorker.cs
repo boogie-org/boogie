@@ -20,7 +20,7 @@ namespace VC
     private readonly int maxKeepGoingSplits;
     private double maxVcCost;
       
-    private bool DoSplitting => KeepGoing || maxSplits > 1;
+    private bool DoSplitting => manualSplits.Count > 1 || KeepGoing || maxSplits > 1;
       
     private Outcome outcome;
     private int runningSplits;
@@ -116,7 +116,7 @@ namespace VC
 
     private void StartCheck(Split split, Checker checker)
     {
-      int currentSplitNumber = Interlocked.Increment(ref splitNumber);
+      int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) : -1;
       if (CommandLineOptions.Clo.Trace && splitNumber >= 0) {
         Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
           split.Stats, splitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
