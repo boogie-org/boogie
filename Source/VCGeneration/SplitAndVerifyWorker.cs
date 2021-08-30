@@ -88,7 +88,7 @@ namespace VC
     async void DoWork(Split split)
     {
       Interlocked.Increment(ref runningSplits);
-      Checker checker = null;
+      Checker checker;
       try {
         checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split);
       }
@@ -181,7 +181,7 @@ namespace VC
 
         if (currentMaxSplits > 1)
         {
-          List<Split> newSplits = Split.DoSplit(split, maxVcCost, currentMaxSplits);
+          var newSplits = Split.DoSplit(split, maxVcCost, currentMaxSplits);
           Contract.Assert(newSplits != null);
           maxVcCost = 1.0; // for future
           firstRound = false;
