@@ -1185,7 +1185,7 @@ namespace VC
       public static List<Split> FocusAndSplit(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
       {
         List<Split> focussedImpl = FocusImpl(impl, gotoCmdOrigins, par);
-        var splits = focussedImpl.Select(f => FindManualSplits(f)).SelectMany(x => x).ToList();
+        var splits = focussedImpl.Select(FindManualSplits).SelectMany(x => x).ToList();
         splits.ForEach(split => split.TopLevelDeclarations = Prune.PruneDecl(par.program, split.blocks));
         return splits;
       }

@@ -26,7 +26,6 @@ namespace VC
     private bool KeepGoing => maxKeepGoingSplits > 1;
       
     private Outcome outcome;
-    private int runningSplits;
     private double remainingCost;
     private double provenCost;
     private int total;
@@ -81,7 +80,6 @@ namespace VC
 
     async Task DoWork(Split split)
     {
-      Interlocked.Increment(ref runningSplits);
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split);
 
       try {
