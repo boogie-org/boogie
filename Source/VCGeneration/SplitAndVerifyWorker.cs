@@ -15,24 +15,23 @@ namespace VC
     private readonly VerifierCallback callback;
     private readonly ModelViewInfo mvInfo;
     private readonly Implementation implementation;
-    private bool KeepGoing => maxKeepGoingSplits > 1;
       
     private readonly int maxSplits;
     private readonly int maxKeepGoingSplits;
+    private readonly List<Split> manualSplits;
     private double maxVcCost;
       
     private bool DoSplitting => manualSplits.Count > 1 || KeepGoing || maxSplits > 1;
     private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
+    private bool KeepGoing => maxKeepGoingSplits > 1;
       
     private Outcome outcome;
     private int runningSplits;
     private double remainingCost;
     private double provenCost;
-    private int total = 0;
+    private int total;
     private int splitNumber;
-    private bool proverFailed;
     private bool firstRound = true;
-    private readonly List<Split> manualSplits;
 
     public SplitAndVerifyWorker(CommandLineOptions options, VCGen vcGen, Implementation implementation,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
@@ -85,7 +84,6 @@ namespace VC
       Interlocked.Increment(ref runningSplits);
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split);
 
-      proverFailed = false;
       try {
         StartCheck(split, checker);
       }
@@ -121,9 +119,7 @@ namespace VC
         }
       }
 
-      lock (split.Checker) {
-        split.ReadOutcome(ref outcome, out proverFailed);
-      }
+      split.ReadOutcome(ref outcome, out var proverFailed);
       split.ReleaseChecker();
 
       if (TrackingProgress) {
@@ -140,7 +136,16 @@ namespace VC
 
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
-      if (proverFailed && !firstRound && split.LastChance) {
+      if (!proverFailed) {
+        return;
+      }
+
+      await HandleProverFailure(split);
+    }
+
+    private async Task HandleProverFailure(Split split)
+    {
+      if (!firstRound && split.LastChance) {
         string msg = "some timeout";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
@@ -150,58 +155,43 @@ namespace VC
         outcome = Outcome.Errors;
         return;
       }
-      
-      if (proverFailed)
-      {
-        int currentMaxSplits = firstRound && maxSplits > 1 ? maxSplits : maxKeepGoingSplits;
 
-        if (currentMaxSplits > 1)
-        {
-          var newSplits = Split.DoSplit(split, maxVcCost, currentMaxSplits);
-          Contract.Assert(newSplits != null);
-          maxVcCost = 1.0; // for future
-          firstRound = false;
-          TrackSplitsCost(newSplits);
-          await Task.WhenAll(newSplits.Select(DoWork));
+      int currentMaxSplits = firstRound && maxSplits > 1 ? maxSplits : maxKeepGoingSplits;
 
-          if (outcome != Outcome.Errors)
-          {
-            outcome = Outcome.Correct;
-          }
+      if (currentMaxSplits > 1) {
+        var newSplits = Split.DoSplit(split, maxVcCost, currentMaxSplits);
+        Contract.Assert(newSplits != null);
+        maxVcCost = 1.0; // for future
+        firstRound = false;
+        TrackSplitsCost(newSplits);
+        await Task.WhenAll(newSplits.Select(DoWork));
+
+        if (outcome != Outcome.Errors) {
+          outcome = Outcome.Correct;
         }
-        else
-        {
-          Contract.Assert(outcome != Outcome.Correct);
-          if (outcome == Outcome.TimedOut)
-          {
-            string msg = "some timeout";
-            if (split.reporter is { resourceExceededMessage: { } })
-            {
-              msg = split.reporter.resourceExceededMessage;
-            }
-
-            callback.OnTimeout(msg);
+      } else {
+        Contract.Assert(outcome != Outcome.Correct);
+        if (outcome == Outcome.TimedOut) {
+          string msg = "some timeout";
+          if (split.reporter is { resourceExceededMessage: { } }) {
+            msg = split.reporter.resourceExceededMessage;
           }
-          else if (outcome == Outcome.OutOfMemory)
-          {
-            string msg = "out of memory";
-            if (split.reporter is { resourceExceededMessage: { } })
-            {
-              msg = split.reporter.resourceExceededMessage;
-            }
 
-            callback.OnOutOfMemory(msg);
+          callback.OnTimeout(msg);
+        } else if (outcome == Outcome.OutOfMemory) {
+          string msg = "out of memory";
+          if (split.reporter is { resourceExceededMessage: { } }) {
+            msg = split.reporter.resourceExceededMessage;
           }
-          else if (outcome == Outcome.OutOfResource)
-          {
-            string msg = "out of resource";
-            if (split.reporter is { resourceExceededMessage: { } })
-            {
-              msg = split.reporter.resourceExceededMessage;
-            }
 
-            callback.OnOutOfResource(msg);
+          callback.OnOutOfMemory(msg);
+        } else if (outcome == Outcome.OutOfResource) {
+          string msg = "out of resource";
+          if (split.reporter is { resourceExceededMessage: { } }) {
+            msg = split.reporter.resourceExceededMessage;
           }
+
+          callback.OnOutOfResource(msg);
         }
       }
     }
