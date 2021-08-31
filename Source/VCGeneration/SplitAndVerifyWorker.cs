@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
@@ -15,7 +16,6 @@ namespace VC
     private readonly ModelViewInfo mvInfo;
     private readonly Implementation implementation;
     private bool KeepGoing => maxKeepGoingSplits > 1;
-    private readonly TaskCompletionSource<Outcome> tcs = new();
       
     private readonly int maxSplits;
     private readonly int maxKeepGoingSplits;
@@ -31,7 +31,6 @@ namespace VC
     private int total = 0;
     private int splitNumber;
     private bool proverFailed;
-    private bool halted;
     private bool firstRound = true;
     private readonly List<Split> manualSplits;
 
@@ -62,15 +61,12 @@ namespace VC
       splitNumber = maxSplits == 1 && !KeepGoing ? -1 : 0;
     }
 
-    public Task<Outcome> WorkUntilDone()
+    public async Task<Outcome> WorkUntilDone()
     {
       TrackSplitsCost(manualSplits);
-      foreach (var manualSplit in manualSplits) {
-        DoWork(manualSplit);
-      }
-      CheckEnd();
+      await Task.WhenAll(manualSplits.Select(DoWork));
 
-      return tcs.Task;
+      return outcome;
     }
 
     private void TrackSplitsCost(List<Split> splits)
@@ -84,40 +80,20 @@ namespace VC
       }
     }
 
-    private void CheckEnd()
-    {
-      lock (this) {
-        if (halted || runningSplits == 0)
-        {
-          tcs.TrySetResult(outcome);
-        }
-      }
-    }
-
-    async void DoWork(Split split)
+    async Task DoWork(Split split)
     {
       Interlocked.Increment(ref runningSplits);
-      Checker checker;
+      var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split);
+
+      proverFailed = false;
       try {
-        checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split);
-      }
-      catch (Exception e) {
-        tcs.SetException(e);
-        halted = true;
-        return;
-      }
-      
-      try {
-        proverFailed = false;
         StartCheck(split, checker);
-        await split.ProverTask;
-        ProcessResult(split);
       }
-      finally {
+      catch {
         split.ReleaseChecker();
-        Interlocked.Decrement(ref runningSplits);
-        CheckEnd();
       }
+      await split.ProverTask;
+      await ProcessResult(split);
     }
 
     private void StartCheck(Split split, Checker checker)
@@ -137,7 +113,7 @@ namespace VC
       split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit);
     }
 
-    private void ProcessResult(Split split)
+    private async Task ProcessResult(Split split)
     {
       if (TrackingProgress) {
         lock (this) {
@@ -148,6 +124,7 @@ namespace VC
       lock (split.Checker) {
         split.ReadOutcome(ref outcome, out proverFailed);
       }
+      split.ReleaseChecker();
 
       if (TrackingProgress) {
         lock (this) {
@@ -171,7 +148,6 @@ namespace VC
 
         callback.OnCounterexample(split.ToCounterexample(split.Checker.TheoremProver.Context), msg);
         outcome = Outcome.Errors;
-        halted = true;
         return;
       }
       
@@ -186,12 +162,7 @@ namespace VC
           maxVcCost = 1.0; // for future
           firstRound = false;
           TrackSplitsCost(newSplits);
-          foreach (Split newSplit in newSplits)
-          {
-            Contract.Assert(newSplit != null);
-            DoWork(newSplit);
-          }
-          Interlocked.Decrement(ref runningSplits);
+          await Task.WhenAll(newSplits.Select(DoWork));
 
           if (outcome != Outcome.Errors)
           {
@@ -231,8 +202,6 @@ namespace VC
 
             callback.OnOutOfResource(msg);
           }
-
-          halted = true;
         }
       }
     }
