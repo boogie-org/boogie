@@ -146,7 +146,7 @@ namespace Microsoft.Boogie.Houdini
       this.descriptiveName = impl.Name;
       this.stats = stats;
       collector = new ConditionGeneration.CounterexampleCollector();
-      collector.OnProgress("HdnVCGen", 0, 0, 0.0);
+      collector.OnProgress?.Invoke("HdnVCGen", 0, 0, 0.0);
 
       vcgen.ConvertCFG2DAG(impl, taskID: taskID);
       var gotoCmdOrigins = vcgen.PassifyImpl(impl, out var mvInfo);

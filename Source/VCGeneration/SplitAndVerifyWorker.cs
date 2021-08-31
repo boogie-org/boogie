@@ -10,6 +10,7 @@ namespace VC
 {
   class SplitAndVerifyWorker
   {
+    private readonly CommandLineOptions options;
     private readonly VerifierCallback callback;
     private readonly ModelViewInfo mvInfo;
     private readonly Implementation implementation;
@@ -21,6 +22,7 @@ namespace VC
     private double maxVcCost;
       
     private bool DoSplitting => manualSplits.Count > 1 || KeepGoing || maxSplits > 1;
+    private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
       
     private Outcome outcome;
     private int runningSplits;
@@ -33,22 +35,23 @@ namespace VC
     private bool firstRound = true;
     private readonly List<Split> manualSplits;
 
-    public SplitAndVerifyWorker(VCGen vcGen, Implementation implementation,
+    public SplitAndVerifyWorker(CommandLineOptions options, VCGen vcGen, Implementation implementation,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
       Outcome outcome)
     {
+      this.options = options;
       this.callback = callback;
       this.mvInfo = mvInfo;
       this.implementation = implementation;
       this.outcome = outcome;
       
-      maxSplits = CommandLineOptions.Clo.VcsMaxSplits;
+      maxSplits = options.VcsMaxSplits;
       VCGen.CheckIntAttributeOnImpl(implementation, "vcs_max_splits", ref maxSplits);
       
-      maxKeepGoingSplits = CommandLineOptions.Clo.VcsMaxKeepGoingSplits;
+      maxKeepGoingSplits = options.VcsMaxKeepGoingSplits;
       VCGen.CheckIntAttributeOnImpl(implementation, "vcs_max_keep_going_splits", ref maxKeepGoingSplits);
       
-      maxVcCost = CommandLineOptions.Clo.VcsMaxCost;
+      maxVcCost = options.VcsMaxCost;
       var tmpMaxVcCost = -1;
       VCGen.CheckIntAttributeOnImpl(implementation, "vcs_max_cost", ref tmpMaxVcCost);
       if (tmpMaxVcCost >= 0) maxVcCost = tmpMaxVcCost;
@@ -72,6 +75,9 @@ namespace VC
 
     private void TrackSplitsCost(List<Split> splits)
     {
+      if (!TrackingProgress)
+        return;
+      
       foreach (var split in splits) {
         remainingCost += split.Cost;
         total++;
@@ -117,41 +123,45 @@ namespace VC
     private void StartCheck(Split split, Checker checker)
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) : -1;
-      if (CommandLineOptions.Clo.Trace && splitNumber >= 0) {
+      if (options.Trace && splitNumber >= 0) {
         Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
           split.Stats, splitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
       }
 
-      callback.OnProgress("VCprove", splitNumber < 0 ? 0 : splitNumber, total,
+      callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total,
         provenCost / (remainingCost + provenCost));
 
-      var timeout = KeepGoing && split.LastChance ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
-        KeepGoing ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
+      var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
+        KeepGoing ? options.VcsKeepGoingTimeout :
         implementation.TimeLimit;
       split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit);
     }
 
     private void ProcessResult(Split split)
     {
-      lock (this) {
-        remainingCost -= split.Cost;
+      if (TrackingProgress) {
+        lock (this) {
+          remainingCost -= split.Cost;
+        }
       }
 
       lock (split.Checker) {
         split.ReadOutcome(ref outcome, out proverFailed);
       }
 
-      lock (this) {
-        if (proverFailed) {
-          // even if the prover fails, we have learned something, i.e., it is
-          // annoying to watch Boogie say Timeout, 0.00% a couple of times
-          provenCost += split.Cost / 100;
-        } else {
-          provenCost += split.Cost;
+      if (TrackingProgress) {
+        lock (this) {
+          if (proverFailed) {
+            // even if the prover fails, we have learned something, i.e., it is
+            // annoying to watch Boogie say Timeout, 0.00% a couple of times
+            provenCost += split.Cost / 100;
+          } else {
+            provenCost += split.Cost;
+          }
         }
       }
 
-      callback.OnProgress("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
+      callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
       if (proverFailed && !firstRound && split.LastChance) {
         string msg = "some timeout";

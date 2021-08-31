@@ -296,7 +296,7 @@ namespace VC
           System.Console.Write("    soundness smoke test #{0} ... ", id);
         }
 
-        callback.OnProgress("smoke", id, id, 0.0);
+        callback.OnProgress?.Invoke("smoke", id, id, 0.0);
 
         Token tok = new Token();
         tok.val = "soundness smoke test assertion";
@@ -782,7 +782,7 @@ namespace VC
         return Outcome.Inconclusive; // not sure about this one
       }
 
-      callback.OnProgress("VCgen", 0, 0, 0.0);
+      callback.OnProgress?.Invoke("VCgen", 0, 0, 0.0);
 
       Stopwatch watch = new Stopwatch();
 #if PRINT_TIME
@@ -834,7 +834,7 @@ namespace VC
         }
       }
 
-      var worker = new SplitAndVerifyWorker(this, impl, gotoCmdOrigins, callback, mvInfo, outcome);
+      var worker = new SplitAndVerifyWorker(CommandLineOptions.Clo, this, impl, gotoCmdOrigins, callback, mvInfo, outcome);
       outcome = worker.WorkUntilDone().Result;
 
       if (outcome == Outcome.Correct && smoke_tester != null)
@@ -842,7 +842,7 @@ namespace VC
         smoke_tester.Test();
       }
 
-      callback.OnProgress("done", 0, 0, 1.0);
+      callback.OnProgress?.Invoke("done", 0, 0, 1.0);
 
 #if PRINT_TIME
       watch.Stop();
