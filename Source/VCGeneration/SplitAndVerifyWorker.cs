@@ -16,12 +16,11 @@ namespace VC
     private readonly ModelViewInfo mvInfo;
     private readonly Implementation implementation;
       
-    private readonly int maxSplits;
     private readonly int maxKeepGoingSplits;
     private readonly List<Split> manualSplits;
     private double maxVcCost;
       
-    private bool DoSplitting => manualSplits.Count > 1 || KeepGoing || maxSplits > 1;
+    private bool DoSplitting => manualSplits.Count > 1 || KeepGoing;
     private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
     private bool KeepGoing => maxKeepGoingSplits > 1;
       
@@ -30,7 +29,6 @@ namespace VC
     private double provenCost;
     private int total;
     private int splitNumber;
-    private bool firstRound = true;
 
     public SplitAndVerifyWorker(CommandLineOptions options, VCGen vcGen, Implementation implementation,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
@@ -42,7 +40,7 @@ namespace VC
       this.implementation = implementation;
       this.outcome = outcome;
       
-      maxSplits = options.VcsMaxSplits;
+      var maxSplits = options.VcsMaxSplits;
       VCGen.CheckIntAttributeOnImpl(implementation, "vcs_max_splits", ref maxSplits);
       
       maxKeepGoingSplits = options.VcsMaxKeepGoingSplits;
@@ -55,8 +53,13 @@ namespace VC
 
       ResetPredecessors(implementation.Blocks);
       manualSplits = Split.FocusAndSplit(implementation, gotoCmdOrigins, vcGen);
-
-      splitNumber = maxSplits == 1 && !KeepGoing ? -1 : 0;
+      
+      if (manualSplits.Count == 1 && maxSplits > 1) {
+        manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);
+        maxVcCost = 1.0;
+      }
+      
+      splitNumber = DoSplitting ? -1 : 0;
     }
 
     public async Task<Outcome> WorkUntilDone()
@@ -143,7 +146,7 @@ namespace VC
 
     private async Task HandleProverFailure(Split split)
     {
-      if (!firstRound && split.LastChance) {
+      if (split.LastChance) {
         string msg = "some timeout";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
@@ -154,13 +157,10 @@ namespace VC
         return;
       }
 
-      int currentMaxSplits = firstRound && maxSplits > 1 ? maxSplits : maxKeepGoingSplits;
-
-      if (currentMaxSplits > 1) {
-        var newSplits = Split.DoSplit(split, maxVcCost, currentMaxSplits);
+      if (maxKeepGoingSplits > 1) {
+        var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
         Contract.Assert(newSplits != null);
         maxVcCost = 1.0; // for future
-        firstRound = false;
         TrackSplitsCost(newSplits);
         await Task.WhenAll(newSplits.Select(DoWork));
 
