@@ -1190,31 +1190,27 @@ namespace VC
         return splits;
       }
 
-      public static List<Split /*!*/> /*!*/ DoSplit(Split initial, double maxCost, int max)
+      public static List<Split /*!*/> /*!*/ DoSplit(Split initial, double splitThreshold, int maxSplits)
       {
         Contract.Requires(initial != null);
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<Split>>()));
 
-        List<Split> res = new List<Split>();
-        res.Add(initial);
+        var result = new List<Split> { initial };
 
-        while (res.Count < max)
+        while (result.Count < maxSplits)
         {
           Split best = null;
-          int bestIdx = 0, pos = 0;
-          foreach (Split s in res)
-          {
-            Contract.Assert(s != null);
-            s.ComputeBestSplit(); // TODO check totalCost first
-            if (s.totalCost > maxCost &&
-                (best == null || best.totalCost < s.totalCost) &&
-                (s.assertionCount > 1 || s.splitBlock != null))
-            {
-              best = s;
-              bestIdx = pos;
+          int bestIndex = 0;
+          for (var index = 0; index < result.Count; index++) {
+            var split = result[index];
+            Contract.Assert(split != null);
+            split.ComputeBestSplit(); // TODO check totalCost first
+            if (split.totalCost > splitThreshold &&
+                (best == null || best.totalCost < split.totalCost) &&
+                (split.assertionCount > 1 || split.splitBlock != null)) {
+              best = split;
+              bestIndex = index;
             }
-
-            pos++;
           }
 
           if (best == null)
@@ -1267,9 +1263,11 @@ namespace VC
 
           if (true)
           {
-            List<Block> ss = new List<Block>();
-            ss.Add(s0.blocks[0]);
-            ss.Add(s1.blocks[0]);
+            var ss = new List<Block>
+            {
+              s0.blocks[0],
+              s1.blocks[0]
+            };
             try
             {
               best.SoundnessCheck(new HashSet<List<Block>>(new BlockListComparer()), best.blocks[0], ss);
@@ -1298,11 +1296,11 @@ namespace VC
             best.Print();
           }
 
-          res[bestIdx] = s0;
-          res.Add(s1);
+          result[bestIndex] = s0;
+          result.Add(s1);
         }
 
-        return res;
+        return result;
       }
 
       class BlockListComparer : IEqualityComparer<List<Block>>
