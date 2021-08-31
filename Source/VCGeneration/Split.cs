@@ -67,9 +67,9 @@ namespace VC
       }
 
 
-      public readonly List<Block> blocks;
-      readonly List<Block> bigBlocks = new List<Block>();
-      public IEnumerable<Declaration> TopLevelDeclarations;
+      private readonly List<Block> blocks;
+      public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
+      readonly List<Block> bigBlocks = new();
 
       readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
         stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
@@ -127,6 +127,7 @@ namespace VC
         this.parent = par;
         this.impl = impl;
         Interlocked.Increment(ref currentId);
+        TopLevelDeclarations = Prune.PruneDecl(par.program, blocks).ToList();
       }
 
       public double Cost
@@ -1186,7 +1187,6 @@ namespace VC
       {
         List<Split> focussedImpl = FocusImpl(impl, gotoCmdOrigins, par);
         var splits = focussedImpl.Select(FindManualSplits).SelectMany(x => x).ToList();
-        splits.ForEach(split => split.TopLevelDeclarations = Prune.PruneDecl(par.program, split.blocks));
         return splits;
       }
 
