@@ -59,7 +59,7 @@ namespace VC
         maxVcCost = 1.0;
       }
       
-      splitNumber = DoSplitting ? -1 : 0;
+      splitNumber = DoSplitting ? 0 : -1;
     }
 
     public async Task<Outcome> WorkUntilDone()
@@ -97,13 +97,13 @@ namespace VC
 
     private void StartCheck(Split split, Checker checker)
     {
-      int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) : -1;
-      if (options.Trace && splitNumber >= 0) {
+      int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
+      if (options.Trace && DoSplitting) {
         Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
-          split.Stats, splitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
+          split.Stats, currentSplitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
       }
 
-      callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total,
+      callback.OnProgress?.Invoke("VCprove", currentSplitNumber, total,
         provenCost / (remainingCost + provenCost));
 
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
@@ -121,7 +121,6 @@ namespace VC
       }
 
       split.ReadOutcome(ref outcome, out var proverFailed);
-      split.ReleaseChecker();
 
       if (TrackingProgress) {
         lock (this) {
@@ -156,6 +155,7 @@ namespace VC
         outcome = Outcome.Errors;
         return;
       }
+      split.ReleaseChecker();
 
       if (maxKeepGoingSplits > 1) {
         var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
