@@ -155,7 +155,8 @@ namespace VC
         outcome = Outcome.Errors;
         return;
       }
-      split.ReleaseChecker();
+      
+      split.ReleaseChecker(); // Release before we run splits but after we last call split.Checker.
 
       if (maxKeepGoingSplits > 1) {
         var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
