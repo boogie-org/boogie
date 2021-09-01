@@ -142,7 +142,7 @@ namespace VC
       }
 
       var newTasks = HandleProverFailure(split);
-      split.ReleaseChecker();
+      split.ReleaseChecker(); // Can only be released after the synchronous part of HandleProverFailure.
       await newTasks;
     }
 
@@ -156,6 +156,7 @@ namespace VC
 
         callback.OnCounterexample(split.ToCounterexample(split.Checker.TheoremProver.Context), msg);
         outcome = Outcome.Errors;
+        return;
       }
 
       if (maxKeepGoingSplits > 1) {
@@ -163,35 +164,36 @@ namespace VC
         Contract.Assert(newSplits != null);
         maxVcCost = 1.0; // for future
         TrackSplitsCost(newSplits);
-        await Task.WhenAll(newSplits.Select(DoWork));
-
+        
         if (outcome != Outcome.Errors) {
           outcome = Outcome.Correct;
         }
-      } else {
-        Contract.Assert(outcome != Outcome.Correct);
-        if (outcome == Outcome.TimedOut) {
-          string msg = "some timeout";
-          if (split.reporter is { resourceExceededMessage: { } }) {
-            msg = split.reporter.resourceExceededMessage;
-          }
+        await Task.WhenAll(newSplits.Select(DoWork));
+        return;
+      }
 
-          callback.OnTimeout(msg);
-        } else if (outcome == Outcome.OutOfMemory) {
-          string msg = "out of memory";
-          if (split.reporter is { resourceExceededMessage: { } }) {
-            msg = split.reporter.resourceExceededMessage;
-          }
-
-          callback.OnOutOfMemory(msg);
-        } else if (outcome == Outcome.OutOfResource) {
-          string msg = "out of resource";
-          if (split.reporter is { resourceExceededMessage: { } }) {
-            msg = split.reporter.resourceExceededMessage;
-          }
-
-          callback.OnOutOfResource(msg);
+      Contract.Assert(outcome != Outcome.Correct);
+      if (outcome == Outcome.TimedOut) {
+        string msg = "some timeout";
+        if (split.reporter is { resourceExceededMessage: { } }) {
+          msg = split.reporter.resourceExceededMessage;
         }
+
+        callback.OnTimeout(msg);
+      } else if (outcome == Outcome.OutOfMemory) {
+        string msg = "out of memory";
+        if (split.reporter is { resourceExceededMessage: { } }) {
+          msg = split.reporter.resourceExceededMessage;
+        }
+
+        callback.OnOutOfMemory(msg);
+      } else if (outcome == Outcome.OutOfResource) {
+        string msg = "out of resource";
+        if (split.reporter is { resourceExceededMessage: { } }) {
+          msg = split.reporter.resourceExceededMessage;
+        }
+
+        callback.OnOutOfResource(msg);
       }
     }
   }
