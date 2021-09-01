@@ -137,10 +137,13 @@ namespace VC
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
       if (!proverFailed) {
+        split.ReleaseChecker();
         return;
       }
 
-      await HandleProverFailure(split);
+      var newTasks = HandleProverFailure(split);
+      split.ReleaseChecker();
+      await newTasks;
     }
 
     private async Task HandleProverFailure(Split split)
@@ -153,10 +156,7 @@ namespace VC
 
         callback.OnCounterexample(split.ToCounterexample(split.Checker.TheoremProver.Context), msg);
         outcome = Outcome.Errors;
-        return;
       }
-      
-      split.ReleaseChecker(); // Release before we run splits but after we last call split.Checker.
 
       if (maxKeepGoingSplits > 1) {
         var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
