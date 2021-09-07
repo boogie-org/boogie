@@ -17,7 +17,7 @@
 
   <!-- Use StyleCop to check for consistent code formatting -->
   <ItemGroup Condition="'$(Configuration)' != 'Release'">
-    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118" PrivateAssets="All" />
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json" />
   </ItemGroup>
 
