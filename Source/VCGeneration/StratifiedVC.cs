@@ -95,7 +95,7 @@ namespace VC
       }
     }
 
-    public VCExpr MustReach(Block block)
+    public VCExpr MustReach(Block block, Func<Absy, int> absyToId)
     {
       // This information is computed lazily
       if (mustReachBindings == null)
@@ -123,9 +123,9 @@ namespace VC
           foreach (var pred in dag.Successors(currBlock))
           {
             VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(BigNum.FromInt(id)),
-              gen.Integer(BigNum.FromInt(pred.UniqueId)));
+              gen.Integer(BigNum.FromInt(absyToId(pred))));
             VCExpr controlTransferExpr =
-              gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(currBlock.UniqueId)));
+              gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(absyToId(currBlock))));
             expr = gen.Or(expr, gen.And(mustReachVar[pred], controlTransferExpr));
           }
 
@@ -594,15 +594,17 @@ namespace VC
         PassiveImplInstrumentation(impl);
 
       label2absy = new Dictionary<int, Absy>();
-      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(label2absy, proverInterface.Context);
+      var biFuncs = Absy.GetBidirectionalAbsIntegerMap();
+      
+      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(biFuncs.Item1, proverInterface.Context);
       translator.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
-      vcexpr = gen.Not(vcgen.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverInterface.Context));
+      vcexpr = gen.Not(vcgen.GenerateVCAux(impl, controlFlowVariableExpr, biFuncs.Item1, proverInterface.Context));
 
       if (controlFlowVariableExpr != null)
       {
         VCExpr controlFlowFunctionAppl =
           exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
-        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(biFuncs.Item1(impl.Blocks[0]))));
         vcexpr = exprGen.And(eqExpr, vcexpr);
       }
 

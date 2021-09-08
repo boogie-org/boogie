@@ -20,13 +20,19 @@ procedure M(x: int)
   assert x + x == 4;
 }";
       
+      var procedure2 = @"
+procedure N(x: int) 
+  requires x == 3; {
+  assert x * x == 9;
+}";
+      
       var procedure1And2 = $@"
 {procedure1}
-
-procedure N(x: int) 
-  requires x == 3; {{
-  assert x * x == 9;
-}}";
+{procedure2}";
+      
+      var procedure2And1 = $@"
+{procedure1}
+{procedure2}";
       CommandLineOptions.Install(new CommandLineOptions());
       CommandLineOptions.Clo.Parse(new string[]{});
       ExecutionEngine.printer = new ConsolePrinter();
@@ -36,6 +42,8 @@ procedure N(x: int)
       var proverLog2 = GetProverLogForProgram(procedure1And2).ToList();
       Assert.AreEqual(proverLog1.Count, proverLog2.Count);
       Assert.AreEqual(proverLog1[0], proverLog2[0]);
+      var proverLog3 = GetProverLogForProgram(procedure2And1).ToList();
+      Assert.AreEqual(proverLog3[0], proverLog2[0]);
     }
 
     private static IEnumerable<string> GetProverLogForProgram(string procedure1)

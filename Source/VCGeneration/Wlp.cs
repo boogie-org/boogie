@@ -15,25 +15,25 @@ namespace VC
       Contract.Invariant(Ctxt != null);
     }
 
-    [Rep] public readonly Dictionary<int, Absy> Label2absy;
+    [Rep] public readonly Func<Absy, int> RecordAbsy;
     [Rep] public readonly ProverContext Ctxt;
     public readonly VCExpr ControlFlowVariableExpr;
     public int AssertionCount; // counts the number of assertions for which Wlp has been computed
     public bool isPositiveContext;
 
-    public VCContext(Dictionary<int, Absy> label2absy, ProverContext ctxt, bool isPositiveContext = true)
+    public VCContext(Func<Absy, int> recordAbsy, ProverContext ctxt, bool isPositiveContext = true)
     {
       Contract.Requires(ctxt != null);
-      this.Label2absy = label2absy;
+      this.RecordAbsy = recordAbsy;
       this.Ctxt = ctxt;
       this.isPositiveContext = isPositiveContext;
     }
 
-    public VCContext(Dictionary<int, Absy> label2absy, ProverContext ctxt, VCExpr controlFlowVariableExpr,
+    public VCContext(Func<Absy, int> recordAbsy, ProverContext ctxt, VCExpr controlFlowVariableExpr,
       bool isPositiveContext = true)
     {
       Contract.Requires(ctxt != null);
-      this.Label2absy = label2absy;
+      this.RecordAbsy = recordAbsy;
       this.Ctxt = ctxt;
       this.ControlFlowVariableExpr = controlFlowVariableExpr;
       this.isPositiveContext = isPositiveContext;
@@ -62,11 +62,7 @@ namespace VC
         res = Cmd(b, cce.NonNull(b.Cmds[i]), res, ctxt);
       }
 
-      int id = b.UniqueId;
-      if (ctxt.Label2absy != null)
-      {
-        ctxt.Label2absy[id] = b;
-      }
+      ctxt.RecordAbsy?.Invoke(b);
 
       try
       {
@@ -156,25 +152,21 @@ namespace VC
             C = gen.OrSimp(VU, C);
           }
 
-          int id = ac.UniqueId;
-          if (ctxt.Label2absy != null)
-          {
-            ctxt.Label2absy[id] = ac;
-          }
+          ctxt.RecordAbsy?.Invoke(ac);
 
           ctxt.AssertionCount++;
 
           if (ctxt.ControlFlowVariableExpr == null)
           {
-            Contract.Assert(ctxt.Label2absy != null);
+            Contract.Assert(ctxt.RecordAbsy != null);
             return gen.AndSimp(C, N);
           }
           else
           {
             VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(ctxt.ControlFlowVariableExpr,
-              gen.Integer(BigNum.FromInt(b.UniqueId)));
+              gen.Integer(BigNum.FromInt(ctxt.RecordAbsy(b))));
             Contract.Assert(controlFlowFunctionAppl != null);
-            VCExpr assertFailure = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(-ac.UniqueId)));
+            VCExpr assertFailure = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(-ctxt.RecordAbsy(ac))));
             return gen.AndSimp(gen.Implies(assertFailure, C), N);
           }
         }
@@ -191,8 +183,7 @@ namespace VC
           {
             if (naryExpr.Fun is FunctionCall)
             {
-              int id = ac.UniqueId;
-              ctxt.Label2absy[id] = ac;
+              ctxt.RecordAbsy(ac);
               return MaybeWrapWithOptimization(ctxt, gen, ac.Attributes,
                 gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N));
             }
