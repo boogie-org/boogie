@@ -165,19 +165,19 @@ namespace Microsoft.Boogie.Houdini
       var exprGen = proverInterface.Context.ExprGen;
       VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
 
-      var absyTuples = Absy.GetBidirectionalAbsIntegerMap();
-      conjecture = vcgen.GenerateVC(impl, controlFlowVariableExpr, absyTuples.Item1, proverInterface.Context);
+      var absyIds = new IdMap<Absy>();
+      conjecture = vcgen.GenerateVC(impl, controlFlowVariableExpr, absyIds, proverInterface.Context);
 
       VCExpr controlFlowFunctionAppl =
         exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-      VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyTuples.Item1(impl.Blocks[0]))));
+      VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(impl.Blocks[0]))));
       conjecture = exprGen.Implies(eqExpr, conjecture);
 
       Macro macro = new Macro(Token.NoToken, descriptiveName, new List<Variable>(),
         new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false));
       proverInterface.DefineMacro(macro, conjecture);
       conjecture = exprGen.Function(macro);
-      handler = new VCGen.ErrorReporter(gotoCmdOrigins, absyTuples.Item2, impl.Blocks, vcgen.debugInfos, collector,
+      handler = new VCGen.ErrorReporter(gotoCmdOrigins, absyIds, impl.Blocks, vcgen.debugInfos, collector,
         mvInfo, proverInterface.Context, program);
     }
 

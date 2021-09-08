@@ -71,26 +71,6 @@ namespace Microsoft.Boogie
     {
       return new string(' ', (indent_size * level));
     }
-
-
-    public static Tuple<Func<Absy, int>, Func<int, Absy>> GetBidirectionalAbsIntegerMap()
-    {
-      var counter = 0;
-      var absyToInt = new Dictionary<Absy, int>();
-      var intToAbsy = new Dictionary<int, Absy>();
-
-      return Tuple.Create<Func<Absy, int>, Func<int, Absy>>(absy =>
-      {
-        if (absyToInt.TryGetValue(absy, out var result)) {
-          return result;
-        }
-
-        absyToInt[absy] = counter;
-        intToAbsy[counter] = absy;
-
-        return counter++;
-      }, id => intToAbsy[id]);
-    }
     
     [NeedsContracts]
     public abstract void Resolve(ResolutionContext /*!*/ rc);

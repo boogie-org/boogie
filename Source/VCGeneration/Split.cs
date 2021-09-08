@@ -1412,25 +1412,25 @@ namespace VC
 
         this.checker = checker;
 
-        var absyTuple = Absy.GetBidirectionalAbsIntegerMap();
+        var absyIds = new IdMap<Absy>();
 
         ProverContext ctx = checker.TheoremProver.Context;
         Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
-        var cc = new VCGen.CodeExprConversionClosure(absyTuple.Item1, ctx);
+        var cc = new VCGen.CodeExprConversionClosure(absyIds, ctx);
         bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
 
         var exprGen = ctx.ExprGen;
         VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
-        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, absyTuple.Item1, checker.TheoremProver.Context);
+        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, absyIds, checker.TheoremProver.Context);
         Contract.Assert(vc != null);
 
         vc = QuantifierInstantiationEngine.Instantiate(impl, exprGen, bet, vc);
 
         VCExpr controlFlowFunctionAppl =
           exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyTuple.Item1(impl.Blocks[0]))));
+        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(impl.Blocks[0]))));
         vc = exprGen.Implies(eqExpr, vc);
-        reporter = new VCGen.ErrorReporter(gotoCmdOrigins, absyTuple.Item2, impl.Blocks, parent.debugInfos, callback,
+        reporter = new VCGen.ErrorReporter(gotoCmdOrigins, absyIds, impl.Blocks, parent.debugInfos, callback,
           mvInfo, this.Checker.TheoremProver.Context, parent.program);
 
         if (CommandLineOptions.Clo.TraceVerify && no >= 0)

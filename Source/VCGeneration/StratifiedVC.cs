@@ -95,7 +95,7 @@ namespace VC
       }
     }
 
-    public VCExpr MustReach(Block block, Func<Absy, int> absyToId)
+    public VCExpr MustReach(Block block, IdMap<Absy> absyIds)
     {
       // This information is computed lazily
       if (mustReachBindings == null)
@@ -123,9 +123,9 @@ namespace VC
           foreach (var pred in dag.Successors(currBlock))
           {
             VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(BigNum.FromInt(id)),
-              gen.Integer(BigNum.FromInt(absyToId(pred))));
+              gen.Integer(BigNum.FromInt(absyIds.GetId(pred))));
             VCExpr controlTransferExpr =
-              gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(absyToId(currBlock))));
+              gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(absyIds.GetId(currBlock))));
             expr = gen.Or(expr, gen.And(mustReachVar[pred], controlTransferExpr));
           }
 
@@ -321,7 +321,6 @@ namespace VC
     public VCExpr vcexpr;
     public List<VCExprVar> interfaceExprVars;
     public List<VCExprVar> privateExprVars;
-    public Dictionary<int, Absy> label2absy;
     public ModelViewInfo mvInfo;
     public Dictionary<Block, List<CallSite>> callSites;
     public Dictionary<Block, List<CallSite>> recordProcCallSites;
@@ -435,9 +434,6 @@ namespace VC
 
       exitAssertCmd = new AssumeCmd(Token.NoToken, Expr.BinaryTreeAnd(assertConjuncts));
       (exitAssertCmd as AssumeCmd).Attributes = new QKeyValue(Token.NoToken, "exitAssert", new List<object>(), null);
-
-      // no need for label2absy
-      label2absy = new Dictionary<int, Absy>();
 
       // Passify
       Program program = vcgen.program;
@@ -593,18 +589,17 @@ namespace VC
       if (PassiveImplInstrumentation != null)
         PassiveImplInstrumentation(impl);
 
-      label2absy = new Dictionary<int, Absy>();
-      var biFuncs = Absy.GetBidirectionalAbsIntegerMap();
+      var absyIds = new IdMap<Absy>();
       
-      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(biFuncs.Item1, proverInterface.Context);
+      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(absyIds, proverInterface.Context);
       translator.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
-      vcexpr = gen.Not(vcgen.GenerateVCAux(impl, controlFlowVariableExpr, biFuncs.Item1, proverInterface.Context));
+      vcexpr = gen.Not(vcgen.GenerateVCAux(impl, controlFlowVariableExpr, absyIds, proverInterface.Context));
 
       if (controlFlowVariableExpr != null)
       {
         VCExpr controlFlowFunctionAppl =
           exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
-        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(biFuncs.Item1(impl.Blocks[0]))));
+        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(impl.Blocks[0]))));
         vcexpr = exprGen.And(eqExpr, vcexpr);
       }
 
