@@ -803,13 +803,13 @@ namespace Microsoft.Boogie
     // Note that procsToCheck stores all patterns <p> supplied with /proc:<p>
     // (and similarly procsToIgnore for /noProc:<p>). Thus, if procsToCheck
     // is empty it means that all procedures should be checked.
-    private List<string /*!*/> procsToCheck = new List<string /*!*/>();
+    public List<string> ProcsToCheck { get; } = new();
     private List<string /*!*/> procsToIgnore = new List<string /*!*/>();
 
     [ContractInvariantMethod]
     void ObjectInvariant5()
     {
-      Contract.Invariant(cce.NonNullElements(this.procsToCheck, true));
+      Contract.Invariant(cce.NonNullElements(this.ProcsToCheck, true));
       Contract.Invariant(cce.NonNullElements(this.procsToIgnore, true));
       Contract.Invariant(Ai != null);
     }
@@ -907,7 +907,7 @@ namespace Microsoft.Boogie
         case "proc":
           if (ps.ConfirmArgumentCount(1))
           {
-            this.procsToCheck.Add(cce.NonNull(args[ps.i]));
+            this.ProcsToCheck.Add(cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -1621,11 +1621,11 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(methodFullname != null);
       Func<string, bool> match = s => Regex.IsMatch(methodFullname, "^" + Regex.Escape(s).Replace(@"\*", ".*") + "$");
-      return (procsToCheck.Count == 0 || procsToCheck.Any(match)) && !procsToIgnore.Any(match);
+      return (ProcsToCheck.Count == 0 || ProcsToCheck.Any(match)) && !procsToIgnore.Any(match);
     }
 
     // Used by Dafny to decide if it should perform compilation
-    public bool UserConstrainedProcsToCheck => procsToCheck.Count > 0 || procsToIgnore.Count > 0;
+    public bool UserConstrainedProcsToCheck => ProcsToCheck.Count > 0 || procsToIgnore.Count > 0;
 
     public virtual StringCollection ParseNamedArgumentList(string argList)
     {
