@@ -67,14 +67,14 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
 
-      InitializeGlobalInformation();
 
       this.options = (SMTLibProverOptions) options;
       this.libOptions = libOptions;
       this.ctx = ctx;
       this.gen = gen;
-      this.usingUnsatCore = false;
+      usingUnsatCore = false;
 
+      InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
       Namer = new SMTLibNamer();
@@ -2294,19 +2294,13 @@ namespace Microsoft.Boogie.SMTLib
 
   public class Factory : ProverFactory
   {
-    private readonly SMTLibOptions libOptions;
-
-    public Factory(SMTLibOptions libOptions) {
-      this.libOptions = libOptions;
-    }
-
-    public override object SpawnProver(ProverOptions options, object ctxt)
+    public override object SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt)
     {
       //Contract.Requires(ctxt != null);
       //Contract.Requires(options != null);
       Contract.Ensures(Contract.Result<object>() != null);
 
-      return this.SpawnProver(options,
+      return this.SpawnProver(libOptions, options,
         cce.NonNull((SMTLibProverContext) ctxt).ExprGen,
         cce.NonNull((SMTLibProverContext) ctxt));
     }
@@ -2334,7 +2328,7 @@ namespace Microsoft.Boogie.SMTLib
       return new SMTLibProverOptions();
     }
 
-    protected virtual SMTLibProcessTheoremProver SpawnProver(ProverOptions options,
+    protected virtual SMTLibProcessTheoremProver SpawnProver(SMTLibOptions libOptions, ProverOptions options,
       VCExpressionGenerator gen,
       SMTLibProverContext ctx)
     {

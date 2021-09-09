@@ -176,7 +176,7 @@ namespace Microsoft.Boogie
       {
         ctx = (ProverContext) cce.NonNull(ctx).Clone();
         prover = (ProverInterface)
-          CommandLineOptions.Clo.TheProverFactory.SpawnProver(options, ctx);
+          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, options, ctx);
       }
       else
       {
@@ -188,7 +188,7 @@ namespace Microsoft.Boogie
         // context in the cache, so that the prover can setup stuff in
         // the context to be cached
         prover = (ProverInterface)
-          CommandLineOptions.Clo.TheProverFactory.SpawnProver(options, ctx);
+          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, options, ctx);
         cachedContexts.Add(key, cce.NonNull((ProverContext) ctx.Clone()));
       }
 
@@ -491,7 +491,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      return (ProverInterface) CommandLineOptions.Clo.TheProverFactory.SpawnProver(options, ctx);
+      return (ProverInterface) CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, options, ctx);
     }
 
     public enum Outcome
