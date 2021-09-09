@@ -26,7 +26,7 @@ namespace Microsoft.Boogie.SMTLib
   // Lineariser for expressions. The result (bool) is currently not used for anything
   public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions /*!*/>
   {
-    private readonly SMTLibOptions libOptions;
+    public SMTLibOptions LibOptions { get; }
 
     public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
       ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null) : this(libOptions)
@@ -42,7 +42,7 @@ namespace Microsoft.Boogie.SMTLib
     
     public SMTLibExprLineariser(SMTLibOptions libOptions)
     {
-      this.libOptions = libOptions;
+      this.LibOptions = libOptions;
     }
 
     public string StoreOpName(VCExprNAry node)
@@ -127,7 +127,7 @@ namespace Microsoft.Boogie.SMTLib
       }
       else
       {
-        if (t.IsMap && libOptions.UseArrayTheory)
+        if (t.IsMap && LibOptions.UseArrayTheory)
         {
           MapType m = t.AsMap;
           // Contract.Assert(m.MapArity == 1);
@@ -222,7 +222,7 @@ namespace Microsoft.Boogie.SMTLib
         retVal = f.FindStringAttribute("builtin");
       }
 
-      if (retVal != null && !libOptions.UseArrayTheory && SMTLibOpLineariser.ArrayOps.Contains(retVal))
+      if (retVal != null && !LibOptions.UseArrayTheory && SMTLibOpLineariser.ArrayOps.Contains(retVal))
       {
         retVal = null;
       }
@@ -535,22 +535,8 @@ namespace Microsoft.Boogie.SMTLib
     // Lineariser for operator terms. The result (bool) is currently not used for anything
     internal class SMTLibOpLineariser : IVCExprOpVisitor<bool, LineariserOptions /*!*/>
     {
-      private readonly SMTLibOptions libOptions;
       private readonly SMTLibExprLineariser ExprLineariser;
       private readonly TextWriter wr;
-
-      public SMTLibOpLineariser(SMTLibOptions libOptions)
-      {
-        this.libOptions = libOptions;
-      }
-
-      [ContractInvariantMethod]
-      void ObjectInvariant()
-      {
-        Contract.Invariant(wr != null);
-        Contract.Invariant(ExprLineariser != null);
-      }
-
 
       public SMTLibOpLineariser(SMTLibExprLineariser ExprLineariser, TextWriter wr)
       {
@@ -558,6 +544,13 @@ namespace Microsoft.Boogie.SMTLib
         Contract.Requires(wr != null);
         this.ExprLineariser = ExprLineariser;
         this.wr = wr;
+      }
+
+      [ContractInvariantMethod]
+      void ObjectInvariant()
+      {
+        Contract.Invariant(wr != null);
+        Contract.Invariant(ExprLineariser != null);
       }
 
       ///////////////////////////////////////////////////////////////////////////////////
@@ -699,7 +692,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         var name = ExprLineariser.SelectOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
-        if (libOptions.UseArrayTheory)
+        if (ExprLineariser.LibOptions.UseArrayTheory)
           name = "select";
         WriteApplication(name, node, options);
         return true;
@@ -709,7 +702,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         var name = ExprLineariser.StoreOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
-        if (libOptions.UseArrayTheory)
+        if (ExprLineariser.LibOptions.UseArrayTheory)
           name = "store";
         WriteApplication(name, node, options);
         return true;
