@@ -589,7 +589,7 @@ namespace Microsoft.Boogie
       set => trace = value;
     }
 
-    public bool InitialiseImmediately => StratifiedInlining > 0 || ContractInfer;
+    public bool ImmediatelyAcceptCommands => StratifiedInlining > 0 || ContractInfer;
 
     public bool ProduceUnsatCores => PrintNecessaryAssumes || EnableUnSatCoreExtract == 1 ||
                                      ContractInfer && (UseUnsatCoreForContractInfer || ExplainHoudini);

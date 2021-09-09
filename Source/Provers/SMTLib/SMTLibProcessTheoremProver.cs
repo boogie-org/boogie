@@ -83,7 +83,7 @@ namespace Microsoft.Boogie.SMTLib
 
       SetupProcess();
 
-      if (libOptions.InitialiseImmediately)
+      if (libOptions.ImmediatelyAcceptCommands)
       {
         // Prepare for ApiChecker usage
         if (options.LogFilename != null && currentLogFile == null)

@@ -7,7 +7,7 @@ namespace Microsoft.Boogie
     bool ExpectingModel { get; }
     bool ProduceModel { get; }
     bool ProduceUnsatCores { get; }
-    bool InitialiseImmediately { get; }
+    bool ImmediatelyAcceptCommands { get; }
     bool RunningBoogieFromCommandLine { get; }
     CommandLineOptions.TypeEncoding TypeEncodingMethod { get; }
     bool UseArrayTheory { get; }
