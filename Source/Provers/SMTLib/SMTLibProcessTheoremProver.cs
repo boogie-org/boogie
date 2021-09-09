@@ -1063,20 +1063,20 @@ namespace Microsoft.Boogie.SMTLib
       var path = new List<string>();
       while (true)
       {
-        var resp = Process.GetProverResponse();
-        if (resp == null) break;
-        if (!(resp.Name == "" && resp.ArgCount == 1)) break;
-        resp = resp.Arguments[0];
-        if (!(resp.Name == "" && resp.ArgCount == 2)) break;
-        resp = resp.Arguments[1];
-        var v = resp.Name;
-        if (v == "-" && resp.ArgCount == 1)
+        var response = Process.GetProverResponse();
+        if (response == null) break;
+        if (!(response.Name == "" && response.ArgCount == 1)) break;
+        response = response.Arguments[0];
+        if (!(response.Name == "" && response.ArgCount == 2)) break;
+        response = response.Arguments[1];
+        var v = response.Name;
+        if (v == "-" && response.ArgCount == 1)
         {
-          v = resp.Arguments[0].Name;
+          v = response.Arguments[0].Name;
           path.Add(v);
           break;
         }
-        else if (resp.ArgCount != 0)
+        else if (response.ArgCount != 0)
           break;
 
         path.Add(v);
