@@ -1,4 +1,4 @@
-// RUN: %boogie "-proc:*Bar" "-proc:*Foo" "%s" > "%t"
+// RUN: %parallel-boogie "-proc:*Bar" "-proc:*Foo" "%s" > "%t"
 // RUN: %OutputCheck --file-to-check "%t" "%s"
 // CHECK-L: Boogie program verifier finished with 4 verified, 0 errors
 

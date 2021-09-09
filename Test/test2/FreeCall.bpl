@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // Test the implementation of free calls. These calls don't check the preconditions of the
 // called procedure in the caller.

@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" | %OutputCheck "%s"
+// RUN: %parallel-boogie "%s" | %OutputCheck "%s"
 
 // ==================================================
 // Preamble of State module.

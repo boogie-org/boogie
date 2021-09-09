@@ -309,8 +309,7 @@ namespace Microsoft.Boogie
 
       internal void Substitute(Dictionary<Element, Element> mapping)
       {
-        Element e;
-        if (@else != null && mapping.TryGetValue(@else, out e))
+        if (@else != null && mapping.TryGetValue(@else, out var e))
           @else = e;
         foreach (var ft in apps)
         {
@@ -648,9 +647,7 @@ namespace Microsoft.Boogie
 
     public Element TryMkElement(string name)
     {
-      Element res;
-
-      if (elementsByName.TryGetValue(name, out res))
+      if (elementsByName.TryGetValue(name, out var res))
         return res;
 
       var tmp = ConstructElement(name);
@@ -675,8 +672,7 @@ namespace Microsoft.Boogie
 
     public Func MkFunc(string name, int? arity)
     {
-      Func res;
-      if (functionsByName.TryGetValue(name, out res)) {
+      if (functionsByName.TryGetValue(name, out var res)) {
         res.Arity = arity;
         return res;
       }
@@ -732,8 +728,7 @@ namespace Microsoft.Boogie
         CapturedState curr = this;
         while (curr != null)
         {
-          Element res;
-          if (curr.valuations.TryGetValue(varname, out res))
+          if (curr.valuations.TryGetValue(varname, out var res))
             return res;
           curr = curr.previous;
         }
@@ -841,8 +836,7 @@ namespace Microsoft.Boogie
 
     public Func TryGetFunc(string name)
     {
-      Func res;
-      if (functionsByName.TryGetValue(name, out res))
+      if (functionsByName.TryGetValue(name, out var res))
         return res;
       else
         return null;
@@ -863,8 +857,7 @@ namespace Microsoft.Boogie
 
     public Element GetElement(string name)
     {
-      Element res;
-      if (elementsByName.TryGetValue(name, out res))
+      if (elementsByName.TryGetValue(name, out var res))
         return res;
       else
         throw new KeyNotFoundException("element '" + name + "' undefined in the model");

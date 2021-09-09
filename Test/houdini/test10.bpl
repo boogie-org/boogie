@@ -1,4 +1,4 @@
-// RUN: %boogie -contractInfer -printAssignment -inlineDepth:1 "%s" > "%t"
+// RUN: %parallel-boogie -contractInfer -printAssignment -inlineDepth:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 var sdv_7: int;
 var sdv_21: int;

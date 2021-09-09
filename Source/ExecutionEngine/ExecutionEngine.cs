@@ -371,7 +371,7 @@ namespace Microsoft.Boogie
       MessageIfVerifies = implementation.FindStringAttribute("msg_if_verifies");
     }
   }
-  
+
   public class ExecutionEngine
   {
     public static OutputPrinter printer;
@@ -392,8 +392,7 @@ namespace Microsoft.Boogie
     {
       if (id.StartsWith(AutoRequestIdPrefix))
       {
-        int result;
-        if (int.TryParse(id.Substring(AutoRequestIdPrefix.Length), out result))
+        if (int.TryParse(id.Substring(AutoRequestIdPrefix.Length), out var result))
         {
           return result;
         }
@@ -455,66 +454,60 @@ namespace Microsoft.Boogie
         return snapshotsByVersion.All(s => ProcessFiles(new List<string>(s), false, programId));
       }
 
-      using (XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count - 1]))
+      using XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count - 1]);
+      Program program = ParseBoogieProgram(fileNames, false);
+      if (program == null)
       {
-        Program program = ParseBoogieProgram(fileNames, false);
-        if (program == null)
-        {
-          return true;
-        }
-        if (CommandLineOptions.Clo.PrintFile != null)
-        {
-          PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
-        }
+        return true;
+      }
+      if (CommandLineOptions.Clo.PrintFile != null)
+      {
+        PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
+      }
 
-        CivlTypeChecker civlTypeChecker;
-        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out civlTypeChecker);
-        if (oc != PipelineOutcome.ResolvedAndTypeChecked)
-        {
-          return true;
-        }
+      PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out var civlTypeChecker);
+      if (oc != PipelineOutcome.ResolvedAndTypeChecked)
+      {
+        return true;
+      }
 
-        if (CommandLineOptions.Clo.PrintCFGPrefix != null)
-        {
-          foreach (var impl in program.Implementations)
-          {
-            using (StreamWriter sw = new StreamWriter(CommandLineOptions.Clo.PrintCFGPrefix + "." + impl.Name + ".dot"))
-            {
-              sw.Write(program.ProcessLoops(impl).ToDot());
-            }
-          }
+      if (CommandLineOptions.Clo.PrintCFGPrefix != null)
+      {
+        foreach (var impl in program.Implementations) {
+          using StreamWriter sw = new StreamWriter(CommandLineOptions.Clo.PrintCFGPrefix + "." + impl.Name + ".dot");
+          sw.Write(program.ProcessLoops(impl).ToDot());
         }
+      }
 
-        CivlVCGeneration.Transform(civlTypeChecker);
-        if (CommandLineOptions.Clo.CivlDesugaredFile != null)
-        {
-          int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-          CommandLineOptions.Clo.PrintUnstructured = 1;
-          PrintBplFile(CommandLineOptions.Clo.CivlDesugaredFile, program, false, false,
-            CommandLineOptions.Clo.PrettyPrint);
-          CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
-        }
+      CivlVCGeneration.Transform(civlTypeChecker);
+      if (CommandLineOptions.Clo.CivlDesugaredFile != null)
+      {
+        int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+        CommandLineOptions.Clo.PrintUnstructured = 1;
+        PrintBplFile(CommandLineOptions.Clo.CivlDesugaredFile, program, false, false,
+          CommandLineOptions.Clo.PrettyPrint);
+        CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+      }
         
-        EliminateDeadVariables(program);
+      EliminateDeadVariables(program);
 
-        CoalesceBlocks(program);
+      CoalesceBlocks(program);
 
-        Inline(program);
+      Inline(program);
 
-        var stats = new PipelineStatistics();
-        oc = InferAndVerify(program, stats, 1 < CommandLineOptions.Clo.VerifySnapshots ? programId : null);
-        switch (oc)
-        {
-          case PipelineOutcome.Done:
-          case PipelineOutcome.VerificationCompleted:
-            printer.WriteTrailer(stats);
-            return true;
-          case PipelineOutcome.FatalError:
-            return false;
-          default:
-            Debug.Assert(false, "Unreachable code");
-            return false;
-        }
+      var stats = new PipelineStatistics();
+      oc = InferAndVerify(program, stats, 1 < CommandLineOptions.Clo.VerifySnapshots ? programId : null);
+      switch (oc)
+      {
+        case PipelineOutcome.Done:
+        case PipelineOutcome.VerificationCompleted:
+          printer.WriteTrailer(stats);
+          return true;
+        case PipelineOutcome.FatalError:
+          return false;
+        default:
+          Debug.Assert(false, "Unreachable code");
+          return false;
       }
     }
 
@@ -956,7 +949,8 @@ namespace Microsoft.Boogie
       }
 
       #region Verify each implementation
-
+      // compute program dependecies
+      program.edges = BoogiePL.Prune.InitializeEdges(program);
       var outputCollector = new OutputCollector(stablePrioritizedImpls);
       var outcome = PipelineOutcome.VerificationCompleted;
 
@@ -975,8 +969,7 @@ namespace Microsoft.Boogie
           var taskIndex = i;
           var id = stablePrioritizedImpls[taskIndex].Id;
 
-          CancellationTokenSource old;
-          if (ImplIdToCancellationTokenSource.TryGetValue(id, out old))
+          if (ImplIdToCancellationTokenSource.TryGetValue(id, out var old))
           {
             old.Cancel();
           }
@@ -1117,8 +1110,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(requestId != null);
 
-      CancellationTokenSource cts;
-      if (RequestIdToCancellationTokenSource.TryGetValue(requestId, out cts))
+      if (RequestIdToCancellationTokenSource.TryGetValue(requestId, out var cts))
       {
         cts.Cancel();
 
@@ -1131,8 +1123,7 @@ namespace Microsoft.Boogie
     {
       if (requestId != null)
       {
-        CancellationTokenSource old;
-        RequestIdToCancellationTokenSource.TryRemove(requestId, out old);
+        RequestIdToCancellationTokenSource.TryRemove(requestId, out var old);
       }
 
       lock (RequestIdToCancellationTokenSource)
@@ -1389,8 +1380,7 @@ namespace Microsoft.Boogie
     {
       Program p = ParseBoogieProgram(new List<string> {filename}, false);
       System.Diagnostics.Debug.Assert(p != null);
-      CivlTypeChecker civlTypeChecker;
-      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out civlTypeChecker);
+      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out var civlTypeChecker);
       System.Diagnostics.Debug.Assert(oc == PipelineOutcome.ResolvedAndTypeChecked);
       return p;
     }

@@ -1266,10 +1266,9 @@ namespace Microsoft.Boogie.VCExprAST
       get
       {
         Contract.Requires(var != null);
-        VCExpr res;
         for (int i = TermSubsts.Count - 1; i >= 0; --i)
         {
-          if (TermSubsts[i].TryGetValue(var, out res))
+          if (TermSubsts[i].TryGetValue(var, out var res))
             return res;
         }
 
@@ -1283,10 +1282,9 @@ namespace Microsoft.Boogie.VCExprAST
       get
       {
         Contract.Requires(var != null);
-        Type res;
         for (int i = TypeSubsts.Count - 1; i >= 0; --i)
         {
-          if (TypeSubsts[i].TryGetValue(var, out res))
+          if (TypeSubsts[i].TryGetValue(var, out var res))
             return res;
         }
 

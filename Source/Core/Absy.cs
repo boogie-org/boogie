@@ -8,6 +8,7 @@ using System.Diagnostics.Contracts;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.GraphUtil;
 using Set = Microsoft.Boogie.GSet<object>;
+using DependencyEvaluator = Microsoft.Boogie.Prune.DependencyEvaluator;
 
 namespace Microsoft.Boogie
 {
@@ -282,6 +283,8 @@ namespace Microsoft.Boogie
       Contract.Invariant(cce.NonNullElements(this.globalVariablesCache, true));
     }
 
+    public Dictionary<DependencyEvaluator, List<DependencyEvaluator>> edges;
+
     public Program()
       : base(Token.NoToken)
     {
@@ -410,7 +413,7 @@ namespace Microsoft.Boogie
           membership.Register(rc);
         }
       }
-      
+
       foreach (var d in TopLevelDeclarations)
       {
         if (QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
@@ -525,7 +528,7 @@ namespace Microsoft.Boogie
       set
       {
         Contract.Requires(value != null);
-        // materialize the decls, in case there is any dependency 
+        // materialize the decls, in case there is any dependency
         // back on topLevelDeclarations
         var v = value.ToList();
         // remove null elements
@@ -1067,7 +1070,7 @@ namespace Microsoft.Boogie
               Contract.Assert(auxGotoCmd != null && auxGotoCmd.labelNames != null &&
                               auxGotoCmd.labelTargets != null && auxGotoCmd.labelTargets.Count >= 1);
               //BUGFIX on 10/26/15: this contains nodes present in NaturalLoops for a different backedgenode
-              var loopNodes = GetBlocksInAllNaturalLoops(header, g); //var loopNodes = g.NaturalLoops(header, source); 
+              var loopNodes = GetBlocksInAllNaturalLoops(header, g); //var loopNodes = g.NaturalLoops(header, source);
               foreach (var bl in auxGotoCmd.labelTargets)
               {
                 if (g.Nodes.Contains(bl) && //newly created blocks are not present in NaturalLoop(header, xx, g)
@@ -1076,7 +1079,7 @@ namespace Microsoft.Boogie
                   Block auxNewBlock = new Block();
                   auxNewBlock.Label = bl.Label;
                   //these blocks may have read/write locals that are not present in naturalLoops
-                  //we need to capture these variables 
+                  //we need to capture these variables
                   auxNewBlock.Cmds = Substituter.Apply(subst, bl.Cmds);
                   //add restoration code for such blocks
                   if (loopHeaderToAssignCmd.ContainsKey(header))
@@ -1867,7 +1870,7 @@ namespace Microsoft.Boogie
         return null;
       }
     }
-    
+
     public NamedDeclaration(IToken /*!*/ tok, string /*!*/ name)
       : base(tok)
     {
@@ -1959,14 +1962,14 @@ namespace Microsoft.Boogie
     {
       this.constructors = new List<DatatypeConstructor>();
     }
-    
+
     public override void Emit(TokenTextWriter stream, int level)
     {
       base.Emit(stream, level);
       constructors.Iter(constructor => constructor.Emit(stream, level));
     }
   }
-  
+
   public class TypeSynonymDecl : NamedDeclaration
   {
     private List<TypeVariable> /*!*/
@@ -3117,7 +3120,7 @@ namespace Microsoft.Boogie
       var typeVariableMapping = LinqExtender.Map(constructor.TypeParameters, newTypeVariables.Select(x => (Type)x).ToList());
       return new DatatypeSelector(constructor, index, newTypeVariables, typeVariableMapping);
     }
-    
+
     private DatatypeSelector(DatatypeConstructor constructor, int index, List<TypeVariable> newTypeVariables, Dictionary<TypeVariable, Type> typeVariableMapping)
       : base(constructor.InParams[index].tok,
         constructor.InParams[index].Name + "#" + constructor.Name,
@@ -3149,7 +3152,7 @@ namespace Microsoft.Boogie
       var typeVariableMapping = LinqExtender.Map(constructor.TypeParameters, newTypeVariables.Select(x => (Type)x).ToList());
       return new DatatypeMembership(constructor, newTypeVariables, typeVariableMapping);
     }
-    
+
     private DatatypeMembership(DatatypeConstructor constructor, List<TypeVariable> newTypeVariables, Dictionary<TypeVariable, Type> typeVariableMapping)
       : base(constructor.tok,
         "is#" + constructor.Name,
@@ -4219,8 +4222,7 @@ namespace Microsoft.Boogie
     {
       return InjectedAssumptionVariables.Where(v =>
       {
-        Expr e;
-        if (incarnationMap.TryGetValue(v, out e))
+        if (incarnationMap.TryGetValue(v, out var e))
         {
           var le = e as LiteralExpr;
           return le == null || !le.IsTrue;
@@ -4236,8 +4238,7 @@ namespace Microsoft.Boogie
     {
       return DoomedInjectedAssumptionVariables.Where(v =>
       {
-        Expr e;
-        if (incarnationMap.TryGetValue(v, out e))
+        if (incarnationMap.TryGetValue(v, out var e))
         {
           var le = e as LiteralExpr;
           return le == null || !le.IsTrue;
@@ -4674,17 +4675,15 @@ namespace Microsoft.Boogie
         if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
         {
           Console.WriteLine("Implementation.GetImplFormalMap on {0}:", this.Name);
-          using (TokenTextWriter stream =
-            new TokenTextWriter("<console>", Console.Out, /*setTokens=*/false, /*pretty=*/ false))
+          using TokenTextWriter stream =
+            new TokenTextWriter("<console>", Console.Out, /*setTokens=*/false, /*pretty=*/ false);
+          foreach (var e in map)
           {
-            foreach (var e in map)
-            {
-              Console.Write("  ");
-              cce.NonNull((Variable /*!*/) e.Key).Emit(stream, 0);
-              Console.Write("  --> ");
-              cce.NonNull((Expr) e.Value).Emit(stream);
-              Console.WriteLine();
-            }
+            Console.Write("  ");
+            cce.NonNull((Variable /*!*/) e.Key).Emit(stream, 0);
+            Console.Write("  --> ");
+            cce.NonNull((Expr) e.Value).Emit(stream);
+            Console.WriteLine();
           }
         }
 

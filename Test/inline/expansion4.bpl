@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 function foo(x:int) : int
   { if x <= 0 then 1 else foo(x - 1) + 2 }

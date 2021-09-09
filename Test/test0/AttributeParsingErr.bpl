@@ -1,4 +1,4 @@
-// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %parallel-boogie -noVerify "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type {:sourcefile "test.ssc"} {1} T; 
 

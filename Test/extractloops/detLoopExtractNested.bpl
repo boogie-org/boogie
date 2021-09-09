@@ -1,4 +1,4 @@
-// RUN: %boogie  -stratifiedInline:1 -extractLoops -deterministicExtractLoops -recursionBound:100  "%s" > "%t"
+// RUN: %parallel-boogie  -stratifiedInline:1 -extractLoops -deterministicExtractLoops -recursionBound:100  "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 //This example checks the bug fix in the loop extract for http://symdiff.codeplex.com/workitem/1

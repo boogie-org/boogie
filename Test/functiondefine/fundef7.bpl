@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" /errorTrace:0 > "%t"
 // RUN: %diff "%s.expect" "%t"
 // defined functions
 

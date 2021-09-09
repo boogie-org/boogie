@@ -1,4 +1,4 @@
-// RUN: %boogie -noVerify "%s" SeparateVerification0.bpl > "%t"
+// RUN: %parallel-boogie -noVerify "%s" SeparateVerification0.bpl > "%t"
 // RUN: %diff "%s.expect" "%t"
 // to be used with SeparateVerification0.bpl
 

@@ -1,4 +1,4 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %parallel-boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 var k: int;
 var AllMaps__1: [int][int]int;

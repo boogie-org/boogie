@@ -1672,10 +1672,8 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<string>() != null);
       System.IO.StringWriter buffer = new System.IO.StringWriter();
-      using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false))
-      {
-        this.Emit(stream, 0);
-      }
+      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false);
+      this.Emit(stream, 0);
 
       return buffer.ToString();
     }
@@ -2009,11 +2007,7 @@ namespace Microsoft.Boogie
 
         for (int i = 0; i < Lhss.Count; ++i)
         {
-          IdentifierExpr /*!*/
-            newLhs;
-          Expr /*!*/
-            newRhs;
-          Lhss[i].AsSimpleAssignment(Rhss[i], out newLhs, out newRhs);
+          Lhss[i].AsSimpleAssignment(Rhss[i], out var newLhs, out var newRhs);
           newLhss.Add(new SimpleAssignLhs(Token.NoToken, newLhs));
           newRhss.Add(newRhs);
         }
@@ -2254,11 +2248,9 @@ namespace Microsoft.Boogie
         selectArgs.Add(e);
       }
 
-      TypeParamInstantiation /*!*/
-        tpInsts;
       TypeAttr =
         MapSelect.Typecheck(cce.NonNull(Map.Type), Map,
-          selectArgs, out tpInsts, tc, tok, "map assignment");
+          selectArgs, out var tpInsts, tc, tok, "map assignment");
       TypeParameters = tpInsts;
     }
 
@@ -3085,10 +3077,8 @@ namespace Microsoft.Boogie
       }
 
       // match actuals with formals
-      List<Type /*!*/> /*!*/
-        actualTypeParams;
       Type.CheckArgumentTypes(Proc.TypeParameters,
-        out actualTypeParams,
+        out var actualTypeParams,
         formalInTypes, actualIns,
         formalOutTypes, actualOuts,
         this.tok,
@@ -3495,8 +3485,7 @@ namespace Microsoft.Boogie
 
       Substitution substOldCombined = v =>
       {
-        Expr s;
-        if (oldSubst.TryGetValue(v, out s))
+        if (oldSubst.TryGetValue(v, out var s))
         {
           return s;
         }
@@ -4132,10 +4121,8 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<string>() != null);
       System.IO.StringWriter buffer = new System.IO.StringWriter();
-      using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false))
-      {
-        this.Emit(stream, 0);
-      }
+      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false);
+      this.Emit(stream, 0);
 
       return buffer.ToString();
     }

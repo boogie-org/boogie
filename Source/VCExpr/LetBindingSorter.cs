@@ -64,8 +64,7 @@ namespace Microsoft.Boogie.VCExprAST
         foreach (VCExprVar /*!*/ v in b.FreeVars)
         {
           Contract.Assert(v != null);
-          Binding b2;
-          if (boundVars.TryGetValue(v, out b2))
+          if (boundVars.TryGetValue(v, out var b2))
           {
             cce.NonNull(b2).Occurrences.Add(b);
             b.InvOccurrencesNum = b.InvOccurrencesNum + 1;

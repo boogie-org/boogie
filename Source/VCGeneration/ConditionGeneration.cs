@@ -98,7 +98,7 @@ namespace VC
     public Dictionary<Incarnation, Absy> incarnationOriginMap = new Dictionary<Incarnation, Absy>();
 
     public Dictionary<Cmd, List<object>> debugInfos = new Dictionary<Cmd, List<object>>();
-    
+
     public Program program;
 
     protected string /*?*/
@@ -148,7 +148,7 @@ namespace VC
       Helpers.ExtraTraceInformation("Finished implementation verification");
       return outcome;
     }
-    
+
     public abstract Outcome VerifyImplementation(Implementation impl, VerifierCallback callback);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
@@ -513,7 +513,7 @@ namespace VC
     #endregion
 
 
-    protected Checker FindCheckerFor(bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
+    protected Checker FindCheckerFor(Program program, bool isBlocking, Split s = null, int waitTimeinMs = 50, int maxRetries = 3)
     {
       Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
       Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
@@ -529,7 +529,7 @@ namespace VC
           {
             try
             {
-              if (c.WillingToHandle(program))
+              if (c.WillingToHandle(program) && !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
               {
                 c.GetReady();
                 return c;
@@ -538,7 +538,7 @@ namespace VC
               {
                 if (c.IsIdle)
                 {
-                  c.Retarget(program, c.TheoremProver.Context);
+                  c.Retarget(program, c.TheoremProver.Context, s);
                   c.GetReady();
                   return c;
                 }
@@ -582,7 +582,7 @@ namespace VC
           log = log + "." + checkers.Count;
         }
 
-        Checker ch = new Checker(this, program, log, appendLogFile);
+        Checker ch = new Checker(this, program, log, appendLogFile, s);
         ch.GetReady();
         checkers.Add(ch);
         return ch;
@@ -944,18 +944,15 @@ namespace VC
           end.Subtract(start).TotalMilliseconds);
       }
 
-      if (CommandLineOptions.Clo.TraceCachingForDebugging)
-      {
-        using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
-        {
-          var pd = CommandLineOptions.Clo.PrintDesugarings;
-          var pu = CommandLineOptions.Clo.PrintUnstructured;
-          CommandLineOptions.Clo.PrintDesugarings = true;
-          CommandLineOptions.Clo.PrintUnstructured = 1;
-          impl.Emit(tokTxtWr, 0);
-          CommandLineOptions.Clo.PrintDesugarings = pd;
-          CommandLineOptions.Clo.PrintUnstructured = pu;
-        }
+      if (CommandLineOptions.Clo.TraceCachingForDebugging) {
+        using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
+        var pd = CommandLineOptions.Clo.PrintDesugarings;
+        var pu = CommandLineOptions.Clo.PrintUnstructured;
+        CommandLineOptions.Clo.PrintDesugarings = true;
+        CommandLineOptions.Clo.PrintUnstructured = 1;
+        impl.Emit(tokTxtWr, 0);
+        CommandLineOptions.Clo.PrintDesugarings = pd;
+        CommandLineOptions.Clo.PrintUnstructured = pu;
       }
 
       currentImplementation = null;
@@ -1019,7 +1016,7 @@ namespace VC
         // b.liveVarsBefore has served its purpose in the just-finished call to ComputeIncarnationMap; null it out.
         b.liveVarsBefore = null;
 
-        // Decrement the succCount field in each predecessor. Once the field reaches zero in any block, 
+        // Decrement the succCount field in each predecessor. Once the field reaches zero in any block,
         // all its successors have been passified.  Consequently, its entry in block2Incarnation can be removed.
         byte[] currentChecksum = null;
         var mvc = new MutableVariableCollector();
@@ -1100,17 +1097,14 @@ namespace VC
 
     void TraceCachingAction(Cmd cmd, CachingAction action)
     {
-      if (CommandLineOptions.Clo.TraceCachingForTesting)
-      {
-        using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
-        {
-          var loc = cmd.tok != null && cmd.tok != Token.NoToken
-            ? string.Format("{0}({1},{2})", cmd.tok.filename, cmd.tok.line, cmd.tok.col)
-            : "<unknown location>";
-          Console.Write("Processing command (at {0}) ", loc);
-          cmd.Emit(tokTxtWr, 0);
-          Console.Out.WriteLine("  >>> {0}", action);
-        }
+      if (CommandLineOptions.Clo.TraceCachingForTesting) {
+        using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
+        var loc = cmd.tok != null && cmd.tok != Token.NoToken
+          ? string.Format("{0}({1},{2})", cmd.tok.filename, cmd.tok.line, cmd.tok.col)
+          : "<unknown location>";
+        Console.Write("Processing command (at {0}) ", loc);
+        cmd.Emit(tokTxtWr, 0);
+        Console.Out.WriteLine("  >>> {0}", action);
       }
 
       if (CommandLineOptions.Clo.TraceCachingForBenchmarking && CachingActionCounts != null)
@@ -1118,7 +1112,7 @@ namespace VC
         Interlocked.Increment(ref CachingActionCounts[(int) action]);
       }
     }
-    
+
     private void AddDebugInfo(Cmd c, Dictionary<Variable, Expr> incarnationMap, List<Cmd> passiveCmds)
     {
       if (c is ICarriesAttributes cmd)
@@ -1160,7 +1154,7 @@ namespace VC
         debugInfos.Add(debugCmd, debugExprs);
       }
     }
-    
+
     /// <summary>
     /// Turn a command into a passive command, and it remembers the previous step, to see if it is a havoc or not.
     /// In that case, it remembers the incarnation map BEFORE the havoc.
@@ -1178,7 +1172,7 @@ namespace VC
 
       AddDebugInfo(c, incarnationMap, passiveCmds);
       Substitution incarnationSubst = Substituter.SubstitutionFromDictionary(incarnationMap);
-      
+
       Microsoft.Boogie.VCExprAST.QuantifierInstantiationEngine.SubstituteIncarnationInInstantiationSources(c, incarnationSubst);
 
       #region assert/assume P |--> assert/assume P[x := in(x)], out := in
@@ -1264,8 +1258,7 @@ namespace VC
             }
             else
             {
-              bool isTrue;
-              var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
+              var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out var isTrue);
               TraceCachingAction(pc,
                 !isTrue ? CachingAction.MarkAsPartiallyVerified : CachingAction.MarkAsFullyVerified);
               var litExpr = ac.Expr as LiteralExpr;
@@ -1306,8 +1299,7 @@ namespace VC
               && currentImplementation.IsAssertionChecksumInCachedSnapshot(pc.SugaredCmdChecksum)
               && !currentImplementation.IsErrorChecksumInCachedSnapshot(pc.SugaredCmdChecksum))
           {
-            bool isTrue;
-            var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
+            var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out var isTrue);
             if (!isTrue)
             {
               copy = LiteralExpr.Imp(assmVars, copy);
@@ -1463,10 +1455,9 @@ namespace VC
             && assign.Lhss.Count == 1)
         {
           var identExpr = assign.Lhss[0].AsExpr as IdentifierExpr;
-          Expr incarnation;
           if (identExpr != null && identExpr.Decl != null &&
               QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption") &&
-              incarnationMap.TryGetValue(identExpr.Decl, out incarnation))
+              incarnationMap.TryGetValue(identExpr.Decl, out var incarnation))
           {
             TraceCachingAction(assign, CachingAction.AssumeNegationOfAssumptionVariable);
             passiveCmds.Add(new AssumeCmd(c.tok, Expr.Not(incarnation)));
@@ -1550,7 +1541,7 @@ namespace VC
       else if (c is StateCmd st)
       {
         this.preHavocIncarnationMap = null; // we do not need to remember the previous incarnations
-        
+
         // account for any where clauses among the local variables
         foreach (Variable v in st.Locals)
         {

@@ -235,10 +235,9 @@ The generic options may or may not be used by the prover plugin.
       Contract.Requires(name != null);
       Contract.Requires(opt != null);
       string tmp = null;
-      int t2;
       if (ParseString(opt, name, ref tmp))
       {
-        if (int.TryParse(cce.NonNull(tmp), out t2))
+        if (int.TryParse(cce.NonNull(tmp), out var t2))
         {
           field = t2;
           return true;
@@ -257,10 +256,9 @@ The generic options may or may not be used by the prover plugin.
       Contract.Requires(name != null);
       Contract.Requires(opt != null);
       string tmp = null;
-      uint t2;
       if (ParseString(opt, name, ref tmp))
       {
-        if (uint.TryParse(cce.NonNull(tmp), out t2))
+        if (uint.TryParse(cce.NonNull(tmp), out var t2))
         {
           field = t2;
           return true;

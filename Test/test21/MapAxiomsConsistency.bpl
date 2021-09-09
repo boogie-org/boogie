@@ -1,6 +1,6 @@
-// RUN: %boogie -typeEncoding:p -logPrefix:0p "%s" > "%t"
+// RUN: %parallel-boogie -typeEncoding:p -logPrefix:0p "%s" > "%t"
 // RUN: %diff "%s.p.expect" "%t"
-// RUN: %boogie -typeEncoding:a -logPrefix:0a "%s" > "%t"
+// RUN: %parallel-boogie -typeEncoding:a -logPrefix:0a "%s" > "%t"
 // RUN: %diff "%s.a.expect" "%t"
 // Dafny program verifier version 0.92, Copyright (c) 2003-2008, Microsoft.
 // Command Line Options: /trace /typeEncoding:arguments /print:test.bpl test.dfy

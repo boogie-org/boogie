@@ -1,4 +1,4 @@
-// RUN: %boogie /printModel:1 "%s" > "%t"
+// RUN: %parallel-boogie /printModel:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure test0()

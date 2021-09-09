@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" -infer:j > "%t"
+// RUN: %parallel-boogie "%s" -infer:j > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure main()
 {

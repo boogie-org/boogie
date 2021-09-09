@@ -2205,8 +2205,7 @@ namespace Microsoft.Boogie.SMTLib
           resp = resp.Arguments[0];
           if (resp.ArgCount != 0)
             break;
-          int v;
-          if (int.TryParse(resp.Name, out v))
+          if (int.TryParse(resp.Name, out var v))
             unsatisfiedSoftAssumptions.Add(v);
           else
             break;

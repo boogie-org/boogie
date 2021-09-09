@@ -1,4 +1,4 @@
-// RUN: %boogie -useArrayTheory "%s" > "%t"
+// RUN: %parallel-boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type X;
 

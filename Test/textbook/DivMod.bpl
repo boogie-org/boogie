@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // This file contains two definitions of integer div/mod (truncated division, as is
 // used in C, C#, Java, and several other languages, and Euclidean division, which

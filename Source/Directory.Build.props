@@ -2,7 +2,7 @@
 
   <!-- Target framework and package configuration -->
   <PropertyGroup>
-    <Version>2.9.2</Version>
+    <Version>2.9.4</Version>
     <TargetFramework>net5.0</TargetFramework>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Authors>Boogie</Authors>

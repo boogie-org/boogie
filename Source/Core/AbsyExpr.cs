@@ -34,6 +34,20 @@ namespace Microsoft.Boogie
       Emit(stream, 0, false);
     }
 
+    public enum Position
+    {
+      Pos,
+      Neg,
+      Neither
+    }
+
+    public static Position NegatePosition(Position p)
+    {
+      return p == Position.Neither ? Position.Neither : (p == Position.Neg ? Position.Pos : Position.Neg);
+    }
+
+    public Position pos = Position.Pos;
+
     /// <summary>
     /// If true the client is making a promise that this Expr will be
     /// treated immutably (i.e. once constructed it is never changed).
@@ -65,10 +79,8 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<string>() != null);
       System.IO.StringWriter buffer = new System.IO.StringWriter();
-      using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false))
-      {
-        this.Emit(stream, 0, false);
-      }
+      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false);
+      this.Emit(stream, 0, false);
 
       return buffer.ToString();
     }
@@ -101,7 +113,7 @@ namespace Microsoft.Boogie
           if (Immutable && !_Type.Equals(value))
             throw new InvalidOperationException("Cannot change the Type of an Immutable Expr");
 
-          // Once the Type has been set (i.e. no longer null) we never change the reference 
+          // Once the Type has been set (i.e. no longer null) we never change the reference
           // if this Expr is immutable, even if the Type is equivalent (i.e. _Type.Equals(newType))
           if (!Immutable)
             _Type = value;
@@ -2200,7 +2212,7 @@ namespace Microsoft.Boogie
         case Opcode.Eq:
         case Opcode.Neq:
           // Comparison is allowed if the argument types are unifiable
-          // (i.e., if there is any chance that the values of the arguments are 
+          // (i.e., if there is any chance that the values of the arguments are
           // in the same domain)
           if (arg0type.Equals(arg1type))
           {
@@ -2690,11 +2702,9 @@ namespace Microsoft.Boogie
       Contract.Assume(actuals.Count == Func.InParams.Count);
       Contract.Assume(Func.OutParams.Count == 1);
 
-      List<Type /*!*/> /*!*/
-        resultingTypeArgs;
       List<Type> actualResultType =
         Type.CheckArgumentTypes(Func.TypeParameters,
-          out resultingTypeArgs,
+          out var resultingTypeArgs,
           new List<Type>(Func.InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
           actuals,
           new List<Type>(Func.OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
@@ -3155,8 +3165,7 @@ namespace Microsoft.Boogie
                // typechecked and does not need to be checked again
                TypeParameters == null)
       {
-        TypeParamInstantiation tpInsts;
-        Type = Fun.Typecheck(Args, out tpInsts,
+        Type = Fun.Typecheck(Args, out var tpInsts,
           tc); // Make sure we pass Args so if this Expr is immutable it is protected
         TypeParameters = tpInsts;
       }

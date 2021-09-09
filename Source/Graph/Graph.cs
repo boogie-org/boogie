@@ -586,6 +586,49 @@ namespace Microsoft.Boogie.GraphUtil
       }
     }
 
+    // This method gives a simpler way to compute dominators but it assmumes the graph is a DAG.
+    // With acyclicty we can compute all dominators by traversing the graph (once) in topological order
+    // (using the property: A vertex's dominator set is unaffected by vertices that come later).
+    // The method does not check the graph for the DAG property. That risk is on the caller.
+    public Dictionary<Node, HashSet<Node>> DominatorsFast()
+    {
+      List<Node> topoSorted = this.TopologicalSort().ToList();
+      var dominators = new Dictionary<Node, HashSet<Node>>();
+      topoSorted.ForEach(u => dominators[u] = topoSorted.ToHashSet());
+      var todo = new Queue<Node>();
+      foreach (var u in topoSorted)
+      {
+        var s = new HashSet<Node>();
+        var predecessors = this.Predecessors(u).ToList();
+        if (predecessors.Count() != 0)
+        {
+          s.UnionWith(dominators[predecessors.First()]);
+          predecessors.ForEach(v => s.IntersectWith(dominators[v]));
+        }
+        s.Add(u);
+        dominators[u] = s;
+      }
+      return dominators;
+    }
+
+    // Use this method only for DAGs because it uses DominatorsFast() for computing dominators
+    public Dictionary<Node, Node> ImmediateDominator()
+    {
+      List<Node> topoSorted = this.TopologicalSort().ToList();
+      Dictionary<Node, HashSet<Node>> dominators = DominatorsFast();
+      var immediateDominator = new Dictionary<Node, Node>();
+      foreach (var u in this.Nodes)
+      {
+        if (dominators[u].Count() > 1)
+        {
+          dominators[u].Remove(u);
+        }
+        immediateDominator[u] = topoSorted.ElementAt(dominators[u].Max(e => topoSorted.IndexOf(e)));
+      }
+      immediateDominator[this.source] = this.source;
+      return immediateDominator;
+    }
+
     public Dictionary<Node, List<Node>> ImmediateDominatorMap
     {
       get
@@ -603,16 +646,13 @@ namespace Microsoft.Boogie.GraphUtil
     public List<Node> ImmediatelyDominatedBy(Node /*!*/ n)
     {
       Contract.Requires(n != null);
-      List<Node> dominees;
-      this.ImmediateDominatorMap.TryGetValue(n, out dominees);
+      this.ImmediateDominatorMap.TryGetValue(n, out var dominees);
       return dominees == null ? new List<Node>() : dominees;
     }
 
     public IEnumerable<Node /*?*/> TopologicalSort(bool reversed = false)
     {
-      bool acyclic;
-      List<Node> sortedList;
-      this.TarjanTopSort(out acyclic, out sortedList, reversed);
+      this.TarjanTopSort(out var acyclic, out var sortedList, reversed);
       return acyclic ? sortedList : new List<Node>();
     }
 
@@ -763,9 +803,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     public static bool Acyclic(Graph<Node> g, Node source)
     {
-      bool acyclic;
-      List<Node> sortedList;
-      g.TarjanTopSort(out acyclic, out sortedList);
+      g.TarjanTopSort(out var acyclic, out var sortedList);
       return acyclic;
     }
 
@@ -1044,25 +1082,25 @@ namespace Microsoft.Boogie.GraphUtil
       return s.ToString();
     }
 
-    public ICollection<Node> ComputeReachable()
+    public ICollection<Node> ComputeReachability(Node start, bool forward = true)
     {
-      ICollection<Node> result = new HashSet<Node>();
-      Stack<Node> stack = new Stack<Node>();
-      stack.Push(source);
-      while (!(stack.Count() == 0))
+      var todo = new Stack<Node>();
+      var visited = new HashSet<Node>();
+      todo.Push(start);
+      while (todo.Any())
       {
-        Node n = stack.Pop();
-        result.Add(n);
-        foreach (var m in Successors(n))
-        {
-          if (!result.Contains(m))
-          {
-            stack.Push(m);
-          }
-        }
+        var b = todo.Pop();
+        if (visited.Contains(b)) continue;
+        visited.Add(b);
+        var related = forward ? this.Successors(b) : this.Predecessors(b);
+        related.Where(blk => !visited.Contains(blk)).ToList().ForEach(blk => todo.Push(blk));
       }
+      return visited;
+    }
 
-      return result;
+    public ICollection<Node> Reachable()
+    {
+      return ComputeReachability(source);
     }
   } // end: class Graph
 
@@ -1091,7 +1129,7 @@ namespace Microsoft.Boogie.GraphUtil
 
       #region Dual graph may not be connected, so add an edge from the dual graph's soure node to any unreachable node
 
-      foreach (var n in dual.Nodes.Where(Item => !dual.ComputeReachable().Contains(Item)))
+      foreach (var n in dual.Nodes.Where(Item => !dual.Reachable().Contains(Item)))
       {
         dual.AddEdge(source, n);
       }

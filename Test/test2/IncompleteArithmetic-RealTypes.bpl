@@ -1,4 +1,4 @@
-// RUN: %boogie "-proverOpt:O:smt.arith.solver=2" "%s" > "%t"
+// RUN: %parallel-boogie "-proverOpt:O:smt.arith.solver=2" "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // This file is generated from $DAFNY/Test/dafny0/RealTypes.dfy using Dafny.

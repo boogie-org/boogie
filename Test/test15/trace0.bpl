@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" -enhancedErrorMessages:1 > "%t"
+// RUN: %parallel-boogie "%s" -enhancedErrorMessages:1 > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure foo(i: int) returns (o: int)
 requires i == 42;

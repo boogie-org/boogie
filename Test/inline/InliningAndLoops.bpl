@@ -1,4 +1,4 @@
-// RUN: %boogie -loopUnroll:3 -soundLoopUnrolling "%s" > "%t"
+// RUN: %parallel-boogie -loopUnroll:3 -soundLoopUnrolling "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure foo(N: int)
   requires N == 2;

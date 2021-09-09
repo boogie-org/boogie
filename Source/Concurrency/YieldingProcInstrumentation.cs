@@ -417,9 +417,7 @@ namespace Microsoft.Boogie
       var returnBlock = BlockHelper.Block(civlTypeChecker.AddNamePrefix("UnifiedReturn"), new List<Cmd>());
       SplitBlocks(impl);
 
-      HashSet<Block> yieldingLoopHeaders;
-      HashSet<Block> blocksInYieldingLoops;
-      ComputeYieldingLoops(impl, out yieldingLoopHeaders, out blocksInYieldingLoops);
+      ComputeYieldingLoops(impl, out var yieldingLoopHeaders, out var blocksInYieldingLoops);
       foreach (Block header in yieldingLoopHeaders)
       {
         foreach (Block pred in header.Predecessors)
@@ -436,9 +434,7 @@ namespace Microsoft.Boogie
           }
         }
 
-        List<Cmd> firstCmds;
-        List<Cmd> secondCmds;
-        SplitCmds(header.Cmds, out firstCmds, out secondCmds);
+        SplitCmds(header.Cmds, out var firstCmds, out var secondCmds);
         List<Cmd> newCmds = new List<Cmd>();
         newCmds.AddRange(firstCmds);
         newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());

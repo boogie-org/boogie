@@ -103,7 +103,6 @@ namespace VC
 
         DFS(initial);
       }
-
       void TopologicalSortImpl()
       {
         Graph<Block> dag = Program.GraphFromImpl(impl);
@@ -127,8 +126,7 @@ namespace VC
         Contract.Requires(b != null);
         Contract.Ensures(Contract.Result<Block>() != null);
 
-        Block fake_res;
-        if (copies.TryGetValue(b, out fake_res))
+        if (copies.TryGetValue(b, out var fake_res))
         {
           return cce.NonNull(fake_res);
         }
@@ -159,8 +157,7 @@ namespace VC
         Contract.Requires(b != null);
         Contract.Ensures(Contract.Result<Block>() != null);
 
-        Block fake_res;
-        if (copies.TryGetValue(b, out fake_res))
+        if (copies.TryGetValue(b, out var fake_res))
         {
           // fake_res should be Block! but the compiler fails
           return cce.NonNull(fake_res);
@@ -218,8 +215,7 @@ namespace VC
             foreach (Block b in cce.NonNull(go.labelTargets))
             {
               Contract.Assert(b != null);
-              Block c;
-              if (copies.TryGetValue(b, out c))
+              if (copies.TryGetValue(b, out var c))
               {
                 copy.AddTarget(cce.NonNull(c));
               }
@@ -321,10 +317,8 @@ namespace VC
         }
 
         parent.CurrentLocalVariables = impl.LocVars;
-        ModelViewInfo mvInfo;
-        parent.PassifyImpl(impl, out mvInfo);
-        Dictionary<int, Absy> label2Absy;
-        Checker ch = parent.FindCheckerFor();
+        parent.PassifyImpl(impl, out var mvInfo);
+        Checker ch = parent.FindCheckerFor(parent.program, true);
         Contract.Assert(ch != null);
 
         ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
@@ -335,7 +329,7 @@ namespace VC
             var exprGen = ch.TheoremProver.Context.ExprGen;
             VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
 
-            VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, out label2Absy, ch.TheoremProver.Context);
+            VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, out var label2Absy, ch.TheoremProver.Context);
             Contract.Assert(vc != null);
 
             VCExpr controlFlowFunctionAppl =
@@ -352,7 +346,7 @@ namespace VC
               Emit();
             }
 
-            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback), 
+            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback),
               CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit, null);
           }
 
@@ -555,8 +549,7 @@ namespace VC
         vcgen.AddBlocksBetween(codeExpr.Blocks);
         Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks,
           new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
-        int ac; // computed, but then ignored for this CodeExpr
-        VCExpr startCorrect = LetVC(codeExpr.Blocks, null, label2absy, ctx, out ac, isPositiveContext);
+        VCExpr startCorrect = LetVC(codeExpr.Blocks, null, label2absy, ctx, out var ac, isPositiveContext);
         VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
         if (vcgen.CurrentLocalVariables.Count != 0)
         {
@@ -795,21 +788,10 @@ namespace VC
       {
         max_vc_cost = tmp_max_vc_cost;
       }
-      Stack<Split> work = new Stack<Split>();
-      List<Split> currently_running = new List<Split>();
       ResetPredecessors(impl.Blocks);
-      List<Split> manual_splits = Split.FindManualSplits(impl, gotoCmdOrigins, this);
-      if (manual_splits != null)
-      {
-        foreach (var split in manual_splits)
-        {
-          work.Push(split);
-        }
-      }
-      else
-      {
-        work.Push(new Split(impl.Blocks, gotoCmdOrigins, this, impl));
-      }
+      List<Split> manual_splits = Split.FocusAndSplit(impl, gotoCmdOrigins, this);
+      var work = new Stack<Split>(manual_splits);
+      var currently_running = new List<Split>();
 
       bool keep_going = max_kg_splits > 1;
       int total = 0;
@@ -843,8 +825,7 @@ namespace VC
             var timeout = (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
               keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
               impl.TimeLimit;
-
-            var checker = s.parent.FindCheckerFor(false);
+            var checker = s.parent.FindCheckerFor(s.parent.program, false, s);
             try
             {
               if (checker == null)
@@ -911,7 +892,7 @@ namespace VC
               {
                 if (prover_failed)
                 {
-                  // even if the prover fails, we have learned something, i.e., it is 
+                  // even if the prover fails, we have learned something, i.e., it is
                   // annoying to watch Boogie say Timeout, 0.00% a couple of times
                   proven_cost += s.Cost / 100;
                 }
@@ -1009,7 +990,7 @@ namespace VC
         }
       }
     }
-    
+
     public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -1037,11 +1018,10 @@ namespace VC
         smoke_tester.Copy();
       }
 
-      ModelViewInfo mvInfo;
-      var gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
+      var gotoCmdOrigins = PassifyImpl(impl, out var mvInfo);
 
       ExpandAsserts(impl);
-      
+
       Outcome outcome = Outcome.Correct;
 
       // Report all recycled failing assertions for this implementation.
@@ -1073,7 +1053,7 @@ namespace VC
       }
 
       SplitAndVerify(impl, gotoCmdOrigins, callback, mvInfo, ref outcome);
-      
+
       if (outcome == Outcome.Correct && smoke_tester != null)
       {
         smoke_tester.Test();
@@ -1420,7 +1400,7 @@ namespace VC
         {
           Block pred = cce.NonNull(header.Predecessors[predIndex]);
 
-          // Create a block between header and pred for the predicate commands if pred has more than one successor 
+          // Create a block between header and pred for the predicate commands if pred has more than one successor
           GotoCmd gotocmd = cce.NonNull((GotoCmd) pred.TransferCmd);
           Contract.Assert(gotocmd.labelNames !=
                           null); // if "pred" is really a predecessor, it may be a GotoCmd with at least one label
@@ -1779,7 +1759,6 @@ namespace VC
 
           for (int i = 0; i < gc.labelTargets.Count(); ++i)
           {
-            Block newTarget;
             if (gc.labelTargets[i] == header)
             {
               if (nextHeader != null)
@@ -1789,7 +1768,7 @@ namespace VC
                 nextHeader.Predecessors.Add(copy);
               }
             }
-            else if (ori2CopiedBlocks.TryGetValue(gc.labelTargets[i], out newTarget))
+            else if (ori2CopiedBlocks.TryGetValue(gc.labelTargets[i], out var newTarget))
             {
               newTargets.Add(newTarget);
               newLabels.Add(newTarget.Label);
@@ -1897,14 +1876,17 @@ namespace VC
         foreach (Variable lvar in impl.LocVars)
         {
           Contract.Assert(lvar != null);
+          var idExp = new IdentifierExpr(lvar.tok, lvar);
           if (lvar.TypedIdent.WhereExpr != null)
           {
-            Cmd c = new AssumeCmd(lvar.tok, lvar.TypedIdent.WhereExpr);
+            var exp = Expr.Binary(lvar.tok, BinaryOperator.Opcode.And, lvar.TypedIdent.WhereExpr, LiteralExpr.Literal(true));
+            Cmd c = new AssumeCmd(lvar.tok, exp,
+            new QKeyValue(lvar.tok, "where", new List<object>(new object [] {idExp}), null));
             cc.Add(c);
           }
           else if (QKeyValue.FindBoolAttribute(lvar.Attributes, "assumption"))
           {
-            cc.Add(new AssumeCmd(lvar.tok, new IdentifierExpr(lvar.tok, lvar),
+            cc.Add(new AssumeCmd(lvar.tok, idExp,
               new QKeyValue(lvar.tok, "assumption_variable_initialization", new List<object>(), null)));
           }
         }
@@ -1992,7 +1974,7 @@ namespace VC
 //      #region Constant Folding
 //      #endregion
 //      #region Debug Tracing
-//      if (CommandLineOptions.Clo.TraceVerify) 
+//      if (CommandLineOptions.Clo.TraceVerify)
 //      {
 //        Console.WriteLine("after constant folding");
 //        EmitImpl(impl, true);
@@ -2078,8 +2060,7 @@ namespace VC
             }
             else
             {
-              HashSet<Variable> vars;
-              if (IsConjunctionOfAssumptionVariables(assertCmd.VerifiedUnder, out vars))
+              if (IsConjunctionOfAssumptionVariables(assertCmd.VerifiedUnder, out var vars))
               {
                 vu = vars;
                 // TODO(wuestholz): Maybe drop the :verified_under attribute.
@@ -2182,8 +2163,7 @@ namespace VC
           variables = new HashSet<Variable>();
           foreach (var op in andExpr.Args)
           {
-            HashSet<Variable> vars;
-            var r = IsConjunctionOfAssumptionVariables(op, out vars);
+            var r = IsConjunctionOfAssumptionVariables(op, out var vars);
             res &= r;
             variables = JoinVariableSets(variables, vars);
             if (!res)
@@ -2351,7 +2331,7 @@ namespace VC
       return new CalleeCounterexampleInfo(ret, cexInfo.args);
     }
 
-    // return the position of the i^th CallCmd in the block (count only those Calls that call a procedure in inlinedProcs). 
+    // return the position of the i^th CallCmd in the block (count only those Calls that call a procedure in inlinedProcs).
     // Assert failure if there isn't any.
     // Assert that the CallCmd found calls "callee"
     private int GetCallCmdPosition(Block block, int i, HashSet<string> inlinedProcs, string callee)
@@ -2452,7 +2432,7 @@ namespace VC
           {
             augmentedTrace.AddRange(debugInfos[cmd]);
           }
-          
+
           // Skip if 'cmd' not contained in the trace or not an assert
           if (cmd is AssertCmd && traceNodes.Contains(cmd))
           {
@@ -2621,12 +2601,12 @@ namespace VC
       {
         cc = new AssertCounterexample(cex.Trace, cex.AugmentedTrace, assrt, cex.Model, cex.MvInfo, cex.Context);
       }
-      
+
       return cc;
     }
 
     /*
-     * 
+     *
      * Encoding control flow in VC generation:
      *
      * A function ControlFlow is declared globally and used in each verification condition.
@@ -2644,9 +2624,9 @@ namespace VC
      * (1) While translating block A, we have wlp(assert E, Phi) = (f(A) == Id(assert E) ==> E) && Phi
      *
      * In the description above, I am only explaining one of the options for translating assert statements.
-     * 
+     *
      */
-    
+
     static VCExpr LetVC(List<Block> blocks,
       VCExpr controlFlowVariableExpr,
       Dictionary<int, Absy> label2absy,
@@ -2746,7 +2726,7 @@ namespace VC
         return vc;
       }
 
-      /* 
+      /*
        * For block A (= block), generate:
        *   wp(A_body, (/\ S \in Successors(A) :: DagVC(S)))
        */
@@ -2757,8 +2737,7 @@ namespace VC
         foreach (Block successor in cce.NonNull(gotocmd.labelTargets))
         {
           Contract.Assert(successor != null);
-          int ac;
-          VCExpr c = DagVC(successor, controlFlowVariableExpr, label2absy, blockEquations, proverCtxt, out ac);
+          VCExpr c = DagVC(successor, controlFlowVariableExpr, label2absy, blockEquations, proverCtxt, out var ac);
           assertionCount += ac;
           if (controlFlowVariableExpr != null)
           {
@@ -2788,7 +2767,7 @@ namespace VC
       return vc;
     }
 
-    /// <summary> 
+    /// <summary>
     /// Remove empty blocks reachable from the startBlock of the CFG
     /// </summary>
     static void RemoveEmptyBlocks(List<Block> blocks)
