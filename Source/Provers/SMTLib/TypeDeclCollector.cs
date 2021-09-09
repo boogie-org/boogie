@@ -10,7 +10,7 @@ namespace Microsoft.Boogie.SMTLib
 
   public class TypeDeclCollector : BoundVarTraversingVCExprVisitor<bool, bool>
   {
-    private readonly SMTCommandLineOptions commandLineOptions;
+    private readonly SMTLibOptions commandLineOptions;
     private UniqueNamer Namer;
     private readonly SMTLibProverOptions Options;
 
@@ -28,7 +28,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
 
-    public TypeDeclCollector(SMTCommandLineOptions commandLineOptions, SMTLibProverOptions opts, UniqueNamer namer)
+    public TypeDeclCollector(SMTLibOptions commandLineOptions, SMTLibProverOptions opts, UniqueNamer namer)
     {
       Contract.Requires(namer != null);
       this.commandLineOptions = commandLineOptions;

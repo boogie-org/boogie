@@ -26,11 +26,11 @@ namespace Microsoft.Boogie.SMTLib
   // Lineariser for expressions. The result (bool) is currently not used for anything
   public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions /*!*/>
   {
-    private readonly SMTCommandLineOptions commandLineOptions;
+    private readonly SMTLibOptions libOptions;
 
-    public SMTLibExprLineariser(SMTCommandLineOptions commandLineOptions)
+    public SMTLibExprLineariser(SMTLibOptions libOptions)
     {
-      this.commandLineOptions = commandLineOptions;
+      this.libOptions = libOptions;
     }
 
     public string StoreOpName(VCExprNAry node)
@@ -127,7 +127,7 @@ namespace Microsoft.Boogie.SMTLib
       }
       else
       {
-        if (t.IsMap && commandLineOptions.UseArrayTheory)
+        if (t.IsMap && libOptions.UseArrayTheory)
         {
           MapType m = t.AsMap;
           // Contract.Assert(m.MapArity == 1);
@@ -222,7 +222,7 @@ namespace Microsoft.Boogie.SMTLib
         retVal = f.FindStringAttribute("builtin");
       }
 
-      if (retVal != null && !commandLineOptions.UseArrayTheory && SMTLibOpLineariser.ArrayOps.Contains(retVal))
+      if (retVal != null && !libOptions.UseArrayTheory && SMTLibOpLineariser.ArrayOps.Contains(retVal))
       {
         retVal = null;
       }
@@ -535,13 +535,13 @@ namespace Microsoft.Boogie.SMTLib
     // Lineariser for operator terms. The result (bool) is currently not used for anything
     internal class SMTLibOpLineariser : IVCExprOpVisitor<bool, LineariserOptions /*!*/>
     {
-      private readonly CommandLineOptions commandLineOptions;
+      private readonly CommandLineOptions libOptions;
       private readonly SMTLibExprLineariser ExprLineariser;
       private readonly TextWriter wr;
 
-      public SMTLibOpLineariser(CommandLineOptions commandLineOptions)
+      public SMTLibOpLineariser(CommandLineOptions libOptions)
       {
-        this.commandLineOptions = commandLineOptions;
+        this.libOptions = libOptions;
       }
 
       [ContractInvariantMethod]
@@ -699,7 +699,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         var name = ExprLineariser.SelectOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
-        if (commandLineOptions.UseArrayTheory)
+        if (libOptions.UseArrayTheory)
           name = "select";
         WriteApplication(name, node, options);
         return true;
@@ -709,7 +709,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         var name = ExprLineariser.StoreOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
-        if (commandLineOptions.UseArrayTheory)
+        if (libOptions.UseArrayTheory)
           name = "store";
         WriteApplication(name, node, options);
         return true;

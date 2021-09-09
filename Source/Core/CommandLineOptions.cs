@@ -490,7 +490,7 @@ namespace Microsoft.Boogie
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
-  public class CommandLineOptions : CommandLineOptionEngine, SMTCommandLineOptions
+  public class CommandLineOptions : CommandLineOptionEngine, SMTLibOptions
   {
     public CommandLineOptions()
       : base("Boogie", "Boogie program verifier")

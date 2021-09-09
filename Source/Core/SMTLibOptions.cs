@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Boogie
 {
-  public interface SMTCommandLineOptions
+  public interface SMTLibOptions
   {
     bool ExpectingModel { get; }
     bool ProduceModel { get; }
