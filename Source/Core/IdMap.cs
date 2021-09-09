@@ -6,7 +6,7 @@ namespace Microsoft.Boogie
   {
     Dictionary<T, int> toId = new ();
     Dictionary<int, T> fromId = new ();
-    private int counter = 0;
+    private int counter = 10;
     
     public int GetId(T value)
     {
