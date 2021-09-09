@@ -519,6 +519,13 @@ namespace Microsoft.Boogie
 
     // Flags and arguments
 
+    public bool ExpectingModel => PrintErrorModel >= 1 ||
+                                  EnhancedErrorMessages == 1 ||
+                                  ModelViewFile != null ||
+                                  StratifiedInlining > 0 && !StratifiedInliningWithoutModels;
+
+    public bool ProduceModel => ExplainHoudini || UseProverEvaluate || ExpectingModel;
+    
     public bool RunningBoogieFromCommandLine { get; set; }
 
     [ContractInvariantMethod]
@@ -533,15 +540,29 @@ namespace Microsoft.Boogie
     public int VerifySnapshots = -1;
     public bool VerifySeparately = false;
     public string PrintFile = null;
-    public int PrintUnstructured = 0;
+
+    public int PrintUnstructured {
+      get => printUnstructured;
+      set => printUnstructured = value;
+    }
+
     public bool UseBaseNameForFileName = false;
-    public bool PrintDesugarings = false;
+
+    public bool PrintDesugarings {
+      get => printDesugarings;
+      set => printDesugarings = value;
+    }
+
     public bool PrintLambdaLifting = false;
     public bool FreeVarLambdaLifting = false;
     public string ProverLogFilePath = null;
     public bool ProverLogFileAppend = false;
 
-    public bool PrintInstrumented = false;
+    public bool PrintInstrumented {
+      get => printInstrumented;
+      set => printInstrumented = value;
+    }
+
     public bool InstrumentWithAsserts = false;
     public string ProverPreamble { get; set; }= null;
     public bool WarnNotEliminatedVars = false;
@@ -553,7 +574,12 @@ namespace Microsoft.Boogie
     }
 
     public InstrumentationPlaces InstrumentInfer = InstrumentationPlaces.LoopHeaders;
-    public bool PrintWithUniqueASTIds = false;
+
+    public bool PrintWithUniqueASTIds {
+      get => printWithUniqueAstIds;
+      set => printWithUniqueAstIds = value;
+    }
+
     private string XmlSinkFilename = null;
     [Peer] public XmlSink XmlSink = null;
     public bool Wait = false;
@@ -562,6 +588,11 @@ namespace Microsoft.Boogie
       get => trace;
       set => trace = value;
     }
+
+    public bool InitialiseImmediately => StratifiedInlining > 0 || ContractInfer;
+
+    public bool ProduceUnsatCores => PrintNecessaryAssumes || EnableUnSatCoreExtract == 1 ||
+                                     ContractInfer && (UseUnsatCoreForContractInfer || ExplainHoudini);
 
     public bool TraceTimes = false;
     public bool TraceProofObligations = false;
@@ -860,7 +891,12 @@ namespace Microsoft.Boogie
     }
 
     public Inlining ProcedureInlining = Inlining.Assume;
-    public bool PrintInlined = false;
+
+    public bool PrintInlined {
+      get => printInlined;
+      set => printInlined = value;
+    }
+
     public bool ExtractLoops = false;
     public bool DeterministicExtractLoops = false;
 
@@ -943,6 +979,11 @@ namespace Microsoft.Boogie
     private int stagedHoudiniThreads = 1;
     private uint timeLimitPerAssertionInPercent = 10;
     private int errorLimit = 5;
+    private bool printInlined = false;
+    private bool printInstrumented = false;
+    private bool printWithUniqueAstIds = false;
+    private int printUnstructured = 0;
+    private bool printDesugarings = false;
 
     public class ConcurrentHoudiniOptions
     {
@@ -1614,10 +1655,10 @@ namespace Microsoft.Boogie
             return true;
           }
 
-          if (ps.CheckBooleanFlag("printDesugared", ref PrintDesugarings) ||
+          if (ps.CheckBooleanFlag("printDesugared", ref printDesugarings) ||
               ps.CheckBooleanFlag("printLambdaLifting", ref PrintLambdaLifting) ||
-              ps.CheckBooleanFlag("printInstrumented", ref PrintInstrumented) ||
-              ps.CheckBooleanFlag("printWithUniqueIds", ref PrintWithUniqueASTIds) ||
+              ps.CheckBooleanFlag("printInstrumented", ref printInstrumented) ||
+              ps.CheckBooleanFlag("printWithUniqueIds", ref printWithUniqueAstIds) ||
               ps.CheckBooleanFlag("wait", ref Wait) ||
               ps.CheckBooleanFlag("trace", ref trace) ||
               ps.CheckBooleanFlag("traceTimes", ref TraceTimes) ||
@@ -1633,7 +1674,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("soundLoopUnrolling", ref SoundLoopUnrolling) ||
               ps.CheckBooleanFlag("checkInfer", ref InstrumentWithAsserts) ||
               ps.CheckBooleanFlag("restartProver", ref restartProverPerVc) ||
-              ps.CheckBooleanFlag("printInlined", ref PrintInlined) ||
+              ps.CheckBooleanFlag("printInlined", ref printInlined) ||
               ps.CheckBooleanFlag("smoke", ref SoundnessSmokeTest) ||
               ps.CheckBooleanFlag("vcsDumpSplits", ref VcsDumpSplits) ||
               ps.CheckBooleanFlag("dbgRefuted", ref DebugRefuted) ||

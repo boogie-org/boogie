@@ -49,17 +49,10 @@ namespace Microsoft.Boogie.SMTLib
       this.commandLineOptions = commandLineOptions;
     }
 
-    public bool ProduceModel()
-    {
-      return commandLineOptions.ExplainHoudini || commandLineOptions.UseProverEvaluate || ExpectingModel();
-    }
+    public bool ProduceModel() => commandLineOptions.ProduceModel;
 
-    public bool ExpectingModel()
-    {
-      return commandLineOptions.PrintErrorModel >= 1 ||
-             commandLineOptions.EnhancedErrorMessages == 1 ||
-             commandLineOptions.ModelViewFile != null ||
-             (commandLineOptions.StratifiedInlining > 0 && !commandLineOptions.StratifiedInliningWithoutModels);
+    public bool ExpectingModel() {
+      return commandLineOptions.ExpectingModel;
     }
 
     public void AddSolverArgument(string s)

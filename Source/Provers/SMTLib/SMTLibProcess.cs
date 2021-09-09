@@ -43,9 +43,9 @@ namespace Microsoft.Boogie.SMTLib
         this.inspector = new Inspector(options);
       }
 
-      if (cancelEvent == null && commandLineOptions.RunningBoogieFromCommandLine)
+      if (commandLineOptions.RunningBoogieFromCommandLine)
       {
-        cancelEvent = new ConsoleCancelEventHandler(ControlCHandler);
+        cancelEvent = ControlCHandler;
         Console.CancelKeyPress += cancelEvent;
       }
 

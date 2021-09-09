@@ -1388,10 +1388,20 @@ namespace Microsoft.Boogie.Houdini
       out List<Counterexample> errors)
     {
       ProverInterface.Outcome outcome;
-      try
-      {
-        outcome = session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), out errors,
-          taskID: GetTaskID());
+      try {
+        var taskID = GetTaskID();
+        int errorLimit;
+        if (CommandLineOptions.Clo.ConcurrentHoudini)
+        {
+          Contract.Assert(taskID >= 0);
+          errorLimit = CommandLineOptions.Clo.Cho[taskID].ErrorLimit;
+        }
+        else
+        {
+          errorLimit = CommandLineOptions.Clo.ErrorLimit;
+        }
+        
+        outcome = session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), out errors, errorLimit);
       }
       catch (UnexpectedProverOutputException upo)
       {

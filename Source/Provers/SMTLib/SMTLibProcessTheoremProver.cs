@@ -84,7 +84,7 @@ namespace Microsoft.Boogie.SMTLib
 
       SetupProcess();
 
-      if (commandLineOptions.StratifiedInlining > 0 || commandLineOptions.ContractInfer)
+      if (commandLineOptions.InitialiseImmediately)
       {
         // Prepare for ApiChecker usage
         if (options.LogFilename != null && currentLogFile == null)
@@ -407,9 +407,7 @@ namespace Microsoft.Boogie.SMTLib
 
         // Set produce-unsat-cores last. It seems there's a bug in Z3 where if we set it earlier its value
         // gets reset by other set-option commands ( https://z3.codeplex.com/workitem/188 )
-        if (commandLineOptions.PrintNecessaryAssumes || commandLineOptions.EnableUnSatCoreExtract == 1 ||
-            (commandLineOptions.ContractInfer && (commandLineOptions.UseUnsatCoreForContractInfer ||
-                                                      commandLineOptions.ExplainHoudini)))
+        if (commandLineOptions.ProduceUnsatCores)
         {
           SendCommon("(set-option :produce-unsat-cores true)");
           this.usingUnsatCore = true;
@@ -748,11 +746,11 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     [NoDefaultContract]
-    public override Outcome CheckOutcome(ErrorHandler handler, int taskID = -1)
+    public override Outcome CheckOutcome(ErrorHandler handler, int errorLimit)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-      var result = CheckOutcomeCore(handler, taskID: taskID);
+      var result = CheckOutcomeCore(handler, errorLimit);
       SendThisVC("(pop 1)");
       FlushLogFile();
 
@@ -760,7 +758,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     [NoDefaultContract]
-    public override Outcome CheckOutcomeCore(ErrorHandler handler, int taskID = -1)
+    public override Outcome CheckOutcomeCore(ErrorHandler handler, int errorLimit)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
@@ -773,17 +771,6 @@ namespace Microsoft.Boogie.SMTLib
       {
         currentErrorHandler = handler;
         FlushProverWarnings();
-
-        int errorLimit;
-        if (commandLineOptions.ConcurrentHoudini)
-        {
-          Contract.Assert(taskID >= 0);
-          errorLimit = commandLineOptions.Cho[taskID].ErrorLimit;
-        }
-        else
-        {
-          errorLimit = commandLineOptions.ErrorLimit;
-        }
 
         int errorsDiscovered = 0;
 
@@ -2119,7 +2106,7 @@ namespace Microsoft.Boogie.SMTLib
 
       Check();
 
-      var outcome = CheckOutcomeCore(handler);
+      var outcome = CheckOutcomeCore(handler, commandLineOptions.ErrorLimit);
 
       if (outcome != Outcome.Valid)
       {
@@ -2189,7 +2176,7 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         Check();
-        outcome = CheckOutcomeCore(handler);
+        outcome = CheckOutcomeCore(handler, commandLineOptions.ErrorLimit);
         if (outcome != Outcome.Valid)
           break;
         Pop();
