@@ -28,6 +28,18 @@ namespace Microsoft.Boogie.SMTLib
   {
     private readonly SMTLibOptions libOptions;
 
+    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
+      ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null) : this(libOptions)
+    {
+      Contract.Requires(wr != null);
+      Contract.Requires(namer != null);
+      this.wr = wr;
+      this.Namer = namer;
+      this.ProverOptions = opts;
+      this.OptimizationRequests = optReqs;
+      this.NamedAssumes = namedAssumes;
+    }
+    
     public SMTLibExprLineariser(SMTLibOptions libOptions)
     {
       this.libOptions = libOptions;
@@ -49,7 +61,7 @@ namespace Microsoft.Boogie.SMTLib
       return "Select_" + TypeToString(node[0].Type);
     }
     
-    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibProverOptions opts,
+    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
       ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null, ISet<VCExprVar> tryAssumes = null)
     {
       Contract.Requires(e != null);
@@ -57,7 +69,7 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Ensures(Contract.Result<string>() != null);
 
       StringWriter sw = new StringWriter();
-      SMTLibExprLineariser lin = new SMTLibExprLineariser(sw, namer, opts, namedAssumes, optReqs);
+      SMTLibExprLineariser lin = new SMTLibExprLineariser(sw, namer, libOptions, opts, namedAssumes, optReqs);
       Contract.Assert(lin != null);
       lin.Linearise(e, LineariserOptions.Default);
       return cce.NonNull(sw.ToString());
@@ -94,18 +106,6 @@ namespace Microsoft.Boogie.SMTLib
 
     readonly IList<string> OptimizationRequests;
     readonly ISet<VCExprVar> NamedAssumes;
-
-    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibProverOptions opts,
-      ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null)
-    {
-      Contract.Requires(wr != null);
-      Contract.Requires(namer != null);
-      this.wr = wr;
-      this.Namer = namer;
-      this.ProverOptions = opts;
-      this.OptimizationRequests = optReqs;
-      this.NamedAssumes = namedAssumes;
-    }
 
     public void Linearise(VCExpr expr, LineariserOptions options)
     {
@@ -345,7 +345,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         string optOp = node.Op.Equals(VCExpressionGenerator.MinimizeOp) ? "minimize" : "maximize";
         OptimizationRequests.Add(string.Format("({0} {1})", optOp,
-          ToString(node[0], Namer, ProverOptions, NamedAssumes)));
+          ToString(node[0], Namer, CommandLineOptions.Clo, ProverOptions, NamedAssumes)));
         Linearise(node[1], options);
         return true;
       }

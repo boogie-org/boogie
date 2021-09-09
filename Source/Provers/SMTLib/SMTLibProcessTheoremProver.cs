@@ -1684,10 +1684,10 @@ namespace Microsoft.Boogie.SMTLib
           Contract.Assert(sortedAxioms != null);
           DeclCollector.Collect(sortedAxioms);
           FeedTypeDeclsToProver();
-          AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options, namedAssumes: NamedAssumes));
+          AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, libOptions, options, namedAssumes: NamedAssumes));
         }
 
-        string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options, NamedAssumes, OptimizationRequests);
+        string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, libOptions, options, NamedAssumes, OptimizationRequests);
         Contract.Assert(res != null);
 
         if (libOptions.Trace)
