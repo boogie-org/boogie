@@ -11,7 +11,6 @@ namespace Microsoft.Boogie.SMTLib
 {
   public class SMTLibProcess
   {
-    private readonly SMTLibOptions libOptions;
     readonly Process prover;
     readonly Inspector inspector;
     readonly SMTLibProverOptions options;
@@ -26,8 +25,7 @@ namespace Microsoft.Boogie.SMTLib
     public SMTLibProcess(SMTLibOptions libOptions, SMTLibProverOptions options)
     {
       this.options = options;
-      this.libOptions = libOptions;
-      this.smtProcessId = smtProcessIdSeq++;
+      smtProcessId = smtProcessIdSeq++;
 
       var psi = new ProcessStartInfo(options.ExecutablePath(), options.SolverArguments.Concat(" "))
       {

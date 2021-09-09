@@ -59,7 +59,6 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Invariant(_backgroundPredicates != null);
     }
 
-
     [NotDelayed]
     public SMTLibProcessTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx)
@@ -80,7 +79,7 @@ namespace Microsoft.Boogie.SMTLib
 
       Namer = new SMTLibNamer();
       ctx.parent = this;
-      this.DeclCollector = new TypeDeclCollector(libOptions, (SMTLibProverOptions) options, Namer);
+      this.DeclCollector = new TypeDeclCollector(libOptions, Namer);
 
       SetupProcess();
 
@@ -393,7 +392,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         SendCommon("(set-option :print-success false)");
         SendCommon("(set-info :smt-lib-version 2.6)");
-        if (options.ProduceModel())
+        if (libOptions.ProduceModel)
           SendCommon("(set-option :produce-models true)");
         foreach (var opt in options.SmtOptions)
         {
@@ -1461,7 +1460,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private Model GetErrorModel()
     {
-      if (!options.ExpectingModel())
+      if (!libOptions.ExpectingModel)
         return null;
 
       SendThisVC("(get-model)");
@@ -1646,8 +1645,6 @@ namespace Microsoft.Boogie.SMTLib
       lock (gen)
       {
         DateTime start = DateTime.UtcNow;
-        //if (commandLineOptions.Trace)
-        //  Console.Write("Linearising ... ");
 
         // handle the types in the VCExpr
         VCExpr exprWithoutTypes;
@@ -2335,7 +2332,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override ProverOptions BlankProverOptions()
     {
-      return new SMTLibProverOptions(libOptions);
+      return new SMTLibProverOptions();
     }
 
     protected virtual SMTLibProcessTheoremProver SpawnProver(ProverOptions options,
