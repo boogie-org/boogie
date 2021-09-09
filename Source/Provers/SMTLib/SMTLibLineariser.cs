@@ -535,11 +535,11 @@ namespace Microsoft.Boogie.SMTLib
     // Lineariser for operator terms. The result (bool) is currently not used for anything
     internal class SMTLibOpLineariser : IVCExprOpVisitor<bool, LineariserOptions /*!*/>
     {
-      private readonly CommandLineOptions libOptions;
+      private readonly SMTLibOptions libOptions;
       private readonly SMTLibExprLineariser ExprLineariser;
       private readonly TextWriter wr;
 
-      public SMTLibOpLineariser(CommandLineOptions libOptions)
+      public SMTLibOpLineariser(SMTLibOptions libOptions)
       {
         this.libOptions = libOptions;
       }

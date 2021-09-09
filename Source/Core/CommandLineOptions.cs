@@ -665,21 +665,6 @@ namespace Microsoft.Boogie
       set => useUnsatCoreForContractInfer = value;
     }
 
-    // public bool ContractInfer = false;
-    // public bool ExplainHoudini = false;
-    // public bool ReverseHoudiniWorklist = false;
-    // public bool ConcurrentHoudini = false;
-    // public bool ModifyTopologicalSorting = false;
-    // public bool DebugConcurrentHoudini = false;
-    // public bool HoudiniUseCrossDependencies = false;
-    // public string StagedHoudini = null;
-    // public bool DebugStagedHoudini = false;
-    // public bool StagedHoudiniReachabilityAnalysis = false;
-    // public bool StagedHoudiniMergeIgnoredAnnotations = false;
-    // public int StagedHoudiniThreads = 1;
-    // public string VariableDependenceIgnore = null;
-    // public bool UseUnsatCoreForContractInfer = false;
-
     public bool PrintAssignment = false;
 
     // TODO(wuestholz): Add documentation for this flag.

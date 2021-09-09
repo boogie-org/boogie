@@ -245,7 +245,6 @@ namespace Microsoft.Boogie.Houdini
 
       VCExpr vc = proverInterface.VCExprGen.Implies(BuildAxiom(proverInterface, assignment), conjecture);
       proverInterface.BeginCheck(descriptiveName, vc, handler);
-      
       ProverInterface.Outcome proverOutcome = proverInterface.CheckOutcome(handler, errorLimit);
 
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
