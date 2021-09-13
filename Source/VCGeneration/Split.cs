@@ -67,9 +67,9 @@ namespace VC
       }
 
 
-      public readonly List<Block> blocks;
-      readonly List<Block> bigBlocks = new List<Block>();
-      public IEnumerable<Declaration> TopLevelDeclarations;
+      private readonly List<Block> blocks;
+      public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
+      readonly List<Block> bigBlocks = new();
 
       readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
         stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
@@ -127,6 +127,7 @@ namespace VC
         this.parent = par;
         this.impl = impl;
         Interlocked.Increment(ref currentId);
+        TopLevelDeclarations = Prune.PruneDecl(par.program, blocks).ToList();
       }
 
       public double Cost
@@ -152,13 +153,13 @@ namespace VC
         get
         {
           ComputeBestSplit();
-          return string.Format("(cost:{0:0}/{1:0}{2})", totalCost, assertionCost, LastChance ? " last" : "");
+          return $"(cost:{totalCost:0}/{assertionCost:0}{(LastChance ? " last" : "")})";
         }
       }
 
       public void DumpDot(int splitNum)
       {
-        using (System.IO.StreamWriter sw = System.IO.File.CreateText(string.Format("{0}.split.{1}.dot", impl.Name, splitNum)))
+        using (System.IO.StreamWriter sw = System.IO.File.CreateText($"{impl.Name}.split.{splitNum}.dot"))
         {
           sw.WriteLine("digraph G {");
 
@@ -1185,36 +1186,31 @@ namespace VC
       public static List<Split> FocusAndSplit(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
       {
         List<Split> focussedImpl = FocusImpl(impl, gotoCmdOrigins, par);
-        var splits = focussedImpl.Select(f => FindManualSplits(f)).SelectMany(x => x).ToList();
-        splits.ForEach(split => split.TopLevelDeclarations = Prune.PruneDecl(par.program, split.blocks));
+        var splits = focussedImpl.Select(FindManualSplits).SelectMany(x => x).ToList();
         return splits;
       }
 
-      public static List<Split /*!*/> /*!*/ DoSplit(Split initial, double maxCost, int max)
+      public static List<Split /*!*/> /*!*/ DoSplit(Split initial, double splitThreshold, int maxSplits)
       {
         Contract.Requires(initial != null);
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<Split>>()));
 
-        List<Split> res = new List<Split>();
-        res.Add(initial);
+        var result = new List<Split> { initial };
 
-        while (res.Count < max)
+        while (result.Count < maxSplits)
         {
           Split best = null;
-          int bestIdx = 0, pos = 0;
-          foreach (Split s in res)
-          {
-            Contract.Assert(s != null);
-            s.ComputeBestSplit(); // TODO check totalCost first
-            if (s.totalCost > maxCost &&
-                (best == null || best.totalCost < s.totalCost) &&
-                (s.assertionCount > 1 || s.splitBlock != null))
-            {
-              best = s;
-              bestIdx = pos;
+          int bestIndex = 0;
+          for (var index = 0; index < result.Count; index++) {
+            var split = result[index];
+            Contract.Assert(split != null);
+            split.ComputeBestSplit(); // TODO check totalCost first
+            if (split.totalCost > splitThreshold &&
+                (best == null || best.totalCost < split.totalCost) &&
+                (split.assertionCount > 1 || split.splitBlock != null)) {
+              best = split;
+              bestIndex = index;
             }
-
-            pos++;
           }
 
           if (best == null)
@@ -1267,9 +1263,11 @@ namespace VC
 
           if (true)
           {
-            List<Block> ss = new List<Block>();
-            ss.Add(s0.blocks[0]);
-            ss.Add(s1.blocks[0]);
+            var ss = new List<Block>
+            {
+              s0.blocks[0],
+              s1.blocks[0]
+            };
             try
             {
               best.SoundnessCheck(new HashSet<List<Block>>(new BlockListComparer()), best.blocks[0], ss);
@@ -1298,11 +1296,11 @@ namespace VC
             best.Print();
           }
 
-          res[bestIdx] = s0;
-          res.Add(s1);
+          result[bestIndex] = s0;
+          result.Add(s1);
         }
 
-        return res;
+        return result;
       }
 
       class BlockListComparer : IEqualityComparer<List<Block>>
@@ -1355,7 +1353,7 @@ namespace VC
 
         if (CommandLineOptions.Clo.Trace && splitNum >= 0)
         {
-          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitNum,
+          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitNum + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
@@ -1408,41 +1406,44 @@ namespace VC
 
         splitNum = no;
 
-        impl.Blocks = blocks;
+        // Lock impl since we're setting impl.Blocks that is used to generate the VC.
+        lock (impl) {
+          impl.Blocks = blocks;
 
-        this.checker = checker;
+          this.checker = checker;
 
-        Dictionary<int, Absy> label2absy = new Dictionary<int, Absy>();
+          Dictionary<int, Absy> label2absy = new Dictionary<int, Absy>();
 
-        ProverContext ctx = checker.TheoremProver.Context;
-        Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
-        var cc = new VCGen.CodeExprConversionClosure(label2absy, ctx);
-        bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
+          ProverContext ctx = checker.TheoremProver.Context;
+          Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
+          var cc = new VCGen.CodeExprConversionClosure(label2absy, ctx);
+          bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
 
-        var exprGen = ctx.ExprGen;
-        VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
-        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
-        Contract.Assert(vc != null);
+          var exprGen = ctx.ExprGen;
+          VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
+          VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
+          Contract.Assert(vc != null);
 
-        vc = QuantifierInstantiationEngine.Instantiate(impl, exprGen, bet, vc);
+          vc = QuantifierInstantiationEngine.Instantiate(impl, exprGen, bet, vc);
 
-        VCExpr controlFlowFunctionAppl =
-          exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
-        vc = exprGen.Implies(eqExpr, vc);
-        reporter = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.debugInfos, callback,
-          mvInfo, this.Checker.TheoremProver.Context, parent.program);
+          VCExpr controlFlowFunctionAppl =
+            exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+          VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+          vc = exprGen.Implies(eqExpr, vc);
+          reporter = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.debugInfos, callback,
+            mvInfo, Checker.TheoremProver.Context, parent.program);
+          
+          if (CommandLineOptions.Clo.TraceVerify && no >= 0)
+          {
+            Console.WriteLine("-- after split #{0}", no);
+            Print();
+          }
 
-        if (CommandLineOptions.Clo.TraceVerify && no >= 0)
-        {
-          Console.WriteLine("-- after split #{0}", no);
-          Print();
+          string desc = cce.NonNull(impl.Name);
+          if (no >= 0)
+            desc += "_split" + no;
+          checker.BeginCheck(desc, vc, reporter, timeout, rlimit, impl.RandomSeed);
         }
-
-        string desc = cce.NonNull(impl.Name);
-        if (no >= 0)
-          desc += "_split" + no;
-        checker.BeginCheck(desc, vc, reporter, timeout, rlimit, impl.RandomSeed);
       }
 
       private static Cmd AssertIntoAssume(Cmd c)
@@ -1518,6 +1519,12 @@ namespace VC
 
           SoundnessCheck(cache, exit, newcopies);
         }
+      }
+
+      public void ReleaseChecker()
+      {
+        Checker.GoBackToIdle();
+        checker = null;
       }
     }
 }

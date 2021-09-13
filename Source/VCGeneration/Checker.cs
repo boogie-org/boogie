@@ -57,6 +57,7 @@ namespace Microsoft.Boogie
     private TimeSpan proverRunTime;
     private volatile ProverInterface.ErrorHandler handler;
     private volatile CheckerStatus status;
+    private readonly CheckerPool pool;
     public volatile Program Program;
 
     public void GetReady()
@@ -71,6 +72,7 @@ namespace Microsoft.Boogie
       Contract.Requires(IsBusy);
 
       status = CheckerStatus.Idle;
+      pool.AddChecker(this);
     }
 
     public Task ProverTask { get; set; }
@@ -101,53 +103,18 @@ namespace Microsoft.Boogie
     /////////////////////////////////////////////////////////////////////////////////
     // We share context information for the same program between different Checkers
 
-    private struct ContextCacheKey
-    {
-      [ContractInvariantMethod]
-      void ObjectInvariant()
-      {
-        Contract.Invariant(program != null);
-      }
-
-      public readonly Program program;
-
-      public ContextCacheKey(Program prog)
-      {
-        Contract.Requires(prog != null);
-        this.program = prog;
-      }
-
-      [Pure]
-      [Reads(ReadsAttribute.Reads.Nothing)]
-      public override bool Equals(object that)
-      {
-        if (that is ContextCacheKey)
-        {
-          ContextCacheKey thatKey = (ContextCacheKey) that;
-          return this.program.Equals(thatKey.program);
-        }
-
-        return false;
-      }
-
-      [Pure]
-      public override int GetHashCode()
-      {
-        return this.program.GetHashCode();
-      }
-    }
-
     /////////////////////////////////////////////////////////////////////////////////
 
     /// <summary>
     /// Constructor.  Initialize a checker with the program and log file.
     /// Optionally, use prover context provided by parameter "ctx".
     /// </summary>
-    public Checker(VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile,
-      Split s, ProverContext ctx = null)
+    public Checker(CheckerPool pool, VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile,
+      Split split, ProverContext ctx = null)
     {
       Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
+      this.pool = pool;
       this.Program = prog;
 
       ProverOptions options = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
@@ -182,7 +149,7 @@ namespace Microsoft.Boogie
       {
         if (ctx == null) ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
 
-        Setup(prog, ctx, s);
+        Setup(prog, ctx, split);
 
         // we first generate the prover and then store a clone of the
         // context in the cache, so that the prover can setup stuff in
