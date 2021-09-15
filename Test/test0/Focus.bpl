@@ -1,11 +1,11 @@
 // RUN: %parallel-boogie /vcsDumpSplits "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// RUN: %diff Ex.split.-1.bpl Ex.split.-1.bpl
 // RUN: %diff Ex.split.0.bpl Ex.split.0.bpl
 // RUN: %diff Ex.split.1.bpl Ex.split.1.bpl
 // RUN: %diff Ex.split.2.bpl Ex.split.2.bpl
 // RUN: %diff Ex.split.3.bpl Ex.split.3.bpl
 // RUN: %diff Ex.split.4.bpl Ex.split.4.bpl
+// RUN: %diff Ex.split.5.bpl Ex.split.5.bpl
 
 procedure Ex() returns (y: int)
   ensures y >= 0;

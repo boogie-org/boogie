@@ -1,4 +1,4 @@
-// We use sequential-boogie here because parallel Boogie doesn't work well with -proverLog
+// We use boogie here because parallel-boogie doesn't work well with -proverLog
 // RUN: %boogie -proverOpt:O:smt.random_seed=55 -proverLog:"%t.smt2" "%s"
 // RUN: %OutputCheck --file-to-check "%t.smt2" "%s"
 // CHECK-L: (set-info :boogie-vc-id WithRandomSeed0)
