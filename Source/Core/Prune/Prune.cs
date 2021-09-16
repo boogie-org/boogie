@@ -24,6 +24,8 @@ namespace Microsoft.Boogie
       nodes.ForEach(u => u.incoming = u.incoming.Where(i => u.node == i || !ExcludeDep(i)).ToHashSet());
       nodes.ForEach(u => u.outgoing = u.outgoing.Where(i => !ExcludeDep(i)).ToHashSet());
       var edges = new Dictionary<DependencyEvaluator, List<DependencyEvaluator>>();
+      
+      // TODO remove square complexity.
       nodes.ForEach(u => edges[u] = nodes.Where(v => DependencyEvaluator.Depends(u, v)).ToList());
       return edges;
     }
