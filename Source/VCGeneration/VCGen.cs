@@ -330,7 +330,7 @@ namespace VC
             var exprGen = ch.TheoremProver.Context.ExprGen;
             VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
 
-            var absyIds = new IdMap<Absy>();
+            var absyIds = new ControlFlowIdMap<Absy>();
             
             VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, absyIds, ch.TheoremProver.Context);
             Contract.Assert(vc != null);
@@ -492,7 +492,7 @@ namespace VC
 
       class ErrorHandler : ProverInterface.ErrorHandler
       {
-        IdMap<Absy> absyIds;
+        ControlFlowIdMap<Absy> absyIds;
         VerifierCallback callback;
 
         [ContractInvariantMethod]
@@ -503,7 +503,7 @@ namespace VC
         }
 
 
-        public ErrorHandler(IdMap<Absy> absyIds, VerifierCallback callback)
+        public ErrorHandler(ControlFlowIdMap<Absy> absyIds, VerifierCallback callback)
         {
           Contract.Requires(absyIds != null);
           Contract.Requires(callback != null);
@@ -532,10 +532,10 @@ namespace VC
 
     public class CodeExprConversionClosure
     {
-      IdMap<Absy> absyIds;
+      ControlFlowIdMap<Absy> absyIds;
       ProverContext ctx;
 
-      public CodeExprConversionClosure(IdMap<Absy> absyIds, ProverContext ctx)
+      public CodeExprConversionClosure(ControlFlowIdMap<Absy> absyIds, ProverContext ctx)
       {
         this.absyIds = absyIds;
         this.ctx = ctx;
@@ -584,7 +584,7 @@ namespace VC
     }
 
     public VCExpr GenerateVC(Implementation /*!*/ impl, VCExpr controlFlowVariableExpr,
-      IdMap<Absy> absyIds, ProverContext proverContext)
+      ControlFlowIdMap<Absy> absyIds, ProverContext proverContext)
     {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
@@ -595,7 +595,7 @@ namespace VC
     }
 
     public VCExpr GenerateVCAux(Implementation /*!*/ impl, VCExpr controlFlowVariableExpr,
-      IdMap<Absy> /*!*/ absyIds, ProverContext proverContext)
+      ControlFlowIdMap<Absy> /*!*/ absyIds, ProverContext proverContext)
     {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
@@ -1075,7 +1075,7 @@ namespace VC
     {
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins;
 
-      IdMap<Absy> absyIds;
+      ControlFlowIdMap<Absy> absyIds;
 
       List<Block> blocks;
 
@@ -1112,7 +1112,7 @@ namespace VC
       }
 
       public ErrorReporter(Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
-        IdMap<Absy> /*!*/ absyIds,
+        ControlFlowIdMap<Absy> /*!*/ absyIds,
         List<Block /*!*/> /*!*/ blocks,
         Dictionary<Cmd, List<object>> debugInfos,
         VerifierCallback /*!*/ callback,
@@ -2631,7 +2631,7 @@ namespace VC
 
     static VCExpr LetVC(List<Block> blocks,
       VCExpr controlFlowVariableExpr,
-      IdMap<Absy> absyIds,
+      ControlFlowIdMap<Absy> absyIds,
       ProverContext proverCtxt,
       out int assertionCount,
       bool isPositiveContext = true)
@@ -2708,7 +2708,7 @@ namespace VC
 
     static VCExpr DagVC(Block block,
       VCExpr controlFlowVariableExpr,
-      IdMap<Absy> absyIds,
+      ControlFlowIdMap<Absy> absyIds,
       Dictionary<Block, VCExpr> blockEquations,
       ProverContext proverCtxt,
       out int assertionCount)

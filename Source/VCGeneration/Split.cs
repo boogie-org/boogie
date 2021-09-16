@@ -1412,7 +1412,7 @@ namespace VC
 
         this.checker = checker;
 
-        var absyIds = new IdMap<Absy>();
+        var absyIds = new ControlFlowIdMap<Absy>();
 
         ProverContext ctx = checker.TheoremProver.Context;
         Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;

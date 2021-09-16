@@ -2,11 +2,11 @@ using System.Collections.Generic;
 
 namespace Microsoft.Boogie
 {
-  public class IdMap<T>
+  public class ControlFlowIdMap<T>
   {
     Dictionary<T, int> toId = new ();
     Dictionary<int, T> fromId = new ();
-    private int counter = 10;
+    private int counter = 1; // Index 0 is reserved.
     
     public int GetId(T value)
     {

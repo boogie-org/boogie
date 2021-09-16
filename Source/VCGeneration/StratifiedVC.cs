@@ -95,7 +95,7 @@ namespace VC
       }
     }
 
-    public VCExpr MustReach(Block block, IdMap<Absy> absyIds)
+    public VCExpr MustReach(Block block, ControlFlowIdMap<Absy> absyIds)
     {
       // This information is computed lazily
       if (mustReachBindings == null)
@@ -589,7 +589,7 @@ namespace VC
       if (PassiveImplInstrumentation != null)
         PassiveImplInstrumentation(impl);
 
-      var absyIds = new IdMap<Absy>();
+      var absyIds = new ControlFlowIdMap<Absy>();
       
       VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(absyIds, proverInterface.Context);
       translator.SetCodeExprConverter(cc.CodeExprToVerificationCondition);

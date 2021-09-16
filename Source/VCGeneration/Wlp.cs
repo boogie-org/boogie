@@ -15,13 +15,13 @@ namespace VC
       Contract.Invariant(Ctxt != null);
     }
 
-    [Rep] public readonly IdMap<Absy> absyIds;
+    [Rep] public readonly ControlFlowIdMap<Absy> absyIds;
     [Rep] public readonly ProverContext Ctxt;
     public readonly VCExpr ControlFlowVariableExpr;
     public int AssertionCount; // counts the number of assertions for which Wlp has been computed
     public bool isPositiveContext;
 
-    public VCContext(IdMap<Absy> absyIds, ProverContext ctxt, bool isPositiveContext = true)
+    public VCContext(ControlFlowIdMap<Absy> absyIds, ProverContext ctxt, bool isPositiveContext = true)
     {
       Contract.Requires(ctxt != null);
       this.absyIds = absyIds;
@@ -29,7 +29,7 @@ namespace VC
       this.isPositiveContext = isPositiveContext;
     }
 
-    public VCContext(IdMap<Absy> absyIds, ProverContext ctxt, VCExpr controlFlowVariableExpr,
+    public VCContext(ControlFlowIdMap<Absy> absyIds, ProverContext ctxt, VCExpr controlFlowVariableExpr,
       bool isPositiveContext = true)
     {
       Contract.Requires(ctxt != null);

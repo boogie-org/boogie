@@ -165,7 +165,7 @@ namespace Microsoft.Boogie.Houdini
       var exprGen = proverInterface.Context.ExprGen;
       VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
 
-      var absyIds = new IdMap<Absy>();
+      var absyIds = new ControlFlowIdMap<Absy>();
       conjecture = vcgen.GenerateVC(impl, controlFlowVariableExpr, absyIds, proverInterface.Context);
 
       VCExpr controlFlowFunctionAppl =
