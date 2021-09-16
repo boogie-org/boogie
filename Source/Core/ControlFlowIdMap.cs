@@ -4,8 +4,8 @@ namespace Microsoft.Boogie
 {
   public class ControlFlowIdMap<T>
   {
-    readonly Dictionary<T, int> toId = new ();
-    readonly Dictionary<int, T> fromId = new ();
+    private readonly Dictionary<T, int> toId = new ();
+    private readonly Dictionary<int, T> fromId = new ();
     private int counter = 1; // Index 0 is reserved.
     
     public int GetId(T value)
