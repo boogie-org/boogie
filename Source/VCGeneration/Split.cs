@@ -1422,7 +1422,7 @@ namespace VC
           var exprGen = ctx.ExprGen;
           VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
           VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, absyIds, checker.TheoremProver.Context);
-          Contract.Assert(vc != null);t(vc != null);
+          Contract.Assert(vc != null);
 
           vc = QuantifierInstantiationEngine.Instantiate(impl, exprGen, bet, vc);
 
