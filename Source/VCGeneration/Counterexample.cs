@@ -614,9 +614,9 @@ namespace Microsoft.Boogie
       Contract.Requires(reason != null);
     }
 
-    public virtual void OnProgress(string phase, int step, int totalSteps, double progressEstimate)
-    {
-    }
+    public delegate void ProgressDelegate(string phase, int step, int totalSteps, double progressEstimate);
+    
+    public virtual ProgressDelegate OnProgress => null;
 
     public virtual void OnUnreachableCode(Implementation impl)
     {

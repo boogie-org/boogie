@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
+using System.Threading;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
@@ -20,12 +21,10 @@ namespace VC
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
     [NotDelayed]
-    public VCGen(Program program, string /*?*/ logFilePath, bool appendLogFile, List<Checker> checkers)
-      : base(program, checkers)
+    public VCGen(Program program, CheckerPool checkerPool)
+      : base(program, checkerPool)
     {
       Contract.Requires(program != null);
-      this.appendLogFile = appendLogFile;
-      this.logFilePath = logFilePath;
     }
 
     public static AssumeCmd AssertTurnedIntoAssume(AssertCmd assrt)
@@ -298,7 +297,7 @@ namespace VC
           System.Console.Write("    soundness smoke test #{0} ... ", id);
         }
 
-        callback.OnProgress("smoke", id, id, 0.0);
+        callback.OnProgress?.Invoke("smoke", id, id, 0.0);
 
         Token tok = new Token();
         tok.val = "soundness smoke test assertion";
@@ -319,7 +318,7 @@ namespace VC
 
         parent.CurrentLocalVariables = impl.LocVars;
         parent.PassifyImpl(impl, out var mvInfo);
-        Checker ch = parent.FindCheckerFor(parent.program, true);
+        Checker ch = parent.CheckerPool.FindCheckerFor(parent).Result;
         Contract.Assert(ch != null);
 
         ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
@@ -543,7 +542,7 @@ namespace VC
 
       public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext)
       {
-        VCGen vcgen = new VCGen(new Program(), null, false, new List<Checker>());
+        VCGen vcgen = new VCGen(new Program(), new CheckerPool(CommandLineOptions.Clo));
         vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
         vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
         vcgen.CurrentLocalVariables = codeExpr.LocVars;
@@ -624,7 +623,7 @@ namespace VC
       return vc;
     }
 
-    void CheckIntAttributeOnImpl(Implementation impl, string name, ref int val)
+    public static void CheckIntAttributeOnImpl(Implementation impl, string name, ref int val)
     {
       Contract.Requires(impl != null);
       Contract.Requires(name != null);
@@ -776,223 +775,6 @@ namespace VC
       }
     }
 
-    void SplitAndVerify(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins,  VerifierCallback callback, ModelViewInfo mvInfo, ref Outcome outcome)
-    {
-      Cores = CommandLineOptions.Clo.VcsCores;
-      double max_vc_cost = CommandLineOptions.Clo.VcsMaxCost;
-      int tmp_max_vc_cost = -1,
-        max_splits = CommandLineOptions.Clo.VcsMaxSplits,
-        max_kg_splits = CommandLineOptions.Clo.VcsMaxKeepGoingSplits;
-      CheckIntAttributeOnImpl(impl, "vcs_max_cost", ref tmp_max_vc_cost);
-      CheckIntAttributeOnImpl(impl, "vcs_max_splits", ref max_splits);
-      CheckIntAttributeOnImpl(impl, "vcs_max_keep_going_splits", ref max_kg_splits);
-      if (tmp_max_vc_cost >= 0)
-      {
-        max_vc_cost = tmp_max_vc_cost;
-      }
-      ResetPredecessors(impl.Blocks);
-      List<Split> manual_splits = Split.FocusAndSplit(impl, gotoCmdOrigins, this);
-      var work = new Stack<Split>(manual_splits);
-      var currently_running = new List<Split>();
-
-      bool keep_going = max_kg_splits > 1;
-      int total = 0;
-      int no = max_splits == 1 && !keep_going ? -1 : 0;
-      bool first_round = true;
-      bool do_splitting = keep_going || max_splits > 1;
-      double remaining_cost = 0.0, proven_cost = 0.0;
-
-      if (do_splitting)
-      {
-        remaining_cost = work.Peek().Cost;
-      }
-
-      while (work.Any() || currently_running.Any())
-      {
-        bool prover_failed = false;
-        Split s = null;
-        var isWaiting = !work.Any();
-
-        if (!isWaiting)
-        {
-          s = work.Peek();
-
-          if (first_round && max_splits > 1)
-          {
-            prover_failed = true;
-            remaining_cost -= s.Cost;
-          }
-          else
-          {
-            var timeout = (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
-              keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
-              impl.TimeLimit;
-            var checker = s.parent.FindCheckerFor(s.parent.program, false, s);
-            try
-            {
-              if (checker == null)
-              {
-                isWaiting = true;
-                goto waiting;
-              }
-              else
-              {
-                s = work.Pop();
-              }
-
-              if (CommandLineOptions.Clo.Trace && no >= 0)
-              {
-                System.Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
-                  s.Stats, no + 1, total, 100 * proven_cost / (proven_cost + remaining_cost));
-              }
-
-              callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
-
-              Contract.Assert(s.parent == this);
-              lock (checker)
-              {
-                s.BeginCheck(checker, callback, mvInfo, no, timeout, impl.ResourceLimit);
-              }
-
-              no++;
-
-              currently_running.Add(s);
-            }
-            catch (Exception)
-            {
-              checker.GoBackToIdle();
-              throw;
-            }
-          }
-        }
-
-        waiting:
-        if (isWaiting)
-        {
-          // Wait for one split to terminate.
-          var tasks = currently_running.Select(splt => splt.ProverTask).ToArray();
-
-          if (tasks.Any())
-          {
-            try
-            {
-              int index = Task.WaitAny(tasks);
-              s = currently_running[index];
-              currently_running.RemoveAt(index);
-
-              if (do_splitting)
-              {
-                remaining_cost -= s.Cost;
-              }
-
-              lock (s.Checker)
-              {
-                s.ReadOutcome(ref outcome, out prover_failed);
-              }
-
-              if (do_splitting)
-              {
-                if (prover_failed)
-                {
-                  // even if the prover fails, we have learned something, i.e., it is
-                  // annoying to watch Boogie say Timeout, 0.00% a couple of times
-                  proven_cost += s.Cost / 100;
-                }
-                else
-                {
-                  proven_cost += s.Cost;
-                }
-              }
-
-              callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
-
-              if (prover_failed && !first_round && s.LastChance)
-              {
-                string msg = "some timeout";
-                if (s.reporter != null && s.reporter.resourceExceededMessage != null)
-                {
-                  msg = s.reporter.resourceExceededMessage;
-                }
-
-                callback.OnCounterexample(s.ToCounterexample(s.Checker.TheoremProver.Context), msg);
-                outcome = Outcome.Errors;
-                break;
-              }
-            }
-            finally
-            {
-              s.Checker.GoBackToIdle();
-            }
-
-            Contract.Assert(prover_failed || outcome == Outcome.Correct || outcome == Outcome.Errors ||
-                            outcome == Outcome.Inconclusive);
-          }
-        }
-
-        if (prover_failed)
-        {
-          int splits = first_round && max_splits > 1 ? max_splits : max_kg_splits;
-
-          if (splits > 1)
-          {
-            List<Split> tmp = Split.DoSplit(s, max_vc_cost, splits);
-            Contract.Assert(tmp != null);
-            max_vc_cost = 1.0; // for future
-            first_round = false;
-            //tmp.Sort(new Comparison<Split!>(Split.Compare));
-            foreach (Split a in tmp)
-            {
-              Contract.Assert(a != null);
-              work.Push(a);
-              total++;
-              remaining_cost += a.Cost;
-            }
-
-            if (outcome != Outcome.Errors)
-            {
-              outcome = Outcome.Correct;
-            }
-          }
-          else
-          {
-            Contract.Assert(outcome != Outcome.Correct);
-            if (outcome == Outcome.TimedOut)
-            {
-              string msg = "some timeout";
-              if (s.reporter != null && s.reporter.resourceExceededMessage != null)
-              {
-                msg = s.reporter.resourceExceededMessage;
-              }
-
-              callback.OnTimeout(msg);
-            }
-            else if (outcome == Outcome.OutOfMemory)
-            {
-              string msg = "out of memory";
-              if (s.reporter != null && s.reporter.resourceExceededMessage != null)
-              {
-                msg = s.reporter.resourceExceededMessage;
-              }
-
-              callback.OnOutOfMemory(msg);
-            }
-            else if (outcome == Outcome.OutOfResource)
-            {
-              string msg = "out of resource";
-              if (s.reporter != null && s.reporter.resourceExceededMessage != null)
-              {
-                msg = s.reporter.resourceExceededMessage;
-              }
-
-              callback.OnOutOfResource(msg);
-            }
-
-            break;
-          }
-        }
-      }
-    }
-
     public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -1002,7 +784,7 @@ namespace VC
         return Outcome.Inconclusive; // not sure about this one
       }
 
-      callback.OnProgress("VCgen", 0, 0, 0.0);
+      callback.OnProgress?.Invoke("VCgen", 0, 0, 0.0);
 
       Stopwatch watch = new Stopwatch();
 #if PRINT_TIME
@@ -1054,14 +836,15 @@ namespace VC
         }
       }
 
-      SplitAndVerify(impl, gotoCmdOrigins, callback, mvInfo, ref outcome);
+      var worker = new SplitAndVerifyWorker(CommandLineOptions.Clo, this, impl, gotoCmdOrigins, callback, mvInfo, outcome);
+      outcome = worker.WorkUntilDone().Result;
 
       if (outcome == Outcome.Correct && smoke_tester != null)
       {
         smoke_tester.Test();
       }
 
-      callback.OnProgress("done", 0, 0, 1.0);
+      callback.OnProgress?.Invoke("done", 0, 0, 1.0);
 
 #if PRINT_TIME
       watch.Stop();
