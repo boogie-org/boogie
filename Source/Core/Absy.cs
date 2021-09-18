@@ -18,8 +18,6 @@ namespace Microsoft.Boogie
     private IToken /*!*/
       _tok;
 
-    private int uniqueId;
-
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
@@ -55,7 +53,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(tok != null);
       this._tok = tok;
-      this.uniqueId = System.Threading.Interlocked.Increment(ref CurrentAbsyNodeId);
+      this.UniqueId = System.Threading.Interlocked.Increment(ref CurrentAbsyNodeId);
     }
 
     private static int CurrentAbsyNodeId = -1;
@@ -63,10 +61,7 @@ namespace Microsoft.Boogie
     // We uniquely number every AST node to make them
     // suitable for our implementation of functional maps.
     //
-    public int UniqueId
-    {
-      get { return this.uniqueId; }
-    }
+    public int UniqueId { get; private set; }
 
     private const int indent_size = 2;
 
@@ -74,7 +69,7 @@ namespace Microsoft.Boogie
     {
       return new string(' ', (indent_size * level));
     }
-
+    
     [NeedsContracts]
     public abstract void Resolve(ResolutionContext /*!*/ rc);
 
@@ -94,7 +89,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Absy>() != null);
       Absy /*!*/
         result = cce.NonNull((Absy /*!*/) this.MemberwiseClone());
-      result.uniqueId = System.Threading.Interlocked.Increment(ref CurrentAbsyNodeId); // BUGBUG??
+      result.UniqueId = System.Threading.Interlocked.Increment(ref CurrentAbsyNodeId); // BUGBUG??
 
       if (InternalNumberedMetadata != null)
       {

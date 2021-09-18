@@ -438,11 +438,6 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(cce.NonNullElements(fileNames));
 
-      if (programId == null)
-      {
-        programId = "main_program_id";
-      }
-
       if (CommandLineOptions.Clo.VerifySeparately && 1 < fileNames.Count)
       {
         return fileNames.All(f => ProcessFiles(new List<string> {f}, lookForSnapshots, f));
@@ -454,25 +449,33 @@ namespace Microsoft.Boogie
         return snapshotsByVersion.All(s => ProcessFiles(new List<string>(s), false, programId));
       }
 
-      using XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count - 1]);
+      using XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[^1]);
       Program program = ParseBoogieProgram(fileNames, false);
+      var bplFileName = fileNames[^1];
       if (program == null)
       {
         return true;
       }
-      if (CommandLineOptions.Clo.PrintFile != null)
+      return ProcessProgram(program, bplFileName, programId);
+    }
+
+    public static bool ProcessProgram(Program program, string bplFileName, string programId = null)
+    {
+      if (programId == null)
       {
+        programId = "main_program_id";
+      }
+      
+      if (CommandLineOptions.Clo.PrintFile != null) {
         PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
       }
 
-      PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out var civlTypeChecker);
-      if (oc != PipelineOutcome.ResolvedAndTypeChecked)
-      {
+      PipelineOutcome oc = ResolveAndTypecheck(program, bplFileName, out var civlTypeChecker);
+      if (oc != PipelineOutcome.ResolvedAndTypeChecked) {
         return true;
       }
 
-      if (CommandLineOptions.Clo.PrintCFGPrefix != null)
-      {
+      if (CommandLineOptions.Clo.PrintCFGPrefix != null) {
         foreach (var impl in program.Implementations) {
           using StreamWriter sw = new StreamWriter(CommandLineOptions.Clo.PrintCFGPrefix + "." + impl.Name + ".dot");
           sw.Write(program.ProcessLoops(impl).ToDot());
@@ -480,15 +483,14 @@ namespace Microsoft.Boogie
       }
 
       CivlVCGeneration.Transform(civlTypeChecker);
-      if (CommandLineOptions.Clo.CivlDesugaredFile != null)
-      {
+      if (CommandLineOptions.Clo.CivlDesugaredFile != null) {
         int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
         CommandLineOptions.Clo.PrintUnstructured = 1;
         PrintBplFile(CommandLineOptions.Clo.CivlDesugaredFile, program, false, false,
           CommandLineOptions.Clo.PrettyPrint);
         CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
       }
-        
+
       EliminateDeadVariables(program);
 
       CoalesceBlocks(program);
@@ -497,8 +499,7 @@ namespace Microsoft.Boogie
 
       var stats = new PipelineStatistics();
       oc = InferAndVerify(program, stats, 1 < CommandLineOptions.Clo.VerifySnapshots ? programId : null);
-      switch (oc)
-      {
+      switch (oc) {
         case PipelineOutcome.Done:
         case PipelineOutcome.VerificationCompleted:
           printer.WriteTrailer(stats);

@@ -18,12 +18,12 @@ this -> T@Ref!val!0
 x -> 40
 y -> 0
 ControlFlow -> {
-  0 0 -> 182
-  0 138 -> 140
-  0 140 -> 144
-  0 144 -> (- 368)
-  0 182 -> 138
-  else -> 144
+  0 0 -> 6
+  0 2 -> (- 1)
+  0 3 -> 2
+  0 5 -> 3
+  0 6 -> 5
+  else -> (- 1)
 }
 Select__T@[Ref,FieldName]Int_ -> {
   |T@[Ref,FieldName]Int!val!0| T@Ref!val!0 T@FieldName!val!0 -> (- 8)

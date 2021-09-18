@@ -5,10 +5,10 @@ Execution trace:
 null -> T@ref!val!0
 s -> T@ref!val!0
 ControlFlow -> {
-  0 0 -> 59
-  0 26 -> (- 60)
-  0 59 -> 26
-  else -> (- 60)
+  0 0 -> 3
+  0 2 -> (- 1)
+  0 3 -> 2
+  else -> (- 1)
 }
 tickleBool -> {
   false -> true

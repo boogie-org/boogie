@@ -4,10 +4,10 @@ Execution trace:
 *** MODEL
 a -> |T@[Int]float24e8!val!0|
 ControlFlow -> {
-  0 0 -> 64
-  0 32 -> (- 65)
-  0 64 -> 32
-  else -> (- 65)
+  0 0 -> 3
+  0 2 -> (- 1)
+  0 3 -> 2
+  else -> (- 1)
 }
 Select__T@[Int]float24e8_ -> {
   |T@[Int]float24e8!val!0| 0 -> (_ (+zero) 8 24)
