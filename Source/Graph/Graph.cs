@@ -1106,6 +1106,36 @@ namespace Microsoft.Boogie.GraphUtil
 
   public static class GraphAlgorithms
   {
+
+    /**
+     * A merge node is a node that has multiple incoming edges, and which cannot be traversed unless all incoming edges have been traversed.
+     * A merge node is represented by an object of type IReadOnlySet{object}
+     */
+    public static IEnumerable<object> FindReachableNodesInGraphWithMergeNodes(Dictionary<object, List<object>> edges, IEnumerable<object> roots)
+    {
+      var todo = new Stack<object>(roots);
+      var visitedEdges = new HashSet<object>();
+      while(todo.Any())
+      {
+        var node = todo.Pop();
+        if (visitedEdges.Contains(node)) continue;
+        
+        if (node is IReadOnlySet<object> mergeNode) {
+          if (!visitedEdges.IsSupersetOf(mergeNode)) 
+            continue;
+        } else {
+          visitedEdges.Add(node);
+        }
+
+        var outgoing = edges.GetValueOrDefault(node) ?? new List<object>();
+        foreach (var x in outgoing)
+        {
+          todo.Push(x);
+        }
+      }
+      return visitedEdges;
+    }
+    
     public static Graph<Node> Dual<Node>(this Graph<Node> g, Node dummySource)
     {
       var exits = g.Nodes.Where(n => g.Successors(n).Count() == 0).ToList();
