@@ -22,14 +22,29 @@ namespace Microsoft.Boogie
 
     public readonly Declaration node; // a node could either be a function or an axiom.
     public HashSet<Declaration> outgoing; // an edge can either be a function or a constant.
-    public HashSet<Declaration> incoming;
     public List<HashSet<Declaration>> incomingTuples;
     public HashSet<Type> types;
 
+    private static bool ExcludeDep(Declaration d)
+    {
+      return d.Attributes != null && QKeyValue.FindBoolAttribute(d.Attributes, "exclude_dep");
+    }
+    
+    public void AddIncoming(Declaration declaration)
+    {
+      if (!ExcludeDep(declaration)) {
+        incomingTuples.Add(new[] { declaration }.ToHashSet());
+      }
+    }
+    
+    public void AddIncoming(HashSet<Declaration> declarations)
+    {
+      incomingTuples.Add(declarations);
+    }
+    
     public DependencyEvaluator(Declaration d)
     {
       node = d;
-      incoming = new HashSet<Declaration>();
       incomingTuples = new List<HashSet<Declaration>>();
       outgoing = new HashSet<Declaration>();
       types = new HashSet<Type>();

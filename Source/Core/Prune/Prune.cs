@@ -49,22 +49,27 @@ namespace Microsoft.Boogie
       var functionNodes = program.Functions.Select(f => (DependencyEvaluator)new FunctionVisitor(f)).ToList();
       functionNodes.ForEach(fv => ((FunctionVisitor)fv).Visit(fv.node));
       nodes.AddRange(functionNodes);
-      nodes.ForEach(u => u.incoming = u.incoming.Where(i => !ExcludeDep(i)).ToHashSet());
       nodes.ForEach(u => u.outgoing = u.outgoing.Where(i => !ExcludeDep(i)).ToHashSet());
 
       var edges = new Dictionary<object, List<object>>();
       foreach (var node in nodes) {
-        foreach (var incomingSingle in node.incoming) {
-          var targets = edges.GetOrCreate(incomingSingle, () => new());
-          targets.Add(node.node);
-        }
         foreach (var incomingTuple in node.incomingTuples) {
-          foreach (var mergeIncoming in incomingTuple) {
-            var mergeIncomingTargets = edges.GetOrCreate(mergeIncoming, () => new());
-            mergeIncomingTargets.Add(incomingTuple);
+          object source;
+          if (incomingTuple.Count == 0) {
+            continue;
+          } else if (incomingTuple.Count == 1) {
+            source = incomingTuple.First();
+          } else {
+            foreach (var mergeIncoming in incomingTuple) {
+              var mergeIncomingTargets = edges.GetOrCreate(mergeIncoming, () => new());
+              mergeIncomingTargets.Add(incomingTuple);
+            }
+
+            source = incomingTuple;
           }
-          var mergeTargets = edges.GetOrCreate(incomingTuple, () => new());
-          mergeTargets.Add(node.node);
+
+          var targets = edges.GetOrCreate(source, () => new());
+          targets.Add(node.node);
         }
         foreach (var outgoingSingle in node.outgoing) {
           var targets = edges.GetOrCreate(node.node, () => new());

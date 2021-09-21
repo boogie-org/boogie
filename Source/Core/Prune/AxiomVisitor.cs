@@ -10,25 +10,19 @@ namespace Microsoft.Boogie
     public AxiomVisitor (Axiom a) : base(a) {}
 
     private void VisitTriggerCustom(Trigger t) {
-      var incomingOld = new HashSet<Declaration>(incoming);
-      incoming = new HashSet<Declaration>();
+      var visitor = new AxiomVisitor((Axiom)node);
       var triggerList = t.Tr.ToList();
       triggerList.ForEach(e => e.pos = Expr.Position.Neither);
-      triggerList.ForEach(e => VisitExpr(e));
-      if (incoming.Count() > 1) {
-        incomingTuples.Add(new HashSet<Declaration>(incoming));
-        incoming = incomingOld;
-      } else {
-        incoming.UnionWith(incomingOld);
-      }
+      triggerList.ForEach(e => visitor.VisitExpr(e));
+      AddIncoming(visitor.incomingTuples.SelectMany(x => x).ToHashSet());
     }
 
     public override Expr VisitExpr(Expr node) {
       if (node is IdentifierExpr iExpr && iExpr.Decl is Constant c) {
-        incoming.Add(c);
+        AddIncoming(c);
         outgoing.Add(c);
       } else if (node is NAryExpr e && e.Fun is FunctionCall f) {
-        incoming.Add(f.Func);
+        AddIncoming(f.Func);
         outgoing.Add(f.Func);
       } else if (node is NAryExpr n) {
         var appliable = n.Fun;
@@ -57,9 +51,14 @@ namespace Microsoft.Boogie
         var discardBodyIncoming = (qe is ForallExpr fa && fa.pos == Expr.Position.Pos && qe.Triggers != null)
                                   || qe is ExistsExpr ee && ee.pos == Expr.Position.Neg;
         be.Body.pos = Expr.Position.Neither;
-        var incomingOld = new HashSet<Declaration>(incoming);
-        VisitExpr(be.Body); // this will still edit the outgoing edges and types
-        incoming = discardBodyIncoming ? incomingOld : incoming;
+        if (discardBodyIncoming) {
+          var incomingOld = incomingTuples;
+          incomingTuples = new();
+          VisitExpr(be.Body); // this will still edit the outgoing edges and types
+          incomingTuples = incomingOld;
+        } else {
+          VisitExpr(be.Body);
+        }
         return null;
       } else if (node is OldExpr o) {
         o.Expr.pos = Expr.Position.Neither;

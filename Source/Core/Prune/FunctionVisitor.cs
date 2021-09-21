@@ -4,7 +4,6 @@ namespace Microsoft.Boogie
   {
     public FunctionVisitor(Function func) : base(func)
     {
-      incoming.Add(func);
     }
 
     public override Expr VisitExpr(Expr node)
