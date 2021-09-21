@@ -1,36 +1,9 @@
-using System;
 using System.Linq;
 using System.Collections.Generic;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
-
-  public static class Util
-  {
-    public static V GetOrCreate<K, V>(this IDictionary<K, V> dictionary, K key, Func<V> createValue)
-    {
-      if (dictionary.TryGetValue(key, out var result)) {
-        return result;
-      }
-
-      result = createValue();
-      dictionary[key] = result;
-      return result;
-    }
-    
-    public static uint SafeMult(uint a, uint b) {
-      uint result = UInt32.MaxValue;
-      try {
-        checked {
-          result = a * b;
-        }
-      } catch (OverflowException) { }
-
-      return result;
-    }
-  }
-  
   public class Prune {
     private static bool ExcludeDep(Declaration d)
     {
@@ -38,26 +11,25 @@ namespace Microsoft.Boogie
               QKeyValue.FindBoolAttribute(d.Attributes, "exclude_dep");
     }
 
-    public static Dictionary<object, List<object>> InitializeEdges(Program program)
+    public static Dictionary<object, List<object>> ComputeEdges(Program program)
     {
       if (!CommandLineOptions.Clo.PruneFunctionsAndAxioms)
       {
         return null;
       }
-      var nodes = program.Axioms.Select(ax => (DependencyEvaluator)new AxiomVisitor(ax)).ToList();
-      nodes.ForEach(axv => ((AxiomVisitor)axv).Visit(axv.node));
-      var functionNodes = program.Functions.Select(f => (DependencyEvaluator)new FunctionVisitor(f)).ToList();
-      functionNodes.ForEach(fv => ((FunctionVisitor)fv).Visit(fv.node));
-      nodes.AddRange(functionNodes);
-      nodes.ForEach(u => u.outgoing = u.outgoing.Where(i => !ExcludeDep(i)).ToHashSet());
+      var axiomNodes = program.Axioms.Select(AxiomVisitor.GetAxiomDependencies);
+      var functionNodes = program.Functions.Select(FunctionVisitor.GetFunctionDependencies);
+      var nodes = axiomNodes.Concat(functionNodes).ToList();
 
       var edges = new Dictionary<object, List<object>>();
       foreach (var node in nodes) {
-        foreach (var incomingTuple in node.incomingTuples) {
+        foreach (var incomingTuple in node.incomingSets) {
           object source;
-          if (incomingTuple.Count == 0) {
+          if (incomingTuple.Length == 0) {
             continue;
-          } else if (incomingTuple.Count == 1) {
+          }
+
+          if (incomingTuple.Length == 1) {
             source = incomingTuple.First();
           } else {
             foreach (var mergeIncoming in incomingTuple) {
@@ -69,10 +41,10 @@ namespace Microsoft.Boogie
           }
 
           var targets = edges.GetOrCreate(source, () => new());
-          targets.Add(node.node);
+          targets.Add(node.declaration);
         }
         foreach (var outgoingSingle in node.outgoing) {
-          var targets = edges.GetOrCreate(node.node, () => new());
+          var targets = edges.GetOrCreate(node.declaration, () => new());
           targets.Add(outgoingSingle);
         }
       }
@@ -135,13 +107,12 @@ namespace Microsoft.Boogie
         return p.TopLevelDeclarations;
       }
 
-      // an implementation only has outgoing edges.
-      BlocksVisitor bnode = new BlocksVisitor(blocks);
-      bnode.Blocks.ForEach(blk => bnode.Visit(blk));
-      TrimWhereAssumes(blocks, bnode.RelVars);
-      var implHooks = bnode.outgoing;
+      BlocksVisitor blocksNode = new BlocksVisitor(blocks);
+      blocksNode.Blocks.ForEach(blk => blocksNode.Visit(blk));
+      TrimWhereAssumes(blocks, blocksNode.RelVars);
 
-      var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(p.edges, implHooks).ToHashSet();
+      // an implementation only has outgoing edges.
+      var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(p.edges, blocksNode.outgoing).ToHashSet();
       var result = p.TopLevelDeclarations.Where(d => d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
       return result;
     }

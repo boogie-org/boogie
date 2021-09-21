@@ -20,34 +20,38 @@ namespace Microsoft.Boogie
     // Now, a declaration A depends on B, if the outgoing dependents of A match
     // with some incoming dependent of B (see method depends).
 
-    public readonly Declaration node; // a node could either be a function or an axiom.
-    public HashSet<Declaration> outgoing; // an edge can either be a function or a constant.
-    public List<HashSet<Declaration>> incomingTuples;
-    public HashSet<Type> types;
-
-    private static bool ExcludeDep(Declaration d)
-    {
-      return d.Attributes != null && QKeyValue.FindBoolAttribute(d.Attributes, "exclude_dep");
-    }
+    public readonly Declaration declaration; // a node could either be a function or an axiom.
+    public readonly HashSet<Declaration> outgoing = new(); // an edge can either be a function or a constant.
+    public List<Declaration[]> incomingSets = new();
+    public HashSet<Type> types = new();
     
-    public void AddIncoming(Declaration declaration)
+    private static bool ExcludeDep(Declaration declaration)
     {
-      if (!ExcludeDep(declaration)) {
-        incomingTuples.Add(new[] { declaration }.ToHashSet());
+      return declaration.Attributes != null && QKeyValue.FindBoolAttribute(declaration.Attributes, "exclude_dep");
+    }
+
+    protected void AddIncoming(Declaration newIncoming)
+    {
+      if (!ExcludeDep(newIncoming)) {
+        incomingSets.Add(new[] { newIncoming });
       }
     }
-    
-    public void AddIncoming(HashSet<Declaration> declarations)
+
+    protected void AddOutgoing(Declaration newOutgoing)
     {
-      incomingTuples.Add(declarations);
+      if (!ExcludeDep(newOutgoing)) {
+        outgoing.Add(newOutgoing);
+      }
     }
-    
-    public DependencyEvaluator(Declaration d)
+
+    protected void AddIncoming(Declaration[] declarations)
     {
-      node = d;
-      incomingTuples = new List<HashSet<Declaration>>();
-      outgoing = new HashSet<Declaration>();
-      types = new HashSet<Type>();
+      incomingSets.Add(declarations);
+    }
+
+    protected DependencyEvaluator(Declaration declaration)
+    {
+      this.declaration = declaration;
     }
   }
 }

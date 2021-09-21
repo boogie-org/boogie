@@ -9,21 +9,28 @@ namespace Microsoft.Boogie
   {
     public AxiomVisitor (Axiom a) : base(a) {}
 
+    public static DependencyEvaluator GetAxiomDependencies(Axiom axiom)
+    {
+      var result = new AxiomVisitor(axiom);
+      result.Visit(axiom);
+      return result;
+    }
+    
     private void VisitTriggerCustom(Trigger t) {
-      var visitor = new AxiomVisitor((Axiom)node);
+      var visitor = new AxiomVisitor((Axiom)declaration);
       var triggerList = t.Tr.ToList();
       triggerList.ForEach(e => e.pos = Expr.Position.Neither);
       triggerList.ForEach(e => visitor.VisitExpr(e));
-      AddIncoming(visitor.incomingTuples.SelectMany(x => x).ToHashSet());
+      AddIncoming(visitor.incomingSets.SelectMany(x => x).ToArray());
     }
 
     public override Expr VisitExpr(Expr node) {
       if (node is IdentifierExpr iExpr && iExpr.Decl is Constant c) {
         AddIncoming(c);
-        outgoing.Add(c);
+        AddOutgoing(c);
       } else if (node is NAryExpr e && e.Fun is FunctionCall f) {
         AddIncoming(f.Func);
-        outgoing.Add(f.Func);
+        AddOutgoing(f.Func);
       } else if (node is NAryExpr n) {
         var appliable = n.Fun;
         if (appliable is UnaryOperator op) {
@@ -52,10 +59,10 @@ namespace Microsoft.Boogie
                                   || qe is ExistsExpr ee && ee.pos == Expr.Position.Neg;
         be.Body.pos = Expr.Position.Neither;
         if (discardBodyIncoming) {
-          var incomingOld = incomingTuples;
-          incomingTuples = new();
+          var incomingOld = incomingSets;
+          incomingSets = new();
           VisitExpr(be.Body); // this will still edit the outgoing edges and types
-          incomingTuples = incomingOld;
+          incomingSets = incomingOld;
         } else {
           VisitExpr(be.Body);
         }
