@@ -12,7 +12,7 @@ namespace ExecutionEngineTests
   public class ProofIsolation
   {
     [Test()]
-    public void Implementation()
+    public void ControlFlowIsIsolated()
     {
       var procedure1 = @"
 procedure M(x: int) 
@@ -47,7 +47,7 @@ procedure N(x: int)
     }
     
     [Test()]
-    public void Implementation2()
+    public void ConstantsFunctionsAxiomsAndTypesAreIsolated()
     {
       var procedure1 = @"
 type Wicket;
