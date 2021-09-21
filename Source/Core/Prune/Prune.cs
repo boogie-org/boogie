@@ -11,7 +11,7 @@ namespace Microsoft.Boogie
               QKeyValue.FindBoolAttribute(d.Attributes, "exclude_dep");
     }
 
-    public static Dictionary<object, List<object>> ComputeEdges(Program program)
+    public static Dictionary<object, List<object>> ComputeDeclarationDependencies(Program program)
     {
       if (!CommandLineOptions.Clo.PruneFunctionsAndAxioms)
       {
@@ -102,7 +102,7 @@ namespace Microsoft.Boogie
 
     public static IEnumerable<Declaration> PruneDecl(Program p, List<Block> blocks)
     {
-      if (p.edges == null || blocks == null || !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
+      if (p.DeclarationDependencies == null || blocks == null || !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
       {
         return p.TopLevelDeclarations;
       }
@@ -112,7 +112,7 @@ namespace Microsoft.Boogie
       TrimWhereAssumes(blocks, blocksNode.RelVars);
 
       // an implementation only has outgoing edges.
-      var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(p.edges, blocksNode.outgoing).ToHashSet();
+      var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(p.DeclarationDependencies, blocksNode.outgoing).ToHashSet();
       var result = p.TopLevelDeclarations.Where(d => d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
       return result;
     }
