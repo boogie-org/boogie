@@ -44,19 +44,6 @@ namespace Microsoft.Boogie.SMTLib
     // Z3 specific (at the moment; some of them make sense also for other provers)
     public string Inspector = null;
 
-    public bool ProduceModel()
-    {
-      return CommandLineOptions.Clo.ExplainHoudini || CommandLineOptions.Clo.UseProverEvaluate || ExpectingModel();
-    }
-
-    public bool ExpectingModel()
-    {
-      return CommandLineOptions.Clo.PrintErrorModel >= 1 ||
-             CommandLineOptions.Clo.EnhancedErrorMessages == 1 ||
-             CommandLineOptions.Clo.ModelViewFile != null ||
-             (CommandLineOptions.Clo.StratifiedInlining > 0 && !CommandLineOptions.Clo.StratifiedInliningWithoutModels);
-    }
-
     public void AddSolverArgument(string s)
     {
       SolverArguments.Add(s);

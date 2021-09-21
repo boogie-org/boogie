@@ -233,7 +233,7 @@ namespace Microsoft.Boogie.Houdini
     }
 
     public ProverInterface.Outcome Verify(ProverInterface proverInterface, Dictionary<Variable, bool> assignment,
-      out List<Counterexample> errors, int taskID = -1)
+      out List<Counterexample> errors, int errorLimit)
     {
       collector.examples.Clear();
 
@@ -246,7 +246,7 @@ namespace Microsoft.Boogie.Houdini
 
       VCExpr vc = proverInterface.VCExprGen.Implies(BuildAxiom(proverInterface, assignment), conjecture);
       proverInterface.BeginCheck(descriptiveName, vc, handler);
-      ProverInterface.Outcome proverOutcome = proverInterface.CheckOutcome(handler, taskID: taskID);
+      ProverInterface.Outcome proverOutcome = proverInterface.CheckOutcome(handler, errorLimit);
 
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
       stats.proverTime += queryTime;

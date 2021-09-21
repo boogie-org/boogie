@@ -10,8 +10,8 @@ namespace Microsoft.Boogie.SMTLib
 
   public class TypeDeclCollector : BoundVarTraversingVCExprVisitor<bool, bool>
   {
+    private readonly SMTLibOptions options;
     private UniqueNamer Namer;
-    private readonly SMTLibProverOptions Options;
 
     private HashSet<Function /*!*/> /*!*/
       RegisteredRelations = new HashSet<Function>();
@@ -27,11 +27,11 @@ namespace Microsoft.Boogie.SMTLib
     }
 
 
-    public TypeDeclCollector(SMTLibProverOptions opts, UniqueNamer namer)
+    public TypeDeclCollector(SMTLibOptions options, UniqueNamer namer)
     {
       Contract.Requires(namer != null);
+      this.options = options;
       this.Namer = namer;
-      this.Options = opts;
       InitializeKnownDecls();
     }
 
@@ -165,12 +165,12 @@ namespace Microsoft.Boogie.SMTLib
 
     ///////////////////////////////////////////////////////////////////////////
 
-    private static string TypeToString(Type t)
+    private string TypeToString(Type t)
     {
       Contract.Requires(t != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
-      return SMTLibExprLineariser.TypeToString(t);
+      return new SMTLibExprLineariser(options).TypeToString(t);
     }
 
     public string TypeToStringReg(Type t)
@@ -209,7 +209,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         var exprVar = node[0] as VCExprVar;
         AddDeclaration(string.Format("(declare-fun {0} () Bool)", exprVar.Name));
-        if (CommandLineOptions.Clo.PrintNecessaryAssumes)
+        if (options.PrintNecessaryAssumes)
         {
           AddDeclaration(string.Format("(assert (! {0} :named {1}))", exprVar.Name, "aux$$" + exprVar.Name));
         }
@@ -224,7 +224,7 @@ namespace Microsoft.Boogie.SMTLib
           Function f = op.Func;
           Contract.Assert(f != null);
 
-          var builtin = SMTLibExprLineariser.ExtractBuiltin(f);
+          var builtin = new SMTLibExprLineariser(options).ExtractBuiltin(f);
           if (builtin == null)
           {
             string printedName = Namer.GetQuotedName(f, f.Name);
@@ -287,7 +287,7 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(type != null);
       if (KnownTypes.Contains(type)) return;
 
-      if (type.IsMap && CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+      if (type.IsMap && options.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
       {
         KnownTypes.Add(type);
         MapType mapType = type.AsMap;
@@ -301,7 +301,7 @@ namespace Microsoft.Boogie.SMTLib
 
         RegisterType(mapType.Result);
 
-        if (!CommandLineOptions.Clo.UseArrayTheory)
+        if (!options.UseArrayTheory)
           AddDeclaration("(declare-sort " + TypeToString(type) + " 0)");
 
         return;
@@ -326,7 +326,7 @@ namespace Microsoft.Boogie.SMTLib
           return;
       }
 
-      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+      if (options.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
       {
         AddDeclaration("(declare-sort " + TypeToString(type) + " 0)");
         KnownTypes.Add(type);
@@ -338,10 +338,10 @@ namespace Microsoft.Boogie.SMTLib
     {
       RegisterType(node[0].Type);
 
-      if (CommandLineOptions.Clo.UseArrayTheory)
+      if (options.UseArrayTheory)
         return;
 
-      string name = SMTLibExprLineariser.SelectOpName(node);
+      string name = new SMTLibExprLineariser(options).SelectOpName(node);
       name = Namer.GetQuotedName(name, name);
 
       if (!KnownSelectFunctions.Contains(name))
@@ -357,10 +357,10 @@ namespace Microsoft.Boogie.SMTLib
     {
       RegisterType(node.Type); // this is the map type, registering it should register also the index and value types
 
-      if (CommandLineOptions.Clo.UseArrayTheory)
+      if (options.UseArrayTheory)
         return;
 
-      string name = SMTLibExprLineariser.StoreOpName(node);
+      string name = new SMTLibExprLineariser(options).StoreOpName(node);
       name = Namer.GetQuotedName(name, name);
 
       if (!KnownStoreFunctions.Contains(name))
@@ -369,9 +369,9 @@ namespace Microsoft.Boogie.SMTLib
                       TypeToString(node.Type) + ")";
         AddDeclaration(decl);
 
-        if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+        if (options.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
         {
-          var sel = SMTLibExprLineariser.SelectOpName(node);
+          var sel = new SMTLibExprLineariser(options).SelectOpName(node);
           sel = Namer.GetQuotedName(sel, sel);
 
           if (!KnownSelectFunctions.Contains(sel))

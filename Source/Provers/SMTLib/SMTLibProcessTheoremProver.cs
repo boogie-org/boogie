@@ -42,6 +42,7 @@ namespace Microsoft.Boogie.SMTLib
 
   public class SMTLibProcessTheoremProver : ProverInterface
   {
+    private readonly SMTLibOptions libOptions;
     private readonly SMTLibProverContext ctx;
     private VCExpressionGenerator gen;
     protected readonly SMTLibProverOptions options;
@@ -58,31 +59,31 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Invariant(_backgroundPredicates != null);
     }
 
-
     [NotDelayed]
-    public SMTLibProcessTheoremProver(ProverOptions options, VCExpressionGenerator gen,
+    public SMTLibProcessTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx)
     {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
 
-      InitializeGlobalInformation();
 
       this.options = (SMTLibProverOptions) options;
+      this.libOptions = libOptions;
       this.ctx = ctx;
       this.gen = gen;
-      this.usingUnsatCore = false;
+      usingUnsatCore = false;
 
+      InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
       Namer = new SMTLibNamer();
       ctx.parent = this;
-      this.DeclCollector = new TypeDeclCollector((SMTLibProverOptions) options, Namer);
+      this.DeclCollector = new TypeDeclCollector(libOptions, Namer);
 
       SetupProcess();
 
-      if (CommandLineOptions.Clo.StratifiedInlining > 0 || CommandLineOptions.Clo.ContractInfer)
+      if (libOptions.ImmediatelyAcceptCommands)
       {
         // Prepare for ApiChecker usage
         if (options.LogFilename != null && currentLogFile == null)
@@ -112,7 +113,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private void SetupAxiomBuilder(VCExpressionGenerator gen)
     {
-      switch (CommandLineOptions.Clo.TypeEncodingMethod)
+      switch (libOptions.TypeEncodingMethod)
       {
         case CommandLineOptions.TypeEncoding.Arguments:
           AxBuilder = new TypeAxiomBuilderArguments(gen);
@@ -132,7 +133,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       if (Process != null) return;
 
-      Process = new SMTLibProcess(this.options);
+      Process = new SMTLibProcess(this.libOptions, this.options);
       Process.ErrorHandler += this.HandleProverError;
     }
 
@@ -272,7 +273,7 @@ namespace Microsoft.Boogie.SMTLib
           string datatypeConstructorsString = "";
           foreach (var datatype in scc)
           {
-            datatypesString += "(" + SMTLibExprLineariser.TypeToString(new CtorType(Token.NoToken, datatype, new List<Type>())) + " 0)";
+            datatypesString += "(" + new SMTLibExprLineariser(libOptions).TypeToString(new CtorType(Token.NoToken, datatype, new List<Type>())) + " 0)";
             string datatypeConstructorString = "";
             foreach (Function f in datatype.Constructors)
             {
@@ -363,12 +364,12 @@ namespace Microsoft.Boogie.SMTLib
             DeclCollector.AddKnownVariable(varExpr); // add var to knows vars so that it does not get declared later on
             string printedName = Namer.GetQuotedLocalName(varExpr, varExpr.Name);
             Contract.Assert(printedName != null);
-            funcDef += "(" + printedName + " " + SMTLibExprLineariser.TypeToString(varExpr.Type) + ") ";
+            funcDef += "(" + printedName + " " + new SMTLibExprLineariser(libOptions).TypeToString(varExpr.Type) + ") ";
           }
 
           funcDef += ") ";
 
-          funcDef += SMTLibExprLineariser.TypeToString(defBody[0].Type) + " ";
+          funcDef += new SMTLibExprLineariser(libOptions).TypeToString(defBody[0].Type) + " ";
           funcDef += VCExpr2String(defBody[1], -1);
           funcDef += ")";
           generatedFuncDefs.Add(funcDef);
@@ -391,7 +392,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         SendCommon("(set-option :print-success false)");
         SendCommon("(set-info :smt-lib-version 2.6)");
-        if (options.ProduceModel())
+        if (libOptions.ProduceModel)
           SendCommon("(set-option :produce-models true)");
         foreach (var opt in options.SmtOptions)
         {
@@ -405,9 +406,7 @@ namespace Microsoft.Boogie.SMTLib
 
         // Set produce-unsat-cores last. It seems there's a bug in Z3 where if we set it earlier its value
         // gets reset by other set-option commands ( https://z3.codeplex.com/workitem/188 )
-        if (CommandLineOptions.Clo.PrintNecessaryAssumes || CommandLineOptions.Clo.EnableUnSatCoreExtract == 1 ||
-            (CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer ||
-                                                      CommandLineOptions.Clo.ExplainHoudini)))
+        if (libOptions.ProduceUnsatCores)
         {
           SendCommon("(set-option :produce-unsat-cores true)");
           this.usingUnsatCore = true;
@@ -422,16 +421,16 @@ namespace Microsoft.Boogie.SMTLib
           SendCommon("(assert (and (tickleBool true) (tickleBool false)))");
         }
 
-        if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
+        if (libOptions.RunDiagnosticsOnTimeout)
         {
           SendCommon("(declare-fun timeoutDiagnostics (Int) Bool)");
         }
 
         PrepareDataTypes();
 
-        if (CommandLineOptions.Clo.ProverPreamble != null)
+        if (libOptions.ProverPreamble != null)
         {
-          SendCommon("(include \"" + CommandLineOptions.Clo.ProverPreamble + "\")");
+          SendCommon("(include \"" + libOptions.ProverPreamble + "\")");
         }
 
         PrepareFunctionDefinitions();
@@ -746,11 +745,11 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     [NoDefaultContract]
-    public override Outcome CheckOutcome(ErrorHandler handler, int taskID = -1)
+    public override Outcome CheckOutcome(ErrorHandler handler, int errorLimit)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-      var result = CheckOutcomeCore(handler, taskID: taskID);
+      var result = CheckOutcomeCore(handler, errorLimit);
       SendThisVC("(pop 1)");
       FlushLogFile();
 
@@ -758,7 +757,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     [NoDefaultContract]
-    public override Outcome CheckOutcomeCore(ErrorHandler handler, int taskID = -1)
+    public override Outcome CheckOutcomeCore(ErrorHandler handler, int errorLimit)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
@@ -771,17 +770,6 @@ namespace Microsoft.Boogie.SMTLib
       {
         currentErrorHandler = handler;
         FlushProverWarnings();
-
-        int errorLimit;
-        if (CommandLineOptions.Clo.ConcurrentHoudini)
-        {
-          Contract.Assert(taskID >= 0);
-          errorLimit = CommandLineOptions.Clo.Cho[taskID].ErrorLimit;
-        }
-        else
-        {
-          errorLimit = CommandLineOptions.Clo.ErrorLimit;
-        }
 
         int errorsDiscovered = 0;
 
@@ -810,7 +798,7 @@ namespace Microsoft.Boogie.SMTLib
                 if (resp.Name != "")
                 {
                   UsedNamedAssumes.Add(resp.Name);
-                  if (CommandLineOptions.Clo.PrintNecessaryAssumes)
+                  if (libOptions.PrintNecessaryAssumes)
                   {
                     reporter.AddNecessaryAssume(resp.Name.Substring("aux$$assume$$".Length));
                   }
@@ -819,7 +807,7 @@ namespace Microsoft.Boogie.SMTLib
                 foreach (var arg in resp.Arguments)
                 {
                   UsedNamedAssumes.Add(arg.Name);
-                  if (CommandLineOptions.Clo.PrintNecessaryAssumes)
+                  if (libOptions.PrintNecessaryAssumes)
                   {
                     reporter.AddNecessaryAssume(arg.Name.Substring("aux$$assume$$".Length));
                   }
@@ -831,7 +819,7 @@ namespace Microsoft.Boogie.SMTLib
               }
             }
 
-            if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout && result == Outcome.TimeOut) {
+            if (libOptions.RunDiagnosticsOnTimeout && result == Outcome.TimeOut) {
               result = RunTimeoutDiagnostics(handler, result, ref popLater);
             }
 
@@ -841,7 +829,7 @@ namespace Microsoft.Boogie.SMTLib
             if (result == Outcome.Invalid)
             {
               Model model = GetErrorModel();
-              if (CommandLineOptions.Clo.SIBoolControlVC)
+              if (libOptions.SIBoolControlVC)
               {
                 labels = new string[0];
               }
@@ -881,7 +869,7 @@ namespace Microsoft.Boogie.SMTLib
 
         FlushLogFile();
 
-        if (CommandLineOptions.Clo.RestartProverPerVC && Process != null)
+        if (libOptions.RestartProverPerVC && Process != null)
           Process.NeedsRestart = true;
 
         return globalResult;
@@ -894,7 +882,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private Outcome RunTimeoutDiagnostics(ErrorHandler handler, Outcome result, ref bool popLater)
     {
-      if (CommandLineOptions.Clo.TraceDiagnosticsOnTimeout) {
+      if (libOptions.TraceDiagnosticsOnTimeout) {
         Console.Out.WriteLine("Starting timeout diagnostics with initial time limit {0}.", options.TimeLimit);
       }
 
@@ -906,7 +894,7 @@ namespace Microsoft.Boogie.SMTLib
       int frac = 2;
       int queries = 0;
       uint timeLimitPerAssertion = 0 < options.TimeLimit
-        ? (options.TimeLimit / 100) * CommandLineOptions.Clo.TimeLimitPerAssertionInPercent
+        ? (options.TimeLimit / 100) * libOptions.TimeLimitPerAssertionInPercent
         : 1000;
       while (true) {
         int rem = unverified.Count;
@@ -964,7 +952,7 @@ namespace Microsoft.Boogie.SMTLib
 
       SendThisVC("; end timeout diagnostics");
 
-      if (CommandLineOptions.Clo.TraceDiagnosticsOnTimeout) {
+      if (libOptions.TraceDiagnosticsOnTimeout) {
         Console.Out.WriteLine("Terminated timeout diagnostics after {0:F0} ms and {1} prover queries.",
           end.Subtract(start).TotalMilliseconds, queries);
         Console.Out.WriteLine("Outcome: {0}", result);
@@ -1448,7 +1436,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private Model GetErrorModel()
     {
-      if (!options.ExpectingModel())
+      if (!libOptions.ExpectingModel)
         return null;
 
       SendThisVC("(get-model)");
@@ -1633,12 +1621,10 @@ namespace Microsoft.Boogie.SMTLib
       lock (gen)
       {
         DateTime start = DateTime.UtcNow;
-        //if (CommandLineOptions.Clo.Trace)
-        //  Console.Write("Linearising ... ");
 
         // handle the types in the VCExpr
         VCExpr exprWithoutTypes;
-        switch (CommandLineOptions.Clo.TypeEncodingMethod)
+        switch (libOptions.TypeEncodingMethod)
         {
           case CommandLineOptions.TypeEncoding.Arguments:
           {
@@ -1674,13 +1660,13 @@ namespace Microsoft.Boogie.SMTLib
           Contract.Assert(sortedAxioms != null);
           DeclCollector.Collect(sortedAxioms);
           FeedTypeDeclsToProver();
-          AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options, namedAssumes: NamedAssumes));
+          AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, libOptions, options, namedAssumes: NamedAssumes));
         }
 
-        string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options, NamedAssumes, OptimizationRequests);
+        string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, libOptions, options, NamedAssumes, OptimizationRequests);
         Contract.Assert(res != null);
 
-        if (CommandLineOptions.Clo.Trace)
+        if (libOptions.Trace)
         {
           DateTime end = DateTime.UtcNow;
           TimeSpan elapsed = end - start;
@@ -1726,13 +1712,13 @@ namespace Microsoft.Boogie.SMTLib
 
     private static string _backgroundPredicates;
 
-    static void InitializeGlobalInformation()
+    void InitializeGlobalInformation()
     {
       Contract.Ensures(_backgroundPredicates != null);
       //throws ProverException, System.IO.FileNotFoundException;
       if (_backgroundPredicates == null)
       {
-        if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+        if (libOptions.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
         {
           _backgroundPredicates = "";
         }
@@ -2093,7 +2079,7 @@ namespace Microsoft.Boogie.SMTLib
 
       Check();
 
-      var outcome = CheckOutcomeCore(handler);
+      var outcome = CheckOutcomeCore(handler, libOptions.ErrorLimit);
 
       if (outcome != Outcome.Valid)
       {
@@ -2163,7 +2149,7 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         Check();
-        outcome = CheckOutcomeCore(handler);
+        outcome = CheckOutcomeCore(handler, libOptions.ErrorLimit);
         if (outcome != Outcome.Valid)
           break;
         Pop();
@@ -2284,13 +2270,13 @@ namespace Microsoft.Boogie.SMTLib
 
   public class Factory : ProverFactory
   {
-    public override object SpawnProver(ProverOptions options, object ctxt)
+    public override object SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt)
     {
       //Contract.Requires(ctxt != null);
       //Contract.Requires(options != null);
       Contract.Ensures(Contract.Result<object>() != null);
 
-      return this.SpawnProver(options,
+      return this.SpawnProver(libOptions, options,
         cce.NonNull((SMTLibProverContext) ctxt).ExprGen,
         cce.NonNull((SMTLibProverContext) ctxt));
     }
@@ -2318,7 +2304,7 @@ namespace Microsoft.Boogie.SMTLib
       return new SMTLibProverOptions();
     }
 
-    protected virtual SMTLibProcessTheoremProver SpawnProver(ProverOptions options,
+    protected virtual SMTLibProcessTheoremProver SpawnProver(SMTLibOptions libOptions, ProverOptions options,
       VCExpressionGenerator gen,
       SMTLibProverContext ctx)
     {
@@ -2326,7 +2312,7 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
       Contract.Ensures(Contract.Result<SMTLibProcessTheoremProver>() != null);
-      return new SMTLibProcessTheoremProver(options, gen, ctx);
+      return new SMTLibProcessTheoremProver(libOptions, options, gen, ctx);
     }
   }
 }
