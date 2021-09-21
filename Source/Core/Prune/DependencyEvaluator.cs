@@ -34,11 +34,5 @@ namespace Microsoft.Boogie
       outgoing = new HashSet<Declaration>();
       types = new HashSet<Type>();
     }
-    // returns true if there is an edge from a to b
-    public static bool Depends(DependencyEvaluator a, DependencyEvaluator b)
-    {
-      return b.incoming.Intersect(a.outgoing).Any() ||
-             b.incomingTuples.Any(s => s.IsSubsetOf(a.outgoing));
-    }
   }
 }

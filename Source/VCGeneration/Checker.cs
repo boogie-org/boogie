@@ -15,20 +15,6 @@ namespace Microsoft.Boogie
     Closed
   }
 
-  public class Util
-  {
-    public static uint SafeMult(uint a, uint b) {
-      uint result = UInt32.MaxValue;
-      try {
-        checked {
-          result = a * b;
-        }
-      } catch (OverflowException) { }
-
-      return result;
-    }
-  }
-
 
   /// <summary>
   /// Interface to the theorem prover specialized to Boogie.

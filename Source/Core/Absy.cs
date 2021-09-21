@@ -278,7 +278,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(cce.NonNullElements(this.globalVariablesCache, true));
     }
 
-    public Dictionary<DependencyEvaluator, List<DependencyEvaluator>> edges;
+    public Dictionary<object, List<object>> edges;
 
     public Program()
       : base(Token.NoToken)

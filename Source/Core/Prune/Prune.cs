@@ -1,8 +1,35 @@
+using System;
 using System.Linq;
 using System.Collections.Generic;
 
 namespace Microsoft.Boogie
 {
+
+  public static class Util
+  {
+    public static V GetOrCreate<K, V>(this IDictionary<K, V> dictionary, K key, Func<V> createValue)
+    {
+      if (dictionary.TryGetValue(key, out var result)) {
+        return result;
+      }
+
+      result = createValue();
+      dictionary[key] = result;
+      return result;
+    }
+    
+    public static uint SafeMult(uint a, uint b) {
+      uint result = UInt32.MaxValue;
+      try {
+        checked {
+          result = a * b;
+        }
+      } catch (OverflowException) { }
+
+      return result;
+    }
+  }
+  
   public class Prune {
     private static bool ExcludeDep(Declaration d)
     {
@@ -10,7 +37,7 @@ namespace Microsoft.Boogie
               QKeyValue.FindBoolAttribute(d.Attributes, "exclude_dep");
     }
 
-    public static Dictionary<DependencyEvaluator, List<DependencyEvaluator>> InitializeEdges(Program program)
+    public static Dictionary<object, List<object>> InitializeEdges(Program program)
     {
       if (!CommandLineOptions.Clo.PruneFunctionsAndAxioms)
       {
@@ -23,10 +50,27 @@ namespace Microsoft.Boogie
       nodes.AddRange(functionNodes);
       nodes.ForEach(u => u.incoming = u.incoming.Where(i => u.node == i || !ExcludeDep(i)).ToHashSet());
       nodes.ForEach(u => u.outgoing = u.outgoing.Where(i => !ExcludeDep(i)).ToHashSet());
-      var edges = new Dictionary<DependencyEvaluator, List<DependencyEvaluator>>();
-      
-      // TODO remove square complexity.
-      nodes.ForEach(u => edges[u] = nodes.Where(v => DependencyEvaluator.Depends(u, v)).ToList());
+
+      var edges = new Dictionary<object, List<object>>();
+      foreach (var node in nodes) {
+        foreach (var incomingSingle in node.incoming) {
+          var targets = edges.GetOrCreate(incomingSingle, () => new());
+          targets.Add(node.node);
+        }
+        foreach (var incomingTuple in node.incomingTuples) {
+          foreach (var mergeIncoming in incomingTuple) {
+            var mergeIncomingTargets = edges.GetOrCreate(mergeIncoming, () => new());
+            mergeIncomingTargets.Add(incomingTuple);
+          }
+          var mergeTargets = edges.GetOrCreate(incomingTuple, () => new());
+          mergeTargets.Add(node.node);
+        }
+        foreach (var outgoingSingle in node.outgoing) {
+          var targets = edges.GetOrCreate(node.node, () => new());
+          targets.Add(outgoingSingle);
+        }
+      }
+
       return edges;
     }
 
@@ -90,28 +134,35 @@ namespace Microsoft.Boogie
       BlocksVisitor bnode = new BlocksVisitor(blocks);
       bnode.Blocks.ForEach(blk => bnode.Visit(blk));
       TrimWhereAssumes(blocks, bnode.RelVars);
-      var implHooks = edges.Keys.Where(m => DependencyEvaluator.Depends(bnode, m));
+      var implHooks = bnode.outgoing;
 
-      var reachableDeclarations = ComputeReachability(p, implHooks).ToHashSet();
-      var result = p.TopLevelDeclarations.Where(d => d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
+      var reachableDeclarations = FindReachableNodesInGraphWithMergeNodes(p.edges, implHooks).ToHashSet();
+      var result = p.TopLevelDeclarations.Where(d => d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
       return result;
     }
-    
-    static IEnumerable<Declaration> ComputeReachability(Program p, IEnumerable<DependencyEvaluator> implHooks)
+
+    private static IEnumerable<Declaration> FindReachableNodesInGraphWithMergeNodes(Dictionary<object, List<object>> edges, IEnumerable<object> roots)
     {
-      var edges = p.edges;
-      var todo = new Stack<DependencyEvaluator>(implHooks);
-      var visited = new HashSet<DependencyEvaluator>();
+      var todo = new Stack<object>(roots);
+      var visitedEdges = new HashSet<Declaration>();
       while(todo.Any())
       {
-        var d = todo.Pop();
-        foreach (var x in edges[d].Where(t => !visited.Contains(t)))
+        var node = todo.Pop();
+        if (visitedEdges.Contains(node)) continue;
+        
+        if (node is HashSet<Declaration> incomingTuple) {
+          if (!visitedEdges.IsSupersetOf(incomingTuple)) continue;
+        } else {
+          visitedEdges.Add((Declaration)node);
+        }
+
+        var outgoing = edges.GetValueOrDefault(node) ?? new List<object>();
+        foreach (var x in outgoing)
         {
           todo.Push(x);
         }
-        visited.Add(d);
       }
-      return visited.Select(a => a.node);
+      return visitedEdges;
     }
   }
 }
