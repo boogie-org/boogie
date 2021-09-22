@@ -1118,11 +1118,14 @@ namespace Microsoft.Boogie.GraphUtil
       while (todo.Any())
       {
         var node = todo.Pop();
-        if (visitedEdges.Contains(node)) continue;
+        if (visitedEdges.Contains(node)) {
+          continue;
+        }
         
         if (node is IReadOnlySet<object> mergeNode) {
-          if (!visitedEdges.IsSupersetOf(mergeNode)) 
+          if (!visitedEdges.IsSupersetOf(mergeNode)) {
             continue;
+          }
         } else {
           visitedEdges.Add(node);
         }
