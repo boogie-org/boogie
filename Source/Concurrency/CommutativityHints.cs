@@ -80,14 +80,22 @@ namespace Microsoft.Boogie
     public IEnumerable<CommutativityWitness> GetWitnesses(AtomicAction first, AtomicAction second)
     {
       witnesses.TryGetValue(Key(first, second), out List<CommutativityWitness> list);
-      if (list == null) return Enumerable.Empty<CommutativityWitness>();
+      if (list == null)
+      {
+        return Enumerable.Empty<CommutativityWitness>();
+      }
+
       return list;
     }
 
     public IEnumerable<CommutativityHint> GetLemmas(AtomicAction first, AtomicAction second)
     {
       lemmas.TryGetValue(Key(first, second), out List<CommutativityHint> list);
-      if (list == null) return Enumerable.Empty<CommutativityHint>();
+      if (list == null)
+      {
+        return Enumerable.Empty<CommutativityHint>();
+      }
+
       return list;
     }
   }
@@ -127,7 +135,10 @@ namespace Microsoft.Boogie
       for (QKeyValue kv = function.Attributes; kv != null; kv = kv.Next)
       {
         if (kv.Key != CivlAttributes.COMMUTATIVITY)
+        {
           continue;
+        }
+
         if (kv.Params.Count == 2 &&
             kv.Params[0] is string firstActionName &&
             kv.Params[1] is string secondActionName)
@@ -237,7 +248,10 @@ namespace Microsoft.Boogie
       var var = FindVariable(param.Name, param.TypedIdent.Type,
         impl.InParams.Union(impl.OutParams));
       if (var != null)
+      {
         return Expr.Ident(var);
+      }
+
       var name = param.Name.Remove(0, prefix.Length);
       civlTypeChecker.Error(param, $"Action {impl.Name} does not have parameter {name}:{param.TypedIdent.Type}");
       return null;
@@ -248,14 +262,21 @@ namespace Microsoft.Boogie
       bool postState = param.Name.EndsWith(PostStateSuffix, StringComparison.Ordinal);
       var name = param.Name;
       if (postState)
+      {
         name = name.Substring(0, name.Length - 1);
+      }
+
       var var = FindVariable(name, param.TypedIdent.Type, civlTypeChecker.GlobalVariables);
       if (var != null)
       {
         if (!postState)
+        {
           return ExprHelper.Old(Expr.Ident(var));
+        }
         else
+        {
           return Expr.Ident(var);
+        }
       }
 
       civlTypeChecker.Error(param, $"No global variable {name}:{param.TypedIdent.Type}");

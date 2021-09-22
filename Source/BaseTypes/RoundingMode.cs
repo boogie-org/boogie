@@ -24,11 +24,31 @@ namespace Microsoft.BaseTypes
     [Pure]
     public static RoundingMode FromString(String s)
     {
-      if (s.Equals("RNE") || s.Equals("roundNearestTiesToEven")) return RNE;
-      if (s.Equals("RNA") || s.Equals("roundNearestTiesToAway")) return RNA;
-      if (s.Equals("RTP") || s.Equals("roundTowardPositive")) return RTP;
-      if (s.Equals("RTN") || s.Equals("roundTowardNegative")) return RTN;
-      if (s.Equals("RTZ") || s.Equals("roundTowardZero")) return RTZ;
+      if (s.Equals("RNE") || s.Equals("roundNearestTiesToEven"))
+      {
+        return RNE;
+      }
+
+      if (s.Equals("RNA") || s.Equals("roundNearestTiesToAway"))
+      {
+        return RNA;
+      }
+
+      if (s.Equals("RTP") || s.Equals("roundTowardPositive"))
+      {
+        return RTP;
+      }
+
+      if (s.Equals("RTN") || s.Equals("roundTowardNegative"))
+      {
+        return RTN;
+      }
+
+      if (s.Equals("RTZ") || s.Equals("roundTowardZero"))
+      {
+        return RTZ;
+      }
+
       throw new FormatException(s + " is not a valid rounding mode.");
     }
 

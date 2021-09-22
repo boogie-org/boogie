@@ -170,11 +170,14 @@ namespace Microsoft.Boogie
         Contract.Assert(successors != null);
 
         if (successors.labelTargets != null)
+        {
           foreach (Block nextBlock in successors.labelTargets)
           {
             Contract.Assert(nextBlock != null);
             if (path.Contains(nextBlock)) // If the current path has already seen the block, just skip it 
+            {
               continue;
+            }
             // Otherwise we perform the DFS visit
             path.Add(nextBlock);
             DoDFSVisit(nextBlock, path, blocksInPath);
@@ -182,6 +185,7 @@ namespace Microsoft.Boogie
             Contract.Assert(nextBlock == path[path.Count - 1]);
             path.RemoveAt(path.Count - 1);
           }
+        }
       }
 
       #endregion

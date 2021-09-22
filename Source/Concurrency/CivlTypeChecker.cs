@@ -147,24 +147,32 @@ namespace Microsoft.Boogie
       TypeCheckPendingAsyncMachinery();
 
       if (checkingContext.ErrorCount > 0)
+      {
         return;
+      }
 
       linearTypeChecker.TypeCheck();
       if (checkingContext.ErrorCount > 0)
+      {
         return;
+      }
 
       TypeCheckInductiveSequentializations();
       TypeCheckYieldingProcedureDecls();
       TypeCheckLocalVariables();
 
       if (checkingContext.ErrorCount > 0)
+      {
         return;
+      }
 
       TypeCheckActionImpls();
       TypeCheckYieldingProcedureImpls();
 
       if (checkingContext.ErrorCount > 0)
+      {
         return;
+      }
 
       TypeCheckLoopAnnotations();
 
@@ -175,7 +183,9 @@ namespace Microsoft.Boogie
       AttributeEraser.Erase(this);
 
       if (checkingContext.ErrorCount > 0)
+      {
         return;
+      }
 
       YieldSufficiencyTypeChecker.TypeCheck(this);
     }
@@ -203,16 +213,23 @@ namespace Microsoft.Boogie
 
       var intersect = allRefinementLayers.Intersect(allInductiveSequentializationLayers).ToList();
       if (intersect.Any())
+      {
         checkingContext.Error(Token.NoToken,
           "The following layers mix refinement with IS: " + string.Join(",", intersect));
+      }
 
       foreach (var g in GlobalVariables)
       {
         var layerRange = GlobalVariableLayerRange(g);
         if (allInductiveSequentializationLayers.Contains(layerRange.lowerLayerNum))
+        {
           Error(g, $"Global variable {g.Name} cannot be introduced at layer with IS");
+        }
+
         if (allInductiveSequentializationLayers.Contains(layerRange.upperLayerNum))
+        {
           Error(g, $"Global variable {g.Name} cannot be hidden at layer with IS");
+        }
       }
     }
 
@@ -308,11 +325,17 @@ namespace Microsoft.Boogie
         {
           var action = new AtomicAction(proc, impl, layerRange, GetActionMoverType(proc));
           if (proc.HasAttribute(CivlAttributes.IS_INVARIANT))
+          {
             procToIsInvariant[proc] = action;
+          }
           else if (proc.HasAttribute(CivlAttributes.IS_ABSTRACTION))
+          {
             procToIsAbstraction[proc] = action;
+          }
           else
+          {
             procToAtomicAction[proc] = action;
+          }
         }
       }
     }
@@ -339,7 +362,10 @@ namespace Microsoft.Boogie
           if (kv.Key == CivlAttributes.IS)
           {
             if (action.refinedAction != null || invariantAction != null)
+            {
               Error(kv, "Duplicate inductive sequentialization");
+            }
+
             if (kv.Params.Count == 2 &&
                 kv.Params[0] is string refinedActionName &&
                 kv.Params[1] is string invariantActionName)
@@ -347,21 +373,35 @@ namespace Microsoft.Boogie
               action.refinedAction = FindAtomicAction(refinedActionName);
               invariantAction = FindIsInvariant(invariantActionName);
               if (action.refinedAction == null)
+              {
                 Error(kv, "Could not find refined atomic action");
+              }
               else
               {
                 if (!action.HasPendingAsyncs)
+                {
                   Error(action.proc, "IS target must have pending async output");
+                }
+
                 if (!action.refinedAction.layerRange.Contains(layer + 1))
+                {
                   Error(action.proc, $"IS target does not exist at layer {layer + 1}");
+                }
+
                 if (action.IsLeftMover && !action.refinedAction.IsLeftMover)
+                {
                   Error(action.proc, "IS output must preserve left moverness");
+                }
               }
 
               if (invariantAction == null)
+              {
                 Error(kv, "Could not find invariant action");
+              }
               else if (!invariantAction.layerRange.Contains(layer))
+              {
                 Error(action.proc, $"IS invariant does not exist at layer {layer}");
+              }
             }
             else
             {
@@ -383,9 +423,14 @@ namespace Microsoft.Boogie
               else
               {
                 if (elimAction.pendingAsyncCtor == null)
+                {
                   Error(kv, $"No pending async constructor for atomic action {actionName}");
+                }
+
                 if (!elimAction.layerRange.Contains(layer))
+                {
                   Error(kv, $"Elim action does not exist at layer {layer}");
+                }
               }
 
               if (kv.Params.Count == 2)
@@ -393,11 +438,18 @@ namespace Microsoft.Boogie
                 string abstractionName = (string) kv.Params[1];
                 absAction = FindAtomicAction(abstractionName);
                 if (absAction == null)
+                {
                   absAction = FindIsAbstraction(abstractionName);
+                }
+
                 if (absAction == null)
+                {
                   Error(kv, "Could not find abstraction action");
+                }
                 else if (!absAction.layerRange.Contains(layer))
+                {
                   Error(kv, "Abstraction action does not exist at layer {layer}");
+                }
               }
               else
               {
@@ -450,7 +502,11 @@ namespace Microsoft.Boogie
         }
       }
 
-      if (checkingContext.ErrorCount > 0) return;
+      if (checkingContext.ErrorCount > 0)
+      {
+        return;
+      }
+
       foreach (Implementation impl in program.Implementations.Where(impl => procToLemmaProc.ContainsKey(impl.Proc)))
       {
         visitor.VisitImplementation(impl);
@@ -689,7 +745,11 @@ namespace Microsoft.Boogie
             foreach (var attr in CivlAttributes.FindAllAttributes(predCmd, CivlAttributes.YIELD_LOOP))
             {
               var callCmd = YieldInvariantCallChecker.CheckLoop(this, attr, header);
-              if (callCmd == null) continue;
+              if (callCmd == null)
+              {
+                continue;
+              }
+
               var calleeLayerNum = procToYieldInvariant[callCmd.Proc].LayerNum;
               if (yieldingLayers.Contains(calleeLayerNum))
               {
@@ -825,12 +885,21 @@ namespace Microsoft.Boogie
           if (v.HasAttribute(CivlAttributes.PENDING_ASYNC))
           {
             if (implToPendingAsyncCollector.ContainsKey(impl))
+            {
               Error(v, "Duplicate pending async collector");
+            }
+
             if (!v.TypedIdent.Type.Equals(pendingAsyncMultisetType))
+            {
               Error(v, "Pending async collector is of incorrect type");
+            }
+
             if (layer != upperLayer)
+            {
               Error(v,
                 "Pending async collector must be introduced at the disappearing layer of the enclosing procedure");
+            }
+
             implToPendingAsyncCollector[impl] = v;
           }
         }
@@ -841,14 +910,18 @@ namespace Microsoft.Boogie
         {
           Variable v = impl.Proc.InParams[i];
           if (localVarToLayerRange.ContainsKey(v))
+          {
             localVarToLayerRange[impl.InParams[i]] = localVarToLayerRange[v];
+          }
         }
 
         for (int i = 0; i < impl.Proc.OutParams.Count; i++)
         {
           Variable v = impl.Proc.OutParams[i];
           if (localVarToLayerRange.ContainsKey(v))
+          {
             localVarToLayerRange[impl.OutParams[i]] = localVarToLayerRange[v];
+          }
         }
       }
 
@@ -899,7 +972,10 @@ namespace Microsoft.Boogie
           else
           {
             if (action.proc.HasAttribute(CivlAttributes.IS))
+            {
               Error(ctor, "Action transformed by IS cannot be a pending async");
+            }
+
             CheckPendingAsyncSignature(action, ctor);
             action.pendingAsyncCtor = ctor;
           }
@@ -912,11 +988,15 @@ namespace Microsoft.Boogie
         {
           CheckPendingAsyncOutput(action, action.impl.OutParams.Last());
           if (action.HasPendingAsyncs && action.IsRightMover)
+          {
             Error(action.proc, "Action with pending async cannot be a right mover");
+          }
         }
 
         if (action.pendingAsyncCtor != null && action.impl.OutParams.Count > (action.HasPendingAsyncs ? 1 : 0))
+        {
           Error(action.proc, $"Action declared as pending async cannot have output parameters");
+        }
       }
 
       foreach (var action in procToIsInvariant.Values)
@@ -935,7 +1015,9 @@ namespace Microsoft.Boogie
         }
 
         if (!action.HasPendingAsyncs)
+        {
           Error(action.proc, "Invariant action must have pending async output");
+        }
       }
     }
 
@@ -956,14 +1038,23 @@ namespace Microsoft.Boogie
               if (pendingAsync != null)
               {
                 if (!action.layerRange.Subset(pendingAsync.layerRange))
+                {
                   Error(kv, $"Pending async {actionName} is not available on all layers of {action.proc.Name}");
+                }
+
                 if (pendingAsync.pendingAsyncCtor != null)
+                {
                   pendingAsyncs.Add(pendingAsync);
+                }
                 else
+                {
                   Error(kv, $"No pending async constructor for atomic action {actionName}");
+                }
               }
               else
+              {
                 Error(kv, $"Could not find atomic action {actionName}");
+              }
             }
             else
             {
@@ -989,7 +1080,9 @@ namespace Microsoft.Boogie
     private void CheckPendingAsyncChoice(AtomicAction action, Variable outParam)
     {
       if (!outParam.TypedIdent.Type.Equals(pendingAsyncType))
+      {
         Error(outParam, "Pending aync choice is of incorrect type");
+      }
     }
 
     #region Helpers for attribute parsing
@@ -1021,11 +1114,17 @@ namespace Microsoft.Boogie
     private MoverType GetActionMoverType(Procedure proc)
     {
       if (proc.HasAttribute(CivlAttributes.IS_INVARIANT))
+      {
         return MoverType.Non;
+      }
       else if (proc.HasAttribute(CivlAttributes.IS_ABSTRACTION))
+      {
         return MoverType.Left;
+      }
       else
+      {
         return GetMoverType(proc).Value;
+      }
     }
 
     /// Parses attributes for mover type declarations.
@@ -1040,20 +1139,32 @@ namespace Microsoft.Boogie
         {
           MoverType? x = null;
           if (kv.Key == CivlAttributes.ATOMIC)
+          {
             x = MoverType.Non;
+          }
           else if (kv.Key == CivlAttributes.RIGHT)
+          {
             x = MoverType.Right;
+          }
           else if (kv.Key == CivlAttributes.LEFT)
+          {
             x = MoverType.Left;
+          }
           else if (kv.Key == CivlAttributes.BOTH)
+          {
             x = MoverType.Both;
+          }
 
           if (x.HasValue)
           {
             if (moverType.HasValue)
+            {
               checkingContext.Warning(kv, "Ignoring duplicate mover type declaration ({0})", kv.Key);
+            }
             else
+            {
               moverType = x;
+            }
           }
         }
       }
@@ -1066,7 +1177,11 @@ namespace Microsoft.Boogie
       List<int> layers = new List<int>();
       for (; kv != null; kv = kv.Next)
       {
-        if (kv.Key != CivlAttributes.LAYER) continue;
+        if (kv.Key != CivlAttributes.LAYER)
+        {
+          continue;
+        }
+
         foreach (var o in kv.Params)
         {
           var layerNum = TypeCheckLayer(kv, o);
@@ -1213,7 +1328,11 @@ namespace Microsoft.Boogie
     public AtomicAction FindAtomicActionOrAbstraction(string name)
     {
       var action = FindAtomicAction(name);
-      if (action != null) return action;
+      if (action != null)
+      {
+        return action;
+      }
+
       return FindIsAbstraction(name);
     }
 

@@ -49,7 +49,10 @@ namespace VC
       maxVcCost = options.VcsMaxCost;
       var tmpMaxVcCost = -1;
       VCGen.CheckIntAttributeOnImpl(implementation, "vcs_max_cost", ref tmpMaxVcCost);
-      if (tmpMaxVcCost >= 0) maxVcCost = tmpMaxVcCost;
+      if (tmpMaxVcCost >= 0)
+      {
+        maxVcCost = tmpMaxVcCost;
+      }
 
       ResetPredecessors(implementation.Blocks);
       manualSplits = Split.FocusAndSplit(implementation, gotoCmdOrigins, vcGen);
@@ -73,8 +76,10 @@ namespace VC
     private void TrackSplitsCost(List<Split> splits)
     {
       if (!TrackingProgress)
+      {
         return;
-      
+      }
+
       foreach (var split in splits) {
         remainingCost += split.Cost;
         total++;

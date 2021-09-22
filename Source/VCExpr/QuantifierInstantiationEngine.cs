@@ -269,7 +269,11 @@ namespace Microsoft.Boogie.VCExprAST
         {
           foreach (var v in quantifierBinding.Keys)
           {
-            if (visitedQuantifierBindings.Contains(v)) continue;
+            if (visitedQuantifierBindings.Contains(v))
+            {
+              continue;
+            }
+
             visitedQuantifierBindings.Add(v);
             var quantifierExpr = quantifierBinding[v];
             var quantifierInfo = quantifierInstantiationInfo[quantifierExpr];
@@ -285,7 +289,11 @@ namespace Microsoft.Boogie.VCExprAST
         {
           foreach (var lambdaFunction in lambdaDefinition.Keys)
           {
-            if (visitedLambdaFunctions.Contains(lambdaFunction)) continue;
+            if (visitedLambdaFunctions.Contains(lambdaFunction))
+            {
+              continue;
+            }
+
             visitedLambdaFunctions.Add(lambdaFunction);
             var quantifierExpr = lambdaDefinition[lambdaFunction];
             var quantifierInfo = quantifierInstantiationInfo[quantifierExpr];

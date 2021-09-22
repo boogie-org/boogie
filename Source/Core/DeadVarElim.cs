@@ -35,7 +35,9 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(var != null);
         if (_usedVars.Contains(var))
+        {
           vars.Add(var);
+        }
       }
 
       impl.LocVars = vars;
@@ -92,7 +94,9 @@ namespace Microsoft.Boogie
       foreach (var impl in program.Implementations)
       {
         if (impl.Proc != null)
+        {
           implementedProcs.Add(impl.Proc);
+        }
       }
 
       foreach (var proc in program.Procedures)
@@ -216,12 +220,18 @@ namespace Microsoft.Boogie
       Cmd ret = base.VisitCallCmd(callCmd);
       foreach (IdentifierExpr ie in callCmd.Outs)
       {
-        if (ie != null) ProcessVariable(ie.Decl);
+        if (ie != null)
+        {
+          ProcessVariable(ie.Decl);
+        }
       }
 
       Procedure callee = callCmd.Proc;
       if (callee == null)
+      {
         return ret;
+      }
+
       if (modSets.ContainsKey(callee))
       {
         foreach (Variable var in modSets[callee])
@@ -276,16 +286,25 @@ namespace Microsoft.Boogie
       Procedure /*!*/
         localProc = cce.NonNull(enclosingProc);
       if (var == null)
+      {
         return;
+      }
+
       if (!(var is GlobalVariable))
+      {
         return;
+      }
+
       if (!modSets.ContainsKey(localProc))
       {
         modSets[localProc] = new HashSet<Variable /*!*/>();
       }
 
       if (modSets[localProc].Contains(var))
+      {
         return;
+      }
+
       moreProcessingRequired = true;
       modSets[localProc].Add(var);
     }
@@ -396,7 +415,10 @@ namespace Microsoft.Boogie
     {
       var collector = new VariableCollector();
       foreach (var node in nodes)
+      {
         collector.Visit(node);
+      }
+
       return collector.usedVars;
     }
   }
@@ -431,13 +453,22 @@ namespace Microsoft.Boogie
 
         visitedBlocks.Add(b);
         if (b.TransferCmd == null)
+        {
           continue;
+        }
+
         if (b.TransferCmd is ReturnCmd)
+        {
           continue;
+        }
+
         Contract.Assert(b.TransferCmd is GotoCmd);
         GotoCmd gotoCmd = (GotoCmd) b.TransferCmd;
         if (gotoCmd.labelTargets == null)
+        {
           continue;
+        }
+
         foreach (Block /*!*/ succ in gotoCmd.labelTargets)
         {
           Contract.Assert(succ != null);
@@ -467,16 +498,28 @@ namespace Microsoft.Boogie
           b = dfsStack.Pop();
         Contract.Assert(b != null);
         if (visitedBlocks.Contains(b))
+        {
           continue;
+        }
+
         visitedBlocks.Add(b);
         if (b.TransferCmd == null)
+        {
           continue;
+        }
+
         if (b.TransferCmd is ReturnCmd)
+        {
           continue;
+        }
+
         Contract.Assert(b.TransferCmd is GotoCmd);
         GotoCmd gotoCmd = (GotoCmd) b.TransferCmd;
         if (gotoCmd.labelTargets == null)
+        {
           continue;
+        }
+
         if (gotoCmd.labelTargets.Count == 1)
         {
           Block /*!*/
@@ -523,7 +566,11 @@ namespace Microsoft.Boogie
       impl.Blocks = newBlocks;
       foreach (Block b in impl.Blocks)
       {
-        if (b.TransferCmd is ReturnCmd) continue;
+        if (b.TransferCmd is ReturnCmd)
+        {
+          continue;
+        }
+
         GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
         gotoCmd.labelNames = new List<string>();
         foreach (Block succ in gotoCmd.labelTargets)
@@ -809,7 +856,9 @@ namespace Microsoft.Boogie
       Contract.Requires(w1 != null);
       Contract.Ensures(Contract.Result<GenKillWeight>() != null);
       if (w1.isZero || w2.isZero)
+      {
         return zero();
+      }
 
       HashSet<Variable> t = new HashSet<Variable>(w2.gen);
       t.ExceptWith(w1.kill);
@@ -827,9 +876,14 @@ namespace Microsoft.Boogie
       Contract.Requires(w1 != null);
       Contract.Ensures(Contract.Result<GenKillWeight>() != null);
       if (w1.isZero)
+      {
         return w2;
+      }
+
       if (w2.isZero)
+      {
         return w1;
+      }
 
       HashSet<Variable> g = new HashSet<Variable>(w1.gen);
       g.UnionWith(w2.gen);
@@ -847,14 +901,18 @@ namespace Microsoft.Boogie
       foreach (Variable v in w.gen)
       {
         if (isGlobal(v))
+        {
           gen.Add(v);
+        }
       }
 
       HashSet<Variable /*!*/> kill = new HashSet<Variable>();
       foreach (Variable v in w.kill)
       {
         if (isGlobal(v))
+        {
           kill.Add(v);
+        }
       }
 
       return new GenKillWeight(gen, kill);
@@ -865,9 +923,14 @@ namespace Microsoft.Boogie
       Contract.Requires(w2 != null);
       Contract.Requires(w1 != null);
       if (w1.isZero)
+      {
         return w2.isZero;
+      }
+
       if (w2.isZero)
+      {
         return w1.isZero;
+      }
 
       return (w1.gen.Equals(w2.gen) && w1.kill.Equals(w2.kill));
     }
@@ -1063,7 +1126,10 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(b != null);
       if (priority.ContainsKey(b))
+      {
         return priority[b];
+      }
+
       return Int32.MaxValue;
     }
 
@@ -1227,7 +1293,9 @@ namespace Microsoft.Boogie
         {
           Contract.Assert(callee != null);
           if (!name2Impl.ContainsKey(callee))
+          {
             continue;
+          }
 
           callGraph.AddEdge(p.impl.Name, callee);
 
@@ -1248,7 +1316,10 @@ namespace Microsoft.Boogie
           }
 
           if (procICFG.ContainsKey(callee))
+          {
             continue;
+          }
+
           ICFG /*!*/
             ncfg = new ICFG(name2Impl[callee]);
           Contract.Assert(ncfg != null);
@@ -1266,7 +1337,10 @@ namespace Microsoft.Boogie
       {
         string s = sortedNodes[i];
         if (s == null)
+        {
           continue;
+        }
+
         procPriority.Add(s, cnt);
         cnt++;
       }
@@ -1406,7 +1480,10 @@ namespace Microsoft.Boogie
           curr = GenKillWeight.combine(w, prev);
         Contract.Assert(curr != null);
         if (GenKillWeight.isEqual(prev, curr))
+        {
           return false;
+        }
+
         cfg.weightBefore[block] = curr;
         return true;
       }
@@ -1702,7 +1779,9 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
             {
               Contract.Assert(v != null);
               if (v is GlobalVariable)
+              {
                 elv.Add(v);
+              }
             }
 
             foreach (Variable /*!*/ v in callee.impl.OutParams)
@@ -1854,7 +1933,9 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
       Contract.Ensures(Contract.Result<GenKillWeight>() != null);
 
       if (weightCache.ContainsKey(cmd))
+      {
         return weightCache[cmd];
+      }
 
       HashSet<Variable /*!*/> /*!*/
         gen = new HashSet<Variable /*!*/>();
@@ -2031,7 +2112,9 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
       Contract.Ensures(Contract.Result<GenKillWeight>() != null);
 
       if (weightCacheAfterCall.ContainsKey(cmd))
+      {
         return weightCacheAfterCall[cmd];
+      }
 
       HashSet<Variable /*!*/> /*!*/
         gen = new HashSet<Variable /*!*/>();
@@ -2046,7 +2129,9 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
       {
         Contract.Assert(ie != null);
         if (ie.Decl != null)
+        {
           kill.Add(ie.Decl);
+        }
       }
 
       // Variables in ensures are considered as "read"
@@ -2079,7 +2164,9 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
       Contract.Ensures(Contract.Result<GenKillWeight>() != null);
       Contract.Assert((cmd is CallCmd));
       if (weightCacheBeforeCall.ContainsKey(cmd))
+      {
         return weightCacheBeforeCall[cmd];
+      }
 
       HashSet<Variable /*!*/> /*!*/
         gen = new HashSet<Variable /*!*/>();

@@ -44,7 +44,10 @@ namespace Microsoft.BaseTypes
     {
       Contract.Assert(!den.IsZero);
       if (num == BigNum.ZERO)
+      {
         return ZERO;
+      }
+
       if (den.Signum < 0)
       {
         den = -den;
@@ -52,10 +55,16 @@ namespace Microsoft.BaseTypes
       }
 
       if (den == BigNum.ONE)
+      {
         return new Rational(num, den);
+      }
+
       var gcd = num.Gcd(den);
       if (gcd == BigNum.ONE)
+      {
         return new Rational(num, den);
+      }
+
       return new Rational(num / gcd, den / gcd);
     }
 
@@ -140,7 +149,10 @@ namespace Microsoft.BaseTypes
     public override bool Equals(object obj)
     {
       if (obj == null)
+      {
         return false;
+      }
+
       return obj is Rational && (Rational) obj == this;
     }
 

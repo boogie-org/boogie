@@ -745,7 +745,10 @@ namespace VC
       {
         Contract.Assert(v != null);
         if (!b.IsLive(v))
+        {
           continue;
+        }
+
         Variable v_prime = CreateIncarnation(v, b);
         IdentifierExpr ie = new IdentifierExpr(v_prime.tok, v_prime);
         Contract.Assert(incarnationMap != null);
@@ -945,7 +948,9 @@ namespace VC
 
           mvc.AddUsedVariables(variableCollectors[p].UsedVariables);
           if (p.succCount == 0)
+          {
             block2Incarnation.Remove(p);
+          }
         }
 
         #region Each block's map needs to be available to successor blocks
@@ -990,7 +995,9 @@ namespace VC
       {
         Contract.Assert(ie != null);
         if (!oldFrameMap.ContainsKey(cce.NonNull(ie.Decl)))
+        {
           oldFrameMap.Add(ie.Decl, ie);
+        }
       }
 
       return Substituter.SubstitutionFromDictionary(oldFrameMap);
@@ -1291,9 +1298,13 @@ namespace VC
           {
             IdentifierExpr ie = (IdentifierExpr) rhs;
             if (incarnationMap.ContainsKey(cce.NonNull(ie.Decl)))
+            {
               newIncarnationMappings[lhs] = cce.NonNull((Expr) incarnationMap[ie.Decl]);
+            }
             else
+            {
               newIncarnationMappings[lhs] = ie;
+            }
           }
           else
           {
@@ -1386,7 +1397,9 @@ namespace VC
       {
         if (this.preHavocIncarnationMap == null
         ) // Save a copy of the incarnation map (at the top of a sequence of havoc statements)
+        {
           this.preHavocIncarnationMap = new Dictionary<Variable, Expr>(incarnationMap);
+        }
 
         HavocCmd hc = (HavocCmd) c;
         Contract.Assert(c != null);
@@ -1495,7 +1508,9 @@ namespace VC
       #region We remember if we have put an havoc statement into a passive form
 
       if (!(c is HavocCmd))
+      {
         this.preHavocIncarnationMap = null;
+      }
       // else: it has already been set by the case for the HavocCmd
 
       #endregion

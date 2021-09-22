@@ -77,20 +77,34 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(sb != null);
 
-      if (Arguments.Length > 0) sb.Append('(');
+      if (Arguments.Length > 0)
+      {
+        sb.Append('(');
+      }
+
       if (Name.Any(Char.IsWhiteSpace))
+      {
         sb.Append("\"").Append(Name).Append("\"");
+      }
       else if (Name.Length == 0)
+      {
         sb.Append("()");
+      }
       else
+      {
         sb.Append(Name);
+      }
+
       foreach (var a in Arguments)
       {
         sb.Append(' ');
         a.WriteTo(sb);
       }
 
-      if (Arguments.Length > 0) sb.Append(')');
+      if (Arguments.Length > 0)
+      {
+        sb.Append(')');
+      }
     }
 
     public override string ToString()
@@ -128,14 +142,20 @@ namespace Microsoft.Boogie
           {
             currLine = Read();
             if (currLine == null)
+            {
               return '\0';
+            }
           }
 
           while (linePos < currLine.Length && char.IsWhiteSpace(currLine[linePos]))
+          {
             linePos++;
+          }
 
           if (linePos < currLine.Length)
+          {
             return currLine[linePos];
+          }
           else
           {
             currLine = null;
@@ -157,7 +177,10 @@ namespace Microsoft.Boogie
 
         var quoted = beg == '"' || beg == '|';
         if (quoted)
+        {
           Shift();
+        }
+
         while (true)
         {
           if (linePos >= currLine.Length)
@@ -168,14 +191,22 @@ namespace Microsoft.Boogie
               currLine = Read();
               linePos = 0;
               if (currLine == null)
+              {
                 break;
+              }
             }
-            else break;
+            else
+            {
+              break;
+            }
           }
 
           var c = currLine[linePos++];
           if (quoted && c == beg)
+          {
             break;
+          }
+
           if (!quoted && (char.IsWhiteSpace(c) || c == '(' || c == ')'))
           {
             linePos--;
@@ -203,12 +234,17 @@ namespace Microsoft.Boogie
         {
           var c = SkipWs();
           if (c == '\0')
+          {
             break;
+          }
 
           if (c == ')')
           {
             if (top)
+            {
               ParseError("stray ')'");
+            }
+
             break;
           }
 
@@ -252,7 +288,10 @@ namespace Microsoft.Boogie
             yield return new SExpr(id);
           }
 
-          if (top) break;
+          if (top)
+          {
+            break;
+          }
         }
       }
     }

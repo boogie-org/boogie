@@ -107,7 +107,10 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(axiom != null);
       if (axiom.Equals(VCExpressionGenerator.True))
+      {
         return;
+      }
+
       AllAxioms.Add(axiom);
       IncAxioms.Add(axiom);
     }
@@ -198,7 +201,9 @@ namespace Microsoft.Boogie
       AddAxiom(GenParentConstraints(c));
       Constants.Add(c);
       if (c.ChildrenComplete)
+      {
         CompleteConstantsOpen.Add(c);
+      }
 
       // ensure that no further children are added to closed
       // children-complete constants
@@ -218,7 +223,9 @@ namespace Microsoft.Boogie
       VCExpr res = VCExpressionGenerator.True;
 
       if (c.Parents == null)
+      {
         return res;
+      }
 
       VCExprVar cAsVar = Translator.LookupVariable(c);
       VCExprVar w = Gen.Variable("w", c.TypedIdent.Type);
@@ -276,9 +283,11 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(p != null);
         if (p.Unique)
+        {
           res =
             Gen.AndSimp(res,
               GenUniqueParentConstraint(c, cce.NonNull((Constant) p.Parent.Decl)));
+        }
       }
 
       return res;
@@ -302,8 +311,10 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(d != null);
         if (d.Parents != null && d.Parents.Any(p => c.Equals(p.Parent.Decl)))
+        {
           maxDescendants = Gen.Or(maxDescendants,
             Gen.AtMost(w, Translator.LookupVariable(d)));
+        }
       }
 
       VCExpr antecedent = Gen.AtMost(w, cAsVar);

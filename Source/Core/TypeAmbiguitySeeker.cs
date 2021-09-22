@@ -44,9 +44,11 @@ namespace Microsoft.Boogie
         inTypeSeeker.FoundAmbiguity = false;
         inTypeSeeker.Visit(inst);
         if (inTypeSeeker.FoundAmbiguity)
+        {
           TC.Warning(node,
             "type parameter {0} is ambiguous, instantiating to {1}",
             var, inst);
+        }
       }
     }
 
@@ -88,7 +90,9 @@ namespace Microsoft.Boogie
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       if (node.ProxyFor != null)
+      {
         return base.VisitTypeProxy(node);
+      }
 
       return Instantiate(node, Type.Int);
     }
@@ -98,7 +102,9 @@ namespace Microsoft.Boogie
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       if (node.ProxyFor != null)
+      {
         return base.VisitMapTypeProxy(node);
+      }
 
       List<TypeVariable> /*!*/
         typeParams = new List<TypeVariable>();
@@ -130,7 +136,9 @@ namespace Microsoft.Boogie
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       if (node.ProxyFor != null)
+      {
         return base.VisitBvTypeProxy(node);
+      }
 
       return Instantiate(node, new BvType(node.MinBits));
     }

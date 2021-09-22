@@ -46,7 +46,10 @@ namespace Microsoft.BaseTypes
     [Pure]
     public static BigDec FromString(string v)
     {
-      if (v == null) throw new FormatException();
+      if (v == null)
+      {
+        throw new FormatException();
+      }
 
       BIM integral = BIM.Zero;
       BIM fraction = BIM.Zero;
@@ -57,7 +60,11 @@ namespace Microsoft.BaseTypes
       int i = v.IndexOf('e');
       if (i >= 0)
       {
-        if (i + 1 == v.Length) throw new FormatException();
+        if (i + 1 == v.Length)
+        {
+          throw new FormatException();
+        }
+
         exponent = Int32.Parse(v.Substring(i + 1, len - i - 1));
         len = i;
       }
@@ -66,7 +73,11 @@ namespace Microsoft.BaseTypes
       i = v.IndexOf('.');
       if (i >= 0)
       {
-        if (i + 1 == v.Length) throw new FormatException();
+        if (i + 1 == v.Length)
+        {
+          throw new FormatException();
+        }
+
         fractionLen = len - i - 1;
         fraction = BIM.Parse(v.Substring(i + 1, fractionLen));
         len = i;
@@ -123,9 +134,14 @@ namespace Microsoft.BaseTypes
     public override bool Equals(object obj)
     {
       if (obj == null)
+      {
         return false;
+      }
+
       if (!(obj is BigDec))
+      {
         return false;
+      }
 
       return (this == (BigDec) obj);
     }

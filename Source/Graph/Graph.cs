@@ -18,7 +18,10 @@ namespace Microsoft.Boogie.GraphUtil
       {
         Contract.Assert(x != null);
         if (!first)
+        {
           sb.Append(", ");
+        }
+
         sb.Append(x.ToString());
         first = false;
       }
@@ -36,7 +39,10 @@ namespace Microsoft.Boogie.GraphUtil
       foreach (KeyValuePair<Node, List<Node>> de in d)
       {
         if (!first)
+        {
           sb.Append(", ");
+        }
+
         Contract.Assert(!object.Equals(de.Key, default(Node)));
         sb.Append(de.Key.ToString());
         sb.Append("~>");
@@ -90,16 +96,28 @@ namespace Microsoft.Boogie.GraphUtil
       int domineeNum = this.nodeToPostOrderNumber[dominee];
       int dominatorNum = this.nodeToPostOrderNumber[dominator];
       if (domineeNum == dominatorNum)
+      {
         return true;
+      }
+
       int currentNodeNum = this.doms[domineeNum];
       while (true)
       {
         if (currentNodeNum == dominatorNum)
+        {
           return true;
+        }
+
         if (currentNodeNum == this.sourceNum)
+        {
           return false;
+        }
+
         if (path != null)
+        {
           path.Add(postOrderNumberToNode[currentNodeNum]);
+        }
+
         currentNodeNum = this.doms[currentNodeNum];
       }
     }
@@ -138,7 +156,10 @@ namespace Microsoft.Boogie.GraphUtil
       foreach (KeyValuePair<Node, List<Node>> de in domMap)
       {
         if (!first)
+        {
           sb.Append(", ");
+        }
+
         Contract.Assert(!object.Equals(de.Key, default(Node)));
         sb.Append(de.Key.ToString());
         sb.Append("~>");
@@ -156,7 +177,10 @@ namespace Microsoft.Boogie.GraphUtil
       for (int i = 0; i < xs.Length; i++)
       {
         if (0 < i)
+        {
           Console.Write(", ");
+        }
+
         Console.Write(xs[i]);
       }
 
@@ -171,7 +195,10 @@ namespace Microsoft.Boogie.GraphUtil
       {
         Contract.Assert(x != null);
         if (0 < i)
+        {
           Console.Write(", ");
+        }
+
         Console.Write(x.ToString());
         i++;
       }
@@ -189,7 +216,10 @@ namespace Microsoft.Boogie.GraphUtil
       {
         Contract.Assert(x != null);
         if (!first)
+        {
           sb.Append(", ");
+        }
+
         sb.Append(x.ToString());
         first = false;
       }
@@ -255,7 +285,9 @@ namespace Microsoft.Boogie.GraphUtil
             }
 
             if (this.doms[this.nodeToPostOrderNumber[p]] != 0)
+            {
               new_idom = intersect(this.nodeToPostOrderNumber[p], new_idom, this.doms);
+            }
           }
 
           #endregion
@@ -320,7 +352,10 @@ namespace Microsoft.Boogie.GraphUtil
     {
       Contract.Requires(n != null);
       if (visited.Contains(n))
+      {
         return;
+      }
+
       visited.Add(n);
       foreach (Node /*!*/ child in this.graph.Successors(n))
       {
@@ -521,7 +556,10 @@ namespace Microsoft.Boogie.GraphUtil
     private void ComputePredSuccCaches()
     {
       if (predComputed)
+      {
         return;
+      }
+
       predComputed = true;
       predCache = new Dictionary<Node, HashSet<Node>>();
       succCache = new Dictionary<Node, HashSet<Node>>();
@@ -568,7 +606,10 @@ namespace Microsoft.Boogie.GraphUtil
       ComputePredSuccCaches();
       List<Node> ret = new List<Node>();
       foreach (Node s in succCache[n])
+      {
         ret.Add(s);
+      }
+
       return ret;
     }
 
@@ -906,12 +947,17 @@ namespace Microsoft.Boogie.GraphUtil
           {
             Node x = stack.Pop().Item1;
             if (x.Equals(n))
+            {
               return ret;
+            }
           }
         }
 
         if (visited.Contains(n))
+        {
           continue;
+        }
+
         stack.Push(new Tuple<Node, List<Node>>(n, g.SuccessorsAsList(n)));
         visited.Add(n);
         stackAsSet.Add(n);
@@ -1056,7 +1102,11 @@ namespace Microsoft.Boogie.GraphUtil
         dag.AddSource(b);
         foreach (Node c in headers)
         {
-          if (b.Equals(c)) continue;
+          if (b.Equals(c))
+          {
+            continue;
+          }
+
           if (DominatorMap.DominatedBy(b, c))
           {
             System.Diagnostics.Debug.Assert(!DominatorMap.DominatedBy(c, b));
@@ -1075,9 +1125,15 @@ namespace Microsoft.Boogie.GraphUtil
       var s = new StringBuilder();
       s.AppendLine("digraph G {");
       foreach (var n in Nodes)
+      {
         s.AppendLine("  \"" + NodeLabel(n) + "\" " + NodeStyle(n) + ";");
+      }
+
       foreach (var e in Edges)
+      {
         s.AppendLine("  \"" + NodeLabel(e.Item1) + "\" -> \"" + NodeLabel(e.Item2) + "\";");
+      }
+
       s.AppendLine("}");
       return s.ToString();
     }
@@ -1090,7 +1146,11 @@ namespace Microsoft.Boogie.GraphUtil
       while (todo.Any())
       {
         var b = todo.Pop();
-        if (visited.Contains(b)) continue;
+        if (visited.Contains(b))
+        {
+          continue;
+        }
+
         visited.Add(b);
         var related = forward ? this.Successors(b) : this.Predecessors(b);
         related.Where(blk => !visited.Contains(blk)).ToList().ForEach(blk => todo.Push(blk));
@@ -1111,7 +1171,10 @@ namespace Microsoft.Boogie.GraphUtil
       var exits = g.Nodes.Where(n => g.Successors(n).Count() == 0).ToList();
       Node source;
       if (exits.Count == 0)
+      {
         exits.Add(dummySource);
+      }
+
       var dual = new Graph<Node>(
         new HashSet<Tuple<Node, Node>>(g.Edges.Select(e => new Tuple<Node, Node>(e.Item2, e.Item1))));
       if (exits.Count == 1)
@@ -1124,7 +1187,9 @@ namespace Microsoft.Boogie.GraphUtil
         dual.AddSource(dummySource);
         source = dummySource;
         foreach (var exit in exits)
+        {
           dual.AddEdge(dummySource, exit);
+        }
       }
 
       #region Dual graph may not be connected, so add an edge from the dual graph's soure node to any unreachable node
@@ -1161,7 +1226,10 @@ namespace Microsoft.Boogie.GraphUtil
       {
         var loopNodes = new HashSet<Node>();
         foreach (var b in g.BackEdgeNodes(h))
+        {
           loopNodes.UnionWith(g.NaturalLoops(h, b));
+        }
+
         loops[nodeToNumber[h]] =
           new List<int>(loopNodes.Select(node => nodeToNumber[node]));
       }
@@ -1171,7 +1239,9 @@ namespace Microsoft.Boogie.GraphUtil
       int[] incomingEdges = new int[n];
 
       for (int i = 0; i < n; i++)
+      {
         predecessors[i] = new List<int>();
+      }
 
       foreach (var e in g.Edges)
       {
@@ -1181,7 +1251,10 @@ namespace Microsoft.Boogie.GraphUtil
         if (loops[target] == null || !loops[target].Contains(source))
         {
           if (successors[source] == null)
+          {
             successors[source] = new List<int>();
+          }
+
           successors[source].Add(target);
           incomingEdges[target]++;
         }
@@ -1201,7 +1274,9 @@ namespace Microsoft.Boogie.GraphUtil
         foreach (var i in regionStack.Peek().Item2)
         {
           if (incomingEdges[i] == 0)
+          {
             rootIndexes.Add(i);
+          }
         }
 
         if (rootIndexes.Count() == 0)
@@ -1236,11 +1311,18 @@ namespace Microsoft.Boogie.GraphUtil
         sortedNodes.Add(new Tuple<Node, bool>(numberToNode[rootIndex], false));
         sortedNodesInternal.Add(rootIndex);
         if (successors[rootIndex] != null)
+        {
           foreach (int s in successors[rootIndex])
+          {
             incomingEdges[s]--;
+          }
+        }
+
         if (loops[rootIndex] != null)
+        {
           regionStack.Push(new Tuple<Node, List<int>>(numberToNode[rootIndex],
             loops[rootIndex]));
+        }
       }
 
       return sortedNodes;
@@ -1297,7 +1379,9 @@ namespace Microsoft.Boogie.GraphUtil
           foreach (var successor in entry.Value)
           {
             if (graph.ContainsKey(successor))
+            {
               newSuccessors.UnionWith(graph[successor]);
+            }
           }
 
           if (newSuccessors.Count != entry.Value.Count)

@@ -94,7 +94,10 @@ namespace Microsoft.Boogie.Clustering
     {
       Contract.Requires(node != null);
       if (!BoundTermVars.Contains(node))
+      {
         GlobalVariables[node] = node;
+      }
+
       return true;
     }
 
@@ -292,15 +295,21 @@ namespace Microsoft.Boogie.Clustering
         bool[] remaining = new bool[clusters.Count];
         RemainingClusters = remaining;
         for (int i = 0; i < remaining.Length; ++i)
+        {
           remaining[i] = true;
+        }
 
         Distance[,] /*!*/
           distances = new Distance[clusters.Count, clusters.Count];
         Distances = distances;
         for (int i = 1; i < clusters.Count; ++i)
-        for (int j = 0; j < i; ++j)
-          distances[i, j] =
+        {
+          for (int j = 0; j < i; ++j)
+          {
+            distances[i, j] =
             new Distance(clusters[i], clusters[j], GlobalVariables, Gen);
+          }
+        }
       }
 
       public void UnifyClusters(int maxDist)
@@ -310,7 +319,9 @@ namespace Microsoft.Boogie.Clustering
           int minDist = FindMinDistance(out var i, out var j);
 
           if (minDist > maxDist)
+          {
             return;
+          }
 
           MergeClusters(i, j);
         }
@@ -321,8 +332,12 @@ namespace Microsoft.Boogie.Clustering
         Contract.Requires(clusters != null);
         clusters.Clear();
         for (int i = 0; i < Clusters.Count; ++i)
+        {
           if (RemainingClusters[i])
+          {
             clusters.Add(Clusters[i]);
+          }
+        }
       }
 
       //////////////////////////////////////////////////////////////////////////
@@ -332,15 +347,19 @@ namespace Microsoft.Boogie.Clustering
         for (int j = 0; j < i; ++j)
         {
           if (RemainingClusters[j])
+          {
             Distances[i, j] =
               new Distance(Clusters[i], Clusters[j], GlobalVariables, Gen);
+          }
         }
 
         for (int j = i + 1; j < Clusters.Count; ++j)
         {
           if (RemainingClusters[j])
+          {
             Distances[j, i] =
               new Distance(Clusters[j], Clusters[i], GlobalVariables, Gen);
+          }
         }
       }
 
@@ -351,9 +370,11 @@ namespace Microsoft.Boogie.Clustering
         c1 = -1;
 
         for (int i = 0; i < Clusters.Count; ++i)
+        {
           if (RemainingClusters[i])
           {
             for (int j = 0; j < i; ++j)
+            {
               if (RemainingClusters[j])
               {
                 if (Distances[i, j].Dist < minDist)
@@ -363,7 +384,9 @@ namespace Microsoft.Boogie.Clustering
                   c1 = j;
                 }
               }
+            }
           }
+        }
 
         Contract.Assert(c0 == -1 && c1 == -1 || c0 > c1 && c1 >= 0);
         return minDist;
@@ -396,7 +419,10 @@ namespace Microsoft.Boogie.Clustering
       string /*!*/
         res = "";
       foreach (Cluster c in Clusters)
+      {
         res = res + c.Generator + "\t" + c.Size + "\n";
+      }
+
       return res;
     }
   }
@@ -482,7 +508,9 @@ namespace Microsoft.Boogie.Clustering
         pair.Key.Expr0 is VCExprVar && pair.Key.Expr1 is VCExprVar &&
         !globalVars.ContainsKey(cce.NonNull((VCExprVar) pair.Key.Expr0)) &&
         !globalVars.ContainsKey(cce.NonNull((VCExprVar /*!*/) pair.Key.Expr1))))
+      {
         return false;
+      }
       // check that all substituted variables are distinct
       // TODO: optimise
       return
@@ -547,7 +575,10 @@ namespace Microsoft.Boogie.Clustering
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (node.Equals(that))
+      {
         return node;
+      }
+
       return AbstractWithVariable(node, that);
     }
 
@@ -566,7 +597,9 @@ namespace Microsoft.Boogie.Clustering
         List<VCExpr /*!*/> /*!*/
           unifiedArgs = new List<VCExpr /*!*/>();
         for (int i = 0; i < node.Arity; ++i)
+        {
           unifiedArgs.Add(Traverse(node[i], thatNAry[i]));
+        }
 
         return Gen.Function(node.Op, unifiedArgs);
       }
@@ -580,7 +613,10 @@ namespace Microsoft.Boogie.Clustering
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (node.Equals(that))
+      {
         return node;
+      }
+
       return AbstractWithVariable(node, that);
     }
 
@@ -616,7 +652,10 @@ namespace Microsoft.Boogie.Clustering
       //Contract.Requires(cce.NonNullElements(globalVars));
       VCExprVar nodeAsVar = node as VCExprVar;
       if (nodeAsVar == null || globalVars.ContainsKey(nodeAsVar))
+      {
         Size = Size + 1;
+      }
+
       return true;
     }
   }

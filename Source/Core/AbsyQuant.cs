@@ -55,7 +55,9 @@ namespace Microsoft.Boogie
       set
       {
         if (Immutable)
+        {
           throw new InvalidOperationException("Cannot change the Body of an immutable BinderExpr");
+        }
 
         _Body = value;
       }
@@ -83,7 +85,9 @@ namespace Microsoft.Boogie
       Attributes = kv;
       _Body = body;
       if (immutable)
+      {
         CachedHashCode = ComputeHashCode();
+      }
     }
 
     abstract public BinderKind Kind { get; }
@@ -131,9 +135,13 @@ namespace Microsoft.Boogie
     public override int GetHashCode()
     {
       if (Immutable)
+      {
         return CachedHashCode;
+      }
       else
+      {
         return ComputeHashCode();
+      }
     }
 
     [Pure]
@@ -310,7 +318,9 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(var != null);
         if (!dummyParameters.Contains(var))
+        {
           unmentionedParameters.Add(var);
+        }
       }
 
       return unmentionedParameters;
@@ -523,7 +533,10 @@ namespace Microsoft.Boogie
       Expr e = FindExprAttribute(kv, name);
       LiteralExpr l = e as LiteralExpr;
       if (l != null && l.isBigNum)
+      {
         return l.asBigNum.ToIntSafe;
+      }
+
       return defl;
     }
 
@@ -531,7 +544,10 @@ namespace Microsoft.Boogie
     {
       List<object> newParams = new List<object>();
       foreach (object o in Params)
+      {
         newParams.Add(o);
+      }
+
       return new QKeyValue(tok, Key, newParams, (Next == null) ? null : (QKeyValue) Next.Clone());
     }
 
@@ -1065,9 +1081,11 @@ namespace Microsoft.Boogie
             {
               Contract.Assert(v != null);
               if (!freeVars[v])
+              {
                 tc.Error(tr,
                   "trigger does not mention {0}, which does not occur in variables types either",
                   v);
+              }
             }
           }
         }

@@ -66,7 +66,9 @@ namespace Microsoft.Boogie.Houdini
     private void AddHoudiniConstant(AssertCmd assertCmd)
     {
       if (houdini.MatchCandidate(assertCmd.Expr, out Variable houdiniConstant))
+      {
         houdiniAssertConstants.Add(houdiniConstant);
+      }
 
       if (houdiniConstant != null && CommandLineOptions.Clo.ExplainHoudini &&
           !constToControl.ContainsKey(houdiniConstant.Name))
@@ -85,7 +87,9 @@ namespace Microsoft.Boogie.Houdini
     private void AddHoudiniConstant(AssumeCmd assumeCmd)
     {
       if (houdini.MatchCandidate(assumeCmd.Expr, out Variable houdiniConstant))
+      {
         houdiniAssumeConstants.Add(houdiniConstant);
+      }
     }
 
     private Tuple<Variable, Variable> createNewExplainConstants(Variable v)
@@ -133,9 +137,15 @@ namespace Microsoft.Boogie.Houdini
     public bool InUnsatCore(Variable constant)
     {
       if (unsatCoreSet == null)
+      {
         return true;
+      }
+
       if (unsatCoreSet.Contains(constant))
+      {
         return true;
+      }
+
       stats.numUnsatCorePrunings++;
       return false;
     }
@@ -291,24 +301,36 @@ namespace Microsoft.Boogie.Houdini
         if (houdiniAssumeConstants.Contains(constant))
         {
           if (tup.Value)
+          {
             hardAssumptions.Add(exprVar);
+          }
           else
+          {
             // Previously removed assumed candidates are the soft constraints
             softAssumptions.Add(exprVar);
+          }
         }
         else if (houdiniAssertConstants.Contains(constant))
         {
           if (constant == refutedConstant)
+          {
             hardAssumptions.Add(exprVar);
+          }
           else
+          {
             hardAssumptions.Add(exprGen.Not(exprVar));
+          }
         }
         else
         {
           if (tup.Value)
+          {
             hardAssumptions.Add(exprVar);
+          }
           else
+          {
             hardAssumptions.Add(exprGen.Not(exprVar));
+          }
         }
 
         // For an asserted condition (c ==> \phi), 
@@ -372,7 +394,9 @@ namespace Microsoft.Boogie.Houdini
 
         if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory ||
             outcome == ProverInterface.Outcome.OutOfResource || outcome == ProverInterface.Outcome.Undetermined)
+        {
           break;
+        }
 
         var reason = new HashSet<string>();
         unsatisfiedSoftAssumptions.Iter(i => reason.Add(softAssumptions[i].ToString()));
@@ -405,7 +429,9 @@ namespace Microsoft.Boogie.Houdini
 
         if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory ||
             outcome == ProverInterface.Outcome.OutOfResource || outcome == ProverInterface.Outcome.Undetermined)
+        {
           break;
+        }
 
         unsatisfiedSoftAssumptions2.Iter(i => reason.Remove(softAssumptions2[i].ToString()));
         var reason1 = new HashSet<string>(); //these are the reasons for inconsistency
@@ -459,7 +485,11 @@ namespace Microsoft.Boogie.Houdini
       proverInterface.Assert(conjecture, false);
       foreach (var v in assignment.Keys)
       {
-        if (assignment[v]) continue;
+        if (assignment[v])
+        {
+          continue;
+        }
+
         proverInterface.Assert(exprTranslator.LookupVariable(v), false);
       }
 
@@ -467,7 +497,11 @@ namespace Microsoft.Boogie.Houdini
       List<VCExpr> assumptionExprs = new List<VCExpr>();
       foreach (var v in assignment.Keys)
       {
-        if (!assignment[v]) continue;
+        if (!assignment[v])
+        {
+          continue;
+        }
+
         assumptionVars.Add(v);
         assumptionExprs.Add(exprTranslator.LookupVariable(v));
       }
@@ -476,7 +510,10 @@ namespace Microsoft.Boogie.Houdini
       System.Diagnostics.Debug.Assert(tmp == ProverInterface.Outcome.Valid);
       unsatCoreSet = new HashSet<Variable>();
       foreach (int i in unsatCore)
+      {
         unsatCoreSet.Add(assumptionVars[i]);
+      }
+
       proverInterface.Pop();
 
       double unsatCoreQueryTime = (DateTime.UtcNow - now).TotalSeconds;

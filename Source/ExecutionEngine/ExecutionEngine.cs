@@ -548,7 +548,10 @@ namespace Microsoft.Boogie
       if (CommandLineOptions.Clo.CoalesceBlocks)
       {
         if (CommandLineOptions.Clo.Trace)
+        {
           Console.WriteLine("Coalescing blocks...");
+        }
+
         Microsoft.Boogie.BlockCoalescer.CoalesceBlocks(program);
       }
     }
@@ -790,7 +793,9 @@ namespace Microsoft.Boogie
       Contract.Requires(program != null);
 
       if (CommandLineOptions.Clo.Trace)
+      {
         Console.WriteLine("Inlining...");
+      }
 
       // Inline
       var TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
@@ -1354,7 +1359,9 @@ namespace Microsoft.Boogie
         foreach (var x in outcome.assignment)
         {
           if (x.Value)
+          {
             numTrueAssigns++;
+          }
         }
 
         Console.WriteLine("Number of true assignments = " + numTrueAssigns);
@@ -1405,7 +1412,9 @@ namespace Microsoft.Boogie
         foreach (var x in outcome.assignment)
         {
           if (x.Value)
+          {
             numTrueAssigns++;
+          }
         }
 
         Console.WriteLine("Number of true assignments = " + numTrueAssigns);

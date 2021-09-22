@@ -383,7 +383,11 @@ namespace Microsoft.Boogie
 
     private void ComputeAllLabels(StmtList stmts)
     {
-      if (stmts == null) return;
+      if (stmts == null)
+      {
+        return;
+      }
+
       foreach (BigBlock bb in stmts.BigBlocks)
       {
         if (bb.LabelName != null)
@@ -397,7 +401,11 @@ namespace Microsoft.Boogie
 
     private void ComputeAllLabels(StructuredCmd cmd)
     {
-      if (cmd == null) return;
+      if (cmd == null)
+      {
+        return;
+      }
+
       if (cmd is IfCmd)
       {
         IfCmd ifCmd = (IfCmd) cmd;
@@ -478,8 +486,15 @@ namespace Microsoft.Boogie
       else if (structuredCmd is IfCmd ifCmd)
       {
         InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.thn);
-        if (ifCmd.elseBlock != null) InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.elseBlock);
-        if (ifCmd.elseIf != null) InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.elseIf);
+        if (ifCmd.elseBlock != null)
+        {
+          InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.elseBlock);
+        }
+
+        if (ifCmd.elseIf != null)
+        {
+          InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.elseIf);
+        }
       }
     }
 
@@ -1247,17 +1262,25 @@ namespace Microsoft.Boogie
       {
         Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Variable /*!*/>>(), true));
         if (this._liveVarsBefore == null)
+        {
           return null;
+        }
         else
+        {
           return this._liveVarsBefore.AsEnumerable<Variable>();
+        }
       }
       set
       {
         Contract.Requires(cce.NonNullElements(value, true));
         if (value == null)
+        {
           this._liveVarsBefore = null;
+        }
         else
+        {
           this._liveVarsBefore = new HashSet<Variable>(value);
+        }
       }
     }
 
@@ -1273,7 +1296,10 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(v != null);
       if (liveVarsBefore == null)
+      {
         return true;
+      }
+
       return liveVarsBefore.Contains(v);
     }
 
@@ -1590,7 +1616,9 @@ namespace Microsoft.Boogie
 
 
       foreach (Expr e in indexes)
+      {
         indexesList.Add(cce.NonNull(e));
+      }
 
       lhss.Add(new MapAssignLhs(map.tok,
         new SimpleAssignLhs(map.tok, map),
@@ -1619,7 +1647,9 @@ namespace Microsoft.Boogie
         indexesList = new List<Expr /*!*/>();
 
       for (int i = 0; i < args.Length - 1; ++i)
+      {
         indexesList.Add(cce.NonNull(args[i]));
+      }
 
       lhss.Add(new MapAssignLhs(map.tok,
         new SimpleAssignLhs(map.tok, map),
@@ -1891,8 +1921,10 @@ namespace Microsoft.Boogie
     {
       ResolveAttributes(Attributes, rc);
       if (Lhss.Count != Rhss.Count)
+      {
         rc.Error(this,
           "number of left-hand sides does not match number of right-hand sides");
+      }
 
       foreach (AssignLhs /*!*/ e in Lhss)
       {
@@ -1914,9 +1946,11 @@ namespace Microsoft.Boogie
         {
           if (cce.NonNull(Lhss[i].DeepAssignedVariable).Equals(
             Lhss[j].DeepAssignedVariable))
+          {
             rc.Error(Lhss[j],
               "variable {0} is assigned more than once in parallel assignment",
               Lhss[j].DeepAssignedVariable);
+          }
         }
       }
 
@@ -1975,9 +2009,11 @@ namespace Microsoft.Boogie
           // otherwise, there has already been an error when
           // typechecking the lhs or rhs
           if (!ltype.Unify(rtype))
+          {
             tc.Error(Lhss[i],
               "mismatched types in assignment command (cannot assign {0} to {1})",
               rtype, ltype);
+          }
         }
       }
     }
@@ -2970,7 +3006,9 @@ namespace Microsoft.Boogie
       }
 
       if (Proc == null)
+      {
         return;
+      }
 
       // first make sure that the right number of parameters is given
       // (a similar check is in CheckArgumentTypes, but we are not
@@ -3011,7 +3049,10 @@ namespace Microsoft.Boogie
     public override void AddAssignedVariables(List<Variable> vars)
     {
       if (this.IsAsync)
+      {
         return;
+      }
+
       foreach (IdentifierExpr e in Outs)
       {
         if (e != null)
@@ -3043,11 +3084,21 @@ namespace Microsoft.Boogie
 
       // typecheck in-parameters
       foreach (Expr e in Ins)
+      {
         if (e != null)
+        {
           e.Typecheck(tc);
+        }
+      }
+
       foreach (Expr e in Outs)
+      {
         if (e != null)
+        {
           e.Typecheck(tc);
+        }
+      }
+
       this.CheckAssignments(tc);
 
       List<Type> /*!*/
@@ -3161,11 +3212,15 @@ namespace Microsoft.Boogie
         Type /*!*/
           actualType;
         if (isWildcard)
+        {
           actualType = param.TypedIdent.Type.Substitute(TypeParamSubstitution());
+        }
         else
+        {
           // during type checking, we have ensured that the type of the actual
           // parameter Ins[i] is correct, so we can use it here
           actualType = cce.NonNull(cce.NonNull(Ins[i]).Type);
+        }
 
         Variable cin = CreateTemporaryVariable(tempVars, param, actualType,
           TempVarKind.Formal, ref uniqueId);
@@ -3333,7 +3388,9 @@ namespace Microsoft.Boogie
 
         // fra
         if (!havocVarExprs.Contains(f))
+        {
           havocVarExprs.Add(f);
+        }
       }
 
       #endregion
@@ -3351,11 +3408,15 @@ namespace Microsoft.Boogie
         Type /*!*/
           actualType;
         if (isWildcard)
+        {
           actualType = param.TypedIdent.Type.Substitute(TypeParamSubstitution());
+        }
         else
+        {
           // during type checking, we have ensured that the type of the actual
           // out parameter Outs[i] is correct, so we can use it here
           actualType = cce.NonNull(cce.NonNull(Outs[i]).Type);
+        }
 
         Variable cout = CreateTemporaryVariable(tempVars, param, actualType,
           TempVarKind.Formal, ref uniqueId);
@@ -3364,7 +3425,9 @@ namespace Microsoft.Boogie
         substMap.Add(param, ie);
 
         if (!havocVarExprs.Contains(ie))
+        {
           havocVarExprs.Add(ie);
+        }
       }
 
       // add the where clauses, now that we have the entire substitution map
@@ -4214,7 +4277,10 @@ namespace Microsoft.Boogie
       Contract.Requires(blockSeq != null);
       List<String> labelSeq = new List<String>();
       for (int i = 0; i < blockSeq.Count; i++)
+      {
         labelSeq.Add(cce.NonNull(blockSeq[i]).Label);
+      }
+
       this.labelNames = labelSeq;
       this.labelTargets = blockSeq;
     }

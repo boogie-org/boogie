@@ -130,10 +130,14 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       if (lit.IsNegative)
+      {
         return Gen.Function(VCExpressionGenerator.SubIOp,
           Gen.Integer(BigNum.ZERO), RepresentPos(lit.Neg));
+      }
       else
+      {
         return RepresentPos(lit);
+      }
     }
 
     private VCExpr RepresentPos(BigNum lit)
@@ -143,8 +147,10 @@ namespace Microsoft.Boogie.VCExprAST
 
       int index = GetIndexFor(lit);
       if (index >= 0)
+      {
         // precise match
         return Literals[index].Value;
+      }
 
       // check whether a constant is defined that is at most
       // ConstantDistance away from lit
@@ -175,7 +181,9 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       if (res != null)
+      {
         return res;
+      }
 
       // otherwise, define a new constant to represent this literal
       return AddConstantFor(lit);
@@ -195,14 +203,20 @@ namespace Microsoft.Boogie.VCExprAST
 
       // relate the new constant to the predecessor and successor
       if (index > 0)
+      {
         DefineRelationship(Literals[index - 1].Value, Literals[index - 1].Key,
           res, lit);
+      }
       else
+      {
         DefineRelationship(Gen.Integer(BigNum.ZERO), BigNum.ZERO, res, lit);
+      }
 
       if (index < Literals.Count - 1)
+      {
         DefineRelationship(res, lit,
           Literals[index + 1].Value, Literals[index + 1].Key);
+      }
 
       return res;
     }
@@ -217,12 +231,16 @@ namespace Microsoft.Boogie.VCExprAST
       BigNum dist = bValue - aValue;
       VCExpr distExpr = Gen.Function(VCExpressionGenerator.SubIOp, bExpr, aExpr);
       if (dist <= ConstantDistanceTPO)
+      {
         // constants that are sufficiently close to each other are put
         // into a precise relationship
         AddAxiom(Gen.Eq(distExpr, Gen.Integer(dist)));
+      }
       else
+      {
         AddAxiom(Gen.Function(VCExpressionGenerator.GtOp,
           distExpr, Gen.Integer(ConstantDistanceTPO)));
+      }
     }
 
     private int GetIndexFor(BigNum lit)
@@ -242,7 +260,9 @@ namespace Microsoft.Boogie.VCExprAST
       if (intLit != null)
       {
         if (NegConstantDistance > intLit.Val || intLit.Val > ConstantDistance)
+        {
           return Represent(intLit.Val);
+        }
       }
 
       return node;

@@ -299,7 +299,10 @@ namespace Microsoft.Boogie
       while (action != null)
       {
         if (layer <= action.layerRange.upperLayerNum)
+        {
           return action;
+        }
+
         action = action.refinedAction;
       }
 

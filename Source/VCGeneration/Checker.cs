@@ -123,7 +123,9 @@ namespace Microsoft.Boogie
       {
         options.LogFilename = logFilePath;
         if (appendLogFile)
+        {
           options.AppendLogFile = appendLogFile;
+        }
       }
 
       options.Parse(CommandLineOptions.Clo.ProverOptions);
@@ -147,7 +149,10 @@ namespace Microsoft.Boogie
       }
       else
       {
-        if (ctx == null) ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
+        if (ctx == null)
+        {
+          ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
+        }
 
         Setup(prog, ctx, split);
 
@@ -395,7 +400,9 @@ namespace Microsoft.Boogie
       {
         options.LogFilename = logFilePath;
         if (appendLogFile)
+        {
           options.AppendLogFile = appendLogFile;
+        }
       }
 
       if (timeout > 0)

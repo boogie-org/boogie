@@ -16,7 +16,10 @@ namespace Microsoft.Boogie
       foreach (var s in strings)
       {
         if (!first)
+        {
           sb.Append(separator);
+        }
+
         first = false;
         sb.Append(s);
       }
@@ -41,7 +44,10 @@ namespace Microsoft.Boogie
       foreach (var s in objects)
       {
         if (!first)
+        {
           sb.Append(separator);
+        }
+
         first = false;
         sb.Append(toString(s));
       }
@@ -53,14 +59,20 @@ namespace Microsoft.Boogie
     {
       var l = source.ToList();
       if (count >= l.Count)
+      {
         return Enumerable.Empty<T>();
+      }
+
       l.RemoveRange(l.Count - count, count);
       return l;
     }
 
     public static void Iter<T>(this IEnumerable<T> coll, Action<T> fn)
     {
-      foreach (var e in coll) fn(e);
+      foreach (var e in coll)
+      {
+        fn(e);
+      }
     }
 
     public static IEnumerable<Tuple<TSource1, TSource2>> Zip<TSource1, TSource2>(this IEnumerable<TSource1> source1,

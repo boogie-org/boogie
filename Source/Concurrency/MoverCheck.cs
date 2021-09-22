@@ -38,9 +38,14 @@ namespace Microsoft.Boogie
       foreach (var moverCheck in regularMoverChecks)
       {
         if (moverCheck.first.IsRightMover)
+        {
           moverChecking.CreateRightMoverCheckers(moverCheck.first, moverCheck.second);
+        }
+
         if (moverCheck.second.IsLeftMover)
+        {
           moverChecking.CreateLeftMoverCheckers(moverCheck.first, moverCheck.second);
+        }
       }
 
       var inductiveSequentializationMoverChecks =
@@ -113,11 +118,19 @@ namespace Microsoft.Boogie
     private void CreateCommutativityChecker(AtomicAction first, AtomicAction second)
     {
       if (first == second && first.firstImpl.InParams.Count == 0 && first.firstImpl.OutParams.Count == 0)
+      {
         return;
+      }
+
       if (first.TriviallyCommutesWith(second))
+      {
         return;
+      }
+
       if (!commutativityCheckerCache.Add(Tuple.Create(first, second)))
+      {
         return;
+      }
 
       string checkerName = $"CommutativityChecker_{first.proc.Name}_{second.proc.Name}";
 
@@ -176,9 +189,14 @@ namespace Microsoft.Boogie
     private void CreateGatePreservationChecker(AtomicAction first, AtomicAction second)
     {
       if (!first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Any())
+      {
         return;
+      }
+
       if (!gatePreservationCheckerCache.Add(Tuple.Create(first, second)))
+      {
         return;
+      }
 
       HashSet<Variable> frame = new HashSet<Variable>();
       frame.UnionWith(first.gateUsedGlobalVars);
@@ -224,9 +242,14 @@ namespace Microsoft.Boogie
     private void CreateFailurePreservationChecker(AtomicAction first, AtomicAction second)
     {
       if (!first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Any())
+      {
         return;
+      }
+
       if (!failurePreservationCheckerCache.Add(Tuple.Create(first, second)))
+      {
         return;
+      }
 
       HashSet<Variable> frame = new HashSet<Variable>();
       frame.UnionWith(first.gateUsedGlobalVars);
@@ -271,7 +294,10 @@ namespace Microsoft.Boogie
 
     private void CreateCooperationChecker(Action action)
     {
-      if (!action.HasAssumeCmd) return;
+      if (!action.HasAssumeCmd)
+      {
+        return;
+      }
 
       string checkerName = $"CooperationChecker_{action.proc.Name}";
 

@@ -288,7 +288,9 @@ namespace VC
         {
           AssertCmd assrt = cmd as AssertCmd;
           if (assrt != null && QKeyValue.FindBoolAttribute(assrt.Attributes, "PossiblyUnreachable"))
+          {
             return false;
+          }
         }
 
         DateTime start = DateTime.UtcNow;
@@ -398,7 +400,10 @@ namespace VC
         Contract.Requires(cur != null);
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         if (visited.Contains(cur))
+        {
           return;
+        }
+
         visited.Add(cur);
 
         List<Cmd> seq = new List<Cmd>();
@@ -419,7 +424,9 @@ namespace VC
             // it's not clear where did he expect it, maybe it would be right to insert
             // a check just one command before
             if (IsFalse(assrt.Expr))
+            {
               return;
+            }
 
 #if TURN_ASSERT_INFO_ASSUMES
             if (turnAssertIntoAssumes) {
@@ -430,7 +437,9 @@ namespace VC
           else if (assm != null)
           {
             if (IsFalse(assm.Expr))
+            {
               assumeFalse = true;
+            }
           }
           else if (call != null)
           {
@@ -438,7 +447,9 @@ namespace VC
             {
               Contract.Assert(e != null);
               if (IsFalse(e.Condition))
+              {
                 assumeFalse = true;
+              }
             }
           }
 
@@ -658,7 +669,11 @@ namespace VC
             NAryExpr nFrom = from as NAryExpr;
             NAryExpr nTo = to as NAryExpr;
             to.Type = from.Type;
-            if (nFrom != null && nTo != null) nTo.TypeParameters = nFrom.TypeParameters;
+            if (nFrom != null && nTo != null)
+            {
+              nTo.TypeParameters = nFrom.TypeParameters;
+            }
+
             return to;
           };
 
@@ -739,9 +754,21 @@ namespace VC
           if (a != null)
           {
             var attr = a.Attributes;
-            if (ar != null && ar.Requires.Attributes != null) attr = ar.Requires.Attributes;
-            if (ar != null && ar.Call.Attributes != null) attr = ar.Call.Attributes;
-            if (ae != null && ae.Ensures.Attributes != null) attr = ae.Ensures.Attributes;
+            if (ar != null && ar.Requires.Attributes != null)
+            {
+              attr = ar.Requires.Attributes;
+            }
+
+            if (ar != null && ar.Call.Attributes != null)
+            {
+              attr = ar.Call.Attributes;
+            }
+
+            if (ae != null && ae.Ensures.Attributes != null)
+            {
+              attr = ae.Ensures.Attributes;
+            }
+
             if (QKeyValue.FindExprAttribute(attr, "expand") != null || QKeyValue.FindBoolAttribute(attr, "expand"))
             {
               int depth = QKeyValue.FindIntAttribute(attr, "expand", 100);
@@ -771,7 +798,10 @@ namespace VC
           }
         }
 
-        if (changed) b.Cmds = newCmds;
+        if (changed)
+        {
+          b.Cmds = newCmds;
+        }
       }
     }
 
@@ -923,7 +953,10 @@ namespace VC
       public override void OnModel(IList<string /*!*/> /*!*/ labels, Model model, ProverInterface.Outcome proverOutcome)
       {
         // no counter examples reported.
-        if (labels.Count == 0) return;
+        if (labels.Count == 0)
+        {
+          return;
+        }
 
         var traceNodes = new HashSet<Absy>();
         foreach (string s in labels)
@@ -932,9 +965,13 @@ namespace VC
           Absy absy = Label2Absy(s);
           Contract.Assert(absy != null);
           if (traceNodes.Contains(absy))
+          {
             System.Console.WriteLine("Warning: duplicate label: " + s + " read while tracing nodes");
+          }
           else
+          {
             traceNodes.Add(absy);
+          }
         }
 
         List<Block> trace = new List<Block>();
@@ -946,7 +983,9 @@ namespace VC
           debugInfos, context, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
 
         if (newCounterexample == null)
+        {
           return;
+        }
 
         #region Map passive program errors back to original program errors
 
@@ -1008,7 +1047,10 @@ namespace VC
       if (edgesCut != null)
       {
         if (!edgesCut.ContainsKey(from))
+        {
           edgesCut.Add(from, new List<Block>());
+        }
+
         edgesCut[from].Add(to);
       }
     }
@@ -1123,9 +1165,13 @@ namespace VC
               {
                 Contract.Assert(taskID >= 0);
                 if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvEntryAssert)
+                {
                   b = new LoopInitAssertCmd(c.tok, Expr.True);
+                }
                 else
+                {
                   b = new LoopInitAssertCmd(c.tok, c.Expr);
+                }
               }
               else
               {
@@ -1140,9 +1186,13 @@ namespace VC
               {
                 Contract.Assert(taskID >= 0);
                 if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvMaintainedAssert)
+                {
                   b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True);
+                }
                 else
+                {
                   b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+                }
               }
               else
               {
@@ -1239,7 +1289,9 @@ namespace VC
                 remainingLabels.Add(gtc.labelNames[i]);
               }
               else
+              {
                 RecordCutEdge(edgesCut, backEdgeNode, header);
+              }
             }
 
             gtc.labelTargets = remainingTargets;
@@ -1254,7 +1306,9 @@ namespace VC
             backEdgeNode.Cmds.Add(ac);
             backEdgeNode.TransferCmd = new ReturnCmd(Token.NoToken);
             if (gtc != null && gtc.labelTargets != null && gtc.labelTargets.Count == 1)
+            {
               RecordCutEdge(edgesCut, backEdgeNode, gtc.labelTargets[0]);
+            }
           }
 
           #region Remove the backedge node from the list of predecessor nodes in the header
@@ -1263,7 +1317,9 @@ namespace VC
           foreach (Block p in header.Predecessors)
           {
             if (p != backEdgeNode)
+            {
               newPreds.Add(p);
+            }
           }
 
           header.Predecessors = newPreds;
@@ -1282,7 +1338,9 @@ namespace VC
           Contract.Assert(v != null);
           IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
           if (!havocExprs.Contains(ie))
+          {
             havocExprs.Add(ie);
+          }
         }
 
         // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct
@@ -1414,7 +1472,9 @@ namespace VC
             Contract.Assert(v != null);
             IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
             if (!havocExprs.Contains(ie))
+            {
               havocExprs.Add(ie);
+            }
           }
 
           // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct
@@ -1995,34 +2055,55 @@ namespace VC
           while (todo.Count > 0)
           {
             var x = todo.Pop();
-            if (blocksToCheck.Contains(x)) continue;
+            if (blocksToCheck.Contains(x))
+            {
+              continue;
+            }
+
             blocksToCheck.Add(x);
             var ex = x.TransferCmd as GotoCmd;
             if (ex != null)
+            {
               foreach (Block e in ex.labelTargets)
+              {
                 todo.Push(e);
+              }
+            }
           }
 
-          if (!wasThere) blocksToCheck.Remove(b);
+          if (!wasThere)
+          {
+            blocksToCheck.Remove(b);
+          }
         }
 
         // Convert asserts to assumes in "unreachable" blocks, as well as in portions of blocks before we reach "start_checking_here"
         foreach (var b in impl.Blocks)
         {
           if (blocksToCheck.Contains(b))
+          {
             continue; // All reachable blocks must be checked in their entirety, so don't change anything
+          }
+
           var newCmds = new List<Cmd>();
           var copyMode = false;
           foreach (Cmd c in b.Cmds)
           {
             var p = c as PredicateCmd;
             if (p != null && QKeyValue.FindBoolAttribute(p.Attributes, "start_checking_here"))
+            {
               copyMode = true;
+            }
+
             var asrt = c as AssertCmd;
             if (copyMode || asrt == null)
+            {
               newCmds.Add(c);
+            }
             else
+            {
               newCmds.Add(AssertTurnedIntoAssume(asrt));
+            }
           }
 
           b.Cmds = newCmds;
@@ -2059,7 +2140,10 @@ namespace VC
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
       Contract.Requires(currProc != null);
-      if (cexInfo.counterexample == null) return cexInfo;
+      if (cexInfo.counterexample == null)
+      {
+        return cexInfo;
+      }
 
       var cex = cexInfo.counterexample;
       // Go through all blocks in the trace, map them back to blocks in the original program (if there is one)
@@ -2071,7 +2155,11 @@ namespace VC
       {
         Block block = cex.Trace[numBlock];
         var origBlock = elGetBlock(currProc, block, extractLoopMappingInfo);
-        if (origBlock != null) ret.Trace.Add(origBlock);
+        if (origBlock != null)
+        {
+          ret.Trace.Add(origBlock);
+        }
+
         var callCnt = 1;
         for (int numInstr = 0; numInstr < block.Cmds.Count; numInstr++)
         {
@@ -2079,7 +2167,11 @@ namespace VC
           var loc = new TraceLocation(numBlock, numInstr);
           if (!cex.calleeCounterexamples.ContainsKey(loc))
           {
-            if (GetCallee(cex.getTraceCmd(loc), inlinedProcs) != null) callCnt++;
+            if (GetCallee(cex.getTraceCmd(loc), inlinedProcs) != null)
+            {
+              callCnt++;
+            }
+
             continue;
           }
 
@@ -2181,10 +2273,14 @@ namespace VC
       Contract.Requires(procname != null);
 
       if (!extractLoopMappingInfo.ContainsKey(procname))
+      {
         return block;
+      }
 
       if (!extractLoopMappingInfo[procname].ContainsKey(block.Label))
+      {
         return null;
+      }
 
       return extractLoopMappingInfo[procname][block.Label];
     }
@@ -2230,7 +2326,11 @@ namespace VC
         }
 
         GotoCmd gotoCmd = transferCmd as GotoCmd;
-        if (gotoCmd == null) return null;
+        if (gotoCmd == null)
+        {
+          return null;
+        }
+
         Block foundBlock = null;
         foreach (Block bb in cce.NonNull(gotoCmd.labelTargets))
         {
@@ -2242,7 +2342,11 @@ namespace VC
           }
         }
 
-        if (foundBlock == null) return null;
+        if (foundBlock == null)
+        {
+          return null;
+        }
+
         trace.Add(foundBlock);
         b = foundBlock;
       }
@@ -2625,7 +2729,11 @@ namespace VC
           grey.Add(curr);
           stack.Push(curr);
           GotoCmd gtc = curr.TransferCmd as GotoCmd;
-          if (gtc == null || gtc.labelTargets == null || gtc.labelTargets.Count == 0) continue;
+          if (gtc == null || gtc.labelTargets == null || gtc.labelTargets.Count == 0)
+          {
+            continue;
+          }
+
           foreach (Block s in gtc.labelTargets)
           {
             if (!visited.Contains(s))

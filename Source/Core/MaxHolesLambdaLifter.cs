@@ -66,7 +66,10 @@ namespace Core
       {
         var newName = prefix + _freshVarCount;
         _freshVarCount++;
-        if (!existing.Contains(newName)) return newName;
+        if (!existing.Contains(newName))
+        {
+          return newName;
+        }
       }
     }
 
@@ -78,7 +81,11 @@ namespace Core
     public override Expr VisitNAryExpr(NAryExpr node)
     {
       Contract.Requires(node != null);
-      if (_templates.ContainsKey(node)) return node;
+      if (_templates.ContainsKey(node))
+      {
+        return node;
+      }
+
       base.VisitNAryExpr(node);
       var nodeArgs = node.Args;
       if (nodeArgs.Any(arg => _templates[arg].ContainsBoundVariables()))
@@ -109,7 +116,11 @@ namespace Core
     public override Expr VisitIdentifierExpr(IdentifierExpr node)
     {
       Contract.Requires(node != null);
-      if (_templates.ContainsKey(node)) return node;
+      if (_templates.ContainsKey(node))
+      {
+        return node;
+      }
+
       base.VisitIdentifierExpr(node);
       if (IsBound(node.Decl))
       {
@@ -126,7 +137,11 @@ namespace Core
     public override Expr VisitLiteralExpr(LiteralExpr node)
     {
       Contract.Requires(node != null);
-      if (_templates.ContainsKey(node)) return node;
+      if (_templates.ContainsKey(node))
+      {
+        return node;
+      }
+
       base.VisitLiteralExpr(node);
       _templates[node] = new TemplateNoBoundVariables(node);
       return node;
@@ -135,7 +150,11 @@ namespace Core
     public override Expr VisitLetExpr(LetExpr node)
     {
       Contract.Requires(node != null);
-      if (_templates.ContainsKey(node)) return node;
+      if (_templates.ContainsKey(node))
+      {
+        return node;
+      }
+
       _nestedBoundVariables.AddRange(node.Dummies);
       base.VisitLetExpr(node);
       var bodyTemplate = _templates[node.Body];
@@ -168,7 +187,11 @@ namespace Core
     public override Expr VisitForallExpr(ForallExpr node)
     {
       Contract.Requires(node != null);
-      if (_templates.ContainsKey(node)) return node;
+      if (_templates.ContainsKey(node))
+      {
+        return node;
+      }
+
       _nestedBoundVariables.AddRange(node.Dummies);
       base.VisitForallExpr(node);
       var body = node.Body;
@@ -200,7 +223,11 @@ namespace Core
     public override Expr VisitExistsExpr(ExistsExpr node)
     {
       Contract.Requires(node != null);
-      if (_templates.ContainsKey(node)) return node;
+      if (_templates.ContainsKey(node))
+      {
+        return node;
+      }
+
       _nestedBoundVariables.AddRange(node.Dummies);
       base.VisitExistsExpr(node);
       var body = node.Body;
@@ -245,7 +272,11 @@ namespace Core
 
     private Trigger ReplacementTrigger(Trigger trigger)
     {
-      if (trigger == null) return null;
+      if (trigger == null)
+      {
+        return null;
+      }
+
       var replacements = _templates[trigger].GetReplacements();
       var next = trigger.Next;
       return new Trigger(trigger.tok, trigger.Pos, replacements, next == null ? null : ReplacementTrigger(next));
@@ -254,7 +285,11 @@ namespace Core
     public override Trigger VisitTrigger(Trigger node)
     {
       Contract.Requires(node != null);
-      if (_templates.ContainsKey(node)) return node;
+      if (_templates.ContainsKey(node))
+      {
+        return node;
+      }
+
       base.VisitTrigger(node);
       var templates = (from e in node.Tr select _templates[e]).ToList();
       var replacements = new List<Expr>();
@@ -416,7 +451,11 @@ namespace Core
     public override Variable VisitVariable(Variable node)
     {
       Contract.Requires(node != null);
-      if (_templates.ContainsKey(node)) return node;
+      if (_templates.ContainsKey(node))
+      {
+        return node;
+      }
+
       base.VisitVariable(node);
       if (IsBound(node))
       {
@@ -435,7 +474,11 @@ namespace Core
     public override Expr VisitOldExpr(OldExpr node)
     {
       Contract.Requires(node != null);
-      if (_templates.ContainsKey(node)) return node;
+      if (_templates.ContainsKey(node))
+      {
+        return node;
+      }
+
       base.VisitOldExpr(node);
       if (_templates[node.Expr] is TemplateNoBoundVariables t)
       {

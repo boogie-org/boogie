@@ -45,7 +45,11 @@ namespace Microsoft.Boogie
     public override bool Equals(object obj)
     {
       TraceLocation that = obj as TraceLocation;
-      if (that == null) return false;
+      if (that == null)
+      {
+        return false;
+      }
+
       return (numBlock == that.numBlock && numInstr == that.numInstr);
     }
 
@@ -214,7 +218,10 @@ namespace Microsoft.Boogie
       Contract.Requires(counterexample != null);
 
       var filename = CommandLineOptions.Clo.ModelViewFile;
-      if (Model == null || filename == null || CommandLineOptions.Clo.StratifiedInlining > 0) return;
+      if (Model == null || filename == null || CommandLineOptions.Clo.StratifiedInlining > 0)
+      {
+        return;
+      }
 
       if (!Model.ModelHasStatesAlready)
       {
@@ -249,7 +256,10 @@ namespace Microsoft.Boogie
         Model.Func f = Model.TryGetFunc(name);
         if (f != null && f.Arity == 1)
         {
-          foreach (var ft in f.Apps) mapping[ft.Args[0]] = ft.Result;
+          foreach (var ft in f.Apps)
+          {
+            mapping[ft.Args[0]] = ft.Result;
+          }
         }
       }
 
