@@ -16,15 +16,12 @@ namespace Microsoft.Boogie
       return result;
     }
     
-    public static uint SafeMult(uint a, uint b) {
-      uint result = UInt32.MaxValue;
+    public static uint BoundedMultiply(uint a, uint b) {
       try {
-        checked {
-          result = a * b;
-        }
-      } catch (OverflowException) { }
-
-      return result;
+        return a * b;
+      } catch (OverflowException) {
+        return UInt32.MaxValue;
+      }
     }
   }
 }

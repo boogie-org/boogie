@@ -171,12 +171,12 @@ namespace Microsoft.Boogie
 
     private void SetTimeout(uint timeout)
     {
-      TheoremProver.SetTimeout(Util.SafeMult(timeout, 1000));
+      TheoremProver.SetTimeout(Util.BoundedMultiply(timeout, 1000));
     }
 
     private void SetRlimit(uint rlimit)
     {
-      TheoremProver.SetRlimit(Util.SafeMult(rlimit, 1000));
+      TheoremProver.SetRlimit(Util.BoundedMultiply(rlimit, 1000));
     }
 
     private void SetRandomSeed(int? randomSeed)
@@ -386,7 +386,7 @@ namespace Microsoft.Boogie
 
       if (timeout > 0)
       {
-        options.TimeLimit = Util.SafeMult(timeout, 1000);
+        options.TimeLimit = Util.BoundedMultiply(timeout, 1000);
       }
 
       if (taskID >= 0)
