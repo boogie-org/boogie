@@ -1115,7 +1115,7 @@ namespace Microsoft.Boogie.GraphUtil
     {
       var todo = new Stack<object>(roots);
       var visitedEdges = new HashSet<object>();
-      while(todo.Any())
+      while (todo.Any())
       {
         var node = todo.Pop();
         if (visitedEdges.Contains(node)) continue;
