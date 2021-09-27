@@ -47,7 +47,7 @@ jobs:
           diff --strip-trailing-cr Source/Core/Parser.cs Source/Core/Parser.cs.old
           diff --strip-trailing-cr Source/Core/Scanner.cs Source/Core/Scanner.cs.old
           # Build Boogie
-          dotnet build -c ${{ matrix.configuration }} ${SOLUTION}
+          dotnet build -warnaserror -c ${{ matrix.configuration }} ${SOLUTION}
           # Create packages
           dotnet pack --no-build -c ${{ matrix.configuration }} ${SOLUTION}
           # Run unit tests
