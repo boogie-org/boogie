@@ -56,13 +56,13 @@ function age(Wicket) returns (int);
 axiom age(w) == 7;
 
 var favorite: Wicket;
+var alternative: Wicket;
 
 type Barrel a;
 type RGBColor;
 const unique red: RGBColor;
 const unique green: RGBColor;
 const unique blue: RGBColor;
-axiom ( forall ce: RGBColor :: ce == red || ce == green || ce == blue );
 
 const m: [Barrel Wicket] Wicket;
 const n: <a> [Barrel a] a;
@@ -76,6 +76,7 @@ procedure M(x: int, coloredBarrel: Barrel RGBColor)
   ensures age(favorite) == 42; 
 {
   var y: ComplicatedInt;
+  favorite := alternative;
   assert y == 3;
 }
 ";
@@ -87,13 +88,13 @@ function age2(Wicket2) returns (int);
 axiom age2(w2) == 7;
 
 var favorite2: Wicket2;
+var alternative2: Wicket2;
 
 type Barrel2 a;
 type RGBColor2;
 const unique red2: RGBColor2;
 const unique green2: RGBColor2;
 const unique blue2: RGBColor2;
-axiom ( forall ce2: RGBColor2 :: ce2 == red2 || ce2 == green2 || ce2 == blue2 );
 
 const m2: [Barrel2 Wicket2] Wicket2;
 const n2: <a> [Barrel2 a] a;
@@ -107,6 +108,7 @@ procedure M2(x: int, coloredBarrel: Barrel2 RGBColor2)
   ensures age2(favorite2) == 42; 
 {
   var y: ComplicatedInt2;
+  favorite2 := alternative2;
   assert y == 3;
 }
 ";

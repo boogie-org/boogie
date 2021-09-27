@@ -100,11 +100,16 @@ namespace Microsoft.Boogie
       blocks.ForEach(blk => blk.Cmds = blk.Cmds.Where(c => !DeadWhereAssumption(c)).ToList());
     }
 
-    public static IEnumerable<Declaration> PruneDecl(Program p, List<Block> blocks)
+    /*
+     * Global variables, type constructor declarations, type synonyms, procedures and implementations are not pruned, but none of them produce solver commands.
+     * See Checker.Setup for more information.
+     * Data type constructor declarations are not pruned and they do affect VC generation.
+     */
+    public static IEnumerable<Declaration> GetLiveDeclarations(Program program, List<Block> blocks)
     {
-      if (p.DeclarationDependencies == null || blocks == null || !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
+      if (program.DeclarationDependencies == null || blocks == null || !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
       {
-        return p.TopLevelDeclarations;
+        return program.TopLevelDeclarations;
       }
 
       BlocksVisitor blocksNode = new BlocksVisitor(blocks);
@@ -112,8 +117,8 @@ namespace Microsoft.Boogie
       TrimWhereAssumes(blocks, blocksNode.RelVars);
 
       // an implementation only has outgoing edges.
-      var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(p.DeclarationDependencies, blocksNode.outgoing).ToHashSet();
-      var result = p.TopLevelDeclarations.Where(d => d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
+      var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing).ToHashSet();
+      var result = program.TopLevelDeclarations.Where(d => d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
       return result;
     }
   }
