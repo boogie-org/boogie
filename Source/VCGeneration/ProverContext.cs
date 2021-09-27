@@ -200,9 +200,13 @@ namespace Microsoft.Boogie
       axiomConjuncts = new List<VCExpr>(ctxt.axiomConjuncts);
 
       if (ctxt.exprTranslator == null)
+      {
         exprTranslator = null;
+      }
       else
+      {
         exprTranslator = (VCExprTranslator) cce.NonNull(ctxt.exprTranslator.Clone());
+      }
     }
 
     public override object Clone()
@@ -262,7 +266,10 @@ namespace Microsoft.Boogie
 
         axioms = gen.AndSimp(gen.Distinct(distinctVars), axioms);
         if (CommandLineOptions.Clo.TypeEncodingMethod != CommandLineOptions.TypeEncoding.Monomorphic)
+        {
           axioms = gen.AndSimp(orderingAxiomBuilder.Axioms, axioms);
+        }
+
         return axioms;
       }
     }

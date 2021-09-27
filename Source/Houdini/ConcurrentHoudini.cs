@@ -38,7 +38,9 @@ namespace Microsoft.Boogie.Houdini
       int count = 0;
 
       if (CommandLineOptions.Clo.DebugConcurrentHoudini)
+      {
         Console.WriteLine("# number of shared refuted annotations: " + refutedSharedAnnotations.Count);
+      }
 
       foreach (string key in refutedSharedAnnotations.Keys)
       {
@@ -77,14 +79,20 @@ namespace Microsoft.Boogie.Houdini
             ra = RefutedAnnotation.BuildRefutedRequires(kv.Key, proc, refutationSite);
           }
           else if (refutedSharedAnnotations[key].Kind == RefutedAnnotationKind.ENSURES)
+          {
             ra = RefutedAnnotation.BuildRefutedEnsures(kv.Key, refutationSite);
+          }
           else if (refutedSharedAnnotations[key].Kind == RefutedAnnotationKind.ASSERT)
+          {
             ra = RefutedAnnotation.BuildRefutedAssert(kv.Key, refutationSite);
+          }
 
           Debug.Assert(ra != null);
 
           if (CommandLineOptions.Clo.DebugConcurrentHoudini)
+          {
             Console.WriteLine("(+) " + ra.Constant + "," + ra.Kind + "," + ra.CalleeProc + "," + ra.RefutationSite);
+          }
 
           AddRelatedToWorkList(ra);
           UpdateAssignment(ra);

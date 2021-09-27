@@ -125,9 +125,14 @@ namespace Microsoft.BaseTypes
     public override bool Equals(object obj)
     {
       if (obj == null)
+      {
         return false;
+      }
+
       if (!(obj is BigNum))
+      {
         return false;
+      }
 
       BigNum other = (BigNum) obj;
       return (this.val == other.val);
@@ -201,9 +206,11 @@ namespace Microsoft.BaseTypes
     {
       Contract.Requires(format != null);
       if (format.Length > 1)
+      {
         // will throw a FormatException if the precision is invalid;
         // that is ok
         return Int32.Parse(format.Substring(1));
+      }
       // always output at least one digit
       return 1;
     }
@@ -214,7 +221,10 @@ namespace Microsoft.BaseTypes
       Contract.Requires(suffix != null);
       Contract.Ensures(Contract.Result<string>() != null);
       if (signum < 0)
+      {
         return "-" + suffix;
+      }
+
       return suffix;
     }
 
@@ -225,7 +235,10 @@ namespace Microsoft.BaseTypes
       Contract.Ensures(Contract.Result<string>() != null);
       StringBuilder res = new StringBuilder();
       while (res.Length + suffix.Length < minLength)
+      {
         res.Append("0");
+      }
+
       res.Append(suffix);
       return res.ToString();
     }
@@ -352,9 +365,15 @@ namespace Microsoft.BaseTypes
     public int CompareTo(BigNum that)
     {
       if (this.val == that.val)
+      {
         return 0;
+      }
+
       if (this.val < that.val)
+      {
         return -1;
+      }
+
       return 1;
     }
 

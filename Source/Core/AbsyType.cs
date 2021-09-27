@@ -67,7 +67,10 @@ namespace Microsoft.Boogie
     public override bool Equals(object that)
     {
       if (ReferenceEquals(this, that))
+      {
         return true;
+      }
+
       Type thatType = that as Type;
       return thatType != null && this.Equals(thatType,
         new List<TypeVariable>(),
@@ -214,8 +217,12 @@ namespace Microsoft.Boogie
       Contract.Requires(b != null);
       Contract.Requires(a != null);
       foreach (A x in b)
+      {
         if (!a.Contains(x))
+        {
           a.Add(x);
+        }
+      }
     }
 
     public bool IsClosed
@@ -676,11 +683,15 @@ namespace Microsoft.Boogie
         // we can still return the result type and hope that the
         // type checking proceeds in a meaningful manner
         if (typeParams.All(param => !resultFreeVars.Contains(param)))
+        {
           return actualResults;
+        }
         else
+        {
           // otherwise there is no point in returning the result type,
           // type checking would only get confused even further
           return null;
+        }
       }
 
       Contract.Assert(Contract.ForAll(0, typeParams.Count, index => !resultFreeVars.Contains(typeParams[index])));
@@ -840,9 +851,11 @@ namespace Microsoft.Boogie
       }
 
       if (sortedTypeParams.Count < typeParams.Count)
+      {
         // add the type parameters not mentioned in "argumentTypes" in
         // the end of the list (this can happen for quantifiers)
         sortedTypeParams.AppendWithoutDups(typeParams);
+      }
 
       return sortedTypeParams;
     }
@@ -1076,7 +1089,10 @@ namespace Microsoft.Boogie
       // shortcut
       Type thatType = that as Type;
       if (thatType == null)
+      {
         return false;
+      }
+
       BasicType thatBasicType = TypeProxy.FollowProxy(thatType.Expanded) as BasicType;
       return thatBasicType != null && this.T == thatBasicType.T;
     }
@@ -1742,13 +1758,23 @@ Contract.Requires(that != null);
         bool is_float = true;
         int i = 5;
         for (; is_float && Name[i] != 'e'; i++)
+        {
           if (i >= Name.Length - 1 || !char.IsDigit(Name[i])) //There must be an e
+          {
             is_float = false;
+          }
+        }
+
         int mid = i;
         i++;
         for (; i < Name.Length && is_float; i++)
+        {
           if (!char.IsDigit(Name[i]))
+          {
             is_float = false;
+          }
+        }
+
         if (is_float)
         {
           if (Arguments.Count > 0)
@@ -1955,9 +1981,13 @@ Contract.Requires(that != null);
       // otherwise, return this
       varMap.TryGetValue(this, out var res);
       if (res == null)
+      {
         return this;
+      }
       else
+      {
         return res;
+      }
     }
 
     public override Type CloneUnresolved()
@@ -1979,7 +2009,9 @@ Contract.Requires(that != null);
       TypeVariable thatAsTypeVar = TypeProxy.FollowProxy(that.Expanded) as TypeVariable;
 
       if (thatAsTypeVar == null)
+      {
         return false;
+      }
 
       int thisIndex = thisBoundVariables.LastIndexOf(this);
       int thatIndex = thatBoundVariables.LastIndexOf(thatAsTypeVar);
@@ -2001,10 +2033,14 @@ Contract.Requires(that != null);
       //Contract.Requires(cce.NonNullElements(unifier));
       that = that.Expanded;
       if (that is TypeProxy && !(that is ConstrainedProxy))
+      {
         return that.Unify(this, unifiableVariables, unifier);
+      }
 
       if (this.Equals(that))
+      {
         return true;
+      }
 
       if (unifiableVariables.Contains(this))
       {
@@ -2049,7 +2085,10 @@ Contract.Requires(that != null);
       Contract.Assert(substSubst != null);
       // occurs check
       if (substSubst.FreeVariables.Contains(this))
+      {
         return false;
+      }
+
       newMapping.Add(this, substSubst);
 
       // apply the new substitution to the old ones to ensure idempotence
@@ -2145,7 +2184,10 @@ Contract.Requires(that != null);
       //Contract.Requires(boundVariables != null);
       int thisIndex = boundVariables.LastIndexOf(this);
       if (thisIndex == -1)
+      {
         return GetBaseHashCode();
+      }
+
       return thisIndex * 27473671;
     }
 
@@ -2372,7 +2414,10 @@ Contract.Requires(that != null);
       {
         // unify this with that
         if (this.ReallyOccursIn(that))
+        {
           return false;
+        }
+
         DefineProxy(that.Expanded);
         return true;
       }
@@ -2529,7 +2574,10 @@ Contract.Requires(that != null);
       {
         Type p = ProxyFor;
         if (p == null || !p.IsFloat)
+        {
           return base.FloatExponent; //Shouldn't happen, so get an unreachable exception
+        }
+
         return p.FloatExponent;
       }
     }
@@ -2540,7 +2588,10 @@ Contract.Requires(that != null);
       {
         Type p = ProxyFor;
         if (p == null || !p.IsFloat)
+        {
           return base.FloatSignificand; //Shouldn't happen, so get an unreachable exception
+        }
+
         return p.FloatSignificand;
       }
     }
@@ -2877,12 +2928,16 @@ Contract.Requires(that != null);
       that = FollowProxy(that);
 
       if (this.ReallyOccursIn(that))
+      {
         return false;
+      }
 
       TypeVariable tv = that as TypeVariable;
 
       if (tv != null && unifiableVariables.Contains(tv))
+      {
         return that.Unify(this, unifiableVariables, result);
+      }
 
       if (object.ReferenceEquals(this, that))
       {
@@ -3181,11 +3236,15 @@ Contract.Requires(that != null);
       Type f = ProxyFor;
       MapType mf = f as MapType;
       if (mf != null)
+      {
         return mf.CheckArgumentTypes(actualArgs, out tpInstantiation, typeCheckingSubject, opName, tc);
+      }
 
       MapTypeProxy mpf = f as MapTypeProxy;
       if (mpf != null)
+      {
         return mpf.CheckArgumentTypes(actualArgs, out tpInstantiation, typeCheckingSubject, opName, tc);
+      }
 
       Contract.Assert(f == null); // no other types should occur as specialisations of this proxy
 
@@ -3232,7 +3291,10 @@ Contract.Requires(that != null);
       {
         MapTypeProxy p2 = new MapTypeProxy(tok, Name, Arity);
         foreach (Constraint c in constraints)
+        {
           p2.AddConstraint(c.Clone(varMap));
+        }
+
         return p2; // the clone will have a name that ends with $mapproxy<n>$mapproxy<m> (hopefully)
       }
     }
@@ -3283,12 +3345,16 @@ Contract.Requires(that != null);
       that = FollowProxy(that);
 
       if (this.ReallyOccursIn(that))
+      {
         return false;
+      }
 
       TypeVariable tv = that as TypeVariable;
 
       if (tv != null && unifiableVariables.Contains(tv))
+      {
         return that.Unify(this, unifiableVariables, result);
+      }
 
       if (object.ReferenceEquals(this, that))
       {
@@ -3301,7 +3367,10 @@ Contract.Requires(that != null);
         {
           bool good = true;
           foreach (Constraint c in constraints)
+          {
             good &= c.Unify(mapType, unifiableVariables, result);
+          }
+
           if (good)
           {
             DefineProxy(mapType);
@@ -3316,7 +3385,10 @@ Contract.Requires(that != null);
         {
           // we propagate the constraints of this proxy to the more specific one
           foreach (Constraint c in constraints)
+          {
             mt.AddConstraint(c);
+          }
+
           DefineProxy(mt);
           return true;
         }
@@ -3438,7 +3510,9 @@ Contract.Requires(that != null);
         subst =
           new Dictionary<TypeVariable /*!*/, Type /*!*/>();
       for (int i = 0; i < arguments.Count; ++i)
+      {
         subst.Add(decl.TypeParameters[i], arguments[i]);
+      }
 
       ExpandedType = decl.Body.Substitute(subst);
     }
@@ -3548,7 +3622,10 @@ Contract.Requires(that != null);
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       if (subst.Count == 0)
+      {
         return this;
+      }
+
       List<Type> newArgs = new List<Type>();
       foreach (Type /*!*/ t in Arguments)
       {
@@ -3831,14 +3908,23 @@ Contract.Requires(that != null);
     {
       Type thatType = that as Type;
       if (thatType == null)
+      {
         return false;
+      }
+
       thatType = TypeProxy.FollowProxy(thatType.Expanded);
       // shortcut
       CtorType thatCtorType = thatType as CtorType;
       if (thatCtorType == null || !this.Decl.Equals(thatCtorType.Decl))
+      {
         return false;
+      }
+
       if (Arguments.Count == 0)
+      {
         return true;
+      }
+
       return base.Equals(thatType);
     }
 
@@ -3850,12 +3936,17 @@ Contract.Requires(that != null);
       that = TypeProxy.FollowProxy(that.Expanded);
       CtorType thatCtorType = that as CtorType;
       if (thatCtorType == null || !this.Decl.Equals(thatCtorType.Decl))
+      {
         return false;
+      }
+
       for (int i = 0; i < Arguments.Count; ++i)
       {
         if (!Arguments[i].Equals(thatCtorType.Arguments[i],
           thisBoundVariables, thatBoundVariables))
+        {
           return false;
+        }
       }
 
       return true;
@@ -3869,7 +3960,9 @@ Contract.Requires(that != null);
     {
       that = that.Expanded;
       if (that is TypeProxy || that is TypeVariable)
+      {
         return that.Unify(this, unifiableVariables, result);
+      }
 
       CtorType thatCtorType = that as CtorType;
       if (thatCtorType == null || !thatCtorType.Decl.Equals(Decl))
@@ -3880,7 +3973,10 @@ Contract.Requires(that != null);
       {
         bool good = true;
         for (int i = 0; i < Arguments.Count; ++i)
+        {
           good &= Arguments[i].Unify(thatCtorType.Arguments[i], unifiableVariables, result);
+        }
+
         return good;
       }
     }
@@ -3915,7 +4011,10 @@ Contract.Requires(that != null);
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       if (subst.Count == 0)
+      {
         return this;
+      }
+
       List<Type> newArgs = new List<Type>();
       lock (Arguments)
       {
@@ -3976,7 +4075,9 @@ Contract.Requires(that != null);
       Contract.Requires(name != null);
       int opBindingStrength = args.Count > 0 ? 0 : 2;
       if (opBindingStrength < contextBindingStrength)
+      {
         stream.Write("(");
+      }
 
       stream.Write("{0}", TokenTextWriter.SanitizeIdentifier(name));
       int i = args.Count;
@@ -3991,7 +4092,9 @@ Contract.Requires(that != null);
       }
 
       if (opBindingStrength < contextBindingStrength)
+      {
         stream.Write(")");
+      }
     }
 
     //-----------  Resolution  ----------------------------------
@@ -4116,7 +4219,9 @@ Contract.Requires(that != null);
       {
         Contract.Assert(cce.NonNullElements(p));
         if (!TypeParameters.Contains(p.Key))
+        {
           newVarMap.Add(p);
+        }
       }
 
       List<TypeVariable> /*!*/
@@ -4187,7 +4292,9 @@ Contract.Requires(that != null);
       if (thatMapType == null ||
           this.TypeParameters.Count != thatMapType.TypeParameters.Count ||
           this.Arguments.Count != thatMapType.Arguments.Count)
+      {
         return false;
+      }
 
       thisBoundVariables = thisBoundVariables.ToList();
       foreach (TypeVariable /*!*/ var in this.TypeParameters)
@@ -4207,7 +4314,9 @@ Contract.Requires(that != null);
       {
         if (!Arguments[i].Equals(thatMapType.Arguments[i],
           thisBoundVariables, thatBoundVariables))
+        {
           return false;
+        }
       }
 
       return this.Result.Equals(thatMapType.Result,
@@ -4222,13 +4331,17 @@ Contract.Requires(that != null);
     {
       that = that.Expanded;
       if (that is TypeProxy || that is TypeVariable)
+      {
         return that.Unify(this, unifiableVariables, result);
+      }
 
       MapType thatMapType = that as MapType;
       if (thatMapType == null ||
           this.TypeParameters.Count != thatMapType.TypeParameters.Count ||
           this.Arguments.Count != thatMapType.Arguments.Count)
+      {
         return false;
+      }
 
       // treat the bound variables of the two map types as equal...
       Dictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
@@ -4268,17 +4381,21 @@ Contract.Requires(that != null);
         // non-substituted types ...
         List<TypeVariable> freeVars = this.FreeVariables;
         foreach (TypeVariable fr in freshies)
+        {
           if (freeVars.Contains(fr))
           {
             return false;
           } // fresh variable escaped
+        }
 
         freeVars = thatMapType.FreeVariables;
         foreach (TypeVariable fr in freshies)
+        {
           if (freeVars.Contains(fr))
           {
             return false;
           } // fresh variable escaped
+        }
 
         // ... and in the resulting unifier of type variables
         foreach (KeyValuePair<TypeVariable /*!*/, Type /*!*/> pair in result)
@@ -4286,10 +4403,12 @@ Contract.Requires(that != null);
           Contract.Assert(cce.NonNullElements(pair));
           freeVars = pair.Value.FreeVariables;
           foreach (TypeVariable fr in freshies)
+          {
             if (freeVars.Contains(fr))
             {
               return false;
             } // fresh variable escaped          
+          }
         }
       }
 
@@ -4369,7 +4488,9 @@ Contract.Assert(var != null);
       //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       if (subst.Count == 0)
+      {
         return this;
+      }
 
       // there are two cases in which we have to be careful:
       // * a variable to be substituted is shadowed by a variable binder
@@ -4440,7 +4561,9 @@ Contract.Assert(var != null);
 
       const int opBindingStrength = 1;
       if (opBindingStrength < contextBindingStrength)
+      {
         stream.Write("(");
+      }
 
       EmitOptionalTypeParams(stream, TypeParameters);
 
@@ -4450,7 +4573,9 @@ Contract.Assert(var != null);
       Result.Emit(stream); // default binding strength of 0 is ok
 
       if (opBindingStrength < contextBindingStrength)
+      {
         stream.Write(")");
+      }
     }
 
     //-----------  Resolution  ----------------------------------
@@ -4684,7 +4809,9 @@ Contract.Assert(var != null);
       Contract.Ensures(Contract.Result<TypeParamInstantiation>() != null);
 
       if (typeParams.Count == 0)
+      {
         return EMPTY;
+      }
 
       List<TypeVariable /*!*/> /*!*/
         typeParamList = new List<TypeVariable /*!*/>();
@@ -4764,11 +4891,15 @@ Contract.Assert(var != null);
       {
         MapType realType = Proxy.ProxyFor as MapType;
         if (realType == null)
+        {
           // no instantiation of the map type is known, which means
           // that the map type is assumed to be monomorphic
           return new List<TypeVariable /*!*/>();
+        }
         else
+        {
           return realType.TypeParameters.ToList();
+        }
       }
     }
 

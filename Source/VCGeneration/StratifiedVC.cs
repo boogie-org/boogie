@@ -57,7 +57,10 @@ namespace VC
       }
 
       if (info.controlFlowVariable != null)
+      {
         substDict.Add(bet.LookupVariable(info.controlFlowVariable), gen.Integer(BigNum.FromInt(id)));
+      }
+
       VCExprSubstitution subst =
         new VCExprSubstitution(substDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
       SubstitutingVCExprVisitor substVisitor = new SubstitutingVCExprVisitor(prover.VCExprGen);
@@ -68,11 +71,15 @@ namespace VC
       {
         blockToControlVar = new Dictionary<Block, VCExpr>();
         foreach (var tup in info.blockToControlVar)
+        {
           blockToControlVar.Add(tup.Key, substDict[tup.Value]);
+        }
       }
 
       if (procCalls != null)
+      {
         vcexpr = RemoveProcedureCalls.Apply(vcexpr, info.vcgen.prover.VCExprGen, procCalls);
+      }
 
       callSites = new Dictionary<Block, List<StratifiedCallSite>>();
       foreach (Block b in info.callSites.Keys)
@@ -106,7 +113,9 @@ namespace VC
         mustReachVar = new Dictionary<Block, VCExprVar>();
         mustReachBindings = new List<VCExprLetBinding>();
         foreach (Block b in impl.Blocks)
+        {
           mustReachVar[b] = vcgen.CreateNewVar(Bpl.Type.Bool);
+        }
 
         var dag = Program.GraphFromImpl(impl, false);
         IEnumerable sortedNodes = dag.TopologicalSort();
@@ -203,19 +212,32 @@ namespace VC
 
       VCExpr ret;
       if (changed)
+      {
         ret = Gen.Function(originalNode.Op,
           newSubExprs, originalNode.TypeArguments);
+      }
       else
+      {
         ret = originalNode;
+      }
 
-      if (!(ret is VCExprNAry)) return ret;
+      if (!(ret is VCExprNAry))
+      {
+        return ret;
+      }
+
       VCExprNAry retnary = (VCExprNAry) ret;
       if (!(retnary.Op is VCExprBoogieFunctionOp))
+      {
         return ret;
+      }
 
       var fcall = (retnary.Op as VCExprBoogieFunctionOp).Func.Name;
       if (procNames.Contains(fcall))
+      {
         return VCExpressionGenerator.True;
+      }
+
       return ret;
     }
   }
@@ -258,7 +280,9 @@ namespace VC
       }
 
       if (callSite.callSiteVar != null)
+      {
         callSiteExpr = substVisitor.Mutate(callSite.callSiteVar, subst);
+      }
     }
 
     public VCExpr Attach(StratifiedVC svc)
@@ -361,7 +385,11 @@ namespace VC
 
       foreach (IdentifierExpr e in impl.Proc.Modifies)
       {
-        if (e.Decl == null) continue;
+        if (e.Decl == null)
+        {
+          continue;
+        }
+
         functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", e.Decl.TypedIdent.Type),
           true));
       }
@@ -393,7 +421,10 @@ namespace VC
       {
         Contract.Assert(ie != null);
         if (ie.Decl == null)
+        {
           continue;
+        }
+
         exprs.Add(ie);
       }
 
@@ -423,7 +454,11 @@ namespace VC
 
       foreach (IdentifierExpr e in impl.Proc.Modifies)
       {
-        if (e.Decl == null) continue;
+        if (e.Decl == null)
+        {
+          continue;
+        }
+
         Variable v = e.Decl;
         Constant c = new Constant(Token.NoToken,
           new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
@@ -459,7 +494,9 @@ namespace VC
       // block -> bool variable
       blockToControlVar = new Dictionary<Block, VCExprVar>();
       foreach (var b in impl.Blocks)
+      {
         blockToControlVar.Add(b, gen.Variable(b.Label + "_holds", Bpl.Type.Bool));
+      }
 
       vcexpr = VCExpressionGenerator.True;
       foreach (var b in impl.Blocks)
@@ -487,7 +524,10 @@ namespace VC
         {
           VCExpr succ = VCExpressionGenerator.False;
           foreach (var sb in gc.labelTargets)
+          {
             succ = gen.OrSimp(succ, blockToControlVar[sb]);
+          }
+
           c = gen.AndSimp(c, succ);
         }
         else
@@ -539,7 +579,11 @@ namespace VC
 
     public void GenerateVC()
     {
-      if (initialized) return;
+      if (initialized)
+      {
+        return;
+      }
+
       if (CommandLineOptions.Clo.SIBoolControlVC)
       {
         GenerateVCBoolControl();
@@ -560,7 +604,11 @@ namespace VC
 
       foreach (IdentifierExpr e in impl.Proc.Modifies)
       {
-        if (e.Decl == null) continue;
+        if (e.Decl == null)
+        {
+          continue;
+        }
+
         Variable v = e.Decl;
         Constant c = new Constant(Token.NoToken,
           new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
@@ -587,7 +635,9 @@ namespace VC
       vcgen.InstrumentCallSites(impl);
 
       if (PassiveImplInstrumentation != null)
+      {
         PassiveImplInstrumentation(impl);
+      }
 
       var absyIds = new ControlFlowIdMap<Absy>();
       
@@ -663,7 +713,11 @@ namespace VC
     {
       foreach (var proc in program.Procedures)
       {
-        if (!proc.Name.StartsWith(recordProcName)) continue;
+        if (!proc.Name.StartsWith(recordProcName))
+        {
+          continue;
+        }
+
         Contract.Assert(proc.InParams.Count == 1);
 
         // Make a new function
@@ -706,10 +760,22 @@ namespace VC
           Cmd cmd = block.Cmds[i];
           newCmds.Add(cmd);
           AssumeCmd assumeCmd = cmd as AssumeCmd;
-          if (assumeCmd == null) continue;
+          if (assumeCmd == null)
+          {
+            continue;
+          }
+
           NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
-          if (naryExpr == null) continue;
-          if (!implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName)) continue;
+          if (naryExpr == null)
+          {
+            continue;
+          }
+
+          if (!implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName))
+          {
+            continue;
+          }
+
           Variable callSiteVar = new LocalVariable(Token.NoToken,
             new TypedIdent(Token.NoToken, "SICS" + callSiteId, Microsoft.Boogie.Type.Bool));
           implementation.LocVars.Add(callSiteVar);
@@ -732,10 +798,22 @@ namespace VC
         {
           Cmd cmd = block.Cmds[i];
           AssumeCmd assumeCmd = cmd as AssumeCmd;
-          if (assumeCmd == null) continue;
+          if (assumeCmd == null)
+          {
+            continue;
+          }
+
           NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
-          if (naryExpr == null) continue;
-          if (!implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName)) continue;
+          if (naryExpr == null)
+          {
+            continue;
+          }
+
+          if (!implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName))
+          {
+            continue;
+          }
+
           List<VCExpr> interfaceExprs = new List<VCExpr>();
           foreach (Expr e in naryExpr.Args)
           {
@@ -749,7 +827,10 @@ namespace VC
           CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs,
             prover.Context.BoogieExprTranslator.LookupVariable(iexpr.Decl), block, instr, assumeCmd.Attributes);
           if (!callSites.ContainsKey(block))
+          {
             callSites[block] = new List<CallSite>();
+          }
+
           callSites[block].Add(cs);
         }
       }
@@ -765,10 +846,22 @@ namespace VC
         for (int i = 0; i < block.Cmds.Count; i++)
         {
           AssumeCmd assumeCmd = block.Cmds[i] as AssumeCmd;
-          if (assumeCmd == null) continue;
+          if (assumeCmd == null)
+          {
+            continue;
+          }
+
           NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
-          if (naryExpr == null) continue;
-          if (!naryExpr.Fun.FunctionName.StartsWith(recordProcName)) continue;
+          if (naryExpr == null)
+          {
+            continue;
+          }
+
+          if (!naryExpr.Fun.FunctionName.StartsWith(recordProcName))
+          {
+            continue;
+          }
+
           List<VCExpr> interfaceExprs = new List<VCExpr>();
           foreach (Expr e in naryExpr.Args)
           {
@@ -777,7 +870,10 @@ namespace VC
 
           CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs, null, block, i, assumeCmd.Attributes);
           if (!callSites.ContainsKey(block))
+          {
             callSites[block] = new List<CallSite>();
+          }
+
           callSites[block].Add(cs);
         }
       }
@@ -819,7 +915,10 @@ namespace VC
       if (implName2StratifiedInliningInfo != null && implName2StratifiedInliningInfo.ContainsKey(implName))
       {
         var exitAssertCmd = implName2StratifiedInliningInfo[implName].exitAssertCmd;
-        if (exitAssertCmd != null) exitBlock.Cmds.Add(exitAssertCmd);
+        if (exitAssertCmd != null)
+        {
+          exitBlock.Cmds.Add(exitAssertCmd);
+        }
       }
     }
 
@@ -865,11 +964,18 @@ namespace VC
         info = implName2StratifiedInliningInfo[procname];
       }
 
-      if (info == null) return false;
+      if (info == null)
+      {
+        return false;
+      }
 
       var lp = info.impl.Proc as LoopProcedure;
 
-      if (lp == null) return false;
+      if (lp == null)
+      {
+        return false;
+      }
+
       return true;
     }
 

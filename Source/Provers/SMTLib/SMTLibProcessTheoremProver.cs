@@ -131,7 +131,10 @@ namespace Microsoft.Boogie.SMTLib
 
     void SetupProcess()
     {
-      if (Process != null) return;
+      if (Process != null)
+      {
+        return;
+      }
 
       Process = new SMTLibProcess(this.libOptions, this.options);
       Process.ErrorHandler += this.HandleProverError;
@@ -183,7 +186,10 @@ namespace Microsoft.Boogie.SMTLib
     {
       var idx = msg.IndexOf('\n');
       if (idx > 0)
+      {
         msg = msg.Replace("\r", "").Replace("\n", "\r\n");
+      }
+
       return msg;
     }
 
@@ -207,10 +213,15 @@ namespace Microsoft.Boogie.SMTLib
       s = Sanitize(s);
 
       if (isCommon)
+      {
         common.Append(s).Append("\r\n");
+      }
 
       if (Process != null)
+      {
         Process.Send(s);
+      }
+
       if (currentLogFile != null)
       {
         currentLogFile.WriteLine(s);
@@ -393,7 +404,10 @@ namespace Microsoft.Boogie.SMTLib
         SendCommon("(set-option :print-success false)");
         SendCommon("(set-info :smt-lib-version 2.6)");
         if (libOptions.ProduceModel)
+        {
           SendCommon("(set-option :produce-models true)");
+        }
+
         foreach (var opt in options.SmtOptions)
         {
           SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
@@ -441,14 +455,20 @@ namespace Microsoft.Boogie.SMTLib
         var axioms = ctx.Axioms;
         var nary = axioms as VCExprNAry;
         if (nary != null && nary.Op == VCExpressionGenerator.AndOp)
+        {
           foreach (var expr in nary.UniformArguments)
           {
             var str = VCExpr2String(expr, -1);
             if (str != "true")
+            {
               AddAxiom(str);
+            }
           }
+        }
         else
+        {
           AddAxiom(VCExpr2String(axioms, -1));
+        }
 
         AxiomsAreSetup = true;
         CachedAxBuilder = AxBuilder;
@@ -479,7 +499,9 @@ namespace Microsoft.Boogie.SMTLib
       {
         Contract.Assert(s != null);
         if (s != "true")
+        {
           SendCommon("(assert " + s + ")");
+        }
       }
 
       Axioms.Clear();
@@ -508,7 +530,9 @@ namespace Microsoft.Boogie.SMTLib
       base.Close();
       CloseLogFile();
       if (Process != null)
+      {
         Process.Close();
+      }
     }
 
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
@@ -517,7 +541,10 @@ namespace Microsoft.Boogie.SMTLib
       //Contract.Requires(vc != null);
       //Contract.Requires(handler != null);
 
-      if (options.SeparateLogFiles) CloseLogFile(); // shouldn't really happen
+      if (options.SeparateLogFiles)
+      {
+        CloseLogFile(); // shouldn't really happen
+      }
 
       if (options.LogFilename != null && currentLogFile == null)
       {
@@ -566,7 +593,9 @@ namespace Microsoft.Boogie.SMTLib
         Process.PingPong(); // flush any errors
 
         if (Process.Inspector != null)
+        {
           Process.Inspector.NewProblem(descriptiveName);
+        }
       }
 
       if (HasReset)
@@ -733,7 +762,10 @@ namespace Microsoft.Boogie.SMTLib
 
       FlushProverWarnings();
 
-      if (errors == "") return;
+      if (errors == "")
+      {
+        return;
+      }
 
       lock (proverErrors)
       {
@@ -764,7 +796,9 @@ namespace Microsoft.Boogie.SMTLib
       var result = Outcome.Undetermined;
 
       if (Process == null || proverErrors.Count > 0)
+      {
         return result;
+      }
 
       try
       {
@@ -824,7 +858,9 @@ namespace Microsoft.Boogie.SMTLib
             }
 
             if (globalResult == Outcome.Undetermined)
+            {
               globalResult = result;
+            }
 
             if (result == Outcome.Invalid)
             {
@@ -850,7 +886,10 @@ namespace Microsoft.Boogie.SMTLib
             Debug.Assert(errorsDiscovered > 0);
             // if errorLimit is 0, loop will break only if there are no more 
             // counterexamples to be discovered.
-            if (labels == null || !labels.Any() || errorsDiscovered == errorLimit) break;
+            if (labels == null || !labels.Any() || errorsDiscovered == errorLimit)
+            {
+              break;
+            }
           }
           finally
           {
@@ -870,7 +909,9 @@ namespace Microsoft.Boogie.SMTLib
         FlushLogFile();
 
         if (libOptions.RestartProverPerVC && Process != null)
+        {
           Process.NeedsRestart = true;
+        }
 
         return globalResult;
       }
@@ -1028,10 +1069,22 @@ namespace Microsoft.Boogie.SMTLib
       while (true)
       {
         var response = Process.GetProverResponse();
-        if (response == null) break;
-        if (!(response.Name == "" && response.ArgCount == 1)) break;
+        if (response == null)
+        {
+          break;
+        }
+
+        if (!(response.Name == "" && response.ArgCount == 1))
+        {
+          break;
+        }
+
         response = response.Arguments[0];
-        if (!(response.Name == "" && response.ArgCount == 2)) break;
+        if (!(response.Name == "" && response.ArgCount == 2))
+        {
+          break;
+        }
+
         response = response.Arguments[1];
         var v = response.Name;
         if (v == "-" && response.ArgCount == 1)
@@ -1041,7 +1094,9 @@ namespace Microsoft.Boogie.SMTLib
           break;
         }
         else if (response.ArgCount != 0)
+        {
           break;
+        }
 
         path.Add(v);
         SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " " + v + ")))");
@@ -1080,13 +1135,19 @@ namespace Microsoft.Boogie.SMTLib
       bool IsConstArray(SExpr element, SExpr type)
       {
         if (type.Name != "Array")
+        {
           return false;
+        }
 
         if (element.Name == "__array_store_all__")
+        {
           return true;
+        }
         else if (element.Name == "" && element[0].Name == "as" &&
                  element[0][0].Name == "const")
+        {
           return true;
+        }
 
         return false;
       }
@@ -1094,10 +1155,14 @@ namespace Microsoft.Boogie.SMTLib
       SExpr GetConstArrayElement(SExpr element)
       {
         if (element.Name == "__array_store_all__")
+        {
           return element[1];
+        }
         else if (element.Name == "" && element[0].Name == "as" &&
                  element[0][0].Name == "const")
+        {
           return element[1];
+        }
 
         Parent.HandleProverError("Unexpected value: " + element);
         throw new BadExprFromProver();
@@ -1247,11 +1312,18 @@ namespace Microsoft.Boogie.SMTLib
         {
           int argNum;
           if (arguments[0].Name.StartsWith("_ufmt_"))
+          {
             argNum = System.Convert.ToInt32(arguments[0].Name.Substring("_uftm_".Length)) - 1;
+          }
           else if (arguments[0].Name.StartsWith("_arg_"))
+          {
             argNum = System.Convert.ToInt32(arguments[0].Name.Substring("_arg_".Length)) - 1;
+          }
           else /* if (arguments[0].Name.StartsWith("x!")) */
+          {
             argNum = System.Convert.ToInt32(arguments[0].Name.Substring("x!".Length)) - 1;
+          }
+
           if (argNum < 0 || argNum >= argTypes.Count)
           {
             Parent.HandleProverError("Unexpected function argument: " + arguments[0]);
@@ -1281,12 +1353,18 @@ namespace Microsoft.Boogie.SMTLib
           StringBuilder[] argValues = new StringBuilder[argTypes.Count];
           ConstructFunctionArguments(element[0], argTypes, argValues);
           foreach (var s in argValues)
+          {
             m.Append(s + " ");
+          }
+
           m.Append("-> ");
           ConstructComplexValue(element[1], outType, m);
           m.Append("\n  ");
           if (element[2].Name != "ite")
+          {
             m.Append("else -> ");
+          }
+
           element = element[2];
         }
 
@@ -1317,11 +1395,15 @@ namespace Microsoft.Boogie.SMTLib
         Debug.Assert(element.Name == "define-fun");
 
         if (element[1].ArgCount != 0)
+        {
           TopLevelProcessed.Add(element);
+        }
 
         m.Append(element[0] + " -> ");
         if (TopLevelProcessed.Contains(element))
+        {
           m.Append("{\n  ");
+        }
 
         if (element[1].ArgCount == 0 && element[2].Name == "Array" && !TopLevelProcessed.Contains(element))
         {
@@ -1337,7 +1419,10 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         if (TopLevelProcessed.Contains(element))
+        {
           m.Append("\n}");
+        }
+
         m.Append("\n");
       }
 
@@ -1437,7 +1522,9 @@ namespace Microsoft.Boogie.SMTLib
     private Model GetErrorModel()
     {
       if (!libOptions.ExpectingModel)
+      {
         return null;
+      }
 
       SendThisVC("(get-model)");
       Process.Ping();
@@ -1446,9 +1533,14 @@ namespace Microsoft.Boogie.SMTLib
       {
         var resp = Process.GetProverResponse();
         if (resp == null || Process.IsPong(resp))
+        {
           break;
+        }
+
         if (theModel != null)
+        {
           HandleProverError("Expecting only one model but got many");
+        }
 
         string modelStr = null;
         if (resp.ArgCount >= 1)
@@ -1485,13 +1577,21 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         if (models == null)
+        {
           HandleProverError("Could not parse any models");
+        }
         else if (models.Count == 0)
+        {
           HandleProverError("Could not parse any models");
+        }
         else if (models.Count > 1)
+        {
           HandleProverError("Expecting only one model but got many");
+        }
         else
+        {
           theModel = models[0];
+        }
       }
 
       return theModel;
@@ -1508,7 +1608,9 @@ namespace Microsoft.Boogie.SMTLib
       {
         var resp = Process.GetProverResponse();
         if (resp == null || Process.IsPong(resp))
+        {
           break;
+        }
 
         switch (resp.Name)
         {
@@ -1553,7 +1655,9 @@ namespace Microsoft.Boogie.SMTLib
         {
           var resp = Process.GetProverResponse();
           if (resp == null || Process.IsPong(resp))
+          {
             break;
+          }
 
           if (resp.ArgCount == 1 && resp.Name == ":reason-unknown")
           {
@@ -1671,7 +1775,9 @@ namespace Microsoft.Boogie.SMTLib
           DateTime end = DateTime.UtcNow;
           TimeSpan elapsed = end - start;
           if (elapsed.TotalSeconds > 0.5)
+          {
             Console.WriteLine("Linearising   [{0} s]", elapsed.TotalSeconds);
+          }
         }
 
         return res;
@@ -1801,9 +1907,15 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(get-unsat-core)");
       var resp = Process.GetProverResponse().ToString();
       if (resp == "" || resp == "()")
+      {
         return null;
+      }
+
       if (resp[0] == '(')
+      {
         resp = resp.Substring(1, resp.Length - 2);
+      }
+
       var ucore = resp.Split(' ').ToList();
       return ucore;
     }
@@ -1860,7 +1972,9 @@ namespace Microsoft.Boogie.SMTLib
     SExpr ReduceLet(SExpr expr)
     {
       if (expr.Name != "let")
+      {
         return expr;
+      }
 
       var bindings = expr.Arguments[0].Arguments;
       var subexpr = expr.Arguments[1];
@@ -1883,9 +1997,13 @@ namespace Microsoft.Boogie.SMTLib
         {
           var arg = curr.Arguments[i];
           if (dict.ContainsKey(arg.Name))
+          {
             curr.Arguments[i] = dict[arg.Name];
+          }
           else
+          {
             workList.Push(arg);
+          }
         }
       }
 
@@ -1896,15 +2014,31 @@ namespace Microsoft.Boogie.SMTLib
     {
       resp = ReduceLet(resp);
       var dict = GetArrayFromArrayExpr(resp);
-      if (dict == null) dict = GetArrayFromProverLambdaExpr(resp);
-      if (dict == null) return null;
+      if (dict == null)
+      {
+        dict = GetArrayFromProverLambdaExpr(resp);
+      }
+
+      if (dict == null)
+      {
+        return null;
+      }
+
       var str = new StringWriter();
       str.Write("{");
       foreach (var entry in dict)
+      {
         if (entry.Key != "*")
+        {
           str.Write("\"{0}\":{1},", entry.Key, entry.Value);
+        }
+      }
+
       if (dict.ContainsKey("*"))
+      {
         str.Write("\"*\":{0}", dict["*"]);
+      }
+
       str.Write("}");
       return str.ToString();
     }
@@ -1930,10 +2064,14 @@ namespace Microsoft.Boogie.SMTLib
             // TODO: nested arrays, as (ite (...) (_ as-array k!5) (_ as-array k!3))
 
             if (condition.Name != "=")
+            {
               throw new VCExprEvaluationException();
+            }
 
             if (condition.Arguments[0].Name != indexVar)
+            {
               throw new VCExprEvaluationException();
+            }
 
             var index = ParseValueFromProver(condition.Arguments[1]);
             var value = ParseValueFromProver(positive);
@@ -1992,31 +2130,53 @@ namespace Microsoft.Boogie.SMTLib
       string vcString = VCExpr2String(expr, 1);
       SendThisVC("(get-value (" + vcString + "))");
       var resp = Process.GetProverResponse();
-      if (resp == null) throw new VCExprEvaluationException();
-      if (!(resp.Name == "" && resp.ArgCount == 1)) throw new VCExprEvaluationException();
+      if (resp == null)
+      {
+        throw new VCExprEvaluationException();
+      }
+
+      if (!(resp.Name == "" && resp.ArgCount == 1))
+      {
+        throw new VCExprEvaluationException();
+      }
+
       resp = resp.Arguments[0];
       if (resp.Name == "")
       {
         // evaluating an expression
         if (resp.ArgCount == 2)
+        {
           resp = resp.Arguments[1];
+        }
         else
+        {
           throw new VCExprEvaluationException();
+        }
       }
       else
       {
         // evaluating a variable
         if (resp.ArgCount == 1)
+        {
           resp = resp.Arguments[0];
+        }
         else
+        {
           throw new VCExprEvaluationException();
+        }
       }
 
       if (resp.Name == "-" && resp.ArgCount == 1) // negative int
+      {
         return Microsoft.BaseTypes.BigNum.FromString("-" + resp.Arguments[0].Name);
+      }
+
       if (resp.Name == "_" && resp.ArgCount == 2 && resp.Arguments[0].Name.StartsWith("bv")) // bitvector
+      {
         return new BvConst(Microsoft.BaseTypes.BigNum.FromString(resp.Arguments[0].Name.Substring("bv".Length)),
           int.Parse(resp.Arguments[1].Name));
+      }
+
       if (resp.Name == "fp" && resp.ArgCount == 3)
       {
         Func<SExpr, BigInteger> getBvVal = e => BigInteger.Parse(e.Arguments[0].Name.Substring("bv".Length));
@@ -2041,15 +2201,27 @@ namespace Microsoft.Boogie.SMTLib
 
       var ary = GetArrayFromProverResponse(resp);
       if (ary != null)
+      {
         return ary;
+      }
+
       if (resp.ArgCount != 0)
+      {
         throw new VCExprEvaluationException();
+      }
+
       if (expr.Type.Equals(Boogie.Type.Bool))
+      {
         return bool.Parse(resp.Name);
+      }
       else if (expr.Type.Equals(Boogie.Type.Int))
+      {
         return Microsoft.BaseTypes.BigNum.FromString(resp.Name);
+      }
       else
+      {
         return resp.Name;
+      }
     }
 
     /// <summary>
@@ -2091,8 +2263,15 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(get-unsat-core)");
       var resp = Process.GetProverResponse();
       unsatCore = new List<int>();
-      if (resp.Name != "") unsatCore.Add(nameToAssumption[resp.Name]);
-      foreach (var s in resp.Arguments) unsatCore.Add(nameToAssumption[s.Name]);
+      if (resp.Name != "")
+      {
+        unsatCore.Add(nameToAssumption[resp.Name]);
+      }
+
+      foreach (var s in resp.Arguments)
+      {
+        unsatCore.Add(nameToAssumption[s.Name]);
+      }
 
       FlushLogFile();
       Pop();
@@ -2151,7 +2330,10 @@ namespace Microsoft.Boogie.SMTLib
         Check();
         outcome = CheckOutcomeCore(handler, libOptions.ErrorLimit);
         if (outcome != Outcome.Valid)
+        {
           break;
+        }
+
         Pop();
         string relaxVar = "relax_" + k;
         relaxVars.Add(relaxVar);
@@ -2174,17 +2356,36 @@ namespace Microsoft.Boogie.SMTLib
           SendThisVC("(get-value (" + relaxVar + "))");
           FlushLogFile();
           var resp = Process.GetProverResponse();
-          if (resp == null) break;
-          if (!(resp.Name == "" && resp.ArgCount == 1)) break;
+          if (resp == null)
+          {
+            break;
+          }
+
+          if (!(resp.Name == "" && resp.ArgCount == 1))
+          {
+            break;
+          }
+
           resp = resp.Arguments[0];
-          if (!(resp.Name != "" && resp.ArgCount == 1)) break;
+          if (!(resp.Name != "" && resp.ArgCount == 1))
+          {
+            break;
+          }
+
           resp = resp.Arguments[0];
           if (resp.ArgCount != 0)
+          {
             break;
+          }
+
           if (int.TryParse(resp.Name, out var v))
+          {
             unsatisfiedSoftAssumptions.Add(v);
+          }
           else
+          {
             break;
+          }
         }
 
         Pop();
@@ -2292,9 +2493,14 @@ namespace Microsoft.Boogie.SMTLib
       proverCommands.Add("smtlib");
       var opts = (SMTLibProverOptions) options;
       if (opts.Solver == SolverKind.Z3)
+      {
         proverCommands.Add("z3");
+      }
       else
+      {
         proverCommands.Add("external");
+      }
+
       VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
       return new SMTLibProverContext(gen, genOptions);
     }

@@ -45,7 +45,9 @@ namespace Microsoft.Boogie
     public static string sanitizeLabel(string lab)
     {
       if (!lab.Contains("#"))
+      {
         return lab;
+      }
 
       // Find the last occurrance of "#"
       int pos = lab.LastIndexOf('#');

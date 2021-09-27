@@ -76,7 +76,10 @@ namespace Microsoft.Boogie.TypeErasure
         Contract.Ensures(Contract.Result<MapTypeAbstractionBuilder>() != null);
 
         if (MapTypeAbstracterAttr == null)
+        {
           MapTypeAbstracterAttr = new MapTypeAbstractionBuilderArguments(this, Gen);
+        }
+
         return MapTypeAbstracterAttr;
       }
     }
@@ -432,9 +435,14 @@ namespace Microsoft.Boogie.TypeErasure
       List<VCExpr /*!*/> /*!*/
         indexEqs = new List<VCExpr /*!*/>();
       for (int i = 0; i < mapTypeParamNum; ++i)
+      {
         indexEqs.Add(Gen.Eq(boundTypeVars0[i], boundTypeVars1[i]));
+      }
+
       for (int i = 0; i < arity; ++i)
+      {
         indexEqs.Add(Gen.Eq(indexes0[i], indexes1[i]));
+      }
 
       VCExpr /*!*/
         axiom = VCExpressionGenerator.True;
@@ -479,7 +487,10 @@ namespace Microsoft.Boogie.TypeErasure
         Contract.Ensures(Contract.Result<OpTypeEraser>() != null);
 
         if (OpEraserAttr == null)
+        {
           OpEraserAttr = new OpTypeEraserArguments(this, AxBuilderArguments, Gen);
+        }
+
         return OpEraserAttr;
       }
     }
@@ -515,11 +526,15 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Assert(newNode != null);
 
       if (!(newNode is VCExprQuantifier) || !IsUniversalQuantifier(node))
+      {
         return newNode;
+      }
 
       if (!RedoQuantifier(node, (VCExprQuantifier) newNode, node.BoundVars, oldBindings,
         out var bindings2, out newBoundVars))
+      {
         return newNode;
+      }
 
       GenBoundVarsForTypeParams(node.TypeParameters, newBoundVars, bindings2);
       return HandleQuantifier(node, newBoundVars, bindings2);
@@ -558,7 +573,10 @@ namespace Microsoft.Boogie.TypeErasure
       newBody = AxBuilder.Cast(newBody, Type.Bool);
 
       if (newBoundVars.Count == 0) // might happen that no bound variables are left
+      {
         return newBody;
+      }
+
       return Gen.Quantify(node.Quan, new List<TypeVariable /*!*/>(), newBoundVars,
         newTriggers, node.Info, newBody);
     }
@@ -649,7 +667,10 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(t0 != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (t0.Equals(t1))
+      {
         return VCExpressionGenerator.True;
+      }
+
       VCExpr /*!*/
         t0Expr = AxBuilder.Type2Term(t0, bindings.TypeVariableBindings);
       Contract.Assert(t0Expr != null);

@@ -47,9 +47,13 @@ namespace BaseTypesTests
     {
       var v = BigDec.FromString(value);
       if (value.StartsWith("-"))
+      {
         Assert.IsTrue(v.IsNegative);
+      }
       else
+      {
         Assert.IsTrue(v.IsPositive || v.IsZero);
+      }
 
       BigInteger floor = 0;
       BigInteger ceiling = 0;

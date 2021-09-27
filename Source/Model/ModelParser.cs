@@ -43,7 +43,10 @@ namespace Microsoft.Boogie
     string[] GetWords(string line)
     {
       if (line == null)
+      {
         return null;
+      }
+
       var words = Array.FindAll(seps.Split(line), word => word != "" && word != " ");
       return words;
     }
@@ -52,7 +55,10 @@ namespace Microsoft.Boogie
     {
       Model.Element ret = currModel.TryMkElement(name);
       if (ret == null)
+      {
         BadModel("invalid element name " + name);
+      }
+
       return ret;
     }
 
@@ -60,10 +66,16 @@ namespace Microsoft.Boogie
     {
       string s = o as string;
       if (s != null)
+      {
         return GetElt(s);
+      }
+
       List<object> os = (List<object>) o;
       if (!(os[0] is string))
+      {
         os.Insert(0, "_"); // KLM: fix crash on ((as const (Array Int Int)) 0)
+      }
+
       List<Model.Element> args = new List<Model.Element>();
       for (int i = 1; i < os.Count; i++)
       {
@@ -79,13 +91,20 @@ namespace Microsoft.Boogie
       foreach (char c in s)
       {
         if (c == '(')
+        {
           f++;
+        }
         else if (c == ')')
+        {
           f--;
+        }
       }
 
       if (f < 0)
+      {
         BadModel("mismatched parentheses in datatype term");
+      }
+
       return f;
     }
 
@@ -97,7 +116,10 @@ namespace Microsoft.Boogie
     List<object> GetFunctionTokens(string newLine)
     {
       if (newLine == null)
+      {
         return null;
+      }
+
       newLine = bitVec.Replace(newLine, "bv${1}");
       newLine = bv.Replace(newLine, "bv${1}[${2}]");
       newLine = fpType.Replace(newLine, "float${2}e${1}");
@@ -129,7 +151,9 @@ namespace Microsoft.Boogie
         string elem = tuple[i];
 
         if (elem == "" || elem == " ")
+        {
           continue;
+        }
 
         if (elem == "(" || elem == "\"" && (wordStack.Count == 0 || wordStack.Peek().Item1 != "\""))
         {
@@ -140,7 +164,10 @@ namespace Microsoft.Boogie
         {
           var tup = wordStack.Pop();
           if (tup.Item1 != "(")
+          {
             BadModel("unmatched parentheses");
+          }
+
           var ls = tup.Item2;
           if (wordStack.Count > 0)
           {
@@ -155,9 +182,13 @@ namespace Microsoft.Boogie
         {
           var words = "\"" + String.Join(" ", wordStack.Pop().Item2) + "\"";
           if (wordStack.Count > 0)
+          {
             wordStack.Peek().Item2.Add(String.Join(" ", words));
+          }
           else
+          {
             newTuple.Add(words);
+          }
         }
         else if (wordStack.Count > 0)
         {
@@ -178,7 +209,9 @@ namespace Microsoft.Boogie
       {
         var line = ReadLine();
         if (line == null)
+        {
           break; // end of model, everything fine
+        }
 
         if (line == "Counterexample:" || line == "Error model: " || line == "*** MODEL")
         {
@@ -187,36 +220,60 @@ namespace Microsoft.Boogie
         }
 
         if (line.EndsWith(": Invalid.") || line.EndsWith(": Valid.") || line.StartsWith("labels:"))
+        {
           continue;
+        }
+
         if (line == "END_OF_MODEL" || line == "." || line == "*** END_MODEL")
+        {
           continue;
+        }
 
         var words = GetFunctionTokens(line);
         if (words.Count == 0)
+        {
           continue;
+        }
+
         var lastWord = words[words.Count - 1];
 
         if (currModel == null)
+        {
           BadModel("model begin marker not found");
+        }
 
         if (line.StartsWith("*** STATE "))
         {
           var name = line.Substring(10);
           Model.CapturedState cs;
           if (name == "<initial>")
+          {
             cs = currModel.InitialState;
+          }
           else
+          {
             cs = currModel.MkState(name);
+          }
+
           while (true)
           {
             var tmpline = ReadLine();
             if (tmpline == "*** END_STATE")
+            {
               break;
+            }
+
             var tuple = GetFunctionTokens(tmpline);
             if (tuple == null)
+            {
               BadModel("EOF in state table");
+            }
+
             if (tuple.Count == 0)
+            {
               continue;
+            }
+
             if (tuple.Count == 3 && tuple[0] is string && tuple[1] is string && ((string) tuple[1]) == "->")
             {
               cs.AddBinding((string) tuple[0], GetElt(tuple[2]));
@@ -247,14 +304,23 @@ namespace Microsoft.Boogie
             {
               var tuple = GetFunctionTokens(ReadLine());
               if (tuple == null)
+              {
                 BadModel("EOF in function table");
+              }
+
               if (tuple.Count == 0)
+              {
                 continue;
+              }
+
               string tuple0 = tuple[0] as string;
               if (tuple.Count == 1)
               {
                 if (tuple0 == "}")
+                {
                   break;
+                }
+
                 if (fn.Else != null) {
                   BadModel("multiple else cases");
                 }
@@ -264,7 +330,10 @@ namespace Microsoft.Boogie
 
               string tuplePenultimate = tuple[tuple.Count - 2] as string;
               if (tuple.Count == 2 || tuplePenultimate != "->")
+              {
                 BadModel("invalid function tuple definition");
+              }
+
               var resultName = tuple[tuple.Count - 1];
 
               if (tuple0 == "else")
@@ -282,7 +351,10 @@ namespace Microsoft.Boogie
               fn.Arity = tuple.Count - 2;
               var args = new Model.Element[(int) fn.Arity]; 
               for (int i = 0; i < fn.Arity; ++i)
+              {
                 args[i] = GetElt(tuple[i]);
+              }
+
               fn.AddApp(GetElt(resultName), args);
             }
           }

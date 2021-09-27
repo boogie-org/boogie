@@ -147,9 +147,13 @@ namespace Microsoft.Boogie
       get
       {
         if (InternalNumberedMetadata == null)
+        {
           return Enumerable.Empty<KeyValuePair<int, Object>>();
+        }
         else
+        {
           return InternalNumberedMetadata.Select((v, index) => new KeyValuePair<int, Object>(index, v));
+        }
       }
     }
 
@@ -165,10 +169,14 @@ namespace Microsoft.Boogie
     {
       // We aren't using NumberedMetadataLock for speed. Perhaps we should be using it?
       if (InternalNumberedMetadata == null)
+      {
         throw new ArgumentOutOfRangeException();
+      }
 
       if (InternalNumberedMetadata[index] is T)
+      {
         return (T) InternalNumberedMetadata[index];
+      }
       else if (InternalNumberedMetadata[index] == null)
       {
         throw new InvalidCastException("Numbered metadata " + index +
@@ -190,7 +198,9 @@ namespace Microsoft.Boogie
         lock (NumberedMetadataLock)
         {
           if (InternalNumberedMetadata == null)
+          {
             InternalNumberedMetadata = new List<Object>();
+          }
         }
       }
     }
@@ -206,12 +216,16 @@ namespace Microsoft.Boogie
       InitialiseNumberedMetadata();
 
       if (index < 0)
+      {
         throw new IndexOutOfRangeException();
+      }
 
       lock (NumberedMetadataLock)
       {
         if (index < InternalNumberedMetadata.Count)
+        {
           InternalNumberedMetadata[index] = value;
+        }
         else
         {
           // Make sure expansion only happens once whilst we pad
@@ -223,7 +237,9 @@ namespace Microsoft.Boogie
 
           // Pad with nulls
           while (InternalNumberedMetadata.Count < index)
+          {
             InternalNumberedMetadata.Add(null);
+          }
 
           InternalNumberedMetadata.Add(value);
           Debug.Assert(InternalNumberedMetadata.Count == (index + 1));
@@ -449,7 +465,9 @@ namespace Microsoft.Boogie
       foreach (var d in TopLevelDeclarations.OfType<TypeCtorDecl>())
       {
         if (!QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
+        {
           d.Resolve(rc);
+        }
       }
 
       // collect type synonym declarations
@@ -459,7 +477,9 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(d != null);
         if (!QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
+        {
           synonymDecls.Add((TypeSynonymDecl) d);
+        }
       }
 
       // then resolve the type synonyms by a simple
@@ -731,7 +751,9 @@ namespace Microsoft.Boogie
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<GlobalVariable>>()));
 
         if (globalVariablesCache == null)
+        {
           globalVariablesCache = TopLevelDeclarations.OfType<GlobalVariable>();
+        }
 
         return new List<GlobalVariable>(globalVariablesCache);
       }
@@ -800,10 +822,18 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(block != null);
         var auxCmd = block.TransferCmd as GotoCmd;
-        if (auxCmd == null) continue;
+        if (auxCmd == null)
+        {
+          continue;
+        }
+
         foreach (var bl in auxCmd.labelTargets)
         {
-          if (loopBlocks.Contains(bl)) continue;
+          if (loopBlocks.Contains(bl))
+          {
+            continue;
+          }
+
           immSuccBlks.Add(bl);
         }
       }
@@ -918,16 +948,25 @@ namespace Microsoft.Boogie
         {
           Contract.Assert(v != null);
           if (targetSet.Contains(v))
+          {
             continue;
+          }
+
           targetSet.Add(v);
           if (v is GlobalVariable)
+          {
             globalMods.Add(new IdentifierExpr(Token.NoToken, v));
+          }
         }
 
         foreach (Variable v in impl.InParams)
         {
           Contract.Assert(v != null);
-          if (!footprint.Contains(v)) continue;
+          if (!footprint.Contains(v))
+          {
+            continue;
+          }
+
           callInputs1.Add(new IdentifierExpr(Token.NoToken, v));
           Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true);
           inputs.Add(f);
@@ -938,7 +977,11 @@ namespace Microsoft.Boogie
         foreach (Variable v in impl.OutParams)
         {
           Contract.Assert(v != null);
-          if (!footprint.Contains(v)) continue;
+          if (!footprint.Contains(v))
+          {
+            continue;
+          }
+
           callInputs1.Add(new IdentifierExpr(Token.NoToken, v));
           Formal f1 = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true);
           inputs.Add(f1);
@@ -964,7 +1007,11 @@ namespace Microsoft.Boogie
         foreach (Variable v in impl.LocVars)
         {
           Contract.Assert(v != null);
-          if (!footprint.Contains(v)) continue;
+          if (!footprint.Contains(v))
+          {
+            continue;
+          }
+
           callInputs1.Add(new IdentifierExpr(Token.NoToken, v));
           Formal f1 = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true);
           inputs.Add(f1);
@@ -1034,7 +1081,10 @@ namespace Microsoft.Boogie
           {
             Contract.Assert(block != null);
             if (blockMap.ContainsKey(block))
+            {
               continue;
+            }
+
             Block newBlock = new Block();
             newBlock.Label = block.Label;
             if (headRecursion && block == header)
@@ -1047,7 +1097,9 @@ namespace Microsoft.Boogie
               newBlock.Cmds.AddRange(rest);
             }
             else
+            {
               newBlock.Cmds = Substituter.Apply(subst, block.Cmds);
+            }
 
             blockMap[block] = newBlock;
             if (newBlocksCreated.ContainsKey(block))
@@ -1087,10 +1139,16 @@ namespace Microsoft.Boogie
                   List<IdentifierExpr> /*!*/
                     globalsMods = loopHeaderToLoopProc[header].Modifies;
                   foreach (IdentifierExpr gl in globalsMods)
+                  {
                     lhsg.Add(new SimpleAssignLhs(Token.NoToken, gl));
+                  }
+
                   List<Expr> rhsg = new List<Expr>();
                   foreach (IdentifierExpr gl in globalsMods)
+                  {
                     rhsg.Add(new OldExpr(Token.NoToken, gl));
+                  }
+
                   if (lhsg.Count != 0)
                   {
                     AssignCmd globalAssignCmd = new AssignCmd(Token.NoToken, lhsg, rhsg);
@@ -1105,7 +1163,9 @@ namespace Microsoft.Boogie
 
           List<Cmd> cmdSeq;
           if (headRecursion)
+          {
             cmdSeq = new List<Cmd>();
+          }
           else
           {
             CallCmd callCmd = (CallCmd) (loopHeaderToCallCmd2[header]).Clone();
@@ -1133,7 +1193,10 @@ namespace Microsoft.Boogie
           for (int i = 0; i < gotoCmd.labelTargets.Count; i++)
           {
             if (gotoCmd.labelTargets[i] == header)
+            {
               continue;
+            }
+
             newTargets.Add(gotoCmd.labelTargets[i]);
             newLabels.Add(gotoCmd.labelNames[i]);
           }
@@ -1153,9 +1216,11 @@ namespace Microsoft.Boogie
           new List<Block> {blockMap[header], exit});
 
         if (detLoopExtract) //cutting the non-determinism
+        {
           cmd = new GotoCmd(Token.NoToken,
             new List<String> {cce.NonNull(blockMap[header]).Label},
             new List<Block> {blockMap[header]});
+        }
 
         Block entry;
         List<Cmd> initCmds = new List<Cmd>();
@@ -1196,7 +1261,10 @@ namespace Microsoft.Boogie
             if (newTargets.Count == 0)
             {
               if (!detLoopExtract)
+              {
                 newBlock.Cmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
+              }
+
               newBlock.TransferCmd = new ReturnCmd(Token.NoToken);
             }
             else
@@ -1235,10 +1303,17 @@ namespace Microsoft.Boogie
         foreach (Block block in blockMap.Keys)
         {
           // Don't add dummy blocks to the map
-          if (dummyBlocks.Contains(blockMap[block].Label)) continue;
+          if (dummyBlocks.Contains(blockMap[block].Label))
+          {
+            continue;
+          }
 
           // Following two statements are for nested loops: compose map
-          if (!fullMap[impl.Name].ContainsKey(block.Label)) continue;
+          if (!fullMap[impl.Name].ContainsKey(block.Label))
+          {
+            continue;
+          }
+
           var target = fullMap[impl.Name][block.Label];
 
           AddToFullMap(fullMap, loopProc.Name, blockMap[block].Label, target);
@@ -1261,7 +1336,10 @@ namespace Microsoft.Boogie
       Block block)
     {
       if (!fullMap.ContainsKey(procName))
+      {
         fullMap[procName] = new Dictionary<string, Block>();
+      }
+
       fullMap[procName][blockName] = block;
     }
 
@@ -1276,20 +1354,32 @@ namespace Microsoft.Boogie
 
       foreach (var impl in program.Implementations)
       {
-        if (impl.SkipVerification) continue;
+        if (impl.SkipVerification)
+        {
+          continue;
+        }
+
         callGraph.AddSource(impl);
         procToImpls[impl.Proc].Add(impl);
       }
 
       foreach (var impl in program.Implementations)
       {
-        if (impl.SkipVerification) continue;
+        if (impl.SkipVerification)
+        {
+          continue;
+        }
+
         foreach (Block b in impl.Blocks)
         {
           foreach (Cmd c in b.Cmds)
           {
             CallCmd cc = c as CallCmd;
-            if (cc == null) continue;
+            if (cc == null)
+            {
+              continue;
+            }
+
             foreach (Implementation callee in procToImpls[cc.Proc])
             {
               callGraph.AddEdge(impl, callee);
@@ -1384,7 +1474,10 @@ namespace Microsoft.Boogie
 
               // First, build a map of the current blocks
               var origBlocks = new Dictionary<string, Block>();
-              foreach (var blk in impl.Blocks) origBlocks.Add(blk.Label, blk);
+              foreach (var blk in impl.Blocks)
+              {
+                origBlocks.Add(blk.Label, blk);
+              }
 
               // unroll
               Block start = impl.Blocks[0];
@@ -1396,7 +1489,10 @@ namespace Microsoft.Boogie
               foreach (var blk in impl.Blocks)
               {
                 var sl = LoopUnroll.sanitizeLabel(blk.Label);
-                if (sl == blk.Label) blockMap.Add(blk.Label, blk);
+                if (sl == blk.Label)
+                {
+                  blockMap.Add(blk.Label, blk);
+                }
                 else
                 {
                   Contract.Assert(origBlocks.ContainsKey(sl));
@@ -1453,7 +1549,10 @@ namespace Microsoft.Boogie
       IdentifierExpr ExistentialBoolean = new IdentifierExpr(Token.NoToken, ExistentialBooleanConstant);
       PredicateCmd invariant = new AssertCmd(Token.NoToken, Expr.Imp(ExistentialBoolean, e));
       if (tag != null)
+      {
         invariant.Attributes = new QKeyValue(Token.NoToken, "tag", new List<object>(new object[] {tag}), null);
+      }
+
       return invariant;
     }
 
@@ -1910,7 +2009,10 @@ namespace Microsoft.Boogie
       EmitAttributes(stream);
       stream.Write("{0}", TokenTextWriter.SanitizeIdentifier(Name));
       for (int i = 0; i < Arity; ++i)
+      {
         stream.Write(" _");
+      }
+
       stream.WriteLine(";");
     }
 
@@ -2040,7 +2142,10 @@ namespace Microsoft.Boogie
       EmitAttributes(stream);
       stream.Write("{0}", TokenTextWriter.SanitizeIdentifier(Name));
       if (TypeParameters.Count > 0)
+      {
         stream.Write(" ");
+      }
+
       TypeParameters.Emit(stream, " ");
       stream.Write(" = ");
       Body.Emit(stream);
@@ -2164,7 +2269,10 @@ namespace Microsoft.Boogie
         Contract.Assert(unresType != null);
         TypeSynonymDecl dep = rc.LookUpTypeSynonym(unresType.Name);
         if (dep != null)
+        {
           deps.Add(dep);
+        }
+
         foreach (Type /*!*/ subtype in unresType.Arguments)
         {
           Contract.Assert(subtype != null);
@@ -2442,12 +2550,17 @@ namespace Microsoft.Boogie
           stream.Write(this, level, sep);
           sep = ", ";
           if (p.Unique)
+          {
             stream.Write(this, level, "unique ");
+          }
+
           p.Parent.Emit(stream);
         }
 
         if (ChildrenComplete)
+        {
           stream.Write(this, level, " complete");
+        }
       }
 
       stream.WriteLine(";");
@@ -2470,9 +2583,14 @@ namespace Microsoft.Boogie
           Contract.Assert(p != null);
           p.Parent.Resolve(rc);
           if (p.Parent.Decl != null && !(p.Parent.Decl is Constant))
+          {
             rc.Error(p.Parent, "the parent of a constant has to be a constant");
+          }
+
           if (this.Equals(p.Parent.Decl))
+          {
             rc.Error(p.Parent, "constant cannot be its own parent");
+          }
         }
       }
 
@@ -2488,9 +2606,11 @@ namespace Microsoft.Boogie
             {
               if (Parents[j].Parent.Decl != null &&
                   cce.NonNull(Parents[i].Parent.Decl).Equals(Parents[j].Parent.Decl))
+              {
                 rc.Error(Parents[j].Parent,
                   "{0} occurs more than once as parent",
                   Parents[j].Parent.Decl);
+              }
             }
           }
         }
@@ -2509,9 +2629,11 @@ namespace Microsoft.Boogie
           Contract.Assert(p != null);
           p.Parent.Typecheck(tc);
           if (!cce.NonNull(p.Parent.Decl).TypedIdent.Type.Unify(this.TypedIdent.Type))
+          {
             tc.Error(p.Parent,
               "parent of constant has incompatible type ({0} instead of {1})",
               p.Parent.Decl.TypedIdent.Type, this.TypedIdent.Type);
+          }
         }
       }
     }
@@ -3080,9 +3202,13 @@ namespace Microsoft.Boogie
         else
         {
           if (selectorNames.Contains(selector.Name))
+          {
             rc.Error(this.tok, "The selectors for a constructor must be distinct strings");
+          }
           else
+          {
             selectorNames.Add(selector.Name);
+          }
         }
       }
 
@@ -3376,9 +3502,11 @@ namespace Microsoft.Boogie
         Contract.Assert(DefinitionBody == null);
         Body.Typecheck(tc);
         if (!cce.NonNull(Body.Type).Unify(cce.NonNull(OutParams[0]).TypedIdent.Type))
+        {
           tc.Error(Body,
             "function body with invalid type: {0} (expected: {1})",
             Body.Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
+        }
       }
       else if (DefinitionBody != null)
       {
@@ -3387,9 +3515,11 @@ namespace Microsoft.Boogie
         // We are matching the type of the function body with output param, and not the type
         // of DefinitionBody, which is always going to be bool (since it is of the form func_call == func_body)
         if (!cce.NonNull(DefinitionBody.Args[1].Type).Unify(cce.NonNull(OutParams[0]).TypedIdent.Type))
+        {
           tc.Error(DefinitionBody.Args[1],
             "function body with invalid type: {0} (expected: {1})",
             DefinitionBody.Args[1].Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
+        }
       }
     }
 
@@ -3972,7 +4102,11 @@ namespace Microsoft.Boogie
 
     public Block getBlock(string label)
     {
-      if (blockLabelMap.ContainsKey(label)) return blockLabelMap[label];
+      if (blockLabelMap.ContainsKey(label))
+      {
+        return blockLabelMap[label];
+      }
+
       return null;
     }
   }
@@ -4110,7 +4244,10 @@ namespace Microsoft.Boogie
         {
           Expr inl = this.FindExprAttribute("inline");
           if (inl == null)
+          {
             inl = this.Proc.FindExprAttribute("inline");
+          }
+
           if (inl != null)
           {
             return true;
@@ -4635,7 +4772,9 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Dictionary<Variable, Expr>>() != null);
 
       if (this.formalMap != null)
+      {
         return this.formalMap;
+      }
       else
       {
         Dictionary<Variable, Expr> /*!*/
@@ -4697,7 +4836,9 @@ namespace Microsoft.Boogie
       Contract.Assert(this.Blocks.Contains(startingBlock));
 
       if (!this.BlockPredecessorsComputed)
+      {
         ComputeStronglyConnectedComponents();
+      }
 
 #if DEBUG_PRINT
       System.Console.WriteLine("* Strongly connected components * \n{0} \n ** ", scc);
@@ -4728,7 +4869,9 @@ namespace Microsoft.Boogie
     override public void ComputeStronglyConnectedComponents()
     {
       if (!this.BlockPredecessorsComputed)
+      {
         ComputePredecessorsForBlocks();
+      }
 
       Adjacency<Block /*!*/> next = new Adjacency<Block /*!*/>(Successors);
       Adjacency<Block /*!*/> prev = new Adjacency<Block /*!*/>(Predecessors);
@@ -5101,7 +5244,9 @@ namespace Microsoft.Boogie
           next = s1[i];
         Contract.Assert(next != null);
         if (!tvs.Contains(next))
+        {
           tvs.Add(next);
+        }
       }
     }
   }
@@ -5116,7 +5261,10 @@ namespace Microsoft.Boogie
       foreach (Declaration d in decls)
       {
         if (d == null)
+        {
           continue;
+        }
+
         if (first)
         {
           first = false;

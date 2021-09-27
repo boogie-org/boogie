@@ -18,7 +18,10 @@ namespace Microsoft.Boogie.VCExprAST
         Contract.Ensures(Contract.Result<VCExprOpPrinter>() != null);
 
         if (OpPrinterVar == null)
+        {
           OpPrinterVar = new VCExprOpPrinter(this);
+        }
+
         return OpPrinterVar;
       }
     }

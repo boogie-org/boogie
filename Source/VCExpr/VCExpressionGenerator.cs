@@ -82,7 +82,9 @@ namespace Microsoft.Boogie
       Contract.Requires(cce.NonNullElements(arguments));
       Contract.Requires(cce.NonNullElements(typeArguments));
       if (typeArguments.Count > 0)
+      {
         return new VCExprMultiAry(op, arguments, typeArguments);
+      }
 
       switch (arguments.Count)
       {
@@ -273,8 +275,11 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       if (args.Count <= 1)
+      {
         // trivial case
         return True;
+      }
+
       return Function(DistinctOp(args.Count), args);
     }
 
@@ -287,9 +292,15 @@ namespace Microsoft.Boogie
       Contract.Requires(e0 != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (e0.Equals(True))
+      {
         return False;
+      }
+
       if (e0.Equals(False))
+      {
         return True;
+      }
+
       return Not(e0);
     }
 
@@ -299,11 +310,20 @@ namespace Microsoft.Boogie
       Contract.Requires(e0 != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (e0.Equals(True))
+      {
         return e1;
+      }
+
       if (e1.Equals(True))
+      {
         return e0;
+      }
+
       if (e0.Equals(False) || e1.Equals(False))
+      {
         return False;
+      }
+
       return And(e0, e1);
     }
 
@@ -313,11 +333,20 @@ namespace Microsoft.Boogie
       Contract.Requires(e0 != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (e0.Equals(False))
+      {
         return e1;
+      }
+
       if (e1.Equals(False))
+      {
         return e0;
+      }
+
       if (e0.Equals(True) || e1.Equals(True))
+      {
         return True;
+      }
+
       return Or(e0, e1);
     }
 
@@ -327,11 +356,19 @@ namespace Microsoft.Boogie
       Contract.Requires(e0 != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (e0.Equals(True))
+      {
         return e1;
+      }
+
       if (e1.Equals(False))
+      {
         return NotSimp(e0);
+      }
+
       if (e0.Equals(False) || e1.Equals(True))
+      {
         return True;
+      }
       // attempt to save on the depth of expressions (to reduce chances of stack overflows)
       while (aggressive && e1 is VCExprBinary)
       {
@@ -557,8 +594,11 @@ namespace Microsoft.Boogie
       Contract.Requires(cce.NonNullElements(bindings));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (bindings.Count == 0)
+      {
         // no empty let-bindings
         return body;
+      }
+
       return new VCExprLet(bindings, body);
     }
 
@@ -590,8 +630,11 @@ namespace Microsoft.Boogie
       VCExpr /*!*/
         antecedents = True;
       foreach (VCExprLetBinding b in bindings)
+      {
         // turn "LET_binding v = E" into "v <== E"
         antecedents = AndSimp(antecedents, Implies(b.E, b.V));
+      }
+
       return antecedents;
     }
 
@@ -603,8 +646,11 @@ namespace Microsoft.Boogie
       VCExpr /*!*/
         antecedents = True;
       foreach (VCExprLetBinding b in bindings)
+      {
         // turn "LET_binding v = E" into "v <== E"
         antecedents = AndSimp(antecedents, Eq(b.E, b.V));
+      }
+
       return antecedents;
     }
 

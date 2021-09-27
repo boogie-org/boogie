@@ -53,49 +53,81 @@ namespace Core
 
     public override Variable VisitVariable(Variable node)
     {
-      if (GetReplacementVariable(new IdentifierExpr(node.tok, node), out var variable)) return variable;
+      if (GetReplacementVariable(new IdentifierExpr(node.tok, node), out var variable))
+      {
+        return variable;
+      }
+
       return base.VisitVariable(node);
     }
 
     public override Expr VisitExistsExpr(ExistsExpr node)
     {
-      if (GetReplacementVariable(node, out var variable)) return new IdentifierExpr(variable.tok, variable);
+      if (GetReplacementVariable(node, out var variable))
+      {
+        return new IdentifierExpr(variable.tok, variable);
+      }
+
       return base.VisitExistsExpr(node);
     }
 
     public override Expr VisitForallExpr(ForallExpr node)
     {
-      if (GetReplacementVariable(node, out var variable)) return new IdentifierExpr(variable.tok, variable);
+      if (GetReplacementVariable(node, out var variable))
+      {
+        return new IdentifierExpr(variable.tok, variable);
+      }
+
       return base.VisitForallExpr(node);
     }
 
     public override Expr VisitIdentifierExpr(IdentifierExpr node)
     {
-      if (GetReplacementVariable(node, out var variable)) return new IdentifierExpr(variable.tok, variable);
+      if (GetReplacementVariable(node, out var variable))
+      {
+        return new IdentifierExpr(variable.tok, variable);
+      }
+
       return base.VisitIdentifierExpr(node);
     }
 
     public override Expr VisitLetExpr(LetExpr node)
     {
-      if (GetReplacementVariable(node, out var variable)) return new IdentifierExpr(variable.tok, variable);
+      if (GetReplacementVariable(node, out var variable))
+      {
+        return new IdentifierExpr(variable.tok, variable);
+      }
+
       return base.VisitLetExpr(node);
     }
 
     public override Expr VisitLiteralExpr(LiteralExpr node)
     {
-      if (GetReplacementVariable(node, out var variable)) return new IdentifierExpr(variable.tok, variable);
+      if (GetReplacementVariable(node, out var variable))
+      {
+        return new IdentifierExpr(variable.tok, variable);
+      }
+
       return base.VisitLiteralExpr(node);
     }
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      if (GetReplacementVariable(node, out var variable)) return new IdentifierExpr(variable.tok, variable);
+      if (GetReplacementVariable(node, out var variable))
+      {
+        return new IdentifierExpr(variable.tok, variable);
+      }
+
       return base.VisitNAryExpr(node);
     }
 
     public override Expr VisitOldExpr(OldExpr node)
     {
-      if (GetReplacementVariable(node, out var variable)) return new IdentifierExpr(variable.tok, variable);
+      if (GetReplacementVariable(node, out var variable))
+      {
+        return new IdentifierExpr(variable.tok, variable);
+      }
+
       return base.VisitOldExpr(node);
     }
   }

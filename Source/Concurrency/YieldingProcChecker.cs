@@ -12,7 +12,10 @@ namespace Microsoft.Boogie
       foreach (int layerNum in civlTypeChecker.allRefinementLayers)
       {
         if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum ||
-            layerNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
+            layerNum <= CommandLineOptions.Clo.TrustLayersUpto)
+        {
+          continue;
+        }
 
         YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum);
 

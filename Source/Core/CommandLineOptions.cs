@@ -459,9 +459,13 @@ namespace Microsoft.Boogie
           if (!ParseOption(ps.s.Substring(1), ps))
           {
             if (Path.DirectorySeparatorChar == '/' && ps.s.StartsWith("/"))
+            {
               this._files.Add(arg);
+            }
             else
+            {
               ps.Error("unknown switch: {0}", ps.s);
+            }
           }
         }
         else
@@ -877,9 +881,13 @@ namespace Microsoft.Boogie
       get
       {
         if (DebugRefuted)
+        {
           return XmlSink;
+        }
         else
+        {
           return null;
+        }
       }
     }
 
@@ -1751,7 +1759,9 @@ namespace Microsoft.Boogie
         }
 
         if (UseProverEvaluate)
+        {
           StratifiedInliningWithoutModels = true;
+        }
       }
 
       if (Trace)
@@ -1789,7 +1799,10 @@ namespace Microsoft.Boogie
     public virtual StringCollection ParseNamedArgumentList(string argList)
     {
       if (argList == null || argList.Length == 0)
+      {
         return null;
+      }
+
       StringCollection result = new StringCollection();
       int i = 0;
       for (int n = argList.Length; i < n;)
@@ -1818,11 +1831,20 @@ namespace Microsoft.Boogie
       int commaIndex = argList.IndexOf(",", startIndex);
       int semicolonIndex = argList.IndexOf(";", startIndex);
       if (commaIndex == -1)
+      {
         return semicolonIndex;
+      }
+
       if (semicolonIndex == -1)
+      {
         return commaIndex;
+      }
+
       if (commaIndex < semicolonIndex)
+      {
         return commaIndex;
+      }
+
       return semicolonIndex;
     }
 

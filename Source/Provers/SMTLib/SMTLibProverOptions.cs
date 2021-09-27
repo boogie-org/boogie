@@ -57,14 +57,19 @@ namespace Microsoft.Boogie.SMTLib
     public void AddWeakSmtOption(string name, string val)
     {
       if (!SmtOptions.Any(o => o.Option == name))
+      {
         SmtOptions.Add(new OptionValue(name, val));
+      }
     }
 
     public void AddSmtOption(string opt)
     {
       var idx = opt.IndexOf('=');
       if (idx <= 0 || idx == opt.Length - 1)
+      {
         ReportError("Options to be passed to the prover should have the format: <name>=<value>, got '" + opt + "'");
+      }
+
       AddSmtOption(opt.Substring(0, idx), opt.Substring(idx + 1));
     }
 
@@ -126,12 +131,20 @@ namespace Microsoft.Boogie.SMTLib
         case SolverKind.CVC5:
           SolverArguments.Add(
             "--lang=smt --no-strict-parsing --no-condense-function-values --incremental --produce-models");
-          if (Logic == null) Logic = "ALL";
+          if (Logic == null)
+          {
+            Logic = "ALL";
+          }
+
           SolverBinaryName = Solver.ToString().ToLower();
           break;
         case SolverKind.YICES2:
           SolverArguments.Add("--incremental");
-          if (Logic == null) Logic = "ALL";
+          if (Logic == null)
+          {
+            Logic = "ALL";
+          }
+
           SolverBinaryName = "yices-smt2";
           break;
         default:

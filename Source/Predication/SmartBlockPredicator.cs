@@ -161,7 +161,10 @@ namespace Microsoft.Boogie
         var sCmd = (StateCmd) cmd;
         var newCmdSeq = new List<Cmd>();
         foreach (Cmd c in sCmd.Cmds)
+        {
           PredicateCmd(p, pDom, newCmdSeq, c);
+        }
+
         sCmd.Cmds = newCmdSeq;
         cmdSeq.Add(sCmd);
       }
@@ -201,7 +204,9 @@ namespace Microsoft.Boogie
           foreach (Block target in gCmd.labelTargets)
           {
             if (!partInfo.ContainsKey(target))
+            {
               continue;
+            }
 
             // In this case we not only predicate with the current predicate p,
             // but also with the "part predicate"; this ensures that we do not
@@ -219,9 +224,14 @@ namespace Microsoft.Boogie
             {
               List<Expr> predList;
               if (!predsExitingLoop.ContainsKey(exit))
+              {
                 predList = predsExitingLoop[exit] = new List<Expr>();
+              }
               else
+              {
                 predList = predsExitingLoop[exit];
+              }
+
               predList.Add(part.pred);
             }
 
@@ -415,11 +425,18 @@ namespace Microsoft.Boogie
       {
         var b = i.Current;
         if (!b.Item2 && blockGraph.Headers.Contains(b.Item1))
+        {
           headsSeen.Add(b.Item1);
+        }
         else if (b.Item2)
+        {
           headsSeen.Remove(b.Item1);
+        }
+
         if (b.Item1 == src)
+        {
           return headsSeen;
+        }
       }
 
       Debug.Assert(false);
@@ -433,11 +450,17 @@ namespace Microsoft.Boogie
       {
         var b = i.Current;
         if (b.Item1 == dest)
+        {
           yield break;
+        }
         else if (!b.Item2 && blockGraph.Headers.Contains(b.Item1))
+        {
           headsSeen.Add(b.Item1);
+        }
         else if (b.Item2 && !headsSeen.Contains(b.Item1))
+        {
           yield return b.Item1;
+        }
       }
 
       Debug.Assert(false);
@@ -461,7 +484,9 @@ namespace Microsoft.Boogie
       foreach (var block in blockGraph.Nodes)
       {
         if (uni.IsUniform(impl.Name, block))
+        {
           continue;
+        }
 
         var parts = block.Cmds.Cast<Cmd>().TakeWhile(
           c => c is AssumeCmd &&
@@ -484,7 +509,9 @@ namespace Microsoft.Boogie
         {
           var gc = block.TransferCmd as GotoCmd;
           if (gc != null && gc.labelTargets.Count == 1)
+          {
             realDest = gc.labelTargets[0];
+          }
         }
 
         partInfo[block] = new PartInfo(pred, realDest);
@@ -501,9 +528,13 @@ namespace Microsoft.Boogie
         if (!blockGraph.DominatorMap.DominatedBy(pred, block))
         {
           if (predecessor == null)
+          {
             predecessor = pred;
+          }
           else
+          {
             predecessor = blockGraph.DominatorMap.LeastCommonAncestor(pred, predecessor);
+          }
         }
       }
 
@@ -519,7 +550,9 @@ namespace Microsoft.Boogie
       partInfo = BuildPartitionInfo();
 
       if (myUseProcedurePredicates)
+      {
         fp = Expr.Ident(impl.InParams[0]);
+      }
 
       var newBlocks = new List<Block>();
       Block prevBlock = null;
@@ -572,8 +605,11 @@ namespace Microsoft.Boogie
             }
 
             if (prevBlock != null)
+            {
               prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
                 new List<Block> {backedgeBlock, tailBlock});
+            }
+
             prevBlock = tailBlock;
           }
           else
@@ -591,7 +627,9 @@ namespace Microsoft.Boogie
       }
 
       if (prevBlock != null)
+      {
         prevBlock.TransferCmd = new ReturnCmd(Token.NoToken);
+      }
 
       impl.Blocks = newBlocks;
     }
@@ -635,24 +673,35 @@ namespace Microsoft.Boogie
       Block dominator = FindImmediateDominator(block);
       Expr pDomExpr = Expr.True;
       if (dominator != null && predMap.ContainsKey(dominator))
+      {
         pDomExpr = new IdentifierExpr(Token.NoToken, predMap[dominator]);
+      }
+
       var transferCmd = block.TransferCmd;
       foreach (Cmd cmd in oldCmdSeq)
+      {
         PredicateCmd(pExpr, pDomExpr, newBlocks, block, cmd, out block);
+      }
 
       if (ownedMap.ContainsKey(firstBlock))
       {
         var owned = ownedMap[firstBlock];
         foreach (var v in owned)
+        {
           block.Cmds.Add(Cmd.SimpleAssign(Token.NoToken, Expr.Ident(v), Expr.False));
+        }
       }
 
       PredicateTransferCmd(pExpr, block, block.Cmds, transferCmd, out var hasPredicatedRegion);
 
       if (hasPredicatedRegion)
+      {
         prevBlock = block;
+      }
       else
+      {
         prevBlock = null;
+      }
 
       doneBlocks.Add(block);
     }

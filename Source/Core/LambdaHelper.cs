@@ -345,10 +345,12 @@ namespace Microsoft.Boogie
         oldFinder.Visit(lambda);
         var oldSubst = new Dictionary<Variable, Expr>();
         foreach (var v in oldFinder.FreeOldVars)
+        {
           if (v is GlobalVariable g)
           {
             oldSubst.Add(g, new OldExpr(g.tok, new IdentifierExpr(g.tok, g)) {Type = g.TypedIdent.Type});
           }
+        }
 
         var lambdaBody = Substituter.ApplyReplacingOldExprs(
           Substituter.SubstitutionFromDictionary(new Dictionary<Variable, Expr>()),

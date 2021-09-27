@@ -521,14 +521,18 @@ namespace Microsoft.Boogie.VCExprAST
     public bool MoveNext()
     {
       if (ExprTodo.Count == 0)
+      {
         return false;
+      }
 
       CurrentExpr = ExprTodo.Pop();
       VCExprNAry currentNAry = CurrentExpr as VCExprNAry;
       if (currentNAry != null && Descend(currentNAry))
       {
         for (int i = currentNAry.Arity - 1; i >= 0; --i)
+        {
           ExprTodo.Push(currentNAry[i]);
+        }
       }
 
       return true;
@@ -846,7 +850,9 @@ namespace Microsoft.Boogie.VCExprAST
       {
         Contract.Assert(tvar != null);
         if (!BoundTypeVars.Contains(tvar) && !FreeTypeVars.Contains(tvar))
+        {
           FreeTypeVars.Add(tvar);
+        }
       }
     }
 
@@ -951,12 +957,18 @@ namespace Microsoft.Boogie.VCExprAST
         VCExpr /*!*/
           newExpr = expr.Accept(this, arg);
         if (!Object.ReferenceEquals(expr, newExpr))
+        {
           changed = true;
+        }
+
         res.Add(newExpr);
       }
 
       if (!changed)
+      {
         return exprs;
+      }
+
       return res;
     }
 
@@ -1003,7 +1015,9 @@ namespace Microsoft.Boogie.VCExprAST
       NAryExprTodoStack.Push(exprTodo);
       NAryExprTodoStack.Push(CombineResultsMarker);
       for (int i = exprTodo.Arity - 1; i >= 0; --i)
+      {
         NAryExprTodoStack.Push(exprTodo[i]);
+      }
     }
 
     public virtual bool AvoidVisit(VCExprNAry node, Arg arg)
@@ -1044,7 +1058,10 @@ namespace Microsoft.Boogie.VCExprAST
               nextSubExpr = NAryExprResultStack.Pop();
             Contract.Assert(nextSubExpr != null);
             if (!Object.ReferenceEquals(nextSubExpr, originalExpr[i]))
+            {
               changed = true;
+            }
+
             newSubExprs.Insert(0, nextSubExpr);
           }
 
@@ -1085,10 +1102,14 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       if (changed)
+      {
         return Gen.Function(originalNode.Op,
           newSubExprs, originalNode.TypeArguments);
+      }
       else
+      {
         return originalNode;
+      }
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1127,7 +1148,10 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       if (!changed)
+      {
         return triggers;
+      }
+
       return newTriggers;
     }
 
@@ -1144,7 +1168,9 @@ namespace Microsoft.Boogie.VCExprAST
         newbody = body.Accept(this, arg);
       Contract.Assert(newbody != null);
       if (!Object.ReferenceEquals(body, newbody))
+      {
         changed = true;
+      }
 
       // visit the trigger expressions as well
       List<VCTrigger /*!*/> /*!*/
@@ -1154,10 +1180,15 @@ namespace Microsoft.Boogie.VCExprAST
         newTriggers = MutateTriggers(triggers, arg);
       Contract.Assert(cce.NonNullElements(newTriggers));
       if (!Object.ReferenceEquals(triggers, newTriggers))
+      {
         changed = true;
+      }
 
       if (!changed)
+      {
         return node;
+      }
+
       return Gen.Quantify(node.Quan, node.TypeParameters, node.BoundVars,
         newTriggers, node.Info, newbody);
     }
@@ -1173,7 +1204,9 @@ namespace Microsoft.Boogie.VCExprAST
       VCExpr /*!*/
         newbody = body.Accept(this, arg);
       if (!Object.ReferenceEquals(body, newbody))
+      {
         changed = true;
+      }
 
       List<VCExprLetBinding /*!*/> /*!*/
         newbindings = new List<VCExprLetBinding /*!*/>();
@@ -1198,7 +1231,10 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       if (!changed)
+      {
         return node;
+      }
+
       return Gen.Let(newbindings, newbody);
     }
   }
@@ -1269,7 +1305,9 @@ namespace Microsoft.Boogie.VCExprAST
         for (int i = TermSubsts.Count - 1; i >= 0; --i)
         {
           if (TermSubsts[i].TryGetValue(var, out var res))
+          {
             return res;
+          }
         }
 
         return null;
@@ -1285,7 +1323,9 @@ namespace Microsoft.Boogie.VCExprAST
         for (int i = TypeSubsts.Count - 1; i >= 0; --i)
         {
           if (TypeSubsts[i].TryGetValue(var, out var res))
+          {
             return res;
+          }
         }
 
         return null;
@@ -1351,7 +1391,9 @@ namespace Microsoft.Boogie.VCExprAST
           {
             Contract.Assert(var != null);
             if (!var.Equals(this[var]))
+            {
               domain.Add(var);
+            }
           }
         }
 
@@ -1374,7 +1416,9 @@ namespace Microsoft.Boogie.VCExprAST
           {
             Contract.Assert(var != null);
             if (!var.Equals(this[var]))
+            {
               domain.Add(var);
+            }
           }
         }
 
@@ -1391,9 +1435,15 @@ namespace Microsoft.Boogie.VCExprAST
         FreeVariableCollector /*!*/
           coll = new FreeVariableCollector();
         foreach (VCExprVar /*!*/ var in TermDomain)
+        {
           coll.Collect(cce.NonNull(this)[var]);
+        }
+
         foreach (TypeVariable /*!*/ var in TypeDomain)
+        {
           coll.Collect(cce.NonNull(this)[var]);
+        }
+
         return coll;
       }
     }
@@ -1404,9 +1454,15 @@ namespace Microsoft.Boogie.VCExprAST
       VCExprSubstitution /*!*/
         res = new VCExprSubstitution();
       foreach (IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/ dict in TermSubsts)
+      {
         res.TermSubsts.Add(HelperFuns.Clone(dict));
+      }
+
       foreach (IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ dict in TypeSubsts)
+      {
         res.TypeSubsts.Add(HelperFuns.Clone(dict));
+      }
+
       return res;
     }
   }
@@ -1434,7 +1490,9 @@ namespace Microsoft.Boogie.VCExprAST
       // variables can be shadowed by a binder
       if (typeParams.Any(var => substitution.ContainsKey(var)) ||
           boundVars.Any(var => substitution.ContainsKey(var)))
+      {
         return true;
+      }
       // compute the codomain of the substitution
       FreeVariableCollector coll = substitution.Codomains;
       Contract.Assert(coll != null);
@@ -1469,14 +1527,21 @@ namespace Microsoft.Boogie.VCExprAST
           newType = t.Substitute(substitution.ToTypeSubst);
         Contract.Assert(newType != null);
         if (!ReferenceEquals(t, newType))
+        {
           changed = true;
+        }
+
         typeParams.Add(newType);
       }
 
       if (changed)
+      {
         return Gen.Function(originalNode.Op, newSubExprs, typeParams);
+      }
       else
+      {
         return originalNode;
+      }
     }
 
     public override VCExpr /*!*/ Visit(VCExprQuantifier /*!*/ node, VCExprSubstitution /*!*/ substitution)
@@ -1576,7 +1641,10 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       VCExpr res = substitution[node];
       if (res != null)
+      {
         return res;
+      }
+
       return node;
     }
 

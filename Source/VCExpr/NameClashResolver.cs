@@ -34,7 +34,9 @@ namespace Microsoft.Boogie.VCExprAST
       LocalNames = new List<IDictionary<Object, string>>();
 
       foreach (IDictionary<Object /*!*/, string /*!*/> /*!*/ d in namer.LocalNames)
+      {
         LocalNames.Add(new Dictionary<Object /*!*/, string /*!*/>(d));
+      }
 
       UsedNames = new HashSet<string>(namer.UsedNames);
       CurrentCounters = new Dictionary<string, int>(namer.CurrentCounters);
@@ -162,7 +164,9 @@ namespace Microsoft.Boogie.VCExprAST
       string res = this[thingie];
 
       if (res != null)
+      {
         return res;
+      }
 
       // if the object is not yet registered, create a name for it
       res = NextFreeName(thingie, inherentName);
@@ -182,7 +186,9 @@ namespace Microsoft.Boogie.VCExprAST
         for (int i = LocalNames.Count - 1; i >= 0; --i)
         {
           if (LocalNames[i].TryGetValue(thingie, out res))
+          {
             return res;
+          }
         }
 
         GlobalNames.TryGetValue(thingie, out res);
@@ -234,7 +240,10 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(thingie != null);
       Contract.Ensures(Contract.Result<string>() != null);
       if (GlobalPlusLocalNames.TryGetValue(thingie, out var name))
+      {
         return name;
+      }
+
       return Spacer + "undefined" + Spacer + thingie.GetHashCode() + Spacer;
     }
   }

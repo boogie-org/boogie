@@ -31,6 +31,7 @@ Source/*.cache
 Source/.vs/
 
 .vscode
+.vs
 
 # MonoDevelop files
 Source/*.userprefs

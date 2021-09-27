@@ -122,7 +122,9 @@ The generic options may or may not be used by the prover plugin.
       Contract.Ensures(confirmedProverPath != null);
 
       if (confirmedProverPath != null)
+      {
         return confirmedProverPath;
+      }
 
       // Explicitly set path always has priority
       if (ProverPath != null)
@@ -211,6 +213,7 @@ The generic options may or may not be used by the prover plugin.
       Contract.Requires(opt != null);
       string tmp = null;
       if (ParseString(opt, name, ref tmp))
+      {
         switch (cce.NonNull(tmp).ToLower())
         {
           case "1":
@@ -226,6 +229,7 @@ The generic options may or may not be used by the prover plugin.
             ReportError("Invalid Boolean option \"" + opt + "\"");
             return false;
         }
+      }
 
       return false;
     }
@@ -279,7 +283,10 @@ The generic options may or may not be used by the prover plugin.
         string filename = LogFilename;
         Contract.Assert(filename != null);
         if (descName != null)
+        {
           filename = Helpers.SubstituteAtPROC(descName, filename);
+        }
+
         return new StreamWriter(filename, AppendLogFile);
       }
       else

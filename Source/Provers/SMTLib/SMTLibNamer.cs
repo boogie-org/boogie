@@ -72,13 +72,22 @@ namespace Microsoft.Boogie.SMTLib
       {
         // don't move out, c.f. http://en.wikipedia.org/wiki/Double-checked_locking
         if (symbolListsInitilized)
+        {
           return;
+        }
+
         reservedSmtWords = new HashSet<string>();
         foreach (var w in reservedSmtWordsList)
+        {
           reservedSmtWords.Add(w);
+        }
+
         validIdChar = new bool[255];
         for (int i = 0; i < validIdChar.Length; ++i)
+        {
           validIdChar[i] = char.IsLetterOrDigit((char) i) || idCharacters.IndexOf((char) i) >= 0;
+        }
+
         symbolListsInitilized = true;
       }
     }
@@ -98,7 +107,9 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       if (allGood)
+      {
         return s;
+      }
 
       return "|" + s + "|";
     }
@@ -111,14 +122,20 @@ namespace Microsoft.Boogie.SMTLib
       // used for labels so we don't check for it here. It hopefully won't matter
       // in practice because ``@`` cannot be legally used in Boogie identifiers.
       if (reservedSmtWords.Contains(s) || char.IsDigit(s[0]) || s[0] == '.')
+      {
         s = "q@" + s;
+      }
 
       // | and \ are illegal even in quoted identifiers
       if (s.IndexOf('|') >= 0)
+      {
         s = s.Replace("|", "_");
+      }
 
       if (s.IndexOf('\\') >= 0)
+      {
         s = s.Replace("\\", "_");
+      }
 
       return s;
     }

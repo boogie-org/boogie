@@ -182,14 +182,20 @@ namespace Microsoft.Boogie.SMTLib
     public void AddKnownFunction(Function func)
     {
       if (KnownFunctions.Contains(func))
+      {
         return;
+      }
+
       KnownFunctions.Add(func);
     }
 
     public void AddKnownVariable(VCExprVar variable)
     {
       if (KnownVariables.Contains(variable))
+      {
         return;
+      }
+
       KnownVariables.Add(variable);
     }
 
@@ -197,8 +203,14 @@ namespace Microsoft.Boogie.SMTLib
     {
       Contract.Requires(node != null);
 
-      if (node.Op is VCExprStoreOp) RegisterStore(node);
-      else if (node.Op is VCExprSelectOp) RegisterSelect(node);
+      if (node.Op is VCExprStoreOp)
+      {
+        RegisterStore(node);
+      }
+      else if (node.Op is VCExprSelectOp)
+      {
+        RegisterSelect(node);
+      }
       else if (node.Op is VCExprSoftOp)
       {
         var exprVar = node[0] as VCExprVar;
@@ -234,10 +246,15 @@ namespace Microsoft.Boogie.SMTLib
             var argTypes = f.InParams.Cast<Variable>().MapConcat(p => TypeToStringReg(p.TypedIdent.Type), " ");
             string decl;
             if (RegisteredRelations.Contains(op.Func))
+            {
               decl = "(declare-rel " + printedName + " (" + argTypes + ") " + ")";
+            }
             else
+            {
               decl = "(declare-fun " + printedName + " (" + argTypes + ") " +
                      TypeToStringReg(f.OutParams[0].TypedIdent.Type) + ")";
+            }
+
             AddDeclaration(decl);
           }
 
@@ -285,7 +302,10 @@ namespace Microsoft.Boogie.SMTLib
     private void RegisterType(Type type)
     {
       Contract.Requires(type != null);
-      if (KnownTypes.Contains(type)) return;
+      if (KnownTypes.Contains(type))
+      {
+        return;
+      }
 
       if (type.IsMap && options.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
       {
@@ -302,14 +322,18 @@ namespace Microsoft.Boogie.SMTLib
         RegisterType(mapType.Result);
 
         if (!options.UseArrayTheory)
+        {
           AddDeclaration("(declare-sort " + TypeToString(type) + " 0)");
+        }
 
         return;
       }
 
       if (type.IsBool || type.IsInt || type.IsReal || type.IsBv || type.IsFloat || type.IsRMode || type.IsString ||
           type.IsRegEx)
+      {
         return;
+      }
 
       CtorType ctorType = type as CtorType;
       if (ctorType != null)
@@ -323,7 +347,9 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         if (ctorType.IsDatatype())
+        {
           return;
+        }
       }
 
       if (options.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
@@ -339,7 +365,9 @@ namespace Microsoft.Boogie.SMTLib
       RegisterType(node[0].Type);
 
       if (options.UseArrayTheory)
+      {
         return;
+      }
 
       string name = new SMTLibExprLineariser(options).SelectOpName(node);
       name = Namer.GetQuotedName(name, name);
@@ -358,7 +386,9 @@ namespace Microsoft.Boogie.SMTLib
       RegisterType(node.Type); // this is the map type, registering it should register also the index and value types
 
       if (options.UseArrayTheory)
+      {
         return;
+      }
 
       string name = new SMTLibExprLineariser(options).StoreOpName(node);
       name = Namer.GetQuotedName(name, name);
@@ -411,7 +441,10 @@ namespace Microsoft.Boogie.SMTLib
           ax1 += " :weight 0)))";
 
           if (node.Arity > 3)
+          {
             dist = "(or " + dist + ")";
+          }
+
           ax2 += ") (! (=> " + dist + " (= (" + sel + " (" + name + " ?x0" + argX + v + ")" + argY + ") (" + sel + " ?x0" +
                  argY + ")))";
           ax2 += " :weight 0)))";

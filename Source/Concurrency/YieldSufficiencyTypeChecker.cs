@@ -105,14 +105,20 @@ namespace Microsoft.Boogie
         civlTypeChecker.procToYieldingProc.ContainsKey(impl.Proc)))
       {
         MoverProc callerProc = civlTypeChecker.procToYieldingProc[impl.Proc] as MoverProc;
-        if (callerProc == null) continue;
+        if (callerProc == null)
+        {
+          continue;
+        }
 
         foreach (var callCmd in impl.Blocks.SelectMany(b => b.Cmds).OfType<CallCmd>())
         {
           if (civlTypeChecker.procToYieldingProc.ContainsKey(callCmd.Proc))
           {
             MoverProc calleeProc = civlTypeChecker.procToYieldingProc[callCmd.Proc] as MoverProc;
-            if (calleeProc == null) continue;
+            if (calleeProc == null)
+            {
+              continue;
+            }
 
             Debug.Assert(callerProc.upperLayer == calleeProc.upperLayer);
             moverProcedureCallGraph.AddEdge(callerProc, calleeProc);
@@ -170,11 +176,19 @@ namespace Microsoft.Boogie
             edgeToLoopHeader[new Tuple<Absy, Absy>(source, header)] = header;
             foreach (var node in graph.NaturalLoops(header, source))
             {
-              if (node == header) continue;
+              if (node == header)
+              {
+                continue;
+              }
+
               foreach (var pred in graph.Predecessors(node))
               {
                 var edge = new Tuple<Absy, Absy>(pred, node);
-                if (edgeToLoopHeader.ContainsKey(edge)) continue;
+                if (edgeToLoopHeader.ContainsKey(edge))
+                {
+                  continue;
+                }
+
                 edgeToLoopHeader[edge] = header;
               }
             }
@@ -210,7 +224,11 @@ namespace Microsoft.Boogie
         foreach (var edge in edgeToLoopHeader.Keys)
         {
           var header = edgeToLoopHeader[edge];
-          if (yieldingLoopHeaders.Contains(header)) continue;
+          if (yieldingLoopHeaders.Contains(header))
+          {
+            continue;
+          }
+
           if (atomicityLabels[edge] == Y)
           {
             civlTypeChecker.Error(header,
@@ -239,7 +257,11 @@ namespace Microsoft.Boogie
         foreach (Block header in implGraph.Headers)
         {
           if (civlTypeChecker.IsYieldingLoopHeader(header, currLayerNum) ||
-              civlTypeChecker.IsCooperatingLoopHeader(header, currLayerNum)) continue;
+              civlTypeChecker.IsCooperatingLoopHeader(header, currLayerNum))
+          {
+            continue;
+          }
+
           initialConstraints[header] = new HashSet<int> {RM};
         }
 
@@ -285,11 +307,21 @@ namespace Microsoft.Boogie
       private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)
       {
         if (yieldingProc.moverType == MoverType.Non && simulationRelation[initialState].Count == 0)
+        {
           return false;
+        }
+
         if (yieldingProc.IsRightMover && (!simulationRelation[initialState].Contains(RM) ||
                                           finalStates.Any(f => !simulationRelation[f].Contains(RM))))
+        {
           return false;
-        if (yieldingProc.IsLeftMover && !simulationRelation[initialState].Contains(LM)) return false;
+        }
+
+        if (yieldingProc.IsLeftMover && !simulationRelation[initialState].Contains(LM))
+        {
+          return false;
+        }
+
         return true;
       }
 
@@ -297,9 +329,14 @@ namespace Microsoft.Boogie
       {
         MoverProc source = null;
         if (civlTypeChecker.procToYieldingProc.ContainsKey(call.Proc))
+        {
           source = civlTypeChecker.procToYieldingProc[call.Proc] as MoverProc;
+        }
+
         if (source == null)
+        {
           return false;
+        }
 
         MoverProc target = (MoverProc) yieldingProc;
 
@@ -313,7 +350,10 @@ namespace Microsoft.Boogie
           visited.Add(curr);
 
           if (curr == target)
+          {
             return true;
+          }
+
           frontier.UnionWith(moverProcedureCallGraph.Successors(curr).Except(visited));
         }
 
@@ -561,18 +601,30 @@ namespace Microsoft.Boogie
         foreach (var callCmd in parCallCmd.CallCmds)
         {
           var label = CallCmdLabel(callCmd);
-          if (label == P || label == Y || label == B) continue;
+          if (label == P || label == Y || label == B)
+          {
+            continue;
+          }
+
           switch (phase)
           {
             case ParallelCallPhase.BEFORE:
-              if (label == L) continue;
+              if (label == L)
+              {
+                continue;
+              }
+
               phase = ParallelCallPhase.AFTER;
               break;
             case ParallelCallPhase.MIDDLE:
               Debug.Assert(false);
               break;
             case ParallelCallPhase.AFTER:
-              if (label == R) continue;
+              if (label == R)
+              {
+                continue;
+              }
+
               civlTypeChecker.Error(parCallCmd,
                 $"Mover types in parallel call do not match (left)*(non)?(right)* at layer {currLayerNum}");
               break;
@@ -589,7 +641,11 @@ namespace Microsoft.Boogie
           var label = CallCmdLabel(callCmd);
           Debug.Assert(label != N);
           if (label == P || label == Y && civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc)
-          ) continue;
+          )
+          {
+            continue;
+          }
+
           switch (phase)
           {
             case ParallelCallPhase.BEFORE:
@@ -604,7 +660,11 @@ namespace Microsoft.Boogie
 
               break;
             case ParallelCallPhase.MIDDLE:
-              if (label == Y) continue;
+              if (label == Y)
+              {
+                continue;
+              }
+
               if (label == L)
               {
                 civlTypeChecker.Error(parCallCmd,
@@ -617,7 +677,11 @@ namespace Microsoft.Boogie
 
               break;
             case ParallelCallPhase.AFTER:
-              if (label == R || label == B) continue;
+              if (label == R || label == B)
+              {
+                continue;
+              }
+
               civlTypeChecker.Error(parCallCmd,
                 $"Mover types in parallel call do not match (left)*(yielding-proc)*(right)* at layer {currLayerNum}");
               break;
@@ -632,8 +696,15 @@ namespace Microsoft.Boogie
         int cnt = 0;
         foreach (var e in edges)
         {
-          if (!map.ContainsKey(e.Item1)) map[e.Item1] = cnt++;
-          if (!map.ContainsKey(e.Item3)) map[e.Item3] = cnt++;
+          if (!map.ContainsKey(e.Item1))
+          {
+            map[e.Item1] = cnt++;
+          }
+
+          if (!map.ContainsKey(e.Item3))
+          {
+            map[e.Item3] = cnt++;
+          }
         }
 
         var s = new StringBuilder();

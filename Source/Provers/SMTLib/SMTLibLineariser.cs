@@ -95,7 +95,10 @@ namespace Microsoft.Boogie.SMTLib
         Contract.Ensures(Contract.Result<IVCExprOpVisitor<bool, LineariserOptions>>() != null);
 
         if (OpLinObject == null)
+        {
           OpLinObject = new SMTLibOpLineariser(this, wr);
+        }
+
         return OpLinObject;
       }
     }
@@ -133,7 +136,10 @@ namespace Microsoft.Boogie.SMTLib
           // Contract.Assert(m.MapArity == 1);
           sb.Append("(Array ");
           foreach (Type tp in m.Arguments)
+          {
             sb.Append(TypeToString(tp)).Append(" ");
+          }
+
           sb.Append(TypeToString(m.Result)).Append(")");
         }
         else if (t.IsMap)
@@ -143,7 +149,10 @@ namespace Microsoft.Boogie.SMTLib
           for (int i = 0; i < m.MapArity; ++i)
           {
             if (i != 0)
+            {
               sb.Append(',');
+            }
+
             TypeToStringHelper(m.Arguments[i], sb);
           }
 
@@ -174,19 +183,33 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Ensures(Contract.Result<string>() != null);
 
       if (t.IsBool)
+      {
         return "Bool";
+      }
       else if (t.IsInt)
+      {
         return "Int";
+      }
       else if (t.IsReal)
+      {
         return "Real";
+      }
       else if (t.IsFloat)
+      {
         return "(_ FloatingPoint " + t.FloatExponent + " " + t.FloatSignificand + ")";
+      }
       else if (t.IsBv)
+      {
         return "(_ BitVec " + t.BvBits + ")";
+      }
       else if (t.IsRMode)
+      {
         return "RoundingMode";
+      }
       else if (t.IsString)
+      {
         return "String";
+      }
       else if (t.IsRegEx)
       {
         return "(RegEx String)";
@@ -201,9 +224,13 @@ namespace Microsoft.Boogie.SMTLib
         TypeToStringHelper(t, sb);
         var s = sb.ToString();
         if (s[0] == '(')
+        {
           return s;
+        }
         else
+        {
           return SMTLibNamer.QuoteId("T@" + s);
+        }
       }
     }
 
@@ -215,7 +242,9 @@ namespace Microsoft.Boogie.SMTLib
 
       // It used to be "sign_extend 12" in Simplify, and is "(_ sign_extend 12)" with SMT
       if (retVal != null && (retVal.StartsWith("sign_extend ") || retVal.StartsWith("zero_extend ")))
+      {
         return "(_ " + retVal + ")";
+      }
 
       if (retVal == null)
       {
@@ -235,26 +264,38 @@ namespace Microsoft.Boogie.SMTLib
     public bool Visit(VCExprLiteral node, LineariserOptions options)
     {
       if (node == VCExpressionGenerator.True)
+      {
         wr.Write("true");
+      }
       else if (node == VCExpressionGenerator.False)
+      {
         wr.Write("false");
+      }
       else if (node is VCExprIntLit)
       {
         BigNum lit = ((VCExprIntLit) node).Val;
         if (lit.IsNegative)
+        {
           // In SMT2 "-42" is an identifier (SMT2, Sect. 3.2 "Symbols")
           wr.Write("(- 0 {0})", lit.Abs);
+        }
         else
+        {
           wr.Write(lit);
+        }
       }
       else if (node is VCExprRealLit)
       {
         BigDec lit = ((VCExprRealLit) node).Val;
         if (lit.IsNegative)
+        {
           // In SMT2 "-42" is an identifier (SMT2, Sect. 3.2 "Symbols")
           wr.Write("(- 0.0 {0})", lit.Abs.ToDecimalString());
+        }
         else
+        {
           wr.Write(lit.ToDecimalString());
+        }
       }
       else if (node is VCExprFloatLit)
       {
@@ -402,11 +443,16 @@ namespace Microsoft.Boogie.SMTLib
         VCQuantifierInfo info = node.Info;
         var weight = info.weight;
         if (!ProverOptions.UseWeights)
+        {
           weight = 1;
+        }
+
         var hasAttrs = node.Triggers.Count > 0 || info.qid != null || weight != 1 || info.uniqueId != -1;
 
         if (hasAttrs)
+        {
           wr.Write("(! ");
+        }
 
         Linearise(node.Body, options);
 
@@ -414,11 +460,20 @@ namespace Microsoft.Boogie.SMTLib
         {
           wr.Write("\n");
           if (info.qid != null)
+          {
             wr.Write(" :qid {0}\n", SMTLibNamer.QuoteId(info.qid));
+          }
+
           if (weight != 1)
+          {
             wr.Write(" :weight {0}\n", weight);
+          }
+
           if (info.uniqueId != -1)
+          {
             wr.Write(" :skolemid |{0}|\n", info.uniqueId);
+          }
+
           WriteTriggers(node.Triggers, options);
 
           wr.Write(")");
@@ -472,9 +527,13 @@ namespace Microsoft.Boogie.SMTLib
               if (nary != null && (nary.Op == VCExpressionGenerator.NeqOp || nary.Op == VCExpressionGenerator.EqOp))
               {
                 if (nary[0] is VCExprLiteral)
+                {
                   subPat = nary[1];
+                }
                 else if (nary[1] is VCExprLiteral)
+                {
                   subPat = nary[0];
+                }
               }
 
               Linearise(subPat, options);
@@ -521,7 +580,10 @@ namespace Microsoft.Boogie.SMTLib
 
         Linearise(node.Body, options);
         foreach (VCExprLetBinding b in node)
+        {
           wr.Write(")");
+        }
+
         return true;
       }
       finally
@@ -565,16 +627,23 @@ namespace Microsoft.Boogie.SMTLib
         {
           Contract.Assert(e != null);
           if (!hasArgs)
+          {
             wr.Write("({0}", opName);
+          }
+
           wr.Write(" ");
           ExprLineariser.Linearise(e, options);
           hasArgs = true;
         }
 
         if (hasArgs)
+        {
           wr.Write(")");
+        }
         else
+        {
           wr.Write("{0}", opName);
+        }
       }
 
       ///////////////////////////////////////////////////////////////////////////////////
@@ -638,9 +707,14 @@ namespace Microsoft.Boogie.SMTLib
       {
         VCExprCustomOp op = (VCExprCustomOp) node.Op;
         if (!ExprLineariser.ProverOptions.UseTickleBool && op.Name == "tickleBool")
+        {
           ExprLineariser.Linearise(VCExpressionGenerator.True, options);
+        }
         else
+        {
           WriteApplication(op.Name, node, options);
+        }
+
         return true;
       }
 
@@ -663,7 +737,9 @@ namespace Microsoft.Boogie.SMTLib
           else
           {
             if (groupings.Length > 1)
+            {
               wr.Write("(and ");
+            }
 
             foreach (var g in groupings)
             {
@@ -679,7 +755,9 @@ namespace Microsoft.Boogie.SMTLib
             }
 
             if (groupings.Length > 1)
+            {
               wr.Write(")");
+            }
 
             wr.Write("\n");
           }
@@ -693,7 +771,10 @@ namespace Microsoft.Boogie.SMTLib
         var name = ExprLineariser.SelectOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
         if (ExprLineariser.LibOptions.UseArrayTheory)
+        {
           name = "select";
+        }
+
         WriteApplication(name, node, options);
         return true;
       }
@@ -703,7 +784,10 @@ namespace Microsoft.Boogie.SMTLib
         var name = ExprLineariser.StoreOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
         if (ExprLineariser.LibOptions.UseArrayTheory)
+        {
           name = "store";
+        }
+
         WriteApplication(name, node, options);
         return true;
       }

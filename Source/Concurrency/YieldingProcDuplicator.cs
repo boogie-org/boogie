@@ -86,9 +86,15 @@ namespace Microsoft.Boogie
     {
       Requires requires = base.VisitRequires(node);
       if (node.Free)
+      {
         return requires;
+      }
+
       if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
+      {
         requires.Condition = Expr.True;
+      }
+
       return requires;
     }
 
@@ -96,9 +102,15 @@ namespace Microsoft.Boogie
     {
       Ensures ensures = base.VisitEnsures(node);
       if (node.Free)
+      {
         return ensures;
+      }
+
       if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
+      {
         ensures.Condition = Expr.True;
+      }
+
       return ensures;
     }
 
@@ -119,7 +131,10 @@ namespace Microsoft.Boogie
       get
       {
         if (returnedPAs == null)
+        {
           returnedPAs = civlTypeChecker.LocalVariable("returnedPAs", civlTypeChecker.pendingAsyncMultisetType);
+        }
+
         return returnedPAs;
       }
     }
@@ -169,7 +184,10 @@ namespace Microsoft.Boogie
       refinementCallCmds = null;
 
       if (returnedPAs != null)
+      {
         newImpl.LocVars.Add(returnedPAs);
+      }
+
       if (enclosingYieldingProc is ActionProc && SummaryHasPendingAsyncParam && IsRefinementLayer)
       {
         // TODO: This was copied from InductiveSequentialization property NoPendingAsyncs.
@@ -182,7 +200,9 @@ namespace Microsoft.Boogie
         newImpl.Blocks.First().Cmds.Insert(0, CmdHelper.AssumeCmd(forallExpr));
 
         if (!impl.LocVars.Contains(CollectedPAs))
+        {
           newImpl.LocVars.Add(CollectedPAs);
+        }
       }
 
       absyMap[newImpl] = impl;
@@ -207,7 +227,10 @@ namespace Microsoft.Boogie
     {
       AssertCmd assertCmd = (AssertCmd) base.VisitAssertCmd(node);
       if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
+      {
         assertCmd.Expr = Expr.True;
+      }
+
       return assertCmd;
     }
 
@@ -465,7 +488,10 @@ namespace Microsoft.Boogie
 
     private void InjectGate(Action action, CallCmd callCmd, bool assume = false)
     {
-      if (action.gate.Count == 0) return;
+      if (action.gate.Count == 0)
+      {
+        return;
+      }
 
       Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
       for (int i = 0; i < action.proc.InParams.Count; i++)
@@ -483,10 +509,14 @@ namespace Microsoft.Boogie
       {
         var expr = Substituter.Apply(subst, assertCmd.Expr);
         if (assume)
+        {
           newCmdSeq.Add(new AssumeCmd(assertCmd.tok, expr));
+        }
         else
+        {
           newCmdSeq.Add(CmdHelper.AssertCmd(assertCmd.tok, expr,
             $"This gate of {action.proc.Name} might not hold."));
+        }
       }
 
       newCmdSeq.Add(new CommentCmd("injected gate >>>"));
@@ -496,7 +526,11 @@ namespace Microsoft.Boogie
     {
       // Inject pending async collection
       newCall.Outs.Add(Expr.Ident(ReturnedPAs));
-      if (!IsRefinementLayer) return;
+      if (!IsRefinementLayer)
+      {
+        return;
+      }
+
       if (SummaryHasPendingAsyncParam)
       {
         var collectedUnionReturned = ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncAdd,
@@ -555,9 +589,14 @@ namespace Microsoft.Boogie
     {
       AtomicAction paAction;
       if (actionProc.upperLayer == enclosingYieldingProc.upperLayer)
+      {
         paAction = actionProc.refinedAction;
+      }
       else
+      {
         paAction = actionProc.RefinedActionAtLayer(layerNum);
+      }
+
       if (paAction == civlTypeChecker.SkipAtomicAction)
       {
         return;

@@ -634,7 +634,10 @@ namespace Microsoft.Boogie
         }
         Expr inlineAttr = impl.FindExprAttribute("inline");
         if (inlineAttr == null)
+        {
           inlineAttr = impl.Proc.FindExprAttribute("inline");
+        }
+
         return inlineAttr != null;
       }
 

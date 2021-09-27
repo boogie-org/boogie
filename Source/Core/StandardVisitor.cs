@@ -31,7 +31,9 @@ namespace Microsoft.Boogie
       lock (list)
       {
         for (int i = 0, n = list.Count; i < n; i++)
+        {
           list[i] = (Expr) this.Visit(cce.NonNull(list[i]));
+        }
       }
 
       return list;
@@ -153,7 +155,10 @@ namespace Microsoft.Boogie
       // if the type proxy is instantiated with some more
       // specific type, we visit the instantiation
       if (node.ProxyFor != null)
+      {
         return (Type) this.Visit(node.ProxyFor);
+      }
+
       return this.VisitType(node);
     }
 
@@ -182,7 +187,9 @@ namespace Microsoft.Boogie
       lock (blockSeq)
       {
         for (int i = 0, n = blockSeq.Count; i < n; i++)
+        {
           blockSeq[i] = this.VisitBlock(cce.NonNull(blockSeq[i]));
+        }
       }
 
       return blockSeq;
@@ -213,11 +220,21 @@ namespace Microsoft.Boogie
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       for (int i = 0; i < node.Ins.Count; ++i)
+      {
         if (node.Ins[i] != null)
+        {
           node.Ins[i] = this.VisitExpr(cce.NonNull(node.Ins[i]));
+        }
+      }
+
       for (int i = 0; i < node.Outs.Count; ++i)
+      {
         if (node.Outs[i] != null)
+        {
           node.Outs[i] = (IdentifierExpr) this.VisitIdentifierExpr(cce.NonNull(node.Outs[i]));
+        }
+      }
+
       return node;
     }
 
@@ -228,7 +245,9 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.CallCmds.Count; i++)
       {
         if (node.CallCmds[i] != null)
+        {
           node.CallCmds[i] = (CallCmd) this.VisitCallCmd(node.CallCmds[i]);
+        }
       }
 
       return node;
@@ -241,8 +260,10 @@ namespace Microsoft.Boogie
       lock (cmdSeq)
       {
         for (int i = 0, n = cmdSeq.Count; i < n; i++)
+        {
           cmdSeq[i] = (Cmd) this.Visit(
             cce.NonNull(cmdSeq[i])); // call general Visit so subtypes of Cmd get visited by their particular visitor
+        }
       }
 
       return cmdSeq;
@@ -277,7 +298,9 @@ namespace Microsoft.Boogie
       lock (node)
       {
         for (int i = 0; i < node.Arguments.Count; ++i)
+        {
           node.Arguments[i] = cce.NonNull((Type /*!*/) this.Visit(node.Arguments[i]));
+        }
       }
 
       return node;
@@ -295,7 +318,10 @@ namespace Microsoft.Boogie
       Contract.Requires(declarationList != null);
       Contract.Ensures(Contract.Result<List<Declaration>>() != null);
       for (int i = 0, n = declarationList.Count; i < n; i++)
+      {
         declarationList[i] = cce.NonNull((Declaration /*!*/) this.Visit(declarationList[i]));
+      }
+
       return declarationList;
     }
 
@@ -337,7 +363,10 @@ namespace Microsoft.Boogie
       //Contract.Requires(exprSeq != null);
       Contract.Ensures(Contract.Result<IList<Expr>>() != null);
       for (int i = 0, n = exprSeq.Count; i < n; i++)
+      {
         exprSeq[i] = this.VisitExpr(cce.NonNull(exprSeq[i]));
+      }
+
       return exprSeq;
     }
 
@@ -354,7 +383,10 @@ namespace Microsoft.Boogie
       Contract.Requires(requiresSeq != null);
       Contract.Ensures(Contract.Result<List<Requires>>() != null);
       for (int i = 0, n = requiresSeq.Count; i < n; i++)
+      {
         requiresSeq[i] = this.VisitRequires(requiresSeq[i]);
+      }
+
       return requiresSeq;
     }
 
@@ -371,7 +403,10 @@ namespace Microsoft.Boogie
       Contract.Requires(ensuresSeq != null);
       Contract.Ensures(Contract.Result<List<Ensures>>() != null);
       for (int i = 0, n = ensuresSeq.Count; i < n; i++)
+      {
         ensuresSeq[i] = this.VisitEnsures(ensuresSeq[i]);
+      }
+
       return ensuresSeq;
     }
 
@@ -419,7 +454,9 @@ namespace Microsoft.Boogie
         node.Body = this.VisitExpr(node.Body);
       }
       else if (node.DefinitionBody != null)
+      {
         node.DefinitionBody = (NAryExpr) this.VisitExpr(node.DefinitionBody);
+      }
 
       return node;
     }
@@ -453,7 +490,10 @@ namespace Microsoft.Boogie
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
       if (node.Decl != null)
+      {
         node.Decl = this.VisitVariable(node.Decl);
+      }
+
       return node;
     }
 
@@ -464,7 +504,9 @@ namespace Microsoft.Boogie
       lock (identifierExprSeq)
       {
         for (int i = 0, n = identifierExprSeq.Count; i < n; i++)
+        {
           identifierExprSeq[i] = (IdentifierExpr) this.VisitIdentifierExpr(cce.NonNull(identifierExprSeq[i]));
+        }
       }
 
       return identifierExprSeq;
@@ -501,7 +543,10 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<AssignLhs>() != null);
       node.Map = cce.NonNull((AssignLhs) this.Visit(node.Map));
       for (int i = 0; i < node.Indexes.Count; ++i)
+      {
         node.Indexes[i] = cce.NonNull((Expr) this.VisitExpr(node.Indexes[i]));
+      }
+
       return node;
     }
 
@@ -517,7 +562,9 @@ namespace Microsoft.Boogie
       lock (node.Arguments)
       {
         for (int i = 0; i < node.Arguments.Count; ++i)
+        {
           node.Arguments[i] = cce.NonNull((Type /*!*/) this.Visit(node.Arguments[i]));
+        }
       }
 
       node.Result = cce.NonNull((Type /*!*/) this.Visit(node.Result));
@@ -531,7 +578,10 @@ namespace Microsoft.Boogie
       // if the type proxy is instantiated with some more
       // specific type, we visit the instantiation
       if (node.ProxyFor != null)
+      {
         return (Type) this.Visit(node.ProxyFor);
+      }
+
       return this.VisitType(node);
     }
 
@@ -629,7 +679,10 @@ namespace Microsoft.Boogie
       Contract.Requires(reSeq != null);
       Contract.Ensures(Contract.Result<List<RE>>() != null);
       for (int i = 0, n = reSeq.Count; i < n; i++)
+      {
         reSeq[i] = (RE) this.VisitRE(cce.NonNull(reSeq[i]));
+      }
+
       return reSeq;
     }
 
@@ -732,7 +785,9 @@ namespace Microsoft.Boogie
       lock (node.Arguments)
       {
         for (int i = 0; i < node.Arguments.Count; ++i)
+        {
           node.Arguments[i] = cce.NonNull((Type /*!*/) this.Visit(node.Arguments[i]));
+        }
       }
 
       return node;
@@ -759,7 +814,10 @@ namespace Microsoft.Boogie
       // if the type proxy is instantiated with some more
       // specific type, we visit the instantiation
       if (node.ProxyFor != null)
+      {
         return cce.NonNull((Type /*!*/) this.Visit(node.ProxyFor));
+      }
+
       return this.VisitType(node);
     }
 
@@ -785,7 +843,9 @@ namespace Microsoft.Boogie
       lock (variableSeq)
       {
         for (int i = 0, n = variableSeq.Count; i < n; i++)
+        {
           variableSeq[i] = this.VisitVariable(cce.NonNull(variableSeq[i]));
+        }
       }
 
       return variableSeq;
@@ -926,7 +986,10 @@ namespace Microsoft.Boogie
       // if the type proxy is instantiated with some more
       // specific type, we visit the instantiation
       if (node.ProxyFor != null)
+      {
         this.Visit(node.ProxyFor);
+      }
+
       return this.VisitType(node);
     }
 
@@ -950,7 +1013,10 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<List<Block>>() == blockSeq);
       for (int i = 0, n = blockSeq.Count; i < n; i++)
+      {
         this.VisitBlock(cce.NonNull(blockSeq[i]));
+      }
+
       return blockSeq;
     }
 
@@ -975,11 +1041,21 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<Cmd>() == node);
       for (int i = 0; i < node.Ins.Count; ++i)
+      {
         if (node.Ins[i] != null)
+        {
           this.VisitExpr(node.Ins[i]);
+        }
+      }
+
       for (int i = 0; i < node.Outs.Count; ++i)
+      {
         if (node.Outs[i] != null)
+        {
           this.VisitIdentifierExpr(node.Outs[i]);
+        }
+      }
+
       return node;
     }
 
@@ -989,7 +1065,9 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.CallCmds.Count; i++)
       {
         if (node.CallCmds[i] != null)
+        {
           this.VisitCallCmd(node.CallCmds[i]);
+        }
       }
 
       return node;
@@ -999,8 +1077,11 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<List<Cmd>>() == cmdSeq);
       for (int i = 0, n = cmdSeq.Count; i < n; i++)
+      {
         this.Visit(cce.NonNull(
           cmdSeq[i])); // call general Visit so subtypes of Cmd get visited by their particular visitor
+      }
+
       return cmdSeq;
     }
 
@@ -1027,7 +1108,10 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<CtorType>() == node);
       for (int i = 0; i < node.Arguments.Count; ++i)
+      {
         this.Visit(node.Arguments[i]);
+      }
+
       return node;
     }
 
@@ -1041,7 +1125,10 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<List<Declaration>>() == declarationList);
       for (int i = 0, n = declarationList.Count; i < n; i++)
+      {
         this.Visit(declarationList[i]);
+      }
+
       return declarationList;
     }
 
@@ -1076,7 +1163,10 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<IList<Expr>>() == exprSeq);
       for (int i = 0, n = exprSeq.Count; i < n; i++)
+      {
         this.VisitExpr(cce.NonNull(exprSeq[i]));
+      }
+
       return exprSeq;
     }
 
@@ -1091,7 +1181,10 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<List<Requires>>() == requiresSeq);
       for (int i = 0, n = requiresSeq.Count; i < n; i++)
+      {
         this.VisitRequires(requiresSeq[i]);
+      }
+
       return requiresSeq;
     }
 
@@ -1106,7 +1199,10 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<List<Ensures>>() == ensuresSeq);
       for (int i = 0, n = ensuresSeq.Count; i < n; i++)
+      {
         this.VisitEnsures(ensuresSeq[i]);
+      }
+
       return ensuresSeq;
     }
 
@@ -1146,7 +1242,9 @@ namespace Microsoft.Boogie
         this.VisitExpr(node.Body);
       }
       else if (node.DefinitionBody != null)
+      {
         this.VisitExpr(node.DefinitionBody);
+      }
 
       return node;
     }
@@ -1175,7 +1273,10 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<Expr>() == node);
       if (node.Decl != null)
+      {
         this.VisitVariable(node.Decl);
+      }
+
       return node;
     }
 
@@ -1183,7 +1284,10 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<List<IdentifierExpr>>() == identifierExprSeq);
       for (int i = 0, n = identifierExprSeq.Count; i < n; i++)
+      {
         this.VisitIdentifierExpr(cce.NonNull(identifierExprSeq[i]));
+      }
+
       return identifierExprSeq;
     }
 
@@ -1213,7 +1317,10 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<AssignLhs>() == node);
       this.Visit(node.Map);
       for (int i = 0; i < node.Indexes.Count; ++i)
+      {
         this.VisitExpr(node.Indexes[i]);
+      }
+
       return node;
     }
 
@@ -1226,7 +1333,10 @@ namespace Microsoft.Boogie
       // NOTE: when overriding this method, you have to make sure that
       // the bound variables of the map type are updated correctly
       for (int i = 0; i < node.Arguments.Count; ++i)
+      {
         this.Visit(node.Arguments[i]);
+      }
+
       this.Visit(node.Result);
       return node;
     }
@@ -1237,7 +1347,10 @@ namespace Microsoft.Boogie
       // if the type proxy is instantiated with some more
       // specific type, we visit the instantiation
       if (node.ProxyFor != null)
+      {
         this.Visit(node.ProxyFor);
+      }
+
       return this.VisitType(node);
     }
 
@@ -1324,7 +1437,10 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<List<RE>>() == reSeq);
       for (int i = 0, n = reSeq.Count; i < n; i++)
+      {
         this.VisitRE(cce.NonNull(reSeq[i]));
+      }
+
       return reSeq;
     }
 
@@ -1408,7 +1524,10 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Type>() == node);
       node.ExpandedType = cce.NonNull((Type /*!*/) this.Visit(node.ExpandedType));
       for (int i = 0; i < node.Arguments.Count; ++i)
+      {
         this.Visit(node.Arguments[i]);
+      }
+
       return node;
     }
 
@@ -1430,7 +1549,10 @@ namespace Microsoft.Boogie
       // if the type proxy is instantiated with some more
       // specific type, we visit the instantiation
       if (node.ProxyFor != null)
+      {
         this.Visit(node.ProxyFor);
+      }
+
       return this.VisitType(node);
     }
 
@@ -1451,7 +1573,10 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<List<Variable>>() == variableSeq);
       for (int i = 0, n = variableSeq.Count; i < n; i++)
+      {
         this.VisitVariable(cce.NonNull(variableSeq[i]));
+      }
+
       return variableSeq;
     }
 

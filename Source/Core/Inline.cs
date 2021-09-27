@@ -123,11 +123,18 @@ namespace Microsoft.Boogie
 
     private void DistinguishPrefix(string s)
     {
-      if (!s.StartsWith(prefix)) return;
+      if (!s.StartsWith(prefix))
+      {
+        return;
+      }
+
       for (int i = prefix.Length; i < s.Length; i++)
       {
         prefix = prefix + "$";
-        if (s[i] != '$') break;
+        if (s[i] != '$')
+        {
+          break;
+        }
       }
 
       if (prefix == s)
@@ -150,7 +157,9 @@ namespace Microsoft.Boogie
       Contract.Assert(cce.NonNullElements(newBlocks));
 
       if (!inlined)
+      {
         return;
+      }
 
       impl.InParams = new List<Variable>(impl.InParams);
       impl.OutParams = new List<Variable>(impl.OutParams);
@@ -481,7 +490,11 @@ namespace Microsoft.Boogie
           new TypedIdent(Token.NoToken, GetProcVarName(proc.Name, inVar.Name), inVar.TypedIdent.Type,
             inVar.TypedIdent.WhereExpr));
         newLocalVars.Add(localVar);
-        if (impl.Proc != null) localVar.Attributes = impl.Proc.InParams[i].Attributes; // copy attributes
+        if (impl.Proc != null)
+        {
+          localVar.Attributes = impl.Proc.InParams[i].Attributes; // copy attributes
+        }
+
         IdentifierExpr ie = new IdentifierExpr(Token.NoToken, localVar);
         substMap.Add(inVar, ie);
         // also add a substitution from the corresponding formal occurring in the PROCEDURE declaration
@@ -498,7 +511,11 @@ namespace Microsoft.Boogie
         LocalVariable localVar = new LocalVariable(Token.NoToken,
           new TypedIdent(Token.NoToken, GetProcVarName(proc.Name, outVar.Name), outVar.TypedIdent.Type,
             outVar.TypedIdent.WhereExpr));
-        if (impl.Proc != null) localVar.Attributes = impl.Proc.OutParams[i].Attributes; // copy attributes
+        if (impl.Proc != null)
+        {
+          localVar.Attributes = impl.Proc.OutParams[i].Attributes; // copy attributes
+        }
+
         newLocalVars.Add(localVar);
         IdentifierExpr ie = new IdentifierExpr(Token.NoToken, localVar);
         substMap.Add(outVar, ie);
@@ -540,9 +557,14 @@ namespace Microsoft.Boogie
       Requires /*!*/
         reqCopy = (Requires /*!*/) cce.NonNull(req.Clone());
       if (req.Free)
+      {
         reqCopy.Condition = Expr.True;
+      }
       else
+      {
         reqCopy.Condition = codeCopier.CopyExpr(req.Condition);
+      }
+
       AssertCmd /*!*/
         a = new AssertRequiresCmd(callCmd, reqCopy);
       a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
@@ -574,7 +596,11 @@ namespace Microsoft.Boogie
       for (int i = 0; i < cmds.Count; i++)
       {
         Cmd cmd = cmds[i];
-        if (cmd is AssertCmd) continue;
+        if (cmd is AssertCmd)
+        {
+          continue;
+        }
+
         newCmdSeq.Add(cmd);
       }
 

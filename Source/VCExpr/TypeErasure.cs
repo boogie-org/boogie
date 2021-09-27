@@ -26,9 +26,12 @@ namespace Microsoft.Boogie.TypeErasure
 
       List<Variable> args = new List<Variable>();
       for (int i = 0; i < types.Length - 1; ++i)
+      {
         args.Add(new Formal(Token.NoToken,
           new TypedIdent(Token.NoToken, "arg" + i, cce.NonNull(types[i])),
           true));
+      }
+
       Formal result = new Formal(Token.NoToken,
         new TypedIdent(Token.NoToken, "res",
           cce.NonNull(types)[types.Length - 1]),
@@ -53,7 +56,10 @@ namespace Microsoft.Boogie.TypeErasure
       Type[] /*!*/
         types = new Type[arity + 1];
       for (int i = 0; i < arity + 1; ++i)
+      {
         types[i] = U;
+      }
+
       return BoogieFunction(name, types);
     }
 
@@ -98,7 +104,10 @@ namespace Microsoft.Boogie.TypeErasure
       List<VCExprVar /*!*/> /*!*/
         res = new List<VCExprVar /*!*/>(num);
       for (int i = 0; i < num; ++i)
+      {
         res.Add(gen.Variable(baseName + i, type));
+      }
+
       return res;
     }
 
@@ -112,7 +121,10 @@ namespace Microsoft.Boogie.TypeErasure
       List<VCExprVar /*!*/> /*!*/
         res = new List<VCExprVar /*!*/>(types.Count);
       for (int i = 0; i < types.Count; ++i)
+      {
         res.Add(gen.Variable(baseName + i, types[i]));
+      }
+
       return res;
     }
   }
@@ -243,7 +255,9 @@ namespace Microsoft.Boogie.TypeErasure
             HelperFuns.ToVCExprList(quantifiedVars)));
 
       if (typeRepr.InParams.Count == 0)
+      {
         return eq;
+      }
 
       return Gen.Forall(quantifiedVars, new List<VCTrigger /*!*/>(),
         "ctor:" + typeRepr.Name, 1, eq);
@@ -492,9 +506,12 @@ namespace Microsoft.Boogie.TypeErasure
       {
         //
         if (!varMapping.TryGetValue(type.AsVariable, out var res))
+        {
           // then the variable is free and we bind it at this point to a term
           // variable
           res = Typed2Untyped(type.AsVariable);
+        }
+
         return cce.NonNull(res);
         //
       }
@@ -775,7 +792,10 @@ namespace Microsoft.Boogie.TypeErasure
     {
       Contract.Requires(fun != null);
       if (fun.InParams.Count != 1)
+      {
         return false;
+      }
+
       Type /*!*/
         inType = cce.NonNull(fun.InParams[0]).TypedIdent.Type;
       if (inType.Equals(U))
@@ -783,17 +803,26 @@ namespace Microsoft.Boogie.TypeErasure
         Type /*!*/
           outType = cce.NonNull(fun.OutParams[0]).TypedIdent.Type;
         if (!TypeCasts.ContainsKey(outType))
+        {
           return false;
+        }
+
         return fun.Equals(CastTo(outType));
       }
       else
       {
         if (!TypeCasts.ContainsKey(inType))
+        {
           return false;
+        }
+
         Type /*!*/
           outType = cce.NonNull(fun.OutParams[0]).TypedIdent.Type;
         if (!outType.Equals(U))
+        {
           return false;
+        }
+
         return fun.Equals(CastFrom(inType));
       }
     }
@@ -808,11 +837,15 @@ namespace Microsoft.Boogie.TypeErasure
       //Contract.Requires(type != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       if (UnchangedType(type))
+      {
         // these types are kept
         return type;
+      }
       else
+      {
         // all other types are replaced by U
         return U;
+      }
     }
 
     [Pure]
@@ -831,7 +864,9 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires((toType.Equals(U) || UnchangedType(toType)));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (expr.Type.Equals(toType))
+      {
         return expr;
+      }
 
       if (toType.Equals(U))
       {
@@ -974,8 +1009,11 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires((num >= 0));
       Contract.Ensures(Contract.Result<TypeVariable>() != null);
       while (AbstractionVariables.Count <= num)
+      {
         AbstractionVariables.Add(new TypeVariable(Token.NoToken,
           "aVar" + AbstractionVariables.Count));
+      }
+
       return AbstractionVariables[num];
     }
 
@@ -1326,8 +1364,10 @@ namespace Microsoft.Boogie.TypeErasure
       VCExprOp /*!*/
         op = node.Op;
       if (op == VCExpressionGenerator.AndOp || op == VCExpressionGenerator.OrOp)
+      {
         // more efficient on large conjunctions/disjunctions
         return base.Visit(node, bindings);
+      }
 
       // the visitor that handles all other operators
       return node.Accept<VCExpr /*!*/, VariableBindings /*!*/>(OpEraser, bindings);
@@ -1355,7 +1395,10 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (!bindings.VCExprVarBindings.TryGetValue(node, out var res))
+      {
         return AxBuilder.Typed2Untyped(node);
+      }
+
       return cce.NonNull(res);
     }
 
@@ -1590,9 +1633,13 @@ namespace Microsoft.Boogie.TypeErasure
         oldType = node[0].Type;
       if (AxBuilder.UnchangedType(oldType) &&
           node.Skip(1).All(e => e.Type.Equals(oldType)))
+      {
         return Gen.Function(node.Op, AxBuilder.CastSeq(newArgs, oldType));
+      }
       else
+      {
         return Gen.Function(node.Op, AxBuilder.CastSeq(newArgs, AxBuilder.U));
+      }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1962,7 +2009,9 @@ namespace Microsoft.Boogie.TypeErasure
         Contract.Assert(castVar != null);
         int i = newNode.BoundVars.IndexOf(castVar);
         if (0 <= i && i < oldNode.BoundVars.Count && !collector.varsOutsideCasts.ContainsKey(castVar))
+        {
           castVariables.Add(oldNode.BoundVars[i]);
+        }
       }
 
       return castVariables;
@@ -2009,7 +2058,10 @@ namespace Microsoft.Boogie.TypeErasure
         {
           VCExprVar castVar = (VCExprVar) node[0];
           if (!varsInCasts.Contains(castVar))
+          {
             varsInCasts.Add(castVar);
+          }
+
           return true;
         }
       }
@@ -2051,7 +2103,10 @@ namespace Microsoft.Boogie.TypeErasure
     {
       Contract.Requires(node != null);
       if (!varsOutsideCasts.ContainsKey(node))
+      {
         varsOutsideCasts.Add(node, null);
+      }
+
       return true;
     }
   }

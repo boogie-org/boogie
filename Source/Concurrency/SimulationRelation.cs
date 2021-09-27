@@ -194,7 +194,10 @@ namespace Microsoft.Boogie
                   {
                     Tuple<A, L> z = new Tuple<A, L>(u, l);
                     if (!remove.ContainsKey(z))
+                    {
                       remove[z] = new HashSet<B>();
+                    }
+
                     remove[z].Add(b);
                     workQueue.Enqueue(z);
                   }
