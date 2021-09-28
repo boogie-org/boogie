@@ -127,7 +127,7 @@ namespace VC
         this.parent = par;
         this.impl = impl;
         Interlocked.Increment(ref currentId);
-        TopLevelDeclarations = Prune.PruneDecl(par.program, blocks).ToList();
+        TopLevelDeclarations = Prune.GetLiveDeclarations(par.program, blocks).ToList();
       }
 
       public double Cost

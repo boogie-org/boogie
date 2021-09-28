@@ -15,20 +15,6 @@ namespace Microsoft.Boogie
     Closed
   }
 
-  public class Util
-  {
-    public static uint SafeMult(uint a, uint b) {
-      uint result = UInt32.MaxValue;
-      try {
-        checked {
-          result = a * b;
-        }
-      } catch (OverflowException) { }
-
-      return result;
-    }
-  }
-
 
   /// <summary>
   /// Interface to the theorem prover specialized to Boogie.
@@ -190,12 +176,12 @@ namespace Microsoft.Boogie
 
     private void SetTimeout(uint timeout)
     {
-      TheoremProver.SetTimeout(Util.SafeMult(timeout, 1000));
+      TheoremProver.SetTimeout(Util.BoundedMultiply(timeout, 1000));
     }
 
     private void SetRlimit(uint rlimit)
     {
-      TheoremProver.SetRlimit(Util.SafeMult(rlimit, 1000));
+      TheoremProver.SetRlimit(Util.BoundedMultiply(rlimit, 1000));
     }
 
     private void SetRandomSeed(int? randomSeed)
@@ -216,28 +202,23 @@ namespace Microsoft.Boogie
         foreach (Declaration decl in decls)
         {
           Contract.Assert(decl != null);
-          var typeDecl = decl as TypeCtorDecl;
-          var constDecl = decl as Constant;
-          var funDecl = decl as Function;
-          var axiomDecl = decl as Axiom;
-          var glVarDecl = decl as GlobalVariable;
-          if (typeDecl != null)
+          if (decl is TypeCtorDecl typeDecl)
           {
             ctx.DeclareType(typeDecl, null);
           }
-          else if (constDecl != null)
+          else if (decl is Constant constDecl)
           {
             ctx.DeclareConstant(constDecl, constDecl.Unique, null);
           }
-          else if (funDecl != null)
+          else if (decl is Function funDecl)
           {
             ctx.DeclareFunction(funDecl, null);
           }
-          else if (axiomDecl != null)
+          else if (decl is Axiom axiomDecl)
           {
             ctx.AddAxiom(axiomDecl, null);
           }
-          else if (glVarDecl != null)
+          else if (decl is GlobalVariable glVarDecl)
           {
             ctx.DeclareGlobalVariable(glVarDecl, null);
           }
@@ -407,7 +388,7 @@ namespace Microsoft.Boogie
 
       if (timeout > 0)
       {
-        options.TimeLimit = Util.SafeMult(timeout, 1000);
+        options.TimeLimit = Util.BoundedMultiply(timeout, 1000);
       }
 
       if (taskID >= 0)
