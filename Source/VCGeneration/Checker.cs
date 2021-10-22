@@ -282,7 +282,7 @@ namespace Microsoft.Boogie
       {
         try
         {
-          outcome = thmProver.CheckOutcome(cce.NonNull(handler));
+          outcome = thmProver.CheckOutcome(cce.NonNull(handler), CommandLineOptions.Clo.ErrorLimit);
         }
         catch (UnexpectedProverOutputException e)
         {
@@ -519,7 +519,7 @@ namespace Microsoft.Boogie
     public abstract void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler);
 
     [NoDefaultContract]
-    public abstract Outcome CheckOutcome(ErrorHandler handler, int taskID = -1);
+    public abstract Outcome CheckOutcome(ErrorHandler handler, int errorLimit);
 
     public virtual string[] CalculatePath(int controlFlowConstant)
     {
