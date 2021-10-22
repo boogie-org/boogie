@@ -1,0 +1,10 @@
+ErrorLimit.bpl(9,1): Error: A postcondition might not hold on this return path.
+ErrorLimit.bpl(5,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    ErrorLimit.bpl(9,1): anon0
+ErrorLimit.bpl(9,1): Error: A postcondition might not hold on this return path.
+ErrorLimit.bpl(7,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    ErrorLimit.bpl(9,1): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
