@@ -321,6 +321,17 @@ private class BvBounds : Expr {
 		if (la.kind == 27) {
 			OrderSpec(out ChildrenComplete, out Parents);
 		}
+		if (la.kind == 9) {
+			Get();
+		} else if (la.kind == 24) {
+			Get();
+			Expect(25);
+			while (la.kind == 31) {
+				Axiom(out ax);
+				axioms.Add(ax); 
+			}
+			Expect(26);
+		} else SynErr(109);
 		bool makeClone = false;
 		foreach(TypedIdent/*!*/ x in xs){
 		 Contract.Assert(x != null);
@@ -342,22 +353,10 @@ private class BvBounds : Expr {
 		 foreach(var axiom in axioms) {
 		   ds.Add(axiom);
 		 }
-		 var constant = new Constant(y, x, u, ParentsClone, ChildrenComplete, kv);
-		 constant.NewDefinitionAxioms = axioms; 
+		 var constant = new Constant(y, x, u, ParentsClone, ChildrenComplete, kv, axioms);
 		 ds.Add(constant);
 		}
 		
-		if (la.kind == 9) {
-			Get();
-		} else if (la.kind == 24) {
-			Get();
-			Expect(25);
-			while (la.kind == 31) {
-				Axiom(out ax);
-				axioms.Add(ax); 
-			}
-			Expect(26);
-		} else SynErr(109);
 	}
 
 	void Function(out List<Declaration>/*!*/ ds) {
@@ -437,9 +436,9 @@ private class BvBounds : Expr {
 		}
 		Function/*!*/ func = new Function(z, z.val, typeParams, arguments,
 		                                 new Formal(retTyd.tok, retTyd, false, argKv), null, kv);
-		func.NewDefinitionAxioms = axioms;
 		foreach(var axiom in axioms) {
 		   ds.Add(axiom);
+		   func.AddOtherDefinitionAxiom(axiom);
 		}
 		
 		Contract.Assert(func != null);

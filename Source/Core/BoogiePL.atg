@@ -409,6 +409,7 @@ Consts<.out List<Declaration>/*!*/ ds.>
   ]
   IdsType<out xs>
   [ OrderSpec<out ChildrenComplete, out Parents> ]
+  ( ";" | "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}")
   (. bool makeClone = false;
      foreach(TypedIdent/*!*/ x in xs){
        Contract.Assert(x != null);
@@ -427,15 +428,13 @@ Consts<.out List<Declaration>/*!*/ ds.>
        }
        makeClone = true;
        
-       foreach(var axiom in axioms) {
-         ds.Add(axiom);
-       }
-       var constant = new Constant(y, x, u, ParentsClone, ChildrenComplete, kv);
-       constant.NewDefinitionAxioms = axioms; 
+       var constant = new Constant(y, x, u, ParentsClone, ChildrenComplete, kv, axioms);
        ds.Add(constant);
      }
+     foreach(var axiom in axioms) {
+       ds.Add(axiom);
+     }
   .)
-  ( ";" | "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}")
   .
 
 OrderSpec<.out bool ChildrenComplete, out List<ConstantParent/*!*/> Parents.>

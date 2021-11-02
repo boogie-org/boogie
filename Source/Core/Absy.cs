@@ -2477,7 +2477,7 @@ namespace Microsoft.Boogie
     // that the parental situation is unconstrained.
     public readonly ReadOnlyCollection<ConstantParent /*!*/> Parents;
 
-    public readonly IReadOnlyList<Axiom> DefinitionAxioms { get; }
+    public IReadOnlyList<Axiom> DefinitionAxioms { get; }
     
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -3307,19 +3307,15 @@ namespace Microsoft.Boogie
     public NAryExpr DefinitionBody; // Only set if the function is declared with {:define}
     public Axiom DefinitionAxiom;
 
-    public IList<Axiom> otherDefinitionAxioms;
-    public IEnumerable<Axiom> DefinitionAxioms => new []{ DefinitionAxiom}.Concat(otherDefinitionAxioms);
+    public IList<Axiom> otherDefinitionAxioms = new List<Axiom>();
+    public IEnumerable<Axiom> DefinitionAxioms => 
+      (DefinitionAxiom == null ? Enumerable.Empty<Axiom>() : new[]{ DefinitionAxiom }).Concat(otherDefinitionAxioms);
 
     public IEnumerable<Axiom> OtherDefinitionAxioms => otherDefinitionAxioms;
 
     public void AddOtherDefinitionAxiom(Axiom axiom)
     {
       Contract.Requires(axiom != null);
-
-      if (otherDefinitionAxioms == null)
-      {
-        otherDefinitionAxioms = new List<Axiom>();
-      }
 
       otherDefinitionAxioms.Add(axiom);
     }

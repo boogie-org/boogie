@@ -569,7 +569,9 @@ namespace Microsoft.Boogie
     public bool InstrumentWithAsserts = false;
     public string ProverPreamble { get; set; }= null;
     public bool WarnNotEliminatedVars = false;
-    public bool PruneFunctionsAndAxioms = false;
+    
+    public enum PruneMode { None, Automatic, UsesClauses }
+    public PruneMode Prune = PruneMode.None;
 
     public enum InstrumentationPlaces
     {
@@ -1656,6 +1658,12 @@ namespace Microsoft.Boogie
         case "kInductionDepth":
           ps.GetNumericArgument(ref KInductionDepth);
           return true;
+        
+        case "prune":
+          int number = 0;
+          ps.GetNumericArgument(ref number);
+          Prune = (PruneMode)number;
+          return true;
 
         default:
           bool optionValue = false;
@@ -1710,7 +1718,6 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustInductiveSequentialization", ref trustInductiveSequentialization) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting) ||
-              ps.CheckBooleanFlag("pruneFunctionsAndAxioms", ref PruneFunctionsAndAxioms) ||
               ps.CheckBooleanFlag("warnNotEliminatedVars", ref WarnNotEliminatedVars)
           )
           {
@@ -2291,8 +2298,10 @@ namespace Microsoft.Boogie
                 only for monomorphic programs.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
-  /pruneFunctionsAndAxioms
-                Prune declarations for each implementation
+  /prune:<n>
+                0 (default) - none
+                1 - automatic pruning
+                2 - aggressive pruning. Requires binding axioms to functions and constants using 'using'
   /relaxFocus   Process foci in a bottom-up fashion. This way only generates
                 a linear number of splits. The default way (top-down) is more
                 aggressive and it may create an exponential number of splits.

@@ -5,15 +5,10 @@ using Microsoft.Boogie.GraphUtil;
 namespace Microsoft.Boogie
 {
   public class Prune {
-    private static bool ExcludeDep(Declaration d)
-    {
-      return d.Attributes != null &&
-              QKeyValue.FindBoolAttribute(d.Attributes, "exclude_dep");
-    }
 
     public static Dictionary<object, List<object>> ComputeDeclarationDependencies(Program program)
     {
-      if (!CommandLineOptions.Clo.PruneFunctionsAndAxioms)
+      if (CommandLineOptions.Clo.Prune == CommandLineOptions.PruneMode.None)
       {
         return null;
       }
@@ -108,7 +103,7 @@ namespace Microsoft.Boogie
      */
     public static IEnumerable<Declaration> GetLiveDeclarations(Program program, List<Block> blocks)
     {
-      if (program.DeclarationDependencies == null || blocks == null || !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
+      if (program.DeclarationDependencies == null || blocks == null || CommandLineOptions.Clo.Prune == CommandLineOptions.PruneMode.None)
       {
         return program.TopLevelDeclarations;
       }
