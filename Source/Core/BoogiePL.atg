@@ -185,7 +185,7 @@ BoogiePL
      Implementation im;
      Implementation/*!*/ nnim;
   .)
-  { Consts<out vs>             (. foreach(Bpl.Variable/*!*/ v in vs){
+  { Consts<out ds>             (. foreach(Bpl.Declaration/*!*/ v in ds){
                                     Contract.Assert(v != null);
                                     Pgm.AddTopLevelDeclaration(v);
                                   }
@@ -395,9 +395,11 @@ Types<.List<Bpl.Type>/*!*/ ts.>
 
 
 /*------------------------------------------------------------------------*/
-Consts<.out List<Variable>/*!*/ ds.>
+Consts<.out List<Declaration>/*!*/ ds.>
 = (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken/*!*/ y; List<TypedIdent>/*!*/ xs;
-     ds = new List<Variable>();
+     ds = new List<Declaration>();
+     var axioms = new List<Axiom>();
+     Axiom ax;
      bool u = false; QKeyValue kv = null;
      bool ChildrenComplete = false;
      List<ConstantParent/*!*/> Parents = null; .)
@@ -424,11 +426,16 @@ Consts<.out List<Variable>/*!*/ ds.>
          ParentsClone = Parents;
        }
        makeClone = true;
-
-       ds.Add(new Constant(y, x, u, ParentsClone, ChildrenComplete, kv));
+       
+       foreach(var axiom in axioms) {
+         ds.Add(axiom);
+       }
+       var constant = new Constant(y, x, u, ParentsClone, ChildrenComplete, kv);
+       constant.NewDefinitionAxioms = axioms; 
+       ds.Add(constant);
      }
   .)
-  ";"
+  ( ";" | "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}")
   .
 
 OrderSpec<.out bool ChildrenComplete, out List<ConstantParent/*!*/> Parents.>
@@ -462,6 +469,7 @@ Function<.out List<Declaration>/*!*/ ds.>
      IToken/*!*/ typeParamTok;
      var typeParams = new List<TypeVariable>();
      var arguments = new List<Variable>();
+     var axioms = new List<Axiom>();
      TypedIdent/*!*/ tyd;
      TypedIdent retTyd = null;
      Bpl.Type/*!*/ retTy;
@@ -469,6 +477,7 @@ Function<.out List<Declaration>/*!*/ ds.>
      QKeyValue kv = null;
      Expr definition = null;
      Expr/*!*/ tmp;
+     Axiom ax;
   .)
   "function" { Attribute<ref kv> } Ident<out z>
   [ TypeParams<out typeParamTok, out typeParams> ]
@@ -482,7 +491,10 @@ Function<.out List<Declaration>/*!*/ ds.>
     |
     ":" Type<out retTy>   (. retTyd = new TypedIdent(retTy.tok, TypedIdent.NoName, retTy); .)
   )
-  ( "{" Expression<out tmp> (. definition = tmp; .) "}" | ";" )
+  ( "{" Expression<out tmp> (. definition = tmp; .) "}" [ "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}" ] | 
+    "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}" |
+    ";"
+  )
   (.
     if (retTyd == null) {
       // construct a dummy type for the case of syntax error
@@ -490,10 +502,15 @@ Function<.out List<Declaration>/*!*/ ds.>
     }
     Function/*!*/ func = new Function(z, z.val, typeParams, arguments,
                                       new Formal(retTyd.tok, retTyd, false, argKv), null, kv);
+    func.NewDefinitionAxioms = axioms;
+    foreach(var axiom in axioms) {
+        ds.Add(axiom);
+    }
+    
     Contract.Assert(func != null);
     ds.Add(func);
     bool allUnnamed = true;
-    foreach(Formal/*!*/ f in arguments){
+    foreach(Formal/*!*/ f in arguments) {
       Contract.Assert(f != null);
       if (f.TypedIdent.HasName) {
         allUnnamed = false;

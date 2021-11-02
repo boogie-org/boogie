@@ -1779,6 +1779,11 @@ namespace Microsoft.Boogie
 
   public class Axiom : Declaration
   {
+    public override string ToString()
+    {
+      return "Axiom: " + expression.ToString();
+    }
+
     private Expr /*!*/
       expression;
 
@@ -2472,6 +2477,8 @@ namespace Microsoft.Boogie
     // that the parental situation is unconstrained.
     public readonly ReadOnlyCollection<ConstantParent /*!*/> Parents;
 
+    public IList<Axiom> NewDefinitionAxioms;
+    
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
@@ -3301,12 +3308,10 @@ namespace Microsoft.Boogie
     public NAryExpr DefinitionBody; // Only set if the function is declared with {:define}
     public Axiom DefinitionAxiom;
 
+    public IList<Axiom> NewDefinitionAxioms;
     public IList<Axiom> otherDefinitionAxioms;
 
-    public IEnumerable<Axiom> OtherDefinitionAxioms
-    {
-      get { return otherDefinitionAxioms; }
-    }
+    public IEnumerable<Axiom> OtherDefinitionAxioms => otherDefinitionAxioms;
 
     public void AddOtherDefinitionAxiom(Axiom axiom)
     {
