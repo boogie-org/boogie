@@ -17,9 +17,10 @@ namespace Microsoft.Boogie
       {
         return null;
       }
-      var axiomNodes = program.Axioms.Select(AxiomVisitor.GetAxiomDependencies);
-      var functionNodes = program.Functions.Select(FunctionVisitor.GetFunctionDependencies);
-      var nodes = axiomNodes.Concat(functionNodes).ToList();
+      var axiomNodes = program.Axioms.Select(AxiomVisitor.GetDependencies);
+      var functionNodes = program.Functions.Select(FunctionVisitor.GetDependencies);
+      var constantNodes = program.Constants.Select(ConstantVisitor.GetDependencies);
+      var nodes = axiomNodes.Concat(functionNodes).Concat(constantNodes).ToList();
 
       var edges = new Dictionary<object, List<object>>();
       foreach (var node in nodes) {

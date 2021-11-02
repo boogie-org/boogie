@@ -8,7 +8,7 @@ namespace Microsoft.Boogie
   {
     public AxiomVisitor (Axiom a) : base(a) {}
 
-    public static DependencyEvaluator GetAxiomDependencies(Axiom axiom)
+    public static DependencyEvaluator GetDependencies(Axiom axiom)
     {
       var result = new AxiomVisitor(axiom);
       result.Visit(axiom);

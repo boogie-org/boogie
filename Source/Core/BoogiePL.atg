@@ -502,9 +502,9 @@ Function<.out List<Declaration>/*!*/ ds.>
     }
     Function/*!*/ func = new Function(z, z.val, typeParams, arguments,
                                       new Formal(retTyd.tok, retTyd, false, argKv), null, kv);
-    func.NewDefinitionAxioms = axioms;
     foreach(var axiom in axioms) {
         ds.Add(axiom);
+        func.AddOtherDefinitionAxiom(axiom);
     }
     
     Contract.Assert(func != null);

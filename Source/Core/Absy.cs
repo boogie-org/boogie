@@ -2477,7 +2477,7 @@ namespace Microsoft.Boogie
     // that the parental situation is unconstrained.
     public readonly ReadOnlyCollection<ConstantParent /*!*/> Parents;
 
-    public IList<Axiom> NewDefinitionAxioms;
+    public readonly IReadOnlyList<Axiom> DefinitionAxioms { get; }
     
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -2516,7 +2516,8 @@ namespace Microsoft.Boogie
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent,
       bool unique,
       IEnumerable<ConstantParent /*!*/> parents, bool childrenComplete,
-      QKeyValue kv)
+      QKeyValue kv,
+      IReadOnlyList<Axiom> definitionAxioms)
       : base(tok, typedIdent, kv)
     {
       Contract.Requires(tok != null);
@@ -2527,12 +2528,10 @@ namespace Microsoft.Boogie
       this.Unique = unique;
       this.Parents = parents == null ? null : new ReadOnlyCollection<ConstantParent>(parents.ToList());
       this.ChildrenComplete = childrenComplete;
+      this.DefinitionAxioms = definitionAxioms;
     }
 
-    public override bool IsMutable
-    {
-      get { return false; }
-    }
+    public override bool IsMutable => false;
 
     public override void Emit(TokenTextWriter stream, int level)
     {
@@ -3308,8 +3307,8 @@ namespace Microsoft.Boogie
     public NAryExpr DefinitionBody; // Only set if the function is declared with {:define}
     public Axiom DefinitionAxiom;
 
-    public IList<Axiom> NewDefinitionAxioms;
     public IList<Axiom> otherDefinitionAxioms;
+    public IEnumerable<Axiom> DefinitionAxioms => new []{ DefinitionAxiom}.Concat(otherDefinitionAxioms);
 
     public IEnumerable<Axiom> OtherDefinitionAxioms => otherDefinitionAxioms;
 
