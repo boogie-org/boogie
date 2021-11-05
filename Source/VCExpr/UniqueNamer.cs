@@ -127,9 +127,11 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(baseName != null);
       Contract.Requires(thingie != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      string /*!*/
-        candidate;
+      string /*!*/ candidate;
 
+      // if (baseName != "ControlFlow" && baseName.Contains("lambda")) {
+      //   baseName = "b";
+      // }
       if (CurrentCounters.TryGetValue(baseName, out var counter))
       {
         candidate = baseName + Spacer + counter;
@@ -202,7 +204,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(thingie != null);
       Contract.Ensures(Contract.Result<string>() != null);
       string res = NextFreeName(thingie, inherentName);
-      LocalNames[LocalNames.Count - 1][thingie] = res;
+      LocalNames[^1][thingie] = res;
       return res;
     }
 
