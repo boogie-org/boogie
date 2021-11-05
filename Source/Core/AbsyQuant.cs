@@ -51,7 +51,7 @@ namespace Microsoft.Boogie
 
     public Expr /*!*/ Body
     {
-      get { return _Body; }
+      get => _Body;
       set
       {
         if (Immutable)

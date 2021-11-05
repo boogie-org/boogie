@@ -509,10 +509,7 @@ namespace Microsoft.Boogie
 
     private static CommandLineOptions clo;
 
-    public static CommandLineOptions /*!*/ Clo
-    {
-      get { return clo; }
-    }
+    public static CommandLineOptions /*!*/ Clo => clo;
 
     public static void Install(CommandLineOptions options)
     {
