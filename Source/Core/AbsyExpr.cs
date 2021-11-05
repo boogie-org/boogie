@@ -21,6 +21,8 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(ExprContracts))]
   public abstract class Expr : Absy
   {
+    public virtual int ContentHash => 1;
+    
     public Expr(IToken /*!*/ tok, bool immutable)
       : base(tok)
     {

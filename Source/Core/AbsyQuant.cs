@@ -1029,6 +1029,9 @@ namespace Microsoft.Boogie
       }
     }
 
+    public override int ContentHash =>
+      HashCode.Combine(TypeParameters.Count.GetHashCode(), this.Dummies.Count, this.Body.ContentHash);
+
     public override void ComputeFreeVariables(Set freeVars)
     {
       //Contract.Requires(freeVars != null);

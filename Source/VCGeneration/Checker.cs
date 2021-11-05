@@ -199,8 +199,8 @@ namespace Microsoft.Boogie
       lock (Program.TopLevelDeclarations)
       {
         var decls = s == null ? prog.TopLevelDeclarations : s.TopLevelDeclarations;
-        foreach (Declaration decl in decls)
-        {
+        decls = decls.OrderBy(d => d.ContentHash);
+        foreach (Declaration decl in decls) {
           Contract.Assert(decl != null);
           if (decl is TypeCtorDecl typeDecl)
           {
