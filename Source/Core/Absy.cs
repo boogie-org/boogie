@@ -2477,7 +2477,7 @@ namespace Microsoft.Boogie
     // that the parental situation is unconstrained.
     public readonly ReadOnlyCollection<ConstantParent /*!*/> Parents;
 
-    public IReadOnlyList<Axiom> DefinitionAxioms { get; }
+    public IEnumerable<Axiom> DefinitionAxioms { get; }
     
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -2490,34 +2490,20 @@ namespace Microsoft.Boogie
     public readonly bool ChildrenComplete;
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent)
-      : base(tok, typedIdent)
+      : this(tok, typedIdent, true)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(typedIdent != null);
-      Contract.Requires(typedIdent.Name != null && (!typedIdent.HasName || typedIdent.Name.Length > 0));
-      Contract.Requires(typedIdent.WhereExpr == null);
-      this.Unique = true;
-      this.Parents = null;
-      this.ChildrenComplete = false;
     }
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent, bool unique)
-      : base(tok, typedIdent)
+      : this(tok, typedIdent, unique, null, false, null, new List<Axiom>())
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(typedIdent != null);
-      Contract.Requires(typedIdent.Name != null && typedIdent.Name.Length > 0);
-      Contract.Requires(typedIdent.WhereExpr == null);
-      this.Unique = unique;
-      this.Parents = null;
-      this.ChildrenComplete = false;
     }
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent,
       bool unique,
-      IEnumerable<ConstantParent /*!*/> parents, bool childrenComplete,
-      QKeyValue kv,
-      IReadOnlyList<Axiom> definitionAxioms)
+      IEnumerable<ConstantParent /*!*/> parents = null, bool childrenComplete = false,
+      QKeyValue kv = null,
+      IEnumerable<Axiom> definitionAxioms = null)
       : base(tok, typedIdent, kv)
     {
       Contract.Requires(tok != null);
@@ -2528,7 +2514,7 @@ namespace Microsoft.Boogie
       this.Unique = unique;
       this.Parents = parents == null ? null : new ReadOnlyCollection<ConstantParent>(parents.ToList());
       this.ChildrenComplete = childrenComplete;
-      this.DefinitionAxioms = definitionAxioms;
+      this.DefinitionAxioms = definitionAxioms ?? Enumerable.Empty<Axiom>();
     }
 
     public override bool IsMutable => false;
