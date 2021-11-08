@@ -20,7 +20,7 @@ axiom (forall x: int ::
 
 procedure I1(x : int) returns (y: int)
   requires R(x);
-  ensures Q(f1(y)); // this post-condition doesn't prove because f1 is attributed as exclude_dep and
+  ensures Q(f1(x)); // this post-condition doesn't prove because f1 is attributed as exclude_dep and
                     // is thus removed from the outgoing set of I1.
                     // This makes the axiom on line 23 unreachable from I1, which is thus pruned away.
 {
