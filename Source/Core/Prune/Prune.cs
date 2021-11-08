@@ -114,9 +114,7 @@ namespace Microsoft.Boogie
 
       // an implementation only has outgoing edges.
       var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing).ToHashSet();
-      var result = program.TopLevelDeclarations.Where(d => d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d)).ToList();
-      var removedDeclarations = program.TopLevelDeclarations.Except(result).ToList();
-      return result;
+      return program.TopLevelDeclarations.Where(d => d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
     }
   }
 }

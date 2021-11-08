@@ -1191,9 +1191,6 @@ namespace Microsoft.Boogie.GraphUtil
         var outgoing = edges.GetValueOrDefault(node) ?? new List<object>();
         foreach (var x in outgoing)
         {
-          if (x.ToString().Contains("Agnes2")) {
-            Console.Write("");
-          }
           todo.Push(x);
         }
       }
