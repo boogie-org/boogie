@@ -2298,7 +2298,7 @@ namespace Microsoft.Boogie
   /prune:<n>
                 0 (default) - none
                 1 - automatic pruning
-                2 - aggressive pruning. Requires binding axioms to functions and constants using 'using'
+                2 - aggressive pruning. Requires binding axioms to functions and constants using 'uses'
   /relaxFocus   Process foci in a bottom-up fashion. This way only generates
                 a linear number of splits. The default way (top-down) is more
                 aggressive and it may create an exponential number of splits.
