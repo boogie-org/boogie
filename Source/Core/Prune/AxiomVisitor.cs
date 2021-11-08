@@ -21,7 +21,7 @@ namespace Microsoft.Boogie
       var triggerList = t.Tr.ToList();
       triggerList.ForEach(e => e.pos = Expr.Position.Neither);
       triggerList.ForEach(e => visitor.VisitExpr(e));
-      AddIncoming(visitor.incomingSets.SelectMany(x => x).ToArray());
+      AddIncoming(visitor.outgoing.ToArray());
     }
 
     public override Expr VisitExpr(Expr node) {

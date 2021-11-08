@@ -39,9 +39,7 @@ namespace Microsoft.Boogie
 
     protected void AddOutgoing(Declaration newOutgoing)
     {
-      if (!ExcludeDep(newOutgoing)) {
-        outgoing.Add(newOutgoing);
-      }
+      outgoing.Add(newOutgoing);
     }
 
     protected void AddIncoming(Declaration[] declarations)
