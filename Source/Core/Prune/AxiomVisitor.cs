@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 
@@ -17,11 +16,11 @@ namespace Microsoft.Boogie
     }
     
     private void VisitTriggerCustom(Trigger t) {
-      var visitor = new AxiomVisitor((Axiom)declaration);
+      var visitor = new TriggerVisitor();
       var triggerList = t.Tr.ToList();
-      triggerList.ForEach(e => e.pos = Expr.Position.Neither);
       triggerList.ForEach(e => visitor.VisitExpr(e));
-      AddIncoming(visitor.outgoing.ToArray());
+      var incomingSet = visitor.Declarations.ToArray();
+      AddIncoming(incomingSet);
     }
 
     public override Expr VisitExpr(Expr node) {

@@ -25,7 +25,7 @@ namespace Microsoft.Boogie
     public List<Declaration[]> incomingSets = new();
     public HashSet<Type> types = new();
     
-    private static bool ExcludeDep(Declaration declaration)
+    public static bool ExcludeDep(Declaration declaration)
     {
       return declaration.Attributes != null && QKeyValue.FindBoolAttribute(declaration.Attributes, "exclude_dep");
     }
@@ -39,7 +39,9 @@ namespace Microsoft.Boogie
 
     protected void AddOutgoing(Declaration newOutgoing)
     {
-      outgoing.Add(newOutgoing);
+      if (!ExcludeDep(newOutgoing)) {
+        outgoing.Add(newOutgoing);
+      }
     }
 
     protected void AddIncoming(Declaration[] declarations)
