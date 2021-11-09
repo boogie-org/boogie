@@ -350,11 +350,11 @@ private class BvBounds : Expr {
 		 }
 		 makeClone = true;
 		 
-		 foreach(var axiom in axioms) {
-		   ds.Add(axiom);
-		 }
 		 var constant = new Constant(y, x, u, ParentsClone, ChildrenComplete, kv, axioms);
 		 ds.Add(constant);
+		}
+		foreach(var axiom in axioms) {
+		 ds.Add(axiom);
 		}
 		
 	}
