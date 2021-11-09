@@ -1,2 +1,2 @@
-WhereParsing2.bpl(3,14): error: ";" expected
+WhereParsing2.bpl(3,14): error: invalid Consts
 1 parse errors detected in WhereParsing2.bpl
