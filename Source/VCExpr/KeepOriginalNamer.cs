@@ -9,8 +9,6 @@ using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie.VCExprAST
 {
-  using TEHelperFuns = Microsoft.Boogie.TypeErasure.HelperFuns;
-
   public class KeepOriginalNamer : IUniqueNamer
   {
     public string Spacer = "@@";
@@ -18,8 +16,7 @@ namespace Microsoft.Boogie.VCExprAST
     public KeepOriginalNamer()
     {
       GlobalNames = new Dictionary<Object, string>();
-      LocalNames = TEHelperFuns.ToList(new Dictionary<Object /*!*/, string /*!*/>()
-        as IDictionary<Object /*!*/, string /*!*/>);
+      LocalNames = new() { new Dictionary<object, string>() };
       UsedNames = new HashSet<string>();
       CurrentCounters = new Dictionary<string, int>();
       GlobalPlusLocalNames = new Dictionary<Object, string>();
@@ -99,8 +96,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Invariant(CurrentCounters != null);
     }
 
-    private readonly IDictionary<Object /*!*/, string /*!*/> /*!*/
-      GlobalPlusLocalNames;
+    private readonly IDictionary<Object /*!*/, string /*!*/> /*!*/ GlobalPlusLocalNames;
 
     [ContractInvariantMethod]
     void GlobalPlusLocalNamesInvariantMethod()
@@ -206,21 +202,6 @@ namespace Microsoft.Boogie.VCExprAST
       string res = NextFreeName(thingie, inherentName);
       LocalNames[^1][thingie] = res;
       return res;
-    }
-
-    public virtual string LabelVar(string s)
-    {
-      return s;
-    }
-
-    public virtual string LabelName(string s)
-    {
-      return s;
-    }
-
-    public virtual string AbsyLabel(string s)
-    {
-      return s;
     }
 
     public virtual void ResetLabelCount()
