@@ -11,7 +11,7 @@ namespace Microsoft.Boogie.VCExprAST
 {
   using TEHelperFuns = Microsoft.Boogie.TypeErasure.HelperFuns;
 
-  public class UniqueNamer : ICloneable
+  public class UniqueNamer : IUniqueNamer
   {
     public string Spacer = "@@";
 
@@ -129,7 +129,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Ensures(Contract.Result<string>() != null);
       string /*!*/ candidate;
 
-      // if (baseName != "ControlFlow" && baseName.Contains("lambda")) {
+      // if (baseName != "ControlFlow") {
       //   baseName = "b";
       // }
       if (CurrentCounters.TryGetValue(baseName, out var counter))
@@ -206,16 +206,6 @@ namespace Microsoft.Boogie.VCExprAST
       string res = NextFreeName(thingie, inherentName);
       LocalNames[^1][thingie] = res;
       return res;
-    }
-
-    public virtual string GetQuotedName(Object thingie, string inherentName)
-    {
-      return GetName(thingie, inherentName);
-    }
-
-    public virtual string GetQuotedLocalName(Object thingie, string inherentName)
-    {
-      return GetLocalName(thingie, inherentName);
     }
 
     public virtual string LabelVar(string s)

@@ -11,7 +11,7 @@ namespace Microsoft.Boogie.SMTLib
   public class TypeDeclCollector : BoundVarTraversingVCExprVisitor<bool, bool>
   {
     private readonly SMTLibOptions options;
-    private UniqueNamer Namer;
+    private IUniqueNamer Namer;
 
     private HashSet<Function /*!*/> /*!*/
       RegisteredRelations = new HashSet<Function>();
@@ -27,7 +27,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
 
-    public TypeDeclCollector(SMTLibOptions options, UniqueNamer namer)
+    public TypeDeclCollector(SMTLibOptions options, IUniqueNamer namer)
     {
       Contract.Requires(namer != null);
       this.options = options;
@@ -122,7 +122,7 @@ namespace Microsoft.Boogie.SMTLib
       _KnownSelectFunctions.Pop();
     }
 
-    public void SetNamer(UniqueNamer namer)
+    public void SetNamer(IUniqueNamer namer)
     {
       Namer = namer;
     }

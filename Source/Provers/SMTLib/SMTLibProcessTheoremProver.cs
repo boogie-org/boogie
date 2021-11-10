@@ -162,8 +162,8 @@ namespace Microsoft.Boogie.SMTLib
 
     internal TypeAxiomBuilder AxBuilder { get; private set; }
     private TypeAxiomBuilder CachedAxBuilder;
-    private UniqueNamer CachedNamer;
-    internal UniqueNamer Namer { get; private set; }
+    private IUniqueNamer CachedNamer;
+    internal IUniqueNamer Namer { get; private set; }
     readonly TypeDeclCollector DeclCollector;
     protected SMTLibProcess Process;
     readonly List<string> proverErrors = new List<string>();
@@ -572,7 +572,7 @@ namespace Microsoft.Boogie.SMTLib
       PossiblyRestart();
 
       SendThisVC("(push 1)");
-      SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
+      SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
       if (options.Solver == SolverKind.Z3)
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
