@@ -28,7 +28,7 @@ namespace Microsoft.Boogie.SMTLib
   {
     public SMTLibOptions LibOptions { get; }
 
-    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
+    public SMTLibExprLineariser(TextWriter wr, IUniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
       ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null) : this(libOptions)
     {
       Contract.Requires(wr != null);
@@ -61,7 +61,7 @@ namespace Microsoft.Boogie.SMTLib
       return "Select_" + TypeToString(node[0].Type);
     }
     
-    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
+    public static string ToString(VCExpr e, IUniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
       ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null, ISet<VCExprVar> tryAssumes = null)
     {
       Contract.Requires(e != null);
@@ -103,7 +103,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    internal readonly UniqueNamer Namer;
+    internal readonly IUniqueNamer Namer;
     internal int UnderQuantifier = 0;
     internal readonly SMTLibProverOptions ProverOptions;
 
@@ -229,7 +229,7 @@ namespace Microsoft.Boogie.SMTLib
         }
         else
         {
-          return SMTLibNamer.QuoteId("T@" + s);
+          return SmtLibNameUtils.QuoteId("T@" + s);
         }
       }
     }
@@ -461,7 +461,7 @@ namespace Microsoft.Boogie.SMTLib
           wr.Write("\n");
           if (info.qid != null && LibOptions.EmitDebugInformation)
           {
-            wr.Write(" :qid {0}\n", SMTLibNamer.QuoteId(info.qid));
+            wr.Write(" :qid {0}\n", SmtLibNameUtils.QuoteId(info.qid));
           }
 
           if (weight != 1)
