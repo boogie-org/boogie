@@ -77,7 +77,7 @@ namespace Microsoft.Boogie.SMTLib
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
-      Namer = new SMTLibNamer();
+      Namer = new UniqueNamer();
       ctx.parent = this;
       this.DeclCollector = new TypeDeclCollector(libOptions, Namer);
 
@@ -558,7 +558,7 @@ namespace Microsoft.Boogie.SMTLib
       if (HasReset)
       {
         AxBuilder = (TypeAxiomBuilder) CachedAxBuilder?.Clone();
-        Namer = (SMTLibNamer) CachedNamer.Clone();
+        Namer = (IUniqueNamer) CachedNamer.Clone();
         Namer.ResetLabelCount();
         DeclCollector.SetNamer(Namer);
         DeclCollector.Push();
