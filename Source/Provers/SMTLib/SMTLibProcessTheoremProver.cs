@@ -77,7 +77,7 @@ namespace Microsoft.Boogie.SMTLib
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
-      Namer = new UniqueNamer();
+      Namer = new KeepOriginalNamer();
       ctx.parent = this;
       this.DeclCollector = new TypeDeclCollector(libOptions, Namer);
 

@@ -11,11 +11,11 @@ namespace Microsoft.Boogie.VCExprAST
 {
   using TEHelperFuns = Microsoft.Boogie.TypeErasure.HelperFuns;
 
-  public class UniqueNamer : IUniqueNamer
+  public class KeepOriginalNamer : IUniqueNamer
   {
     public string Spacer = "@@";
 
-    public UniqueNamer()
+    public KeepOriginalNamer()
     {
       GlobalNames = new Dictionary<Object, string>();
       LocalNames = TEHelperFuns.ToList(new Dictionary<Object /*!*/, string /*!*/>()
@@ -25,7 +25,7 @@ namespace Microsoft.Boogie.VCExprAST
       GlobalPlusLocalNames = new Dictionary<Object, string>();
     }
 
-    protected UniqueNamer(UniqueNamer namer)
+    protected KeepOriginalNamer(KeepOriginalNamer namer)
     {
       Contract.Requires(namer != null);
 
@@ -46,7 +46,7 @@ namespace Microsoft.Boogie.VCExprAST
     public virtual Object Clone()
     {
       Contract.Ensures(Contract.Result<Object>() != null);
-      return new UniqueNamer(this);
+      return new KeepOriginalNamer(this);
     }
 
     public virtual void Reset()
