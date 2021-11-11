@@ -709,6 +709,8 @@ namespace Microsoft.Boogie
 
   public class LiteralExpr : Expr
   {
+    public override int ContentHash => Val.GetHashCode();
+
     public readonly object /*!*/
       Val; // false, true, a BigNum, a BigDec, a BigFloat, a BvConst, or a RoundingMode
 
@@ -3085,11 +3087,14 @@ namespace Microsoft.Boogie
 
   public class NAryExpr : Expr
   {
+    public override int ContentHash => HashCode.Combine(Fun.GetType().GetHashCode(),
+      Args.Select(a => a.ContentHash).Aggregate(HashCode.Combine));
+    
     [Additive] [Peer] private IAppliable _Fun;
 
     public IAppliable /*!*/ Fun
     {
-      get { return _Fun; }
+      get => _Fun;
       set
       {
         if (Immutable)

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using Microsoft.Boogie.VCExprAST;
 using System.Threading.Tasks;
 using VC;
@@ -199,8 +200,8 @@ namespace Microsoft.Boogie
       lock (Program.TopLevelDeclarations)
       {
         var decls = s == null ? prog.TopLevelDeclarations : s.TopLevelDeclarations;
-        decls = decls.OrderBy(d => d.ContentHash);
-        foreach (Declaration decl in decls) {
+        var orderedByContentHash = decls.OrderBy(d => d.ContentHash);
+        foreach (Declaration decl in orderedByContentHash) {
           Contract.Assert(decl != null);
           if (decl is TypeCtorDecl typeDecl)
           {
