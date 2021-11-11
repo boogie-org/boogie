@@ -32,8 +32,8 @@ namespace Microsoft.Boogie
 
     protected void AddIncoming(Declaration newIncoming)
     {
-      if (CommandLineOptions.Clo.Prune == CommandLineOptions.PruneMode.Automatic && !ExcludeDep(newIncoming)) {
-        incomingSets.Add(new[] { newIncoming });
+      if (!ExcludeDep(newIncoming)) {
+        AddIncoming(new[] { newIncoming });
       }
     }
 
