@@ -42,6 +42,7 @@ procedure M(p: Person)
       
       CommandLineOptions.Install(new CommandLineOptions());
       CommandLineOptions.Clo.Parse(new string[]{});
+      CommandLineOptions.Clo.EmitSkolimIdAndQId = false;
       ExecutionEngine.printer = new ConsolePrinter();
     
       var proverLog1 = GetProverLogForProgram(procedure1);
@@ -49,6 +50,33 @@ procedure M(p: Person)
       Assert.AreEqual(proverLog1, proverLog2);
     }
       
+    [Test()]
+    public void TurnOffEmitSkolimIdAndQId()
+    {
+      var procedure = @"
+procedure M(x: int) 
+  requires x == 2; {
+  assert (exists y:int :: x + y + x - y == 4);
+  assert (forall y:int :: x + y + x - y == 4);
+}";
+      
+      CommandLineOptions.Install(new CommandLineOptions());
+      CommandLineOptions.Clo.Parse(new string[]{});
+      ExecutionEngine.printer = new ConsolePrinter();
+      
+      var proverLog1 = GetProverLogForProgram(procedure);
+      Assert.True(proverLog1.Contains("skolemid"));
+      Assert.True(proverLog1.Contains("qid"));
+      
+      CommandLineOptions.Install(new CommandLineOptions());
+      CommandLineOptions.Clo.Parse(new string[]{});
+      CommandLineOptions.Clo.EmitSkolimIdAndQId = false;
+      ExecutionEngine.printer = new ConsolePrinter();
+      var proverLog2 = GetProverLogForProgram(procedure);
+      Assert.True(!proverLog2.Contains("skolemid"));
+      Assert.True(!proverLog2.Contains("qid"));
+    }
+
     [Test()]
     public void ControlFlowIsIsolated()
     {

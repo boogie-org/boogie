@@ -459,7 +459,7 @@ namespace Microsoft.Boogie.SMTLib
         if (hasAttrs)
         {
           wr.Write("\n");
-          if (info.qid != null)
+          if (info.qid != null && CommandLineOptions.Clo.EmitSkolimIdAndQId)
           {
             wr.Write(" :qid {0}\n", SMTLibNamer.QuoteId(info.qid));
           }
@@ -469,7 +469,7 @@ namespace Microsoft.Boogie.SMTLib
             wr.Write(" :weight {0}\n", weight);
           }
 
-          if (info.uniqueId != -1)
+          if (info.uniqueId != -1 && CommandLineOptions.Clo.EmitSkolimIdAndQId)
           {
             wr.Write(" :skolemid |{0}|\n", info.uniqueId);
           }
