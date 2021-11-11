@@ -2,6 +2,8 @@ namespace Microsoft.Boogie.VCExprAST
 {
   public class DiscardOriginalName : KeepOriginalNamer
   {
+    private const string controlFlow = "ControlFlow"; // This is a hardcoded name used by Boogie to inspect the SMT model.
+
     public DiscardOriginalName()
     {
     }
@@ -12,7 +14,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     protected override string NextFreeName(object thingie, string baseName)
     {
-      if (baseName != "ControlFlow") {
+      if (baseName != controlFlow) {
         baseName = "b";
       }
       return base.NextFreeName(thingie, baseName);
