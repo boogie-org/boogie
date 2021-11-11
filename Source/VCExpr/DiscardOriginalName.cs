@@ -1,12 +1,12 @@
 namespace Microsoft.Boogie.VCExprAST
 {
-  public class TrashOriginalName : KeepOriginalNamer
+  public class DiscardOriginalName : KeepOriginalNamer
   {
-    public TrashOriginalName()
+    public DiscardOriginalName()
     {
     }
 
-    protected TrashOriginalName(KeepOriginalNamer namer) : base(namer)
+    protected DiscardOriginalName(KeepOriginalNamer namer) : base(namer)
     {
     }
 
@@ -18,9 +18,9 @@ namespace Microsoft.Boogie.VCExprAST
       return base.NextFreeName(thingie, baseName);
     }
     
-    public override TrashOriginalName Clone()
+    public override DiscardOriginalName Clone()
     {
-      return new TrashOriginalName(this);
+      return new DiscardOriginalName(this);
     }
   }
 }
