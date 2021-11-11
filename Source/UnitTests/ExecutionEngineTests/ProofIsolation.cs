@@ -12,6 +12,33 @@ namespace ExecutionEngineTests
   public class ProofIsolation
   {
     [Test()]
+    public void TurnOffEmitSkolimIdAndQId()
+    {
+      var procedure = @"
+procedure M(x: int) 
+  requires x == 2; {
+  assert (exists y:int :: x + y + x - y == 4);
+  assert (forall y:int :: x + y + x - y == 4);
+}";
+      
+      CommandLineOptions.Install(new CommandLineOptions());
+      CommandLineOptions.Clo.Parse(new string[]{});
+      ExecutionEngine.printer = new ConsolePrinter();
+      
+      var proverLog1 = GetProverLogForProgram(procedure).ToList();
+      Assert.True(proverLog1[0].Contains("skolemid"));
+      Assert.True(proverLog1[0].Contains("qid"));
+      
+      CommandLineOptions.Install(new CommandLineOptions());
+      CommandLineOptions.Clo.Parse(new string[]{});
+      CommandLineOptions.Clo.EmitSkolimIdAndQId = false;
+      ExecutionEngine.printer = new ConsolePrinter();
+      var proverLog2 = GetProverLogForProgram(procedure).ToList();
+      Assert.True(!proverLog2[0].Contains("skolemid"));
+      Assert.True(!proverLog2[0].Contains("qid"));
+    }
+
+    [Test()]
     public void ControlFlowIsIsolated()
     {
       var procedure1 = @"
@@ -142,6 +169,7 @@ procedure M2(x: int, coloredBarrel: Barrel2 RGBColor2)
       // Parse error are printed to StdOut :/
       int errorCount = Parser.Parse(new StringReader(procedure1), "1", defines, out Program program1,
         CommandLineOptions.Clo.UseBaseNameForFileName);
+      Assert.AreEqual(0, errorCount);
       string directory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
       Directory.CreateDirectory(directory);
       var temp1 = directory + "/proverLog";
