@@ -41,7 +41,7 @@ procedure M(x: int)
     }
 
     [Test()]
-    public void TestTrashingNamer()
+    public void TestNameDiscarding()
     {
       var procedure1 = @"
 type Wicket;
@@ -109,7 +109,7 @@ procedure M(x: int, coloredBarrel: Barrel2 RGBColor2)
       
       CommandLineOptions.Install(new CommandLineOptions());
       CommandLineOptions.Clo.Parse(new string[]{});
-      CommandLineOptions.Clo.KeepOriginalName = false;
+      CommandLineOptions.Clo.DiscardNames = true;
       ExecutionEngine.printer = new ConsolePrinter();
       
       CommandLineOptions.Clo.ProcsToCheck.Add("M");
