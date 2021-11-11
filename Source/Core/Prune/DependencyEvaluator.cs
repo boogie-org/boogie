@@ -24,8 +24,8 @@ namespace Microsoft.Boogie
     public readonly HashSet<Declaration> outgoing = new(); // an edge can either be a function or a constant.
     public List<Declaration[]> incomingSets = new();
     public HashSet<Type> types = new();
-    
-    public static bool ExcludeDep(Declaration declaration)
+
+    private static bool ExcludeDep(Declaration declaration)
     {
       return declaration.Attributes != null && QKeyValue.FindBoolAttribute(declaration.Attributes, "exclude_dep");
     }
