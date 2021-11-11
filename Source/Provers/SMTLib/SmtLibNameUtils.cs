@@ -135,12 +135,12 @@ namespace Microsoft.Boogie.SMTLib
     }
 
 
-    public static string GetQuotedLocalName(this IUniqueNamer namer, object thingie, string inherentName)
+    public static string GetQuotedLocalName(this UniqueNamer namer, object thingie, string inherentName)
     {
       return AddQuotes(namer.GetLocalName(thingie, FilterReserved(inherentName)));
     }
 
-    public static string GetQuotedName(this IUniqueNamer namer, object thingie, string inherentName)
+    public static string GetQuotedName(this UniqueNamer namer, object thingie, string inherentName)
     {
       return AddQuotes(namer.GetName(thingie, FilterReserved(inherentName)));
     }

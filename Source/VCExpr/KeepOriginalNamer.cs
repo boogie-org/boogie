@@ -2,17 +2,23 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 
-// Visitor that establishes unique variable (or constant) names in a VCExpr.
-// This is done by adding a counter as suffix if name clashes occur
-
-// TODO: also handle type variables here
-
 namespace Microsoft.Boogie.VCExprAST
 {
-  public class KeepOriginalNamer : IUniqueNamer
+  /**
+   * Visitor that establishes unique variable (or constant) names in a VCExpr.
+   * This is done by adding a counter as suffix if name clashes occur
+   * TODO: also handle type variables here
+   */
+  public class KeepOriginalNamer : UniqueNamer
   {
     public string Spacer = "@@";
 
+    public virtual UniqueNamer Clone()
+    {
+      Contract.Ensures(Contract.Result<Object>() != null);
+      return new KeepOriginalNamer(this);
+    }
+    
     public KeepOriginalNamer()
     {
       GlobalNames = new Dictionary<Object, string>();
@@ -38,12 +44,6 @@ namespace Microsoft.Boogie.VCExprAST
       UsedNames = new HashSet<string>(namer.UsedNames);
       CurrentCounters = new Dictionary<string, int>(namer.CurrentCounters);
       GlobalPlusLocalNames = new Dictionary<Object, string>(namer.GlobalPlusLocalNames);
-    }
-
-    public virtual Object Clone()
-    {
-      Contract.Ensures(Contract.Result<Object>() != null);
-      return new KeepOriginalNamer(this);
     }
 
     public virtual void Reset()
@@ -118,16 +118,13 @@ namespace Microsoft.Boogie.VCExprAST
 
     ////////////////////////////////////////////////////////////////////////////
 
-    private string NextFreeName(Object thingie, string baseName)
+    protected virtual string NextFreeName(Object thingie, string baseName)
     {
       Contract.Requires(baseName != null);
       Contract.Requires(thingie != null);
       Contract.Ensures(Contract.Result<string>() != null);
       string /*!*/ candidate;
 
-      // if (baseName != "ControlFlow") {
-      //   baseName = "b";
-      // }
       if (CurrentCounters.TryGetValue(baseName, out var counter))
       {
         candidate = baseName + Spacer + counter;
@@ -202,10 +199,6 @@ namespace Microsoft.Boogie.VCExprAST
       string res = NextFreeName(thingie, inherentName);
       LocalNames[^1][thingie] = res;
       return res;
-    }
-
-    public virtual void ResetLabelCount()
-    {
     }
 
     public string Lookup(Object thingie)

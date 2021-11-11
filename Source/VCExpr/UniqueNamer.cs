@@ -2,7 +2,7 @@ using System;
 
 namespace Microsoft.Boogie.VCExprAST
 {
-  public interface IUniqueNamer : ICloneable
+  public interface UniqueNamer
   {
     string Lookup(Object thingie);
     
@@ -12,6 +12,7 @@ namespace Microsoft.Boogie.VCExprAST
     void PopScope();
     void PushScope();
     string GetLocalName(object thingie, string name);
-    void ResetLabelCount();
+
+    UniqueNamer Clone();
   }
 }

@@ -28,7 +28,7 @@ namespace Microsoft.Boogie.SMTLib
   {
     public SMTLibOptions LibOptions { get; }
 
-    public SMTLibExprLineariser(TextWriter wr, IUniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
+    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
       ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null) : this(libOptions)
     {
       Contract.Requires(wr != null);
@@ -61,7 +61,7 @@ namespace Microsoft.Boogie.SMTLib
       return "Select_" + TypeToString(node[0].Type);
     }
     
-    public static string ToString(VCExpr e, IUniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
+    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
       ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null, ISet<VCExprVar> tryAssumes = null)
     {
       Contract.Requires(e != null);
@@ -103,7 +103,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    internal readonly IUniqueNamer Namer;
+    internal readonly UniqueNamer Namer;
     internal int UnderQuantifier = 0;
     internal readonly SMTLibProverOptions ProverOptions;
 

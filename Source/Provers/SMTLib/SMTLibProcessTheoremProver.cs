@@ -77,7 +77,7 @@ namespace Microsoft.Boogie.SMTLib
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
-      Namer = new KeepOriginalNamer();
+      Namer = libOptions.KeepOriginalName ? new KeepOriginalNamer() : new TrashOriginalName();
       ctx.parent = this;
       this.DeclCollector = new TypeDeclCollector(libOptions, Namer);
 
@@ -162,8 +162,8 @@ namespace Microsoft.Boogie.SMTLib
 
     internal TypeAxiomBuilder AxBuilder { get; private set; }
     private TypeAxiomBuilder CachedAxBuilder;
-    private IUniqueNamer CachedNamer;
-    internal IUniqueNamer Namer { get; private set; }
+    private UniqueNamer CachedNamer;
+    internal UniqueNamer Namer { get; private set; }
     readonly TypeDeclCollector DeclCollector;
     protected SMTLibProcess Process;
     readonly List<string> proverErrors = new List<string>();
@@ -551,15 +551,14 @@ namespace Microsoft.Boogie.SMTLib
         currentLogFile = OpenOutputFile(descriptiveName);
         currentLogFile.Write(common.ToString());
       }
-
+      
       PrepareCommon();
       FlushAndCacheCommons();
 
       if (HasReset)
       {
         AxBuilder = (TypeAxiomBuilder) CachedAxBuilder?.Clone();
-        Namer = (IUniqueNamer) CachedNamer.Clone();
-        Namer.ResetLabelCount();
+        Namer = CachedNamer.Clone();
         DeclCollector.SetNamer(Namer);
         DeclCollector.Push();
       }

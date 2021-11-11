@@ -21,5 +21,6 @@ namespace Microsoft.Boogie
     bool RestartProverPerVC { get; }
     bool Trace { get; }
     bool EmitDebugInformation { get; }
+    bool KeepOriginalName { get; }
   }
 }
