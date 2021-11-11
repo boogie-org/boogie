@@ -116,7 +116,7 @@ procedure M(x2: int, coloredBarrel: Barrel2 RGBColor2)
       var proverLog2 = GetProverLogForProgram(procedure2);
       Assert.AreEqual(proverLog1, proverLog2);
     }
-    
+
     [Test()]
     public void ControlFlowIsIsolated()
     {
