@@ -593,7 +593,7 @@ namespace Microsoft.Boogie
       set => trace = value;
     }
 
-    public bool KeepOriginalName { get; set; } = true;
+    public bool DiscardNames { get; set; }
 
     public bool ImmediatelyAcceptCommands => StratifiedInlining > 0 || ContractInfer;
 
