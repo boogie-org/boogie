@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 
@@ -17,11 +16,11 @@ namespace Microsoft.Boogie
     }
     
     private void VisitTriggerCustom(Trigger t) {
-      var visitor = new AxiomVisitor((Axiom)declaration);
+      var visitor = new TriggerVisitor();
       var triggerList = t.Tr.ToList();
-      triggerList.ForEach(e => e.pos = Expr.Position.Neither);
       triggerList.ForEach(e => visitor.VisitExpr(e));
-      AddIncoming(visitor.incomingSets.SelectMany(x => x).ToArray());
+      var incomingSet = visitor.Declarations.ToArray();
+      AddIncoming(incomingSet);
     }
 
     public override Expr VisitExpr(Expr node) {
@@ -32,12 +31,12 @@ namespace Microsoft.Boogie
         AddIncoming(f.Func);
         AddOutgoing(f.Func);
       } else if (node is NAryExpr n) {
-        var appliable = n.Fun;
-        if (appliable is UnaryOperator op) {
+        var applicable = n.Fun;
+        if (applicable is UnaryOperator op) {
           Contract.Assert(op.Op == UnaryOperator.Opcode.Neg || op.Op == UnaryOperator.Opcode.Not);
           Contract.Assert(n.Args.Count() == 1);
           n.Args[0].pos = Expr.NegatePosition(n.Args[0].pos);
-        } else if (appliable is BinaryOperator bin) {
+        } else if (applicable is BinaryOperator bin) {
           Contract.Assert(n.Args.Count() == 2);
           if (bin.Op == BinaryOperator.Opcode.And
               || bin.Op == BinaryOperator.Opcode.Or) {
