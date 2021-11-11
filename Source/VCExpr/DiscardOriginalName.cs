@@ -15,7 +15,7 @@ namespace Microsoft.Boogie.VCExprAST
     protected override string NextFreeName(object thingie, string baseName)
     {
       if (baseName != controlFlow) {
-        baseName = "b";
+        baseName = "n";
       }
       return base.NextFreeName(thingie, baseName);
     }
