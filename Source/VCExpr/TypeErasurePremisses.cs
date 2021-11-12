@@ -1535,7 +1535,7 @@ namespace Microsoft.Boogie.TypeErasure
         typeArgs.Add(node.TypeArguments[i]);
       }
 
-      return HandleFunctionOp(select, typeArgs, node, bindings);
+      return HandleFunctionOp(select, typeArgs, node.Arguments, bindings);
     }
 
     public override VCExpr VisitStoreOp(VCExprNAry node, VariableBindings bindings)
@@ -1551,7 +1551,7 @@ namespace Microsoft.Boogie.TypeErasure
         // the store function never has explicit
         // type parameters
         new List<Type /*!*/>(),
-        node, bindings);
+        node.Arguments, bindings);
     }
 
     public override VCExpr VisitBoogieFunctionOp(VCExprNAry node, VariableBindings bindings)
@@ -1570,7 +1570,7 @@ namespace Microsoft.Boogie.TypeErasure
         typeArgs =
           ExtractTypeArgs(node,
             oriFun.TypeParameters, untypedFun.ExplicitTypeParams);
-      return HandleFunctionOp(untypedFun.Fun, typeArgs, node, bindings);
+      return HandleFunctionOp(untypedFun.Fun, typeArgs, node.Arguments, bindings);
     }
 
     private List<Type /*!*/> /*!*/ ExtractTypeArgs(VCExprNAry node, List<TypeVariable> allTypeParams,

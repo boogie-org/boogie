@@ -369,8 +369,27 @@ namespace Microsoft.Boogie.VCExprAST
   }
 
   [ContractClass(typeof(VCExprNAryContracts))]
-  public abstract class VCExprNAry : VCExpr, IEnumerable<VCExpr /*!*/>
+  public abstract class VCExprNAry : VCExpr
   {
+    public override string ToString()
+    {
+      return $"${Op}(${String.Join(", ", Arguments)})";
+    }
+
+    [Pure]
+    [GlobalAccess(false)]
+    [Escapes(true, false)]
+    public IEnumerable<VCExpr> Arguments
+    {
+      get
+      {
+        for (int i = 0; i < Arity; ++i)
+        {
+          yield return this[i];
+        }
+      }
+    }
+    
     public readonly VCExprOp Op;
 
     [ContractInvariantMethod]
@@ -401,30 +420,6 @@ namespace Microsoft.Boogie.VCExprAST
 
     // the type arguments
     public abstract List<Type /*!*/> /*!*/ TypeArguments { get; }
-
-    [Pure]
-    [GlobalAccess(false)]
-    [Escapes(true, false)]
-    public IEnumerator<VCExpr /*!*/> /*!*/ GetEnumerator()
-    {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerator<VCExpr>>()));
-      for (int i = 0; i < Arity; ++i)
-      {
-        yield return this[i];
-      }
-    }
-
-    [Pure]
-    [GlobalAccess(false)]
-    [Escapes(true, false)]
-    IEnumerator System.Collections.IEnumerable.GetEnumerator()
-    {
-      Contract.Ensures(Contract.Result<IEnumerator>() != null);
-      for (int i = 0; i < Arity; ++i)
-      {
-        yield return this[i];
-      }
-    }
 
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
@@ -488,8 +483,7 @@ namespace Microsoft.Boogie.VCExprAST
     [Pure]
     public override int GetHashCode()
     {
-      return HelperFuns.PolyHash(Op.GetHashCode() * 123 + Arity * 61521,
-        3, this);
+      return HelperFuns.PolyHash(Op.GetHashCode() * 123 + Arity * 61521, 3, this.Arguments);
     }
 
     internal VCExprNAry(VCExprOp op)

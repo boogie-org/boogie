@@ -616,14 +616,14 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       ///////////////////////////////////////////////////////////////////////////////////
-      private void WriteApplication(string opName, IEnumerable<VCExpr> /*!>!*/ args, LineariserOptions options)
+      private void WriteApplication(string opName, VCExprNAry /*!>!*/ call, LineariserOptions options)
       {
-        Contract.Requires(cce.NonNullElements(args));
+        Contract.Requires(cce.NonNullElements(call.Arguments));
         Contract.Requires(options != null);
         Contract.Assert(opName != null);
 
         bool hasArgs = false;
-        foreach (VCExpr e in args)
+        foreach (VCExpr e in call.Arguments)
         {
           Contract.Assert(e != null);
           if (!hasArgs)
@@ -729,7 +729,7 @@ namespace Microsoft.Boogie.SMTLib
         }
         else
         {
-          var groupings = node.GroupBy(e => e.Type).Where(g => g.Count() > 1).ToArray();
+          var groupings = node.Arguments.GroupBy(e => e.Type).Where(g => g.Count() > 1).ToArray();
           if (groupings.Length == 0)
           {
             ExprLineariser.Linearise(VCExpressionGenerator.True, options);
