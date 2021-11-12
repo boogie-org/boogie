@@ -543,7 +543,7 @@ namespace Microsoft.Boogie
     public int VerifySnapshots = -1;
     public bool VerifySeparately = false;
     public string PrintFile = null;
-    public bool EmitSkolimIdAndQId = true;
+    public bool EmitSkolemIdAndQId = true;
     
     public int PrintUnstructured {
       get => printUnstructured;

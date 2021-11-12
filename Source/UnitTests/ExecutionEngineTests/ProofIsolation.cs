@@ -12,7 +12,7 @@ namespace ExecutionEngineTests
   public class ProofIsolation
   {
     [Test()]
-    public void TurnOffEmitSkolimIdAndQId()
+    public void TurnOffEmitSkolemIdAndQId()
     {
       var procedure = @"
 procedure M(x: int) 
@@ -31,7 +31,7 @@ procedure M(x: int)
       
       CommandLineOptions.Install(new CommandLineOptions());
       CommandLineOptions.Clo.Parse(new string[]{});
-      CommandLineOptions.Clo.EmitSkolimIdAndQId = false;
+      CommandLineOptions.Clo.EmitSkolemIdAndQId = false;
       ExecutionEngine.printer = new ConsolePrinter();
       var proverLog2 = GetProverLogForProgram(procedure).ToList();
       Assert.True(!proverLog2[0].Contains("skolemid"));
