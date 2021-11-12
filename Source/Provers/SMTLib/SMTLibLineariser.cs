@@ -459,7 +459,7 @@ namespace Microsoft.Boogie.SMTLib
         if (hasAttrs)
         {
           wr.Write("\n");
-          if (info.qid != null)
+          if (info.qid != null && LibOptions.EmitDebugInformation)
           {
             wr.Write(" :qid {0}\n", SmtLibNameUtils.QuoteId(info.qid));
           }
@@ -469,7 +469,7 @@ namespace Microsoft.Boogie.SMTLib
             wr.Write(" :weight {0}\n", weight);
           }
 
-          if (info.uniqueId != -1)
+          if (info.uniqueId != -1 && LibOptions.EmitDebugInformation)
           {
             wr.Write(" :skolemid |{0}|\n", info.uniqueId);
           }

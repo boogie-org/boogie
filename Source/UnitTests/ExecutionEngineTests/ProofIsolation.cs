@@ -67,7 +67,7 @@ const n2: <a2> [Barrel2 a2] a2;
 type MySynonym2 a2 = int;
 type ComplicatedInt2 = MySynonym2 (MySynonym2 bool);
 
-procedure M(x2: int, coloredBarrel: Barrel2 RGBColor2)
+procedure M2(x2: int, coloredBarrel: Barrel2 RGBColor2)
   requires x2 == 2; 
   modifies favorite2;
   ensures age2(favorite2) == 42; 
@@ -81,6 +81,7 @@ procedure M(x2: int, coloredBarrel: Barrel2 RGBColor2)
       CommandLineOptions.Install(new CommandLineOptions());
       CommandLineOptions.Clo.Parse(new string[]{});
       CommandLineOptions.Clo.DiscardNames = true;
+      CommandLineOptions.Clo.EmitDebugInformation = false;
       ExecutionEngine.printer = new ConsolePrinter();
       
       var proverLog1 = GetProverLogForProgram(procedure1);
@@ -88,6 +89,33 @@ procedure M(x2: int, coloredBarrel: Barrel2 RGBColor2)
       Assert.AreEqual(proverLog1, proverLog2);
     }
     
+    [Test()]
+    public void TurnOffEmitSkolemIdAndQId()
+    {
+      var procedure = @"
+procedure M(x: int) 
+  requires x == 2; {
+  assert (exists y:int :: x + y + x - y == 4);
+  assert (forall y:int :: x + y + x - y == 4);
+}";
+      
+      CommandLineOptions.Install(new CommandLineOptions());
+      CommandLineOptions.Clo.Parse(new string[]{});
+      ExecutionEngine.printer = new ConsolePrinter();
+      
+      var proverLog1 = GetProverLogForProgram(procedure);
+      Assert.True(proverLog1.Contains("skolemid"));
+      Assert.True(proverLog1.Contains("qid"));
+      
+      CommandLineOptions.Install(new CommandLineOptions());
+      CommandLineOptions.Clo.Parse(new string[]{});
+      CommandLineOptions.Clo.EmitDebugInformation = false;
+      ExecutionEngine.printer = new ConsolePrinter();
+      var proverLog2 = GetProverLogForProgram(procedure);
+      Assert.True(!proverLog2.Contains("skolemid"));
+      Assert.True(!proverLog2.Contains("qid"));
+    }
+
     [Test()]
     public void ControlFlowIsIsolated()
     {
@@ -223,6 +251,7 @@ procedure M2(x: int, coloredBarrel: Barrel2 RGBColor2)
       // Parse error are printed to StdOut :/
       int errorCount = Parser.Parse(new StringReader(procedure1), "1", defines, out Program program1,
         CommandLineOptions.Clo.UseBaseNameForFileName);
+      Assert.AreEqual(0, errorCount);
       string directory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
       Directory.CreateDirectory(directory);
       var temp1 = directory + "/proverLog";
