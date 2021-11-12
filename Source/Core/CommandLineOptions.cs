@@ -566,7 +566,7 @@ namespace Microsoft.Boogie
       get => emitDebugInformation;
       set => emitDebugInformation = value;
     }
-
+    
     public int PrintUnstructured {
       get => printUnstructured;
       set => printUnstructured = value;
