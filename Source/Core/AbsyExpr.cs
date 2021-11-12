@@ -21,7 +21,7 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(ExprContracts))]
   public abstract class Expr : Absy
   {
-    public virtual int ContentHash => 1;
+    public abstract int ContentHash { get; }
     
     public Expr(IToken /*!*/ tok, bool immutable)
       : base(tok)
@@ -1271,6 +1271,8 @@ namespace Microsoft.Boogie
         return ComputeHashCode();
       }
     }
+
+    public override int ContentHash => 1;
 
     [Pure]
     public override int ComputeHashCode()
@@ -3092,8 +3094,7 @@ namespace Microsoft.Boogie
 
   public class NAryExpr : Expr
   {
-    public override int ContentHash => HashCode.Combine(Fun.GetType().GetHashCode(),
-      Args.Select(a => a.ContentHash).Aggregate(HashCode.Combine));
+    public override int ContentHash => Args.Select(a => a.ContentHash).Aggregate(Fun.GetType().GetHashCode(), HashCode.Combine);
     
     [Additive] [Peer] private IAppliable _Fun;
 
@@ -3870,6 +3871,8 @@ namespace Microsoft.Boogie
         return ComputeHashCode();
       }
     }
+
+    public override int ContentHash => throw new NotImplementedException();
 
     [Pure]
     public override int ComputeHashCode()

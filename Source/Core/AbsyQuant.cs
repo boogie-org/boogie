@@ -1348,6 +1348,9 @@ namespace Microsoft.Boogie
       return ComputeHashCode();
     }
 
+    public override int ContentHash => HashCode.Combine("let".GetHashCode(), Dummies.Count,
+      Rhss.Select(x => x.ContentHash).Aggregate(Body.ContentHash, HashCode.Combine));
+
     [Pure]
     public override int ComputeHashCode()
     {
