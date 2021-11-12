@@ -1412,9 +1412,14 @@ namespace Microsoft.Boogie
   {
     private Expr _Expr;
 
+    public override int ContentHash => HashCode.Combine("old".GetHashCode(), Expr.ContentHash);
+
     public Expr /*!*/ Expr
     {
-      get { return _Expr; }
+      get
+      {
+        return _Expr;
+      }
       set
       {
         if (Immutable)
@@ -3979,6 +3984,8 @@ namespace Microsoft.Boogie
 
   public class BvExtractExpr : Expr
   {
+    public override int ContentHash => HashCode.Combine(Start, End, Bitvector.ContentHash);
+
     private /*readonly--except in StandardVisitor*/ Expr /*!*/
       _Bitvector;
 
@@ -4149,12 +4156,14 @@ namespace Microsoft.Boogie
 
   public class BvConcatExpr : Expr
   {
+    public override int ContentHash => HashCode.Combine("bvConcat".GetHashCode(), E0.ContentHash, E1.ContentHash);
+    
     private /*readonly--except in StandardVisitor*/ Expr /*!*/
       _E0, _E1;
 
     public Expr E0
     {
-      get { return _E0; }
+      get => _E0;
       set
       {
         if (Immutable)
@@ -4168,7 +4177,7 @@ namespace Microsoft.Boogie
 
     public Expr E1
     {
-      get { return _E1; }
+      get => _E1;
       set
       {
         if (Immutable)
