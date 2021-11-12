@@ -10,33 +10,37 @@ namespace ExecutionEngineTests
   public class ProofIsolation
   {
     [Test()]
-    public void OrderIsNormalised()
+    public void OrderIsNormalisedBasedOnContent()
     {
       var procedure1 = @"
 type Person;
-function height(Person) returns (int);
-function age(Person) returns (int);
-axiom (forall p: Person :: name(p) == ""Remy"" ==> height(p) == 180);
+function A(Person) returns (int) uses {
+  axiom (forall p: Person :: name(p) == ""Remy"" ==> A(p) == 32);
+}
+function B(Person) returns (int) uses {
+  axiom (forall p: Person :: name(p) == ""Remy"" ==> B(p) == 180);
+}
 function name(Person) returns (string);
-axiom (forall p: Person :: name(p) == ""Remy"" ==> age(p) == 32);
 procedure M(p: Person) 
   requires name(p) == ""Remy"";
-  ensures age(p) == 32; 
-  ensures height(p) == 180; 
+  ensures A(p) == 32; 
+  ensures B(p) == 180; 
 {
 }";
       
       var procedure2 = @"
 function name(Person) returns (string);
 type Person;
-axiom (forall p: Person :: name(p) == ""Remy"" ==> age(p) == 32);
-axiom (forall p: Person :: name(p) == ""Remy"" ==> height(p) == 180);
-function age(Person) returns (int);
-function height(Person) returns (int);
+function A(Person) returns (int) uses {
+  axiom (forall p: Person :: name(p) == ""Remy"" ==> A(p) == 180);
+}
+function B(Person) returns (int) uses {
+  axiom (forall p: Person :: name(p) == ""Remy"" ==> B(p) == 32);
+}
 procedure M(p: Person) 
   requires name(p) == ""Remy"";
-  ensures age(p) == 32; 
-  ensures height(p) == 180;
+  ensures B(p) == 32; 
+  ensures A(p) == 180;
 {
 }";
       
