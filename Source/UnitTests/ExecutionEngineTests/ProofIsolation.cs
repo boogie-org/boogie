@@ -46,8 +46,13 @@ procedure M(p: Person)
 
       CommandLineOptions.Install(new CommandLineOptions());
       CommandLineOptions.Clo.Parse(new string[] { });
-      CommandLineOptions.Clo.EmitSkolimIdAndQId = false;
+      CommandLineOptions.Clo.DiscardNames = true;
+      CommandLineOptions.Clo.EmitDebugInformation = false;
       ExecutionEngine.printer = new ConsolePrinter();
+      
+      var proverLog1 = GetProverLogForProgram(procedure1);
+      var proverLog2 = GetProverLogForProgram(procedure2);
+      Assert.AreEqual(proverLog1, proverLog2);
     }
 
     [Test()]
