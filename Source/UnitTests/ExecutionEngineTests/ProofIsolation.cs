@@ -62,19 +62,19 @@ const unique green2: RGBColor2;
 const unique blue2: RGBColor2;
 
 const m2: [Barrel2 Wicket2] Wicket2;
-const n2: <a> [Barrel2 a] a;
+const n2: <a2> [Barrel2 a2] a2;
 
-type MySynonym2 a = int;
+type MySynonym2 a2 = int;
 type ComplicatedInt2 = MySynonym2 (MySynonym2 bool);
 
-procedure M(x: int, coloredBarrel: Barrel2 RGBColor2)
-  requires x == 2; 
+procedure M(x2: int, coloredBarrel: Barrel2 RGBColor2)
+  requires x2 == 2; 
   modifies favorite2;
   ensures age2(favorite2) == 42; 
 {
-  var y: ComplicatedInt2;
+  var y2: ComplicatedInt2;
   favorite2 := alternative2;
-  assert y == 3;
+  assert y2 == 3;
 }
 ";
       
@@ -83,12 +83,9 @@ procedure M(x: int, coloredBarrel: Barrel2 RGBColor2)
       CommandLineOptions.Clo.DiscardNames = true;
       ExecutionEngine.printer = new ConsolePrinter();
       
-      CommandLineOptions.Clo.ProcsToCheck.Add("M");
       var proverLog1 = GetProverLogForProgram(procedure1);
       var proverLog2 = GetProverLogForProgram(procedure2);
       Assert.AreEqual(proverLog1, proverLog2);
-      
-      Console.Out.Write("");
     }
     
     [Test()]
