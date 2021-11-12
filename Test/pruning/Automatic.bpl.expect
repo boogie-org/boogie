@@ -1,0 +1,6 @@
+Automatic.bpl(27,1): Error: A postcondition might not hold on this return path.
+Automatic.bpl(23,3): Related location: This is the postcondition that might not hold.
+Automatic.bpl(57,1): Error: A postcondition might not hold on this return path.
+Automatic.bpl(55,3): Related location: This is the postcondition that might not hold.
+
+Boogie program verifier finished with 1 verified, 2 errors

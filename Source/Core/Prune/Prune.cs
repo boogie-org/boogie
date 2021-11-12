@@ -5,21 +5,17 @@ using Microsoft.Boogie.GraphUtil;
 namespace Microsoft.Boogie
 {
   public class Prune {
-    private static bool ExcludeDep(Declaration d)
-    {
-      return d.Attributes != null &&
-              QKeyValue.FindBoolAttribute(d.Attributes, "exclude_dep");
-    }
 
     public static Dictionary<object, List<object>> ComputeDeclarationDependencies(Program program)
     {
-      if (!CommandLineOptions.Clo.PruneFunctionsAndAxioms)
+      if (CommandLineOptions.Clo.Prune == CommandLineOptions.PruneMode.None)
       {
         return null;
       }
-      var axiomNodes = program.Axioms.Select(AxiomVisitor.GetAxiomDependencies);
-      var functionNodes = program.Functions.Select(FunctionVisitor.GetFunctionDependencies);
-      var nodes = axiomNodes.Concat(functionNodes).ToList();
+      var axiomNodes = program.Axioms.Select(AxiomVisitor.GetDependencies);
+      var functionNodes = program.Functions.Select(FunctionVisitor.GetDependencies);
+      var constantNodes = program.Constants.Select(ConstantVisitor.GetDependencies);
+      var nodes = axiomNodes.Concat(functionNodes).Concat(constantNodes).ToList();
 
       var edges = new Dictionary<object, List<object>>();
       foreach (var node in nodes) {
@@ -107,7 +103,7 @@ namespace Microsoft.Boogie
      */
     public static IEnumerable<Declaration> GetLiveDeclarations(Program program, List<Block> blocks)
     {
-      if (program.DeclarationDependencies == null || blocks == null || !CommandLineOptions.Clo.PruneFunctionsAndAxioms)
+      if (program.DeclarationDependencies == null || blocks == null || CommandLineOptions.Clo.Prune == CommandLineOptions.PruneMode.None)
       {
         return program.TopLevelDeclarations;
       }
@@ -118,8 +114,7 @@ namespace Microsoft.Boogie
 
       // an implementation only has outgoing edges.
       var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing).ToHashSet();
-      var result = program.TopLevelDeclarations.Where(d => d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
-      return result;
+      return program.TopLevelDeclarations.Where(d => d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
     }
   }
 }

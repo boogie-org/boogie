@@ -24,7 +24,7 @@ namespace Microsoft.Boogie
     public readonly HashSet<Declaration> outgoing = new(); // an edge can either be a function or a constant.
     public List<Declaration[]> incomingSets = new();
     public HashSet<Type> types = new();
-    
+
     private static bool ExcludeDep(Declaration declaration)
     {
       return declaration.Attributes != null && QKeyValue.FindBoolAttribute(declaration.Attributes, "exclude_dep");
@@ -33,7 +33,7 @@ namespace Microsoft.Boogie
     protected void AddIncoming(Declaration newIncoming)
     {
       if (!ExcludeDep(newIncoming)) {
-        incomingSets.Add(new[] { newIncoming });
+        AddIncoming(new[] { newIncoming });
       }
     }
 
@@ -46,7 +46,9 @@ namespace Microsoft.Boogie
 
     protected void AddIncoming(Declaration[] declarations)
     {
-      incomingSets.Add(declarations);
+      if (CommandLineOptions.Clo.Prune == CommandLineOptions.PruneMode.Automatic) {
+        incomingSets.Add(declarations);
+      }
     }
 
     protected DependencyEvaluator(Declaration declaration)

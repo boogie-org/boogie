@@ -6,9 +6,12 @@ namespace Microsoft.Boogie
     {
     }
     
-    public static DependencyEvaluator GetFunctionDependencies(Function function)
+    public static DependencyEvaluator GetDependencies(Function function)
     {
       var result = new FunctionVisitor(function);
+      foreach (var definitionAxiom in function.DefinitionAxioms) {
+        result.AddOutgoing(definitionAxiom);
+      }
       result.Visit(function);
       return result;
     }
