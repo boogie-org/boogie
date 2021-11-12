@@ -77,7 +77,7 @@ namespace Microsoft.Boogie.SMTLib
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
-      Namer = new SMTLibNamer();
+      Namer = libOptions.DiscardNames ? new DiscardOriginalName() : new KeepOriginalNamer();
       ctx.parent = this;
       this.DeclCollector = new TypeDeclCollector(libOptions, Namer);
 
@@ -558,8 +558,7 @@ namespace Microsoft.Boogie.SMTLib
       if (HasReset)
       {
         AxBuilder = (TypeAxiomBuilder) CachedAxBuilder?.Clone();
-        Namer = (SMTLibNamer) CachedNamer.Clone();
-        Namer.ResetLabelCount();
+        Namer = CachedNamer.Clone();
         DeclCollector.SetNamer(Namer);
         DeclCollector.Push();
       }
@@ -572,7 +571,9 @@ namespace Microsoft.Boogie.SMTLib
       PossiblyRestart();
 
       SendThisVC("(push 1)");
-      SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
+      if (this.libOptions.EmitDebugInformation) {
+        SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
+      }
       if (options.Solver == SolverKind.Z3)
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");

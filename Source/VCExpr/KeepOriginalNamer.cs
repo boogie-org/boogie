@@ -2,30 +2,33 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 
-// Visitor that establishes unique variable (or constant) names in a VCExpr.
-// This is done by adding a counter as suffix if name clashes occur
-
-// TODO: also handle type variables here
-
 namespace Microsoft.Boogie.VCExprAST
 {
-  using TEHelperFuns = Microsoft.Boogie.TypeErasure.HelperFuns;
-
-  public class UniqueNamer : ICloneable
+  /**
+   * Visitor that establishes unique variable (or constant) names in a VCExpr.
+   * This is done by adding a counter as suffix if name clashes occur
+   * TODO: also handle type variables here
+   */
+  public class KeepOriginalNamer : UniqueNamer
   {
     public string Spacer = "@@";
 
-    public UniqueNamer()
+    public virtual UniqueNamer Clone()
+    {
+      Contract.Ensures(Contract.Result<Object>() != null);
+      return new KeepOriginalNamer(this);
+    }
+    
+    public KeepOriginalNamer()
     {
       GlobalNames = new Dictionary<Object, string>();
-      LocalNames = TEHelperFuns.ToList(new Dictionary<Object /*!*/, string /*!*/>()
-        as IDictionary<Object /*!*/, string /*!*/>);
+      LocalNames = new() { new Dictionary<object, string>() };
       UsedNames = new HashSet<string>();
       CurrentCounters = new Dictionary<string, int>();
       GlobalPlusLocalNames = new Dictionary<Object, string>();
     }
 
-    protected UniqueNamer(UniqueNamer namer)
+    protected KeepOriginalNamer(KeepOriginalNamer namer)
     {
       Contract.Requires(namer != null);
 
@@ -41,12 +44,6 @@ namespace Microsoft.Boogie.VCExprAST
       UsedNames = new HashSet<string>(namer.UsedNames);
       CurrentCounters = new Dictionary<string, int>(namer.CurrentCounters);
       GlobalPlusLocalNames = new Dictionary<Object, string>(namer.GlobalPlusLocalNames);
-    }
-
-    public virtual Object Clone()
-    {
-      Contract.Ensures(Contract.Result<Object>() != null);
-      return new UniqueNamer(this);
     }
 
     public virtual void Reset()
@@ -99,8 +96,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Invariant(CurrentCounters != null);
     }
 
-    private readonly IDictionary<Object /*!*/, string /*!*/> /*!*/
-      GlobalPlusLocalNames;
+    private readonly IDictionary<Object /*!*/, string /*!*/> /*!*/ GlobalPlusLocalNames;
 
     [ContractInvariantMethod]
     void GlobalPlusLocalNamesInvariantMethod()
@@ -122,13 +118,12 @@ namespace Microsoft.Boogie.VCExprAST
 
     ////////////////////////////////////////////////////////////////////////////
 
-    private string NextFreeName(Object thingie, string baseName)
+    protected virtual string NextFreeName(Object thingie, string baseName)
     {
       Contract.Requires(baseName != null);
       Contract.Requires(thingie != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      string /*!*/
-        candidate;
+      string /*!*/ candidate;
 
       if (CurrentCounters.TryGetValue(baseName, out var counter))
       {
@@ -202,37 +197,8 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(thingie != null);
       Contract.Ensures(Contract.Result<string>() != null);
       string res = NextFreeName(thingie, inherentName);
-      LocalNames[LocalNames.Count - 1][thingie] = res;
+      LocalNames[^1][thingie] = res;
       return res;
-    }
-
-    public virtual string GetQuotedName(Object thingie, string inherentName)
-    {
-      return GetName(thingie, inherentName);
-    }
-
-    public virtual string GetQuotedLocalName(Object thingie, string inherentName)
-    {
-      return GetLocalName(thingie, inherentName);
-    }
-
-    public virtual string LabelVar(string s)
-    {
-      return s;
-    }
-
-    public virtual string LabelName(string s)
-    {
-      return s;
-    }
-
-    public virtual string AbsyLabel(string s)
-    {
-      return s;
-    }
-
-    public virtual void ResetLabelCount()
-    {
     }
 
     public string Lookup(Object thingie)

@@ -540,7 +540,7 @@ namespace Microsoft.Boogie
     public int VerifySnapshots = -1;
     public bool VerifySeparately = false;
     public string PrintFile = null;
-    public bool EmitSkolimIdAndQId = true;
+    public bool EmitDebugInformation { get; set;  } = true;
     
     public int PrintUnstructured {
       get => printUnstructured;
@@ -592,6 +592,8 @@ namespace Microsoft.Boogie
       get => trace;
       set => trace = value;
     }
+
+    public bool DiscardNames { get; set; }
 
     public bool ImmediatelyAcceptCommands => StratifiedInlining > 0 || ContractInfer;
 
