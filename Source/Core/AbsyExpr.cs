@@ -3094,7 +3094,7 @@ namespace Microsoft.Boogie
 
   public class NAryExpr : Expr
   {
-    public override int ContentHash => Args.Select(a => a.ContentHash).Aggregate(Fun.GetType().GetHashCode(), HashCode.Combine);
+    public override int ContentHash => Args.Select(a => a.ContentHash).Aggregate(Fun.FunctionName.GetHashCode(), HashCode.Combine);
     
     [Additive] [Peer] private IAppliable _Fun;
 
@@ -4159,7 +4159,7 @@ namespace Microsoft.Boogie
 
   public class BvConcatExpr : Expr
   {
-    public override int ContentHash => HashCode.Combine("bvConcat".GetHashCode(), E0.ContentHash, E1.ContentHash);
+    public override int ContentHash => HashCode.Combine("bvConcat", E0.ContentHash, E1.ContentHash);
     
     private /*readonly--except in StandardVisitor*/ Expr /*!*/
       _E0, _E1;
