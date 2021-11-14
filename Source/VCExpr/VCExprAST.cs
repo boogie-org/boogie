@@ -735,8 +735,7 @@ namespace Microsoft.Boogie.VCExprAST
 
   internal class VCExprMultiAry : VCExprNAry
   {
-    private readonly List<VCExpr /*!*/> /*!*/
-      Arguments;
+    private readonly List<VCExpr /*!*/> /*!*/ arguments;
 
     private readonly List<Type /*!*/> /*!*/
       TypeArgumentsAttr;
@@ -744,7 +743,7 @@ namespace Microsoft.Boogie.VCExprAST
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(cce.NonNullElements(Arguments));
+      Contract.Invariant(cce.NonNullElements(arguments));
       Contract.Invariant(cce.NonNullElements(TypeArgumentsAttr));
       Contract.Invariant(ExprType != null);
     }
@@ -769,7 +768,7 @@ namespace Microsoft.Boogie.VCExprAST
         Contract.Ensures(Contract.Result<VCExpr>() != null);
 
         Contract.Assume(index >= 0 && index < Arity);
-        return cce.NonNull(Arguments)[index];
+        return cce.NonNull(arguments)[index];
       }
     }
 
@@ -788,7 +787,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       Contract.Requires(op != null);
       Contract.Requires(cce.NonNullElements(arguments));
-      this.Arguments = arguments;
+      this.arguments = arguments;
       this.TypeArgumentsAttr = EMPTY_TYPE_LIST;
       this.ExprType = op.InferType(arguments, TypeArgumentsAttr);
     }
@@ -802,7 +801,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(arguments.Count > 2 || typeArguments.Count > 0);
       Contract.Requires(op.Arity == arguments.Count);
       Contract.Requires(op.TypeParamArity == typeArguments.Count);
-      this.Arguments = arguments;
+      this.arguments = arguments;
       this.TypeArgumentsAttr = typeArguments;
       this.ExprType = op.InferType(arguments, typeArguments);
     }
