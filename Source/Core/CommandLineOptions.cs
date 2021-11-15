@@ -567,7 +567,73 @@ namespace Microsoft.Boogie
     public string ProverPreamble { get; set; }= null;
     public bool WarnNotEliminatedVars = false;
     
-    public enum PruneMode { None, Automatic, UsesClauses }
+    public enum PruneMode { 
+      None, 
+      
+      /**
+       * Automatic pruning will remove any declarations that are guaranteed not to be useful for verifying the current implementation.
+       * Automatic pruning detects incoming edges in axioms, for example:
+       *
+       * function A(int) returns (int);
+       * axiom A(3) == 2;
+       *
+       * Will detect both an incoming and an outgoing edge from and to A, in the axiom. So if either the axiom of the function A is live, the other is also live.
+       */
+      Automatic, 
+      
+      /**
+       * UsesClauses pruning will not detect any incoming edges in axioms,
+       * and instead depends on uses clauses in the input program
+       * to determine the outgoing edges of functions and constants.
+       * 
+       * The reason to use UsesClauses is that Automatic pruning mode can miss opportunities for pruning.
+       * Consider the following program:
+       *
+       * ```
+       * function F(int) returns (int);
+       * function G(int) returns (int);
+       *
+       * // declaration axiom for F
+       * axiom forall x: int :: F(x) == x * 2
+       * 
+       * // declaration axiom for G
+       * axiom forall x: int :: G(x) == F(x) + 1
+       *
+       * procedure FMultipliesByTwo(x: int)
+       *   ensures F(x) - x == x
+       * { }
+       * ```
+       * 
+       * Automatic pruning will not remove any declarations when verifying the procedure FMultipliesByTwo,
+       * since it refers to F, which refers to the declaration axiom of G through an incoming edge in the axiom,
+       * which also has an outgoing edge to G.
+       *
+       * If we rewrite the previous program to
+       * 
+       * ```
+       * function F(int) returns (int) uses {
+       *   axiom forall x: int :: F(x) == x * 2
+       * }
+       * function G(int) returns (int) {
+       *   axiom forall x: int :: G(x) == F(x) + 1
+       * }
+       *
+       * procedure FMultipliesByTwo(x: int)
+       *   ensures F(x) - x == x
+       * { }
+       * ```
+       *
+       * And apply UsesClauses pruning, then G and its axiom will be removed when verifying FMultipliesByTwo.
+       *
+       * An alternative to using UsesClauses pruning, is to add an {:exclude_dep} attributes to a function or constant,
+       * which prevents axioms from detecting incoming edges from that declaration.
+       * To add outgoing edges to the function or constant, uses clauses should be used.
+       *
+       * Using Automatic pruning in combination with {:exclude_dep} can be useful if this provides good enough pruning,
+       * or to migrate from Automatic to UsesClauses pruning.
+       */
+      UsesClauses 
+    }
     public PruneMode Prune = PruneMode.None;
 
     public enum InstrumentationPlaces
