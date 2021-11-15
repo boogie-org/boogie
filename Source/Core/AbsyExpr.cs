@@ -3095,9 +3095,7 @@ namespace Microsoft.Boogie
   public class NAryExpr : Expr
   {
     public override int ContentHash =>
-      // We can't use Fun.FunctionName.GetHashCode() since String hashcode differs per execution in .NET Core
-      // https://andrewlock.net/why-is-string-gethashcode-different-each-time-i-run-my-program-in-net-core/
-      Args.Select(a => a.ContentHash).Aggregate(98765939, HashCode.Combine);
+      Args.Select(a => a.ContentHash).Aggregate(HashCode.Combine(98765939, Fun.FunctionName.GetDeterministicHashCode()), HashCode.Combine);
     
     [Additive] [Peer] private IAppliable _Fun;
 
