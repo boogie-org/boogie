@@ -1414,7 +1414,7 @@ namespace Microsoft.Boogie
   {
     private Expr _Expr;
 
-    public override int ContentHash => HashCode.Combine("old".GetHashCode(), Expr.ContentHash);
+    public override int ContentHash => HashCode.Combine(262567431, Expr.ContentHash);
 
     public Expr /*!*/ Expr
     {
@@ -3094,7 +3094,10 @@ namespace Microsoft.Boogie
 
   public class NAryExpr : Expr
   {
-    public override int ContentHash => Args.Select(a => a.ContentHash).Aggregate(Fun.FunctionName.GetHashCode(), HashCode.Combine);
+    public override int ContentHash =>
+      // We can't use Fun.FunctionName.GetHashCode() since String hashcode differs per execution in .NET Core
+      // https://andrewlock.net/why-is-string-gethashcode-different-each-time-i-run-my-program-in-net-core/
+      Args.Select(a => a.ContentHash).Aggregate(98765939, HashCode.Combine);
     
     [Additive] [Peer] private IAppliable _Fun;
 
@@ -3987,7 +3990,7 @@ namespace Microsoft.Boogie
 
   public class BvExtractExpr : Expr
   {
-    public override int ContentHash => HashCode.Combine(Start, End, Bitvector.ContentHash);
+    public override int ContentHash => HashCode.Combine(1947706825, Start, End, Bitvector.ContentHash);
 
     private /*readonly--except in StandardVisitor*/ Expr /*!*/
       _Bitvector;
@@ -4159,7 +4162,7 @@ namespace Microsoft.Boogie
 
   public class BvConcatExpr : Expr
   {
-    public override int ContentHash => HashCode.Combine("bvConcat", E0.ContentHash, E1.ContentHash);
+    public override int ContentHash => HashCode.Combine(1653318336, E0.ContentHash, E1.ContentHash);
     
     private /*readonly--except in StandardVisitor*/ Expr /*!*/
       _E0, _E1;
