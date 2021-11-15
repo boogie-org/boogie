@@ -1856,7 +1856,7 @@ namespace Microsoft.Boogie
       functionDependencies.Add(function);
     }
 
-    public override int ContentHash => HashCode.Combine(1218192003, expression.ContentHash);
+    public override int ContentHash => Util.GetHashCode(1218192003, expression.ContentHash);
 
     public override void Emit(TokenTextWriter stream, int level)
     {

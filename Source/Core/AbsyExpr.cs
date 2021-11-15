@@ -709,7 +709,16 @@ namespace Microsoft.Boogie
 
   public class LiteralExpr : Expr
   {
-    public override int ContentHash => Val.GetHashCode();
+    public override int ContentHash
+    {
+      get
+      {
+        if (Val is string stringValue) {
+          return stringValue.GetDeterministicHashCode();
+        }
+        return Val.GetHashCode();
+      }
+    }
 
     public readonly object /*!*/
       Val; // false, true, a BigNum, a BigDec, a BigFloat, a BvConst, or a RoundingMode
@@ -1414,7 +1423,7 @@ namespace Microsoft.Boogie
   {
     private Expr _Expr;
 
-    public override int ContentHash => HashCode.Combine(262567431, Expr.ContentHash);
+    public override int ContentHash => Util.GetHashCode(262567431, Expr.ContentHash);
 
     public Expr /*!*/ Expr
     {
@@ -1610,6 +1619,8 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(IAppliableContracts))]
   public interface IAppliable
   {
+    public virtual int ContentHash => FunctionName.GetDeterministicHashCode();
+    
     string /*!*/ FunctionName { get; }
 
     /// <summary>
@@ -2665,8 +2676,9 @@ namespace Microsoft.Boogie
 
   public class FunctionCall : IAppliable
   {
-    private IdentifierExpr /*!*/
-      name;
+    public int ContentHash => 1;
+
+    private IdentifierExpr /*!*/ name;
 
     public Function Func;
 
@@ -3095,7 +3107,7 @@ namespace Microsoft.Boogie
   public class NAryExpr : Expr
   {
     public override int ContentHash =>
-      Args.Select(a => a.ContentHash).Aggregate(HashCode.Combine(98765939, Fun.FunctionName.GetDeterministicHashCode()), HashCode.Combine);
+      Args.Select(a => a.ContentHash).Aggregate(Util.GetHashCode(98765939, Fun.ContentHash), Util.GetHashCode);
     
     [Additive] [Peer] private IAppliable _Fun;
 
@@ -3988,7 +4000,7 @@ namespace Microsoft.Boogie
 
   public class BvExtractExpr : Expr
   {
-    public override int ContentHash => HashCode.Combine(1947706825, Start, End, Bitvector.ContentHash);
+    public override int ContentHash => Util.GetHashCode(1947706825, Start, End, Bitvector.ContentHash);
 
     private /*readonly--except in StandardVisitor*/ Expr /*!*/
       _Bitvector;
@@ -4160,7 +4172,7 @@ namespace Microsoft.Boogie
 
   public class BvConcatExpr : Expr
   {
-    public override int ContentHash => HashCode.Combine(1653318336, E0.ContentHash, E1.ContentHash);
+    public override int ContentHash => Util.GetHashCode(1653318336, E0.ContentHash, E1.ContentHash);
     
     private /*readonly--except in StandardVisitor*/ Expr /*!*/
       _E0, _E1;

@@ -38,7 +38,7 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(BinderExprContracts))]
   public abstract class BinderExpr : Expr, ICarriesAttributes
   {
-    public override int ContentHash => HashCode.Combine(2099615205, Kind, TypeParameters.Count, Dummies.Count, Body.ContentHash);
+    public override int ContentHash => Util.GetHashCode(2099615205, Kind, TypeParameters.Count, Dummies.Count, Body.ContentHash);
 
     public List<TypeVariable> /*!*/
       TypeParameters;
@@ -1345,8 +1345,8 @@ namespace Microsoft.Boogie
       return ComputeHashCode();
     }
 
-    public override int ContentHash => HashCode.Combine(1842378754, Dummies.Count,
-      Rhss.Select(x => x.ContentHash).Aggregate(Body.ContentHash, HashCode.Combine));
+    public override int ContentHash => Util.GetHashCode(1842378754, Dummies.Count,
+      Rhss.Select(x => x.ContentHash).Aggregate(Body.ContentHash, Util.GetHashCode));
 
     [Pure]
     public override int ComputeHashCode()
