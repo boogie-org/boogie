@@ -571,10 +571,12 @@ namespace Microsoft.Boogie
       None, 
       
       /**
-       * Automatic pruning will remove any declarations that are guaranteed not to be useful for verifying the current implementation.
+       * Automatic pruning will remove any declarations that do not reference, directly or indirectly, and are not referenced by, the implementation being verified,
+       * and declarations which cannot be used for verifying the current implementation, such as axioms with triggers that can not be satisfied.
+       * 
        * Automatic pruning detects incoming edges in axioms, for example:
        *
-       * function A(int) returns (int);
+       * function A(int): int;
        * axiom A(3) == 2;
        *
        * Will detect both an incoming and an outgoing edge from and to A, in the axiom. So if either the axiom of the function A is live, the other is also live.
@@ -590,8 +592,8 @@ namespace Microsoft.Boogie
        * Consider the following program:
        *
        * ```
-       * function F(int) returns (int);
-       * function G(int) returns (int);
+       * function F(int): int;
+       * function G(int): int;
        *
        * // declaration axiom for F
        * axiom forall x: int :: F(x) == x * 2
