@@ -1933,6 +1933,13 @@ namespace Microsoft.Boogie.SMTLib
       options.ResourceLimit = limit;
     }
 
+    public override int GetRCount() 
+    {
+      SendThisVC("(get-info :rlimit)");
+      var resp = Process.GetProverResponse();
+      return int.Parse(resp[0].Name);
+    }
+
     public override void SetRandomSeed(int? randomSeed)
     {
       options.RandomSeed = randomSeed;
