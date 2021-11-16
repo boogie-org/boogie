@@ -1068,9 +1068,10 @@ namespace Microsoft.Boogie
       }
     }
 
-    public static List<Model> ParseModels(System.IO.TextReader rd)
+    public static List<Model> ParseModels(System.IO.TextReader rd, Func<string, string> nameMapper = null)
     {
-      ModelParser p = new ParserZ3();
+      nameMapper ??= x => x;
+      ModelParser p = new ParserZ3(nameMapper);
       p.rd = rd;
       p.Run();
       return p.resModels;

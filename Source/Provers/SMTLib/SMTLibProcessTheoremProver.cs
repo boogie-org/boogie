@@ -1565,7 +1565,7 @@ namespace Microsoft.Boogie.SMTLib
           {
             case SolverKind.Z3:
             case SolverKind.CVC5:
-              models = Model.ParseModels(new StringReader("Error model: \n" + modelStr));
+              models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), Namer.GetOriginalName);
               break;
             default:
               Debug.Assert(false);
@@ -2429,7 +2429,7 @@ namespace Microsoft.Boogie.SMTLib
         var = v;
       }
 
-      return parent.Namer.Lookup(var);
+      return parent.Namer.GetOriginalName(parent.Namer.Lookup(var));
     }
 
     public override void DeclareFunction(Function f, string attributes)

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Microsoft.Boogie.VCExprAST
 {
   public class DiscardOriginalName : KeepOriginalNamer

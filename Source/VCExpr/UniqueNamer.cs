@@ -13,6 +13,8 @@ namespace Microsoft.Boogie.VCExprAST
     void PushScope();
     string GetLocalName(object thingie, string name);
 
+    string GetOriginalName(string newName);
+
     UniqueNamer Clone();
   }
 }

@@ -1750,8 +1750,7 @@ namespace Microsoft.Boogie
             }
           }
 
-          if (CommandLineOptions.Clo.ModelViewFile != null)
-          {
+          if (CommandLineOptions.Clo.ModelViewFile != null) {
             error.PrintModel(errorInfo.Model, error);
           }
 

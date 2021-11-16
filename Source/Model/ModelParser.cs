@@ -108,11 +108,18 @@ namespace Microsoft.Boogie
       return f;
     }
 
-    abstract internal void Run();
+    internal abstract void Run();
   }
 
   class ParserZ3 : ModelParser
   {
+    private readonly Func<string, string> nameMapper;
+
+    public ParserZ3(Func<string,string> nameMapper)
+    {
+      this.nameMapper = nameMapper;
+    }
+
     List<object> GetFunctionTokens(string newLine)
     {
       if (newLine == null)
@@ -299,7 +306,7 @@ namespace Microsoft.Boogie
 
           if (lastWord is string && ((string) lastWord) == "{")
           {
-            fn = currModel.MkFunc(funName, null);
+            fn = currModel.MkFunc(nameMapper(funName), null);
             while (true)
             {
               var tuple = GetFunctionTokens(ReadLine());
@@ -360,7 +367,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            fn = currModel.MkFunc(funName, 0);
+            fn = currModel.MkFunc(nameMapper(funName), 0);
             fn.SetConstant(GetElt(lastWord));
           }
         }
