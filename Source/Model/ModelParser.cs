@@ -127,9 +127,6 @@ namespace Microsoft.Boogie
         return null;
       }
 
-      newLine = bitVec.Replace(newLine, "bv${1}");
-      newLine = bv.Replace(newLine, "bv${1}[${2}]");
-      newLine = fpType.Replace(newLine, "float${2}e${1}");
       string line = newLine;
       int openParenCounter = CountOpenParentheses(newLine, 0);
       if (!newLine.Contains("}"))
@@ -301,12 +298,16 @@ namespace Microsoft.Boogie
 
         if (words.Count == 3 && words[1] is string && ((string) words[1]) == "->")
         {
-          var funName = (string) words[0];
+          var funName = nameMapper((string) words[0]);
+          funName = bitVec.Replace(funName, "bv${1}");
+          funName = bv.Replace(funName, "bv${1}[${2}]");
+          funName = fpType.Replace(funName, "float${2}e${1}");
+          
           Model.Func fn = null;
 
           if (lastWord is string && ((string) lastWord) == "{")
           {
-            fn = currModel.MkFunc(nameMapper(funName), null);
+            fn = currModel.MkFunc(funName, null);
             while (true)
             {
               var tuple = GetFunctionTokens(ReadLine());
@@ -367,7 +368,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            fn = currModel.MkFunc(nameMapper(funName), 0);
+            fn = currModel.MkFunc(funName, 0);
             fn.SetConstant(GetElt(lastWord));
           }
         }
