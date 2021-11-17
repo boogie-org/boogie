@@ -616,7 +616,11 @@ namespace Microsoft.Boogie
       set => trace = value;
     }
 
-    public bool DiscardNames { get; set; }
+    public bool DiscardNames
+    {
+      get => discardNames;
+      set => discardNames = value;
+    }
 
     public bool ImmediatelyAcceptCommands => StratifiedInlining > 0 || ContractInfer;
 
@@ -1020,6 +1024,7 @@ namespace Microsoft.Boogie
     private int printUnstructured = 0;
     private bool printDesugarings = false;
     private bool emitDebugInformation = true;
+    private bool discardNames;
 
     public class ConcurrentHoudiniOptions
     {
@@ -1685,6 +1690,10 @@ namespace Microsoft.Boogie
         
         case "emitDebugInformation":
           ps.GetNumericArgument(ref emitDebugInformation);
+          return true;
+        
+        case "discardNames":
+          ps.GetNumericArgument(ref discardNames);
           return true;
 
         default:
