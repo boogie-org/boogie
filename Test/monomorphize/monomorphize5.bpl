@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -monomorphize -enhancedErrorMessages:1 "%s" > "%t"
+// RUN: %parallel-boogie -monomorphize -discardNames:1 -enhancedErrorMessages:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // Issue #359
 

@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" -mv:- > "%t"
+// RUN: %parallel-boogie "%s" -discardNames:1 -mv:- > "%t"
 // RUN: %diff "%s.expect" "%t"
 type Ref;
 type FieldName;
