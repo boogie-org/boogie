@@ -173,7 +173,9 @@ namespace Microsoft.Boogie.VCExprAST
       // if the object is not yet registered, create a name for it
       res = NextFreeName(thingie, inherentName);
       GlobalNames.Add(thingie, res);
-      GlobalNewToOldName.Add(res, inherentName);
+      if (!GlobalNewToOldName.TryGetValue(res, out var existing) || existing != inherentName) {
+        GlobalNewToOldName.Add(res, inherentName);
+      }
 
       return res;
     }
