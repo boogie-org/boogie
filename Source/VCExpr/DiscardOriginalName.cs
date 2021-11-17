@@ -37,7 +37,7 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       var uniqueInherentName = NextFreeName(thingie, inherentName);
-      res = uniqueInherentName == controlFlow ? uniqueInherentName : NextFreeName(thingie, "n");
+      res = uniqueInherentName == controlFlow ? uniqueInherentName : NextFreeName(thingie, "$generated");
       
       GlobalNames.Add(thingie, res);
       GlobalNewToOldName.Add(res, uniqueInherentName);
