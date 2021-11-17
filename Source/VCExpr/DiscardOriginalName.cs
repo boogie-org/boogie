@@ -16,7 +16,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     protected DiscardOriginalName(DiscardOriginalName namer) : base(namer)
     {
-      GlobalNewToOldName = new(GlobalNewToOldName);
+      GlobalNewToOldName = new(namer.GlobalNewToOldName);
     }
 
     public override void Reset()
