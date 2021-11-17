@@ -1,9 +1,0 @@
-UNHANDLED EXCEPTIONS FROM PROCESS 22405:
-=====================
-11/17/2021 13:14:49
-System.IO.IOException: Pipe is broken.
-   at System.IO.Pipes.NamedPipeServerStream.CheckConnectOperationsServer() in System.IO.Pipes.dll:token 0x600009f+0x3d
-   at System.IO.Pipes.NamedPipeServerStream.WaitForConnectionAsync(CancellationToken cancellationToken) in System.IO.Pipes.dll:token 0x60000a3+0x14
-   at System.IO.Pipes.NamedPipeServerStream.WaitForConnectionAsync() in System.IO.Pipes.dll:token 0x600009c+0x0
-   at Microsoft.Build.BackEnd.NodeEndpointOutOfProcBase.PacketPumpProc() in Microsoft.Build.dll:token 0x6001079+0x52
-===================
