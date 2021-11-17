@@ -9,156 +9,40 @@ namespace Microsoft.Boogie.VCExprAST
    * This is done by adding a counter as suffix if name clashes occur
    * TODO: also handle type variables here
    */
-  public class KeepOriginalNamer : UniqueNamer
+  public class KeepOriginalNamer : ScopedNamer, UniqueNamer
   {
-    public string Spacer = "@@";
-
-    public string GetOriginalName(string newName)
+    public override string GetOriginalName(string newName)
     {
-      return GlobalNewToOldName.GetValueOrDefault(newName, newName);
+      return newName;
     }
 
-    public virtual UniqueNamer Clone()
+    public override UniqueNamer Clone()
     {
       Contract.Ensures(Contract.Result<Object>() != null);
       return new KeepOriginalNamer(this);
     }
     
-    public KeepOriginalNamer()
+    public KeepOriginalNamer() : base()
     {
-      GlobalNames = new Dictionary<Object, string>();
-      LocalNames = new() { new Dictionary<object, string>() };
-      UsedNames = new HashSet<string>();
-      CurrentCounters = new Dictionary<string, int>();
-      GlobalPlusLocalNames = new Dictionary<Object, string>();
     }
 
-    protected KeepOriginalNamer(KeepOriginalNamer namer)
+    protected KeepOriginalNamer(KeepOriginalNamer namer) : base(namer)
     {
-      Contract.Requires(namer != null);
-
-      Spacer = namer.Spacer;
-      GlobalNames = new Dictionary<Object, string>(namer.GlobalNames);
-      LocalNames = new List<IDictionary<Object, string>>();
-
-      foreach (IDictionary<Object /*!*/, string /*!*/> /*!*/ d in namer.LocalNames)
-      {
-        LocalNames.Add(new Dictionary<Object /*!*/, string /*!*/>(d));
-      }
-
-      UsedNames = new HashSet<string>(namer.UsedNames);
-      CurrentCounters = new Dictionary<string, int>(namer.CurrentCounters);
-      GlobalPlusLocalNames = new Dictionary<Object, string>(namer.GlobalPlusLocalNames);
-      GlobalNewToOldName = new(namer.GlobalNewToOldName);
-    }
-
-    public virtual void Reset()
-    {
-      GlobalNames.Clear();
-      LocalNames.Clear();
-      LocalNames.Add(new Dictionary<Object /*!*/, string /*!*/>());
-      UsedNames.Clear();
-      CurrentCounters.Clear();
-      GlobalPlusLocalNames.Clear();
     }
 
     ////////////////////////////////////////////////////////////////////////////
-
-    private readonly IDictionary<Object /*!*/, string /*!*/> /*!*/ GlobalNames;
-
-    private readonly Dictionary<string, string> GlobalNewToOldName = new ();
-
-    [ContractInvariantMethod]
-    void GlobalNamesInvariantMethod()
-    {
-      Contract.Invariant(cce.NonNullDictionaryAndValues(GlobalNames));
-    }
-
-    private readonly List<IDictionary<Object /*!*/, string /*!*/> /*!*/> /*!*/
-      LocalNames;
-
-    [ContractInvariantMethod]
-    void LocalNamesInvariantMethod()
-    {
-      Contract.Invariant(Contract.ForAll(LocalNames, i => i != null && cce.NonNullDictionaryAndValues(i)));
-    }
 
     // dictionary of all names that have already been used
     // (locally or globally)
-    private readonly HashSet<string /*!*/> /*!*/
-      UsedNames;
-
-    [ContractInvariantMethod]
-    void UsedNamesInvariantMethod()
-    {
-      Contract.Invariant(cce.NonNull(UsedNames));
-    }
-
-    private readonly IDictionary<string /*!*/, int /*!*/> /*!*/
-      CurrentCounters;
-
-    [ContractInvariantMethod]
-    void CurrentCountersInvariantMethod()
-    {
-      Contract.Invariant(CurrentCounters != null);
-    }
-
-    private readonly IDictionary<Object /*!*/, string /*!*/> /*!*/ GlobalPlusLocalNames;
-
-    [ContractInvariantMethod]
-    void GlobalPlusLocalNamesInvariantMethod()
-    {
-      Contract.Invariant(cce.NonNullDictionaryAndValues(GlobalPlusLocalNames));
-    }
 
     ////////////////////////////////////////////////////////////////////////////
 
-    public void PushScope()
-    {
-      LocalNames.Add(new Dictionary<Object /*!*/, string /*!*/>());
-    }
-
-    public void PopScope()
-    {
-      LocalNames.RemoveAt(LocalNames.Count - 1);
-    }
-
     ////////////////////////////////////////////////////////////////////////////
-
-    protected virtual string NextFreeName(Object thingie, string baseName)
-    {
-      Contract.Requires(baseName != null);
-      Contract.Requires(thingie != null);
-      Contract.Ensures(Contract.Result<string>() != null);
-      string /*!*/ candidate;
-
-      if (CurrentCounters.TryGetValue(baseName, out var counter))
-      {
-        candidate = baseName + Spacer + counter;
-        counter = counter + 1;
-      }
-      else
-      {
-        candidate = baseName;
-        counter = 0;
-      }
-
-      while (UsedNames.Contains(candidate))
-      {
-        candidate = baseName + Spacer + counter;
-        counter = counter + 1;
-      }
-
-      UsedNames.Add(candidate);
-      CurrentCounters[baseName] = counter;
-      GlobalPlusLocalNames[thingie] = candidate;
-      return candidate;
-    }
 
     // retrieve the name of a thingie; if it does not have a name yet,
     // generate a unique name for it (as close as possible to its inherent
     // name) and register it globally
-    public string GetName(Object thingie, string inherentName)
+    public override string GetName(Object thingie, string inherentName)
     {
       Contract.Requires(inherentName != null);
       Contract.Requires(thingie != null);
@@ -173,35 +57,11 @@ namespace Microsoft.Boogie.VCExprAST
       // if the object is not yet registered, create a name for it
       res = NextFreeName(thingie, inherentName);
       GlobalNames.Add(thingie, res);
-      if (!GlobalNewToOldName.TryGetValue(res, out var existing) || existing != inherentName) {
-        GlobalNewToOldName.Add(res, inherentName);
-      }
 
       return res;
     }
 
-    [Pure]
-    public string this[Object /*!*/ thingie]
-    {
-      get
-      {
-        Contract.Requires(thingie != null);
-
-        string res;
-        for (int i = LocalNames.Count - 1; i >= 0; --i)
-        {
-          if (LocalNames[i].TryGetValue(thingie, out res))
-          {
-            return res;
-          }
-        }
-
-        GlobalNames.TryGetValue(thingie, out res);
-        return res;
-      }
-    }
-
-    public string GetLocalName(Object thingie, string inherentName)
+    public override string GetLocalName(Object thingie, string inherentName)
     {
       Contract.Requires(inherentName != null);
       Contract.Requires(thingie != null);
@@ -209,18 +69,6 @@ namespace Microsoft.Boogie.VCExprAST
       string res = NextFreeName(thingie, inherentName);
       LocalNames[^1][thingie] = res;
       return res;
-    }
-
-    public string Lookup(Object thingie)
-    {
-      Contract.Requires(thingie != null);
-      Contract.Ensures(Contract.Result<string>() != null);
-      if (GlobalPlusLocalNames.TryGetValue(thingie, out var name))
-      {
-        return name;
-      }
-
-      return Spacer + "undefined" + Spacer + thingie.GetHashCode() + Spacer;
     }
   }
 }

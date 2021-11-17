@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" /mv:- /discardNames:1 /loopUnroll:2 /inline:none > "%t"
+// RUN: %boogie "%s" /mv:- /discardNames:1 /proverLog:%t.proverLog /loopUnroll:2 /inline:none > "%t"
 // RUN: %boogie "%s" /mv:- /discardNames:1 /loopUnroll:3 >> "%t"
 // RUN: %diff "%s.expect" "%t"
 
