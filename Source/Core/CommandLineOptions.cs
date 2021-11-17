@@ -2215,6 +2215,12 @@ namespace Microsoft.Boogie
                 0 - do not emit debug information
                 1 (default) - emit the debug information :qid, :skolemid and set-info :boogie-vc-id
 
+  /discardNames:<n>
+                0 (default) - Keep Boogie program names when generating SMT commands
+                1 (default) - Discard Boogie program names when generating SMT commands. 
+                  This keeps SMT solver input, and thus output, 
+                  constant when renaming declarations in the input program.
+
   ---- Inference options -----------------------------------------------------
 
   /infer:<flags>
