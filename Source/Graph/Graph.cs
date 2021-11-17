@@ -1169,7 +1169,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     /**
      * A merge node is a node that has multiple incoming edges, and which cannot be traversed unless all incoming edges have been traversed.
-     * A merge node is represented by an object of type IReadOnlySet{object}
+     * A merge node is represented by an object of type IEnumerable{object}
      */
     public static IEnumerable<object> FindReachableNodesInGraphWithMergeNodes(Dictionary<object, List<object>> edges, IEnumerable<object> roots)
     {
@@ -1182,13 +1182,12 @@ namespace Microsoft.Boogie.GraphUtil
           continue;
         }
         
-        if (node is IReadOnlySet<object> mergeNode) {
-          if (!visitedEdges.IsSupersetOf(mergeNode)) {
+        if (node is IEnumerable<object> objects) {
+          if (!visitedEdges.IsSupersetOf(objects)) {
             continue;
           }
-        } else {
-          visitedEdges.Add(node);
         }
+        visitedEdges.Add(node);
 
         var outgoing = edges.GetValueOrDefault(node) ?? new List<object>();
         foreach (var x in outgoing)
