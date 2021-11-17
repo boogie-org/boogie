@@ -13,6 +13,11 @@ namespace Microsoft.Boogie.VCExprAST
   {
     public string Spacer = "@@";
 
+    public string GetOriginalName(string newName)
+    {
+      return GlobalNewToOldName.GetValueOrDefault(newName, newName);
+    }
+
     public virtual UniqueNamer Clone()
     {
       Contract.Ensures(Contract.Result<Object>() != null);
@@ -44,6 +49,7 @@ namespace Microsoft.Boogie.VCExprAST
       UsedNames = new HashSet<string>(namer.UsedNames);
       CurrentCounters = new Dictionary<string, int>(namer.CurrentCounters);
       GlobalPlusLocalNames = new Dictionary<Object, string>(namer.GlobalPlusLocalNames);
+      GlobalNewToOldName = new(namer.GlobalNewToOldName);
     }
 
     public virtual void Reset()
@@ -58,8 +64,9 @@ namespace Microsoft.Boogie.VCExprAST
 
     ////////////////////////////////////////////////////////////////////////////
 
-    private readonly IDictionary<Object /*!*/, string /*!*/> /*!*/
-      GlobalNames;
+    private readonly IDictionary<Object /*!*/, string /*!*/> /*!*/ GlobalNames;
+
+    private readonly Dictionary<string, string> GlobalNewToOldName = new ();
 
     [ContractInvariantMethod]
     void GlobalNamesInvariantMethod()
@@ -166,6 +173,7 @@ namespace Microsoft.Boogie.VCExprAST
       // if the object is not yet registered, create a name for it
       res = NextFreeName(thingie, inherentName);
       GlobalNames.Add(thingie, res);
+      GlobalNewToOldName.Add(res, inherentName);
 
       return res;
     }

@@ -54,13 +54,42 @@ procedure M(p: Person)
       var proverLog2 = GetProverLogForProgram(procedure2);
       Assert.AreEqual(proverLog1, proverLog2);
     }
-
+    
+    [Test()]
+    public void TurnOffEmitDebugInformation()
+    {
+      var procedure = @"
+procedure M(x: int) 
+  requires x == 2; {
+  assert (exists y:int :: x + y + x - y == 4);
+  assert (forall y:int :: x + y + x - y == 4);
+}";
+      
+      CommandLineOptions.Install(new CommandLineOptions());
+      CommandLineOptions.Clo.Parse(new string[]{});
+      ExecutionEngine.printer = new ConsolePrinter();
+      
+      var proverLog1 = GetProverLogForProgram(procedure);
+      Assert.True(proverLog1.Contains("skolemid"));
+      Assert.True(proverLog1.Contains("qid"));
+      Assert.True(proverLog1.Contains(":boogie-vc-id"));
+      
+      CommandLineOptions.Install(new CommandLineOptions());
+      CommandLineOptions.Clo.Parse(new string[]{});
+      CommandLineOptions.Clo.EmitDebugInformation = false;
+      ExecutionEngine.printer = new ConsolePrinter();
+      var proverLog2 = GetProverLogForProgram(procedure);
+      Assert.True(!proverLog2.Contains("skolemid"));
+      Assert.True(!proverLog2.Contains("qid"));
+      Assert.True(!proverLog2.Contains(":boogie-vc-id"));
+    }
+    
     [Test()]
     public void TestNameDiscarding()
     {
       var procedure1 = @"
 type Wicket;
-const w : Wicket;
+const w: Wicket;
 function age(Wicket) returns (int);
 axiom age(w) == 7;
 
@@ -111,7 +140,7 @@ const n2: <a2> [Barrel2 a2] a2;
 type MySynonym2 a2 = int;
 type ComplicatedInt2 = MySynonym2 (MySynonym2 bool);
 
-procedure M2(x2: int, coloredBarrel: Barrel2 RGBColor2)
+procedure M(x2: int, coloredBarrel: Barrel2 RGBColor2)
   requires x2 == 2; 
   modifies favorite2;
   ensures age2(favorite2) == 42; 
@@ -125,39 +154,11 @@ procedure M2(x2: int, coloredBarrel: Barrel2 RGBColor2)
       CommandLineOptions.Install(new CommandLineOptions());
       CommandLineOptions.Clo.Parse(new string[]{});
       CommandLineOptions.Clo.DiscardNames = true;
-      CommandLineOptions.Clo.EmitDebugInformation = false;
       ExecutionEngine.printer = new ConsolePrinter();
       
       var proverLog1 = GetProverLogForProgram(procedure1);
       var proverLog2 = GetProverLogForProgram(procedure2);
       Assert.AreEqual(proverLog1, proverLog2);
-    }
-    
-    [Test()]
-    public void TurnOffEmitSkolemIdAndQId()
-    {
-      var procedure = @"
-procedure M(x: int) 
-  requires x == 2; {
-  assert (exists y:int :: x + y + x - y == 4);
-  assert (forall y:int :: x + y + x - y == 4);
-}";
-      
-      CommandLineOptions.Install(new CommandLineOptions());
-      CommandLineOptions.Clo.Parse(new string[]{});
-      ExecutionEngine.printer = new ConsolePrinter();
-      
-      var proverLog1 = GetProverLogForProgram(procedure);
-      Assert.True(proverLog1.Contains("skolemid"));
-      Assert.True(proverLog1.Contains("qid"));
-      
-      CommandLineOptions.Install(new CommandLineOptions());
-      CommandLineOptions.Clo.Parse(new string[]{});
-      CommandLineOptions.Clo.EmitDebugInformation = false;
-      ExecutionEngine.printer = new ConsolePrinter();
-      var proverLog2 = GetProverLogForProgram(procedure);
-      Assert.True(!proverLog2.Contains("skolemid"));
-      Assert.True(!proverLog2.Contains("qid"));
     }
 
     [Test()]
@@ -199,7 +200,7 @@ procedure N(x: int)
     {
       var procedure1 = @"
 type Wicket;
-const w : Wicket;
+const w: Wicket;
 function age(Wicket) returns (int);
 axiom age(w) == 7;
 
@@ -273,19 +274,17 @@ procedure M2(x: int, coloredBarrel: Barrel2 RGBColor2)
       CommandLineOptions.Clo.Parse(new string[]{});
       ExecutionEngine.printer = new ConsolePrinter();
       
-      var proverLog1 = GetProverLogsForProgram(procedure1).ToList();
+      var proverLog1 = GetProverLogForProgram(procedure1);
       CommandLineOptions.Clo.ProcsToCheck.Add("M");
-      var proverLog2 = GetProverLogsForProgram(procedure1And2).ToList();
-      Assert.AreEqual(proverLog1.Count, 1);
-      Assert.AreEqual(proverLog1.Count, proverLog2.Count);
-      Assert.AreEqual(proverLog1[0], proverLog2[0]);
-      var proverLog3 = GetProverLogsForProgram(procedure2And1).ToList();
-      Assert.AreEqual(proverLog3[0], proverLog2[0]);
+      var proverLog2 = GetProverLogForProgram(procedure1And2);
+      Assert.AreEqual(proverLog1, proverLog2);
+      var proverLog3 = GetProverLogForProgram(procedure2And1);
+      Assert.AreEqual(proverLog3, proverLog2);
     }
 
-    private static string GetProverLogForProgram(string procedure1)
+    private static string GetProverLogForProgram(string procedure)
     {
-      var logs = GetProverLogsForProgram(procedure1).ToList();
+      var logs = GetProverLogsForProgram(procedure).ToList();
       Assert.AreEqual(1, logs.Count);
       return logs[0];
     }
