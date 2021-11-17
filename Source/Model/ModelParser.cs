@@ -196,11 +196,11 @@ namespace Microsoft.Boogie
         }
         else if (wordStack.Count > 0)
         {
-          wordStack.Peek().Item2.Add(elem);
+          wordStack.Peek().Item2.Add(nameMapper(elem));
         }
         else
         {
-          newTuple.Add(elem);
+          newTuple.Add(nameMapper(elem));
         }
       }
 
@@ -239,35 +239,28 @@ namespace Microsoft.Boogie
           continue;
         }
 
-        var lastWord = words[words.Count - 1];
+        var lastWord = words[^1];
 
         if (currModel == null)
         {
           BadModel("model begin marker not found");
         }
 
-        if (line.StartsWith("*** STATE "))
+        var stateMarker = "*** STATE ";
+        if (line.StartsWith(stateMarker))
         {
-          var name = line.Substring(10);
-          Model.CapturedState cs;
-          if (name == "<initial>")
-          {
-            cs = currModel.InitialState;
-          }
-          else
-          {
-            cs = currModel.MkState(name);
-          }
+          var name = line.Substring(stateMarker.Length);
+          var cs = name == "<initial>" ? currModel.InitialState : currModel.MkState(name);
 
           while (true)
           {
-            var tmpline = ReadLine();
-            if (tmpline == "*** END_STATE")
+            var stateLine = ReadLine();
+            if (stateLine == "*** END_STATE")
             {
               break;
             }
 
-            var tuple = GetFunctionTokens(tmpline);
+            var tuple = GetFunctionTokens(stateLine);
             if (tuple == null)
             {
               BadModel("EOF in state table");
@@ -298,7 +291,7 @@ namespace Microsoft.Boogie
 
         if (words.Count == 3 && words[1] is string && ((string) words[1]) == "->")
         {
-          var funName = nameMapper((string) words[0]);
+          var funName = (string) words[0];
           funName = bitVec.Replace(funName, "bv${1}");
           funName = bv.Replace(funName, "bv${1}[${2}]");
           funName = fpType.Replace(funName, "float${2}e${1}");
