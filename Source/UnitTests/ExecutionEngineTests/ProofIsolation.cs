@@ -1,6 +1,4 @@
-﻿using System;
-using Microsoft.Boogie;
-using Microsoft.BaseTypes;
+﻿using Microsoft.Boogie;
 using NUnit.Framework;
 using System.Collections.Generic;
 using System.IO;
@@ -45,7 +43,7 @@ procedure M(x: int)
     {
       var procedure1 = @"
 type Wicket;
-const w : Wicket;
+const w: Wicket;
 function age(Wicket) returns (int);
 axiom age(w) == 7;
 
@@ -156,7 +154,7 @@ procedure N(x: int)
     {
       var procedure1 = @"
 type Wicket;
-const w : Wicket;
+const w: Wicket;
 function age(Wicket) returns (int);
 axiom age(w) == 7;
 
