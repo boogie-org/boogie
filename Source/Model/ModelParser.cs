@@ -115,7 +115,11 @@ namespace Microsoft.Boogie
         return null;
       }
 
+      newLine = bitVec.Replace(newLine, "bv${1}");
+      newLine = bv.Replace(newLine, "bv${1}[${2}]");
+      newLine = fpType.Replace(newLine, "float${2}e${1}");
       string line = newLine;
+      
       int openParenCounter = CountOpenParentheses(newLine, 0);
       if (!newLine.Contains("}"))
       {
@@ -181,15 +185,24 @@ namespace Microsoft.Boogie
         }
         else if (wordStack.Count > 0)
         {
-          wordStack.Peek().Item2.Add(nameMapper(elem));
+          wordStack.Peek().Item2.Add(DisplayName(elem));
         }
         else
         {
-          newTuple.Add(nameMapper(elem));
+          newTuple.Add(DisplayName(elem));
         }
       }
 
       return newTuple;
+    }
+
+    private string DisplayName(string elem)
+    {
+      var displayName = nameMapper(elem);
+      displayName = bitVec.Replace(displayName, "bv${1}");
+      displayName = bv.Replace(displayName, "bv${1}[${2}]");
+      displayName = fpType.Replace(displayName, "float${2}e${1}");
+      return displayName;
     }
 
     internal override void Run()
@@ -277,9 +290,6 @@ namespace Microsoft.Boogie
         if (words.Count == 3 && words[1] is string && ((string) words[1]) == "->")
         {
           var funName = (string) words[0];
-          funName = bitVec.Replace(funName, "bv${1}");
-          funName = bv.Replace(funName, "bv${1}[${2}]");
-          funName = fpType.Replace(funName, "float${2}e${1}");
           
           Model.Func fn;
 
