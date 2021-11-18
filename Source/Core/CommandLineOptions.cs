@@ -969,6 +969,7 @@ namespace Microsoft.Boogie
     public double VcsPathSplitMult = 0.5; // 0.5-always, 2-rarely do path splitting
     public int VcsMaxSplits = 1;
     public int VcsMaxKeepGoingSplits = 1;
+    public bool VcsSplitOnEveryAssert = false;
     public uint VcsFinalAssertTimeout = 30;
     public uint VcsKeepGoingTimeout = 1;
     public int VcsCores = 1;
@@ -1697,6 +1698,13 @@ namespace Microsoft.Boogie
 
         case "vcsMaxKeepGoingSplits":
           ps.GetNumericArgument(ref VcsMaxKeepGoingSplits);
+          return true;
+
+        case "vcsSplitOnEveryAssert":
+          if (ps.ConfirmArgumentCount(0))
+          {
+            VcsSplitOnEveryAssert = true;
+          }
           return true;
 
         case "vcsFinalAssertTimeout":

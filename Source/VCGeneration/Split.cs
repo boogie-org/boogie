@@ -130,6 +130,22 @@ namespace VC
         TopLevelDeclarations = Prune.GetLiveDeclarations(par.program, blocks).ToList();
       }
 
+      // TODO: Not really just a name, more like a description?
+      public string Name
+      {
+        get {
+          var asserts = blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).Take(2).ToList();
+          if (asserts.Count() == 1) {
+            var assert = asserts.Single();
+            var tok = assert.tok;
+            return $"{tok.filename}({tok.line}, {tok.col}) - ErrorData({assert.ErrorData})";
+          } else {
+            // TODO: assign names to all splits?
+            return "(anon split)";
+          }
+        }
+      }
+      
       public double Cost
       {
         get
@@ -806,14 +822,8 @@ namespace VC
         return blockAssignments;
       }
       private static List<Block> DoPreAssignedManualSplit(List<Block> blocks, Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
-        Block containingBlock, bool lastSplitInBlock)
+        Block containingBlock, bool lastSplitInBlock, bool splitOnEveryAssert)
       {
-
-        bool isSplitCmd(Cmd c)
-        {
-          return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "split_here");
-        }
-
         var newBlocks = new List<Block>(blocks.Count()); // Copies of the original blocks
         var duplicator = new Duplicator();
         var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count()); // Maps original blocks to their new copies in newBlocks
@@ -829,7 +839,7 @@ namespace VC
             var verify = splitCount == splitNumberWithinBlock;
             foreach (Cmd c in currentBlock.Cmds)
             {
-              if (isSplitCmd(c))
+              if (ShouldSplitHere(c, splitOnEveryAssert))
               {
                 splitCount++;
                 verify = splitCount == splitNumberWithinBlock;
@@ -843,7 +853,7 @@ namespace VC
             var verify = true;
             var newCmds = new List<Cmd>();
             foreach(Cmd c in currentBlock.Cmds) {
-              verify = isSplitCmd(c) ? false : verify;
+              verify = ShouldSplitHere(c, splitOnEveryAssert) ? false : verify;
               newCmds.Add(verify ? c : Split.AssertIntoAssume(c));
             }
             newBlock.Cmds = newCmds;
@@ -872,151 +882,6 @@ namespace VC
 
           oldToNewBlockMap[oldBlock].TransferCmd = new GotoCmd(gotoCmd.tok, newLabelNames, newLabelTargets);
         }
-        return newBlocks;
-      }
-
-
-      /// <summary>
-      /// Starting from the 0-index "split_here" annotation in begin, verifies until it reaches a subsequent "split_here" annotation
-      /// Returns a list of blocks where all code not verified has asserts converted into assumes
-      /// </summary>
-      /// <param name="blocks">Implementation's collection of blocks</param>
-      /// <param name="begin">Block containing the first split_here from which to start verifying</param>
-      /// <param name="beginSplitId">0-based ID of the "split_here" annotation within begin at which to start verifying</param>
-      /// <param name="blockInternalSplit">True if the entire split is contained within block begin</param>
-      /// <param name="endPoints">Set of all blocks containing a "split_here" annotation</param>
-      /// <returns></returns>
-      // Note: Current implementation may over report errors.
-      //       For example, if the control flow graph is a diamond (e.g., A -> B, C, B->D, C->D),
-      //       and there is a split in B and an error in D, then D will be verified twice and hence report the error twice.
-      //       Best solution may be to memoize blocks that have been fully verified and be sure not to verify them again
-      private static List<Block> DoManualSplit(List<Block> blocks, Block begin, int beginSplitId,
-        bool blockInternalSplit, IEnumerable<Block> endPoints)
-      {
-        // Compute the set of blocks reachable from begin but not included in endPoints.  These will be verified in their entirety.
-        var blocksToVerifyEntirely = new HashSet<Block>();
-        var reachableEndPoints =
-          new HashSet<Block>(); // Reachable end points will be verified up to their first split point
-        var todo = new Stack<Block>();
-        todo.Push(begin);
-        while (todo.Count > 0)
-        {
-          var currentBlock = todo.Pop();
-          if (blocksToVerifyEntirely.Contains(currentBlock))
-          {
-            continue;
-          }
-
-          blocksToVerifyEntirely.Add(currentBlock);
-          var exit = currentBlock.TransferCmd as GotoCmd;
-          if (exit != null)
-          {
-            foreach (Block targetBlock in exit.labelTargets)
-            {
-              if (!endPoints.Contains(targetBlock))
-              {
-                todo.Push(targetBlock);
-              }
-              else
-              {
-                reachableEndPoints.Add(targetBlock);
-              }
-            }
-          }
-        }
-
-        blocksToVerifyEntirely.Remove(begin);
-
-        // Convert assumes to asserts in "unreachable" blocks, including portions of blocks containing "split_here"
-        var newBlocks = new List<Block>(blocks.Count()); // Copies of the original blocks
-        var duplicator = new Duplicator();
-        var oldToNewBlockMap =
-          new Dictionary<Block, Block>(blocks.Count()); // Maps original blocks to their new copies in newBlocks
-
-        foreach (var currentBlock in blocks)
-        {
-          var newBlock = (Block) duplicator.VisitBlock(currentBlock);
-          oldToNewBlockMap[currentBlock] = newBlock;
-          newBlocks.Add(newBlock);
-
-          if (!blockInternalSplit && blocksToVerifyEntirely.Contains(currentBlock))
-          {
-            continue; // All reachable blocks must be checked in their entirety, so don't change anything
-          }
-          // Otherwise, we only verify a portion of the current block, so we'll need to look at each of its commands
-
-          // !verify -> convert assert to assume
-          var verify =
-            (currentBlock == begin &&
-             beginSplitId == -1
-            ) // -1 tells us to start verifying from the very beginning (i.e., there is no split in the begin block)
-            || (
-              reachableEndPoints
-                .Contains(currentBlock) // This endpoint is reachable from begin, so we verify until we hit the first split point
-              && !blockInternalSplit); // Don't bother verifying if all of the splitting is within the begin block
-          var newCmds = new List<Cmd>();
-          var splitHereCount = 0;
-
-          foreach (Cmd c in currentBlock.Cmds)
-          {
-            var p = c as PredicateCmd;
-            if (p != null && QKeyValue.FindBoolAttribute(p.Attributes, "split_here"))
-            {
-              if (currentBlock == begin)
-              {
-                // Verify everything between the beginSplitId we were given and the next split
-                if (splitHereCount == beginSplitId)
-                {
-                  verify = true;
-                }
-                else if (splitHereCount == beginSplitId + 1)
-                {
-                  verify = false;
-                }
-              }
-              else
-              {
-                // We're in an endpoint so we stop verifying as soon as we hit a "split_here"
-                verify = false;
-              }
-
-              splitHereCount++;
-            }
-
-            var asrt = c as AssertCmd;
-            if (verify || asrt == null)
-            {
-              newCmds.Add(c);
-            }
-            else
-            {
-              newCmds.Add(VCGen.AssertTurnedIntoAssume(asrt));
-            }
-          }
-
-          newBlock.Cmds = newCmds;
-        }
-
-        // Patch the edges between the new blocks
-        foreach (var oldBlock in blocks)
-        {
-          if (oldBlock.TransferCmd is ReturnCmd)
-          {
-            continue;
-          }
-
-          var gotoCmd = (GotoCmd) oldBlock.TransferCmd;
-          var newLabelTargets = new List<Block>(gotoCmd.labelTargets.Count());
-          var newLabelNames = new List<string>(gotoCmd.labelTargets.Count());
-          foreach (var target in gotoCmd.labelTargets)
-          {
-            newLabelTargets.Add(oldToNewBlockMap[target]);
-            newLabelNames.Add(oldToNewBlockMap[target].Label);
-          }
-
-          oldToNewBlockMap[oldBlock].TransferCmd = new GotoCmd(gotoCmd.tok, newLabelNames, newLabelTargets);
-        }
-
         return newBlocks;
       }
 
@@ -1072,7 +937,12 @@ namespace VC
         return blocks.Where(b => interestingBlocks.Contains(b)).ToList(); // this is not the same as interestingBlocks.ToList() because the resulting lists will have different orders.
       }
 
-      public static List<Split /*!*/> FindManualSplits(Split s)
+      private static bool ShouldSplitHere(Cmd c, bool splitOnEveryAssert) {
+        return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "split_here")
+               || c is AssertCmd && splitOnEveryAssert;
+      }
+      
+      public static List<Split /*!*/> FindManualSplits(Split s, bool splitOnEveryAssert)
       {
         Contract.Requires(s.impl != null);
         Contract.Ensures(Contract.Result<List<Split>>() == null || cce.NonNullElements(Contract.Result<List<Split>>()));
@@ -1083,7 +953,7 @@ namespace VC
           foreach (Cmd c in b.Cmds)
           {
             var p = c as PredicateCmd;
-            if (p != null && QKeyValue.FindBoolAttribute(p.Attributes, "split_here"))
+            if (ShouldSplitHere(c, splitOnEveryAssert))
             {
               splitPoints.TryGetValue(b, out var count);
               splitPoints[b] = count + 1;
@@ -1100,14 +970,14 @@ namespace VC
           Block entryPoint = s.blocks[0];
           var blockAssignments = PickBlocksToVerify(s.blocks, splitPoints);
           var entryBlockHasSplit = splitPoints.Keys.Contains(entryPoint);
-          var baseSplitBlocks = PostProcess(DoPreAssignedManualSplit(s.blocks, blockAssignments, -1, entryPoint, !entryBlockHasSplit));
+          var baseSplitBlocks = PostProcess(DoPreAssignedManualSplit(s.blocks, blockAssignments, -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert));
           splits.Add(new Split(baseSplitBlocks, s.gotoCmdOrigins, s.parent, s.impl));
           foreach (KeyValuePair<Block, int> pair in splitPoints)
           {
             for (int i = 0; i < pair.Value; i++)
             {
               bool lastSplitInBlock = i == pair.Value - 1;
-              var newBlocks = DoPreAssignedManualSplit(s.blocks, blockAssignments, i, pair.Key, lastSplitInBlock);
+              var newBlocks = DoPreAssignedManualSplit(s.blocks, blockAssignments, i, pair.Key, lastSplitInBlock, splitOnEveryAssert);
               splits.Add(new Split(PostProcess(newBlocks), s.gotoCmdOrigins, s.parent, s.impl)); // REVIEW: Does gotoCmdOrigins need to be changed at all?
             }
           }
@@ -1236,10 +1106,10 @@ namespace VC
         return s;
       }
 
-      public static List<Split> FocusAndSplit(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
+      public static List<Split> FocusAndSplit(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par, bool splitOnEveryAssert)
       {
         List<Split> focussedImpl = FocusImpl(impl, gotoCmdOrigins, par);
-        var splits = focussedImpl.Select(FindManualSplits).SelectMany(x => x).ToList();
+        var splits = focussedImpl.Select(s => FindManualSplits(s, splitOnEveryAssert)).SelectMany(x => x).ToList();
         return splits;
       }
 
