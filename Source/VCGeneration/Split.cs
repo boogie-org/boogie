@@ -1412,6 +1412,11 @@ namespace VC
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
+        if (CommandLineOptions.Clo.XmlSink != null) {
+          CommandLineOptions.Clo.XmlSink.WriteEndSplit(outcome.ToString().ToLowerInvariant(), 
+            TimeSpan.FromSeconds(checker.ProverRunTime.TotalSeconds));
+        }
+
         if (CommandLineOptions.Clo.VcsDumpSplits)
         {
           DumpDot(splitNum);
