@@ -8,21 +8,21 @@ namespace Microsoft.Boogie.VCExprAST
   {
     private const string controlFlow = "ControlFlow"; // This is a hardcoded name used by Boogie to inspect the SMT model.
 
-    private readonly Dictionary<string, string> GlobalNewToOldName = new ();
+    private readonly Dictionary<string, string> globalNewToOldName = new ();
 
     public DiscardOriginalName() : base()
     {
     }
 
-    protected DiscardOriginalName(DiscardOriginalName namer) : base(namer)
+    private DiscardOriginalName(DiscardOriginalName namer) : base(namer)
     {
-      GlobalNewToOldName = new(namer.GlobalNewToOldName);
+      globalNewToOldName = new(namer.globalNewToOldName);
     }
 
     public override void Reset()
     {
       base.Reset();
-      GlobalNewToOldName.Clear();
+      globalNewToOldName.Clear();
     }
 
     public override string GetName(Object thingie, string inherentName)
@@ -40,7 +40,7 @@ namespace Microsoft.Boogie.VCExprAST
       res = uniqueInherentName == controlFlow ? uniqueInherentName : NextFreeName(thingie, "$generated");
       
       GlobalNames.Add(thingie, res);
-      GlobalNewToOldName.Add(res, uniqueInherentName);
+      globalNewToOldName.Add(res, uniqueInherentName);
 
       return res;
     }
@@ -61,7 +61,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override string GetOriginalName(string newName)
     {
-      return GlobalNewToOldName.GetValueOrDefault(newName, newName);
+      return globalNewToOldName.GetValueOrDefault(newName, newName);
     }
     
     public override UniqueNamer Clone()
