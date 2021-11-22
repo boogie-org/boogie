@@ -205,6 +205,20 @@ namespace Microsoft.Boogie
       /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
       /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
       /// </summary>
+      public bool GetNumericArgument(ref bool arg)
+      {
+        int intArg = 0;
+        var result = GetNumericArgument(ref intArg, x => x < 2);
+        if (result) {
+          arg = intArg != 0;
+        }
+        return result;
+      }
+      
+      /// <summary>
+      /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
+      /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
+      /// </summary>
       public bool GetNumericArgument(ref int arg)
       {
         //modifies nextIndex, encounteredErrors, Console.Error.*;
@@ -540,6 +554,15 @@ namespace Microsoft.Boogie
     public int VerifySnapshots = -1;
     public bool VerifySeparately = false;
     public string PrintFile = null;
+
+    /**
+     * Whether to emit {:qid}, {:skolemid} and set-info :boogie-vc-id
+     */
+    public bool EmitDebugInformation
+    {
+      get => emitDebugInformation;
+      set => emitDebugInformation = value;
+    }
 
     public int PrintUnstructured {
       get => printUnstructured;
@@ -1064,6 +1087,7 @@ namespace Microsoft.Boogie
     private bool printWithUniqueAstIds = false;
     private int printUnstructured = 0;
     private bool printDesugarings = false;
+    private bool emitDebugInformation = true;
 
     public class ConcurrentHoudiniOptions
     {
@@ -1732,6 +1756,10 @@ namespace Microsoft.Boogie
           ps.GetNumericArgument(ref number);
           Prune = (PruneMode)number;
           return true;
+          
+        case "emitDebugInformation":
+          ps.GetNumericArgument(ref emitDebugInformation);
+          return true;
 
         default:
           bool optionValue = false;
@@ -2246,6 +2274,10 @@ namespace Microsoft.Boogie
 
   /useBaseNameForFileName : When parsing use basename of file for tokens instead
                             of the path supplied on the command line
+
+  /emitDebugInformation:<n>
+                0 - do not emit debug information
+                1 (default) - emit the debug information :qid, :skolemid and set-info :boogie-vc-id
 
   ---- Inference options -----------------------------------------------------
 
