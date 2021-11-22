@@ -32,6 +32,7 @@ procedure M(x: int)
       CommandLineOptions.Clo.Parse(new string[]{});
       CommandLineOptions.Clo.EmitDebugInformation = false;
       ExecutionEngine.printer = new ConsolePrinter();
+      
       var proverLog2 = GetProverLogForProgram(procedure);
       Assert.True(!proverLog2.Contains("skolemid"));
       Assert.True(!proverLog2.Contains("qid"));

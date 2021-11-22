@@ -574,6 +574,7 @@ namespace Microsoft.Boogie.SMTLib
       if (this.libOptions.EmitDebugInformation) {
         SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
       }
+
       if (options.Solver == SolverKind.Z3)
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
