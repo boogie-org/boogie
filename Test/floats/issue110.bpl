@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /printModel:1 /discardNames:1 "%s" > "%t"
+// RUN: %parallel-boogie /printModel:1 /normalizeNames:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure Exp2(a:[int]float24e8)
 {

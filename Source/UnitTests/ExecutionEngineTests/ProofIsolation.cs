@@ -108,7 +108,7 @@ procedure M(x2: int, coloredBarrel: Barrel2 RGBColor2)
       
       CommandLineOptions.Install(new CommandLineOptions());
       CommandLineOptions.Clo.Parse(new string[]{});
-      CommandLineOptions.Clo.DiscardNames = true;
+      CommandLineOptions.Clo.NormalizeNames = true;
       ExecutionEngine.printer = new ConsolePrinter();
       
       var proverLog1 = GetProverLogForProgram(procedure1);

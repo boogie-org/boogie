@@ -4,17 +4,17 @@ using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie.VCExprAST
 {
-  public class DiscardOriginalName : ScopedNamer
+  public class NormalizeNamer : ScopedNamer
   {
     private const string controlFlow = "ControlFlow"; // This is a hardcoded name used by Boogie to inspect the SMT model.
 
     private readonly Dictionary<string, string> GlobalNewToOldName = new ();
 
-    public DiscardOriginalName() : base()
+    public NormalizeNamer() : base()
     {
     }
 
-    protected DiscardOriginalName(DiscardOriginalName namer) : base(namer)
+    protected NormalizeNamer(NormalizeNamer namer) : base(namer)
     {
       GlobalNewToOldName = new(namer.GlobalNewToOldName);
     }
@@ -66,7 +66,7 @@ namespace Microsoft.Boogie.VCExprAST
     
     public override UniqueNamer Clone()
     {
-      return new DiscardOriginalName(this);
+      return new NormalizeNamer(this);
     }
   }
 }
