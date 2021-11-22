@@ -571,15 +571,18 @@ namespace Microsoft.Boogie
       None, 
       
       /**
-       * Automatic pruning will remove any declarations that do not reference, directly or indirectly, and are not referenced by, the implementation being verified,
-       * and declarations which cannot be used for verifying the current implementation, such as axioms with triggers that can not be satisfied.
+       * Automatic pruning will remove any declarations that do not reference,
+       * directly or indirectly, and are not referenced by, the implementation being verified,
+       * and declarations which cannot be used for verifying the current implementation,
+       * such as axioms with triggers that can not be satisfied.
        * 
        * Automatic pruning detects incoming edges in axioms, for example:
        *
        * function A(int): int;
        * axiom A(3) == 2;
        *
-       * Will detect both an incoming and an outgoing edge from and to A, in the axiom. So if either the axiom of the function A is live, the other is also live.
+       * Will detect edges in both directions between the declaration of A and the axiom declaration.
+       * So if either declaration is live, both declarations are live.
        */
       Automatic, 
       
@@ -616,7 +619,7 @@ namespace Microsoft.Boogie
        * function F(int) returns (int) uses {
        *   axiom forall x: int :: F(x) == x * 2
        * }
-       * function G(int) returns (int) {
+       * function G(int) returns (int) uses {
        *   axiom forall x: int :: G(x) == F(x) + 1
        * }
        *
@@ -627,12 +630,12 @@ namespace Microsoft.Boogie
        *
        * And apply UsesClauses pruning, then G and its axiom will be removed when verifying FMultipliesByTwo.
        *
-       * An alternative to using UsesClauses pruning, is to add an {:exclude_dep} attributes to a function or constant,
+       * An alternative to using UsesClauses pruning, is to add an {:exclude_dep} attribute to a function or constant,
        * which prevents axioms from detecting incoming edges from that declaration.
        * To add outgoing edges to the function or constant, uses clauses should be used.
        *
        * Using Automatic pruning in combination with {:exclude_dep} can be useful if this provides good enough pruning,
-       * or to migrate from Automatic to UsesClauses pruning.
+       * or to migrate from None to UsesClauses pruning.
        */
       UsesClauses 
     }
