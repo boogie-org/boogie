@@ -572,7 +572,10 @@ namespace Microsoft.Boogie.SMTLib
       PossiblyRestart();
 
       SendThisVC("(push 1)");
-      SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
+      if (this.libOptions.EmitDebugInformation) {
+        SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
+      }
+
       if (options.Solver == SolverKind.Z3)
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
