@@ -1,4 +1,4 @@
-// RUN: %boogie "%s" -mv:"%t".model > "%t"
+// RUN: %boogie "%s" -normalizeNames:1 -mv:"%t".model > "%t"
 // RUN: grep STATE "%t".model >> "%t"
 // RUN: %diff "%s.expect" "%t"
 

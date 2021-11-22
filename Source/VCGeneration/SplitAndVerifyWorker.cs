@@ -92,12 +92,12 @@ namespace VC
 
       try {
         StartCheck(split, checker);
+        await split.ProverTask;
+        await ProcessResult(split);
       }
       catch {
         split.ReleaseChecker();
       }
-      await split.ProverTask;
-      await ProcessResult(split);
     }
 
     private void StartCheck(Split split, Checker checker)

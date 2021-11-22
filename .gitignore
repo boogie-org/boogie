@@ -1,3 +1,5 @@
+MSBuild_Logs/
+
 # Nuget
 Source/packages/
 

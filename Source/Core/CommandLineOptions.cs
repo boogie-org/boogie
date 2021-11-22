@@ -616,6 +616,12 @@ namespace Microsoft.Boogie
       set => trace = value;
     }
 
+    public bool NormalizeNames
+    {
+      get => normalizeNames;
+      set => normalizeNames = value;
+    }
+
     public bool ImmediatelyAcceptCommands => StratifiedInlining > 0 || ContractInfer;
 
     public bool ProduceUnsatCores => PrintNecessaryAssumes || EnableUnSatCoreExtract == 1 ||
@@ -1018,6 +1024,7 @@ namespace Microsoft.Boogie
     private int printUnstructured = 0;
     private bool printDesugarings = false;
     private bool emitDebugInformation = true;
+    private bool normalizeNames;
 
     public class ConcurrentHoudiniOptions
     {
@@ -1684,6 +1691,10 @@ namespace Microsoft.Boogie
         case "emitDebugInformation":
           ps.GetNumericArgument(ref emitDebugInformation);
           return true;
+        
+        case "normalizeNames":
+          ps.GetNumericArgument(ref normalizeNames);
+          return true;
 
         default:
           bool optionValue = false;
@@ -2203,6 +2214,12 @@ namespace Microsoft.Boogie
   /emitDebugInformation:<n>
                 0 - do not emit debug information
                 1 (default) - emit the debug information :qid, :skolemid and set-info :boogie-vc-id
+
+  /normalizeNames:<n>
+                0 (default) - Keep Boogie program names when generating SMT commands
+                1 (default) - Normalize Boogie program names when generating SMT commands. 
+                  This keeps SMT solver input, and thus output, 
+                  constant when renaming declarations in the input program.
 
   ---- Inference options -----------------------------------------------------
 

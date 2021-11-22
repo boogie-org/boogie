@@ -23,7 +23,7 @@ ControlFlow -> {
   0 3 -> 2
   0 5 -> 3
   0 6 -> 5
-  else -> (- 1)
+  else -> 2
 }
 Select__T@[Ref,FieldName]Int_ -> {
   |T@[Ref,FieldName]Int!val!0| T@Ref!val!0 T@FieldName!val!0 -> (- 8)

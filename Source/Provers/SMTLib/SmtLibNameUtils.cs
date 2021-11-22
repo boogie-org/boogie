@@ -1,13 +1,18 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  public class SMTLibNamer : UniqueNamer
+  public static class SmtLibNameUtils
   {
+
+    public static string QuoteId(string s)
+    {
+      return AddQuotes(FilterReserved(s));
+    }
+    
     // The following Boogie ID characters are not SMT ID characters: `'\#    
     const string idCharacters = "~!@$%^&*_-+=<>.?/";
-
 
     static string[] reservedSmtWordsList =
     {
@@ -64,54 +69,20 @@ namespace Microsoft.Boogie.SMTLib
 
     static HashSet<string> reservedSmtWords;
     static bool[] validIdChar;
-    static bool symbolListsInitilized;
 
-    static void InitSymbolLists()
+    static SmtLibNameUtils()
     {
-      lock (reservedSmtWordsList)
+      reservedSmtWords = new HashSet<string>();
+      foreach (var w in reservedSmtWordsList)
       {
-        // don't move out, c.f. http://en.wikipedia.org/wiki/Double-checked_locking
-        if (symbolListsInitilized)
-        {
-          return;
-        }
-
-        reservedSmtWords = new HashSet<string>();
-        foreach (var w in reservedSmtWordsList)
-        {
-          reservedSmtWords.Add(w);
-        }
-
-        validIdChar = new bool[255];
-        for (int i = 0; i < validIdChar.Length; ++i)
-        {
-          validIdChar[i] = char.IsLetterOrDigit((char) i) || idCharacters.IndexOf((char) i) >= 0;
-        }
-
-        symbolListsInitilized = true;
-      }
-    }
-
-    static string AddQuotes(string s)
-    {
-      var allGood = true;
-
-      foreach (char ch in s)
-      {
-        var c = (int) ch;
-        if (c >= validIdChar.Length || !validIdChar[c])
-        {
-          allGood = false;
-          break;
-        }
+        reservedSmtWords.Add(w);
       }
 
-      if (allGood)
+      validIdChar = new bool[255];
+      for (int i = 0; i < validIdChar.Length; ++i)
       {
-        return s;
+        validIdChar[i] = char.IsLetterOrDigit((char) i) || idCharacters.IndexOf((char) i) >= 0;
       }
-
-      return "|" + s + "|";
     }
 
     static string FilterReserved(string s)
@@ -140,102 +111,38 @@ namespace Microsoft.Boogie.SMTLib
       return s;
     }
 
-    public IDictionary<string /*!*/, string /*!*/> /*!*/
-      LabelCounters; // Absy id -> local id
-
-    public IDictionary<string /*!*/, string /*!*/> /*!*/
-      CounterToLabels; // local id -> Absy id
-
-    private int CurrentLabelId;
-
-    public override void ResetLabelCount()
+    
+    static string AddQuotes(string s)
     {
-      LabelCounters = new Dictionary<string, string>();
-      CounterToLabels = new Dictionary<string, string>();
-      CurrentLabelId = 0;
-    }
+      var allGood = true;
 
-    public override string LabelVar(string s)
-    {
-      return "%lbl%" + LabelName(s);
-    }
-
-    public override string LabelName(string s)
-    {
-      if (s[0] == '+' || s[0] == '@')
+      foreach (char ch in s)
       {
-        return s[0] + AbsyIndexToLocalIndex(s.Substring(1));
-      }
-      else
-      {
-        return AbsyIndexToLocalIndex(s);
-      }
-    }
-
-    private string AbsyIndexToLocalIndex(string s)
-    {
-      if (!LabelCounters.TryGetValue(s, out var counter))
-      {
-        counter = CurrentLabelId.ToString();
-        CurrentLabelId++;
-        LabelCounters[s] = counter;
-        CounterToLabels[counter] = s;
+        var c = (int) ch;
+        if (c >= validIdChar.Length || !validIdChar[c])
+        {
+          allGood = false;
+          break;
+        }
       }
 
-      return counter;
-    }
-
-    public override string AbsyLabel(string s)
-    {
-      if (s[0] == '+' || s[0] == '@')
+      if (allGood)
       {
-        return s[0] + cce.NonNull(CounterToLabels[s.Substring(1)]);
+        return s;
       }
-      else
-      {
-        return cce.NonNull(CounterToLabels[s.Substring(1)]);
-      }
+
+      return "|" + s + "|";
     }
 
-    public static string QuoteId(string s)
+
+    public static string GetQuotedLocalName(this UniqueNamer namer, object thingie, string inherentName)
     {
-      return AddQuotes(FilterReserved(s));
+      return AddQuotes(namer.GetLocalName(thingie, FilterReserved(inherentName)));
     }
 
-    public override string GetQuotedLocalName(object thingie, string inherentName)
+    public static string GetQuotedName(this UniqueNamer namer, object thingie, string inherentName)
     {
-      return AddQuotes(base.GetLocalName(thingie, FilterReserved(inherentName)));
-    }
-
-    public override string GetQuotedName(object thingie, string inherentName)
-    {
-      return AddQuotes(base.GetName(thingie, FilterReserved(inherentName)));
-    }
-
-    public SMTLibNamer()
-    {
-      this.Spacer = "@@";
-      InitSymbolLists();
-      LabelCounters = new Dictionary<string, string>();
-      CounterToLabels = new Dictionary<string, string>();
-      CurrentLabelId = 0;
-    }
-
-    private SMTLibNamer(SMTLibNamer namer) : base(namer)
-    {
-    }
-
-    public override object Clone()
-    {
-      return new SMTLibNamer(this);
-    }
-
-    public override void Reset()
-    {
-      LabelCounters.Clear();
-      CounterToLabels.Clear();
-      CurrentLabelId = 0;
-      base.Reset();
+      return AddQuotes(namer.GetName(thingie, FilterReserved(inherentName)));
     }
   }
 }

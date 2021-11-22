@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -printModel:1 "%s" > "%t"
+// RUN: %parallel-boogie -normalizeNames:1 -printModel:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure M (s: ref) {
   assert s != null;

@@ -229,7 +229,7 @@ namespace Microsoft.Boogie.SMTLib
         }
         else
         {
-          return SMTLibNamer.QuoteId("T@" + s);
+          return SmtLibNameUtils.QuoteId("T@" + s);
         }
       }
     }
@@ -461,7 +461,7 @@ namespace Microsoft.Boogie.SMTLib
           wr.Write("\n");
           if (info.qid != null && LibOptions.EmitDebugInformation)
           {
-            wr.Write(" :qid {0}\n", SMTLibNamer.QuoteId(info.qid));
+            wr.Write(" :qid {0}\n", SmtLibNameUtils.QuoteId(info.qid));
           }
 
           if (weight != 1)

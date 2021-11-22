@@ -77,7 +77,7 @@ namespace Microsoft.Boogie.SMTLib
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
-      Namer = new SMTLibNamer();
+      Namer = libOptions.NormalizeNames ? new NormalizeNamer() : new KeepOriginalNamer();
       ctx.parent = this;
       this.DeclCollector = new TypeDeclCollector(libOptions, Namer);
 
@@ -558,8 +558,7 @@ namespace Microsoft.Boogie.SMTLib
       if (HasReset)
       {
         AxBuilder = (TypeAxiomBuilder) CachedAxBuilder?.Clone();
-        Namer = (SMTLibNamer) CachedNamer.Clone();
-        Namer.ResetLabelCount();
+        Namer = CachedNamer.Clone();
         DeclCollector.SetNamer(Namer);
         DeclCollector.Push();
       }
@@ -573,7 +572,7 @@ namespace Microsoft.Boogie.SMTLib
 
       SendThisVC("(push 1)");
       if (this.libOptions.EmitDebugInformation) {
-        SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
+        SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
       }
 
       if (options.Solver == SolverKind.Z3)
@@ -1567,7 +1566,7 @@ namespace Microsoft.Boogie.SMTLib
           {
             case SolverKind.Z3:
             case SolverKind.CVC5:
-              models = Model.ParseModels(new StringReader("Error model: \n" + modelStr));
+              models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), Namer.GetOriginalName);
               break;
             default:
               Debug.Assert(false);
@@ -2431,7 +2430,7 @@ namespace Microsoft.Boogie.SMTLib
         var = v;
       }
 
-      return parent.Namer.Lookup(var);
+      return parent.Namer.GetOriginalName(parent.Namer.Lookup(var));
     }
 
     public override void DeclareFunction(Function f, string attributes)
