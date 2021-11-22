@@ -610,11 +610,11 @@ namespace Microsoft.Boogie
       Automatic, 
       
       /**
-       * UsesClauses pruning will not detect any incoming edges in axioms,
-       * and instead depends on uses clauses in the input program
-       * to determine the outgoing edges of functions and constants.
+       * UsesClauses pruning will not automatically detect incoming edges in axioms.
+       * Instead it depends on uses clauses in the input program to determine the outgoing edges of functions and constants.
+       * Outgoing edges in axioms are still detected automatically.
        * 
-       * The reason to use UsesClauses is that Automatic pruning mode can miss opportunities for pruning.
+       * The reason to use UsesClauses over Automatic pruning is that the latter can miss pruning opportunities.
        * Consider the following program:
        *
        * ```
