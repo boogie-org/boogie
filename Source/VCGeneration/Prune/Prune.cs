@@ -110,7 +110,6 @@ namespace Microsoft.Boogie
 
       BlocksVisitor blocksNode = new BlocksVisitor(blocks);
       blocksNode.Blocks.ForEach(blk => blocksNode.Visit(blk));
-      TrimWhereAssumes(blocks, blocksNode.RelVars);
 
       // an implementation only has outgoing edges.
       var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing).ToHashSet();
