@@ -2404,7 +2404,8 @@ namespace Microsoft.Boogie
 
   /errorLimit:<num>
                 Limit the number of errors produced for each procedure
-                (default is 5, some provers may support only 1)
+                (default is 5, some provers may support only 1).
+                Set num to 0 to find as many assertion failures as possible.
   /timeLimit:<num>
                 Limit the number of seconds spent trying to verify
                 each procedure
