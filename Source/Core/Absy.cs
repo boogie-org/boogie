@@ -8,7 +8,6 @@ using System.Diagnostics.Contracts;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.GraphUtil;
 using Set = Microsoft.Boogie.GSet<object>;
-using DependencyEvaluator = Microsoft.Boogie.DependencyEvaluator;
 
 namespace Microsoft.Boogie
 {
