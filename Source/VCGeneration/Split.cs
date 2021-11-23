@@ -128,10 +128,6 @@ namespace VC
         this.impl = impl;
         Interlocked.Increment(ref currentId);
         
-        // BlocksVisitor blocksNode = new BlocksVisitor(blocks);
-        // blocksNode.Blocks.ForEach(blk => blocksNode.Visit(blk));
-        // TrimWhereAssumes(blocks, blocksNode.RelVars);
-        
         TopLevelDeclarations = Prune.GetLiveDeclarations(par.program, blocks).ToList();
       }
 
