@@ -1,5 +1,5 @@
 // RUN: %parallel-boogie /vcsDumpSplits /errorTrace:0 "%s" > "%t"
-// RUN: mv %/S/Ex.split* %/S/Output/
+// RUN: mv %/S/*.split* %/S/Output/
 // RUN: %diff "%s.expect" "%t"
 // RUN: %diff ./Output/Ex.split.0.bpl ./Output/Ex.split.0.bpl
 // RUN: %diff ./Output/Ex.split.1.bpl ./Output/Ex.split.1.bpl
