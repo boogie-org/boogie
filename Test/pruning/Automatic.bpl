@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /pruneFunctionsAndAxioms "%s" > "%t"
+// RUN: %parallel-boogie /prune:1 /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function {:exclude_dep} f1 (x: int) : int;
@@ -24,14 +24,6 @@ procedure I1(x : int) returns (y: int)
                     // is thus removed from the outgoing set of I1.
                     // This makes the axiom on line 16 unreachable from I1, which is thus pruned away.
 {
-  var i: int where false;
-
-  if (x > 0) {
-    havoc i; // mentioning i in this branch results in assuming false because of the where clause.
-             // Thus, the post-condition proves for this path.
-  } else {
-    assume {:focus} true; // i is not mentioned in this branch so the where clause is not assumed for it.
-  }
 }
 
 procedure I2(x : int) returns (y: int)

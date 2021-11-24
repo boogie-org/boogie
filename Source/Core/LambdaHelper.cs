@@ -109,7 +109,7 @@ namespace Microsoft.Boogie
 
       string FreshLambdaFunctionName()
       {
-        return string.Format("lambda#{0}", lambdaid++);
+        return $"lambda#{lambdaid++}";
       }
 
       public override Expr VisitLambdaExpr(LambdaExpr lambda)

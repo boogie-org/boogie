@@ -1779,6 +1779,11 @@ namespace Microsoft.Boogie
 
   public class Axiom : Declaration
   {
+    public override string ToString()
+    {
+      return "Axiom: " + expression.ToString();
+    }
+
     private Expr /*!*/
       expression;
 
@@ -2472,6 +2477,8 @@ namespace Microsoft.Boogie
     // that the parental situation is unconstrained.
     public readonly ReadOnlyCollection<ConstantParent /*!*/> Parents;
 
+    public IEnumerable<Axiom> DefinitionAxioms { get; }
+    
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
@@ -2483,33 +2490,20 @@ namespace Microsoft.Boogie
     public readonly bool ChildrenComplete;
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent)
-      : base(tok, typedIdent)
+      : this(tok, typedIdent, true)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(typedIdent != null);
-      Contract.Requires(typedIdent.Name != null && (!typedIdent.HasName || typedIdent.Name.Length > 0));
-      Contract.Requires(typedIdent.WhereExpr == null);
-      this.Unique = true;
-      this.Parents = null;
-      this.ChildrenComplete = false;
     }
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent, bool unique)
-      : base(tok, typedIdent)
+      : this(tok, typedIdent, unique, null, false, null, new List<Axiom>())
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(typedIdent != null);
-      Contract.Requires(typedIdent.Name != null && typedIdent.Name.Length > 0);
-      Contract.Requires(typedIdent.WhereExpr == null);
-      this.Unique = unique;
-      this.Parents = null;
-      this.ChildrenComplete = false;
     }
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent,
       bool unique,
-      IEnumerable<ConstantParent /*!*/> parents, bool childrenComplete,
-      QKeyValue kv)
+      IEnumerable<ConstantParent /*!*/> parents = null, bool childrenComplete = false,
+      QKeyValue kv = null,
+      IEnumerable<Axiom> definitionAxioms = null)
       : base(tok, typedIdent, kv)
     {
       Contract.Requires(tok != null);
@@ -2520,12 +2514,10 @@ namespace Microsoft.Boogie
       this.Unique = unique;
       this.Parents = parents == null ? null : new ReadOnlyCollection<ConstantParent>(parents.ToList());
       this.ChildrenComplete = childrenComplete;
+      this.DefinitionAxioms = definitionAxioms ?? Enumerable.Empty<Axiom>();
     }
 
-    public override bool IsMutable
-    {
-      get { return false; }
-    }
+    public override bool IsMutable => false;
 
     public override void Emit(TokenTextWriter stream, int level)
     {
@@ -3301,21 +3293,15 @@ namespace Microsoft.Boogie
     public NAryExpr DefinitionBody; // Only set if the function is declared with {:define}
     public Axiom DefinitionAxiom;
 
-    public IList<Axiom> otherDefinitionAxioms;
+    public IList<Axiom> otherDefinitionAxioms = new List<Axiom>();
+    public IEnumerable<Axiom> DefinitionAxioms => 
+      (DefinitionAxiom == null ? Enumerable.Empty<Axiom>() : new[]{ DefinitionAxiom }).Concat(otherDefinitionAxioms);
 
-    public IEnumerable<Axiom> OtherDefinitionAxioms
-    {
-      get { return otherDefinitionAxioms; }
-    }
+    public IEnumerable<Axiom> OtherDefinitionAxioms => otherDefinitionAxioms;
 
     public void AddOtherDefinitionAxiom(Axiom axiom)
     {
       Contract.Requires(axiom != null);
-
-      if (otherDefinitionAxioms == null)
-      {
-        otherDefinitionAxioms = new List<Axiom>();
-      }
 
       otherDefinitionAxioms.Add(axiom);
     }

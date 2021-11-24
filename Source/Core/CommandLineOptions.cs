@@ -523,10 +523,7 @@ namespace Microsoft.Boogie
 
     private static CommandLineOptions clo;
 
-    public static CommandLineOptions /*!*/ Clo
-    {
-      get { return clo; }
-    }
+    public static CommandLineOptions /*!*/ Clo => clo;
 
     public static void Install(CommandLineOptions options)
     {
@@ -592,7 +589,80 @@ namespace Microsoft.Boogie
     public bool InstrumentWithAsserts = false;
     public string ProverPreamble { get; set; }= null;
     public bool WarnNotEliminatedVars = false;
-    public bool PruneFunctionsAndAxioms = false;
+    
+    public enum PruneMode { 
+      None, 
+      
+      /**
+       * Automatic pruning will remove any declarations that do not reference,
+       * directly or indirectly, and are not referenced by, the implementation being verified,
+       * and declarations which cannot be used for verifying the current implementation,
+       * such as axioms with triggers that can not be satisfied.
+       * 
+       * Automatic pruning detects incoming edges in axioms, for example:
+       *
+       * function A(int): int;
+       * axiom A(3) == 2;
+       *
+       * Will detect edges in both directions between the declaration of A and the axiom declaration.
+       * So if either declaration is live, both declarations are live.
+       */
+      Automatic, 
+      
+      /**
+       * UsesDecls pruning will not automatically detect incoming edges in axioms.
+       * Instead it depends on uses clauses in the input program to determine the outgoing edges of functions and constants.
+       * Outgoing edges in axioms are still detected automatically.
+       * 
+       * The reason to use UsesDecls over Automatic pruning is that the latter can miss pruning opportunities.
+       * Consider the following program:
+       *
+       * ```
+       * function F(int): int;
+       * function G(int): int;
+       *
+       * // declaration axiom for F
+       * axiom forall x: int :: F(x) == x * 2
+       * 
+       * // declaration axiom for G
+       * axiom forall x: int :: G(x) == F(x) + 1
+       *
+       * procedure FMultipliesByTwo(x: int)
+       *   ensures F(x) - x == x
+       * { }
+       * ```
+       * 
+       * Automatic pruning will not remove any declarations when verifying the procedure FMultipliesByTwo,
+       * since it refers to F, which refers to the declaration axiom of G through an incoming edge in the axiom,
+       * which also has an outgoing edge to G.
+       *
+       * If we rewrite the previous program to
+       * 
+       * ```
+       * function F(int) returns (int) uses {
+       *   axiom forall x: int :: F(x) == x * 2
+       * }
+       * function G(int) returns (int) uses {
+       *   axiom forall x: int :: G(x) == F(x) + 1
+       * }
+       *
+       * procedure FMultipliesByTwo(x: int)
+       *   ensures F(x) - x == x
+       * { }
+       * ```
+       *
+       * And apply UsesDecls pruning, then G and its axiom will be removed when verifying FMultipliesByTwo.
+       *
+       * An alternative to using UsesDecls pruning, is to add an {:exclude_dep} attribute to a function or constant,
+       * which prevents axioms from detecting incoming edges from that declaration.
+       * To add outgoing edges to the function or constant, uses clauses should be used.
+       *
+       * Using Automatic pruning in combination with {:exclude_dep} can be useful if this provides good enough pruning,
+       * or to migrate from None to UsesDecls pruning.
+       */
+      UsesDecls 
+    }
+    public PruneMode Prune = PruneMode.None;
 
     public enum InstrumentationPlaces
     {
@@ -1688,6 +1758,12 @@ namespace Microsoft.Boogie
           ps.GetNumericArgument(ref KInductionDepth);
           return true;
         
+        case "prune":
+          int number = 0;
+          ps.GetNumericArgument(ref number);
+          Prune = (PruneMode)number;
+          return true;
+          
         case "emitDebugInformation":
           ps.GetNumericArgument(ref emitDebugInformation);
           return true;
@@ -1749,7 +1825,6 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustInductiveSequentialization", ref trustInductiveSequentialization) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting) ||
-              ps.CheckBooleanFlag("pruneFunctionsAndAxioms", ref PruneFunctionsAndAxioms) ||
               ps.CheckBooleanFlag("warnNotEliminatedVars", ref WarnNotEliminatedVars)
           )
           {
@@ -2340,8 +2415,10 @@ namespace Microsoft.Boogie
                 only for monomorphic programs.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
-  /pruneFunctionsAndAxioms
-                Prune declarations for each implementation
+  /prune:<n>
+                0 (default) - none
+                1 - automatic pruning
+                2 - aggressive pruning. Requires binding axioms to functions and constants using 'uses'
   /relaxFocus   Process foci in a bottom-up fashion. This way only generates
                 a linear number of splits. The default way (top-down) is more
                 aggressive and it may create an exponential number of splits.

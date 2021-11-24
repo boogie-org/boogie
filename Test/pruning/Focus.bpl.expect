@@ -1,0 +1,3 @@
+Focus.bpl(22,5): Error: This assertion might not hold.
+
+Boogie program verifier finished with 1 verified, 1 error
