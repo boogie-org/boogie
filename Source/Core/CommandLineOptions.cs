@@ -610,11 +610,11 @@ namespace Microsoft.Boogie
       Automatic, 
       
       /**
-       * UsesClauses pruning will not automatically detect incoming edges in axioms.
+       * UsesDecls pruning will not automatically detect incoming edges in axioms.
        * Instead it depends on uses clauses in the input program to determine the outgoing edges of functions and constants.
        * Outgoing edges in axioms are still detected automatically.
        * 
-       * The reason to use UsesClauses over Automatic pruning is that the latter can miss pruning opportunities.
+       * The reason to use UsesDecls over Automatic pruning is that the latter can miss pruning opportunities.
        * Consider the following program:
        *
        * ```
@@ -651,16 +651,16 @@ namespace Microsoft.Boogie
        * { }
        * ```
        *
-       * And apply UsesClauses pruning, then G and its axiom will be removed when verifying FMultipliesByTwo.
+       * And apply UsesDecls pruning, then G and its axiom will be removed when verifying FMultipliesByTwo.
        *
-       * An alternative to using UsesClauses pruning, is to add an {:exclude_dep} attribute to a function or constant,
+       * An alternative to using UsesDecls pruning, is to add an {:exclude_dep} attribute to a function or constant,
        * which prevents axioms from detecting incoming edges from that declaration.
        * To add outgoing edges to the function or constant, uses clauses should be used.
        *
        * Using Automatic pruning in combination with {:exclude_dep} can be useful if this provides good enough pruning,
-       * or to migrate from None to UsesClauses pruning.
+       * or to migrate from None to UsesDecls pruning.
        */
-      UsesClauses 
+      UsesDecls 
     }
     public PruneMode Prune = PruneMode.None;
 
