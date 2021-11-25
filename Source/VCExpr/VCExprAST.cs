@@ -369,8 +369,27 @@ namespace Microsoft.Boogie.VCExprAST
   }
 
   [ContractClass(typeof(VCExprNAryContracts))]
-  public abstract class VCExprNAry : VCExpr, IEnumerable<VCExpr /*!*/>
+  public abstract class VCExprNAry : VCExpr
   {
+    public override string ToString()
+    {
+      return $"${Op}(${String.Join(", ", Arguments)})";
+    }
+
+    [Pure]
+    [GlobalAccess(false)]
+    [Escapes(true, false)]
+    public IEnumerable<VCExpr> Arguments
+    {
+      get
+      {
+        for (int i = 0; i < Arity; ++i)
+        {
+          yield return this[i];
+        }
+      }
+    }
+    
     public readonly VCExprOp Op;
 
     [ContractInvariantMethod]
@@ -401,30 +420,6 @@ namespace Microsoft.Boogie.VCExprAST
 
     // the type arguments
     public abstract List<Type /*!*/> /*!*/ TypeArguments { get; }
-
-    [Pure]
-    [GlobalAccess(false)]
-    [Escapes(true, false)]
-    public IEnumerator<VCExpr /*!*/> /*!*/ GetEnumerator()
-    {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerator<VCExpr>>()));
-      for (int i = 0; i < Arity; ++i)
-      {
-        yield return this[i];
-      }
-    }
-
-    [Pure]
-    [GlobalAccess(false)]
-    [Escapes(true, false)]
-    IEnumerator System.Collections.IEnumerable.GetEnumerator()
-    {
-      Contract.Ensures(Contract.Result<IEnumerator>() != null);
-      for (int i = 0; i < Arity; ++i)
-      {
-        yield return this[i];
-      }
-    }
 
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
@@ -488,8 +483,7 @@ namespace Microsoft.Boogie.VCExprAST
     [Pure]
     public override int GetHashCode()
     {
-      return HelperFuns.PolyHash(Op.GetHashCode() * 123 + Arity * 61521,
-        3, this);
+      return HelperFuns.PolyHash(Op.GetHashCode() * 123 + Arity * 61521, 3, this.Arguments);
     }
 
     internal VCExprNAry(VCExprOp op)
@@ -741,8 +735,7 @@ namespace Microsoft.Boogie.VCExprAST
 
   internal class VCExprMultiAry : VCExprNAry
   {
-    private readonly List<VCExpr /*!*/> /*!*/
-      Arguments;
+    private readonly List<VCExpr /*!*/> /*!*/ arguments;
 
     private readonly List<Type /*!*/> /*!*/
       TypeArgumentsAttr;
@@ -750,7 +743,7 @@ namespace Microsoft.Boogie.VCExprAST
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(cce.NonNullElements(Arguments));
+      Contract.Invariant(cce.NonNullElements(arguments));
       Contract.Invariant(cce.NonNullElements(TypeArgumentsAttr));
       Contract.Invariant(ExprType != null);
     }
@@ -775,7 +768,7 @@ namespace Microsoft.Boogie.VCExprAST
         Contract.Ensures(Contract.Result<VCExpr>() != null);
 
         Contract.Assume(index >= 0 && index < Arity);
-        return cce.NonNull(Arguments)[index];
+        return cce.NonNull(arguments)[index];
       }
     }
 
@@ -794,7 +787,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       Contract.Requires(op != null);
       Contract.Requires(cce.NonNullElements(arguments));
-      this.Arguments = arguments;
+      this.arguments = arguments;
       this.TypeArgumentsAttr = EMPTY_TYPE_LIST;
       this.ExprType = op.InferType(arguments, TypeArgumentsAttr);
     }
@@ -808,7 +801,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(arguments.Count > 2 || typeArguments.Count > 0);
       Contract.Requires(op.Arity == arguments.Count);
       Contract.Requires(op.TypeParamArity == typeArguments.Count);
-      this.Arguments = arguments;
+      this.arguments = arguments;
       this.TypeArgumentsAttr = typeArguments;
       this.ExprType = op.InferType(arguments, typeArguments);
     }

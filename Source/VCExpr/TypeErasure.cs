@@ -1602,7 +1602,7 @@ namespace Microsoft.Boogie.TypeErasure
       int oldPolarity = Eraser.Polarity;
       Eraser.Polarity = newPolarity;
       List<VCExpr /*!*/> /*!*/
-        newArgs = Eraser.MutateSeq(node, bindings);
+        newArgs = Eraser.MutateSeq(node.Arguments, bindings);
       Eraser.Polarity = oldPolarity;
       return newArgs;
     }
@@ -1632,7 +1632,7 @@ namespace Microsoft.Boogie.TypeErasure
       Type /*!*/
         oldType = node[0].Type;
       if (AxBuilder.UnchangedType(oldType) &&
-          node.Skip(1).All(e => e.Type.Equals(oldType)))
+          node.Arguments.Skip(1).All(e => e.Type.Equals(oldType)))
       {
         return Gen.Function(node.Op, AxBuilder.CastSeq(newArgs, oldType));
       }
@@ -2081,7 +2081,7 @@ namespace Microsoft.Boogie.TypeErasure
           case VCExpressionGenerator.SingletonOp.LeOp:
           case VCExpressionGenerator.SingletonOp.GtOp:
           case VCExpressionGenerator.SingletonOp.GeOp:
-            foreach (VCExpr n in node)
+            foreach (VCExpr n in node.Arguments)
             {
               if (!(n is VCExprVar))
               {

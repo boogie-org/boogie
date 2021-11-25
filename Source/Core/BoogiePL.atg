@@ -121,6 +121,9 @@ private class BvBounds : Expr {
     Contract.Assert(false);throw new cce.UnreachableException();
   }
   public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) { Contract.Assert(false);throw new cce.UnreachableException(); }
+  
+  public override int ContentHash => throw new NotSupportedException("Not supported since this type is translated away");
+  
   public override int ComputeHashCode()
   {
     return base.GetHashCode();

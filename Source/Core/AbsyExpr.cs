@@ -21,6 +21,8 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(ExprContracts))]
   public abstract class Expr : Absy
   {
+    public abstract int ContentHash { get; }
+    
     public Expr(IToken /*!*/ tok, bool immutable)
       : base(tok)
     {
@@ -707,6 +709,17 @@ namespace Microsoft.Boogie
 
   public class LiteralExpr : Expr
   {
+    public override int ContentHash
+    {
+      get
+      {
+        if (Val is string stringValue) {
+          return stringValue.GetDeterministicHashCode();
+        }
+        return Val.GetHashCode();
+      }
+    }
+
     public readonly object /*!*/
       Val; // false, true, a BigNum, a BigDec, a BigFloat, a BvConst, or a RoundingMode
 
@@ -1268,6 +1281,8 @@ namespace Microsoft.Boogie
       }
     }
 
+    public override int ContentHash => 1;
+
     [Pure]
     public override int ComputeHashCode()
     {
@@ -1408,9 +1423,14 @@ namespace Microsoft.Boogie
   {
     private Expr _Expr;
 
+    public override int ContentHash => Util.GetHashCode(262567431, Expr.ContentHash);
+
     public Expr /*!*/ Expr
     {
-      get { return _Expr; }
+      get
+      {
+        return _Expr;
+      }
       set
       {
         if (Immutable)
@@ -1599,6 +1619,8 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(IAppliableContracts))]
   public interface IAppliable
   {
+    public virtual int ContentHash => FunctionName.GetDeterministicHashCode();
+    
     string /*!*/ FunctionName { get; }
 
     /// <summary>
@@ -2654,8 +2676,9 @@ namespace Microsoft.Boogie
 
   public class FunctionCall : IAppliable
   {
-    private IdentifierExpr /*!*/
-      name;
+    public int ContentHash => 1;
+
+    private IdentifierExpr /*!*/ name;
 
     public Function Func;
 
@@ -3083,11 +3106,14 @@ namespace Microsoft.Boogie
 
   public class NAryExpr : Expr
   {
+    public override int ContentHash =>
+      Args.Select(a => a.ContentHash).Aggregate(Util.GetHashCode(98765939, Fun.ContentHash), Util.GetHashCode);
+    
     [Additive] [Peer] private IAppliable _Fun;
 
     public IAppliable /*!*/ Fun
     {
-      get { return _Fun; }
+      get => _Fun;
       set
       {
         if (Immutable)
@@ -3859,6 +3885,8 @@ namespace Microsoft.Boogie
       }
     }
 
+    public override int ContentHash => throw new NotImplementedException();
+
     [Pure]
     public override int ComputeHashCode()
     {
@@ -3972,6 +4000,8 @@ namespace Microsoft.Boogie
 
   public class BvExtractExpr : Expr
   {
+    public override int ContentHash => Util.GetHashCode(1947706825, Start, End, Bitvector.ContentHash);
+
     private /*readonly--except in StandardVisitor*/ Expr /*!*/
       _Bitvector;
 
@@ -4142,12 +4172,14 @@ namespace Microsoft.Boogie
 
   public class BvConcatExpr : Expr
   {
+    public override int ContentHash => Util.GetHashCode(1653318336, E0.ContentHash, E1.ContentHash);
+    
     private /*readonly--except in StandardVisitor*/ Expr /*!*/
       _E0, _E1;
 
     public Expr E0
     {
-      get { return _E0; }
+      get => _E0;
       set
       {
         if (Immutable)
@@ -4161,7 +4193,7 @@ namespace Microsoft.Boogie
 
     public Expr E1
     {
-      get { return _E1; }
+      get => _E1;
       set
       {
         if (Immutable)

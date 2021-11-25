@@ -10,6 +10,52 @@ namespace ExecutionEngineTests
   public class ProofIsolation
   {
     [Test()]
+    public void OrderIsNormalisedBasedOnContent()
+    {
+      var procedure1 = @"
+type Person;
+function A(Person) returns (int) uses {
+  axiom (forall p: Person :: name(p) == ""Remy"" ==> A(p) == 32);
+}
+function B(Person) returns (int) uses {
+  axiom (forall p: Person :: name(p) == ""Remy"" ==> B(p) == 180);
+}
+function name(Person) returns (string);
+procedure M(p: Person) 
+  requires name(p) == ""Remy"";
+  ensures A(p) == 32; 
+  ensures B(p) == 180; 
+{
+}";
+
+      var procedure2 = @"
+function name(Person) returns (string);
+type Person;
+function A(Person) returns (int) uses {
+  axiom (forall p: Person :: name(p) == ""Remy"" ==> A(p) == 180);
+}
+function B(Person) returns (int) uses {
+  axiom (forall p: Person :: name(p) == ""Remy"" ==> B(p) == 32);
+}
+procedure M(p: Person) 
+  requires name(p) == ""Remy"";
+  ensures B(p) == 32; 
+  ensures A(p) == 180;
+{
+}";
+
+      CommandLineOptions.Install(new CommandLineOptions());
+      CommandLineOptions.Clo.Parse(new string[] { });
+      CommandLineOptions.Clo.NormalizeNames = true;
+      CommandLineOptions.Clo.EmitDebugInformation = false;
+      ExecutionEngine.printer = new ConsolePrinter();
+      
+      var proverLog1 = GetProverLogForProgram(procedure1);
+      var proverLog2 = GetProverLogForProgram(procedure2);
+      Assert.AreEqual(proverLog1, proverLog2);
+    }
+    
+    [Test()]
     public void TurnOffEmitDebugInformation()
     {
       var procedure = @"

@@ -563,7 +563,7 @@ namespace Microsoft.Boogie
       get => emitDebugInformation;
       set => emitDebugInformation = value;
     }
-
+    
     public int PrintUnstructured {
       get => printUnstructured;
       set => printUnstructured = value;
@@ -662,6 +662,7 @@ namespace Microsoft.Boogie
        */
       UsesDecls 
     }
+
     public PruneMode Prune = PruneMode.None;
 
     public enum InstrumentationPlaces
@@ -1767,7 +1768,7 @@ namespace Microsoft.Boogie
         case "emitDebugInformation":
           ps.GetNumericArgument(ref emitDebugInformation);
           return true;
-        
+
         case "normalizeNames":
           ps.GetNumericArgument(ref normalizeNames);
           return true;

@@ -650,7 +650,7 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(node != null);
       List<Type /*!*/> /*!*/
         originalTypes = new List<Type /*!*/>();
-      foreach (VCExpr /*!*/ expr in node)
+      foreach (VCExpr /*!*/ expr in node.Arguments)
       {
         Contract.Assert(expr != null);
         originalTypes.Add(expr.Type);
@@ -749,7 +749,7 @@ namespace Microsoft.Boogie.TypeErasure
         NewOpCache.Add(originalOpTypes, newOpTypes);
       }
 
-      return AssembleOpExpression(newOpTypes, node, bindings);
+      return AssembleOpExpression(newOpTypes, node.Arguments, bindings);
     }
 
     public override VCExpr VisitStoreOp(VCExprNAry node, VariableBindings bindings)
@@ -771,7 +771,7 @@ namespace Microsoft.Boogie.TypeErasure
         NewOpCache.Add(originalOpTypes, newOpTypes);
       }
 
-      return AssembleOpExpression(newOpTypes, node, bindings);
+      return AssembleOpExpression(newOpTypes, node.Arguments, bindings);
     }
 
     private OpTypesPair TypesPairForSelectStore(VCExprNAry /*!*/ node, Function /*!*/ untypedOp,
@@ -831,7 +831,7 @@ namespace Microsoft.Boogie.TypeErasure
         NewOpCache.Add(originalOpTypes, newOpTypes);
       }
 
-      return AssembleOpExpression(newOpTypes, node, bindings);
+      return AssembleOpExpression(newOpTypes, node.Arguments, bindings);
     }
 
     ///////////////////////////////////////////////////////////////////////////

@@ -1565,6 +1565,8 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(DeclarationContracts))]
   public abstract class Declaration : Absy, ICarriesAttributes
   {
+    public virtual int ContentHash => 1; 
+    
     public QKeyValue Attributes { get; set; }
 
     public Declaration(IToken tok)
@@ -1853,6 +1855,8 @@ namespace Microsoft.Boogie
 
       functionDependencies.Add(function);
     }
+
+    public override int ContentHash => Util.GetHashCode(1218192003, expression.ContentHash);
 
     public override void Emit(TokenTextWriter stream, int level)
     {

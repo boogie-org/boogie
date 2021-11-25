@@ -70,7 +70,7 @@ namespace Microsoft.Boogie.Clustering
       }
 
       bool res = true;
-      foreach (VCExpr subexpr in node)
+      foreach (VCExpr subexpr in node.Arguments)
       {
         Contract.Assert(subexpr != null);
         res &= this.Traverse(subexpr, arg);

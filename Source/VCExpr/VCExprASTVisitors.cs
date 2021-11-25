@@ -416,7 +416,7 @@ namespace Microsoft.Boogie.VCExprAST
       }
       else
       {
-        foreach (VCExpr e in node)
+        foreach (VCExpr e in node.Arguments)
         {
           Contract.Assert(e != null);
           e.Accept(this, arg);
