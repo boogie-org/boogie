@@ -46,7 +46,7 @@ procedure M(p: Person)
 
       CommandLineOptions.Install(new CommandLineOptions());
       CommandLineOptions.Clo.Parse(new string[] { });
-      CommandLineOptions.Clo.DiscardNames = true;
+      CommandLineOptions.Clo.NormalizeNames = true;
       CommandLineOptions.Clo.EmitDebugInformation = false;
       ExecutionEngine.printer = new ConsolePrinter();
       
@@ -78,12 +78,13 @@ procedure M(x: int)
       CommandLineOptions.Clo.Parse(new string[]{});
       CommandLineOptions.Clo.EmitDebugInformation = false;
       ExecutionEngine.printer = new ConsolePrinter();
+      
       var proverLog2 = GetProverLogForProgram(procedure);
       Assert.True(!proverLog2.Contains("skolemid"));
       Assert.True(!proverLog2.Contains("qid"));
       Assert.True(!proverLog2.Contains(":boogie-vc-id"));
     }
-    
+
     [Test()]
     public void TestNameDiscarding()
     {
@@ -153,7 +154,7 @@ procedure M(x2: int, coloredBarrel: Barrel2 RGBColor2)
       
       CommandLineOptions.Install(new CommandLineOptions());
       CommandLineOptions.Clo.Parse(new string[]{});
-      CommandLineOptions.Clo.DiscardNames = true;
+      CommandLineOptions.Clo.NormalizeNames = true;
       ExecutionEngine.printer = new ConsolePrinter();
       
       var proverLog1 = GetProverLogForProgram(procedure1);

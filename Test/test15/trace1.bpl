@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" -discardNames:1 -enhancedErrorMessages:1 > "%t"
+// RUN: %parallel-boogie "%s" -normalizeNames:1 -enhancedErrorMessages:1 > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 var g: int;

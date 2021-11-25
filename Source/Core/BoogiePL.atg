@@ -493,9 +493,9 @@ Function<.out List<Declaration>/*!*/ ds.>
     |
     ":" Type<out retTy>   (. retTyd = new TypedIdent(retTy.tok, TypedIdent.NoName, retTy); .)
   )
-  ( "{" Expression<out tmp> (. definition = tmp; .) "}" [ "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}" ] | 
-    "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}" |
-    ";"
+  ( "{" Expression<out tmp> (. definition = tmp; .) "}" [ "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}" ] 
+  | "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}" 
+  | ";"
   )
   (.
     if (retTyd == null) {

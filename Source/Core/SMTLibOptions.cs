@@ -20,14 +20,13 @@ namespace Microsoft.Boogie
     bool SIBoolControlVC { get; }
     bool RestartProverPerVC { get; }
     bool Trace { get; }
-
+    bool EmitDebugInformation { get; }
+    
     /**
      * Setting this to true will rename all identifiers in the Boogie program to a generated name that does not depend on the original name.
      * Discarding the original names is useful to prevent the solver input from changing when identifiers are renamed in the
      * Boogie program, which prevents unexpected changes in solver output.
      */
-    bool DiscardNames { get; }
-
-    bool EmitDebugInformation { get; }
+    bool NormalizeNames { get; }
   }
 }

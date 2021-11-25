@@ -77,7 +77,7 @@ namespace Microsoft.Boogie.SMTLib
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
-      Namer = libOptions.DiscardNames ? new DiscardOriginalName() : new KeepOriginalNamer();
+      Namer = libOptions.NormalizeNames ? new NormalizeNamer() : new KeepOriginalNamer();
       ctx.parent = this;
       this.DeclCollector = new TypeDeclCollector(libOptions, Namer);
 
@@ -574,6 +574,7 @@ namespace Microsoft.Boogie.SMTLib
       if (this.libOptions.EmitDebugInformation) {
         SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
       }
+
       if (options.Solver == SolverKind.Z3)
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
