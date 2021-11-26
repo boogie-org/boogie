@@ -554,6 +554,7 @@ namespace Microsoft.Boogie
     public int VerifySnapshots = -1;
     public bool VerifySeparately = false;
     public string PrintFile = null;
+    public string PrintPrunedFile = null;
 
     /**
      * Whether to emit {:qid}, {:skolemid} and set-info :boogie-vc-id
@@ -1197,6 +1198,14 @@ namespace Microsoft.Boogie
 
           return true;
 
+        case "printPruned":
+          if (ps.ConfirmArgumentCount(1))
+          {
+            PrintPrunedFile = args[ps.i];
+          }
+
+          return true;
+        
         case "print":
           if (ps.ConfirmArgumentCount(1))
           {

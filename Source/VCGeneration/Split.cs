@@ -6,6 +6,7 @@ using System.Threading;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
+using System.IO;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
@@ -129,6 +130,13 @@ namespace VC
         Interlocked.Increment(ref currentId);
         
         TopLevelDeclarations = Prune.GetLiveDeclarations(par.program, blocks).ToList();
+        
+        if (CommandLineOptions.Clo.PrintPrunedFile != null) {
+          var t = new TokenTextWriter(CommandLineOptions.Clo.PrintPrunedFile,  false, CommandLineOptions.Clo.PrettyPrint);
+          foreach (var d in TopLevelDeclarations) {
+            d.Emit(t, 0);
+          }
+        }
       }
 
       public double Cost
