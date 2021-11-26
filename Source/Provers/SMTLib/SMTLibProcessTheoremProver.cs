@@ -47,6 +47,7 @@ namespace Microsoft.Boogie.SMTLib
     private VCExpressionGenerator gen;
     protected readonly SMTLibProverOptions options;
     private bool usingUnsatCore;
+    private int resetCount = 0;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -129,9 +130,9 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    void SetupProcess()
+    void SetupProcess(bool recover = false)
     {
-      if (Process != null)
+      if (Process != null && !recover)
       {
         return;
       }
@@ -145,8 +146,7 @@ namespace Microsoft.Boogie.SMTLib
       if (Process != null && Process.NeedsRestart)
       {
         Process.Close();
-        Process = null;
-        SetupProcess();
+        SetupProcess(true);
         Process.Send(common.ToString());
       }
     }
@@ -628,6 +628,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         this.gen = gen;
         SendThisVC("(reset)");
+        RecoverIfProverCrashedAfterReset();
         SendThisVC("(set-option :" + Z3.RlimitOption + " 0)");
 
         if (0 < common.Length)
@@ -641,6 +642,23 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         HasReset = true;
+      }
+    }
+
+    private void RecoverIfProverCrashedAfterReset()
+    {
+      resetCount += 1;
+      if (Process.HasProverDied() is { } e)
+      {
+        if (resetCount == 1)
+        {
+          // First-time reset cannot be recovered
+          throw e;
+        }
+
+        Process.Close();
+        SetupProcess(true);
+        resetCount = 1;
       }
     }
 
