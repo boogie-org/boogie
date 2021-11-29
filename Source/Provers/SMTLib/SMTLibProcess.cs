@@ -125,7 +125,7 @@ namespace Microsoft.Boogie.SMTLib
       return sx != null && sx.Name == ":name";
     }
 
-    public ProverDiedException HasProverDied()
+    public ProverDiedException GetExceptionIfProverDied()
     {
       try
       {

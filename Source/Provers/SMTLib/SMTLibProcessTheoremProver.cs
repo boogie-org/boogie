@@ -648,7 +648,7 @@ namespace Microsoft.Boogie.SMTLib
     private void RecoverIfProverCrashedAfterReset()
     {
       resetCount += 1;
-      if (Process.HasProverDied() is { } e)
+      if (Process.GetExceptionIfProverDied() is Exception e)
       {
         if (resetCount == 1)
         {
