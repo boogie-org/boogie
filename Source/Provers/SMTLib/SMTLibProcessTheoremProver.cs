@@ -129,20 +129,9 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    void SetupProcess(bool forceRestart = false)
+    void SetupProcess()
     {
-      if (Process != null)
-      {
-        if (forceRestart)
-        {
-          Process.Close();
-        }
-        else 
-        {
-          return;
-        }
-      }
-
+      Process?.Close();
       Process = new SMTLibProcess(this.libOptions, this.options);
       Process.ErrorHandler += this.HandleProverError;
     }
@@ -151,7 +140,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       if (Process != null && Process.NeedsRestart)
       {
-        SetupProcess(true);
+        SetupProcess();
         Process.Send(common.ToString());
       }
     }
@@ -655,7 +644,7 @@ namespace Microsoft.Boogie.SMTLib
       if (Process.GetExceptionIfProverDied() is Exception e)
       {
         // We recover the process but don't issue the `(reset)` command that fails.
-        SetupProcess(true);
+        SetupProcess();
       }
     }
 
