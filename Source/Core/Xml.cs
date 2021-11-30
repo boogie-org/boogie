@@ -112,7 +112,6 @@ namespace Microsoft.Boogie
     public void WriteStartSplit(int splitNum, DateTime startTime)
     {
       Contract.Requires(splitNum > 0);
-      Contract.Requires(startTime != null);
       Contract.Requires(IsOpen);
       //modifies this.*;
       Contract.Ensures(IsOpen);
@@ -129,7 +128,6 @@ namespace Microsoft.Boogie
     public void WriteEndSplit(string outcome, TimeSpan elapsed)
     {
       Contract.Requires(outcome != null);
-      Contract.Requires(elapsed != null);
       Contract.Requires(IsOpen);
       //modifies this.*;
       Contract.Ensures(IsOpen);
