@@ -131,11 +131,7 @@ namespace Microsoft.Boogie.SMTLib
 
     void SetupProcess()
     {
-      if (Process != null)
-      {
-        return;
-      }
-
+      Process?.Close();
       Process = new SMTLibProcess(this.libOptions, this.options);
       Process.ErrorHandler += this.HandleProverError;
     }
@@ -144,8 +140,6 @@ namespace Microsoft.Boogie.SMTLib
     {
       if (Process != null && Process.NeedsRestart)
       {
-        Process.Close();
-        Process = null;
         SetupProcess();
         Process.Send(common.ToString());
       }
@@ -628,6 +622,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         this.gen = gen;
         SendThisVC("(reset)");
+        RecoverIfProverCrashedAfterReset();
         SendThisVC("(set-option :" + Z3.RlimitOption + " 0)");
 
         if (0 < common.Length)
@@ -641,6 +636,15 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         HasReset = true;
+      }
+    }
+
+    private void RecoverIfProverCrashedAfterReset()
+    {
+      if (Process.GetExceptionIfProverDied() is Exception e)
+      {
+        // We recover the process but don't issue the `(reset)` command that fails.
+        SetupProcess();
       }
     }
 

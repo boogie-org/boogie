@@ -125,6 +125,20 @@ namespace Microsoft.Boogie.SMTLib
       return sx != null && sx.Name == ":name";
     }
 
+    public ProverDiedException GetExceptionIfProverDied()
+    {
+      try
+      {
+        PingPong();
+      }
+      catch (ProverDiedException e)
+      {
+        return e;
+      }
+
+      return null;
+    }
+    
     public void PingPong()
     {
       Ping();
