@@ -1,5 +1,5 @@
 // Can't use %parallel-boogie here yet - see https://github.com/boogie-org/boogie/issues/460
-// RUN: %boogie /proverOpt:PROVER_PATH=/Users/salkeldr/Documents/GitHub/dafny/Binaries/z3/bin/z3 -xml:"%t.xml" "%s"
+// RUN: %boogie -xml:"%t.xml" "%s"
 // RUN: %OutputCheck "%s" --file-to-check="%t.xml"
 // CHECK: \<method name="Example" startTime=".*"\>
 // CHECK:   \<split number="1" startTime=".*"\>
