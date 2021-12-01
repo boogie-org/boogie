@@ -64,12 +64,9 @@ namespace Microsoft.Boogie
       BlocksVisitor blocksNode = new BlocksVisitor(blocks);
       blocksNode.Blocks.ForEach(blk => blocksNode.Visit(blk));
 
-      // an implementation only has outgoing edges.
-      var rootAxioms = program.TopLevelDeclarations.Where(t => QKeyValue.FindBoolAttribute(t.Attributes, "root"));
-      var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing.Concat(rootAxioms)).ToHashSet();
-      var result = program.TopLevelDeclarations.Where(d =>
+      var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing).ToHashSet();
+      return program.TopLevelDeclarations.Where(d =>
         d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
-      return result;
     }
   }
 }
