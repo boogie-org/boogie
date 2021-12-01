@@ -1,6 +1,8 @@
 // Can't use %parallel-boogie here yet - see https://github.com/boogie-org/boogie/issues/460
 // RUN: %boogie -xml:"%t.xml" "%s"
-// RUN: %OutputCheck "%s" --file-to-check="%t.xml"
+// Chop off the first line, since OutputCheck expects ASCII and can't handle the byte-order mark
+// RUN: tail -n +2 "%t.xml" > "%t.trimmed.xml"
+// RUN: %OutputCheck "%s" --file-to-check="%t.trimmed.xml"
 // CHECK: \<method name="Example" startTime=".*"\>
 // CHECK:   \<split number="1" startTime=".*"\>
 // CHECK:     \<conclusion duration=".*" outcome="valid" />
