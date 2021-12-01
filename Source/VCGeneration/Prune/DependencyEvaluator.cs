@@ -33,7 +33,7 @@ namespace Microsoft.Boogie
     protected void AddIncoming(Declaration newIncoming)
     {
       if (!ExcludeDep(newIncoming)) {
-        if (QKeyValue.FindBoolAttribute(declaration.Attributes, "include_dep") || CommandLineOptions.Clo.Prune == CommandLineOptions.PruneMode.Automatic) {
+        if (QKeyValue.FindBoolAttribute(declaration.Attributes, "include_dep")) {
           incomingSets.Add(new[] { newIncoming });
         }
       }

@@ -9,7 +9,7 @@ namespace Microsoft.Boogie
 
     public static Dictionary<object, List<object>> ComputeDeclarationDependencies(Program program)
     {
-      if (CommandLineOptions.Clo.Prune == CommandLineOptions.PruneMode.None)
+      if (!CommandLineOptions.Clo.Prune)
       {
         return null;
       }
@@ -56,7 +56,7 @@ namespace Microsoft.Boogie
      */
     public static IEnumerable<Declaration> GetLiveDeclarations(Program program, List<Block> blocks)
     {
-      if (program.DeclarationDependencies == null || blocks == null || CommandLineOptions.Clo.Prune == CommandLineOptions.PruneMode.None)
+      if (program.DeclarationDependencies == null || blocks == null || !CommandLineOptions.Clo.Prune)
       {
         return program.TopLevelDeclarations;
       }
