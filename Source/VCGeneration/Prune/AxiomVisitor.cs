@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 
@@ -17,8 +18,9 @@ namespace Microsoft.Boogie
     
     private void VisitTriggerCustom(Trigger t) {
       var visitor = new TriggerVisitor();
-      var triggerList = t.Tr.ToList();
-      triggerList.ForEach(e => visitor.VisitExpr(e));
+      foreach (var trigger in t.Tr) {
+        visitor.VisitExpr(trigger);
+      }
       var incomingSet = visitor.Declarations.ToArray();
       AddIncoming(incomingSet);
     }

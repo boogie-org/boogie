@@ -65,8 +65,10 @@ namespace Microsoft.Boogie
       blocksNode.Blocks.ForEach(blk => blocksNode.Visit(blk));
 
       var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing).ToHashSet();
-      return program.TopLevelDeclarations.Where(d =>
-        d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
+      var liveDeclarations = program.TopLevelDeclarations.Where(d =>
+        d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d)).ToList();
+      var pruned = program.TopLevelDeclarations.Except(liveDeclarations).ToList();
+      return liveDeclarations;
     }
   }
 }
