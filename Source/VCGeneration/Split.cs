@@ -130,22 +130,6 @@ namespace VC
         TopLevelDeclarations = Prune.GetLiveDeclarations(par.program, blocks).ToList();
       }
 
-      // TODO: Not really just a name, more like a description?
-      public string Name
-      {
-        get {
-          var asserts = blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).Take(2).ToList();
-          if (asserts.Count() == 1) {
-            var assert = asserts.Single();
-            var tok = assert.tok;
-            return $"{tok.filename}({tok.line}, {tok.col}) - ErrorData({assert.ErrorData})";
-          } else {
-            // TODO: assign names to all splits?
-            return "(anon split)";
-          }
-        }
-      }
-      
       public double Cost
       {
         get

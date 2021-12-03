@@ -19,7 +19,7 @@ namespace VC
     private readonly int maxKeepGoingSplits;
     private readonly List<Split> manualSplits;
     private double maxVcCost;
-    private bool splitOnEveryAssert = true;
+    private readonly bool splitOnEveryAssert;
       
     private bool DoSplitting => manualSplits.Count > 1 || KeepGoing || splitOnEveryAssert;
     private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
@@ -108,9 +108,8 @@ namespace VC
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
       if (options.Trace && DoSplitting) {
-        Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} \n      <{4}>...",
-          split.Stats, currentSplitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost),
-          split.Name);
+        Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
+          split.Stats, currentSplitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
       }
 
       callback.OnProgress?.Invoke("VCprove", currentSplitNumber, total,
