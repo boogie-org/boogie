@@ -1,0 +1,6 @@
+IncludeDep.bpl(24,1): Error: A postcondition might not hold on this return path.
+IncludeDep.bpl(20,3): Related location: This is the postcondition that might not hold.
+IncludeDep.bpl(56,1): Error: A postcondition might not hold on this return path.
+IncludeDep.bpl(54,3): Related location: This is the postcondition that might not hold.
+
+Boogie program verifier finished with 1 verified, 2 errors
