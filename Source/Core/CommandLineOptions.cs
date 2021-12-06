@@ -639,7 +639,7 @@ namespace Microsoft.Boogie
      * regardless of {:include_dep} being present. However, for each trigger of the quantifier,
      * each declaration referenced in the trigger has an outgoing edge to a merge node,
      * that in turn has an outgoing edge to the axiom.
-     * The merge node is only traversable in the reachable analysis if each of its incoming edges has been reached.
+     * The merge node is traversable in the reachable analysis only if each of its incoming edges has been reached.
      *
      */
     public bool Prune = false;
