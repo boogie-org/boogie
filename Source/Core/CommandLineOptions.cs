@@ -623,7 +623,7 @@ namespace Microsoft.Boogie
      * { }
      * ```
      * 
-     * When verifying FMultipliesByTwo, pruning will remove G and its axiom, but not F and its axiom.
+     * When verifying FMultipliedByTwo, pruning will remove G and its axiom, but not F and its axiom.
      *
      * Axioms defined in a uses clause have an incoming edge from the clause's declaration.
      * Uses clauses can be placed on functions and constants.
