@@ -618,7 +618,7 @@ namespace Microsoft.Boogie
      *   axiom forall x: int :: G(x) == F(x) + 1
      * }
      *
-     * procedure FMultipliesByTwo(x: int)
+     * procedure FMultipliedByTwo(x: int)
      *   ensures F(x) - x == x
      * { }
      * ```
