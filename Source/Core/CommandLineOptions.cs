@@ -2023,8 +2023,11 @@ namespace Microsoft.Boogie
      {:vcs_max_cost N}
      {:vcs_max_splits N}
      {:vcs_max_keep_going_splits N}
+     {:vcs_split_on_every_assert}
+     {:vcs_split_on_every_assert true}
        Per-implementation versions of
-       /vcsMaxCost, /vcsMaxSplits and /vcsMaxKeepGoingSplits.
+       /vcsMaxCost, /vcsMaxSplits, /vcsMaxKeepGoingSplits and
+       /vcsSplitOnEveryAssert.
 
      {:selective_checking true}
        Turn all asserts into assumes except for the ones reachable from
@@ -2477,6 +2480,9 @@ namespace Microsoft.Boogie
                 applied. Defaults to 0.5 (always do path splitting if
                 possible), set to more to do less path splitting
                 and more assertion splitting.
+  /vcsSplitOnEveryAssert
+                Splits every VC so that each assertion is isolated
+                into its own VC. May result in VCs without any assertions.
   /vcsDumpSplits
                 For split #n dump split.n.dot and split.n.bpl.
                 Warning: Affects error reporting.
