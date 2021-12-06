@@ -631,7 +631,7 @@ namespace Microsoft.Boogie
      * Adding the {:include_dep} attribute to an axiom will give it an incoming edge from each declaration that it references.
      * The {:include_dep} attribute is useful in a migration scenario.
      * When turning on pruning in a Boogie program with many axioms,
-     * one many add {:include_dep} to all of them to prevent pruning too much,
+     * one may add {:include_dep} to all of them to prevent pruning too much,
      * and then iteratively remove {:include_dep} attributes and add uses clauses to enable pruning more.
      *
      * Apart from uses clauses and {:include_dep}, incoming edges are also created for axioms that contain triggers.
