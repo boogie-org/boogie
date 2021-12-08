@@ -2404,7 +2404,11 @@ namespace Microsoft.Boogie
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
   /prune
-                Turn on pruning.
+                Turn on pruning. Pruning will remove any top-level Boogie declarations 
+                that are not accessible by the implementation that is about to be verified.
+                Without pruning, due to the unstable nature of SMT solvers,
+                a change to any part of a Boogie program has the potential 
+                to affect the verification of any other part of the program.
   /printPruned:<file>
                 After pruning, print the Boogie program to the specified file.
   /relaxFocus   Process foci in a bottom-up fashion. This way only generates
