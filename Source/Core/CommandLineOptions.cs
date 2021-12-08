@@ -117,7 +117,7 @@ namespace Microsoft.Boogie
       {
         pattern = pattern.Replace("@PREFIX@", logPrefix).Replace("@TIME@", fileTimestamp);
         string fn = Files.Count == 0 ? "" : Files[Files.Count - 1];
-        fn = fn.Replace(':', '-').Replace('/', '-').Replace('\\', '-');
+        fn = Util.EscapeFilename(fn);
         pattern = pattern.Replace("@FILE@", fn);
       }
     }

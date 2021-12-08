@@ -132,7 +132,7 @@ namespace VC
         TopLevelDeclarations = Prune.GetLiveDeclarations(par.program, blocks).ToList();
         
         if (CommandLineOptions.Clo.PrintPrunedFile != null) {
-          var t = new TokenTextWriter(CommandLineOptions.Clo.PrintPrunedFile,  false, CommandLineOptions.Clo.PrettyPrint);
+          var t = new TokenTextWriter(CommandLineOptions.Clo.PrintPrunedFile + "-" + Util.EscapeFilename(impl.Name),  false, CommandLineOptions.Clo.PrettyPrint);
           foreach (var d in TopLevelDeclarations) {
             d.Emit(t, 0);
           }
