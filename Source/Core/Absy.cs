@@ -8,7 +8,6 @@ using System.Diagnostics.Contracts;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.GraphUtil;
 using Set = Microsoft.Boogie.GSet<object>;
-using DependencyEvaluator = Microsoft.Boogie.DependencyEvaluator;
 
 namespace Microsoft.Boogie
 {
@@ -2481,7 +2480,7 @@ namespace Microsoft.Boogie
     // that the parental situation is unconstrained.
     public readonly ReadOnlyCollection<ConstantParent /*!*/> Parents;
 
-    public IEnumerable<Axiom> DefinitionAxioms { get; }
+    public IList<Axiom> DefinitionAxioms { get; }
     
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -2507,7 +2506,7 @@ namespace Microsoft.Boogie
       bool unique,
       IEnumerable<ConstantParent /*!*/> parents = null, bool childrenComplete = false,
       QKeyValue kv = null,
-      IEnumerable<Axiom> definitionAxioms = null)
+      IList<Axiom> definitionAxioms = null)
       : base(tok, typedIdent, kv)
     {
       Contract.Requires(tok != null);
@@ -2518,7 +2517,7 @@ namespace Microsoft.Boogie
       this.Unique = unique;
       this.Parents = parents == null ? null : new ReadOnlyCollection<ConstantParent>(parents.ToList());
       this.ChildrenComplete = childrenComplete;
-      this.DefinitionAxioms = definitionAxioms ?? Enumerable.Empty<Axiom>();
+      this.DefinitionAxioms = definitionAxioms ?? new List<Axiom>();
     }
 
     public override bool IsMutable => false;

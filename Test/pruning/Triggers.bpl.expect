@@ -1,0 +1,6 @@
+Triggers.bpl(27,1): Error: A postcondition might not hold on this return path.
+Triggers.bpl(25,3): Related location: This is the postcondition that might not hold.
+Triggers.bpl(35,1): Error: A postcondition might not hold on this return path.
+Triggers.bpl(33,3): Related location: This is the postcondition that might not hold.
+
+Boogie program verifier finished with 2 verified, 2 errors

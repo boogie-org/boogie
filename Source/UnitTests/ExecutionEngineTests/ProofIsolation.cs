@@ -271,7 +271,7 @@ procedure M2(x: int, coloredBarrel: Barrel2 RGBColor2)
 {procedure1}
 {procedure2}";
       CommandLineOptions.Install(new CommandLineOptions());
-      CommandLineOptions.Clo.Prune = CommandLineOptions.PruneMode.Automatic;
+      CommandLineOptions.Clo.Prune = true;
       CommandLineOptions.Clo.Parse(new string[]{});
       ExecutionEngine.printer = new ConsolePrinter();
       

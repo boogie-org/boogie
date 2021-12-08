@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using Microsoft.Boogie.GraphUtil;
@@ -8,7 +9,7 @@ namespace Microsoft.Boogie
 
     public static Dictionary<object, List<object>> ComputeDeclarationDependencies(Program program)
     {
-      if (CommandLineOptions.Clo.Prune == CommandLineOptions.PruneMode.None)
+      if (!CommandLineOptions.Clo.Prune)
       {
         return null;
       }
@@ -48,54 +49,6 @@ namespace Microsoft.Boogie
       return edges;
     }
 
-    public static Variable GetWhereVariable(Cmd c) {
-      if (c is AssumeCmd ac)
-      {
-        var attr = QKeyValue.FindAttribute(ac.Attributes, qkv => qkv.Key == "where" && qkv.Params.Count == 1);
-        if (attr != null)
-        {
-          var ie = (IdentifierExpr) attr.Params[0];
-          return ie.Decl;
-        }
-      }
-      return null;
-    }
-
-    public static void TrimWhereAssumes(List<Block> blocks, HashSet<Variable> liveVars) {
-      var whereAssumes = new Dictionary<Variable, AssumeVisitor> ();
-      foreach (var blk in blocks)
-      {
-        foreach(var cmd in blk.Cmds)
-        {
-          var v = GetWhereVariable(cmd);
-          if (v != null)
-          {
-            var ac = cmd as AssumeCmd;
-            whereAssumes[v] = new AssumeVisitor(ac);
-            whereAssumes[v].Visit(ac);
-          }
-        }
-      }
-
-      var todo = new Stack<Variable> (liveVars);
-      while (todo.Any())
-      {
-        var t = todo.Pop();
-        if (whereAssumes.Keys.Contains(t)) {
-          whereAssumes[t].RelVars.Where(v => !liveVars.Contains(v)).ToList().ForEach(v => todo.Push(v));
-        }
-        liveVars.Add(t);
-      }
-
-      bool DeadWhereAssumption(Cmd c)
-      {
-        var v = GetWhereVariable(c);
-        return v != null && !liveVars.Contains(v);
-      }
-
-      blocks.ForEach(blk => blk.Cmds = blk.Cmds.Where(c => !DeadWhereAssumption(c)).ToList());
-    }
-
     /*
      * Global variables, type constructor declarations, type synonyms, procedures and implementations are not pruned, but none of them produce solver commands.
      * See Checker.Setup for more information.
@@ -103,18 +56,19 @@ namespace Microsoft.Boogie
      */
     public static IEnumerable<Declaration> GetLiveDeclarations(Program program, List<Block> blocks)
     {
-      if (program.DeclarationDependencies == null || blocks == null || CommandLineOptions.Clo.Prune == CommandLineOptions.PruneMode.None)
+      if (program.DeclarationDependencies == null || blocks == null || !CommandLineOptions.Clo.Prune)
       {
         return program.TopLevelDeclarations;
       }
 
       BlocksVisitor blocksNode = new BlocksVisitor(blocks);
       blocksNode.Blocks.ForEach(blk => blocksNode.Visit(blk));
-      TrimWhereAssumes(blocks, blocksNode.RelVars);
 
-      // an implementation only has outgoing edges.
       var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing).ToHashSet();
-      return program.TopLevelDeclarations.Where(d => d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
+      var liveDeclarations = program.TopLevelDeclarations.Where(d =>
+        d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d)).ToList();
+      var pruned = program.TopLevelDeclarations.Except(liveDeclarations).ToList();
+      return liveDeclarations;
     }
   }
 }

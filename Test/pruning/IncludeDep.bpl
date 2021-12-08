@@ -1,8 +1,8 @@
-// RUN: %parallel-boogie /prune:1 /errorTrace:0 "%s" > "%t"
+// RUN: %parallel-boogie /prune /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-function {:exclude_dep} f1 (x: int) : int;
-function f2(x: int) : int;
+function f1 (x: int) : int;
+function {:include_dep} f2(x: int) : int;
 
 function P(x: int, y: int) : bool; // should not show up in the smt2 file
 function Q(x: int) : bool;
@@ -13,10 +13,7 @@ const B: bool;
 
 axiom false; // this is always pruned away
 
-axiom (forall x: int ::
-  {f1(x), R(x)}
-  {f2(x), R(x)}
-  Q(f1(x)) && Q(f2(x)));
+axiom (forall x: int :: Q(f1(x)));
 
 procedure I1(x : int) returns (y: int)
   requires R(x);
@@ -26,6 +23,8 @@ procedure I1(x : int) returns (y: int)
 {
 }
 
+axiom {:include_dep} (forall x: int :: Q(f2(x)));
+
 procedure I2(x : int) returns (y: int)
   requires R(x);
   ensures Q(f2(x)); // proved using the axiom on line 16
@@ -33,14 +32,14 @@ procedure I2(x : int) returns (y: int)
 }
 
 
-axiom (forall x: int :: A);
+axiom {:include_dep} (forall x: int :: A);
 
 function Def1(x: int) : bool
 {
   A
 }
 
-axiom (forall x: int ::
+axiom {:include_dep} (forall x: int ::
   {f1(x)}
   B);
 

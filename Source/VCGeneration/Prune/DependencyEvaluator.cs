@@ -25,30 +25,21 @@ namespace Microsoft.Boogie
     public List<Declaration[]> incomingSets = new();
     public HashSet<Type> types = new();
 
-    private static bool ExcludeDep(Declaration declaration)
-    {
-      return declaration.Attributes != null && QKeyValue.FindBoolAttribute(declaration.Attributes, "exclude_dep");
-    }
-
     protected void AddIncoming(Declaration newIncoming)
     {
-      if (!ExcludeDep(newIncoming)) {
-        AddIncoming(new[] { newIncoming });
+      if (QKeyValue.FindBoolAttribute(declaration.Attributes, "include_dep")) {
+        incomingSets.Add(new[] { newIncoming });
       }
     }
 
     protected void AddOutgoing(Declaration newOutgoing)
     {
-      if (!ExcludeDep(newOutgoing)) {
-        outgoing.Add(newOutgoing);
-      }
+      outgoing.Add(newOutgoing);
     }
 
     protected void AddIncoming(Declaration[] declarations)
     {
-      if (CommandLineOptions.Clo.Prune == CommandLineOptions.PruneMode.Automatic) {
-        incomingSets.Add(declarations);
-      }
+      incomingSets.Add(declarations);
     }
 
     protected DependencyEvaluator(Declaration declaration)

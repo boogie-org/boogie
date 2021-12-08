@@ -117,7 +117,7 @@ namespace Microsoft.Boogie
       {
         pattern = pattern.Replace("@PREFIX@", logPrefix).Replace("@TIME@", fileTimestamp);
         string fn = Files.Count == 0 ? "" : Files[Files.Count - 1];
-        fn = fn.Replace(':', '-').Replace('/', '-').Replace('\\', '-');
+        fn = Util.EscapeFilename(fn);
         pattern = pattern.Replace("@FILE@", fn);
       }
     }
@@ -554,6 +554,7 @@ namespace Microsoft.Boogie
     public int VerifySnapshots = -1;
     public bool VerifySeparately = false;
     public string PrintFile = null;
+    public string PrintPrunedFile = null;
 
     /**
      * Whether to emit {:qid}, {:skolemid} and set-info :boogie-vc-id
@@ -590,80 +591,58 @@ namespace Microsoft.Boogie
     public string ProverPreamble { get; set; }= null;
     public bool WarnNotEliminatedVars = false;
     
-    public enum PruneMode { 
-      None, 
-      
-      /**
-       * Automatic pruning will remove any declarations that do not reference,
-       * directly or indirectly, and are not referenced by, the implementation being verified,
-       * and declarations which cannot be used for verifying the current implementation,
-       * such as axioms with triggers that can not be satisfied.
-       * 
-       * Automatic pruning detects incoming edges in axioms, for example:
-       *
-       * function A(int): int;
-       * axiom A(3) == 2;
-       *
-       * Will detect edges in both directions between the declaration of A and the axiom declaration.
-       * So if either declaration is live, both declarations are live.
-       */
-      Automatic, 
-      
-      /**
-       * UsesDecls pruning will not automatically detect incoming edges in axioms.
-       * Instead it depends on uses clauses in the input program to determine the outgoing edges of functions and constants.
-       * Outgoing edges in axioms are still detected automatically.
-       * 
-       * The reason to use UsesDecls over Automatic pruning is that the latter can miss pruning opportunities.
-       * Consider the following program:
-       *
-       * ```
-       * function F(int): int;
-       * function G(int): int;
-       *
-       * // declaration axiom for F
-       * axiom forall x: int :: F(x) == x * 2
-       * 
-       * // declaration axiom for G
-       * axiom forall x: int :: G(x) == F(x) + 1
-       *
-       * procedure FMultipliesByTwo(x: int)
-       *   ensures F(x) - x == x
-       * { }
-       * ```
-       * 
-       * Automatic pruning will not remove any declarations when verifying the procedure FMultipliesByTwo,
-       * since it refers to F, which refers to the declaration axiom of G through an incoming edge in the axiom,
-       * which also has an outgoing edge to G.
-       *
-       * If we rewrite the previous program to
-       * 
-       * ```
-       * function F(int) returns (int) uses {
-       *   axiom forall x: int :: F(x) == x * 2
-       * }
-       * function G(int) returns (int) uses {
-       *   axiom forall x: int :: G(x) == F(x) + 1
-       * }
-       *
-       * procedure FMultipliesByTwo(x: int)
-       *   ensures F(x) - x == x
-       * { }
-       * ```
-       *
-       * And apply UsesDecls pruning, then G and its axiom will be removed when verifying FMultipliesByTwo.
-       *
-       * An alternative to using UsesDecls pruning, is to add an {:exclude_dep} attribute to a function or constant,
-       * which prevents axioms from detecting incoming edges from that declaration.
-       * To add outgoing edges to the function or constant, uses clauses should be used.
-       *
-       * Using Automatic pruning in combination with {:exclude_dep} can be useful if this provides good enough pruning,
-       * or to migrate from None to UsesDecls pruning.
-       */
-      UsesDecls 
-    }
-
-    public PruneMode Prune = PruneMode.None;
+    /**
+     * Pruning will remove any top-level Boogie declarations that are not accessible by the implementation that is about to be verified.
+     *
+     * # Why pruning?
+     * Without pruning, a change to any part of a Boogie program has the potential to affect the verification of any other part of the program.
+     * 
+     * When pruning is used, a declaration of a Boogie program can be changed with the guarantee that the verification of
+     * implementations that do not depend on the modified declaration, remains unchanged.
+     *
+     * # How to use pruning
+     * Pruning depends on the dependency graph of Boogie declarations.
+     * This graph must contain both incoming and outgoing edges for axioms.
+     * 
+     * Outgoing edges for axioms are detected automatically:
+     * an axiom has an outgoing edge to each declaration that it references.
+     *
+     * When using pruning, you must ensure that the right incoming edges for axioms are defined.
+     * The most manual method of defining incoming axiom edges is using 'uses' clauses, which are shown in the following program:
+     *
+     * ```
+     * function F(int) returns (int) uses {
+     *   axiom forall x: int :: F(x) == x * 2
+     * }
+     * function G(int) returns (int) uses {
+     *   axiom forall x: int :: G(x) == F(x) + 1
+     * }
+     *
+     * procedure FMultipliedByTwo(x: int)
+     *   ensures F(x) - x == x
+     * { }
+     * ```
+     * 
+     * When verifying FMultipliedByTwo, pruning will remove G and its axiom, but not F and its axiom.
+     *
+     * Axioms defined in a uses clause have an incoming edge from the clause's declaration.
+     * Uses clauses can be placed on functions and constants.
+     * 
+     * Adding the {:include_dep} attribute to an axiom will give it an incoming edge from each declaration that it references.
+     * The {:include_dep} attribute is useful in a migration scenario.
+     * When turning on pruning in a Boogie program with many axioms,
+     * one may add {:include_dep} to all of them to prevent pruning too much,
+     * and then iteratively remove {:include_dep} attributes and add uses clauses to enable pruning more.
+     *
+     * Apart from uses clauses and {:include_dep}, incoming edges are also created for axioms that contain triggers.
+     * If a quantifier with a trigger occurs in an axiom, then no incoming edges are determined from the body of the quantifier,
+     * regardless of {:include_dep} being present. However, for each trigger of the quantifier,
+     * each declaration referenced in the trigger has an outgoing edge to a merge node,
+     * that in turn has an outgoing edge to the axiom.
+     * The merge node is traversable in the reachability analysis only if each of its incoming edges has been reached.
+     *
+     */
+    public bool Prune = false;
 
     public enum InstrumentationPlaces
     {
@@ -1197,6 +1176,14 @@ namespace Microsoft.Boogie
 
           return true;
 
+        case "printPruned":
+          if (ps.ConfirmArgumentCount(1))
+          {
+            PrintPrunedFile = args[ps.i];
+          }
+
+          return true;
+        
         case "print":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1758,12 +1745,6 @@ namespace Microsoft.Boogie
         case "kInductionDepth":
           ps.GetNumericArgument(ref KInductionDepth);
           return true;
-        
-        case "prune":
-          int number = 0;
-          ps.GetNumericArgument(ref number);
-          Prune = (PruneMode)number;
-          return true;
           
         case "emitDebugInformation":
           ps.GetNumericArgument(ref emitDebugInformation);
@@ -1826,6 +1807,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustInductiveSequentialization", ref trustInductiveSequentialization) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting) ||
+              ps.CheckBooleanFlag("prune", ref Prune) ||
               ps.CheckBooleanFlag("warnNotEliminatedVars", ref WarnNotEliminatedVars)
           )
           {
@@ -1973,10 +1955,6 @@ namespace Microsoft.Boogie
     {:ignore}
       Ignore the declaration (after checking for duplicate names).
 
-    {:exclude_dep}
-      Ignore the declaration for the purpose of pruning by removing it
-      from the outgoing set of all other declarations.
-
     {:extern}
       If two top-level declarations introduce the same name (for example, two
       constants with the same name or two procedures with the same name), then
@@ -2041,6 +2019,15 @@ namespace Microsoft.Boogie
 
      {:random_seed N}
        Set the random seed for verifying a given implementation.
+
+  ---- On Axioms -------------------------------------------------------------
+
+    {:include_dep}
+      
+       Give the axiom an incoming edge from each declaration that it references, which is useful in a migration scenario.
+       When turning on pruning in a Boogie program with many axioms,
+       one may add {:include_dep} to all of them to prevent pruning too much,
+       and then iteratively remove {:include_dep} attributes and add uses clauses to enable pruning more.
 
   ---- On functions ----------------------------------------------------------
 
@@ -2416,10 +2403,14 @@ namespace Microsoft.Boogie
                 only for monomorphic programs.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
-  /prune:<n>
-                0 (default) - none
-                1 - automatic pruning
-                2 - aggressive pruning. Requires binding axioms to functions and constants using 'uses'
+  /prune
+                Turn on pruning. Pruning will remove any top-level Boogie declarations 
+                that are not accessible by the implementation that is about to be verified.
+                Without pruning, due to the unstable nature of SMT solvers,
+                a change to any part of a Boogie program has the potential 
+                to affect the verification of any other part of the program.
+  /printPruned:<file>
+                After pruning, print the Boogie program to the specified file.
   /relaxFocus   Process foci in a bottom-up fashion. This way only generates
                 a linear number of splits. The default way (top-down) is more
                 aggressive and it may create an exponential number of splits.

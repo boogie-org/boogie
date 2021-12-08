@@ -82,7 +82,7 @@ namespace VC
 
     void PrepareChecker(Program program, Split split, Checker checker)
     {
-      if (checker.WillingToHandle(program) && options.Prune == CommandLineOptions.PruneMode.None)
+      if (checker.WillingToHandle(program) && !options.Prune)
       {
         checker.GetReady();
         return;
