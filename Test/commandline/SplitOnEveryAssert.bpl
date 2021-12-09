@@ -1,5 +1,5 @@
 // Don't use %parallel-boogie so the trace output is more predictable
-// RUN: %boogie /errorTrace:0 /trace "%s" > "%t"
+// RUN: %boogie /vcsSplitOnEveryAssert /errorTrace:0 /trace "%s" > "%t"
 // RUN: %OutputCheck --file-to-check "%t" "%s"
 
 // CHECK:      checking split 1/12, .*
@@ -15,15 +15,10 @@
 // CHECK:      checking split 10/12, .*
 // CHECK:      checking split 11/12, .*
 // CHECK:      checking split 12/12, .*
-// CHECK: Verifying DoTheSplitting ...
-// CHECK-L: SplitOnEveryAssert.bpl(37,5): Error: This assertion might not hold.
+// CHECK: Verifying Ex ...
+// CHECK-L: SplitOnEveryAssert.bpl(32,5): Error: This assertion might not hold.
 
-// Verify the second procedure is NOT split. .* is necessary to match the blank line in-between.
-// CHECK-NEXT: .*
-// CHECK-NEXT: Verifying DontDoTheSplitting ...
-// CHECK-NEXT:   \[.* s, .* proof obligations\]  verified
-
-procedure {:vcs_split_on_every_assert} DoTheSplitting() returns (y: int)
+procedure Ex() returns (y: int)
   ensures y >= 0;
 {
   var x: int;
@@ -46,11 +41,4 @@ procedure {:vcs_split_on_every_assert} DoTheSplitting() returns (y: int)
     }
     assert (x+y) * (x+y) == 25;
   }
-}
-
-procedure DontDoTheSplitting()
-{
-  assert 1 + 1 == 2;
-  assert 2 + 2 == 4;
-  assert 3 + 3 == 6;
 }
