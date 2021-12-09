@@ -19,8 +19,9 @@ namespace VC
     private readonly int maxKeepGoingSplits;
     private readonly List<Split> manualSplits;
     private double maxVcCost;
+    private readonly bool splitOnEveryAssert;
       
-    private bool DoSplitting => manualSplits.Count > 1 || KeepGoing;
+    private bool DoSplitting => manualSplits.Count > 1 || KeepGoing || splitOnEveryAssert;
     private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
     private bool KeepGoing => maxKeepGoingSplits > 1;
       
@@ -53,9 +54,12 @@ namespace VC
       {
         maxVcCost = tmpMaxVcCost;
       }
+      
+      splitOnEveryAssert = options.VcsSplitOnEveryAssert;
+      implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
       ResetPredecessors(implementation.Blocks);
-      manualSplits = Split.FocusAndSplit(implementation, gotoCmdOrigins, vcGen);
+      manualSplits = Split.FocusAndSplit(implementation, gotoCmdOrigins, vcGen, splitOnEveryAssert);
       
       if (manualSplits.Count == 1 && maxSplits > 1) {
         manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);

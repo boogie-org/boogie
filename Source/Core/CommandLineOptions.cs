@@ -948,6 +948,7 @@ namespace Microsoft.Boogie
     public double VcsPathSplitMult = 0.5; // 0.5-always, 2-rarely do path splitting
     public int VcsMaxSplits = 1;
     public int VcsMaxKeepGoingSplits = 1;
+    public bool VcsSplitOnEveryAssert = false;
     public uint VcsFinalAssertTimeout = 30;
     public uint VcsKeepGoingTimeout = 1;
     public int VcsCores = 1;
@@ -1686,6 +1687,13 @@ namespace Microsoft.Boogie
           ps.GetNumericArgument(ref VcsMaxKeepGoingSplits);
           return true;
 
+        case "vcsSplitOnEveryAssert":
+          if (ps.ConfirmArgumentCount(0))
+          {
+            VcsSplitOnEveryAssert = true;
+          }
+          return true;
+
         case "vcsFinalAssertTimeout":
           ps.GetUnsignedNumericArgument(ref VcsFinalAssertTimeout, null);
           return true;
@@ -1993,8 +2001,11 @@ namespace Microsoft.Boogie
      {:vcs_max_cost N}
      {:vcs_max_splits N}
      {:vcs_max_keep_going_splits N}
+     {:vcs_split_on_every_assert}
+     {:vcs_split_on_every_assert true}
        Per-implementation versions of
-       /vcsMaxCost, /vcsMaxSplits and /vcsMaxKeepGoingSplits.
+       /vcsMaxCost, /vcsMaxSplits, /vcsMaxKeepGoingSplits and
+       /vcsSplitOnEveryAssert.
 
      {:selective_checking true}
        Turn all asserts into assumes except for the ones reachable from
@@ -2460,6 +2471,9 @@ namespace Microsoft.Boogie
                 applied. Defaults to 0.5 (always do path splitting if
                 possible), set to more to do less path splitting
                 and more assertion splitting.
+  /vcsSplitOnEveryAssert
+                Splits every VC so that each assertion is isolated
+                into its own VC. May result in VCs without any assertions.
   /vcsDumpSplits
                 For split #n dump split.n.dot and split.n.bpl.
                 Warning: Affects error reporting.
