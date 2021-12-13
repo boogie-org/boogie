@@ -13,15 +13,9 @@
 // CHECK:   \<conclusion endTime=".*" duration=".*" outcome="correct" />
 // CHECK: \</method\>
 // CHECK: \<method name="ExampleWithoutSplits" startTime=".*"\>
-// CHECK:   \<split number="1" startTime=".*"\>
-// CHECK:     \<conclusion duration=".*" outcome="valid" />
-// CHECK:   \</split\>
 // CHECK:   \<conclusion endTime=".*" duration=".*" outcome="correct" />
 // CHECK: \</method\>
 // CHECK: \<method name="AnotherExampleWithoutSplits" startTime=".*"\>
-// CHECK:   \<split number="1" startTime=".*"\>
-// CHECK:     \<conclusion duration=".*" outcome="valid" />
-// CHECK:   \</split\>
 // CHECK:   \<conclusion endTime=".*" duration=".*" outcome="correct" />
 // CHECK: \</method\>
 

@@ -112,11 +112,8 @@ namespace VC
           split.Stats, currentSplitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
       }
 
-      if (options.XmlSink != null) {
-        // Here it's friendlier to refer to the singleton split as "Split #1" even if there was no explicitly
-        // requested splitting.
-        var xmlSplitNumber = DoSplitting ? currentSplitNumber + 1 : 1;
-        options.XmlSink.WriteStartSplit(xmlSplitNumber, DateTime.UtcNow);
+      if (options.XmlSink != null && DoSplitting) {
+        options.XmlSink.WriteStartSplit(currentSplitNumber + 1, DateTime.UtcNow);
       }
 
       callback.OnProgress?.Invoke("VCprove", currentSplitNumber, total,
