@@ -1275,7 +1275,7 @@ namespace VC
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
-        if (CommandLineOptions.Clo.XmlSink != null) {
+        if (CommandLineOptions.Clo.XmlSink != null && splitNum >= 0) {
           CommandLineOptions.Clo.XmlSink.WriteEndSplit(outcome.ToString().ToLowerInvariant(), 
             TimeSpan.FromSeconds(checker.ProverRunTime.TotalSeconds));
         }
