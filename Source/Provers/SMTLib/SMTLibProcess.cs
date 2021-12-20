@@ -76,7 +76,7 @@ namespace Microsoft.Boogie.SMTLib
         TerminateProver();
       }
     }
-    
+
     private void TerminateProver(Int32 timeout = 2000)
     {
       try
@@ -224,7 +224,7 @@ namespace Microsoft.Boogie.SMTLib
       TerminateProver();
       DisposeProver();
     }
-    
+
     public override event Action<string> ErrorHandler;
     int errorCnt;
 
