@@ -9,18 +9,17 @@ using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  public class SMTLibProcess
+  public class SMTLibProcess : SMTLibSolver
   {
     readonly Process prover;
     readonly Inspector inspector;
     readonly SMTLibProverOptions options;
-    readonly Queue<string> proverOutput = new Queue<string>();
-    readonly Queue<string> proverErrors = new Queue<string>();
+    readonly Queue<string> proverOutput = new();
+    readonly Queue<string> proverErrors = new();
     readonly TextWriter toProver;
     readonly int smtProcessId;
     static int smtProcessIdSeq = 0;
     ConsoleCancelEventHandler cancelEvent;
-    public bool NeedsRestart;
 
     public SMTLibProcess(SMTLibOptions libOptions, SMTLibProverOptions options)
     {
@@ -77,7 +76,7 @@ namespace Microsoft.Boogie.SMTLib
         TerminateProver();
       }
     }
-
+    
     private void TerminateProver(Int32 timeout = 2000)
     {
       try
@@ -97,7 +96,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public void Send(string cmd)
+    public override void Send(string cmd)
     {
       if (options.Verbosity >= 2)
       {
@@ -114,59 +113,12 @@ namespace Microsoft.Boogie.SMTLib
       toProver.WriteLine(cmd);
     }
 
-    // this is less than perfect; (echo ...) would be better
-    public void Ping()
-    {
-      Send("(get-info :name)");
-    }
-
-    public bool IsPong(SExpr sx)
-    {
-      return sx != null && sx.Name == ":name";
-    }
-
-    public ProverDiedException GetExceptionIfProverDied()
-    {
-      try
-      {
-        PingPong();
-      }
-      catch (ProverDiedException e)
-      {
-        return e;
-      }
-
-      return null;
-    }
-    
-    public void PingPong()
-    {
-      Ping();
-      while (true)
-      {
-        var sx = GetProverResponse();
-        if (sx == null)
-        {
-          throw new ProverDiedException();
-        }
-
-        if (IsPong(sx))
-        {
-          return;
-        }
-        else
-        {
-          HandleError("Invalid PING response from the prover: " + sx.ToString());
-        }
-      }
-    }
-
     internal Inspector Inspector
     {
       get { return inspector; }
     }
 
-    public SExpr GetProverResponse()
+    public override SExpr GetProverResponse()
     {
       toProver.Flush();
 
@@ -245,12 +197,17 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    public override void NewProblem(string descriptiveName)
+    {
+      Inspector?.NewProblem(descriptiveName);
+    }
+
 
     // NOTE: this field is used by Corral.
     // https://github.com/boogie-org/corral/blob/master/source/Driver.cs
     public static System.TimeSpan TotalUserTime = System.TimeSpan.Zero;
 
-    public void Close()
+    public override void Close()
     {
       try
       {
@@ -267,21 +224,18 @@ namespace Microsoft.Boogie.SMTLib
       TerminateProver();
       DisposeProver();
     }
-
-    public event Action<string> ErrorHandler;
+    
+    public override event Action<string> ErrorHandler;
     int errorCnt;
 
-    private void HandleError(string msg)
+    protected override void HandleError(string msg)
     {
       if (options.Verbosity >= 2)
       {
         Console.WriteLine("[SMT-ERR-{0}] Handling error: {1}", smtProcessId, msg);
       }
 
-      if (ErrorHandler != null)
-      {
-        ErrorHandler(msg);
-      }
+      ErrorHandler?.Invoke(msg);
     }
 
     #region SExpr parsing

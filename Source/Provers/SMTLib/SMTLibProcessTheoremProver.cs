@@ -11,35 +11,6 @@ using System.Numerics;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  public class FunctionDependencyCollector : BoundVarTraversingVCExprVisitor<bool, bool>
-  {
-    private List<Function> functionList;
-
-    // not used but required by interface
-    protected override bool StandardResult(VCExpr node, bool arg)
-    {
-      return true;
-    }
-
-    public List<Function> Collect(VCExpr expr)
-    {
-      functionList = new List<Function>();
-      Traverse(expr, true);
-      return functionList;
-    }
-
-    public override bool Visit(VCExprNAry node, bool arg)
-    {
-      VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
-      if (op != null)
-      {
-        functionList.Add(op.Func);
-      }
-
-      return base.Visit(node, arg);
-    }
-  }
-
   public class SMTLibProcessTheoremProver : ProverInterface
   {
     private readonly SMTLibOptions libOptions;
@@ -132,14 +103,14 @@ namespace Microsoft.Boogie.SMTLib
     void SetupProcess()
     {
       Process?.Close();
-      Process = new SMTLibProcess(this.libOptions, this.options);
-      Process.ErrorHandler += this.HandleProverError;
+      Process = options.Solver == SolverKind.NoOp ? new NoopSolver() : new SMTLibProcess(libOptions, options);
+      Process.ErrorHandler += HandleProverError;
     }
 
     void PossiblyRestart()
     {
-      if (Process != null && Process.NeedsRestart)
-      {
+      if (Process != null && ProcessNeedsRestart) {
+        ProcessNeedsRestart = false;
         SetupProcess();
         Process.Send(common.ToString());
       }
@@ -159,7 +130,8 @@ namespace Microsoft.Boogie.SMTLib
     private UniqueNamer CachedNamer;
     internal UniqueNamer Namer { get; private set; }
     readonly TypeDeclCollector DeclCollector;
-    protected SMTLibProcess Process;
+    protected SMTLibSolver Process;
+    private bool ProcessNeedsRestart;
     readonly List<string> proverErrors = new List<string>();
     readonly List<string> proverWarnings = new List<string>();
     StringBuilder common = new StringBuilder();
@@ -587,11 +559,7 @@ namespace Microsoft.Boogie.SMTLib
       if (Process != null)
       {
         Process.PingPong(); // flush any errors
-
-        if (Process.Inspector != null)
-        {
-          Process.Inspector.NewProblem(descriptiveName);
-        }
+        Process.NewProblem(descriptiveName);
       }
 
       if (HasReset)
@@ -916,7 +884,7 @@ namespace Microsoft.Boogie.SMTLib
 
         if (libOptions.RestartProverPerVC && Process != null)
         {
-          Process.NeedsRestart = true;
+          ProcessNeedsRestart = true;
         }
 
         return globalResult;
@@ -1677,7 +1645,7 @@ namespace Microsoft.Boogie.SMTLib
               case "memout":
                 currentErrorHandler.OnResourceExceeded("memory");
                 result = Outcome.OutOfMemory;
-                Process.NeedsRestart = true;
+                ProcessNeedsRestart = true;
                 break;
               case "timeout":
                 currentErrorHandler.OnResourceExceeded("timeout");
