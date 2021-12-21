@@ -106,7 +106,7 @@ namespace Microsoft.Boogie.SMTLib
             Solver = SolverKind.YICES2;
             break;
           default:
-            ReportError("Invalid SOLVER value; must be 'Z3' or 'CVC5', 'Yices2' or 'noop'");
+            ReportError("Invalid SOLVER value; must be 'Z3' or 'CVC5' or 'Yices2' or 'noop'");
             return false;
         }
 
