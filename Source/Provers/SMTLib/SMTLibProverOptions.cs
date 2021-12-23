@@ -29,7 +29,8 @@ namespace Microsoft.Boogie.SMTLib
   {
     Z3,
     CVC5,
-    YICES2
+    YICES2,
+    NoOp
   }
 
   public class SMTLibProverOptions : ProverOptions
@@ -87,11 +88,14 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      string SolverStr = null;
-      if (ParseString(opt, "SOLVER", ref SolverStr))
+      string solverStr = null;
+      if (ParseString(opt, "SOLVER", ref solverStr))
       {
-        switch (SolverStr.ToLower())
+        switch (solverStr.ToLower())
         {
+          case "noop":
+            Solver = SolverKind.NoOp;
+            break;
           case "z3":
             Solver = SolverKind.Z3;
             break;
@@ -102,7 +106,7 @@ namespace Microsoft.Boogie.SMTLib
             Solver = SolverKind.YICES2;
             break;
           default:
-            ReportError("Invalid SOLVER value; must be 'Z3' or 'CVC5' or 'Yices2'");
+            ReportError("Invalid SOLVER value; must be 'Z3' or 'CVC5' or 'Yices2' or 'noop'");
             return false;
         }
 
@@ -147,6 +151,9 @@ namespace Microsoft.Boogie.SMTLib
 
           SolverBinaryName = "yices-smt2";
           break;
+        case SolverKind.NoOp:
+          ProverName = "noop";
+          break;
         default:
           Contract.Assert(false);
           throw new cce.UnreachableException();
@@ -166,7 +173,8 @@ namespace Microsoft.Boogie.SMTLib
           @"
 SMT-specific options:
 ~~~~~~~~~~~~~~~~~~~~~
-SOLVER=<string>           Use the given SMT solver (z3, cvc5, yices2; default: z3)
+SOLVER=<string>           Use the given SMT solver (z3, cvc5, yices2, noop; default: z3)
+                          The noop solver never does any solving and always returns unknown.
 LOGIC=<string>            Pass (set-logic <string>) to the prover (default: empty, 'ALL' for CVC5)
 USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas (default: true)
 VERBOSITY=<int>           1 - print prover output (default: 0)
