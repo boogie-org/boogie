@@ -53,6 +53,13 @@ procedure M(p: Person)
       var proverLog1 = GetProverLogForProgram(procedure1);
       var proverLog2 = GetProverLogForProgram(procedure2);
       Assert.AreEqual(proverLog1, proverLog2);
+      
+      CommandLineOptions.Clo.NormalizeDeclarationOrder = false;
+      var proverLog3 = GetProverLogForProgram(procedure2);
+      Assert.AreNotEqual(proverLog1, proverLog3);
+      
+      // Set this option back to its default
+      CommandLineOptions.Clo.NormalizeDeclarationOrder = true;
     }
     
     [Test()]
@@ -302,6 +309,7 @@ procedure M2(x: int, coloredBarrel: Barrel2 RGBColor2)
       Directory.CreateDirectory(directory);
       var temp1 = directory + "/proverLog";
       CommandLineOptions.Clo.ProverLogFilePath = temp1;
+      CommandLineOptions.Clo.ProverOptions.Add("SOLVER=noop");
       var success1 = ExecutionEngine.ProcessProgram(program1, "1");
       foreach (var proverFile in Directory.GetFiles(directory)) {
         yield return File.ReadAllText(proverFile);
