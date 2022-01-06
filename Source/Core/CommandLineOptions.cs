@@ -671,6 +671,12 @@ namespace Microsoft.Boogie
       get => normalizeNames;
       set => normalizeNames = value;
     }
+    
+    public bool NormalizeDeclarationOrder
+    {
+      get => normalizeDeclarationOrder;
+      set => normalizeDeclarationOrder = value;
+    }
 
     public bool ImmediatelyAcceptCommands => StratifiedInlining > 0 || ContractInfer;
 
@@ -1076,6 +1082,7 @@ namespace Microsoft.Boogie
     private bool printDesugarings = false;
     private bool emitDebugInformation = true;
     private bool normalizeNames;
+    private bool normalizeDeclarationOrder = true;
 
     public class ConcurrentHoudiniOptions
     {
@@ -1761,6 +1768,10 @@ namespace Microsoft.Boogie
         case "normalizeNames":
           ps.GetNumericArgument(ref normalizeNames);
           return true;
+        
+        case "normalizeDeclarationOrder":
+          ps.GetNumericArgument(ref normalizeNames);
+          return true;
 
         default:
           bool optionValue = false;
@@ -2291,9 +2302,15 @@ namespace Microsoft.Boogie
 
   /normalizeNames:<n>
                 0 (default) - Keep Boogie program names when generating SMT commands
-                1 (default) - Normalize Boogie program names when generating SMT commands. 
+                1 - Normalize Boogie program names when generating SMT commands. 
                   This keeps SMT solver input, and thus output, 
                   constant when renaming declarations in the input program.
+
+  /normalizeDeclarationOrder:<n>
+                0 - Keep order of top-level declarations when generating SMT commands.
+                1 (default) - Normalize order of top-level declarations when generating SMT commands.
+                  This keeps SMT solver input, and thus output, 
+                  constant when reordering declarations in the input program.
 
   ---- Inference options -----------------------------------------------------
 

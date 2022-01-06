@@ -128,15 +128,27 @@ namespace VC
         this.parent = par;
         this.impl = impl;
         Interlocked.Increment(ref currentId);
-        
+
+        PrintTopLevelDeclarationsForPruning(impl, "before");        
         TopLevelDeclarations = Prune.GetLiveDeclarations(par.program, blocks).ToList();
-        
-        if (CommandLineOptions.Clo.PrintPrunedFile != null) {
-          var t = new TokenTextWriter(CommandLineOptions.Clo.PrintPrunedFile + "-" + Util.EscapeFilename(impl.Name),  false, CommandLineOptions.Clo.PrettyPrint);
-          foreach (var d in TopLevelDeclarations) {
-            d.Emit(t, 0);
-          }
+        PrintTopLevelDeclarationsForPruning(impl, "after");
+      }
+
+      private void PrintTopLevelDeclarationsForPruning(Implementation implementation, string suffix)
+      {
+        if (!CommandLineOptions.Clo.Prune || CommandLineOptions.Clo.PrintPrunedFile == null)
+        {
+          return;
         }
+
+        using var writer = new TokenTextWriter(
+          $"{CommandLineOptions.Clo.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}", false,
+          CommandLineOptions.Clo.PrettyPrint);
+        foreach (var declaration in TopLevelDeclarations) {
+          declaration.Emit(writer, 0);
+        }
+
+        writer.Close();
       }
 
       public double Cost

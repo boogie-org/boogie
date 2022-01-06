@@ -64,11 +64,10 @@ namespace Microsoft.Boogie
       BlocksVisitor blocksNode = new BlocksVisitor(blocks);
       blocksNode.Blocks.ForEach(blk => blocksNode.Visit(blk));
 
-      var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing).ToHashSet();
-      var liveDeclarations = program.TopLevelDeclarations.Where(d =>
-        d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d)).ToList();
-      var pruned = program.TopLevelDeclarations.Except(liveDeclarations).ToList();
-      return liveDeclarations;
+      var keepRoots = program.TopLevelDeclarations.Where(d => QKeyValue.FindBoolAttribute(d.Attributes, "keep"));
+      var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing.Concat(keepRoots).ToHashSet()).ToHashSet();
+      return program.TopLevelDeclarations.Where(d => 
+        d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
     }
   }
 }
