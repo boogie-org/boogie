@@ -81,6 +81,7 @@ namespace VC
 
 
       private readonly List<Block> blocks;
+      public IEnumerable<AssertCmd> Asserts => blocks.SelectMany(block => block.cmds.OfType<AssertCmd>());
       public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
       readonly List<Block> bigBlocks = new();
 
@@ -165,6 +166,18 @@ namespace VC
         writer.Close();
       }
 
+      public IToken AssertToken
+      {
+        get
+        {
+          var firstTwoAsserts = Asserts.Take(2).ToList();
+          IToken token = null;
+          if (firstTwoAsserts.Count() == 1) {
+            token = firstTwoAsserts.Single().tok;
+          }
+          return token;
+        }
+      }
       public double Cost
       {
         get

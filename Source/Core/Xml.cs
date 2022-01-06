@@ -130,6 +130,14 @@ namespace Microsoft.Boogie
         wr.WriteAttributeString("number", splitNum.ToString());
         wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
 
+        if (token != null) {
+          wr.WriteStartElement("location");
+          wr.WriteAttributeString("file", token.filename);
+          wr.WriteAttributeString("line", token.line.ToString());
+          wr.WriteAttributeString("column", token.col.ToString());
+          wr.WriteEndElement(); // location
+        }
+
         wr.WriteStartElement("conclusion");
         wr.WriteAttributeString("duration", elapsed.TotalSeconds.ToString());
         wr.WriteAttributeString("outcome", outcome);
