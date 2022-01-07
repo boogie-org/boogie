@@ -201,7 +201,8 @@ namespace Microsoft.Boogie
       {
         var decls = s == null ? prog.TopLevelDeclarations : s.TopLevelDeclarations;
         // By ordering the declarations based on content and naming them based on order, the solver input stays content under reordering and renaming.
-        var orderedByContentHash = decls.OrderBy(d => d.ContentHash);
+        var orderedByContentHash = CommandLineOptions.Clo.NormalizeDeclarationOrder 
+          ? decls.OrderBy(d => d.ContentHash) : decls;
         foreach (Declaration decl in orderedByContentHash) {
           Contract.Assert(decl != null);
           if (decl is TypeCtorDecl typeDecl)
