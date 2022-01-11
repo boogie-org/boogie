@@ -4,8 +4,14 @@ using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie.VCExprAST
 {
+  /**
+   * Visitor that establishes unique variable (or constant) names in a VCExpr.
+   * This is done by adding a counter as suffix if name clashes occur
+   * TODO: also handle type variables here
+   */
   public abstract class ScopedNamer : UniqueNamer
   {
+    private const string controlFlow = "ControlFlow"; // This is a hardcoded name used by Boogie to inspect the SMT model.
     public string Spacer = "@@";
     protected IDictionary<Object /*!*/, string /*!*/> /*!*/ GlobalNames;
 
@@ -16,6 +22,7 @@ namespace Microsoft.Boogie.VCExprAST
     protected IDictionary<string /*!*/, int /*!*/> /*!*/ CurrentCounters;
 
     protected IDictionary<Object /*!*/, string /*!*/> /*!*/ GlobalPlusLocalNames;
+    protected Dictionary<string, string> globalNewToOldName = new ();
 
     protected ScopedNamer()
     {
@@ -52,9 +59,8 @@ namespace Microsoft.Boogie.VCExprAST
       UsedNames.Clear();
       CurrentCounters.Clear();
       GlobalPlusLocalNames.Clear();
+      globalNewToOldName.Clear();
     }
-
-    public abstract string GetName(object thingie, string name);
 
     [ContractInvariantMethod]
     private void GlobalNamesInvariantMethod()
@@ -91,8 +97,6 @@ namespace Microsoft.Boogie.VCExprAST
       LocalNames.Add(new Dictionary<Object /*!*/, string /*!*/>());
     }
 
-    public abstract string GetLocalName(object thingie, string name);
-    public abstract string GetOriginalName(string newName);
     public abstract UniqueNamer Clone();
 
     public void PopScope()
@@ -100,10 +104,10 @@ namespace Microsoft.Boogie.VCExprAST
       LocalNames.RemoveAt(LocalNames.Count - 1);
     }
 
-    protected string NextFreeName(Object thingie, string baseName)
+    protected string NextFreeName(Object thing, string baseName)
     {
       Contract.Requires(baseName != null);
-      Contract.Requires(thingie != null);
+      Contract.Requires(thing != null);
       Contract.Ensures(Contract.Result<string>() != null);
       string /*!*/ candidate;
 
@@ -126,7 +130,7 @@ namespace Microsoft.Boogie.VCExprAST
 
       UsedNames.Add(candidate);
       CurrentCounters[baseName] = counter;
-      GlobalPlusLocalNames[thingie] = candidate;
+      GlobalPlusLocalNames[thing] = candidate;
       return candidate;
     }
 
@@ -161,6 +165,56 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       return Spacer + "undefined" + Spacer + thingie.GetHashCode() + Spacer;
+    }
+
+    public virtual string GetName(object thing, string inherentName)
+    {
+      Contract.Requires(inherentName != null);
+      Contract.Requires(thing != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+      string result = this[thing];
+      if (result != null)
+      {
+        return result;
+      }
+
+      var uniqueInherentName = NextFreeName(thing, inherentName);
+      if (inherentName == controlFlow)
+      {
+        result = uniqueInherentName;
+      }
+      else {
+        var modifiedName = GetModifiedName(uniqueInherentName);
+        if (modifiedName != uniqueInherentName) {
+          result = NextFreeName(thing, GetModifiedName(uniqueInherentName));
+        }
+      }
+
+      GlobalNames.Add(thing, result);
+      globalNewToOldName.Add(result, uniqueInherentName);
+
+      return result;
+    }
+
+    protected abstract string GetModifiedName(string uniqueInherentName);
+
+    public virtual string GetLocalName(Object thing, string inherentName)
+    {
+      Contract.Requires(inherentName != null);
+      Contract.Requires(thing != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+      if (inherentName != controlFlow) {
+        inherentName = GetModifiedName(inherentName);
+      }
+
+      string res = NextFreeName(thing, inherentName);
+      LocalNames[^1][thing] = res;
+      return res;
+    }
+
+    public virtual string GetOriginalName(string newName)
+    {
+      return globalNewToOldName.GetValueOrDefault(newName, newName);
     }
   }
 }

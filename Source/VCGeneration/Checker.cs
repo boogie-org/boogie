@@ -190,6 +190,7 @@ namespace Microsoft.Boogie
       TheoremProver.SetRandomSeed(randomSeed);
     }
 
+    
     /// <summary>
     /// Set up the context.
     /// </summary>
@@ -199,34 +200,45 @@ namespace Microsoft.Boogie
       // TODO(wuestholz): Is this lock necessary?
       lock (Program.TopLevelDeclarations)
       {
-        var decls = s == null ? prog.TopLevelDeclarations : s.TopLevelDeclarations;
-        // By ordering the declarations based on content and naming them based on order, the solver input stays content under reordering and renaming.
-        var orderedByContentHash = CommandLineOptions.Clo.NormalizeDeclarationOrder 
-          ? decls.OrderBy(d => d.ContentHash) : decls;
-        foreach (Declaration decl in orderedByContentHash) {
-          Contract.Assert(decl != null);
-          if (decl is TypeCtorDecl typeDecl)
+        var declarations = s == null ? prog.TopLevelDeclarations : s.TopLevelDeclarations;
+        foreach (var declaration in GetReorderedDeclarations(declarations)) {
+          Contract.Assert(declaration != null);
+          if (declaration is TypeCtorDecl typeDecl)
           {
             ctx.DeclareType(typeDecl, null);
           }
-          else if (decl is Constant constDecl)
+          else if (declaration is Constant constDecl)
           {
             ctx.DeclareConstant(constDecl, constDecl.Unique, null);
           }
-          else if (decl is Function funDecl)
+          else if (declaration is Function funDecl)
           {
             ctx.DeclareFunction(funDecl, null);
           }
-          else if (decl is Axiom axiomDecl)
+          else if (declaration is Axiom axiomDecl)
           {
             ctx.AddAxiom(axiomDecl, null);
           }
-          else if (decl is GlobalVariable glVarDecl)
+          else if (declaration is GlobalVariable glVarDecl)
           {
             ctx.DeclareGlobalVariable(glVarDecl, null);
           }
         }
       }
+    }
+
+    private static IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations)
+    {
+      if (CommandLineOptions.Clo.Random == null) {
+        // By ordering the declarations based on content and naming them based on order, the solver input stays content under reordering and renaming.
+        return CommandLineOptions.Clo.NormalizeDeclarationOrder
+          ? declarations.OrderBy(d => d.ContentHash)
+          : declarations;
+      }
+
+      var copy = declarations.ToList();
+      Util.Shuffle(CommandLineOptions.Clo.Random, copy);
+      return copy;
     }
 
     /// <summary>

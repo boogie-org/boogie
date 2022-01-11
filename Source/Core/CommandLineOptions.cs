@@ -1749,6 +1749,12 @@ namespace Microsoft.Boogie
           ps.GetNumericArgument(ref errorLimit);
           return true;
 
+        case "randomSeed":
+          int randomSeed = 0;
+          ps.GetNumericArgument(ref randomSeed);
+          Random = new Random(randomSeed);
+          return true;
+        
         case "verifySnapshots":
           ps.GetNumericArgument(ref VerifySnapshots, 4);
           return true;
@@ -2443,6 +2449,10 @@ namespace Microsoft.Boogie
                 a linear number of splits. The default way (top-down) is more
                 aggressive and it may create an exponential number of splits.
 
+  /randomSeed:<n>
+                Randomise arbitrary decisions during verification condition generation, 
+                and during solving   
+
   ---- Verification-condition splitting --------------------------------------
 
   /vcsMaxCost:<f>
@@ -2551,5 +2561,7 @@ namespace Microsoft.Boogie
                 2 - print to stderr
   /restartProver
                 Restart the prover after each query";
+
+    public Random Random { get; private set; }
   }
 }

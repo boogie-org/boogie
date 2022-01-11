@@ -48,9 +48,10 @@ namespace Microsoft.Boogie.SMTLib
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
-      Namer = libOptions.NormalizeNames ? new NormalizeNamer() : new KeepOriginalNamer();
+      Namer = libOptions.Random != null ? new RandomiseNamer(libOptions.Random) : 
+        libOptions.NormalizeNames ? new NormalizeNamer() : new KeepOriginalNamer();
       ctx.parent = this;
-      this.DeclCollector = new TypeDeclCollector(libOptions, Namer);
+      DeclCollector = new TypeDeclCollector(libOptions, Namer);
 
       SetupProcess();
 
@@ -103,6 +104,9 @@ namespace Microsoft.Boogie.SMTLib
     void SetupProcess()
     {
       Process?.Close();
+      if (libOptions.Random != null && options.Solver == SolverKind.Z3 && options.RandomSeed == null) {
+        options.RandomSeed = libOptions.Random.Next();
+      }
       Process = options.Solver == SolverKind.NoOp ? new NoopSolver() : new SMTLibProcess(libOptions, options);
       Process.ErrorHandler += HandleProverError;
     }
