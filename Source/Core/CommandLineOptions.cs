@@ -652,6 +652,8 @@ namespace Microsoft.Boogie
 
     public InstrumentationPlaces InstrumentInfer = InstrumentationPlaces.LoopHeaders;
 
+    public Random Random { get; private set; }
+    
     public bool PrintWithUniqueASTIds {
       get => printWithUniqueAstIds;
       set => printWithUniqueAstIds = value;
@@ -2561,7 +2563,5 @@ namespace Microsoft.Boogie
                 2 - print to stderr
   /restartProver
                 Restart the prover after each query";
-
-    public Random Random { get; private set; }
   }
 }

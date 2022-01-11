@@ -186,12 +186,12 @@ namespace Microsoft.Boogie.VCExprAST
       else {
         var modifiedName = GetModifiedName(uniqueInherentName);
         if (modifiedName != uniqueInherentName) {
-          result = NextFreeName(thing, GetModifiedName(uniqueInherentName));
+          result = NextFreeName(thing, modifiedName);
+          globalNewToOldName.Add(result, uniqueInherentName);
         }
       }
 
       GlobalNames.Add(thing, result);
-      globalNewToOldName.Add(result, uniqueInherentName);
 
       return result;
     }
