@@ -188,6 +188,10 @@ namespace Microsoft.Boogie.VCExprAST
         if (modifiedName != uniqueInherentName) {
           result = NextFreeName(thing, modifiedName);
           globalNewToOldName.Add(result, uniqueInherentName);
+        } 
+        else
+        {
+          result = uniqueInherentName;
         }
       }
 
