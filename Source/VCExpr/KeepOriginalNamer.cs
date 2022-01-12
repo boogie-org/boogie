@@ -10,7 +10,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
     }
 
-    private KeepOriginalNamer(KeepOriginalNamer namer) : base(namer)
+    public KeepOriginalNamer(ScopedNamer namer) : base(namer)
     {
     }
     

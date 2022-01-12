@@ -10,9 +10,8 @@ namespace Microsoft.Boogie.VCExprAST
     {
     }
 
-    private NormalizeNamer(NormalizeNamer namer) : base(namer)
+    public NormalizeNamer(ScopedNamer namer) : base(namer)
     {
-      globalNewToOldName = new(namer.globalNewToOldName);
     }
 
     protected override string GetModifiedName(string uniqueInherentName)

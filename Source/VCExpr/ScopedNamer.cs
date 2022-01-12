@@ -49,6 +49,7 @@ namespace Microsoft.Boogie.VCExprAST
       UsedNames = new HashSet<string>(namer.UsedNames);
       CurrentCounters = new Dictionary<string, int>(namer.CurrentCounters);
       GlobalPlusLocalNames = new Dictionary<Object, string>(namer.GlobalPlusLocalNames);
+      globalNewToOldName = new(namer.globalNewToOldName);
     }
 
     public virtual void Reset()

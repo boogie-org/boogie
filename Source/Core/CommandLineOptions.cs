@@ -1778,7 +1778,7 @@ namespace Microsoft.Boogie
           return true;
         
         case "normalizeDeclarationOrder":
-          ps.GetNumericArgument(ref normalizeNames);
+          ps.GetNumericArgument(ref normalizeDeclarationOrder);
           return true;
 
         default:

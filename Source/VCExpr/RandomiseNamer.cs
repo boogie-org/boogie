@@ -5,16 +5,26 @@ namespace Microsoft.Boogie.VCExprAST;
 
 public class RandomiseNamer : ScopedNamer
 {
-  private readonly Random random;
+  private Random random;
 
   public RandomiseNamer(Random random)
   {
     this.random = random;
   }
 
+  public RandomiseNamer(ScopedNamer namer, Random random) : base(namer)
+  {
+    this.random = random;
+  }
+  
   private RandomiseNamer(RandomiseNamer namer) : base(namer)
   {
     random = namer.random;
+  }
+
+  public void SetRandom(Random random)
+  {
+    this.random = random;
   }
     
   public override UniqueNamer Clone()
@@ -24,6 +34,6 @@ public class RandomiseNamer : ScopedNamer
 
   protected override string GetModifiedName(string uniqueInherentName)
   {
-    return random.NextInt64().ToString();
+    return $"random{random.Next()}";
   }
 }

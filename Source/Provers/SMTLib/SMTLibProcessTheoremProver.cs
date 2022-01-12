@@ -66,6 +66,11 @@ namespace Microsoft.Boogie.SMTLib
         PrepareCommon();
       }
     }
+    
+    private ScopedNamer ResetNamer(ScopedNamer namer) {
+      return options.RandomSeed == null ? libOptions.NormalizeNames ? new NormalizeNamer(namer) : new KeepOriginalNamer(namer) : 
+        new RandomiseNamer(namer, new Random(options.RandomSeed.Value)); 
+    }
 
     public override void AssertNamed(VCExpr vc, bool polarity, string name)
     {
@@ -128,8 +133,8 @@ namespace Microsoft.Boogie.SMTLib
 
     internal TypeAxiomBuilder AxBuilder { get; private set; }
     private TypeAxiomBuilder CachedAxBuilder;
-    private UniqueNamer CachedNamer;
-    internal UniqueNamer Namer { get; private set; }
+    private ScopedNamer CachedNamer;
+    internal ScopedNamer Namer { get; private set; }
     readonly TypeDeclCollector DeclCollector;
     protected SMTLibSolver Process;
     private bool ProcessNeedsRestart;
@@ -525,7 +530,7 @@ namespace Microsoft.Boogie.SMTLib
       if (HasReset)
       {
         AxBuilder = (TypeAxiomBuilder) CachedAxBuilder?.Clone();
-        Namer = CachedNamer.Clone();
+        Namer = ResetNamer(CachedNamer);
         DeclCollector.SetNamer(Namer);
         DeclCollector.Push();
       }
@@ -541,7 +546,6 @@ namespace Microsoft.Boogie.SMTLib
       if (this.libOptions.EmitDebugInformation) {
         SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
       }
-
       if (options.Solver == SolverKind.Z3)
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");

@@ -204,7 +204,8 @@ namespace Microsoft.Boogie
       lock (Program.TopLevelDeclarations)
       {
         var declarations = s == null ? prog.TopLevelDeclarations : s.TopLevelDeclarations;
-        foreach (var declaration in GetReorderedDeclarations(declarations, random)) {
+        var reorderedDeclarations = GetReorderedDeclarations(declarations, random);
+        foreach (var declaration in reorderedDeclarations) {
           Contract.Assert(declaration != null);
           if (declaration is TypeCtorDecl typeDecl)
           {

@@ -9,7 +9,7 @@ namespace Microsoft.Boogie
     {  
       int remainingItems = list.Count;  
       while (remainingItems > 1) {
-        int k = random.Next(remainingItems);  
+        int k = random.Next(0, remainingItems);  
         (list[k], list[remainingItems - 1]) = (list[remainingItems - 1], list[k]);
         remainingItems--;    
       }  
