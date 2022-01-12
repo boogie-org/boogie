@@ -230,7 +230,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations, Random? random)
+    private static IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations, Random random)
     {
       if (random == null) {
         // By ordering the declarations based on content and naming them based on order, the solver input stays content under reordering and renaming.
