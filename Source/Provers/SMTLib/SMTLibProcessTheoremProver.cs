@@ -48,8 +48,8 @@ namespace Microsoft.Boogie.SMTLib
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
-      Namer = libOptions.Random != null ? new RandomiseNamer(libOptions.Random) : 
-        libOptions.NormalizeNames ? new NormalizeNamer() : new KeepOriginalNamer();
+      Namer = options.RandomSeed == null ? libOptions.NormalizeNames ? new NormalizeNamer() : new KeepOriginalNamer() : 
+        new RandomiseNamer(new Random(options.RandomSeed.Value));
       ctx.parent = this;
       DeclCollector = new TypeDeclCollector(libOptions, Namer);
 
@@ -104,9 +104,6 @@ namespace Microsoft.Boogie.SMTLib
     void SetupProcess()
     {
       Process?.Close();
-      if (libOptions.Random != null && options.Solver == SolverKind.Z3 && options.RandomSeed == null) {
-        options.RandomSeed = libOptions.Random.Next();
-      }
       Process = options.Solver == SolverKind.NoOp ? new NoopSolver() : new SMTLibProcess(libOptions, options);
       Process.ErrorHandler += HandleProverError;
     }
@@ -551,7 +548,8 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC("(set-option :" + Z3.RlimitOption + " " + options.ResourceLimit + ")");
         if (options.RandomSeed.HasValue)
         {
-          SendThisVC("(set-option :" + Z3.RandomSeedOption + " " + options.RandomSeed.Value + ")");
+          SendThisVC("(set-option :" + Z3.SmtRandomSeed + " " + options.RandomSeed.Value + ")");
+          SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed.Value + ")");
         }
       }
       SendThisVC(vcString);

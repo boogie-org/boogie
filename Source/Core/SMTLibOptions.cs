@@ -29,7 +29,5 @@ namespace Microsoft.Boogie
      * Boogie program, which prevents unexpected changes in solver output.
      */
     bool NormalizeNames { get; }
-    
-    Random Random { get; }
   }
 }

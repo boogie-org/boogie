@@ -196,12 +196,15 @@ namespace Microsoft.Boogie
     /// </summary>
     private void Setup(Program prog, ProverContext ctx, Split s = null)
     {
+      var implementationRandomSeed = s?.Implementation.RandomSeed;
+      var random = implementationRandomSeed == null ? CommandLineOptions.Clo.Random : new Random(implementationRandomSeed.Value);
+      
       Program = prog;
       // TODO(wuestholz): Is this lock necessary?
       lock (Program.TopLevelDeclarations)
       {
         var declarations = s == null ? prog.TopLevelDeclarations : s.TopLevelDeclarations;
-        foreach (var declaration in GetReorderedDeclarations(declarations)) {
+        foreach (var declaration in GetReorderedDeclarations(declarations, random)) {
           Contract.Assert(declaration != null);
           if (declaration is TypeCtorDecl typeDecl)
           {
@@ -227,9 +230,9 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations)
+    private static IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations, Random? random)
     {
-      if (CommandLineOptions.Clo.Random == null) {
+      if (random == null) {
         // By ordering the declarations based on content and naming them based on order, the solver input stays content under reordering and renaming.
         return CommandLineOptions.Clo.NormalizeDeclarationOrder
           ? declarations.OrderBy(d => d.ContentHash)
@@ -237,7 +240,7 @@ namespace Microsoft.Boogie
       }
 
       var copy = declarations.ToList();
-      Util.Shuffle(CommandLineOptions.Clo.Random, copy);
+      Util.Shuffle(random, copy);
       return copy;
     }
 
