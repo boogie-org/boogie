@@ -2458,9 +2458,8 @@ namespace Microsoft.Boogie
  
                 Certain Boogie inputs are unstable in the sense that changes to 
                 the input that preserve its meaning may cause the output to change.
-                The /randomSeed option allows discovering whether a certain input
-                is unstable without requiring the user to make changes to the 
-                input program.
+                The /randomSeed option simulates meaning preserving changes to 
+                the input without requiring the user to actually make those changes.
 
                 The /randomSeed option is implemented by renaming variables and 
                 reordering declarations in the input, and by setting 
