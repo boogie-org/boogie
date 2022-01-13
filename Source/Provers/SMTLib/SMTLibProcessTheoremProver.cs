@@ -48,8 +48,13 @@ namespace Microsoft.Boogie.SMTLib
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
-      Namer = options.RandomSeed == null ? libOptions.NormalizeNames ? new NormalizeNamer() : new KeepOriginalNamer() : 
-        new RandomiseNamer(new Random(options.RandomSeed.Value));
+      Namer = (options.RandomSeed, libOptions.NormalizeNames) switch
+      {
+        (null, true) => new NormalizeNamer(),
+        (null, false) => new KeepOriginalNamer(),
+        _ => new RandomiseNamer(new Random(options.RandomSeed.Value))
+      };
+
       ctx.parent = this;
       DeclCollector = new TypeDeclCollector(libOptions, Namer);
 

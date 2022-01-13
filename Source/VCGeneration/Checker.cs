@@ -234,7 +234,7 @@ namespace Microsoft.Boogie
     private static IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations, Random random)
     {
       if (random == null) {
-        // By ordering the declarations based on content and naming them based on order, the solver input stays content under reordering and renaming.
+        // By ordering the declarations based on their content and naming them based on order, the solver input stays content under reordering and renaming.
         return CommandLineOptions.Clo.NormalizeDeclarationOrder
           ? declarations.OrderBy(d => d.ContentHash)
           : declarations;

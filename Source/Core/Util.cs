@@ -7,11 +7,9 @@ namespace Microsoft.Boogie
   {
     public static void Shuffle<T>(Random random, IList<T> list)  
     {  
-      int remainingItems = list.Count;  
-      while (remainingItems > 1) {
-        int k = random.Next(0, remainingItems);  
-        (list[k], list[remainingItems - 1]) = (list[remainingItems - 1], list[k]);
-        remainingItems--;    
+      for(var index = list.Count - 1; index > 0; index--) {
+        var k = random.Next(0, index + 1); // The end is exclusive, so 0 <= k <= index
+        (list[k], list[index]) = (list[index], list[k]);
       }  
     }
     
