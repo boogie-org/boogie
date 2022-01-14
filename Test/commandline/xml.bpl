@@ -10,13 +10,13 @@
 // CHECK:   \<split number="2" startTime=".*"\>
 // CHECK:     \<conclusion duration=".*" outcome="valid" />
 // CHECK:   \</split\>
-// CHECK:   \<conclusion endTime=".*" duration=".*" outcome="correct" />
+// CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount=".*" outcome="correct" />
 // CHECK: \</method\>
 // CHECK: \<method name="ExampleWithoutSplits" startTime=".*"\>
-// CHECK:   \<conclusion endTime=".*" duration=".*" outcome="correct" />
+// CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount=".*" outcome="correct" />
 // CHECK: \</method\>
 // CHECK: \<method name="AnotherExampleWithoutSplits" startTime=".*"\>
-// CHECK:   \<conclusion endTime=".*" duration=".*" outcome="correct" />
+// CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount=".*" outcome="correct" />
 // CHECK: \</method\>
 
 procedure ExampleWithSplits()
