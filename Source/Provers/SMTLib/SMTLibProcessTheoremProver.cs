@@ -73,8 +73,12 @@ namespace Microsoft.Boogie.SMTLib
     }
     
     private ScopedNamer ResetNamer(ScopedNamer namer) {
-      return options.RandomSeed == null ? libOptions.NormalizeNames ? new NormalizeNamer(namer) : new KeepOriginalNamer(namer) : 
-        new RandomiseNamer(namer, new Random(options.RandomSeed.Value)); 
+      return (options.RandomSeed, libOptions.NormalizeNames) switch
+      {
+        (null, true) => new NormalizeNamer(namer), 
+        (null, false) => new KeepOriginalNamer(namer),
+        _ => new RandomiseNamer(namer, new Random(options.RandomSeed.Value))
+      }; 
     }
 
     public override void AssertNamed(VCExpr vc, bool polarity, string name)

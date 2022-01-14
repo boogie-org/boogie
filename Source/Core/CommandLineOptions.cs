@@ -2049,7 +2049,7 @@ namespace Microsoft.Boogie
 
      {:random_seed N}
        Set the random seed for verifying a given implementation.
-       See the /randomSeed option for more information.
+       Has the same effect as setting /randomSeed but only for a single implementation.
 
   ---- On Axioms -------------------------------------------------------------
 
@@ -2453,17 +2453,17 @@ namespace Microsoft.Boogie
                 aggressive and it may create an exponential number of splits.
 
   /randomSeed:<n>
-                Note: Boogie output is deterministic in the input, whether this
-                option is used or not.
+                Turn on randomization of the input that Boogie passes to the 
+                SMT solver and turn on randomization in the SMT solver itself.
  
                 Certain Boogie inputs are unstable in the sense that changes to 
                 the input that preserve its meaning may cause the output to change.
-                The /randomSeed option simulates meaning preserving changes to 
+                The /randomSeed option simulates meaning-preserving changes to 
                 the input without requiring the user to actually make those changes.
 
                 The /randomSeed option is implemented by renaming variables and 
                 reordering declarations in the input, and by setting 
-                solver options that have similar affects.
+                solver options that have similar effects.
 
   ---- Verification-condition splitting --------------------------------------
 
