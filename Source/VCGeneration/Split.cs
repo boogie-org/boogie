@@ -20,7 +20,9 @@ namespace VC
     int vcNum,
     DateTime startTime,
     ProverInterface.Outcome outcome,
-    TimeSpan runTime
+    TimeSpan runTime,
+    List<AssertCmd> asserts,
+    int resourceCount
   );
 
   public class Split
@@ -166,18 +168,6 @@ namespace VC
         writer.Close();
       }
 
-      public IToken AssertToken
-      {
-        get
-        {
-          var firstTwoAsserts = Asserts.Take(2).ToList();
-          IToken token = null;
-          if (firstTwoAsserts.Count() == 1) {
-            token = firstTwoAsserts.Single().tok;
-          }
-          return token;
-        }
-      }
       public double Cost
       {
         get
@@ -1314,15 +1304,16 @@ namespace VC
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
-        var result = new VCResult(splitNum + 1, checker.ProverStart, outcome, checker.ProverRunTime);
+        var resourceCount = checker.GetProverResourceCount().Result;
+        totalResourceCount += resourceCount;
+
+        var result = new VCResult(splitNum + 1, checker.ProverStart, outcome, checker.ProverRunTime, Asserts, resourceCount);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
         {
           DumpDot(splitNum);
         }
-
-        totalResourceCount += checker.GetProverResourceCount().Result;
 
         proverFailed = false;
 

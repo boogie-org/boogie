@@ -115,7 +115,7 @@ namespace Microsoft.Boogie
       cce.EndExpose();
     }
 
-    public void WriteSplit(int splitNum, DateTime startTime, string outcome, TimeSpan elapsed)
+    public void WriteSplit(int splitNum, IEnumerable<AssertCmd> asserts, DateTime startTime, string outcome TimeSpan elapsed)
     {
       Contract.Requires(splitNum > 0);
       Contract.Requires(outcome != null);
@@ -130,12 +130,14 @@ namespace Microsoft.Boogie
         wr.WriteAttributeString("number", splitNum.ToString());
         wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
 
-        if (token != null) {
-          wr.WriteStartElement("location");
+        foreach(var assert in asserts)
+        {
+          var token = assert.tok;
+          wr.WriteStartElement("property");
           wr.WriteAttributeString("file", token.filename);
           wr.WriteAttributeString("line", token.line.ToString());
           wr.WriteAttributeString("column", token.col.ToString());
-          wr.WriteEndElement(); // location
+          wr.WriteEndElement(); // property
         }
 
         wr.WriteStartElement("conclusion");

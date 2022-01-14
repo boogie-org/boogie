@@ -1132,7 +1132,7 @@ namespace Microsoft.Boogie
           Options.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
 
           foreach (var vcResult in verificationResult.VCResults.OrderBy(s => s.vcNum)) {
-            Options.XmlSink.WriteSplit(vcResult.vcNum, vcResult.startTime,
+            Options.XmlSink.WriteSplit(vcResult.vcNum, vcResult.startTime, vcResult.asserts,
               vcResult.outcome.ToString().ToLowerInvariant(), vcResult.runTime);
           }
 
