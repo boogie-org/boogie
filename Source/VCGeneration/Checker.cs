@@ -283,7 +283,7 @@ namespace Microsoft.Boogie
     {
       get { return thmProver.GetRCount(); }
     }
-    
+
     private void WaitForOutput(object dummy)
     {
       lock (this)
@@ -642,7 +642,7 @@ namespace Microsoft.Boogie
     {
       throw new NotImplementedException();
     }
-    
+
     public virtual void SetRandomSeed(int? randomSeed)
     {
     }

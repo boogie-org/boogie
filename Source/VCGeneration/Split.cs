@@ -1298,7 +1298,7 @@ namespace VC
         }
 
         totalResourceCount += checker.ProverResourceCount;
-        
+
         proverFailed = false;
 
         switch (outcome)

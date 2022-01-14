@@ -347,7 +347,7 @@ namespace Microsoft.Boogie
     public DateTime End { get; set; }
 
     public int ResourceCount { get; set; }
-    
+
     public int ProofObligationCount
     {
       get { return ProofObligationCountAfter - ProofObligationCountBefore; }
@@ -1190,6 +1190,11 @@ namespace Microsoft.Boogie
           verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
           verificationResult.Start = DateTime.UtcNow;
 
+          if (CommandLineOptions.Clo.XmlSink != null)
+          {
+            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
+          }
+
           try
           {
             verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId);
@@ -1262,12 +1267,9 @@ namespace Microsoft.Boogie
 
       if (CommandLineOptions.Clo.XmlSink != null)
       {
-        lock (CommandLineOptions.Clo.XmlSink) {
-          CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
-          CommandLineOptions.Clo.XmlSink.WriteEndMethod(verificationResult.Outcome.ToString().ToLowerInvariant(),
-            verificationResult.End, verificationResult.End - verificationResult.Start,
-            verificationResult.ResourceCount);
-        }
+        CommandLineOptions.Clo.XmlSink.WriteEndMethod(verificationResult.Outcome.ToString().ToLowerInvariant(),
+          verificationResult.End, verificationResult.End - verificationResult.Start,
+          verificationResult.ResourceCount);
       }
 
       outputCollector.Add(index, output);
@@ -1318,7 +1320,7 @@ namespace Microsoft.Boogie
         }
       }
     }
-    
+
     private static ConditionGeneration CreateVCGen(Program program, CheckerPool checkerPool)
     {
       return new VCGen(program, checkerPool);
