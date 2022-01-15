@@ -1167,6 +1167,11 @@ namespace Microsoft.Boogie
         var cachedResults = Cache.Lookup(impl, out priority);
         if (cachedResults != null && priority == Priority.SKIP)
         {
+          if (CommandLineOptions.Clo.XmlSink != null)
+          {
+            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, cachedResults.Start);
+          }
+
           printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name),
             output);
           if (CommandLineOptions.Clo.VerifySnapshots < 3 ||
