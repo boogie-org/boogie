@@ -16,7 +16,9 @@ namespace VC
   using System.Threading.Tasks;
 
   public class Split
-    {
+  {
+      public int? RandomSeed => Implementation.RandomSeed ?? CommandLineOptions.Clo.RandomSeed;
+    
       class BlockStats
       {
         public bool bigBlock;

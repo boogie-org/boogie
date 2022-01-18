@@ -46,7 +46,7 @@ namespace Microsoft.Boogie
     private volatile CheckerStatus status;
     private readonly CheckerPool pool;
     public volatile Program Program;
-    private readonly ProverOptions solverOptions;
+    public readonly ProverOptions SolverOptions;
 
     public void GetReady()
     {
@@ -105,18 +105,18 @@ namespace Microsoft.Boogie
       this.pool = pool;
       this.Program = prog;
 
-      solverOptions = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
+      SolverOptions = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
 
       if (logFilePath != null)
       {
-        solverOptions.LogFilename = logFilePath;
+        SolverOptions.LogFilename = logFilePath;
         if (appendLogFile)
         {
-          solverOptions.AppendLogFile = appendLogFile;
+          SolverOptions.AppendLogFile = appendLogFile;
         }
       }
 
-      solverOptions.Parse(CommandLineOptions.Clo.ProverOptions);
+      SolverOptions.Parse(CommandLineOptions.Clo.ProverOptions);
 
       ContextCacheKey key = new ContextCacheKey(prog);
       ProverInterface prover;
@@ -133,13 +133,13 @@ namespace Microsoft.Boogie
       {
         ctx = (ProverContext) cce.NonNull(ctx).Clone();
         prover = (ProverInterface)
-          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, solverOptions, ctx);
+          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx);
       }
       else
       {
         if (ctx == null)
         {
-          ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(solverOptions);
+          ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(SolverOptions);
         }
 
         Setup(prog, ctx, split);
@@ -148,7 +148,7 @@ namespace Microsoft.Boogie
         // context in the cache, so that the prover can setup stuff in
         // the context to be cached
         prover = (ProverInterface)
-          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, solverOptions, ctx);
+          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx);
         cachedContexts.Add(key, cce.NonNull((ProverContext) ctx.Clone()));
       }
 
@@ -191,8 +191,8 @@ namespace Microsoft.Boogie
     /// </summary>
     private void Setup(Program prog, ProverContext ctx, Split split = null)
     {
-      solverOptions.RandomSeed = split?.Implementation.RandomSeed ?? CommandLineOptions.Clo.RandomSeed;
-      var random = solverOptions.RandomSeed == null ? null : new Random(solverOptions.RandomSeed.Value);
+      SolverOptions.RandomSeed = split?.RandomSeed ?? CommandLineOptions.Clo.RandomSeed;
+      var random = SolverOptions.RandomSeed == null ? null : new Random(SolverOptions.RandomSeed.Value);
       
       Program = prog;
       // TODO(wuestholz): Is this lock necessary?
