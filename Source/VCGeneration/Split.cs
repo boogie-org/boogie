@@ -1391,8 +1391,7 @@ namespace VC
             desc += "_split" + no;
           }
 
-          var randomSeed = Implementation.RandomSeed ?? CommandLineOptions.Clo.Random?.Next();
-          checker.BeginCheck(desc, vc, reporter, timeout, rlimit, randomSeed);
+          checker.BeginCheck(desc, vc, reporter, timeout, rlimit);
         }
       }
 

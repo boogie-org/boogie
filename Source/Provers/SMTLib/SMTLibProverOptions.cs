@@ -30,7 +30,7 @@ namespace Microsoft.Boogie.SMTLib
     Z3,
     CVC5,
     YICES2,
-    NoOp
+    NoOpWithZ3Options
   }
 
   public class SMTLibProverOptions : ProverOptions
@@ -94,7 +94,7 @@ namespace Microsoft.Boogie.SMTLib
         switch (solverStr.ToLower())
         {
           case "noop":
-            Solver = SolverKind.NoOp;
+            Solver = SolverKind.NoOpWithZ3Options;
             break;
           case "z3":
             Solver = SolverKind.Z3;
@@ -151,7 +151,7 @@ namespace Microsoft.Boogie.SMTLib
 
           SolverBinaryName = "yices-smt2";
           break;
-        case SolverKind.NoOp:
+        case SolverKind.NoOpWithZ3Options:
           ProverName = "noop";
           break;
         default:

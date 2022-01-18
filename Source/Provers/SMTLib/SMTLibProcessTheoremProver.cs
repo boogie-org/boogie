@@ -48,7 +48,7 @@ namespace Microsoft.Boogie.SMTLib
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
-      Namer = (options.RandomSeed, libOptions.NormalizeNames) switch
+      Namer = (RandomSeed: options.RandomSeed, libOptions.NormalizeNames) switch
       {
         (null, true) => new NormalizeNamer(),
         (null, false) => new KeepOriginalNamer(),
@@ -73,7 +73,7 @@ namespace Microsoft.Boogie.SMTLib
     }
     
     private ScopedNamer ResetNamer(ScopedNamer namer) {
-      return (options.RandomSeed, libOptions.NormalizeNames) switch
+      return (RandomSeed: options.RandomSeed, libOptions.NormalizeNames) switch
       {
         (null, true) => new NormalizeNamer(namer), 
         (null, false) => new KeepOriginalNamer(namer),
@@ -118,7 +118,7 @@ namespace Microsoft.Boogie.SMTLib
     void SetupProcess()
     {
       Process?.Close();
-      Process = options.Solver == SolverKind.NoOp ? new NoopSolver() : new SMTLibProcess(libOptions, options);
+      Process = options.Solver == SolverKind.NoOpWithZ3Options ? new NoopSolver() : new SMTLibProcess(libOptions, options);
       Process.ErrorHandler += HandleProverError;
     }
 
@@ -555,12 +555,11 @@ namespace Microsoft.Boogie.SMTLib
       if (this.libOptions.EmitDebugInformation) {
         SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
       }
-      if (options.Solver == SolverKind.Z3)
+      if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
         SendThisVC("(set-option :" + Z3.RlimitOption + " " + options.ResourceLimit + ")");
-        if (options.RandomSeed.HasValue)
-        {
+        if (options.RandomSeed != null) {
           SendThisVC("(set-option :" + Z3.SmtRandomSeed + " " + options.RandomSeed.Value + ")");
           SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed.Value + ")");
         }
@@ -1946,11 +1945,6 @@ namespace Microsoft.Boogie.SMTLib
     public override void SetRlimit(uint limit)
     {
       options.ResourceLimit = limit;
-    }
-
-    public override void SetRandomSeed(int? randomSeed)
-    {
-      options.RandomSeed = randomSeed;
     }
     
     object ParseValueFromProver(SExpr expr)

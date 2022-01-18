@@ -509,6 +509,13 @@ namespace Microsoft.Boogie
   /// </summary>
   public class CommandLineOptions : CommandLineOptionEngine, SMTLibOptions
   {
+    public static CommandLineOptions FromArguments(params string[] arguments)
+    {
+      var result = new CommandLineOptions();
+      result.Parse(arguments);
+      return result;
+    }
+    
     public CommandLineOptions()
       : base("Boogie", "Boogie program verifier")
     {
@@ -652,7 +659,7 @@ namespace Microsoft.Boogie
 
     public InstrumentationPlaces InstrumentInfer = InstrumentationPlaces.LoopHeaders;
 
-    public Random Random { get; private set; }
+    public int? RandomSeed { get; set; }
     
     public bool PrintWithUniqueASTIds {
       get => printWithUniqueAstIds;
@@ -1754,7 +1761,7 @@ namespace Microsoft.Boogie
         case "randomSeed":
           int randomSeed = 0;
           ps.GetNumericArgument(ref randomSeed);
-          Random = new Random(randomSeed);
+          RandomSeed = randomSeed;
           return true;
         
         case "verifySnapshots":
