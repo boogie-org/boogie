@@ -1954,7 +1954,6 @@ namespace Microsoft.Boogie.SMTLib
       return int.Parse(resp[0].Name);
     }
 
-
     object ParseValueFromProver(SExpr expr)
     {
       return expr.ToString().Replace(" ", "").Replace("(", "").Replace(")", "");

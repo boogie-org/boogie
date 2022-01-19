@@ -266,6 +266,7 @@ public abstract class ProverInterface
   public virtual void SetRlimit(uint limit)
   {
   }
+
   public virtual int GetRCount()
   {
     throw new NotImplementedException();
