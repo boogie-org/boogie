@@ -531,7 +531,7 @@ namespace Microsoft.Boogie
 
     [Rep] private List<Declaration /*!*/> /*!*/ topLevelDeclarations;
 
-    public IEnumerable<Declaration> TopLevelDeclarations
+    public IReadOnlyList<Declaration> TopLevelDeclarations
     {
       get
       {

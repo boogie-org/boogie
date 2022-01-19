@@ -5,7 +5,14 @@ namespace Microsoft.Boogie
 {
   public static class Util
   {
-
+    public static void Shuffle<T>(Random random, IList<T> list)  
+    {  
+      for(var index = list.Count - 1; index > 0; index--) {
+        var k = random.Next(0, index + 1); // The end is exclusive, so 0 <= k <= index
+        (list[k], list[index]) = (list[index], list[k]);
+      }  
+    }
+    
     public static string EscapeFilename(string fn)
     {
       return fn.Replace(':', '-').Replace('/', '-').Replace('\\', '-');

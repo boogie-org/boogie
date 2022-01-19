@@ -82,7 +82,7 @@ namespace VC
 
     void PrepareChecker(Program program, Split split, Checker checker)
     {
-      if (checker.WillingToHandle(program) && !options.Prune)
+      if (checker.WillingToHandle(program) && (split == null || checker.SolverOptions.RandomSeed == split.RandomSeed && !options.Prune))
       {
         checker.GetReady();
         return;

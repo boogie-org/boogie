@@ -55,7 +55,8 @@ namespace Microsoft.Boogie.SMTLib
 
     public static string RlimitOption = "rlimit";
 
-    public static string RandomSeedOption = "smt.random_seed";
+    public static string SmtRandomSeed = "smt.random_seed";
+    public static string SatRandomSeed = "sat.random_seed";
     
     public static void SetDefaultOptions(SMTLibProverOptions options)
     {

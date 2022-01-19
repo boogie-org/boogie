@@ -16,7 +16,9 @@ namespace VC
   using System.Threading.Tasks;
 
   public class Split
-    {
+  {
+      public int? RandomSeed => Implementation.RandomSeed ?? CommandLineOptions.Clo.RandomSeed;
+    
       class BlockStats
       {
         public bool bigBlock;
@@ -61,7 +63,7 @@ namespace VC
         Contract.Invariant(cce.NonNullElements(assumizedBranches));
         Contract.Invariant(gotoCmdOrigins != null);
         Contract.Invariant(parent != null);
-        Contract.Invariant(impl != null);
+        Contract.Invariant(Implementation != null);
         Contract.Invariant(copies != null);
         Contract.Invariant(cce.NonNull(protectedFromAssertToAssume));
         Contract.Invariant(cce.NonNull(keepAtAll));
@@ -94,8 +96,7 @@ namespace VC
       readonly public VCGen /*!*/
         parent;
 
-      Implementation /*!*/
-        impl;
+      public Implementation /*!*/ Implementation { get; private set; }
 
       Dictionary<Block /*!*/, Block /*!*/> /*!*/
         copies = new Dictionary<Block /*!*/, Block /*!*/>();
@@ -117,21 +118,21 @@ namespace VC
       internal VCGen.ErrorReporter reporter;
 
       public Split(List<Block /*!*/> /*!*/ blocks, Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
-        VCGen /*!*/ par, Implementation /*!*/ impl)
+        VCGen /*!*/ par, Implementation /*!*/ implementation)
       {
         Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(par != null);
-        Contract.Requires(impl != null);
+        Contract.Requires(implementation != null);
         this.blocks = blocks;
         this.gotoCmdOrigins = gotoCmdOrigins;
         this.parent = par;
-        this.impl = impl;
+        this.Implementation = implementation;
         Interlocked.Increment(ref currentId);
 
-        PrintTopLevelDeclarationsForPruning(impl, "before");        
+        PrintTopLevelDeclarationsForPruning(implementation, "before");        
         TopLevelDeclarations = Prune.GetLiveDeclarations(par.program, blocks).ToList();
-        PrintTopLevelDeclarationsForPruning(impl, "after");
+        PrintTopLevelDeclarationsForPruning(implementation, "after");
       }
 
       private void PrintTopLevelDeclarationsForPruning(Implementation implementation, string suffix)
@@ -180,7 +181,7 @@ namespace VC
 
       public void DumpDot(int splitNum)
       {
-        using (System.IO.StreamWriter sw = System.IO.File.CreateText($"{impl.Name}.split.{splitNum}.dot"))
+        using (System.IO.StreamWriter sw = System.IO.File.CreateText($"{Implementation.Name}.split.{splitNum}.dot"))
         {
           sw.WriteLine("digraph G {");
 
@@ -211,18 +212,18 @@ namespace VC
           sw.Close();
         }
 
-        string filename = string.Format("{0}.split.{1}.bpl", impl.Name, splitNum);
+        string filename = string.Format("{0}.split.{1}.bpl", Implementation.Name, splitNum);
         using (System.IO.StreamWriter sw = System.IO.File.CreateText(filename))
         {
           int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
           CommandLineOptions.Clo.PrintUnstructured = 2; // print only the unstructured program
           bool oldPrintDesugaringSetting = CommandLineOptions.Clo.PrintDesugarings;
           CommandLineOptions.Clo.PrintDesugarings = false;
-          List<Block> backup = impl.Blocks;
+          List<Block> backup = Implementation.Blocks;
           Contract.Assert(backup != null);
-          impl.Blocks = blocks;
-          impl.Emit(new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false), 0);
-          impl.Blocks = backup;
+          Implementation.Blocks = blocks;
+          Implementation.Emit(new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false), 0);
+          Implementation.Blocks = backup;
           CommandLineOptions.Clo.PrintDesugarings = oldPrintDesugaringSetting;
           CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
         }
@@ -713,7 +714,7 @@ namespace VC
           }
         }
 
-        return new Split(newBlocks, newGotoCmdOrigins, parent, impl);
+        return new Split(newBlocks, newGotoCmdOrigins, parent, Implementation);
       }
 
       Split SplitAt(int idx)
@@ -749,11 +750,11 @@ namespace VC
 
       void Print()
       {
-        List<Block> tmp = impl.Blocks;
+        List<Block> tmp = Implementation.Blocks;
         Contract.Assert(tmp != null);
-        impl.Blocks = blocks;
-        ConditionGeneration.EmitImpl(impl, false);
-        impl.Blocks = tmp;
+        Implementation.Blocks = blocks;
+        ConditionGeneration.EmitImpl(Implementation, false);
+        Implementation.Blocks = tmp;
       }
 
       public Counterexample ToCounterexample(ProverContext context)
@@ -949,7 +950,7 @@ namespace VC
       
       public static List<Split /*!*/> FindManualSplits(Split s, bool splitOnEveryAssert)
       {
-        Contract.Requires(s.impl != null);
+        Contract.Requires(s.Implementation != null);
         Contract.Ensures(Contract.Result<List<Split>>() == null || cce.NonNullElements(Contract.Result<List<Split>>()));
 
         var splitPoints = new Dictionary<Block, int>();
@@ -976,14 +977,14 @@ namespace VC
           var blockAssignments = PickBlocksToVerify(s.blocks, splitPoints);
           var entryBlockHasSplit = splitPoints.Keys.Contains(entryPoint);
           var baseSplitBlocks = PostProcess(DoPreAssignedManualSplit(s.blocks, blockAssignments, -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert));
-          splits.Add(new Split(baseSplitBlocks, s.gotoCmdOrigins, s.parent, s.impl));
+          splits.Add(new Split(baseSplitBlocks, s.gotoCmdOrigins, s.parent, s.Implementation));
           foreach (KeyValuePair<Block, int> pair in splitPoints)
           {
             for (int i = 0; i < pair.Value; i++)
             {
               bool lastSplitInBlock = i == pair.Value - 1;
               var newBlocks = DoPreAssignedManualSplit(s.blocks, blockAssignments, i, pair.Key, lastSplitInBlock, splitOnEveryAssert);
-              splits.Add(new Split(PostProcess(newBlocks), s.gotoCmdOrigins, s.parent, s.impl)); // REVIEW: Does gotoCmdOrigins need to be changed at all?
+              splits.Add(new Split(PostProcess(newBlocks), s.gotoCmdOrigins, s.parent, s.Implementation)); // REVIEW: Does gotoCmdOrigins need to be changed at all?
             }
           }
         }
@@ -1356,8 +1357,8 @@ namespace VC
         splitNum = no;
 
         // Lock impl since we're setting impl.Blocks that is used to generate the VC.
-        lock (impl) {
-          impl.Blocks = blocks;
+        lock (Implementation) {
+          Implementation.Blocks = blocks;
 
           this.checker = checker;
 
@@ -1370,16 +1371,16 @@ namespace VC
 
           var exprGen = ctx.ExprGen;
           VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
-          VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, absyIds, checker.TheoremProver.Context);
+          VCExpr vc = parent.GenerateVCAux(Implementation, controlFlowVariableExpr, absyIds, checker.TheoremProver.Context);
           Contract.Assert(vc != null);
 
-          vc = QuantifierInstantiationEngine.Instantiate(impl, exprGen, bet, vc);
+          vc = QuantifierInstantiationEngine.Instantiate(Implementation, exprGen, bet, vc);
 
           VCExpr controlFlowFunctionAppl =
             exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-          VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(impl.Blocks[0]))));
+          VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
           vc = exprGen.Implies(eqExpr, vc);
-          reporter = new VCGen.ErrorReporter(gotoCmdOrigins, absyIds, impl.Blocks, parent.debugInfos, callback,
+          reporter = new VCGen.ErrorReporter(gotoCmdOrigins, absyIds, Implementation.Blocks, parent.debugInfos, callback,
             mvInfo, this.Checker.TheoremProver.Context, parent.program);
           
           if (CommandLineOptions.Clo.TraceVerify && no >= 0)
@@ -1388,13 +1389,13 @@ namespace VC
             Print();
           }
 
-          string desc = cce.NonNull(impl.Name);
+          string desc = cce.NonNull(Implementation.Name);
           if (no >= 0)
           {
             desc += "_split" + no;
           }
 
-          checker.BeginCheck(desc, vc, reporter, timeout, rlimit, impl.RandomSeed);
+          checker.BeginCheck(desc, vc, reporter, timeout, rlimit);
         }
       }
 

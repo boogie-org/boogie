@@ -509,6 +509,13 @@ namespace Microsoft.Boogie
   /// </summary>
   public class CommandLineOptions : CommandLineOptionEngine, SMTLibOptions
   {
+    public static CommandLineOptions FromArguments(params string[] arguments)
+    {
+      var result = new CommandLineOptions();
+      result.Parse(arguments);
+      return result;
+    }
+    
     public CommandLineOptions()
       : base("Boogie", "Boogie program verifier")
     {
@@ -652,6 +659,8 @@ namespace Microsoft.Boogie
 
     public InstrumentationPlaces InstrumentInfer = InstrumentationPlaces.LoopHeaders;
 
+    public int? RandomSeed { get; set; }
+    
     public bool PrintWithUniqueASTIds {
       get => printWithUniqueAstIds;
       set => printWithUniqueAstIds = value;
@@ -1749,6 +1758,12 @@ namespace Microsoft.Boogie
           ps.GetNumericArgument(ref errorLimit);
           return true;
 
+        case "randomSeed":
+          int randomSeed = 0;
+          ps.GetNumericArgument(ref randomSeed);
+          RandomSeed = randomSeed;
+          return true;
+        
         case "verifySnapshots":
           ps.GetNumericArgument(ref VerifySnapshots, 4);
           return true;
@@ -1770,7 +1785,7 @@ namespace Microsoft.Boogie
           return true;
         
         case "normalizeDeclarationOrder":
-          ps.GetNumericArgument(ref normalizeNames);
+          ps.GetNumericArgument(ref normalizeDeclarationOrder);
           return true;
 
         default:
@@ -2041,6 +2056,7 @@ namespace Microsoft.Boogie
 
      {:random_seed N}
        Set the random seed for verifying a given implementation.
+       Has the same effect as setting /randomSeed but only for a single implementation.
 
   ---- On Axioms -------------------------------------------------------------
 
@@ -2442,6 +2458,19 @@ namespace Microsoft.Boogie
   /relaxFocus   Process foci in a bottom-up fashion. This way only generates
                 a linear number of splits. The default way (top-down) is more
                 aggressive and it may create an exponential number of splits.
+
+  /randomSeed:<n>
+                Turn on randomization of the input that Boogie passes to the 
+                SMT solver and turn on randomization in the SMT solver itself.
+ 
+                Certain Boogie inputs are unstable in the sense that changes to 
+                the input that preserve its meaning may cause the output to change.
+                The /randomSeed option simulates meaning-preserving changes to 
+                the input without requiring the user to actually make those changes.
+
+                The /randomSeed option is implemented by renaming variables and 
+                reordering declarations in the input, and by setting 
+                solver options that have similar effects.
 
   ---- Verification-condition splitting --------------------------------------
 
