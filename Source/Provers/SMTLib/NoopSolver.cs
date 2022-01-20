@@ -25,6 +25,7 @@ class NoopSolver : SMTLibSolver
       {
         "(get-model)" => null,
         "(get-info :name)" => new SExpr(":name"),
+        "(get-info :rlimit)" => new SExpr(":rlimit", new SExpr("0")),
         "(check-sat)" => new SExpr("unknown"),
         "(get-info :reason-unknown)" => new SExpr("incomplete"),
         "(get-unsat-core)" => new SExpr(""),

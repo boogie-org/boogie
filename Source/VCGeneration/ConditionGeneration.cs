@@ -81,7 +81,8 @@ namespace VC
     }
 
     public int CumulativeAssertionCount; // for statistics
-
+    public int ResourceCount;
+    
     private bool _disposed;
 
     protected Implementation currentImplementation;

@@ -868,7 +868,8 @@ namespace VC
 
       var worker = new SplitAndVerifyWorker(CommandLineOptions.Clo, this, impl, gotoCmdOrigins, callback, mvInfo, outcome);
       outcome = worker.WorkUntilDone().Result;
-
+      ResourceCount = worker.ResourceCount;
+      
       if (outcome == Outcome.Correct && smoke_tester != null)
       {
         smoke_tester.Test();

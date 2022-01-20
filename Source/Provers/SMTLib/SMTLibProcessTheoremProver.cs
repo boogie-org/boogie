@@ -1946,7 +1946,14 @@ namespace Microsoft.Boogie.SMTLib
     {
       options.ResourceLimit = limit;
     }
-    
+
+    public override int GetRCount() 
+    {
+      SendThisVC("(get-info :rlimit)");
+      var resp = Process.GetProverResponse();
+      return int.Parse(resp[0].Name);
+    }
+
     object ParseValueFromProver(SExpr expr)
     {
       return expr.ToString().Replace(" ", "").Replace("(", "").Replace(")", "");

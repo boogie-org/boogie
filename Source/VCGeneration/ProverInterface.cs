@@ -267,6 +267,11 @@ public abstract class ProverInterface
   {
   }
 
+  public virtual int GetRCount()
+  {
+    throw new NotImplementedException();
+  }
+
   public abstract ProverContext Context { get; }
 
   public abstract VCExpressionGenerator VCExprGen { get; }

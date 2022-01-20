@@ -89,7 +89,7 @@ namespace Microsoft.Boogie
       cce.EndExpose();
     }
 
-    public void WriteEndMethod(string outcome, DateTime endTime, TimeSpan elapsed)
+    public void WriteEndMethod(string outcome, DateTime endTime, TimeSpan elapsed, int? resourceCount)
     {
       Contract.Requires(outcome != null);
       Contract.Requires(IsOpen);
@@ -101,6 +101,11 @@ namespace Microsoft.Boogie
         wr.WriteStartElement("conclusion");
         wr.WriteAttributeString("endTime", endTime.ToString(DateTimeFormatString));
         wr.WriteAttributeString("duration", elapsed.TotalSeconds.ToString());
+        if (resourceCount is not null)
+        {
+          wr.WriteAttributeString("resourceCount", resourceCount.ToString());
+        }
+
         wr.WriteAttributeString("outcome", outcome);
 
         wr.WriteEndElement(); // outcome

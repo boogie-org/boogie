@@ -1439,7 +1439,7 @@ namespace Microsoft.Boogie.Houdini
         }
 
         DateTime end = DateTime.UtcNow;
-        xmlRefuted.WriteEndMethod("errors", end, end.Subtract(start));
+        xmlRefuted.WriteEndMethod("errors", end, end.Subtract(start), null);
       }
     }
 
