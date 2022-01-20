@@ -1,5 +1,5 @@
 // Can't use %parallel-boogie here yet - see https://github.com/boogie-org/boogie/issues/460
-// RUN: %boogie -xml:"%t.xml" "%s"
+// RUN: %boogie -randomSeed:0 -xml:"%t.xml" "%s"
 // Chop off the first line, since OutputCheck expects ASCII and can't handle the byte-order mark
 // RUN: tail -n +2 "%t.xml" > "%t.trimmed.xml"
 // RUN: %OutputCheck "%s" --file-to-check="%t.trimmed.xml"
@@ -10,13 +10,13 @@
 // CHECK:   \<split number="2" startTime=".*"\>
 // CHECK:     \<conclusion duration=".*" outcome="valid" />
 // CHECK:   \</split\>
-// CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount=".*" outcome="correct" />
+// CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount="210" outcome="correct" />
 // CHECK: \</method\>
 // CHECK: \<method name="ExampleWithoutSplits" startTime=".*"\>
-// CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount=".*" outcome="correct" />
+// CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount="120" outcome="correct" />
 // CHECK: \</method\>
 // CHECK: \<method name="AnotherExampleWithoutSplits" startTime=".*"\>
-// CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount=".*" outcome="correct" />
+// CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount="120" outcome="correct" />
 // CHECK: \</method\>
 
 procedure ExampleWithSplits()
