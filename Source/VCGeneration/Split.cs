@@ -130,12 +130,13 @@ namespace VC
         this.Implementation = implementation;
         Interlocked.Increment(ref currentId);
 
-        PrintTopLevelDeclarationsForPruning(implementation, "before");        
+        TopLevelDeclarations = par.program.TopLevelDeclarations;
+        PrintTopLevelDeclarationsForPruning(par.program, implementation, "before");        
         TopLevelDeclarations = Prune.GetLiveDeclarations(par.program, blocks).ToList();
-        PrintTopLevelDeclarationsForPruning(implementation, "after");
+        PrintTopLevelDeclarationsForPruning(par.program, implementation, "after");
       }
 
-      private void PrintTopLevelDeclarationsForPruning(Implementation implementation, string suffix)
+      private void PrintTopLevelDeclarationsForPruning(Program program, Implementation implementation, string suffix)
       {
         if (!CommandLineOptions.Clo.Prune || CommandLineOptions.Clo.PrintPrunedFile == null)
         {
@@ -145,7 +146,7 @@ namespace VC
         using var writer = new TokenTextWriter(
           $"{CommandLineOptions.Clo.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}", false,
           CommandLineOptions.Clo.PrettyPrint);
-        foreach (var declaration in TopLevelDeclarations) {
+        foreach (var declaration in TopLevelDeclarations ?? program.TopLevelDeclarations) {
           declaration.Emit(writer, 0);
         }
 
