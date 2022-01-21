@@ -43,6 +43,7 @@ namespace VC
 
     public enum Outcome
     {
+      Uninitialized,
       Correct,
       Errors,
       TimedOut,
