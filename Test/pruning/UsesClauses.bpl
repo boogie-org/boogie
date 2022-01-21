@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /prune /errorTrace:0 "%s" > "%t"
+// RUN: %parallel-boogie /prune /printPruned:"%tpruned" /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 const unique four: int;
