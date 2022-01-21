@@ -1446,8 +1446,10 @@ namespace Microsoft.Boogie
       var result = "";
       if (CommandLineOptions.Clo.Trace)
       {
-        result = string.Format("  [{0:F3} s, {1} proof obligation{2}]  ",
-          (verificationResult.End - verificationResult.Start).TotalSeconds, verificationResult.ProofObligationCount,
+        result = string.Format("  [{0:F3} s, {1} Z3 ticks, {2} proof obligation{3}]  ",
+          (verificationResult.End - verificationResult.Start).TotalSeconds,
+          verificationResult.ResourceCount,
+          verificationResult.ProofObligationCount,
           verificationResult.ProofObligationCount == 1 ? "" : "s");
       }
       else if (CommandLineOptions.Clo.TraceProofObligations)
