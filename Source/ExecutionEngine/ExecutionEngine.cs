@@ -1594,16 +1594,13 @@ namespace Microsoft.Boogie
       if (errorInfo != null)
       {
         errorInfo.ImplementationName = implName;
+        printer.WriteErrorInformation(errorInfo, tw);
         if (er != null)
         {
           lock (er)
           {
             er(errorInfo);
           }
-        }
-        else
-        {
-          printer.WriteErrorInformation(errorInfo, tw);
         }
       }
     }
