@@ -1244,7 +1244,7 @@ namespace Microsoft.Boogie
             verificationResult.Errors = null;
             verificationResult.Outcome = VCGen.Outcome.Inconclusive;
           }
-          catch(Exception e)
+          catch(AggregateException e)
           {
             printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because: {1}",
               impl.Name, e.Message);
