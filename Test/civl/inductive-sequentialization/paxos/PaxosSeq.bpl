@@ -29,12 +29,12 @@ modifies pendingAsyncs;
   pendingAsyncs := PAs;
 }
 
-function {:inline} FirstCasePAs(k: int, numRounds: int) : [PA]int
+function {:inline} StartRoundPAs(k: int, numRounds: int) : [PA]int
 {
   (lambda pa: PA :: if (is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && k < round#A_StartRound(pa) && round#A_StartRound(pa) <= numRounds) then 1 else 0)
 }
 
-function {:inline} SecondCasePAs(k: int, m: Node, numRounds: int) : [PA]int
+function {:inline} StartRoundPlusJoinPlusProposePAs(k: int, m: Node, numRounds: int) : [PA]int
 {
   (lambda pa : PA ::
     if (is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && k+1 < round#A_StartRound(pa) && round#A_StartRound(pa) <= numRounds) ||
@@ -44,12 +44,12 @@ function {:inline} SecondCasePAs(k: int, m: Node, numRounds: int) : [PA]int
     then 1 else 0)
 }
 
-function {:inline} SecondCaseChoice(k: int, m: Node) : PA
+function {:inline} JoinOrProposeChoice(k: int, m: Node) : PA
 {
   if m == numNodes then A_Propose(k+1, ProposePermissions(k+1)) else A_Join(k+1, m+1, JoinPerm(k+1, m+1))
 }
 
-function {:inline} ThirdCasePAs(k: int, m: Node, v: Value, numRounds: int) : [PA]int
+function {:inline} StartRoundPlusVotePlusConcludePAs(k: int, m: Node, v: Value, numRounds: int) : [PA]int
 {
   ( lambda pa: PA ::
     if (is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && k+1 < round#A_StartRound(pa) && round#A_StartRound(pa) <= numRounds) ||
@@ -59,7 +59,7 @@ function {:inline} ThirdCasePAs(k: int, m: Node, v: Value, numRounds: int) : [PA
     then 1 else 0)
 }
 
-function {:inline} ThirdCaseChoice(k: int, m: Node, v: Value) : PA
+function {:inline} VoteOrConcludeChoice(k: int, m: Node, v: Value) : PA
 {
   if m == numNodes then A_Conclude(k+1, v, ConcludePerm(k+1)) else A_Vote(k+1, m+1, v, VotePerm(k+1, m+1))
 }
@@ -92,34 +92,30 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
       PAs := NoPAs();
   } else if (*) {
       assume
-        (forall r: Round :: r < 1 || r > k ==> joinedNodes[r] == NoNodes()) &&
         (forall r: Round :: r < 1 || r > k ==> is#None(voteInfo[r])) &&
         (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]));
-      PAs := FirstCasePAs(k, numRounds);
+      PAs := StartRoundPAs(k, numRounds);
       choice := A_StartRound(k+1, k+1);
   } else if (*) {
       assume
-        (forall r: Round :: r < 1 || r > k+1 ==> joinedNodes[r] == NoNodes()) &&
         (forall r: Round :: r < 1 || r > k ==> is#None(voteInfo[r])) &&
         (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]));
       assume
         {:add_to_pool "Node", m}
-        0 <= m && m <= numNodes &&
-        (forall n: Node :: n < 1 || n > m ==> !joinedNodes[k+1][n]);
-      PAs := SecondCasePAs(k, m, numRounds);
-      choice := SecondCaseChoice(k, m);
+        0 <= m && m <= numNodes;
+      PAs := StartRoundPlusJoinPlusProposePAs(k, m, numRounds);
+      choice := JoinOrProposeChoice(k, m);
   } else {
       assume
         is#Some(voteInfo[k+1]) &&
-        (forall r: Round :: r < 1 || r > k+1 ==> joinedNodes[r] == NoNodes()) &&
         (forall r: Round :: r < 1 || r > k+1 ==> is#None(voteInfo[r])) &&
         (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]));
       assume
         {:add_to_pool "Node", m}
         0 <= m && m <= numNodes &&
         (forall n: Node :: n < 1 || n > m ==> !ns#VoteInfo(t#Some(voteInfo[k+1]))[n]);
-      PAs := ThirdCasePAs(k, m, value#VoteInfo(t#Some(voteInfo[k+1])), numRounds);
-      choice := ThirdCaseChoice(k, m, value#VoteInfo(t#Some(voteInfo[k+1])));
+      PAs := StartRoundPlusVotePlusConcludePAs(k, m, value#VoteInfo(t#Some(voteInfo[k+1])), numRounds);
+      choice := VoteOrConcludeChoice(k, m, value#VoteInfo(t#Some(voteInfo[k+1])));
   }
 
   // If there was a decision for some value, then there must have been a
@@ -127,7 +123,7 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
   assume (forall r: Round :: is#Some(decision[r]) ==>
     is#Some(voteInfo[r]) &&
     value#VoteInfo(t#Some(voteInfo[r])) == t#Some(decision[r]) &&
-    (exists q: NodeSet :: { IsQuorum(q) }
+    (exists q: NodeSet ::
       IsSubset(q, ns#VoteInfo(t#Some(voteInfo[r]))) && IsQuorum(q)));
 
   // This is the main invariant to prove

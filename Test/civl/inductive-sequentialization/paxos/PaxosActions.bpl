@@ -49,7 +49,7 @@ modifies voteInfo, pendingAsyncs;
 procedure {:atomic}{:layer 2} A_Conclude(r: Round, v: Value, {:linear_in "perm"} p: Permission)
 modifies decision, pendingAsyncs;
 {
-  var q:NodeSet;
+  var q: NodeSet;
 
   assert Round(r);
   assert pendingAsyncs[A_Conclude(r, v, p)] > 0;
