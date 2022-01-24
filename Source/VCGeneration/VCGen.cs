@@ -836,10 +836,7 @@ namespace VC
 
       ExpandAsserts(impl);
 
-      // Start with an uninitialized outcome, and set it to another value only
-      // on  concrete observation of evidence of correctness (e.g., seeing a
-      // solver emit "unsat").
-      Outcome outcome = Outcome.Uninitialized;
+      Outcome outcome = Outcome.Correct;
 
       // Report all recycled failing assertions for this implementation.
       if (impl.RecycledFailingAssertions != null && impl.RecycledFailingAssertions.Any())

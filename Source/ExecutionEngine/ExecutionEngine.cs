@@ -1589,14 +1589,6 @@ namespace Microsoft.Boogie
           }
 
           break;
-        case VCGen.Outcome.Uninitialized:
-          if (implName != null && implTok != null)
-          {
-            errorInfo = errorInformationFactory.CreateErrorInformation(implTok,
-              "Verification result not initialized.");
-          }
-
-          break;
       }
 
       if (errorInfo != null)
@@ -1642,9 +1634,6 @@ namespace Microsoft.Boogie
           break;
         case VCGen.Outcome.Inconclusive:
           traceOutput = "inconclusive";
-          break;
-        case VCGen.Outcome.Uninitialized:
-          traceOutput = "not yet initialized (internal error)";
           break;
         case VCGen.Outcome.Errors:
           Contract.Assert(errors != null);
@@ -1722,9 +1711,6 @@ namespace Microsoft.Boogie
             Interlocked.Add(ref stats.CachedErrorCount, cnt);
           }
 
-          break;
-        case VCGen.Outcome.Uninitialized:
-          // There's currently no counter for internal errors.
           break;
       }
     }

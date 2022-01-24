@@ -1305,10 +1305,6 @@ namespace VC
         switch (outcome)
         {
           case ProverInterface.Outcome.Valid:
-            if (curOutcome == ConditionGeneration.Outcome.Uninitialized)
-            {
-              curOutcome = ConditionGeneration.Outcome.Correct;
-            }
             return;
           case ProverInterface.Outcome.Invalid:
             curOutcome = ConditionGeneration.Outcome.Errors;
