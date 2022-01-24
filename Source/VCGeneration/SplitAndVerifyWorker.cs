@@ -103,7 +103,7 @@ namespace VC
         await split.ProverTask;
         await ProcessResult(split);
       }
-      catch {
+      finally {
         split.ReleaseChecker();
       }
     }
