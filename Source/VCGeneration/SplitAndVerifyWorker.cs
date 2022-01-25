@@ -105,7 +105,7 @@ namespace VC
       }
       catch {
         split.ReleaseChecker();
-        throw; // This can be better handled farther up the call stack.
+        throw;
       }
     }
 
