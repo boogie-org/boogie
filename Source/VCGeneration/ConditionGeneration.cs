@@ -49,7 +49,8 @@ namespace VC
       OutOfResource,
       OutOfMemory,
       Inconclusive,
-      ReachedBound
+      ReachedBound,
+      SolverException
     }
 
     public static Outcome ProverInterfaceOutcomeToConditionGenerationOutcome(ProverInterface.Outcome outcome)
