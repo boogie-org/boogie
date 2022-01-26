@@ -1251,12 +1251,21 @@ namespace Microsoft.Boogie
             verificationResult.Errors = null;
             verificationResult.Outcome = VCGen.Outcome.Inconclusive;
           }
-          catch(AggregateException e)
+          catch(AggregateException ae)
           {
-            printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because: {1}",
-              impl.Name, e.Message);
-            verificationResult.Errors = null;
-            verificationResult.Outcome = VCGen.Outcome.SolverException;
+            ae.Flatten().Handle(e =>
+            {
+              if (e is IOException)
+              {
+                printer.AdvisoryWriteLine("Advisory: {0} SKIPPED due to I/O exception: {1}",
+                  impl.Name, e.Message);
+                verificationResult.Errors = null;
+                verificationResult.Outcome = VCGen.Outcome.SolverException;
+                return true;
+              }
+
+              return false;
+            });
           }
 
           verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
