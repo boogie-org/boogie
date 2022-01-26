@@ -1446,7 +1446,7 @@ namespace Microsoft.Boogie
       var result = "";
       if (CommandLineOptions.Clo.Trace)
       {
-        result = string.Format("  [{0:F3} s, {1} Z3 ticks, {2} proof obligation{3}]  ",
+        result = string.Format("  [{0:F3} s, solver resource count: {1}, {2} proof obligation{3}]  ",
           (verificationResult.End - verificationResult.Start).TotalSeconds,
           verificationResult.ResourceCount,
           verificationResult.ProofObligationCount,

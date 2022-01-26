@@ -21,7 +21,7 @@
 // Verify the second procedure is NOT split. .* is necessary to match the blank line in-between.
 // CHECK-NEXT: .*
 // CHECK-NEXT: Verifying DontDoTheSplitting ...
-// CHECK-NEXT:   \[.* s, .* Z3 ticks, .* proof obligations\]  verified
+// CHECK-NEXT:   \[.* s, solver resource count: .*, .* proof obligations\]  verified
 
 procedure {:vcs_split_on_every_assert} DoTheSplitting() returns (y: int)
   ensures y >= 0;
