@@ -133,6 +133,11 @@ namespace Microsoft.Boogie
         Console.Write(", {0} out of resource", stats.OutOfResourceCount);
       }
 
+      if (stats.SolverExceptionCount != 0)
+      {
+        Console.Write(", {0} solver exceptions", stats.SolverExceptionCount);
+      }
+
       Console.WriteLine();
       Console.Out.Flush();
     }
@@ -211,6 +216,7 @@ namespace Microsoft.Boogie
     public int TimeoutCount;
     public int OutOfResourceCount;
     public int OutOfMemoryCount;
+    public int SolverExceptionCount;
     public long[] CachingActionCounts;
     public int CachedErrorCount;
     public int CachedVerifiedCount;
@@ -218,6 +224,7 @@ namespace Microsoft.Boogie
     public int CachedTimeoutCount;
     public int CachedOutOfResourceCount;
     public int CachedOutOfMemoryCount;
+    public int CachedSolverExceptionCount;
   }
 
 
@@ -1244,6 +1251,22 @@ namespace Microsoft.Boogie
             verificationResult.Errors = null;
             verificationResult.Outcome = VCGen.Outcome.Inconclusive;
           }
+          catch(AggregateException ae)
+          {
+            ae.Flatten().Handle(e =>
+            {
+              if (e is IOException)
+              {
+                printer.AdvisoryWriteLine("Advisory: {0} SKIPPED due to I/O exception: {1}",
+                  impl.Name, e.Message);
+                verificationResult.Errors = null;
+                verificationResult.Outcome = VCGen.Outcome.SolverException;
+                return true;
+              }
+
+              return false;
+            });
+          }
 
           verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
           verificationResult.End = DateTime.UtcNow;
@@ -1581,6 +1604,15 @@ namespace Microsoft.Boogie
           }
 
           break;
+        case VCGen.Outcome.SolverException:
+          if (implName != null && implTok != null)
+          {
+            errorInfo = errorInformationFactory.CreateErrorInformation(implTok,
+              "Verification encountered solver exception (" + implName + ")", requestId);
+          }
+
+          break;
+
         case VCGen.Outcome.Inconclusive:
           if (implName != null && implTok != null)
           {
@@ -1631,6 +1663,9 @@ namespace Microsoft.Boogie
           break;
         case VCGen.Outcome.OutOfMemory:
           traceOutput = "out of memory";
+          break;
+        case VCGen.Outcome.SolverException:
+          traceOutput = "solver exception";
           break;
         case VCGen.Outcome.Inconclusive:
           traceOutput = "inconclusive";
@@ -1692,6 +1727,14 @@ namespace Microsoft.Boogie
           if (wasCached)
           {
             Interlocked.Increment(ref stats.CachedOutOfMemoryCount);
+          }
+
+          break;
+        case VCGen.Outcome.SolverException:
+          Interlocked.Increment(ref stats.SolverExceptionCount);
+          if (wasCached)
+          {
+            Interlocked.Increment(ref stats.CachedSolverExceptionCount);
           }
 
           break;
@@ -1783,6 +1826,10 @@ namespace Microsoft.Boogie
       else if (outcome == VCGen.Outcome.OutOfMemory)
       {
         cause = "Out of memory on";
+      }
+      else if (outcome == VCGen.Outcome.SolverException)
+      {
+        cause = "Solver exception on";
       }
       else if (outcome == VCGen.Outcome.OutOfResource)
       {

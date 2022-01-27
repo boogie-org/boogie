@@ -105,6 +105,7 @@ namespace VC
       }
       catch {
         split.ReleaseChecker();
+        throw;
       }
     }
 
