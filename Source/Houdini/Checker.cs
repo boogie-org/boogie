@@ -5,6 +5,7 @@ using Microsoft.Boogie.VCExprAST;
 using Microsoft.BaseTypes;
 using VC;
 using System.Linq;
+using System.Threading;
 
 namespace Microsoft.Boogie.Houdini
 {
@@ -243,7 +244,7 @@ namespace Microsoft.Boogie.Houdini
     }
 
     public ProverInterface.Outcome Verify(ProverInterface proverInterface, Dictionary<Variable, bool> assignment,
-      out List<Counterexample> errors, int errorLimit)
+      out List<Counterexample> errors, int errorLimit, CancellationToken cancellationToken)
     {
       collector.examples.Clear();
 

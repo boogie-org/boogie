@@ -17,13 +17,14 @@ namespace VC
 
   public class VCGen : ConditionGeneration
   {
+    public CancellationToken CancellationToken { get; }
+
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
     [NotDelayed]
-    public VCGen(Program program, CheckerPool checkerPool)
-      : base(program, checkerPool)
-    {
+    public VCGen(Program program, CheckerPool checkerPool, CancellationToken cancellationToken)
+      : base(program, checkerPool, cancellationToken) {
       Contract.Requires(program != null);
     }
 
@@ -100,7 +101,7 @@ namespace VC
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-        DFS(initial);
+        DFS(initial, new CancellationToken());
       }
       
       void TopologicalSortImpl()
@@ -279,7 +280,7 @@ namespace VC
         return BooleanEval(e, ref val) && !val;
       }
 
-      bool CheckUnreachable(Block cur, List<Cmd> seq)
+      bool CheckUnreachable(Block cur, List<Cmd> seq, CancellationToken cancellationToken)
       {
         Contract.Requires(cur != null);
         Contract.Requires(seq != null);
@@ -351,7 +352,7 @@ namespace VC
             }
 
             ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(absyIds, this.callback),
-              CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit);
+              CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit, cancellationToken);
           }
 
           ch.ProverTask.Wait();
@@ -395,7 +396,7 @@ namespace VC
 
       const bool turnAssertIntoAssumes = false;
 
-      void DFS(Block cur)
+      void DFS(Block cur, CancellationToken cancellationToken)
       {
         Contract.Requires(cur != null);
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -455,7 +456,7 @@ namespace VC
 
           if (assumeFalse)
           {
-            CheckUnreachable(cur, seq);
+            CheckUnreachable(cur, seq, cancellationToken);
             return;
           }
 
@@ -471,7 +472,7 @@ namespace VC
         if (ret != null || (go != null && cce.NonNull(go.labelTargets).Count == 0))
         {
           // we end in return, so there will be no more places to check
-          CheckUnreachable(cur, seq);
+          CheckUnreachable(cur, seq, cancellationToken);
         }
         else if (go != null)
         {
@@ -489,13 +490,13 @@ namespace VC
 
           if (needToCheck)
           {
-            CheckUnreachable(cur, seq);
+            CheckUnreachable(cur, seq, cancellationToken);
           }
 
           foreach (Block target in go.labelTargets)
           {
             Contract.Assert(target != null);
-            DFS(target);
+            DFS(target, cancellationToken);
           }
         }
       }
@@ -544,16 +545,18 @@ namespace VC
     {
       ControlFlowIdMap<Absy> absyIds;
       ProverContext ctx;
+      CancellationToken cancellationToken;
 
-      public CodeExprConversionClosure(ControlFlowIdMap<Absy> absyIds, ProverContext ctx)
+      public CodeExprConversionClosure(ControlFlowIdMap<Absy> absyIds, ProverContext ctx, CancellationToken cts)
       {
         this.absyIds = absyIds;
         this.ctx = ctx;
+        this.cancellationToken = cts;
       }
 
       public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext)
       {
-        VCGen vcgen = new VCGen(new Program(), new CheckerPool(CommandLineOptions.Clo));
+        VCGen vcgen = new VCGen(new Program(), new CheckerPool(CommandLineOptions.Clo), cancellationToken);
         vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
         vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
         vcgen.CurrentLocalVariables = codeExpr.LocVars;

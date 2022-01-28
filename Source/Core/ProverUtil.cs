@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using System.Diagnostics.Contracts;
+using System.Threading;
 
 namespace Microsoft.Boogie
 {
@@ -301,7 +302,8 @@ The generic options may or may not be used by the prover plugin.
   {
     // Really returns ProverInterface.
     //public abstract object! SpawnProver(ProverOptions! options, object! ctxt);
-    public abstract object SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt);
+    public abstract object SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt,
+      CancellationToken cancellationToken);
 
     // Really returns ProverContext
     public abstract object /*!*/ NewProverContext(ProverOptions /*!*/ options);

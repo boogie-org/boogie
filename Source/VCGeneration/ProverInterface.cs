@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Threading;
 using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie;
 
 public abstract class ProverInterface
 {
-  public static ProverInterface CreateProver(Program prog, string /*?*/ logFilePath, bool appendLogFile, uint timeout,
+  public static ProverInterface CreateProver(Program prog, string /*?*/ logFilePath, bool appendLogFile, uint timeout, CancellationToken cancellationToken,
     int taskID = -1)
   {
     Contract.Requires(prog != null);
@@ -83,7 +84,7 @@ public abstract class ProverInterface
       }
     }
 
-    return (ProverInterface) CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, options, ctx);
+    return (ProverInterface) CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, options, ctx, cancellationToken);
   }
 
   public enum Outcome
@@ -94,6 +95,7 @@ public abstract class ProverInterface
     OutOfMemory,
     OutOfResource,
     Undetermined,
+    Canceled,
     Bounded
   }
 

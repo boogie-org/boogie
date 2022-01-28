@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Threading;
 using Microsoft.Boogie.VCExprAST;
 using System.Threading.Tasks;
 using VC;
@@ -133,7 +134,7 @@ namespace Microsoft.Boogie
       {
         ctx = (ProverContext) cce.NonNull(ctx).Clone();
         prover = (ProverInterface)
-          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx);
+          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx, vcgen.CancellationToken);
       }
       else
       {
@@ -148,7 +149,7 @@ namespace Microsoft.Boogie
         // context in the cache, so that the prover can setup stuff in
         // the context to be cached
         prover = (ProverInterface)
-          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx);
+          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx, vcgen.CancellationToken);
         cachedContexts.Add(key, cce.NonNull((ProverContext) ctx.Clone()));
       }
 
@@ -299,13 +300,14 @@ namespace Microsoft.Boogie
     {
       lock (this)
       {
-        try
-        {
+        try {
           outcome = thmProver.CheckOutcome(cce.NonNull(handler), CommandLineOptions.Clo.ErrorLimit);
-        }
-        catch (UnexpectedProverOutputException e)
-        {
+        } catch (UnexpectedProverOutputException e) {
           outputExn = e;
+        } catch (OperationCanceledException) {
+          outcome = ProverInterface.Outcome.Canceled;
+          // We don't want to log the comment as the process has been killed
+          throw;
         }
         catch (Exception e)
         {
@@ -332,6 +334,9 @@ namespace Microsoft.Boogie
           case ProverInterface.Outcome.Undetermined:
             thmProver.LogComment("Undetermined");
             break;
+          case ProverInterface.Outcome.Canceled:
+            thmProver.LogComment("canceled");
+            break;
         }
 
         hasOutput = true;
@@ -339,7 +344,8 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit)
+    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout,
+      uint rlimit, CancellationToken cancellationToken)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
@@ -417,7 +423,7 @@ namespace Microsoft.Boogie
     }
 
     [NoDefaultContract]
-    public override Outcome CheckOutcome(ErrorHandler handler, int taskID = -1)
+    public override Outcome CheckOutcome(ErrorHandler handler, int errorLimit)
     {
       //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);

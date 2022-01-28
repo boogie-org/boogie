@@ -1007,7 +1007,7 @@ namespace Microsoft.Boogie
               {
                 cts.Token.ThrowIfCancellationRequested();
               }
-
+              // Here we guarantee that requestId is bound to a CancellationTokenSource inside RequestIdToCancellationTokenSource
               VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls,
                 taskIndex, outputCollector, checkerPool, programId);
               ImplIdToCancellationTokenSource.TryRemove(id, out old);
@@ -1042,6 +1042,7 @@ namespace Microsoft.Boogie
       }
       catch (AggregateException ae)
       {
+        ThrowIfCanceled(ae);
         ae.Flatten().Handle(e =>
         {
           if (e is ProverException)
@@ -1124,6 +1125,14 @@ namespace Microsoft.Boogie
       return outcome;
     }
 
+    private static void ThrowIfCanceled(AggregateException ae) {
+      var canceledException =
+        ae.Flatten().InnerExceptions.FirstOrDefault(exception => exception is OperationCanceledException, null);
+      if (canceledException != null) {
+        throw canceledException;
+      }
+    }
+
     public static void CancelRequest(string requestId)
     {
       Contract.Requires(requestId != null);
@@ -1148,13 +1157,13 @@ namespace Microsoft.Boogie
       {
         if (RequestIdToCancellationTokenSource.IsEmpty)
         {
-          checkerPool.Dispose();
+          checkerPool?.Dispose();
           checkerPool = null;
         }
       }
     }
 
-
+    // Requires requestId to be bound to a CancellationTokenSource in RequestIdToCancellationTokenSource
     private static void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er,
       string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
       Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, CheckerPool checkerPool,
@@ -1196,7 +1205,9 @@ namespace Microsoft.Boogie
 
         verificationResult = new VerificationResult(requestId, impl, programId);
 
-        using (var vcgen = CreateVCGen(program, checkerPool))
+        var cancellationToken = RequestIdToCancellationTokenSource[requestId].Token;
+
+        using (var vcgen = CreateVCGen(program, checkerPool, cancellationToken))
         {
           vcgen.CachingActionCounts = stats.CachingActionCounts;
           verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
@@ -1251,8 +1262,8 @@ namespace Microsoft.Boogie
             verificationResult.Errors = null;
             verificationResult.Outcome = VCGen.Outcome.Inconclusive;
           }
-          catch(AggregateException ae)
-          {
+          catch(AggregateException ae) {
+            ThrowIfCanceled(ae);
             ae.Flatten().Handle(e =>
             {
               if (e is IOException)
@@ -1349,9 +1360,9 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static ConditionGeneration CreateVCGen(Program program, CheckerPool checkerPool)
+    private static ConditionGeneration CreateVCGen(Program program, CheckerPool checkerPool, CancellationToken ct)
     {
-      return new VCGen(program, checkerPool);
+      return new VCGen(program, checkerPool, ct);
     }
 
     #region Houdini

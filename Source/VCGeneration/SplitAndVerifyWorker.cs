@@ -12,6 +12,7 @@ namespace VC
   class SplitAndVerifyWorker
   {
     private readonly CommandLineOptions options;
+    private readonly VCGen vcGen;
     private readonly VerifierCallback callback;
     private readonly ModelViewInfo mvInfo;
     private readonly Implementation implementation;
@@ -38,6 +39,7 @@ namespace VC
       Outcome outcome)
     {
       this.options = options;
+      this.vcGen = vcGen;
       this.callback = callback;
       this.mvInfo = mvInfo;
       this.implementation = implementation;
@@ -127,7 +129,7 @@ namespace VC
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
         implementation.TimeLimit;
-      split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit);
+      split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit, vcGen.CancellationToken);
     }
 
     private async Task ProcessResult(Split split)

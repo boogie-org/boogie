@@ -31,7 +31,7 @@ namespace VC
     }
 
     public ConditionGenerationContracts(Program p, CheckerPool checkerPool)
-      : base(p, checkerPool)
+      : base(p, checkerPool, CancellationToken.None)
     {
     }
   }
@@ -100,11 +100,14 @@ namespace VC
     public Program program;
     public CheckerPool CheckerPool { get; }
 
-    public ConditionGeneration(Program p, CheckerPool checkerPool)
+    public CancellationToken CancellationToken { get; }
+    
+    public ConditionGeneration(Program p, CheckerPool checkerPool, CancellationToken cancellationToken)
     {
       Contract.Requires(p != null && checkerPool != null);
       program = p;
       CheckerPool = checkerPool;
+      CancellationToken = cancellationToken;
     }
 
     /// <summary>

@@ -8,6 +8,7 @@ using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
 using System.Numerics;
+using System.Threading;
 
 namespace Microsoft.Boogie.SMTLib
 {
@@ -15,6 +16,7 @@ namespace Microsoft.Boogie.SMTLib
   {
     private readonly SMTLibOptions libOptions;
     private readonly SMTLibProverContext ctx;
+    private readonly CancellationToken cancellationToken;
     private VCExpressionGenerator gen;
     protected readonly SMTLibProverOptions options;
     private bool usingUnsatCore;
@@ -32,7 +34,7 @@ namespace Microsoft.Boogie.SMTLib
 
     [NotDelayed]
     public SMTLibProcessTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
-      SMTLibProverContext ctx)
+      SMTLibProverContext ctx, CancellationToken cancellationToken)
     {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
@@ -42,6 +44,7 @@ namespace Microsoft.Boogie.SMTLib
       this.options = (SMTLibProverOptions) options;
       this.libOptions = libOptions;
       this.ctx = ctx;
+      this.cancellationToken = cancellationToken;
       this.gen = gen;
       usingUnsatCore = false;
 
@@ -59,6 +62,8 @@ namespace Microsoft.Boogie.SMTLib
       DeclCollector = new TypeDeclCollector(libOptions, Namer);
 
       SetupProcess();
+
+      cancellationToken.Register(() => KillProcess());
 
       if (libOptions.ImmediatelyAcceptCommands)
       {
@@ -115,10 +120,14 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    void KillProcess() {
+      Process?.Close();
+    }
+
     void SetupProcess()
     {
       Process?.Close();
-      Process = options.Solver == SolverKind.NoOpWithZ3Options ? new NoopSolver() : new SMTLibProcess(libOptions, options);
+      Process = options.Solver == SolverKind.NoOpWithZ3Options ? new NoopSolver() : new SMTLibProcess(libOptions, options, cancellationToken);
       Process.ErrorHandler += HandleProverError;
     }
 
@@ -2461,7 +2470,8 @@ namespace Microsoft.Boogie.SMTLib
 
   public class Factory : ProverFactory
   {
-    public override object SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt)
+    public override object SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt,
+      CancellationToken cancellationToken)
     {
       //Contract.Requires(ctxt != null);
       //Contract.Requires(options != null);
@@ -2469,7 +2479,8 @@ namespace Microsoft.Boogie.SMTLib
 
       return this.SpawnProver(libOptions, options,
         cce.NonNull((SMTLibProverContext) ctxt).ExprGen,
-        cce.NonNull((SMTLibProverContext) ctxt));
+        cce.NonNull((SMTLibProverContext) ctxt),
+        cancellationToken);
     }
 
     public override object NewProverContext(ProverOptions options)
@@ -2502,13 +2513,14 @@ namespace Microsoft.Boogie.SMTLib
 
     protected virtual SMTLibProcessTheoremProver SpawnProver(SMTLibOptions libOptions, ProverOptions options,
       VCExpressionGenerator gen,
-      SMTLibProverContext ctx)
+      SMTLibProverContext ctx,
+      CancellationToken cancellationToken)
     {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
       Contract.Ensures(Contract.Result<SMTLibProcessTheoremProver>() != null);
-      return new SMTLibProcessTheoremProver(libOptions, options, gen, ctx);
+      return new SMTLibProcessTheoremProver(libOptions, options, gen, ctx, cancellationToken);
     }
   }
 }

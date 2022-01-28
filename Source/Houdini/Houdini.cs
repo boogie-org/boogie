@@ -5,6 +5,7 @@ using VC;
 using System.IO;
 using Microsoft.Boogie.GraphUtil;
 using System.Linq;
+using System.Threading;
 
 namespace Microsoft.Boogie.Houdini
 {
@@ -408,19 +409,22 @@ namespace Microsoft.Boogie.Houdini
     }
 
     public static TextWriter explainHoudiniDottyFile;
+    private CancellationToken cancellationToken;
 
     protected Houdini()
     {
+      cancellationToken = CancellationToken.None;
     }
 
     public Houdini(Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.txt")
     {
       this.program = program;
       this.cexTraceFile = cexTraceFile;
-      Initialize(program, stats);
+      Initialize(program, stats, new CancellationToken());
     }
 
-    protected void Initialize(Program program, HoudiniSession.HoudiniStatistics stats)
+    protected void Initialize(Program program, HoudiniSession.HoudiniStatistics stats,
+      CancellationToken cancellationToken)
     {
       if (CommandLineOptions.Clo.Trace)
       {
@@ -465,9 +469,9 @@ namespace Microsoft.Boogie.Houdini
       */
 
       var checkerPool = new CheckerPool(CommandLineOptions.Clo);
-      this.vcgen = new VCGen(program, checkerPool);
+      this.vcgen = new VCGen(program, checkerPool, cancellationToken);
       this.proverInterface = ProverInterface.CreateProver(program, CommandLineOptions.Clo.ProverLogFilePath,
-        CommandLineOptions.Clo.ProverLogFileAppend, CommandLineOptions.Clo.TimeLimit, taskID: GetTaskID());
+        CommandLineOptions.Clo.ProverLogFileAppend, CommandLineOptions.Clo.TimeLimit, cancellationToken, taskID: GetTaskID());
 
       vcgenFailures = new HashSet<Implementation>();
       Dictionary<Implementation, HoudiniSession> houdiniSessions = new Dictionary<Implementation, HoudiniSession>();
@@ -891,7 +895,7 @@ namespace Microsoft.Boogie.Houdini
         this.NotifyImplementation(currentHoudiniState.Implementation);
 
         houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out var session);
-        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors);
+        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors, cancellationToken);
         UpdateHoudiniOutcome(currentHoudiniState.Outcome, currentHoudiniState.Implementation, outcome, errors);
         this.NotifyOutcome(outcome);
 
@@ -1485,11 +1489,11 @@ namespace Microsoft.Boogie.Houdini
     }
 
     private ProverInterface.Outcome TryCatchVerify(HoudiniSession session, int stage, IEnumerable<int> completedStages,
-      out List<Counterexample> errors)
+      out List<Counterexample> errors, CancellationToken cancellationToken)
     {
       ProverInterface.Outcome outcome;
       try {
-        outcome = session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), out errors, GetErrorLimit());
+        outcome = session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), out errors, GetErrorLimit(), cancellationToken);
       }
       catch (UnexpectedProverOutputException upo)
       {
@@ -1543,7 +1547,7 @@ namespace Microsoft.Boogie.Houdini
         this.NotifyAssignment(currentHoudiniState.Assignment);
 
         //check the VC with the current assignment
-        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors);
+        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors, cancellationToken);
         this.NotifyOutcome(outcome);
 
         DebugRefutedCandidates(currentHoudiniState.Implementation, errors);

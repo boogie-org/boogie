@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Threading;
 
 namespace Microsoft.Boogie.Houdini
 {
@@ -25,7 +26,7 @@ namespace Microsoft.Boogie.Houdini
       this.program = program;
       this.cexTraceFile = cexTraceFile;
       this.taskID = taskId;
-      Initialize(program, stats);
+      Initialize(program, stats, CancellationToken.None);
     }
 
     static ConcurrentHoudini()

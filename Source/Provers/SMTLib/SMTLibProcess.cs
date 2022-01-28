@@ -14,6 +14,7 @@ namespace Microsoft.Boogie.SMTLib
     readonly Process prover;
     readonly Inspector inspector;
     readonly SMTLibProverOptions options;
+    private readonly CancellationToken cancellationToken;
     readonly Queue<string> proverOutput = new();
     readonly Queue<string> proverErrors = new();
     readonly TextWriter toProver;
@@ -21,9 +22,10 @@ namespace Microsoft.Boogie.SMTLib
     static int smtProcessIdSeq = 0;
     ConsoleCancelEventHandler cancelEvent;
 
-    public SMTLibProcess(SMTLibOptions libOptions, SMTLibProverOptions options)
+    public SMTLibProcess(SMTLibOptions libOptions, SMTLibProverOptions options, CancellationToken cancellationToken)
     {
       this.options = options;
+      this.cancellationToken = cancellationToken;
       smtProcessId = smtProcessIdSeq++;
 
       var psi = new ProcessStartInfo(options.ExecutablePath(), options.SolverArguments.Concat(" "))
@@ -432,6 +434,7 @@ namespace Microsoft.Boogie.SMTLib
         {
           while (proverOutput.Count == 0 && proverErrors.Count == 0 && !prover.HasExited)
           {
+            cancellationToken.ThrowIfCancellationRequested();
             Monitor.Wait(this, 100);
           }
 

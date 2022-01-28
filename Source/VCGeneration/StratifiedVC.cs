@@ -7,6 +7,7 @@ using System.IO;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
+using System.Threading;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
@@ -356,6 +357,7 @@ namespace VC
 
     // boolControlVC (block -> its Bool variable)
     public Dictionary<Block, VCExprVar> blockToControlVar;
+    private CancellationToken cancellationToken;
 
     public StratifiedInliningInfo(Implementation implementation, StratifiedVCGenBase stratifiedVcGen,
       Action<Implementation> PassiveImplInstrumentation)
@@ -641,7 +643,7 @@ namespace VC
 
       var absyIds = new ControlFlowIdMap<Absy>();
       
-      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(absyIds, proverInterface.Context);
+      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(absyIds, proverInterface.Context, cancellationToken);
       translator.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
       vcexpr = gen.Not(vcgen.GenerateVCAux(impl, controlFlowVariableExpr, absyIds, proverInterface.Context));
 
@@ -696,11 +698,11 @@ namespace VC
     public ProverInterface prover;
 
     public StratifiedVCGenBase(Program program, string /*?*/ logFilePath, bool appendLogFile, CheckerPool checkerPool,
-      Action<Implementation> PassiveImplInstrumentation)
-      : base(program, checkerPool)
+      Action<Implementation> PassiveImplInstrumentation, CancellationToken cancellationToken)
+      : base(program, checkerPool, cancellationToken)
     {
       implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
-      prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.TimeLimit);
+      prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.TimeLimit, cancellationToken);
       foreach (var impl in program.Implementations)
       {
         implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this, PassiveImplInstrumentation);
