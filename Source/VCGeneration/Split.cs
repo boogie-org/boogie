@@ -1342,10 +1342,7 @@ namespace VC
 
             return;
           case ProverInterface.Outcome.Canceled:
-            if (curOutcome != ConditionGeneration.Outcome.Canceled)
-            {
-              curOutcome = ConditionGeneration.Outcome.Canceled;
-            }
+            curOutcome = ConditionGeneration.Outcome.Canceled;
 
             return;
           default:
