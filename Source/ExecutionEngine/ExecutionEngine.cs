@@ -1126,10 +1126,10 @@ namespace Microsoft.Boogie
     }
 
     private static void ThrowIfCanceled(AggregateException ae) {
-      var canceledException =
-        ae.Flatten().InnerExceptions.FirstOrDefault(exception => exception is OperationCanceledException, null);
-      if (canceledException != null) {
-        throw canceledException;
+      foreach (var e in ae.Flatten().InnerExceptions) {
+        if (e is OperationCanceledException) {
+          throw e;
+        }
       }
     }
 

@@ -360,11 +360,12 @@ namespace VC
     private CancellationToken cancellationToken;
 
     public StratifiedInliningInfo(Implementation implementation, StratifiedVCGenBase stratifiedVcGen,
-      Action<Implementation> PassiveImplInstrumentation)
+      Action<Implementation> PassiveImplInstrumentation, CancellationToken cancellationToken)
     {
       vcgen = stratifiedVcGen;
       impl = implementation;
       this.PassiveImplInstrumentation = PassiveImplInstrumentation;
+      this.cancellationToken = cancellationToken;
 
       List<Variable> functionInterfaceVars = new List<Variable>();
       foreach (Variable v in vcgen.program.GlobalVariables)
@@ -705,7 +706,8 @@ namespace VC
       prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.TimeLimit, cancellationToken);
       foreach (var impl in program.Implementations)
       {
-        implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this, PassiveImplInstrumentation);
+        implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this, PassiveImplInstrumentation, 
+          cancellationToken);
       }
 
       GenerateRecordFunctions();

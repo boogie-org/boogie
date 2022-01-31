@@ -17,8 +17,6 @@ namespace VC
 
   public class VCGen : ConditionGeneration
   {
-    public CancellationToken CancellationToken { get; }
-
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
@@ -101,7 +99,7 @@ namespace VC
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-        DFS(initial, new CancellationToken());
+        DFS(initial);
       }
       
       void TopologicalSortImpl()
@@ -280,7 +278,7 @@ namespace VC
         return BooleanEval(e, ref val) && !val;
       }
 
-      bool CheckUnreachable(Block cur, List<Cmd> seq, CancellationToken cancellationToken)
+      bool CheckUnreachable(Block cur, List<Cmd> seq)
       {
         Contract.Requires(cur != null);
         Contract.Requires(seq != null);
@@ -352,7 +350,7 @@ namespace VC
             }
 
             ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(absyIds, this.callback),
-              CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit, cancellationToken);
+              CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit);
           }
 
           ch.ProverTask.Wait();
@@ -396,7 +394,7 @@ namespace VC
 
       const bool turnAssertIntoAssumes = false;
 
-      void DFS(Block cur, CancellationToken cancellationToken)
+      void DFS(Block cur)
       {
         Contract.Requires(cur != null);
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -456,7 +454,7 @@ namespace VC
 
           if (assumeFalse)
           {
-            CheckUnreachable(cur, seq, cancellationToken);
+            CheckUnreachable(cur, seq);
             return;
           }
 
@@ -472,7 +470,7 @@ namespace VC
         if (ret != null || (go != null && cce.NonNull(go.labelTargets).Count == 0))
         {
           // we end in return, so there will be no more places to check
-          CheckUnreachable(cur, seq, cancellationToken);
+          CheckUnreachable(cur, seq);
         }
         else if (go != null)
         {
@@ -490,13 +488,13 @@ namespace VC
 
           if (needToCheck)
           {
-            CheckUnreachable(cur, seq, cancellationToken);
+            CheckUnreachable(cur, seq);
           }
 
           foreach (Block target in go.labelTargets)
           {
             Contract.Assert(target != null);
-            DFS(target, cancellationToken);
+            DFS(target);
           }
         }
       }

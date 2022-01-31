@@ -624,6 +624,11 @@ namespace Microsoft.Boogie
       Contract.Requires(reason != null);
     }
 
+    public virtual void OnCanceled(string reason)
+    {
+      Contract.Requires(reason != null);
+    }
+
     public delegate void ProgressDelegate(string phase, int step, int totalSteps, double progressEstimate);
     
     public virtual ProgressDelegate OnProgress => null;

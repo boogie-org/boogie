@@ -345,7 +345,7 @@ namespace Microsoft.Boogie
     }
 
     public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout,
-      uint rlimit, CancellationToken cancellationToken)
+      uint rlimit)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);

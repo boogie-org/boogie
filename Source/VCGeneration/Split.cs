@@ -1341,6 +1341,13 @@ namespace VC
             }
 
             return;
+          case ProverInterface.Outcome.Canceled:
+            if (curOutcome != ConditionGeneration.Outcome.Canceled)
+            {
+              curOutcome = ConditionGeneration.Outcome.Canceled;
+            }
+
+            return;
           default:
             Contract.Assert(false);
             throw new cce.UnreachableException();
@@ -1397,7 +1404,7 @@ namespace VC
             desc += "_split" + no;
           }
 
-          checker.BeginCheck(desc, vc, reporter, timeout, rlimit, vcGenCancellationToken);
+          checker.BeginCheck(desc, vc, reporter, timeout, rlimit);
         }
       }
 

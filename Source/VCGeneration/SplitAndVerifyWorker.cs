@@ -214,6 +214,13 @@ namespace VC
         }
 
         callback.OnOutOfResource(msg);
+      } else if (outcome == Outcome.Canceled) {
+        string msg = "canceled";
+        if (split.reporter is { resourceExceededMessage: { } }) {
+          msg = split.reporter.resourceExceededMessage;
+        }
+
+        callback.OnCanceled(msg);
       }
     }
   }

@@ -50,6 +50,7 @@ namespace VC
       OutOfMemory,
       Inconclusive,
       ReachedBound,
+      Canceled,
       SolverException
     }
 

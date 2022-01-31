@@ -420,7 +420,7 @@ namespace Microsoft.Boogie.Houdini
     {
       this.program = program;
       this.cexTraceFile = cexTraceFile;
-      Initialize(program, stats, new CancellationToken());
+      Initialize(program, stats, CancellationToken.None);
     }
 
     protected void Initialize(Program program, HoudiniSession.HoudiniStatistics stats,
