@@ -416,15 +416,13 @@ namespace Microsoft.Boogie.Houdini
       cancellationToken = CancellationToken.None;
     }
 
-    public Houdini(Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.txt")
-    {
+    public Houdini(Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.txt") {
       this.program = program;
       this.cexTraceFile = cexTraceFile;
-      Initialize(program, stats, CancellationToken.None);
+      Initialize(program, stats);
     }
 
-    protected void Initialize(Program program, HoudiniSession.HoudiniStatistics stats,
-      CancellationToken cancellationToken)
+    protected void Initialize(Program program, HoudiniSession.HoudiniStatistics stats)
     {
       if (CommandLineOptions.Clo.Trace)
       {
@@ -895,7 +893,7 @@ namespace Microsoft.Boogie.Houdini
         this.NotifyImplementation(currentHoudiniState.Implementation);
 
         houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out var session);
-        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors, cancellationToken);
+        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors);
         UpdateHoudiniOutcome(currentHoudiniState.Outcome, currentHoudiniState.Implementation, outcome, errors);
         this.NotifyOutcome(outcome);
 
@@ -1489,7 +1487,7 @@ namespace Microsoft.Boogie.Houdini
     }
 
     private ProverInterface.Outcome TryCatchVerify(HoudiniSession session, int stage, IEnumerable<int> completedStages,
-      out List<Counterexample> errors, CancellationToken cancellationToken)
+      out List<Counterexample> errors)
     {
       ProverInterface.Outcome outcome;
       try {
@@ -1547,7 +1545,7 @@ namespace Microsoft.Boogie.Houdini
         this.NotifyAssignment(currentHoudiniState.Assignment);
 
         //check the VC with the current assignment
-        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors, cancellationToken);
+        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors);
         this.NotifyOutcome(outcome);
 
         DebugRefutedCandidates(currentHoudiniState.Implementation, errors);

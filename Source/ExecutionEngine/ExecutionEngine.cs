@@ -1042,18 +1042,12 @@ namespace Microsoft.Boogie
       }
       catch (AggregateException ae)
       {
-        ThrowIfCanceled(ae);
         ae.Flatten().Handle(e =>
         {
           if (e is ProverException)
           {
             printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e.Message);
             outcome = PipelineOutcome.FatalError;
-            return true;
-          }
-
-          if (e is OperationCanceledException)
-          {
             return true;
           }
 
@@ -1123,14 +1117,6 @@ namespace Microsoft.Boogie
       #endregion
 
       return outcome;
-    }
-
-    private static void ThrowIfCanceled(AggregateException ae) {
-      foreach (var e in ae.Flatten().InnerExceptions) {
-        if (e is OperationCanceledException) {
-          throw e;
-        }
-      }
     }
 
     public static void CancelRequest(string requestId)
@@ -1263,7 +1249,6 @@ namespace Microsoft.Boogie
             verificationResult.Outcome = VCGen.Outcome.Inconclusive;
           }
           catch(AggregateException ae) {
-            ThrowIfCanceled(ae);
             ae.Flatten().Handle(e =>
             {
               if (e is IOException)

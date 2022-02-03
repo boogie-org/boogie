@@ -26,7 +26,7 @@ namespace Microsoft.Boogie.Houdini
       this.program = program;
       this.cexTraceFile = cexTraceFile;
       this.taskID = taskId;
-      Initialize(program, stats, CancellationToken.None);
+      Initialize(program, stats);
     }
 
     static ConcurrentHoudini()
