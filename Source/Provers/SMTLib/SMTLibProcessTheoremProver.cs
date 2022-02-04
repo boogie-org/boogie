@@ -1961,7 +1961,7 @@ namespace Microsoft.Boogie.SMTLib
         // it's better to be able to continue, even with uninformative data.
         lock (proverWarnings)
         {
-          proverWarnings.Add("Failed to parse resource count from solver.");
+          proverWarnings.Add($"Failed to parse resource count from solver. Got: {resp.ToString()}");
         }
         return -1;
       }
