@@ -1960,7 +1960,20 @@ namespace Microsoft.Boogie.SMTLib
     {
       SendThisVC("(get-info :rlimit)");
       var resp = Process.GetProverResponse(cancellationToken);
-      return int.Parse(resp[0].Name);
+      try
+      {
+        return int.Parse(resp[0].Name);
+      }
+      catch
+      {
+        // If anything goes wrong with parsing the response from the solver,
+        // it's better to be able to continue, even with uninformative data.
+        lock (proverWarnings)
+        {
+          proverWarnings.Add($"Failed to parse resource count from solver. Got: {resp.ToString()}");
+        }
+        return -1;
+      }
     }
 
     object ParseValueFromProver(SExpr expr)
