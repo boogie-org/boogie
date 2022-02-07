@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 
 namespace Microsoft.Boogie.SMTLib;
 
@@ -7,7 +8,7 @@ public abstract class SMTLibSolver
   public abstract event Action<string> ErrorHandler;
   public abstract void Close();
   public abstract void Send(string cmd);
-  public abstract SExpr GetProverResponse();
+  public abstract SExpr GetProverResponse(CancellationToken cancellationToken);
   public abstract void NewProblem(string descriptiveName);
 
   protected abstract void HandleError(string msg);
@@ -17,12 +18,12 @@ public abstract class SMTLibSolver
     Send("(get-info :name)");
   }
 
-  public void PingPong()
+  public void PingPong(CancellationToken cancellationToken)
   {
     Ping();
     while (true)
     {
-      var sx = GetProverResponse();
+      var sx = GetProverResponse(cancellationToken);
       if (sx == null)
       {
         throw new ProverDiedException();
@@ -44,11 +45,11 @@ public abstract class SMTLibSolver
     return sx is { Name: ":name" };
   }
 
-  public ProverDiedException GetExceptionIfProverDied()
+  public ProverDiedException GetExceptionIfProverDied(CancellationToken cancellationToken)
   {
     try
     {
-      PingPong();
+      PingPong(cancellationToken);
     }
     catch (ProverDiedException e)
     {

@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 
 namespace Microsoft.Boogie.SMTLib;
 
@@ -34,7 +35,7 @@ class NoopSolver : SMTLibSolver
     }
   }
 
-  public override SExpr GetProverResponse()
+  public override SExpr GetProverResponse(CancellationToken cancellationToken)
   {
     var result = response;
     response = null;

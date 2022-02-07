@@ -63,7 +63,7 @@ namespace Microsoft.Boogie.SMTLib
 
       SetupProcess();
 
-      cancellationToken.Register(() => KillProcess());
+      cancellationToken.Register(KillProcess);
 
       if (libOptions.ImmediatelyAcceptCommands)
       {
@@ -127,7 +127,7 @@ namespace Microsoft.Boogie.SMTLib
     void SetupProcess()
     {
       Process?.Close();
-      Process = options.Solver == SolverKind.NoOpWithZ3Options ? new NoopSolver() : new SMTLibProcess(libOptions, options, cancellationToken);
+      Process = options.Solver == SolverKind.NoOpWithZ3Options ? new NoopSolver() : new SMTLibProcess(libOptions, options);
       Process.ErrorHandler += HandleProverError;
     }
 
@@ -581,7 +581,7 @@ namespace Microsoft.Boogie.SMTLib
 
       if (Process != null)
       {
-        Process.PingPong(); // flush any errors
+        Process.PingPong(cancellationToken); // flush any errors
         Process.NewProblem(descriptiveName);
       }
 
@@ -632,7 +632,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private void RecoverIfProverCrashedAfterReset()
     {
-      if (Process.GetExceptionIfProverDied() is Exception e)
+      if (Process.GetExceptionIfProverDied(cancellationToken) is Exception e)
       {
         // We recover the process but don't issue the `(reset)` command that fails.
         SetupProcess();
@@ -825,7 +825,7 @@ namespace Microsoft.Boogie.SMTLib
               {
                 UsedNamedAssumes = new HashSet<string>();
                 SendThisVC("(get-unsat-core)");
-                var resp = Process.GetProverResponse();
+                var resp = Process.GetProverResponse(cancellationToken);
                 if (resp.Name != "")
                 {
                   UsedNamedAssumes.Add(resp.Name);
@@ -1065,7 +1065,7 @@ namespace Microsoft.Boogie.SMTLib
       var path = new List<string>();
       while (true)
       {
-        var response = Process.GetProverResponse();
+        var response = Process.GetProverResponse(cancellationToken);
         if (response == null)
         {
           break;
@@ -1528,7 +1528,7 @@ namespace Microsoft.Boogie.SMTLib
       Model theModel = null;
       while (true)
       {
-        var resp = Process.GetProverResponse();
+        var resp = Process.GetProverResponse(cancellationToken);
         if (resp == null || Process.IsPong(resp))
         {
           break;
@@ -1603,7 +1603,7 @@ namespace Microsoft.Boogie.SMTLib
 
       while (true)
       {
-        var resp = Process.GetProverResponse();
+        var resp = Process.GetProverResponse(cancellationToken);
         if (resp == null || Process.IsPong(resp))
         {
           break;
@@ -1650,7 +1650,7 @@ namespace Microsoft.Boogie.SMTLib
         Process.Ping();
         while (true)
         {
-          var resp = Process.GetProverResponse();
+          var resp = Process.GetProverResponse(cancellationToken);
           if (resp == null || Process.IsPong(resp))
           {
             break;
@@ -1902,7 +1902,7 @@ namespace Microsoft.Boogie.SMTLib
     public override List<string> UnsatCore()
     {
       SendThisVC("(get-unsat-core)");
-      var resp = Process.GetProverResponse().ToString();
+      var resp = Process.GetProverResponse(cancellationToken).ToString();
       if (resp == "" || resp == "()")
       {
         return null;
@@ -1959,7 +1959,7 @@ namespace Microsoft.Boogie.SMTLib
     public override int GetRCount() 
     {
       SendThisVC("(get-info :rlimit)");
-      var resp = Process.GetProverResponse();
+      var resp = Process.GetProverResponse(cancellationToken);
       return int.Parse(resp[0].Name);
     }
 
@@ -2128,7 +2128,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       string vcString = VCExpr2String(expr, 1);
       SendThisVC("(get-value (" + vcString + "))");
-      var resp = Process.GetProverResponse();
+      var resp = Process.GetProverResponse(cancellationToken);
       if (resp == null)
       {
         throw new VCExprEvaluationException();
@@ -2260,7 +2260,7 @@ namespace Microsoft.Boogie.SMTLib
 
       Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
       SendThisVC("(get-unsat-core)");
-      var resp = Process.GetProverResponse();
+      var resp = Process.GetProverResponse(cancellationToken);
       unsatCore = new List<int>();
       if (resp.Name != "")
       {
@@ -2354,7 +2354,7 @@ namespace Microsoft.Boogie.SMTLib
         {
           SendThisVC("(get-value (" + relaxVar + "))");
           FlushLogFile();
-          var resp = Process.GetProverResponse();
+          var resp = Process.GetProverResponse(cancellationToken);
           if (resp == null)
           {
             break;
