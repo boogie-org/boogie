@@ -14,6 +14,9 @@ namespace Microsoft.Boogie
     int col { get; set; } // token column (starting at 0)
     int line { get; set; } // token line (starting at 1)
     string /*!*/ val { get; set; } // token value
+    
+    string/*!*/ leadingTrivia { get; set; } // Leading trivia (comments, whitespace)
+    string/*!*/ trailingTrivia { get; set; } // Trailing trivia (comments, whitespace)
 
     bool IsValid { get; }
   }
@@ -34,6 +37,9 @@ namespace Microsoft.Boogie
 
     public static readonly IToken /*!*/
       NoToken = new Token();
+
+    private string/*!*/ _trailingTrivia;
+    private string/*!*/ _leadingTrivia;
 
     public Token()
     {
@@ -82,6 +88,18 @@ namespace Microsoft.Boogie
     {
       get { return this._val; }
       set { this._val = value; }
+    }
+    
+    public string /*!*/ leadingTrivia
+    {
+      get { return this._leadingTrivia; }
+      set { this._leadingTrivia = value; }
+    }
+    
+    public string /*!*/ trailingTrivia
+    {
+      get { return this._trailingTrivia; }
+      set { this._trailingTrivia = value; }
     }
 
     public bool IsValid
