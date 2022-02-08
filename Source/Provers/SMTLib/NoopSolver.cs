@@ -35,7 +35,7 @@ class NoopSolver : SMTLibSolver
     }
   }
 
-  public override SExpr GetProverResponse(CancellationToken cancellationToken)
+  public override SExpr GetProverResponse()
   {
     var result = response;
     response = null;

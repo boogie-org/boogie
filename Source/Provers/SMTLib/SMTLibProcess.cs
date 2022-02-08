@@ -118,13 +118,13 @@ namespace Microsoft.Boogie.SMTLib
       get { return inspector; }
     }
 
-    public override SExpr GetProverResponse(CancellationToken cancellationToken)
+    public override SExpr GetProverResponse()
     {
       toProver.Flush();
 
       while (true)
       {
-        var exprs = ParseSExprs(true, cancellationToken).ToArray();
+        var exprs = ParseSExprs(true).ToArray();
         Contract.Assert(exprs.Length <= 1);
         if (exprs.Length == 0)
         {
@@ -243,13 +243,13 @@ namespace Microsoft.Boogie.SMTLib
     int linePos;
     string currLine;
 
-    char SkipWs(CancellationToken cancellationToken)
+    char SkipWs()
     {
       while (true)
       {
         if (currLine == null)
         {
-          currLine = ReadProver(cancellationToken);
+          currLine = ReadProver();
           if (currLine == null)
           {
             return '\0';
@@ -279,11 +279,11 @@ namespace Microsoft.Boogie.SMTLib
       linePos++;
     }
 
-    string ParseId(CancellationToken cancellationToken)
+    string ParseId()
     {
       var sb = new StringBuilder();
 
-      var beg = SkipWs(cancellationToken);
+      var beg = SkipWs();
 
       var quoted = beg == '"' || beg == '|';
       if (quoted)
@@ -300,7 +300,7 @@ namespace Microsoft.Boogie.SMTLib
             do
             {
               sb.Append("\n");
-              currLine = ReadProver(cancellationToken);
+              currLine = ReadProver();
             } while (currLine == "");
             if (currLine == null)
             {
@@ -345,11 +345,11 @@ namespace Microsoft.Boogie.SMTLib
       HandleError("Error parsing prover output: " + msg);
     }
 
-    IEnumerable<SExpr> ParseSExprs(bool top, CancellationToken cancellationToken)
+    IEnumerable<SExpr> ParseSExprs(bool top)
     {
       while (true)
       {
-        var c = SkipWs(cancellationToken);
+        var c = SkipWs();
         if (c == '\0')
         {
           break;
@@ -370,7 +370,7 @@ namespace Microsoft.Boogie.SMTLib
         if (c == '(')
         {
           Shift();
-          c = SkipWs(cancellationToken);
+          c = SkipWs();
           if (c == '\0')
           {
             ParseError("expecting something after '('");
@@ -382,12 +382,12 @@ namespace Microsoft.Boogie.SMTLib
           }
           else
           {
-            id = ParseId(cancellationToken);
+            id = ParseId();
           }
 
-          var args = ParseSExprs(false, cancellationToken).ToArray();
+          var args = ParseSExprs(false).ToArray();
 
-          c = SkipWs(cancellationToken);
+          c = SkipWs();
           if (c == ')')
           {
             Shift();
@@ -401,7 +401,7 @@ namespace Microsoft.Boogie.SMTLib
         }
         else
         {
-          id = ParseId(cancellationToken);
+          id = ParseId();
           yield return new SExpr(id);
         }
 
@@ -416,7 +416,7 @@ namespace Microsoft.Boogie.SMTLib
 
     #region handling input from the prover
 
-    string ReadProver(CancellationToken cancellationToken)
+    string ReadProver()
     {
       string error = null;
       while (true)
@@ -432,7 +432,6 @@ namespace Microsoft.Boogie.SMTLib
         {
           while (proverOutput.Count == 0 && proverErrors.Count == 0 && !prover.HasExited)
           {
-            cancellationToken.ThrowIfCancellationRequested();
             Monitor.Wait(this, 100);
           }
 

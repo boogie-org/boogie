@@ -8,7 +8,7 @@ public abstract class SMTLibSolver
   public abstract event Action<string> ErrorHandler;
   public abstract void Close();
   public abstract void Send(string cmd);
-  public abstract SExpr GetProverResponse(CancellationToken cancellationToken);
+  public abstract SExpr GetProverResponse();
   public abstract void NewProblem(string descriptiveName);
 
   protected abstract void HandleError(string msg);
@@ -18,12 +18,12 @@ public abstract class SMTLibSolver
     Send("(get-info :name)");
   }
 
-  public void PingPong(CancellationToken cancellationToken)
+  public void PingPong()
   {
     Ping();
     while (true)
     {
-      var sx = GetProverResponse(cancellationToken);
+      var sx = GetProverResponse();
       if (sx == null)
       {
         throw new ProverDiedException();
@@ -45,11 +45,11 @@ public abstract class SMTLibSolver
     return sx is { Name: ":name" };
   }
 
-  public ProverDiedException GetExceptionIfProverDied(CancellationToken cancellationToken)
+  public ProverDiedException GetExceptionIfProverDied()
   {
     try
     {
-      PingPong(cancellationToken);
+      PingPong();
     }
     catch (ProverDiedException e)
     {
