@@ -1207,9 +1207,9 @@ namespace Microsoft.Boogie
             CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
           }
 
-          try
-          {
-            verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId);
+          try {
+            var cancellationToken = RequestIdToCancellationTokenSource[requestId].Token;
+            verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId, cancellationToken);
             if (CommandLineOptions.Clo.ExtractLoops && verificationResult.Errors != null)
             {
               var vcg = vcgen as VCGen;

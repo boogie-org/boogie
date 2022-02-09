@@ -805,7 +805,7 @@ namespace VC
       }
     }
 
-    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback)
+    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback, CancellationToken cancellationToken)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
@@ -867,7 +867,7 @@ namespace VC
       }
 
       var worker = new SplitAndVerifyWorker(CommandLineOptions.Clo, this, impl, gotoCmdOrigins, callback, mvInfo, outcome);
-      outcome = worker.WorkUntilDone().Result;
+      outcome = worker.WorkUntilDone(cancellationToken).Result;
       ResourceCount = worker.ResourceCount;
       
       if (outcome == Outcome.Correct && smoke_tester != null)
