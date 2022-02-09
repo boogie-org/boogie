@@ -302,8 +302,7 @@ The generic options may or may not be used by the prover plugin.
   {
     // Really returns ProverInterface.
     //public abstract object! SpawnProver(ProverOptions! options, object! ctxt);
-    public abstract object SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt,
-      CancellationToken cancellationToken);
+    public abstract object SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt);
 
     // Really returns ProverContext
     public abstract object /*!*/ NewProverContext(ProverOptions /*!*/ options);

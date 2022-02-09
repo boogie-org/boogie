@@ -96,6 +96,8 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    public override bool HasExited => prover.HasExited;
+
     public override void Send(string cmd)
     {
       if (options.Verbosity >= 2)

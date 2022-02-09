@@ -84,7 +84,7 @@ public abstract class ProverInterface
       }
     }
 
-    return (ProverInterface) CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, options, ctx, cancellationToken);
+    return (ProverInterface) CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, options, ctx);
   }
 
   public enum Outcome
@@ -277,6 +277,8 @@ public abstract class ProverInterface
   public abstract ProverContext Context { get; }
 
   public abstract VCExpressionGenerator VCExprGen { get; }
+  
+  public abstract bool HasExited { get; }
 
   public virtual void DefineMacro(Macro fun, VCExpr vc)
   {
@@ -295,6 +297,10 @@ public abstract class ProverInterface
   // Assert vc tagged with a name
   public virtual void AssertNamed(VCExpr vc, bool polarity, string name)
   {
+    throw new NotImplementedException();
+  }
+
+  public virtual void Cancel() {
     throw new NotImplementedException();
   }
 }

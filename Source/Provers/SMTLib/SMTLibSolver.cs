@@ -6,6 +6,7 @@ namespace Microsoft.Boogie.SMTLib;
 public abstract class SMTLibSolver
 {
   public abstract event Action<string> ErrorHandler;
+  public abstract bool HasExited { get; }
   public abstract void Close();
   public abstract void Send(string cmd);
   public abstract SExpr GetProverResponse();

@@ -73,10 +73,10 @@ namespace VC
       splitNumber = DoSplitting ? 0 : -1;
     }
 
-    public async Task<Outcome> WorkUntilDone()
+    public async Task<Outcome> WorkUntilDone(CancellationToken cancellationToken)
     {
       TrackSplitsCost(manualSplits);
-      await Task.WhenAll(manualSplits.Select(DoWork));
+      await Task.WhenAll(manualSplits.Select(split => DoWork(split, cancellationToken)));
 
       return outcome;
     }
@@ -96,18 +96,17 @@ namespace VC
       }
     }
 
-    async Task DoWork(Split split)
+    async Task DoWork(Split split, CancellationToken cancellationToken)
     {
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split);
 
       try {
         StartCheck(split, checker);
-        await split.ProverTask;
-        await ProcessResult(split);
+        await split.ProverTask.WaitAsync(cancellationToken);
+        await ProcessResult(split, cancellationToken);
       }
-      catch {
+      finally {
         split.ReleaseChecker();
-        throw;
       }
     }
 
@@ -132,7 +131,7 @@ namespace VC
       split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit, vcGen.CancellationToken);
     }
 
-    private async Task ProcessResult(Split split)
+    private async Task ProcessResult(Split split, CancellationToken cancellationToken)
     {
       if (TrackingProgress) {
         lock (this) {
@@ -161,12 +160,10 @@ namespace VC
         return;
       }
 
-      var newTasks = HandleProverFailure(split);
-      split.ReleaseChecker(); // Can only be released after the synchronous part of HandleProverFailure.
-      await newTasks;
+      await HandleProverFailure(split, cancellationToken);
     }
 
-    private async Task HandleProverFailure(Split split)
+    private async Task HandleProverFailure(Split split, CancellationToken cancellationToken)
     {
       if (split.LastChance) {
         string msg = "some timeout";
@@ -188,7 +185,7 @@ namespace VC
         if (outcome != Outcome.Errors) {
           outcome = Outcome.Correct;
         }
-        await Task.WhenAll(newSplits.Select(DoWork));
+        await Task.WhenAll(newSplits.Select(newSplit => DoWork(newSplit, cancellationToken)));
         return;
       }
 

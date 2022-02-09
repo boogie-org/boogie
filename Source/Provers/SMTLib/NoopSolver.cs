@@ -9,6 +9,9 @@ class NoopSolver : SMTLibSolver
   public override event Action<string> ErrorHandler;
 #pragma warning restore CS0067
 
+  // A Noop solver never exits
+  public override bool HasExited => false;
+
   public override void Close()
   {
   }

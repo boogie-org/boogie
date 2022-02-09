@@ -64,6 +64,12 @@ namespace Microsoft.Boogie
       pool.AddChecker(this);
     }
 
+    private void Cancel() {
+      status = CheckerStatus.Closed;
+      thmProver.Cancel();
+      pool.CancelChecker(this);
+    }
+
     public Task ProverTask { get; set; }
 
     public bool WillingToHandle(Program prog)
@@ -134,7 +140,7 @@ namespace Microsoft.Boogie
       {
         ctx = (ProverContext) cce.NonNull(ctx).Clone();
         prover = (ProverInterface)
-          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx, vcgen.CancellationToken);
+          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx);
       }
       else
       {
@@ -149,7 +155,8 @@ namespace Microsoft.Boogie
         // context in the cache, so that the prover can setup stuff in
         // the context to be cached
         prover = (ProverInterface)
-          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx, vcgen.CancellationToken);
+          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx);
+        vcgen.CancellationToken.Register(Cancel);
         cachedContexts.Add(key, cce.NonNull((ProverContext) ctx.Clone()));
       }
 
@@ -304,42 +311,39 @@ namespace Microsoft.Boogie
           outcome = thmProver.CheckOutcome(cce.NonNull(handler), CommandLineOptions.Clo.ErrorLimit);
         } catch (UnexpectedProverOutputException e) {
           outputExn = e;
-        } catch (OperationCanceledException) {
-          outcome = ProverInterface.Outcome.Canceled;
-          // We don't want to log the comment as the process has been killed
-          throw;
         }
         catch (Exception e)
         {
           outputExn = new UnexpectedProverOutputException(e.Message);
         }
 
-        switch (outcome)
-        {
-          case ProverInterface.Outcome.Valid:
-            thmProver.LogComment("Valid");
-            break;
-          case ProverInterface.Outcome.Invalid:
-            thmProver.LogComment("Invalid");
-            break;
-          case ProverInterface.Outcome.TimeOut:
-            thmProver.LogComment("Timed out");
-            break;
-          case ProverInterface.Outcome.OutOfResource:
-            thmProver.LogComment("Out of resource");
-            break;
-          case ProverInterface.Outcome.OutOfMemory:
-            thmProver.LogComment("Out of memory");
-            break;
-          case ProverInterface.Outcome.Undetermined:
-            thmProver.LogComment("Undetermined");
-            break;
-          case ProverInterface.Outcome.Canceled:
-            thmProver.LogComment("canceled");
-            break;
+        if (!thmProver.HasExited) {
+          switch (outcome) {
+            case ProverInterface.Outcome.Valid:
+              thmProver.LogComment("Valid");
+              break;
+            case ProverInterface.Outcome.Invalid:
+              thmProver.LogComment("Invalid");
+              break;
+            case ProverInterface.Outcome.TimeOut:
+              thmProver.LogComment("Timed out");
+              break;
+            case ProverInterface.Outcome.OutOfResource:
+              thmProver.LogComment("Out of resource");
+              break;
+            case ProverInterface.Outcome.OutOfMemory:
+              thmProver.LogComment("Out of memory");
+              break;
+            case ProverInterface.Outcome.Undetermined:
+              thmProver.LogComment("Undetermined");
+              break;
+            case ProverInterface.Outcome.Canceled:
+              thmProver.LogComment("canceled");
+              break;
+          }
+          hasOutput = true;
         }
 
-        hasOutput = true;
         proverRunTime = DateTime.UtcNow - proverStart;
       }
     }
@@ -410,6 +414,13 @@ namespace Microsoft.Boogie
       {
         Contract.Ensures(Contract.Result<VCExpressionGenerator>() != null);
 
+        throw new NotImplementedException();
+      }
+    }
+
+    public override bool HasExited {
+      get
+      {
         throw new NotImplementedException();
       }
     }

@@ -33,7 +33,7 @@ namespace Microsoft.Boogie.SMTLib
 
     [NotDelayed]
     public SMTLibProcessTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
-      SMTLibProverContext ctx, CancellationToken cancellationToken)
+      SMTLibProverContext ctx)
     {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
@@ -61,8 +61,6 @@ namespace Microsoft.Boogie.SMTLib
 
       SetupProcess();
 
-      cancellationToken.Register(KillProcess);
-
       if (libOptions.ImmediatelyAcceptCommands)
       {
         // Prepare for ApiChecker usage
@@ -73,6 +71,10 @@ namespace Microsoft.Boogie.SMTLib
 
         PrepareCommon();
       }
+    }
+    
+    public override void Cancel() {
+      KillProcess();
     }
     
     private ScopedNamer ResetNamer(ScopedNamer namer) {
@@ -777,7 +779,10 @@ namespace Microsoft.Boogie.SMTLib
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
       var result = CheckOutcomeCore(handler, errorLimit);
-      SendThisVC("(pop 1)");
+      if (!Process.HasExited) {
+        SendThisVC("(pop 1)");
+      }
+
       FlushLogFile();
 
       return result;
@@ -824,6 +829,9 @@ namespace Microsoft.Boogie.SMTLib
                 UsedNamedAssumes = new HashSet<string>();
                 SendThisVC("(get-unsat-core)");
                 var resp = Process.GetProverResponse();
+                if (resp == null) {
+                  return Outcome.Canceled;
+                } 
                 if (resp.Name != "")
                 {
                   UsedNamedAssumes.Add(resp.Name);
@@ -874,7 +882,7 @@ namespace Microsoft.Boogie.SMTLib
                   break;
                 }
               }
-
+              
               handler.OnModel(labels, model, result);
             }
 
@@ -1707,6 +1715,9 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
+      if (Process.HasExited) {
+        return Outcome.Canceled;
+      }
       return result;
     }
 
@@ -1841,6 +1852,8 @@ namespace Microsoft.Boogie.SMTLib
       get { return this.gen; }
     }
 
+    public override bool HasExited => Process == null || Process.HasExited;
+
     //// Push/pop interface
 
     //List<string> pushedAssertions = new List<string>();
@@ -1900,7 +1913,11 @@ namespace Microsoft.Boogie.SMTLib
     public override List<string> UnsatCore()
     {
       SendThisVC("(get-unsat-core)");
-      var resp = Process.GetProverResponse().ToString();
+      var sExpr = Process.GetProverResponse();
+      if (sExpr == null) {
+        return null;
+      }
+      var resp = sExpr.ToString();
       if (resp == "" || resp == "()")
       {
         return null;
@@ -2265,13 +2282,19 @@ namespace Microsoft.Boogie.SMTLib
 
       if (outcome != Outcome.Valid)
       {
-        Pop();
+        if (!Process.HasExited) {
+          Pop();
+        }
+
         return outcome;
       }
 
       Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
       SendThisVC("(get-unsat-core)");
       var resp = Process.GetProverResponse();
+      if (resp == null) {
+        return Outcome.Canceled;
+      }
       unsatCore = new List<int>();
       if (resp.Name != "")
       {
@@ -2481,8 +2504,7 @@ namespace Microsoft.Boogie.SMTLib
 
   public class Factory : ProverFactory
   {
-    public override object SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt,
-      CancellationToken cancellationToken)
+    public override object SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt)
     {
       //Contract.Requires(ctxt != null);
       //Contract.Requires(options != null);
@@ -2490,8 +2512,7 @@ namespace Microsoft.Boogie.SMTLib
 
       return this.SpawnProver(libOptions, options,
         cce.NonNull((SMTLibProverContext) ctxt).ExprGen,
-        cce.NonNull((SMTLibProverContext) ctxt),
-        cancellationToken);
+        cce.NonNull((SMTLibProverContext) ctxt));
     }
 
     public override object NewProverContext(ProverOptions options)
@@ -2524,14 +2545,13 @@ namespace Microsoft.Boogie.SMTLib
 
     protected virtual SMTLibProcessTheoremProver SpawnProver(SMTLibOptions libOptions, ProverOptions options,
       VCExpressionGenerator gen,
-      SMTLibProverContext ctx,
-      CancellationToken cancellationToken)
+      SMTLibProverContext ctx)
     {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
       Contract.Ensures(Contract.Result<SMTLibProcessTheoremProver>() != null);
-      return new SMTLibProcessTheoremProver(libOptions, options, gen, ctx, cancellationToken);
+      return new SMTLibProcessTheoremProver(libOptions, options, gen, ctx);
     }
   }
 }
