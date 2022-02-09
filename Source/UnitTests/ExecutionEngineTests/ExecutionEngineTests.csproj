@@ -11,5 +11,10 @@
         <ProjectReference Include="..\..\ExecutionEngine\ExecutionEngine.csproj" />
         <ProjectReference Include="..\TestUtil\TestUtil.csproj" />
     </ItemGroup>
-
+  <ItemGroup>
+	  <Compile Remove="testfiles/**" />
+	  <Content Remove="testfiles/**" />
+	  <EmbeddedResource Include="testfiles/**" />
+    <None Remove="testfiles\**" />
+	</ItemGroup>
 </Project>
