@@ -6,13 +6,18 @@ using System.Threading.Tasks;
 using Microsoft.Boogie;
 
 namespace VC
-{
+{  
+  public record CheckerWaiter(
+    TaskCompletionSource<Checker> checkerSource,
+    ConditionGeneration vcgen,
+    Split split = null);
+  
   public class CheckerPool
   {
     private readonly CommandLineOptions options;
 
     private readonly Stack<Checker> availableCheckers = new();
-    private readonly Queue<TaskCompletionSource<Checker>> checkerWaiters = new();
+    private readonly Queue<CheckerWaiter> checkerWaiters = new();
     private int notCreatedCheckers;
     private bool disposed;
     
@@ -44,13 +49,9 @@ namespace VC
 
         Interlocked.Increment(ref notCreatedCheckers);
         var source = new TaskCompletionSource<Checker>();
-        checkerWaiters.Enqueue(source);
-        return source.Task.ContinueWith(t =>
-        {
-          PrepareChecker(vcgen.program, split, t.Result);
-          Contract.Assert(t.Result != null);
-          return t.Result;
-        });
+        var checkerWaiter = new CheckerWaiter(source, vcgen, split);
+        checkerWaiters.Enqueue(checkerWaiter);
+        return source.Task;
       }
       
     }
@@ -76,6 +77,11 @@ namespace VC
           checker.Close();
         }
         availableCheckers.Clear();
+
+        // Notify all checker waiters that they shouldn't wait anymore.
+        foreach (var waiter in checkerWaiters) {
+          waiter.checkerSource.TrySetException(new Exception("CheckerPool was disposed"));
+        }
         disposed = true;
       }
     }
@@ -104,7 +110,8 @@ namespace VC
       lock(this)
       {
         if (checkerWaiters.TryDequeue(out var waiter)) {
-          if (waiter.TrySetResult(checker)) {
+          PrepareChecker(waiter.vcgen.program, waiter.split, checker);
+          if (waiter.checkerSource.TrySetResult(checker)) {
             return;
           }
         }
@@ -115,7 +122,20 @@ namespace VC
 
     public void CheckerDied()
     {
-      Interlocked.Increment(ref notCreatedCheckers);
+      if (disposed) {
+        return;
+      }
+      lock(this)
+      {
+        if (checkerWaiters.TryDequeue(out var waiter)) {
+          var checker = CreateNewChecker(waiter.vcgen, waiter.split);
+          if (waiter.checkerSource.TrySetResult(checker)) {
+            return;
+          }
+        }
+
+        Interlocked.Increment(ref notCreatedCheckers);
+      }
     }
   }
 }
