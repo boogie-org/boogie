@@ -393,7 +393,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public virtual string Help =>
+    protected virtual string HelpHeader =>
       $"Usage: {ToolName} [ option ... ] [ filename ... ]" + @"
 
   ---- General options -------------------------------------------------------
@@ -401,6 +401,11 @@ namespace Microsoft.Boogie
   /version      print the " + ToolName + @" version number
   /help         print this message
   /attrHelp     print a message about supported declaration attributes";
+
+    protected virtual string HelpBody => "";
+
+    public virtual string Help =>
+      HelpHeader + HelpBody;
 
     public virtual string AttributeHelp => "";
 
@@ -2243,8 +2248,8 @@ namespace Microsoft.Boogie
      {:backward}
        Backward assignment in atomic action.";
 
-    public override string Help =>
-      base.Help + @"
+    protected override string HelpHeader =>
+      base.HelpHeader + @"
   /env:<n>      print command line arguments
                   0 - never, 1 (default) - during BPL print and prover log,
                   2 - like 1 and also to standard output
@@ -2253,7 +2258,10 @@ namespace Microsoft.Boogie
                 1 (default) - yes
   /wait         await Enter from keyboard before terminating program
   /xml:<file>   also produce output in XML format to <file>
+";
 
+    protected override string HelpBody =>
+      @"
   ---- Boogie options --------------------------------------------------------
 
   Multiple .bpl files supplied on the command line are concatenated into one
