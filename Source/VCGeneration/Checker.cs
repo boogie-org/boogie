@@ -61,7 +61,13 @@ namespace Microsoft.Boogie
       Contract.Requires(IsBusy);
 
       status = CheckerStatus.Idle;
-      pool.AddChecker(this);
+      var becameIdle = thmProver.GoBackToIdle().Wait(TimeSpan.FromMilliseconds(100));
+      if (becameIdle) {
+        pool.AddChecker(this);
+      } else {
+        pool.CheckerDied();
+        Close();
+      }
     }
 
     public Task ProverTask { get; set; }
@@ -404,6 +410,11 @@ namespace Microsoft.Boogie
 
         throw new NotImplementedException();
       }
+    }
+
+    public override Task GoBackToIdle()
+    {
+      throw new NotImplementedException();
     }
 
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)

@@ -99,6 +99,11 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC(string.Format("(assert (! {0} :named {1}))", vcString, name));
     }
 
+    public override Task GoBackToIdle()
+    {
+      return Process.PingPong();
+    }
+
     private void SetupAxiomBuilder(VCExpressionGenerator gen)
     {
       switch (libOptions.TypeEncodingMethod)

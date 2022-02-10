@@ -112,5 +112,10 @@ namespace VC
         availableCheckers.Push(checker);
       }
     }
+
+    public void CheckerDied()
+    {
+      Interlocked.Increment(ref notCreatedCheckers);
+    }
   }
 }

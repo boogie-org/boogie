@@ -294,4 +294,6 @@ public abstract class ProverInterface
   {
     throw new NotImplementedException();
   }
+
+  public abstract Task GoBackToIdle();
 }
