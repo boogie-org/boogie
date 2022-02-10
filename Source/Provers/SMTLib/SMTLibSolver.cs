@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.SMTLib;
@@ -8,7 +9,7 @@ public abstract class SMTLibSolver
   public abstract event Action<string> ErrorHandler;
   public abstract void Close();
   public abstract void Send(string cmd);
-  public abstract Task<SExpr> GetProverResponse();
+  public abstract Task<SExpr> GetProverResponse(CancellationToken cancellationToken);
   public abstract void NewProblem(string descriptiveName);
 
   protected abstract void HandleError(string msg);
@@ -23,7 +24,7 @@ public abstract class SMTLibSolver
     Ping();
     while (true)
     {
-      var sx = await GetProverResponse();
+      var sx = await GetProverResponse(CancellationToken.None);
       if (sx == null)
       {
         throw new ProverDiedException();

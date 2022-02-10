@@ -119,81 +119,66 @@ namespace Microsoft.Boogie.SMTLib
       get { return inspector; }
     }
 
-    public override async Task<SExpr> GetProverResponse()
+    public override Task<SExpr> GetProverResponse(CancellationToken cancellationToken)
+    {
+      return Task.Factory.StartNew(GetProverResponseSync, cancellationToken);
+    }
+
+    private SExpr GetProverResponseSync()
     {
       toProver.Flush();
 
-      while (true)
-      {
-        var exprs = ParseSExprs(true).ToArray();
-        Contract.Assert(exprs.Length <= 1);
-        if (exprs.Length == 0)
-        {
-          return null;
-        }
-
-        var resp = exprs[0];
-        if (resp.Name == "error")
-        {
-          if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId)
-          {
-            if (resp.Arguments[0].Name.Contains("max. resource limit exceeded"))
-            {
-              return resp;
-            }
-            else {
-              HandleError(resp.Arguments[0].Name);
-              return null;
-            }
-          }
-          else {
-            HandleError(resp.ToString());
+      lock (this) {
+        while (true) {
+          var exprs = ParseSExprs(true).ToArray();
+          Contract.Assert(exprs.Length <= 1);
+          if (exprs.Length == 0) {
             return null;
           }
-        }
-        else if (resp.Name == "progress")
-        {
-          if (inspector != null)
-          {
-            var sb = new StringBuilder();
-            foreach (var a in resp.Arguments)
-            {
-              if (a.Name == "labels")
-              {
-                sb.Append("STATS LABELS");
-                foreach (var x in a.Arguments)
-                {
-                  sb.Append(" ").Append(x.Name);
-                }
-              }
-              else if (a.Name.StartsWith(":"))
-              {
-                sb.Append("STATS NAMED_VALUES ").Append(a.Name);
-                foreach (var x in a.Arguments)
-                {
-                  sb.Append(" ").Append(x.Name);
-                }
-              }
-              else
-              {
-                continue;
-              }
 
-              inspector.StatsLine(sb.ToString());
-              sb.Clear();
+          var resp = exprs[0];
+          if (resp.Name == "error") {
+            if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId) {
+              if (resp.Arguments[0].Name.Contains("max. resource limit exceeded")) {
+                return resp;
+              } else {
+                HandleError(resp.Arguments[0].Name);
+                return null;
+              }
+            } else {
+              HandleError(resp.ToString());
+              return null;
             }
+          } else if (resp.Name == "progress") {
+            if (inspector != null) {
+              var sb = new StringBuilder();
+              foreach (var a in resp.Arguments) {
+                if (a.Name == "labels") {
+                  sb.Append("STATS LABELS");
+                  foreach (var x in a.Arguments) {
+                    sb.Append(" ").Append(x.Name);
+                  }
+                } else if (a.Name.StartsWith(":")) {
+                  sb.Append("STATS NAMED_VALUES ").Append(a.Name);
+                  foreach (var x in a.Arguments) {
+                    sb.Append(" ").Append(x.Name);
+                  }
+                } else {
+                  continue;
+                }
+
+                inspector.StatsLine(sb.ToString());
+                sb.Clear();
+              }
+            }
+          } else if (resp.Name == "unsupported") {
+            // Skip -- this may be a benign "unsupported" from a previous command.
+            // Of course, this is suboptimal.  We should really be using
+            // print-success to identify the errant command and determine whether
+            // the response is benign.
+          } else {
+            return resp;
           }
-        }
-        else if (resp.Name == "unsupported")
-        {
-          // Skip -- this may be a benign "unsupported" from a previous command.
-          // Of course, this is suboptimal.  We should really be using
-          // print-success to identify the errant command and determine whether
-          // the response is benign.
-        }
-        else
-        {
-          return resp;
         }
       }
     }
@@ -429,29 +414,26 @@ namespace Microsoft.Boogie.SMTLib
           error = null;
         }
 
-        lock (this)
+        while (proverOutput.Count == 0 && proverErrors.Count == 0 && !prover.HasExited)
         {
-          while (proverOutput.Count == 0 && proverErrors.Count == 0 && !prover.HasExited)
-          {
-            Monitor.Wait(this, 100);
-          }
+          Monitor.Wait(this, 100);
+        }
 
-          if (proverErrors.Count > 0)
-          {
-            error = proverErrors.Dequeue();
-            continue;
-          }
+        if (proverErrors.Count > 0)
+        {
+          error = proverErrors.Dequeue();
+          continue;
+        }
 
-          if (proverOutput.Count > 0)
-          {
-            return proverOutput.Dequeue();
-          }
+        if (proverOutput.Count > 0)
+        {
+          return proverOutput.Dequeue();
+        }
 
-          if (prover.HasExited)
-          {
-            DisposeProver();
-            return null;
-          }
+        if (prover.HasExited)
+        {
+          DisposeProver();
+          return null;
         }
       }
     }
