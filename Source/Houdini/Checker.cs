@@ -5,6 +5,7 @@ using Microsoft.Boogie.VCExprAST;
 using Microsoft.BaseTypes;
 using VC;
 using System.Linq;
+using System.Threading;
 
 namespace Microsoft.Boogie.Houdini
 {
@@ -256,7 +257,7 @@ namespace Microsoft.Boogie.Houdini
 
       VCExpr vc = proverInterface.VCExprGen.Implies(BuildAxiom(proverInterface, assignment), conjecture);
       proverInterface.BeginCheck(descriptiveName, vc, handler);
-      ProverInterface.Outcome proverOutcome = proverInterface.CheckOutcome(handler, errorLimit);
+      ProverInterface.Outcome proverOutcome = proverInterface.CheckOutcome(handler, errorLimit, CancellationToken.None).Result;
 
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
       stats.proverTime += queryTime;
@@ -388,8 +389,8 @@ namespace Microsoft.Boogie.Houdini
       do
       {
         hardAssumptions.Add(controlExprNoop);
-        outcome = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions, out var unsatisfiedSoftAssumptions,
-          handler);
+        (outcome, var unsatisfiedSoftAssumptions) = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions, 
+          handler, CancellationToken.None).Result;
         hardAssumptions.RemoveAt(hardAssumptions.Count - 1);
 
         if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory ||
@@ -423,9 +424,8 @@ namespace Microsoft.Boogie.Houdini
           hardAssumptions.Add(softAssumptions[i]);
         }
 
-        var unsatisfiedSoftAssumptions2 = new List<int>();
-        outcome = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions2, out unsatisfiedSoftAssumptions2,
-          handler);
+        (outcome, var unsatisfiedSoftAssumptions2) = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions2, 
+          handler, CancellationToken.None).Result;
 
         if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory ||
             outcome == ProverInterface.Outcome.OutOfResource || outcome == ProverInterface.Outcome.Undetermined)
@@ -506,7 +506,7 @@ namespace Microsoft.Boogie.Houdini
         assumptionExprs.Add(exprTranslator.LookupVariable(v));
       }
 
-      ProverInterface.Outcome tmp = proverInterface.CheckAssumptions(assumptionExprs, out var unsatCore, handler);
+      (ProverInterface.Outcome tmp, var unsatCore) = proverInterface.CheckAssumptions(assumptionExprs, handler, CancellationToken.None).Result;
       System.Diagnostics.Debug.Assert(tmp == ProverInterface.Outcome.Valid);
       unsatCoreSet = new HashSet<Variable>();
       foreach (int i in unsatCore)

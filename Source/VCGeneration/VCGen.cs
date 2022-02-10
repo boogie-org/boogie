@@ -351,7 +351,7 @@ namespace VC
             }
 
             ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(absyIds, this.callback),
-              CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit);
+              CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit, CancellationToken.None);
           }
 
           ch.ProverTask.Wait();

@@ -99,8 +99,8 @@ namespace VC
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split);
 
       try {
-        StartCheck(split, checker);
-        await split.ProverTask.WaitAsync(cancellationToken);
+        StartCheck(split, checker, cancellationToken);
+        await split.ProverTask;
         await ProcessResult(split, cancellationToken);
       }
       finally {
@@ -108,7 +108,7 @@ namespace VC
       }
     }
 
-    private void StartCheck(Split split, Checker checker)
+    private void StartCheck(Split split, Checker checker, CancellationToken cancellationToken)
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
       if (options.Trace && DoSplitting) {
@@ -126,7 +126,7 @@ namespace VC
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
         implementation.TimeLimit;
-      split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit);
+      split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit, cancellationToken);
     }
 
     private async Task ProcessResult(Split split, CancellationToken cancellationToken)

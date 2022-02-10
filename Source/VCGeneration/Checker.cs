@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Threading;
 using Microsoft.Boogie.VCExprAST;
 using System.Threading.Tasks;
 using VC;
@@ -290,56 +291,53 @@ namespace Microsoft.Boogie
       get { return proverRunTime; }
     }
 
-    public int ProverResourceCount
+    public Task<int> GetProverResourceCount()
     {
-      get { return thmProver.GetRCount(); }
+      return thmProver.GetRCount();
     }
 
-    private void WaitForOutput(object dummy)
+    private async Task WaitForOutput(object dummy, CancellationToken cancellationToken)
     {
-      lock (this)
+      try
       {
-        try
-        {
-          outcome = thmProver.CheckOutcome(cce.NonNull(handler), CommandLineOptions.Clo.ErrorLimit);
-        }
-        catch (UnexpectedProverOutputException e)
-        {
-          outputExn = e;
-        }
-        catch (Exception e)
-        {
-          outputExn = new UnexpectedProverOutputException(e.Message);
-        }
-
-        switch (outcome)
-        {
-          case ProverInterface.Outcome.Valid:
-            thmProver.LogComment("Valid");
-            break;
-          case ProverInterface.Outcome.Invalid:
-            thmProver.LogComment("Invalid");
-            break;
-          case ProverInterface.Outcome.TimeOut:
-            thmProver.LogComment("Timed out");
-            break;
-          case ProverInterface.Outcome.OutOfResource:
-            thmProver.LogComment("Out of resource");
-            break;
-          case ProverInterface.Outcome.OutOfMemory:
-            thmProver.LogComment("Out of memory");
-            break;
-          case ProverInterface.Outcome.Undetermined:
-            thmProver.LogComment("Undetermined");
-            break;
-        }
-
-        hasOutput = true;
-        proverRunTime = DateTime.UtcNow - proverStart;
+        outcome = await thmProver.CheckOutcome(cce.NonNull(handler), CommandLineOptions.Clo.ErrorLimit, cancellationToken);
       }
+      catch (UnexpectedProverOutputException e)
+      {
+        outputExn = e;
+      }
+      catch (Exception e)
+      {
+        outputExn = new UnexpectedProverOutputException(e.Message);
+      }
+
+      switch (outcome)
+      {
+        case ProverInterface.Outcome.Valid:
+          thmProver.LogComment("Valid");
+          break;
+        case ProverInterface.Outcome.Invalid:
+          thmProver.LogComment("Invalid");
+          break;
+        case ProverInterface.Outcome.TimeOut:
+          thmProver.LogComment("Timed out");
+          break;
+        case ProverInterface.Outcome.OutOfResource:
+          thmProver.LogComment("Out of resource");
+          break;
+        case ProverInterface.Outcome.OutOfMemory:
+          thmProver.LogComment("Out of memory");
+          break;
+        case ProverInterface.Outcome.Undetermined:
+          thmProver.LogComment("Undetermined");
+          break;
+      }
+
+      hasOutput = true;
+      proverRunTime = DateTime.UtcNow - proverStart;
     }
 
-    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit)
+    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, CancellationToken cancellationToken)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
@@ -362,7 +360,7 @@ namespace Microsoft.Boogie
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 
-      ProverTask = Task.Factory.StartNew(() => { WaitForOutput(null); }, TaskCreationOptions.LongRunning);
+      ProverTask = WaitForOutput(null, cancellationToken);
     }
 
     public ProverInterface.Outcome ReadOutcome()
@@ -417,7 +415,7 @@ namespace Microsoft.Boogie
     }
 
     [NoDefaultContract]
-    public override Outcome CheckOutcome(ErrorHandler handler, int taskID = -1)
+    public override Task<Outcome> CheckOutcome(ErrorHandler handler, int taskID, CancellationToken cancellationToken)
     {
       //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);

@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Diagnostics.Contracts;
+using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.SMTLib
 {
@@ -118,7 +119,7 @@ namespace Microsoft.Boogie.SMTLib
       get { return inspector; }
     }
 
-    public override SExpr GetProverResponse()
+    public override async Task<SExpr> GetProverResponse()
     {
       toProver.Flush();
 

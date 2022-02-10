@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie;
@@ -156,12 +158,7 @@ public abstract class ProverInterface
   public abstract void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler);
 
   [NoDefaultContract]
-  public abstract Outcome CheckOutcome(ErrorHandler handler, int errorLimit);
-
-  public virtual string[] CalculatePath(int controlFlowConstant)
-  {
-    throw new System.NotImplementedException();
-  }
+  public abstract Task<Outcome> CheckOutcome(ErrorHandler handler, int errorLimit, CancellationToken cancellationToken);
 
   public virtual void LogComment(string comment)
   {
@@ -236,18 +233,20 @@ public abstract class ProverInterface
   }
 
   // (check-sat + get-unsat-core + checkOutcome)
-  public virtual Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore, ErrorHandler handler)
+  public virtual Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> assumptions, ErrorHandler handler,
+    CancellationToken cancellationToken)
   {
     throw new NotImplementedException();
   }
 
-  public virtual Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
-    out List<int> unsatisfiedSoftAssumptions, ErrorHandler handler)
+  public virtual Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
+    ErrorHandler handler, CancellationToken cancellationToken)
   {
     throw new NotImplementedException();
   }
 
-  public virtual Outcome CheckOutcomeCore(ErrorHandler handler, int taskID = -1)
+  public virtual Task<Outcome> CheckOutcomeCore(ErrorHandler handler,
+    CancellationToken cancellationToken, int taskID = -1)
   {
     throw new NotImplementedException();
   }
@@ -267,7 +266,7 @@ public abstract class ProverInterface
   {
   }
 
-  public virtual int GetRCount()
+  public virtual Task<int> GetRCount()
   {
     throw new NotImplementedException();
   }
@@ -285,7 +284,7 @@ public abstract class ProverInterface
   {
   }
 
-  public virtual object Evaluate(VCExpr expr)
+  public virtual Task<object> Evaluate(VCExpr expr)
   {
     throw new NotImplementedException();
   }
