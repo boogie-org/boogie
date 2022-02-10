@@ -21,7 +21,7 @@ namespace VC
     DateTime startTime,
     ProverInterface.Outcome outcome,
     TimeSpan runTime,
-    List<AssertCmd> asserts,
+    IEnumerable<AssertCmd> asserts,
     int resourceCount
   );
 

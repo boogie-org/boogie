@@ -115,7 +115,8 @@ namespace Microsoft.Boogie
       cce.EndExpose();
     }
 
-    public void WriteSplit(int splitNum, IEnumerable<AssertCmd> asserts, DateTime startTime, string outcome TimeSpan elapsed)
+    public void WriteSplit(int splitNum, IEnumerable<AssertCmd> asserts, DateTime startTime,
+                           string outcome, TimeSpan elapsed, int? resourceCount)
     {
       Contract.Requires(splitNum > 0);
       Contract.Requires(outcome != null);
