@@ -35,7 +35,7 @@ namespace VC
           return Task.FromResult(result);
         }
 
-        if (notCreatedCheckers >= 0) {
+        if (notCreatedCheckers > 0) {
           notCreatedCheckers--;
           var checker = CreateNewChecker();
           PrepareChecker(vcgen.program, split, checker);
