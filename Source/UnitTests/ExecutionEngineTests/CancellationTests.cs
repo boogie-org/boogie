@@ -35,7 +35,7 @@ namespace ExecutionEngineTests
 
       var requestId = ExecutionEngine.FreshRequestId();
       var outcomeTask = Task.Run(() => ExecutionEngine.InferAndVerify(infiniteProgram, new PipelineStatistics(), requestId, null, requestId));
-      await Task.Delay(2000);
+      await Task.Delay(1000);
       ExecutionEngine.CancelRequest(requestId);
       var outcome = await outcomeTask;
       Assert.AreEqual(PipelineOutcome.Cancelled, outcome);

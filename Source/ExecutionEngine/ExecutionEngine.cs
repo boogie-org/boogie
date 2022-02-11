@@ -1054,6 +1054,7 @@ namespace Microsoft.Boogie
 
           if (e is OperationCanceledException)
           {
+            outcome = PipelineOutcome.Cancelled;
             return true;
           }
 
