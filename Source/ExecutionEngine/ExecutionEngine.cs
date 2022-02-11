@@ -204,6 +204,7 @@ namespace Microsoft.Boogie
     TypeCheckingError,
     ResolvedAndTypeChecked,
     FatalError,
+    Cancelled,
     VerificationCompleted
   }
 
@@ -1148,7 +1149,7 @@ namespace Microsoft.Boogie
       {
         if (RequestIdToCancellationTokenSource.IsEmpty)
         {
-          checkerPool.Dispose();
+          checkerPool?.Dispose();
           checkerPool = null;
         }
       }
