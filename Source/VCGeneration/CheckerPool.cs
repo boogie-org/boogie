@@ -86,7 +86,7 @@ namespace VC
         return;
       }
 
-      checker.Retarget(program, checker.TheoremProver.Context, split);
+      checker.Target(program, checker.TheoremProver.Context, split);
       checker.GetReady();
     }
 

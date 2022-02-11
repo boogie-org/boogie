@@ -95,11 +95,6 @@ namespace Microsoft.Boogie
       }
     }
 
-    /////////////////////////////////////////////////////////////////////////////////
-    // We share context information for the same program between different Checkers
-
-    /////////////////////////////////////////////////////////////////////////////////
-
     public Checker(CheckerPool pool, string /*?*/ logFilePath, bool appendLogFile)
     {
       this.pool = pool;
@@ -125,71 +120,8 @@ namespace Microsoft.Boogie
       thmProver = prover;
       gen = prover.VCExprGen;
     }
-    
-    /// <summary>
-    /// Constructor.  Initialize a checker with the program and log file.
-    /// Optionally, use prover context provided by parameter "ctx".
-    /// </summary>
-    public Checker(CheckerPool pool, VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile,
-      Split split, ProverContext ctx = null)
-    {
-      Contract.Requires(vcgen != null);
-      Contract.Requires(prog != null);
-      this.pool = pool;
-      this.Program = prog;
 
-      SolverOptions = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
-
-      if (logFilePath != null)
-      {
-        SolverOptions.LogFilename = logFilePath;
-        if (appendLogFile)
-        {
-          SolverOptions.AppendLogFile = appendLogFile;
-        }
-      }
-
-      SolverOptions.Parse(CommandLineOptions.Clo.ProverOptions);
-
-      ContextCacheKey key = new ContextCacheKey(prog);
-      ProverInterface prover;
-
-      if (vcgen.CheckerCommonState == null)
-      {
-        vcgen.CheckerCommonState = new Dictionary<ContextCacheKey, ProverContext>();
-      }
-
-      IDictionary<ContextCacheKey, ProverContext> /*!>!*/
-        cachedContexts = (IDictionary<ContextCacheKey, ProverContext /*!*/>) vcgen.CheckerCommonState;
-
-      if (ctx == null && cachedContexts.TryGetValue(key, out ctx))
-      {
-        ctx = (ProverContext) cce.NonNull(ctx).Clone();
-        prover = (ProverInterface)
-          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx);
-      }
-      else
-      {
-        if (ctx == null)
-        {
-          ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(SolverOptions);
-        }
-
-        Setup(prog, ctx, split);
-
-        // we first generate the prover and then store a clone of the
-        // context in the cache, so that the prover can setup stuff in
-        // the context to be cached
-        prover = (ProverInterface)
-          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx);
-        cachedContexts.Add(key, cce.NonNull((ProverContext) ctx.Clone()));
-      }
-
-      this.thmProver = prover;
-      this.gen = prover.VCExprGen;
-    }
-
-    public void Retarget(Program prog, ProverContext ctx, Split split)
+    public void Target(Program prog, ProverContext ctx, Split split)
     {
       lock (this)
       {
@@ -201,12 +133,6 @@ namespace Microsoft.Boogie
         ctx.Reset();
         Setup(prog, ctx, split);
       }
-    }
-
-    public void RetargetWithoutReset(Program prog, ProverContext ctx, Split split)
-    {
-      ctx.Clear();
-      Setup(prog, ctx, split);
     }
 
     private void SetTimeout(uint timeout)

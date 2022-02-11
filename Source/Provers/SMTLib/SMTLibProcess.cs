@@ -9,6 +9,9 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.SMTLib
 {
+  /*
+   * Not thread-safe.
+   */
   public class SMTLibProcess : SMTLibSolver
   {
     readonly Process prover;
@@ -72,7 +75,7 @@ namespace Microsoft.Boogie.SMTLib
     private void prover_Exited(object sender, EventArgs e)
     {
       lock (this) {
-        if (outputReceivers.TryDequeue(out var source)) {
+        while (outputReceivers.TryDequeue(out var source)) {
           source.SetResult(null);
         }
       }

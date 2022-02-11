@@ -630,7 +630,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private void RecoverIfProverCrashedAfterReset()
     {
-      if (Process.GetExceptionIfProverDied() is Exception e)
+      if (Process.GetExceptionIfProverDied().Result is Exception e)
       {
         // We recover the process but don't issue the `(reset)` command that fails.
         SetupProcess();

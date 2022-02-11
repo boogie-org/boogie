@@ -104,6 +104,6 @@ procedure easy() ensures 1 + 1 == 0; {
     assume Ack#canCall(LitInt(5), LitInt(5));
     assert LitInt(Ack($LS($LS($LZ)), LitInt(5), LitInt(5))) == LitInt(0);
   }
-  ";
+";
   }
 }

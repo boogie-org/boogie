@@ -1223,9 +1223,6 @@ namespace Microsoft.Boogie
               }
             }
           }
-          catch (OperationCanceledException) {
-            
-          }
           catch (VCGenException e)
           {
             var errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok,

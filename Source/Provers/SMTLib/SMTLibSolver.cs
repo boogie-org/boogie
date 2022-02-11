@@ -46,17 +46,16 @@ public abstract class SMTLibSolver
     return sx is { Name: ":name" };
   }
 
-  public ProverDiedException GetExceptionIfProverDied()
+  public async Task<ProverDiedException> GetExceptionIfProverDied()
   {
     try
     {
-      PingPong().Wait();
+      await PingPong();
+      return null;
     }
     catch (ProverDiedException e)
     {
       return e;
     }
-
-    return null;
   }
 }
