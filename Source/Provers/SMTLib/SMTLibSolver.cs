@@ -9,7 +9,7 @@ public abstract class SMTLibSolver
   public abstract event Action<string> ErrorHandler;
   public abstract void Close();
   public abstract void Send(string cmd);
-  public abstract Task<SExpr> GetProverResponse(CancellationToken cancellationToken);
+  public abstract Task<SExpr> GetProverResponse();
   public abstract void NewProblem(string descriptiveName);
 
   protected abstract void HandleError(string msg);
@@ -24,7 +24,7 @@ public abstract class SMTLibSolver
     Ping();
     while (true)
     {
-      var sx = await GetProverResponse(CancellationToken.None);
+      var sx = await GetProverResponse();
       if (sx == null)
       {
         throw new ProverDiedException();

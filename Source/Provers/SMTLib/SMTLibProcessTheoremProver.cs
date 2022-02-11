@@ -824,7 +824,7 @@ namespace Microsoft.Boogie.SMTLib
               {
                 UsedNamedAssumes = new HashSet<string>();
                 SendThisVC("(get-unsat-core)");
-                var resp = await Process.GetProverResponse(cancellationToken);
+                var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
                 if (resp.Name != "")
                 {
                   UsedNamedAssumes.Add(resp.Name);
@@ -1071,7 +1071,7 @@ namespace Microsoft.Boogie.SMTLib
       var path = new List<string>();
       while (true)
       {
-        var response = await Process.GetProverResponse(cancellationToken);
+        var response = await Process.GetProverResponse().WaitAsync(cancellationToken);
         if (response == null)
         {
           break;
@@ -1534,7 +1534,7 @@ namespace Microsoft.Boogie.SMTLib
       Model theModel = null;
       while (true)
       {
-        var resp = await Process.GetProverResponse(cancellationToken);
+        var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
         if (resp == null || Process.IsPong(resp))
         {
           break;
@@ -1609,7 +1609,7 @@ namespace Microsoft.Boogie.SMTLib
 
       while (true)
       {
-        var resp = await Process.GetProverResponse(cancellationToken);
+        var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
         if (resp == null || Process.IsPong(resp))
         {
           break;
@@ -1656,7 +1656,7 @@ namespace Microsoft.Boogie.SMTLib
         Process.Ping();
         while (true)
         {
-          var resp = await Process.GetProverResponse(cancellationToken);
+          var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
           if (resp == null || Process.IsPong(resp))
           {
             break;
@@ -1908,7 +1908,7 @@ namespace Microsoft.Boogie.SMTLib
     public override List<string> UnsatCore()
     {
       SendThisVC("(get-unsat-core)");
-      var resp = Process.GetProverResponse(CancellationToken.None).ToString();
+      var resp = Process.GetProverResponse().ToString();
       if (resp == "" || resp == "()")
       {
         return null;
@@ -1965,7 +1965,7 @@ namespace Microsoft.Boogie.SMTLib
     public override async Task<int> GetRCount() 
     {
       SendThisVC("(get-info :rlimit)");
-      var resp = await Process.GetProverResponse(CancellationToken.None);
+      var resp = await Process.GetProverResponse();
       try
       {
         return int.Parse(resp[0].Name);
@@ -2147,7 +2147,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       string vcString = VCExpr2String(expr, 1);
       SendThisVC("(get-value (" + vcString + "))");
-      var resp = await Process.GetProverResponse(CancellationToken.None);
+      var resp = await Process.GetProverResponse();
       if (resp == null)
       {
         throw new VCExprEvaluationException();
@@ -2278,7 +2278,7 @@ namespace Microsoft.Boogie.SMTLib
 
       Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
       SendThisVC("(get-unsat-core)");
-      var resp = await Process.GetProverResponse(cancellationToken);
+      var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
       var unsatCore = new List<int>();
       if (resp.Name != "")
       {
@@ -2372,7 +2372,7 @@ namespace Microsoft.Boogie.SMTLib
         {
           SendThisVC("(get-value (" + relaxVar + "))");
           FlushLogFile();
-          var resp = await Process.GetProverResponse(cancellationToken);
+          var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
           if (resp == null)
           {
             break;
