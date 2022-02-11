@@ -58,13 +58,12 @@ namespace VC
 
     private Checker CreateNewChecker()
     {
-      // TODO use this log variable.
       var log = options.ProverLogFilePath;
       if (log != null && !log.Contains("@PROC@") && availableCheckers.Count > 0) {
         log = log + "." + availableCheckers.Count;
       } 
 
-      return new Checker(this, options.ProverLogFilePath, options.ProverLogFileAppend);
+      return new Checker(this, log, options.ProverLogFileAppend);
     }
 
     public void Dispose()
