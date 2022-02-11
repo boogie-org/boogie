@@ -69,23 +69,18 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private static ScopedNamer GetNamer(SMTLibOptions libOptions, ProverOptions options)
+    private static ScopedNamer GetNamer(SMTLibOptions libOptions, ProverOptions options, ScopedNamer namer = null)
     {
       return (RandomSeed: options.RandomSeed, libOptions.NormalizeNames) switch
       {
-        (null, true) => new NormalizeNamer(),
-        (null, false) => new KeepOriginalNamer(),
-        _ => new RandomiseNamer(new Random(options.RandomSeed.Value))
+        (null, true) => NormalizeNamer.Create(namer),
+        (null, false) => KeepOriginalNamer.Create(namer),
+        _ => RandomiseNamer.Create(new Random(options.RandomSeed.Value), namer)
       };
     }
 
     private ScopedNamer ResetNamer(ScopedNamer namer) {
-      return (RandomSeed: options.RandomSeed, libOptions.NormalizeNames) switch
-      {
-        (null, true) => new NormalizeNamer(namer), 
-        (null, false) => new KeepOriginalNamer(namer),
-        _ => new RandomiseNamer(namer, new Random(options.RandomSeed.Value))
-      }; 
+      return GetNamer(libOptions, options, namer);
     }
 
     public override void AssertNamed(VCExpr vc, bool polarity, string name)
