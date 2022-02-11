@@ -12,12 +12,13 @@ namespace ExecutionEngineTests
     public Program GetProgram(string code) {
       var options = CommandLineOptions.FromArguments();
       CommandLineOptions.Install(options);
-      int errorCount = Parser.Parse(code, "1", out Program program,
+      var bplFileName = "1";
+      int errorCount = Parser.Parse(code, bplFileName, out Program program,
         CommandLineOptions.Clo.UseBaseNameForFileName);
       Assert.AreEqual(0, errorCount);
 
       ExecutionEngine.printer = new ConsolePrinter();
-      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(program, "bla", out _);
+      ExecutionEngine.ResolveAndTypecheck(program, bplFileName, out _);
       ExecutionEngine.EliminateDeadVariables(program);
       ExecutionEngine.CollectModSets(program);
       ExecutionEngine.CoalesceBlocks(program);
@@ -26,7 +27,7 @@ namespace ExecutionEngineTests
     }
     
     [Test]
-    public async Task BoogieCorrectlyCancelsProvers() {
+    public async Task InferAndVerifyCanBeCancelledWhileWaitingForProver() {
       var infiniteProgram = GetProgram(slow);
       var terminatingProgram = GetProgram(fast);
       

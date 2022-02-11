@@ -61,7 +61,7 @@ namespace Microsoft.Boogie
       Contract.Requires(IsBusy);
 
       status = CheckerStatus.Idle;
-      var becameIdle = false; //thmProver.GoBackToIdle().Wait(TimeSpan.FromMilliseconds(100));
+      var becameIdle = thmProver.GoBackToIdle().Wait(TimeSpan.FromMilliseconds(100));
       if (becameIdle) {
         pool.AddChecker(this);
       } else {
