@@ -304,9 +304,12 @@ namespace Microsoft.Boogie
 
     private async Task WaitForOutput(object dummy, CancellationToken cancellationToken)
     {
-      try
-      {
-        outcome = await thmProver.CheckOutcome(cce.NonNull(handler), CommandLineOptions.Clo.ErrorLimit, cancellationToken);
+      try {
+        outcome = await thmProver.CheckOutcome(cce.NonNull(handler), CommandLineOptions.Clo.ErrorLimit,
+          cancellationToken);
+      }
+      catch (OperationCanceledException) {
+        throw;
       }
       catch (UnexpectedProverOutputException e)
       {
