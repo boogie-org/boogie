@@ -1210,19 +1210,20 @@ namespace Microsoft.Boogie
 
           try {
             var cancellationToken = RequestIdToCancellationTokenSource[requestId].Token;
-            verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId, cancellationToken);
-            if (CommandLineOptions.Clo.ExtractLoops && verificationResult.Errors != null)
-            {
+            verificationResult.Outcome =
+              vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId, cancellationToken);
+            if (CommandLineOptions.Clo.ExtractLoops && verificationResult.Errors != null) {
               var vcg = vcgen as VCGen;
-              if (vcg != null)
-              {
-                for (int i = 0; i < verificationResult.Errors.Count; i++)
-                {
+              if (vcg != null) {
+                for (int i = 0; i < verificationResult.Errors.Count; i++) {
                   verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name,
                     program, extractLoopMappingInfo);
                 }
               }
             }
+          }
+          catch (OperationCanceledException) {
+            
           }
           catch (VCGenException e)
           {

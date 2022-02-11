@@ -37,7 +37,8 @@ namespace VC
 
         int afterDec = Interlocked.Decrement(ref notCreatedCheckers);
         if (afterDec >= 0) {
-          var checker = CreateNewChecker(vcgen, split);
+          var checker = CreateNewChecker();
+          PrepareChecker(vcgen.program, split, checker);
           Contract.Assert(checker != null);
           return Task.FromResult(checker);
         }
@@ -55,16 +56,15 @@ namespace VC
       
     }
 
-    private Checker CreateNewChecker(ConditionGeneration vcgen, Split split)
+    private Checker CreateNewChecker()
     {
+      // TODO use this log variable.
       var log = options.ProverLogFilePath;
       if (log != null && !log.Contains("@PROC@") && availableCheckers.Count > 0) {
         log = log + "." + availableCheckers.Count;
-      }
+      } 
 
-      Checker ch = new Checker(this, vcgen, vcgen.program, options.ProverLogFilePath, options.ProverLogFileAppend, split);
-      ch.GetReady();
-      return ch;
+      return new Checker(this, options.ProverLogFilePath, options.ProverLogFileAppend);
     }
 
     public void Dispose()
@@ -115,7 +115,13 @@ namespace VC
 
     public void CheckerDied()
     {
-      Interlocked.Increment(ref notCreatedCheckers);
+      lock (this) {
+        if (checkerWaiters.TryDequeue(out var waiter)) {
+          waiter.SetResult(CreateNewChecker());
+        } else {
+          Interlocked.Increment(ref notCreatedCheckers);
+        }
+      }
     }
   }
 }

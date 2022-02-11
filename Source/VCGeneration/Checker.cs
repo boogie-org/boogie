@@ -100,6 +100,32 @@ namespace Microsoft.Boogie
 
     /////////////////////////////////////////////////////////////////////////////////
 
+    public Checker(CheckerPool pool, string /*?*/ logFilePath, bool appendLogFile)
+    {
+      this.pool = pool;
+
+      SolverOptions = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
+
+      if (logFilePath != null)
+      {
+        SolverOptions.LogFilename = logFilePath;
+        if (appendLogFile)
+        {
+          SolverOptions.AppendLogFile = appendLogFile;
+        }
+      }
+
+      SolverOptions.Parse(CommandLineOptions.Clo.ProverOptions);
+
+      var ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(SolverOptions);
+
+      var prover = (ProverInterface)
+        CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx);
+      
+      thmProver = prover;
+      gen = prover.VCExprGen;
+    }
+    
     /// <summary>
     /// Constructor.  Initialize a checker with the program and log file.
     /// Optionally, use prover context provided by parameter "ctx".
@@ -167,20 +193,20 @@ namespace Microsoft.Boogie
     {
       lock (this)
       {
-        hasOutput = default(bool);
-        outcome = default(ProverInterface.Outcome);
-        outputExn = default(UnexpectedProverOutputException);
-        handler = default(ProverInterface.ErrorHandler);
+        hasOutput = default;
+        outcome = default;
+        outputExn = default;
+        handler = default;
         TheoremProver.FullReset(gen);
         ctx.Reset();
         Setup(prog, ctx, s);
       }
     }
 
-    public void RetargetWithoutReset(Program prog, ProverContext ctx)
+    public void RetargetWithoutReset(Program prog, ProverContext ctx, Split split)
     {
       ctx.Clear();
-      Setup(prog, ctx);
+      Setup(prog, ctx, split);
     }
 
     private void SetTimeout(uint timeout)
