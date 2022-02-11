@@ -101,14 +101,6 @@ procedure easy() ensures 1 + 1 == 0; {
 
   procedure proof()
   {
-    var ##m#0: int;
-    var ##n#0: int;
-
-    ##m#0 := LitInt(5);
-    ##n#0 := LitInt(5);
-    assert {:subsumption 0} ##m#0 >= LitInt(0);
-    assert {:subsumption 0} ##n#0 >= LitInt(0);
-    assume Ack#canCall(LitInt(5), LitInt(5));
     assume Ack#canCall(LitInt(5), LitInt(5));
     assert LitInt(Ack($LS($LS($LZ)), LitInt(5), LitInt(5))) == LitInt(0);
   }
