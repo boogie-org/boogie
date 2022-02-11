@@ -7,7 +7,7 @@ using NUnit.Framework;
 namespace ExecutionEngineTests
 {
   [TestFixture]
-  public class SolverVerificationCancellationTest
+  public class CancellationTests
   {
     public Program GetProgram(string code) {
       var options = CommandLineOptions.FromArguments();

@@ -99,6 +99,7 @@ namespace VC
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split);
 
       try {
+        cancellationToken.ThrowIfCancellationRequested();
         StartCheck(split, checker, cancellationToken);
         await split.ProverTask;
         await ProcessResult(split, cancellationToken);

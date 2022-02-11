@@ -35,15 +35,14 @@ namespace VC
           return Task.FromResult(result);
         }
 
-        int afterDec = Interlocked.Decrement(ref notCreatedCheckers);
-        if (afterDec >= 0) {
+        if (notCreatedCheckers >= 0) {
+          notCreatedCheckers--;
           var checker = CreateNewChecker();
           PrepareChecker(vcgen.program, split, checker);
           Contract.Assert(checker != null);
           return Task.FromResult(checker);
         }
 
-        Interlocked.Increment(ref notCreatedCheckers);
         var source = new TaskCompletionSource<Checker>();
         checkerWaiters.Enqueue(source);
         return source.Task.ContinueWith(t =>
@@ -118,7 +117,7 @@ namespace VC
         if (checkerWaiters.TryDequeue(out var waiter)) {
           waiter.SetResult(CreateNewChecker());
         } else {
-          Interlocked.Increment(ref notCreatedCheckers);
+          notCreatedCheckers++;
         }
       }
     }
