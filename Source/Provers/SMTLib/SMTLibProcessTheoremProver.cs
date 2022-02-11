@@ -50,12 +50,7 @@ namespace Microsoft.Boogie.SMTLib
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
-      Namer = (RandomSeed: options.RandomSeed, libOptions.NormalizeNames) switch
-      {
-        (null, true) => new NormalizeNamer(),
-        (null, false) => new KeepOriginalNamer(),
-        _ => new RandomiseNamer(new Random(options.RandomSeed.Value))
-      };
+      Namer = GetNamer(libOptions, options);
 
       ctx.parent = this;
       DeclCollector = new TypeDeclCollector(libOptions, Namer);
@@ -73,7 +68,17 @@ namespace Microsoft.Boogie.SMTLib
         PrepareCommon();
       }
     }
-    
+
+    private static ScopedNamer GetNamer(SMTLibOptions libOptions, ProverOptions options)
+    {
+      return (RandomSeed: options.RandomSeed, libOptions.NormalizeNames) switch
+      {
+        (null, true) => new NormalizeNamer(),
+        (null, false) => new KeepOriginalNamer(),
+        _ => new RandomiseNamer(new Random(options.RandomSeed.Value))
+      };
+    }
+
     private ScopedNamer ResetNamer(ScopedNamer namer) {
       return (RandomSeed: options.RandomSeed, libOptions.NormalizeNames) switch
       {
@@ -607,7 +612,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void Reset(VCExpressionGenerator gen)
     {
-      if (options.Solver == SolverKind.Z3)
+      if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
       {
         this.gen = gen;
         SendThisVC("(reset)");
@@ -639,12 +644,12 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void FullReset(VCExpressionGenerator gen)
     {
-      if (options.Solver == SolverKind.Z3)
+      if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
       {
         this.gen = gen;
         SendThisVC("(reset)");
         SendThisVC("(set-option :" + Z3.RlimitOption + " 0)");
-        Namer.Reset();
+        HasReset = true;
         common.Clear();
         SetupAxiomBuilder(gen);
         Axioms.Clear();

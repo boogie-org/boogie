@@ -189,7 +189,7 @@ namespace Microsoft.Boogie
       this.gen = prover.VCExprGen;
     }
 
-    public void Retarget(Program prog, ProverContext ctx, Split s)
+    public void Retarget(Program prog, ProverContext ctx, Split split)
     {
       lock (this)
       {
@@ -199,7 +199,7 @@ namespace Microsoft.Boogie
         handler = default;
         TheoremProver.FullReset(gen);
         ctx.Reset();
-        Setup(prog, ctx, s);
+        Setup(prog, ctx, split);
       }
     }
 
