@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.IO;
-using System.Linq;
 using System.Diagnostics.Contracts;
-using System.Text.RegularExpressions;
 
 namespace Microsoft.Boogie
 {
@@ -13,11 +10,11 @@ namespace Microsoft.Boogie
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
-  public class CommandLineOptionsImpl : CommandLineOptionEngine, CommandLineOptions, SMTLibOptions
+  public class CommandLineOptionsImpl : CommandLineOptionEngine, ExecutionEngineOptions
   {
-    public static CommandLineOptions FromArguments(params string[] arguments)
+    public static CommandLineOptionsImpl FromArguments(params string[] arguments)
     {
-      var result = new CommandLineOptions();
+      var result = new CommandLineOptionsImpl();
       result.Parse(arguments);
       return result;
     }
@@ -37,7 +34,7 @@ namespace Microsoft.Boogie
     public static void Install(CommandLineOptions options)
     {
       Contract.Requires(options != null);
-      clo = options;
+      CommandLineOptions.Clo = options;
     }
 
     // Flags and arguments
@@ -60,10 +57,10 @@ namespace Microsoft.Boogie
                          3); // 0 = print only structured,  1 = both structured and unstructured,  2 = only unstructured
     }
 
-    public int VerifySnapshots = -1;
-    public bool VerifySeparately = false;
-    public string PrintFile = null;
-    public string PrintPrunedFile = null;
+    public int VerifySnapshots { get; set; } = -1;
+    public bool VerifySeparately { get; set; }
+    public string PrintFile { get; set; }
+    public string PrintPrunedFile { get; set; }
 
     /**
      * Whether to emit {:qid}, {:skolemid} and set-info :boogie-vc-id
@@ -79,26 +76,30 @@ namespace Microsoft.Boogie
       set => printUnstructured = value;
     }
 
-    public bool UseBaseNameForFileName = false;
+    public bool UseBaseNameForFileName { get; set; }
 
     public bool PrintDesugarings {
       get => printDesugarings;
       set => printDesugarings = value;
     }
 
-    public bool PrintLambdaLifting = false;
-    public bool FreeVarLambdaLifting = false;
-    public string ProverLogFilePath = null;
-    public bool ProverLogFileAppend = false;
+    public bool PrintLambdaLifting { get; set; }
+    public bool FreeVarLambdaLifting { get; set; }
+    public string ProverLogFilePath { get; set; }
+    public bool ProverLogFileAppend { get; set; }
 
     public bool PrintInstrumented {
       get => printInstrumented;
       set => printInstrumented = value;
     }
 
-    public bool InstrumentWithAsserts = false;
-    public string ProverPreamble { get; set; }= null;
-    public bool WarnNotEliminatedVars = false;
+    public bool InstrumentWithAsserts
+    {
+      get;
+      set;
+    }
+    public string ProverPreamble { get; set; }
+    public bool WarnNotEliminatedVars { get; set; }
     
     /**
      * Pruning will remove any top-level Boogie declarations that are not accessible by the implementation that is about to be verified.
@@ -151,9 +152,9 @@ namespace Microsoft.Boogie
      * The merge node is traversable in the reachability analysis only if each of its incoming edges has been reached.
      *
      */
-    public bool Prune = false;
+    public bool Prune { get; set; }
 
-    public CommandLineOptions.InstrumentationPlaces InstrumentInfer = CommandLineOptions.InstrumentationPlaces.LoopHeaders;
+    public CommandLineOptions.InstrumentationPlaces InstrumentInfer { get; set; } = CommandLineOptions.InstrumentationPlaces.LoopHeaders;
 
     public int? RandomSeed { get; set; }
     
@@ -162,9 +163,9 @@ namespace Microsoft.Boogie
       set => printWithUniqueAstIds = value;
     }
 
-    private string XmlSinkFilename = null;
-    [Peer] public XmlSink XmlSink = null;
-    public bool Wait = false;
+    private string XmlSinkFilename { get; set; }
+    [Peer] public XmlSink XmlSink { get; set; }
+    public bool Wait { get; set; }
 
     public bool Trace {
       get => trace;
@@ -188,8 +189,8 @@ namespace Microsoft.Boogie
     public bool ProduceUnsatCores => PrintNecessaryAssumes || EnableUnSatCoreExtract == 1 ||
                                      ContractInfer && (UseUnsatCoreForContractInfer || ExplainHoudini);
 
-    public bool TraceTimes = false;
-    public bool TraceProofObligations = false;
+    public bool TraceTimes { get; set; }
+    public bool TraceProofObligations { get; set; }
 
     public bool TraceCachingForTesting
     {
@@ -206,15 +207,15 @@ namespace Microsoft.Boogie
       get { return TraceCaching == 3; }
     }
 
-    internal int TraceCaching = 0;
-    public bool NoResolve = false;
-    public bool NoTypecheck = false;
-    public bool OverlookBoogieTypeErrors = false;
-    public bool Verify = true;
-    public bool TraceVerify = false;
+    internal int TraceCaching { get; set; }
+    public bool NoResolve { get; set; }
+    public bool NoTypecheck { get; set; }
+    public bool OverlookBoogieTypeErrors { get; set; }
+    public bool Verify { get; set; } = true;
+    public bool TraceVerify { get; set; }
 
     public int /*(0:3)*/
-      ErrorTrace = 1;
+      ErrorTrace { get; set; } = 1;
     
     public bool IntraproceduralInfer { get; set; }= true;
 
@@ -233,33 +234,33 @@ namespace Microsoft.Boogie
       set => reverseHoudiniWorklist = value;
     }
 
-    public bool ConcurrentHoudini  { get; set; } = false;
-    public bool ModifyTopologicalSorting  { get; set; } = false;
-    public bool DebugConcurrentHoudini  { get; set; } = false;
+    public bool ConcurrentHoudini  { get; set; }
+    public bool ModifyTopologicalSorting  { get; set; }
+    public bool DebugConcurrentHoudini  { get; set; }
 
     public bool HoudiniUseCrossDependencies {
       get => houdiniUseCrossDependencies;
       set => houdiniUseCrossDependencies = value;
     }
 
-    public string StagedHoudini  { get; set; } = null;
-    public bool DebugStagedHoudini  { get; set; } = false;
-    public bool StagedHoudiniReachabilityAnalysis  { get; set; } = false;
-    public bool StagedHoudiniMergeIgnoredAnnotations  { get; set; } = false;
+    public string StagedHoudini  { get; set; }
+    public bool DebugStagedHoudini  { get; set; }
+    public bool StagedHoudiniReachabilityAnalysis  { get; set; }
+    public bool StagedHoudiniMergeIgnoredAnnotations  { get; set; }
 
     public int StagedHoudiniThreads {
       get => stagedHoudiniThreads;
       set => stagedHoudiniThreads = value;
     }
 
-    public string VariableDependenceIgnore  { get; set; } = null;
+    public string VariableDependenceIgnore  { get; set; }
 
     public bool UseUnsatCoreForContractInfer {
       get => useUnsatCoreForContractInfer;
       set => useUnsatCoreForContractInfer = value;
     }
 
-    public bool PrintAssignment = false;
+    public bool PrintAssignment  { get; set; }
 
     // TODO(wuestholz): Add documentation for this flag.
     public bool PrintNecessaryAssumes {
@@ -267,19 +268,18 @@ namespace Microsoft.Boogie
       set => printNecessaryAssumes = value;
     }
 
-    public int InlineDepth = -1;
+    public int InlineDepth  { get; set; } = -1;
 
     public bool UseProverEvaluate {
       get => useProverEvaluate;
       set => useProverEvaluate = value;
     } // Use ProverInterface's Evaluate method, instead of model to get variable values
 
-    public bool SoundnessSmokeTest = false;
-    public int KInductionDepth = -1;
-    public int EnableUnSatCoreExtract { get; set; }= 0;
+    public bool SoundnessSmokeTest  { get; set; }
+    public int KInductionDepth { get; set; } = -1;
+    public int EnableUnSatCoreExtract { get; set; }
 
-    private string /*!*/
-      _logPrefix = "";
+    private string /*!*/ _logPrefix = "";
 
     public string LogPrefix
     {
@@ -295,24 +295,17 @@ namespace Microsoft.Boogie
       }
     }
 
-    public bool PrettyPrint = true;
+    public bool PrettyPrint { get; set; } = true;
 
-    public CommandLineOptions.ProverWarnings PrintProverWarnings = CommandLineOptions.ProverWarnings.None;
+    public CommandLineOptions.ProverWarnings PrintProverWarnings { get; set; } = CommandLineOptions.ProverWarnings.None;
 
 
-    public CommandLineOptions.SubsumptionOption UseSubsumption = CommandLineOptions.SubsumptionOption.Always;
+    public CommandLineOptions.SubsumptionOption UseSubsumption { get; set; } = CommandLineOptions.SubsumptionOption.Always;
 
-    public bool AlwaysAssumeFreeLoopInvariants = false;
+    public bool AlwaysAssumeFreeLoopInvariants { get; set; }
 
-    public enum ShowEnvironment
-    {
-      Never,
-      DuringPrint,
-      Always
-    }
-
-    public ShowEnvironment ShowEnv = ShowEnvironment.DuringPrint;
-    public bool ShowVerifiedProcedureCount = true;
+    public ExecutionEngineOptions.ShowEnvironment ShowEnv { get; set; } = ExecutionEngineOptions.ShowEnvironment.DuringPrint;
+    public bool ShowVerifiedProcedureCount { get; set; } = true;
 
     [ContractInvariantMethod]
     void ObjectInvariant3()
@@ -324,27 +317,27 @@ namespace Microsoft.Boogie
       Contract.Invariant(cce.NonNullElements(this.ProverOptions));
     }
 
-    public int LoopUnrollCount = -1; // -1 means don't unroll loops
-    public bool SoundLoopUnrolling = false;
-    public int PrintErrorModel { get; set; } = 0;
-    public string PrintErrorModelFile = null;
+    public int LoopUnrollCount { get; set; } = -1; // -1 means don't unroll loops
+    public bool SoundLoopUnrolling { get; set; }
+    public int PrintErrorModel { get; set; }
+    public string PrintErrorModelFile { get; set; }
 
-    public string /*?*/ ModelViewFile { get; set; } = null;
+    public string /*?*/ ModelViewFile { get; set; }
 
     public int EnhancedErrorMessages {
       get => enhancedErrorMessages;
       set => enhancedErrorMessages = value;
     }
 
-    public string PrintCFGPrefix = null;
-    public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
+    public string PrintCFGPrefix { get; set; }
+    public bool ForceBplErrors { get; set; } = false; // if true, boogie error is shown even if "msg" attribute is present
 
     public bool UseArrayTheory {
       get => useArrayTheory;
       set => useArrayTheory = value;
     }
-    
-    public bool RelaxFocus = false;
+
+    public bool RelaxFocus { get; set; }
 
     public bool RunDiagnosticsOnTimeout {
       get => runDiagnosticsOnTimeout;
@@ -366,16 +359,16 @@ namespace Microsoft.Boogie
       set => siBoolControlVc = value;
     }
 
-    public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
+    public bool ExpandLambdas { get; set; } = true; // not useful from command line, only to be set to false programatically
 
     public bool DoModSetAnalysis {
       get => doModSetAnalysis;
       set => doModSetAnalysis = value;
     }
 
-    public bool UseAbstractInterpretation  { get; set; } = false;
+    public bool UseAbstractInterpretation { get; set; }
 
-    public string CivlDesugaredFile  { get; set; } = null;
+    public string CivlDesugaredFile { get; set; }
 
     public bool TrustMoverTypes {
       get => trustMoverTypes;
@@ -387,19 +380,19 @@ namespace Microsoft.Boogie
       set => trustNoninterference = value;
     }
 
-    public int TrustLayersUpto = -1;
-    public int TrustLayersDownto = int.MaxValue;
+    public int TrustLayersUpto { get; set; } = -1;
+    public int TrustLayersDownto { get; set; } = int.MaxValue;
 
     public bool TrustInductiveSequentialization {
       get => trustInductiveSequentialization;
       set => trustInductiveSequentialization = value;
     }
 
-    public bool RemoveEmptyBlocks = true;
-    public bool CoalesceBlocks = true;
-    public bool PruneInfeasibleEdges = true;
+    public bool RemoveEmptyBlocks { get; set; } = true;
+    public bool CoalesceBlocks { get; set; } = true;
+    public bool PruneInfeasibleEdges { get; set; } = true;
 
-    [Rep] public ProverFactory TheProverFactory;
+    [Rep] public ProverFactory TheProverFactory { get; set; }
     public string ProverDllName;
 
     public bool ProverHelpRequested {
@@ -407,7 +400,7 @@ namespace Microsoft.Boogie
       set => proverHelpRequested = value;
     }
 
-    public List<string> ProverOptions  { get; set; } = new List<string>();
+    public List<string> ProverOptions { get; set; } = new();
 
     private int bracketIdsInVC = -1; // -1 - not specified, 0 - no, 1 - yes
 
@@ -425,34 +418,34 @@ namespace Microsoft.Boogie
       }
     }
 
-    public uint TimeLimit = 0; // 0 means no limit
-    public uint ResourceLimit = 0; // default to 0
-    public uint SmokeTimeout = 10; // default to 10s
+    public uint TimeLimit { get; set; } = 0; // 0 means no limit
+    public uint ResourceLimit { get; set; } = 0; // default to 0
+    public uint SmokeTimeout { get; set; } = 10; // default to 10s
 
     public int ErrorLimit {
       get => errorLimit;
       set => errorLimit = value;
-    } // 0 means attempt to falsify each assertion in a desugared implementation 
+    } // 0 means attempt to falsify each assertion in a desugared implementation
 
     public bool RestartProverPerVC {
       get => restartProverPerVc;
       set => restartProverPerVc = value;
     }
 
-    public double VcsMaxCost = 1.0;
-    public double VcsPathJoinMult = 0.8;
-    public double VcsPathCostMult = 1.0;
-    public double VcsAssumeMult = 0.01;
-    public double VcsPathSplitMult = 0.5; // 0.5-always, 2-rarely do path splitting
-    public int VcsMaxSplits = 1;
-    public int VcsMaxKeepGoingSplits = 1;
-    public bool VcsSplitOnEveryAssert = false;
-    public uint VcsFinalAssertTimeout = 30;
-    public uint VcsKeepGoingTimeout = 1;
-    public int VcsCores = 1;
-    public bool VcsDumpSplits = false;
+    public double VcsMaxCost { get; set; } = 1.0;
+    public double VcsPathJoinMult { get; set; } = 0.8;
+    public double VcsPathCostMult { get; set; } = 1.0;
+    public double VcsAssumeMult { get; set; } = 0.01;
+    public double VcsPathSplitMult { get; set; } = 0.5; // 0.5-always, 2-rarely do path splitting
+    public int VcsMaxSplits { get; set; } = 1;
+    public int VcsMaxKeepGoingSplits { get; set; } = 1;
+    public bool VcsSplitOnEveryAssert { get; set; } = false;
+    public uint VcsFinalAssertTimeout { get; set; } = 30;
+    public uint VcsKeepGoingTimeout { get; set; } = 1;
+    public int VcsCores { get; set; } = 1;
+    public bool VcsDumpSplits { get; set; } = false;
 
-    public bool DebugRefuted = false;
+    public bool DebugRefuted { get; set; } = false;
 
     public XmlSink XmlRefuted
     {
@@ -476,48 +469,47 @@ namespace Microsoft.Boogie
       set => printInlined = value;
     }
 
-    public bool ExtractLoops = false;
-    public bool DeterministicExtractLoops = false;
+    public bool ExtractLoops { get; set; } = false;
+    public bool DeterministicExtractLoops { get; set; } = false;
 
     // Enables VC generation for Stratified Inlining.
     // Set programmatically by Corral.
     public int StratifiedInlining  { get; set; } = 0;
 
     // disable model generation, used by Corral/SI
-    public bool StratifiedInliningWithoutModels { get; set; } 
+    public bool StratifiedInliningWithoutModels { get; set; }
 
     // Sets the recursion bound, used for loop extraction, etc.
-    public int RecursionBound = 500;
+    public int RecursionBound { get; set; } = 500;
 
-    public bool ExtractLoopsUnrollIrreducible = true; // unroll irreducible loops? (set programmatically)
+    public bool ExtractLoopsUnrollIrreducible { get; set; } = true; // unroll irreducible loops? (set programmatically)
 
 
     public CommandLineOptions.TypeEncoding TypeEncodingMethod { get; set; } = CommandLineOptions.TypeEncoding.Predicates;
 
-    public bool Monomorphize = false;
+    public bool Monomorphize { get; set; } = false;
 
-    public bool ReflectAdd = false;
+    public bool ReflectAdd { get; set; } = false;
 
-    public int LiveVariableAnalysis = 1;
+    public int LiveVariableAnalysis { get; set; } = 1;
 
-    public bool UseLibrary = false;
+    public bool UseLibrary { get; set; } = false;
 
     // Note that procsToCheck stores all patterns <p> supplied with /proc:<p>
     // (and similarly procsToIgnore for /noProc:<p>). Thus, if procsToCheck
     // is empty it means that all procedures should be checked.
     public List<string> ProcsToCheck { get; } = new();
-    private List<string /*!*/> procsToIgnore = new List<string /*!*/>();
+    public List<string /*!*/> ProcsToIgnore { get; set; } = new();
 
     [ContractInvariantMethod]
     void ObjectInvariant5()
     {
       Contract.Invariant(cce.NonNullElements(this.ProcsToCheck, true));
-      Contract.Invariant(cce.NonNullElements(this.procsToIgnore, true));
+      Contract.Invariant(cce.NonNullElements(this.ProcsToIgnore, true));
       Contract.Invariant(Ai != null);
     }
 
-    public readonly CommandLineOptions.AiFlags /*!*/
-      Ai = new CommandLineOptions.AiFlags();
+    public CommandLineOptions.AiFlags /*!*/ Ai  { get; private set; } = new();
 
     private bool proverHelpRequested = false;
     private bool restartProverPerVc = false;
@@ -677,7 +669,7 @@ namespace Microsoft.Boogie
         case "trustLayersUpto":
           if (ps.ConfirmArgumentCount(1))
           {
-            ps.GetNumericArgument(ref TrustLayersUpto);
+            ps.GetNumericArgument(x => TrustLayersUpto = x);
           }
 
           return true;
@@ -685,7 +677,7 @@ namespace Microsoft.Boogie
         case "trustLayersDownto":
           if (ps.ConfirmArgumentCount(1))
           {
-            ps.GetNumericArgument(ref TrustLayersDownto);
+            ps.GetNumericArgument(x => TrustLayersDownto = x);
           }
 
           return true;
@@ -716,7 +708,7 @@ namespace Microsoft.Boogie
           return true;
 
         case "errorTrace":
-          ps.GetNumericArgument(ref ErrorTrace, 3);
+          ps.GetNumericArgument(x => ErrorTrace = x, 3);
           return true;
 
         case "proverWarnings":
@@ -754,13 +746,13 @@ namespace Microsoft.Boogie
             switch (e)
             {
               case 0:
-                ShowEnv = ShowEnvironment.Never;
+                ShowEnv = ExecutionEngineOptions.ShowEnvironment.Never;
                 break;
               case 1:
-                ShowEnv = ShowEnvironment.DuringPrint;
+                ShowEnv = ExecutionEngineOptions.ShowEnvironment.DuringPrint;
                 break;
               case 2:
-                ShowEnv = ShowEnvironment.Always;
+                ShowEnv = ExecutionEngineOptions.ShowEnvironment.Always;
                 break;
               default:
               {
@@ -785,7 +777,7 @@ namespace Microsoft.Boogie
         }
 
         case "loopUnroll":
-          ps.GetNumericArgument(ref LoopUnrollCount);
+          ps.GetNumericArgument(x => LoopUnrollCount = x);
           return true;
 
         case "printModel":
@@ -836,7 +828,7 @@ namespace Microsoft.Boogie
           return true;
 
         case "inlineDepth":
-          ps.GetNumericArgument(ref InlineDepth);
+          ps.GetNumericArgument(x => InlineDepth = x);
           return true;
 
         case "subsumption":
@@ -1124,23 +1116,23 @@ namespace Microsoft.Boogie
           return true;
 
         case "vcsMaxCost":
-          ps.GetNumericArgument(ref VcsMaxCost);
+          ps.GetNumericArgument(x => VcsMaxCost = x);
           return true;
 
         case "vcsPathJoinMult":
-          ps.GetNumericArgument(ref VcsPathJoinMult);
+          ps.GetNumericArgument(x => VcsPathJoinMult = x);
           return true;
 
         case "vcsPathCostMult":
-          ps.GetNumericArgument(ref VcsPathCostMult);
+          ps.GetNumericArgument(x => VcsPathCostMult = x);
           return true;
 
         case "vcsAssumeMult":
-          ps.GetNumericArgument(ref VcsAssumeMult);
+          ps.GetNumericArgument(x => VcsAssumeMult = x);
           return true;
 
         case "vcsPathSplitMult":
-          ps.GetNumericArgument(ref VcsPathSplitMult);
+          ps.GetNumericArgument(x => VcsPathSplitMult = x);
           return true;
 
         case "vcsMaxSplits":
@@ -1365,15 +1357,9 @@ namespace Microsoft.Boogie
       return false;
     }
 
-    public bool UserWantsToCheckRoutine(string methodFullname)
-    {
-      Contract.Requires(methodFullname != null);
-      Func<string, bool> match = s => Regex.IsMatch(methodFullname, "^" + Regex.Escape(s).Replace(@"\*", ".*") + "$");
-      return (ProcsToCheck.Count == 0 || ProcsToCheck.Any(match)) && !procsToIgnore.Any(match);
-    }
 
     // Used by Dafny to decide if it should perform compilation
-    public bool UserConstrainedProcsToCheck => ProcsToCheck.Count > 0 || procsToIgnore.Count > 0;
+    public bool UserConstrainedProcsToCheck => ProcsToCheck.Count > 0 || ProcsToIgnore.Count > 0;
 
     public virtual StringCollection ParseNamedArgumentList(string argList)
     {

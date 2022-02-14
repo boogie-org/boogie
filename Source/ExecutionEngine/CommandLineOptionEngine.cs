@@ -7,8 +7,8 @@ namespace Microsoft.Boogie;
 
 public class CommandLineOptionEngine
 {
-  public readonly string ToolName;
-  public readonly string DescriptiveToolName;
+  public string ToolName { get; set; }
+  public string DescriptiveToolName { get; set; }
 
   [ContractInvariantMethod]
   void ObjectInvariant()
@@ -20,8 +20,7 @@ public class CommandLineOptionEngine
     Contract.Invariant(this._fileTimestamp != null);
   }
 
-  private string /*!*/
-    _environment = "";
+  private string /*!*/ _environment = "";
 
   public string Environment
   {
@@ -176,6 +175,21 @@ public class CommandLineOptionEngine
       this.EncounteredErrors = false;
     }
 
+    public bool CheckBooleanFlag(string flagName, Action<bool> setFlag, bool valueWhenPresent = true)
+    {
+      Contract.Requires(flagName != null);
+      //modifies nextIndex, encounteredErrors, Console.Error.*;
+      bool flagPresent = false;
+
+      if ((s == "/" + flagName || s == "-" + flagName) && ConfirmArgumentCount(0))
+      {
+        setFlag(valueWhenPresent);
+        flagPresent = true;
+      }
+
+      return flagPresent;
+    }
+
     public bool CheckBooleanFlag(string flagName, ref bool flag, bool valueWhenPresent)
     {
       Contract.Requires(flagName != null);
@@ -202,6 +216,20 @@ public class CommandLineOptionEngine
     /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
     /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
     /// </summary>
+    public bool GetNumericArgument(Action<bool> setArg)
+    {
+      int intArg = 0;
+      var result = GetNumericArgument(ref intArg, x => x < 2);
+      if (result) {
+        setArg(intArg != 0);
+      }
+      return result;
+    }
+
+    /// <summary>
+    /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
+    /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
+    /// </summary>
     public bool GetNumericArgument(ref bool arg)
     {
       int intArg = 0;
@@ -211,7 +239,46 @@ public class CommandLineOptionEngine
       }
       return result;
     }
-      
+
+    /// <summary>
+    /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
+    /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
+    /// </summary>
+    public bool GetNumericArgument(Action<int> setArg, Predicate<int> filter = null)
+    {
+      filter ??= a => 0 <= a;
+
+      Contract.Requires(filter != null);
+
+      if (this.ConfirmArgumentCount(1))
+      {
+        try
+        {
+          Contract.Assume(args[i] != null);
+          Contract.Assert(args[i] is string); // needed to prove args[i].IsPeerConsistent
+          int d = Convert.ToInt32(this.args[this.i]);
+          if (filter == null || filter(d))
+          {
+            setArg(d);
+            return true;
+          }
+        }
+        catch (FormatException)
+        {
+        }
+        catch (OverflowException)
+        {
+        }
+      }
+      else
+      {
+        return false;
+      }
+
+      Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
+      return false;
+    }
+
     /// <summary>
     /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
     /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
@@ -284,6 +351,29 @@ public class CommandLineOptionEngine
       else
       {
         return false;
+      }
+
+      Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
+      return false;
+    }
+
+    /// <summary>
+    /// If there is one argument and it is a non-negative integer less than "limit",
+    /// then set "arg" to that number and return "true".
+    /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
+    /// </summary>
+    public bool GetNumericArgument(Action<int> setArg, int limit)
+    {
+      Contract.Requires(this.i < args.Length);
+      int a = 0;
+      if (!GetNumericArgument(x => a = x))
+      {
+        return false;
+      }
+
+      if (a < limit) {
+        setArg(a);
+        return true;
       }
 
       Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);

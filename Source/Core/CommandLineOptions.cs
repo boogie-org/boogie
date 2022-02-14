@@ -1,8 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Linq;
-using System.Diagnostics.Contracts;
-using System.Text.RegularExpressions;
 
 namespace Microsoft.Boogie
 {
@@ -12,9 +8,12 @@ namespace Microsoft.Boogie
   /// </summary>
   public interface CommandLineOptions : ConcurrencyOptions // TODO Reverse inheritance
   {
-    private static CommandLineOptions clo;
 
-    public static CommandLineOptions /*!*/ Clo => clo;
+    public static CommandLineOptions /*!*/ Clo
+    {
+      get;
+      set;
+    }
 
     public enum TypeEncoding
     {
@@ -69,12 +68,12 @@ namespace Microsoft.Boogie
     InstrumentationPlaces InstrumentInfer { get; }
     AiFlags Ai { get; }
     bool InstrumentWithAsserts { get; }
-    bool UseArrayTheory { get; }
-    TypeEncoding TypeEncodingMethod { get; }
+    bool UseArrayTheory { get; set; }
+    TypeEncoding TypeEncodingMethod { get; set; }
     bool ReflectAdd { get; }
     SubsumptionOption UseSubsumption { get; }
     int VcsCores { get; }
-    IReadOnlyList<string> ProverOptions { get; }
+    List<string> ProverOptions { get; }
     bool Prune { get; }
     bool RunDiagnosticsOnTimeout { get; }
     string ProverLogFilePath { get; }
@@ -111,6 +110,7 @@ namespace Microsoft.Boogie
     int LiveVariableAnalysis { get; }
     bool RemoveEmptyBlocks { get; }
     double VcsPathJoinMult { get; }
+    bool VerifySeparately { get; }
 
     public enum ProverWarnings
     {
