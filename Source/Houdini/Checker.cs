@@ -158,7 +158,7 @@ namespace Microsoft.Boogie.Houdini
       this.descriptiveName = impl.Name;
       this.houdini = houdini;
       this.stats = stats;
-      collector = new ConditionGeneration.CounterexampleCollector();
+      collector = new ConditionGeneration.CounterexampleCollector(houdini.Options);
       collector.OnProgress?.Invoke("HdnVCGen", 0, 0, 0.0);
 
       vcgen.ConvertCFG2DAG(impl, taskID: taskID);
@@ -190,7 +190,7 @@ namespace Microsoft.Boogie.Houdini
         new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false));
       proverInterface.DefineMacro(macro, conjecture);
       conjecture = exprGen.Function(macro);
-      handler = new VCGen.ErrorReporter(gotoCmdOrigins, absyIds, impl.Blocks, vcgen.debugInfos, collector,
+      handler = new VCGen.ErrorReporter(this.houdini.Options, gotoCmdOrigins, absyIds, impl.Blocks, vcgen.debugInfos, collector,
         mvInfo, proverInterface.Context, program);
     }
 

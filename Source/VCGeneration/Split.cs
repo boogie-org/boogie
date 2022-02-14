@@ -17,7 +17,7 @@ namespace VC
 
   public class Split
   {
-      public int? RandomSeed => Implementation.RandomSeed ?? CommandLineOptions.Clo.RandomSeed;
+      public int? RandomSeed => Implementation.RandomSeed ?? Options.RandomSeed;
     
       class BlockStats
       {
@@ -138,14 +138,14 @@ namespace VC
 
       private void PrintTopLevelDeclarationsForPruning(Program program, Implementation implementation, string suffix)
       {
-        if (!CommandLineOptions.Clo.Prune || CommandLineOptions.Clo.PrintPrunedFile == null)
+        if (!Options.Prune || Options.PrintPrunedFile == null)
         {
           return;
         }
 
         using var writer = new TokenTextWriter(
-          $"{CommandLineOptions.Clo.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}", false,
-          CommandLineOptions.Clo.PrettyPrint);
+          $"{Options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}", false,
+          Options.PrettyPrint);
         foreach (var declaration in TopLevelDeclarations ?? program.TopLevelDeclarations) {
           declaration.Emit(writer, 0);
         }
@@ -216,17 +216,17 @@ namespace VC
         string filename = string.Format("{0}.split.{1}.bpl", Implementation.Name, splitNum);
         using (System.IO.StreamWriter sw = System.IO.File.CreateText(filename))
         {
-          int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-          CommandLineOptions.Clo.PrintUnstructured = 2; // print only the unstructured program
-          bool oldPrintDesugaringSetting = CommandLineOptions.Clo.PrintDesugarings;
-          CommandLineOptions.Clo.PrintDesugarings = false;
+          int oldPrintUnstructured = Options.PrintUnstructured;
+          Options.PrintUnstructured = 2; // print only the unstructured program
+          bool oldPrintDesugaringSetting = Options.PrintDesugarings;
+          Options.PrintDesugarings = false;
           List<Block> backup = Implementation.Blocks;
           Contract.Assert(backup != null);
           Implementation.Blocks = blocks;
           Implementation.Emit(new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false), 0);
           Implementation.Blocks = backup;
-          CommandLineOptions.Clo.PrintDesugarings = oldPrintDesugaringSetting;
-          CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+          Options.PrintDesugarings = oldPrintDesugaringSetting;
+          Options.PrintUnstructured = oldPrintUnstructured;
         }
       }
 
@@ -432,7 +432,7 @@ namespace VC
           }
         }
 
-        if (CommandLineOptions.Clo.VcsPathSplitMult * score > totalCost)
+        if (Options.VcsPathSplitMult * score > totalCost)
         {
           splitBlock = null;
           score = -1;
@@ -471,7 +471,7 @@ namespace VC
 
           if (count > 1)
           {
-            s.incomingPaths *= CommandLineOptions.Clo.VcsPathJoinMult;
+            s.incomingPaths *= Options.VcsPathJoinMult;
           }
         }
       }
@@ -583,14 +583,14 @@ namespace VC
             double local = s.assertionCost;
             if (ShouldAssumize(b))
             {
-              local = (s.assertionCost + s.assumptionCost) * CommandLineOptions.Clo.VcsAssumeMult;
+              local = (s.assertionCost + s.assumptionCost) * Options.VcsAssumeMult;
             }
             else
             {
-              local = s.assumptionCost * CommandLineOptions.Clo.VcsAssumeMult + s.assertionCost;
+              local = s.assumptionCost * Options.VcsAssumeMult + s.assertionCost;
             }
 
-            local = local + local * s.incomingPaths * CommandLineOptions.Clo.VcsPathCostMult;
+            local = local + local * s.incomingPaths * Options.VcsPathCostMult;
             cost += local;
           }
         }
@@ -754,7 +754,7 @@ namespace VC
         List<Block> tmp = Implementation.Blocks;
         Contract.Assert(tmp != null);
         Implementation.Blocks = blocks;
-        ConditionGeneration.EmitImpl(Implementation, false);
+        ConditionGeneration.EmitImpl(Options, Implementation, false);
         Implementation.Blocks = tmp;
       }
 
@@ -778,7 +778,7 @@ namespace VC
             Contract.Assert(c != null);
             if (c is AssertCmd)
             {
-              return VCGen.AssertCmdToCounterexample((AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context);
+              return VCGen.AssertCmdToCounterexample(Options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context);
             }
           }
         }
@@ -786,6 +786,8 @@ namespace VC
         Contract.Assume(false);
         throw new cce.UnreachableException();
       }
+
+      private VCGenOptions Options => Checker.Options;
 
       private static void PrintSet<T> (HashSet<T> s) {
         foreach(T i in s)
@@ -1007,7 +1009,7 @@ namespace VC
         // By default, we process the foci in a top-down fashion, i.e., in the topological order.
         // If the user sets the RelaxFocus flag, we use the reverse (topological) order.
         var focusBlocks = GetFocusBlocks(topoSorted);
-        if (CommandLineOptions.Clo.RelaxFocus) {
+        if (par.CheckerPool.Options.RelaxFocus) {
           focusBlocks.Reverse();
         }
         if (!focusBlocks.Any()) {
@@ -1150,7 +1152,7 @@ namespace VC
 
           Split s0, s1;
 
-          bool splitStats = CommandLineOptions.Clo.TraceVerify;
+          bool splitStats = initial.Options.TraceVerify;
 
           if (splitStats)
           {
@@ -1223,7 +1225,7 @@ namespace VC
             Console.WriteLine("    --> {0}", s1.Stats);
           }
 
-          if (CommandLineOptions.Clo.TraceVerify)
+          if (initial.Options.TraceVerify)
           {
             best.Print();
           }
@@ -1283,18 +1285,18 @@ namespace VC
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
 
-        if (CommandLineOptions.Clo.Trace && splitNum >= 0)
+        if (Options.Trace && splitNum >= 0)
         {
           System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitNum + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
-        if (CommandLineOptions.Clo.XmlSink != null && splitNum >= 0) {
-          CommandLineOptions.Clo.XmlSink.WriteEndSplit(outcome.ToString().ToLowerInvariant(), 
+        if (Options.XmlSink != null && splitNum >= 0) {
+          Options.XmlSink.WriteEndSplit(outcome.ToString().ToLowerInvariant(),
             TimeSpan.FromSeconds(checker.ProverRunTime.TotalSeconds));
         }
 
-        if (CommandLineOptions.Clo.VcsDumpSplits)
+        if (Options.VcsDumpSplits)
         {
           DumpDot(splitNum);
         }
@@ -1381,10 +1383,10 @@ namespace VC
             exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
           VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
           vc = exprGen.Implies(eqExpr, vc);
-          reporter = new VCGen.ErrorReporter(gotoCmdOrigins, absyIds, Implementation.Blocks, parent.debugInfos, callback,
-            mvInfo, this.Checker.TheoremProver.Context, parent.program);
+          reporter = new VCGen.ErrorReporter(Options, gotoCmdOrigins, absyIds, Implementation.Blocks, parent.debugInfos, callback,
+            mvInfo, Checker.TheoremProver.Context, parent.program);
           
-          if (CommandLineOptions.Clo.TraceVerify && no >= 0)
+          if (Options.TraceVerify && no >= 0)
           {
             Console.WriteLine("-- after split #{0}", no);
             Print();

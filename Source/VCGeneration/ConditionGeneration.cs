@@ -7,6 +7,7 @@ using System.Threading;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
+using System.Runtime.CompilerServices;
 using Set = Microsoft.Boogie.GSet<object>;
 
 namespace VC
@@ -22,7 +23,8 @@ namespace VC
   [ContractClassFor(typeof(ConditionGeneration))]
   public abstract class ConditionGenerationContracts : ConditionGeneration
   {
-    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback, CancellationToken cancellationToken)
+    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback,
+      CancellationToken cancellationToken)
     {
       Contract.Requires(impl != null);
       Contract.Requires(callback != null);
@@ -123,7 +125,7 @@ namespace VC
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       Helpers.ExtraTraceInformation("Starting implementation verification");
 
-      CounterexampleCollector collector = new CounterexampleCollector();
+      CounterexampleCollector collector = new CounterexampleCollector(Options);
       collector.RequestId = requestId;
       Outcome outcome = VerifyImplementation(impl, collector, cancellationToken);
       if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
@@ -140,7 +142,10 @@ namespace VC
       return outcome;
     }
 
-    public abstract Outcome VerifyImplementation(Implementation impl, VerifierCallback callback, CancellationToken cancellationToken);
+    private VCGenOptions Options => CheckerPool.Options;
+
+    public abstract Outcome VerifyImplementation(Implementation impl, VerifierCallback callback,
+      CancellationToken cancellationToken);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
 
@@ -216,14 +221,14 @@ namespace VC
     /// </summary>
     /// <param name="impl"></param>
     /// <param name="startCmds"></param>
-    protected static void InjectPreconditions(Implementation impl, [Captured] List<Cmd> startCmds)
+    protected static void InjectPreconditions(VCGenOptions options, Implementation impl, [Captured] List<Cmd> startCmds)
     {
       Contract.Requires(impl != null);
       Contract.Requires(startCmds != null);
       Contract.Requires(impl.Proc != null);
 
       TokenTextWriter debugWriter = null;
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (options.PrintWithUniqueASTIds)
       {
         debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false);
         debugWriter.WriteLine("Effective precondition:");
@@ -278,7 +283,7 @@ namespace VC
     /// already been constructed for the implementation (and so
     /// is already an element of impl.Blocks)
     /// </param>
-    protected static void InjectPostConditions(Implementation impl, Block unifiedExitBlock,
+    protected static void InjectPostConditions(VCGenOptions options, Implementation impl, Block unifiedExitBlock,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
     {
       Contract.Requires(impl != null);
@@ -288,7 +293,7 @@ namespace VC
       Contract.Requires(unifiedExitBlock.TransferCmd is ReturnCmd);
 
       TokenTextWriter debugWriter = null;
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (options.PrintWithUniqueASTIds)
       {
         debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false);
         debugWriter.WriteLine("Effective postcondition:");
@@ -336,7 +341,7 @@ namespace VC
     /// Get the pre-condition of an implementation, including the where clauses from the in-parameters.
     /// </summary>
     /// <param name="impl"></param>
-    protected static List<Cmd> GetPre(Implementation impl)
+    protected static List<Cmd> GetPre(VCGenOptions options, Implementation impl)
     {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
@@ -344,7 +349,7 @@ namespace VC
 
 
       TokenTextWriter debugWriter = null;
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (options.PrintWithUniqueASTIds)
       {
         debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false);
         debugWriter.WriteLine("Effective precondition:");
@@ -381,12 +386,12 @@ namespace VC
     /// Get the post-condition of an implementation.
     /// </summary>
     /// <param name="impl"></param>
-    protected static List<Cmd> GetPost(Implementation impl)
+    protected static List<Cmd> GetPost(VCGenOptions options, Implementation impl)
     {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (options.PrintWithUniqueASTIds)
       {
         Console.WriteLine("Effective postcondition:");
       }
@@ -407,14 +412,14 @@ namespace VC
           ((AssertEnsuresCmd) c).ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
           post.Add(c);
 
-          if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+          if (options.PrintWithUniqueASTIds)
           {
             c.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false), 1);
           }
         }
       }
 
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (options.PrintWithUniqueASTIds)
       {
         Console.WriteLine();
       }
@@ -428,13 +433,13 @@ namespace VC
     /// As a side effect, this method adds these where clauses to the out parameters.
     /// </summary>
     /// <param name="impl"></param>
-    protected static List<Cmd> GetParamWhereClauses(Implementation impl)
+    protected static List<Cmd> GetParamWhereClauses(VCGenOptions options, Implementation impl)
     {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       TokenTextWriter debugWriter = null;
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (options.PrintWithUniqueASTIds)
       {
         debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false);
         debugWriter.WriteLine("Effective precondition from where-clauses:");
@@ -510,6 +515,13 @@ namespace VC
 
     public class CounterexampleCollector : VerifierCallback
     {
+      private readonly VCGenOptions options;
+
+      public CounterexampleCollector(VCGenOptions options) : base(options.PrintProverWarnings)
+      {
+        this.options = options;
+      }
+
       [ContractInvariantMethod]
       void ObjectInvariant()
       {
@@ -529,7 +541,7 @@ namespace VC
           ce.RequestId = RequestId;
         }
 
-        if (ce.OriginalRequestId == null && 1 < CommandLineOptions.Clo.VerifySnapshots)
+        if (ce.OriginalRequestId == null && 1 < options.VerifySnapshots)
         {
           ce.OriginalRequestId = RequestId;
         }
@@ -541,21 +553,21 @@ namespace VC
       {
         //Contract.Requires(impl != null);
         System.Console.WriteLine("found unreachable code:");
-        EmitImpl(impl, false);
+        EmitImpl(options, impl, false);
         // TODO report error about next to last in seq
       }
     }
 
-    public static void EmitImpl(Implementation impl, bool printDesugarings)
+    public static void EmitImpl(VCGenOptions options, Implementation impl, bool printDesugarings)
     {
       Contract.Requires(impl != null);
-      int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-      CommandLineOptions.Clo.PrintUnstructured = 2; // print only the unstructured program
-      bool oldPrintDesugaringSetting = CommandLineOptions.Clo.PrintDesugarings;
-      CommandLineOptions.Clo.PrintDesugarings = printDesugarings;
+      int oldPrintUnstructured = options.PrintUnstructured;
+      options.PrintUnstructured = 2; // print only the unstructured program
+      bool oldPrintDesugaringSetting = options.PrintDesugarings;
+      options.PrintDesugarings = printDesugarings;
       impl.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false), 0);
-      CommandLineOptions.Clo.PrintDesugarings = oldPrintDesugaringSetting;
-      CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+      options.PrintDesugarings = oldPrintDesugaringSetting;
+      options.PrintUnstructured = oldPrintUnstructured;
     }
 
 
@@ -854,21 +866,21 @@ namespace VC
 
       var end = DateTime.UtcNow;
 
-      if (CommandLineOptions.Clo.TraceCachingForDebugging)
+      if (Options.TraceCachingForDebugging)
       {
         Console.Out.WriteLine("Turned implementation into passive commands within {0:F0} ms.\n",
           end.Subtract(start).TotalMilliseconds);
       }
 
-      if (CommandLineOptions.Clo.TraceCachingForDebugging) {
+      if (Options.TraceCachingForDebugging) {
         using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
-        var pd = CommandLineOptions.Clo.PrintDesugarings;
-        var pu = CommandLineOptions.Clo.PrintUnstructured;
-        CommandLineOptions.Clo.PrintDesugarings = true;
-        CommandLineOptions.Clo.PrintUnstructured = 1;
+        var pd = Options.PrintDesugarings;
+        var pu = Options.PrintUnstructured;
+        Options.PrintDesugarings = true;
+        Options.PrintUnstructured = 1;
         impl.Emit(tokTxtWr, 0);
-        CommandLineOptions.Clo.PrintDesugarings = pd;
-        CommandLineOptions.Clo.PrintUnstructured = pu;
+        Options.PrintDesugarings = pd;
+        Options.PrintUnstructured = pu;
       }
 
       currentImplementation = null;
@@ -877,10 +889,10 @@ namespace VC
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("after conversion to passive commands");
-        EmitImpl(impl, true);
+        EmitImpl(Options, impl, true);
       }
 
       #endregion
@@ -901,7 +913,7 @@ namespace VC
 
       Graph<Block> dag = Program.GraphFromBlocks(blocks);
       IEnumerable sortedNodes;
-      if (CommandLineOptions.Clo.ModifyTopologicalSorting)
+      if (Options.ModifyTopologicalSorting)
       {
         sortedNodes = dag.TopologicalSort(true);
       }
@@ -1017,7 +1029,7 @@ namespace VC
 
     void TraceCachingAction(Cmd cmd, CachingAction action)
     {
-      if (CommandLineOptions.Clo.TraceCachingForTesting) {
+      if (Options.TraceCachingForTesting) {
         using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
         var loc = cmd.tok != null && cmd.tok != Token.NoToken
           ? string.Format("{0}({1},{2})", cmd.tok.filename, cmd.tok.line, cmd.tok.col)
@@ -1027,7 +1039,7 @@ namespace VC
         Console.Out.WriteLine("  >>> {0}", action);
       }
 
-      if (CommandLineOptions.Clo.TraceCachingForBenchmarking && CachingActionCounts != null)
+      if (Options.TraceCachingForBenchmarking && CachingActionCounts != null)
       {
         Interlocked.Increment(ref CachingActionCounts[(int) action]);
       }
@@ -1129,7 +1141,7 @@ namespace VC
         }
 
         Expr copy = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, pc.Expr);
-        if (CommandLineOptions.Clo.ModelViewFile != null && pc is AssumeCmd captureStateAssumeCmd)
+        if (Options.ModelViewFile != null && pc is AssumeCmd captureStateAssumeCmd)
         {
           string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
           if (description != null)

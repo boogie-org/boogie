@@ -3,12 +3,15 @@ using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Microsoft.BaseTypes;
 
 namespace VC
 {
   public class VCContext
   {
+    public VCGenOptions Options { get; }
+
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
@@ -21,9 +24,10 @@ namespace VC
     public int AssertionCount; // counts the number of assertions for which Wlp has been computed
     public bool isPositiveContext;
 
-    public VCContext(ControlFlowIdMap<Absy> absyIds, ProverContext ctxt, bool isPositiveContext = true)
+    public VCContext(VCGenOptions options, ControlFlowIdMap<Absy> absyIds, ProverContext ctxt, bool isPositiveContext = true)
     {
       Contract.Requires(ctxt != null);
+      Options = options;
       this.absyIds = absyIds;
       this.Ctxt = ctxt;
       this.isPositiveContext = isPositiveContext;
@@ -112,7 +116,7 @@ namespace VC
           {
             VU = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.VerifiedUnder);
 
-            if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
+            if (ctxt.Options.RunDiagnosticsOnTimeout)
             {
               ctxt.Ctxt.TimeoutDiagnosticIDToAssertion[ctxt.Ctxt.TimeoutDiagnosticsCount] =
                 new Tuple<AssertCmd, TransferCmd>(ac, b.TransferCmd);
@@ -121,7 +125,7 @@ namespace VC
                   gen.Integer(BigNum.FromInt(ctxt.Ctxt.TimeoutDiagnosticsCount++))));
             }
           }
-          else if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
+          else if (ctxt.Options.RunDiagnosticsOnTimeout)
           {
             ctxt.Ctxt.TimeoutDiagnosticIDToAssertion[ctxt.Ctxt.TimeoutDiagnosticsCount] =
               new Tuple<AssertCmd, TransferCmd>(ac, b.TransferCmd);
@@ -175,7 +179,7 @@ namespace VC
       {
         AssumeCmd ac = (AssumeCmd) cmd;
 
-        if (CommandLineOptions.Clo.StratifiedInlining > 0)
+        if (ctxt.Options.StratifiedInlining > 0)
         {
           // Label the assume if it is a procedure call
           NAryExpr naryExpr = ac.Expr as NAryExpr;

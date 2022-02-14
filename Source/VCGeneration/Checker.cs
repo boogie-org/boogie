@@ -48,6 +48,7 @@ namespace Microsoft.Boogie
     public volatile Program Program;
     public readonly ProverOptions SolverOptions;
 
+    public VCGenOptions Options => Pool.Options;
     public CheckerPool Pool { get; }
 
     public void GetReady()
