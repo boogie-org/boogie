@@ -119,6 +119,7 @@ namespace CoreTests
     [Test()]
     public void GotoTargets()
     {
+      CommandLineOptions.Clo = new CommandLineOptionsImpl();
       Program p = TestUtil.ProgramLoader.LoadProgramFrom(@"
         procedure main()
         {
@@ -217,6 +218,7 @@ namespace CoreTests
     [Test()]
     public void CallCmdResolving()
     {
+      CommandLineOptions.Clo = new CommandLineOptionsImpl();
       Program p = TestUtil.ProgramLoader.LoadProgramFrom(@"
         procedure main()
         {
