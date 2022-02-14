@@ -620,7 +620,7 @@ namespace Microsoft.Boogie
         case "noProc":
           if (ps.ConfirmArgumentCount(1))
           {
-            this.procsToIgnore.Add(cce.NonNull(args[ps.i]));
+            this.ProcsToIgnore.Add(cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -651,7 +651,7 @@ namespace Microsoft.Boogie
 
         case "pretty":
           int val = 1;
-          if (ps.GetNumericArgument(ref val, 2))
+          if (ps.GetNumericArgument(x => val = x, 2))
           {
             PrettyPrint = val == 1;
           }
@@ -714,7 +714,7 @@ namespace Microsoft.Boogie
         case "proverWarnings":
         {
           int pw = 0;
-          if (ps.GetNumericArgument(ref pw, 3))
+          if (ps.GetNumericArgument(x => pw = x, 3))
           {
             switch (pw)
             {
@@ -741,7 +741,7 @@ namespace Microsoft.Boogie
         case "env":
         {
           int e = 0;
-          if (ps.GetNumericArgument(ref e, 3))
+          if (ps.GetNumericArgument(x => e = x, 3))
           {
             switch (e)
             {
@@ -768,7 +768,7 @@ namespace Microsoft.Boogie
         case "printVerifiedProceduresCount":
         {
           int n = 0;
-          if (ps.GetNumericArgument(ref n, 2))
+          if (ps.GetNumericArgument(x => n = x, 2))
           {
             ShowVerifiedProcedureCount = n != 0;
           }
@@ -816,7 +816,7 @@ namespace Microsoft.Boogie
           return true;
 
         case "enhancedErrorMessages":
-          ps.GetNumericArgument(ref enhancedErrorMessages, 2);
+          ps.GetNumericArgument(x => enhancedErrorMessages = x, 2);
           return true;
 
         case "printCFG":
@@ -834,7 +834,7 @@ namespace Microsoft.Boogie
         case "subsumption":
         {
           int s = 0;
-          if (ps.GetNumericArgument(ref s, 3))
+          if (ps.GetNumericArgument(x => s = x, 3))
           {
             switch (s)
             {
@@ -861,7 +861,7 @@ namespace Microsoft.Boogie
         case "liveVariableAnalysis":
         {
           int lva = 0;
-          if (ps.GetNumericArgument(ref lva, 3))
+          if (ps.GetNumericArgument(x => lva = x, 3))
           {
             LiveVariableAnalysis = lva;
           }
@@ -872,7 +872,7 @@ namespace Microsoft.Boogie
         case "removeEmptyBlocks":
         {
           int reb = 0;
-          if (ps.GetNumericArgument(ref reb, 2))
+          if (ps.GetNumericArgument(x => reb = x, 2))
           {
             RemoveEmptyBlocks = reb == 1;
           }
@@ -883,7 +883,7 @@ namespace Microsoft.Boogie
         case "coalesceBlocks":
         {
           int cb = 0;
-          if (ps.GetNumericArgument(ref cb, 2))
+          if (ps.GetNumericArgument(x => cb = x, 2))
           {
             CoalesceBlocks = cb == 1;
           }
@@ -922,7 +922,7 @@ namespace Microsoft.Boogie
 
         case "stagedHoudiniThreads":
         {
-          ps.GetNumericArgument(ref stagedHoudiniThreads);
+          ps.GetNumericArgument(x => stagedHoudiniThreads = x);
           return true;
         }
 
@@ -1112,7 +1112,7 @@ namespace Microsoft.Boogie
           return true;
 
         case "vcBrackets":
-          ps.GetNumericArgument(ref bracketIdsInVC, 2);
+          ps.GetNumericArgument(x => bracketIdsInVC = x, 2);
           return true;
 
         case "vcsMaxCost":
@@ -1136,11 +1136,11 @@ namespace Microsoft.Boogie
           return true;
 
         case "vcsMaxSplits":
-          ps.GetNumericArgument(ref VcsMaxSplits);
+          ps.GetNumericArgument(x => VcsMaxSplits = x);
           return true;
 
         case "vcsMaxKeepGoingSplits":
-          ps.GetNumericArgument(ref VcsMaxKeepGoingSplits);
+          ps.GetNumericArgument(x => VcsMaxKeepGoingSplits = x);
           return true;
 
         case "vcsSplitOnEveryAssert":
@@ -1151,20 +1151,20 @@ namespace Microsoft.Boogie
           return true;
 
         case "vcsFinalAssertTimeout":
-          ps.GetUnsignedNumericArgument(ref VcsFinalAssertTimeout, null);
+          ps.GetUnsignedNumericArgument(x => VcsFinalAssertTimeout = x);
           return true;
 
         case "vcsKeepGoingTimeout":
-          ps.GetUnsignedNumericArgument(ref VcsKeepGoingTimeout, null);
+          ps.GetUnsignedNumericArgument(x => VcsKeepGoingTimeout = x);
           return true;
 
         case "vcsCores":
-          ps.GetNumericArgument(ref VcsCores, a => 1 <= a);
+          ps.GetNumericArgument(x => VcsCores = x, a => 1 <= a);
           return true;
 
         case "vcsLoad":
           double load = 0.0;
-          if (ps.GetNumericArgument(ref load))
+          if (ps.GetNumericArgument(x => load = x))
           {
             if (3.0 <= load)
             {
@@ -1179,110 +1179,110 @@ namespace Microsoft.Boogie
           return true;
 
         case "timeLimit":
-          ps.GetUnsignedNumericArgument(ref TimeLimit, null);
+          ps.GetUnsignedNumericArgument(x => TimeLimit = x, null);
           return true;
 
         case "rlimit":
-          ps.GetUnsignedNumericArgument(ref ResourceLimit, null);
+          ps.GetUnsignedNumericArgument(x => ResourceLimit = x, null);
           return true;
 
         case "timeLimitPerAssertionInPercent":
-          ps.GetUnsignedNumericArgument(ref timeLimitPerAssertionInPercent, a => 0 < a);
+          ps.GetUnsignedNumericArgument(x => timeLimitPerAssertionInPercent = x, a => 0 < a);
           return true;
 
         case "smokeTimeout":
-          ps.GetUnsignedNumericArgument(ref SmokeTimeout, null);
+          ps.GetUnsignedNumericArgument(x => SmokeTimeout = x, null);
           return true;
 
         case "errorLimit":
-          ps.GetNumericArgument(ref errorLimit);
+          ps.GetNumericArgument(x => errorLimit = x);
           return true;
 
         case "randomSeed":
           int randomSeed = 0;
-          ps.GetNumericArgument(ref randomSeed);
+          ps.GetNumericArgument(x => randomSeed = x);
           RandomSeed = randomSeed;
           return true;
         
         case "verifySnapshots":
-          ps.GetNumericArgument(ref VerifySnapshots, 4);
+          ps.GetNumericArgument(x => VerifySnapshots = x, 4);
           return true;
 
         case "traceCaching":
-          ps.GetNumericArgument(ref TraceCaching, 4);
+          ps.GetNumericArgument(x => TraceCaching = x, 4);
           return true;
 
         case "kInductionDepth":
-          ps.GetNumericArgument(ref KInductionDepth);
+          ps.GetNumericArgument(x => KInductionDepth = x);
           return true;
           
         case "emitDebugInformation":
-          ps.GetNumericArgument(ref emitDebugInformation);
+          ps.GetNumericArgument(x => emitDebugInformation = x);
           return true;
 
         case "normalizeNames":
-          ps.GetNumericArgument(ref normalizeNames);
+          ps.GetNumericArgument(x => normalizeNames = x);
           return true;
         
         case "normalizeDeclarationOrder":
-          ps.GetNumericArgument(ref normalizeDeclarationOrder);
+          ps.GetNumericArgument(x => normalizeDeclarationOrder = x);
           return true;
 
         default:
           bool optionValue = false;
-          if (ps.CheckBooleanFlag("printUnstructured", ref optionValue))
+          if (ps.CheckBooleanFlag("printUnstructured", x => optionValue = x))
           {
             PrintUnstructured = optionValue ? 1 : 0;
             return true;
           }
 
-          if (ps.CheckBooleanFlag("printDesugared", ref printDesugarings) ||
-              ps.CheckBooleanFlag("printLambdaLifting", ref PrintLambdaLifting) ||
-              ps.CheckBooleanFlag("printInstrumented", ref printInstrumented) ||
-              ps.CheckBooleanFlag("printWithUniqueIds", ref printWithUniqueAstIds) ||
-              ps.CheckBooleanFlag("wait", ref Wait) ||
-              ps.CheckBooleanFlag("trace", ref trace) ||
-              ps.CheckBooleanFlag("traceTimes", ref TraceTimes) ||
-              ps.CheckBooleanFlag("tracePOs", ref TraceProofObligations) ||
-              ps.CheckBooleanFlag("noResolve", ref NoResolve) ||
-              ps.CheckBooleanFlag("noTypecheck", ref NoTypecheck) ||
-              ps.CheckBooleanFlag("overlookTypeErrors", ref OverlookBoogieTypeErrors) ||
-              ps.CheckBooleanFlag("noVerify", ref Verify, false) ||
-              ps.CheckBooleanFlag("traceverify", ref TraceVerify) ||
-              ps.CheckBooleanFlag("alwaysAssumeFreeLoopInvariants", ref AlwaysAssumeFreeLoopInvariants, true) ||
-              ps.CheckBooleanFlag("proverHelp", ref proverHelpRequested) ||
-              ps.CheckBooleanFlag("proverLogAppend", ref ProverLogFileAppend) ||
-              ps.CheckBooleanFlag("soundLoopUnrolling", ref SoundLoopUnrolling) ||
-              ps.CheckBooleanFlag("checkInfer", ref InstrumentWithAsserts) ||
-              ps.CheckBooleanFlag("restartProver", ref restartProverPerVc) ||
-              ps.CheckBooleanFlag("printInlined", ref printInlined) ||
-              ps.CheckBooleanFlag("smoke", ref SoundnessSmokeTest) ||
-              ps.CheckBooleanFlag("vcsDumpSplits", ref VcsDumpSplits) ||
-              ps.CheckBooleanFlag("dbgRefuted", ref DebugRefuted) ||
-              ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
-              ps.CheckBooleanFlag("useArrayTheory", ref useArrayTheory) ||
-              ps.CheckBooleanFlag("relaxFocus", ref RelaxFocus) ||
-              ps.CheckBooleanFlag("doModSetAnalysis", ref doModSetAnalysis) ||
-              ps.CheckBooleanFlag("runDiagnosticsOnTimeout", ref runDiagnosticsOnTimeout) ||
-              ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", ref traceDiagnosticsOnTimeout) ||
-              ps.CheckBooleanFlag("boolControlVC", ref siBoolControlVc, true) ||
-              ps.CheckBooleanFlag("contractInfer", ref contractInfer) ||
-              ps.CheckBooleanFlag("explainHoudini", ref explainHoudini) ||
-              ps.CheckBooleanFlag("reverseHoudiniWorklist", ref reverseHoudiniWorklist) ||
-              ps.CheckBooleanFlag("crossDependencies", ref houdiniUseCrossDependencies) ||
-              ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref useUnsatCoreForContractInfer) ||
-              ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
-              ps.CheckBooleanFlag("printNecessaryAssumes", ref printNecessaryAssumes) ||
-              ps.CheckBooleanFlag("useProverEvaluate", ref useProverEvaluate) ||
-              ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
-              ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
-              ps.CheckBooleanFlag("trustMoverTypes", ref trustMoverTypes) ||
-              ps.CheckBooleanFlag("trustNoninterference", ref trustNoninterference) ||
-              ps.CheckBooleanFlag("trustInductiveSequentialization", ref trustInductiveSequentialization) ||
-              ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
-              ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting) ||
-              ps.CheckBooleanFlag("prune", ref Prune) ||
-              ps.CheckBooleanFlag("warnNotEliminatedVars", ref WarnNotEliminatedVars)
+          if (ps.CheckBooleanFlag("printDesugared", x => printDesugarings = x) ||
+              ps.CheckBooleanFlag("printLambdaLifting", x => PrintLambdaLifting = x) ||
+              ps.CheckBooleanFlag("printInstrumented", x => printInstrumented = x) ||
+              ps.CheckBooleanFlag("printWithUniqueIds", x => printWithUniqueAstIds = x) ||
+              ps.CheckBooleanFlag("wait", x => Wait = x) ||
+              ps.CheckBooleanFlag("trace", x => trace = x) ||
+              ps.CheckBooleanFlag("traceTimes", x => TraceTimes = x) ||
+              ps.CheckBooleanFlag("tracePOs", x => TraceProofObligations = x) ||
+              ps.CheckBooleanFlag("noResolve", x => NoResolve = x) ||
+              ps.CheckBooleanFlag("noTypecheck", x => NoTypecheck = x) ||
+              ps.CheckBooleanFlag("overlookTypeErrors", x => OverlookBoogieTypeErrors = x) ||
+              ps.CheckBooleanFlag("noVerify", x => Verify = x, false) ||
+              ps.CheckBooleanFlag("traceverify", x => TraceVerify = x) ||
+              ps.CheckBooleanFlag("alwaysAssumeFreeLoopInvariants", x => AlwaysAssumeFreeLoopInvariants = x, true) ||
+              ps.CheckBooleanFlag("proverHelp", x => proverHelpRequested = x) ||
+              ps.CheckBooleanFlag("proverLogAppend", x => ProverLogFileAppend = x) ||
+              ps.CheckBooleanFlag("soundLoopUnrolling", x => SoundLoopUnrolling = x) ||
+              ps.CheckBooleanFlag("checkInfer", x => InstrumentWithAsserts = x) ||
+              ps.CheckBooleanFlag("restartProver", x => restartProverPerVc = x) ||
+              ps.CheckBooleanFlag("printInlined", x => printInlined = x) ||
+              ps.CheckBooleanFlag("smoke", x => SoundnessSmokeTest = x) ||
+              ps.CheckBooleanFlag("vcsDumpSplits", x => VcsDumpSplits = x) ||
+              ps.CheckBooleanFlag("dbgRefuted", x => DebugRefuted = x) ||
+              ps.CheckBooleanFlag("reflectAdd", x => ReflectAdd = x) ||
+              ps.CheckBooleanFlag("useArrayTheory", x => useArrayTheory = x) ||
+              ps.CheckBooleanFlag("relaxFocus", x => RelaxFocus = x) ||
+              ps.CheckBooleanFlag("doModSetAnalysis", x => doModSetAnalysis = x) ||
+              ps.CheckBooleanFlag("runDiagnosticsOnTimeout", x => runDiagnosticsOnTimeout = x) ||
+              ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", x => traceDiagnosticsOnTimeout = x) ||
+              ps.CheckBooleanFlag("boolControlVC", x => siBoolControlVc = x, true) ||
+              ps.CheckBooleanFlag("contractInfer", x => contractInfer = x) ||
+              ps.CheckBooleanFlag("explainHoudini", x => explainHoudini = x) ||
+              ps.CheckBooleanFlag("reverseHoudiniWorklist", x => reverseHoudiniWorklist = x) ||
+              ps.CheckBooleanFlag("crossDependencies", x => houdiniUseCrossDependencies = x) ||
+              ps.CheckBooleanFlag("useUnsatCoreForContractInfer", x => useUnsatCoreForContractInfer = x) ||
+              ps.CheckBooleanFlag("printAssignment", x => PrintAssignment = x) ||
+              ps.CheckBooleanFlag("printNecessaryAssumes", x => printNecessaryAssumes = x) ||
+              ps.CheckBooleanFlag("useProverEvaluate", x => useProverEvaluate = x) ||
+              ps.CheckBooleanFlag("deterministicExtractLoops", x => DeterministicExtractLoops = x) ||
+              ps.CheckBooleanFlag("verifySeparately", x => VerifySeparately = x) ||
+              ps.CheckBooleanFlag("trustMoverTypes", x => trustMoverTypes = x) ||
+              ps.CheckBooleanFlag("trustNoninterference", x => trustNoninterference = x) ||
+              ps.CheckBooleanFlag("trustInductiveSequentialization", x => trustInductiveSequentialization = x) ||
+              ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
+              ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
+              ps.CheckBooleanFlag("prune", x => Prune = x) ||
+              ps.CheckBooleanFlag("warnNotEliminatedVars", x => WarnNotEliminatedVars = x)
           )
           {
             // one of the boolean flags matched
@@ -1302,10 +1302,10 @@ namespace Microsoft.Boogie
       base.ApplyDefaultOptions();
 
       // expand macros in filenames, now that LogPrefix is fully determined
-      ExpandFilename(ref XmlSinkFilename, LogPrefix, FileTimestamp);
-      ExpandFilename(ref PrintFile, LogPrefix, FileTimestamp);
-      ExpandFilename(ref ProverLogFilePath, LogPrefix, FileTimestamp);
-      ExpandFilename(ref PrintErrorModelFile, LogPrefix, FileTimestamp);
+      ExpandFilename(XmlSinkFilename, x => XmlSinkFilename = x, LogPrefix, FileTimestamp);
+      ExpandFilename(PrintFile, x => PrintFile = x, LogPrefix, FileTimestamp);
+      ExpandFilename(ProverLogFilePath, x => ProverLogFilePath = x, LogPrefix, FileTimestamp);
+      ExpandFilename(PrintErrorModelFile, x => PrintErrorModelFile = x, LogPrefix, FileTimestamp);
 
       Contract.Assume(XmlSink == null); // XmlSink is to be set here
       if (XmlSinkFilename != null)

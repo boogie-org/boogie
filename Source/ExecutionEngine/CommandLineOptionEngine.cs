@@ -107,14 +107,14 @@ public class CommandLineOptionEngine
     }
   }
 
-  public void ExpandFilename(ref string pattern, string logPrefix, string fileTimestamp)
+  public void ExpandFilename(string pattern, Action<string> setPattern, string logPrefix, string fileTimestamp)
   {
     if (pattern != null)
     {
       pattern = pattern.Replace("@PREFIX@", logPrefix).Replace("@TIME@", fileTimestamp);
       string fn = Files.Count == 0 ? "" : Files[Files.Count - 1];
       fn = Util.EscapeFilename(fn);
-      pattern = pattern.Replace("@FILE@", fn);
+      setPattern(pattern.Replace("@FILE@", fn));
     }
   }
 
@@ -287,6 +287,37 @@ public class CommandLineOptionEngine
     {
       //modifies nextIndex, encounteredErrors, Console.Error.*;
       return GetNumericArgument(ref arg, a => 0 <= a);
+    }
+
+    public bool GetUnsignedNumericArgument(Action<uint> setArg, Predicate<uint> filter = null)
+    {
+      if (ConfirmArgumentCount(1))
+      {
+        try
+        {
+          Contract.Assume(args[i] != null);
+          Contract.Assert(args[i] is string); // needed to prove args[i].IsPeerConsistent
+          uint d = Convert.ToUInt32(this.args[this.i]);
+          if (filter == null || filter(d))
+          {
+            setArg(d);
+            return true;
+          }
+        }
+        catch (FormatException)
+        {
+        }
+        catch (OverflowException)
+        {
+        }
+      }
+      else
+      {
+        return false;
+      }
+
+      Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
+      return false;
     }
 
     public bool GetUnsignedNumericArgument(ref uint arg, Predicate<uint> filter)
