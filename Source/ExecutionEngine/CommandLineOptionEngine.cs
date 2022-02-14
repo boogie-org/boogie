@@ -36,8 +36,7 @@ public class CommandLineOptionEngine
     }
   }
 
-  private readonly List<string /*!*/> /*!*/
-    _files = new List<string /*!*/>();
+  private readonly List<string /*!*/> /*!*/ _files = new List<string /*!*/>();
 
   public IList<string /*!*/> /*!*/ Files
   {

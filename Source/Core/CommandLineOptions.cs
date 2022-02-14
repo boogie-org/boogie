@@ -76,7 +76,7 @@ namespace Microsoft.Boogie
     List<string> ProverOptions { get; }
     bool Prune { get; }
     bool RunDiagnosticsOnTimeout { get; }
-    string ProverLogFilePath { get; }
+    string ProverLogFilePath { get; set; }
     bool ProverLogFileAppend { get; }
     int? RandomSeed { get; }
     int VcsMaxSplits { get; }
