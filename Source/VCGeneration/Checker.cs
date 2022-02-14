@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Threading;
 using Microsoft.Boogie.VCExprAST;
 using System.Threading.Tasks;
 using VC;
@@ -61,7 +62,13 @@ namespace Microsoft.Boogie
       Contract.Requires(IsBusy);
 
       status = CheckerStatus.Idle;
-      Pool.AddChecker(this);
+      var becameIdle = thmProver.GoBackToIdle().Wait(TimeSpan.FromMilliseconds(100));
+      if (becameIdle) {
+        Pool.AddChecker(this);
+      } else {
+        Pool.CheckerDied();
+        Close();
+      }
     }
 
     public Task ProverTask { get; set; }
@@ -89,22 +96,9 @@ namespace Microsoft.Boogie
       }
     }
 
-    /////////////////////////////////////////////////////////////////////////////////
-    // We share context information for the same program between different Checkers
-
-    /////////////////////////////////////////////////////////////////////////////////
-
-    /// <summary>
-    /// Constructor.  Initialize a checker with the program and log file.
-    /// Optionally, use prover context provided by parameter "ctx".
-    /// </summary>
-    public Checker(CheckerPool pool, VC.ConditionGeneration vcgen, Program prog, string /*?*/ logFilePath, bool appendLogFile,
-      Split split, ProverContext ctx = null)
+    public Checker(CheckerPool pool, string /*?*/ logFilePath, bool appendLogFile)
     {
-      Contract.Requires(vcgen != null);
-      Contract.Requires(prog != null);
-      this.Pool = pool;
-      this.Program = prog;
+      Pool = pool;
 
       SolverOptions = cce.NonNull(Pool.Options.TheProverFactory).BlankProverOptions();
 
@@ -119,62 +113,26 @@ namespace Microsoft.Boogie
 
       SolverOptions.Parse(CommandLineOptions.Clo.ProverOptions);
 
-      ContextCacheKey key = new ContextCacheKey(prog);
-      ProverInterface prover;
+      var ctx = (ProverContext) Pool.Options.TheProverFactory.NewProverContext(SolverOptions);
 
-      if (vcgen.CheckerCommonState == null)
-      {
-        vcgen.CheckerCommonState = new Dictionary<ContextCacheKey, ProverContext>();
-      }
-
-      IDictionary<ContextCacheKey, ProverContext> /*!>!*/
-        cachedContexts = (IDictionary<ContextCacheKey, ProverContext /*!*/>) vcgen.CheckerCommonState;
-
-      if (ctx == null && cachedContexts.TryGetValue(key, out ctx))
-      {
-        ctx = (ProverContext) cce.NonNull(ctx).Clone();
-        prover = (ProverInterface)
-          Pool.Options.TheProverFactory.SpawnProver(this.Pool.Options, SolverOptions, ctx);
-      }
-      else
-      {
-        if (ctx == null)
-        {
-          ctx = (ProverContext) Pool.Options.TheProverFactory.NewProverContext(SolverOptions);
-        }
-
-        Setup(prog, ctx, split);
-
-        // we first generate the prover and then store a clone of the
-        // context in the cache, so that the prover can setup stuff in
-        // the context to be cached
-        prover = (ProverInterface)
-          Pool.Options.TheProverFactory.SpawnProver(this.Pool.Options, SolverOptions, ctx);
-        cachedContexts.Add(key, cce.NonNull((ProverContext) ctx.Clone()));
-      }
-
-      this.thmProver = prover;
-      this.gen = prover.VCExprGen;
+      var prover = (ProverInterface)Pool.Options.TheProverFactory.SpawnProver(Pool.Options, SolverOptions, ctx);
+      
+      thmProver = prover;
+      gen = prover.VCExprGen;
     }
 
-    public void Retarget(Program prog, ProverContext ctx, Split s)
+    public void Target(Program prog, ProverContext ctx, Split split)
     {
       lock (this)
       {
-        hasOutput = default(bool);
-        outcome = default(ProverInterface.Outcome);
-        outputExn = default(UnexpectedProverOutputException);
-        handler = default(ProverInterface.ErrorHandler);
+        hasOutput = default;
+        outcome = default;
+        outputExn = default;
+        handler = default;
         TheoremProver.FullReset(gen);
         ctx.Reset();
-        Setup(prog, ctx, s);
+        Setup(prog, ctx, split);
       }
-    }
-
-    public void RetargetWithoutReset(Program prog, ProverContext ctx)
-    {
-      ctx.Clear();
-      Setup(prog, ctx);
     }
 
     private void SetTimeout(uint timeout)
@@ -291,56 +249,56 @@ namespace Microsoft.Boogie
       get { return proverRunTime; }
     }
 
-    public int ProverResourceCount
+    public Task<int> GetProverResourceCount()
     {
-      get { return thmProver.GetRCount(); }
+      return thmProver.GetRCount();
     }
 
-    private void WaitForOutput(object dummy)
+    private async Task WaitForOutput(object dummy, CancellationToken cancellationToken)
     {
-      lock (this)
-      {
-        try
-        {
-          outcome = thmProver.CheckOutcome(cce.NonNull(handler), CommandLineOptions.Clo.ErrorLimit);
-        }
-        catch (UnexpectedProverOutputException e)
-        {
-          outputExn = e;
-        }
-        catch (Exception e)
-        {
-          outputExn = new UnexpectedProverOutputException(e.Message);
-        }
-
-        switch (outcome)
-        {
-          case ProverInterface.Outcome.Valid:
-            thmProver.LogComment("Valid");
-            break;
-          case ProverInterface.Outcome.Invalid:
-            thmProver.LogComment("Invalid");
-            break;
-          case ProverInterface.Outcome.TimeOut:
-            thmProver.LogComment("Timed out");
-            break;
-          case ProverInterface.Outcome.OutOfResource:
-            thmProver.LogComment("Out of resource");
-            break;
-          case ProverInterface.Outcome.OutOfMemory:
-            thmProver.LogComment("Out of memory");
-            break;
-          case ProverInterface.Outcome.Undetermined:
-            thmProver.LogComment("Undetermined");
-            break;
-        }
-
-        hasOutput = true;
-        proverRunTime = DateTime.UtcNow - proverStart;
+      try {
+        outcome = await thmProver.CheckOutcome(cce.NonNull(handler), CommandLineOptions.Clo.ErrorLimit,
+          cancellationToken);
       }
+      catch (OperationCanceledException) {
+        throw;
+      }
+      catch (UnexpectedProverOutputException e)
+      {
+        outputExn = e;
+      }
+      catch (Exception e)
+      {
+        outputExn = new UnexpectedProverOutputException(e.Message);
+      }
+
+      switch (outcome)
+      {
+        case ProverInterface.Outcome.Valid:
+          thmProver.LogComment("Valid");
+          break;
+        case ProverInterface.Outcome.Invalid:
+          thmProver.LogComment("Invalid");
+          break;
+        case ProverInterface.Outcome.TimeOut:
+          thmProver.LogComment("Timed out");
+          break;
+        case ProverInterface.Outcome.OutOfResource:
+          thmProver.LogComment("Out of resource");
+          break;
+        case ProverInterface.Outcome.OutOfMemory:
+          thmProver.LogComment("Out of memory");
+          break;
+        case ProverInterface.Outcome.Undetermined:
+          thmProver.LogComment("Undetermined");
+          break;
+      }
+
+      hasOutput = true;
+      proverRunTime = DateTime.UtcNow - proverStart;
     }
 
-    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit)
+    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, CancellationToken cancellationToken)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
@@ -363,7 +321,7 @@ namespace Microsoft.Boogie
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 
-      ProverTask = Task.Factory.StartNew(() => { WaitForOutput(null); }, TaskCreationOptions.LongRunning);
+      ProverTask = WaitForOutput(null, cancellationToken);
     }
 
     public ProverInterface.Outcome ReadOutcome()
@@ -409,6 +367,11 @@ namespace Microsoft.Boogie
       }
     }
 
+    public override Task GoBackToIdle()
+    {
+      throw new NotImplementedException();
+    }
+
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
       /*Contract.Requires(descriptiveName != null);*/
@@ -418,7 +381,7 @@ namespace Microsoft.Boogie
     }
 
     [NoDefaultContract]
-    public override Outcome CheckOutcome(ErrorHandler handler, int taskID = -1)
+    public override Task<Outcome> CheckOutcome(ErrorHandler handler, int taskID, CancellationToken cancellationToken)
     {
       //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);

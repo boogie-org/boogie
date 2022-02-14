@@ -35,14 +35,14 @@ namespace VC
           return Task.FromResult(result);
         }
 
-        int afterDec = Interlocked.Decrement(ref notCreatedCheckers);
-        if (afterDec >= 0) {
-          var checker = CreateNewChecker(vcgen, split);
+        if (notCreatedCheckers > 0) {
+          notCreatedCheckers--;
+          var checker = CreateNewChecker();
+          PrepareChecker(vcgen.program, split, checker);
           Contract.Assert(checker != null);
           return Task.FromResult(checker);
         }
 
-        Interlocked.Increment(ref notCreatedCheckers);
         var source = new TaskCompletionSource<Checker>();
         checkerWaiters.Enqueue(source);
         return source.Task.ContinueWith(t =>
@@ -55,16 +55,14 @@ namespace VC
       
     }
 
-    private Checker CreateNewChecker(ConditionGeneration vcgen, Split split)
+    private Checker CreateNewChecker()
     {
       var log = Options.ProverLogFilePath;
       if (log != null && !log.Contains("@PROC@") && availableCheckers.Count > 0) {
         log = log + "." + availableCheckers.Count;
-      }
+      } 
 
-      Checker ch = new Checker(this, vcgen, vcgen.program, Options.ProverLogFilePath, Options.ProverLogFileAppend, split);
-      ch.GetReady();
-      return ch;
+      return new Checker(this, log, Options.ProverLogFileAppend);
     }
 
     public void Dispose()
@@ -88,7 +86,7 @@ namespace VC
         return;
       }
 
-      checker.Retarget(program, checker.TheoremProver.Context, split);
+      checker.Target(program, checker.TheoremProver.Context, split);
       checker.GetReady();
     }
 
@@ -110,6 +108,17 @@ namespace VC
         }
 
         availableCheckers.Push(checker);
+      }
+    }
+
+    public void CheckerDied()
+    {
+      lock (this) {
+        if (checkerWaiters.TryDequeue(out var waiter)) {
+          waiter.SetResult(CreateNewChecker());
+        } else {
+          notCreatedCheckers++;
+        }
       }
     }
   }

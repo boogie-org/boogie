@@ -36,6 +36,7 @@ namespace Microsoft.Boogie
     TypeCheckingError,
     ResolvedAndTypeChecked,
     FatalError,
+    Cancelled,
     VerificationCompleted
   }
 
@@ -886,6 +887,7 @@ namespace Microsoft.Boogie
 
           if (e is OperationCanceledException)
           {
+            outcome = PipelineOutcome.Cancelled;
             return true;
           }
 
@@ -981,7 +983,7 @@ namespace Microsoft.Boogie
       {
         if (RequestIdToCancellationTokenSource.IsEmpty)
         {
-          checkerPool.Dispose();
+          checkerPool?.Dispose();
           checkerPool = null;
         }
       }
@@ -1040,16 +1042,14 @@ namespace Microsoft.Boogie
             options.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
           }
 
-          try
-          {
-            verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId);
-            if (options.ExtractLoops && verificationResult.Errors != null)
-            {
+          try {
+            var cancellationToken = RequestIdToCancellationTokenSource[requestId].Token;
+            verificationResult.Outcome =
+              vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId, cancellationToken);
+            if (options.ExtractLoops && verificationResult.Errors != null) {
               var vcg = vcgen as VCGen;
-              if (vcg != null)
-              {
-                for (int i = 0; i < verificationResult.Errors.Count; i++)
-                {
+              if (vcg != null) {
+                for (int i = 0; i < verificationResult.Errors.Count; i++) {
                   verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name,
                     program, extractLoopMappingInfo);
                 }

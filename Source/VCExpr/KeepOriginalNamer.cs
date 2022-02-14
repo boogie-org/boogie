@@ -13,6 +13,10 @@ namespace Microsoft.Boogie.VCExprAST
     public KeepOriginalNamer(ScopedNamer namer) : base(namer)
     {
     }
+
+    public static KeepOriginalNamer Create(ScopedNamer namer = null) {
+      return namer != null ? new KeepOriginalNamer(namer) : new KeepOriginalNamer();
+    }
     
     public override UniqueNamer Clone()
     {
