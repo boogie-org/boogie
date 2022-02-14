@@ -8,5 +8,4 @@ public interface ConcurrencyOptions : CommandLineOptions
   int TrustLayersUpto { get; }
   bool TrustNoninterference { get; }
   bool WarnNotEliminatedVars { get; }
-    
 }
