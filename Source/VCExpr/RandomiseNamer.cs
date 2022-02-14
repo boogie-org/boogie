@@ -16,6 +16,10 @@ public class RandomiseNamer : ScopedNamer
   {
     this.random = random;
   }
+
+  public static RandomiseNamer Create(Random random, ScopedNamer namer = null) {
+    return namer != null ? new RandomiseNamer(namer, random) : new RandomiseNamer(random);
+  }
   
   private RandomiseNamer(RandomiseNamer namer) : base(namer)
   {

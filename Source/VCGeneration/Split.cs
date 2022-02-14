@@ -1299,7 +1299,7 @@ namespace VC
           DumpDot(splitNum);
         }
 
-        totalResourceCount += checker.ProverResourceCount;
+        totalResourceCount += checker.GetProverResourceCount().Result;
 
         proverFailed = false;
 
@@ -1350,7 +1350,7 @@ namespace VC
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
       /// </summary>
-      public void BeginCheck(Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int no, uint timeout, uint rlimit)
+      public void BeginCheck(Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int no, uint timeout, uint rlimit, CancellationToken cancellationToken)
       {
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
@@ -1396,7 +1396,7 @@ namespace VC
             desc += "_split" + no;
           }
 
-          checker.BeginCheck(desc, vc, reporter, timeout, rlimit);
+          checker.BeginCheck(desc, vc, reporter, timeout, rlimit, cancellationToken);
         }
       }
 

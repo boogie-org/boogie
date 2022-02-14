@@ -351,7 +351,7 @@ namespace VC
             }
 
             ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(absyIds, this.callback),
-              CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit);
+              CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit, CancellationToken.None);
           }
 
           ch.ProverTask.Wait();
@@ -805,7 +805,7 @@ namespace VC
       }
     }
 
-    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback)
+    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback, CancellationToken cancellationToken)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
@@ -867,7 +867,7 @@ namespace VC
       }
 
       var worker = new SplitAndVerifyWorker(CommandLineOptions.Clo, this, impl, gotoCmdOrigins, callback, mvInfo, outcome);
-      outcome = worker.WorkUntilDone().Result;
+      outcome = worker.WorkUntilDone(cancellationToken).Result;
       ResourceCount = worker.ResourceCount;
       
       if (outcome == Outcome.Correct && smoke_tester != null)

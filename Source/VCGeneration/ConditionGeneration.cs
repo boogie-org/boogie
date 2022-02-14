@@ -22,7 +22,7 @@ namespace VC
   [ContractClassFor(typeof(ConditionGeneration))]
   public abstract class ConditionGenerationContracts : ConditionGeneration
   {
-    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback)
+    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback, CancellationToken cancellationToken)
     {
       Contract.Requires(impl != null);
       Contract.Requires(callback != null);
@@ -39,8 +39,6 @@ namespace VC
   [ContractClass(typeof(ConditionGenerationContracts))]
   public abstract class ConditionGeneration : IDisposable
   {
-    protected internal object CheckerCommonState;
-
     public enum Outcome
     {
       Correct,
@@ -115,7 +113,7 @@ namespace VC
     /// </summary>
     /// <param name="impl"></param>
     public Outcome VerifyImplementation(Implementation impl, out List<Counterexample> /*?*/ errors,
-      string requestId = null)
+      string requestId, CancellationToken cancellationToken)
     {
       Contract.Requires(impl != null);
 
@@ -127,7 +125,7 @@ namespace VC
 
       CounterexampleCollector collector = new CounterexampleCollector();
       collector.RequestId = requestId;
-      Outcome outcome = VerifyImplementation(impl, collector);
+      Outcome outcome = VerifyImplementation(impl, collector, cancellationToken);
       if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
           outcome == Outcome.OutOfResource)
       {
@@ -142,7 +140,7 @@ namespace VC
       return outcome;
     }
 
-    public abstract Outcome VerifyImplementation(Implementation impl, VerifierCallback callback);
+    public abstract Outcome VerifyImplementation(Implementation impl, VerifierCallback callback, CancellationToken cancellationToken);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
 
