@@ -6,6 +6,8 @@ namespace Microsoft.Boogie
   // TODO move to SMTLib
   public interface SMTLibOptions : CommandLineOptions
   {
+    ProverFactory TheProverFactory { get; }
+
     bool ExpectingModel { get; }
     bool ProduceModel { get; }
     bool ProduceUnsatCores { get; }

@@ -926,7 +926,7 @@ namespace VC
         get { return program.NecessaryAssumes; }
       }
 
-      public void AddNecessaryAssume(string id)
+      public override void AddNecessaryAssume(string id)
       {
         program.NecessaryAssumes.Add(id);
       }

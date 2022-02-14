@@ -113,9 +113,9 @@ namespace Microsoft.Boogie
 
       SolverOptions.Parse(CommandLineOptions.Clo.ProverOptions);
 
-      var ctx = (ProverContext) Pool.Options.TheProverFactory.NewProverContext(SolverOptions);
+      var ctx = Pool.Options.TheProverFactory.NewProverContext(SolverOptions);
 
-      var prover = (ProverInterface)Pool.Options.TheProverFactory.SpawnProver(Pool.Options, SolverOptions, ctx);
+      var prover = Pool.Options.TheProverFactory.SpawnProver(Pool.Options, SolverOptions, ctx);
       
       thmProver = prover;
       gen = prover.VCExprGen;
@@ -396,22 +396,6 @@ namespace Microsoft.Boogie
     public override void FullReset(VCExpressionGenerator gen)
     {
       throw new NotImplementedException();
-    }
-  }
-
-  public class UnexpectedProverOutputException : ProverException
-  {
-    public UnexpectedProverOutputException(string s)
-      : base(s)
-    {
-    }
-  }
-
-  public class ProverDiedException : UnexpectedProverOutputException
-  {
-    public ProverDiedException()
-      : base("Prover died with no further output, perhaps it ran out of memory or was killed.")
-    {
     }
   }
 }
