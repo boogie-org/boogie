@@ -10,7 +10,7 @@ namespace Microsoft.Boogie
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
-  public interface CommandLineOptions : ConcurrencyOptions
+  public interface CommandLineOptions : ConcurrencyOptions // TODO Reverse inheritance
   {
     private static CommandLineOptions clo;
 
@@ -38,7 +38,7 @@ namespace Microsoft.Boogie
       Spec
     }
 
-    public Inlining ProcedureInlining { get; }
+    public Inlining ProcedureInlining { get; set; }
 
     public bool Trace { get; }
 
@@ -54,8 +54,8 @@ namespace Microsoft.Boogie
     bool DoModSetAnalysis { get; }
     bool PrintInstrumented { get; }
     bool PrintInlined { get; }
-    int PrintUnstructured { get; }
-    bool PrintDesugarings { get; }
+    int PrintUnstructured { get; set; }
+    bool PrintDesugarings { get; set; }
     bool DebugStagedHoudini { get; }
     bool DeterministicExtractLoops { get; }
     string VariableDependenceIgnore { get; }
@@ -74,7 +74,6 @@ namespace Microsoft.Boogie
     bool ReflectAdd { get; }
     SubsumptionOption UseSubsumption { get; }
     int VcsCores { get; }
-    ProverFactory TheProverFactory { get; }
     IReadOnlyList<string> ProverOptions { get; }
     bool Prune { get; }
     bool RunDiagnosticsOnTimeout { get; }
@@ -91,7 +90,7 @@ namespace Microsoft.Boogie
     XmlSink XmlSink { get; }
     uint VcsFinalAssertTimeout { get; }
     uint VcsKeepGoingTimeout { get; }
-    int ErrorLimit { get; }
+    int ErrorLimit { get; set; }
     List<ConcurrentHoudiniOptions> Cho { get; }
     double VcsPathSplitMult { get; }
     ProverWarnings PrintProverWarnings { get; }
@@ -102,7 +101,6 @@ namespace Microsoft.Boogie
     bool TraceCachingForBenchmarking { get; }
     string ModelViewFile { get; }
     int ErrorTrace { get; }
-    bool SIBoolControlVC { get; }
     bool RelaxFocus { get; }
     bool VcsDumpSplits { get; }
     bool SoundnessSmokeTest { get; }
@@ -112,6 +110,7 @@ namespace Microsoft.Boogie
     bool AlwaysAssumeFreeLoopInvariants { get; }
     int LiveVariableAnalysis { get; }
     bool RemoveEmptyBlocks { get; }
+    double VcsPathJoinMult { get; }
 
     public enum ProverWarnings
     {

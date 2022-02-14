@@ -22,12 +22,12 @@ namespace Microsoft.Boogie
       return result;
     }
     
-    public CommandLineOptions()
+    public CommandLineOptionsImpl()
       : base("Boogie", "Boogie program verifier")
     {
     }
 
-    protected CommandLineOptions(string toolName, string descriptiveName)
+    protected CommandLineOptionsImpl(string toolName, string descriptiveName)
       : base(toolName, descriptiveName)
     {
       Contract.Requires(toolName != null);
@@ -297,7 +297,7 @@ namespace Microsoft.Boogie
 
     public bool PrettyPrint = true;
 
-    public ProverWarnings PrintProverWarnings = ProverWarnings.None;
+    public CommandLineOptions.ProverWarnings PrintProverWarnings = CommandLineOptions.ProverWarnings.None;
 
 
     public CommandLineOptions.SubsumptionOption UseSubsumption = CommandLineOptions.SubsumptionOption.Always;
@@ -516,8 +516,8 @@ namespace Microsoft.Boogie
       Contract.Invariant(Ai != null);
     }
 
-    public readonly AiFlags /*!*/
-      Ai = new AiFlags();
+    public readonly CommandLineOptions.AiFlags /*!*/
+      Ai = new CommandLineOptions.AiFlags();
 
     private bool proverHelpRequested = false;
     private bool restartProverPerVc = false;
@@ -550,7 +550,7 @@ namespace Microsoft.Boogie
     private bool normalizeNames;
     private bool normalizeDeclarationOrder = true;
 
-    public List<ConcurrentHoudiniOptions> Cho { get; set; } = new();
+    public List<CommandLineOptions.ConcurrentHoudiniOptions> Cho { get; set; } = new();
 
     protected override bool ParseOption(string name, CommandLineOptionEngine.CommandLineParseState ps)
     {
@@ -727,13 +727,13 @@ namespace Microsoft.Boogie
             switch (pw)
             {
               case 0:
-                PrintProverWarnings = ProverWarnings.None;
+                PrintProverWarnings = CommandLineOptions.ProverWarnings.None;
                 break;
               case 1:
-                PrintProverWarnings = ProverWarnings.Stdout;
+                PrintProverWarnings = CommandLineOptions.ProverWarnings.Stdout;
                 break;
               case 2:
-                PrintProverWarnings = ProverWarnings.Stderr;
+                PrintProverWarnings = CommandLineOptions.ProverWarnings.Stderr;
                 break;
               default:
               {
@@ -847,13 +847,13 @@ namespace Microsoft.Boogie
             switch (s)
             {
               case 0:
-                UseSubsumption = SubsumptionOption.Never;
+                UseSubsumption = CommandLineOptions.SubsumptionOption.Never;
                 break;
               case 1:
-                UseSubsumption = SubsumptionOption.NotForQuantifiers;
+                UseSubsumption = CommandLineOptions.SubsumptionOption.NotForQuantifiers;
                 break;
               case 2:
-                UseSubsumption = SubsumptionOption.Always;
+                UseSubsumption = CommandLineOptions.SubsumptionOption.Always;
                 break;
               default:
               {
@@ -1082,10 +1082,10 @@ namespace Microsoft.Boogie
             switch (args[ps.i])
             {
               case "e":
-                InstrumentInfer = InstrumentationPlaces.Everywhere;
+                InstrumentInfer = CommandLineOptions.InstrumentationPlaces.Everywhere;
                 break;
               case "h":
-                InstrumentInfer = InstrumentationPlaces.LoopHeaders;
+                InstrumentInfer = CommandLineOptions.InstrumentationPlaces.LoopHeaders;
                 break;
               default:
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);

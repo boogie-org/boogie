@@ -542,18 +542,20 @@ namespace VC
 
     public class CodeExprConversionClosure
     {
+      private readonly VCGenOptions options;
       ControlFlowIdMap<Absy> absyIds;
       ProverContext ctx;
 
-      public CodeExprConversionClosure(ControlFlowIdMap<Absy> absyIds, ProverContext ctx)
+      public CodeExprConversionClosure(VCGenOptions options, ControlFlowIdMap<Absy> absyIds, ProverContext ctx)
       {
+        this.options = options;
         this.absyIds = absyIds;
         this.ctx = ctx;
       }
 
       public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext)
       {
-        VCGen vcgen = new VCGen(new Program(), new CheckerPool(CommandLineOptions.Clo));
+        VCGen vcgen = new VCGen(new Program(), new CheckerPool(options));
         vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
         vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
         vcgen.CurrentLocalVariables = codeExpr.LocVars;
@@ -616,7 +618,7 @@ namespace VC
 
       VCExpr vc;
       int assertionCount;
-      if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags)
+      if (cce.NonNull(CheckerPool.Options.TheProverFactory).SupportsDags)
       {
         vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, absyIds,
           new Dictionary<Block, VCExpr>(), proverContext, out assertionCount);

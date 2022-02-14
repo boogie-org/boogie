@@ -44,9 +44,10 @@ namespace Microsoft.Boogie
     private TimeSpan proverRunTime;
     private volatile ProverInterface.ErrorHandler handler;
     private volatile CheckerStatus status;
-    private readonly CheckerPool pool;
     public volatile Program Program;
     public readonly ProverOptions SolverOptions;
+
+    public CheckerPool Pool { get; }
 
     public void GetReady()
     {
@@ -60,7 +61,7 @@ namespace Microsoft.Boogie
       Contract.Requires(IsBusy);
 
       status = CheckerStatus.Idle;
-      pool.AddChecker(this);
+      Pool.AddChecker(this);
     }
 
     public Task ProverTask { get; set; }
@@ -102,10 +103,10 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
-      this.pool = pool;
+      this.Pool = pool;
       this.Program = prog;
 
-      SolverOptions = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
+      SolverOptions = cce.NonNull(Pool.Options.TheProverFactory).BlankProverOptions();
 
       if (logFilePath != null)
       {
@@ -133,13 +134,13 @@ namespace Microsoft.Boogie
       {
         ctx = (ProverContext) cce.NonNull(ctx).Clone();
         prover = (ProverInterface)
-          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx);
+          Pool.Options.TheProverFactory.SpawnProver(this.Pool.Options, SolverOptions, ctx);
       }
       else
       {
         if (ctx == null)
         {
-          ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(SolverOptions);
+          ctx = (ProverContext) Pool.Options.TheProverFactory.NewProverContext(SolverOptions);
         }
 
         Setup(prog, ctx, split);
@@ -148,7 +149,7 @@ namespace Microsoft.Boogie
         // context in the cache, so that the prover can setup stuff in
         // the context to be cached
         prover = (ProverInterface)
-          CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx);
+          Pool.Options.TheProverFactory.SpawnProver(this.Pool.Options, SolverOptions, ctx);
         cachedContexts.Add(key, cce.NonNull((ProverContext) ctx.Clone()));
       }
 

@@ -70,7 +70,7 @@ namespace Microsoft.Boogie.Houdini
         houdiniAssertConstants.Add(houdiniConstant);
       }
 
-      if (houdiniConstant != null && CommandLineOptions.Clo.ExplainHoudini &&
+      if (houdiniConstant != null && houdini.Options.ExplainHoudini &&
           !constToControl.ContainsKey(houdiniConstant.Name))
       {
         // For each houdini constant c, create two more constants c_pos and c_neg.
@@ -95,7 +95,7 @@ namespace Microsoft.Boogie.Houdini
     private Tuple<Variable, Variable> createNewExplainConstants(Variable v)
     {
       Contract.Assert(impl != null);
-      Contract.Assert(CommandLineOptions.Clo.ExplainHoudini);
+      Contract.Assert(houdini.Options.ExplainHoudini);
       Variable v1 = new Constant(Token.NoToken,
         new TypedIdent(Token.NoToken, string.Format("{0}_{1}_{2}", v.Name, impl.Name, "pos"),
           Microsoft.Boogie.BasicType.Bool));
@@ -120,6 +120,7 @@ namespace Microsoft.Boogie.Houdini
     }
 
     public string descriptiveName;
+    private readonly Houdini houdini;
     public HoudiniStatistics stats;
     private VCExpr conjecture;
     private ProverInterface.ErrorHandler handler;
@@ -154,6 +155,7 @@ namespace Microsoft.Boogie.Houdini
       Implementation impl, HoudiniStatistics stats, int taskID = -1)
     {
       this.descriptiveName = impl.Name;
+      this.houdini = houdini;
       this.stats = stats;
       collector = new ConditionGeneration.CounterexampleCollector();
       collector.OnProgress?.Invoke("HdnVCGen", 0, 0, 0.0);
@@ -213,7 +215,7 @@ namespace Microsoft.Boogie.Houdini
         }
       }
 
-      if (CommandLineOptions.Clo.ExplainHoudini)
+      if (houdini.Options.ExplainHoudini)
       {
         // default values for ExplainHoudini control variables
         foreach (var constant in explainConstantsNegative.Concat(explainConstantsPositive))
@@ -275,7 +277,7 @@ namespace Microsoft.Boogie.Houdini
     public void Explain(ProverInterface proverInterface,
       Dictionary<Variable, bool> assignment, Variable refutedConstant)
     {
-      Contract.Assert(CommandLineOptions.Clo.ExplainHoudini);
+      Contract.Assert(houdini.Options.ExplainHoudini);
 
       collector.examples.Clear();
 

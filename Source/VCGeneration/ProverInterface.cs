@@ -7,12 +7,12 @@ namespace Microsoft.Boogie;
 
 public abstract class ProverInterface
 {
-  public static ProverInterface CreateProver(Program prog, string /*?*/ logFilePath, bool appendLogFile, uint timeout,
+  public static ProverInterface CreateProver(VCGenOptions libOptions, Program prog, string /*?*/ logFilePath, bool appendLogFile, uint timeout,
     int taskID = -1)
   {
     Contract.Requires(prog != null);
 
-    ProverOptions options = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
+    ProverOptions options = cce.NonNull(libOptions.TheProverFactory).BlankProverOptions();
 
     if (logFilePath != null)
     {
@@ -37,7 +37,7 @@ public abstract class ProverInterface
       options.Parse(CommandLineOptions.Clo.ProverOptions);
     }
 
-    ProverContext ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
+    ProverContext ctx = (ProverContext) libOptions.TheProverFactory.NewProverContext(options);
 
     // set up the context
     foreach (Declaration decl in prog.TopLevelDeclarations)
@@ -83,7 +83,7 @@ public abstract class ProverInterface
       }
     }
 
-    return (ProverInterface) CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, options, ctx);
+    return (ProverInterface) libOptions.TheProverFactory.SpawnProver(libOptions, options, ctx);
   }
 
   public enum Outcome

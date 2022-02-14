@@ -10,7 +10,9 @@
 
       // FIXME: THIS IS A HACK. Boogie's methods
       // depend on its command line parser being set!
-      CommandLineOptions.Install(new Microsoft.Boogie.CommandLineOptions());
+
+      // TODO FIX
+      //CommandLineOptions.Install(new Microsoft.Boogie.CommandLineOptions());
     }
   }
 }

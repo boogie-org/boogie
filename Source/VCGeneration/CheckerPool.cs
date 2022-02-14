@@ -9,16 +9,16 @@ namespace VC
 {
   public class CheckerPool
   {
-    private readonly CommandLineOptions options;
-
     private readonly Stack<Checker> availableCheckers = new();
     private readonly Queue<TaskCompletionSource<Checker>> checkerWaiters = new();
     private int notCreatedCheckers;
     private bool disposed;
-    
-    public CheckerPool(CommandLineOptions options)
+
+    public VCGenOptions Options { get; }
+
+    public CheckerPool(VCGenOptions options)
     {
-      this.options = options;
+      this.Options = options;
       notCreatedCheckers = options.VcsCores;
     }
 
@@ -57,12 +57,12 @@ namespace VC
 
     private Checker CreateNewChecker(ConditionGeneration vcgen, Split split)
     {
-      var log = options.ProverLogFilePath;
+      var log = Options.ProverLogFilePath;
       if (log != null && !log.Contains("@PROC@") && availableCheckers.Count > 0) {
         log = log + "." + availableCheckers.Count;
       }
 
-      Checker ch = new Checker(this, vcgen, vcgen.program, options.ProverLogFilePath, options.ProverLogFileAppend, split);
+      Checker ch = new Checker(this, vcgen, vcgen.program, Options.ProverLogFilePath, Options.ProverLogFileAppend, split);
       ch.GetReady();
       return ch;
     }
@@ -82,7 +82,7 @@ namespace VC
 
     void PrepareChecker(Program program, Split split, Checker checker)
     {
-      if (checker.WillingToHandle(program) && (split == null || checker.SolverOptions.RandomSeed == split.RandomSeed && !options.Prune))
+      if (checker.WillingToHandle(program) && (split == null || checker.SolverOptions.RandomSeed == split.RandomSeed && !Options.Prune))
       {
         checker.GetReady();
         return;
