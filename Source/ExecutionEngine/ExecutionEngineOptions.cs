@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace Microsoft.Boogie;
 
-public interface ExecutionEngineOptions : HoudiniOptions
+public interface ExecutionEngineOptions : HoudiniOptions, ConcurrencyOptions
 {
   bool ShowVerifiedProcedureCount { get; }
   string DescriptiveToolName { get; }

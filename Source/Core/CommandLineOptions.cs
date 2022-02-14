@@ -6,7 +6,7 @@ namespace Microsoft.Boogie
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
-  public interface CommandLineOptions : ConcurrencyOptions // TODO Reverse inheritance
+  public interface CommandLineOptions
   {
 
     public static CommandLineOptions /*!*/ Clo
@@ -145,16 +145,5 @@ namespace Microsoft.Boogie
       NotForQuantifiers,
       Always
     }
-  }
-
-  public interface ConcurrencyOptions
-  {
-    bool TrustMoverTypes { get; }
-    bool TrustInductiveSequentialization { get; }
-    int TrustLayersDownto { get; }
-    int TrustLayersUpto { get; }
-    bool TrustNoninterference { get; }
-    bool WarnNotEliminatedVars { get; }
-    
   }
 }

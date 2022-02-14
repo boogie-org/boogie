@@ -172,7 +172,7 @@ namespace Microsoft.Boogie
       var pathTranslation = new PathTranslation(this);
       pathTranslations.Add(pathTranslation.TransitionRelationExpr);
 
-      if (CommandLineOptions.Clo.WarnNotEliminatedVars)
+      if (civlTypeChecker.Options.WarnNotEliminatedVars)
       {
         var quantifiedVars = pathTranslation.GetQuantifiedOriginalVariables();
         if (quantifiedVars.Any())

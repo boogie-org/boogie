@@ -323,7 +323,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      CivlVCGeneration.Transform(civlTypeChecker);
+      CivlVCGeneration.Transform(options, civlTypeChecker);
       if (options.CivlDesugaredFile != null) {
         int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
         CommandLineOptions.Clo.PrintUnstructured = 1;
@@ -610,7 +610,7 @@ namespace Microsoft.Boogie
 
       CollectModSets(program);
 
-      civlTypeChecker = new CivlTypeChecker(program);
+      civlTypeChecker = new CivlTypeChecker(options, program);
       civlTypeChecker.TypeCheck();
       if (civlTypeChecker.checkingContext.ErrorCount != 0)
       {
