@@ -104,11 +104,7 @@ namespace Microsoft.Boogie
     bool VcsDumpSplits { get; }
     bool SoundnessSmokeTest { get; }
     uint SmokeTimeout { get; }
-    int KInductionDepth { get; }
     bool ConcurrentHoudini { get; }
-    bool AlwaysAssumeFreeLoopInvariants { get; }
-    int LiveVariableAnalysis { get; }
-    bool RemoveEmptyBlocks { get; }
     double VcsPathJoinMult { get; }
     bool VerifySeparately { get; }
 

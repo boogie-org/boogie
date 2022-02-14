@@ -72,7 +72,7 @@ public class ConsolePrinter : OutputPrinter
   /// </summary>
   public void Inform(string s, TextWriter tw)
   {
-    if (CommandLineOptions.Clo.Trace || options.TraceProofObligations)
+    if (options.Trace || options.TraceProofObligations)
     {
       tw.WriteLine(s);
     }

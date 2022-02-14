@@ -11,7 +11,7 @@ namespace VC
 {
   class SplitAndVerifyWorker
   {
-    private readonly CommandLineOptions options;
+    private readonly VCGenOptions options;
     private readonly VerifierCallback callback;
     private readonly ModelViewInfo mvInfo;
     private readonly Implementation implementation;
@@ -33,7 +33,7 @@ namespace VC
 
     private int totalResourceCount;
     
-    public SplitAndVerifyWorker(CommandLineOptions options, VCGen vcGen, Implementation implementation,
+    public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, Implementation implementation,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
       Outcome outcome)
     {

@@ -90,6 +90,8 @@ namespace VC
         this.callback = callback;
       }
 
+      private VCGenOptions Options => parent.Options;
+
       internal void Copy()
       {
         CloneBlock(impl.Blocks[0]);
@@ -294,7 +296,7 @@ namespace VC
         }
 
         DateTime start = DateTime.UtcNow;
-        if (CommandLineOptions.Clo.Trace)
+        if (Options.Trace)
         {
           System.Console.Write("    soundness smoke test #{0} ... ", id);
         }
@@ -311,7 +313,7 @@ namespace VC
         Contract.Assert(backup != null);
         impl.Blocks = GetCopiedBlocks();
         copy.TransferCmd = new ReturnCmd(Token.NoToken);
-        if (CommandLineOptions.Clo.TraceVerify)
+        if (Options.TraceVerify)
         {
           System.Console.WriteLine();
           System.Console.WriteLine(" --- smoke #{0}, before passify", id);
@@ -344,14 +346,14 @@ namespace VC
 
             impl.Blocks = backup;
 
-            if (CommandLineOptions.Clo.TraceVerify)
+            if (Options.TraceVerify)
             {
               System.Console.WriteLine(" --- smoke #{0}, after passify", id);
               Emit();
             }
 
             ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(absyIds, this.callback),
-              CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit);
+              Options.SmokeTimeout, Options.ResourceLimit);
           }
 
           ch.ProverTask.Wait();
@@ -370,7 +372,7 @@ namespace VC
 
         DateTime end = DateTime.UtcNow;
         TimeSpan elapsed = end - start;
-        if (CommandLineOptions.Clo.Trace)
+        if (Options.Trace)
         {
           System.Console.WriteLine("  [{0} s] {1}", elapsed.TotalSeconds,
             outcome == ProverInterface.Outcome.Valid
@@ -807,6 +809,8 @@ namespace VC
       }
     }
 
+    private VCGenOptions Options => CheckerPool.Options;
+
     public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -828,7 +832,7 @@ namespace VC
       ConvertCFG2DAG(impl);
 
       SmokeTester smoke_tester = null;
-      if (CommandLineOptions.Clo.SoundnessSmokeTest)
+      if (Options.SoundnessSmokeTest)
       {
         smoke_tester = new SmokeTester(this, impl, callback);
         smoke_tester.Copy();
@@ -850,7 +854,7 @@ namespace VC
           var oldCex = impl.ErrorChecksumToCachedError[checksum] as Counterexample;
           if (oldCex != null)
           {
-            if (CommandLineOptions.Clo.VerifySnapshots < 3)
+            if (Options.VerifySnapshots < 3)
             {
               callback.OnCounterexample(oldCex, null);
             }
@@ -868,7 +872,7 @@ namespace VC
         }
       }
 
-      var worker = new SplitAndVerifyWorker(CommandLineOptions.Clo, this, impl, gotoCmdOrigins, callback, mvInfo, outcome);
+      var worker = new SplitAndVerifyWorker(Options, this, impl, gotoCmdOrigins, callback, mvInfo, outcome);
       outcome = worker.WorkUntilDone().Result;
       ResourceCount = worker.ResourceCount;
       
@@ -1069,7 +1073,7 @@ namespace VC
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("original implementation");
         EmitImpl(impl, false);
@@ -1079,7 +1083,7 @@ namespace VC
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("after desugaring sugared commands like procedure calls");
         EmitImpl(impl, true);
@@ -1094,7 +1098,7 @@ namespace VC
           new GotoCmd(Token.NoToken, new List<String> {impl.Blocks[0].Label}, new List<Block> {impl.Blocks[0]})));
       ResetPredecessors(impl.Blocks);
 
-      var k = Math.Max(CommandLineOptions.Clo.KInductionDepth,
+      var k = Math.Max(Options.KInductionDepth,
         QKeyValue.FindIntAttribute(impl.Attributes, "kInductionDepth", -1));
       if (k < 0)
       {
@@ -1107,7 +1111,7 @@ namespace VC
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("after conversion into a DAG");
         EmitImpl(impl, true);
@@ -1164,10 +1168,10 @@ namespace VC
               AssertCmd c = (AssertCmd) a;
               AssertCmd b = null;
 
-              if (CommandLineOptions.Clo.ConcurrentHoudini)
+              if (Options.ConcurrentHoudini)
               {
                 Contract.Assert(taskID >= 0);
-                if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvEntryAssert)
+                if (Options.Cho[taskID].DisableLoopInvEntryAssert)
                 {
                   b = new LoopInitAssertCmd(c.tok, Expr.True);
                 }
@@ -1185,10 +1189,10 @@ namespace VC
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsInit.Add(b);
 
-              if (CommandLineOptions.Clo.ConcurrentHoudini)
+              if (Options.ConcurrentHoudini)
               {
                 Contract.Assert(taskID >= 0);
-                if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvMaintainedAssert)
+                if (Options.Cho[taskID].DisableLoopInvMaintainedAssert)
                 {
                   b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True);
                 }
@@ -1210,7 +1214,7 @@ namespace VC
             else
             {
               Contract.Assert(a is AssumeCmd);
-              if (Bpl.CommandLineOptions.Clo.AlwaysAssumeFreeLoopInvariants)
+              if (Options.AlwaysAssumeFreeLoopInvariants)
               {
                 // Usually, "free" stuff, like free loop invariants (and the assume statements
                 // that stand for such loop invariants) are ignored on the checking side.  This
@@ -1446,7 +1450,7 @@ namespace VC
 
           #region Debug Tracing
 
-          if (CommandLineOptions.Clo.TraceVerify)
+          if (Options.TraceVerify)
           {
             Console.WriteLine("Applying k-induction rule with k=" + inductionK);
           }
@@ -1693,7 +1697,7 @@ namespace VC
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("after creating a unified exit block");
         EmitImpl(impl, true);
@@ -1757,7 +1761,7 @@ namespace VC
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("after inserting pre- and post-conditions");
         EmitImpl(impl, true);
@@ -1769,7 +1773,7 @@ namespace VC
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("after adding empty blocks as needed to catch join assumptions");
         EmitImpl(impl, true);
@@ -1777,7 +1781,7 @@ namespace VC
 
       #endregion
 
-      if (CommandLineOptions.Clo.LiveVariableAnalysis > 0)
+      if (Options.LiveVariableAnalysis > 0)
       {
         Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(impl);
       }
@@ -1792,7 +1796,7 @@ namespace VC
 
       #region Peep-hole optimizations
 
-      if (CommandLineOptions.Clo.RemoveEmptyBlocks)
+      if (Options.RemoveEmptyBlocks)
       {
         #region Get rid of empty blocks
 
@@ -1805,7 +1809,7 @@ namespace VC
 
         #region Debug Tracing
 
-        if (CommandLineOptions.Clo.TraceVerify)
+        if (Options.TraceVerify)
         {
           Console.WriteLine("after peep-hole optimizations");
           EmitImpl(impl, true);

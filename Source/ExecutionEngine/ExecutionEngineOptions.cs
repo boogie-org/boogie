@@ -24,20 +24,6 @@ public interface ExecutionEngineOptions : HoudiniOptions, ConcurrencyOptions
   bool NoResolve { get; }
   bool NoTypecheck { get; }
 
-  public enum ShowEnvironment
-  {
-    Never,
-    DuringPrint,
-    Always
-  }
-
-  public bool UserWantsToCheckRoutine(string methodFullname)
-  {
-    Contract.Requires(methodFullname != null);
-    Func<string, bool> match = s => Regex.IsMatch(methodFullname, "^" + Regex.Escape(s).Replace(@"\*", ".*") + "$");
-    return (ProcsToCheck.Count == 0 || ProcsToCheck.Any(match)) && !ProcsToIgnore.Any(match);
-  }
-
   List<string> ProcsToCheck { get; }
   List<string> ProcsToIgnore { get; }
   int PrintErrorModel { get; }
@@ -53,4 +39,18 @@ public interface ExecutionEngineOptions : HoudiniOptions, ConcurrencyOptions
   bool SoundLoopUnrolling { get; }
   bool Verify { get; }
   bool ContractInfer { get; }
+
+  public enum ShowEnvironment
+  {
+    Never,
+    DuringPrint,
+    Always
+  }
+
+  public bool UserWantsToCheckRoutine(string methodFullname)
+  {
+    Contract.Requires(methodFullname != null);
+    Func<string, bool> match = s => Regex.IsMatch(methodFullname, "^" + Regex.Escape(s).Replace(@"\*", ".*") + "$");
+    return (ProcsToCheck.Count == 0 || ProcsToCheck.Any(match)) && !ProcsToIgnore.Any(match);
+  }
 }
