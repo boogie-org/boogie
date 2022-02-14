@@ -237,7 +237,7 @@ namespace Microsoft.Boogie.Houdini
       }
        */
 
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
         Console.WriteLine("Houdini assignment axiom: " + expr);
       }
@@ -245,12 +245,14 @@ namespace Microsoft.Boogie.Houdini
       return expr;
     }
 
+    public HoudiniOptions Options => houdini.Options;
+
     public ProverInterface.Outcome Verify(ProverInterface proverInterface, Dictionary<Variable, bool> assignment,
       out List<Counterexample> errors, int errorLimit)
     {
       collector.examples.Clear();
 
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
         Console.WriteLine("Verifying " + descriptiveName);
       }
@@ -264,7 +266,7 @@ namespace Microsoft.Boogie.Houdini
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
       stats.proverTime += queryTime;
       stats.numProverQueries++;
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
         Console.WriteLine("Outcome = " + proverOutcome);
         Console.WriteLine("Time taken = " + queryTime);
@@ -376,15 +378,15 @@ namespace Microsoft.Boogie.Houdini
       var controlExprFalse = exprGen.And(controlExpr,
         exprGen.And(exprGen.Not(exprTranslator.LookupVariable(pc)), exprGen.Not(exprTranslator.LookupVariable(nc))));
 
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
         Console.WriteLine("Verifying (MaxSat) " + descriptiveName);
       }
 
       DateTime now = DateTime.UtcNow;
 
-      var el = CommandLineOptions.Clo.ErrorLimit;
-      CommandLineOptions.Clo.ErrorLimit = 1;
+      var el = Options.ErrorLimit;
+      Options.ErrorLimit = 1;
 
       var outcome = ProverInterface.Outcome.Undetermined;
 
@@ -403,7 +405,7 @@ namespace Microsoft.Boogie.Houdini
 
         var reason = new HashSet<string>();
         unsatisfiedSoftAssumptions.Iter(i => reason.Add(softAssumptions[i].ToString()));
-        if (CommandLineOptions.Clo.Trace)
+        if (Options.Trace)
         {
           Console.Write("Reason for removal of {0}: ", refutedConstant.Name);
           reason.Iter(r => Console.Write("{0} ", r));
@@ -439,7 +441,7 @@ namespace Microsoft.Boogie.Houdini
         var reason1 = new HashSet<string>(); //these are the reasons for inconsistency
         unsatisfiedSoftAssumptions2.Iter(i => reason1.Add(softAssumptions2[i].ToString()));
 
-        if (CommandLineOptions.Clo.Trace)
+        if (Options.Trace)
         {
           Console.Write("Revised reason for removal of {0}: ", refutedConstant.Name);
           reason.Iter(r => Console.Write("{0} ", r));
@@ -467,12 +469,12 @@ namespace Microsoft.Boogie.Houdini
           "TimeOut", descriptiveName);
       }
 
-      CommandLineOptions.Clo.ErrorLimit = el;
+      Options.ErrorLimit = el;
 
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
       stats.proverTime += queryTime;
       stats.numProverQueries++;
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
         Console.WriteLine("Time taken = " + queryTime);
       }

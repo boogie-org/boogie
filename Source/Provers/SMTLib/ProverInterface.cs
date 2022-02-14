@@ -32,11 +32,11 @@ public abstract class ProverInterface
 
     if (taskID >= 0)
     {
-      options.Parse(CommandLineOptions.Clo.Cho[taskID].ProverOptions);
+      options.Parse(libOptions.Cho[taskID].ProverOptions);
     }
     else
     {
-      options.Parse(CommandLineOptions.Clo.ProverOptions);
+      options.Parse(libOptions.ProverOptions);
     }
 
     ProverContext ctx = libOptions.TheProverFactory.NewProverContext(options);
@@ -104,6 +104,13 @@ public abstract class ProverInterface
 
   public class ErrorHandler
   {
+    private SMTLibOptions options;
+
+    public ErrorHandler(SMTLibOptions options)
+    {
+      this.options = options;
+    }
+
     public virtual void AddNecessaryAssume(string id)
     {
       throw new System.NotImplementedException();
@@ -129,7 +136,7 @@ public abstract class ProverInterface
     public virtual void OnProverWarning(string message)
     {
       Contract.Requires(message != null);
-      switch (CommandLineOptions.Clo.PrintProverWarnings)
+      switch (options.PrintProverWarnings)
       {
         case CommandLineOptions.ProverWarnings.None:
           break;

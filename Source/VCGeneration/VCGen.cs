@@ -353,7 +353,7 @@ namespace VC
               Emit();
             }
 
-            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(absyIds, this.callback),
+            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(Options, absyIds, callback),
               Options.SmokeTimeout, Options.ResourceLimit, CancellationToken.None);
           }
 
@@ -516,7 +516,7 @@ namespace VC
         }
 
 
-        public ErrorHandler(ControlFlowIdMap<Absy> absyIds, VerifierCallback callback)
+        public ErrorHandler(VCGenOptions options, ControlFlowIdMap<Absy> absyIds, VerifierCallback callback)  : base(options)
         {
           Contract.Requires(absyIds != null);
           Contract.Requires(callback != null);
@@ -942,7 +942,7 @@ namespace VC
         VerifierCallback /*!*/ callback,
         ModelViewInfo mvInfo,
         ProverContext /*!*/ context,
-        Program /*!*/ program)
+        Program /*!*/ program) : base(options)
       {
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(absyIds != null);
