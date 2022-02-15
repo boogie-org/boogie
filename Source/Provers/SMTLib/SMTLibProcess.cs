@@ -452,11 +452,12 @@ namespace Microsoft.Boogie.SMTLib
 
     void prover_ErrorDataReceived(object sender, DataReceivedEventArgs e)
     {
+      if (e.Data == null)
+      {
+        return;
+      }
+
       lock (this) {
-        if (e.Data == null)
-        {
-          return;
-        }
 
         if (options.Verbosity >= 1)
         {
