@@ -35,7 +35,7 @@ namespace Microsoft.Boogie.Houdini
 
     public void Analyse()
     {
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Annotation dependence analysis: Getting annotations");
       }
@@ -68,7 +68,7 @@ namespace Microsoft.Boogie.Houdini
 
     private void ConstructStagesDAG()
     {
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Annotation dependence analysis: Computing SCCs");
       }
@@ -79,7 +79,7 @@ namespace Microsoft.Boogie.Houdini
         AnnotationDependences.Nodes, next, prev);
       SCCs.Compute();
 
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Annotation dependence analysis: Building stages DAG");
       }
@@ -112,7 +112,7 @@ namespace Microsoft.Boogie.Houdini
 
     private void ConstructAnnotationDependenceGraph()
     {
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Annotation dependence analysis: Building dependence graph");
       }
@@ -204,7 +204,7 @@ namespace Microsoft.Boogie.Houdini
 
     private void DetermineAnnotationVariableDependences()
     {
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Annotation dependence analysis: Working out what annotations depend on");
       }
@@ -345,7 +345,7 @@ namespace Microsoft.Boogie.Houdini
 
     public void dump()
     {
-      if (CommandLineOptions.Clo.DebugStagedHoudini)
+      if (options.DebugStagedHoudini)
       {
         varDepAnalyser.dump();
 

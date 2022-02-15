@@ -541,8 +541,8 @@ namespace Microsoft.Boogie.Houdini
 
       foreach (Implementation impl in callGraph.Nodes)
       {
-        CommandLineOptions.Inlining savedOption = Options.ProcedureInlining;
-        Options.ProcedureInlining = CommandLineOptions.Inlining.Spec;
+        CoreOptions.Inlining savedOption = Options.ProcedureInlining;
+        Options.ProcedureInlining = CoreOptions.Inlining.Spec;
         Inliner.ProcessImplementationForHoudini(program, impl);
         Options.ProcedureInlining = savedOption;
       }

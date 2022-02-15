@@ -1294,7 +1294,7 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
       //Contract.Requires(stream != null);
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds && !stream.UseForComputingChecksums)
+      if (CoreOptions.Clo.PrintWithUniqueASTIds && !stream.UseForComputingChecksums)
       {
         stream.Write("{0}^^", this.Decl == null ? "NoDecl" : "h" + this.Decl.GetHashCode());
       }

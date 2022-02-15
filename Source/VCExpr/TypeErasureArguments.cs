@@ -243,7 +243,7 @@ namespace Microsoft.Boogie.TypeErasure
       select = HelperFuns.BoogieFunction(baseName + "Select", selectTypes);
       store = HelperFuns.BoogieFunction(baseName + "Store", storeTypes);
 
-      if (CommandLineOptions.Clo.UseArrayTheory)
+      if (CoreOptions.Clo.UseArrayTheory)
       {
         select.AddAttribute("builtin", "select");
         store.AddAttribute("builtin", "store");

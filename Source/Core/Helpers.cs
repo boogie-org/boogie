@@ -255,7 +255,7 @@ namespace Microsoft.Boogie
     public static void ExtraTraceInformation(string point)
     {
       Contract.Requires(point != null);
-      if (CommandLineOptions.Clo.TraceTimes)
+      if (CoreOptions.Clo.TraceTimes)
       {
         DateTime now = DateTime.UtcNow;
         TimeSpan timeSinceStartUp = now - StartUp;

@@ -6,10 +6,10 @@ namespace Microsoft.Boogie
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
-  public interface CommandLineOptions
+  public interface CoreOptions
   {
 
-    public static CommandLineOptions /*!*/ Clo
+    public static CoreOptions /*!*/ Clo
     {
       get;
       set;

@@ -43,7 +43,7 @@ namespace Microsoft.Boogie
 
     public override Expr VisitCodeExpr(CodeExpr node)
     {
-      Inliner codeExprInliner = new Inliner(program, inlineCallback, CommandLineOptions.Clo.InlineDepth);
+      Inliner codeExprInliner = new Inliner(program, inlineCallback, CoreOptions.Clo.InlineDepth);
       codeExprInliner.newLocalVars.AddRange(node.LocVars);
       codeExprInliner.inlinedProcLblMap = this.inlinedProcLblMap;
       List<Block> newCodeExprBlocks = codeExprInliner.DoInlineBlocks(node.Blocks, ref inlinedSomething);
@@ -171,7 +171,7 @@ namespace Microsoft.Boogie
       // we need to resolve the new code
       inliner.ResolveImpl(impl);
 
-      if (CommandLineOptions.Clo.PrintInlined)
+      if (CoreOptions.Clo.PrintInlined)
       {
         inliner.EmitImpl(impl);
       }
@@ -182,7 +182,7 @@ namespace Microsoft.Boogie
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
       Contract.Requires(impl.Proc != null);
-      ProcessImplementation(program, impl, new Inliner(program, null, CommandLineOptions.Clo.InlineDepth));
+      ProcessImplementation(program, impl, new Inliner(program, null, CoreOptions.Clo.InlineDepth));
     }
 
     public static void ProcessImplementation(Program program, Implementation impl)
@@ -388,12 +388,12 @@ namespace Microsoft.Boogie
             else if (inline == 0)
             {
               inlinedSomething = true;
-              if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assert)
+              if (CoreOptions.Clo.ProcedureInlining == CoreOptions.Inlining.Assert)
               {
                 // add assert
                 newCmds.Add(new AssertCmd(callCmd.tok, Expr.False));
               }
-              else if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assume)
+              else if (CoreOptions.Clo.ProcedureInlining == CoreOptions.Inlining.Assume)
               {
                 // add assume
                 newCmds.Add(new AssumeCmd(callCmd.tok, Expr.False));

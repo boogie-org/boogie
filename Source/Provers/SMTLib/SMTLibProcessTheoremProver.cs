@@ -108,11 +108,11 @@ namespace Microsoft.Boogie.SMTLib
     {
       switch (libOptions.TypeEncodingMethod)
       {
-        case CommandLineOptions.TypeEncoding.Arguments:
+        case CoreOptions.TypeEncoding.Arguments:
           AxBuilder = new TypeAxiomBuilderArguments(gen);
           AxBuilder.Setup();
           break;
-        case CommandLineOptions.TypeEncoding.Monomorphic:
+        case CoreOptions.TypeEncoding.Monomorphic:
           AxBuilder = null;
           break;
         default:
@@ -1733,13 +1733,13 @@ namespace Microsoft.Boogie.SMTLib
         VCExpr exprWithoutTypes;
         switch (libOptions.TypeEncodingMethod)
         {
-          case CommandLineOptions.TypeEncoding.Arguments:
+          case CoreOptions.TypeEncoding.Arguments:
           {
             TypeEraser eraser = new TypeEraserArguments((TypeAxiomBuilderArguments) AxBuilder, gen);
             exprWithoutTypes = AxBuilder.Cast(eraser.Erase(expr, polarity), Type.Bool);
             break;
           }
-          case CommandLineOptions.TypeEncoding.Monomorphic:
+          case CoreOptions.TypeEncoding.Monomorphic:
           {
             exprWithoutTypes = expr;
             break;
@@ -1827,7 +1827,7 @@ namespace Microsoft.Boogie.SMTLib
       //throws ProverException, System.IO.FileNotFoundException;
       if (_backgroundPredicates == null)
       {
-        if (libOptions.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+        if (libOptions.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic)
         {
           _backgroundPredicates = "";
         }

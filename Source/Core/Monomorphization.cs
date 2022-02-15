@@ -628,7 +628,7 @@ namespace Microsoft.Boogie
 
       private static bool IsInlined(Implementation impl)
       {
-        if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.None)
+        if (CoreOptions.Clo.ProcedureInlining == CoreOptions.Inlining.None)
         {
           return false;
         }

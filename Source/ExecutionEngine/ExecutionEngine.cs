@@ -243,7 +243,7 @@ namespace Microsoft.Boogie
       return -1;
     }
 
-    public readonly static VerificationResultCache Cache = new VerificationResultCache();
+    public static readonly VerificationResultCache Cache = new VerificationResultCache();
 
     static readonly MemoryCache programCache = new MemoryCache("ProgramCache");
 
@@ -576,14 +576,14 @@ namespace Microsoft.Boogie
 
       if (MonomorphismChecker.IsMonomorphic(program))
       {
-        options.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
+        options.TypeEncodingMethod = CoreOptions.TypeEncoding.Monomorphic;
       }
       else if (options.Monomorphize)
       {
         var monomorphizableStatus = Monomorphizer.Monomorphize(program);
         if (monomorphizableStatus == MonomorphizableStatus.Monomorphizable)
         {
-          options.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
+          options.TypeEncodingMethod = CoreOptions.TypeEncoding.Monomorphic;
         }
         else if (monomorphizableStatus == MonomorphizableStatus.UnhandledPolymorphism)
         {
@@ -642,7 +642,7 @@ namespace Microsoft.Boogie
       // Inline
       var TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
 
-      if (options.ProcedureInlining != CommandLineOptions.Inlining.None)
+      if (options.ProcedureInlining != CoreOptions.Inlining.None)
       {
         bool inline = false;
         foreach (var d in TopLevelDeclarations)
@@ -783,8 +783,8 @@ namespace Microsoft.Boogie
       Implementation[] stablePrioritizedImpls = null;
       if (0 < options.VerifySnapshots)
       {
-        OtherDefinitionAxiomsCollector.Collect(program.Axioms);
-        DependencyCollector.Collect(program);
+        OtherDefinitionAxiomsCollector.Collect(options, program.Axioms);
+        DependencyCollector.Collect(options, program);
         stablePrioritizedImpls = impls.OrderByDescending(
           impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl)).ToArray();
       }
@@ -797,7 +797,7 @@ namespace Microsoft.Boogie
 
       if (1 < options.VerifySnapshots)
       {
-        CachedVerificationResultInjector.Inject(program, stablePrioritizedImpls, requestId, programId,
+        CachedVerificationResultInjector.Inject(options, program, stablePrioritizedImpls, requestId, programId,
           out stats.CachingActionCounts);
       }
 

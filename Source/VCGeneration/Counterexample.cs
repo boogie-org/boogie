@@ -603,9 +603,9 @@ namespace Microsoft.Boogie
 
   public class VerifierCallback
   {
-    private CommandLineOptions.ProverWarnings printProverWarnings;
+    private CoreOptions.ProverWarnings printProverWarnings;
 
-    public VerifierCallback(CommandLineOptions.ProverWarnings printProverWarnings)
+    public VerifierCallback(CoreOptions.ProverWarnings printProverWarnings)
     {
       this.printProverWarnings = printProverWarnings;
     }
@@ -647,12 +647,12 @@ namespace Microsoft.Boogie
       Contract.Requires(msg != null);
       switch (printProverWarnings)
       {
-        case CommandLineOptions.ProverWarnings.None:
+        case CoreOptions.ProverWarnings.None:
           break;
-        case CommandLineOptions.ProverWarnings.Stdout:
+        case CoreOptions.ProverWarnings.Stdout:
           Console.WriteLine("Prover warning: " + msg);
           break;
-        case CommandLineOptions.ProverWarnings.Stderr:
+        case CoreOptions.ProverWarnings.Stderr:
           Console.Error.WriteLine("Prover warning: " + msg);
           break;
         default:

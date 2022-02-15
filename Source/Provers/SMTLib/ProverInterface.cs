@@ -138,12 +138,12 @@ public abstract class ProverInterface
       Contract.Requires(message != null);
       switch (options.PrintProverWarnings)
       {
-        case CommandLineOptions.ProverWarnings.None:
+        case CoreOptions.ProverWarnings.None:
           break;
-        case CommandLineOptions.ProverWarnings.Stdout:
+        case CoreOptions.ProverWarnings.Stdout:
           Console.WriteLine("Prover warning: " + message);
           break;
-        case CommandLineOptions.ProverWarnings.Stderr:
+        case CoreOptions.ProverWarnings.Stderr:
           Console.Error.WriteLine("Prover warning: " + message);
           break;
         default:

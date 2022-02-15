@@ -436,7 +436,7 @@ namespace Microsoft.Boogie
         {
           int e = rc.ErrorCount;
           d.Resolve(rc);
-          if (CommandLineOptions.Clo.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation)
+          if (CoreOptions.Clo.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation)
           {
             // ignore this implementation
             System.Console.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors",
@@ -813,7 +813,7 @@ namespace Microsoft.Boogie
     /// <returns></returns>
     private HashSet<Block> GetBreakBlocksOfLoop(Block header, Block backEdgeNode, Graph<Block /*!*/> /*!*/ g)
     {
-      Contract.Assert(CommandLineOptions.Clo.DeterministicExtractLoops,
+      Contract.Assert(CoreOptions.Clo.DeterministicExtractLoops,
         "Can only be called with /deterministicExtractLoops option");
       var immSuccBlks = new HashSet<Block>();
       var loopBlocks = g.NaturalLoops(header, backEdgeNode);
@@ -842,7 +842,7 @@ namespace Microsoft.Boogie
 
     private HashSet<Block> GetBlocksInAllNaturalLoops(Block header, Graph<Block /*!*/> /*!*/ g)
     {
-      Contract.Assert(CommandLineOptions.Clo.DeterministicExtractLoops,
+      Contract.Assert(CoreOptions.Clo.DeterministicExtractLoops,
         "Can only be called with /deterministicExtractLoops option");
       var allBlocksInNaturalLoops = new HashSet<Block>();
       foreach (Block /*!*/ source in g.BackEdgeNodes(header))
@@ -882,7 +882,7 @@ namespace Microsoft.Boogie
         AddToFullMap(fullMap, impl.Name, block.Label, block);
       }
 
-      bool detLoopExtract = CommandLineOptions.Clo.DeterministicExtractLoops;
+      bool detLoopExtract = CoreOptions.Clo.DeterministicExtractLoops;
 
       Dictionary<Block /*!*/, List<Variable> /*!*/> /*!*/
         loopHeaderToInputs = new Dictionary<Block /*!*/, List<Variable> /*!*/>();
@@ -1467,7 +1467,7 @@ namespace Microsoft.Boogie
             fullMap[impl.Name] = null;
             procsWithIrreducibleLoops.Add(impl.Name);
 
-            if (CommandLineOptions.Clo.ExtractLoopsUnrollIrreducible)
+            if (CoreOptions.Clo.ExtractLoopsUnrollIrreducible)
             {
               // statically unroll loops in this procedure
 
@@ -1480,7 +1480,7 @@ namespace Microsoft.Boogie
 
               // unroll
               Block start = impl.Blocks[0];
-              impl.Blocks = LoopUnroll.UnrollLoops(start, CommandLineOptions.Clo.RecursionBound, false);
+              impl.Blocks = LoopUnroll.UnrollLoops(start, CoreOptions.Clo.RecursionBound, false);
 
               // Now construct the "map back" information
               // Resulting block label -> original block
@@ -1936,11 +1936,11 @@ namespace Microsoft.Boogie
     {
       get
       {
-        uint tl = CommandLineOptions.Clo.TimeLimit;
+        uint tl = CoreOptions.Clo.TimeLimit;
         CheckUIntAttribute("timeLimit", ref tl);
         if (tl < 0)
         {
-          tl = CommandLineOptions.Clo.TimeLimit;
+          tl = CoreOptions.Clo.TimeLimit;
         }
         return tl;
       }
@@ -1950,11 +1950,11 @@ namespace Microsoft.Boogie
     {
       get
       {
-        uint rl = CommandLineOptions.Clo.ResourceLimit;
+        uint rl = CoreOptions.Clo.ResourceLimit;
         CheckUIntAttribute("rlimit", ref rl);
         if (rl < 0)
         {
-          rl = CommandLineOptions.Clo.ResourceLimit;
+          rl = CoreOptions.Clo.ResourceLimit;
         }
         return rl;
       }
@@ -2388,7 +2388,7 @@ namespace Microsoft.Boogie
         EmitAttributes(stream);
       }
 
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds && this.TypedIdent.HasName)
+      if (CoreOptions.Clo.PrintWithUniqueASTIds && this.TypedIdent.HasName)
       {
         stream.Write("h{0}^^",
           this.GetHashCode()); // the idea is that this will prepend the name printed by TypedIdent.Emit
@@ -3399,7 +3399,7 @@ namespace Microsoft.Boogie
         stream.Write("{:define} ");
       }
 
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (CoreOptions.Clo.PrintWithUniqueASTIds)
       {
         stream.Write("h{0}^^{1}", this.GetHashCode(), TokenTextWriter.SanitizeIdentifier(this.Name));
       }
@@ -4228,8 +4228,8 @@ namespace Microsoft.Boogie
           return true;
         }
 
-        if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assert ||
-            CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assume)
+        if (CoreOptions.Clo.ProcedureInlining == CoreOptions.Inlining.Assert ||
+            CoreOptions.Clo.ProcedureInlining == CoreOptions.Inlining.Assume)
         {
           Expr inl = this.FindExprAttribute("inline");
           if (inl == null)
@@ -4243,7 +4243,7 @@ namespace Microsoft.Boogie
           }
         }
 
-        if (CommandLineOptions.Clo.StratifiedInlining > 0)
+        if (CoreOptions.Clo.StratifiedInlining > 0)
         {
           return !QKeyValue.FindBoolAttribute(Attributes, "entrypoint");
         }
@@ -4527,31 +4527,31 @@ namespace Microsoft.Boogie
         v.Emit(stream, level + 1);
       }
 
-      if (this.StructuredStmts != null && !CommandLineOptions.Clo.PrintInstrumented &&
-          !CommandLineOptions.Clo.PrintInlined)
+      if (this.StructuredStmts != null && !CoreOptions.Clo.PrintInstrumented &&
+          !CoreOptions.Clo.PrintInlined)
       {
         if (this.LocVars.Count > 0)
         {
           stream.WriteLine();
         }
 
-        if (CommandLineOptions.Clo.PrintUnstructured < 2)
+        if (CoreOptions.Clo.PrintUnstructured < 2)
         {
-          if (CommandLineOptions.Clo.PrintUnstructured == 1)
+          if (CoreOptions.Clo.PrintUnstructured == 1)
           {
             stream.WriteLine(this, level + 1, "/*** structured program:");
           }
 
           this.StructuredStmts.Emit(stream, level + 1);
-          if (CommandLineOptions.Clo.PrintUnstructured == 1)
+          if (CoreOptions.Clo.PrintUnstructured == 1)
           {
             stream.WriteLine(level + 1, "**** end structured program */");
           }
         }
       }
 
-      if (this.StructuredStmts == null || 1 <= CommandLineOptions.Clo.PrintUnstructured ||
-          CommandLineOptions.Clo.PrintInstrumented || CommandLineOptions.Clo.PrintInlined)
+      if (this.StructuredStmts == null || 1 <= CoreOptions.Clo.PrintUnstructured ||
+          CoreOptions.Clo.PrintInstrumented || CoreOptions.Clo.PrintInlined)
       {
         foreach (Block b in this.Blocks)
         {
@@ -4795,7 +4795,7 @@ namespace Microsoft.Boogie
 
         this.formalMap = map;
 
-        if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+        if (CoreOptions.Clo.PrintWithUniqueASTIds)
         {
           Console.WriteLine("Implementation.GetImplFormalMap on {0}:", this.Name);
           using TokenTextWriter stream =
@@ -4974,7 +4974,7 @@ namespace Microsoft.Boogie
           reachable.Add(b);
           if (b.TransferCmd is GotoCmd)
           {
-            if (CommandLineOptions.Clo.PruneInfeasibleEdges)
+            if (CoreOptions.Clo.PruneInfeasibleEdges)
             {
               foreach (Cmd /*!*/ s in b.Cmds)
               {

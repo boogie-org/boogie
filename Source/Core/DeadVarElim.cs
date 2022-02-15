@@ -76,7 +76,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(program != null);
 
-      if (CommandLineOptions.Clo.Trace)
+      if (CoreOptions.Clo.Trace)
       {
 //          Console.WriteLine();
 //          Console.WriteLine("Running modset analysis ...");
@@ -602,7 +602,7 @@ namespace Microsoft.Boogie
       Microsoft.Boogie.Helpers.ExtraTraceInformation("Starting live variable analysis");
       Graph<Block> dag = Program.GraphFromBlocks(impl.Blocks, false);
       IEnumerable<Block> sortedNodes;
-      if (CommandLineOptions.Clo.ModifyTopologicalSorting)
+      if (CoreOptions.Clo.ModifyTopologicalSorting)
       {
         sortedNodes = dag.TopologicalSort(true);
       }

@@ -214,8 +214,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
       public Expr ToExpr()
       {
-        if (!V.IsMutable && CommandLineOptions.Clo.InstrumentInfer !=
-          CommandLineOptions.InstrumentationPlaces.Everywhere)
+        if (!V.IsMutable && CoreOptions.Clo.InstrumentInfer !=
+          CoreOptions.InstrumentationPlaces.Everywhere)
         {
           // omit invariants about readonly variables
           return Expr.True;

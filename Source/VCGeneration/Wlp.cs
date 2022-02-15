@@ -138,8 +138,8 @@ namespace VC
 
         {
           var subsumption = Subsumption(ac);
-          if (subsumption == CommandLineOptions.SubsumptionOption.Always
-              || (subsumption == CommandLineOptions.SubsumptionOption.NotForQuantifiers && !(C is VCExprQuantifier)))
+          if (subsumption == CoreOptions.SubsumptionOption.Always
+              || (subsumption == CoreOptions.SubsumptionOption.NotForQuantifiers && !(C is VCExprQuantifier)))
           {
             // Translate ac.Expr again so that we create separate VC expressions for the two different
             // occurrences of the translation of ac.Expr.  Pool-based quantifier instantiation assumes
@@ -240,16 +240,16 @@ namespace VC
       return expr;
     }
 
-    public static CommandLineOptions.SubsumptionOption Subsumption(AssertCmd ac)
+    public static CoreOptions.SubsumptionOption Subsumption(AssertCmd ac)
     {
       Contract.Requires(ac != null);
       int n = QKeyValue.FindIntAttribute(ac.Attributes, "subsumption", -1);
       switch (n)
       {
-        case 0: return CommandLineOptions.SubsumptionOption.Never;
-        case 1: return CommandLineOptions.SubsumptionOption.NotForQuantifiers;
-        case 2: return CommandLineOptions.SubsumptionOption.Always;
-        default: return CommandLineOptions.Clo.UseSubsumption;
+        case 0: return CoreOptions.SubsumptionOption.Never;
+        case 1: return CoreOptions.SubsumptionOption.NotForQuantifiers;
+        case 2: return CoreOptions.SubsumptionOption.Always;
+        default: return CoreOptions.Clo.UseSubsumption;
       }
     }
 

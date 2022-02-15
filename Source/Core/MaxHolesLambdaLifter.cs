@@ -346,7 +346,7 @@ namespace Core
 
 
       var lambdaAttrs = _lambda.Attributes;
-      if (0 < CommandLineOptions.Clo.VerifySnapshots && QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
+      if (0 < CoreOptions.Clo.VerifySnapshots && QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
       {
         // Attach a dummy checksum to avoid issues in the dependency analysis.
         var checksumAttr = new QKeyValue(_lambda.tok, "checksum", new List<object> {"lambda expression"}, null);
@@ -381,14 +381,14 @@ namespace Core
 
       if (_liftedLambdas.TryGetValue(liftedLambda, out var fcall))
       {
-        if (CommandLineOptions.Clo.TraceVerify)
+        if (CoreOptions.Clo.TraceVerify)
         {
           Console.WriteLine("Old lambda: {0}", lam_str);
         }
       }
       else
       {
-        if (CommandLineOptions.Clo.TraceVerify)
+        if (CoreOptions.Clo.TraceVerify)
         {
           Console.WriteLine("New lambda: {0}", lam_str);
         }

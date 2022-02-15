@@ -37,12 +37,12 @@ namespace VC
       Contract.Assert(expr != null);
       switch (Wlp.Subsumption(assrt))
       {
-        case CommandLineOptions.SubsumptionOption.Never:
+        case CoreOptions.SubsumptionOption.Never:
           expr = Expr.True;
           break;
-        case CommandLineOptions.SubsumptionOption.Always:
+        case CoreOptions.SubsumptionOption.Always:
           break;
-        case CommandLineOptions.SubsumptionOption.NotForQuantifiers:
+        case CoreOptions.SubsumptionOption.NotForQuantifiers:
           if (expr is QuantifierExpr)
           {
             expr = Expr.True;
