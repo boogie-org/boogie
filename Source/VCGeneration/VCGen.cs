@@ -567,7 +567,7 @@ namespace VC
         vcgen.AddBlocksBetween(codeExpr.Blocks);
         Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks,
           new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
-        VCExpr startCorrect = LetVC(codeExpr.Blocks, null, absyIds, ctx, out var ac, isPositiveContext);
+        VCExpr startCorrect = vcgen.LetVC(codeExpr.Blocks, null, absyIds, ctx, out var ac, isPositiveContext);
         VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
         if (vcgen.CurrentLocalVariables.Count != 0)
         {
@@ -2529,7 +2529,7 @@ namespace VC
      *
      */
 
-    static VCExpr LetVC(List<Block> blocks,
+    VCExpr LetVC(List<Block> blocks,
       VCExpr controlFlowVariableExpr,
       ControlFlowIdMap<Absy> absyIds,
       ProverContext proverCtxt,
@@ -2594,7 +2594,7 @@ namespace VC
           SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
         }
 
-        VCContext context = new VCContext(absyIds, proverCtxt, controlFlowVariableExpr, isPositiveContext);
+        VCContext context = new VCContext(Options, absyIds, proverCtxt, controlFlowVariableExpr, isPositiveContext);
         VCExpr vc = Wlp.Block(block, SuccCorrect, context);
         assertionCount += context.AssertionCount;
 
@@ -2606,7 +2606,7 @@ namespace VC
       return proverCtxt.ExprGen.Let(bindings, blockVariables[blocks[0]]);
     }
 
-    static VCExpr DagVC(Block block,
+    VCExpr DagVC(Block block,
       VCExpr controlFlowVariableExpr,
       ControlFlowIdMap<Absy> absyIds,
       Dictionary<Block, VCExpr> blockEquations,
@@ -2659,7 +2659,7 @@ namespace VC
         SuccCorrect = VCExpressionGenerator.True;
       }
 
-      VCContext context = new VCContext(absyIds, proverCtxt, controlFlowVariableExpr);
+      VCContext context = new VCContext(Options, absyIds, proverCtxt, controlFlowVariableExpr);
       vc = Wlp.Block(block, SuccCorrect, context);
       assertionCount += context.AssertionCount;
 

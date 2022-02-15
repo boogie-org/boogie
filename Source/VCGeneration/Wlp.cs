@@ -33,10 +33,11 @@ namespace VC
       this.isPositiveContext = isPositiveContext;
     }
 
-    public VCContext(ControlFlowIdMap<Absy> absyIds, ProverContext ctxt, VCExpr controlFlowVariableExpr,
+    public VCContext(VCGenOptions options, ControlFlowIdMap<Absy> absyIds, ProverContext ctxt, VCExpr controlFlowVariableExpr,
       bool isPositiveContext = true)
     {
       Contract.Requires(ctxt != null);
+      Options = options;
       this.absyIds = absyIds;
       this.Ctxt = ctxt;
       this.ControlFlowVariableExpr = controlFlowVariableExpr;
