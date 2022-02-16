@@ -2686,7 +2686,7 @@ namespace Microsoft.Boogie
       set { errorData = value; }
     }
 
-    public readonly ProofObligationDescription Description = new PreconditionDescription();
+    public ProofObligationDescription Description { get; }= new PreconditionDescription();
 
     public override void Resolve(ResolutionContext rc)
     {
@@ -2870,7 +2870,7 @@ namespace Microsoft.Boogie
       set { errorData = value; }
     }
 
-    public readonly ProofObligationDescription Description = new PreconditionDescription();
+    public ProofObligationDescription Description { get; } = new PreconditionDescription();
 
     public CallCmd(IToken tok, string callee, List<Expr> ins, List<IdentifierExpr> outs)
       : base(tok, null)
@@ -3943,18 +3943,16 @@ namespace Microsoft.Boogie
     {
       Contract.Invariant(Call != null);
       Contract.Invariant(Requires != null);
-      this.Description = new PreconditionDescription();
     }
 
 
     public AssertRequiresCmd(CallCmd /*!*/ call, Requires /*!*/ requires)
-      : base(call.tok, requires.Condition)
+      : base(requires.Description, call.tok, requires.Condition)
     {
       Contract.Requires(call != null);
       Contract.Requires(requires != null);
       this.Call = call;
       this.Requires = requires;
-      this.Description = new PreconditionDescription();
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
@@ -3981,11 +3979,10 @@ namespace Microsoft.Boogie
     }
 
     public AssertEnsuresCmd(Ensures /*!*/ ens)
-      : base(ens.tok, ens.Condition)
+      : base(ens.Description, ens.tok, ens.Condition)
     {
       Contract.Requires(ens != null);
       this.Ensures = ens;
-      this.Description = new PostconditionDescription();
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)

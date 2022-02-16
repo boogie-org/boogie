@@ -1848,7 +1848,7 @@ namespace Microsoft.Boogie
             callError.RequestId, callError.OriginalRequestId, cause);
           errorInfo.Kind = ErrorKind.Precondition;
           errorInfo.AddAuxInfo(callError.FailingRequires.tok,
-            callError.FailingRequires.ErrorData as string ?? "This is the precondition that might not hold.",
+            callError.FailingRequires.ErrorData as string ?? callError.FailingRequires.Description.FailureDescription,
             "Related location");
         }
         else
@@ -1867,7 +1867,7 @@ namespace Microsoft.Boogie
             returnError.RequestId, returnError.OriginalRequestId, cause);
           errorInfo.Kind = ErrorKind.Postcondition;
           errorInfo.AddAuxInfo(returnError.FailingEnsures.tok,
-            returnError.FailingEnsures.ErrorData as string ?? "This is the postcondition that might not hold.",
+            returnError.FailingEnsures.ErrorData as string ?? returnError.FailingEnsures.Description.FailureDescription,
             "Related location");
         }
         else

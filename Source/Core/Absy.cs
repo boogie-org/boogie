@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.Contracts;
+using Core;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.GraphUtil;
 using Set = Microsoft.Boogie.GSet<object>;
@@ -277,6 +278,8 @@ namespace Microsoft.Boogie
   public interface IPotentialErrorNode<out TGet>
   {
     TGet ErrorData { get; }
+
+    ProofObligationDescription Description { get; }
   }
 
   public interface IPotentialErrorNode<out TGet, in TSet> : IPotentialErrorNode<TGet>
@@ -3622,6 +3625,8 @@ namespace Microsoft.Boogie
     private Expr /*!*/
       _condition;
 
+    public ProofObligationDescription Description { get; } = new RequiresDescription();
+
     public Expr /*!*/ Condition
     {
       get
@@ -3749,6 +3754,8 @@ namespace Microsoft.Boogie
   public class Ensures : Absy, ICarriesAttributes, IPotentialErrorNode<string, string>
   {
     public readonly bool Free;
+
+    public ProofObligationDescription Description { get; } = new EnsuresDescription();
 
     private Expr /*!*/
       _condition;

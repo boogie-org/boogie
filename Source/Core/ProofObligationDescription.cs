@@ -15,13 +15,13 @@ public class AssertionDescription : ProofObligationDescription
 
   public override string FailureDescription => "This assertion might not hold.";
 
-  public override string ShortDescription => "assertion";
+  public override string ShortDescription => "assert";
 }
 
 public class PreconditionDescription : ProofObligationDescription
 {
   public override string SuccessDescription =>
-    "Precondition holds for call.";
+    "All preconditions hold for call.";
 
   public override string FailureDescription =>
     "A precondition for this call might not hold.";
@@ -29,15 +29,37 @@ public class PreconditionDescription : ProofObligationDescription
   public override string ShortDescription => "precondition";
 }
 
+public class RequiresDescription : ProofObligationDescription
+{
+  public override string SuccessDescription =>
+    "This precondition holds.";
+
+  public override string FailureDescription =>
+    "This is the precondition that might not hold.";
+
+  public override string ShortDescription => "requires";
+}
+
 public class PostconditionDescription : ProofObligationDescription
 {
   public override string SuccessDescription =>
-    "Postcondition holds on return.";
+    "All postconditions hold for this return path.";
 
   public override string FailureDescription =>
     "A postcondition might not hold on this return path.";
 
   public override string ShortDescription => "postcondition";
+}
+
+public class EnsuresDescription : ProofObligationDescription
+{
+  public override string SuccessDescription =>
+    "This postcondition holds.";
+
+  public override string FailureDescription =>
+    "This is the postcondition that might not hold.";
+
+  public override string ShortDescription => "ensures";
 }
 
 public class InvariantEstablishedDescription : AssertionDescription
