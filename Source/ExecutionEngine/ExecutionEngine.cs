@@ -1549,23 +1549,24 @@ namespace Microsoft.Boogie
                 if (callError != null)
                 {
                   tok = callError.FailingCall.tok;
-                  msg = callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.";
+                  msg = callError.FailingCall.ErrorData as string ??
+                        callError.FailingCall.Description.FailureDescription;
                 }
                 else if (returnError != null)
                 {
                   tok = returnError.FailingReturn.tok;
-                  msg = "A postcondition might not hold on this return path.";
+                  msg = returnError.FailingReturn.Description.FailureDescription;
                 }
                 else
                 {
                   tok = assertError.FailingAssert.tok;
                   if (assertError.FailingAssert is LoopInitAssertCmd)
                   {
-                    msg = "This loop invariant might not hold on entry.";
+                    msg = assertError.FailingAssert.Description.FailureDescription;
                   }
                   else if (assertError.FailingAssert is LoopInvMaintainedAssertCmd)
                   {
-                    msg = "This loop invariant might not be maintained by the loop.";
+                    msg = assertError.FailingAssert.Description.FailureDescription;
                   }
                   else
                   {
@@ -1579,7 +1580,7 @@ namespace Microsoft.Boogie
                     }
                     if (msg == null)
                     {
-                      msg = "This assertion might not hold.";
+                      msg = assertError.FailingAssert.Description.FailureDescription;
                     }
                   }
                 }
@@ -1843,7 +1844,7 @@ namespace Microsoft.Boogie
         if (callError.FailingRequires.ErrorMessage == null || CommandLineOptions.Clo.ForceBplErrors)
         {
           errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok,
-            callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.",
+            callError.FailingCall.ErrorData as string ?? callError.FailingCall.Description.FailureDescription,
             callError.RequestId, callError.OriginalRequestId, cause);
           errorInfo.Kind = ErrorKind.Precondition;
           errorInfo.AddAuxInfo(callError.FailingRequires.tok,
@@ -1862,7 +1863,7 @@ namespace Microsoft.Boogie
         if (returnError.FailingEnsures.ErrorMessage == null || CommandLineOptions.Clo.ForceBplErrors)
         {
           errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok,
-            "A postcondition might not hold on this return path.",
+            returnError.FailingReturn.Description.FailureDescription,
             returnError.RequestId, returnError.OriginalRequestId, cause);
           errorInfo.Kind = ErrorKind.Postcondition;
           errorInfo.AddAuxInfo(returnError.FailingEnsures.tok,
@@ -1883,7 +1884,7 @@ namespace Microsoft.Boogie
         if (assertError.FailingAssert is LoopInitAssertCmd)
         {
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok,
-            "This loop invariant might not hold on entry.",
+            assertError.FailingAssert.Description.FailureDescription,
             assertError.RequestId, assertError.OriginalRequestId, cause);
           errorInfo.Kind = ErrorKind.InvariantEntry;
           if ((assertError.FailingAssert.ErrorData as string) != null)
@@ -1895,7 +1896,7 @@ namespace Microsoft.Boogie
         else if (assertError.FailingAssert is LoopInvMaintainedAssertCmd)
         {
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok,
-            "This loop invariant might not be maintained by the loop.",
+            assertError.FailingAssert.Description.FailureDescription,
             assertError.RequestId, assertError.OriginalRequestId, cause);
           errorInfo.Kind = ErrorKind.InvariantMaintainance;
           if ((assertError.FailingAssert.ErrorData as string) != null)
@@ -1908,7 +1909,8 @@ namespace Microsoft.Boogie
         {
           if (assertError.FailingAssert.ErrorMessage == null || CommandLineOptions.Clo.ForceBplErrors)
           {
-            string msg = assertError.FailingAssert.ErrorData as string ?? "This assertion might not hold.";
+            string msg = assertError.FailingAssert.ErrorData as string ??
+                         assertError.FailingAssert.Description.FailureDescription;
             errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg,
               assertError.RequestId, assertError.OriginalRequestId, cause);
             errorInfo.Kind = ErrorKind.Assertion;
