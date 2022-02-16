@@ -2686,7 +2686,7 @@ namespace Microsoft.Boogie
       set { errorData = value; }
     }
 
-    public ProofObligationDescription Description { get; }= new PreconditionDescription();
+    public ProofObligationDescription Description { get; } = new PreconditionDescription();
 
     public override void Resolve(ResolutionContext rc)
     {
@@ -3767,7 +3767,7 @@ namespace Microsoft.Boogie
       set { errorData = value; }
     }
 
-    public ProofObligationDescription Description { get; protected set; } = new AssertionDescription();
+    public ProofObligationDescription Description { get; } = new AssertionDescription();
 
     public string ErrorMessage
     {
@@ -3914,6 +3914,13 @@ namespace Microsoft.Boogie
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
     }
+
+    public LoopInitAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description)
+      : base(description, tok, expr)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(expr != null);
+    }
   }
 
   // An AssertCmd that is a loop invariant check to maintain the invariant after iteration
@@ -3921,6 +3928,13 @@ namespace Microsoft.Boogie
   {
     public LoopInvMaintainedAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr)
       : base(new InvariantMaintainedDescription(), tok, expr)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(expr != null);
+    }
+
+    public LoopInvMaintainedAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description)
+      : base(description, tok, expr)
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
@@ -3955,6 +3969,15 @@ namespace Microsoft.Boogie
       this.Requires = requires;
     }
 
+    public AssertRequiresCmd(CallCmd /*!*/ call, Requires /*!*/ requires, ProofObligationDescription description)
+      : base(description, call.tok, requires.Condition)
+    {
+      Contract.Requires(call != null);
+      Contract.Requires(requires != null);
+      this.Call = call;
+      this.Requires = requires;
+    }
+
     public override Absy StdDispatch(StandardVisitor visitor)
     {
       //Contract.Requires(visitor != null);
@@ -3980,6 +4003,13 @@ namespace Microsoft.Boogie
 
     public AssertEnsuresCmd(Ensures /*!*/ ens)
       : base(ens.Description, ens.tok, ens.Condition)
+    {
+      Contract.Requires(ens != null);
+      this.Ensures = ens;
+    }
+
+    public AssertEnsuresCmd(Ensures /*!*/ ens, ProofObligationDescription description)
+      : base(description, ens.tok, ens.Condition)
     {
       Contract.Requires(ens != null);
       this.Ensures = ens;

@@ -1167,16 +1167,16 @@ namespace VC
                 Contract.Assert(taskID >= 0);
                 if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvEntryAssert)
                 {
-                  b = new LoopInitAssertCmd(c.tok, Expr.True);
+                  b = new LoopInitAssertCmd(c.tok, Expr.True, c.Description);
                 }
                 else
                 {
-                  b = new LoopInitAssertCmd(c.tok, c.Expr);
+                  b = new LoopInitAssertCmd(c.tok, c.Expr, c.Description);
                 }
               }
               else
               {
-                b = new LoopInitAssertCmd(c.tok, c.Expr);
+                b = new LoopInitAssertCmd(c.tok, c.Expr, c.Description);
               }
 
               b.Attributes = c.Attributes;
@@ -1188,16 +1188,16 @@ namespace VC
                 Contract.Assert(taskID >= 0);
                 if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvMaintainedAssert)
                 {
-                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True);
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True, c.Description);
                 }
                 else
                 {
-                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c.Description);
                 }
               }
               else
               {
-                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c.Description);
               }
 
               b.Attributes = c.Attributes;
