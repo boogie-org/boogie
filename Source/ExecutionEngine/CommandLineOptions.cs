@@ -214,7 +214,7 @@ namespace Microsoft.Boogie
       }
 
       /// <summary>
-      /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
+      /// If there is one argument and it is a non-negative integer, then call "setArg" with that number and return "true".
       /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
       /// </summary>
       public bool GetNumericArgument(Action<bool> setArg)
@@ -242,7 +242,7 @@ namespace Microsoft.Boogie
       }
 
       /// <summary>
-      /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
+      /// If there is one argument and it is a non-negative integer, then call "setArg" with that number and return "true".
       /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
       /// </summary>
       public bool GetNumericArgument(Action<int> setArg, Predicate<int> filter = null)
@@ -391,7 +391,7 @@ namespace Microsoft.Boogie
 
       /// <summary>
       /// If there is one argument and it is a non-negative integer less than "limit",
-      /// then set "arg" to that number and return "true".
+      /// then call "setArg" with that number and return "true".
       /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
       /// </summary>
       public bool GetNumericArgument(Action<int> setArg, int limit)

@@ -7,7 +7,7 @@ using System.Linq;
 namespace CoreTests
 {
   [TestFixture()]
-  public class DuplicatorTests : BoogieTestBase, IErrorSink
+  public class DuplicatorTests : IErrorSink
   {
     Duplicator d;
 
