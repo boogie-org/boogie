@@ -386,7 +386,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         string optOp = node.Op.Equals(VCExpressionGenerator.MinimizeOp) ? "minimize" : "maximize";
         OptimizationRequests.Add(string.Format("({0} {1})", optOp,
-          ToString(node[0], Namer, CommandLineOptions.Clo, ProverOptions, NamedAssumes)));
+          ToString(node[0], Namer, LibOptions, ProverOptions, NamedAssumes)));
         Linearise(node[1], options);
         return true;
       }

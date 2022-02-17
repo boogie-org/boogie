@@ -5,7 +5,7 @@ namespace Microsoft.Boogie
 {
   public class CivlVCGeneration
   {
-    public static void Transform(CivlTypeChecker civlTypeChecker)
+    public static void Transform(ConcurrencyOptions options, CivlTypeChecker civlTypeChecker)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       Program program = linearTypeChecker.program;
@@ -19,7 +19,7 @@ namespace Microsoft.Boogie
 
       // Commutativity checks
       List<Declaration> decls = new List<Declaration>();
-      if (!CommandLineOptions.Clo.TrustMoverTypes)
+      if (!options.TrustMoverTypes)
       {
         MoverCheck.AddCheckers(civlTypeChecker, decls);
       }
@@ -30,7 +30,7 @@ namespace Microsoft.Boogie
       // Linear type checks
       LinearTypeChecker.AddCheckers(civlTypeChecker, decls);
 
-      if (!CommandLineOptions.Clo.TrustInductiveSequentialization)
+      if (!options.TrustInductiveSequentialization)
       {
         InductiveSequentializationChecker.AddCheckers(civlTypeChecker);
       }

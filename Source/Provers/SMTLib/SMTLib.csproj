@@ -12,7 +12,10 @@
     <ProjectReference Include="..\..\Graph\Graph.csproj" />
     <ProjectReference Include="..\..\Model\Model.csproj" />
     <ProjectReference Include="..\..\VCExpr\VCExpr.csproj" />
-    <ProjectReference Include="..\..\VCGeneration\VCGeneration.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
   </ItemGroup>
 
 </Project>

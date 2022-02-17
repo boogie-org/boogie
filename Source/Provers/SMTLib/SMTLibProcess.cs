@@ -4,11 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
 using System.Diagnostics.Contracts;
+using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.SMTLib
 {
+  /*
+   * Not thread-safe.
+   */
   public class SMTLibProcess : SMTLibSolver
   {
     readonly Process prover;
@@ -57,6 +60,7 @@ namespace Microsoft.Boogie.SMTLib
         prover.StartInfo = psi;
         prover.ErrorDataReceived += prover_ErrorDataReceived;
         prover.OutputDataReceived += prover_OutputDataReceived;
+        prover.Exited += prover_Exited;
         prover.Start();
         toProver = prover.StandardInput;
         prover.BeginErrorReadLine();
@@ -66,6 +70,17 @@ namespace Microsoft.Boogie.SMTLib
       {
         throw new ProverException(string.Format("Unable to start the process {0}: {1}", psi.FileName, e.Message));
       }
+    }
+
+    private void prover_Exited(object sender, EventArgs e)
+    {
+      lock (this) {
+        while (outputReceivers.TryDequeue(out var source)) {
+          source.SetResult(null);
+        }
+      }
+
+      DisposeProver();
     }
 
     [NoDefaultContract] // important, since we have no idea what state the object might be in when this handler is invoked
@@ -113,68 +128,47 @@ namespace Microsoft.Boogie.SMTLib
       toProver.WriteLine(cmd);
     }
 
-    internal Inspector Inspector
-    {
-      get { return inspector; }
-    }
+    internal Inspector Inspector => inspector;
 
-    public override SExpr GetProverResponse()
+    public override async Task<SExpr> GetProverResponse()
     {
-      toProver.Flush();
+      await toProver.FlushAsync();
 
-      while (true)
-      {
-        var exprs = ParseSExprs(true).ToArray();
-        Contract.Assert(exprs.Length <= 1);
-        if (exprs.Length == 0)
-        {
+      while (true) {
+        var exprs = await ParseSExprs(true).ToListAsync();
+        Contract.Assert(exprs.Count <= 1);
+        if (exprs.Count == 0) {
           return null;
         }
 
         var resp = exprs[0];
-        if (resp.Name == "error")
-        {
-          if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId)
-          {
-            if (resp.Arguments[0].Name.Contains("max. resource limit exceeded"))
-            {
+        if (resp.Name == "error") {
+          if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId) {
+            if (resp.Arguments[0].Name.Contains("max. resource limit exceeded")) {
               return resp;
-            }
-            else {
+            } else {
               HandleError(resp.Arguments[0].Name);
               return null;
             }
-          }
-          else {
+          } else {
             HandleError(resp.ToString());
             return null;
           }
-        }
-        else if (resp.Name == "progress")
-        {
-          if (inspector != null)
-          {
+        } else if (resp.Name == "progress") {
+          if (inspector != null) {
             var sb = new StringBuilder();
-            foreach (var a in resp.Arguments)
-            {
-              if (a.Name == "labels")
-              {
+            foreach (var a in resp.Arguments) {
+              if (a.Name == "labels") {
                 sb.Append("STATS LABELS");
-                foreach (var x in a.Arguments)
-                {
+                foreach (var x in a.Arguments) {
                   sb.Append(" ").Append(x.Name);
                 }
-              }
-              else if (a.Name.StartsWith(":"))
-              {
+              } else if (a.Name.StartsWith(":")) {
                 sb.Append("STATS NAMED_VALUES ").Append(a.Name);
-                foreach (var x in a.Arguments)
-                {
+                foreach (var x in a.Arguments) {
                   sb.Append(" ").Append(x.Name);
                 }
-              }
-              else
-              {
+              } else {
                 continue;
               }
 
@@ -182,16 +176,12 @@ namespace Microsoft.Boogie.SMTLib
               sb.Clear();
             }
           }
-        }
-        else if (resp.Name == "unsupported")
-        {
+        } else if (resp.Name == "unsupported") {
           // Skip -- this may be a benign "unsupported" from a previous command.
           // Of course, this is suboptimal.  We should really be using
           // print-success to identify the errant command and determine whether
           // the response is benign.
-        }
-        else
-        {
+        } else {
           return resp;
         }
       }
@@ -226,7 +216,6 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     public override event Action<string> ErrorHandler;
-    int errorCnt;
 
     protected override void HandleError(string msg)
     {
@@ -243,13 +232,13 @@ namespace Microsoft.Boogie.SMTLib
     int linePos;
     string currLine;
 
-    char SkipWs()
+    async Task<char> SkipWs()
     {
       while (true)
       {
         if (currLine == null)
         {
-          currLine = ReadProver();
+          currLine = await ReadProver();
           if (currLine == null)
           {
             return '\0';
@@ -279,13 +268,13 @@ namespace Microsoft.Boogie.SMTLib
       linePos++;
     }
 
-    string ParseId()
+    async Task<string> ParseId()
     {
       var sb = new StringBuilder();
 
-      var beg = SkipWs();
+      var begin = await SkipWs();
 
-      var quoted = beg == '"' || beg == '|';
+      var quoted = begin == '"' || begin == '|';
       if (quoted)
       {
         Shift();
@@ -300,7 +289,7 @@ namespace Microsoft.Boogie.SMTLib
             do
             {
               sb.Append("\n");
-              currLine = ReadProver();
+              currLine = await ReadProver();
             } while (currLine == "");
             if (currLine == null)
             {
@@ -316,7 +305,7 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         var c = currLine[linePos++];
-        if (quoted && c == beg)
+        if (quoted && c == begin)
         {
           break;
         }
@@ -345,11 +334,11 @@ namespace Microsoft.Boogie.SMTLib
       HandleError("Error parsing prover output: " + msg);
     }
 
-    IEnumerable<SExpr> ParseSExprs(bool top)
+    async IAsyncEnumerable<SExpr> ParseSExprs(bool top)
     {
       while (true)
       {
-        var c = SkipWs();
+        var c = await SkipWs();
         if (c == '\0')
         {
           break;
@@ -370,7 +359,7 @@ namespace Microsoft.Boogie.SMTLib
         if (c == '(')
         {
           Shift();
-          c = SkipWs();
+          c = await SkipWs();
           if (c == '\0')
           {
             ParseError("expecting something after '('");
@@ -382,12 +371,12 @@ namespace Microsoft.Boogie.SMTLib
           }
           else
           {
-            id = ParseId();
+            id = await ParseId();
           }
 
-          var args = ParseSExprs(false).ToArray();
+          var args = await ParseSExprs(false).ToListAsync();
 
-          c = SkipWs();
+          c = await SkipWs();
           if (c == ')')
           {
             Shift();
@@ -401,7 +390,7 @@ namespace Microsoft.Boogie.SMTLib
         }
         else
         {
-          id = ParseId();
+          id = await ParseId();
           yield return new SExpr(id);
         }
 
@@ -416,42 +405,18 @@ namespace Microsoft.Boogie.SMTLib
 
     #region handling input from the prover
 
-    string ReadProver()
+    private readonly Queue<TaskCompletionSource<string>> outputReceivers = new();
+    
+    Task<string> ReadProver()
     {
-      string error = null;
-      while (true)
-      {
-        if (error != null)
-        {
-          HandleError(error);
-          errorCnt++;
-          error = null;
+      lock (this) {
+        if (proverOutput.TryDequeue(out var result)) {
+          return Task.FromResult(result);
         }
 
-        lock (this)
-        {
-          while (proverOutput.Count == 0 && proverErrors.Count == 0 && !prover.HasExited)
-          {
-            Monitor.Wait(this, 100);
-          }
-
-          if (proverErrors.Count > 0)
-          {
-            error = proverErrors.Dequeue();
-            continue;
-          }
-
-          if (proverOutput.Count > 0)
-          {
-            return proverOutput.Dequeue();
-          }
-
-          if (prover.HasExited)
-          {
-            DisposeProver();
-            return null;
-          }
-        }
+        var taskCompletionSource = new TaskCompletionSource<string>();
+        outputReceivers.Enqueue(taskCompletionSource);
+        return taskCompletionSource.Task;
       }
     }
 
@@ -466,35 +431,40 @@ namespace Microsoft.Boogie.SMTLib
 
     void prover_OutputDataReceived(object sender, DataReceivedEventArgs e)
     {
-      lock (this)
-      {
-        if (e.Data != null)
+        if (e.Data == null)
         {
-          if (options.Verbosity >= 2 || (options.Verbosity >= 1 && !e.Data.StartsWith("(:name ")))
-          {
-            Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
-          }
-
-          proverOutput.Enqueue(e.Data);
-          Monitor.Pulse(this);
+          return;
         }
-      }
+
+        if (options.Verbosity >= 2 || (options.Verbosity >= 1 && !e.Data.StartsWith("(:name ")))
+        {
+          Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
+        }
+
+        lock (this) {
+          if (outputReceivers.TryDequeue(out var source)) {
+            source.SetResult(e.Data);
+          } else {
+            proverOutput.Enqueue(e.Data);
+          }
+        }
     }
 
     void prover_ErrorDataReceived(object sender, DataReceivedEventArgs e)
     {
-      lock (this)
+      if (e.Data == null)
       {
-        if (e.Data != null)
-        {
-          if (options.Verbosity >= 1)
-          {
-            Console.WriteLine("[SMT-ERR-{0}] {1}", smtProcessId, e.Data);
-          }
+        return;
+      }
 
-          proverErrors.Enqueue(e.Data);
-          Monitor.Pulse(this);
+      lock (this) {
+
+        if (options.Verbosity >= 1)
+        {
+          Console.WriteLine("[SMT-ERR-{0}] {1}", smtProcessId, e.Data);
         }
+
+        HandleError(e.Data);
       }
     }
 

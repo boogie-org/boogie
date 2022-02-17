@@ -402,6 +402,8 @@ namespace Microsoft.Boogie.Houdini
 
     protected string cexTraceFile;
 
+    public HoudiniOptions Options { get; }
+
     public HoudiniState CurrentHoudiniState
     {
       get { return currentHoudiniState; }
@@ -409,12 +411,14 @@ namespace Microsoft.Boogie.Houdini
 
     public static TextWriter explainHoudiniDottyFile;
 
-    protected Houdini()
+    protected Houdini(HoudiniOptions options)
     {
+      this.Options = options;
     }
 
-    public Houdini(Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.txt")
+    public Houdini(HoudiniOptions options, Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.txt")
     {
+      this.Options = options;
       this.program = program;
       this.cexTraceFile = cexTraceFile;
       Initialize(program, stats);
@@ -440,7 +444,7 @@ namespace Microsoft.Boogie.Houdini
         Console.WriteLine("Number of implementations = {0}", callGraph.Nodes.Count);
       }
 
-      if (CommandLineOptions.Clo.HoudiniUseCrossDependencies)
+      if (Options.HoudiniUseCrossDependencies)
       {
         if (CommandLineOptions.Clo.Trace)
         {
@@ -464,9 +468,9 @@ namespace Microsoft.Boogie.Houdini
       }
       */
 
-      var checkerPool = new CheckerPool(CommandLineOptions.Clo);
+      var checkerPool = new CheckerPool(Options);
       this.vcgen = new VCGen(program, checkerPool);
-      this.proverInterface = ProverInterface.CreateProver(program, CommandLineOptions.Clo.ProverLogFilePath,
+      this.proverInterface = ProverInterface.CreateProver(Options, program, CommandLineOptions.Clo.ProverLogFilePath,
         CommandLineOptions.Clo.ProverLogFileAppend, CommandLineOptions.Clo.TimeLimit, taskID: GetTaskID());
 
       vcgenFailures = new HashSet<Implementation>();
@@ -502,7 +506,7 @@ namespace Microsoft.Boogie.Houdini
 
       this.houdiniSessions = new ReadOnlyDictionary<Implementation, HoudiniSession>(houdiniSessions);
 
-      if (CommandLineOptions.Clo.ExplainHoudini)
+      if (Options.ExplainHoudini)
       {
         // Print results of ExplainHoudini to a dotty file
         explainHoudiniDottyFile = new StreamWriter("explainHoudini.dot");
@@ -673,7 +677,7 @@ namespace Microsoft.Boogie.Houdini
         }
       }
 
-      if (CommandLineOptions.Clo.ReverseHoudiniWorklist)
+      if (Options.ReverseHoudiniWorklist)
       {
         queue = queue.Reverse();
       }
@@ -800,7 +804,7 @@ namespace Microsoft.Boogie.Houdini
     // Precondition: MatchCandidate returns true
     public Expr InsertCandidateControl(Expr boogieExpr, Variable vpos, Variable vneg)
     {
-      Contract.Assert(CommandLineOptions.Clo.ExplainHoudini);
+      Contract.Assert(Options.ExplainHoudini);
 
       NAryExpr e = boogieExpr as NAryExpr;
       if (e != null && e.Fun is BinaryOperator && ((BinaryOperator) e.Fun).Op == BinaryOperator.Opcode.Imp)
@@ -1196,7 +1200,7 @@ namespace Microsoft.Boogie.Houdini
     {
       vcgen.Close();
       proverInterface.Close();
-      if (CommandLineOptions.Clo.ExplainHoudini)
+      if (Options.ExplainHoudini)
       {
         explainHoudiniDottyFile.WriteLine("};");
         explainHoudiniDottyFile.Close();
@@ -1255,7 +1259,7 @@ namespace Microsoft.Boogie.Houdini
 
           break;
         case RefutedAnnotationKind.ASSERT: //the implementation is already in queue
-          if (CommandLineOptions.Clo.HoudiniUseCrossDependencies &&
+          if (Options.HoudiniUseCrossDependencies &&
               crossDependencies.assumedInImpl.ContainsKey(refutedAnnotation.Constant.Name))
           {
             foreach (var impl in crossDependencies.assumedInImpl[refutedAnnotation.Constant.Name])
@@ -1411,7 +1415,7 @@ namespace Microsoft.Boogie.Houdini
 
     protected void DebugRefutedCandidates(Implementation curFunc, List<Counterexample> errors)
     {
-      XmlSink xmlRefuted = CommandLineOptions.Clo.XmlRefuted;
+      XmlSink xmlRefuted = Options.XmlRefuted;
       if (xmlRefuted != null && errors != null)
       {
         DateTime start = DateTime.UtcNow;
@@ -1550,7 +1554,7 @@ namespace Microsoft.Boogie.Houdini
 
         #region Explain Houdini
 
-        if (CommandLineOptions.Clo.ExplainHoudini && outcome == ProverInterface.Outcome.Invalid)
+        if (Options.ExplainHoudini && outcome == ProverInterface.Outcome.Invalid)
         {
           Contract.Assume(errors != null);
           // make a copy of this variable
@@ -1585,7 +1589,7 @@ namespace Microsoft.Boogie.Houdini
         }
         else if (UpdateAssignmentWorkList(outcome, errors))
         {
-          if (CommandLineOptions.Clo.UseUnsatCoreForContractInfer && outcome == ProverInterface.Outcome.Valid)
+          if (Options.UseUnsatCoreForContractInfer && outcome == ProverInterface.Outcome.Valid)
           {
             session.UpdateUnsatCore(proverInterface, currentHoudiniState.Assignment);
           }
