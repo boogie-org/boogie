@@ -199,6 +199,26 @@ namespace Microsoft.Boogie
         tw.WriteLine(s);
       }
     }
+
+    public void ReportImplCount(int implNumber) {
+      // Do not print to console
+    }
+
+    public void ReportStartVerifyImpl(IToken tok) {
+      // Do not print to console
+    }
+
+    public void ReportEndVerifyImpl(IToken tok, VerificationResult result) {
+      // Do not print to console
+    }
+
+    public void ReportVerificationStarts(IToken token, IToken parentToken) {
+      // Do not print to console
+    }
+
+    public void ReportVerificationCompleted(IToken token, IToken parentToken, ConditionGeneration.Outcome outcome, int totalResource) {
+      // Do not print to console
+    }
   }
 
   #endregion
