@@ -97,12 +97,14 @@ namespace VC
 
     public Program program;
     public CheckerPool CheckerPool { get; }
+    public ConditionGenerationLogger Logger { get; }
 
-    public ConditionGeneration(Program p, CheckerPool checkerPool)
+    public ConditionGeneration(Program p, CheckerPool checkerPool, ConditionGenerationLogger logger = null)
     {
       Contract.Requires(p != null && checkerPool != null);
       program = p;
       CheckerPool = checkerPool;
+      Logger = logger;
     }
 
     /// <summary>
@@ -123,8 +125,9 @@ namespace VC
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       Helpers.ExtraTraceInformation("Starting implementation verification");
 
-      CounterexampleCollector collector = new CounterexampleCollector();
-      collector.RequestId = requestId;
+      CounterexampleCollector collector = new CounterexampleCollector {
+        RequestId = requestId
+      };
       Outcome outcome = VerifyImplementation(impl, collector, cancellationToken);
       if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
           outcome == Outcome.OutOfResource)

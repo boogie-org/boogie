@@ -24,6 +24,13 @@ namespace Microsoft.Boogie
     void WriteTrailer(PipelineStatistics stats);
     void WriteErrorInformation(ErrorInformation errorInfo, TextWriter tw, bool skipExecutionTrace = true);
     void ReportBplError(IToken tok, string message, bool error, TextWriter tw, string category = null);
+
+    void ReportImplCount(int implNumber);
+    // For real-time feedback.
+    void ReportStartVerifyImpl(IToken tok);
+    void ReportEndVerifyImpl(IToken tok, VerificationResult result);
+    void ReportVerificationStarts(IToken token, IToken parentToken);
+    void ReportVerificationCompleted(IToken token, IToken parentToken, ConditionGeneration.Outcome outcome, int totalResource);
   }
 
 
@@ -982,6 +989,7 @@ namespace Microsoft.Boogie
         // We use this semaphore to limit the number of tasks that are currently executing.
         var semaphore = new SemaphoreSlim(CommandLineOptions.Clo.VcsCores);
 
+        printer.ReportImplCount(stablePrioritizedImpls.Length);
         // Create a task per implementation.
         for (int i = 0; i < stablePrioritizedImpls.Length; i++)
         {
@@ -1168,6 +1176,7 @@ namespace Microsoft.Boogie
 
       printer.Inform("", output); // newline
       printer.Inform(string.Format("Verifying {0} ...", impl.Name), output);
+      printer.ReportStartVerifyImpl(impl.tok);
 
       int priority = 0;
       var wasCached = false;
@@ -1308,7 +1317,7 @@ namespace Microsoft.Boogie
       {
         Console.Out.Flush();
       }
-
+      printer.ReportEndVerifyImpl(impl.tok, verificationResult);
       #endregion
     }
 
@@ -1349,9 +1358,20 @@ namespace Microsoft.Boogie
       }
     }
 
+    class ConditionGenerationLoggerRouter : ConditionGenerationLogger {
+      // use ExecutionEngine.printer to emit diagnostics
+      public override void VerificationStarts(IToken splitTok, IToken implementationTok) {
+        printer.ReportVerificationStarts(splitTok, implementationTok);
+      }
+
+      public override void VerificationCompleted(IToken splitTok, IToken implementationTok, ConditionGeneration.Outcome outcome, int totalResourceCount) {
+        printer.ReportVerificationCompleted(splitTok, implementationTok, outcome, totalResourceCount);
+      }
+    }
+
     private static ConditionGeneration CreateVCGen(Program program, CheckerPool checkerPool)
     {
-      return new VCGen(program, checkerPool);
+      return new VCGen(program, checkerPool, new ConditionGenerationLoggerRouter());
     }
 
     #region Houdini

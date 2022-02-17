@@ -81,6 +81,8 @@ namespace VC
       Block splitBlock;
       bool assertToAssume;
 
+      public IToken tok => splitBlock.tok;
+
       List<Block /*!*/> /*!*/
         assumizedBranches = new List<Block /*!*/>();
 
@@ -1481,7 +1483,7 @@ namespace VC
 
       public void ReleaseChecker()
       {
-        Checker.GoBackToIdle();
+        Checker?.GoBackToIdle();
         checker = null;
       }
     }

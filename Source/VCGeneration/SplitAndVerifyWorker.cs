@@ -120,13 +120,13 @@ namespace VC
       if (options.XmlSink != null && DoSplitting) {
         options.XmlSink.WriteStartSplit(currentSplitNumber + 1, DateTime.UtcNow);
       }
-
       callback.OnProgress?.Invoke("VCprove", currentSplitNumber, total,
         provenCost / (remainingCost + provenCost));
 
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
         implementation.TimeLimit;
+      split.parent.Logger?.VerificationStarts(split.tok, split.Implementation.tok);
       split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit, cancellationToken);
     }
 
@@ -139,7 +139,8 @@ namespace VC
       }
 
       split.ReadOutcome(ref outcome, out var proverFailed, ref totalResourceCount);
-
+      split.parent.Logger?.VerificationCompleted(split.tok, split.Implementation.tok, outcome, totalResourceCount);
+      
       if (TrackingProgress) {
         lock (this) {
           if (proverFailed) {
