@@ -8,6 +8,7 @@ namespace Microsoft.Boogie
 {
   public class CivlTypeChecker
   {
+    public ConcurrencyOptions Options { get; }
     public CheckingContext checkingContext;
     public Program program;
 
@@ -47,10 +48,11 @@ namespace Microsoft.Boogie
 
     public AtomicAction SkipAtomicAction;
 
-    public CivlTypeChecker(Program program)
+    public CivlTypeChecker(ConcurrencyOptions options, Program program)
     {
       this.checkingContext = new CheckingContext(null);
       this.program = program;
+      this.Options = options;
       this.linearTypeChecker = new LinearTypeChecker(this);
 
       this.globalVarToLayerRange = new Dictionary<Variable, LayerRange>();

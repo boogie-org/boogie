@@ -45,9 +45,10 @@ namespace Microsoft.Boogie
     private TimeSpan proverRunTime;
     private volatile ProverInterface.ErrorHandler handler;
     private volatile CheckerStatus status;
-    private readonly CheckerPool pool;
     public volatile Program Program;
     public readonly ProverOptions SolverOptions;
+
+    public CheckerPool Pool { get; }
 
     public void GetReady()
     {
@@ -63,9 +64,9 @@ namespace Microsoft.Boogie
       status = CheckerStatus.Idle;
       var becameIdle = thmProver.GoBackToIdle().Wait(TimeSpan.FromMilliseconds(100));
       if (becameIdle) {
-        pool.AddChecker(this);
+        Pool.AddChecker(this);
       } else {
-        pool.CheckerDied();
+        Pool.CheckerDied();
         Close();
       }
     }
@@ -97,9 +98,9 @@ namespace Microsoft.Boogie
 
     public Checker(CheckerPool pool, string /*?*/ logFilePath, bool appendLogFile)
     {
-      this.pool = pool;
+      Pool = pool;
 
-      SolverOptions = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
+      SolverOptions = cce.NonNull(Pool.Options.TheProverFactory).BlankProverOptions();
 
       if (logFilePath != null)
       {
@@ -112,10 +113,9 @@ namespace Microsoft.Boogie
 
       SolverOptions.Parse(CommandLineOptions.Clo.ProverOptions);
 
-      var ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(SolverOptions);
+      var ctx = Pool.Options.TheProverFactory.NewProverContext(SolverOptions);
 
-      var prover = (ProverInterface)
-        CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, SolverOptions, ctx);
+      var prover = Pool.Options.TheProverFactory.SpawnProver(Pool.Options, SolverOptions, ctx);
       
       thmProver = prover;
       gen = prover.VCExprGen;
@@ -188,7 +188,7 @@ namespace Microsoft.Boogie
     private static IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations, Random random)
     {
       if (random == null) {
-        // By ordering the declarations based on their content and naming them based on order, the solver input stays content under reordering and renaming.
+        // By ordering the declarations based on their content and naming them based on order, the solver input stays constant under reordering and renaming.
         return CommandLineOptions.Clo.NormalizeDeclarationOrder
           ? declarations.OrderBy(d => d.ContentHash)
           : declarations;
@@ -396,22 +396,6 @@ namespace Microsoft.Boogie
     public override void FullReset(VCExpressionGenerator gen)
     {
       throw new NotImplementedException();
-    }
-  }
-
-  public class UnexpectedProverOutputException : ProverException
-  {
-    public UnexpectedProverOutputException(string s)
-      : base(s)
-    {
-    }
-  }
-
-  public class ProverDiedException : UnexpectedProverOutputException
-  {
-    public ProverDiedException()
-      : base("Prover died with no further output, perhaps it ran out of memory or was killed.")
-    {
     }
   }
 }

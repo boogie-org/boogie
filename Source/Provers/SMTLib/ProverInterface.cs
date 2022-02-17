@@ -9,12 +9,12 @@ namespace Microsoft.Boogie;
 
 public abstract class ProverInterface
 {
-  public static ProverInterface CreateProver(Program prog, string /*?*/ logFilePath, bool appendLogFile, uint timeout,
+  public static ProverInterface CreateProver(SMTLibOptions libOptions, Program prog, string /*?*/ logFilePath, bool appendLogFile, uint timeout,
     int taskID = -1)
   {
     Contract.Requires(prog != null);
 
-    ProverOptions options = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
+    ProverOptions options = cce.NonNull(libOptions.TheProverFactory).BlankProverOptions();
 
     if (logFilePath != null)
     {
@@ -39,7 +39,7 @@ public abstract class ProverInterface
       options.Parse(CommandLineOptions.Clo.ProverOptions);
     }
 
-    ProverContext ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
+    ProverContext ctx = libOptions.TheProverFactory.NewProverContext(options);
 
     // set up the context
     foreach (Declaration decl in prog.TopLevelDeclarations)
@@ -85,7 +85,7 @@ public abstract class ProverInterface
       }
     }
 
-    return (ProverInterface) CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, options, ctx);
+    return libOptions.TheProverFactory.SpawnProver(libOptions, options, ctx);
   }
 
   public enum Outcome
@@ -104,6 +104,11 @@ public abstract class ProverInterface
 
   public class ErrorHandler
   {
+    public virtual void AddNecessaryAssume(string id)
+    {
+      throw new System.NotImplementedException();
+    }
+
     // Used in CheckOutcomeCore
     public virtual int StartingProcId()
     {
@@ -296,4 +301,19 @@ public abstract class ProverInterface
   }
 
   public abstract Task GoBackToIdle();
+}
+public class UnexpectedProverOutputException : ProverException
+{
+  public UnexpectedProverOutputException(string s)
+    : base(s)
+  {
+  }
+}
+
+public class ProverDiedException : UnexpectedProverOutputException
+{
+  public ProverDiedException()
+    : base("Prover died with no further output, perhaps it ran out of memory or was killed.")
+  {
+  }
 }

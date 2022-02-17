@@ -816,7 +816,7 @@ namespace Microsoft.Boogie.SMTLib
 
             result = await GetResponse(cancellationToken);
 
-            var reporter = handler as VC.VCGen.ErrorReporter;
+            var reporter = handler;
             // TODO(wuestholz): Is the reporter ever null?
             if (usingUnsatCore && result == Outcome.Valid && reporter != null && 0 < NamedAssumes.Count)
             {
@@ -2488,7 +2488,7 @@ namespace Microsoft.Boogie.SMTLib
 
   public class Factory : ProverFactory
   {
-    public override object SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt)
+    public override ProverInterface SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt)
     {
       //Contract.Requires(ctxt != null);
       //Contract.Requires(options != null);
@@ -2499,7 +2499,7 @@ namespace Microsoft.Boogie.SMTLib
         cce.NonNull((SMTLibProverContext) ctxt));
     }
 
-    public override object NewProverContext(ProverOptions options)
+    public override ProverContext NewProverContext(ProverOptions options)
     {
       //Contract.Requires(options != null);
       Contract.Ensures(Contract.Result<object>() != null);

@@ -9,39 +9,39 @@ namespace ExecutionEngineTests
   [TestFixture]
   public class CancellationTests
   {
-    public Program GetProgram(string code) {
-      var options = CommandLineOptions.FromArguments();
-      CommandLineOptions.Install(options);
+    public Program GetProgram(ExecutionEngineOptions options, string code) {
       var bplFileName = "1";
       int errorCount = Parser.Parse(code, bplFileName, out Program program,
-        CommandLineOptions.Clo.UseBaseNameForFileName);
+        options.UseBaseNameForFileName);
       Assert.AreEqual(0, errorCount);
 
-      ExecutionEngine.printer = new ConsolePrinter();
-      ExecutionEngine.ResolveAndTypecheck(program, bplFileName, out _);
+      ExecutionEngine.printer = new ConsolePrinter(options);
+      ExecutionEngine.ResolveAndTypecheck(options, program, bplFileName, out _);
       ExecutionEngine.EliminateDeadVariables(program);
-      ExecutionEngine.CollectModSets(program);
-      ExecutionEngine.CoalesceBlocks(program);
-      ExecutionEngine.Inline(program);
+      ExecutionEngine.CollectModSets(options, program);
+      ExecutionEngine.CoalesceBlocks(options, program);
+      ExecutionEngine.Inline(options, program);
       return program;
     }
     
     [Test]
     public async Task InferAndVerifyCanBeCancelledWhileWaitingForProver() {
-      var infiniteProgram = GetProgram(slow);
-      var terminatingProgram = GetProgram(fast);
+      var options = CommandLineOptionsImpl.FromArguments();
+      CommandLineOptionsImpl.Install(options);
+      var infiniteProgram = GetProgram(options, slow);
+      var terminatingProgram = GetProgram(options, fast);
       
       // We limit the number of checkers to 1.
-      CommandLineOptions.Clo.VcsCores = 1;
+      options.VcsCores = 1;
 
       var requestId = ExecutionEngine.FreshRequestId();
-      var outcomeTask = Task.Run(() => ExecutionEngine.InferAndVerify(infiniteProgram, new PipelineStatistics(), requestId, null, requestId));
+      var outcomeTask = Task.Run(() => ExecutionEngine.InferAndVerify(options, infiniteProgram, new PipelineStatistics(), requestId, null, requestId));
       await Task.Delay(1000);
       ExecutionEngine.CancelRequest(requestId);
       var outcome = await outcomeTask;
       Assert.AreEqual(PipelineOutcome.Cancelled, outcome);
       var requestId2 = ExecutionEngine.FreshRequestId();
-      var outcome2 = ExecutionEngine.InferAndVerify(terminatingProgram, new PipelineStatistics(), requestId2, null, requestId2);
+      var outcome2 = ExecutionEngine.InferAndVerify(options, terminatingProgram, new PipelineStatistics(), requestId2, null, requestId2);
       Assert.AreEqual(PipelineOutcome.VerificationCompleted, outcome2);
     }
 

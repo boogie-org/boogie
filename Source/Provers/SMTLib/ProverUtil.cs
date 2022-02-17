@@ -301,10 +301,10 @@ The generic options may or may not be used by the prover plugin.
   {
     // Really returns ProverInterface.
     //public abstract object! SpawnProver(ProverOptions! options, object! ctxt);
-    public abstract object SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt);
+    public abstract ProverInterface SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt);
 
     // Really returns ProverContext
-    public abstract object /*!*/ NewProverContext(ProverOptions /*!*/ options);
+    public abstract ProverContext /*!*/ NewProverContext(ProverOptions /*!*/ options);
 
     public virtual ProverOptions BlankProverOptions()
     {
@@ -351,7 +351,7 @@ The generic options may or may not be used by the prover plugin.
   [ContractClassFor(typeof(ProverFactory))]
   public abstract class ProverFactoryContracts : ProverFactory
   {
-    public override object NewProverContext(ProverOptions options)
+    public override ProverContext NewProverContext(ProverOptions options)
     {
       Contract.Requires(options != null);
       Contract.Ensures(Contract.Result<object>() != null);

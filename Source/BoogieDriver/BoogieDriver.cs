@@ -11,36 +11,39 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(cce.NonNullElements(args));
 
-      ExecutionEngine.printer = new ConsolePrinter();
 
-      CommandLineOptions.Install(new CommandLineOptions());
-      CommandLineOptions.Clo.RunningBoogieFromCommandLine = true;
+      var options = new CommandLineOptionsImpl
+      {
+        RunningBoogieFromCommandLine = true
+      };
+      ExecutionEngine.printer = new ConsolePrinter(options);
+      CommandLineOptionsImpl.Install(options);
 
-      if (!CommandLineOptions.Clo.Parse(args))
+      if (!options.Parse(args))
       {
         return 1;
       }
       
-      if (CommandLineOptions.Clo.ProcessInfoFlags())
+      if (options.ProcessInfoFlags())
       {
         return 0;
       }
 
-      if (CommandLineOptions.Clo.Files.Count == 0)
+      if (options.Files.Count == 0)
       {
         ExecutionEngine.printer.ErrorWriteLine(Console.Out, "*** Error: No input files were specified.");
         return 1;
       }
 
-      List<string> fileList = GetFileList();
+      List<string> fileList = GetFileList(options);
       if (fileList == null)
       {
         return 1;
       }
 
-      if (CommandLineOptions.Clo.XmlSink != null)
+      if (options.XmlSink != null)
       {
-        string errMsg = CommandLineOptions.Clo.XmlSink.Open();
+        string errMsg = options.XmlSink.Open();
         if (errMsg != null)
         {
           ExecutionEngine.printer.ErrorWriteLine(Console.Out, "*** Error: " + errMsg);
@@ -48,7 +51,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      if (CommandLineOptions.Clo.ShowEnv == CommandLineOptions.ShowEnvironment.Always)
+      if (options.ShowEnv == ExecutionEngineOptions.ShowEnvironment.Always)
       {
         Console.WriteLine("---Command arguments");
         foreach (string arg in args)
@@ -62,14 +65,14 @@ namespace Microsoft.Boogie
 
       Helpers.ExtraTraceInformation("Becoming sentient");
 
-      var success = ExecutionEngine.ProcessFiles(fileList);
+      var success = ExecutionEngine.ProcessFiles(options, fileList);
 
       if (CommandLineOptions.Clo.XmlSink != null)
       {
         CommandLineOptions.Clo.XmlSink.Close();
       }
 
-      if (CommandLineOptions.Clo.Wait)
+      if (options.Wait)
       {
         Console.WriteLine("Press Enter to exit.");
         Console.ReadLine();
@@ -78,10 +81,10 @@ namespace Microsoft.Boogie
       return success ? 0 : 1;
     }
 
-    private static List<string> GetFileList()
+    private static List<string> GetFileList(CommandLineOptionsImpl options)
     {
       List<string> fileList = new List<string>();
-      foreach (string file in CommandLineOptions.Clo.Files)
+      foreach (string file in options.Files)
       {
         string extension = Path.GetExtension(file);
         if (extension != null)

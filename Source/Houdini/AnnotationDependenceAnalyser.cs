@@ -13,6 +13,7 @@ namespace Microsoft.Boogie.Houdini
     private const string FINE_STAGES = "FINE";
     private const string BALANCED_STAGES = "BALANCED";
 
+    private readonly HoudiniOptions options;
     private Program prog;
     private IVariableDependenceAnalyser varDepAnalyser;
     private IEnumerable<string> CandidateIdentifiers; // Candidate Boolean names
@@ -24,8 +25,9 @@ namespace Microsoft.Boogie.Houdini
     private Graph<SCC<string>> StagesDAG;
     private StagedHoudiniPlan Plan;
 
-    public AnnotationDependenceAnalyser(Program prog)
+    public AnnotationDependenceAnalyser(HoudiniOptions options, Program prog)
     {
+      this.options = options;
       this.prog = prog;
       this.varDepAnalyser = new VariableDependenceAnalyser(prog);
       varDepAnalyser.Analyse();
@@ -117,7 +119,7 @@ namespace Microsoft.Boogie.Houdini
 
       IAnnotationReachabilityChecker reachabilityChecker;
 
-      if (CommandLineOptions.Clo.StagedHoudiniReachabilityAnalysis)
+      if (options.StagedHoudiniReachabilityAnalysis)
       {
         reachabilityChecker = new AnnotationReachabilityChecker(prog, AllAnnotationIdentifiers());
       }
@@ -145,7 +147,7 @@ namespace Microsoft.Boogie.Houdini
         }
       }
 
-      if (CommandLineOptions.Clo.StagedHoudiniMergeIgnoredAnnotations)
+      if (options.StagedHoudiniMergeIgnoredAnnotations)
       {
         MergeIgnoredAnnotations();
       }
@@ -542,7 +544,7 @@ namespace Microsoft.Boogie.Houdini
 
       #region Assign annotations to stages at a given level of granularity
 
-      switch (CommandLineOptions.Clo.StagedHoudini)
+      switch (options.StagedHoudini)
       {
         case COARSE_STAGES:
           Plan = ComputeCoarseStages();
