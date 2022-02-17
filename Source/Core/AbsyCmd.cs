@@ -3782,8 +3782,8 @@ namespace Microsoft.Boogie
       set { errorDataEnhanced = value; }
     }
 
-    public AssertCmd(ProofObligationDescription description, IToken /*!*/ tok, Expr /*!*/ expr)
-      : base(tok, expr)
+    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description, QKeyValue kv)
+      : base(tok, expr, kv)
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
@@ -3909,14 +3909,14 @@ namespace Microsoft.Boogie
   public class LoopInitAssertCmd : AssertCmd
   {
     public LoopInitAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr)
-      : base(new InvariantEstablishedDescription(), tok, expr)
+      : base(tok, expr, new InvariantEstablishedDescription(), null)
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
     }
 
-    public LoopInitAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description)
-      : base(description, tok, expr)
+    public LoopInitAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description, QKeyValue kv)
+      : base(tok, expr, description, kv)
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
@@ -3927,14 +3927,14 @@ namespace Microsoft.Boogie
   public class LoopInvMaintainedAssertCmd : AssertCmd
   {
     public LoopInvMaintainedAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr)
-      : base(new InvariantMaintainedDescription(), tok, expr)
+      : base(tok, expr, new InvariantMaintainedDescription(), null)
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
     }
 
-    public LoopInvMaintainedAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description)
-      : base(description, tok, expr)
+    public LoopInvMaintainedAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description, QKeyValue kv)
+      : base(tok, expr, description, kv)
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
@@ -3961,7 +3961,7 @@ namespace Microsoft.Boogie
 
 
     public AssertRequiresCmd(CallCmd /*!*/ call, Requires /*!*/ requires)
-      : base(requires.Description, call.tok, requires.Condition)
+      : base(call.tok, requires.Condition, requires.Description, null)
     {
       Contract.Requires(call != null);
       Contract.Requires(requires != null);
@@ -3969,8 +3969,8 @@ namespace Microsoft.Boogie
       this.Requires = requires;
     }
 
-    public AssertRequiresCmd(CallCmd /*!*/ call, Requires /*!*/ requires, ProofObligationDescription description)
-      : base(description, call.tok, requires.Condition)
+    public AssertRequiresCmd(CallCmd /*!*/ call, Requires /*!*/ requires, ProofObligationDescription description, QKeyValue kv)
+      : base(call.tok, requires.Condition, description, kv)
     {
       Contract.Requires(call != null);
       Contract.Requires(requires != null);
@@ -4002,14 +4002,14 @@ namespace Microsoft.Boogie
     }
 
     public AssertEnsuresCmd(Ensures /*!*/ ens)
-      : base(ens.Description, ens.tok, ens.Condition)
+      : base(ens.tok, ens.Condition, ens.Description, null)
     {
       Contract.Requires(ens != null);
       this.Ensures = ens;
     }
 
-    public AssertEnsuresCmd(Ensures /*!*/ ens, ProofObligationDescription description)
-      : base(description, ens.tok, ens.Condition)
+    public AssertEnsuresCmd(Ensures /*!*/ ens, ProofObligationDescription description, QKeyValue kv)
+      : base(ens.tok, ens.Condition, description, kv)
     {
       Contract.Requires(ens != null);
       this.Ensures = ens;

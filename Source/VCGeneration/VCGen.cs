@@ -1167,19 +1167,18 @@ namespace VC
                 Contract.Assert(taskID >= 0);
                 if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvEntryAssert)
                 {
-                  b = new LoopInitAssertCmd(c.tok, Expr.True, c.Description);
+                  b = new LoopInitAssertCmd(c.tok, Expr.True, c.Description, c.Attributes);
                 }
                 else
                 {
-                  b = new LoopInitAssertCmd(c.tok, c.Expr, c.Description);
+                  b = new LoopInitAssertCmd(c.tok, c.Expr, c.Description, c.Attributes);
                 }
               }
               else
               {
-                b = new LoopInitAssertCmd(c.tok, c.Expr, c.Description);
+                b = new LoopInitAssertCmd(c.tok, c.Expr, c.Description, c.Attributes);
               }
 
-              b.Attributes = c.Attributes;
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsInit.Add(b);
 
@@ -1188,19 +1187,18 @@ namespace VC
                 Contract.Assert(taskID >= 0);
                 if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvMaintainedAssert)
                 {
-                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True, c.Description);
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True, c.Description, c.Attributes);
                 }
                 else
                 {
-                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c.Description);
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c.Description, c.Attributes);
                 }
               }
               else
               {
-                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c.Description);
+                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c.Description, c.Attributes);
               }
 
-              b.Attributes = c.Attributes;
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsMaintained.Add(b);
               header.Cmds[i] = new AssumeCmd(c.tok, c.Expr);
