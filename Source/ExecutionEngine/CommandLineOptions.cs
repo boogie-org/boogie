@@ -214,7 +214,8 @@ namespace Microsoft.Boogie
       }
 
       /// <summary>
-      /// If there is one argument and it is a non-negative integer, then call "setArg" with that number and return "true".
+      /// If there is one argument and it is a non-negative integer,
+      /// then call "setArg" with that number mapped to a boolean and return "true".
       /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
       /// </summary>
       public bool GetNumericArgument(Action<bool> setArg)
