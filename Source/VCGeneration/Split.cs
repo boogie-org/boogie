@@ -1481,8 +1481,10 @@ namespace VC
 
       public void ReleaseChecker()
       {
-        Checker.GoBackToIdle();
-        checker = null;
+        if (checker != null) {
+          Checker.GoBackToIdle();
+          checker = null;
+        }
       }
     }
 }
