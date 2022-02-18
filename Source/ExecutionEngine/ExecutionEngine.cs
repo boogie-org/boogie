@@ -424,29 +424,36 @@ namespace Microsoft.Boogie
     public void PrintBplFile(string filename, Program program, bool allowPrintDesugaring, bool setTokens = true,
       bool pretty = false)
     {
+      PrintBplFile(Options, filename, program, allowPrintDesugaring, setTokens, pretty);
+    }
+
+    public static void PrintBplFile(ExecutionEngineOptions options, string filename, Program program, bool allowPrintDesugaring, bool setTokens = true,
+      bool pretty = false)
+
+    {
       Contract.Requires(program != null);
       Contract.Requires(filename != null);
-      bool oldPrintDesugaring = Options.PrintDesugarings;
+      bool oldPrintDesugaring = options.PrintDesugarings;
       if (!allowPrintDesugaring)
       {
-        Options.PrintDesugarings = false;
+        options.PrintDesugarings = false;
       }
 
       using (TokenTextWriter writer = filename == "-"
         ? new TokenTextWriter("<console>", Console.Out, setTokens, pretty)
         : new TokenTextWriter(filename, setTokens, pretty))
       {
-        if (Options.ShowEnv != ExecutionEngineOptions.ShowEnvironment.Never)
+        if (options.ShowEnv != ExecutionEngineOptions.ShowEnvironment.Never)
         {
-          writer.WriteLine("// " + Options.Version);
-          writer.WriteLine("// " + Options.Environment);
+          writer.WriteLine("// " + options.Version);
+          writer.WriteLine("// " + options.Environment);
         }
 
         writer.WriteLine();
         program.Emit(writer);
       }
 
-      Options.PrintDesugarings = oldPrintDesugaring;
+      options.PrintDesugarings = oldPrintDesugaring;
     }
 
 
