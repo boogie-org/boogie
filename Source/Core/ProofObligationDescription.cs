@@ -1,11 +1,30 @@
 namespace Microsoft.Boogie;
 
+/// <summary>
+/// A multi-faceted description of a proof obligation. This class is intended
+/// to provide several forms of human-readable text summarizing the meaning of
+/// a proof obligation: one for the case where the proof has succeeded, one
+/// for the case where the proof has failed, and one for the case of quickly
+/// identifying the type of proof obligation (for inclusion in long lists of
+/// proof obligations, for example).
+/// </summary>
 public abstract class ProofObligationDescription {
+  /// <summary>
+  /// A description of what this proof obligation means when it has been
+  /// successfully proven.
+  /// </summary>
   public abstract string SuccessDescription { get; }
 
+  /// <summary>
+  /// A description of what this proof obligation means (or might mean)
+  /// when the prover has failed to establish its validity.
+  /// </summary>
   public virtual string FailureDescription =>
     $"Failed to prove: {SuccessDescription}";
 
+  /// <summary>
+  /// A short description of the general type of this proof obligation.
+  /// </summary>
   public abstract string ShortDescription { get; }
 }
 
