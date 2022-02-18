@@ -787,6 +787,7 @@ namespace VC
                   (ai != null) ? new LoopInitAssertCmd(e.tok, fe(e)) :
                   (am != null) ? new LoopInvMaintainedAssertCmd(e.tok, fe(e)) :
                   new AssertCmd(e.tok, fe(e));
+                new_c.Description = a.Description;
                 new_c.Attributes = new QKeyValue(e.tok, "subsumption",
                   new List<object>() {new LiteralExpr(e.tok, BigNum.FromInt(0))}, a.Attributes);
                 newCmds.Add(new_c);
