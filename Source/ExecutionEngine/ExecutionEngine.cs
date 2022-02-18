@@ -15,7 +15,7 @@ namespace Microsoft.Boogie
 {
   #region Output printing
 
-  public interface OutputPrinter
+  public interface OutputPrinter: IConditionGenerationLogger
   {
     void ErrorWriteLine(TextWriter tw, string s);
     void ErrorWriteLine(TextWriter tw, string format, params object[] args);
@@ -29,8 +29,6 @@ namespace Microsoft.Boogie
     // For real-time feedback.
     void ReportStartVerifyImpl(IToken tok);
     void ReportEndVerifyImpl(IToken tok, VerificationResult result);
-    void ReportVerificationStarts(IToken token, IToken parentToken);
-    void ReportVerificationCompleted(IToken token, IToken parentToken, ConditionGeneration.Outcome outcome, int totalResource);
   }
 
 
@@ -411,6 +409,7 @@ namespace Microsoft.Boogie
 
   public class ExecutionEngine
   {
+    // Should it be set per request?
     public static OutputPrinter printer;
 
     public static ErrorInformationFactory errorInformationFactory = new ErrorInformationFactory();
@@ -1378,20 +1377,9 @@ namespace Microsoft.Boogie
       }
     }
 
-    class ConditionGenerationLoggerRouter : ConditionGenerationLogger {
-      // use ExecutionEngine.printer to emit diagnostics
-      public override void VerificationStarts(IToken splitTok, IToken implementationTok) {
-        printer.ReportVerificationStarts(splitTok, implementationTok);
-      }
-
-      public override void VerificationCompleted(IToken splitTok, IToken implementationTok, ConditionGeneration.Outcome outcome, int totalResourceCount) {
-        printer.ReportVerificationCompleted(splitTok, implementationTok, outcome, totalResourceCount);
-      }
-    }
-
     private static ConditionGeneration CreateVCGen(Program program, CheckerPool checkerPool)
     {
-      return new VCGen(program, checkerPool, new ConditionGenerationLoggerRouter());
+      return new VCGen(program, checkerPool, ExecutionEngine.printer);
     }
 
     #region Houdini

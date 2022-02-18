@@ -97,9 +97,9 @@ namespace VC
 
     public Program program;
     public CheckerPool CheckerPool { get; }
-    public ConditionGenerationLogger Logger { get; }
+    public IConditionGenerationLogger Logger { get; }
 
-    public ConditionGeneration(Program p, CheckerPool checkerPool, ConditionGenerationLogger logger = null)
+    public ConditionGeneration(Program p, CheckerPool checkerPool, IConditionGenerationLogger logger = null)
     {
       Contract.Requires(p != null && checkerPool != null);
       program = p;
