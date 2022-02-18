@@ -1,4 +1,4 @@
-namespace Core;
+namespace Microsoft.Boogie;
 
 public abstract class ProofObligationDescription {
   public abstract string SuccessDescription { get; }

@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics.Contracts;
-using Core;
 using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Microsoft.Boogie

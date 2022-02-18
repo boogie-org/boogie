@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.Contracts;
-using Core;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.GraphUtil;
 using Set = Microsoft.Boogie.GSet<object>;
