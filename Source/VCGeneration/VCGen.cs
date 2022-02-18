@@ -1173,18 +1173,19 @@ namespace VC
                 Contract.Assert(taskID >= 0);
                 if (Options.Cho[taskID].DisableLoopInvEntryAssert)
                 {
-                  b = new LoopInitAssertCmd(c.tok, Expr.True, c.Description, c.Attributes);
+                  b = new LoopInitAssertCmd(c.tok, Expr.True);
                 }
                 else
                 {
-                  b = new LoopInitAssertCmd(c.tok, c.Expr, c.Description, c.Attributes);
+                  b = new LoopInitAssertCmd(c.tok, c.Expr);
                 }
               }
               else
               {
-                b = new LoopInitAssertCmd(c.tok, c.Expr, c.Description, c.Attributes);
+                b = new LoopInitAssertCmd(c.tok, c.Expr);
               }
 
+              b.Attributes = c.Attributes;
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsInit.Add(b);
 
@@ -1193,18 +1194,19 @@ namespace VC
                 Contract.Assert(taskID >= 0);
                 if (Options.Cho[taskID].DisableLoopInvMaintainedAssert)
                 {
-                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True, c.Description, c.Attributes);
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True);
                 }
                 else
                 {
-                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c.Description, c.Attributes);
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
                 }
               }
               else
               {
-                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c.Description, c.Attributes);
+                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
               }
 
+              b.Attributes = c.Attributes;
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsMaintained.Add(b);
               header.Cmds[i] = new AssumeCmd(c.tok, c.Expr);
