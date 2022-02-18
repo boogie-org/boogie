@@ -2686,7 +2686,7 @@ namespace Microsoft.Boogie
       set { errorData = value; }
     }
 
-    public ProofObligationDescription Description { get; } = new PreconditionDescription();
+    public ProofObligationDescription Description { get; set; } = new PreconditionDescription();
 
     public override void Resolve(ResolutionContext rc)
     {
@@ -2870,7 +2870,7 @@ namespace Microsoft.Boogie
       set { errorData = value; }
     }
 
-    public ProofObligationDescription Description { get; } = new PreconditionDescription();
+    public ProofObligationDescription Description { get; set; } = new PreconditionDescription();
 
     public CallCmd(IToken tok, string callee, List<Expr> ins, List<IdentifierExpr> outs)
       : base(tok, null)
@@ -3767,7 +3767,7 @@ namespace Microsoft.Boogie
       set { errorData = value; }
     }
 
-    public ProofObligationDescription Description { get; } = new AssertionDescription();
+    public ProofObligationDescription Description { get; set; } = new AssertionDescription();
 
     public string ErrorMessage
     {
@@ -3914,13 +3914,6 @@ namespace Microsoft.Boogie
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
     }
-
-    public LoopInitAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description, QKeyValue kv)
-      : base(tok, expr, description, kv)
-    {
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
-    }
   }
 
   // An AssertCmd that is a loop invariant check to maintain the invariant after iteration
@@ -3928,13 +3921,6 @@ namespace Microsoft.Boogie
   {
     public LoopInvMaintainedAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr)
       : base(tok, expr, new InvariantMaintainedDescription(), null)
-    {
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
-    }
-
-    public LoopInvMaintainedAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description, QKeyValue kv)
-      : base(tok, expr, description, kv)
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
@@ -3969,15 +3955,6 @@ namespace Microsoft.Boogie
       this.Requires = requires;
     }
 
-    public AssertRequiresCmd(CallCmd /*!*/ call, Requires /*!*/ requires, ProofObligationDescription description, QKeyValue kv)
-      : base(call.tok, requires.Condition, description, kv)
-    {
-      Contract.Requires(call != null);
-      Contract.Requires(requires != null);
-      this.Call = call;
-      this.Requires = requires;
-    }
-
     public override Absy StdDispatch(StandardVisitor visitor)
     {
       //Contract.Requires(visitor != null);
@@ -4003,13 +3980,6 @@ namespace Microsoft.Boogie
 
     public AssertEnsuresCmd(Ensures /*!*/ ens)
       : base(ens.tok, ens.Condition, ens.Description, null)
-    {
-      Contract.Requires(ens != null);
-      this.Ensures = ens;
-    }
-
-    public AssertEnsuresCmd(Ensures /*!*/ ens, ProofObligationDescription description, QKeyValue kv)
-      : base(ens.tok, ens.Condition, description, kv)
     {
       Contract.Requires(ens != null);
       this.Ensures = ens;
@@ -4212,7 +4182,7 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(TransferCmdContracts))]
   public abstract class TransferCmd : Absy
   {
-    public readonly ProofObligationDescription Description = new PostconditionDescription();
+    public ProofObligationDescription Description { get; set; } = new PostconditionDescription();
 
     internal TransferCmd(IToken /*!*/ tok)
       : base(tok)

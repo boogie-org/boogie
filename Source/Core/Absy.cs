@@ -278,8 +278,6 @@ namespace Microsoft.Boogie
   public interface IPotentialErrorNode<out TGet>
   {
     TGet ErrorData { get; }
-
-    ProofObligationDescription Description { get; }
   }
 
   public interface IPotentialErrorNode<out TGet, in TSet> : IPotentialErrorNode<TGet>
@@ -3625,7 +3623,7 @@ namespace Microsoft.Boogie
     private Expr /*!*/
       _condition;
 
-    public ProofObligationDescription Description { get; } = new RequiresDescription();
+    public ProofObligationDescription Description { get; set; } = new RequiresDescription();
 
     public Expr /*!*/ Condition
     {
@@ -3755,7 +3753,7 @@ namespace Microsoft.Boogie
   {
     public readonly bool Free;
 
-    public ProofObligationDescription Description { get; } = new EnsuresDescription();
+    public ProofObligationDescription Description { get; set; } = new EnsuresDescription();
 
     private Expr /*!*/
       _condition;
