@@ -11,7 +11,6 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(cce.NonNullElements(args));
 
-
       var options = new CommandLineOptions
       {
         RunningBoogieFromCommandLine = true
@@ -23,6 +22,7 @@ namespace Microsoft.Boogie
       {
         return 1;
       }
+      using var executionEngine = new ExecutionEngine(options);
       
       if (options.ProcessInfoFlags())
       {
@@ -65,7 +65,7 @@ namespace Microsoft.Boogie
 
       Helpers.ExtraTraceInformation("Becoming sentient");
 
-      var success = ExecutionEngine.ProcessFiles(options, fileList);
+      var success = executionEngine.ProcessFiles(fileList);
 
       if (CoreOptions.Clo.XmlSink != null)
       {
