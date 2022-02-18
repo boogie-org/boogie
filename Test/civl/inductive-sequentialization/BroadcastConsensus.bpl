@@ -67,7 +67,7 @@ function value_card(v:val, value:[pid]val, i:pid, j:pid) : int
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// NOTE: CIVL currently does not support variables to be linear in multiple
+// NOTE: Civl currently does not support variables to be linear in multiple
 // domains (i.e., supplying multiple linear annotations). In the future we
 // would like the MAIN action(s) to take a single parameter as follows:
 //     {:linear_in "broadcast"}{:linear_in "collect"} pids:[pid]bool
