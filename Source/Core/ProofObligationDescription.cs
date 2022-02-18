@@ -4,7 +4,7 @@ public abstract class ProofObligationDescription {
   public abstract string SuccessDescription { get; }
 
   public virtual string FailureDescription =>
-    $"Unable to prove property: {SuccessDescription}";
+    $"Failed to prove: {SuccessDescription}";
 
   public abstract string ShortDescription { get; }
 }
