@@ -332,7 +332,7 @@ namespace Microsoft.Boogie
       if (Options.PrintCFGPrefix != null) {
         foreach (var impl in program.Implementations) {
           using StreamWriter sw = new StreamWriter(Options.PrintCFGPrefix + "." + impl.Name + ".dot");
-          sw.Write(program.ProcessLoops(impl).ToDot());
+          sw.Write(program.ProcessLoops(Options, impl).ToDot());
         }
       }
 
@@ -415,7 +415,7 @@ namespace Microsoft.Boogie
     {
       if (Options.DoModSetAnalysis)
       {
-        new ModSetCollector().DoModSetAnalysis(program);
+        new ModSetCollector(Options).DoModSetAnalysis(program);
       }
     }
 
@@ -445,8 +445,8 @@ namespace Microsoft.Boogie
       }
 
       using (TokenTextWriter writer = filename == "-"
-        ? new TokenTextWriter("<console>", Console.Out, setTokens, pretty)
-        : new TokenTextWriter(filename, setTokens, pretty))
+        ? new TokenTextWriter("<console>", Console.Out, setTokens, pretty, options)
+        : new TokenTextWriter(filename, setTokens, pretty, options))
       {
         if (options.ShowEnv != ExecutionEngineOptions.ShowEnvironment.Never)
         {
@@ -567,7 +567,7 @@ namespace Microsoft.Boogie
         return PipelineOutcome.Done;
       }
 
-      int errorCount = program.Resolve();
+      int errorCount = program.Resolve(Options);
       if (errorCount != 0)
       {
         Console.WriteLine("{0} name resolution errors detected in {1}", errorCount, GetFileNameForConsole(Options, bplFileName));
@@ -586,7 +586,7 @@ namespace Microsoft.Boogie
         return PipelineOutcome.TypeCheckingError;
       }
       
-      errorCount = program.Typecheck();
+      errorCount = program.Typecheck(Options);
       if (errorCount != 0)
       {
         Console.WriteLine("{0} type checking errors detected in {1}", errorCount, GetFileNameForConsole(Options, bplFileName));
@@ -599,7 +599,7 @@ namespace Microsoft.Boogie
       }
       else if (Options.Monomorphize)
       {
-        var monomorphizableStatus = Monomorphizer.Monomorphize(program);
+        var monomorphizableStatus = Monomorphizer.Monomorphize(Options, program);
         if (monomorphizableStatus == MonomorphizableStatus.Monomorphizable)
         {
           Options.TypeEncodingMethod = CoreOptions.TypeEncoding.Monomorphic;
@@ -682,9 +682,9 @@ namespace Microsoft.Boogie
 
           foreach (var impl in TopLevelDeclarations.OfType<Implementation>())
           {
-            if (Options.UserWantsToCheckRoutine(impl.Name) && !impl.SkipVerification)
+            if (Options.UserWantsToCheckRoutine(impl.Name) && !impl.IsSkipVerification(Options))
             {
-              Inliner.ProcessImplementation(program, impl);
+              Inliner.ProcessImplementation(Options, program, impl);
             }
           }
 
@@ -736,7 +736,7 @@ namespace Microsoft.Boogie
       // to see lambdas, then it would be better to more lambda expansion until after inference.)
       if (Options.ExpandLambdas)
       {
-        LambdaHelper.ExpandLambdas(program);
+        LambdaHelper.ExpandLambdas(Options, program);
         if (Options.PrintFile != null && Options.PrintLambdaLifting)
         {
           PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
@@ -749,7 +749,7 @@ namespace Microsoft.Boogie
 
       if (Options.UseAbstractInterpretation)
       {
-        AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
+        new AbstractInterpretation.NativeAbstractInterpretation(Options).RunAbstractInterpretation(program);
       }
 
       #endregion
@@ -764,12 +764,12 @@ namespace Microsoft.Boogie
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo = null;
       if (Options.ExtractLoops)
       {
-        extractLoopMappingInfo = program.ExtractLoops();
+        extractLoopMappingInfo = program.ExtractLoops(Options);
       }
 
       if (Options.PrintInstrumented)
       {
-        program.Emit(new TokenTextWriter(Console.Out, Options.PrettyPrint));
+        program.Emit(new TokenTextWriter(Console.Out, Options.PrettyPrint, Options));
       }
 
       #endregion
@@ -792,7 +792,7 @@ namespace Microsoft.Boogie
 
       var impls = program.Implementations.Where(
         impl => impl != null && Options.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) &&
-                !impl.SkipVerification);
+                !impl.IsSkipVerification(Options));
 
       // operate on a stable copy, in case it gets updated while we're running
       Implementation[] stablePrioritizedImpls = null;
@@ -1126,7 +1126,7 @@ namespace Microsoft.Boogie
       #region Process the verification results and statistics
 
       ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats,
-        output, impl.TimeLimit, er, verificationResult.ImplementationName, verificationResult.ImplementationToken,
+        output, impl.GetTimeLimit(Options), er, verificationResult.ImplementationName, verificationResult.ImplementationToken,
         verificationResult.RequestId, verificationResult.MessageIfVerifies, wasCached);
 
       ProcessErrors(verificationResult.Errors, verificationResult.Outcome, output, er, impl);

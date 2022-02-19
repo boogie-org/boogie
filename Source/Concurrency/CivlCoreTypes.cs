@@ -137,6 +137,7 @@ namespace Microsoft.Boogie
 
   public class AtomicAction : Action
   {
+    private ConcurrencyOptions options;
     public MoverType moverType;
     public AtomicAction refinedAction;
 
@@ -151,10 +152,12 @@ namespace Microsoft.Boogie
 
     public Dictionary<Variable, Function> triggerFunctions;
 
-    public AtomicAction(Procedure proc, Implementation impl, LayerRange layerRange, MoverType moverType) :
+    public AtomicAction(Procedure proc, Implementation impl, LayerRange layerRange,
+      MoverType moverType, ConcurrencyOptions options) :
       base(proc, impl, layerRange)
     {
       this.moverType = moverType;
+      this.options = options;
       AtomicActionDuplicator.SetupCopy(this, ref firstGate, ref firstImpl, "first_");
       AtomicActionDuplicator.SetupCopy(this, ref secondGate, ref secondImpl, "second_");
       DeclareTriggerFunctions();
@@ -201,7 +204,7 @@ namespace Microsoft.Boogie
       {
         var f = triggerFunctions[v];
         program.AddTopLevelDeclaration(f);
-        var assume = CmdHelper.AssumeCmd(ExprHelper.FunctionCall(f, Expr.Ident(v)));
+        var assume = CmdHelper.AssumeCmd(ExprHelper.FunctionCall(options, f, Expr.Ident(v)));
         impl.Blocks[0].Cmds.Insert(0, assume);
       }
     }

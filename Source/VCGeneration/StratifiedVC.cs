@@ -486,7 +486,7 @@ namespace VC
       vcgen.InstrumentCallSites(impl);
 
       // typecheck
-      var tc = new TypecheckingContext(null);
+      var tc = new TypecheckingContext(null, options);
       impl.Typecheck(tc);
 
       ///////////////////

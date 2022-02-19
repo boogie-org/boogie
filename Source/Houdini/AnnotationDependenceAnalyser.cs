@@ -29,7 +29,7 @@ namespace Microsoft.Boogie.Houdini
     {
       this.options = options;
       this.prog = prog;
-      this.varDepAnalyser = new VariableDependenceAnalyser(prog);
+      this.varDepAnalyser = new VariableDependenceAnalyser(prog, options);
       varDepAnalyser.Analyse();
     }
 
@@ -121,7 +121,7 @@ namespace Microsoft.Boogie.Houdini
 
       if (options.StagedHoudiniReachabilityAnalysis)
       {
-        reachabilityChecker = new AnnotationReachabilityChecker(prog, AllAnnotationIdentifiers());
+        reachabilityChecker = new AnnotationReachabilityChecker(options, prog, AllAnnotationIdentifiers());
       }
       else
       {
@@ -900,11 +900,11 @@ namespace Microsoft.Boogie.Houdini
     private IInterproceduralReachabilityGraph reachabilityGraph;
     private Dictionary<string, HashSet<object>> annotationToOccurences;
 
-    internal AnnotationReachabilityChecker(Program prog, IEnumerable<string> AnnotationIdentifiers)
+    internal AnnotationReachabilityChecker(CoreOptions options, Program prog, IEnumerable<string> AnnotationIdentifiers)
     {
       this.prog = prog;
       this.AnnotationIdentifiers = AnnotationIdentifiers;
-      this.reachabilityGraph = new InterproceduralReachabilityGraph(prog);
+      this.reachabilityGraph = new InterproceduralReachabilityGraph(prog, options);
       this.annotationToOccurences = new Dictionary<string, HashSet<object>>();
 
       // Add all annotation occurrences in blocks

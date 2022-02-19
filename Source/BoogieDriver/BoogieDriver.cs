@@ -63,13 +63,13 @@ namespace Microsoft.Boogie
         Console.WriteLine("--------------------");
       }
 
-      Helpers.ExtraTraceInformation("Becoming sentient");
+      Helpers.ExtraTraceInformation(options, "Becoming sentient");
 
       var success = executionEngine.ProcessFiles(fileList);
 
-      if (CoreOptions.Clo.XmlSink != null)
+      if (options.XmlSink != null)
       {
-        CoreOptions.Clo.XmlSink.Close();
+        options.XmlSink.Close();
       }
 
       if (options.Wait)

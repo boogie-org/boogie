@@ -839,7 +839,8 @@ namespace Microsoft.Boogie
       }
     }
 
-    public static MonomorphizationVisitor Initialize(Program program, Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated,
+    public static MonomorphizationVisitor Initialize(CoreOptions options, Program program,
+      Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated,
       HashSet<Axiom> polymorphicFunctionAxioms)
     {
       var monomorphizationVisitor = new MonomorphizationVisitor(program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
@@ -847,7 +848,7 @@ namespace Microsoft.Boogie
       // that must be verified. The types in ctorTypes are reused across different implementations.
       var ctorTypes = new List<Type>();
       var typeCtorDecls = new HashSet<TypeCtorDecl>();
-      monomorphizationVisitor.implInstantiations.Keys.Where(impl => !impl.SkipVerification).Iter(impl =>
+      monomorphizationVisitor.implInstantiations.Keys.Where(impl => !impl.IsSkipVerification(options)).Iter(impl =>
       {
         for (int i = ctorTypes.Count; i < impl.TypeParameters.Count; i++)
         {
@@ -1076,12 +1077,12 @@ namespace Microsoft.Boogie
   
   public class Monomorphizer
   {
-    public static MonomorphizableStatus Monomorphize(Program program)
+    public static MonomorphizableStatus Monomorphize(CoreOptions options, Program program)
     {
       var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program, out var axiomsToBeInstantiated, out var polymorphicFunctionAxioms);
       if (monomorphizableStatus == MonomorphizableStatus.Monomorphizable)
       {
-        var monomorphizationVisitor = MonomorphizationVisitor.Initialize(program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
+        var monomorphizationVisitor = MonomorphizationVisitor.Initialize(options, program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
         program.monomorphizer = new Monomorphizer(monomorphizationVisitor);
       }
       return monomorphizableStatus;

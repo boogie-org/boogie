@@ -2030,7 +2030,7 @@ namespace Microsoft.Boogie
       return semicolonIndex;
     }
 
-    public string ProverHelp => TheProverFactory.BlankProverOptions().Help;
+    public string ProverHelp => TheProverFactory.BlankProverOptions(this).Help;
 
     public override string AttributeHelp =>
 @"Boogie: The following attributes are supported by this version.

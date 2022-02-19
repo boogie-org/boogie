@@ -24,6 +24,8 @@ namespace Microsoft.Boogie
     private Dictionary<CallCmd, CallCmd> refinementCallCmds; // rewritten -> original
     private Dictionary<CallCmd, Block> refinementBlocks; // rewritten -> block
 
+    private ConcurrencyOptions Options => civlTypeChecker.Options;
+
     public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, int layerNum)
     {
       this.civlTypeChecker = civlTypeChecker;
@@ -196,7 +198,7 @@ namespace Microsoft.Boogie
         var pa = Expr.Ident(paBound);
         var expr = Expr.Eq(Expr.Select(Expr.Ident(CollectedPAs), pa), Expr.Literal(0));
         var forallExpr = ExprHelper.ForallExpr(new List<Variable> {paBound}, expr);
-        forallExpr.Typecheck(new TypecheckingContext(null));
+        forallExpr.Typecheck(new TypecheckingContext(null, Options));
         newImpl.Blocks.First().Cmds.Insert(0, CmdHelper.AssumeCmd(forallExpr));
 
         if (!impl.LocVars.Contains(CollectedPAs))
@@ -533,7 +535,7 @@ namespace Microsoft.Boogie
 
       if (SummaryHasPendingAsyncParam)
       {
-        var collectedUnionReturned = ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncAdd,
+        var collectedUnionReturned = ExprHelper.FunctionCall(Options, civlTypeChecker.pendingAsyncAdd,
           Expr.Ident(CollectedPAs), Expr.Ident(ReturnedPAs));
         newCmdSeq.Add(CmdHelper.AssignCmd(CollectedPAs, collectedUnionReturned));
       }
@@ -545,7 +547,7 @@ namespace Microsoft.Boogie
         var pa = Expr.Ident(paBound);
         var expr = Expr.Eq(Expr.Select(Expr.Ident(ReturnedPAs), pa), Expr.Literal(0));
         var forallExpr = ExprHelper.ForallExpr(new List<Variable> {paBound}, expr);
-        forallExpr.Typecheck(new TypecheckingContext(null));
+        forallExpr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
         newCmdSeq.Add(CmdHelper.AssertCmd(newCall.tok, forallExpr,
           "Pending asyncs created by this call are not summarized"));
       }
@@ -614,7 +616,7 @@ namespace Microsoft.Boogie
           }
         }
 
-        var pa = ExprHelper.FunctionCall(paAction.pendingAsyncCtor, newIns);
+        var pa = ExprHelper.FunctionCall(Options, paAction.pendingAsyncCtor, newIns);
         var inc = Expr.Add(Expr.Select(Expr.Ident(CollectedPAs), pa), Expr.Literal(1));
         var add = CmdHelper.AssignCmd(CollectedPAs, Expr.Store(Expr.Ident(CollectedPAs), pa, inc));
         newCmdSeq.Add(add);

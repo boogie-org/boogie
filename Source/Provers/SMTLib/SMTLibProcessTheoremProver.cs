@@ -2422,8 +2422,8 @@ namespace Microsoft.Boogie.SMTLib
     public readonly Dictionary<Function, VCExprNAry> DefinedFunctions = new Dictionary<Function, VCExprNAry>();
 
     public SMTLibProverContext(VCExpressionGenerator gen,
-      VCGenerationOptions genOptions)
-      : base(gen, genOptions)
+      VCGenerationOptions genOptions, SMTLibOptions options)
+      : base(gen, genOptions, options)
     {
     }
 
@@ -2519,12 +2519,12 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
-      return new SMTLibProverContext(gen, genOptions);
+      return new SMTLibProverContext(gen, genOptions, options.LibOptions);
     }
 
-    public override ProverOptions BlankProverOptions()
+    public override ProverOptions BlankProverOptions(SMTLibOptions libOptions)
     {
-      return new SMTLibProverOptions();
+      return new SMTLibProverOptions(libOptions);
     }
 
     protected virtual SMTLibProcessTheoremProver SpawnProver(SMTLibOptions libOptions, ProverOptions options,

@@ -114,9 +114,9 @@ namespace Microsoft.Boogie
         var after = new List<Cmd>();
         Expr assumedExpr = new LiteralExpr(Token.NoToken, false);
         var canUseSpecs = DependencyCollector.CanExpressOldSpecs(oldProc, Program, true);
-        if (canUseSpecs && oldProc.SignatureEquals(currentImplementation.Proc))
+        if (canUseSpecs && oldProc.SignatureEquals(options, currentImplementation.Proc))
         {
-          var always = Substituter.SubstitutionFromDictionary(currentImplementation.GetImplFormalMap(), true,
+          var always = Substituter.SubstitutionFromDictionary(currentImplementation.GetImplFormalMap(options), true,
             currentImplementation.Proc);
           var forOld = Substituter.SubstitutionFromDictionary(new Dictionary<Variable, Expr>());
           var clauses = oldProc.Requires.Select(r =>
@@ -142,7 +142,7 @@ namespace Microsoft.Boogie
         }
 
         if (options.TraceCachingForTesting || options.TraceCachingForBenchmarking) {
-          using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
+          using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false, options);
           var loc = currentImplementation.tok != null && currentImplementation.tok != Token.NoToken
             ? string.Format("{0}({1},{2})", currentImplementation.tok.filename, currentImplementation.tok.line,
               currentImplementation.tok.col)
@@ -260,9 +260,9 @@ namespace Microsoft.Boogie
         Expr assumedExpr = new LiteralExpr(Token.NoToken, false);
         // TODO(wuestholz): Try out two alternatives: only do this for low priority implementations or not at all.
         var canUseSpecs = DependencyCollector.CanExpressOldSpecs(oldProc, Program);
-        if (canUseSpecs && oldProc.SignatureEquals(node.Proc))
+        if (canUseSpecs && oldProc.SignatureEquals(options, node.Proc))
         {
-          var desugaring = node.Desugaring;
+          var desugaring = node.GetDesugaring(options);
           Contract.Assert(desugaring != null);
           var precond = node.CheckedPrecondition(oldProc, Program, e => FunctionExtractor.Extract(e, Program, axioms));
           if (precond != null)
@@ -329,9 +329,9 @@ namespace Microsoft.Boogie
           after.Add(assumed);
         }
 
-        node.ExtendDesugaring(before, beforePreconditionCheck, after);
+        node.ExtendDesugaring(options, before, beforePreconditionCheck, after);
         if (options.TraceCachingForTesting || options.TraceCachingForBenchmarking) {
-          using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
+          using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false, options);
           var loc = node.tok != null && node.tok != Token.NoToken
             ? string.Format("{0}({1},{2})", node.tok.filename, node.tok.line, node.tok.col)
             : "<unknown location>";

@@ -8,11 +8,10 @@ namespace Microsoft.Boogie
 {
   public class TokenTextWriter : IDisposable
   {
-    string /*!*/
-      filename;
+    public CoreOptions Options { get; }
+    string /*!*/ filename;
 
-    TextWriter /*!*/
-      writer;
+    TextWriter /*!*/ writer;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -262,61 +261,66 @@ namespace Microsoft.Boogie
       }
     }
 
-    public TokenTextWriter(string filename)
-      : this(filename, false)
+    public TokenTextWriter(string filename, CoreOptions options)
+      : this(filename, false, options)
     {
     }
 
-    public TokenTextWriter(string filename, bool pretty)
+    public TokenTextWriter(string filename, bool pretty, CoreOptions options)
       : base()
     {
       Contract.Requires(filename != null);
       this.pretty = pretty;
+      this.Options = options;
       this.filename = filename;
       this.writer = new StreamWriter(filename);
     }
 
-    public TokenTextWriter(string filename, bool setTokens, bool pretty)
+    public TokenTextWriter(string filename, bool setTokens, bool pretty, CoreOptions options)
       : base()
     {
       Contract.Requires(filename != null);
       this.pretty = pretty;
+      this.Options = options;
       this.filename = filename;
       this.writer = new StreamWriter(filename);
       this.setTokens = setTokens;
     }
 
-    public TokenTextWriter(string filename, TextWriter writer, bool setTokens, bool pretty)
+    public TokenTextWriter(string filename, TextWriter writer, bool setTokens, bool pretty, CoreOptions options)
       : base()
     {
       Contract.Requires(writer != null);
       Contract.Requires(filename != null);
       this.pretty = pretty;
+      this.Options = options;
       this.filename = filename;
       this.writer = writer;
       this.setTokens = setTokens;
     }
 
-    public TokenTextWriter(string filename, TextWriter writer, bool pretty)
+    public TokenTextWriter(string filename, TextWriter writer, bool pretty, CoreOptions options)
       : base()
     {
       Contract.Requires(writer != null);
       Contract.Requires(filename != null);
       this.pretty = pretty;
+      this.Options = options;
       this.filename = filename;
       this.writer = writer;
     }
 
-    public TokenTextWriter(TextWriter writer)
-      : this(writer, false)
+    public TokenTextWriter(TextWriter writer, CoreOptions options)
+      : this(writer, false, options)
     {
     }
 
-    public TokenTextWriter(TextWriter writer, bool pretty)
+    public TokenTextWriter(TextWriter writer, bool pretty, CoreOptions options)
       : base()
     {
       Contract.Requires(writer != null);
       this.pretty = pretty;
+      this.Options = options;
       this.filename = "<no file>";
       this.writer = writer;
     }

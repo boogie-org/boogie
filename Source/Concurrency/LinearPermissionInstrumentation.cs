@@ -12,6 +12,8 @@ namespace Microsoft.Boogie
     private Dictionary<string, Variable> domainNameToHoleVar;
     private Dictionary<Variable, Variable> localVarMap;
 
+    private ConcurrencyOptions Options => civlTypeChecker.Options;
+
     public LinearPermissionInstrumentation(
       CivlTypeChecker civlTypeChecker,
       int layerNum,
@@ -104,7 +106,7 @@ namespace Microsoft.Boogie
       }
 
       // loop headers
-      impl.PruneUnreachableBlocks();
+      impl.PruneUnreachableBlocks(Options);
       impl.ComputePredecessorsForBlocks();
       var graph = Program.GraphFromImpl(impl);
       graph.ComputeLoops();

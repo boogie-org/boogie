@@ -134,14 +134,16 @@ namespace Microsoft.Boogie
   /// </summary>
   public class VariableDependenceAnalyser : IVariableDependenceAnalyser
   {
+    private CoreOptions options;
     private Graph<VariableDescriptor> dependsOnNonTransitive;
     private Program prog;
     private Dictionary<Block, HashSet<Block>> BlockToControllingBlocks;
     private Dictionary<Block, HashSet<VariableDescriptor>> ControllingBlockToVariables;
 
-    public VariableDependenceAnalyser(Program prog)
+    public VariableDependenceAnalyser(Program prog, CoreOptions options)
     {
       this.prog = prog;
+      this.options = options;
       dependsOnNonTransitive = new Graph<VariableDescriptor>();
     }
 
@@ -520,7 +522,7 @@ namespace Microsoft.Boogie
       // Work out and union together local control dependences
       foreach (var Impl in prog.NonInlinedImplementations())
       {
-        Graph<Block> blockGraph = prog.ProcessLoops(Impl);
+        Graph<Block> blockGraph = prog.ProcessLoops(options, Impl);
         LocalCtrlDeps[Impl] = blockGraph.ControlDependence();
         foreach (var KeyValue in LocalCtrlDeps[Impl])
         {
@@ -528,7 +530,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      Graph<Implementation> callGraph = Program.BuildCallGraph(prog);
+      Graph<Implementation> callGraph = Program.BuildCallGraph(options, prog);
 
       // Add inter-procedural control dependence nodes based on calls
       foreach (var Impl in prog.NonInlinedImplementations())

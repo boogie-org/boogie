@@ -81,7 +81,8 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<string>() != null);
       System.IO.StringWriter buffer = new System.IO.StringWriter();
-      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false);
+      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer,
+        /*setTokens=*/ false, /*pretty=*/ false, CoreOptions.Clo);
       this.Emit(stream, 0, false);
 
       return buffer.ToString();
@@ -1294,7 +1295,7 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
       //Contract.Requires(stream != null);
-      if (CoreOptions.Clo.PrintWithUniqueASTIds && !stream.UseForComputingChecksums)
+      if (stream.Options.PrintWithUniqueASTIds && !stream.UseForComputingChecksums)
       {
         stream.Write("{0}^^", this.Decl == null ? "NoDecl" : "h" + this.Decl.GetHashCode());
       }

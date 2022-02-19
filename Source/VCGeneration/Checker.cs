@@ -101,7 +101,7 @@ namespace Microsoft.Boogie
     {
       Pool = pool;
 
-      SolverOptions = cce.NonNull(Pool.Options.TheProverFactory).BlankProverOptions();
+      SolverOptions = cce.NonNull(Pool.Options.TheProverFactory).BlankProverOptions(pool.Options);
 
       if (logFilePath != null)
       {

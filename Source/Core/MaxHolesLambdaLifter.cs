@@ -31,6 +31,7 @@ namespace Core
   /// </summary>
   class MaxHolesLambdaLifter : StandardVisitor
   {
+    private CoreOptions options;
     private readonly List<Variable> _nestedBoundVariables = new List<Variable>();
 
     private readonly LambdaExpr _lambda;
@@ -47,8 +48,7 @@ namespace Core
       Dictionary<Expr, FunctionCall> liftedLambdas,
       string freshFnName,
       List<Function> lambdaFunctions,
-      List<Axiom> lambdaAxioms,
-      int freshVarCount = 0
+      List<Axiom> lambdaAxioms, CoreOptions options, int freshVarCount = 0
     )
     {
       _lambda = lambda;
@@ -56,6 +56,7 @@ namespace Core
       _freshFnName = freshFnName;
       _lambdaFunctions = lambdaFunctions;
       _lambdaAxioms = lambdaAxioms;
+      this.options = options;
       _freshVarCount = freshVarCount;
     }
 
@@ -346,7 +347,7 @@ namespace Core
 
 
       var lambdaAttrs = _lambda.Attributes;
-      if (0 < CoreOptions.Clo.VerifySnapshots && QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
+      if (0 < options.VerifySnapshots && QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
       {
         // Attach a dummy checksum to avoid issues in the dependency analysis.
         var checksumAttr = new QKeyValue(_lambda.tok, "checksum", new List<object> {"lambda expression"}, null);
@@ -367,7 +368,7 @@ namespace Core
       var freeVarActuals = freeVars.OfType<Type>().ToList();
 
       var sw = new StringWriter();
-      var wr = new TokenTextWriter(sw, true);
+      var wr = new TokenTextWriter(sw, true, options);
       _lambda.Emit(wr);
       string lam_str = sw.ToString();
 
@@ -381,14 +382,14 @@ namespace Core
 
       if (_liftedLambdas.TryGetValue(liftedLambda, out var fcall))
       {
-        if (CoreOptions.Clo.TraceVerify)
+        if (options.TraceVerify)
         {
           Console.WriteLine("Old lambda: {0}", lam_str);
         }
       }
       else
       {
-        if (CoreOptions.Clo.TraceVerify)
+        if (options.TraceVerify)
         {
           Console.WriteLine("New lambda: {0}", lam_str);
         }
