@@ -10,6 +10,7 @@ using VC;
 using BoogiePL = Microsoft.Boogie;
 using System.Runtime.Caching;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.Boogie
 {
@@ -243,7 +244,7 @@ namespace Microsoft.Boogie
       return -1;
     }
 
-    public static readonly VerificationResultCache Cache = new VerificationResultCache();
+    public readonly VerificationResultCache Cache;
 
     static readonly MemoryCache programCache = new MemoryCache("ProgramCache");
 
@@ -256,9 +257,10 @@ namespace Microsoft.Boogie
       return result;
     }
 
-    public ExecutionEngine(ExecutionEngineOptions options)
+    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache)
     {
-      this.Options = options;
+      Options = options;
+      Cache = cache;
       checkerPool = new CheckerPool(options);
     }
 
@@ -812,7 +814,7 @@ namespace Microsoft.Boogie
 
       if (1 < Options.VerifySnapshots)
       {
-        CachedVerificationResultInjector.Inject(Options, program, stablePrioritizedImpls, requestId, programId,
+        CachedVerificationResultInjector.Inject(this, program, stablePrioritizedImpls, requestId, programId,
           out stats.CachingActionCounts);
       }
 

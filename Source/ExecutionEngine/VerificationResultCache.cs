@@ -171,10 +171,10 @@ namespace Microsoft.Boogie
       return result;
     }
 
-    public static void Inject(ExecutionEngineOptions options, Program program, IEnumerable<Implementation> implementations, string requestId,
+    public static void Inject(ExecutionEngine engine, Program program, IEnumerable<Implementation> implementations, string requestId,
       string programId, out long[] cachingActionCounts)
     {
-      var eai = new CachedVerificationResultInjector(options, program);
+      var eai = new CachedVerificationResultInjector(engine.Options, program);
 
       cachingActionCounts = new long[Enum.GetNames(typeof(VC.ConditionGeneration.CachingAction)).Length];
       var run = new CachedVerificationResultInjectorRun
@@ -184,7 +184,7 @@ namespace Microsoft.Boogie
       };
       foreach (var impl in implementations)
       {
-        var vr = ExecutionEngine.Cache.Lookup(impl, out var priority);
+        var vr = engine.Cache.Lookup(impl, out var priority);
         if (vr != null && vr.ProgramId == programId)
         {
           if (priority == Priority.LOW)
@@ -204,7 +204,7 @@ namespace Microsoft.Boogie
             run.SkippedImplementationCount++;
           }
 
-          if (priority == Priority.LOW || priority == Priority.MEDIUM || options.VerifySnapshots >= 3)
+          if (priority == Priority.LOW || priority == Priority.MEDIUM || engine.Options.VerifySnapshots >= 3)
           {
             if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
             {

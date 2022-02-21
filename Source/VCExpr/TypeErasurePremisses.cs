@@ -58,10 +58,13 @@ namespace Microsoft.Boogie.TypeErasure
 
   public class TypeAxiomBuilderPremisses : TypeAxiomBuilderIntBoolU
   {
-    public TypeAxiomBuilderPremisses(VCExpressionGenerator gen)
+    public CoreOptions Options { get; }
+
+    public TypeAxiomBuilderPremisses(VCExpressionGenerator gen, CoreOptions options)
       : base(gen)
     {
       Contract.Requires(gen != null);
+      this.Options = options;
 
       TypeFunction = HelperFuns.BoogieFunction("dummy", Type.Int);
       Typed2UntypedFunctions = new Dictionary<Function /*!*/, UntypedFunction>();
@@ -74,6 +77,7 @@ namespace Microsoft.Boogie.TypeErasure
       : base(builder)
     {
       Contract.Requires(builder != null);
+      this.Options = builder.Options;
       TypeFunction = builder.TypeFunction;
       Typed2UntypedFunctions =
         new Dictionary<Function /*!*/, UntypedFunction>(builder.Typed2UntypedFunctions);
@@ -81,8 +85,7 @@ namespace Microsoft.Boogie.TypeErasure
       MapTypeAbstracterAttr =
         builder.MapTypeAbstracterAttr == null
           ? null
-          : new MapTypeAbstractionBuilderPremisses(this, builder.Gen,
-            builder.MapTypeAbstracterAttr);
+          : new MapTypeAbstractionBuilderPremisses(this, builder.Gen, builder.MapTypeAbstracterAttr);
     }
 
     public override Object Clone()
@@ -629,7 +632,6 @@ namespace Microsoft.Boogie.TypeErasure
   internal class MapTypeAbstractionBuilderPremisses : MapTypeAbstractionBuilder
   {
     private readonly TypeAxiomBuilderPremisses /*!*/ AxBuilderPremisses;
-    private CoreOptions options;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -638,19 +640,18 @@ namespace Microsoft.Boogie.TypeErasure
     }
 
 
-    internal MapTypeAbstractionBuilderPremisses(TypeAxiomBuilderPremisses axBuilder, VCExpressionGenerator gen, CoreOptions options)
+    internal MapTypeAbstractionBuilderPremisses(TypeAxiomBuilderPremisses axBuilder, VCExpressionGenerator gen)
       : base(axBuilder, gen)
     {
       Contract.Requires(gen != null);
       Contract.Requires(axBuilder != null);
 
       this.AxBuilderPremisses = axBuilder;
-      this.options = options;
     }
 
     // constructor for cloning
     internal MapTypeAbstractionBuilderPremisses(TypeAxiomBuilderPremisses axBuilder, VCExpressionGenerator gen,
-      MapTypeAbstractionBuilderPremisses builder, CoreOptions options)
+      MapTypeAbstractionBuilderPremisses builder)
       : base(axBuilder, gen, builder)
     {
       Contract.Requires(builder != null);
@@ -658,7 +659,6 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(axBuilder != null);
 
       this.AxBuilderPremisses = axBuilder;
-      this.options = options;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -731,7 +731,7 @@ namespace Microsoft.Boogie.TypeErasure
       // the store function does not have any explicit type parameters
       Contract.Assert(explicitStoreParams.Count == 0);
 
-      if (options.UseArrayTheory)
+      if (AxBuilderPremisses.Options.UseArrayTheory)
       {
         select.AddAttribute("builtin", "select");
         store.AddAttribute("builtin", "store");
@@ -1344,7 +1344,7 @@ namespace Microsoft.Boogie.TypeErasure
       List<VCExprVar /*!*/> /*!*/
         newVarsWithTypeSpecs = new List<VCExprVar /*!*/>();
       if (!IsUniversalQuantifier(node) ||
-          options.TypeEncodingMethod
+          AxBuilderPremisses.Options.TypeEncodingMethod
           == CoreOptions.TypeEncoding.Predicates)
       {
         foreach (VCExprVar /*!*/ oldVar in occurringVars)

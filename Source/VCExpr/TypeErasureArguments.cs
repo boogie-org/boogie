@@ -23,11 +23,11 @@ namespace Microsoft.Boogie.TypeErasure
 
     // constructor to allow cloning
     [NotDelayed]
-    internal TypeAxiomBuilderArguments(TypeAxiomBuilderArguments builder, CoreOptions options)
+    internal TypeAxiomBuilderArguments(TypeAxiomBuilderArguments builder)
       : base(builder)
     {
       Contract.Requires(builder != null);
-      this.options = options;
+      this.options = builder.options;
       Typed2UntypedFunctions =
         new Dictionary<Function /*!*/, Function /*!*/>(builder.Typed2UntypedFunctions);
 
