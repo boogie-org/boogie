@@ -295,7 +295,12 @@ namespace Microsoft.Boogie
       if (0 <= Options.VerifySnapshots && lookForSnapshots)
       {
         var snapshotsByVersion = LookForSnapshots(fileNames);
-        return snapshotsByVersion.All(s => ProcessFiles( new List<string>(s), false, programId));
+        return snapshotsByVersion.All(s =>
+        {
+          // BUG: Reusing checkers during snapshots doesn't work, even though it should. We create a new engine (and thus checker pool) to workaround this.
+          using var engine = new ExecutionEngine(Options);
+          return engine.ProcessFiles(new List<string>(s), false, programId);
+        });
       }
 
       using XmlFileScope xf = new XmlFileScope(Options.XmlSink, fileNames[^1]);
