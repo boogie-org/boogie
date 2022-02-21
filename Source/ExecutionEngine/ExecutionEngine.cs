@@ -10,7 +10,6 @@ using VC;
 using BoogiePL = Microsoft.Boogie;
 using System.Runtime.Caching;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 namespace Microsoft.Boogie
 {
@@ -824,7 +823,7 @@ namespace Microsoft.Boogie
       }
 
       #region Verify each implementation
-      program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(program);
+      program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(Options, program);
       var outputCollector = new OutputCollector(stablePrioritizedImpls);
       var outcome = PipelineOutcome.VerificationCompleted;
 

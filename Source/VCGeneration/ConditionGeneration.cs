@@ -1171,7 +1171,7 @@ namespace VC
           Contract.Assert(ac.IncarnationMap == null);
           ac.IncarnationMap = (Dictionary<Variable, Expr>) cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
 
-          var subsumption = Wlp.Subsumption(ac);
+          var subsumption = Wlp.Subsumption(Options, ac);
           if (relevantDoomedAssumpVars.Any())
           {
             TraceCachingAction(pc, CachingAction.DoNothingToAssert);

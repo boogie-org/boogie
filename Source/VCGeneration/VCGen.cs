@@ -28,14 +28,14 @@ namespace VC
       Contract.Requires(program != null);
     }
 
-    public static AssumeCmd AssertTurnedIntoAssume(AssertCmd assrt)
+    public static AssumeCmd AssertTurnedIntoAssume(VCGenOptions options, AssertCmd assrt)
     {
       Contract.Requires(assrt != null);
       Contract.Ensures(Contract.Result<AssumeCmd>() != null);
 
       Expr expr = assrt.Expr;
       Contract.Assert(expr != null);
-      switch (Wlp.Subsumption(assrt))
+      switch (Wlp.Subsumption(options, assrt))
       {
         case CoreOptions.SubsumptionOption.Never:
           expr = Expr.True;
@@ -178,7 +178,7 @@ namespace VC
           }
           else
           {
-            seq.Add(AssertTurnedIntoAssume(turn));
+            seq.Add(AssertTurnedIntoAssume(Options, turn));
           }
         }
 
@@ -2038,7 +2038,7 @@ namespace VC
 
     #endregion
 
-    private static void HandleSelectiveChecking(Implementation impl)
+    private void HandleSelectiveChecking(Implementation impl)
     {
       if (QKeyValue.FindBoolAttribute(impl.Attributes, "selective_checking") ||
           QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "selective_checking"))
@@ -2114,7 +2114,7 @@ namespace VC
             }
             else
             {
-              newCmds.Add(AssertTurnedIntoAssume(asrt));
+              newCmds.Add(AssertTurnedIntoAssume(Options, asrt));
             }
           }
 

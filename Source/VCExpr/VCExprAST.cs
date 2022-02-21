@@ -141,7 +141,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       Contract.Ensures(Contract.Result<string>() != null);
       StringWriter sw = new StringWriter();
-      VCExprPrinter printer = new VCExprPrinter();
+      VCExprPrinter printer = new VCExprPrinter(CoreOptions.Clo);
       printer.Print(this, sw);
       return cce.NonNull(sw.ToString());
     }
