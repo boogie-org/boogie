@@ -11,20 +11,23 @@ namespace Microsoft.Boogie.TypeErasure
 {
   public class TypeAxiomBuilderArguments : TypeAxiomBuilderIntBoolU
   {
-    public TypeAxiomBuilderArguments(VCExpressionGenerator gen)
+    private CoreOptions options;
+    public TypeAxiomBuilderArguments(VCExpressionGenerator gen, CoreOptions options)
       : base(gen)
     {
       Contract.Requires(gen != null);
+      this.options = options;
 
       Typed2UntypedFunctions = new Dictionary<Function /*!*/, Function /*!*/>();
     }
 
     // constructor to allow cloning
     [NotDelayed]
-    internal TypeAxiomBuilderArguments(TypeAxiomBuilderArguments builder)
+    internal TypeAxiomBuilderArguments(TypeAxiomBuilderArguments builder, CoreOptions options)
       : base(builder)
     {
       Contract.Requires(builder != null);
+      this.options = options;
       Typed2UntypedFunctions =
         new Dictionary<Function /*!*/, Function /*!*/>(builder.Typed2UntypedFunctions);
 
@@ -33,7 +36,7 @@ namespace Microsoft.Boogie.TypeErasure
         builder.MapTypeAbstracterAttr == null
           ? null
           : new MapTypeAbstractionBuilderArguments(this, builder.Gen,
-            builder.MapTypeAbstracterAttr);
+            builder.MapTypeAbstracterAttr, options);
     }
 
     public override Object Clone()
@@ -77,7 +80,7 @@ namespace Microsoft.Boogie.TypeErasure
 
         if (MapTypeAbstracterAttr == null)
         {
-          MapTypeAbstracterAttr = new MapTypeAbstractionBuilderArguments(this, Gen);
+          MapTypeAbstracterAttr = new MapTypeAbstractionBuilderArguments(this, Gen, options);
         }
 
         return MapTypeAbstracterAttr;
@@ -157,6 +160,7 @@ namespace Microsoft.Boogie.TypeErasure
 
   internal class MapTypeAbstractionBuilderArguments : MapTypeAbstractionBuilder
   {
+    private CoreOptions options;
     private readonly TypeAxiomBuilderArguments /*!*/
       AxBuilderArguments;
 
@@ -167,24 +171,26 @@ namespace Microsoft.Boogie.TypeErasure
     }
 
 
-    internal MapTypeAbstractionBuilderArguments(TypeAxiomBuilderArguments axBuilder, VCExpressionGenerator gen)
+    internal MapTypeAbstractionBuilderArguments(TypeAxiomBuilderArguments axBuilder, VCExpressionGenerator gen, CoreOptions options)
       : base(axBuilder, gen)
     {
       Contract.Requires(gen != null);
       Contract.Requires(axBuilder != null);
 
       this.AxBuilderArguments = axBuilder;
+      this.options = options;
     }
 
     // constructor for cloning
     internal MapTypeAbstractionBuilderArguments(TypeAxiomBuilderArguments axBuilder, VCExpressionGenerator gen,
-      MapTypeAbstractionBuilderArguments builder)
+      MapTypeAbstractionBuilderArguments builder, CoreOptions options)
       : base(axBuilder, gen, builder)
     {
       Contract.Requires(builder != null);
       Contract.Requires(gen != null);
       Contract.Requires(axBuilder != null);
       this.AxBuilderArguments = axBuilder;
+      this.options = options;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -243,7 +249,7 @@ namespace Microsoft.Boogie.TypeErasure
       select = HelperFuns.BoogieFunction(baseName + "Select", selectTypes);
       store = HelperFuns.BoogieFunction(baseName + "Store", storeTypes);
 
-      if (CoreOptions.Clo.UseArrayTheory)
+      if (options.UseArrayTheory)
       {
         select.AddAttribute("builtin", "select");
         store.AddAttribute("builtin", "store");

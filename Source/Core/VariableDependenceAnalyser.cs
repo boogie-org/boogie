@@ -267,21 +267,21 @@ namespace Microsoft.Boogie
        * 
        */
 
-      if (CoreOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Variable dependence analysis: Initialising");
       }
 
       Initialise();
 
-      if (CoreOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Variable dependence analysis: Computing control dependence info");
       }
 
       BlockToControllingBlocks = ComputeGlobalControlDependences();
 
-      if (CoreOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Variable dependence analysis: Computing control dependence variables");
       }
@@ -289,7 +289,7 @@ namespace Microsoft.Boogie
       ControllingBlockToVariables = ComputeControllingVariables(BlockToControllingBlocks);
       foreach (var Impl in prog.NonInlinedImplementations())
       {
-        if (CoreOptions.Clo.Trace)
+        if (options.Trace)
         {
           Console.WriteLine("Variable dependence analysis: Analysing " + Impl.Name);
         }
@@ -386,7 +386,7 @@ namespace Microsoft.Boogie
     {
       foreach (var n in vs)
       {
-        if (CoreOptions.Clo.DebugStagedHoudini)
+        if (options.DebugStagedHoudini)
         {
           Console.WriteLine("Adding dependence " + v + " -> " + n + ", reason: " + reason + "(" + tok.line + ":" +
                             tok.col + ")");
@@ -473,14 +473,14 @@ namespace Microsoft.Boogie
     private void MakeIgnoreList()
     {
       IgnoredVariables = new HashSet<VariableDescriptor>();
-      if (CoreOptions.Clo.VariableDependenceIgnore == null)
+      if (options.VariableDependenceIgnore == null)
       {
         return;
       }
 
       try
       {
-        var file = System.IO.File.OpenText(CoreOptions.Clo.VariableDependenceIgnore);
+        var file = System.IO.File.OpenText(options.VariableDependenceIgnore);
         while (!file.EndOfStream)
         {
           string line = file.ReadLine();
@@ -509,7 +509,7 @@ namespace Microsoft.Boogie
       catch (System.IO.IOException e)
       {
         Console.Error.WriteLine("Error reading from ignored variables file " +
-                                CoreOptions.Clo.VariableDependenceIgnore + ": " + e);
+                                options.VariableDependenceIgnore + ": " + e);
       }
     }
 
@@ -656,7 +656,7 @@ namespace Microsoft.Boogie
     {
       if (DependsOnSCCsDAG == null)
       {
-        if (CoreOptions.Clo.Trace)
+        if (options.Trace)
         {
           Console.WriteLine("Variable dependence: computing SCCs");
         }
@@ -692,7 +692,7 @@ namespace Microsoft.Boogie
           DependsOnSCCsDAG.AddEdge(VariableDescriptorToSCC[n], dummy);
         }
 
-        if (CoreOptions.Clo.Trace)
+        if (options.Trace)
         {
           Console.WriteLine("Variable dependence: SCCs computed!");
         }

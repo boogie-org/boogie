@@ -628,8 +628,8 @@ namespace Microsoft.Boogie.TypeErasure
 
   internal class MapTypeAbstractionBuilderPremisses : MapTypeAbstractionBuilder
   {
-    private readonly TypeAxiomBuilderPremisses /*!*/
-      AxBuilderPremisses;
+    private readonly TypeAxiomBuilderPremisses /*!*/ AxBuilderPremisses;
+    private CoreOptions options;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -638,18 +638,19 @@ namespace Microsoft.Boogie.TypeErasure
     }
 
 
-    internal MapTypeAbstractionBuilderPremisses(TypeAxiomBuilderPremisses axBuilder, VCExpressionGenerator gen)
+    internal MapTypeAbstractionBuilderPremisses(TypeAxiomBuilderPremisses axBuilder, VCExpressionGenerator gen, CoreOptions options)
       : base(axBuilder, gen)
     {
       Contract.Requires(gen != null);
       Contract.Requires(axBuilder != null);
 
       this.AxBuilderPremisses = axBuilder;
+      this.options = options;
     }
 
     // constructor for cloning
     internal MapTypeAbstractionBuilderPremisses(TypeAxiomBuilderPremisses axBuilder, VCExpressionGenerator gen,
-      MapTypeAbstractionBuilderPremisses builder)
+      MapTypeAbstractionBuilderPremisses builder, CoreOptions options)
       : base(axBuilder, gen, builder)
     {
       Contract.Requires(builder != null);
@@ -657,6 +658,7 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(axBuilder != null);
 
       this.AxBuilderPremisses = axBuilder;
+      this.options = options;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -729,7 +731,7 @@ namespace Microsoft.Boogie.TypeErasure
       // the store function does not have any explicit type parameters
       Contract.Assert(explicitStoreParams.Count == 0);
 
-      if (CoreOptions.Clo.UseArrayTheory)
+      if (options.UseArrayTheory)
       {
         select.AddAttribute("builtin", "select");
         store.AddAttribute("builtin", "store");
@@ -1120,8 +1122,7 @@ namespace Microsoft.Boogie.TypeErasure
 
   public class TypeEraserPremisses : TypeEraser
   {
-    private readonly TypeAxiomBuilderPremisses /*!*/
-      AxBuilderPremisses;
+    private readonly TypeAxiomBuilderPremisses /*!*/ AxBuilderPremisses;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -1343,7 +1344,7 @@ namespace Microsoft.Boogie.TypeErasure
       List<VCExprVar /*!*/> /*!*/
         newVarsWithTypeSpecs = new List<VCExprVar /*!*/>();
       if (!IsUniversalQuantifier(node) ||
-          CoreOptions.Clo.TypeEncodingMethod
+          options.TypeEncodingMethod
           == CoreOptions.TypeEncoding.Predicates)
       {
         foreach (VCExprVar /*!*/ oldVar in occurringVars)

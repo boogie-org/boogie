@@ -1927,7 +1927,7 @@ namespace Microsoft.Boogie
       Contract.Assume(XmlSink == null); // XmlSink is to be set here
       if (XmlSinkFilename != null)
       {
-        XmlSink = new XmlSink(XmlSinkFilename);
+        XmlSink = new XmlSink(this, XmlSinkFilename);
       }
 
       if (TheProverFactory == null)

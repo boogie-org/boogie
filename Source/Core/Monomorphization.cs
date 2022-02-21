@@ -304,6 +304,7 @@ namespace Microsoft.Boogie
   
   class MonomorphizationVisitor : StandardVisitor
   {
+    public CoreOptions Options { get; }
     /*
      * This class monomorphizes a Boogie program.
      * Monomorphization starts from a traversal of monomorphic procedures.
@@ -626,9 +627,9 @@ namespace Microsoft.Boogie
         return returnExpr;
       }
 
-      private static bool IsInlined(Implementation impl)
+      private bool IsInlined(Implementation impl)
       {
-        if (CoreOptions.Clo.ProcedureInlining == CoreOptions.Inlining.None)
+        if (monomorphizationVisitor.Options.ProcedureInlining == CoreOptions.Inlining.None)
         {
           return false;
         }
@@ -649,7 +650,7 @@ namespace Microsoft.Boogie
           var actualTypeParams =
             returnCallCmd.TypeParameters.FormalTypeParams.Select(x =>
                 TypeProxy.FollowProxy(returnCallCmd.TypeParameters[x]).Substitute(typeParamInstantiation))
-              .Select(x => LookupType(x)).ToList();
+              .Select(LookupType).ToList();
           returnCallCmd.Proc = InstantiateProcedure(node.Proc, actualTypeParams);
           returnCallCmd.callee = returnCallCmd.Proc.Name;
           returnCallCmd.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
@@ -843,7 +844,7 @@ namespace Microsoft.Boogie
       Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated,
       HashSet<Axiom> polymorphicFunctionAxioms)
     {
-      var monomorphizationVisitor = new MonomorphizationVisitor(program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
+      var monomorphizationVisitor = new MonomorphizationVisitor(options, program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
       // ctorTypes contains all the uninterpreted types created for monomorphizing top-level polymorphic implementations 
       // that must be verified. The types in ctorTypes are reused across different implementations.
       var ctorTypes = new List<Type>();
@@ -898,8 +899,10 @@ namespace Microsoft.Boogie
     private MonomorphizationDuplicator monomorphizationDuplicator;
     private Dictionary<Procedure, Implementation> procToImpl;
     
-    private MonomorphizationVisitor(Program program, Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, HashSet<Axiom> polymorphicFunctionAxioms)
+    private MonomorphizationVisitor(CoreOptions options, Program program,
+      Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, HashSet<Axiom> polymorphicFunctionAxioms)
     {
+      Options = options;
       this.program = program;
       this.axiomsToBeInstantiated = axiomsToBeInstantiated;
       implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();

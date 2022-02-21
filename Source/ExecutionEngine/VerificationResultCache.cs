@@ -677,10 +677,16 @@ namespace Microsoft.Boogie
 
   public sealed class VerificationResultCache
   {
+    private ExecutionEngineOptions options;
     private readonly MemoryCache Cache = new MemoryCache("VerificationResultCache");
 
     private readonly CacheItemPolicy Policy = new CacheItemPolicy
       {SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default};
+
+    public VerificationResultCache(ExecutionEngineOptions options)
+    {
+      this.options = options;
+    }
 
     public void Insert(Implementation impl, VerificationResult result)
     {
@@ -708,7 +714,7 @@ namespace Microsoft.Boogie
       {
         priority = Priority.LOW;
       }
-      else if (result.Outcome == ConditionGeneration.Outcome.TimedOut && CoreOptions.Clo.RunDiagnosticsOnTimeout)
+      else if (result.Outcome == ConditionGeneration.Outcome.TimedOut && options.RunDiagnosticsOnTimeout)
       {
         priority = Priority.MEDIUM;
       }
