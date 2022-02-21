@@ -49,7 +49,7 @@ namespace Microsoft.Boogie
         wr = XmlWriter.Create(filename, settings);
         wr.WriteStartDocument();
         wr.WriteStartElement("boogie");
-        wr.WriteAttributeString("version", CommandLineOptions.Clo.VersionNumber);
+        wr.WriteAttributeString("version", CoreOptions.Clo.VersionNumber);
         wr.WriteAttributeString("commandLine", Environment.CommandLine);
       }
       cce.EndExpose();

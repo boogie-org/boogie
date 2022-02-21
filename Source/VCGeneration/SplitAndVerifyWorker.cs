@@ -61,7 +61,7 @@ namespace VC
       implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
       ResetPredecessors(implementation.Blocks);
-      manualSplits = Split.FocusAndSplit(implementation, gotoCmdOrigins, vcGen, splitOnEveryAssert);
+      manualSplits = Split.FocusAndSplit(options, implementation, gotoCmdOrigins, vcGen, splitOnEveryAssert);
       
       if (manualSplits.Count == 1 && maxSplits > 1) {
         manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);

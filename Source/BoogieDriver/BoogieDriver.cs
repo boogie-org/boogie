@@ -11,18 +11,18 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(cce.NonNullElements(args));
 
-
-      var options = new CommandLineOptionsImpl
+      var options = new CommandLineOptions
       {
         RunningBoogieFromCommandLine = true
       };
       ExecutionEngine.printer = new ConsolePrinter(options);
-      CommandLineOptionsImpl.Install(options);
+      CommandLineOptions.Install(options);
 
       if (!options.Parse(args))
       {
         return 1;
       }
+      using var executionEngine = new ExecutionEngine(options);
       
       if (options.ProcessInfoFlags())
       {
@@ -65,11 +65,11 @@ namespace Microsoft.Boogie
 
       Helpers.ExtraTraceInformation("Becoming sentient");
 
-      var success = ExecutionEngine.ProcessFiles(options, fileList);
+      var success = executionEngine.ProcessFiles(fileList);
 
-      if (CommandLineOptions.Clo.XmlSink != null)
+      if (CoreOptions.Clo.XmlSink != null)
       {
-        CommandLineOptions.Clo.XmlSink.Close();
+        CoreOptions.Clo.XmlSink.Close();
       }
 
       if (options.Wait)
@@ -81,7 +81,7 @@ namespace Microsoft.Boogie
       return success ? 0 : 1;
     }
 
-    private static List<string> GetFileList(CommandLineOptionsImpl options)
+    private static List<string> GetFileList(CommandLineOptions options)
     {
       List<string> fileList = new List<string>();
       foreach (string file in options.Files)

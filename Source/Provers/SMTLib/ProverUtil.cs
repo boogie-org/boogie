@@ -172,7 +172,7 @@ The generic options may or may not be used by the prover plugin.
       Contract.Requires(proverPath != null);
       Contract.Ensures(confirmedProverPath != null);
       confirmedProverPath = proverPath;
-      if (CommandLineOptions.Clo.Trace)
+      if (CoreOptions.Clo.Trace)
       {
         Console.WriteLine("[TRACE] Using prover: " + confirmedProverPath);
       }

@@ -729,7 +729,7 @@ namespace Microsoft.Boogie.TypeErasure
       // the store function does not have any explicit type parameters
       Contract.Assert(explicitStoreParams.Count == 0);
 
-      if (CommandLineOptions.Clo.UseArrayTheory)
+      if (CoreOptions.Clo.UseArrayTheory)
       {
         select.AddAttribute("builtin", "select");
         store.AddAttribute("builtin", "store");
@@ -1343,8 +1343,8 @@ namespace Microsoft.Boogie.TypeErasure
       List<VCExprVar /*!*/> /*!*/
         newVarsWithTypeSpecs = new List<VCExprVar /*!*/>();
       if (!IsUniversalQuantifier(node) ||
-          CommandLineOptions.Clo.TypeEncodingMethod
-          == CommandLineOptions.TypeEncoding.Predicates)
+          CoreOptions.Clo.TypeEncodingMethod
+          == CoreOptions.TypeEncoding.Predicates)
       {
         foreach (VCExprVar /*!*/ oldVar in occurringVars)
         {

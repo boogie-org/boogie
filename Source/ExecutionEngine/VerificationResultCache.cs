@@ -65,6 +65,7 @@ namespace Microsoft.Boogie
 
   sealed class CachedVerificationResultInjector : StandardVisitor
   {
+    private ExecutionEngineOptions options;
     readonly Program Program;
 
     // TODO(wuestholz): We should probably increase the threshold to something like 2 seconds.
@@ -87,9 +88,10 @@ namespace Microsoft.Boogie
       get { return temporaryVariableCount++; }
     }
 
-    CachedVerificationResultInjector(Program program)
+    CachedVerificationResultInjector(ExecutionEngineOptions options, Program program)
     {
       Program = program;
+      this.options = options;
     }
 
     public Implementation Inject(Implementation implementation, Program programInCachedSnapshot)
@@ -139,7 +141,7 @@ namespace Microsoft.Boogie
           after.Add(assumed);
         }
 
-        if (CommandLineOptions.Clo.TraceCachingForTesting || CommandLineOptions.Clo.TraceCachingForBenchmarking) {
+        if (options.TraceCachingForTesting || options.TraceCachingForBenchmarking) {
           using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
           var loc = currentImplementation.tok != null && currentImplementation.tok != Token.NoToken
             ? string.Format("{0}({1},{2})", currentImplementation.tok.filename, currentImplementation.tok.line,
@@ -169,10 +171,10 @@ namespace Microsoft.Boogie
       return result;
     }
 
-    public static void Inject(Program program, IEnumerable<Implementation> implementations, string requestId,
+    public static void Inject(ExecutionEngineOptions options, Program program, IEnumerable<Implementation> implementations, string requestId,
       string programId, out long[] cachingActionCounts)
     {
-      var eai = new CachedVerificationResultInjector(program);
+      var eai = new CachedVerificationResultInjector(options, program);
 
       cachingActionCounts = new long[Enum.GetNames(typeof(VC.ConditionGeneration.CachingAction)).Length];
       var run = new CachedVerificationResultInjectorRun
@@ -202,11 +204,11 @@ namespace Microsoft.Boogie
             run.SkippedImplementationCount++;
           }
 
-          if (priority == Priority.LOW || priority == Priority.MEDIUM || CommandLineOptions.Clo.VerifySnapshots >= 3)
+          if (priority == Priority.LOW || priority == Priority.MEDIUM || options.VerifySnapshots >= 3)
           {
             if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
             {
-              SetErrorAndAssertionChecksumsInCachedSnapshot(impl, vr);
+              eai.SetErrorAndAssertionChecksumsInCachedSnapshot(impl, vr);
               if (vr.ProgramId != null)
               {
                 var p = ExecutionEngine.CachedProgram(vr.ProgramId);
@@ -225,11 +227,11 @@ namespace Microsoft.Boogie
       Statistics.AddRun(requestId, run);
     }
 
-    private static void SetErrorAndAssertionChecksumsInCachedSnapshot(Implementation implementation,
+    private void SetErrorAndAssertionChecksumsInCachedSnapshot(Implementation implementation,
       VerificationResult result)
     {
       if (result.Outcome == ConditionGeneration.Outcome.Errors && result.Errors != null &&
-          result.Errors.Count < CommandLineOptions.Clo.ErrorLimit)
+          result.Errors.Count < options.ErrorLimit)
       {
         implementation.SetErrorChecksumToCachedError(result.Errors.Select(cex =>
           new Tuple<byte[], byte[], object>(cex.Checksum, cex.SugaredCmdChecksum, cex)));
@@ -328,7 +330,7 @@ namespace Microsoft.Boogie
         }
 
         node.ExtendDesugaring(before, beforePreconditionCheck, after);
-        if (CommandLineOptions.Clo.TraceCachingForTesting || CommandLineOptions.Clo.TraceCachingForBenchmarking) {
+        if (options.TraceCachingForTesting || options.TraceCachingForBenchmarking) {
           using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
           var loc = node.tok != null && node.tok != Token.NoToken
             ? string.Format("{0}({1},{2})", node.tok.filename, node.tok.line, node.tok.col)
@@ -450,14 +452,20 @@ namespace Microsoft.Boogie
 
   sealed class OtherDefinitionAxiomsCollector : ReadOnlyVisitor
   {
+    private ExecutionEngineOptions options;
     Axiom currentAxiom;
     Trigger currentTrigger;
 
-    public static void Collect(IEnumerable<Axiom> axioms)
+    public OtherDefinitionAxiomsCollector(ExecutionEngineOptions options)
+    {
+      this.options = options;
+    }
+
+    public static void Collect(ExecutionEngineOptions options, IEnumerable<Axiom> axioms)
     {
       var start = DateTime.UtcNow;
 
-      var v = new OtherDefinitionAxiomsCollector();
+      var v = new OtherDefinitionAxiomsCollector(options);
       foreach (var a in axioms)
       {
         v.currentAxiom = a;
@@ -466,7 +474,7 @@ namespace Microsoft.Boogie
       }
 
       var end = DateTime.UtcNow;
-      if (CommandLineOptions.Clo.TraceCachingForDebugging)
+      if (options.TraceCachingForDebugging)
       {
         Console.Out.WriteLine("Collected other definition axioms within {0:F0} ms.",
           end.Subtract(start).TotalMilliseconds);
@@ -512,7 +520,7 @@ namespace Microsoft.Boogie
     private DeclWithFormals currentDeclaration;
     private Axiom currentAxiom;
 
-    public static void Collect(Program program)
+    public static void Collect(ExecutionEngineOptions options, Program program)
     {
       var start = DateTime.UtcNow;
 
@@ -520,7 +528,7 @@ namespace Microsoft.Boogie
       dc.VisitProgram(program);
 
       var end = DateTime.UtcNow;
-      if (CommandLineOptions.Clo.TraceCachingForDebugging)
+      if (options.TraceCachingForDebugging)
       {
         Console.Out.WriteLine("Collected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
       }
@@ -674,7 +682,6 @@ namespace Microsoft.Boogie
     private readonly CacheItemPolicy Policy = new CacheItemPolicy
       {SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default};
 
-
     public void Insert(Implementation impl, VerificationResult result)
     {
       Contract.Requires(impl != null);
@@ -701,7 +708,7 @@ namespace Microsoft.Boogie
       {
         priority = Priority.LOW;
       }
-      else if (result.Outcome == ConditionGeneration.Outcome.TimedOut && CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
+      else if (result.Outcome == ConditionGeneration.Outcome.TimedOut && CoreOptions.Clo.RunDiagnosticsOnTimeout)
       {
         priority = Priority.MEDIUM;
       }

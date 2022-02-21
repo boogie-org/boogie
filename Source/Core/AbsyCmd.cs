@@ -103,7 +103,7 @@ namespace Microsoft.Boogie
       if (!Anonymous)
       {
         stream.WriteLine(level, "{0}:",
-          CommandLineOptions.Clo.PrintWithUniqueASTIds
+          CoreOptions.Clo.PrintWithUniqueASTIds
             ? String.Format("h{0}^^{1}", this.GetHashCode(), this.LabelName)
             : this.LabelName);
       }
@@ -1331,7 +1331,7 @@ namespace Microsoft.Boogie
         this,
         level,
         "{0}:{1}",
-        CommandLineOptions.Clo.PrintWithUniqueASTIds
+        CoreOptions.Clo.PrintWithUniqueASTIds
           ? String.Format("h{0}^^{1}", this.GetHashCode(), this.Label)
           : this.Label,
         this.widenBlock ? "  // cut point" : "");
@@ -1427,7 +1427,7 @@ namespace Microsoft.Boogie
     public static void ComputeChecksums(Cmd cmd, Implementation impl, ISet<Variable> usedVariables,
       byte[] currentChecksum = null)
     {
-      if (CommandLineOptions.Clo.VerifySnapshots < 2)
+      if (CoreOptions.Clo.VerifySnapshots < 2)
       {
         return;
       }
@@ -1568,7 +1568,7 @@ namespace Microsoft.Boogie
         {
           tc.Error(this, "command assigns to an immutable variable: {0}", v.Name);
         }
-        else if (!CommandLineOptions.Clo.DoModSetAnalysis && v is GlobalVariable)
+        else if (!CoreOptions.Clo.DoModSetAnalysis && v is GlobalVariable)
         {
           if (!tc.Yields && !tc.InFrame(v))
           {
@@ -1730,7 +1730,7 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      if (!CommandLineOptions.Clo.DoModSetAnalysis && !tc.Yields)
+      if (!CoreOptions.Clo.DoModSetAnalysis && !tc.Yields)
       {
         tc.Error(this, "enclosing procedure of a yield command must yield");
       }
@@ -2553,7 +2553,7 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter stream, int level)
     {
       //Contract.Requires(stream != null);
-      if (CommandLineOptions.Clo.PrintDesugarings && !stream.UseForComputingChecksums)
+      if (CoreOptions.Clo.PrintDesugarings && !stream.UseForComputingChecksums)
       {
         stream.WriteLine(this, level, "/*** desugaring:");
         Desugaring.Emit(stream, level);
@@ -2733,7 +2733,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       TypecheckAttributes(Attributes, tc);
-      if (!CommandLineOptions.Clo.DoModSetAnalysis)
+      if (!CoreOptions.Clo.DoModSetAnalysis)
       {
         if (!tc.Yields)
         {
@@ -3139,7 +3139,7 @@ namespace Microsoft.Boogie
       TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
         actualTypeParams);
 
-      if (!CommandLineOptions.Clo.DoModSetAnalysis && IsAsync)
+      if (!CoreOptions.Clo.DoModSetAnalysis && IsAsync)
       {
         if (!tc.Yields)
         {
@@ -3310,7 +3310,7 @@ namespace Microsoft.Boogie
           }
         }
         else if (req.CanAlwaysAssume()
-                || CommandLineOptions.Clo.StratifiedInlining > 0)
+                || CoreOptions.Clo.StratifiedInlining > 0)
         {
           // inject free requires as assume statements at the call site
           AssumeCmd /*!*/
@@ -4312,7 +4312,7 @@ namespace Microsoft.Boogie
       //Contract.Requires(stream != null);
       Contract.Assume(this.labelNames != null);
       stream.Write(this, level, "goto ");
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (CoreOptions.Clo.PrintWithUniqueASTIds)
       {
         if (labelTargets == null)
         {

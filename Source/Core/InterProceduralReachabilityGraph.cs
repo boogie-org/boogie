@@ -257,7 +257,7 @@ namespace Microsoft.Boogie
     {
       if (ReachabilityGraphSCCsDAG == null)
       {
-        if (CommandLineOptions.Clo.Trace)
+        if (CoreOptions.Clo.Trace)
         {
           Console.WriteLine("Interprocedural reachability: computing SCCs");
         }
@@ -292,7 +292,7 @@ namespace Microsoft.Boogie
           ReachabilityGraphSCCsDAG.AddEdge(BlockToSCC[n], dummy);
         }
 
-        if (CommandLineOptions.Clo.Trace)
+        if (CoreOptions.Clo.Trace)
         {
           Console.WriteLine("Interprocedural reachability: SCCs computed!");
         }

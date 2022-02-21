@@ -265,7 +265,7 @@ namespace Microsoft.Boogie
         }
 
         axioms = gen.AndSimp(gen.Distinct(distinctVars), axioms);
-        if (CommandLineOptions.Clo.TypeEncodingMethod != CommandLineOptions.TypeEncoding.Monomorphic)
+        if (CoreOptions.Clo.TypeEncodingMethod != CoreOptions.TypeEncoding.Monomorphic)
         {
           axioms = gen.AndSimp(orderingAxiomBuilder.Axioms, axioms);
         }

@@ -48,6 +48,7 @@ namespace Microsoft.Boogie
     public volatile Program Program;
     public readonly ProverOptions SolverOptions;
 
+    public VCGenOptions Options => Pool.Options;
     public CheckerPool Pool { get; }
 
     public void GetReady()
@@ -111,7 +112,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      SolverOptions.Parse(CommandLineOptions.Clo.ProverOptions);
+      SolverOptions.Parse(Options.ProverOptions);
 
       var ctx = Pool.Options.TheProverFactory.NewProverContext(SolverOptions);
 
@@ -150,7 +151,7 @@ namespace Microsoft.Boogie
     /// </summary>
     private void Setup(Program prog, ProverContext ctx, Split split = null)
     {
-      SolverOptions.RandomSeed = split?.RandomSeed ?? CommandLineOptions.Clo.RandomSeed;
+      SolverOptions.RandomSeed = split?.RandomSeed ?? Options.RandomSeed;
       var random = SolverOptions.RandomSeed == null ? null : new Random(SolverOptions.RandomSeed.Value);
       
       Program = prog;
@@ -185,11 +186,11 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations, Random random)
+    private IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations, Random random)
     {
       if (random == null) {
         // By ordering the declarations based on their content and naming them based on order, the solver input stays constant under reordering and renaming.
-        return CommandLineOptions.Clo.NormalizeDeclarationOrder
+        return Options.NormalizeDeclarationOrder
           ? declarations.OrderBy(d => d.ContentHash)
           : declarations;
       }
@@ -257,7 +258,7 @@ namespace Microsoft.Boogie
     private async Task WaitForOutput(object dummy, CancellationToken cancellationToken)
     {
       try {
-        outcome = await thmProver.CheckOutcome(cce.NonNull(handler), CommandLineOptions.Clo.ErrorLimit,
+        outcome = await thmProver.CheckOutcome(cce.NonNull(handler), Options.ErrorLimit,
           cancellationToken);
       }
       catch (OperationCanceledException) {

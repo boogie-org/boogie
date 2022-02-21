@@ -19,7 +19,7 @@ namespace Microsoft.Boogie
       program = v.VisitProgram(program);
       axioms = v.lambdaAxioms;
       functions = v.lambdaFunctions;
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (CoreOptions.Clo.TraceVerify)
       {
         Console.WriteLine("Desugaring of lambda expressions produced {0} functions and {1} axioms:", functions.Count,
           axioms.Count);
@@ -121,7 +121,7 @@ namespace Microsoft.Boogie
           return baseResult; // apparently, the base visitor already turned the lambda into something else
         }
 
-        return CommandLineOptions.Clo.FreeVarLambdaLifting ? LiftLambdaFreeVars(lambda) : LiftLambdaMaxHoles(lambda);
+        return CoreOptions.Clo.FreeVarLambdaLifting ? LiftLambdaFreeVars(lambda) : LiftLambdaMaxHoles(lambda);
       }
 
       /// <summary>
@@ -174,7 +174,7 @@ namespace Microsoft.Boogie
           Substituter.SubstitutionFromDictionary(oldSubst),
           lambda.Attributes);
 
-        if (0 < CommandLineOptions.Clo.VerifySnapshots &&
+        if (0 < CoreOptions.Clo.VerifySnapshots &&
             QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
         {
           // Attach a dummy checksum to avoid issues in the dependency analysis.
@@ -250,14 +250,14 @@ namespace Microsoft.Boogie
 
         if (liftedLambdas.TryGetValue(lambda, out var fcall))
         {
-          if (CommandLineOptions.Clo.TraceVerify)
+          if (CoreOptions.Clo.TraceVerify)
           {
             Console.WriteLine("Old lambda: {0}", lam_str);
           }
         }
         else
         {
-          if (CommandLineOptions.Clo.TraceVerify)
+          if (CoreOptions.Clo.TraceVerify)
           {
             Console.WriteLine("New lambda: {0}", lam_str);
           }

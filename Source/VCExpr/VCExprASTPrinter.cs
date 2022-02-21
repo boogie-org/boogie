@@ -416,7 +416,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
-      if (CommandLineOptions.Clo.ReflectAdd)
+      if (CoreOptions.Clo.ReflectAdd)
       {
         return PrintNAry("Reflect$Add", node, wr);
       }
