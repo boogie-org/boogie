@@ -70,7 +70,7 @@ namespace VC
       }
 
 
-      private readonly List<Block> blocks;
+      public readonly List<Block> blocks;
       public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
       readonly List<Block> bigBlocks = new();
 
@@ -80,8 +80,6 @@ namespace VC
       static int currentId = -1;
       Block splitBlock;
       bool assertToAssume;
-
-      public IToken tok => splitBlock.tok;
 
       List<Block /*!*/> /*!*/
         assumizedBranches = new List<Block /*!*/>();

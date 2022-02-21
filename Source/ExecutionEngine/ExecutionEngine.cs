@@ -29,6 +29,9 @@ namespace Microsoft.Boogie
     // For real-time feedback.
     void ReportStartVerifyImpl(IToken tok);
     void ReportEndVerifyImpl(IToken tok, VerificationResult result);
+    
+    // non-positive for default priority.
+    int GetVerificationPriority(IToken implTok);
   }
 
 
@@ -210,11 +213,15 @@ namespace Microsoft.Boogie
       // Do not print to console
     }
 
-    public void ReportVerificationStarts(IToken token, IToken parentToken) {
+    public int GetVerificationPriority(IToken implTok) {
+      return 0;
+    }
+
+    public void ReportVerificationStarts(List<IToken> token, IToken parentToken) {
       // Do not print to console
     }
 
-    public void ReportVerificationCompleted(IToken token, IToken parentToken, ConditionGeneration.Outcome outcome, int totalResource) {
+    public void ReportVerificationCompleted(List<IToken> token, IToken parentToken, ConditionGeneration.Outcome outcome, int totalResource) {
       // Do not print to console
     }
   }
@@ -974,16 +981,25 @@ namespace Microsoft.Boogie
 
       // operate on a stable copy, in case it gets updated while we're running
       Implementation[] stablePrioritizedImpls = null;
+      var userDefinedPriorities =
+        impls.ToDictionary(impl => impl, impl => printer.GetVerificationPriority(impl.tok));
+
+      int UserPriorityOrDefault(Implementation impl, int defaultPriority) {
+        var userDefinedPriority = userDefinedPriorities[impl];
+        return userDefinedPriority > 0 ? userDefinedPriority : defaultPriority;
+      }
       if (0 < CommandLineOptions.Clo.VerifySnapshots)
       {
         OtherDefinitionAxiomsCollector.Collect(program.Axioms);
         DependencyCollector.Collect(program);
         stablePrioritizedImpls = impls.OrderByDescending(
-          impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl)).ToArray();
+          impl =>
+            UserPriorityOrDefault(impl, impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl))
+          ).ToArray();
       }
       else
       {
-        stablePrioritizedImpls = impls.OrderByDescending(impl => impl.Priority).ToArray();
+        stablePrioritizedImpls = impls.OrderByDescending(impl => UserPriorityOrDefault(impl, impl.Priority)).ToArray();
       }
 
       #endregion

@@ -126,7 +126,7 @@ namespace VC
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
         implementation.TimeLimit;
-      split.parent.Logger?.VerificationStarts(split.tok, split.Implementation.tok);
+      split.parent.Logger?.ReportVerificationStarts(split.blocks.SelectMany(block => block.Cmds.Select(cmd => cmd.tok)).ToList(), split.Implementation.tok);
       split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit, cancellationToken);
     }
 
@@ -139,7 +139,7 @@ namespace VC
       }
 
       split.ReadOutcome(ref outcome, out var proverFailed, ref totalResourceCount);
-      split.parent.Logger?.VerificationCompleted(split.tok, split.Implementation.tok, outcome, totalResourceCount);
+      split.parent.Logger?.ReportVerificationCompleted(split.blocks.SelectMany(block => block.Cmds.Select(cmd => cmd.tok)).ToList(), split.Implementation.tok, outcome, totalResourceCount);
       
       if (TrackingProgress) {
         lock (this) {
