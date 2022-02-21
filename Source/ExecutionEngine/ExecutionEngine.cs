@@ -264,7 +264,8 @@ namespace Microsoft.Boogie
       checkerPool = new CheckerPool(options);
     }
 
-    public ExecutionEngine(ExecutionEngineOptions options) : this(options, new VerificationResultCache(options))
+    public ExecutionEngine(ExecutionEngineOptions options) : this(options,
+      new VerificationResultCache(options.RunDiagnosticsOnTimeout))
     {
 
     }
