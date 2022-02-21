@@ -305,7 +305,7 @@ namespace Microsoft.Boogie
         return snapshotsByVersion.All(s =>
         {
           // BUG: Reusing checkers during snapshots doesn't work, even though it should. We create a new engine (and thus checker pool) to workaround this.
-          using var engine = new ExecutionEngine(Options);
+          using var engine = new ExecutionEngine(Options, Cache);
           return engine.ProcessFiles(new List<string>(s), false, programId);
         });
       }
