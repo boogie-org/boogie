@@ -22,7 +22,7 @@ namespace Microsoft.Boogie
       {
         return 1;
       }
-      using var executionEngine = new ExecutionEngine(options);
+      using var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
       
       if (options.ProcessInfoFlags())
       {
