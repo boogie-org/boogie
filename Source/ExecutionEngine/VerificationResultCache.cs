@@ -677,14 +677,14 @@ namespace Microsoft.Boogie
 
   public sealed class VerificationResultCache
   {
-    private readonly bool runDiagnosticsOnTimeout;
+    public bool RunDiagnosticsOnTimeout { get; }
     private readonly MemoryCache Cache = new MemoryCache("VerificationResultCache");
 
     private readonly CacheItemPolicy Policy = new CacheItemPolicy
       {SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default};
 
     public VerificationResultCache(bool runDiagnosticsOnTimeout) {
-      this.runDiagnosticsOnTimeout = runDiagnosticsOnTimeout;
+      this.RunDiagnosticsOnTimeout = runDiagnosticsOnTimeout;
     }
 
     public void Insert(Implementation impl, VerificationResult result)
@@ -713,7 +713,7 @@ namespace Microsoft.Boogie
       {
         priority = Priority.LOW;
       }
-      else if (result.Outcome == ConditionGeneration.Outcome.TimedOut && runDiagnosticsOnTimeout)
+      else if (result.Outcome == ConditionGeneration.Outcome.TimedOut && RunDiagnosticsOnTimeout)
       {
         priority = Priority.MEDIUM;
       }
