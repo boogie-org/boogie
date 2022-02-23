@@ -15,7 +15,7 @@ namespace Microsoft.Boogie
 {
   #region Output printing
 
-  public interface OutputPrinter: IConditionGenerationLogger
+  public interface OutputPrinter : IConditionGenerationLogger
   {
     void ErrorWriteLine(TextWriter tw, string s);
     void ErrorWriteLine(TextWriter tw, string format, params object[] args);
@@ -32,6 +32,9 @@ namespace Microsoft.Boogie
     
     // non-positive for default priority.
     int GetVerificationPriority(IToken implTok);
+    
+    // Report the number of implementations that are going to be verified.
+    void ReportImplementationMultiplicity(IToken[] toArray);
   }
 
 
@@ -215,6 +218,10 @@ namespace Microsoft.Boogie
 
     public int GetVerificationPriority(IToken implTok) {
       return 0;
+    }
+
+    public void ReportImplementationMultiplicity(IToken[] toArray) {
+      // Do not print to console
     }
 
     public void ReportVerificationStarts(List<IToken> token, IToken parentToken) {
@@ -978,11 +985,13 @@ namespace Microsoft.Boogie
       var impls = program.Implementations.Where(
         impl => impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) &&
                 !impl.SkipVerification);
+      printer.ReportImplementationMultiplicity(impls.Select(impl => impl.tok).ToArray());
 
       // operate on a stable copy, in case it gets updated while we're running
       Implementation[] stablePrioritizedImpls = null;
       var userDefinedPriorities =
-        impls.ToDictionary(impl => impl, impl => printer.GetVerificationPriority(impl.tok));
+        impls.ToDictionary(impl => impl,
+          impl => printer.GetVerificationPriority(impl.tok));
 
       int UserPriorityOrDefault(Implementation impl, int defaultPriority) {
         var userDefinedPriority = userDefinedPriorities[impl];
