@@ -1,5 +1,5 @@
-// RUN: %boogie "%s" /mv:- /normalizeNames:1 /proverLog:%t.proverLog /loopUnroll:2 /inline:none > "%t"
-// RUN: %boogie "%s" /mv:- /normalizeNames:1 /loopUnroll:3 >> "%t"
+// RUN: %parallel-boogie "%s" /mv:- /normalizeNames:1 /proverLog:%t.proverLog /loopUnroll:2 /inline:none > "%t"
+// RUN: %parallel-boogie "%s" /mv:- /normalizeNames:1 /loopUnroll:3 >> "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure LoopUnroll(n: int)
