@@ -10,9 +10,9 @@ namespace Microsoft.Boogie.VCExprAST
   public class VCExprPrinter : IVCExprVisitor<bool, TextWriter /*!*/>
   {
     private VCExprOpPrinter OpPrinterVar = null;
-    public CoreOptions Options { get; }
+    public PrintOptions Options { get; }
 
-    public VCExprPrinter(CoreOptions options)
+    public VCExprPrinter(PrintOptions options)
     {
       Options = options;
     }

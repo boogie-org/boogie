@@ -8,7 +8,7 @@ namespace Microsoft.Boogie
 {
   public class TokenTextWriter : IDisposable
   {
-    public CoreOptions Options { get; }
+    public PrintOptions Options { get; }
     string /*!*/ filename;
 
     TextWriter /*!*/ writer;
@@ -287,7 +287,7 @@ namespace Microsoft.Boogie
       this.setTokens = setTokens;
     }
 
-    public TokenTextWriter(string filename, TextWriter writer, bool setTokens, bool pretty, CoreOptions options)
+    public TokenTextWriter(string filename, TextWriter writer, bool setTokens, bool pretty, PrintOptions options)
       : base()
     {
       Contract.Requires(writer != null);

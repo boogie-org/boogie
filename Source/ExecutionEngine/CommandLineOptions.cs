@@ -651,7 +651,6 @@ namespace Microsoft.Boogie
     public static void Install(CoreOptions options)
     {
       Contract.Requires(options != null);
-      CoreOptions.Clo = options;
     }
 
     // Flags and arguments

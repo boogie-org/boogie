@@ -1698,11 +1698,10 @@ namespace Microsoft.Boogie
     }
 
     [Pure]
-    public override string ToString()
-    {
+    public override string ToString() {
       Contract.Ensures(Contract.Result<string>() != null);
       System.IO.StringWriter buffer = new System.IO.StringWriter();
-      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, CoreOptions.Clo);
+      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, PrintOptions.Default);
       this.Emit(stream, 0);
 
       return buffer.ToString();
@@ -2490,7 +2489,7 @@ namespace Microsoft.Boogie
       Contract.Requires(tok != null);
     }
 
-    public Cmd GetDesugaring(CoreOptions options)
+    public Cmd GetDesugaring(PrintOptions options)
     {
       Contract.Ensures(Contract.Result<Cmd>() != null);
 
@@ -2518,7 +2517,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    protected abstract Cmd /*!*/ ComputeDesugaring(CoreOptions options);
+    protected abstract Cmd /*!*/ ComputeDesugaring(PrintOptions options);
 
     public void ExtendDesugaring(CoreOptions options, IEnumerable<Cmd> before, IEnumerable<Cmd> beforePreconditionCheck,
       IEnumerable<Cmd> after)
@@ -2565,7 +2564,7 @@ namespace Microsoft.Boogie
     {
     }
 
-    protected override Cmd ComputeDesugaring(CoreOptions options)
+    protected override Cmd ComputeDesugaring(PrintOptions options)
     {
       Contract.Ensures(Contract.Result<Cmd>() != null);
 
@@ -2668,7 +2667,7 @@ namespace Microsoft.Boogie
       this.CallCmds = callCmds;
     }
 
-    protected override Cmd ComputeDesugaring(CoreOptions options)
+    protected override Cmd ComputeDesugaring(PrintOptions options)
     {
       throw new NotImplementedException();
     }
@@ -3164,7 +3163,7 @@ namespace Microsoft.Boogie
       return res;
     }
 
-    protected override Cmd ComputeDesugaring(CoreOptions options)
+    protected override Cmd ComputeDesugaring(PrintOptions options)
     {
       Contract.Ensures(Contract.Result<Cmd>() != null);
 
@@ -4180,7 +4179,7 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<string>() != null);
       System.IO.StringWriter buffer = new System.IO.StringWriter();
-      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, CoreOptions.Clo);
+      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, PrintOptions.Default);
       this.Emit(stream, 0);
 
       return buffer.ToString();
