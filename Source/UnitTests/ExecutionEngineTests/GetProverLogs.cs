@@ -18,7 +18,7 @@ public static class GetProverLogs
     
   public static IEnumerable<string> GetProverLogsForProgram(ExecutionEngineOptions options, string procedure1)
   {
-    using var engine = new ExecutionEngine(options);
+    using var engine = ExecutionEngine.CreateWithoutSharedCache(options);
     ExecutionEngine.printer = new ConsolePrinter(engine.Options);
     var defines = new List<string>() { "FILE_0" };
 

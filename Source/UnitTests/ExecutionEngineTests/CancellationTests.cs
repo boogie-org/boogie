@@ -26,7 +26,7 @@ namespace ExecutionEngineTests
     public async Task InferAndVerifyCanBeCancelledWhileWaitingForProver() {
       var options = CommandLineOptions.FromArguments();
       CommandLineOptions.Install(options);
-      using var executionEngine = new ExecutionEngine(options);
+      using var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
       var infiniteProgram = GetProgram(executionEngine, slow);
       var terminatingProgram = GetProgram(executionEngine, fast);
       
