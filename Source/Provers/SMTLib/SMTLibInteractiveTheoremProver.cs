@@ -637,7 +637,7 @@ namespace Microsoft.Boogie.SMTLib
             break;
           }
 
-          result = ParseReasonUnknown(resp);
+          result = ParseReasonUnknown(resp, result);
           if (result == Outcome.OutOfMemory) {
             ProcessNeedsRestart = true;
           }

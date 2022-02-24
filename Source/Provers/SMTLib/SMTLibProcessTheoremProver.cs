@@ -1223,6 +1223,12 @@ namespace Microsoft.Boogie.SMTLib
     {
       var result = Outcome.Undetermined;
       wasUnknown = false;
+
+      if (resp is null) {
+        wasUnknown = true;
+        return result;
+      }
+
       switch (resp.Name)
       {
         case "unsat":
@@ -1259,13 +1265,19 @@ namespace Microsoft.Boogie.SMTLib
       return result;
     }
 
-    protected Outcome ParseReasonUnknown(SExpr resp)
+    protected Outcome ParseReasonUnknown(SExpr resp, Outcome initialOutcome)
     {
       Outcome result;
-      if (resp.ArgCount == 1 && resp.Name == ":reason-unknown")
+      if (resp is null || resp.Name == "") {
+        result = initialOutcome;
+      }
+      else if (resp.ArgCount == 1 && resp.Name == ":reason-unknown")
       {
         switch (resp[0].Name)
         {
+          case "":
+            result = initialOutcome;
+            break;
           case "incomplete":
           case "(incomplete quantifiers)":
           case "(incomplete (theory arithmetic))":
@@ -1639,7 +1651,8 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
       Contract.Ensures(Contract.Result<SMTLibProcessTheoremProver>() != null);
-      return new SMTLibInteractiveTheoremProver(libOptions, options, gen, ctx);
+      //return new SMTLibInteractiveTheoremProver(libOptions, options, gen, ctx);
+      return new SMTLibBatchTheoremProver(libOptions, options, gen, ctx);
     }
   }
 }
