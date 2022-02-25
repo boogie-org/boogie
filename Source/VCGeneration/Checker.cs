@@ -41,7 +41,7 @@ namespace Microsoft.Boogie
     private volatile ProverInterface.Outcome outcome;
     private volatile bool hasOutput;
     private volatile UnexpectedProverOutputException outputExn;
-    private DateTime proverStart;
+    public DateTime ProverStart { get; private set; }
     private TimeSpan proverRunTime;
     private volatile ProverInterface.ErrorHandler handler;
     private volatile CheckerStatus status;
@@ -296,7 +296,7 @@ namespace Microsoft.Boogie
       }
 
       hasOutput = true;
-      proverRunTime = DateTime.UtcNow - proverStart;
+      proverRunTime = DateTime.UtcNow - ProverStart;
     }
 
     public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, CancellationToken cancellationToken)
@@ -318,7 +318,7 @@ namespace Microsoft.Boogie
       }
       SetTimeout(timeout);
       SetRlimit(rlimit);
-      proverStart = DateTime.UtcNow;
+      ProverStart = DateTime.UtcNow;
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 

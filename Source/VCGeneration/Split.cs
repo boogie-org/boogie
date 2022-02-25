@@ -1294,7 +1294,10 @@ namespace VC
         }
 
         if (options.XmlSink != null && splitNum >= 0) {
-          options.XmlSink.WriteEndSplit(outcome.ToString().ToLowerInvariant(),
+          options.XmlSink.WriteSplit(
+            splitNum + 1,
+            checker.ProverStart,
+            outcome.ToString().ToLowerInvariant(),
             TimeSpan.FromSeconds(checker.ProverRunTime.TotalSeconds));
         }
 
