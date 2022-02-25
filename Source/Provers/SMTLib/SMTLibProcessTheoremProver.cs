@@ -529,7 +529,7 @@ namespace Microsoft.Boogie.SMTLib
       return new StreamWriter(curFilename, false);
     }
 
-    private void FlushProverWarnings()
+    protected void FlushProverWarnings()
     {
       var handler = currentErrorHandler;
       if (handler != null)

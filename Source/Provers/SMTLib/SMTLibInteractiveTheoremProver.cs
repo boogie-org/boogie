@@ -179,19 +179,6 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private void FlushProverWarnings()
-    {
-      var handler = currentErrorHandler;
-      if (handler != null)
-      {
-        lock (proverWarnings)
-        {
-          proverWarnings.Iter(handler.OnProverWarning);
-          proverWarnings.Clear();
-        }
-      }
-    }
-
     [NoDefaultContract]
     public override async Task<Outcome> CheckOutcome(ErrorHandler handler, int errorLimit, CancellationToken cancellationToken)
     {

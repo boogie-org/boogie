@@ -1,14 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
-using System.Globalization;
-using System.Numerics;
 using Microsoft.Boogie.VCExprAST;
-using Microsoft.Boogie.TypeErasure;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -41,12 +35,6 @@ namespace Microsoft.Boogie.SMTLib
       Process = options.Solver == SolverKind.NoOpWithZ3Options ? new NoopSolver() : new SMTLibProcess(libOptions, options);
       Process.ErrorHandler += HandleProverError;
       CheckSatSent = false;
-    }
-
-    private void FlushAndCacheCommons()
-    {
-      FlushAxioms();
-      CachedCommon ??= common.ToString();
     }
 
     public override int FlushAxiomsToTheoremProver()
@@ -108,11 +96,6 @@ namespace Microsoft.Boogie.SMTLib
         Axioms.Clear();
         TypeDecls.Clear();
         AxiomsAreSetup = false;
-        /*
-        ctx.Reset();
-        ctx.KnownDatatypes.Clear();
-        ctx.parent = this;
-        */
         DeclCollector.Reset();
         NamedAssumes.Clear();
         UsedNamedAssumes = null;
@@ -120,17 +103,6 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     // TODO: move to base?
-    private void FlushProverWarnings()
-    {
-      var handler = currentErrorHandler;
-      if (handler != null) {
-        lock (proverWarnings) {
-          proverWarnings.Iter(handler.OnProverWarning);
-          proverWarnings.Clear();
-        }
-      }
-    }
-
     [NoDefaultContract]
     public override async Task<Outcome> CheckOutcome(ErrorHandler handler, int errorLimit, CancellationToken cancellationToken)
     {
@@ -156,7 +128,7 @@ namespace Microsoft.Boogie.SMTLib
         var result = await GetResponse(cancellationToken);
 
         if (result == Outcome.Invalid) {
-          var labels = CalculatePath(handler.StartingProcId(), errorModel, cancellationToken);
+          var labels = CalculatePath(handler.StartingProcId(), errorModel);
           if (labels.Length == 0) {
             // Without a path to an error, we don't know what to report
             result = Outcome.Undetermined;
@@ -180,10 +152,8 @@ namespace Microsoft.Boogie.SMTLib
 
     private async Task<Outcome> GetResponse(CancellationToken cancellationToken)
     {
-      var wasUnknown = false;
-
       var outcomeSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-      var result = ParseOutcome(outcomeSExp, out wasUnknown);
+      var result = ParseOutcome(outcomeSExp, out var wasUnknown);
 
       var unknownSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
       if (wasUnknown) {
@@ -194,12 +164,12 @@ namespace Microsoft.Boogie.SMTLib
       resourceCount = ParseRCount(rlimitSExp);
 
       var modelSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-      errorModel = GetErrorModel(modelSExp, cancellationToken);
+      errorModel = ParseErrorModel(modelSExp);
 
       return result;
     }
 
-    private string[] CalculatePath(int controlFlowConstant, Model model, CancellationToken cancellationToken)
+    private string[] CalculatePath(int controlFlowConstant, Model model)
     {
       var path = new List<string>();
 
@@ -235,7 +205,7 @@ namespace Microsoft.Boogie.SMTLib
       return path.ToArray();
     }
 
-    private Model GetErrorModel(SExpr resp, CancellationToken cancellationToken)
+    private Model ParseErrorModel(SExpr resp)
     {
       if (resp is null) {
         return null;

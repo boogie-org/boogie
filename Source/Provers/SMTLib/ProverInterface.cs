@@ -258,7 +258,7 @@ public abstract class ProverInterface
   }
 
   public virtual Task<Outcome> CheckOutcomeCore(ErrorHandler handler,
-    CancellationToken cancellationToken, int taskID = -1)
+    CancellationToken cancellationToken, int errorLimit)
   {
     throw new NotImplementedException();
   }
