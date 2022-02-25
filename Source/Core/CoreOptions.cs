@@ -7,8 +7,8 @@ namespace Microsoft.Boogie
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
-  public interface CoreOptions : PrintOptions
-  {
+  public interface CoreOptions : PrintOptions {
+
     public enum TypeEncoding
     {
       Predicates,

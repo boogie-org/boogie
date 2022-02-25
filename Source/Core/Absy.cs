@@ -377,7 +377,7 @@ namespace Microsoft.Boogie
     /// <returns></returns>
     public int Resolve(CoreOptions options)
     {
-      return Resolve(options, (IErrorSink) null);
+      return Resolve(options, null);
     }
 
     public int Resolve(CoreOptions options, IErrorSink errorSink)

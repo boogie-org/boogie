@@ -28,7 +28,6 @@ namespace Microsoft.Boogie
 
   #endregion
 
-
   public enum PipelineOutcome
   {
     Done,
@@ -264,7 +263,7 @@ namespace Microsoft.Boogie
     }
 
     public static ExecutionEngine CreateWithoutSharedCache(ExecutionEngineOptions options) {
-      return new ExecutionEngine(options, new VerificationResultCache(options.RunDiagnosticsOnTimeout));
+      return new ExecutionEngine(options, new VerificationResultCache());
     }
 
     public ExecutionEngineOptions Options { get; }
@@ -400,7 +399,6 @@ namespace Microsoft.Boogie
 
       return result;
     }
-
 
     public void CoalesceBlocks(Program program)
     {
@@ -806,7 +804,7 @@ namespace Microsoft.Boogie
         OtherDefinitionAxiomsCollector.Collect(Options, program.Axioms);
         DependencyCollector.Collect(Options, program);
         stablePrioritizedImpls = impls.OrderByDescending(
-          impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl)).ToArray();
+          impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl, Options.RunDiagnosticsOnTimeout)).ToArray();
       }
       else
       {
@@ -1016,7 +1014,7 @@ namespace Microsoft.Boogie
       var wasCached = false;
       if (0 < Options.VerifySnapshots)
       {
-        var cachedResults = Cache.Lookup(impl, out priority);
+        var cachedResults = Cache.Lookup(impl, Options.RunDiagnosticsOnTimeout, out priority);
         if (cachedResults != null && priority == Priority.SKIP)
         {
           if (Options.XmlSink != null)

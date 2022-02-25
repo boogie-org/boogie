@@ -108,6 +108,17 @@ namespace Microsoft.Boogie
       }
     }
 
+    public void ExpandFilename(ref string pattern, string logPrefix, string fileTimestamp)
+    {
+      if (pattern != null)
+      {
+        pattern = pattern.Replace("@PREFIX@", logPrefix).Replace("@TIME@", fileTimestamp);
+        string fn = Files.Count == 0 ? "" : Files[Files.Count - 1];
+        fn = Util.EscapeFilename(fn);
+        pattern = pattern.Replace("@FILE@", fn);
+      }
+    }
+
     public void ExpandFilename(string pattern, Action<string> setPattern, string logPrefix, string fileTimestamp)
     {
       if (pattern != null)
@@ -627,8 +638,8 @@ namespace Microsoft.Boogie
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
-  public class CommandLineOptions : CommandLineOptionEngine, ExecutionEngineOptions
-  {
+  public class CommandLineOptions : CommandLineOptionEngine, ExecutionEngineOptions {
+
     public static CommandLineOptions FromArguments(params string[] arguments)
     {
       var result = new CommandLineOptions();
@@ -646,11 +657,6 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(toolName != null);
       Contract.Requires(descriptiveName != null);
-    }
-
-    public static void Install(CoreOptions options)
-    {
-      Contract.Requires(options != null);
     }
 
     // Flags and arguments

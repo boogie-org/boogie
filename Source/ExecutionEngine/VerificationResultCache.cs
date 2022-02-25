@@ -184,7 +184,7 @@ namespace Microsoft.Boogie
       };
       foreach (var impl in implementations)
       {
-        var vr = engine.Cache.Lookup(impl, out var priority);
+        var vr = engine.Cache.Lookup(impl, engine.Options.RunDiagnosticsOnTimeout, out var priority);
         if (vr != null && vr.ProgramId == programId)
         {
           if (priority == Priority.LOW)
@@ -677,15 +677,10 @@ namespace Microsoft.Boogie
 
   public sealed class VerificationResultCache
   {
-    public bool RunDiagnosticsOnTimeout { get; }
     private readonly MemoryCache Cache = new MemoryCache("VerificationResultCache");
 
     private readonly CacheItemPolicy Policy = new CacheItemPolicy
       {SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default};
-
-    public VerificationResultCache(bool runDiagnosticsOnTimeout) {
-      this.RunDiagnosticsOnTimeout = runDiagnosticsOnTimeout;
-    }
 
     public void Insert(Implementation impl, VerificationResult result)
     {
@@ -696,7 +691,7 @@ namespace Microsoft.Boogie
     }
 
 
-    public VerificationResult Lookup(Implementation impl, out int priority)
+    public VerificationResult Lookup(Implementation impl, bool runDiagnosticsOnTimeout, out int priority)
     {
       Contract.Requires(impl != null);
 
@@ -713,7 +708,7 @@ namespace Microsoft.Boogie
       {
         priority = Priority.LOW;
       }
-      else if (result.Outcome == ConditionGeneration.Outcome.TimedOut && RunDiagnosticsOnTimeout)
+      else if (result.Outcome == ConditionGeneration.Outcome.TimedOut && runDiagnosticsOnTimeout)
       {
         priority = Priority.MEDIUM;
       }
@@ -746,11 +741,11 @@ namespace Microsoft.Boogie
     }
 
 
-    public int VerificationPriority(Implementation impl)
+    public int VerificationPriority(Implementation impl, bool runDiagnosticsOnTimeout)
     {
       Contract.Requires(impl != null);
 
-      Lookup(impl, out var priority);
+      Lookup(impl, runDiagnosticsOnTimeout, out var priority);
       return priority;
     }
   }
