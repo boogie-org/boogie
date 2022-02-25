@@ -1,11 +1,11 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
+using VC;
 using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Microsoft.Boogie
@@ -659,6 +659,11 @@ namespace Microsoft.Boogie
           Contract.Assume(false);
           throw new cce.UnreachableException(); // unexpected case
       }
+    }
+
+    public virtual void OnSplitResult(SplitResult result)
+    {
+      Contract.Requires(result != null);
     }
   }
 }

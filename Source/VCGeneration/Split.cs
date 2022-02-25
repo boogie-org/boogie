@@ -15,6 +15,14 @@ namespace VC
   using Bpl = Microsoft.Boogie;
   using System.Threading.Tasks;
 
+  public record SplitResult
+  (
+    int splitNum,
+    DateTime startTime,
+    ProverInterface.Outcome outcome,
+    TimeSpan runTime
+  );
+
   public class Split
   {
       private VCGenOptions options;
@@ -1282,7 +1290,7 @@ namespace VC
         }
       }
 
-      public void ReadOutcome(ref ConditionGeneration.Outcome curOutcome, out bool proverFailed, ref int totalResourceCount)
+      public void ReadOutcome(VerifierCallback callback, ref ConditionGeneration.Outcome curOutcome, out bool proverFailed, ref int totalResourceCount)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
@@ -1293,13 +1301,8 @@ namespace VC
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
-        if (options.XmlSink != null && splitNum >= 0) {
-          options.XmlSink.WriteSplit(
-            splitNum + 1,
-            checker.ProverStart,
-            outcome.ToString().ToLowerInvariant(),
-            TimeSpan.FromSeconds(checker.ProverRunTime.TotalSeconds));
-        }
+        var result = new SplitResult(splitNum + 1, checker.ProverStart, outcome, checker.ProverRunTime);
+        callback.OnSplitResult(result);
 
         if (options.VcsDumpSplits)
         {

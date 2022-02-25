@@ -134,7 +134,7 @@ namespace VC
         }
       }
 
-      split.ReadOutcome(ref outcome, out var proverFailed, ref totalResourceCount);
+      split.ReadOutcome(callback, ref outcome, out var proverFailed, ref totalResourceCount);
 
       if (TrackingProgress) {
         lock (this) {

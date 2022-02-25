@@ -115,6 +115,7 @@ namespace VC
     /// </summary>
     /// <param name="impl"></param>
     public Outcome VerifyImplementation(Implementation impl, out List<Counterexample> /*?*/ errors,
+      out List<SplitResult> splitResults,
       string requestId, CancellationToken cancellationToken)
     {
       Contract.Requires(impl != null);
@@ -125,7 +126,7 @@ namespace VC
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       Helpers.ExtraTraceInformation("Starting implementation verification");
 
-      CounterexampleCollector collector = new CounterexampleCollector(Options);
+      VerificationResultCollector collector = new VerificationResultCollector(Options);
       collector.RequestId = requestId;
       Outcome outcome = VerifyImplementation(impl, collector, cancellationToken);
       if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
@@ -137,6 +138,7 @@ namespace VC
       {
         errors = null;
       }
+      splitResults = collector.splitResults;
 
       Helpers.ExtraTraceInformation("Finished implementation verification");
       return outcome;
@@ -513,11 +515,11 @@ namespace VC
     }
 
 
-    public class CounterexampleCollector : VerifierCallback
+    public class VerificationResultCollector : VerifierCallback
     {
       private readonly VCGenOptions options;
 
-      public CounterexampleCollector(VCGenOptions options) : base(options.PrintProverWarnings)
+      public VerificationResultCollector(VCGenOptions options) : base(options.PrintProverWarnings)
       {
         this.options = options;
       }
@@ -526,12 +528,15 @@ namespace VC
       void ObjectInvariant()
       {
         Contract.Invariant(cce.NonNullElements(examples));
+        Contract.Invariant(cce.NonNullElements(splitResults));
       }
 
       public string RequestId;
 
       public readonly List<Counterexample> /*!>!*/
         examples = new List<Counterexample>();
+      public readonly List<SplitResult> /*!>!*/
+        splitResults = new List<SplitResult>();
 
       public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
       {
@@ -555,6 +560,11 @@ namespace VC
         System.Console.WriteLine("found unreachable code:");
         EmitImpl(options, impl, false);
         // TODO report error about next to last in seq
+      }
+
+      public override void OnSplitResult(SplitResult result)
+      {
+        splitResults.Add(result);
       }
     }
 
