@@ -120,7 +120,6 @@ namespace CoreTests
     public void GotoTargets()
     {
       var options = CommandLineOptions.FromArguments();
-      CommandLineOptions.Install(options);
       Program p = TestUtil.ProgramLoader.LoadProgramFrom(options, @"
         procedure main()
         {

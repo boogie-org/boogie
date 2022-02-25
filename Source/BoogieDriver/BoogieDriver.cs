@@ -16,7 +16,6 @@ namespace Microsoft.Boogie
         RunningBoogieFromCommandLine = true
       };
       ExecutionEngine.printer = new ConsolePrinter(options);
-      CommandLineOptions.Install(options);
 
       if (!options.Parse(args))
       {

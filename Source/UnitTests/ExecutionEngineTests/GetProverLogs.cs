@@ -10,7 +10,6 @@ public static class GetProverLogs
 {
   public static string GetProverLogForProgram(ExecutionEngineOptions options, string procedure)
   {
-    CommandLineOptions.Install(options);
     var logs = GetProverLogsForProgram(options, procedure).ToList();
     Assert.AreEqual(1, logs.Count);
     return logs[0];
