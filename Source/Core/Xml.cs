@@ -43,7 +43,7 @@ namespace Microsoft.Boogie
       }
 
       cce.BeginExpose(this);
-      lock (this) {
+      {
         XmlWriterSettings settings = new XmlWriterSettings();
         settings.Indent = true;
         wr = XmlWriter.Create(filename, settings);
@@ -62,7 +62,7 @@ namespace Microsoft.Boogie
       if (wr != null)
       {
         cce.BeginExpose(this);
-        lock (this) {
+        {
           wr.WriteEndDocument();
           wr.Close();
           wr = null;
@@ -81,7 +81,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
       cce.BeginExpose(this);
-      lock(this) {
+      {
         wr.WriteStartElement("method");
         wr.WriteAttributeString("name", methodName);
         wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
@@ -97,7 +97,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
       cce.BeginExpose(this);
-      lock (this) {
+      {
         wr.WriteStartElement("conclusion");
         wr.WriteAttributeString("endTime", endTime.ToString(DateTimeFormatString));
         wr.WriteAttributeString("duration", elapsed.TotalSeconds.ToString());
@@ -124,7 +124,7 @@ namespace Microsoft.Boogie
       Contract.Assert(wr != null);
 
       cce.BeginExpose(this);
-      lock (this) {
+      {
         wr.WriteStartElement("split");
         wr.WriteAttributeString("number", splitNum.ToString());
         wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
@@ -148,7 +148,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
       cce.BeginExpose(this);
-      lock (this) {
+      {
         wr.WriteStartElement("error");
         wr.WriteAttributeString("message", message);
         WriteTokenAttributes(errorToken);
@@ -229,7 +229,7 @@ namespace Microsoft.Boogie
       //modifies this.0, wr.*;
       if (tok != null && tok.filename != null)
       {
-        lock (this) {
+        {
           wr.WriteAttributeString("file", tok.filename);
           wr.WriteAttributeString("line", tok.line.ToString());
           wr.WriteAttributeString("column", tok.col.ToString());
@@ -305,7 +305,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
       cce.BeginExpose(this);
-      lock(this) {
+      {
         wr.WriteStartElement("file");
         wr.WriteAttributeString("name", filename);
       }
@@ -319,7 +319,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
       cce.BeginExpose(this);
-      lock(this) {
+      {
         wr.WriteEndElement();
       }
       cce.EndExpose();
@@ -333,7 +333,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
       cce.BeginExpose(this);
-      lock(this) {
+      {
         wr.WriteStartElement("fileFragment");
         wr.WriteAttributeString("name", fragment);
         wr.WriteEndElement();
