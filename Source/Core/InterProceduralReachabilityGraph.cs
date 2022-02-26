@@ -170,7 +170,7 @@ namespace Microsoft.Boogie
             Block newBlock;
             if (prev == null)
             {
-              newBlock = new Block(b.tok, "__" + impl.Name + "_" + b.Label, new List<Cmd>(cmds.ToArray()), null);
+              newBlock = new Block(b.tok, "__" + impl.Name + "_" + b.Label, cmds.ToList(), null);
               nodes.Add(newBlock);
               originalToNew[b] = newBlock;
               if (impl.Blocks[0] == b)
@@ -181,7 +181,7 @@ namespace Microsoft.Boogie
             else
             {
               string label = "__" + impl.Name + "_" + b.Label + "_call_" + i;
-              newBlock = new Block(b.tok, label, new List<Cmd>(cmds.ToArray()), null);
+              newBlock = new Block(b.tok, label, cmds.ToList(), null);
               nodes.Add(newBlock);
               originalToNew[newBlock] = newBlock;
               prev.TransferCmd = new GotoCmd(Token.NoToken, new List<String> {label}, new List<Block> {newBlock});

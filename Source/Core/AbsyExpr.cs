@@ -2816,9 +2816,9 @@ namespace Microsoft.Boogie
       List<Type> actualResultType =
         Type.CheckArgumentTypes(Func.TypeParameters,
           out var resultingTypeArgs,
-          new List<Type>(Func.InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+          Func.InParams.Select(Item => Item.TypedIdent.Type).ToList(),
           actuals,
-          new List<Type>(Func.OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+          Func.OutParams.Select(Item => Item.TypedIdent.Type).ToList(),
           null,
           // we need some token to report a possibly wrong number of
           // arguments

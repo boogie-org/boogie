@@ -3106,9 +3106,9 @@ namespace Microsoft.Boogie
     protected void SortTypeParams()
     {
       List<Type> /*!*/
-        allTypes = new List<Type>(InParams.Select(Item => Item.TypedIdent.Type).ToArray());
+        allTypes = InParams.Select(Item => Item.TypedIdent.Type).ToList();
       Contract.Assert(allTypes != null);
-      allTypes.AddRange(new List<Type>(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()));
+      allTypes.AddRange(OutParams.Select(Item => Item.TypedIdent.Type));
       TypeParameters = Type.SortTypeParams(TypeParameters, allTypes, null);
     }
 
@@ -3467,8 +3467,8 @@ namespace Microsoft.Boogie
 
         rc.PopVarContext();
         Type.CheckBoundVariableOccurrences(TypeParameters,
-          new List<Type>(InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
-          new List<Type>(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+          InParams.Select(Item => Item.TypedIdent.Type).ToList(),
+          OutParams.Select(Item => Item.TypedIdent.Type).ToList(),
           this.tok, "function arguments",
           rc);
       }
@@ -4008,8 +4008,8 @@ namespace Microsoft.Boogie
         ResolveAttributes(rc);
 
         Type.CheckBoundVariableOccurrences(TypeParameters,
-          new List<Type>(InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
-          new List<Type>(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+          InParams.Select(Item => Item.TypedIdent.Type).ToList(),
+          OutParams.Select(Item => Item.TypedIdent.Type).ToList(),
           this.tok, "procedure arguments",
           rc);
       }
@@ -4628,8 +4628,8 @@ namespace Microsoft.Boogie
         rc.PopVarContext();
 
         Type.CheckBoundVariableOccurrences(TypeParameters,
-          new List<Type>(InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
-          new List<Type>(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+          InParams.Select(Item => Item.TypedIdent.Type).ToList(),
+          OutParams.Select(Item => Item.TypedIdent.Type).ToList(),
           this.tok, "implementation arguments",
           rc);
       }

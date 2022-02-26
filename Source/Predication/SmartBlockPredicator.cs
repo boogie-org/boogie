@@ -488,7 +488,7 @@ namespace Microsoft.Boogie
           continue;
         }
 
-        var parts = block.Cmds.Cast<Cmd>().TakeWhile(
+        var parts = block.Cmds.TakeWhile(
           c => c is AssumeCmd &&
                QKeyValue.FindBoolAttribute(((AssumeCmd) c).Attributes, "partition"));
 
@@ -496,8 +496,7 @@ namespace Microsoft.Boogie
         if (parts.Count() > 0)
         {
           pred = parts.Select(a => ((AssumeCmd) a).Expr).Aggregate(Expr.And);
-          block.Cmds =
-            new List<Cmd>(block.Cmds.Cast<Cmd>().Skip(parts.Count()).ToArray());
+          block.Cmds = block.Cmds.Skip(parts.Count()).ToList();
         }
         else
         {
