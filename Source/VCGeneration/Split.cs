@@ -15,9 +15,9 @@ namespace VC
   using Bpl = Microsoft.Boogie;
   using System.Threading.Tasks;
 
-  public record SplitResult
+  public record VCResult
   (
-    int splitNum,
+    int vcNum,
     DateTime startTime,
     ProverInterface.Outcome outcome,
     TimeSpan runTime
@@ -1301,8 +1301,8 @@ namespace VC
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
-        var result = new SplitResult(splitNum + 1, checker.ProverStart, outcome, checker.ProverRunTime);
-        callback.OnSplitResult(result);
+        var result = new VCResult(splitNum + 1, checker.ProverStart, outcome, checker.ProverRunTime);
+        callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
         {

@@ -198,7 +198,7 @@ namespace Microsoft.Boogie
 
     public ConditionGeneration.Outcome Outcome { get; set; }
     public List<Counterexample> Errors;
-    public List<SplitResult> SplitResults;
+    public List<VCResult> VCResults;
 
     public ISet<byte[]> AssertionChecksums { get; private set; }
 
@@ -1042,7 +1042,7 @@ namespace Microsoft.Boogie
             var cancellationToken = RequestIdToCancellationTokenSource[requestId].Token;
             verificationResult.Outcome =
               vcgen.VerifyImplementation(impl, out verificationResult.Errors,
-                out verificationResult.SplitResults, requestId, cancellationToken);
+                out verificationResult.VCResults, requestId, cancellationToken);
             if (Options.ExtractLoops && verificationResult.Errors != null) {
               var vcg = vcgen as VCGen;
               if (vcg != null) {
@@ -1127,9 +1127,10 @@ namespace Microsoft.Boogie
       {
         lock (Options.XmlSink) {
           Options.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
-          foreach (var splitResult in verificationResult.SplitResults.OrderBy(s => s.splitNum)) {
-            Options.XmlSink.WriteSplit(splitResult.splitNum, splitResult.startTime,
-              splitResult.outcome.ToString().ToLowerInvariant(), splitResult.runTime);
+
+          foreach (var vcResult in verificationResult.VCResults.OrderBy(s => s.vcNum)) {
+            Options.XmlSink.WriteSplit(vcResult.vcNum, vcResult.startTime,
+              vcResult.outcome.ToString().ToLowerInvariant(), vcResult.runTime);
           }
 
           Options.XmlSink.WriteEndMethod(verificationResult.Outcome.ToString().ToLowerInvariant(),

@@ -661,7 +661,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public virtual void OnSplitResult(SplitResult result)
+    public virtual void OnVCResult(VCResult result)
     {
       Contract.Requires(result != null);
     }

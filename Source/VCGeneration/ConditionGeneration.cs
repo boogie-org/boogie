@@ -115,7 +115,7 @@ namespace VC
     /// </summary>
     /// <param name="impl"></param>
     public Outcome VerifyImplementation(Implementation impl, out List<Counterexample> /*?*/ errors,
-      out List<SplitResult> splitResults,
+      out List<VCResult> vcResults,
       string requestId, CancellationToken cancellationToken)
     {
       Contract.Requires(impl != null);
@@ -138,7 +138,7 @@ namespace VC
       {
         errors = null;
       }
-      splitResults = collector.splitResults;
+      vcResults = collector.vcResults;
 
       Helpers.ExtraTraceInformation("Finished implementation verification");
       return outcome;
@@ -528,15 +528,15 @@ namespace VC
       void ObjectInvariant()
       {
         Contract.Invariant(cce.NonNullElements(examples));
-        Contract.Invariant(cce.NonNullElements(splitResults));
+        Contract.Invariant(cce.NonNullElements(vcResults));
       }
 
       public string RequestId;
 
       public readonly List<Counterexample> /*!>!*/
         examples = new List<Counterexample>();
-      public readonly List<SplitResult> /*!>!*/
-        splitResults = new List<SplitResult>();
+      public readonly List<VCResult> /*!>!*/
+        vcResults = new List<VCResult>();
 
       public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
       {
@@ -562,9 +562,9 @@ namespace VC
         // TODO report error about next to last in seq
       }
 
-      public override void OnSplitResult(SplitResult result)
+      public override void OnVCResult(VCResult result)
       {
-        splitResults.Add(result);
+        vcResults.Add(result);
       }
     }
 
