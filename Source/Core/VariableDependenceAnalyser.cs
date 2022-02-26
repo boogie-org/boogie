@@ -134,14 +134,16 @@ namespace Microsoft.Boogie
   /// </summary>
   public class VariableDependenceAnalyser : IVariableDependenceAnalyser
   {
+    private CoreOptions options;
     private Graph<VariableDescriptor> dependsOnNonTransitive;
     private Program prog;
     private Dictionary<Block, HashSet<Block>> BlockToControllingBlocks;
     private Dictionary<Block, HashSet<VariableDescriptor>> ControllingBlockToVariables;
 
-    public VariableDependenceAnalyser(Program prog)
+    public VariableDependenceAnalyser(Program prog, CoreOptions options)
     {
       this.prog = prog;
+      this.options = options;
       dependsOnNonTransitive = new Graph<VariableDescriptor>();
     }
 
@@ -265,21 +267,21 @@ namespace Microsoft.Boogie
        * 
        */
 
-      if (CoreOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Variable dependence analysis: Initialising");
       }
 
       Initialise();
 
-      if (CoreOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Variable dependence analysis: Computing control dependence info");
       }
 
       BlockToControllingBlocks = ComputeGlobalControlDependences();
 
-      if (CoreOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Variable dependence analysis: Computing control dependence variables");
       }
@@ -287,7 +289,7 @@ namespace Microsoft.Boogie
       ControllingBlockToVariables = ComputeControllingVariables(BlockToControllingBlocks);
       foreach (var Impl in prog.NonInlinedImplementations())
       {
-        if (CoreOptions.Clo.Trace)
+        if (options.Trace)
         {
           Console.WriteLine("Variable dependence analysis: Analysing " + Impl.Name);
         }
@@ -384,7 +386,7 @@ namespace Microsoft.Boogie
     {
       foreach (var n in vs)
       {
-        if (CoreOptions.Clo.DebugStagedHoudini)
+        if (options.DebugStagedHoudini)
         {
           Console.WriteLine("Adding dependence " + v + " -> " + n + ", reason: " + reason + "(" + tok.line + ":" +
                             tok.col + ")");
@@ -471,14 +473,14 @@ namespace Microsoft.Boogie
     private void MakeIgnoreList()
     {
       IgnoredVariables = new HashSet<VariableDescriptor>();
-      if (CoreOptions.Clo.VariableDependenceIgnore == null)
+      if (options.VariableDependenceIgnore == null)
       {
         return;
       }
 
       try
       {
-        var file = System.IO.File.OpenText(CoreOptions.Clo.VariableDependenceIgnore);
+        var file = System.IO.File.OpenText(options.VariableDependenceIgnore);
         while (!file.EndOfStream)
         {
           string line = file.ReadLine();
@@ -507,7 +509,7 @@ namespace Microsoft.Boogie
       catch (System.IO.IOException e)
       {
         Console.Error.WriteLine("Error reading from ignored variables file " +
-                                CoreOptions.Clo.VariableDependenceIgnore + ": " + e);
+                                options.VariableDependenceIgnore + ": " + e);
       }
     }
 
@@ -520,7 +522,7 @@ namespace Microsoft.Boogie
       // Work out and union together local control dependences
       foreach (var Impl in prog.NonInlinedImplementations())
       {
-        Graph<Block> blockGraph = prog.ProcessLoops(Impl);
+        Graph<Block> blockGraph = prog.ProcessLoops(options, Impl);
         LocalCtrlDeps[Impl] = blockGraph.ControlDependence();
         foreach (var KeyValue in LocalCtrlDeps[Impl])
         {
@@ -528,7 +530,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      Graph<Implementation> callGraph = Program.BuildCallGraph(prog);
+      Graph<Implementation> callGraph = Program.BuildCallGraph(options, prog);
 
       // Add inter-procedural control dependence nodes based on calls
       foreach (var Impl in prog.NonInlinedImplementations())
@@ -654,7 +656,7 @@ namespace Microsoft.Boogie
     {
       if (DependsOnSCCsDAG == null)
       {
-        if (CoreOptions.Clo.Trace)
+        if (options.Trace)
         {
           Console.WriteLine("Variable dependence: computing SCCs");
         }
@@ -690,7 +692,7 @@ namespace Microsoft.Boogie
           DependsOnSCCsDAG.AddEdge(VariableDescriptorToSCC[n], dummy);
         }
 
-        if (CoreOptions.Clo.Trace)
+        if (options.Trace)
         {
           Console.WriteLine("Variable dependence: SCCs computed!");
         }

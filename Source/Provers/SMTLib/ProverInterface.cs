@@ -9,12 +9,13 @@ namespace Microsoft.Boogie;
 
 public abstract class ProverInterface
 {
-  public static ProverInterface CreateProver(SMTLibOptions libOptions, Program prog, string /*?*/ logFilePath, bool appendLogFile, uint timeout,
+  public static ProverInterface CreateProver(SMTLibOptions libOptions, Program prog,
+    string /*?*/ logFilePath, bool appendLogFile, uint timeout,
     int taskID = -1)
   {
     Contract.Requires(prog != null);
 
-    ProverOptions options = cce.NonNull(libOptions.TheProverFactory).BlankProverOptions();
+    ProverOptions options = cce.NonNull(libOptions.TheProverFactory).BlankProverOptions(libOptions);
 
     if (logFilePath != null)
     {

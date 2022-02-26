@@ -438,7 +438,7 @@ namespace Microsoft.Boogie.Houdini
         Console.WriteLine("Building call graph...");
       }
 
-      this.callGraph = Program.BuildCallGraph(program);
+      this.callGraph = Program.BuildCallGraph(Options, program);
       if (Options.Trace)
       {
         Console.WriteLine("Number of implementations = {0}", callGraph.Nodes.Count);
@@ -543,7 +543,7 @@ namespace Microsoft.Boogie.Houdini
       {
         CoreOptions.Inlining savedOption = Options.ProcedureInlining;
         Options.ProcedureInlining = CoreOptions.Inlining.Spec;
-        Inliner.ProcessImplementationForHoudini(program, impl);
+        Inliner.ProcessImplementationForHoudini(Options, program, impl);
         Options.ProcedureInlining = savedOption;
       }
 
@@ -969,7 +969,7 @@ namespace Microsoft.Boogie.Houdini
                 cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
                 cexWriter.Write(error.ToString());
                 cexWriter.WriteLine();
-                using var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter, /*pretty=*/ false);
+                using var writer = new TokenTextWriter(cexWriter, false, Options);
                 foreach (Microsoft.Boogie.Block blk in error.Trace)
                 {
                   blk.Emit(writer, 15);

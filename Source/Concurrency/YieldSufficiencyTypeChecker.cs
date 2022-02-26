@@ -85,7 +85,7 @@ namespace Microsoft.Boogie
       {
         var yieldingProc = civlTypeChecker.procToYieldingProc[impl.Proc];
 
-        impl.PruneUnreachableBlocks();
+        impl.PruneUnreachableBlocks(civlTypeChecker.Options);
         Graph<Block> implGraph = Program.GraphFromImpl(impl);
         implGraph.ComputeLoops();
 

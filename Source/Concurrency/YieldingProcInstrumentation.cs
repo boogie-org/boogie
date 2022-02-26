@@ -402,7 +402,7 @@ namespace Microsoft.Boogie
     {
       yieldingLoopHeaders = new HashSet<Block>(impl.Blocks.Where(IsYieldingLoopHeader));
 
-      impl.PruneUnreachableBlocks();
+      impl.PruneUnreachableBlocks(civlTypeChecker.Options);
       impl.ComputePredecessorsForBlocks();
       var graph = Program.GraphFromImpl(impl);
       graph.ComputeLoops();

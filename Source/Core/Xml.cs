@@ -7,8 +7,8 @@ namespace Microsoft.Boogie
 {
   public class XmlSink
   {
-    string /*!*/
-      filename;
+    string /*!*/ filename;
+    private CoreOptions options;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -23,10 +23,11 @@ namespace Microsoft.Boogie
       get { return wr != null; }
     }
 
-    public XmlSink(string filename)
+    public XmlSink(CoreOptions options, string filename)
     {
       Contract.Requires(filename != null);
       this.filename = filename;
+      this.options = options;
     }
 
     /// <summary>
@@ -49,7 +50,7 @@ namespace Microsoft.Boogie
         wr = XmlWriter.Create(filename, settings);
         wr.WriteStartDocument();
         wr.WriteStartElement("boogie");
-        wr.WriteAttributeString("version", CoreOptions.Clo.VersionNumber);
+        wr.WriteAttributeString("version", options.VersionNumber);
         wr.WriteAttributeString("commandLine", Environment.CommandLine);
       }
       cce.EndExpose();

@@ -375,14 +375,14 @@ namespace Microsoft.Boogie
     /// Returns the number of name resolution errors.
     /// </summary>
     /// <returns></returns>
-    public int Resolve()
+    public int Resolve(CoreOptions options)
     {
-      return Resolve((IErrorSink) null);
+      return Resolve(options, null);
     }
 
-    public int Resolve(IErrorSink errorSink)
+    public int Resolve(CoreOptions options, IErrorSink errorSink)
     {
-      ResolutionContext rc = new ResolutionContext(errorSink);
+      ResolutionContext rc = new ResolutionContext(errorSink, options);
       Resolve(rc);
       return rc.ErrorCount;
     }
@@ -390,7 +390,7 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      Helpers.ExtraTraceInformation("Starting resolution");
+      Helpers.ExtraTraceInformation(rc.Options, "Starting resolution");
 
       foreach (var d in TopLevelDeclarations)
       {
@@ -436,7 +436,7 @@ namespace Microsoft.Boogie
         {
           int e = rc.ErrorCount;
           d.Resolve(rc);
-          if (CoreOptions.Clo.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation)
+          if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation)
           {
             // ignore this implementation
             System.Console.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors",
@@ -486,14 +486,14 @@ namespace Microsoft.Boogie
       TypeSynonymDecl.ResolveTypeSynonyms(synonymDecls, rc);
     }
 
-    public int Typecheck()
+    public int Typecheck(CoreOptions options)
     {
-      return this.Typecheck((IErrorSink) null);
+      return this.Typecheck(options, (IErrorSink) null);
     }
 
-    public int Typecheck(IErrorSink errorSink)
+    public int Typecheck(CoreOptions options, IErrorSink errorSink)
     {
-      TypecheckingContext tc = new TypecheckingContext(errorSink);
+      TypecheckingContext tc = new TypecheckingContext(errorSink, options);
       Typecheck(tc);
       return tc.ErrorCount;
     }
@@ -501,7 +501,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      Helpers.ExtraTraceInformation("Starting typechecking");
+      Helpers.ExtraTraceInformation(tc.Options, "Starting typechecking");
 
       int oldErrorCount = tc.ErrorCount;
       foreach (var d in TopLevelDeclarations)
@@ -811,9 +811,9 @@ namespace Microsoft.Boogie
     /// <param name="header"></param>
     /// <param name="backEdgeNode"></param>
     /// <returns></returns>
-    private HashSet<Block> GetBreakBlocksOfLoop(Block header, Block backEdgeNode, Graph<Block /*!*/> /*!*/ g)
+    private HashSet<Block> GetBreakBlocksOfLoop(CoreOptions options, Block header, Block backEdgeNode, Graph<Block /*!*/> /*!*/ g)
     {
-      Contract.Assert(CoreOptions.Clo.DeterministicExtractLoops,
+      Contract.Assert(options.DeterministicExtractLoops,
         "Can only be called with /deterministicExtractLoops option");
       var immSuccBlks = new HashSet<Block>();
       var loopBlocks = g.NaturalLoops(header, backEdgeNode);
@@ -840,9 +840,9 @@ namespace Microsoft.Boogie
       return immSuccBlks;
     }
 
-    private HashSet<Block> GetBlocksInAllNaturalLoops(Block header, Graph<Block /*!*/> /*!*/ g)
+    private HashSet<Block> GetBlocksInAllNaturalLoops(CoreOptions options, Block header, Graph<Block /*!*/> /*!*/ g)
     {
-      Contract.Assert(CoreOptions.Clo.DeterministicExtractLoops,
+      Contract.Assert(options.DeterministicExtractLoops,
         "Can only be called with /deterministicExtractLoops option");
       var allBlocksInNaturalLoops = new HashSet<Block>();
       foreach (Block /*!*/ source in g.BackEdgeNodes(header))
@@ -855,7 +855,7 @@ namespace Microsoft.Boogie
     }
 
 
-    void CreateProceduresForLoops(Implementation impl, Graph<Block /*!*/> /*!*/ g,
+    void CreateProceduresForLoops(CoreOptions options, Implementation impl, Graph<Block /*!*/> /*!*/ g,
       List<Implementation /*!*/> /*!*/ loopImpls,
       Dictionary<string, Dictionary<string, Block>> fullMap)
     {
@@ -882,7 +882,7 @@ namespace Microsoft.Boogie
         AddToFullMap(fullMap, impl.Name, block.Label, block);
       }
 
-      bool detLoopExtract = CoreOptions.Clo.DeterministicExtractLoops;
+      bool detLoopExtract = options.DeterministicExtractLoops;
 
       Dictionary<Block /*!*/, List<Variable> /*!*/> /*!*/
         loopHeaderToInputs = new Dictionary<Block /*!*/, List<Variable> /*!*/>();
@@ -922,7 +922,7 @@ namespace Microsoft.Boogie
           if (detLoopExtract)
           {
             //Need to get the blocks that exit the loop, as we need to add them to targets and footprint
-            immSuccBlks = GetBreakBlocksOfLoop(header, b, g);
+            immSuccBlks = GetBreakBlocksOfLoop(options, header, b, g);
           }
 
           foreach (Block /*!*/ block in g.NaturalLoops(header, b).Union(immSuccBlks))
@@ -1116,7 +1116,7 @@ namespace Microsoft.Boogie
               Contract.Assert(auxGotoCmd != null && auxGotoCmd.labelNames != null &&
                               auxGotoCmd.labelTargets != null && auxGotoCmd.labelTargets.Count >= 1);
               //BUGFIX on 10/26/15: this contains nodes present in NaturalLoops for a different backedgenode
-              var loopNodes = GetBlocksInAllNaturalLoops(header, g); //var loopNodes = g.NaturalLoops(header, source);
+              var loopNodes = GetBlocksInAllNaturalLoops(options, header, g); //var loopNodes = g.NaturalLoops(header, source);
               foreach (var bl in auxGotoCmd.labelTargets)
               {
                 if (g.Nodes.Contains(bl) && //newly created blocks are not present in NaturalLoop(header, xx, g)
@@ -1342,7 +1342,7 @@ namespace Microsoft.Boogie
       fullMap[procName][blockName] = block;
     }
 
-    public static Graph<Implementation> BuildCallGraph(Program program)
+    public static Graph<Implementation> BuildCallGraph(CoreOptions options, Program program)
     {
       Graph<Implementation> callGraph = new Graph<Implementation>();
       Dictionary<Procedure, HashSet<Implementation>> procToImpls = new Dictionary<Procedure, HashSet<Implementation>>();
@@ -1353,7 +1353,7 @@ namespace Microsoft.Boogie
 
       foreach (var impl in program.Implementations)
       {
-        if (impl.SkipVerification)
+        if (impl.IsSkipVerification(options))
         {
           continue;
         }
@@ -1364,7 +1364,7 @@ namespace Microsoft.Boogie
 
       foreach (var impl in program.Implementations)
       {
-        if (impl.SkipVerification)
+        if (impl.IsSkipVerification(options))
         {
           continue;
         }
@@ -1427,9 +1427,9 @@ namespace Microsoft.Boogie
     {
     }
 
-    public Graph<Block> ProcessLoops(Implementation impl)
+    public Graph<Block> ProcessLoops(CoreOptions options, Implementation impl)
     {
-      impl.PruneUnreachableBlocks();
+      impl.PruneUnreachableBlocks(options);
       impl.ComputePredecessorsForBlocks();
       Graph<Block> g = GraphFromImpl(impl);
       g.ComputeLoops();
@@ -1440,13 +1440,14 @@ namespace Microsoft.Boogie
       throw new IrreducibleLoopException();
     }
 
-    public Dictionary<string, Dictionary<string, Block>> ExtractLoops()
+    public Dictionary<string, Dictionary<string, Block>> ExtractLoops(CoreOptions options)
     {
       HashSet<string> procsWithIrreducibleLoops = null;
-      return ExtractLoops(out procsWithIrreducibleLoops);
+      return ExtractLoops(options, out procsWithIrreducibleLoops);
     }
 
-    public Dictionary<string, Dictionary<string, Block>> ExtractLoops(out HashSet<string> procsWithIrreducibleLoops)
+    public Dictionary<string, Dictionary<string, Block>> ExtractLoops(CoreOptions options,
+      out HashSet<string> procsWithIrreducibleLoops)
     {
       procsWithIrreducibleLoops = new HashSet<string>();
       List<Implementation /*!*/> /*!*/
@@ -1458,8 +1459,8 @@ namespace Microsoft.Boogie
         {
           try
           {
-            Graph<Block> g = ProcessLoops(impl);
-            CreateProceduresForLoops(impl, g, loopImpls, fullMap);
+            Graph<Block> g = ProcessLoops(options, impl);
+            CreateProceduresForLoops(options, impl, g, loopImpls, fullMap);
           }
           catch (IrreducibleLoopException)
           {
@@ -1467,7 +1468,7 @@ namespace Microsoft.Boogie
             fullMap[impl.Name] = null;
             procsWithIrreducibleLoops.Add(impl.Name);
 
-            if (CoreOptions.Clo.ExtractLoopsUnrollIrreducible)
+            if (options.ExtractLoopsUnrollIrreducible)
             {
               // statically unroll loops in this procedure
 
@@ -1480,7 +1481,7 @@ namespace Microsoft.Boogie
 
               // unroll
               Block start = impl.Blocks[0];
-              impl.Blocks = LoopUnroll.UnrollLoops(start, CoreOptions.Clo.RecursionBound, false);
+              impl.Blocks = LoopUnroll.UnrollLoops(start, options.RecursionBound, false);
 
               // Now construct the "map back" information
               // Resulting block label -> original block
@@ -1932,32 +1933,26 @@ namespace Microsoft.Boogie
       }
     }
 
-    public uint TimeLimit
+    public uint GetTimeLimit(CoreOptions options)
     {
-      get
-      {
-        uint tl = CoreOptions.Clo.TimeLimit;
-        CheckUIntAttribute("timeLimit", ref tl);
-        if (tl < 0)
-        {
-          tl = CoreOptions.Clo.TimeLimit;
-        }
-        return tl;
+      uint tl = options.TimeLimit;
+      CheckUIntAttribute("timeLimit", ref tl);
+      if (tl < 0) {
+        tl = options.TimeLimit;
       }
+
+      return tl;
     }
 
-    public uint ResourceLimit
+    public uint GetResourceLimit(CoreOptions options)
     {
-      get
-      {
-        uint rl = CoreOptions.Clo.ResourceLimit;
-        CheckUIntAttribute("rlimit", ref rl);
-        if (rl < 0)
-        {
-          rl = CoreOptions.Clo.ResourceLimit;
-        }
-        return rl;
+      uint rl = options.ResourceLimit;
+      CheckUIntAttribute("rlimit", ref rl);
+      if (rl < 0) {
+        rl = options.ResourceLimit;
       }
+
+      return rl;
     }
 
     public int? RandomSeed
@@ -2388,7 +2383,7 @@ namespace Microsoft.Boogie
         EmitAttributes(stream);
       }
 
-      if (CoreOptions.Clo.PrintWithUniqueASTIds && this.TypedIdent.HasName)
+      if (stream.Options.PrintWithUniqueASTIds && this.TypedIdent.HasName)
       {
         stream.Write("h{0}^^",
           this.GetHashCode()); // the idea is that this will prepend the name printed by TypedIdent.Emit
@@ -3043,21 +3038,21 @@ namespace Microsoft.Boogie
       functionDependencies.Add(function);
     }
 
-    public bool SignatureEquals(DeclWithFormals other)
+    public bool SignatureEquals(CoreOptions options, DeclWithFormals other)
     {
       Contract.Requires(other != null);
 
       string sig = null;
       string otherSig = null;
       using (var strWr = new System.IO.StringWriter())
-      using (var tokTxtWr = new TokenTextWriter("<no file>", strWr, false, false))
+      using (var tokTxtWr = new TokenTextWriter("<no file>", strWr, false, false, options))
       {
         EmitSignature(tokTxtWr, this is Function);
         sig = strWr.ToString();
       }
 
       using (var otherStrWr = new System.IO.StringWriter())
-      using (var otherTokTxtWr = new TokenTextWriter("<no file>", otherStrWr, false, false))
+      using (var otherTokTxtWr = new TokenTextWriter("<no file>", otherStrWr, false, false, options))
       {
         EmitSignature(otherTokTxtWr, other is Function);
         otherSig = otherStrWr.ToString();
@@ -3399,7 +3394,7 @@ namespace Microsoft.Boogie
         stream.Write("{:define} ");
       }
 
-      if (CoreOptions.Clo.PrintWithUniqueASTIds)
+      if (stream.Options.PrintWithUniqueASTIds)
       {
         stream.Write("h{0}^^{1}", this.GetHashCode(), TokenTextWriter.SanitizeIdentifier(this.Name));
       }
@@ -4216,40 +4211,32 @@ namespace Microsoft.Boogie
       get { return this.scc != null; }
     }
 
-    public bool SkipVerification
+    public bool IsSkipVerification(CoreOptions options)
     {
-      get
-      {
-        bool verify = true;
-        cce.NonNull(this.Proc).CheckBooleanAttribute("verify", ref verify);
-        this.CheckBooleanAttribute("verify", ref verify);
-        if (!verify)
-        {
+      bool verify = true;
+      cce.NonNull(this.Proc).CheckBooleanAttribute("verify", ref verify);
+      this.CheckBooleanAttribute("verify", ref verify);
+      if (!verify) {
+        return true;
+      }
+
+      if (options.ProcedureInlining == CoreOptions.Inlining.Assert ||
+          options.ProcedureInlining == CoreOptions.Inlining.Assume) {
+        Expr inl = this.FindExprAttribute("inline");
+        if (inl == null) {
+          inl = this.Proc.FindExprAttribute("inline");
+        }
+
+        if (inl != null) {
           return true;
         }
-
-        if (CoreOptions.Clo.ProcedureInlining == CoreOptions.Inlining.Assert ||
-            CoreOptions.Clo.ProcedureInlining == CoreOptions.Inlining.Assume)
-        {
-          Expr inl = this.FindExprAttribute("inline");
-          if (inl == null)
-          {
-            inl = this.Proc.FindExprAttribute("inline");
-          }
-
-          if (inl != null)
-          {
-            return true;
-          }
-        }
-
-        if (CoreOptions.Clo.StratifiedInlining > 0)
-        {
-          return !QKeyValue.FindBoolAttribute(Attributes, "entrypoint");
-        }
-
-        return false;
       }
+
+      if (options.StratifiedInlining > 0) {
+        return !QKeyValue.FindBoolAttribute(Attributes, "entrypoint");
+      }
+
+      return false;
     }
 
     public string Id
@@ -4527,31 +4514,31 @@ namespace Microsoft.Boogie
         v.Emit(stream, level + 1);
       }
 
-      if (this.StructuredStmts != null && !CoreOptions.Clo.PrintInstrumented &&
-          !CoreOptions.Clo.PrintInlined)
+      if (this.StructuredStmts != null && !stream.Options.PrintInstrumented &&
+          !stream.Options.PrintInlined)
       {
         if (this.LocVars.Count > 0)
         {
           stream.WriteLine();
         }
 
-        if (CoreOptions.Clo.PrintUnstructured < 2)
+        if (stream.Options.PrintUnstructured < 2)
         {
-          if (CoreOptions.Clo.PrintUnstructured == 1)
+          if (stream.Options.PrintUnstructured == 1)
           {
             stream.WriteLine(this, level + 1, "/*** structured program:");
           }
 
           this.StructuredStmts.Emit(stream, level + 1);
-          if (CoreOptions.Clo.PrintUnstructured == 1)
+          if (stream.Options.PrintUnstructured == 1)
           {
             stream.WriteLine(level + 1, "**** end structured program */");
           }
         }
       }
 
-      if (this.StructuredStmts == null || 1 <= CoreOptions.Clo.PrintUnstructured ||
-          CoreOptions.Clo.PrintInstrumented || CoreOptions.Clo.PrintInlined)
+      if (this.StructuredStmts == null || 1 <= stream.Options.PrintUnstructured ||
+          stream.Options.PrintInstrumented || stream.Options.PrintInlined)
       {
         foreach (Block b in this.Blocks)
         {
@@ -4756,7 +4743,7 @@ namespace Microsoft.Boogie
       this.formalMap = null;
     }
 
-    public Dictionary<Variable, Expr> /*!*/ GetImplFormalMap()
+    public Dictionary<Variable, Expr> /*!*/ GetImplFormalMap(CoreOptions options)
     {
       Contract.Ensures(Contract.Result<Dictionary<Variable, Expr>>() != null);
 
@@ -4795,11 +4782,11 @@ namespace Microsoft.Boogie
 
         this.formalMap = map;
 
-        if (CoreOptions.Clo.PrintWithUniqueASTIds)
+        if (options.PrintWithUniqueASTIds)
         {
           Console.WriteLine("Implementation.GetImplFormalMap on {0}:", this.Name);
           using TokenTextWriter stream =
-            new TokenTextWriter("<console>", Console.Out, /*setTokens=*/false, /*pretty=*/ false);
+            new TokenTextWriter("<console>", Console.Out, /*setTokens=*/false, /*pretty=*/ false, options);
           foreach (var e in map)
           {
             Console.Write("  ");
@@ -4956,7 +4943,7 @@ namespace Microsoft.Boogie
       this.BlockPredecessorsComputed = true;
     }
 
-    public void PruneUnreachableBlocks()
+    public void PruneUnreachableBlocks(CoreOptions options)
     {
       ArrayList /*Block!*/
         visitNext = new ArrayList /*Block!*/();
@@ -4974,7 +4961,7 @@ namespace Microsoft.Boogie
           reachable.Add(b);
           if (b.TransferCmd is GotoCmd)
           {
-            if (CoreOptions.Clo.PruneInfeasibleEdges)
+            if (options.PruneInfeasibleEdges)
             {
               foreach (Cmd /*!*/ s in b.Cmds)
               {

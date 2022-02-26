@@ -16,13 +16,12 @@ namespace Microsoft.Boogie
         RunningBoogieFromCommandLine = true
       };
       ExecutionEngine.printer = new ConsolePrinter(options);
-      CommandLineOptions.Install(options);
 
       if (!options.Parse(args))
       {
         return 1;
       }
-      using var executionEngine = new ExecutionEngine(options);
+      using var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
       
       if (options.ProcessInfoFlags())
       {
@@ -63,13 +62,13 @@ namespace Microsoft.Boogie
         Console.WriteLine("--------------------");
       }
 
-      Helpers.ExtraTraceInformation("Becoming sentient");
+      Helpers.ExtraTraceInformation(options, "Becoming sentient");
 
       var success = executionEngine.ProcessFiles(fileList);
 
-      if (CoreOptions.Clo.XmlSink != null)
+      if (options.XmlSink != null)
       {
-        CoreOptions.Clo.XmlSink.Close();
+        options.XmlSink.Close();
       }
 
       if (options.Wait)

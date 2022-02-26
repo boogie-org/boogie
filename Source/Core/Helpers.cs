@@ -252,10 +252,10 @@ namespace Microsoft.Boogie
 
     private static readonly DateTime StartUp = DateTime.UtcNow;
 
-    public static void ExtraTraceInformation(string point)
+    public static void ExtraTraceInformation(CoreOptions options, string point)
     {
       Contract.Requires(point != null);
-      if (CoreOptions.Clo.TraceTimes)
+      if (options.TraceTimes)
       {
         DateTime now = DateTime.UtcNow;
         TimeSpan timeSinceStartUp = now - StartUp;

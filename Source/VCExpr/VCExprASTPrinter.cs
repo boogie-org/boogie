@@ -10,6 +10,12 @@ namespace Microsoft.Boogie.VCExprAST
   public class VCExprPrinter : IVCExprVisitor<bool, TextWriter /*!*/>
   {
     private VCExprOpPrinter OpPrinterVar = null;
+    public PrintOptions Options { get; }
+
+    public VCExprPrinter(PrintOptions options)
+    {
+      Options = options;
+    }
 
     private VCExprOpPrinter /*!*/ OpPrinter
     {
@@ -206,8 +212,7 @@ namespace Microsoft.Boogie.VCExprAST
 
   public class VCExprOpPrinter : IVCExprOpVisitor<bool, TextWriter /*!*/>
   {
-    private VCExprPrinter /*!*/
-      ExprPrinter;
+    private VCExprPrinter /*!*/ ExprPrinter;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -416,7 +421,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
-      if (CoreOptions.Clo.ReflectAdd)
+      if (ExprPrinter.Options.ReflectAdd)
       {
         return PrintNAry("Reflect$Add", node, wr);
       }
