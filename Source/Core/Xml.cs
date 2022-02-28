@@ -229,11 +229,9 @@ namespace Microsoft.Boogie
       //modifies this.0, wr.*;
       if (tok != null && tok.filename != null)
       {
-        {
-          wr.WriteAttributeString("file", tok.filename);
-          wr.WriteAttributeString("line", tok.line.ToString());
-          wr.WriteAttributeString("column", tok.col.ToString());
-        }
+        wr.WriteAttributeString("file", tok.filename);
+        wr.WriteAttributeString("line", tok.line.ToString());
+        wr.WriteAttributeString("column", tok.col.ToString());
       }
     }
 
