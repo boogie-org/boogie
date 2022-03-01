@@ -20,22 +20,21 @@ class NoopSolver : SMTLibSolver
   public override void Send(string cmd)
   {
     if (cmd.StartsWith("(get-value")) {
-      responses.Enqueue(null);
-    } 
-    else
-    {
-      var response = cmd switch
-      {
-        "(get-model)" => new SExpr("error", new SExpr("model is not available")),
-        "(get-info :name)" => new SExpr(":name"),
-        "(get-info :rlimit)" => new SExpr(":rlimit", new SExpr("0")),
-        "(check-sat)" => new SExpr("unknown"),
-        "(get-info :reason-unknown)" => new SExpr("incomplete"),
-        "(get-unsat-core)" => new SExpr(""),
-        _ => null
-      };
-      responses.Enqueue(response);
+      return;
     }
+
+    var response = cmd switch
+    {
+      "(get-model)" => new SExpr("error", new SExpr("model is not available")),
+      "(get-info :name)" => new SExpr(":name"),
+      "(get-info :rlimit)" => new SExpr(":rlimit", new SExpr("0")),
+      "(check-sat)" => new SExpr("unknown"),
+      "(get-info :reason-unknown)" => new SExpr(":reason-unknown", new SExpr("incomplete")),
+      "(get-unsat-core)" => new SExpr(""),
+      _ => null
+    };
+
+    if (response is not null) { responses.Enqueue(response); }
   }
 
   public override Task<SExpr> GetProverResponse()
