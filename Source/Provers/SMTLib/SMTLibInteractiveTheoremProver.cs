@@ -15,7 +15,6 @@ namespace Microsoft.Boogie.SMTLib
 {
   public class SMTLibInteractiveTheoremProver : SMTLibProcessTheoremProver
   {
-    private SMTLibSolver Process;
     private bool ProcessNeedsRestart;
 
     [NotDelayed]
@@ -31,13 +30,6 @@ namespace Microsoft.Boogie.SMTLib
     public override Task GoBackToIdle()
     {
       return Process.PingPong();
-    }
-
-    private void SetupProcess()
-    {
-      Process?.Close();
-      Process = options.Solver == SolverKind.NoOpWithZ3Options ? new NoopSolver() : new SMTLibProcess(libOptions, options);
-      Process.ErrorHandler += HandleProverError;
     }
 
     private void PossiblyRestart()
@@ -59,12 +51,6 @@ namespace Microsoft.Boogie.SMTLib
     {
       // we feed the axioms when BeginCheck is called.
       return 0;
-    }
-
-    public override void Close()
-    {
-      base.Close();
-      Process?.Close();
     }
 
     private bool hasReset;

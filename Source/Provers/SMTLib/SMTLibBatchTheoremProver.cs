@@ -10,7 +10,6 @@ namespace Microsoft.Boogie.SMTLib
 {
   public class SMTLibBatchTheoremProver : SMTLibProcessTheoremProver
   {
-    private SMTLibSolver Process;
     private bool CheckSatSent;
     private int resourceCount;
     private Model errorModel;
@@ -29,30 +28,16 @@ namespace Microsoft.Boogie.SMTLib
       return Task.CompletedTask;
     }
 
-    private void SetupProcess()
-    {
-      Process?.Close();
-      Process = options.Solver == SolverKind.NoOpWithZ3Options ? new NoopSolver() : new SMTLibProcess(libOptions, options);
-      Process.ErrorHandler += HandleProverError;
-      CheckSatSent = false;
-    }
-
     public override int FlushAxiomsToTheoremProver()
     {
       // we feed the axioms when BeginCheck is called.
       return 0;
     }
 
-    public override void Close()
-    {
-      base.Close();
-      Process?.Close();
-      Process = null;
-    }
-
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
       SetupProcess();
+      CheckSatSent = false;
       FullReset(gen);
 
       if (options.LogFilename != null && currentLogFile == null) {

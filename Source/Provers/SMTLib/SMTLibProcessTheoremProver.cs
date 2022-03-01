@@ -15,6 +15,7 @@ namespace Microsoft.Boogie.SMTLib
 {
   public abstract class SMTLibProcessTheoremProver : ProverInterface
   {
+    protected SMTLibSolver Process;
     protected SMTLibOptions libOptions;
     protected SMTLibProverContext ctx;
     protected VCExpressionGenerator gen;
@@ -151,6 +152,23 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       return msg;
+    }
+
+    protected void SetupProcess()
+    {
+      Process?.Close();
+      Process = options.Solver == SolverKind.NoOpWithZ3Options
+        ? new NoopSolver()
+        : new SMTLibProcess(libOptions, options);
+      Process.ErrorHandler += HandleProverError;
+    }
+
+    public override void Close()
+    {
+      base.Close();
+      Process?.Close();
+      Process = null;
+      CloseLogFile();
     }
 
     public override void LogComment(string comment)
@@ -449,12 +467,6 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
       SendThisVC(vcString);
-    }
-
-    public override void Close()
-    {
-      base.Close();
-      CloseLogFile();
     }
 
     protected void CloseLogFile()
