@@ -26,6 +26,7 @@ namespace Microsoft.Boogie
     public string ProverName;
     public string ProverPath;
     private string confirmedProverPath;
+    public bool BatchMode;
 
 
     private string /*!*/
@@ -56,7 +57,8 @@ namespace Microsoft.Boogie
              ParseBool(opt, "FORCE_LOG_STATUS", ref ForceLogStatus) ||
              ParseInt(opt, "MEMORY_LIMIT", ref MemoryLimit) ||
              ParseInt(opt, "VERBOSITY", ref Verbosity) ||
-             ParseUInt(opt, "TIME_LIMIT", ref TimeLimit);
+             ParseUInt(opt, "TIME_LIMIT", ref TimeLimit) ||
+             ParseBool(opt, "BATCH_MODE", ref BatchMode);
     }
 
     public virtual string Help
@@ -77,6 +79,7 @@ APPEND_LOG_FILE=<bool>    Append, rather than overwrite the log file.
 MEMORY_LIMIT=<int>        Memory limit of the prover in megabytes.
 VERBOSITY=<int>           The higher, the more verbose.
 TIME_LIMIT=<uint>          Time limit per verification condition in milliseconds.
+BATCH_MODE=<bool>         If true, run in batch mode rather than interactive mode.
 
 The generic options may or may not be used by the prover plugin.
 ";
@@ -175,6 +178,9 @@ The generic options may or may not be used by the prover plugin.
       if (CoreOptions.Clo.Trace)
       {
         Console.WriteLine("[TRACE] Using prover: " + confirmedProverPath);
+        if (BatchMode) {
+          Console.WriteLine("[TRACE] Running in batch mode.");
+        }
       }
 
       return confirmedProverPath;

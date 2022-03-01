@@ -1651,8 +1651,11 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
       Contract.Ensures(Contract.Result<SMTLibProcessTheoremProver>() != null);
-      //return new SMTLibInteractiveTheoremProver(libOptions, options, gen, ctx);
-      return new SMTLibBatchTheoremProver(libOptions, options, gen, ctx);
+      if (options.BatchMode) {
+        return new SMTLibBatchTheoremProver(libOptions, options, gen, ctx);
+      } else {
+        return new SMTLibInteractiveTheoremProver(libOptions, options, gen, ctx);
+      }
     }
   }
 }
