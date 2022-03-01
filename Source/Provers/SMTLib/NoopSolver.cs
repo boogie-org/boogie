@@ -15,7 +15,7 @@ class NoopSolver : SMTLibSolver
   {
   }
 
-  private Queue<SExpr> responses = new Queue<SExpr>();
+  private Queue<SExpr> responses = new();
 
   public override void Send(string cmd)
   {

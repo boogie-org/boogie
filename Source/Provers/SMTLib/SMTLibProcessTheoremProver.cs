@@ -32,6 +32,7 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Invariant(_backgroundPredicates != null);
     }
 
+    [NotDelayed]
     public SMTLibProcessTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx)
     {
