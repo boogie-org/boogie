@@ -525,56 +525,7 @@ namespace Microsoft.Boogie.SMTLib
           HandleProverError("Expecting only one model but got many");
         }
 
-        string modelStr = null;
-        if (resp.ArgCount >= 1)
-        {
-          var converter = new SMTErrorModelConverter(resp, this);
-          modelStr = converter.Convert();
-        }
-        else if (resp.ArgCount == 0 && resp.Name.Contains("->"))
-        {
-          modelStr = resp.Name;
-        }
-        else
-        {
-          HandleProverError("Unexpected prover response getting model: " + resp);
-        }
-
-        List<Model> models = null;
-        try
-        {
-          switch (options.Solver)
-          {
-            case SolverKind.Z3:
-            case SolverKind.CVC5:
-              models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), Namer.GetOriginalName);
-              break;
-            default:
-              Debug.Assert(false);
-              return null;
-          }
-        }
-        catch (ArgumentException exn)
-        {
-          HandleProverError("Model parsing error: " + exn.Message);
-        }
-
-        if (models == null)
-        {
-          HandleProverError("Could not parse any models");
-        }
-        else if (models.Count == 0)
-        {
-          HandleProverError("Could not parse any models");
-        }
-        else if (models.Count > 1)
-        {
-          HandleProverError("Expecting only one model but got many");
-        }
-        else
-        {
-          theModel = models[0];
-        }
+        theModel = ParseErrorModel(resp);
       }
 
       return theModel;
