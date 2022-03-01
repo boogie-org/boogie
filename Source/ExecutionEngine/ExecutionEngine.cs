@@ -25,16 +25,13 @@ namespace Microsoft.Boogie
     void WriteErrorInformation(ErrorInformation errorInfo, TextWriter tw, bool skipExecutionTrace = true);
     void ReportBplError(IToken tok, string message, bool error, TextWriter tw, string category = null);
 
-    void ReportImplCount(int implNumber);
+    void ReportImplementationsBeforeVerification(Implementation[] implementations);
     // For real-time feedback.
-    void ReportStartVerifyImpl(IToken tok);
-    void ReportEndVerifyImpl(IToken tok, VerificationResult result);
+    void ReportStartVerifyImplementation(Implementation implementation);
+    void ReportEndVerifyImplementation(Implementation implementation, VerificationResult result);
     
     // non-positive for default priority.
     int GetVerificationPriority(IToken implTok);
-    
-    // Report the number of implementations that are going to be verified.
-    void ReportImplementationMultiplicity(IToken[] toArray);
   }
 
 
@@ -204,24 +201,20 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void ReportImplCount(int implNumber) {
+    public void ReportImplementationsBeforeVerification(Implementation[] implementations) {
       // Do not print to console
     }
 
-    public void ReportStartVerifyImpl(IToken tok) {
+    public void ReportStartVerifyImplementation(Implementation implementation) {
       // Do not print to console
     }
 
-    public void ReportEndVerifyImpl(IToken tok, VerificationResult result) {
+    public void ReportEndVerifyImplementation(Implementation implementation, VerificationResult result) {
       // Do not print to console
     }
 
     public int GetVerificationPriority(IToken implTok) {
       return 0;
-    }
-
-    public void ReportImplementationMultiplicity(IToken[] toArray) {
-      // Do not print to console
     }
 
     public void ReportVerificationStarts(List<IToken> token, IToken parentToken) {
@@ -985,7 +978,6 @@ namespace Microsoft.Boogie
       var impls = program.Implementations.Where(
         impl => impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) &&
                 !impl.SkipVerification);
-      printer.ReportImplementationMultiplicity(impls.Select(impl => impl.tok).ToArray());
 
       // operate on a stable copy, in case it gets updated while we're running
       Implementation[] stablePrioritizedImpls = null;
@@ -1033,7 +1025,7 @@ namespace Microsoft.Boogie
         // We use this semaphore to limit the number of tasks that are currently executing.
         var semaphore = new SemaphoreSlim(CommandLineOptions.Clo.VcsCores);
 
-        printer.ReportImplCount(stablePrioritizedImpls.Length);
+        printer.ReportImplementationsBeforeVerification(stablePrioritizedImpls);
         // Create a task per implementation.
         for (int i = 0; i < stablePrioritizedImpls.Length; i++)
         {
@@ -1220,7 +1212,7 @@ namespace Microsoft.Boogie
 
       printer.Inform("", output); // newline
       printer.Inform(string.Format("Verifying {0} ...", impl.Name), output);
-      printer.ReportStartVerifyImpl(impl.tok);
+      printer.ReportStartVerifyImplementation(impl);
 
       int priority = 0;
       var wasCached = false;
@@ -1361,7 +1353,7 @@ namespace Microsoft.Boogie
       {
         Console.Out.Flush();
       }
-      printer.ReportEndVerifyImpl(impl.tok, verificationResult);
+      printer.ReportEndVerifyImplementation(impl, verificationResult);
       #endregion
     }
 

@@ -126,7 +126,7 @@ namespace VC
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
         implementation.TimeLimit;
-      split.parent.Logger?.ReportVerificationStarts(split.blocks.SelectMany(block => block.Cmds.Select(cmd => cmd.tok)).ToList(), split.Implementation.tok);
+      split.parent.Logger?.ReportVerificationStarts(split.blocks.SelectMany(block => block.Cmds.Where(cmd => cmd is AssertCmd).Select(cmd => cmd.tok)).ToList(), split.Implementation.tok);
       split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit, cancellationToken);
     }
 

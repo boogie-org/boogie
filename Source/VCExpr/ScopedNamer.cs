@@ -52,6 +52,17 @@ namespace Microsoft.Boogie.VCExprAST
       globalNewToOldName = new(namer.globalNewToOldName);
     }
 
+    public virtual void Reset()
+    {
+      GlobalNames.Clear();
+      LocalNames.Clear();
+      LocalNames.Add(new Dictionary<Object /*!*/, string /*!*/>());
+      UsedNames.Clear();
+      CurrentCounters.Clear();
+      GlobalPlusLocalNames.Clear();
+      globalNewToOldName.Clear();
+    }
+
     [ContractInvariantMethod]
     private void GlobalNamesInvariantMethod()
     {

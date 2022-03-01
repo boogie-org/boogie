@@ -645,6 +645,7 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC("(reset)");
         SendThisVC("(set-option :" + Z3.RlimitOption + " 0)");
         HasReset = true;
+        Namer.Reset();
         common.Clear();
         SetupAxiomBuilder(gen);
         Axioms.Clear();
