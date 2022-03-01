@@ -154,6 +154,10 @@ namespace Microsoft.Boogie.SMTLib
       return result;
     }
 
+    // Note: This could probably be made to work with the result of
+    // `(get-value ControlFlow)` rather than the full result of `(get-model)`.
+    // At some point we should do experiments to see whether that's at all
+    // faster.
     private string[] CalculatePath(int controlFlowConstant, Model model)
     {
       var path = new List<string>();
