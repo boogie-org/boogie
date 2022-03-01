@@ -197,6 +197,7 @@ namespace Microsoft.Boogie
 
     public ConditionGeneration.Outcome Outcome { get; set; }
     public List<Counterexample> Errors;
+    public List<VCResult> VCResults;
 
     public ISet<byte[]> AssertionChecksums { get; private set; }
 
@@ -1017,11 +1018,6 @@ namespace Microsoft.Boogie
         var cachedResults = Cache.Lookup(impl, Options.RunDiagnosticsOnTimeout, out priority);
         if (cachedResults != null && priority == Priority.SKIP)
         {
-          if (Options.XmlSink != null)
-          {
-            Options.XmlSink.WriteStartMethod(impl.Name, cachedResults.Start);
-          }
-
           printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name),
             output);
           if (Options.VerifySnapshots < 3 ||
@@ -1045,15 +1041,11 @@ namespace Microsoft.Boogie
           verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
           verificationResult.Start = DateTime.UtcNow;
 
-          if (Options.XmlSink != null)
-          {
-            Options.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
-          }
-
           try {
             var cancellationToken = RequestIdToCancellationTokenSource[requestId].Token;
             verificationResult.Outcome =
-              vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId, cancellationToken);
+              vcgen.VerifyImplementation(impl, out verificationResult.Errors,
+                out verificationResult.VCResults, requestId, cancellationToken);
             if (Options.ExtractLoops && verificationResult.Errors != null) {
               var vcg = vcgen as VCGen;
               if (vcg != null) {
@@ -1136,9 +1128,18 @@ namespace Microsoft.Boogie
 
       if (Options.XmlSink != null)
       {
-        Options.XmlSink.WriteEndMethod(verificationResult.Outcome.ToString().ToLowerInvariant(),
-          verificationResult.End, verificationResult.End - verificationResult.Start,
-          verificationResult.ResourceCount);
+        lock (Options.XmlSink) {
+          Options.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
+
+          foreach (var vcResult in verificationResult.VCResults.OrderBy(s => s.vcNum)) {
+            Options.XmlSink.WriteSplit(vcResult.vcNum, vcResult.startTime,
+              vcResult.outcome.ToString().ToLowerInvariant(), vcResult.runTime);
+          }
+
+          Options.XmlSink.WriteEndMethod(verificationResult.Outcome.ToString().ToLowerInvariant(),
+            verificationResult.End, verificationResult.End - verificationResult.Start,
+            verificationResult.ResourceCount);
+        }
       }
 
       outputCollector.Add(index, output);

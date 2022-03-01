@@ -125,7 +125,7 @@ namespace Microsoft.Boogie.Houdini
     public HoudiniStatistics stats;
     private VCExpr conjecture;
     private ProverInterface.ErrorHandler handler;
-    ConditionGeneration.CounterexampleCollector collector;
+    ConditionGeneration.VerificationResultCollector collector;
     HashSet<Variable> unsatCoreSet;
     HashSet<Variable> houdiniConstants;
     public HashSet<Variable> houdiniAssertConstants;
@@ -158,7 +158,7 @@ namespace Microsoft.Boogie.Houdini
       this.descriptiveName = impl.Name;
       this.houdini = houdini;
       this.stats = stats;
-      collector = new ConditionGeneration.CounterexampleCollector(houdini.Options);
+      collector = new ConditionGeneration.VerificationResultCollector(houdini.Options);
       collector.OnProgress?.Invoke("HdnVCGen", 0, 0, 0.0);
 
       vcgen.ConvertCFG2DAG(impl, taskID: taskID);

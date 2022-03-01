@@ -117,10 +117,6 @@ namespace VC
           split.Stats, currentSplitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
       }
 
-      if (options.XmlSink != null && DoSplitting) {
-        options.XmlSink.WriteStartSplit(currentSplitNumber + 1, DateTime.UtcNow);
-      }
-
       callback.OnProgress?.Invoke("VCprove", currentSplitNumber, total,
         provenCost / (remainingCost + provenCost));
 
@@ -138,7 +134,7 @@ namespace VC
         }
       }
 
-      split.ReadOutcome(ref outcome, out var proverFailed, ref totalResourceCount);
+      split.ReadOutcome(callback, ref outcome, out var proverFailed, ref totalResourceCount);
 
       if (TrackingProgress) {
         lock (this) {
