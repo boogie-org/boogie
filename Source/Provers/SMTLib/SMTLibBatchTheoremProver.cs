@@ -8,6 +8,25 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.SMTLib
 {
+  /// <summary>
+  /// This class provides a "batch" interface to an SMT-Lib prover that
+  /// prepares all input up-front, sends it to the prover, and then reads
+  /// all output from the prover.
+  ///
+  /// Some SMT-Lib provers don't support the interactive (a.k.a.
+  /// incremental) mode provided by SMTLibInteractiveTheoremProver. This
+  /// class allows Boogie to work with such provers. It's known to work
+  /// with Z3, at least. To work correctly in batch mode, a solver must
+  /// be able to handle the following commands without crashing:
+  ///
+  ///   * `(get-model)` after returning `unsat`
+  ///   * `(get-info :reason-unknown)` after returning `sat` or `unsat`
+  ///
+  /// Working non-interactively precludes certain features, including the
+  /// ability to return multiple errors. The current implementation also
+  /// does not support evaluating expressions in the result context,
+  /// generating unsat cores, or checking assumptions.
+  /// </summary>
   public class SMTLibBatchTheoremProver : SMTLibProcessTheoremProver
   {
     private bool CheckSatSent;
