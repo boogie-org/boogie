@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -24,7 +25,8 @@ namespace VC
     private bool DoSplitting => manualSplits.Count > 1 || KeepGoing || splitOnEveryAssert;
     private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
     private bool KeepGoing => maxKeepGoingSplits > 1;
-      
+
+    private VCGen vcGen;
     private Outcome outcome;
     private double remainingCost;
     private double provenCost;
@@ -42,6 +44,7 @@ namespace VC
       this.mvInfo = mvInfo;
       this.implementation = implementation;
       this.outcome = outcome;
+      this.vcGen = vcGen;
       
       var maxSplits = options.VcsMaxSplits;
       VCGen.CheckIntAttributeOnImpl(implementation, "vcs_max_splits", ref maxSplits);
@@ -126,7 +129,6 @@ namespace VC
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
         implementation.TimeLimit;
-      split.parent.Logger?.ReportVerificationStarts(split.blocks.SelectMany(block => block.Cmds.Where(cmd => cmd is AssertCmd).Select(cmd => cmd.tok)).ToList(), split.Implementation.tok);
       split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit, cancellationToken);
     }
 
@@ -137,10 +139,8 @@ namespace VC
           remainingCost -= split.Cost;
         }
       }
-
       split.ReadOutcome(ref outcome, out var proverFailed, ref totalResourceCount);
-      split.parent.Logger?.ReportVerificationCompleted(split.blocks.SelectMany(block => block.Cmds.Select(cmd => cmd.tok)).ToList(), split.Implementation.tok, outcome, totalResourceCount);
-      
+
       if (TrackingProgress) {
         lock (this) {
           if (proverFailed) {
@@ -156,6 +156,38 @@ namespace VC
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
       if (!proverFailed) {
+        if (callback is CounterexampleCollector collector) {
+          List<AssertCmd> asserts = split.blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToList();
+          Dictionary<AssertCmd, Outcome> perAssertOutcome = new();
+          Dictionary<AssertCmd, Counterexample> perAssertCounterExamples = new();
+          if (outcome == Outcome.Correct) {
+            perAssertOutcome = asserts.ToDictionary(cmd => cmd, assertCmd => Outcome.Correct);
+          } else {
+            foreach (var counterExample in collector.examples) {
+              if (counterExample is AssertCounterexample assertCounterexample) {
+                perAssertOutcome.Add(assertCounterexample.FailingAssert, Outcome.Errors);
+                perAssertCounterExamples.Add(assertCounterexample.FailingAssert, assertCounterexample);
+              } else if (counterExample is CallCounterexample callCounterexample) {
+                perAssertOutcome.Add(callCounterexample.UnderlyingAssert, Outcome.Errors);
+                perAssertCounterExamples.Add(callCounterexample.UnderlyingAssert, callCounterexample);
+              } else if (counterExample is ReturnCounterexample returnCounterexample) {
+                perAssertOutcome.Add(returnCounterexample.UnderlyingAssert, Outcome.Errors);
+                perAssertCounterExamples.Add(returnCounterexample.UnderlyingAssert, returnCounterexample);
+              }
+            }
+
+            var remainingOutcome =
+              outcome == Outcome.Errors && collector.examples.Count != CommandLineOptions.Clo.ErrorLimit
+                ? Outcome.Correct
+                : Outcome.Inconclusive;
+            // Everything not listed is successful
+            foreach (var assert in asserts)
+            {
+              perAssertOutcome.TryAdd(assert, remainingOutcome);
+            }
+          }
+          split.parent.Logger?.ReportAssertionBatchResult(split.Implementation, perAssertOutcome, perAssertCounterExamples);
+        }
         return;
       }
 
@@ -164,13 +196,15 @@ namespace VC
 
     private async Task HandleProverFailure(Split split, CancellationToken cancellationToken)
     {
+      Dictionary<AssertCmd, Outcome> perAssertOutcome;
       if (split.LastChance) {
         string msg = "some timeout";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
         }
-
         callback.OnCounterexample(split.ToCounterexample(split.Checker.TheoremProver.Context), msg);
+        perAssertOutcome = split.blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToDictionary(assertCmd => assertCmd, assertCmd => outcome);
+        split.parent.Logger?.ReportAssertionBatchResult(implementation, perAssertOutcome, new ());
         outcome = Outcome.Errors;
         return;
       }
@@ -211,6 +245,8 @@ namespace VC
 
         callback.OnOutOfResource(msg);
       }
+      perAssertOutcome = split.blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToDictionary(assertCmd => assertCmd, assertCmd => outcome);
+      split.parent.Logger?.ReportAssertionBatchResult(implementation, perAssertOutcome, new());
     }
   }
 }

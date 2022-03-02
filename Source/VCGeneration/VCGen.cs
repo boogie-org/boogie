@@ -2367,7 +2367,7 @@ namespace VC
       {
         AssertRequiresCmd assertCmd = (AssertRequiresCmd) cmd;
         Contract.Assert(assertCmd != null);
-        CallCounterexample cc = new CallCounterexample(trace, augmentedTrace, assertCmd.Call, assertCmd.Requires, errModel, mvInfo,
+        CallCounterexample cc = new CallCounterexample(trace, augmentedTrace, assertCmd, errModel, mvInfo,
           context, assertCmd.Checksum);
         return cc;
       }
@@ -2375,7 +2375,7 @@ namespace VC
       {
         AssertEnsuresCmd assertCmd = (AssertEnsuresCmd) cmd;
         Contract.Assert(assertCmd != null);
-        ReturnCounterexample rc = new ReturnCounterexample(trace, augmentedTrace, transferCmd, assertCmd.Ensures, errModel, mvInfo,
+        ReturnCounterexample rc = new ReturnCounterexample(trace, augmentedTrace, transferCmd, assertCmd, errModel, mvInfo,
           context, cmd.Checksum);
         return rc;
       }
@@ -2402,7 +2402,7 @@ namespace VC
       if (assrt is AssertRequiresCmd)
       {
         var aa = (AssertRequiresCmd) assrt;
-        cc = new CallCounterexample(cex.Trace, cex.AugmentedTrace, aa.Call, aa.Requires, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
+        cc = new CallCounterexample(cex.Trace, cex.AugmentedTrace, aa, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
       }
       else if (assrt is AssertEnsuresCmd && cex is ReturnCounterexample)
       {
@@ -2484,7 +2484,7 @@ namespace VC
           }
         }
 
-        cc = new ReturnCounterexample(reconstructedTrace ?? cex.Trace, cex.AugmentedTrace, returnCmd ?? oldCex.FailingReturn, aa.Ensures,
+        cc = new ReturnCounterexample(reconstructedTrace ?? cex.Trace, cex.AugmentedTrace, returnCmd ?? oldCex.FailingReturn, aa,
           cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
       }
       else

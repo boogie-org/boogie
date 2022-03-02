@@ -217,11 +217,9 @@ namespace Microsoft.Boogie
       return 0;
     }
 
-    public void ReportVerificationStarts(List<IToken> token, IToken parentToken) {
-      // Do not print to console
-    }
-
-    public void ReportVerificationCompleted(List<IToken> token, IToken parentToken, ConditionGeneration.Outcome outcome, int totalResource) {
+    public void ReportAssertionBatchResult(Implementation implementation,
+      Dictionary<AssertCmd, ConditionGeneration.Outcome> perAssertOutcome,
+      Dictionary<AssertCmd, Counterexample> perAssertCounterExamples) {
       // Do not print to console
     }
   }
