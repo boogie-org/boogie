@@ -161,16 +161,22 @@ namespace VC
             perAssertOutcome = asserts.ToDictionary(cmd => cmd, assertCmd => Outcome.Correct);
           } else {
             foreach (var counterExample in collector.examples) {
+              // Only deal with the ocunter-examples that cover the asserts of this split.
+              AssertCmd underlyingAssert;
               if (counterExample is AssertCounterexample assertCounterexample) {
-                perAssertOutcome.Add(assertCounterexample.FailingAssert, Outcome.Errors);
-                perAssertCounterExamples.Add(assertCounterexample.FailingAssert, assertCounterexample);
+                underlyingAssert = assertCounterexample.FailingAssert;
               } else if (counterExample is CallCounterexample callCounterexample) {
-                perAssertOutcome.Add(callCounterexample.UnderlyingAssert, Outcome.Errors);
-                perAssertCounterExamples.Add(callCounterexample.UnderlyingAssert, callCounterexample);
+                underlyingAssert = callCounterexample.UnderlyingAssert;
               } else if (counterExample is ReturnCounterexample returnCounterexample) {
-                perAssertOutcome.Add(returnCounterexample.UnderlyingAssert, Outcome.Errors);
-                perAssertCounterExamples.Add(returnCounterexample.UnderlyingAssert, returnCounterexample);
+                underlyingAssert = returnCounterexample.UnderlyingAssert;
+              } else {
+                continue;
               }
+              if (!asserts.Contains(underlyingAssert)) {
+                continue;
+              }
+              perAssertOutcome.Add(underlyingAssert, Outcome.Errors);
+              perAssertCounterExamples.Add(underlyingAssert, counterExample);
             }
 
             var remainingOutcome =

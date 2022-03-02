@@ -197,6 +197,6 @@ public class ConsolePrinter : OutputPrinter
 
   public void ReportAssertionBatchResult(Implementation implementation, Dictionary<AssertCmd, ConditionGeneration.Outcome> perAssertOutcome,
     Dictionary<AssertCmd, Counterexample> perAssertCounterExamples) {
-    throw new NotImplementedException();
+    // Do not print anything to console
   }
 }
