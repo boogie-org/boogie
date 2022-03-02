@@ -89,7 +89,7 @@ namespace Microsoft.Boogie
       globalSnapshotInstrumentation = new GlobalSnapshotInstrumentation(civlTypeChecker);
 
       // initialize noninterferenceInstrumentation
-      if (CommandLineOptions.Clo.TrustNoninterference)
+      if (civlTypeChecker.Options.TrustNoninterference)
       {
         noninterferenceInstrumentation = new NoneNoninterferenceInstrumentation();
       }
@@ -163,7 +163,7 @@ namespace Microsoft.Boogie
 
     private void AddNoninterferenceCheckers()
     {
-      if (CommandLineOptions.Clo.TrustNoninterference)
+      if (civlTypeChecker.Options.TrustNoninterference)
       {
         return;
       }
@@ -402,7 +402,7 @@ namespace Microsoft.Boogie
     {
       yieldingLoopHeaders = new HashSet<Block>(impl.Blocks.Where(IsYieldingLoopHeader));
 
-      impl.PruneUnreachableBlocks();
+      impl.PruneUnreachableBlocks(civlTypeChecker.Options);
       impl.ComputePredecessorsForBlocks();
       var graph = Program.GraphFromImpl(impl);
       graph.ComputeLoops();
@@ -786,7 +786,7 @@ namespace Microsoft.Boogie
 
     private IEnumerable<Declaration> PendingAsyncNoninterferenceCheckers()
     {
-      if (CommandLineOptions.Clo.TrustNoninterference)
+      if (civlTypeChecker.Options.TrustNoninterference)
       {
         yield break;
       }

@@ -38,7 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 /*
- * Proof of VerifiedFT correctness in CIVL.
+ * Proof of VerifiedFT correctness in Civl.
  */
 
 // RUN: %parallel-boogie "%s" > "%t"

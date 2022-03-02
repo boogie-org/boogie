@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
@@ -27,21 +28,21 @@ namespace VC
       Contract.Requires(program != null);
     }
 
-    public static AssumeCmd AssertTurnedIntoAssume(AssertCmd assrt)
+    public static AssumeCmd AssertTurnedIntoAssume(VCGenOptions options, AssertCmd assrt)
     {
       Contract.Requires(assrt != null);
       Contract.Ensures(Contract.Result<AssumeCmd>() != null);
 
       Expr expr = assrt.Expr;
       Contract.Assert(expr != null);
-      switch (Wlp.Subsumption(assrt))
+      switch (Wlp.Subsumption(options, assrt))
       {
-        case CommandLineOptions.SubsumptionOption.Never:
+        case CoreOptions.SubsumptionOption.Never:
           expr = Expr.True;
           break;
-        case CommandLineOptions.SubsumptionOption.Always:
+        case CoreOptions.SubsumptionOption.Always:
           break;
-        case CommandLineOptions.SubsumptionOption.NotForQuantifiers:
+        case CoreOptions.SubsumptionOption.NotForQuantifiers:
           if (expr is QuantifierExpr)
           {
             expr = Expr.True;
@@ -90,6 +91,8 @@ namespace VC
         this.callback = callback;
       }
 
+      private VCGenOptions Options => parent.Options;
+
       internal void Copy()
       {
         CloneBlock(impl.Blocks[0]);
@@ -117,7 +120,7 @@ namespace VC
       void Emit()
       {
         TopologicalSortImpl();
-        EmitImpl(impl, false);
+        EmitImpl(Options, impl, false);
       }
 
       // this one copies forward
@@ -175,7 +178,7 @@ namespace VC
           }
           else
           {
-            seq.Add(AssertTurnedIntoAssume(turn));
+            seq.Add(AssertTurnedIntoAssume(Options, turn));
           }
         }
 
@@ -294,7 +297,7 @@ namespace VC
         }
 
         DateTime start = DateTime.UtcNow;
-        if (CommandLineOptions.Clo.Trace)
+        if (Options.Trace)
         {
           System.Console.Write("    soundness smoke test #{0} ... ", id);
         }
@@ -311,7 +314,7 @@ namespace VC
         Contract.Assert(backup != null);
         impl.Blocks = GetCopiedBlocks();
         copy.TransferCmd = new ReturnCmd(Token.NoToken);
-        if (CommandLineOptions.Clo.TraceVerify)
+        if (Options.TraceVerify)
         {
           System.Console.WriteLine();
           System.Console.WriteLine(" --- smoke #{0}, before passify", id);
@@ -344,14 +347,14 @@ namespace VC
 
             impl.Blocks = backup;
 
-            if (CommandLineOptions.Clo.TraceVerify)
+            if (Options.TraceVerify)
             {
               System.Console.WriteLine(" --- smoke #{0}, after passify", id);
               Emit();
             }
 
-            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(absyIds, this.callback),
-              CommandLineOptions.Clo.SmokeTimeout, CommandLineOptions.Clo.ResourceLimit, CancellationToken.None);
+            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(Options, absyIds, callback),
+              Options.SmokeTimeout, Options.ResourceLimit, CancellationToken.None);
           }
 
           ch.ProverTask.Wait();
@@ -370,7 +373,7 @@ namespace VC
 
         DateTime end = DateTime.UtcNow;
         TimeSpan elapsed = end - start;
-        if (CommandLineOptions.Clo.Trace)
+        if (Options.Trace)
         {
           System.Console.WriteLine("  [{0} s] {1}", elapsed.TotalSeconds,
             outcome == ProverInterface.Outcome.Valid
@@ -513,7 +516,7 @@ namespace VC
         }
 
 
-        public ErrorHandler(ControlFlowIdMap<Absy> absyIds, VerifierCallback callback)
+        public ErrorHandler(VCGenOptions options, ControlFlowIdMap<Absy> absyIds, VerifierCallback callback)  : base(options)
         {
           Contract.Requires(absyIds != null);
           Contract.Requires(callback != null);
@@ -542,18 +545,20 @@ namespace VC
 
     public class CodeExprConversionClosure
     {
+      private readonly VCGenOptions options;
       ControlFlowIdMap<Absy> absyIds;
       ProverContext ctx;
 
-      public CodeExprConversionClosure(ControlFlowIdMap<Absy> absyIds, ProverContext ctx)
+      public CodeExprConversionClosure(VCGenOptions options, ControlFlowIdMap<Absy> absyIds, ProverContext ctx)
       {
+        this.options = options;
         this.absyIds = absyIds;
         this.ctx = ctx;
       }
 
       public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext)
       {
-        VCGen vcgen = new VCGen(new Program(), new CheckerPool(CommandLineOptions.Clo));
+        VCGen vcgen = new VCGen(new Program(), new CheckerPool(options));
         vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
         vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
         vcgen.CurrentLocalVariables = codeExpr.LocVars;
@@ -562,7 +567,7 @@ namespace VC
         vcgen.AddBlocksBetween(codeExpr.Blocks);
         Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks,
           new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
-        VCExpr startCorrect = LetVC(codeExpr.Blocks, null, absyIds, ctx, out var ac, isPositiveContext);
+        VCExpr startCorrect = vcgen.LetVC(codeExpr.Blocks, null, absyIds, ctx, out var ac, isPositiveContext);
         VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
         if (vcgen.CurrentLocalVariables.Count != 0)
         {
@@ -611,12 +616,12 @@ namespace VC
       Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-      TypecheckingContext tc = new TypecheckingContext(null);
+      TypecheckingContext tc = new TypecheckingContext(null, Options);
       impl.Typecheck(tc);
 
       VCExpr vc;
       int assertionCount;
-      if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags)
+      if (cce.NonNull(CheckerPool.Options.TheProverFactory).SupportsDags)
       {
         vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, absyIds,
           new Dictionary<Block, VCExpr>(), proverContext, out assertionCount);
@@ -805,11 +810,14 @@ namespace VC
       }
     }
 
-    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback, CancellationToken cancellationToken)
+    private VCGenOptions Options => CheckerPool.Options;
+
+    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback,
+      CancellationToken cancellationToken)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-      if (impl.SkipVerification)
+      if (impl.IsSkipVerification(Options))
       {
         return Outcome.Inconclusive; // not sure about this one
       }
@@ -826,7 +834,7 @@ namespace VC
       ConvertCFG2DAG(impl);
 
       SmokeTester smoke_tester = null;
-      if (CommandLineOptions.Clo.SoundnessSmokeTest)
+      if (Options.SoundnessSmokeTest)
       {
         smoke_tester = new SmokeTester(this, impl, callback);
         smoke_tester.Copy();
@@ -848,14 +856,14 @@ namespace VC
           var oldCex = impl.ErrorChecksumToCachedError[checksum] as Counterexample;
           if (oldCex != null)
           {
-            if (CommandLineOptions.Clo.VerifySnapshots < 3)
+            if (Options.VerifySnapshots < 3)
             {
               callback.OnCounterexample(oldCex, null);
             }
             else
             {
               // If possible, we use the old counterexample, but with the location information of "a"
-              var cex = AssertCmdToCloneCounterexample(a, oldCex, impl.Blocks[0], gotoCmdOrigins);
+              var cex = AssertCmdToCloneCounterexample(CheckerPool.Options, a, oldCex, impl.Blocks[0], gotoCmdOrigins);
               callback.OnCounterexample(cex, null);
               // OnCounterexample may have had side effects on the RequestId and OriginalRequestId fields.  We make
               // any such updates available in oldCex. (Is this really a good design? --KRML)
@@ -866,7 +874,7 @@ namespace VC
         }
       }
 
-      var worker = new SplitAndVerifyWorker(CommandLineOptions.Clo, this, impl, gotoCmdOrigins, callback, mvInfo, outcome);
+      var worker = new SplitAndVerifyWorker(Options, this, impl, gotoCmdOrigins, callback, mvInfo, outcome);
       outcome = worker.WorkUntilDone(cancellationToken).Result;
       ResourceCount = worker.ResourceCount;
       
@@ -887,6 +895,7 @@ namespace VC
 
     public class ErrorReporter : ProverInterface.ErrorHandler
     {
+      private VCGenOptions options;
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins;
 
       ControlFlowIdMap<Absy> absyIds;
@@ -920,19 +929,20 @@ namespace VC
         get { return program.NecessaryAssumes; }
       }
 
-      public void AddNecessaryAssume(string id)
+      public override void AddNecessaryAssume(string id)
       {
         program.NecessaryAssumes.Add(id);
       }
 
-      public ErrorReporter(Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
+      public ErrorReporter(VCGenOptions options,
+        Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
         ControlFlowIdMap<Absy> /*!*/ absyIds,
         List<Block /*!*/> /*!*/ blocks,
         Dictionary<Cmd, List<object>> debugInfos,
         VerifierCallback /*!*/ callback,
         ModelViewInfo mvInfo,
         ProverContext /*!*/ context,
-        Program /*!*/ program)
+        Program /*!*/ program) : base(options)
       {
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(absyIds != null);
@@ -949,6 +959,7 @@ namespace VC
 
         this.context = context;
         this.program = program;
+        this.options = options;
       }
 
       public override void OnModel(IList<string /*!*/> /*!*/ labels, Model model, ProverInterface.Outcome proverOutcome)
@@ -980,7 +991,7 @@ namespace VC
         Contract.Assert(traceNodes.Contains(entryBlock));
         trace.Add(entryBlock);
 
-        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, model, MvInfo,
+        Counterexample newCounterexample = TraceCounterexample(options, entryBlock, traceNodes, trace, model, MvInfo,
           debugInfos, context, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
 
         if (newCounterexample == null)
@@ -1029,7 +1040,7 @@ namespace VC
           foreach (var cmd in assertCmds)
           {
             Counterexample cex =
-              AssertCmdToCounterexample(cmd.Item1, cmd.Item2, new List<Block>(), new List<object>(), null, null, context);
+              AssertCmdToCounterexample(options, cmd.Item1, cmd.Item2, new List<Block>(), new List<object>(), null, null, context);
             cex.IsAuxiliaryCexForDiagnosingTimeouts = true;
             callback.OnCounterexample(cex, msg);
           }
@@ -1059,7 +1070,7 @@ namespace VC
     public void ConvertCFG2DAG(Implementation impl, Dictionary<Block, List<Block>> edgesCut = null, int taskID = -1)
     {
       Contract.Requires(impl != null);
-      impl.PruneUnreachableBlocks(); // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
+      impl.PruneUnreachableBlocks(Options); // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
 
       CurrentLocalVariables = impl.LocVars;
       variable2SequenceNumber = new Dictionary<Variable, int>();
@@ -1067,20 +1078,20 @@ namespace VC
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("original implementation");
-        EmitImpl(impl, false);
+        EmitImpl(Options, impl, false);
       }
 
       #endregion
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("after desugaring sugared commands like procedure calls");
-        EmitImpl(impl, true);
+        EmitImpl(Options, impl, true);
       }
 
       #endregion
@@ -1092,7 +1103,7 @@ namespace VC
           new GotoCmd(Token.NoToken, new List<String> {impl.Blocks[0].Label}, new List<Block> {impl.Blocks[0]})));
       ResetPredecessors(impl.Blocks);
 
-      var k = Math.Max(CommandLineOptions.Clo.KInductionDepth,
+      var k = Math.Max(Options.KInductionDepth,
         QKeyValue.FindIntAttribute(impl.Attributes, "kInductionDepth", -1));
       if (k < 0)
       {
@@ -1105,10 +1116,10 @@ namespace VC
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("after conversion into a DAG");
-        EmitImpl(impl, true);
+        EmitImpl(Options, impl, true);
       }
 
       #endregion
@@ -1162,10 +1173,10 @@ namespace VC
               AssertCmd c = (AssertCmd) a;
               AssertCmd b = null;
 
-              if (CommandLineOptions.Clo.ConcurrentHoudini)
+              if (Options.ConcurrentHoudini)
               {
                 Contract.Assert(taskID >= 0);
-                if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvEntryAssert)
+                if (Options.Cho[taskID].DisableLoopInvEntryAssert)
                 {
                   b = new LoopInitAssertCmd(c.tok, Expr.True);
                 }
@@ -1183,10 +1194,10 @@ namespace VC
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsInit.Add(b);
 
-              if (CommandLineOptions.Clo.ConcurrentHoudini)
+              if (Options.ConcurrentHoudini)
               {
                 Contract.Assert(taskID >= 0);
-                if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvMaintainedAssert)
+                if (Options.Cho[taskID].DisableLoopInvMaintainedAssert)
                 {
                   b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True);
                 }
@@ -1208,7 +1219,7 @@ namespace VC
             else
             {
               Contract.Assert(a is AssumeCmd);
-              if (Bpl.CommandLineOptions.Clo.AlwaysAssumeFreeLoopInvariants)
+              if (Options.AlwaysAssumeFreeLoopInvariants)
               {
                 // Usually, "free" stuff, like free loop invariants (and the assume statements
                 // that stand for such loop invariants) are ignored on the checking side.  This
@@ -1444,7 +1455,7 @@ namespace VC
 
           #region Debug Tracing
 
-          if (CommandLineOptions.Clo.TraceVerify)
+          if (Options.TraceVerify)
           {
             Console.WriteLine("Applying k-induction rule with k=" + inductionK);
           }
@@ -1532,7 +1543,7 @@ namespace VC
             }
           }
 
-          impl.PruneUnreachableBlocks();
+          impl.PruneUnreachableBlocks(Options);
 
           #endregion
 
@@ -1662,7 +1673,7 @@ namespace VC
           SugaredCmd sugaredCmd = cmd as SugaredCmd;
           if (sugaredCmd != null)
           {
-            StateCmd stateCmd = sugaredCmd.Desugaring as StateCmd;
+            StateCmd stateCmd = sugaredCmd.GetDesugaring(Options) as StateCmd;
             foreach (Variable v in stateCmd.Locals)
             {
               impl.LocVars.Add(v);
@@ -1691,10 +1702,10 @@ namespace VC
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("after creating a unified exit block");
-        EmitImpl(impl, true);
+        EmitImpl(Options, impl, true);
       }
 
       #endregion
@@ -1717,7 +1728,7 @@ namespace VC
         }
 
         // where clauses of in- and out-parameters
-        cc.AddRange(GetParamWhereClauses(impl));
+        cc.AddRange(GetParamWhereClauses(Options, impl));
         // where clauses of local variables
         foreach (Variable lvar in impl.LocVars)
         {
@@ -1738,10 +1749,10 @@ namespace VC
         }
 
         // add cc and the preconditions to new blocks preceding impl.Blocks[0]
-        InjectPreconditions(impl, cc);
+        InjectPreconditions(Options, impl, cc);
 
         // append postconditions, starting in exitBlock and continuing into other blocks, if needed
-        InjectPostConditions(impl, exitBlock, gotoCmdOrigins);
+        InjectPostConditions(Options, impl, exitBlock, gotoCmdOrigins);
       }
 
       #endregion
@@ -1755,10 +1766,10 @@ namespace VC
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("after inserting pre- and post-conditions");
-        EmitImpl(impl, true);
+        EmitImpl(Options, impl, true);
       }
 
       #endregion
@@ -1767,17 +1778,17 @@ namespace VC
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("after adding empty blocks as needed to catch join assumptions");
-        EmitImpl(impl, true);
+        EmitImpl(Options, impl, true);
       }
 
       #endregion
 
-      if (CommandLineOptions.Clo.LiveVariableAnalysis > 0)
+      if (Options.LiveVariableAnalysis > 0)
       {
-        Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(impl);
+        new LiveVariableAnalysis(Options).ComputeLiveVariables(impl);
       }
 
       mvInfo = new ModelViewInfo(program, impl);
@@ -1790,23 +1801,23 @@ namespace VC
 
       #region Peep-hole optimizations
 
-      if (CommandLineOptions.Clo.RemoveEmptyBlocks)
+      if (Options.RemoveEmptyBlocks)
       {
         #region Get rid of empty blocks
 
         {
           RemoveEmptyBlocks(impl.Blocks);
-          impl.PruneUnreachableBlocks();
+          impl.PruneUnreachableBlocks(Options);
         }
 
         #endregion Get rid of empty blocks
 
         #region Debug Tracing
 
-        if (CommandLineOptions.Clo.TraceVerify)
+        if (Options.TraceVerify)
         {
           Console.WriteLine("after peep-hole optimizations");
-          EmitImpl(impl, true);
+          EmitImpl(Options, impl, true);
         }
 
         #endregion
@@ -2027,7 +2038,7 @@ namespace VC
 
     #endregion
 
-    private static void HandleSelectiveChecking(Implementation impl)
+    private void HandleSelectiveChecking(Implementation impl)
     {
       if (QKeyValue.FindBoolAttribute(impl.Attributes, "selective_checking") ||
           QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "selective_checking"))
@@ -2103,7 +2114,7 @@ namespace VC
             }
             else
             {
-              newCmds.Add(AssertTurnedIntoAssume(asrt));
+              newCmds.Add(AssertTurnedIntoAssume(Options, asrt));
             }
           }
 
@@ -2287,6 +2298,7 @@ namespace VC
     }
 
     static Counterexample TraceCounterexample(
+      VCGenOptions options,
       Block b, HashSet<Absy> traceNodes, List<Block> trace, Model errModel, ModelViewInfo mvInfo,
       Dictionary<Cmd, List<object>> debugInfos,
       ProverContext context,
@@ -2319,7 +2331,7 @@ namespace VC
           if (cmd is AssertCmd && traceNodes.Contains(cmd))
           {
             Counterexample newCounterexample =
-              AssertCmdToCounterexample((AssertCmd) cmd, transferCmd, trace, augmentedTrace, errModel, mvInfo, context);
+              AssertCmdToCounterexample(options, (AssertCmd) cmd, transferCmd, trace, augmentedTrace, errModel, mvInfo, context);
             Contract.Assert(newCounterexample != null);
             newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
             return newCounterexample;
@@ -2353,7 +2365,7 @@ namespace VC
       }
     }
 
-    public static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, List<Block> trace, List<object> augmentedTrace,
+    public static Counterexample AssertCmdToCounterexample(VCGenOptions options, AssertCmd cmd, TransferCmd transferCmd, List<Block> trace, List<object> augmentedTrace,
       Model errModel, ModelViewInfo mvInfo, ProverContext context)
     {
       Contract.Requires(cmd != null);
@@ -2367,7 +2379,7 @@ namespace VC
       {
         AssertRequiresCmd assertCmd = (AssertRequiresCmd) cmd;
         Contract.Assert(assertCmd != null);
-        CallCounterexample cc = new CallCounterexample(trace, augmentedTrace, assertCmd, errModel, mvInfo,
+        CallCounterexample cc = new CallCounterexample(options, trace, augmentedTrace, assertCmd, errModel, mvInfo,
           context, assertCmd.Checksum);
         return cc;
       }
@@ -2375,13 +2387,13 @@ namespace VC
       {
         AssertEnsuresCmd assertCmd = (AssertEnsuresCmd) cmd;
         Contract.Assert(assertCmd != null);
-        ReturnCounterexample rc = new ReturnCounterexample(trace, augmentedTrace, transferCmd, assertCmd, errModel, mvInfo,
+        ReturnCounterexample rc = new ReturnCounterexample(options, trace, augmentedTrace, assertCmd, transferCmd, errModel, mvInfo,
           context, cmd.Checksum);
         return rc;
       }
       else
       {
-        AssertCounterexample ac = new AssertCounterexample(trace, augmentedTrace, (AssertCmd) cmd, errModel, mvInfo, context);
+        AssertCounterexample ac = new AssertCounterexample(options, trace, augmentedTrace, (AssertCmd) cmd, errModel, mvInfo, context);
         return ac;
       }
     }
@@ -2389,7 +2401,7 @@ namespace VC
     /// <summary>
     /// Returns a clone of "cex", but with the location stored in "cex" replaced by those from "assrt".
     /// </summary>
-    public static Counterexample AssertCmdToCloneCounterexample(AssertCmd assrt, Counterexample cex,
+    public static Counterexample AssertCmdToCloneCounterexample(VCGenOptions options, AssertCmd assrt, Counterexample cex,
       Block implEntryBlock, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
     {
       Contract.Requires(assrt != null);
@@ -2402,7 +2414,7 @@ namespace VC
       if (assrt is AssertRequiresCmd)
       {
         var aa = (AssertRequiresCmd) assrt;
-        cc = new CallCounterexample(cex.Trace, cex.AugmentedTrace, aa, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
+        cc = new CallCounterexample(options, cex.Trace, cex.AugmentedTrace, aa, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
       }
       else if (assrt is AssertEnsuresCmd && cex is ReturnCounterexample)
       {
@@ -2484,12 +2496,12 @@ namespace VC
           }
         }
 
-        cc = new ReturnCounterexample(reconstructedTrace ?? cex.Trace, cex.AugmentedTrace, returnCmd ?? oldCex.FailingReturn, aa,
+        cc = new ReturnCounterexample(options, reconstructedTrace ?? cex.Trace, cex.AugmentedTrace, aa, returnCmd ?? oldCex.FailingReturn,
           cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
       }
       else
       {
-        cc = new AssertCounterexample(cex.Trace, cex.AugmentedTrace, assrt, cex.Model, cex.MvInfo, cex.Context);
+        cc = new AssertCounterexample(options, cex.Trace, cex.AugmentedTrace, assrt, cex.Model, cex.MvInfo, cex.Context);
       }
 
       return cc;
@@ -2517,7 +2529,7 @@ namespace VC
      *
      */
 
-    static VCExpr LetVC(List<Block> blocks,
+    VCExpr LetVC(List<Block> blocks,
       VCExpr controlFlowVariableExpr,
       ControlFlowIdMap<Absy> absyIds,
       ProverContext proverCtxt,
@@ -2582,7 +2594,7 @@ namespace VC
           SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
         }
 
-        VCContext context = new VCContext(absyIds, proverCtxt, controlFlowVariableExpr, isPositiveContext);
+        VCContext context = new VCContext(Options, absyIds, proverCtxt, controlFlowVariableExpr, isPositiveContext);
         VCExpr vc = Wlp.Block(block, SuccCorrect, context);
         assertionCount += context.AssertionCount;
 
@@ -2594,7 +2606,7 @@ namespace VC
       return proverCtxt.ExprGen.Let(bindings, blockVariables[blocks[0]]);
     }
 
-    static VCExpr DagVC(Block block,
+    VCExpr DagVC(Block block,
       VCExpr controlFlowVariableExpr,
       ControlFlowIdMap<Absy> absyIds,
       Dictionary<Block, VCExpr> blockEquations,
@@ -2647,7 +2659,7 @@ namespace VC
         SuccCorrect = VCExpressionGenerator.True;
       }
 
-      VCContext context = new VCContext(absyIds, proverCtxt, controlFlowVariableExpr);
+      VCContext context = new VCContext(Options, absyIds, proverCtxt, controlFlowVariableExpr);
       vc = Wlp.Block(block, SuccCorrect, context);
       assertionCount += context.AssertionCount;
 

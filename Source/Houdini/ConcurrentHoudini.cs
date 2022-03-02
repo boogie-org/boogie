@@ -18,8 +18,8 @@ namespace Microsoft.Boogie.Houdini
       get { return refutedSharedAnnotations; }
     }
 
-    public ConcurrentHoudini(int taskId, Program program, HoudiniSession.HoudiniStatistics stats,
-      string cexTraceFile = "houdiniCexTrace.txt")
+    public ConcurrentHoudini(HoudiniOptions options, int taskId, Program program, HoudiniSession.HoudiniStatistics stats,
+      string cexTraceFile = "houdiniCexTrace.txt") : base(options)
     {
       Contract.Assert(taskId >= 0);
       this.program = program;
@@ -37,7 +37,7 @@ namespace Microsoft.Boogie.Houdini
     {
       int count = 0;
 
-      if (CommandLineOptions.Clo.DebugConcurrentHoudini)
+      if (Options.DebugConcurrentHoudini)
       {
         Console.WriteLine("# number of shared refuted annotations: " + refutedSharedAnnotations.Count);
       }
@@ -89,7 +89,7 @@ namespace Microsoft.Boogie.Houdini
 
           Debug.Assert(ra != null);
 
-          if (CommandLineOptions.Clo.DebugConcurrentHoudini)
+          if (Options.DebugConcurrentHoudini)
           {
             Console.WriteLine("(+) " + ra.Constant + "," + ra.Kind + "," + ra.CalleeProc + "," + ra.RefutationSite);
           }

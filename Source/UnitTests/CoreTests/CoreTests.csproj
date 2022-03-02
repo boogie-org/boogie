@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\BaseTypes\BaseTypes.csproj" />
     <ProjectReference Include="..\..\Core\Core.csproj" />
+    <ProjectReference Include="..\..\ExecutionEngine\ExecutionEngine.csproj" />
     <ProjectReference Include="..\TestUtil\TestUtil.csproj" />
   </ItemGroup>
 

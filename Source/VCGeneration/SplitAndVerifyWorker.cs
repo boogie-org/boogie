@@ -12,7 +12,7 @@ namespace VC
 {
   class SplitAndVerifyWorker
   {
-    private readonly CommandLineOptions options;
+    private readonly VCGenOptions options;
     private readonly VerifierCallback callback;
     private readonly ModelViewInfo mvInfo;
     private readonly Implementation implementation;
@@ -35,7 +35,7 @@ namespace VC
 
     private int totalResourceCount;
     
-    public SplitAndVerifyWorker(CommandLineOptions options, VCGen vcGen, Implementation implementation,
+    public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, Implementation implementation,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
       Outcome outcome)
     {
@@ -64,7 +64,7 @@ namespace VC
       implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
       ResetPredecessors(implementation.Blocks);
-      manualSplits = Split.FocusAndSplit(implementation, gotoCmdOrigins, vcGen, splitOnEveryAssert);
+      manualSplits = Split.FocusAndSplit(options, implementation, gotoCmdOrigins, vcGen, splitOnEveryAssert);
       
       if (manualSplits.Count == 1 && maxSplits > 1) {
         manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);
@@ -120,16 +120,13 @@ namespace VC
           split.Stats, currentSplitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
       }
 
-      if (options.XmlSink != null && DoSplitting) {
-        options.XmlSink.WriteStartSplit(currentSplitNumber + 1, DateTime.UtcNow);
-      }
       callback.OnProgress?.Invoke("VCprove", currentSplitNumber, total,
         provenCost / (remainingCost + provenCost));
 
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
-        implementation.TimeLimit;
-      split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit, cancellationToken);
+        implementation.GetTimeLimit(options);
+      split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.GetResourceLimit(options), cancellationToken);
     }
 
     private async Task ProcessResult(Split split, CancellationToken cancellationToken)
@@ -139,7 +136,7 @@ namespace VC
           remainingCost -= split.Cost;
         }
       }
-      split.ReadOutcome(ref outcome, out var proverFailed, ref totalResourceCount);
+      split.ReadOutcome(callback, ref outcome, out var proverFailed, ref totalResourceCount);
 
       if (TrackingProgress) {
         lock (this) {
@@ -156,7 +153,7 @@ namespace VC
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
       if (!proverFailed) {
-        if (callback is CounterexampleCollector collector) {
+        if (callback is VerificationResultCollector collector) {
           List<AssertCmd> asserts = split.blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToList();
           Dictionary<AssertCmd, Outcome> perAssertOutcome = new();
           Dictionary<AssertCmd, Counterexample> perAssertCounterExamples = new();
@@ -177,7 +174,7 @@ namespace VC
             }
 
             var remainingOutcome =
-              outcome == Outcome.Errors && collector.examples.Count != CommandLineOptions.Clo.ErrorLimit
+              outcome == Outcome.Errors && collector.examples.Count != split.Checker.Options.ErrorLimit
                 ? Outcome.Correct
                 : Outcome.Inconclusive;
             // Everything not listed is successful
