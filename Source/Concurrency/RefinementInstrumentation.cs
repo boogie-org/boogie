@@ -170,14 +170,14 @@ namespace Microsoft.Boogie
         tok,
         Expr.Or(Expr.Ident(pc), Expr.Or(OldEqualityExprForGlobals(), transitionRelation)),
         $"A yield-to-yield fragment modifies layer-{layerNum + 1} state in a way that does not match the refined atomic action");
-      CivlUtil.ResolveAndTypecheck(skipOrTransitionRelationAssertCmd);
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, skipOrTransitionRelationAssertCmd);
 
       // assert pc ==> g_old == g && o_old == o;
       AssertCmd skipAssertCmd = CmdHelper.AssertCmd(
         tok,
         Expr.Imp(Expr.Ident(pc), Expr.And(OldEqualityExprForGlobals(), OldEqualityExprForOutputs())),
         $"A yield-to-yield fragment modifies layer-{layerNum + 1} state subsequent to a yield-to-yield fragment that already modified layer-{layerNum + 1} state");
-      CivlUtil.ResolveAndTypecheck(skipAssertCmd);
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, skipAssertCmd);
       
       return new List<Cmd> {skipOrTransitionRelationAssertCmd, skipAssertCmd};
     }
@@ -197,14 +197,14 @@ namespace Microsoft.Boogie
         tok,
         Expr.And(this.oldGlobalMap.Select(kvPair => Expr.Eq(Expr.Ident(kvPair.Key), Expr.Ident(kvPair.Value)))),
         $"A yield-to-yield fragment illegally modifies layer-{layerNum + 1} globals");
-      CivlUtil.ResolveAndTypecheck(globalsAssertCmd);
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, globalsAssertCmd);
 
       // assert pc ==> o_old == o;
       AssertCmd outputsAssertCmd = CmdHelper.AssertCmd(
         tok,
         Expr.Imp(Expr.Ident(pc), OldEqualityExprForOutputs()),
         $"A yield-to-yield fragment illegally modifies layer-{layerNum + 1} outputs");
-      CivlUtil.ResolveAndTypecheck(outputsAssertCmd);
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, outputsAssertCmd);
 
       return new List<Cmd> {globalsAssertCmd, outputsAssertCmd};
     }
@@ -231,7 +231,7 @@ namespace Microsoft.Boogie
         cmds.Add(CmdHelper.AssignCmd(pcOkUpdateLHS, pcOkUpdateRHS));
       }
 
-      CivlUtil.ResolveAndTypecheck(cmds);
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
 
       return cmds;
     }

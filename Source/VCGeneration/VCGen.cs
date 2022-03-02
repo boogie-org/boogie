@@ -28,14 +28,14 @@ namespace VC
       Contract.Requires(program != null);
     }
 
-    public static AssumeCmd AssertTurnedIntoAssume(AssertCmd assrt)
+    public static AssumeCmd AssertTurnedIntoAssume(VCGenOptions options, AssertCmd assrt)
     {
       Contract.Requires(assrt != null);
       Contract.Ensures(Contract.Result<AssumeCmd>() != null);
 
       Expr expr = assrt.Expr;
       Contract.Assert(expr != null);
-      switch (Wlp.Subsumption(assrt))
+      switch (Wlp.Subsumption(options, assrt))
       {
         case CoreOptions.SubsumptionOption.Never:
           expr = Expr.True;
@@ -178,7 +178,7 @@ namespace VC
           }
           else
           {
-            seq.Add(AssertTurnedIntoAssume(turn));
+            seq.Add(AssertTurnedIntoAssume(Options, turn));
           }
         }
 
@@ -616,7 +616,7 @@ namespace VC
       Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-      TypecheckingContext tc = new TypecheckingContext(null);
+      TypecheckingContext tc = new TypecheckingContext(null, Options);
       impl.Typecheck(tc);
 
       VCExpr vc;
@@ -817,7 +817,7 @@ namespace VC
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-      if (impl.SkipVerification)
+      if (impl.IsSkipVerification(Options))
       {
         return Outcome.Inconclusive; // not sure about this one
       }
@@ -1070,7 +1070,7 @@ namespace VC
     public void ConvertCFG2DAG(Implementation impl, Dictionary<Block, List<Block>> edgesCut = null, int taskID = -1)
     {
       Contract.Requires(impl != null);
-      impl.PruneUnreachableBlocks(); // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
+      impl.PruneUnreachableBlocks(Options); // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
 
       CurrentLocalVariables = impl.LocVars;
       variable2SequenceNumber = new Dictionary<Variable, int>();
@@ -1543,7 +1543,7 @@ namespace VC
             }
           }
 
-          impl.PruneUnreachableBlocks();
+          impl.PruneUnreachableBlocks(Options);
 
           #endregion
 
@@ -1673,7 +1673,7 @@ namespace VC
           SugaredCmd sugaredCmd = cmd as SugaredCmd;
           if (sugaredCmd != null)
           {
-            StateCmd stateCmd = sugaredCmd.Desugaring as StateCmd;
+            StateCmd stateCmd = sugaredCmd.GetDesugaring(Options) as StateCmd;
             foreach (Variable v in stateCmd.Locals)
             {
               impl.LocVars.Add(v);
@@ -1788,7 +1788,7 @@ namespace VC
 
       if (Options.LiveVariableAnalysis > 0)
       {
-        Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(impl);
+        new LiveVariableAnalysis(Options).ComputeLiveVariables(impl);
       }
 
       mvInfo = new ModelViewInfo(program, impl);
@@ -1807,7 +1807,7 @@ namespace VC
 
         {
           RemoveEmptyBlocks(impl.Blocks);
-          impl.PruneUnreachableBlocks();
+          impl.PruneUnreachableBlocks(Options);
         }
 
         #endregion Get rid of empty blocks
@@ -2038,7 +2038,7 @@ namespace VC
 
     #endregion
 
-    private static void HandleSelectiveChecking(Implementation impl)
+    private void HandleSelectiveChecking(Implementation impl)
     {
       if (QKeyValue.FindBoolAttribute(impl.Attributes, "selective_checking") ||
           QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "selective_checking"))
@@ -2114,7 +2114,7 @@ namespace VC
             }
             else
             {
-              newCmds.Add(AssertTurnedIntoAssume(asrt));
+              newCmds.Add(AssertTurnedIntoAssume(Options, asrt));
             }
           }
 

@@ -296,7 +296,7 @@ namespace Microsoft.Boogie.Houdini
 
     private void EmitProgram(string filename)
     {
-      using TokenTextWriter writer = new TokenTextWriter(filename, true);
+      using TokenTextWriter writer = new TokenTextWriter(filename, true, options);
       int oldPrintUnstructured = options.PrintUnstructured;
       options.PrintUnstructured = 2;
       program.Emit(writer);

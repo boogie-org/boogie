@@ -45,6 +45,10 @@ namespace Microsoft.Boogie.SMTLib
     // Z3 specific (at the moment; some of them make sense also for other provers)
     public string Inspector = null;
 
+    public SMTLibProverOptions(SMTLibOptions libOptions) : base(libOptions)
+    {
+    }
+
     public void AddSolverArgument(string s)
     {
       SolverArguments.Add(s);

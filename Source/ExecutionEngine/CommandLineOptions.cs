@@ -627,8 +627,8 @@ namespace Microsoft.Boogie
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
-  public class CommandLineOptions : CommandLineOptionEngine, ExecutionEngineOptions
-  {
+  public class CommandLineOptions : CommandLineOptionEngine, ExecutionEngineOptions {
+
     public static CommandLineOptions FromArguments(params string[] arguments)
     {
       var result = new CommandLineOptions();
@@ -646,12 +646,6 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(toolName != null);
       Contract.Requires(descriptiveName != null);
-    }
-
-    public static void Install(CoreOptions options)
-    {
-      Contract.Requires(options != null);
-      CoreOptions.Clo = options;
     }
 
     // Flags and arguments
@@ -1929,7 +1923,7 @@ namespace Microsoft.Boogie
       Contract.Assume(XmlSink == null); // XmlSink is to be set here
       if (XmlSinkFilename != null)
       {
-        XmlSink = new XmlSink(XmlSinkFilename);
+        XmlSink = new XmlSink(this, XmlSinkFilename);
       }
 
       if (TheProverFactory == null)
@@ -2032,7 +2026,7 @@ namespace Microsoft.Boogie
       return semicolonIndex;
     }
 
-    public string ProverHelp => TheProverFactory.BlankProverOptions().Help;
+    public string ProverHelp => TheProverFactory.BlankProverOptions(this).Help;
 
     public override string AttributeHelp =>
 @"Boogie: The following attributes are supported by this version.

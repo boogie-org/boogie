@@ -9,8 +9,8 @@ namespace Microsoft.Boogie
 {
   public class ProverOptions
   {
-    public string /*?*/
-      LogFilename = null;
+    public SMTLibOptions LibOptions { get; }
+    public string /*?*/ LogFilename = null;
 
     public bool AppendLogFile = false;
 
@@ -31,6 +31,11 @@ namespace Microsoft.Boogie
 
     private string /*!*/
       stringRepr = "";
+
+    public ProverOptions(SMTLibOptions libOptions)
+    {
+      this.LibOptions = libOptions;
+    }
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -175,7 +180,7 @@ The generic options may or may not be used by the prover plugin.
       Contract.Requires(proverPath != null);
       Contract.Ensures(confirmedProverPath != null);
       confirmedProverPath = proverPath;
-      if (CoreOptions.Clo.Trace)
+      if (LibOptions.Trace)
       {
         Console.WriteLine("[TRACE] Using prover: " + confirmedProverPath);
         if (BatchMode) {
@@ -312,10 +317,10 @@ The generic options may or may not be used by the prover plugin.
     // Really returns ProverContext
     public abstract ProverContext /*!*/ NewProverContext(ProverOptions /*!*/ options);
 
-    public virtual ProverOptions BlankProverOptions()
+    public virtual ProverOptions BlankProverOptions(SMTLibOptions libOptions)
     {
       Contract.Ensures(Contract.Result<ProverOptions>() != null);
-      return new ProverOptions();
+      return new ProverOptions(libOptions);
     }
 
     // return true if the prover supports DAG AST as opposed to LET AST

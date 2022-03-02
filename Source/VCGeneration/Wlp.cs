@@ -138,7 +138,7 @@ namespace VC
         }
 
         {
-          var subsumption = Subsumption(ac);
+          var subsumption = Subsumption(ctxt.Options, ac);
           if (subsumption == CoreOptions.SubsumptionOption.Always
               || (subsumption == CoreOptions.SubsumptionOption.NotForQuantifiers && !(C is VCExprQuantifier)))
           {
@@ -241,7 +241,7 @@ namespace VC
       return expr;
     }
 
-    public static CoreOptions.SubsumptionOption Subsumption(AssertCmd ac)
+    public static CoreOptions.SubsumptionOption Subsumption(VCGenOptions options, AssertCmd ac)
     {
       Contract.Requires(ac != null);
       int n = QKeyValue.FindIntAttribute(ac.Attributes, "subsumption", -1);
@@ -250,7 +250,7 @@ namespace VC
         case 0: return CoreOptions.SubsumptionOption.Never;
         case 1: return CoreOptions.SubsumptionOption.NotForQuantifiers;
         case 2: return CoreOptions.SubsumptionOption.Always;
-        default: return CoreOptions.Clo.UseSubsumption;
+        default: return options.UseSubsumption;
       }
     }
 

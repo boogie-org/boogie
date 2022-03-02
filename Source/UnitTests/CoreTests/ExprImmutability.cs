@@ -150,11 +150,12 @@ namespace CoreTests
     [Test()]
     public void ProtectedExprType()
     {
+      var options = CommandLineOptions.FromArguments();
       var e = GetUnTypedImmutableNAry();
 
       // Now Typecheck
       // Even though it's immutable we allow the TypeCheck field to be set if the Expr has never been type checked
-      var TC = new TypecheckingContext(this);
+      var TC = new TypecheckingContext(this, options);
       e.Typecheck(TC);
       Assert.IsNotNull(e.Type);
       Assert.IsTrue(e.Type.IsBool);
@@ -163,11 +164,12 @@ namespace CoreTests
     [Test()]
     public void ProtectedExprChangeTypeFail()
     {
+      var options = CommandLineOptions.FromArguments();
       var e = GetUnTypedImmutableNAry();
 
       // Now Typecheck
       // Even though it's immutable we allow the TypeCheck field to be set if the Expr has never been type checked
-      var TC = new TypecheckingContext(this);
+      var TC = new TypecheckingContext(this, options);
       e.Typecheck(TC);
       Assert.IsNotNull(e.Type);
       Assert.IsTrue(e.Type.IsBool);
@@ -179,11 +181,12 @@ namespace CoreTests
     [Test()]
     public void ProtectedExprTypeChangeTypeSucceed()
     {
+      var options = CommandLineOptions.FromArguments();
       var e = GetUnTypedImmutableNAry();
 
       // Now Typecheck
       // Even though it's immutable we allow the TypeCheck field to be set if the Expr has never been type checked
-      var TC = new TypecheckingContext(this);
+      var TC = new TypecheckingContext(this, options);
       e.Typecheck(TC);
       Assert.IsNotNull(e.Type);
       Assert.IsTrue(e.Type.IsBool);

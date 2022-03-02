@@ -252,7 +252,7 @@ namespace Microsoft.Boogie
 
         // establish a canonical order of the type parameters
         this.TypeParameters = Type.SortTypeParams(TypeParameters,
-          new List<Type>(Dummies.Select(Item => Item.TypedIdent.Type).ToArray()), null);
+          Dummies.Select(Item => Item.TypedIdent.Type).ToList(), null);
       }
       finally
       {
@@ -312,7 +312,7 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
       List<TypeVariable> /*!*/
-        dummyParameters = Type.FreeVariablesIn(new List<Type>(Dummies.Select(Item => Item.TypedIdent.Type).ToArray()));
+        dummyParameters = Type.FreeVariablesIn(Dummies.Select(Item => Item.TypedIdent.Type).ToList());
       Contract.Assert(dummyParameters != null);
       List<TypeVariable> /*!*/
         unmentionedParameters = new List<TypeVariable>();

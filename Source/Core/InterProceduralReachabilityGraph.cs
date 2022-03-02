@@ -21,6 +21,7 @@ namespace Microsoft.Boogie
 
   public class InterproceduralReachabilityGraph : IInterproceduralReachabilityGraph
   {
+    private CoreOptions options;
     private Program prog;
     private HashSet<Block> nodes;
     private Dictionary<Block, Block> originalToNew;
@@ -29,9 +30,10 @@ namespace Microsoft.Boogie
 
     private Graph<Block> reachabilityGraph;
 
-    public InterproceduralReachabilityGraph(Program prog)
+    public InterproceduralReachabilityGraph(Program prog, CoreOptions options)
     {
       this.prog = prog;
+      this.options = options;
       originalToNew = new Dictionary<Block, Block>();
       newProcedureEntryNodes = new Dictionary<string, Block>();
       newProcedureExitNodes = new Dictionary<string, Block>();
@@ -170,7 +172,7 @@ namespace Microsoft.Boogie
             Block newBlock;
             if (prev == null)
             {
-              newBlock = new Block(b.tok, "__" + impl.Name + "_" + b.Label, new List<Cmd>(cmds.ToArray()), null);
+              newBlock = new Block(b.tok, "__" + impl.Name + "_" + b.Label, cmds.ToList(), null);
               nodes.Add(newBlock);
               originalToNew[b] = newBlock;
               if (impl.Blocks[0] == b)
@@ -181,7 +183,7 @@ namespace Microsoft.Boogie
             else
             {
               string label = "__" + impl.Name + "_" + b.Label + "_call_" + i;
-              newBlock = new Block(b.tok, label, new List<Cmd>(cmds.ToArray()), null);
+              newBlock = new Block(b.tok, label, cmds.ToList(), null);
               nodes.Add(newBlock);
               originalToNew[newBlock] = newBlock;
               prev.TransferCmd = new GotoCmd(Token.NoToken, new List<String> {label}, new List<Block> {newBlock});
@@ -257,7 +259,7 @@ namespace Microsoft.Boogie
     {
       if (ReachabilityGraphSCCsDAG == null)
       {
-        if (CoreOptions.Clo.Trace)
+        if (options.Trace)
         {
           Console.WriteLine("Interprocedural reachability: computing SCCs");
         }
@@ -292,7 +294,7 @@ namespace Microsoft.Boogie
           ReachabilityGraphSCCsDAG.AddEdge(BlockToSCC[n], dummy);
         }
 
-        if (CoreOptions.Clo.Trace)
+        if (options.Trace)
         {
           Console.WriteLine("Interprocedural reachability: SCCs computed!");
         }

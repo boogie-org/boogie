@@ -117,17 +117,13 @@ namespace VC
           split.Stats, currentSplitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
       }
 
-      if (options.XmlSink != null && DoSplitting) {
-        options.XmlSink.WriteStartSplit(currentSplitNumber + 1, DateTime.UtcNow);
-      }
-
       callback.OnProgress?.Invoke("VCprove", currentSplitNumber, total,
         provenCost / (remainingCost + provenCost));
 
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
-        implementation.TimeLimit;
-      split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit, cancellationToken);
+        implementation.GetTimeLimit(options);
+      split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.GetResourceLimit(options), cancellationToken);
     }
 
     private async Task ProcessResult(Split split, CancellationToken cancellationToken)
@@ -138,7 +134,7 @@ namespace VC
         }
       }
 
-      split.ReadOutcome(ref outcome, out var proverFailed, ref totalResourceCount);
+      split.ReadOutcome(callback, ref outcome, out var proverFailed, ref totalResourceCount);
 
       if (TrackingProgress) {
         lock (this) {

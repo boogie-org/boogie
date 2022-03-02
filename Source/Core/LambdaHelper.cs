@@ -8,22 +8,22 @@ namespace Microsoft.Boogie
 {
   public static class LambdaHelper
   {
-    public static Program Desugar(Program program, out List<Axiom /*!*/> /*!*/ axioms,
+    public static Program Desugar(CoreOptions options, Program program, out List<Axiom /*!*/> /*!*/ axioms,
       out List<Function /*!*/> /*!*/ functions)
     {
       Contract.Requires(program != null);
       Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out functions)));
       Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out axioms)));
       Contract.Ensures(Contract.Result<Program>() != null);
-      LambdaVisitor v = new LambdaVisitor();
+      LambdaVisitor v = new LambdaVisitor(options);
       program = v.VisitProgram(program);
       axioms = v.lambdaAxioms;
       functions = v.lambdaFunctions;
-      if (CoreOptions.Clo.TraceVerify)
+      if (options.TraceVerify)
       {
         Console.WriteLine("Desugaring of lambda expressions produced {0} functions and {1} axioms:", functions.Count,
           axioms.Count);
-        TokenTextWriter wr = new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false);
+        TokenTextWriter wr = new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false, options);
         foreach (Function f in functions)
         {
           f.Emit(wr, 0);
@@ -71,11 +71,11 @@ namespace Microsoft.Boogie
     /// <see cref="LambdaVisitor.LambdaLifterMaxHoles"/> is used by default whereas <c>LambdaLiftingFreeVars</c>
     /// is used with the command-line option <c>/freeVarLambdaLifting</c>.
     /// </summary>
-    public static void ExpandLambdas(Program prog)
+    public static void ExpandLambdas(CoreOptions options, Program prog)
     {
       Contract.Requires(prog != null);
 
-      Desugar(prog, out var axioms, out var functions);
+      Desugar(options, prog, out var axioms, out var functions);
       foreach (var f in functions)
       {
         prog.AddTopLevelDeclaration(f);
@@ -89,6 +89,7 @@ namespace Microsoft.Boogie
 
     private class LambdaVisitor : VarDeclOnceStandardVisitor
     {
+      private CoreOptions options;
       private readonly Dictionary<Expr, FunctionCall> liftedLambdas =
         new Dictionary<Expr, FunctionCall>(new AlphaEquality());
 
@@ -107,6 +108,11 @@ namespace Microsoft.Boogie
 
       int lambdaid = 0;
 
+      public LambdaVisitor(CoreOptions options)
+      {
+        this.options = options;
+      }
+
       string FreshLambdaFunctionName()
       {
         return $"lambda#{lambdaid++}";
@@ -121,7 +127,7 @@ namespace Microsoft.Boogie
           return baseResult; // apparently, the base visitor already turned the lambda into something else
         }
 
-        return CoreOptions.Clo.FreeVarLambdaLifting ? LiftLambdaFreeVars(lambda) : LiftLambdaMaxHoles(lambda);
+        return options.FreeVarLambdaLifting ? LiftLambdaFreeVars(lambda) : LiftLambdaMaxHoles(lambda);
       }
 
       /// <summary>
@@ -174,7 +180,7 @@ namespace Microsoft.Boogie
           Substituter.SubstitutionFromDictionary(oldSubst),
           lambda.Attributes);
 
-        if (0 < CoreOptions.Clo.VerifySnapshots &&
+        if (0 < options.VerifySnapshots &&
             QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
         {
           // Attach a dummy checksum to avoid issues in the dependency analysis.
@@ -241,7 +247,7 @@ namespace Microsoft.Boogie
         dummies.AddRange(lambda.Dummies);
 
         var sw = new System.IO.StringWriter();
-        var wr = new TokenTextWriter(sw, true);
+        var wr = new TokenTextWriter(sw, true, options);
         lambda.Emit(wr);
         string lam_str = sw.ToString();
 
@@ -250,14 +256,14 @@ namespace Microsoft.Boogie
 
         if (liftedLambdas.TryGetValue(lambda, out var fcall))
         {
-          if (CoreOptions.Clo.TraceVerify)
+          if (options.TraceVerify)
           {
             Console.WriteLine("Old lambda: {0}", lam_str);
           }
         }
         else
         {
-          if (CoreOptions.Clo.TraceVerify)
+          if (options.TraceVerify)
           {
             Console.WriteLine("New lambda: {0}", lam_str);
           }
@@ -369,7 +375,7 @@ namespace Microsoft.Boogie
         // We perform lambda lifting on the resulting lambda which now contains only `old` expressions of the form
         // `old(x)` where `x` is a variable that is free in the lambda.
         return new MaxHolesLambdaLifter(
-            newLambda, liftedLambdas, FreshLambdaFunctionName(), lambdaFunctions, lambdaAxioms)
+            newLambda, liftedLambdas, FreshLambdaFunctionName(), lambdaFunctions, lambdaAxioms, options)
           .VisitLambdaExpr(newLambda);
       }
 

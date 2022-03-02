@@ -10,6 +10,7 @@ namespace Microsoft.Boogie
 
   public class Inliner : Duplicator
   {
+    private CoreOptions options;
     protected bool inlinedSomething;
 
     protected Program program;
@@ -43,7 +44,7 @@ namespace Microsoft.Boogie
 
     public override Expr VisitCodeExpr(CodeExpr node)
     {
-      Inliner codeExprInliner = new Inliner(program, inlineCallback, CoreOptions.Clo.InlineDepth);
+      Inliner codeExprInliner = new Inliner(program, inlineCallback, options.InlineDepth, options);
       codeExprInliner.newLocalVars.AddRange(node.LocVars);
       codeExprInliner.inlinedProcLblMap = this.inlinedProcLblMap;
       List<Block> newCodeExprBlocks = codeExprInliner.DoInlineBlocks(node.Blocks, ref inlinedSomething);
@@ -78,12 +79,13 @@ namespace Microsoft.Boogie
       return GetInlinedProcLabel(procName) + "$" + formalName;
     }
 
-    public Inliner(Program program, InlineCallback cb, int inlineDepth)
+    public Inliner(Program program, InlineCallback cb, int inlineDepth, CoreOptions options)
     {
       this.program = program;
       this.inlinedProcLblMap = new Dictionary<string /*!*/, int>();
       this.recursiveProcUnrollMap = new Dictionary<string /*!*/, int>();
       this.inlineDepth = inlineDepth;
+      this.options = options;
       this.codeCopier = new CodeCopier();
       this.inlineCallback = cb;
       this.newLocalVars = new List<Variable>();
@@ -143,17 +145,17 @@ namespace Microsoft.Boogie
       }
     }
 
-    protected static void ProcessImplementation(Program program, Implementation impl, Inliner inliner)
+    protected void ProcessImplementation(Program program, Implementation impl)
     {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
 
-      inliner.ComputePrefix(program, impl);
+      ComputePrefix(program, impl);
 
-      inliner.newLocalVars.AddRange(impl.LocVars);
+      newLocalVars.AddRange(impl.LocVars);
 
       bool inlined = false;
-      List<Block> newBlocks = inliner.DoInlineBlocks(impl.Blocks, ref inlined);
+      List<Block> newBlocks = DoInlineBlocks(impl.Blocks, ref inlined);
       Contract.Assert(cce.NonNullElements(newBlocks));
 
       if (!inlined)
@@ -163,34 +165,36 @@ namespace Microsoft.Boogie
 
       impl.InParams = new List<Variable>(impl.InParams);
       impl.OutParams = new List<Variable>(impl.OutParams);
-      impl.LocVars = inliner.newLocalVars;
+      impl.LocVars = newLocalVars;
       impl.Blocks = newBlocks;
 
       impl.ResetImplFormalMap();
 
       // we need to resolve the new code
-      inliner.ResolveImpl(impl);
+      ResolveImpl(impl);
 
-      if (CoreOptions.Clo.PrintInlined)
+      if (options.PrintInlined)
       {
-        inliner.EmitImpl(impl);
+        EmitImpl(impl);
       }
     }
 
-    public static void ProcessImplementationForHoudini(Program program, Implementation impl)
+    public static void ProcessImplementationForHoudini(CoreOptions options, Program program, Implementation impl)
     {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
       Contract.Requires(impl.Proc != null);
-      ProcessImplementation(program, impl, new Inliner(program, null, CoreOptions.Clo.InlineDepth));
+      var inliner = new Inliner(program, null, options.InlineDepth, options);
+      inliner.ProcessImplementation(program, impl);
     }
 
-    public static void ProcessImplementation(Program program, Implementation impl)
+    public static void ProcessImplementation(CoreOptions options, Program program, Implementation impl)
     {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
       Contract.Requires(impl.Proc != null);
-      ProcessImplementation(program, impl, new Inliner(program, null, -1));
+      var inliner = new Inliner(program, null, -1, options);
+      inliner.ProcessImplementation(program, impl);
     }
 
     protected void EmitImpl(Implementation impl)
@@ -198,8 +202,8 @@ namespace Microsoft.Boogie
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
       Console.WriteLine("after inlining procedure calls");
-      impl.Proc.Emit(new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false), 0);
-      impl.Emit(new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false), 0);
+      impl.Proc.Emit(new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false, options), 0);
+      impl.Emit(new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false, options), 0);
     }
 
     private sealed class DummyErrorSink : IErrorSink
@@ -219,7 +223,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(impl != null);
       Contract.Ensures(impl.Proc != null);
-      ResolutionContext rc = new ResolutionContext(new DummyErrorSink());
+      ResolutionContext rc = new ResolutionContext(new DummyErrorSink(), options);
       foreach (var decl in program.TopLevelDeclarations)
       {
         decl.Register(rc);
@@ -228,7 +232,7 @@ namespace Microsoft.Boogie
       impl.Resolve(rc);
       Debug.Assert(rc.ErrorCount == 0);
       
-      TypecheckingContext tc = new TypecheckingContext(new DummyErrorSink());
+      TypecheckingContext tc = new TypecheckingContext(new DummyErrorSink(), options);
       impl.Typecheck(tc);
       Debug.Assert(tc.ErrorCount == 0);
     }
@@ -388,12 +392,12 @@ namespace Microsoft.Boogie
             else if (inline == 0)
             {
               inlinedSomething = true;
-              if (CoreOptions.Clo.ProcedureInlining == CoreOptions.Inlining.Assert)
+              if (options.ProcedureInlining == CoreOptions.Inlining.Assert)
               {
                 // add assert
                 newCmds.Add(new AssertCmd(callCmd.tok, Expr.False));
               }
-              else if (CoreOptions.Clo.ProcedureInlining == CoreOptions.Inlining.Assume)
+              else if (options.ProcedureInlining == CoreOptions.Inlining.Assume)
               {
                 // add assume
                 newCmds.Add(new AssumeCmd(callCmd.tok, Expr.False));
