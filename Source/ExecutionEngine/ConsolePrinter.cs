@@ -192,7 +192,7 @@ public class ConsolePrinter : OutputPrinter
   }
 
   public int GetVerificationPriority(IToken implTok) {
-    // Do not print anything to console
+    return 0;
   }
 
   public void ReportAssertionBatchResult(Implementation implementation, Dictionary<AssertCmd, ConditionGeneration.Outcome> perAssertOutcome,
