@@ -18,6 +18,8 @@ namespace Microsoft.Boogie
     private IdentifierExpr newPAs;
     private string checkName;
 
+    private ConcurrencyOptions Options => civlTypeChecker.Options;
+
     public InductiveSequentialization(CivlTypeChecker civlTypeChecker, AtomicAction inputAction, AtomicAction outputAction,
       AtomicAction invariantAction, Dictionary<AtomicAction, AtomicAction> elim)
     {
@@ -110,7 +112,7 @@ namespace Microsoft.Boogie
 
       List<Cmd> cmds = new List<Cmd>();
       cmds.Add(GetCallCmd(invariantAction));
-      cmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, choice)));
+      cmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(Options, pendingAsync.pendingAsyncCtor.membership, choice)));
       cmds.Add(CmdHelper.AssumeCmd(Expr.Gt(Expr.Select(PAs, choice), Expr.Literal(0))));
       cmds.Add(RemoveChoice);
 
@@ -119,7 +121,7 @@ namespace Microsoft.Boogie
       List<Expr> inputExprs = new List<Expr>();
       for (int i = 0; i < abs.impl.InParams.Count; i++)
       {
-        var pendingAsyncParam = ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.selectors[i], choice);
+        var pendingAsyncParam = ExprHelper.FunctionCall(Options, pendingAsync.pendingAsyncCtor.selectors[i], choice);
         map[abs.impl.InParams[i]] = pendingAsyncParam;
         inputExprs.Add(pendingAsyncParam);
       }
@@ -154,7 +156,7 @@ namespace Microsoft.Boogie
 
     private AssertCmd GetCheck(Expr expr)
     {
-      expr.Typecheck(new TypecheckingContext(null));
+      expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
       return CmdHelper.AssertCmd(
         inputAction.proc.tok,
         expr,
@@ -212,7 +214,7 @@ namespace Microsoft.Boogie
         var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
         var pa = Expr.Ident(paBound);
         var expr = Expr.Eq(Expr.Select(PAs, pa), Expr.Literal(0));
-        expr.Typecheck(new TypecheckingContext(null));
+        expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
         return ExprHelper.ForallExpr(new List<Variable> { paBound }, expr);
       }
     }
@@ -225,8 +227,9 @@ namespace Microsoft.Boogie
         var pa = Expr.Ident(paBound);
         var expr = Expr.Imp(
           Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0)),
-          Expr.And(elim.Keys.Select(a => Expr.Not(ExprHelper.FunctionCall(a.pendingAsyncCtor.membership, pa)))));
-        expr.Typecheck(new TypecheckingContext(null));
+          Expr.And(elim.Keys.Select(a =>
+            Expr.Not(ExprHelper.FunctionCall(civlTypeChecker.Options, a.pendingAsyncCtor.membership, pa)))));
+        expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
         return ExprHelper.ForallExpr(new List<Variable> { paBound }, expr);
       }
     }
@@ -244,7 +247,7 @@ namespace Microsoft.Boogie
     private Expr ElimPendingAsyncExpr(IdentifierExpr pa)
     {
       return Expr.And(
-        Expr.Or(elim.Keys.Select(a => ExprHelper.FunctionCall(a.pendingAsyncCtor.membership, pa))),
+        Expr.Or(elim.Keys.Select(a => ExprHelper.FunctionCall(Options, a.pendingAsyncCtor.membership, pa))),
         Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0))
       );
     }
@@ -262,7 +265,7 @@ namespace Microsoft.Boogie
     {
       return AssignCmd.SimpleAssign(Token.NoToken,
         PAs,
-        ExprHelper.FunctionCall(pendingAsyncAdd, PAs, newPAs));
+        ExprHelper.FunctionCall(Options, pendingAsyncAdd, PAs, newPAs));
     }
 
 

@@ -5,7 +5,7 @@ namespace TestUtil
 {
   public class ProgramLoader
   {
-    public static Program LoadProgramFrom(string programText, string fileName = "file.bpl")
+    public static Program LoadProgramFrom(CoreOptions options, string programText, string fileName = "file.bpl")
     {
       Assert.That(programText, Is.Not.Null.And.Not.Empty);
       Assert.That(fileName, Is.Not.Null.And.Not.Empty);
@@ -18,11 +18,11 @@ namespace TestUtil
       Assert.IsNotNull(p);
 
       // Resolve
-      errors = p.Resolve();
+      errors = p.Resolve(options);
       Assert.AreEqual(0, errors);
 
       // Type check
-      errors = p.Typecheck();
+      errors = p.Typecheck(options);
       Assert.AreEqual(0, errors);
 
       return p;

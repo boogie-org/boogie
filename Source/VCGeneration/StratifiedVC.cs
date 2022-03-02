@@ -337,6 +337,7 @@ namespace VC
 
   public class StratifiedInliningInfo
   {
+    private VCGenOptions options;
     public StratifiedVCGenBase vcgen;
     public Implementation impl;
     public Function function;
@@ -357,12 +358,13 @@ namespace VC
     // boolControlVC (block -> its Bool variable)
     public Dictionary<Block, VCExprVar> blockToControlVar;
 
-    public StratifiedInliningInfo(Implementation implementation, StratifiedVCGenBase stratifiedVcGen,
+    public StratifiedInliningInfo(VCGenOptions options, Implementation implementation, StratifiedVCGenBase stratifiedVcGen,
       Action<Implementation> PassiveImplInstrumentation)
     {
       vcgen = stratifiedVcGen;
       impl = implementation;
       this.PassiveImplInstrumentation = PassiveImplInstrumentation;
+      this.options = options;
 
       List<Variable> functionInterfaceVars = new List<Variable>();
       foreach (Variable v in vcgen.program.GlobalVariables)
@@ -438,7 +440,7 @@ namespace VC
     public void GenerateVCBoolControl()
     {
       Debug.Assert(!initialized);
-      Debug.Assert(CommandLineOptions.Clo.SIBoolControlVC);
+      Debug.Assert(options.SIBoolControlVC);
 
       // fix names for exit variables
       var outputVariables = new List<Variable>();
@@ -484,7 +486,7 @@ namespace VC
       vcgen.InstrumentCallSites(impl);
 
       // typecheck
-      var tc = new TypecheckingContext(null);
+      var tc = new TypecheckingContext(null, options);
       impl.Typecheck(tc);
 
       ///////////////////
@@ -584,7 +586,7 @@ namespace VC
         return;
       }
 
-      if (CommandLineOptions.Clo.SIBoolControlVC)
+      if (options.SIBoolControlVC)
       {
         GenerateVCBoolControl();
         initialized = true;
@@ -641,7 +643,7 @@ namespace VC
 
       var absyIds = new ControlFlowIdMap<Absy>();
       
-      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(absyIds, proverInterface.Context);
+      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(options, absyIds, proverInterface.Context);
       translator.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
       vcexpr = gen.Not(vcgen.GenerateVCAux(impl, controlFlowVariableExpr, absyIds, proverInterface.Context));
 
@@ -695,15 +697,15 @@ namespace VC
     public Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
     public ProverInterface prover;
 
-    public StratifiedVCGenBase(Program program, string /*?*/ logFilePath, bool appendLogFile, CheckerPool checkerPool,
+    public StratifiedVCGenBase(VCGenOptions options, Program program, string logFilePath /*?*/, bool appendLogFile, CheckerPool checkerPool,
       Action<Implementation> PassiveImplInstrumentation)
       : base(program, checkerPool)
     {
       implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
-      prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.TimeLimit);
+      prover = ProverInterface.CreateProver(options, program, logFilePath, appendLogFile, options.TimeLimit);
       foreach (var impl in program.Implementations)
       {
-        implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this, PassiveImplInstrumentation);
+        implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(options, impl, this, PassiveImplInstrumentation);
       }
 
       GenerateRecordFunctions();

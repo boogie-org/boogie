@@ -179,7 +179,7 @@ procedure N(x: int)
       var options = CommandLineOptions.FromArguments();
       
       var proverLog1 = GetProverLogs.GetProverLogForProgram(options, procedure1);
-      CommandLineOptions.Clo.ProcsToCheck.Add("M");
+      options.ProcsToCheck.Add("M");
       var proverLog2 = GetProverLogs.GetProverLogForProgram(options, procedure1And2);
       Assert.AreEqual(proverLog1, proverLog2);
       var proverLog3 = GetProverLogs.GetProverLogForProgram(options, procedure2And1);
@@ -264,7 +264,7 @@ procedure M2(x: int, coloredBarrel: Barrel2 RGBColor2)
       options.Prune = true;
       
       var proverLog1 = GetProverLogs.GetProverLogForProgram(options, procedure1);
-      CommandLineOptions.Clo.ProcsToCheck.Add("M");
+      options.ProcsToCheck.Add("M");
       var proverLog2 = GetProverLogs.GetProverLogForProgram(options, procedure1And2);
       Assert.AreEqual(proverLog1, proverLog2);
       var proverLog3 = GetProverLogs.GetProverLogForProgram(options, procedure2And1);

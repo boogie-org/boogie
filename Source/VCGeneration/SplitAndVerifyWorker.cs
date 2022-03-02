@@ -11,7 +11,7 @@ namespace VC
 {
   class SplitAndVerifyWorker
   {
-    private readonly CommandLineOptions options;
+    private readonly VCGenOptions options;
     private readonly VerifierCallback callback;
     private readonly ModelViewInfo mvInfo;
     private readonly Implementation implementation;
@@ -33,7 +33,7 @@ namespace VC
 
     private int totalResourceCount;
     
-    public SplitAndVerifyWorker(CommandLineOptions options, VCGen vcGen, Implementation implementation,
+    public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, Implementation implementation,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
       Outcome outcome)
     {
@@ -61,7 +61,7 @@ namespace VC
       implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
       ResetPredecessors(implementation.Blocks);
-      manualSplits = Split.FocusAndSplit(implementation, gotoCmdOrigins, vcGen, splitOnEveryAssert);
+      manualSplits = Split.FocusAndSplit(options, implementation, gotoCmdOrigins, vcGen, splitOnEveryAssert);
       
       if (manualSplits.Count == 1 && maxSplits > 1) {
         manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);
@@ -71,10 +71,10 @@ namespace VC
       splitNumber = DoSplitting ? 0 : -1;
     }
 
-    public async Task<Outcome> WorkUntilDone()
+    public async Task<Outcome> WorkUntilDone(CancellationToken cancellationToken)
     {
       TrackSplitsCost(manualSplits);
-      await Task.WhenAll(manualSplits.Select(DoWork));
+      await Task.WhenAll(manualSplits.Select(split => DoWork(split, cancellationToken)));
 
       return outcome;
     }
@@ -94,22 +94,22 @@ namespace VC
       }
     }
 
-    async Task DoWork(Split split)
+    async Task DoWork(Split split, CancellationToken cancellationToken)
     {
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split);
 
       try {
-        StartCheck(split, checker);
+        cancellationToken.ThrowIfCancellationRequested();
+        StartCheck(split, checker, cancellationToken);
         await split.ProverTask;
-        await ProcessResult(split);
+        await ProcessResult(split, cancellationToken);
       }
-      catch {
+      finally {
         split.ReleaseChecker();
-        throw;
       }
     }
 
-    private void StartCheck(Split split, Checker checker)
+    private void StartCheck(Split split, Checker checker, CancellationToken cancellationToken)
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
       if (options.Trace && DoSplitting) {
@@ -117,20 +117,16 @@ namespace VC
           split.Stats, currentSplitNumber + 1, total, 100 * provenCost / (provenCost + remainingCost));
       }
 
-      if (options.XmlSink != null && DoSplitting) {
-        options.XmlSink.WriteStartSplit(currentSplitNumber + 1, DateTime.UtcNow);
-      }
-
       callback.OnProgress?.Invoke("VCprove", currentSplitNumber, total,
         provenCost / (remainingCost + provenCost));
 
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
-        implementation.TimeLimit;
-      split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.ResourceLimit);
+        implementation.GetTimeLimit(options);
+      split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.GetResourceLimit(options), cancellationToken);
     }
 
-    private async Task ProcessResult(Split split)
+    private async Task ProcessResult(Split split, CancellationToken cancellationToken)
     {
       if (TrackingProgress) {
         lock (this) {
@@ -138,7 +134,7 @@ namespace VC
         }
       }
 
-      split.ReadOutcome(ref outcome, out var proverFailed, ref totalResourceCount);
+      split.ReadOutcome(callback, ref outcome, out var proverFailed, ref totalResourceCount);
 
       if (TrackingProgress) {
         lock (this) {
@@ -155,16 +151,13 @@ namespace VC
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
       if (!proverFailed) {
-        split.ReleaseChecker();
         return;
       }
 
-      var newTasks = HandleProverFailure(split);
-      split.ReleaseChecker(); // Can only be released after the synchronous part of HandleProverFailure.
-      await newTasks;
+      await HandleProverFailure(split, cancellationToken);
     }
 
-    private async Task HandleProverFailure(Split split)
+    private async Task HandleProverFailure(Split split, CancellationToken cancellationToken)
     {
       if (split.LastChance) {
         string msg = "some timeout";
@@ -186,7 +179,7 @@ namespace VC
         if (outcome != Outcome.Errors) {
           outcome = Outcome.Correct;
         }
-        await Task.WhenAll(newSplits.Select(DoWork));
+        await Task.WhenAll(newSplits.Select(newSplit => DoWork(newSplit, cancellationToken)));
         return;
       }
 

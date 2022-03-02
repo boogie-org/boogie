@@ -7,7 +7,7 @@ using System.Linq;
 namespace CoreTests
 {
   [TestFixture()]
-  public class DuplicatorTests : BoogieTestBase, IErrorSink
+  public class DuplicatorTests : IErrorSink
   {
     Duplicator d;
 
@@ -119,7 +119,8 @@ namespace CoreTests
     [Test()]
     public void GotoTargets()
     {
-      Program p = TestUtil.ProgramLoader.LoadProgramFrom(@"
+      var options = CommandLineOptions.FromArguments();
+      Program p = TestUtil.ProgramLoader.LoadProgramFrom(options, @"
         procedure main()
         {
             entry:
@@ -185,7 +186,8 @@ namespace CoreTests
     [Test()]
     public void ImplementationProcedureResolving()
     {
-      Program p = TestUtil.ProgramLoader.LoadProgramFrom(@"
+      var options = CommandLineOptions.FromArguments();
+      Program p = TestUtil.ProgramLoader.LoadProgramFrom(options, @"
         procedure main(a:int) returns (r:int);
         requires a > 0;
         ensures  r > a;
@@ -205,7 +207,7 @@ namespace CoreTests
       var newProgram = (Program) d.Visit(p);
 
       // Resolving doesn't seem to fix this.
-      var rc = new ResolutionContext(this);
+      var rc = new ResolutionContext(this, options);
       newProgram.Resolve(rc);
 
       // Check resolved
@@ -217,7 +219,8 @@ namespace CoreTests
     [Test()]
     public void CallCmdResolving()
     {
-      Program p = TestUtil.ProgramLoader.LoadProgramFrom(@"
+      var options = CommandLineOptions.FromArguments();
+      Program p = TestUtil.ProgramLoader.LoadProgramFrom(options, @"
         procedure main()
         {
             var x:int;

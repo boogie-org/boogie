@@ -17,7 +17,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
     /// </summary>
     public abstract class Element
     {
-      public abstract Expr ToExpr();
+      public abstract Expr ToExpr(CoreOptions options);
     }
 
     public abstract Element Top { get; }
@@ -70,14 +70,21 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
   public class NativeAbstractInterpretation
   {
-    public static void RunAbstractInterpretation(Program program)
+    private CoreOptions options;
+
+    public NativeAbstractInterpretation(CoreOptions options)
+    {
+      this.options = options;
+    }
+
+    public void RunAbstractInterpretation(Program program)
     {
       Contract.Requires(program != null);
 
-      Helpers.ExtraTraceInformation("Starting abstract interpretation");
+      Helpers.ExtraTraceInformation(options, "Starting abstract interpretation");
 
       DateTime start = new DateTime(); // to please compiler's definite assignment rules
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine();
         Console.WriteLine("Running abstract interpretation...");
@@ -87,11 +94,11 @@ namespace Microsoft.Boogie.AbstractInterpretation
       WidenPoints.Compute(program);
 
       NativeLattice lattice = null;
-      if (CommandLineOptions.Clo.Ai.J_Trivial)
+      if (options.Ai.J_Trivial)
       {
         lattice = new TrivialDomain();
       }
-      else if (CommandLineOptions.Clo.Ai.J_Intervals)
+      else if (options.Ai.J_Intervals)
       {
         lattice = new NativeIntervalDomain();
       }
@@ -100,13 +107,13 @@ namespace Microsoft.Boogie.AbstractInterpretation
       {
         Dictionary<Procedure, Implementation[]> procedureImplementations = ComputeProcImplMap(program);
         ComputeProgramInvariants(program, procedureImplementations, lattice);
-        if (CommandLineOptions.Clo.Ai.DebugStatistics)
+        if (options.Ai.DebugStatistics)
         {
           Console.Error.WriteLine(lattice.DebugStatistics);
         }
       }
 
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         DateTime end = DateTime.UtcNow;
         TimeSpan elapsed = end - start;
@@ -132,7 +139,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
     /// <summary>
     /// Compute and apply the invariants for the program using the underlying abstract domain.
     /// </summary>
-    public static void ComputeProgramInvariants(Program program,
+    public void ComputeProgramInvariants(Program program,
       Dictionary<Procedure, Implementation[]> procedureImplementations, NativeLattice lattice)
     {
       Contract.Requires(program != null);
@@ -157,7 +164,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
           foreach (var impl in procedureImplementations[proc])
           {
             // add the precondition to the axioms
-            Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap());
+            Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
             var start = initialElement;
             foreach (Requires pre in proc.Requires)
             {
@@ -173,14 +180,14 @@ namespace Microsoft.Boogie.AbstractInterpretation
       }
     }
 
-    public static void Analyze(Implementation impl, NativeLattice lattice, NativeLattice.Element start)
+    public void Analyze(Implementation impl, NativeLattice lattice, NativeLattice.Element start)
     {
       // We need to keep track of some information for each(some) block(s).  To do that efficiently,
       // we number the implementation's blocks sequentially, and then we can use arrays to store
       // the additional information.
       var pre = new NativeLattice.Element[impl.Blocks
         .Count]; // set to null if we never compute a join/widen at this block
-      var post = CommandLineOptions.Clo.InstrumentInfer == CommandLineOptions.InstrumentationPlaces.Everywhere
+      var post = options.InstrumentInfer == CoreOptions.InstrumentationPlaces.Everywhere
         ? new NativeLattice.Element[impl.Blocks.Count]
         : null;
       var iterations = new int[impl.Blocks.Count];
@@ -223,7 +230,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
           // no change
           continue;
         }
-        else if (b.widenBlock && CommandLineOptions.Clo.Ai.StepsBeforeWidening <= iterations[id])
+        else if (b.widenBlock && options.Ai.StepsBeforeWidening <= iterations[id])
         {
           e = lattice.Widen(pre[id], e);
           pre[id] = e;
@@ -261,7 +268,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       Instrument(impl, pre, post);
     }
 
-    static void Instrument(Implementation impl, NativeLattice.Element[] pre, NativeLattice.Element[] post)
+    void Instrument(Implementation impl, NativeLattice.Element[] pre, NativeLattice.Element[] post)
     {
       Contract.Requires(impl != null);
       Contract.Requires(pre != null);
@@ -269,14 +276,14 @@ namespace Microsoft.Boogie.AbstractInterpretation
       foreach (var b in impl.Blocks)
       {
         var element = pre[b.aiId];
-        if (element != null && (b.widenBlock || CommandLineOptions.Clo.InstrumentInfer ==
-          CommandLineOptions.InstrumentationPlaces.Everywhere))
+        if (element != null && (b.widenBlock || options.InstrumentInfer ==
+          CoreOptions.InstrumentationPlaces.Everywhere))
         {
           List<Cmd> newCommands = new List<Cmd>();
-          Expr inv = element.ToExpr();
+          Expr inv = element.ToExpr(options);
           PredicateCmd cmd;
           var kv = new QKeyValue(Token.NoToken, "inferred", new List<object>(), null);
-          if (CommandLineOptions.Clo.InstrumentWithAsserts)
+          if (options.InstrumentWithAsserts)
           {
             cmd = new AssertCmd(Token.NoToken, inv, kv);
           }
@@ -289,9 +296,9 @@ namespace Microsoft.Boogie.AbstractInterpretation
           newCommands.AddRange(b.Cmds);
           if (post != null && post[b.aiId] != null)
           {
-            inv = post[b.aiId].ToExpr();
+            inv = post[b.aiId].ToExpr(options);
             kv = new QKeyValue(Token.NoToken, "inferred", new List<object>(), null);
-            if (CommandLineOptions.Clo.InstrumentWithAsserts)
+            if (options.InstrumentWithAsserts)
             {
               cmd = new AssertCmd(Token.NoToken, inv, kv);
             }
@@ -312,7 +319,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
     /// The abstract transition relation.
     /// 'cmd' is allowed to be a StateCmd.
     /// </summary>
-    static NativeLattice.Element Step(NativeLattice lattice, Cmd cmd, NativeLattice.Element elmt)
+    NativeLattice.Element Step(NativeLattice lattice, Cmd cmd, NativeLattice.Element elmt)
     {
       Contract.Requires(lattice != null);
       Contract.Requires(cmd != null);
@@ -364,7 +371,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       else if (cmd is SugaredCmd)
       {
         var c = (SugaredCmd) cmd;
-        elmt = Step(lattice, c.Desugaring, elmt);
+        elmt = Step(lattice, c.GetDesugaring(options), elmt);
       }
       else if (cmd is CommentCmd)
       {

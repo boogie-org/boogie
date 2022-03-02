@@ -9,6 +9,7 @@ namespace Microsoft.Boogie
 {
   public class SmartBlockPredicator
   {
+    private CoreOptions options;
     Program prog;
     Implementation impl;
     Graph<Block> blockGraph;
@@ -30,13 +31,14 @@ namespace Microsoft.Boogie
     bool myUseProcedurePredicates;
     UniformityAnalyser uni;
 
-    SmartBlockPredicator(Program p, Implementation i, Func<Procedure, bool> upp, UniformityAnalyser u)
+    SmartBlockPredicator(Program p, Implementation i, Func<Procedure, bool> upp, UniformityAnalyser u, CoreOptions options)
     {
       prog = p;
       impl = i;
       useProcedurePredicates = upp;
       myUseProcedurePredicates = useProcedurePredicates(i.Proc);
       uni = u;
+      this.options = options;
     }
 
     void PredicateCmd(Expr p, Expr pDom, List<Block> blocks, Block block, Cmd cmd, out Block nextBlock)
@@ -488,7 +490,7 @@ namespace Microsoft.Boogie
           continue;
         }
 
-        var parts = block.Cmds.Cast<Cmd>().TakeWhile(
+        var parts = block.Cmds.TakeWhile(
           c => c is AssumeCmd &&
                QKeyValue.FindBoolAttribute(((AssumeCmd) c).Attributes, "partition"));
 
@@ -496,8 +498,7 @@ namespace Microsoft.Boogie
         if (parts.Count() > 0)
         {
           pred = parts.Select(a => ((AssumeCmd) a).Expr).Aggregate(Expr.And);
-          block.Cmds =
-            new List<Cmd>(block.Cmds.Cast<Cmd>().Skip(parts.Count()).ToArray());
+          block.Cmds = block.Cmds.Skip(parts.Count()).ToList();
         }
         else
         {
@@ -543,7 +544,7 @@ namespace Microsoft.Boogie
 
     void PredicateImplementation()
     {
-      blockGraph = prog.ProcessLoops(impl);
+      blockGraph = prog.ProcessLoops(options, impl);
       sortedBlocks = blockGraph.LoopyTopSort();
 
       AssignPredicates();
@@ -720,7 +721,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public static void Predicate(Program p,
+    public void Predicate(Program p,
       Func<Procedure, bool> useProcedurePredicates = null,
       UniformityAnalyser uni = null)
     {
@@ -815,7 +816,7 @@ namespace Microsoft.Boogie
             {
               try
               {
-                new SmartBlockPredicator(p, impl, useProcedurePredicates, uni).PredicateImplementation();
+                new SmartBlockPredicator(p, impl, useProcedurePredicates, uni, options).PredicateImplementation();
                 foreach (AssignCmd c in newAssignCmds)
                 {
                   impl.Blocks.First().Cmds.Insert(0, c);
@@ -844,7 +845,7 @@ namespace Microsoft.Boogie
             {
               try
               {
-                new SmartBlockPredicator(p, impl, useProcedurePredicates, uni).PredicateImplementation();
+                new SmartBlockPredicator(p, impl, useProcedurePredicates, uni, options).PredicateImplementation();
               }
               catch (Program.IrreducibleLoopException)
               {
@@ -855,11 +856,11 @@ namespace Microsoft.Boogie
       }
     }
 
-    public static void Predicate(Program p, Implementation impl)
+    public static void Predicate(CoreOptions options, Program p, Implementation impl)
     {
       try
       {
-        new SmartBlockPredicator(p, impl, proc => false, null).PredicateImplementation();
+        new SmartBlockPredicator(p, impl, proc => false, null, options).PredicateImplementation();
       }
       catch (Program.IrreducibleLoopException)
       {
