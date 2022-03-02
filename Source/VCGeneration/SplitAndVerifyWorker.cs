@@ -189,7 +189,7 @@ namespace VC
               perAssertOutcome.TryAdd(assert, remainingOutcome);
             }
           }
-          split.parent.Logger?.ReportAssertionBatchResult(split.Implementation, perAssertOutcome, perAssertCounterExamples);
+          split.parent.Logger?.ReportAssertionBatchResult(split, perAssertOutcome, perAssertCounterExamples);
         }
         return;
       }
@@ -207,7 +207,7 @@ namespace VC
         }
         callback.OnCounterexample(split.ToCounterexample(split.Checker.TheoremProver.Context), msg);
         perAssertOutcome = split.blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToDictionary(assertCmd => assertCmd, assertCmd => outcome);
-        split.parent.Logger?.ReportAssertionBatchResult(implementation, perAssertOutcome, new ());
+        split.parent.Logger?.ReportAssertionBatchResult(split, perAssertOutcome, new ());
         outcome = Outcome.Errors;
         return;
       }
@@ -249,7 +249,7 @@ namespace VC
         callback.OnOutOfResource(msg);
       }
       perAssertOutcome = split.blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToDictionary(assertCmd => assertCmd, assertCmd => outcome);
-      split.parent.Logger?.ReportAssertionBatchResult(implementation, perAssertOutcome, new());
+      split.parent.Logger?.ReportAssertionBatchResult(split, perAssertOutcome, new());
     }
   }
 }
