@@ -39,11 +39,11 @@ namespace Microsoft.Boogie.Houdini
       var annotationDependenceAnalyser = new AnnotationDependenceAnalyser(options, program);
       annotationDependenceAnalyser.Analyse();
       this.plan = annotationDependenceAnalyser.ApplyStages();
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         annotationDependenceAnalyser.dump();
 
-        if (CommandLineOptions.Clo.DebugStagedHoudini)
+        if (options.DebugStagedHoudini)
         {
           Console.WriteLine("Plan\n====\n");
           if (plan == null)
@@ -296,11 +296,11 @@ namespace Microsoft.Boogie.Houdini
 
     private void EmitProgram(string filename)
     {
-      using TokenTextWriter writer = new TokenTextWriter(filename, true);
-      int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-      CommandLineOptions.Clo.PrintUnstructured = 2;
+      using TokenTextWriter writer = new TokenTextWriter(filename, true, options);
+      int oldPrintUnstructured = options.PrintUnstructured;
+      options.PrintUnstructured = 2;
       program.Emit(writer);
-      CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+      options.PrintUnstructured = oldPrintUnstructured;
     }
 
 

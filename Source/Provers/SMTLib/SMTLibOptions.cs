@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Microsoft.Boogie
 {
   // TODO move to SMTLib
-  public interface SMTLibOptions : CommandLineOptions
+  public interface SMTLibOptions : CoreOptions
   {
     ProverFactory TheProverFactory { get; }
 

@@ -29,13 +29,13 @@ namespace Microsoft.Boogie.Houdini
     {
       this.options = options;
       this.prog = prog;
-      this.varDepAnalyser = new VariableDependenceAnalyser(prog);
+      this.varDepAnalyser = new VariableDependenceAnalyser(prog, options);
       varDepAnalyser.Analyse();
     }
 
     public void Analyse()
     {
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Annotation dependence analysis: Getting annotations");
       }
@@ -68,7 +68,7 @@ namespace Microsoft.Boogie.Houdini
 
     private void ConstructStagesDAG()
     {
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Annotation dependence analysis: Computing SCCs");
       }
@@ -79,7 +79,7 @@ namespace Microsoft.Boogie.Houdini
         AnnotationDependences.Nodes, next, prev);
       SCCs.Compute();
 
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Annotation dependence analysis: Building stages DAG");
       }
@@ -112,7 +112,7 @@ namespace Microsoft.Boogie.Houdini
 
     private void ConstructAnnotationDependenceGraph()
     {
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Annotation dependence analysis: Building dependence graph");
       }
@@ -121,7 +121,7 @@ namespace Microsoft.Boogie.Houdini
 
       if (options.StagedHoudiniReachabilityAnalysis)
       {
-        reachabilityChecker = new AnnotationReachabilityChecker(prog, AllAnnotationIdentifiers());
+        reachabilityChecker = new AnnotationReachabilityChecker(options, prog, AllAnnotationIdentifiers());
       }
       else
       {
@@ -204,7 +204,7 @@ namespace Microsoft.Boogie.Houdini
 
     private void DetermineAnnotationVariableDependences()
     {
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         Console.WriteLine("Annotation dependence analysis: Working out what annotations depend on");
       }
@@ -345,7 +345,7 @@ namespace Microsoft.Boogie.Houdini
 
     public void dump()
     {
-      if (CommandLineOptions.Clo.DebugStagedHoudini)
+      if (options.DebugStagedHoudini)
       {
         varDepAnalyser.dump();
 
@@ -900,11 +900,11 @@ namespace Microsoft.Boogie.Houdini
     private IInterproceduralReachabilityGraph reachabilityGraph;
     private Dictionary<string, HashSet<object>> annotationToOccurences;
 
-    internal AnnotationReachabilityChecker(Program prog, IEnumerable<string> AnnotationIdentifiers)
+    internal AnnotationReachabilityChecker(CoreOptions options, Program prog, IEnumerable<string> AnnotationIdentifiers)
     {
       this.prog = prog;
       this.AnnotationIdentifiers = AnnotationIdentifiers;
-      this.reachabilityGraph = new InterproceduralReachabilityGraph(prog);
+      this.reachabilityGraph = new InterproceduralReachabilityGraph(prog, options);
       this.annotationToOccurences = new Dictionary<string, HashSet<object>>();
 
       // Add all annotation occurrences in blocks

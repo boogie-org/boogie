@@ -25,6 +25,7 @@ namespace Microsoft.Boogie
 
   public class LinearDomain
   {
+    private ConcurrencyOptions options;
     public string domainName;
     public Type permissionType;
     public Dictionary<Type, Function> collectors;
@@ -39,11 +40,13 @@ namespace Microsoft.Boogie
     public Function mapIteInt;
     public Function mapLe;
 
-    public LinearDomain(Program program, string domainName, Type permissionType, Dictionary<Type, Function> collectors)
+    public LinearDomain(Program program, string domainName, Type permissionType, Dictionary<Type, Function> collectors,
+      ConcurrencyOptions options)
     {
       this.domainName = domainName;
       this.permissionType = permissionType;
       this.collectors = collectors;
+      this.options = options;
 
       this.mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> {this.permissionType},
         Type.Bool);
@@ -70,12 +73,12 @@ namespace Microsoft.Boogie
 
     public Expr MapConstInt(int value)
     {
-      return ExprHelper.FunctionCall(mapConstInt, Expr.Literal(value));
+      return ExprHelper.FunctionCall(options, mapConstInt, Expr.Literal(value));
     }
 
     public Expr MapEqTrue(Expr expr)
     {
-      return Expr.Eq(expr, ExprHelper.FunctionCall(mapConstBool, Expr.True));
+      return Expr.Eq(expr, ExprHelper.FunctionCall(options, mapConstBool, Expr.True));
     }
   }
 
@@ -241,7 +244,7 @@ namespace Microsoft.Boogie
         if (collectors.Count != 0)
         {
           this.linearDomains[domainName] =
-            new LinearDomain(program, domainName, permissionTypes[domainName], collectors);
+            new LinearDomain(program, domainName, permissionTypes[domainName], collectors, Options);
         }
       }
       foreach (Absy absy in this.availableLinearVars.Keys)
@@ -381,7 +384,7 @@ namespace Microsoft.Boogie
         return node;
       }
 
-      node.PruneUnreachableBlocks();
+      node.PruneUnreachableBlocks(civlTypeChecker.Options);
       node.ComputePredecessorsForBlocks();
       GraphUtil.Graph<Block> graph = Program.GraphFromImpl(node);
       graph.ComputeLoops();
@@ -944,12 +947,14 @@ namespace Microsoft.Boogie
       var domain = linearDomains[domainName];
       foreach (Variable v in scope)
       {
-        Expr expr = ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v));
-        expr.Resolve(new ResolutionContext(null));
-        expr.Typecheck(new TypecheckingContext(null));
+        Expr expr = ExprHelper.FunctionCall(Options, domain.collectors[v.TypedIdent.Type], Expr.Ident(v));
+        expr.Resolve(new ResolutionContext(null, Options));
+        expr.Typecheck(new TypecheckingContext(null, Options));
         yield return expr;
       }
     }
+
+    private ConcurrencyOptions Options => civlTypeChecker.Options;
 
     public Expr DisjointnessExprForPermissions(string domainName, IEnumerable<Expr> permissionsExprs)
     {
@@ -969,31 +974,31 @@ namespace Microsoft.Boogie
         expr = ExprHelper.ExistsExpr(new List<Variable> {partition}, Expr.And(subsetExprs));
       }
 
-      expr.Resolve(new ResolutionContext(null));
-      expr.Typecheck(new TypecheckingContext(null));
+      expr.Resolve(new ResolutionContext(null, Options));
+      expr.Typecheck(new TypecheckingContext(null, Options));
       return expr;
     }
 
     public Expr UnionExprForPermissions(string domainName, IEnumerable<Expr> permissionExprs)
     {
       var domain = linearDomains[domainName];
-      var expr = ExprHelper.FunctionCall(domain.mapConstBool, Expr.False);
+      var expr = ExprHelper.FunctionCall(Options, domain.mapConstBool, Expr.False);
       foreach (Expr e in permissionExprs)
       {
-        expr = ExprHelper.FunctionCall(domain.mapOr, e, expr);
+        expr = ExprHelper.FunctionCall(Options, domain.mapOr, e, expr);
       }
 
-      expr.Resolve(new ResolutionContext(null));
-      expr.Typecheck(new TypecheckingContext(null));
+      expr.Resolve(new ResolutionContext(null, Options));
+      expr.Typecheck(new TypecheckingContext(null, Options));
       return expr;
     }
 
     private Expr SubsetExpr(LinearDomain domain, Expr ie, Variable partition, int partitionCount)
     {
-      Expr e = ExprHelper.FunctionCall(domain.mapConstInt, Expr.Literal(partitionCount));
-      e = ExprHelper.FunctionCall(domain.mapEqInt, Expr.Ident(partition), e);
-      e = ExprHelper.FunctionCall(domain.mapImp, ie, e);
-      e = Expr.Eq(e, ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
+      Expr e = ExprHelper.FunctionCall(Options, domain.mapConstInt, Expr.Literal(partitionCount));
+      e = ExprHelper.FunctionCall(Options, domain.mapEqInt, Expr.Ident(partition), e);
+      e = ExprHelper.FunctionCall(Options, domain.mapImp, ie, e);
+      e = Expr.Eq(e, ExprHelper.FunctionCall(Options, domain.mapConstBool, Expr.True));
       return e;
     }
 
@@ -1001,12 +1006,12 @@ namespace Microsoft.Boogie
 
     #region Linearity Invariant Checker
 
-    public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
+    public void AddCheckers(List<Declaration> decls)
     {
       foreach (var action in Enumerable.Concat<Action>(civlTypeChecker.procToAtomicAction.Values,
         civlTypeChecker.procToIntroductionAction.Values))
       {
-        AddChecker(civlTypeChecker, action, decls);
+        AddChecker(action, decls);
       }
     }
 
@@ -1031,9 +1036,8 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static void AddChecker(CivlTypeChecker civlTypeChecker, Action action, List<Declaration> decls)
+    private void AddChecker(Action action, List<Declaration> decls)
     {
-      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       // Note: The implementation should be used as the variables in the
       //       gate are bound to implementation and not to the procedure.
       Implementation impl = action.impl;
@@ -1055,19 +1059,19 @@ namespace Microsoft.Boogie
       List<Requires> requires = action.gate.Select(a => new Requires(false, a.Expr)).ToList();
       List<LinearityCheck> linearityChecks = new List<LinearityCheck>();
 
-      foreach (var domain in linearTypeChecker.linearDomains.Values)
+      foreach (var domain in linearDomains.Values)
       {
         // Linear in vars
         var inVars = inputs.Union(action.modifiedGlobalVars)
-          .Where(x => linearTypeChecker.FindDomainName(x) == domain.domainName)
-          .Where(x => InKinds.Contains(linearTypeChecker.FindLinearKind(x)))
+          .Where(x => FindDomainName(x) == domain.domainName)
+          .Where(x => InKinds.Contains(FindLinearKind(x)))
           .Select(Expr.Ident)
           .ToList();
         
         // Linear out vars
         var outVars = inputs.Union(outputs).Union(action.modifiedGlobalVars)
-          .Where(x => linearTypeChecker.FindDomainName(x) == domain.domainName)
-          .Where(x => OutKinds.Contains(linearTypeChecker.FindLinearKind(x)))
+          .Where(x => FindDomainName(x) == domain.domainName)
+          .Where(x => OutKinds.Contains(FindLinearKind(x)))
           .Select(Expr.Ident)
           .ToList();
 
@@ -1089,7 +1093,7 @@ namespace Microsoft.Boogie
           
           foreach (var pendingAsync in atomicAction.pendingAsyncs)
           {
-            var pendingAsyncLinearParams = PendingAsyncLinearParams(linearTypeChecker, domain, pendingAsync, pa1);
+            var pendingAsyncLinearParams = PendingAsyncLinearParams(domain, pendingAsync, pa1);
 
             if (pendingAsyncLinearParams.Count == 0)
             {
@@ -1100,7 +1104,7 @@ namespace Microsoft.Boogie
             // Permissions in linear output variables + linear inputs of a single pending async
             // are a subset of permissions in linear input variables.
             var exactlyOnePA = Expr.And(
-              ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa1),
+              ExprHelper.FunctionCall(Options, pendingAsync.pendingAsyncCtor.membership, pa1),
               Expr.Eq(Expr.Select(PAs, pa1), Expr.Literal(1)));
             var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams.Union(outVars));
             linearityChecks.Add(new LinearityCheck(
@@ -1113,7 +1117,7 @@ namespace Microsoft.Boogie
             // Third kind
             // If there are two identical pending asyncs, then their input permissions mut be empty.
             var twoIdenticalPAs = Expr.And(
-              ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa1),
+              ExprHelper.FunctionCall(Options, pendingAsync.pendingAsyncCtor.membership, pa1),
               Expr.Ge(Expr.Select(PAs, pa1), Expr.Literal(2)));
             var emptyPerms = OutPermsSubsetInPerms(domain, Enumerable.Empty<Expr>(), pendingAsyncLinearParams);
             linearityChecks.Add(new LinearityCheck(
@@ -1132,8 +1136,8 @@ namespace Microsoft.Boogie
             {
               var pendingAsync2 = pendingAsyncs[j];
 
-              var pendingAsyncLinearParams1 = PendingAsyncLinearParams(linearTypeChecker, domain, pendingAsync1, pa1);
-              var pendingAsyncLinearParams2 = PendingAsyncLinearParams(linearTypeChecker, domain, pendingAsync2, pa2);
+              var pendingAsyncLinearParams1 = PendingAsyncLinearParams(domain, pendingAsync1, pa1);
+              var pendingAsyncLinearParams2 = PendingAsyncLinearParams(domain, pendingAsync2, pa2);
               
               if (pendingAsyncLinearParams1.Count == 0 || pendingAsyncLinearParams2.Count == 0)
               {
@@ -1146,8 +1150,8 @@ namespace Microsoft.Boogie
               var membership = Expr.And(
                 Expr.Neq(pa1, pa2),
                 Expr.And(
-                  ExprHelper.FunctionCall(pendingAsync1.pendingAsyncCtor.membership, pa1),
-                  ExprHelper.FunctionCall(pendingAsync2.pendingAsyncCtor.membership, pa2)));
+                  ExprHelper.FunctionCall(Options, pendingAsync1.pendingAsyncCtor.membership, pa1),
+                  ExprHelper.FunctionCall(Options, pendingAsync2.pendingAsyncCtor.membership, pa2)));
 
               var existing = Expr.And(
                 Expr.Ge(Expr.Select(PAs, pa1), Expr.Literal(1)),
@@ -1182,7 +1186,7 @@ namespace Microsoft.Boogie
         }
         cmds.Add(CmdHelper.AssertCmd(action.proc.tok, lc.assert, lc.message));
         var block = BlockHelper.Block($"{lc.domainName}_{lc.checkName}", cmds);
-        CivlUtil.ResolveAndTypecheck(block, ResolutionContext.State.Two);
+        CivlUtil.ResolveAndTypecheck(Options, block, ResolutionContext.State.Two);
         checkerBlocks.Add(block);
       }
       
@@ -1205,16 +1209,16 @@ namespace Microsoft.Boogie
       decls.Add(linCheckerProc);
     }
 
-    private static List<Expr> PendingAsyncLinearParams(LinearTypeChecker linearTypeChecker, LinearDomain domain, AtomicAction pendingAsync, IdentifierExpr pa)
+    private List<Expr> PendingAsyncLinearParams(LinearDomain domain, AtomicAction pendingAsync, IdentifierExpr pa)
     {
       var pendingAsyncLinearParams = new List<Expr>();
 
       for (int i = 0; i < pendingAsync.proc.InParams.Count; i++)
       {
         var inParam = pendingAsync.proc.InParams[i];
-        if (linearTypeChecker.FindDomainName(inParam) == domain.domainName && InKinds.Contains(linearTypeChecker.FindLinearKind(inParam)))
+        if (FindDomainName(inParam) == domain.domainName && InKinds.Contains(FindLinearKind(inParam)))
         {
-          var pendingAsyncParam = ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.selectors[i], pa);
+          var pendingAsyncParam = ExprHelper.FunctionCall(Options, pendingAsync.pendingAsyncCtor.selectors[i], pa);
           pendingAsyncLinearParams.Add(pendingAsyncParam);
         }
       }
@@ -1222,19 +1226,19 @@ namespace Microsoft.Boogie
       return pendingAsyncLinearParams;
     }
 
-    private static Expr OutPermsSubsetInPerms(LinearDomain domain, IEnumerable<Expr> ins, IEnumerable<Expr> outs)
+    private Expr OutPermsSubsetInPerms(LinearDomain domain, IEnumerable<Expr> ins, IEnumerable<Expr> outs)
     {
       Expr inMultiset = ExprHelper.Old(PermissionMultiset(domain, ins));
       Expr outMultiset = PermissionMultiset(domain, outs);
-      Expr subsetExpr = ExprHelper.FunctionCall(domain.mapLe, outMultiset, inMultiset);
-      return Expr.Eq(subsetExpr, ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
+      Expr subsetExpr = ExprHelper.FunctionCall(Options, domain.mapLe, outMultiset, inMultiset);
+      return Expr.Eq(subsetExpr, ExprHelper.FunctionCall(Options, domain.mapConstBool, Expr.True));
     }
 
-    private static Expr PermissionMultiset(LinearDomain domain, IEnumerable<Expr> exprs)
+    private Expr PermissionMultiset(LinearDomain domain, IEnumerable<Expr> exprs)
     {
       var terms = exprs.Select(x =>
-        ExprHelper.FunctionCall(domain.mapIteInt,
-          ExprHelper.FunctionCall(domain.collectors[x.Type], x),
+        ExprHelper.FunctionCall(Options, domain.mapIteInt,
+          ExprHelper.FunctionCall(Options, domain.collectors[x.Type], x),
           domain.MapConstInt(1),
           domain.MapConstInt(0))).ToList<Expr>();
 
@@ -1243,7 +1247,7 @@ namespace Microsoft.Boogie
         return domain.MapConstInt(0);
       }
 
-      return terms.Aggregate((x, y) => ExprHelper.FunctionCall(domain.mapAdd, x, y));
+      return terms.Aggregate((x, y) => ExprHelper.FunctionCall(Options, domain.mapAdd, x, y));
     }
 
     #endregion

@@ -27,18 +27,18 @@ public class RandomSeedTest
   [Test]
   public void AttributeAndCommandLineOptionProduceSameResult()
   {
-    var options = CommandLineOptionsImpl.FromArguments();
+    var options = CommandLineOptions.FromArguments();
     options.RandomSeed = randomSeed;
     var randomOptionsLogs = GetProverLogs.GetProverLogForProgram(options, program);
     var randomAttributeLogs =
-      GetProverLogs.GetProverLogForProgram(CommandLineOptionsImpl.FromArguments(), GetProgramWithAttribute(randomSeed));
+      GetProverLogs.GetProverLogForProgram(CommandLineOptions.FromArguments(), GetProgramWithAttribute(randomSeed));
     Assert.AreEqual(randomOptionsLogs, randomAttributeLogs);
   }
 
   [Test]
   public void Z3RandomisationOptionsAreSet()
   {
-    var options = CommandLineOptionsImpl.FromArguments();
+    var options = CommandLineOptions.FromArguments();
     options.RandomSeed = randomSeed;
     var randomOptionsLogs = GetProverLogs.GetProverLogForProgram(options, program);
     Assert.IsTrue(randomOptionsLogs.Contains("(set-option :smt.random_seed 12312314)"));
@@ -48,7 +48,7 @@ public class RandomSeedTest
   [Test]
   public void DeclarationOrderIsRandomised()
   {
-    var options = CommandLineOptionsImpl.FromArguments();
+    var options = CommandLineOptions.FromArguments();
     options.NormalizeDeclarationOrder = false;
     var noRandomLogs = GetProverLogs.GetProverLogForProgram(options, program);
     options.RandomSeed = 10000;
@@ -68,7 +68,7 @@ public class RandomSeedTest
   [Test]
   public void SomeVariablesAreRenamed()
   {
-    var options = CommandLineOptionsImpl.FromArguments();
+    var options = CommandLineOptions.FromArguments();
     options.RandomSeed = randomSeed;
     options.NormalizeNames = false;
     var randomOptionsLogs = GetProverLogs.GetProverLogForProgram(options, program);

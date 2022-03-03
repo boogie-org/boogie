@@ -108,15 +108,15 @@ namespace Microsoft.Boogie.SMTLib
     {
       switch (libOptions.TypeEncodingMethod)
       {
-        case CommandLineOptions.TypeEncoding.Arguments:
-          AxBuilder = new TypeAxiomBuilderArguments(gen);
+        case CoreOptions.TypeEncoding.Arguments:
+          AxBuilder = new TypeAxiomBuilderArguments(gen, libOptions);
           AxBuilder.Setup();
           break;
-        case CommandLineOptions.TypeEncoding.Monomorphic:
+        case CoreOptions.TypeEncoding.Monomorphic:
           AxBuilder = null;
           break;
         default:
-          AxBuilder = new TypeAxiomBuilderPremisses(gen);
+          AxBuilder = new TypeAxiomBuilderPremisses(gen, libOptions);
           AxBuilder.Setup();
           break;
       }
@@ -1733,13 +1733,13 @@ namespace Microsoft.Boogie.SMTLib
         VCExpr exprWithoutTypes;
         switch (libOptions.TypeEncodingMethod)
         {
-          case CommandLineOptions.TypeEncoding.Arguments:
+          case CoreOptions.TypeEncoding.Arguments:
           {
             TypeEraser eraser = new TypeEraserArguments((TypeAxiomBuilderArguments) AxBuilder, gen);
             exprWithoutTypes = AxBuilder.Cast(eraser.Erase(expr, polarity), Type.Bool);
             break;
           }
-          case CommandLineOptions.TypeEncoding.Monomorphic:
+          case CoreOptions.TypeEncoding.Monomorphic:
           {
             exprWithoutTypes = expr;
             break;
@@ -1827,7 +1827,7 @@ namespace Microsoft.Boogie.SMTLib
       //throws ProverException, System.IO.FileNotFoundException;
       if (_backgroundPredicates == null)
       {
-        if (libOptions.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+        if (libOptions.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic)
         {
           _backgroundPredicates = "";
         }
@@ -2422,8 +2422,8 @@ namespace Microsoft.Boogie.SMTLib
     public readonly Dictionary<Function, VCExprNAry> DefinedFunctions = new Dictionary<Function, VCExprNAry>();
 
     public SMTLibProverContext(VCExpressionGenerator gen,
-      VCGenerationOptions genOptions)
-      : base(gen, genOptions)
+      VCGenerationOptions genOptions, SMTLibOptions options)
+      : base(gen, genOptions, options)
     {
     }
 
@@ -2519,12 +2519,12 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
-      return new SMTLibProverContext(gen, genOptions);
+      return new SMTLibProverContext(gen, genOptions, options.LibOptions);
     }
 
-    public override ProverOptions BlankProverOptions()
+    public override ProverOptions BlankProverOptions(SMTLibOptions libOptions)
     {
-      return new SMTLibProverOptions();
+      return new SMTLibProverOptions(libOptions);
     }
 
     protected virtual SMTLibProcessTheoremProver SpawnProver(SMTLibOptions libOptions, ProverOptions options,

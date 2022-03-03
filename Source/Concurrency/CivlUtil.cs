@@ -11,23 +11,23 @@ namespace Microsoft.Boogie
       decl.AddAttribute("inline", Expr.Literal(1));
     }
 
-    public static int ResolveAndTypecheck(Absy absy)
+    public static int ResolveAndTypecheck(CoreOptions options, Absy absy)
     {
-      var rc = new ResolutionContext(null);
+      var rc = new ResolutionContext(null, options);
       absy.Resolve(rc);
       if (rc.ErrorCount != 0)
       {
         return rc.ErrorCount;
       }
 
-      var tc = new TypecheckingContext(null);
+      var tc = new TypecheckingContext(null, options);
       absy.Typecheck(tc);
       return tc.ErrorCount;
     }
 
-    public static int ResolveAndTypecheck(Absy absy, ResolutionContext.State state)
+    public static int ResolveAndTypecheck(CoreOptions options, Absy absy, ResolutionContext.State state)
     {
-      var rc = new ResolutionContext(null);
+      var rc = new ResolutionContext(null, options);
       rc.StateMode = state;
       absy.Resolve(rc);
       if (rc.ErrorCount != 0)
@@ -35,17 +35,17 @@ namespace Microsoft.Boogie
         return rc.ErrorCount;
       }
 
-      var tc = new TypecheckingContext(null);
+      var tc = new TypecheckingContext(null, options);
       absy.Typecheck(tc);
       return tc.ErrorCount;
     }
 
-    public static int ResolveAndTypecheck(IEnumerable<Absy> absys)
+    public static int ResolveAndTypecheck(CoreOptions options, IEnumerable<Absy> absys)
     {
       int errorCount = 0;
       foreach (var absy in absys)
       {
-        errorCount += ResolveAndTypecheck(absy);
+        errorCount += ResolveAndTypecheck(options, absy);
       }
 
       return errorCount;
@@ -55,13 +55,13 @@ namespace Microsoft.Boogie
   // Handy syntactic sugar missing in Expr
   public static class ExprHelper
   {
-    public static NAryExpr FunctionCall(Function f, params Expr[] args)
+    public static NAryExpr FunctionCall(ConcurrencyOptions options, Function f, params Expr[] args)
     {
       var expr = new NAryExpr(Token.NoToken, new FunctionCall(f), args);
-      var rc = new ResolutionContext(null);
+      var rc = new ResolutionContext(null, options);
       rc.StateMode = ResolutionContext.State.Two;
       expr.Resolve(rc);
-      expr.Typecheck(new TypecheckingContext(null));
+      expr.Typecheck(new TypecheckingContext(null, options));
       return expr;
     }
 

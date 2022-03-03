@@ -98,7 +98,7 @@ namespace Microsoft.Boogie
         new List<Variable>(),
         new List<Variable>(),
         new List<Block> {BlockHelper.Block("init", new List<Cmd>())});
-      SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both);
+      SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both, Options);
     }
 
     public string AddNamePrefix(string name)
@@ -278,7 +278,7 @@ namespace Microsoft.Boogie
         }
 
         Implementation impl = actionImpls[0];
-        impl.PruneUnreachableBlocks();
+        impl.PruneUnreachableBlocks(Options);
         Graph<Block> cfg = Program.GraphFromImpl(impl);
         if (!Graph<Block>.Acyclic(cfg, impl.Blocks[0]))
         {
@@ -325,7 +325,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          var action = new AtomicAction(proc, impl, layerRange, GetActionMoverType(proc));
+          var action = new AtomicAction(proc, impl, layerRange, GetActionMoverType(proc), Options);
           if (proc.HasAttribute(CivlAttributes.IS_INVARIANT))
           {
             procToIsInvariant[proc] = action;
@@ -1512,6 +1512,8 @@ namespace Microsoft.Boogie
       static List<LinearKind> EnsuresAvailable = new List<LinearKind> { LinearKind.LINEAR, LinearKind.LINEAR_OUT };
       static List<LinearKind> PreservesAvailable = new List<LinearKind> { LinearKind.LINEAR };
 
+      private ConcurrencyOptions Options => civlTypeChecker.Options;
+
       public static CallCmd CheckRequires(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller)
       {
         var v = new YieldInvariantCallChecker(civlTypeChecker, attr, caller, RequiresAvailable);
@@ -1617,7 +1619,7 @@ namespace Microsoft.Boogie
 
         callCmd = new CallCmd(attr.tok, yieldingProc.Name, exprs, new List<IdentifierExpr>()) { Proc = yieldingProc };
 
-        if (CivlUtil.ResolveAndTypecheck(callCmd) != 0)
+        if (CivlUtil.ResolveAndTypecheck(Options, callCmd) != 0)
         {
           callCmd = null;
         }

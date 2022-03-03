@@ -2,18 +2,12 @@
 
 namespace Microsoft.Boogie
 {
+
   /// <summary>
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
-  public interface CommandLineOptions
-  {
-
-    public static CommandLineOptions /*!*/ Clo
-    {
-      get;
-      set;
-    }
+  public interface CoreOptions : PrintOptions {
 
     public enum TypeEncoding
     {
@@ -48,13 +42,7 @@ namespace Microsoft.Boogie
     bool OverlookBoogieTypeErrors { get; }
     uint TimeLimit { get; }
     uint ResourceLimit { get; }
-    bool PrintWithUniqueASTIds { get; }
-    int StratifiedInlining { get; }
     bool DoModSetAnalysis { get; }
-    bool PrintInstrumented { get; }
-    bool PrintInlined { get; }
-    int PrintUnstructured { get; set; }
-    bool PrintDesugarings { get; set; }
     bool DebugStagedHoudini { get; }
     bool DeterministicExtractLoops { get; }
     string VariableDependenceIgnore { get; }
@@ -70,7 +58,6 @@ namespace Microsoft.Boogie
     bool InstrumentWithAsserts { get; }
     bool UseArrayTheory { get; set; }
     TypeEncoding TypeEncodingMethod { get; set; }
-    bool ReflectAdd { get; }
     SubsumptionOption UseSubsumption { get; }
     int VcsCores { get; }
     List<string> ProverOptions { get; }

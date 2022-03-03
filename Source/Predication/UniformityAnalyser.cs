@@ -8,6 +8,7 @@ namespace Microsoft.Boogie
 {
   public class UniformityAnalyser
   {
+    private CoreOptions options;
     private Program prog;
 
     private bool doAnalysis;
@@ -37,9 +38,9 @@ namespace Microsoft.Boogie
     /// being used then blocks will only be merged if they are both uniform
     /// or both non-uniform
     /// </summary>
-    public static void MergeBlocksIntoPredecessors(Program prog, Implementation impl, UniformityAnalyser uni)
+    public void MergeBlocksIntoPredecessors(Program prog, Implementation impl, UniformityAnalyser uni)
     {
-      var blockGraph = prog.ProcessLoops(impl);
+      var blockGraph = prog.ProcessLoops(options, impl);
       var predMap = new Dictionary<Block, Block>();
       foreach (var block in blockGraph.Nodes)
       {
@@ -71,12 +72,13 @@ namespace Microsoft.Boogie
     }
 
     public UniformityAnalyser(Program prog, bool doAnalysis, ISet<Implementation> entryPoints,
-      IEnumerable<Variable> nonUniformVars)
+      IEnumerable<Variable> nonUniformVars, CoreOptions options)
     {
       this.prog = prog;
       this.doAnalysis = doAnalysis;
       this.entryPoints = entryPoints;
       this.nonUniformVars = nonUniformVars;
+      this.options = options;
       uniformityInfo = new Dictionary<string, KeyValuePair<bool, Dictionary<string, bool>>>();
       nonUniformLoops = new Dictionary<string, HashSet<int>>();
       nonUniformBlocks = new Dictionary<string, HashSet<Block>>();
@@ -263,7 +265,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      Graph<Block> blockGraph = prog.ProcessLoops(Impl);
+      Graph<Block> blockGraph = prog.ProcessLoops(options, Impl);
       var ctrlDep = blockGraph.ControlDependence();
 
       // Compute transitive closure of control dependence info.

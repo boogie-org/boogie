@@ -7,8 +7,8 @@ namespace Microsoft.Boogie
 {
   public class XmlSink
   {
-    string /*!*/
-      filename;
+    string /*!*/ filename;
+    private CoreOptions options;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -23,10 +23,11 @@ namespace Microsoft.Boogie
       get { return wr != null; }
     }
 
-    public XmlSink(string filename)
+    public XmlSink(CoreOptions options, string filename)
     {
       Contract.Requires(filename != null);
       this.filename = filename;
+      this.options = options;
     }
 
     /// <summary>
@@ -49,7 +50,7 @@ namespace Microsoft.Boogie
         wr = XmlWriter.Create(filename, settings);
         wr.WriteStartDocument();
         wr.WriteStartElement("boogie");
-        wr.WriteAttributeString("version", CommandLineOptions.Clo.VersionNumber);
+        wr.WriteAttributeString("version", options.VersionNumber);
         wr.WriteAttributeString("commandLine", Environment.CommandLine);
       }
       cce.EndExpose();
@@ -114,36 +115,26 @@ namespace Microsoft.Boogie
       cce.EndExpose();
     }
 
-    public void WriteStartSplit(int splitNum, DateTime startTime)
+    public void WriteSplit(int splitNum, DateTime startTime, string outcome, TimeSpan elapsed)
     {
       Contract.Requires(splitNum > 0);
-      Contract.Requires(IsOpen);
-      //modifies this.*;
-      Contract.Ensures(IsOpen);
-      Contract.Assert(wr != null);
-      cce.BeginExpose(this);
-      {
-        wr.WriteStartElement("split");
-        wr.WriteAttributeString("number", splitNum.ToString());
-        wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
-      }
-      cce.EndExpose();
-    }
-    
-    public void WriteEndSplit(string outcome, TimeSpan elapsed)
-    {
       Contract.Requires(outcome != null);
       Contract.Requires(IsOpen);
       //modifies this.*;
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
+
       cce.BeginExpose(this);
       {
+        wr.WriteStartElement("split");
+        wr.WriteAttributeString("number", splitNum.ToString());
+        wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
+
         wr.WriteStartElement("conclusion");
         wr.WriteAttributeString("duration", elapsed.TotalSeconds.ToString());
         wr.WriteAttributeString("outcome", outcome);
-
         wr.WriteEndElement(); // outcome
+
         wr.WriteEndElement(); // split
       }
       cce.EndExpose();

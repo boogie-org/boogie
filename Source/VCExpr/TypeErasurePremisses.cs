@@ -58,10 +58,13 @@ namespace Microsoft.Boogie.TypeErasure
 
   public class TypeAxiomBuilderPremisses : TypeAxiomBuilderIntBoolU
   {
-    public TypeAxiomBuilderPremisses(VCExpressionGenerator gen)
+    public CoreOptions Options { get; }
+
+    public TypeAxiomBuilderPremisses(VCExpressionGenerator gen, CoreOptions options)
       : base(gen)
     {
       Contract.Requires(gen != null);
+      this.Options = options;
 
       TypeFunction = HelperFuns.BoogieFunction("dummy", Type.Int);
       Typed2UntypedFunctions = new Dictionary<Function /*!*/, UntypedFunction>();
@@ -74,6 +77,7 @@ namespace Microsoft.Boogie.TypeErasure
       : base(builder)
     {
       Contract.Requires(builder != null);
+      this.Options = builder.Options;
       TypeFunction = builder.TypeFunction;
       Typed2UntypedFunctions =
         new Dictionary<Function /*!*/, UntypedFunction>(builder.Typed2UntypedFunctions);
@@ -81,8 +85,7 @@ namespace Microsoft.Boogie.TypeErasure
       MapTypeAbstracterAttr =
         builder.MapTypeAbstracterAttr == null
           ? null
-          : new MapTypeAbstractionBuilderPremisses(this, builder.Gen,
-            builder.MapTypeAbstracterAttr);
+          : new MapTypeAbstractionBuilderPremisses(this, builder.Gen, builder.MapTypeAbstracterAttr);
     }
 
     public override Object Clone()
@@ -628,8 +631,7 @@ namespace Microsoft.Boogie.TypeErasure
 
   internal class MapTypeAbstractionBuilderPremisses : MapTypeAbstractionBuilder
   {
-    private readonly TypeAxiomBuilderPremisses /*!*/
-      AxBuilderPremisses;
+    private readonly TypeAxiomBuilderPremisses /*!*/ AxBuilderPremisses;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -729,7 +731,7 @@ namespace Microsoft.Boogie.TypeErasure
       // the store function does not have any explicit type parameters
       Contract.Assert(explicitStoreParams.Count == 0);
 
-      if (CommandLineOptions.Clo.UseArrayTheory)
+      if (AxBuilderPremisses.Options.UseArrayTheory)
       {
         select.AddAttribute("builtin", "select");
         store.AddAttribute("builtin", "store");
@@ -1120,8 +1122,7 @@ namespace Microsoft.Boogie.TypeErasure
 
   public class TypeEraserPremisses : TypeEraser
   {
-    private readonly TypeAxiomBuilderPremisses /*!*/
-      AxBuilderPremisses;
+    private readonly TypeAxiomBuilderPremisses /*!*/ AxBuilderPremisses;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -1343,8 +1344,8 @@ namespace Microsoft.Boogie.TypeErasure
       List<VCExprVar /*!*/> /*!*/
         newVarsWithTypeSpecs = new List<VCExprVar /*!*/>();
       if (!IsUniversalQuantifier(node) ||
-          CommandLineOptions.Clo.TypeEncodingMethod
-          == CommandLineOptions.TypeEncoding.Predicates)
+          AxBuilderPremisses.Options.TypeEncodingMethod
+          == CoreOptions.TypeEncoding.Predicates)
       {
         foreach (VCExprVar /*!*/ oldVar in occurringVars)
         {

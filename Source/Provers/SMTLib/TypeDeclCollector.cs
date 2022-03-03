@@ -307,7 +307,7 @@ namespace Microsoft.Boogie.SMTLib
         return;
       }
 
-      if (type.IsMap && options.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+      if (type.IsMap && options.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic)
       {
         KnownTypes.Add(type);
         MapType mapType = type.AsMap;
@@ -352,7 +352,7 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
-      if (options.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+      if (options.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic)
       {
         AddDeclaration("(declare-sort " + TypeToString(type) + " 0)");
         KnownTypes.Add(type);
@@ -399,7 +399,7 @@ namespace Microsoft.Boogie.SMTLib
                       TypeToString(node.Type) + ")";
         AddDeclaration(decl);
 
-        if (options.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+        if (options.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic)
         {
           var sel = new SMTLibExprLineariser(options).SelectOpName(node);
           sel = Namer.GetQuotedName(sel, sel);

@@ -81,7 +81,8 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<string>() != null);
       System.IO.StringWriter buffer = new System.IO.StringWriter();
-      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false);
+      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer,
+        /*setTokens=*/ false, /*pretty=*/ false, PrintOptions.Default);
       this.Emit(stream, 0, false);
 
       return buffer.ToString();
@@ -1294,7 +1295,7 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
       //Contract.Requires(stream != null);
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds && !stream.UseForComputingChecksums)
+      if (stream.Options.PrintWithUniqueASTIds && !stream.UseForComputingChecksums)
       {
         stream.Write("{0}^^", this.Decl == null ? "NoDecl" : "h" + this.Decl.GetHashCode());
       }
@@ -2816,9 +2817,9 @@ namespace Microsoft.Boogie
       List<Type> actualResultType =
         Type.CheckArgumentTypes(Func.TypeParameters,
           out var resultingTypeArgs,
-          new List<Type>(Func.InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+          Func.InParams.Select(Item => Item.TypedIdent.Type).ToList(),
           actuals,
-          new List<Type>(Func.OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+          Func.OutParams.Select(Item => Item.TypedIdent.Type).ToList(),
           null,
           // we need some token to report a possibly wrong number of
           // arguments

@@ -41,13 +41,14 @@ namespace Microsoft.Boogie
     private volatile ProverInterface.Outcome outcome;
     private volatile bool hasOutput;
     private volatile UnexpectedProverOutputException outputExn;
-    private DateTime proverStart;
+    public DateTime ProverStart { get; private set; }
     private TimeSpan proverRunTime;
     private volatile ProverInterface.ErrorHandler handler;
     private volatile CheckerStatus status;
     public volatile Program Program;
     public readonly ProverOptions SolverOptions;
 
+    public VCGenOptions Options => Pool.Options;
     public CheckerPool Pool { get; }
 
     public void GetReady()
@@ -60,6 +61,12 @@ namespace Microsoft.Boogie
     public void GoBackToIdle()
     {
       Contract.Requires(IsBusy);
+      if (Options.ModelViewFile != null) {
+        // Don't re-use theorem provers whose ProverContext still needs to be queried to extract model data.
+        Pool.CheckerDied();
+        Close();
+        return;
+      }
 
       status = CheckerStatus.Idle;
       var becameIdle = thmProver.GoBackToIdle().Wait(TimeSpan.FromMilliseconds(100));
@@ -100,7 +107,7 @@ namespace Microsoft.Boogie
     {
       Pool = pool;
 
-      SolverOptions = cce.NonNull(Pool.Options.TheProverFactory).BlankProverOptions();
+      SolverOptions = cce.NonNull(Pool.Options.TheProverFactory).BlankProverOptions(pool.Options);
 
       if (logFilePath != null)
       {
@@ -111,7 +118,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      SolverOptions.Parse(CommandLineOptions.Clo.ProverOptions);
+      SolverOptions.Parse(Options.ProverOptions);
 
       var ctx = Pool.Options.TheProverFactory.NewProverContext(SolverOptions);
 
@@ -150,7 +157,7 @@ namespace Microsoft.Boogie
     /// </summary>
     private void Setup(Program prog, ProverContext ctx, Split split = null)
     {
-      SolverOptions.RandomSeed = split?.RandomSeed ?? CommandLineOptions.Clo.RandomSeed;
+      SolverOptions.RandomSeed = split?.RandomSeed ?? Options.RandomSeed;
       var random = SolverOptions.RandomSeed == null ? null : new Random(SolverOptions.RandomSeed.Value);
       
       Program = prog;
@@ -185,11 +192,11 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations, Random random)
+    private IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations, Random random)
     {
       if (random == null) {
         // By ordering the declarations based on their content and naming them based on order, the solver input stays constant under reordering and renaming.
-        return CommandLineOptions.Clo.NormalizeDeclarationOrder
+        return Options.NormalizeDeclarationOrder
           ? declarations.OrderBy(d => d.ContentHash)
           : declarations;
       }
@@ -257,7 +264,7 @@ namespace Microsoft.Boogie
     private async Task WaitForOutput(object dummy, CancellationToken cancellationToken)
     {
       try {
-        outcome = await thmProver.CheckOutcome(cce.NonNull(handler), CommandLineOptions.Clo.ErrorLimit,
+        outcome = await thmProver.CheckOutcome(cce.NonNull(handler), Options.ErrorLimit,
           cancellationToken);
       }
       catch (OperationCanceledException) {
@@ -295,7 +302,7 @@ namespace Microsoft.Boogie
       }
 
       hasOutput = true;
-      proverRunTime = DateTime.UtcNow - proverStart;
+      proverRunTime = DateTime.UtcNow - ProverStart;
     }
 
     public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, CancellationToken cancellationToken)
@@ -317,7 +324,7 @@ namespace Microsoft.Boogie
       }
       SetTimeout(timeout);
       SetRlimit(rlimit);
-      proverStart = DateTime.UtcNow;
+      ProverStart = DateTime.UtcNow;
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 

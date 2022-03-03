@@ -122,6 +122,7 @@ namespace Microsoft.Boogie
   /// </summary>
   public class DeclFreeProverContext : ProverContext
   {
+    private SMTLibOptions options;
     protected VCExpressionGenerator gen;
     protected VCGenerationOptions genOptions;
     protected Boogie2VCExprTranslator translator;
@@ -146,12 +147,13 @@ namespace Microsoft.Boogie
       exprTranslator;
 
     public DeclFreeProverContext(VCExpressionGenerator gen,
-      VCGenerationOptions genOptions)
+      VCGenerationOptions genOptions, SMTLibOptions options)
     {
       Contract.Requires(gen != null);
       Contract.Requires(genOptions != null);
       this.gen = gen;
       this.genOptions = genOptions;
+      this.options = options;
       Boogie2VCExprTranslator t = new Boogie2VCExprTranslator(gen, genOptions);
       this.translator = t;
 
@@ -187,6 +189,7 @@ namespace Microsoft.Boogie
     protected DeclFreeProverContext(DeclFreeProverContext ctxt)
     {
       Contract.Requires(ctxt != null);
+      this.options = ctxt.options;
       this.gen = ctxt.gen;
       this.genOptions = ctxt.genOptions;
       Boogie2VCExprTranslator t = (Boogie2VCExprTranslator) ctxt.translator.Clone();
@@ -265,7 +268,7 @@ namespace Microsoft.Boogie
         }
 
         axioms = gen.AndSimp(gen.Distinct(distinctVars), axioms);
-        if (CommandLineOptions.Clo.TypeEncodingMethod != CommandLineOptions.TypeEncoding.Monomorphic)
+        if (options.TypeEncodingMethod != CoreOptions.TypeEncoding.Monomorphic)
         {
           axioms = gen.AndSimp(orderingAxiomBuilder.Axioms, axioms);
         }

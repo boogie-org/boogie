@@ -21,10 +21,11 @@ namespace Microsoft.Boogie
         var correctTypeExpr = ExprHelper.ForallExpr(new List<Variable> {paBound},
           Expr.Imp(
             Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0)),
-            Expr.Or(action.pendingAsyncs.Select(a => ExprHelper.FunctionCall(a.pendingAsyncCtor.membership, pa)))));
+            Expr.Or(action.pendingAsyncs.Select(a =>
+              ExprHelper.FunctionCall(civlTypeChecker.Options, a.pendingAsyncCtor.membership, pa)))));
 
-        CivlUtil.ResolveAndTypecheck(nonnegativeExpr);
-        CivlUtil.ResolveAndTypecheck(correctTypeExpr);
+        CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, nonnegativeExpr);
+        CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, correctTypeExpr);
 
         var cmds = new List<Cmd>
         {

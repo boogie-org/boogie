@@ -1,11 +1,11 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
+using VC;
 using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Microsoft.Boogie
@@ -74,6 +74,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(cce.NonNullDictionaryAndValues(calleeCounterexamples));
     }
 
+    protected readonly VCGenOptions options;
     [Peer] public List<Block> Trace;
     public List<object> AugmentedTrace;
     public Model Model;
@@ -87,10 +88,11 @@ namespace Microsoft.Boogie
 
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
-    internal Counterexample(List<Block> trace, List<object> augmentedTrace, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
+    internal Counterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
     {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
+      this.options = options;
       this.Trace = trace;
       this.Model = model;
       this.MvInfo = mvInfo;
@@ -175,7 +177,7 @@ namespace Microsoft.Boogie
           // for ErrorTrace == 1 restrict the output;
           // do not print tokens with -17:-4 as their location because they have been
           // introduced in the translation and do not give any useful feedback to the user
-          if (!(CommandLineOptions.Clo.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4))
+          if (!(options.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4))
           {
             if (blockAction != null)
             {
@@ -192,7 +194,7 @@ namespace Microsoft.Boogie
                 var cmd = getTraceCmd(loc);
                 var calleeName = getCalledProcName(cmd);
                 if (calleeName.StartsWith(VC.StratifiedVCGenBase.recordProcName) &&
-                    CommandLineOptions.Clo.StratifiedInlining > 0)
+                    options.StratifiedInlining > 0)
                 {
                   Contract.Assert(calleeCounterexamples[loc].args.Count == 1);
                   var arg = calleeCounterexamples[loc].args[0];
@@ -217,8 +219,8 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(counterexample != null);
 
-      var filename = CommandLineOptions.Clo.ModelViewFile;
-      if (Model == null || filename == null || CommandLineOptions.Clo.StratifiedInlining > 0)
+      var filename = options.ModelViewFile;
+      if (Model == null || filename == null || options.StratifiedInlining > 0)
       {
         return;
       }
@@ -473,9 +475,9 @@ namespace Microsoft.Boogie
     }
 
 
-    public AssertCounterexample(List<Block> trace, List<object> augmentedTrace, AssertCmd failingAssert, Model model, VC.ModelViewInfo mvInfo,
+    public AssertCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, AssertCmd failingAssert, Model model, VC.ModelViewInfo mvInfo,
       ProverContext context)
-      : base(trace, augmentedTrace, model, mvInfo, context)
+      : base(options, trace, augmentedTrace, model, mvInfo, context)
     {
       Contract.Requires(trace != null);
       Contract.Requires(failingAssert != null);
@@ -495,7 +497,7 @@ namespace Microsoft.Boogie
 
     public override Counterexample Clone()
     {
-      var ret = new AssertCounterexample(Trace, AugmentedTrace, FailingAssert, Model, MvInfo, Context);
+      var ret = new AssertCounterexample(options, Trace, AugmentedTrace, FailingAssert, Model, MvInfo, Context);
       ret.calleeCounterexamples = calleeCounterexamples;
       return ret;
     }
@@ -514,9 +516,9 @@ namespace Microsoft.Boogie
     }
 
 
-    public CallCounterexample(List<Block> trace, List<object> augmentedTrace, CallCmd failingCall, Requires failingRequires, Model model,
+    public CallCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, CallCmd failingCall, Requires failingRequires, Model model,
       VC.ModelViewInfo mvInfo, ProverContext context, byte[] checksum = null)
-      : base(trace, augmentedTrace, model, mvInfo, context)
+      : base(options, trace, augmentedTrace, model, mvInfo, context)
     {
       Contract.Requires(!failingRequires.Free);
       Contract.Requires(trace != null);
@@ -543,7 +545,7 @@ namespace Microsoft.Boogie
 
     public override Counterexample Clone()
     {
-      var ret = new CallCounterexample(Trace, AugmentedTrace, FailingCall, FailingRequires, Model, MvInfo, Context, Checksum);
+      var ret = new CallCounterexample(options, Trace, AugmentedTrace, FailingCall, FailingRequires, Model, MvInfo, Context, Checksum);
       ret.calleeCounterexamples = calleeCounterexamples;
       return ret;
     }
@@ -562,9 +564,9 @@ namespace Microsoft.Boogie
     }
 
 
-    public ReturnCounterexample(List<Block> trace, List<object> augmentedTrace, TransferCmd failingReturn, Ensures failingEnsures, Model model,
+    public ReturnCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, TransferCmd failingReturn, Ensures failingEnsures, Model model,
       VC.ModelViewInfo mvInfo, ProverContext context, byte[] checksum)
-      : base(trace, augmentedTrace, model, mvInfo, context)
+      : base(options, trace, augmentedTrace, model, mvInfo, context)
     {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
@@ -593,7 +595,7 @@ namespace Microsoft.Boogie
 
     public override Counterexample Clone()
     {
-      var ret = new ReturnCounterexample(Trace, AugmentedTrace, FailingReturn, FailingEnsures, Model, MvInfo, Context, checksum);
+      var ret = new ReturnCounterexample(options, Trace, AugmentedTrace, FailingReturn, FailingEnsures, Model, MvInfo, Context, checksum);
       ret.calleeCounterexamples = calleeCounterexamples;
       return ret;
     }
@@ -601,6 +603,13 @@ namespace Microsoft.Boogie
 
   public class VerifierCallback
   {
+    private CoreOptions.ProverWarnings printProverWarnings;
+
+    public VerifierCallback(CoreOptions.ProverWarnings printProverWarnings)
+    {
+      this.printProverWarnings = printProverWarnings;
+    }
+
     // reason == null means this is genuine counterexample returned by the prover
     // other reason means it's time out/memory out/crash
     public virtual void OnCounterexample(Counterexample ce, string /*?*/ reason)
@@ -636,20 +645,25 @@ namespace Microsoft.Boogie
     public virtual void OnWarning(string msg)
     {
       Contract.Requires(msg != null);
-      switch (CommandLineOptions.Clo.PrintProverWarnings)
+      switch (printProverWarnings)
       {
-        case CommandLineOptions.ProverWarnings.None:
+        case CoreOptions.ProverWarnings.None:
           break;
-        case CommandLineOptions.ProverWarnings.Stdout:
+        case CoreOptions.ProverWarnings.Stdout:
           Console.WriteLine("Prover warning: " + msg);
           break;
-        case CommandLineOptions.ProverWarnings.Stderr:
+        case CoreOptions.ProverWarnings.Stderr:
           Console.Error.WriteLine("Prover warning: " + msg);
           break;
         default:
           Contract.Assume(false);
           throw new cce.UnreachableException(); // unexpected case
       }
+    }
+
+    public virtual void OnVCResult(VCResult result)
+    {
+      Contract.Requires(result != null);
     }
   }
 }

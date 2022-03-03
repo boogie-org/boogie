@@ -1,6 +1,6 @@
 namespace Microsoft.Boogie;
 
-public interface ConcurrencyOptions : CommandLineOptions
+public interface ConcurrencyOptions : CoreOptions
 {
   bool TrustMoverTypes { get; }
   bool TrustInductiveSequentialization { get; }

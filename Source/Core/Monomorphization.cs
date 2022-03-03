@@ -304,6 +304,7 @@ namespace Microsoft.Boogie
   
   class MonomorphizationVisitor : StandardVisitor
   {
+    public CoreOptions Options { get; }
     /*
      * This class monomorphizes a Boogie program.
      * Monomorphization starts from a traversal of monomorphic procedures.
@@ -626,9 +627,9 @@ namespace Microsoft.Boogie
         return returnExpr;
       }
 
-      private static bool IsInlined(Implementation impl)
+      private bool IsInlined(Implementation impl)
       {
-        if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.None)
+        if (monomorphizationVisitor.Options.ProcedureInlining == CoreOptions.Inlining.None)
         {
           return false;
         }
@@ -649,7 +650,7 @@ namespace Microsoft.Boogie
           var actualTypeParams =
             returnCallCmd.TypeParameters.FormalTypeParams.Select(x =>
                 TypeProxy.FollowProxy(returnCallCmd.TypeParameters[x]).Substitute(typeParamInstantiation))
-              .Select(x => LookupType(x)).ToList();
+              .Select(LookupType).ToList();
           returnCallCmd.Proc = InstantiateProcedure(node.Proc, actualTypeParams);
           returnCallCmd.callee = returnCallCmd.Proc.Name;
           returnCallCmd.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
@@ -839,15 +840,16 @@ namespace Microsoft.Boogie
       }
     }
 
-    public static MonomorphizationVisitor Initialize(Program program, Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated,
+    public static MonomorphizationVisitor Initialize(CoreOptions options, Program program,
+      Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated,
       HashSet<Axiom> polymorphicFunctionAxioms)
     {
-      var monomorphizationVisitor = new MonomorphizationVisitor(program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
+      var monomorphizationVisitor = new MonomorphizationVisitor(options, program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
       // ctorTypes contains all the uninterpreted types created for monomorphizing top-level polymorphic implementations 
       // that must be verified. The types in ctorTypes are reused across different implementations.
       var ctorTypes = new List<Type>();
       var typeCtorDecls = new HashSet<TypeCtorDecl>();
-      monomorphizationVisitor.implInstantiations.Keys.Where(impl => !impl.SkipVerification).Iter(impl =>
+      monomorphizationVisitor.implInstantiations.Keys.Where(impl => !impl.IsSkipVerification(options)).Iter(impl =>
       {
         for (int i = ctorTypes.Count; i < impl.TypeParameters.Count; i++)
         {
@@ -897,8 +899,10 @@ namespace Microsoft.Boogie
     private MonomorphizationDuplicator monomorphizationDuplicator;
     private Dictionary<Procedure, Implementation> procToImpl;
     
-    private MonomorphizationVisitor(Program program, Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, HashSet<Axiom> polymorphicFunctionAxioms)
+    private MonomorphizationVisitor(CoreOptions options, Program program,
+      Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, HashSet<Axiom> polymorphicFunctionAxioms)
     {
+      Options = options;
       this.program = program;
       this.axiomsToBeInstantiated = axiomsToBeInstantiated;
       implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();
@@ -1076,12 +1080,12 @@ namespace Microsoft.Boogie
   
   public class Monomorphizer
   {
-    public static MonomorphizableStatus Monomorphize(Program program)
+    public static MonomorphizableStatus Monomorphize(CoreOptions options, Program program)
     {
       var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program, out var axiomsToBeInstantiated, out var polymorphicFunctionAxioms);
       if (monomorphizableStatus == MonomorphizableStatus.Monomorphizable)
       {
-        var monomorphizationVisitor = MonomorphizationVisitor.Initialize(program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
+        var monomorphizationVisitor = MonomorphizationVisitor.Initialize(options, program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
         program.monomorphizer = new Monomorphizer(monomorphizationVisitor);
       }
       return monomorphizableStatus;

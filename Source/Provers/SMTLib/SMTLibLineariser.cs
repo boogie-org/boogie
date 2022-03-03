@@ -166,7 +166,7 @@ namespace Microsoft.Boogie.SMTLib
         else
         {
           System.IO.StringWriter buffer = new System.IO.StringWriter();
-          using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/false, /*pretty=*/false)
+          using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, LibOptions)
           )
           {
             t.Emit(stream);

@@ -103,7 +103,7 @@ namespace Microsoft.Boogie
       if (!Anonymous)
       {
         stream.WriteLine(level, "{0}:",
-          CommandLineOptions.Clo.PrintWithUniqueASTIds
+          stream.Options.PrintWithUniqueASTIds
             ? String.Format("h{0}^^{1}", this.GetHashCode(), this.LabelName)
             : this.LabelName);
       }
@@ -1331,7 +1331,7 @@ namespace Microsoft.Boogie
         this,
         level,
         "{0}:{1}",
-        CommandLineOptions.Clo.PrintWithUniqueASTIds
+        stream.Options.PrintWithUniqueASTIds
           ? String.Format("h{0}^^{1}", this.GetHashCode(), this.Label)
           : this.Label,
         this.widenBlock ? "  // cut point" : "");
@@ -1424,10 +1424,10 @@ namespace Microsoft.Boogie
 
   public static class ChecksumHelper
   {
-    public static void ComputeChecksums(Cmd cmd, Implementation impl, ISet<Variable> usedVariables,
+    public static void ComputeChecksums(CoreOptions options, Cmd cmd, Implementation impl, ISet<Variable> usedVariables,
       byte[] currentChecksum = null)
     {
-      if (CommandLineOptions.Clo.VerifySnapshots < 2)
+      if (options.VerifySnapshots < 2)
       {
         return;
       }
@@ -1448,7 +1448,7 @@ namespace Microsoft.Boogie
       }
 
       using (var strWr = new System.IO.StringWriter())
-      using (var tokTxtWr = new TokenTextWriter("<no file>", strWr, false, false))
+      using (var tokTxtWr = new TokenTextWriter("<no file>", strWr, false, false, options))
       {
         tokTxtWr.UseForComputingChecksums = true;
         var havocCmd = cmd as HavocCmd;
@@ -1498,12 +1498,12 @@ namespace Microsoft.Boogie
       if (sugaredCmd != null)
       {
         // The checksum of a sugared command should not depend on the desugaring itself.
-        var stateCmd = sugaredCmd.Desugaring as StateCmd;
+        var stateCmd = sugaredCmd.GetDesugaring(options) as StateCmd;
         if (stateCmd != null)
         {
           foreach (var c in stateCmd.Cmds)
           {
-            ComputeChecksums(c, impl, usedVariables, currentChecksum);
+            ComputeChecksums(options, c, impl, usedVariables, currentChecksum);
             currentChecksum = c.Checksum;
             if (c.SugaredCmdChecksum == null)
             {
@@ -1513,7 +1513,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          ComputeChecksums(sugaredCmd.Desugaring, impl, usedVariables, currentChecksum);
+          ComputeChecksums(options, sugaredCmd.GetDesugaring(options), impl, usedVariables, currentChecksum);
         }
       }
     }
@@ -1568,7 +1568,7 @@ namespace Microsoft.Boogie
         {
           tc.Error(this, "command assigns to an immutable variable: {0}", v.Name);
         }
-        else if (!CommandLineOptions.Clo.DoModSetAnalysis && v is GlobalVariable)
+        else if (!tc.Options.DoModSetAnalysis && v is GlobalVariable)
         {
           if (!tc.Yields && !tc.InFrame(v))
           {
@@ -1698,11 +1698,10 @@ namespace Microsoft.Boogie
     }
 
     [Pure]
-    public override string ToString()
-    {
+    public override string ToString() {
       Contract.Ensures(Contract.Result<string>() != null);
       System.IO.StringWriter buffer = new System.IO.StringWriter();
-      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false);
+      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, PrintOptions.Default);
       this.Emit(stream, 0);
 
       return buffer.ToString();
@@ -1730,7 +1729,7 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      if (!CommandLineOptions.Clo.DoModSetAnalysis && !tc.Yields)
+      if (!tc.Options.DoModSetAnalysis && !tc.Yields)
       {
         tc.Error(this, "enclosing procedure of a yield command must yield");
       }
@@ -2490,19 +2489,15 @@ namespace Microsoft.Boogie
       Contract.Requires(tok != null);
     }
 
-    public Cmd /*!*/ Desugaring
+    public Cmd GetDesugaring(PrintOptions options)
     {
-      get
-      {
-        Contract.Ensures(Contract.Result<Cmd>() != null);
+      Contract.Ensures(Contract.Result<Cmd>() != null);
 
-        if (desugaring == null)
-        {
-          desugaring = ComputeDesugaring();
-        }
-
-        return desugaring;
+      if (desugaring == null) {
+        desugaring = ComputeDesugaring(options);
       }
+
+      return desugaring;
     }
 
     /// <summary>
@@ -2522,12 +2517,12 @@ namespace Microsoft.Boogie
       }
     }
 
-    protected abstract Cmd /*!*/ ComputeDesugaring();
+    protected abstract Cmd /*!*/ ComputeDesugaring(PrintOptions options);
 
-    public void ExtendDesugaring(IEnumerable<Cmd> before, IEnumerable<Cmd> beforePreconditionCheck,
+    public void ExtendDesugaring(CoreOptions options, IEnumerable<Cmd> before, IEnumerable<Cmd> beforePreconditionCheck,
       IEnumerable<Cmd> after)
     {
-      var desug = Desugaring;
+      var desug = GetDesugaring(options);
       var stCmd = desug as StateCmd;
       if (stCmd != null)
       {
@@ -2553,10 +2548,10 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter stream, int level)
     {
       //Contract.Requires(stream != null);
-      if (CommandLineOptions.Clo.PrintDesugarings && !stream.UseForComputingChecksums)
+      if (stream.Options.PrintDesugarings && !stream.UseForComputingChecksums)
       {
         stream.WriteLine(this, level, "/*** desugaring:");
-        Desugaring.Emit(stream, level);
+        GetDesugaring(stream.Options).Emit(stream, level);
         stream.WriteLine(level, "**** end desugaring */");
       }
     }
@@ -2569,7 +2564,7 @@ namespace Microsoft.Boogie
     {
     }
 
-    protected override Cmd ComputeDesugaring()
+    protected override Cmd ComputeDesugaring(PrintOptions options)
     {
       Contract.Ensures(Contract.Result<Cmd>() != null);
 
@@ -2672,7 +2667,7 @@ namespace Microsoft.Boogie
       this.CallCmds = callCmds;
     }
 
-    protected override Cmd ComputeDesugaring()
+    protected override Cmd ComputeDesugaring(PrintOptions options)
     {
       throw new NotImplementedException();
     }
@@ -2735,7 +2730,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       TypecheckAttributes(Attributes, tc);
-      if (!CommandLineOptions.Clo.DoModSetAnalysis)
+      if (!tc.Options.DoModSetAnalysis)
       {
         if (!tc.Yields)
         {
@@ -3143,7 +3138,7 @@ namespace Microsoft.Boogie
       TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
         actualTypeParams);
 
-      if (!CommandLineOptions.Clo.DoModSetAnalysis && IsAsync)
+      if (!tc.Options.DoModSetAnalysis && IsAsync)
       {
         if (!tc.Yields)
         {
@@ -3172,7 +3167,7 @@ namespace Microsoft.Boogie
       return res;
     }
 
-    protected override Cmd ComputeDesugaring()
+    protected override Cmd ComputeDesugaring(PrintOptions options)
     {
       Contract.Ensures(Contract.Result<Cmd>() != null);
 
@@ -3314,7 +3309,7 @@ namespace Microsoft.Boogie
           }
         }
         else if (req.CanAlwaysAssume()
-                || CommandLineOptions.Clo.StratifiedInlining > 0)
+                || options.StratifiedInlining > 0)
         {
           // inject free requires as assume statements at the call site
           AssumeCmd /*!*/
@@ -4191,7 +4186,7 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<string>() != null);
       System.IO.StringWriter buffer = new System.IO.StringWriter();
-      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false);
+      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, PrintOptions.Default);
       this.Emit(stream, 0);
 
       return buffer.ToString();
@@ -4319,7 +4314,7 @@ namespace Microsoft.Boogie
       //Contract.Requires(stream != null);
       Contract.Assume(this.labelNames != null);
       stream.Write(this, level, "goto ");
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (stream.Options.PrintWithUniqueASTIds)
       {
         if (labelTargets == null)
         {

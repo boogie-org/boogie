@@ -513,7 +513,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public virtual string Help =>
+    protected virtual string HelpHeader =>
       $"Usage: {ToolName} [ option ... ] [ filename ... ]" + @"
 
     ---- General options -------------------------------------------------------
@@ -521,6 +521,11 @@ namespace Microsoft.Boogie
     /version      print the " + ToolName + @" version number
     /help         print this message
     /attrHelp     print a message about supported declaration attributes";
+
+    protected virtual string HelpBody => "";
+
+    public virtual string Help =>
+      HelpHeader + HelpBody;
 
     public virtual string AttributeHelp => "";
 
@@ -627,31 +632,25 @@ namespace Microsoft.Boogie
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
-  public class CommandLineOptionsImpl : CommandLineOptionEngine, ExecutionEngineOptions
-  {
-    public static CommandLineOptionsImpl FromArguments(params string[] arguments)
+  public class CommandLineOptions : CommandLineOptionEngine, ExecutionEngineOptions {
+
+    public static CommandLineOptions FromArguments(params string[] arguments)
     {
-      var result = new CommandLineOptionsImpl();
+      var result = new CommandLineOptions();
       result.Parse(arguments);
       return result;
     }
     
-    public CommandLineOptionsImpl()
+    public CommandLineOptions()
       : base("Boogie", "Boogie program verifier")
     {
     }
 
-    protected CommandLineOptionsImpl(string toolName, string descriptiveName)
+    protected CommandLineOptions(string toolName, string descriptiveName)
       : base(toolName, descriptiveName)
     {
       Contract.Requires(toolName != null);
       Contract.Requires(descriptiveName != null);
-    }
-
-    public static void Install(CommandLineOptions options)
-    {
-      Contract.Requires(options != null);
-      CommandLineOptions.Clo = options;
     }
 
     // Flags and arguments
@@ -771,7 +770,7 @@ namespace Microsoft.Boogie
      */
     public bool Prune { get; set; }
 
-    public CommandLineOptions.InstrumentationPlaces InstrumentInfer { get; set; } = CommandLineOptions.InstrumentationPlaces.LoopHeaders;
+    public CoreOptions.InstrumentationPlaces InstrumentInfer { get; set; } = CoreOptions.InstrumentationPlaces.LoopHeaders;
 
     public int? RandomSeed { get; set; }
     
@@ -914,10 +913,10 @@ namespace Microsoft.Boogie
 
     public bool PrettyPrint { get; set; } = true;
 
-    public CommandLineOptions.ProverWarnings PrintProverWarnings { get; set; } = CommandLineOptions.ProverWarnings.None;
+    public CoreOptions.ProverWarnings PrintProverWarnings { get; set; } = CoreOptions.ProverWarnings.None;
 
 
-    public CommandLineOptions.SubsumptionOption UseSubsumption { get; set; } = CommandLineOptions.SubsumptionOption.Always;
+    public CoreOptions.SubsumptionOption UseSubsumption { get; set; } = CoreOptions.SubsumptionOption.Always;
 
     public bool AlwaysAssumeFreeLoopInvariants { get; set; }
 
@@ -1079,7 +1078,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public CommandLineOptions.Inlining ProcedureInlining { get; set; } = CommandLineOptions.Inlining.Assume;
+    public CoreOptions.Inlining ProcedureInlining { get; set; } = CoreOptions.Inlining.Assume;
 
     public bool PrintInlined {
       get => printInlined;
@@ -1102,7 +1101,7 @@ namespace Microsoft.Boogie
     public bool ExtractLoopsUnrollIrreducible { get; set; } = true; // unroll irreducible loops? (set programmatically)
 
 
-    public CommandLineOptions.TypeEncoding TypeEncodingMethod { get; set; } = CommandLineOptions.TypeEncoding.Predicates;
+    public CoreOptions.TypeEncoding TypeEncodingMethod { get; set; } = CoreOptions.TypeEncoding.Predicates;
 
     public bool Monomorphize { get; set; } = false;
 
@@ -1126,7 +1125,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(Ai != null);
     }
 
-    public CommandLineOptions.AiFlags /*!*/ Ai  { get; private set; } = new();
+    public CoreOptions.AiFlags /*!*/ Ai  { get; private set; } = new();
 
     private bool proverHelpRequested = false;
     private bool restartProverPerVc = false;
@@ -1159,7 +1158,7 @@ namespace Microsoft.Boogie
     private bool normalizeNames;
     private bool normalizeDeclarationOrder = true;
 
-    public List<CommandLineOptions.ConcurrentHoudiniOptions> Cho { get; set; } = new();
+    public List<CoreOptions.ConcurrentHoudiniOptions> Cho { get; set; } = new();
 
     protected override bool ParseOption(string name, CommandLineOptionEngine.CommandLineParseState ps)
     {
@@ -1336,13 +1335,13 @@ namespace Microsoft.Boogie
             switch (pw)
             {
               case 0:
-                PrintProverWarnings = CommandLineOptions.ProverWarnings.None;
+                PrintProverWarnings = CoreOptions.ProverWarnings.None;
                 break;
               case 1:
-                PrintProverWarnings = CommandLineOptions.ProverWarnings.Stdout;
+                PrintProverWarnings = CoreOptions.ProverWarnings.Stdout;
                 break;
               case 2:
-                PrintProverWarnings = CommandLineOptions.ProverWarnings.Stderr;
+                PrintProverWarnings = CoreOptions.ProverWarnings.Stderr;
                 break;
               default:
               {
@@ -1456,13 +1455,13 @@ namespace Microsoft.Boogie
             switch (s)
             {
               case 0:
-                UseSubsumption = CommandLineOptions.SubsumptionOption.Never;
+                UseSubsumption = CoreOptions.SubsumptionOption.Never;
                 break;
               case 1:
-                UseSubsumption = CommandLineOptions.SubsumptionOption.NotForQuantifiers;
+                UseSubsumption = CoreOptions.SubsumptionOption.NotForQuantifiers;
                 break;
               case 2:
-                UseSubsumption = CommandLineOptions.SubsumptionOption.Always;
+                UseSubsumption = CoreOptions.SubsumptionOption.Always;
                 break;
               default:
               {
@@ -1623,16 +1622,16 @@ namespace Microsoft.Boogie
             switch (args[ps.i])
             {
               case "none":
-                ProcedureInlining = CommandLineOptions.Inlining.None;
+                ProcedureInlining = CoreOptions.Inlining.None;
                 break;
               case "assert":
-                ProcedureInlining = CommandLineOptions.Inlining.Assert;
+                ProcedureInlining = CoreOptions.Inlining.Assert;
                 break;
               case "assume":
-                ProcedureInlining = CommandLineOptions.Inlining.Assume;
+                ProcedureInlining = CoreOptions.Inlining.Assume;
                 break;
               case "spec":
-                ProcedureInlining = CommandLineOptions.Inlining.Spec;
+                ProcedureInlining = CoreOptions.Inlining.Spec;
                 break;
               default:
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
@@ -1663,11 +1662,11 @@ namespace Microsoft.Boogie
             {
               case "p":
               case "predicates":
-                TypeEncodingMethod = CommandLineOptions.TypeEncoding.Predicates;
+                TypeEncodingMethod = CoreOptions.TypeEncoding.Predicates;
                 break;
               case "a":
               case "arguments":
-                TypeEncodingMethod = CommandLineOptions.TypeEncoding.Arguments;
+                TypeEncodingMethod = CoreOptions.TypeEncoding.Arguments;
                 break;
               default:
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
@@ -1691,10 +1690,10 @@ namespace Microsoft.Boogie
             switch (args[ps.i])
             {
               case "e":
-                InstrumentInfer = CommandLineOptions.InstrumentationPlaces.Everywhere;
+                InstrumentInfer = CoreOptions.InstrumentationPlaces.Everywhere;
                 break;
               case "h":
-                InstrumentInfer = CommandLineOptions.InstrumentationPlaces.LoopHeaders;
+                InstrumentInfer = CoreOptions.InstrumentationPlaces.LoopHeaders;
                 break;
               default:
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
@@ -1927,7 +1926,7 @@ namespace Microsoft.Boogie
       Contract.Assume(XmlSink == null); // XmlSink is to be set here
       if (XmlSinkFilename != null)
       {
-        XmlSink = new XmlSink(XmlSinkFilename);
+        XmlSink = new XmlSink(this, XmlSinkFilename);
       }
 
       if (TheProverFactory == null)
@@ -1938,7 +1937,7 @@ namespace Microsoft.Boogie
 
       if (StratifiedInlining > 0)
       {
-        TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
+        TypeEncodingMethod = CoreOptions.TypeEncoding.Monomorphic;
         UseArrayTheory = true;
         UseAbstractInterpretation = false;
         if (ProverDllName == "SMTLib")
@@ -2030,7 +2029,7 @@ namespace Microsoft.Boogie
       return semicolonIndex;
     }
 
-    public string ProverHelp => TheProverFactory.BlankProverOptions().Help;
+    public string ProverHelp => TheProverFactory.BlankProverOptions(this).Help;
 
     public override string AttributeHelp =>
 @"Boogie: The following attributes are supported by this version.
@@ -2294,8 +2293,8 @@ namespace Microsoft.Boogie
      {:backward}
        Backward assignment in atomic action.";
 
-    public override string Help =>
-      base.Help + @"
+    protected override string HelpHeader =>
+      base.HelpHeader + @"
   /env:<n>      print command line arguments
                   0 - never, 1 (default) - during BPL print and prover log,
                   2 - like 1 and also to standard output
@@ -2304,7 +2303,10 @@ namespace Microsoft.Boogie
                 1 (default) - yes
   /wait         await Enter from keyboard before terminating program
   /xml:<file>   also produce output in XML format to <file>
+";
 
+    protected override string HelpBody =>
+      @"
   ---- Boogie options --------------------------------------------------------
 
   Multiple .bpl files supplied on the command line are concatenated into one
