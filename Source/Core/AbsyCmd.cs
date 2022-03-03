@@ -3776,7 +3776,7 @@ namespace Microsoft.Boogie
       set { errorDataEnhanced = value; }
     }
 
-    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description, QKeyValue kv)
+    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description, QKeyValue kv = null)
       : base(tok, expr, kv)
     {
       Contract.Requires(tok != null);
@@ -3785,10 +3785,7 @@ namespace Microsoft.Boogie
       Description = description;
     }
 
-    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr)
-      : this(tok, expr, new AssertionDescription(), null) { }
-
-    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, QKeyValue kv)
+    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, QKeyValue kv = null)
       : this(tok, expr, new AssertionDescription(), kv) { }
 
     public override void Emit(TokenTextWriter stream, int level)
