@@ -164,8 +164,10 @@ namespace Microsoft.Boogie.SMTLib
         result = ParseReasonUnknown(unknownSExp, result);
       }
 
-      var rlimitSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-      resourceCount = ParseRCount(rlimitSExp);
+      if (options.Solver == SolverKind.Z3) {
+        var rlimitSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
+        resourceCount = ParseRCount(rlimitSExp);
+      }
 
       var modelSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
       errorModel = ParseErrorModel(modelSExp);
@@ -228,7 +230,9 @@ namespace Microsoft.Boogie.SMTLib
       UsedNamedAssumes = null;
       SendThisVC("(check-sat)");
       SendThisVC("(get-info :reason-unknown)");
-      SendThisVC("(get-info :rlimit)");
+      if (options.Solver == SolverKind.Z3) {
+        SendThisVC($"(get-info :{Z3.RlimitOption}");
+      }
       SendThisVC("(get-model)");
       CheckSatSent = true;
       Process.IndicateEndOfInput();
