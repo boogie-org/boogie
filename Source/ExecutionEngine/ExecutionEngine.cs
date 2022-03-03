@@ -1393,29 +1393,13 @@ namespace Microsoft.Boogie
                 else
                 {
                   tok = assertError.FailingAssert.tok;
-                  if (assertError.FailingAssert is LoopInitAssertCmd)
-                  {
-                    msg = assertError.FailingAssert.Description.FailureDescription;
-                  }
-                  else if (assertError.FailingAssert is LoopInvMaintainedAssertCmd)
-                  {
-                    msg = assertError.FailingAssert.Description.FailureDescription;
-                  }
-                  else
-                  {
-                    if (assertError.FailingAssert.ErrorMessage == null || options.ForceBplErrors)
-                    {
+                  if (assertError.FailingAssert.ErrorMessage == null || options.ForceBplErrors) {
                       msg = assertError.FailingAssert.ErrorData as string;
-                    }
-                    else
-                    {
-                      msg = assertError.FailingAssert.ErrorMessage;
-                    }
-                    if (msg == null)
-                    {
-                      msg = assertError.FailingAssert.Description.FailureDescription;
-                    }
                   }
+                  else {
+                    msg = assertError.FailingAssert.ErrorMessage;
+                  }
+                  msg ??= assertError.FailingAssert.Description.FailureDescription;
                 }
 
                 errorInfo.AddAuxInfo(tok, msg, "Unverified check due to timeout");
