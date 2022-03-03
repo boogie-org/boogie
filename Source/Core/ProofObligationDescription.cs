@@ -40,7 +40,7 @@ public class AssertionDescription : ProofObligationDescription
 public class PreconditionDescription : ProofObligationDescription
 {
   public override string SuccessDescription =>
-    "All preconditions hold for call.";
+    "All preconditions hold for this call.";
 
   public override string FailureDescription =>
     "A precondition for this call might not hold.";
