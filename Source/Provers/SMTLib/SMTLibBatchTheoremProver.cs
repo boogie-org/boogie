@@ -92,18 +92,15 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void FullReset(VCExpressionGenerator generator)
     {
-      if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
-      {
-        this.gen = generator;
-        common.Clear();
-        SetupAxiomBuilder(gen);
-        Axioms.Clear();
-        TypeDecls.Clear();
-        AxiomsAreSetup = false;
-        DeclCollector.Reset();
-        NamedAssumes.Clear();
-        UsedNamedAssumes = null;
-      }
+      this.gen = generator;
+      common.Clear();
+      SetupAxiomBuilder(gen);
+      Axioms.Clear();
+      TypeDecls.Clear();
+      AxiomsAreSetup = false;
+      DeclCollector.Reset();
+      NamedAssumes.Clear();
+      UsedNamedAssumes = null;
     }
 
     // TODO: move to base?
