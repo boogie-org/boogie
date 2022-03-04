@@ -24,6 +24,8 @@ public abstract class ProofObligationDescription {
 
   /// <summary>
   /// A short description of the general type of this proof obligation.
+  /// Should be a unique identifier appropriate for programmatic comparison
+  /// but also comprehensible to humans.
   /// </summary>
   public abstract string ShortDescription { get; }
 }
