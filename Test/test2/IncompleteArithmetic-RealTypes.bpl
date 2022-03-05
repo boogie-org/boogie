@@ -1,5 +1,6 @@
 // RUN: %parallel-boogie "-proverOpt:O:smt.arith.solver=2" "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
 
 // This file is generated from $DAFNY/Test/dafny0/RealTypes.dfy using Dafny.
 // Note that Dafny currently uses smt.arith.solver=2, which is part of this test

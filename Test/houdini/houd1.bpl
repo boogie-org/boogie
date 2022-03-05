@@ -1,5 +1,8 @@
 // RUN: %parallel-boogie -contractInfer -printAssignment "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+
+// Houdini is very interactive and doesn't work with batch mode
+// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
 const {:existential true} b1:bool;
 
 var myVar: int;

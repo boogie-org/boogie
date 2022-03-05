@@ -2,6 +2,7 @@
 // RUN: %diff "%s.p.expect" "%t"
 // RUN: %parallel-boogie -typeEncoding:a -logPrefix:0a "%s" > "%t"
 // RUN: %diff "%s.a.expect" "%t"
+// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
 // a property that should hold according to the Boogie semantics
 // (but no automatic theorem prover will be able to prove it)
 

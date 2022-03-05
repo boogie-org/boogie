@@ -1,6 +1,9 @@
 // RUN: %parallel-boogie /contractInfer /inlineDepth:1 /printAssignment "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
+// Houdini is very interactive and doesn't work with batch mode
+// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
+
 var _v2.control_flag: int;
 
 function _v2.control_UIF(arg_0: int, arg_1: int) : int;

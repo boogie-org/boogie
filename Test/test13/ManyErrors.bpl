@@ -1,5 +1,6 @@
 // RUN: %parallel-boogie -errorLimit:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
 procedure ManyErrors()
 {
     L0: goto L1, L2, L3, L4, L5, L6, L7, L8, L9, L10;

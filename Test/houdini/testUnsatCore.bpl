@@ -1,6 +1,9 @@
 // RUN: %parallel-boogie -contractInfer -printAssignment -useUnsatCoreForContractInfer "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
+// Houdini is very interactive and doesn't work with batch mode
+// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
+
 // Example to exercise the unsatcore to optimize houdini
 
 procedure foo(x:int, y:int, z:int)

@@ -1,5 +1,6 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
 
 const a:bool;
 const b:bool;
