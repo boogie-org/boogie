@@ -20,6 +20,7 @@ jobs:
     strategy:
       matrix:
         configuration: [Debug, Release]
+        boogie_param: ["-proverOpt:BATCH_MODE=false", "-proverOpt:BATCH_MODE=true"]
     steps:
       - name: Setup dotnet
         uses: actions/setup-dotnet@v1
@@ -53,7 +54,7 @@ jobs:
           # Run unit tests
           dotnet test --no-build -c ${{ matrix.configuration }} ${SOLUTION}
           # Run lit test suite
-          lit -v --timeout=120 -D configuration=${{ matrix.configuration }} Test
+          ./Test/test-with-param.sh ${{ matrix.boogie_param }} -v --timeout=120 -D configuration=${{ matrix.configuration }}
       - name: Deploy to nuget
         if: matrix.configuration == 'Release' && startsWith(github.ref, 'refs/tags/v')
         run: dotnet nuget push "Source/**/bin/${{ matrix.configuration }}/Boogie*.nupkg" -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
