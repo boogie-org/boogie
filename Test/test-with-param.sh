@@ -11,7 +11,7 @@ TEST_FILES=`grep -L "SKIP-WITH-PARAM:.*${PARAM}" ${ALL_FILES}`
 
 shift 1
 if [ -z "${PARAM}" ] ; then
-  lit $* Test
+  lit $@ Test
 else
-  lit --param boogie_params="${PARAM}" $* ${TEST_FILES}
+  lit --param boogie_params="${PARAM}" $@ ${TEST_FILES}
 fi
