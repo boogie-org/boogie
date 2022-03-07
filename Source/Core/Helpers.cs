@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie
@@ -263,18 +264,39 @@ namespace Microsoft.Boogie
       }
     }
 
-    // Substitute @PROC@ in a filename with the given descName
-    public static string SubstituteAtPROC(string descName, string fileName)
+    private static readonly HashSet<string> UsedLogNames = new();
+    public static (string fileName, bool reused) GetLogFilename(string descriptiveName, string filename, bool allowReuse)
     {
-      Contract.Requires(fileName != null);
-      Contract.Requires(descName != null);
+      filename = SubstituteAtProc(descriptiveName, cce.NonNull(filename));
+      var curFilename = filename;
+      var reused = false;
+
+      lock (UsedLogNames) {
+        int n = 1;
+        while (!allowReuse && UsedLogNames.Contains(curFilename)) {
+          curFilename = filename + "." + n++;
+        }
+
+        if (UsedLogNames.Contains(curFilename)) {
+          reused = true;
+        }
+
+        UsedLogNames.Add(curFilename);
+      }
+
+      return (curFilename, reused);
+    }
+
+    // Substitute @PROC@ in a filename with the given descName
+    private static string SubstituteAtProc(string descriptiveName, string filename)
+    {
+      Contract.Requires(filename != null);
+      Contract.Requires(descriptiveName != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      System.Text.StringBuilder /*!*/
-        sb =
-          new System.Text.StringBuilder(descName.Length);
+      var /*!*/ sb = new System.Text.StringBuilder(descriptiveName.Length);
       // quote the name, characters like ^ cause trouble in CMD
       // while $ could cause trouble in SH
-      foreach (char c in descName)
+      foreach (char c in descriptiveName)
       {
         if (Char.IsLetterOrDigit(c) || c == '.')
         {
@@ -291,13 +313,13 @@ namespace Microsoft.Boogie
       // do it by truncating the @PROC@ replacement, which leaves unchanged
       // any filename extension specified by the user.  We base our
       // calculations on that there is at most one occurrence of @PROC@.
-      if (180 <= fileName.Length - 6 + pn.Length)
+      if (180 <= filename.Length - 6 + pn.Length)
       {
-        pn = pn.Substring(0, Math.Max(180 - (fileName.Length - 6), 0)) + "-n" +
+        pn = pn.Substring(0, Math.Max(180 - (filename.Length - 6), 0)) + "-n" +
              System.Threading.Interlocked.Increment(ref sequenceId);
       }
 
-      return fileName.Replace("@PROC@", pn);
+      return filename.Replace("@PROC@", pn);
     }
 
     private static int sequenceId = -1;

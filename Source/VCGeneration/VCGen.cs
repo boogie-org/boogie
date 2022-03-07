@@ -894,8 +894,8 @@ namespace VC
       return outcome;
     }
 
-    public class ErrorReporter : ProverInterface.ErrorHandler
-    {
+    public class ErrorReporter : ProverInterface.ErrorHandler {
+      private ProofRun split;
       private VCGenOptions options;
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins;
 
@@ -943,7 +943,7 @@ namespace VC
         VerifierCallback /*!*/ callback,
         ModelViewInfo mvInfo,
         ProverContext /*!*/ context,
-        Program /*!*/ program) : base(options)
+        Program /*!*/ program, ProofRun split) : base(options)
       {
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(absyIds != null);
@@ -960,10 +960,12 @@ namespace VC
 
         this.context = context;
         this.program = program;
+        this.split = split;
         this.options = options;
       }
 
-      public override void OnModel(IList<string /*!*/> /*!*/ labels, Model model, ProverInterface.Outcome proverOutcome)
+      public override void OnModel(IList<string> labels /*!*/ /*!*/, Model model,
+        ProverInterface.Outcome proverOutcome)
       {
         // no counter examples reported.
         if (labels.Count == 0)
@@ -993,7 +995,7 @@ namespace VC
         trace.Add(entryBlock);
 
         Counterexample newCounterexample = TraceCounterexample(options, entryBlock, traceNodes, trace, model, MvInfo,
-          debugInfos, context, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
+          debugInfos, context, split, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
 
         if (newCounterexample == null)
         {
@@ -1041,7 +1043,8 @@ namespace VC
           foreach (var cmd in assertCmds)
           {
             Counterexample cex =
-              AssertCmdToCounterexample(options, cmd.Item1, cmd.Item2, new List<Block>(), new List<object>(), null, null, context);
+              AssertCmdToCounterexample(options, cmd.Item1, cmd.Item2, new List<Block>(),
+                new List<object>(), null, null, context, null);
             cex.IsAuxiliaryCexForDiagnosingTimeouts = true;
             callback.OnCounterexample(cex, msg);
           }
@@ -2303,6 +2306,7 @@ namespace VC
       Block b, HashSet<Absy> traceNodes, List<Block> trace, Model errModel, ModelViewInfo mvInfo,
       Dictionary<Cmd, List<object>> debugInfos,
       ProverContext context,
+      ProofRun split,
       Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples)
     {
       Contract.Requires(b != null);
@@ -2332,7 +2336,7 @@ namespace VC
           if (cmd is AssertCmd && traceNodes.Contains(cmd))
           {
             Counterexample newCounterexample =
-              AssertCmdToCounterexample(options, (AssertCmd) cmd, transferCmd, trace, augmentedTrace, errModel, mvInfo, context);
+              AssertCmdToCounterexample(options, (AssertCmd) cmd, transferCmd, trace, augmentedTrace, errModel, mvInfo, context, split);
             Contract.Assert(newCounterexample != null);
             newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
             return newCounterexample;
@@ -2367,7 +2371,7 @@ namespace VC
     }
 
     public static Counterexample AssertCmdToCounterexample(VCGenOptions options, AssertCmd cmd, TransferCmd transferCmd, List<Block> trace, List<object> augmentedTrace,
-      Model errModel, ModelViewInfo mvInfo, ProverContext context)
+      Model errModel, ModelViewInfo mvInfo, ProverContext context, ProofRun split)
     {
       Contract.Requires(cmd != null);
       Contract.Requires(transferCmd != null);
@@ -2381,7 +2385,7 @@ namespace VC
         AssertRequiresCmd assertCmd = (AssertRequiresCmd) cmd;
         Contract.Assert(assertCmd != null);
         CallCounterexample cc = new CallCounterexample(options, trace, augmentedTrace, assertCmd.Call, assertCmd.Requires, errModel, mvInfo,
-          context, assertCmd.Checksum);
+          context, split, assertCmd.Checksum);
         return cc;
       }
       else if (cmd is AssertEnsuresCmd)
@@ -2389,12 +2393,12 @@ namespace VC
         AssertEnsuresCmd assertCmd = (AssertEnsuresCmd) cmd;
         Contract.Assert(assertCmd != null);
         ReturnCounterexample rc = new ReturnCounterexample(options, trace, augmentedTrace, transferCmd, assertCmd.Ensures, errModel, mvInfo,
-          context, cmd.Checksum);
+          context, split, cmd.Checksum);
         return rc;
       }
       else
       {
-        AssertCounterexample ac = new AssertCounterexample(options, trace, augmentedTrace, (AssertCmd) cmd, errModel, mvInfo, context);
+        AssertCounterexample ac = new AssertCounterexample(options, trace, augmentedTrace, (AssertCmd) cmd, errModel, mvInfo, context, split);
         return ac;
       }
     }
@@ -2415,7 +2419,7 @@ namespace VC
       if (assrt is AssertRequiresCmd)
       {
         var aa = (AssertRequiresCmd) assrt;
-        cc = new CallCounterexample(options, cex.Trace, cex.AugmentedTrace, aa.Call, aa.Requires, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
+        cc = new CallCounterexample(options, cex.Trace, cex.AugmentedTrace, aa.Call, aa.Requires, cex.Model, cex.MvInfo, cex.Context, cex.Split, aa.Checksum);
       }
       else if (assrt is AssertEnsuresCmd && cex is ReturnCounterexample)
       {
@@ -2498,11 +2502,11 @@ namespace VC
         }
 
         cc = new ReturnCounterexample(options, reconstructedTrace ?? cex.Trace, cex.AugmentedTrace, returnCmd ?? oldCex.FailingReturn, aa.Ensures,
-          cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
+          cex.Model, cex.MvInfo, cex.Context, cex.Split, aa.Checksum);
       }
       else
       {
-        cc = new AssertCounterexample(options, cex.Trace, cex.AugmentedTrace, assrt, cex.Model, cex.MvInfo, cex.Context);
+        cc = new AssertCounterexample(options, cex.Trace, cex.AugmentedTrace, assrt, cex.Model, cex.MvInfo, cex.Context, cex.Split);
       }
 
       return cc;

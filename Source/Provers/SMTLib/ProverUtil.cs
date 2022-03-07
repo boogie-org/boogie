@@ -298,7 +298,7 @@ The generic options may or may not be used by the prover plugin.
         Contract.Assert(filename != null);
         if (descName != null)
         {
-          filename = Helpers.SubstituteAtPROC(descName, filename);
+          filename = Helpers.GetLogFilename(descName, filename, true).fileName;
         }
 
         return new StreamWriter(filename, AppendLogFile);

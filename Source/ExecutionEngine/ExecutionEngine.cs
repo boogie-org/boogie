@@ -99,7 +99,7 @@ namespace Microsoft.Boogie
     public ErrorKind Kind { get; set; }
     public string ImplementationName { get; set; }
     public TextWriter Out = new StringWriter();
-    public TextWriter Model = new StringWriter();
+    public TextWriter ModelWriter = new StringWriter();
 
     public string FullMsg
     {
@@ -1501,7 +1501,7 @@ namespace Microsoft.Boogie
           }
 
           if (Options.ModelViewFile != null) {
-            error.PrintModel(errorInfo.Model, error);
+            error.PrintModel(errorInfo.ModelWriter, error);
           }
 
           printer.WriteErrorInformation(errorInfo, tw);
