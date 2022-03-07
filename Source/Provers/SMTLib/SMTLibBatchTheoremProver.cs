@@ -17,7 +17,7 @@ namespace Microsoft.Boogie.SMTLib
   /// incremental) mode provided by SMTLibInteractiveTheoremProver. This
   /// class allows Boogie to work with such provers, and also works with
   /// provers that support interactive modes (including CVC5, Yices2, and
-  /// Z3). /// To work correctly in batch mode, a solver must  be able to
+  /// Z3). To work correctly in batch mode, a solver must  be able to
   /// handle the following commands without crashing:
   ///
   ///   * `(get-model)` after returning `unsat`
