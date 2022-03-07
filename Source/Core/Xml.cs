@@ -143,7 +143,11 @@ namespace Microsoft.Boogie
         wr.WriteStartElement("conclusion");
         wr.WriteAttributeString("duration", elapsed.TotalSeconds.ToString());
         wr.WriteAttributeString("outcome", outcome);
-        wr.WriteEndElement(); // outcome
+        if (resourceCount is not null)
+        {
+          wr.WriteAttributeString("resourceCount", resourceCount.ToString());
+        }
+        wr.WriteEndElement(); // conclusion
 
         wr.WriteEndElement(); // split
       }
