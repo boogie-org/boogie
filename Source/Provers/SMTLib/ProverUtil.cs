@@ -84,7 +84,8 @@ APPEND_LOG_FILE=<bool>    Append, rather than overwrite the log file.
 MEMORY_LIMIT=<int>        Memory limit of the prover in megabytes.
 VERBOSITY=<int>           The higher, the more verbose.
 TIME_LIMIT=<uint>          Time limit per verification condition in milliseconds.
-BATCH_MODE=<bool>         If true, run in batch mode rather than interactive mode.
+BATCH_MODE=<bool>         If true, send all solver input in one batch,
+                          rather than incrementally.
 
 The generic options may or may not be used by the prover plugin.
 ";
