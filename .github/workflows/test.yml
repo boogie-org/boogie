@@ -37,7 +37,7 @@ jobs:
           unzip z3*.zip
           export PATH="$(find $PWD/z3* -name bin -type d):$PATH"
           # Install python tools
-          sudo pip3 install distutils
+          sudo apt-get install python3-distutils
           sudo pip3 install setuptools
           sudo pip3 install lit OutputCheck pyyaml psutil
           # Change directory to Boogie root folder
