@@ -229,7 +229,7 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(check-sat)");
       SendThisVC("(get-info :reason-unknown)");
       if (options.Solver == SolverKind.Z3) {
-        SendThisVC($"(get-info :{Z3.RlimitOption}");
+        SendThisVC($"(get-info :{Z3.RlimitOption})");
       }
       SendThisVC("(get-model)");
       CheckSatSent = true;
