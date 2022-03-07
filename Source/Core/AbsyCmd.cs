@@ -3890,7 +3890,7 @@ namespace Microsoft.Boogie
   public class LoopInitAssertCmd : AssertCmd
   {
     public LoopInitAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr)
-      : base(tok, expr, new InvariantEstablishedDescription(), null)
+      : base(tok, expr, new InvariantEstablishedDescription())
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
@@ -3901,7 +3901,7 @@ namespace Microsoft.Boogie
   public class LoopInvMaintainedAssertCmd : AssertCmd
   {
     public LoopInvMaintainedAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr)
-      : base(tok, expr, new InvariantMaintainedDescription(), null)
+      : base(tok, expr, new InvariantMaintainedDescription())
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
@@ -3928,7 +3928,7 @@ namespace Microsoft.Boogie
 
 
     public AssertRequiresCmd(CallCmd /*!*/ call, Requires /*!*/ requires)
-      : base(call.tok, requires.Condition, requires.Description, null)
+      : base(call.tok, requires.Condition, requires.Description)
     {
       Contract.Requires(call != null);
       Contract.Requires(requires != null);
@@ -3960,7 +3960,7 @@ namespace Microsoft.Boogie
     }
 
     public AssertEnsuresCmd(Ensures /*!*/ ens)
-      : base(ens.tok, ens.Condition, ens.Description, null)
+      : base(ens.tok, ens.Condition, ens.Description)
     {
       Contract.Requires(ens != null);
       this.Ensures = ens;
