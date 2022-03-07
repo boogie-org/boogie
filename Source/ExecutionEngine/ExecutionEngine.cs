@@ -284,7 +284,7 @@ namespace Microsoft.Boogie
     static readonly ConcurrentDictionary<string, CancellationTokenSource> RequestIdToCancellationTokenSource =
       new ConcurrentDictionary<string, CancellationTokenSource>();
 
-    static ThreadTaskScheduler Scheduler = new ThreadTaskScheduler(16 * 1024 * 1024);
+    static ThreadTaskScheduler Scheduler = new ThreadTaskScheduler();
 
     static TextWriter ModelWriter = null;
 

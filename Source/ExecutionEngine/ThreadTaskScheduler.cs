@@ -10,14 +10,6 @@ namespace Microsoft.Boogie
   // scheduler uses the .NET threadpool, which in turn inherits stack size from the EXE.
   public class ThreadTaskScheduler : TaskScheduler
   {
-    private int stackSize;
-
-    public ThreadTaskScheduler(int StackReserveSize)
-    {
-      Contract.Requires(StackReserveSize >= 0);
-
-      stackSize = StackReserveSize;
-    }
 
     protected override IEnumerable<Task> GetScheduledTasks()
     {
@@ -35,7 +27,7 @@ namespace Microsoft.Boogie
       //
       // Boogie creates tasks which in turn create tasks and wait on them.
       // So throttling tasks via a queue risks deadlock.
-      Thread th = new Thread(TaskMain, stackSize);
+      Thread th = new Thread(TaskMain);
       th.Start(task);
     }
 
