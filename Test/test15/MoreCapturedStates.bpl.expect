@@ -1,20 +1,20 @@
-MoreCapturedStates.bpl(34,1): Error: A postcondition might not hold on this return path.
-MoreCapturedStates.bpl(6,3): Related location: This is the postcondition that might not hold.
+MoreCapturedStates.bpl(35,1): Error: A postcondition might not hold on this return path.
+MoreCapturedStates.bpl(7,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    MoreCapturedStates.bpl(8,3): anon0
-    MoreCapturedStates.bpl(17,3): LabelB
-    MoreCapturedStates.bpl(32,3): Done
-MoreCapturedStates.bpl(53,3): Error: A precondition for this call might not hold.
-MoreCapturedStates.bpl(62,3): Related location: This is the precondition that might not hold.
+    MoreCapturedStates.bpl(9,3): anon0
+    MoreCapturedStates.bpl(18,3): LabelB
+    MoreCapturedStates.bpl(33,3): Done
+MoreCapturedStates.bpl(54,3): Error: A precondition for this call might not hold.
+MoreCapturedStates.bpl(63,3): Related location: This is the precondition that might not hold.
 Execution trace:
-    MoreCapturedStates.bpl(40,3): anon0
-    MoreCapturedStates.bpl(49,3): LabelB
-MoreCapturedStates.bpl(79,3): Error: This assertion might not hold.
+    MoreCapturedStates.bpl(41,3): anon0
+    MoreCapturedStates.bpl(50,3): LabelB
+MoreCapturedStates.bpl(80,3): Error: This assertion might not hold.
 Execution trace:
-    MoreCapturedStates.bpl(67,3): anon0
-MoreCapturedStates.bpl(85,3): Error: This assertion might not hold.
+    MoreCapturedStates.bpl(68,3): anon0
+MoreCapturedStates.bpl(86,3): Error: This assertion might not hold.
 Execution trace:
-    MoreCapturedStates.bpl(67,3): anon0
+    MoreCapturedStates.bpl(68,3): anon0
 
 Boogie program verifier finished with 0 verified, 4 errors
 *** STATE <initial>

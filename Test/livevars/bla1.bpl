@@ -1,5 +1,6 @@
 // RUN: %parallel-boogie -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
 var __storm_thread_done_0 : bool;
 var __storm_thread_done_1 : bool;
 var __storm_thread_done_2 : bool;
