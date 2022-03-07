@@ -76,14 +76,16 @@ Generic prover options :
 ~~~~~~~~~~~~~~~~~~~~~~~
 PROVER_PATH=<string>      Path to the prover to use.
 PROVER_NAME=<string>      Name of the prover executable.
-LOG_FILE=<string>         Log input for the theorem prover. The string @PROC@ in the filename
-                          causes there to be one prover log file per verification condition, 
-                          and is expanded to the name of the procedure that the verification 
+LOG_FILE=<string>         Log input for the theorem prover. The string @PROC@
+                          in the filename causes there to be one prover log
+                          file per verification condition, and is expanded to
+                          the name of the procedure that the verification
                           condition is for.
 APPEND_LOG_FILE=<bool>    Append, rather than overwrite the log file.
 MEMORY_LIMIT=<int>        Memory limit of the prover in megabytes.
 VERBOSITY=<int>           The higher, the more verbose.
-TIME_LIMIT=<uint>          Time limit per verification condition in milliseconds.
+TIME_LIMIT=<uint>         Time limit per verification condition in
+                          milliseconds.
 BATCH_MODE=<bool>         If true, send all solver input in one batch,
                           rather than incrementally.
 
