@@ -12,7 +12,7 @@
 
 // Depends on all output going to a single file, so incompatible with
 // batch mode.
-// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
+// UNSUPPORTED: batch_mode
 
 procedure {:random_seed 100} WithRandomSeed0()
 {

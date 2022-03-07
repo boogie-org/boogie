@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
+// UNSUPPORTED: batch_mode
 procedure foo()
 {
   var a: [int]int;

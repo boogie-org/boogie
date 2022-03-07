@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 
 // Houdini is very interactive and doesn't work with batch mode
-// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
+// UNSUPPORTED: batch_mode
 const {:existential true} b1:bool;
 const {:existential true} b2:bool;
 const {:existential true} b3:bool;

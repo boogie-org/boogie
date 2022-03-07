@@ -1,6 +1,6 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
+// UNSUPPORTED: batch_mode
 type set a = [a]bool;
 function union<T>(a:set T, b:set T) : set T;
 axiom (forall<T> a,b:set T :: union(a,b) == (lambda x:T :: a[x] || b[x]));

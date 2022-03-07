@@ -1,6 +1,6 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
+// UNSUPPORTED: batch_mode
 procedure {:selective_checking} foo()
 {
   var x, y, z : int;

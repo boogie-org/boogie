@@ -3,7 +3,7 @@
 // We use boogie here because parallel-boogie doesn't work well with -proverLog
 // RUN: %boogie -timeLimit:4 /errorTrace:0 -proverLog:"%t.smt2" "%s"
 // RUN: %OutputCheck --file-to-check "%t.smt2" "%s"
-// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
+// UNSUPPORTED: batch_mode
 // CHECK-L: (set-option :timeout 4000)
 // CHECK-L: (set-option :timeout 8000)
 // CHECK-L: (set-option :timeout 2000)

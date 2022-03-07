@@ -1,7 +1,7 @@
 // We use boogie instead of parallel-boogie here to fix the order of the output from /printNecessaryAssumes 
 // RUN: %boogie /printNecessaryAssumes "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
+// UNSUPPORTED: batch_mode
 
 procedure test0(n: int)
 {

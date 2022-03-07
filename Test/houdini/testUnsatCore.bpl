@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 
 // Houdini is very interactive and doesn't work with batch mode
-// SKIP-WITH-PARAM: -proverOpt:BATCH_MODE=true
+// UNSUPPORTED: batch_mode
 
 // Example to exercise the unsatcore to optimize houdini
 
