@@ -236,8 +236,6 @@ namespace Microsoft.Boogie
     static readonly ConcurrentDictionary<string, CancellationTokenSource> RequestIdToCancellationTokenSource =
       new ConcurrentDictionary<string, CancellationTokenSource>();
 
-    static ThreadTaskScheduler LargeStackScheduler = new ThreadTaskScheduler(16 * 1024 * 1024);
-
     public bool ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
       string programId = null) {
       Contract.Requires(cce.NonNullElements(fileNames));
@@ -842,12 +840,11 @@ namespace Microsoft.Boogie
 
         ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
 
-        var coreTask = new Task<Task<VerificationResult>>(() => VerifyImplementation(program, stats, er, requestId,
+        var coreTask = Task.Run(() => VerifyImplementation(program, stats, er, requestId,
           extractLoopMappingInfo, implementation,
-          programId, taskWriter), cts.Token, TaskCreationOptions.None);
+          programId, taskWriter), cts.Token);
 
-        coreTask.Start(LargeStackScheduler);
-        var verificationResult = await await coreTask;
+        var verificationResult = await coreTask;
         var output = verificationResult.GetOutput(Options.Printer, this, stats, er, implementation);
 
         await taskWriter.WriteAsync(output);
