@@ -7,6 +7,10 @@
 // CHECK-L: (set-option :rlimit 900000)
 // CHECK-L: (set-option :timeout 0)
 // CHECK-L: (set-option :rlimit 1000000)
+
+// Depends on all output going to a single file, so incompatible with
+// batch mode.
+// UNSUPPORTED: batch_mode
 procedure {:timeLimit 4} /* timeLimit overridden by rlimit */ TestTimeouts0(in: [int]int, len: int) returns (out: [int]int)
   requires in[0] == 0 && (forall i: int :: 0 <= i ==> in[i + 1] == in[i] + 1);
   requires 0 < len;

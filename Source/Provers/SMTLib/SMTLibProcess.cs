@@ -19,7 +19,7 @@ namespace Microsoft.Boogie.SMTLib
     readonly SMTLibProverOptions options;
     readonly Queue<string> proverOutput = new();
     readonly Queue<string> proverErrors = new();
-    readonly TextWriter toProver;
+    private TextWriter toProver;
     readonly int smtProcessId;
     static int smtProcessIdSeq = 0;
     ConsoleCancelEventHandler cancelEvent;
@@ -92,12 +92,18 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    public override void IndicateEndOfInput()
+    {
+      prover.StandardInput.Close();
+      toProver = null;
+    }
+
     private void TerminateProver(Int32 timeout = 2000)
     {
       try
       {
         // Let the prover know that we're done sending input.
-        prover.StandardInput.Close();
+        IndicateEndOfInput();
 
         // Give it a chance to exit cleanly (e.g. to flush buffers)
         if (!prover.WaitForExit(timeout))
@@ -132,7 +138,9 @@ namespace Microsoft.Boogie.SMTLib
 
     public override async Task<SExpr> GetProverResponse()
     {
-      await toProver.FlushAsync();
+      if (toProver != null) {
+        await toProver.FlushAsync();
+      }
 
       while (true) {
         var exprs = await ParseSExprs(true).ToListAsync();
@@ -146,6 +154,8 @@ namespace Microsoft.Boogie.SMTLib
           if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId) {
             if (resp.Arguments[0].Name.Contains("max. resource limit exceeded")) {
               return resp;
+            } else if (resp.Arguments[0].Name.Contains("model is not available")) {
+              return null;
             } else {
               HandleError(resp.Arguments[0].Name);
               return null;

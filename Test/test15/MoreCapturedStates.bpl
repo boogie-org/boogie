@@ -1,6 +1,7 @@
 // RUN: %boogie "%s" -normalizeNames:1 -mv:"%t".model > "%t"
 // RUN: grep STATE "%t".model >> "%t"
 // RUN: %diff "%s.expect" "%t"
+// UNSUPPORTED: batch_mode
 
 procedure Abs(x: int) returns (y: int)
   ensures y >= 0;

@@ -1,11 +1,11 @@
-Timeouts0.bpl(27,5): Error: A postcondition might not hold on this return path.
-Timeouts0.bpl(12,3): Related location: This is the postcondition that might not hold.
-Timeouts0.bpl(29,7): Error: This loop invariant might not be maintained by the loop.
-Timeouts0.bpl(56,5): Error: A postcondition might not hold on this return path.
-Timeouts0.bpl(39,3): Related location: This is the postcondition that might not hold.
-Timeouts0.bpl(58,7): Error: This loop invariant might not be maintained by the loop.
-Timeouts0.bpl(85,5): Error: A postcondition might not hold on this return path.
-Timeouts0.bpl(68,3): Related location: This is the postcondition that might not hold.
-Timeouts0.bpl(87,7): Error: This loop invariant might not be maintained by the loop.
+Timeouts0.bpl(28,5): Error: A postcondition might not hold on this return path.
+Timeouts0.bpl(13,3): Related location: This is the postcondition that might not hold.
+Timeouts0.bpl(30,7): Error: This loop invariant might not be maintained by the loop.
+Timeouts0.bpl(57,5): Error: A postcondition might not hold on this return path.
+Timeouts0.bpl(40,3): Related location: This is the postcondition that might not hold.
+Timeouts0.bpl(59,7): Error: This loop invariant might not be maintained by the loop.
+Timeouts0.bpl(86,5): Error: A postcondition might not hold on this return path.
+Timeouts0.bpl(69,3): Related location: This is the postcondition that might not hold.
+Timeouts0.bpl(88,7): Error: This loop invariant might not be maintained by the loop.
 
 Boogie program verifier finished with 0 verified, 6 errors
