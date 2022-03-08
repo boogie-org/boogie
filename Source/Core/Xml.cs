@@ -127,18 +127,18 @@ namespace Microsoft.Boogie
 
       cce.BeginExpose(this);
       {
-        wr.WriteStartElement("split");
+        wr.WriteStartElement("assertionBatch");
         wr.WriteAttributeString("number", splitNum.ToString());
         wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
 
         foreach(var assert in asserts)
         {
           var token = assert.tok;
-          wr.WriteStartElement("property");
+          wr.WriteStartElement("assertion");
           wr.WriteAttributeString("file", token.filename);
           wr.WriteAttributeString("line", token.line.ToString());
           wr.WriteAttributeString("column", token.col.ToString());
-          wr.WriteEndElement(); // property
+          wr.WriteEndElement(); // assertion
         }
 
         wr.WriteStartElement("conclusion");
@@ -150,7 +150,7 @@ namespace Microsoft.Boogie
         }
         wr.WriteEndElement(); // conclusion
 
-        wr.WriteEndElement(); // split
+        wr.WriteEndElement(); // assertionBatch
       }
       cce.EndExpose();
     }
