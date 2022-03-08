@@ -154,7 +154,7 @@ namespace VC
 
       if (!proverFailed) {
         if (callback is VerificationResultCollector collector) {
-          List<AssertCmd> asserts = split.blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToList();
+          List<AssertCmd> asserts = split.AssertCmds.ToList();
           Dictionary<AssertCmd, Outcome> perAssertOutcome = new();
           Dictionary<AssertCmd, Counterexample> perAssertCounterExamples = new();
           if (outcome == Outcome.Correct) {
@@ -206,7 +206,7 @@ namespace VC
           msg = split.reporter.resourceExceededMessage;
         }
         callback.OnCounterexample(split.ToCounterexample(split.Checker.TheoremProver.Context), msg);
-        perAssertOutcome = split.blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToDictionary(assertCmd => assertCmd, assertCmd => outcome);
+        perAssertOutcome = split.AssertCmds.ToDictionary(assertCmd => assertCmd, assertCmd => outcome);
         split.parent.Logger?.ReportAssertionBatchResult(split, perAssertOutcome, new ());
         outcome = Outcome.Errors;
         return;
@@ -248,7 +248,7 @@ namespace VC
 
         callback.OnOutOfResource(msg);
       }
-      perAssertOutcome = split.blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToDictionary(assertCmd => assertCmd, assertCmd => outcome);
+      perAssertOutcome = split.AssertCmds.ToDictionary(assertCmd => assertCmd, assertCmd => outcome);
       split.parent.Logger?.ReportAssertionBatchResult(split, perAssertOutcome, new());
     }
   }

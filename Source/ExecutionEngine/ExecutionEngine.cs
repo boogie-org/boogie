@@ -809,6 +809,7 @@ namespace Microsoft.Boogie
 
       // operate on a stable copy, in case it gets updated while we're running
       Implementation[] stablePrioritizedImpls = null;
+      // Ask the printer for custom priorities to verify implementations
       var userDefinedPriorities =
         impls.ToDictionary(impl => impl,
           impl => printer.GetVerificationPriority(impl.tok));

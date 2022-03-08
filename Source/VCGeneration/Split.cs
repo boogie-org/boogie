@@ -80,12 +80,14 @@ namespace VC
       }
 
 
-      public readonly List<Block> blocks;
+      private readonly List<Block> blocks;
       public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
       readonly List<Block> bigBlocks = new();
 
       readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
         stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
+
+      public IEnumerable<AssertCmd> AssertCmds => blocks.SelectMany(block => block.cmds.OfType<AssertCmd>());
 
       static int currentId = -1;
       Block splitBlock;
