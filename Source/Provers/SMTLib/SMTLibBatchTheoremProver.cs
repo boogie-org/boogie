@@ -15,9 +15,10 @@ namespace Microsoft.Boogie.SMTLib
   ///
   /// Some SMT-Lib provers don't support the interactive (a.k.a.
   /// incremental) mode provided by SMTLibInteractiveTheoremProver. This
-  /// class allows Boogie to work with such provers. It's known to work
-  /// with Z3, at least. To work correctly in batch mode, a solver must
-  /// be able to handle the following commands without crashing:
+  /// class allows Boogie to work with such provers, and also works with
+  /// provers that support interactive modes (including CVC5, Yices2, and
+  /// Z3). To work correctly in batch mode, a solver must  be able to
+  /// handle the following commands without crashing:
   ///
   ///   * `(get-model)` after returning `unsat`
   ///   * `(get-info :reason-unknown)` after returning `sat` or `unsat`
@@ -92,18 +93,15 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void FullReset(VCExpressionGenerator generator)
     {
-      if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
-      {
-        this.gen = generator;
-        common.Clear();
-        SetupAxiomBuilder(gen);
-        Axioms.Clear();
-        TypeDecls.Clear();
-        AxiomsAreSetup = false;
-        DeclCollector.Reset();
-        NamedAssumes.Clear();
-        UsedNamedAssumes = null;
-      }
+      this.gen = generator;
+      common.Clear();
+      SetupAxiomBuilder(gen);
+      Axioms.Clear();
+      TypeDecls.Clear();
+      AxiomsAreSetup = false;
+      DeclCollector.Reset();
+      NamedAssumes.Clear();
+      UsedNamedAssumes = null;
     }
 
     // TODO: move to base?
@@ -164,8 +162,10 @@ namespace Microsoft.Boogie.SMTLib
         result = ParseReasonUnknown(unknownSExp, result);
       }
 
-      var rlimitSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-      resourceCount = ParseRCount(rlimitSExp);
+      if (options.Solver == SolverKind.Z3) {
+        var rlimitSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
+        resourceCount = ParseRCount(rlimitSExp);
+      }
 
       var modelSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
       errorModel = ParseErrorModel(modelSExp);
@@ -228,7 +228,9 @@ namespace Microsoft.Boogie.SMTLib
       UsedNamedAssumes = null;
       SendThisVC("(check-sat)");
       SendThisVC("(get-info :reason-unknown)");
-      SendThisVC("(get-info :rlimit)");
+      if (options.Solver == SolverKind.Z3) {
+        SendThisVC($"(get-info :{Z3.RlimitOption})");
+      }
       SendThisVC("(get-model)");
       CheckSatSent = true;
       Process.IndicateEndOfInput();

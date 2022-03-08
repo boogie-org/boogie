@@ -12,6 +12,7 @@ on:
 env:
   SOLUTION: Source/Boogie.sln
   Z3URL: https://github.com/Z3Prover/z3/releases/download/z3-4.8.8/z3-4.8.8-x64-ubuntu-16.04.zip
+  CVC5URL: https://github.com/cvc5/cvc5/releases/latest/download/cvc5-Linux
 
 jobs:
   job0:
@@ -36,6 +37,10 @@ jobs:
           wget ${Z3URL}
           unzip z3*.zip
           export PATH="$(find $PWD/z3* -name bin -type d):$PATH"
+          # Download a CVC5 release
+          mkdir -p bin
+          (cd bin && wget ${CVC5URL} && mv cvc5-Linux cvc5 && chmod +x cvc5)
+          export PATH="$PWD/bin:$PATH"
           # Install python tools
           sudo pip3 install setuptools
           sudo pip3 install lit OutputCheck pyyaml psutil

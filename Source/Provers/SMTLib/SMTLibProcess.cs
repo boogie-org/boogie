@@ -156,6 +156,12 @@ namespace Microsoft.Boogie.SMTLib
               return resp;
             } else if (resp.Arguments[0].Name.Contains("model is not available")) {
               return null;
+            } else if (resp.Arguments[0].Name.Contains("context is unsatisfiable")) {
+              return null;
+            } else if (resp.Arguments[0].Name.Contains("Cannot get model")) {
+              return null;
+            } else if (resp.Arguments[0].Name.Contains("last result wasn't unknown")) {
+              return null;
             } else {
               HandleError(resp.Arguments[0].Name);
               return null;
