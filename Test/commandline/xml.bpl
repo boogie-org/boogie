@@ -10,14 +10,14 @@
 // guarantee about what order they'll appear in.
 // CHECK: \<method name="ExampleWithSplits" startTime=".*"\>
 // CHECK:   \<split number="1" startTime=".*"\>
-// CHECK:     \<property file="xml.bpl" line="30" column="3" />
-// CHECK:     \<conclusion duration=".*" outcome="valid" resourceCount=".*" />
+// CHECK:     \<property file="xml.bpl" line="25" column="3" /\>
+// CHECK:     \<conclusion duration=".*" outcome="valid" resourceCount=".*" /\>
 // CHECK:   \</split\>
 // CHECK:   \<split number="2" startTime=".*"\>
-// CHECK:     \<property file="xml.bpl" line="32" column="3" />
-// CHECK:     \<conclusion duration=".*" outcome="valid" resourceCount=".*" />
+// CHECK:     \<property file="xml.bpl" line="27" column="3" /\>
+// CHECK:     \<conclusion duration=".*" outcome="valid" resourceCount=".*" /\>
 // CHECK:   \</split\>
-// CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount=".*" outcome="correct" />
+// CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount=".*" outcome="correct" /\>
 // CHECK: \</method\>
 
 procedure ExampleWithSplits()
