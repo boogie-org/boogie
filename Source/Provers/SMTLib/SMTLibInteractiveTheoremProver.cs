@@ -117,7 +117,6 @@ namespace Microsoft.Boogie.SMTLib
         this.gen = generator;
         SendThisVC("(reset)");
         RecoverIfProverCrashedAfterReset();
-        SendThisVC("(set-option :" + Z3.RlimitOption + " 0)");
 
         if (0 < common.Length)
         {
@@ -713,7 +712,14 @@ namespace Microsoft.Boogie.SMTLib
 
     public override async Task<int> GetRCount()
     {
-      SendThisVC("(get-info :rlimit)");
+      if (options.Solver != SolverKind.Z3) {
+        // Only Z3 currently supports retrieving this value. CVC5
+        // supports setting a limit, but does not appear to support
+        // reporting how much it took to complete a query.
+        return 0;
+      }
+
+      SendThisVC($"(get-info :{Z3.RlimitOption})");
       return ParseRCount(await Process.GetProverResponse());
     }
 
