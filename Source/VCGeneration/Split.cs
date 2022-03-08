@@ -20,7 +20,9 @@ namespace VC
     int vcNum,
     DateTime startTime,
     ProverInterface.Outcome outcome,
-    TimeSpan runTime
+    TimeSpan runTime,
+    IEnumerable<AssertCmd> asserts,
+    int resourceCount
   );
 
   public class Split
@@ -81,6 +83,7 @@ namespace VC
 
 
       private readonly List<Block> blocks;
+      public IEnumerable<AssertCmd> Asserts => blocks.SelectMany(block => block.cmds.OfType<AssertCmd>());
       public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
       readonly List<Block> bigBlocks = new();
 
@@ -1301,15 +1304,16 @@ namespace VC
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
-        var result = new VCResult(splitNum + 1, checker.ProverStart, outcome, checker.ProverRunTime);
+        var resourceCount = checker.GetProverResourceCount().Result;
+        totalResourceCount += resourceCount;
+
+        var result = new VCResult(splitNum + 1, checker.ProverStart, outcome, checker.ProverRunTime, Asserts, resourceCount);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
         {
           DumpDot(splitNum);
         }
-
-        totalResourceCount += checker.GetProverResourceCount().Result;
 
         proverFailed = false;
 
