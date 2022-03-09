@@ -10,6 +10,7 @@ using VC;
 using BoogiePL = Microsoft.Boogie;
 using System.Runtime.Caching;
 using System.Diagnostics;
+using System.Net.Mime;
 
 namespace Microsoft.Boogie
 {
@@ -797,7 +798,7 @@ namespace Microsoft.Boogie
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
       program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(Options, program);
-      var outputCollector = new OutputCollector(stablePrioritizedImpls);
+      var outputCollector = new ConcurrentToSequentialWriteManager(Console.Out);
       var outcome = PipelineOutcome.VerificationCompleted;
 
       try {
@@ -830,8 +831,9 @@ namespace Microsoft.Boogie
                 cts.Token.ThrowIfCancellationRequested();
               }
 
+              using var implementationWriter = outputCollector.AppendWriter();
               VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls,
-                taskIndex, outputCollector, programId);
+                taskIndex, implementationWriter, programId);
               ImplIdToCancellationTokenSource.TryRemove(id, out old);
             }
             finally {
@@ -885,7 +887,6 @@ namespace Microsoft.Boogie
 
       cce.NonNull(Options.TheProverFactory).Close();
 
-      outputCollector.WriteMoreOutput();
       return outcome;
     }
 
@@ -951,9 +952,8 @@ namespace Microsoft.Boogie
 
     private void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er,
       string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
-      Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, string programId)
+      Implementation[] stablePrioritizedImpls, int index, TextWriter output, string programId)
     {
-      var output = new StringWriter();
       Implementation impl = stablePrioritizedImpls[index];
 
       printer.Inform("", output); // newline
@@ -973,10 +973,8 @@ namespace Microsoft.Boogie
       }
       verificationResult.Emit(this, stats, er, output, impl, wasCached);
 
-      outputCollector.Add(index, output);
-      outputCollector.WriteMoreOutput();
       if (verificationResult.Outcome == VCGen.Outcome.Errors || Options.Trace) {
-        Console.Out.Flush();
+        output.Flush();
       }
     }
 

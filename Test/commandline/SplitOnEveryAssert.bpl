@@ -2,6 +2,7 @@
 // RUN: %boogie /vcsSplitOnEveryAssert /errorTrace:0 /trace "%s" > "%t"
 // RUN: %OutputCheck --file-to-check "%t" "%s"
 
+// CHECK: Verifying Ex ...
 // CHECK:      checking split 1/12, .*
 // CHECK:      checking split 2/12, .*
 // CHECK:      checking split 3/12, .*
@@ -15,7 +16,6 @@
 // CHECK:      checking split 10/12, .*
 // CHECK:      checking split 11/12, .*
 // CHECK:      checking split 12/12, .*
-// CHECK: Verifying Ex ...
 // CHECK-L: SplitOnEveryAssert.bpl(32,5): Error: This assertion might not hold.
 
 procedure Ex() returns (y: int)

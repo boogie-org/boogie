@@ -2,6 +2,7 @@
 // RUN: %boogie /errorTrace:0 /trace "%s" > "%t"
 // RUN: %OutputCheck --file-to-check "%t" "%s"
 
+// CHECK: Verifying DoTheSplitting ...
 // CHECK:      checking split 1/12, .*
 // CHECK:      checking split 2/12, .*
 // CHECK:      checking split 3/12, .*
@@ -15,7 +16,6 @@
 // CHECK:      checking split 10/12, .*
 // CHECK:      checking split 11/12, .*
 // CHECK:      checking split 12/12, .*
-// CHECK: Verifying DoTheSplitting ...
 // CHECK-L: SplitOnEveryAssert.bpl(37,5): Error: This assertion might not hold.
 
 // Verify the second procedure is NOT split. .* is necessary to match the blank line in-between.
