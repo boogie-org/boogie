@@ -47,7 +47,7 @@ public sealed class VerificationResult
     MessageIfVerifies = implementation.FindStringAttribute("msg_if_verifies");
   }
 
-  public void Process(ExecutionEngine engine, PipelineStatistics stats, ErrorReporterDelegate er, int index,
+  public void Emit(ExecutionEngine engine, PipelineStatistics stats, ErrorReporterDelegate er, int index,
     OutputCollector outputCollector, StringWriter output, Implementation impl, bool wasCached)
   {
     engine.ProcessOutcome(Outcome, Errors, engine.TimeIndication(this), stats,

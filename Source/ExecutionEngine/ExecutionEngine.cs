@@ -971,7 +971,7 @@ namespace Microsoft.Boogie
           Cache.Insert(impl, verificationResult);
         }
       }
-      verificationResult.Process(this, stats, er, index, outputCollector, output, impl, wasCached);
+      verificationResult.Emit(this, stats, er, index, outputCollector, output, impl, wasCached);
     }
 
     private VerificationResult GetCachedVerificationResult(Implementation impl, TextWriter output)
