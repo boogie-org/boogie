@@ -758,7 +758,6 @@ namespace Microsoft.Boogie
           out stats.CachingActionCounts);
       }
 
-      #region Verify each implementation
       var outcome = VerifyEachImplementation(program, stats, programId, er, requestId, stablePrioritizedImpls, extractLoopMappingInfo);
 
       if (1 < Options.VerifySnapshots && programId != null)
@@ -768,8 +767,6 @@ namespace Microsoft.Boogie
       }
 
       TraceCachingForBenchmarking(stats, requestId, start);
-
-      #endregion
 
       return outcome;
     }
