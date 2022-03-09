@@ -3645,6 +3645,9 @@ namespace Microsoft.Boogie
     // TODO: convert to use generics
     private string errorData;
 
+    // Note: the `Description` property should cover all the use cases
+    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
+    // eventually go away.
     public string ErrorData
     {
       get { return errorData; }
@@ -3777,6 +3780,9 @@ namespace Microsoft.Boogie
     // TODO: convert to use generics
     private string errorData;
 
+    // Note: the `Description` property should cover all the use cases
+    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
+    // eventually go away.
     public string ErrorData
     {
       get { return errorData; }
