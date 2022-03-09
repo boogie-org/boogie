@@ -888,13 +888,7 @@ namespace Microsoft.Boogie
         {
           return cmd;
         }
-        var newCmd = BoundVarAndReplacingOldSubstituter.Apply(substMap, oldSubstMap, prefix, cmd);
-        if (cmd is ICarriesAttributes attrCmd && attrCmd.Attributes != null)
-        {
-          var attrCopy = (QKeyValue) attrCmd.Attributes.Clone();
-          ((ICarriesAttributes) newCmd).Attributes = Substituter.ApplyReplacingOldExprs(PartialSubst, PartialOldSubst, attrCopy);
-        }
-        return newCmd;
+        return BoundVarAndReplacingOldSubstituter.Apply(substMap, oldSubstMap, prefix, cmd);
       }
 
       public Expr CopyExpr(Expr expr)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,33 +15,35 @@ class NoopSolver : SMTLibSolver
   {
   }
 
-  private SExpr response;
+  private Queue<SExpr> responses = new();
 
   public override void Send(string cmd)
   {
     if (cmd.StartsWith("(get-value")) {
-      response = null;
-    } 
-    else
-    {
-      response = cmd switch
-      {
-        "(get-model)" => null,
-        "(get-info :name)" => new SExpr(":name"),
-        "(get-info :rlimit)" => new SExpr(":rlimit", new SExpr("0")),
-        "(check-sat)" => new SExpr("unknown"),
-        "(get-info :reason-unknown)" => new SExpr("incomplete"),
-        "(get-unsat-core)" => new SExpr(""),
-        _ => null
-      };
+      return;
     }
+
+    var response = cmd switch
+    {
+      "(get-model)" => new SExpr("error", new SExpr("model is not available")),
+      "(get-info :name)" => new SExpr(":name"),
+      "(get-info :rlimit)" => new SExpr(":rlimit", new SExpr("0")),
+      "(check-sat)" => new SExpr("unknown"),
+      "(get-info :reason-unknown)" => new SExpr(":reason-unknown", new SExpr("incomplete")),
+      "(get-unsat-core)" => new SExpr(""),
+      _ => null
+    };
+
+    if (response is not null) { responses.Enqueue(response); }
   }
 
   public override Task<SExpr> GetProverResponse()
   {
-    var result = response;
-    response = null;
-    return Task.FromResult(result);
+    return Task.FromResult(responses.Count > 0 ? responses.Dequeue() : null);
+  }
+
+  public override void IndicateEndOfInput()
+  {
   }
 
   public override void NewProblem(string descriptiveName)

@@ -1,6 +1,9 @@
 // RUN: %parallel-boogie /contractInfer /inlineDepth:1 /printAssignment "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
+// Houdini is very interactive and doesn't work with batch mode
+// UNSUPPORTED: batch_mode
+
 function _v2.ite(b: bool, x: int, y: int) : int;
 
 var _v2.OK: bool;

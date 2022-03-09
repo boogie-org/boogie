@@ -805,6 +805,8 @@ namespace Microsoft.Boogie
     public bool ProduceUnsatCores => PrintNecessaryAssumes || EnableUnSatCoreExtract == 1 ||
                                      ContractInfer && (UseUnsatCoreForContractInfer || ExplainHoudini);
 
+    public bool BatchModeSolver { get; set; }
+
     public bool TraceTimes { get; set; }
     public bool TraceProofObligations { get; set; }
 

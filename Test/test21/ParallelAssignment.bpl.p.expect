@@ -1,11 +1,11 @@
-ParallelAssignment.bpl(30,3): Error: This assertion might not hold.
+ParallelAssignment.bpl(31,3): Error: This assertion might not hold.
 Execution trace:
-    ParallelAssignment.bpl(19,5): anon0
-ParallelAssignment.bpl(39,3): Error: This assertion might not hold.
+    ParallelAssignment.bpl(20,5): anon0
+ParallelAssignment.bpl(40,3): Error: This assertion might not hold.
 Execution trace:
-    ParallelAssignment.bpl(19,5): anon0
-ParallelAssignment.bpl(58,3): Error: This assertion might not hold.
+    ParallelAssignment.bpl(20,5): anon0
+ParallelAssignment.bpl(59,3): Error: This assertion might not hold.
 Execution trace:
-    ParallelAssignment.bpl(44,11): anon0
+    ParallelAssignment.bpl(45,11): anon0
 
 Boogie program verifier finished with 0 verified, 3 errors
