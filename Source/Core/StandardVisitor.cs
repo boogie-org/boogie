@@ -881,6 +881,14 @@ namespace Microsoft.Boogie
       return node;
     }
 
+    /*
+     * VisitAttributes is being called in the visitor of those subtypes of Cmd
+     * and Expr that implement ICarriesAttributes. This behavior is introduced so
+     * that hints for pool-based quantifier instantiation present in attributes
+     * are processed naturally during monomorphization and inlining. There
+     * are other subtypes of Absy that implement ICarriesAttributes; if
+     * necessary, this method could be in the visitor for those types also.
+     */
     private void VisitAttributes(ICarriesAttributes node)
     {
       if (node.Attributes != null)
