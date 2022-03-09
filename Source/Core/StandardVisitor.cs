@@ -1076,7 +1076,7 @@ namespace Microsoft.Boogie
           this.VisitIdentifierExpr(node.Outs[i]);
         }
       }
-      
+
       return node;
     }
 
