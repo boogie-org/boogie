@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using VC;
 
 namespace Microsoft.Boogie;
@@ -43,5 +45,39 @@ public sealed class VerificationResult
     ProgramId = programId;
     AssertionChecksums = implementation.AssertionChecksums;
     MessageIfVerifies = implementation.FindStringAttribute("msg_if_verifies");
+  }
+
+  public void Emit(ExecutionEngine engine, PipelineStatistics stats, ErrorReporterDelegate er, int index,
+    OutputCollector outputCollector, StringWriter output, Implementation impl, bool wasCached)
+  {
+    engine.ProcessOutcome(Outcome, Errors, engine.TimeIndication(this), stats,
+      output, impl.GetTimeLimit(engine.Options), er, ImplementationName,
+      ImplementationToken,
+      RequestId, MessageIfVerifies, wasCached);
+
+    engine.ProcessErrors(Errors, Outcome, output, er, impl);
+
+    if (engine.Options.XmlSink != null) {
+      lock (engine.Options.XmlSink) {
+        engine.Options.XmlSink.WriteStartMethod(impl.Name, Start);
+
+        foreach (var vcResult in VCResults.OrderBy(s => s.vcNum)) {
+          engine.Options.XmlSink.WriteSplit(vcResult.vcNum, vcResult.asserts, vcResult.startTime,
+            vcResult.outcome.ToString().ToLowerInvariant(), vcResult.runTime, vcResult.resourceCount);
+        }
+
+        engine.Options.XmlSink.WriteEndMethod(Outcome.ToString().ToLowerInvariant(),
+          End, End - Start,
+          ResourceCount);
+      }
+    }
+
+    outputCollector.Add(index, output);
+
+    outputCollector.WriteMoreOutput();
+
+    if (Outcome == VCGen.Outcome.Errors || engine.Options.Trace) {
+      Console.Out.Flush();
+    }
   }
 }
