@@ -131,6 +131,7 @@ modifies QuoteCH, RemCH, DecCH, contribution;
 
   havoc contribution;
 
+  assume {:add_to_pool "INV3", 0, 1, k, k+1, n} true;
   if (*)
   {
     QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && q == price then 1 else 0));
@@ -139,9 +140,7 @@ modifies QuoteCH, RemCH, DecCH, contribution;
   }
   else if (*)
   {
-    assume
-      {:add_to_pool "INV3", 1, k, k+1}
-      1 <= k && k < n && 0 <= sum(contribution, 1, k) && sum(contribution, 1, k) <= price;
+    assume 1 <= k && k < n && 0 <= sum(contribution, 1, k) && sum(contribution, 1, k) <= price;
     QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && i > k && q == price then 1 else 0));
     RemCH := (lambda i:int :: (lambda r:int :: if i == k+1 && r == price - sum(contribution, 1, k) then 1 else 0));
     PAs := MapAddPA3(SellerFinish(0), LastBuyer(n), (lambda pa:PA :: if is#MiddleBuyer(pa) && middleBuyerID(pid#MiddleBuyer(pa)) && pid#MiddleBuyer(pa) > k then 1 else 0));
@@ -197,7 +196,6 @@ modifies QuoteCH, RemCH, contribution;
   assert (forall r:int :: RemCH[pid][r] > 0 ==> 0 <= r && r <= price);
   assert (forall r:int :: RemCH[pid][r] > 0 ==> r == price - sum(contribution, 1, pid - 1));
   assert RemCH[pid][price - sum(contribution, 1, pid - 1)] > 0;
-  assert (exists r:int :: RemCH[pid][r] > 0);
   assert DecCH == (lambda b:bool :: 0);
   assert (forall i:int :: i < pid ==> QuoteCH[i] == (lambda r:int :: 0));
   assert (forall i:int :: i != pid ==> RemCH[i] == (lambda r:int :: 0));
@@ -226,7 +224,6 @@ modifies QuoteCH, RemCH, DecCH, contribution;
   assert (forall r:int :: RemCH[pid][r] > 0 ==> 0 <= r && r <= price);
   assert (forall r:int :: RemCH[pid][r] > 0 ==> r == price - sum(contribution, 1, pid - 1));
   assert RemCH[n][price - sum(contribution, 1, n-1)] > 0;
-  assert (exists r:int :: RemCH[pid][r] > 0);
   assert DecCH == (lambda b:bool :: 0);
   assert (forall i:int :: i < pid ==> QuoteCH[i] == (lambda r:int :: 0));
 
