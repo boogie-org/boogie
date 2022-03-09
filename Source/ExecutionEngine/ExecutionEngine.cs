@@ -172,48 +172,6 @@ namespace Microsoft.Boogie
   #endregion
 
 
-  public sealed class VerificationResult
-  {
-    public readonly string RequestId;
-    public readonly string Checksum;
-    public readonly string DependeciesChecksum;
-    public readonly string ImplementationName;
-    public readonly IToken ImplementationToken;
-    public readonly string ProgramId;
-    public readonly string MessageIfVerifies;
-
-    public DateTime Start { get; set; }
-    public DateTime End { get; set; }
-
-    public int ResourceCount { get; set; }
-
-    public int ProofObligationCount
-    {
-      get { return ProofObligationCountAfter - ProofObligationCountBefore; }
-    }
-
-    public int ProofObligationCountBefore { get; set; }
-    public int ProofObligationCountAfter { get; set; }
-
-    public ConditionGeneration.Outcome Outcome { get; set; }
-    public List<Counterexample> Errors;
-    public List<VCResult> VCResults;
-
-    public ISet<byte[]> AssertionChecksums { get; private set; }
-
-    public VerificationResult(string requestId, Implementation implementation, string programId = null)
-    {
-      Checksum = implementation.Checksum;
-      DependeciesChecksum = implementation.DependencyChecksum;
-      RequestId = requestId;
-      ImplementationName = implementation.Name;
-      ImplementationToken = implementation.tok;
-      ProgramId = programId;
-      AssertionChecksums = implementation.AssertionChecksums;
-      MessageIfVerifies = implementation.FindStringAttribute("msg_if_verifies");
-    }
-  }
-
   public class ExecutionEngine : IDisposable
   {
     public static OutputPrinter printer;
@@ -792,27 +750,7 @@ namespace Microsoft.Boogie
 
       #endregion
 
-      #region Select and prioritize implementations that should be verified
-
-      var impls = program.Implementations.Where(
-        impl => impl != null && Options.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) &&
-                !impl.IsSkipVerification(Options));
-
-      // operate on a stable copy, in case it gets updated while we're running
-      Implementation[] stablePrioritizedImpls = null;
-      if (0 < Options.VerifySnapshots)
-      {
-        OtherDefinitionAxiomsCollector.Collect(Options, program.Axioms);
-        DependencyCollector.Collect(Options, program);
-        stablePrioritizedImpls = impls.OrderByDescending(
-          impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl, Options.RunDiagnosticsOnTimeout)).ToArray();
-      }
-      else
-      {
-        stablePrioritizedImpls = impls.OrderByDescending(impl => impl.Priority).ToArray();
-      }
-
-      #endregion
+      var stablePrioritizedImpls = GetPrioritizedImplementations(program);
 
       if (1 < Options.VerifySnapshots)
       {
@@ -820,13 +758,49 @@ namespace Microsoft.Boogie
           out stats.CachingActionCounts);
       }
 
-      #region Verify each implementation
+      var outcome = VerifyEachImplementation(program, stats, programId, er, requestId, stablePrioritizedImpls, extractLoopMappingInfo);
+
+      if (1 < Options.VerifySnapshots && programId != null)
+      {
+        program.FreezeTopLevelDeclarations();
+        programCache.Set(programId, program, policy);
+      }
+
+      TraceCachingForBenchmarking(stats, requestId, start);
+
+      return outcome;
+    }
+
+    private Implementation[] GetPrioritizedImplementations(Program program)
+    {
+      var impls = program.Implementations.Where(
+        impl => impl != null && Options.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) &&
+                !impl.IsSkipVerification(Options));
+
+      // operate on a stable copy, in case it gets updated while we're running
+      Implementation[] stablePrioritizedImpls = null;
+      if (0 < Options.VerifySnapshots) {
+        OtherDefinitionAxiomsCollector.Collect(Options, program.Axioms);
+        DependencyCollector.Collect(Options, program);
+        stablePrioritizedImpls = impls.OrderByDescending(
+            impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl, Options.RunDiagnosticsOnTimeout))
+          .ToArray();
+      } else {
+        stablePrioritizedImpls = impls.OrderByDescending(impl => impl.Priority).ToArray();
+      }
+
+      return stablePrioritizedImpls;
+    }
+
+    private PipelineOutcome VerifyEachImplementation(Program program, PipelineStatistics stats, string programId,
+      ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls,
+      Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
+    {
       program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(Options, program);
       var outputCollector = new OutputCollector(stablePrioritizedImpls);
       var outcome = PipelineOutcome.VerificationCompleted;
 
-      try
-      {
+      try {
         var cts = new CancellationTokenSource();
         RequestIdToCancellationTokenSource.AddOrUpdate(requestId, cts, (k, ov) => cts);
 
@@ -835,13 +809,11 @@ namespace Microsoft.Boogie
         var semaphore = new SemaphoreSlim(Options.VcsCores);
 
         // Create a task per implementation.
-        for (int i = 0; i < stablePrioritizedImpls.Length; i++)
-        {
+        for (int i = 0; i < stablePrioritizedImpls.Length; i++) {
           var taskIndex = i;
           var id = stablePrioritizedImpls[taskIndex].Id;
 
-          if (ImplIdToCancellationTokenSource.TryGetValue(id, out var old))
-          {
+          if (ImplIdToCancellationTokenSource.TryGetValue(id, out var old)) {
             old.Cancel();
           }
 
@@ -849,15 +821,12 @@ namespace Microsoft.Boogie
 
           var t = new Task((dummy) =>
           {
-            try
-            {
-              if (outcome == PipelineOutcome.FatalError)
-              {
+            try {
+              if (outcome == PipelineOutcome.FatalError) {
                 return;
               }
 
-              if (cts.Token.IsCancellationRequested)
-              {
+              if (cts.Token.IsCancellationRequested) {
                 cts.Token.ThrowIfCancellationRequested();
               }
 
@@ -865,8 +834,7 @@ namespace Microsoft.Boogie
                 taskIndex, outputCollector, checkerPool, programId);
               ImplIdToCancellationTokenSource.TryRemove(id, out old);
             }
-            finally
-            {
+            finally {
               semaphore.Release();
             }
           }, cts.Token, TaskCreationOptions.None);
@@ -875,14 +843,11 @@ namespace Microsoft.Boogie
 
         // Execute the tasks.
         int j = 0;
-        for (; j < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; j++)
-        {
-          try
-          {
+        for (; j < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; j++) {
+          try {
             semaphore.Wait(cts.Token);
           }
-          catch (OperationCanceledException)
-          {
+          catch (OperationCanceledException) {
             break;
           }
 
@@ -893,19 +858,16 @@ namespace Microsoft.Boogie
         tasks = tasks.Take(j).ToArray();
         Task.WaitAll(tasks);
       }
-      catch (AggregateException ae)
-      {
+      catch (AggregateException ae) {
         ae.Flatten().Handle(e =>
         {
-          if (e is ProverException)
-          {
+          if (e is ProverException) {
             printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e.Message);
             outcome = PipelineOutcome.FatalError;
             return true;
           }
 
-          if (e is OperationCanceledException)
-          {
+          if (e is OperationCanceledException) {
             outcome = PipelineOutcome.Cancelled;
             return true;
           }
@@ -913,31 +875,25 @@ namespace Microsoft.Boogie
           return false;
         });
       }
-      finally
-      {
+      finally {
         CleanupRequest(requestId);
       }
 
-      if (Options.PrintNecessaryAssumes && program.NecessaryAssumes.Any())
-      {
+      if (Options.PrintNecessaryAssumes && program.NecessaryAssumes.Any()) {
         Console.WriteLine("Necessary assume command(s): {0}", string.Join(", ", program.NecessaryAssumes));
       }
 
       cce.NonNull(Options.TheProverFactory).Close();
 
       outputCollector.WriteMoreOutput();
+      return outcome;
+    }
 
-      if (1 < Options.VerifySnapshots && programId != null)
-      {
-        program.FreezeTopLevelDeclarations();
-        programCache.Set(programId, program, policy);
-      }
-
-      if (0 <= Options.VerifySnapshots && Options.TraceCachingForBenchmarking)
-      {
+    private void TraceCachingForBenchmarking(PipelineStatistics stats, string requestId, DateTime start)
+    {
+      if (0 <= Options.VerifySnapshots && Options.TraceCachingForBenchmarking) {
         var end = DateTime.UtcNow;
-        if (TimePerRequest.Count == 0)
-        {
+        if (TimePerRequest.Count == 0) {
           FirstRequestStart = start;
         }
 
@@ -953,8 +909,7 @@ namespace Microsoft.Boogie
         Console.Out.WriteLine(
           "Request ID{0}, Error, E (C), Inconclusive, I (C), Out of Memory, OoM (C), Timeout, T (C), Verified, V (C), {1}",
           printTimes ? ", Time (ms)" : "", actions);
-        foreach (var kv in TimePerRequest.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key)))
-        {
+        foreach (var kv in TimePerRequest.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key))) {
           var s = StatisticsPerRequest[kv.Key];
           var cacs = s.CachingActionCounts;
           var c = cacs != null ? ", " + cacs.Select(ac => string.Format("{0,3}", ac)).Concat(", ") : "";
@@ -965,17 +920,12 @@ namespace Microsoft.Boogie
             s.CachedOutOfMemoryCount, s.TimeoutCount, s.CachedTimeoutCount, s.VerifiedCount, s.CachedVerifiedCount, c);
         }
 
-        if (printTimes)
-        {
+        if (printTimes) {
           Console.Out.WriteLine();
           Console.Out.WriteLine("Total time (ms) since first request: {0:F0}",
             end.Subtract(FirstRequestStart).TotalMilliseconds);
         }
       }
-
-      #endregion
-
-      return outcome;
     }
 
     public static void CancelRequest(string requestId)
