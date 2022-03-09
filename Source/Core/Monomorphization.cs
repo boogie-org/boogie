@@ -808,36 +808,6 @@ namespace Microsoft.Boogie
 
         return expr;
       }
-
-      public override Cmd VisitAssumeCmd(AssumeCmd node)
-      {
-        var returnCmd = (AssumeCmd) base.VisitAssumeCmd(node);
-        if (node.Attributes != null)
-        {
-          returnCmd.Attributes = VisitQKeyValue(node.Attributes);
-        }
-        return returnCmd;
-      }
-      
-      public override Cmd VisitAssertCmd(AssertCmd node)
-      {
-        var returnCmd = (AssertCmd) base.VisitAssertCmd(node);
-        if (node.Attributes != null)
-        {
-          returnCmd.Attributes = VisitQKeyValue(node.Attributes);
-        }
-        return returnCmd;
-      }
-      
-      public override Cmd VisitAssignCmd(AssignCmd node)
-      {
-        var returnCmd = (AssignCmd) base.VisitAssignCmd(node);
-        if (node.Attributes != null)
-        {
-          returnCmd.Attributes = VisitQKeyValue(node.Attributes);
-        }
-        return returnCmd;
-      }
     }
 
     public static MonomorphizationVisitor Initialize(CoreOptions options, Program program,
@@ -976,36 +946,6 @@ namespace Microsoft.Boogie
       }
     }
 
-    public override Cmd VisitAssumeCmd(AssumeCmd node)
-    {
-      var returnCmd = (AssumeCmd) base.VisitAssumeCmd(node);
-      if (node.Attributes != null)
-      {
-        returnCmd.Attributes = VisitQKeyValue(node.Attributes);
-      }
-      return returnCmd;
-    }
-      
-    public override Cmd VisitAssertCmd(AssertCmd node)
-    {
-      var returnCmd = (AssertCmd) base.VisitAssertCmd(node);
-      if (node.Attributes != null)
-      {
-        returnCmd.Attributes = VisitQKeyValue(node.Attributes);
-      }
-      return returnCmd;
-    }
-      
-    public override Cmd VisitAssignCmd(AssignCmd node)
-    {
-      var returnCmd = (AssignCmd) base.VisitAssignCmd(node);
-      if (node.Attributes != null)
-      {
-        returnCmd.Attributes = VisitQKeyValue(node.Attributes);
-      }
-      return returnCmd;
-    }
-    
     public override CtorType VisitCtorType(CtorType node)
     {
       return (CtorType) monomorphizationDuplicator.VisitType(node);
@@ -1056,15 +996,6 @@ namespace Microsoft.Boogie
       constructor.selectors.Iter(selector => base.VisitFunction(selector));
     }
     
-    public override Absy Visit(Absy node)
-    {
-      if (node is ICarriesAttributes attrNode && attrNode.Attributes != null)
-      {
-        VisitQKeyValue(attrNode.Attributes);
-      }
-      return base.Visit(node);
-    }
-
     // this function may be called directly by monomorphizationDuplicator
     // if a non-generic function call is discovered in an expression
     public override Function VisitFunction(Function node)
