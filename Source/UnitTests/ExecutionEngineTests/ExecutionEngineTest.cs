@@ -48,7 +48,7 @@ Execution trace:
     fakeFilename2(3,3): anon0
 
 Boogie program verifier finished with 1 verified, 1 error
-";
+".ReplaceLineEndings();
     Assert.AreEqual(expected, output);
   }
 }
