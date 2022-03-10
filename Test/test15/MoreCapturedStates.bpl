@@ -1,4 +1,7 @@
-// RUN: %boogie "%s" -normalizeNames:1 -mv:"%t".model > "%t"
+// RUN: %parallel-boogie "%s" -normalizeNames:1 -mv:"%t@PROC@".model > "%t"
+// RUN: cat %tAbs.model > "%t.model"
+// RUN: cat %tBadCall.model >> "%t.model"
+// RUN: cat %tBadAssert.model >> "%t.model"
 // RUN: grep STATE "%t".model >> "%t"
 // RUN: %diff "%s.expect" "%t"
 // UNSUPPORTED: batch_mode

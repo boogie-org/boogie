@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using Microsoft.Boogie.VCExprAST;
 using System.Threading.Tasks;
+using Microsoft.Boogie.SMTLib;
 using VC;
 
 namespace Microsoft.Boogie
@@ -261,7 +262,7 @@ namespace Microsoft.Boogie
       return thmProver.GetRCount();
     }
 
-    private async Task WaitForOutput(object dummy, CancellationToken cancellationToken)
+    private async Task WaitForOutput(CancellationToken cancellationToken)
     {
       try {
         outcome = await thmProver.CheckOutcome(cce.NonNull(handler), Options.ErrorLimit,
@@ -328,7 +329,7 @@ namespace Microsoft.Boogie
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 
-      ProverTask = WaitForOutput(null, cancellationToken);
+      ProverTask = WaitForOutput(cancellationToken);
     }
 
     public ProverInterface.Outcome ReadOutcome()

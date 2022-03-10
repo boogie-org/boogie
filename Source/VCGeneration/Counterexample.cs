@@ -74,6 +74,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(cce.NonNullDictionaryAndValues(calleeCounterexamples));
     }
 
+    public ProofRun ProofRun { get; }
     protected readonly VCGenOptions options;
     [Peer] public List<Block> Trace;
     public List<object> AugmentedTrace;
@@ -88,7 +89,8 @@ namespace Microsoft.Boogie
 
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
-    internal Counterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
+    internal Counterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, Model model,
+      VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun)
     {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
@@ -97,6 +99,7 @@ namespace Microsoft.Boogie
       this.Model = model;
       this.MvInfo = mvInfo;
       this.Context = context;
+      this.ProofRun = proofRun;
       this.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
       // the call to instance method GetModelValue in the following code requires the fields Model and Context to be initialized
       if (augmentedTrace != null)
@@ -213,14 +216,12 @@ namespace Microsoft.Boogie
       }
     }
 
-    public static bool firstModelFile = true;
-
     public void PrintModel(TextWriter tw, Counterexample counterexample)
     {
       Contract.Requires(counterexample != null);
 
-      var filename = options.ModelViewFile;
-      if (Model == null || filename == null || options.StratifiedInlining > 0)
+      var filenameTemplate = options.ModelViewFile;
+      if (Model == null || filenameTemplate == null || options.StratifiedInlining > 0)
       {
         return;
       }
@@ -238,14 +239,14 @@ namespace Microsoft.Boogie
         Model.ModelHasStatesAlready = true;
       }
 
-      if (filename == "-")
+      if (filenameTemplate == "-")
       {
         Model.Write(tw);
         tw.Flush();
       }
       else {
-        using var wr = new StreamWriter(filename, !firstModelFile);
-        firstModelFile = false;
+        var (filename, reused) = Helpers.GetLogFilename(ProofRun.Description, filenameTemplate, true);
+        using var wr = new StreamWriter(filename, reused);
         Model.Write(wr);
       }
     }
@@ -476,8 +477,8 @@ namespace Microsoft.Boogie
 
 
     public AssertCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, AssertCmd failingAssert, Model model, VC.ModelViewInfo mvInfo,
-      ProverContext context)
-      : base(options, trace, augmentedTrace, model, mvInfo, context)
+      ProverContext context, ProofRun proofRun)
+      : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun)
     {
       Contract.Requires(trace != null);
       Contract.Requires(failingAssert != null);
@@ -497,7 +498,7 @@ namespace Microsoft.Boogie
 
     public override Counterexample Clone()
     {
-      var ret = new AssertCounterexample(options, Trace, AugmentedTrace, FailingAssert, Model, MvInfo, Context);
+      var ret = new AssertCounterexample(options, Trace, AugmentedTrace, FailingAssert, Model, MvInfo, Context, ProofRun);
       ret.calleeCounterexamples = calleeCounterexamples;
       return ret;
     }
@@ -517,8 +518,8 @@ namespace Microsoft.Boogie
 
 
     public CallCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, CallCmd failingCall, Requires failingRequires, Model model,
-      VC.ModelViewInfo mvInfo, ProverContext context, byte[] checksum = null)
-      : base(options, trace, augmentedTrace, model, mvInfo, context)
+      VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, byte[] checksum = null)
+      : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun)
     {
       Contract.Requires(!failingRequires.Free);
       Contract.Requires(trace != null);
@@ -545,7 +546,7 @@ namespace Microsoft.Boogie
 
     public override Counterexample Clone()
     {
-      var ret = new CallCounterexample(options, Trace, AugmentedTrace, FailingCall, FailingRequires, Model, MvInfo, Context, Checksum);
+      var ret = new CallCounterexample(options, Trace, AugmentedTrace, FailingCall, FailingRequires, Model, MvInfo, Context, ProofRun, Checksum);
       ret.calleeCounterexamples = calleeCounterexamples;
       return ret;
     }
@@ -565,8 +566,8 @@ namespace Microsoft.Boogie
 
 
     public ReturnCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, TransferCmd failingReturn, Ensures failingEnsures, Model model,
-      VC.ModelViewInfo mvInfo, ProverContext context, byte[] checksum)
-      : base(options, trace, augmentedTrace, model, mvInfo, context)
+      VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, byte[] checksum)
+      : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun)
     {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
@@ -595,7 +596,7 @@ namespace Microsoft.Boogie
 
     public override Counterexample Clone()
     {
-      var ret = new ReturnCounterexample(options, Trace, AugmentedTrace, FailingReturn, FailingEnsures, Model, MvInfo, Context, checksum);
+      var ret = new ReturnCounterexample(options, Trace, AugmentedTrace, FailingReturn, FailingEnsures, Model, MvInfo, Context, ProofRun, checksum);
       ret.calleeCounterexamples = calleeCounterexamples;
       return ret;
     }
