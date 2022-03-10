@@ -51,7 +51,7 @@ public class ConsolePrinter : OutputPrinter
   }
 
 
-  public void AdvisoryWriteLine(string format, params object[] args)
+  public void AdvisoryWriteLine(TextWriter output, string format, params object[] args)
   {
     Contract.Requires(format != null);
     ConsoleColor col = Console.ForegroundColor;

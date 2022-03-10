@@ -21,7 +21,7 @@ namespace Microsoft.Boogie
     ExecutionEngineOptions Options { get; set; }
     void ErrorWriteLine(TextWriter tw, string s);
     void ErrorWriteLine(TextWriter tw, string format, params object[] args);
-    void AdvisoryWriteLine(string format, params object[] args);
+    void AdvisoryWriteLine(TextWriter output, string format, params object[] args);
     void Inform(string s, TextWriter tw);
     void WriteTrailer(TextWriter textWriter, PipelineStatistics stats);
     void WriteErrorInformation(ErrorInformation errorInfo, TextWriter tw, bool skipExecutionTrace = true);
@@ -1001,8 +1001,7 @@ namespace Microsoft.Boogie
         throw;
       }
       catch (UnexpectedProverOutputException upo) {
-        Options.Printer.AdvisoryWriteLine(
-          "Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}",
+        Options.Printer.AdvisoryWriteLine(traceWriter, "Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}",
           impl.Name, upo.Message);
         verificationResult.Errors = null;
         verificationResult.Outcome = VCGen.Outcome.Inconclusive;
@@ -1012,7 +1011,7 @@ namespace Microsoft.Boogie
         {
           // TODO Do we need to move this into a catch?
           if (e is IOException) {
-            Options.Printer.AdvisoryWriteLine("Advisory: {0} SKIPPED due to I/O exception: {1}",
+            Options.Printer.AdvisoryWriteLine(traceWriter, "Advisory: {0} SKIPPED due to I/O exception: {1}",
               impl.Name, e.Message);
             verificationResult.Errors = null;
             verificationResult.Outcome = VCGen.Outcome.SolverException;
