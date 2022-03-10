@@ -11,11 +11,10 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(cce.NonNullElements(args));
 
-      var options = new CommandLineOptions
+      var options = new CommandLineOptions(new ConsolePrinter())
       {
         RunningBoogieFromCommandLine = true
       };
-      ExecutionEngine.printer = new ConsolePrinter(options);
 
       if (!options.Parse(args))
       {
@@ -30,7 +29,7 @@ namespace Microsoft.Boogie
 
       if (options.Files.Count == 0)
       {
-        ExecutionEngine.printer.ErrorWriteLine(Console.Out, "*** Error: No input files were specified.");
+        options.Printer.ErrorWriteLine(Console.Out, "*** Error: No input files were specified.");
         return 1;
       }
 
@@ -45,7 +44,7 @@ namespace Microsoft.Boogie
         string errMsg = options.XmlSink.Open();
         if (errMsg != null)
         {
-          ExecutionEngine.printer.ErrorWriteLine(Console.Out, "*** Error: " + errMsg);
+          options.Printer.ErrorWriteLine(Console.Out, "*** Error: " + errMsg);
           return 1;
         }
       }
@@ -114,7 +113,7 @@ namespace Microsoft.Boogie
 
         if (extension != ".bpl")
         {
-          ExecutionEngine.printer.ErrorWriteLine(
+          options.Printer.ErrorWriteLine(
             Console.Out,
             "*** Error: '{0}': Filename extension '{1}' is not supported. Input files must be BoogiePL programs (.bpl).",
             file,

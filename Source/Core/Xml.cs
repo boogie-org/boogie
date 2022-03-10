@@ -44,15 +44,13 @@ namespace Microsoft.Boogie
       }
 
       cce.BeginExpose(this);
-      {
-        XmlWriterSettings settings = new XmlWriterSettings();
-        settings.Indent = true;
-        wr = XmlWriter.Create(filename, settings);
-        wr.WriteStartDocument();
-        wr.WriteStartElement("boogie");
-        wr.WriteAttributeString("version", options.VersionNumber);
-        wr.WriteAttributeString("commandLine", Environment.CommandLine);
-      }
+      XmlWriterSettings settings = new XmlWriterSettings();
+      settings.Indent = true;
+      wr = XmlWriter.Create(filename, settings);
+      wr.WriteStartDocument();
+      wr.WriteStartElement("boogie");
+      wr.WriteAttributeString("version", options.VersionNumber);
+      wr.WriteAttributeString("commandLine", Environment.CommandLine);
       cce.EndExpose();
       return null; // success
     }
@@ -82,11 +80,9 @@ namespace Microsoft.Boogie
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
       cce.BeginExpose(this);
-      {
-        wr.WriteStartElement("method");
-        wr.WriteAttributeString("name", methodName);
-        wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
-      }
+      wr.WriteStartElement("method");
+      wr.WriteAttributeString("name", methodName);
+      wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
       cce.EndExpose();
     }
 

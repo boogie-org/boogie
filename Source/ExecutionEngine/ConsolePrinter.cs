@@ -6,12 +6,7 @@ namespace Microsoft.Boogie;
 
 public class ConsolePrinter : OutputPrinter
 {
-  private ExecutionEngineOptions options;
-
-  public ConsolePrinter(ExecutionEngineOptions options)
-  {
-    this.options = options;
-  }
+  public ExecutionEngineOptions Options { get; set; }
 
   public void ErrorWriteLine(TextWriter tw, string s)
   {
@@ -72,7 +67,7 @@ public class ConsolePrinter : OutputPrinter
   /// </summary>
   public void Inform(string s, TextWriter tw)
   {
-    if (options.Trace || options.TraceProofObligations)
+    if (Options.Trace || Options.TraceProofObligations)
     {
       tw.WriteLine(s);
     }
@@ -86,14 +81,14 @@ public class ConsolePrinter : OutputPrinter
                       0 <= stats.TimeoutCount && 0 <= stats.OutOfMemoryCount);
 
     Console.WriteLine();
-    if (options.ShowVerifiedProcedureCount)
+    if (Options.ShowVerifiedProcedureCount)
     {
-      Console.Write("{0} finished with {1} verified, {2} error{3}", options.DescriptiveToolName,
+      Console.Write("{0} finished with {1} verified, {2} error{3}", Options.DescriptiveToolName,
         stats.VerifiedCount, stats.ErrorCount, stats.ErrorCount == 1 ? "" : "s");
     }
     else
     {
-      Console.Write("{0} finished with {1} error{2}", options.DescriptiveToolName, stats.ErrorCount,
+      Console.Write("{0} finished with {1} error{2}", Options.DescriptiveToolName, stats.ErrorCount,
         stats.ErrorCount == 1 ? "" : "s");
     }
 
@@ -159,7 +154,7 @@ public class ConsolePrinter : OutputPrinter
     string s;
     if (tok != null)
     {
-      s = string.Format("{0}({1},{2}): {3}", ExecutionEngine.GetFileNameForConsole(options, tok.filename), tok.line, tok.col,
+      s = string.Format("{0}({1},{2}): {3}", ExecutionEngine.GetFileNameForConsole(Options, tok.filename), tok.line, tok.col,
         message);
     }
     else

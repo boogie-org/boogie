@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
 
@@ -142,11 +143,11 @@ namespace Microsoft.Boogie
     protected virtual string HelpHeader =>
       $"Usage: {ToolName} [ option ... ] [ filename ... ]" + @"
 
-    ---- General options -------------------------------------------------------
+  ---- General options -------------------------------------------------------
 
-    /version      print the " + ToolName + @" version number
-    /help         print this message
-    /attrHelp     print a message about supported declaration attributes";
+  /version      print the " + ToolName + @" version number
+  /help         print this message
+  /attrHelp     print a message about supported declaration attributes";
 
     protected virtual string HelpBody => "";
 
@@ -258,25 +259,32 @@ namespace Microsoft.Boogie
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
-  public class CommandLineOptions : CommandLineOptionEngine, ExecutionEngineOptions {
-
+  public class CommandLineOptions : CommandLineOptionEngine, ExecutionEngineOptions
+  {
     public static CommandLineOptions FromArguments(params string[] arguments)
     {
-      var result = new CommandLineOptions();
+      return FromArguments(new ConsolePrinter(), arguments);
+    }
+
+    public static CommandLineOptions FromArguments(OutputPrinter printer, params string[] arguments)
+    {
+      var result = new CommandLineOptions(printer);
       result.Parse(arguments);
       return result;
     }
-    
-    public CommandLineOptions()
-      : base("Boogie", "Boogie program verifier")
-    {
+
+    public CommandLineOptions(OutputPrinter printer)
+      : this("Boogie", "Boogie program verifier", printer) {
     }
 
-    protected CommandLineOptions(string toolName, string descriptiveName)
+    protected CommandLineOptions(string toolName, string descriptiveName, OutputPrinter printer)
       : base(toolName, descriptiveName)
     {
       Contract.Requires(toolName != null);
       Contract.Requires(descriptiveName != null);
+      Contract.Requires(printer.Options == null);
+      Printer = printer;
+      printer.Options = this;
     }
 
     // Flags and arguments
@@ -287,7 +295,7 @@ namespace Microsoft.Boogie
                                   StratifiedInlining > 0 && !StratifiedInliningWithoutModels;
 
     public bool ProduceModel => ExplainHoudini || UseProverEvaluate || ExpectingModel;
-    
+
     public bool RunningBoogieFromCommandLine { get; set; }
 
     [ContractInvariantMethod]
@@ -312,7 +320,7 @@ namespace Microsoft.Boogie
       get => emitDebugInformation;
       set => emitDebugInformation = value;
     }
-    
+
     public int PrintUnstructured {
       get => printUnstructured;
       set => printUnstructured = value;
@@ -342,20 +350,20 @@ namespace Microsoft.Boogie
     }
     public string ProverPreamble { get; set; }
     public bool WarnNotEliminatedVars { get; set; }
-    
+
     /**
      * Pruning will remove any top-level Boogie declarations that are not accessible by the implementation that is about to be verified.
      *
      * # Why pruning?
      * Without pruning, a change to any part of a Boogie program has the potential to affect the verification of any other part of the program.
-     * 
+     *
      * When pruning is used, a declaration of a Boogie program can be changed with the guarantee that the verification of
      * implementations that do not depend on the modified declaration, remains unchanged.
      *
      * # How to use pruning
      * Pruning depends on the dependency graph of Boogie declarations.
      * This graph must contain both incoming and outgoing edges for axioms.
-     * 
+     *
      * Outgoing edges for axioms are detected automatically:
      * an axiom has an outgoing edge to each declaration that it references.
      *
@@ -374,12 +382,12 @@ namespace Microsoft.Boogie
      *   ensures F(x) - x == x
      * { }
      * ```
-     * 
+     *
      * When verifying FMultipliedByTwo, pruning will remove G and its axiom, but not F and its axiom.
      *
      * Axioms defined in a uses clause have an incoming edge from the clause's declaration.
      * Uses clauses can be placed on functions and constants.
-     * 
+     *
      * Adding the {:include_dep} attribute to an axiom will give it an incoming edge from each declaration that it references.
      * The {:include_dep} attribute is useful in a migration scenario.
      * When turning on pruning in a Boogie program with many axioms,
@@ -399,7 +407,7 @@ namespace Microsoft.Boogie
     public CoreOptions.InstrumentationPlaces InstrumentInfer { get; set; } = CoreOptions.InstrumentationPlaces.LoopHeaders;
 
     public int? RandomSeed { get; set; }
-    
+
     public bool PrintWithUniqueASTIds {
       get => printWithUniqueAstIds;
       set => printWithUniqueAstIds = value;
@@ -419,7 +427,7 @@ namespace Microsoft.Boogie
       get => normalizeNames;
       set => normalizeNames = value;
     }
-    
+
     public bool NormalizeDeclarationOrder
     {
       get => normalizeDeclarationOrder;
@@ -460,7 +468,7 @@ namespace Microsoft.Boogie
 
     public int /*(0:3)*/
       ErrorTrace { get; set; } = 1;
-    
+
     public bool IntraproceduralInfer { get; set; }= true;
 
     public bool ContractInfer {
@@ -549,6 +557,9 @@ namespace Microsoft.Boogie
     public bool AlwaysAssumeFreeLoopInvariants { get; set; }
 
     public ExecutionEngineOptions.ShowEnvironment ShowEnv { get; set; } = ExecutionEngineOptions.ShowEnvironment.DuringPrint;
+
+    public OutputPrinter Printer { get; set;  }
+
     public bool ShowVerifiedProcedureCount { get; set; } = true;
 
     [ContractInvariantMethod]
@@ -564,7 +575,7 @@ namespace Microsoft.Boogie
     public int LoopUnrollCount { get; set; } = -1; // -1 means don't unroll loops
     public bool SoundLoopUnrolling { get; set; }
     public int PrintErrorModel { get; set; }
-    public string PrintErrorModelFile { get; set; }
+    private string printErrorModelFile;
 
     public string /*?*/ ModelViewFile { get; set; }
 
@@ -602,6 +613,8 @@ namespace Microsoft.Boogie
       get => siBoolControlVc;
       set => siBoolControlVc = value;
     }
+
+    public TextWriter ModelWriter { get; private set; }
 
     public bool ExpandLambdas { get; set; } = true; // not useful from command line, only to be set to false programatically
 
@@ -1054,7 +1067,7 @@ namespace Microsoft.Boogie
         case "printModelToFile":
           if (ps.ConfirmArgumentCount(1))
           {
-            PrintErrorModelFile = args[ps.i];
+            printErrorModelFile = args[ps.i];
           }
 
           return true;
@@ -1545,16 +1558,21 @@ namespace Microsoft.Boogie
 
       base.ApplyDefaultOptions();
 
+
       // expand macros in filenames, now that LogPrefix is fully determined
       ExpandFilename(XmlSinkFilename, x => XmlSinkFilename = x, LogPrefix, FileTimestamp);
       ExpandFilename(PrintFile, x => PrintFile = x, LogPrefix, FileTimestamp);
       ExpandFilename(ProverLogFilePath, x => ProverLogFilePath = x, LogPrefix, FileTimestamp);
-      ExpandFilename(PrintErrorModelFile, x => PrintErrorModelFile = x, LogPrefix, FileTimestamp);
+      ExpandFilename(printErrorModelFile, x => printErrorModelFile = x, LogPrefix, FileTimestamp);
 
       Contract.Assume(XmlSink == null); // XmlSink is to be set here
       if (XmlSinkFilename != null)
       {
         XmlSink = new XmlSink(this, XmlSinkFilename);
+      }
+
+      if (printErrorModelFile != null) {
+        ModelWriter = new StreamWriter(printErrorModelFile, false);
       }
 
       if (TheProverFactory == null)

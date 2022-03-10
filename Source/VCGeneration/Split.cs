@@ -1306,7 +1306,6 @@ namespace VC
 
         var resourceCount = checker.GetProverResourceCount().Result;
         totalResourceCount += resourceCount;
-
         var result = new VCResult(splitNum + 1, checker.ProverStart, outcome, checker.ProverRunTime, Asserts, resourceCount);
         callback.OnVCResult(result);
 
@@ -1364,7 +1363,8 @@ namespace VC
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
       /// </summary>
-      public void BeginCheck(TextWriter traceWriter, Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int no, uint timeout, uint rlimit, CancellationToken cancellationToken)
+      public void BeginCheck(TextWriter traceWriter, Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int no, uint timeout,
+        uint rlimit, CancellationToken cancellationToken)
       {
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
@@ -1493,9 +1493,8 @@ namespace VC
         }
       }
 
-      public void ReleaseChecker()
+      public void ResetChecker()
       {
-        Checker.GoBackToIdle();
         checker = null;
       }
     }
