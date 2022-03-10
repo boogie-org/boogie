@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 
@@ -264,30 +265,18 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static readonly HashSet<string> UsedLogNames = new();
+    private static readonly ConcurrentDictionary<string, int> UsedLogNames = new();
     public static (string fileName, bool reused) GetLogFilename(string descriptiveName, string filename, bool allowReuse)
     {
       filename = SubstituteAtProc(descriptiveName, cce.NonNull(filename));
-      var curFilename = filename;
-      var reused = false;
 
-      lock (UsedLogNames) {
-        int n = 1;
-        while (!allowReuse && UsedLogNames.Contains(curFilename)) {
-          curFilename = filename + "." + n++;
-        }
+      var reused = allowReuse && UsedLogNames.ContainsKey(filename);
+      var index = UsedLogNames.AddOrUpdate(filename, 0, (_, i) => allowReuse ? i : i + 1);
+      var filenameWithIndex = index > 0 ? filename + "." + index : filename;
 
-        if (UsedLogNames.Contains(curFilename)) {
-          reused = true;
-        }
-
-        UsedLogNames.Add(curFilename);
-      }
-
-      return (curFilename, reused);
+      return (filenameWithIndex, reused);
     }
 
-    // Substitute @PROC@ in a filename with the given descName
     private static string SubstituteAtProc(string descriptiveName, string filename)
     {
       Contract.Requires(filename != null);
