@@ -268,7 +268,7 @@ namespace Microsoft.Boogie
     private static readonly ConcurrentDictionary<string, int> UsedLogNames = new();
     public static (string fileName, bool reused) GetLogFilename(string descriptiveName, string filename, bool allowReuse)
     {
-      filename = SubstituteAtProc(descriptiveName, cce.NonNull(filename));
+      filename = SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
 
       var reused = allowReuse && UsedLogNames.ContainsKey(filename);
       var index = UsedLogNames.AddOrUpdate(filename, 0, (_, i) => allowReuse ? i : i + 1);
@@ -277,7 +277,7 @@ namespace Microsoft.Boogie
       return (filenameWithIndex, reused);
     }
 
-    private static string SubstituteAtProc(string descriptiveName, string filename)
+    private static string SubstituteAtPROC(string descriptiveName, string filename)
     {
       Contract.Requires(filename != null);
       Contract.Requires(descriptiveName != null);
