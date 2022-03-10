@@ -379,6 +379,8 @@ namespace Microsoft.Boogie
     {
       if (civlTypeChecker.procToAtomicAction.ContainsKey(node.Proc) ||
           civlTypeChecker.procToIntroductionAction.ContainsKey(node.Proc) ||
+          civlTypeChecker.procToIsAbstraction.ContainsKey(node.Proc) ||
+          civlTypeChecker.procToIsInvariant.ContainsKey(node.Proc) ||
           civlTypeChecker.procToLemmaProc.ContainsKey(node.Proc))
       {
         return node;
