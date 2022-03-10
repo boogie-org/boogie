@@ -125,22 +125,8 @@ CONSUMER' (x:int, {:linear_in "pid"} pid:int)
 returns ({:pending_async "CONSUMER"} PAs:[PA]int)
 modifies head;
 {
-  var x':int;
-
-  assert pid == cons_id;
-  assert head < tail && (C[head] == x || C[head] == 0);
-
-  assume head < tail;
-  x' := C[head];
-  head := head + 1;
-  if (x' != 0)
-  {
-    PAs := NoPAs()[CONSUMER(x'+1, pid) := 1];
-  }
-  else
-  {
-    PAs := NoPAs();
-  }
+  assert head < tail;
+  call PAs := CONSUMER(x, pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
