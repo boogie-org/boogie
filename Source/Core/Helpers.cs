@@ -270,8 +270,11 @@ namespace Microsoft.Boogie
     {
       filename = SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
 
-      var reused = allowReuse && UsedLogNames.ContainsKey(filename);
-      var index = UsedLogNames.AddOrUpdate(filename, 0, (_, i) => allowReuse ? i : i + 1);
+      var reused = false;
+      var index = UsedLogNames.AddOrUpdate(filename, 0, (_, i) => {
+        reused = allowReuse;
+        return allowReuse ? i : i + 1;
+      });
       var filenameWithIndex = index > 0 ? filename + "." + index : filename;
 
       return (filenameWithIndex, reused);
