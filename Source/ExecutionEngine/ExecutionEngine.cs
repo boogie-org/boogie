@@ -971,7 +971,13 @@ namespace Microsoft.Boogie
           Cache.Insert(impl, verificationResult);
         }
       }
-      verificationResult.Emit(this, stats, er, index, outputCollector, output, impl, wasCached);
+      verificationResult.Emit(this, stats, er, output, impl, wasCached);
+
+      outputCollector.Add(index, output);
+      outputCollector.WriteMoreOutput();
+      if (verificationResult.Outcome == VCGen.Outcome.Errors || Options.Trace) {
+        Console.Out.Flush();
+      }
     }
 
     private VerificationResult GetCachedVerificationResult(Implementation impl, TextWriter output)
@@ -1007,11 +1013,10 @@ namespace Microsoft.Boogie
         try {
           var cancellationToken = RequestIdToCancellationTokenSource[requestId].Token;
           verificationResult.Outcome =
-            vcgen.VerifyImplementation(impl, out verificationResult.Errors,
+            vcgen.VerifyImplementation(new ImplementationRun(impl, output), out verificationResult.Errors,
               out verificationResult.VCResults, requestId, cancellationToken);
           if (Options.ExtractLoops && verificationResult.Errors != null) {
-            var vcg = vcgen as VCGen;
-            if (vcg != null) {
+            if (vcgen is VCGen vcg) {
               for (int i = 0; i < verificationResult.Errors.Count; i++) {
                 verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name,
                   program, extractLoopMappingInfo);
@@ -1023,13 +1028,13 @@ namespace Microsoft.Boogie
           var errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok,
             String.Format("{0} (encountered in implementation {1}).", e.Message, impl.Name), requestId, "Error");
           errorInfo.ImplementationName = impl.Name;
-          printer.WriteErrorInformation(errorInfo, output);
           if (er != null) {
             lock (er) {
               er(errorInfo);
             }
           }
 
+          verificationResult.ErrorBeforeVerification = errorInfo;
           verificationResult.Errors = null;
           verificationResult.Outcome = VCGen.Outcome.Inconclusive;
         }
@@ -1082,7 +1087,7 @@ namespace Microsoft.Boogie
       }
 
       Houdini.HoudiniSession.HoudiniStatistics houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
-      Houdini.Houdini houdini = new Houdini.Houdini(Options, program, houdiniStats);
+      Houdini.Houdini houdini = new Houdini.Houdini(Console.Out, Options, program, houdiniStats);
       Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
       houdini.Close();
 
@@ -1136,7 +1141,7 @@ namespace Microsoft.Boogie
     private PipelineOutcome RunStagedHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
     {
       Houdini.HoudiniSession.HoudiniStatistics houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
-      var stagedHoudini = new Houdini.StagedHoudini(Options, program, houdiniStats, ProgramFromFile);
+      var stagedHoudini = new Houdini.StagedHoudini(Console.Out, Options, program, houdiniStats, ProgramFromFile);
       Houdini.HoudiniOutcome outcome = stagedHoudini.PerformStagedHoudiniInference();
 
       if (Options.PrintAssignment)

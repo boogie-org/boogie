@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.BaseTypes;
@@ -65,7 +66,7 @@ namespace VC
       void ObjectInvariant()
       {
         Contract.Invariant(parent != null);
-        Contract.Invariant(impl != null);
+        Contract.Invariant(run != null);
         Contract.Invariant(initial != null);
         Contract.Invariant(cce.NonNullDictionaryAndValues(copies));
         Contract.Invariant(cce.NonNull(visited));
@@ -73,21 +74,21 @@ namespace VC
       }
 
       VCGen parent;
-      Implementation impl;
+      ImplementationRun run;
       Block initial;
       int id;
       Dictionary<Block, Block> copies = new Dictionary<Block, Block>();
       HashSet<Block> visited = new HashSet<Block>();
       VerifierCallback callback;
 
-      internal SmokeTester(VCGen par, Implementation i, VerifierCallback callback)
+      internal SmokeTester(VCGen par, ImplementationRun run, VerifierCallback callback)
       {
         Contract.Requires(par != null);
-        Contract.Requires(i != null);
+        Contract.Requires(run != null);
         Contract.Requires(callback != null);
         parent = par;
-        impl = i;
-        initial = i.Blocks[0];
+        this.run = run;
+        initial = run.Implementation.Blocks[0];
         this.callback = callback;
       }
 
@@ -95,32 +96,32 @@ namespace VC
 
       internal void Copy()
       {
-        CloneBlock(impl.Blocks[0]);
+        CloneBlock(run.Implementation.Blocks[0]);
         initial = GetCopiedBlocks()[0];
       }
 
-      internal void Test()
+      internal void Test(TextWriter traceWriter)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-        DFS(initial);
+        DFS(traceWriter, initial);
       }
       
       void TopologicalSortImpl()
       {
-        Graph<Block> dag = Program.GraphFromImpl(impl);
-        impl.Blocks = new List<Block>();
+        Graph<Block> dag = Program.GraphFromImpl(run.Implementation);
+        run.Implementation.Blocks = new List<Block>();
         foreach (Block b in dag.TopologicalSort())
         {
           Contract.Assert(b != null);
-          impl.Blocks.Add(b);
+          run.Implementation.Blocks.Add(b);
         }
       }
 
       void Emit()
       {
         TopologicalSortImpl();
-        EmitImpl(Options, impl, false);
+        EmitImpl(Options, run.Implementation, false);
       }
 
       // this one copies forward
@@ -282,7 +283,7 @@ namespace VC
         return BooleanEval(e, ref val) && !val;
       }
 
-      bool CheckUnreachable(Block cur, List<Cmd> seq)
+      bool CheckUnreachable(TextWriter traceWriter, Block cur, List<Cmd> seq)
       {
         Contract.Requires(cur != null);
         Contract.Requires(seq != null);
@@ -310,9 +311,9 @@ namespace VC
         Block copy = CopyBlock(cur);
         Contract.Assert(copy != null);
         copy.Cmds = seq;
-        List<Block> backup = impl.Blocks;
+        List<Block> backup = run.Implementation.Blocks;
         Contract.Assert(backup != null);
-        impl.Blocks = GetCopiedBlocks();
+        run.Implementation.Blocks = GetCopiedBlocks();
         copy.TransferCmd = new ReturnCmd(Token.NoToken);
         if (Options.TraceVerify)
         {
@@ -321,8 +322,8 @@ namespace VC
           Emit();
         }
 
-        parent.CurrentLocalVariables = impl.LocVars;
-        parent.PassifyImpl(impl, out var mvInfo);
+        parent.CurrentLocalVariables = run.Implementation.LocVars;
+        parent.PassifyImpl(run, out var mvInfo);
         Checker ch = parent.CheckerPool.FindCheckerFor(parent).Result;
         Contract.Assert(ch != null);
 
@@ -336,16 +337,16 @@ namespace VC
 
             var absyIds = new ControlFlowIdMap<Absy>();
             
-            VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, absyIds, ch.TheoremProver.Context);
+            VCExpr vc = parent.GenerateVC(run.Implementation, controlFlowVariableExpr, absyIds, ch.TheoremProver.Context);
             Contract.Assert(vc != null);
 
             VCExpr controlFlowFunctionAppl =
               exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
             VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl,
-              exprGen.Integer(BigNum.FromInt(absyIds.GetId(impl.Blocks[0]))));
+              exprGen.Integer(BigNum.FromInt(absyIds.GetId(run.Implementation.Blocks[0]))));
             vc = exprGen.Implies(eqExpr, vc);
 
-            impl.Blocks = backup;
+            run.Implementation.Blocks = backup;
 
             if (Options.TraceVerify)
             {
@@ -353,7 +354,7 @@ namespace VC
               Emit();
             }
 
-            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(Options, absyIds, callback),
+            ch.BeginCheck(cce.NonNull(Implementation.Name + "_smoke" + id++), vc, new ErrorHandler(Options, absyIds, callback),
               Options.SmokeTimeout, Options.ResourceLimit, CancellationToken.None);
           }
 
@@ -386,19 +387,21 @@ namespace VC
           // copy it again, so we get the version with calls, assignments and such
           copy = CopyBlock(cur);
           copy.Cmds = seq;
-          impl.Blocks = GetCopiedBlocks();
+          Implementation.Blocks = GetCopiedBlocks();
           TopologicalSortImpl();
-          callback.OnUnreachableCode(impl);
-          impl.Blocks = backup;
+          callback.OnUnreachableCode(Implementation);
+          Implementation.Blocks = backup;
           return true;
         }
 
         return false;
       }
 
+      private Implementation Implementation => run.Implementation;
+
       const bool turnAssertIntoAssumes = false;
 
-      void DFS(Block cur)
+      void DFS(TextWriter traceWriter, Block cur)
       {
         Contract.Requires(cur != null);
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -458,7 +461,7 @@ namespace VC
 
           if (assumeFalse)
           {
-            CheckUnreachable(cur, seq);
+            CheckUnreachable(traceWriter, cur, seq);
             return;
           }
 
@@ -474,7 +477,7 @@ namespace VC
         if (ret != null || (go != null && cce.NonNull(go.labelTargets).Count == 0))
         {
           // we end in return, so there will be no more places to check
-          CheckUnreachable(cur, seq);
+          CheckUnreachable(traceWriter, cur, seq);
         }
         else if (go != null)
         {
@@ -492,13 +495,13 @@ namespace VC
 
           if (needToCheck)
           {
-            CheckUnreachable(cur, seq);
+            CheckUnreachable(traceWriter, cur, seq);
           }
 
           foreach (Block target in go.labelTargets)
           {
             Contract.Assert(target != null);
-            DFS(target);
+            DFS(traceWriter, target);
           }
         }
       }
@@ -545,12 +548,15 @@ namespace VC
 
     public class CodeExprConversionClosure
     {
+      private readonly TextWriter traceWriter;
       private readonly VCGenOptions options;
       ControlFlowIdMap<Absy> absyIds;
       ProverContext ctx;
 
-      public CodeExprConversionClosure(VCGenOptions options, ControlFlowIdMap<Absy> absyIds, ProverContext ctx)
+      public CodeExprConversionClosure(TextWriter traceWriter, VCGenOptions options, ControlFlowIdMap<Absy> absyIds,
+        ProverContext ctx)
       {
+        this.traceWriter = traceWriter;
         this.options = options;
         this.absyIds = absyIds;
         this.ctx = ctx;
@@ -565,7 +571,7 @@ namespace VC
 
         ResetPredecessors(codeExpr.Blocks);
         vcgen.AddBlocksBetween(codeExpr.Blocks);
-        Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks,
+        Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(traceWriter, codeExpr.Blocks,
           new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
         VCExpr startCorrect = vcgen.LetVC(codeExpr.Blocks, null, absyIds, ctx, out var ac, isPositiveContext);
         VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
@@ -813,12 +819,14 @@ namespace VC
 
     private VCGenOptions Options => CheckerPool.Options;
 
-    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback,
+    public override Outcome VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-      if (impl.IsSkipVerification(Options))
+      var impl = run.Implementation;
+
+      if (run.Implementation.IsSkipVerification(Options))
       {
         return Outcome.Inconclusive; // not sure about this one
       }
@@ -832,16 +840,16 @@ namespace VC
       watch.Start();
 #endif
 
-      ConvertCFG2DAG(impl);
+      ConvertCFG2DAG(run.Implementation);
 
       SmokeTester smoke_tester = null;
       if (Options.SoundnessSmokeTest)
       {
-        smoke_tester = new SmokeTester(this, impl, callback);
+        smoke_tester = new SmokeTester(this, run, callback);
         smoke_tester.Copy();
       }
 
-      var gotoCmdOrigins = PassifyImpl(impl, out var mvInfo);
+      var gotoCmdOrigins = PassifyImpl(run, out var mvInfo);
 
       ExpandAsserts(impl);
 
@@ -854,8 +862,7 @@ namespace VC
         foreach (var a in impl.RecycledFailingAssertions)
         {
           var checksum = a.Checksum;
-          var oldCex = impl.ErrorChecksumToCachedError[checksum] as Counterexample;
-          if (oldCex != null)
+          if (impl.ErrorChecksumToCachedError[checksum] is Counterexample oldCex)
           {
             if (Options.VerifySnapshots < 3)
             {
@@ -875,13 +882,13 @@ namespace VC
         }
       }
 
-      var worker = new SplitAndVerifyWorker(Options, this, impl, gotoCmdOrigins, callback, mvInfo, outcome);
+      var worker = new SplitAndVerifyWorker(Options, this, run, gotoCmdOrigins, callback, mvInfo, outcome);
       outcome = worker.WorkUntilDone(cancellationToken).Result;
       ResourceCount = worker.ResourceCount;
       
       if (outcome == Outcome.Correct && smoke_tester != null)
       {
-        smoke_tester.Test();
+        smoke_tester.Test(run.TraceWriter);
       }
 
       callback.OnProgress?.Invoke("done", 0, 0, 1.0);
@@ -1692,12 +1699,13 @@ namespace VC
       }
     }
 
-    public Dictionary<TransferCmd, ReturnCmd> PassifyImpl(Implementation impl, out ModelViewInfo mvInfo)
+    public Dictionary<TransferCmd, ReturnCmd> PassifyImpl(ImplementationRun run, out ModelViewInfo mvInfo)
     {
-      Contract.Requires(impl != null);
+      Contract.Requires(run != null);
       Contract.Requires(program != null);
       Contract.Ensures(Contract.Result<Dictionary<TransferCmd, ReturnCmd>>() != null);
 
+      var impl = run.Implementation;
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins = new Dictionary<TransferCmd, ReturnCmd>();
       Block exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
 
@@ -1793,7 +1801,7 @@ namespace VC
       }
 
       mvInfo = new ModelViewInfo(program, impl);
-      Convert2PassiveCmd(impl, mvInfo);
+      Convert2PassiveCmd(run, mvInfo);
 
       if (QKeyValue.FindBoolAttribute(impl.Attributes, "may_unverified_instrumentation"))
       {

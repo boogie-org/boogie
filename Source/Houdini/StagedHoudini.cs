@@ -2,14 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 using System.Threading;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie.Houdini
 {
-  public class StagedHoudini
-  {
+  public class StagedHoudini {
+    private TextWriter traceWriter;
     private readonly HoudiniOptions options;
     private Program program;
     private HoudiniSession.HoudiniStatistics houdiniStats;
@@ -21,13 +22,15 @@ namespace Microsoft.Boogie.Houdini
 
     private const string tempFilename = "__stagedHoudiniTemp.bpl";
 
-    public StagedHoudini(HoudiniOptions options, Program program, HoudiniSession.HoudiniStatistics houdiniStats,
+    public StagedHoudini(TextWriter traceWriter, HoudiniOptions options, Program program,
+      HoudiniSession.HoudiniStatistics houdiniStats,
       Func<string, Program> ProgramFromFile)
     {
       this.options = options;
       this.program = program;
       this.houdiniStats = houdiniStats;
       this.ProgramFromFile = ProgramFromFile;
+      this.traceWriter = traceWriter;
       this.houdiniInstances = new List<Houdini>[options.StagedHoudiniThreads];
       for (int i = 0; i < options.StagedHoudiniThreads; i++)
       {
@@ -149,7 +152,7 @@ namespace Microsoft.Boogie.Houdini
     {
       if (NoStages())
       {
-        Houdini houdini = new Houdini(options, program, houdiniStats);
+        Houdini houdini = new Houdini(traceWriter, options, program, houdiniStats);
         return houdini.PerformHoudiniInference();
       }
 
@@ -233,7 +236,7 @@ namespace Microsoft.Boogie.Houdini
 
       if (!h.Any())
       {
-        h.Add(new Houdini(options, ProgramFromFile(tempFilename), new HoudiniSession.HoudiniStatistics(),
+        h.Add(new Houdini(traceWriter, options, ProgramFromFile(tempFilename), new HoudiniSession.HoudiniStatistics(),
           "houdiniCexTrace_" + s.GetId() + ".txt"));
       }
 
