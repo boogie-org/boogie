@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -29,7 +30,7 @@ public static class GetProverLogs
     var temp1 = directory + "/proverLog";
     engine.Options.ProverLogFilePath = temp1;
     engine.Options.ProverOptions.Add("SOLVER=noop");
-    var success1 = engine.ProcessProgram(program1, "1");
+    var success1 = engine.ProcessProgram(Console.Out, program1, "1");
     foreach (var proverFile in Directory.GetFiles(directory)) {
       yield return File.ReadAllText(proverFile);
     }

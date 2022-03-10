@@ -23,7 +23,7 @@ namespace Microsoft.Boogie
     void ErrorWriteLine(TextWriter tw, string format, params object[] args);
     void AdvisoryWriteLine(string format, params object[] args);
     void Inform(string s, TextWriter tw);
-    void WriteTrailer(PipelineStatistics stats);
+    void WriteTrailer(TextWriter textWriter, PipelineStatistics stats);
     void WriteErrorInformation(ErrorInformation errorInfo, TextWriter tw, bool skipExecutionTrace = true);
     void ReportBplError(IToken tok, string message, bool error, TextWriter tw, string category = null);
   }
@@ -245,13 +245,13 @@ namespace Microsoft.Boogie
 
     static ThreadTaskScheduler LargeStackScheduler = new ThreadTaskScheduler(16 * 1024 * 1024);
 
-    public bool ProcessFiles(IList<string> fileNames, bool lookForSnapshots = true, string programId = null)
+    public bool ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true, string programId = null)
     {
       Contract.Requires(cce.NonNullElements(fileNames));
 
       if (Options.VerifySeparately && 1 < fileNames.Count)
       {
-        return fileNames.All(f => ProcessFiles( new List<string> {f}, lookForSnapshots, f));
+        return fileNames.All(f => ProcessFiles( output, new List<string> {f}, lookForSnapshots, f));
       }
 
       if (0 <= Options.VerifySnapshots && lookForSnapshots)
@@ -261,7 +261,7 @@ namespace Microsoft.Boogie
         {
           // BUG: Reusing checkers during snapshots doesn't work, even though it should. We create a new engine (and thus checker pool) to workaround this.
           using var engine = new ExecutionEngine(Options, Cache);
-          return engine.ProcessFiles(new List<string>(s), false, programId);
+          return engine.ProcessFiles(output, new List<string>(s), false, programId);
         });
       }
 
@@ -272,10 +272,10 @@ namespace Microsoft.Boogie
       {
         return true;
       }
-      return ProcessProgram(program, bplFileName, programId);
+      return ProcessProgram(output, program, bplFileName, programId).Result;
     }
 
-    public bool ProcessProgram(Program program, string bplFileName, string programId = null)
+    public async Task<bool> ProcessProgram(TextWriter output, Program program, string bplFileName, string programId = null)
     {
       if (programId == null)
       {
@@ -314,11 +314,11 @@ namespace Microsoft.Boogie
       Inline(program);
 
       var stats = new PipelineStatistics();
-      outcome = InferAndVerify(program, stats, 1 < Options.VerifySnapshots ? programId : null).Result;
+      outcome = await InferAndVerify(output, program, stats, 1 < Options.VerifySnapshots ? programId : null);
       switch (outcome) {
         case PipelineOutcome.Done:
         case PipelineOutcome.VerificationCompleted:
-          Options.Printer.WriteTrailer(stats);
+          Options.Printer.WriteTrailer(output, stats);
           return true;
         case PipelineOutcome.FatalError:
           return false;
@@ -668,6 +668,7 @@ namespace Microsoft.Boogie
     ///    parameters contain meaningful values
     /// </summary>
     public async Task<PipelineOutcome> InferAndVerify(
+      TextWriter output,
       Program program,
       PipelineStatistics stats,
       string programId = null,
@@ -742,7 +743,7 @@ namespace Microsoft.Boogie
           out stats.CachingActionCounts);
       }
 
-      var outcome = await VerifyEachImplementation(program, stats, programId, er, requestId, stablePrioritizedImpls, extractLoopMappingInfo);
+      var outcome = await VerifyEachImplementation(output, program, stats, programId, er, requestId, stablePrioritizedImpls, extractLoopMappingInfo);
 
       if (1 < Options.VerifySnapshots && programId != null)
       {
@@ -775,12 +776,12 @@ namespace Microsoft.Boogie
       return stablePrioritizedImpls;
     }
 
-    private async Task<PipelineOutcome> VerifyEachImplementation(
-      Program program, PipelineStatistics stats,
+    private async Task<PipelineOutcome> VerifyEachImplementation(TextWriter output, Program program,
+      PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
-      var consoleCollector = new ConcurrentToSequentialWriteManager(Console.Out);
+      var consoleCollector = new ConcurrentToSequentialWriteManager(output);
       program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(Options, program);
 
       var cts = new CancellationTokenSource();

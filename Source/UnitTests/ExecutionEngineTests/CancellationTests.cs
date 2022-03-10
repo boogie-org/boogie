@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
 using NUnit.Framework;
@@ -33,13 +34,13 @@ namespace ExecutionEngineTests
 
       var requestId = ExecutionEngine.FreshRequestId();
       var outcomeTask =
-        executionEngine.InferAndVerify(infiniteProgram, new PipelineStatistics(), requestId, null, requestId);
+        executionEngine.InferAndVerify(Console.Out, infiniteProgram, new PipelineStatistics(), requestId, null, requestId);
       await Task.Delay(1000);
       ExecutionEngine.CancelRequest(requestId);
       var outcome = await outcomeTask;
       Assert.AreEqual(PipelineOutcome.Cancelled, outcome);
       var requestId2 = ExecutionEngine.FreshRequestId();
-      var outcome2 = await executionEngine.InferAndVerify(terminatingProgram, new PipelineStatistics(), requestId2, null, requestId2);
+      var outcome2 = await executionEngine.InferAndVerify(Console.Out, terminatingProgram, new PipelineStatistics(), requestId2, null, requestId2);
       Assert.AreEqual(PipelineOutcome.VerificationCompleted, outcome2);
     }
 
