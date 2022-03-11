@@ -28,9 +28,6 @@ namespace Microsoft.Boogie
     void ReportImplementationsBeforeVerification(Implementation[] implementations);
     void ReportStartVerifyImplementation(Implementation implementation);
     void ReportEndVerifyImplementation(Implementation implementation, VerificationResult result);
-    
-    // non-positive for default priority.
-    int GetVerificationPriority(IToken implTok);
   }
 
   #endregion
@@ -788,23 +785,16 @@ namespace Microsoft.Boogie
       // operate on a stable copy, in case it gets updated while we're running
       Implementation[] stablePrioritizedImpls = null;
       // Ask the printer for custom priorities to verify implementations
-      var userDefinedPriorities =
-        impls.ToDictionary(impl => impl,
-          impl => printer.GetVerificationPriority(impl.tok));
-
-      int UserPriorityOrDefault(Implementation impl, int defaultPriority) {
-        var userDefinedPriority = userDefinedPriorities[impl];
-        return userDefinedPriority > 0 ? userDefinedPriority : defaultPriority;
-      }
+      
       if (0 < Options.VerifySnapshots) {
         OtherDefinitionAxiomsCollector.Collect(Options, program.Axioms);
         DependencyCollector.Collect(Options, program);
         stablePrioritizedImpls = impls.OrderByDescending(
           impl =>
-            UserPriorityOrDefault(impl, impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl, Options.RunDiagnosticsOnTimeout))
+            impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl, Options.RunDiagnosticsOnTimeout)
           ).ToArray();
       } else {
-        stablePrioritizedImpls = impls.OrderByDescending(impl => UserPriorityOrDefault(impl, impl.Priority)).ToArray();
+        stablePrioritizedImpls = impls.OrderByDescending(impl => impl.Priority).ToArray();
       }
 
       return stablePrioritizedImpls;
