@@ -137,7 +137,7 @@ public class ConsolePrinter : OutputPrinter
     }
 
     tw.Write(errorInfo.Out.ToString());
-    tw.Write(errorInfo.Model.ToString());
+    tw.Write(errorInfo.ModelWriter.ToString());
     tw.Flush();
   }
 
