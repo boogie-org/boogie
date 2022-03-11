@@ -957,6 +957,33 @@ namespace Microsoft.Boogie
       return verificationResult;
     }
 
+    private VerificationResult GetCachedVerificationResult(Implementation impl, TextWriter output)
+    {
+      if (0 >= Options.VerifySnapshots)
+      {
+        return null;
+      }
+
+      var cachedResults = Cache.Lookup(impl, Options.RunDiagnosticsOnTimeout, out var priority);
+      if (cachedResults == null || priority != Priority.SKIP)
+      {
+        return null;
+      }
+
+      if (Options.VerifySnapshots < 3 ||
+          cachedResults.Outcome == ConditionGeneration.Outcome.Correct) {
+        Options.Printer.Inform($"Retrieving cached verification result for implementation {impl.Name}...", output);
+        return cachedResults;
+      }
+
+      return null;
+    }
+
+    private ConditionGeneration CreateVCGen(Program program)
+    {
+      return new VCGen(program, checkerPool);
+    }
+
     private async Task<VerificationResult> VerifyImplementationWithoutCaching(Program program,
       PipelineStatistics stats, ErrorReporterDelegate er, string requestId,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
@@ -1029,32 +1056,6 @@ namespace Microsoft.Boogie
       return verificationResult;
     }
 
-    private VerificationResult GetCachedVerificationResult(Implementation impl, TextWriter output)
-    {
-      if (0 >= Options.VerifySnapshots)
-      {
-        return null;
-      }
-
-      var cachedResults = Cache.Lookup(impl, Options.RunDiagnosticsOnTimeout, out var priority);
-      if (cachedResults == null || priority != Priority.SKIP)
-      {
-        return null;
-      }
-
-      if (Options.VerifySnapshots < 3 ||
-          cachedResults.Outcome == ConditionGeneration.Outcome.Correct) {
-        Options.Printer.Inform($"Retrieving cached verification result for implementation {impl.Name}...", output);
-        return cachedResults;
-      }
-
-      return null;
-    }
-
-    private ConditionGeneration CreateVCGen(Program program)
-    {
-      return new VCGen(program, checkerPool);
-    }
 
     #region Houdini
 
@@ -1176,8 +1177,7 @@ namespace Microsoft.Boogie
       printer.Inform(timeIndication + OutcomeIndication(outcome, errors), tw);
 
       ReportOutcome(printer, outcome, er, implName, implTok, requestId, msgIfVerifies, tw, timeLimit, errors);
-  }
-
+    }
 
     public void ReportOutcome(OutputPrinter printer,
       ConditionGeneration.Outcome outcome, ErrorReporterDelegate er, string implName,
