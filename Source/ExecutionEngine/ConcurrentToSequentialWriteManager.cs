@@ -3,6 +3,10 @@ using System.IO;
 
 namespace Microsoft.Boogie;
 
+/// <summary>
+/// Allows grouping writes from concurrent sources before sending them to a single TextWriter.
+/// For each concurrent source, a TextWriter can be spawned using AppendWriter.
+/// </summary>
 public class ConcurrentToSequentialWriteManager
 {
   public TextWriter Writer { get; }

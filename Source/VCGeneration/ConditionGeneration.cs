@@ -10,6 +10,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using VC;
 using Set = Microsoft.Boogie.GSet<object>;
 
 namespace VC
@@ -139,8 +140,7 @@ namespace VC
 
     private VCGenOptions Options => CheckerPool.Options;
 
-    public abstract Task<Outcome> VerifyImplementation(ImplementationRun run,
-      VerifierCallback callback,
+    public abstract Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////

@@ -110,7 +110,7 @@ namespace Microsoft.Boogie.Houdini
   }
 
 
-  public class HoudiniSession
+  public class HoudiniSession : ProofRun
   {
     public class HoudiniStatistics
     {
@@ -121,7 +121,7 @@ namespace Microsoft.Boogie.Houdini
       public int numUnsatCorePrunings = 0;
     }
 
-    public string descriptiveName;
+    public string Description { get; }
     private readonly Houdini houdini;
     public HoudiniStatistics stats;
     private VCExpr conjecture;
@@ -156,7 +156,7 @@ namespace Microsoft.Boogie.Houdini
     public HoudiniSession(TextWriter traceWriter, Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program,
       Implementation impl, HoudiniStatistics stats, int taskID = -1)
     {
-      this.descriptiveName = impl.Name;
+      this.Description = impl.Name;
       this.houdini = houdini;
       this.stats = stats;
       collector = new ConditionGeneration.VerificationResultCollector(houdini.Options);
@@ -187,12 +187,12 @@ namespace Microsoft.Boogie.Houdini
       VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(impl.Blocks[0]))));
       conjecture = exprGen.Implies(eqExpr, conjecture);
 
-      Macro macro = new Macro(Token.NoToken, descriptiveName, new List<Variable>(),
+      Macro macro = new Macro(Token.NoToken, Description, new List<Variable>(),
         new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false));
       proverInterface.DefineMacro(macro, conjecture);
       conjecture = exprGen.Function(macro);
       handler = new VCGen.ErrorReporter(this.houdini.Options, gotoCmdOrigins, absyIds, impl.Blocks, vcgen.debugInfos, collector,
-        mvInfo, proverInterface.Context, program);
+        mvInfo, proverInterface.Context, program, this);
     }
 
     private VCExpr BuildAxiom(ProverInterface proverInterface, Dictionary<Variable, bool> currentAssignment)
@@ -255,13 +255,13 @@ namespace Microsoft.Boogie.Houdini
 
       if (Options.Trace)
       {
-        Console.WriteLine("Verifying " + descriptiveName);
+        Console.WriteLine("Verifying " + Description);
       }
 
       DateTime now = DateTime.UtcNow;
 
       VCExpr vc = proverInterface.VCExprGen.Implies(BuildAxiom(proverInterface, assignment), conjecture);
-      proverInterface.BeginCheck(descriptiveName, vc, handler);
+      proverInterface.BeginCheck(Description, vc, handler);
       ProverInterface.Outcome proverOutcome = proverInterface.CheckOutcome(handler, errorLimit, CancellationToken.None).Result;
 
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
@@ -381,7 +381,7 @@ namespace Microsoft.Boogie.Houdini
 
       if (Options.Trace)
       {
-        Console.WriteLine("Verifying (MaxSat) " + descriptiveName);
+        Console.WriteLine("Verifying (MaxSat) " + Description);
       }
 
       DateTime now = DateTime.UtcNow;
@@ -429,7 +429,7 @@ namespace Microsoft.Boogie.Houdini
           hardAssumptions.Add(softAssumptions[i]);
         }
 
-        (outcome, var unsatisfiedSoftAssumptions2) = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions2, 
+        (outcome, var unsatisfiedSoftAssumptions2) = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions2,
           handler, CancellationToken.None).Result;
 
         if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory ||
@@ -452,14 +452,14 @@ namespace Microsoft.Boogie.Houdini
         foreach (var r in reason)
         {
           Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name,
-            r, descriptiveName);
+            r, Description);
         }
 
         //also add the removed reasons using dotted edges (requires- x != 0, requires- x == 0 ==> assert x != 0)
         foreach (var r in reason1)
         {
           Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=blue style=dotted ];",
-            refutedConstant.Name, r, descriptiveName);
+            refutedConstant.Name, r, Description);
         }
       } while (false);
 
@@ -467,7 +467,7 @@ namespace Microsoft.Boogie.Houdini
           outcome == ProverInterface.Outcome.OutOfResource || outcome == ProverInterface.Outcome.Undetermined)
       {
         Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name,
-          "TimeOut", descriptiveName);
+          "TimeOut", Description);
       }
 
       Options.ErrorLimit = el;
