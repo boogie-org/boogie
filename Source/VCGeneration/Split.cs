@@ -20,7 +20,9 @@ namespace VC
     int vcNum,
     DateTime startTime,
     ProverInterface.Outcome outcome,
-    TimeSpan runTime
+    TimeSpan runTime,
+    int resourceCount,
+    List<Counterexample> counterExamples
   );
 
   public class Split
@@ -1303,7 +1305,10 @@ namespace VC
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
-        var result = new VCResult(splitNum + 1, checker.ProverStart, outcome, checker.ProverRunTime);
+        var resourceCount = checker.GetProverResourceCount().Result;
+        var counterExamples = new List<Counterexample>(); // TODO
+
+        var result = new VCResult(splitNum + 1, checker.ProverStart, outcome, checker.ProverRunTime, resourceCount, counterExamples);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
@@ -1311,7 +1316,7 @@ namespace VC
           DumpDot(splitNum);
         }
 
-        totalResourceCount += checker.GetProverResourceCount().Result;
+        totalResourceCount += resourceCount;
 
         proverFailed = false;
 

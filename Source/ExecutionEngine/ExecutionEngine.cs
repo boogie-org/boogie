@@ -26,7 +26,6 @@ namespace Microsoft.Boogie
     void ReportBplError(IToken tok, string message, bool error, TextWriter tw, string category = null);
 
     void ReportImplementationsBeforeVerification(Implementation[] implementations);
-    // For real-time feedback.
     void ReportStartVerifyImplementation(Implementation implementation);
     void ReportEndVerifyImplementation(Implementation implementation, VerificationResult result);
     
