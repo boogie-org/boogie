@@ -103,16 +103,17 @@ namespace VC
 
       try {
         cancellationToken.ThrowIfCancellationRequested();
-        StartCheck(split, checker, cancellationToken);
+        var splitCallback = new SplitVerifierCallback(callback, split);
+        StartCheck(split, splitCallback, checker, cancellationToken);
         await split.ProverTask;
-        await ProcessResult(split, cancellationToken);
+        await ProcessResult(split, splitCallback, cancellationToken);
       }
       finally {
         split.ReleaseChecker();
       }
     }
 
-    private void StartCheck(Split split, Checker checker, CancellationToken cancellationToken)
+    private void StartCheck(Split split, VerifierCallback callback, Checker checker, CancellationToken cancellationToken)
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
       if (options.Trace && DoSplitting) {
@@ -129,7 +130,7 @@ namespace VC
       split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.GetResourceLimit(options), cancellationToken);
     }
 
-    private async Task ProcessResult(Split split, CancellationToken cancellationToken)
+    private async Task ProcessResult(Split split, VerifierCallback callback, CancellationToken cancellationToken)
     {
       if (TrackingProgress) {
         lock (this) {
@@ -153,61 +154,26 @@ namespace VC
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
       if (!proverFailed) {
-        if (callback is VerificationResultCollector collector) {
-          List<AssertCmd> asserts = split.AssertCmds.ToList();
-          Dictionary<AssertCmd, Outcome> perAssertOutcome = new();
-          Dictionary<AssertCmd, Counterexample> perAssertCounterExamples = new();
-          if (outcome == Outcome.Correct) {
-            perAssertOutcome = asserts.ToDictionary(cmd => cmd, assertCmd => Outcome.Correct);
-          } else {
-            foreach (var counterExample in collector.examples) {
-              // Only deal with the ocunter-examples that cover the asserts of this split.
-              AssertCmd underlyingAssert;
-              if (counterExample is AssertCounterexample assertCounterexample) {
-                underlyingAssert = assertCounterexample.FailingAssert;
-              } else if (counterExample is CallCounterexample callCounterexample) {
-                underlyingAssert = callCounterexample.UnderlyingAssert;
-              } else if (counterExample is ReturnCounterexample returnCounterexample) {
-                underlyingAssert = returnCounterexample.UnderlyingAssert;
-              } else {
-                continue;
-              }
-              if (!asserts.Contains(underlyingAssert)) {
-                continue;
-              }
-              perAssertOutcome.Add(underlyingAssert, Outcome.Errors);
-              perAssertCounterExamples.Add(underlyingAssert, counterExample);
-            }
-
-            var remainingOutcome =
-              outcome == Outcome.Errors && collector.examples.Count != split.Checker.Options.ErrorLimit
-                ? Outcome.Correct
-                : Outcome.Inconclusive;
-            // Everything not listed is successful
-            foreach (var assert in asserts)
-            {
-              perAssertOutcome.TryAdd(assert, remainingOutcome);
-            }
-          }
-          split.parent.Logger?.ReportSplitResult(split, perAssertOutcome, perAssertCounterExamples);
-        }
+        split.parent.Logger?.ReportSplitResult(split, result);
         return;
       }
 
-      await HandleProverFailure(split, cancellationToken);
+      await HandleProverFailure(split, callback, result, cancellationToken);
     }
 
-    private async Task HandleProverFailure(Split split, CancellationToken cancellationToken)
+    private async Task HandleProverFailure(Split split, VerifierCallback callback, VCResult vcResult, CancellationToken cancellationToken)
     {
-      Dictionary<AssertCmd, Outcome> perAssertOutcome;
       if (split.LastChance) {
         string msg = "some timeout";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
         }
         callback.OnCounterexample(split.ToCounterexample(split.Checker.TheoremProver.Context), msg);
-        perAssertOutcome = split.AssertCmds.ToDictionary(assertCmd => assertCmd, assertCmd => outcome);
-        split.parent.Logger?.ReportSplitResult(split, perAssertOutcome, new ());
+        // Update one last time the result with the dummy counter-example to indicate the position of the timeout
+        var result = vcResult with {
+          counterExamples = split.Counterexamples
+        };
+        split.parent.Logger?.ReportSplitResult(split, result);
         outcome = Outcome.Errors;
         return;
       }
@@ -248,8 +214,7 @@ namespace VC
 
         callback.OnOutOfResource(msg);
       }
-      perAssertOutcome = split.AssertCmds.ToDictionary(assertCmd => assertCmd, assertCmd => outcome);
-      split.parent.Logger?.ReportSplitResult(split, perAssertOutcome, new());
+      split.parent.Logger?.ReportSplitResult(split, vcResult);
     }
   }
 }

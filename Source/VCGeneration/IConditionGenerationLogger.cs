@@ -5,6 +5,5 @@ namespace VC;
 
 public interface IConditionGenerationLogger {
   public void ReportSplitResult(Split split,
-    Dictionary<AssertCmd, ConditionGeneration.Outcome> perAssertOutcome,
-    Dictionary<AssertCmd, Counterexample> perAssertCounterExamples);
+    VCResult splitResult);
 }

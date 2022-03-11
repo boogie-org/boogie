@@ -4,9 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Microsoft.Boogie;
-using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
-using System.IO;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
@@ -21,10 +19,50 @@ namespace VC
     DateTime startTime,
     ProverInterface.Outcome outcome,
     TimeSpan runTime,
+    int maxCounterExamples,
     List<Counterexample> counterExamples,
-    IEnumerable<AssertCmd> asserts,
+    List<AssertCmd> asserts,
     int resourceCount
-  );
+  ) {
+    public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, ProverInterface.Outcome> perAssertOutcome,
+      out Dictionary<AssertCmd, Counterexample> perAssertCounterExamples) {
+      perAssertOutcome = new();
+      perAssertCounterExamples = new();
+      if (outcome == ProverInterface.Outcome.Valid) {
+        perAssertOutcome = asserts.ToDictionary(cmd => cmd, assertCmd => ProverInterface.Outcome.Valid);
+      } else {
+        foreach (var counterExample in counterExamples) {
+          // Only deal with the ocunter-examples that cover the asserts of this split.
+          AssertCmd underlyingAssert;
+          if (counterExample is AssertCounterexample assertCounterexample) {
+            underlyingAssert = assertCounterexample.FailingAssert;
+          } else if (counterExample is CallCounterexample callCounterexample) {
+            underlyingAssert = callCounterexample.UnderlyingAssert;
+          } else if (counterExample is ReturnCounterexample returnCounterexample) {
+            underlyingAssert = returnCounterexample.UnderlyingAssert;
+          } else {
+            continue;
+          }
+
+          if (!asserts.Contains(underlyingAssert)) {
+            continue;
+          }
+
+          perAssertOutcome.Add(underlyingAssert, ProverInterface.Outcome.Invalid);
+          perAssertCounterExamples.Add(underlyingAssert, counterExample);
+        }
+
+        var remainingOutcome =
+          outcome == ProverInterface.Outcome.Invalid && counterExamples.Count < maxCounterExamples
+            ? ProverInterface.Outcome.Valid
+            : outcome;
+        // Everything not listed is successful if no counter-example covers it and we did not reach the limit of counter-examples
+        foreach (var assert in asserts) {
+          perAssertOutcome.TryAdd(assert, remainingOutcome);
+        }
+      }
+    }
+  };
 
   public class Split : ProofRun
   {
@@ -90,10 +128,8 @@ namespace VC
 
       readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
         stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
-
-      public IEnumerable<AssertCmd> AssertCmds => blocks.SelectMany(block => block.cmds.OfType<AssertCmd>());
-
       static int currentId = -1;
+
       Block splitBlock;
       bool assertToAssume;
 
@@ -1308,9 +1344,8 @@ namespace VC
         }
 
         var resourceCount = checker.GetProverResourceCount().Result;
-        var counterExamples = new List<Counterexample>(); // TODO
         totalResourceCount += resourceCount;
-        result = new VCResult(splitIndex + 1, checker.ProverStart, outcome, checker.ProverRunTime, counterExamples, Asserts, resourceCount);
+        result = new VCResult(splitIndex + 1, checker.ProverStart, outcome, checker.ProverRunTime, Checker.Options.ErrorLimit, this.Counterexamples, Asserts.ToList(), resourceCount);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
@@ -1364,54 +1399,6 @@ namespace VC
         }
       }
 
-      class SplitVerifierCallback : VerifierCallback {
-        private readonly VerifierCallback underlying;
-        private readonly Split split;
-
-        public SplitVerifierCallback(VerifierCallback underlying, Split split) : base(CoreOptions.ProverWarnings.None) {
-          this.underlying = underlying;
-          this.split = split;
-        }
-        // reason == null means this is genuine counterexample returned by the prover
-        // other reason means it's time out/memory out/crash
-        public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
-        {
-          split.Counterexamples.Add(ce);
-          underlying.OnCounterexample(ce, reason);
-        }
-
-        // called in case resource is exceeded and we don't have counterexample
-        public override void OnTimeout(string reason)
-        {
-          underlying.OnTimeout(reason);
-        }
-
-        public override void OnOutOfMemory(string reason)
-        {
-          underlying.OnOutOfMemory(reason);
-        }
-
-        public override void OnOutOfResource(string reason) {
-          underlying.OnOutOfResource(reason);
-        }
-
-        public override void OnUnreachableCode(Implementation impl)
-        {
-          underlying.OnUnreachableCode(impl);
-        }
-
-        public override void OnWarning(string msg)
-        {
-          underlying.OnWarning(msg);
-        }
-
-        public override void OnVCResult(VCResult result)
-        {
-          underlying.OnVCResult(result);
-        }
-        
-      }
-
       public List<Counterexample> Counterexamples { get; } = new();
 
       /// <summary>
@@ -1422,7 +1409,6 @@ namespace VC
       {
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
-        callback = new SplitVerifierCallback(callback, this);
         this.splitIndex = splitIndex;
 
         // Lock impl since we're setting impl.Blocks that is used to generate the VC.

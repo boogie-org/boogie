@@ -195,8 +195,7 @@ public class ConsolePrinter : OutputPrinter
     return 0;
   }
 
-  public void ReportSplitResult(Split split, Dictionary<AssertCmd, ConditionGeneration.Outcome> perAssertOutcome,
-    Dictionary<AssertCmd, Counterexample> perAssertCounterExamples) {
+  public void ReportSplitResult(Split split, VCResult splitResult) {
     // Do not print anything to console
   }
 }

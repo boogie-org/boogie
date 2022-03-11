@@ -674,4 +674,53 @@ namespace Microsoft.Boogie
       Contract.Requires(result != null);
     }
   }
+  
+  // Intercepts callbacks to record counter-examples in splits
+  class SplitVerifierCallback : VerifierCallback {
+    private readonly VerifierCallback underlying;
+    private readonly Split split;
+
+    public SplitVerifierCallback(VerifierCallback underlying, Split split) : base(CoreOptions.ProverWarnings.None) {
+      this.underlying = underlying;
+      this.split = split;
+    }
+    // reason == null means this is genuine counterexample returned by the prover
+    // other reason means it's time out/memory out/crash
+    public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
+    {
+      split.Counterexamples.Add(ce);
+      underlying.OnCounterexample(ce, reason);
+    }
+
+    // called in case resource is exceeded and we don't have counterexample
+    public override void OnTimeout(string reason)
+    {
+      underlying.OnTimeout(reason);
+    }
+
+    public override void OnOutOfMemory(string reason)
+    {
+      underlying.OnOutOfMemory(reason);
+    }
+
+    public override void OnOutOfResource(string reason) {
+      underlying.OnOutOfResource(reason);
+    }
+
+    public override void OnUnreachableCode(Implementation impl)
+    {
+      underlying.OnUnreachableCode(impl);
+    }
+
+    public override void OnWarning(string msg)
+    {
+      underlying.OnWarning(msg);
+    }
+
+    public override void OnVCResult(VCResult result)
+    {
+      underlying.OnVCResult(result);
+    }
+        
+  }
 }
