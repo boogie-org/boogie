@@ -1,4 +1,7 @@
 // RUN: %parallel-boogie -contractInfer -printAssignment "%s" | %OutputCheck -d "%s"
+
+// Houdini is very interactive and doesn't work with batch mode
+// UNSUPPORTED: batch_mode
 // Example to test candidate annotations on loops
 
 // CHECK-L: Assignment computed by Houdini:

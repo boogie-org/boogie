@@ -1,5 +1,6 @@
 // RUN: %parallel-boogie -inline:spec -print:- -env:0 -printInlined "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+// UNSUPPORTED: batch_mode
 
 procedure main(x:int)
 {

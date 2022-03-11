@@ -136,7 +136,7 @@ namespace VC
           remainingCost -= split.Cost;
         }
       }
-      split.ReadOutcome(callback, ref outcome, out var proverFailed, ref totalResourceCount);
+      split.ReadOutcome(callback, ref outcome, out var result, out var proverFailed, ref totalResourceCount);
 
       if (TrackingProgress) {
         lock (this) {

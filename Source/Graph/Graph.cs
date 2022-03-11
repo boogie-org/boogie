@@ -842,9 +842,9 @@ namespace Microsoft.Boogie.GraphUtil
       return new Tuple<bool, List<Node>>(true, S);
     }
 
-    public static bool Acyclic(Graph<Node> g, Node source)
+    public static bool Acyclic(Graph<Node> g)
     {
-      g.TarjanTopSort(out var acyclic, out var sortedList);
+      g.TarjanTopSort(out var acyclic, out var _);
       return acyclic;
     }
 
@@ -997,7 +997,7 @@ namespace Microsoft.Boogie.GraphUtil
       }
 
       Graph<Node> withoutBackEdges = new Graph<Node>(nonBackEdges);
-      if (!Acyclic(withoutBackEdges, source))
+      if (!Acyclic(withoutBackEdges))
       {
         return new ReducibleResult(false,
           new HashSet<Node>(),

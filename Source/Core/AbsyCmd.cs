@@ -2674,11 +2674,16 @@ namespace Microsoft.Boogie
 
     private object errorData;
 
+    // Note: the `Description` property should cover all the use cases
+    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
+    // eventually go away.
     public object ErrorData
     {
       get { return errorData; }
       set { errorData = value; }
     }
+
+    public ProofObligationDescription Description { get; set; } = new PreconditionDescription();
 
     public override void Resolve(ResolutionContext rc)
     {
@@ -2856,11 +2861,16 @@ namespace Microsoft.Boogie
     // TODO: convert to use generics
     private object errorData;
 
+    // Note: the `Description` property should cover all the use cases
+    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
+    // eventually go away.
     public object ErrorData
     {
       get { return errorData; }
       set { errorData = value; }
     }
+
+    public ProofObligationDescription Description { get; set; } = new PreconditionDescription();
 
     public CallCmd(IToken tok, string callee, List<Expr> ins, List<IdentifierExpr> outs)
       : base(tok, null)
@@ -3751,11 +3761,16 @@ namespace Microsoft.Boogie
     // TODO: convert to use generics
     private object errorData;
 
+    // Note: the `Description` property should cover all the use cases
+    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
+    // eventually go away.
     public object ErrorData
     {
       get { return errorData; }
       set { errorData = value; }
     }
+
+    public ProofObligationDescription Description { get; set; }
 
     public string ErrorMessage
     {
@@ -3770,21 +3785,17 @@ namespace Microsoft.Boogie
       set { errorDataEnhanced = value; }
     }
 
-    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr)
-      : base(tok, expr)
-    {
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
-      errorDataEnhanced = GenerateBoundVarMiningStrategy(expr);
-    }
-
-    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, QKeyValue kv)
+    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description, QKeyValue kv = null)
       : base(tok, expr, kv)
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
       errorDataEnhanced = GenerateBoundVarMiningStrategy(expr);
+      Description = description;
     }
+
+    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, QKeyValue kv = null)
+      : this(tok, expr, new AssertionDescription(), kv) { }
 
     public override void Emit(TokenTextWriter stream, int level)
     {
@@ -3888,7 +3899,7 @@ namespace Microsoft.Boogie
   public class LoopInitAssertCmd : AssertCmd
   {
     public LoopInitAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr)
-      : base(tok, expr)
+      : base(tok, expr, new InvariantEstablishedDescription())
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
@@ -3899,7 +3910,7 @@ namespace Microsoft.Boogie
   public class LoopInvMaintainedAssertCmd : AssertCmd
   {
     public LoopInvMaintainedAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr)
-      : base(tok, expr)
+      : base(tok, expr, new InvariantMaintainedDescription())
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
@@ -3926,7 +3937,7 @@ namespace Microsoft.Boogie
 
 
     public AssertRequiresCmd(CallCmd /*!*/ call, Requires /*!*/ requires)
-      : base(call.tok, requires.Condition)
+      : base(call.tok, requires.Condition, requires.Description)
     {
       Contract.Requires(call != null);
       Contract.Requires(requires != null);
@@ -3958,7 +3969,7 @@ namespace Microsoft.Boogie
     }
 
     public AssertEnsuresCmd(Ensures /*!*/ ens)
-      : base(ens.tok, ens.Condition)
+      : base(ens.tok, ens.Condition, ens.Description)
     {
       Contract.Requires(ens != null);
       this.Ensures = ens;
@@ -4161,6 +4172,8 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(TransferCmdContracts))]
   public abstract class TransferCmd : Absy
   {
+    public ProofObligationDescription Description { get; set; } = new PostconditionDescription();
+
     internal TransferCmd(IToken /*!*/ tok)
       : base(tok)
     {

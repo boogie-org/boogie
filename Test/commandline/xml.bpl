@@ -9,13 +9,15 @@
 // We only check for one of the methods in the XML because there's no
 // guarantee about what order they'll appear in.
 // CHECK: \<method name="ExampleWithSplits" startTime=".*"\>
-// CHECK:   \<split number="1" startTime=".*"\>
-// CHECK:     \<conclusion duration=".*" outcome="valid" />
-// CHECK:   \</split\>
-// CHECK:   \<split number="2" startTime=".*"\>
-// CHECK:     \<conclusion duration=".*" outcome="valid" />
-// CHECK:   \</split\>
-// CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount=".*" outcome="correct" />
+// CHECK:   \<assertionBatch number="1" startTime=".*"\>
+// CHECK:     \<assertion file="xml.bpl" line="25" column="3" /\>
+// CHECK:     \<conclusion duration=".*" outcome="valid" resourceCount=".*" /\>
+// CHECK:   \</assertionBatch\>
+// CHECK:   \<assertionBatch number="2" startTime=".*"\>
+// CHECK:     \<assertion file="xml.bpl" line="27" column="3" /\>
+// CHECK:     \<conclusion duration=".*" outcome="valid" resourceCount=".*" /\>
+// CHECK:   \</assertionBatch\>
+// CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount=".*" outcome="correct" /\>
 // CHECK: \</method\>
 
 procedure ExampleWithSplits()

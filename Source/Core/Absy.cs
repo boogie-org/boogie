@@ -3617,6 +3617,8 @@ namespace Microsoft.Boogie
     private Expr /*!*/
       _condition;
 
+    public ProofObligationDescription Description { get; set; } = new RequiresDescription();
+
     public Expr /*!*/ Condition
     {
       get
@@ -3643,6 +3645,9 @@ namespace Microsoft.Boogie
     // TODO: convert to use generics
     private string errorData;
 
+    // Note: the `Description` property should cover all the use cases
+    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
+    // eventually go away.
     public string ErrorData
     {
       get { return errorData; }
@@ -3745,6 +3750,8 @@ namespace Microsoft.Boogie
   {
     public readonly bool Free;
 
+    public ProofObligationDescription Description { get; set; } = new EnsuresDescription();
+
     private Expr /*!*/
       _condition;
 
@@ -3773,6 +3780,9 @@ namespace Microsoft.Boogie
     // TODO: convert to use generics
     private string errorData;
 
+    // Note: the `Description` property should cover all the use cases
+    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
+    // eventually go away.
     public string ErrorData
     {
       get { return errorData; }

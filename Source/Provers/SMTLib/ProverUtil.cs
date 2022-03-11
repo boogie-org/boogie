@@ -26,6 +26,7 @@ namespace Microsoft.Boogie
     public string ProverName;
     public string ProverPath;
     private string confirmedProverPath;
+    public bool BatchMode;
 
 
     private string /*!*/
@@ -61,7 +62,8 @@ namespace Microsoft.Boogie
              ParseBool(opt, "FORCE_LOG_STATUS", ref ForceLogStatus) ||
              ParseInt(opt, "MEMORY_LIMIT", ref MemoryLimit) ||
              ParseInt(opt, "VERBOSITY", ref Verbosity) ||
-             ParseUInt(opt, "TIME_LIMIT", ref TimeLimit);
+             ParseUInt(opt, "TIME_LIMIT", ref TimeLimit) ||
+             ParseBool(opt, "BATCH_MODE", ref BatchMode);
     }
 
     public virtual string Help
@@ -74,14 +76,18 @@ Generic prover options :
 ~~~~~~~~~~~~~~~~~~~~~~~
 PROVER_PATH=<string>      Path to the prover to use.
 PROVER_NAME=<string>      Name of the prover executable.
-LOG_FILE=<string>         Log input for the theorem prover. The string @PROC@ in the filename
-                          causes there to be one prover log file per verification condition, 
-                          and is expanded to the name of the procedure that the verification 
+LOG_FILE=<string>         Log input for the theorem prover. The string @PROC@
+                          in the filename causes there to be one prover log
+                          file per verification condition, and is expanded to
+                          the name of the procedure that the verification
                           condition is for.
 APPEND_LOG_FILE=<bool>    Append, rather than overwrite the log file.
 MEMORY_LIMIT=<int>        Memory limit of the prover in megabytes.
 VERBOSITY=<int>           The higher, the more verbose.
-TIME_LIMIT=<uint>          Time limit per verification condition in milliseconds.
+TIME_LIMIT=<uint>         Time limit per verification condition in
+                          milliseconds.
+BATCH_MODE=<bool>         If true, send all solver input in one batch,
+                          rather than incrementally.
 
 The generic options may or may not be used by the prover plugin.
 ";
@@ -180,6 +186,9 @@ The generic options may or may not be used by the prover plugin.
       if (LibOptions.Trace)
       {
         Console.WriteLine("[TRACE] Using prover: " + confirmedProverPath);
+        if (BatchMode) {
+          Console.WriteLine("[TRACE] Running in batch mode.");
+        }
       }
 
       return confirmedProverPath;
@@ -289,7 +298,7 @@ The generic options may or may not be used by the prover plugin.
         Contract.Assert(filename != null);
         if (descName != null)
         {
-          filename = Helpers.SubstituteAtPROC(descName, filename);
+          filename = Helpers.GetLogFilename(descName, filename, true).fileName;
         }
 
         return new StreamWriter(filename, AppendLogFile);

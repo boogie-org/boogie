@@ -1,0 +1,5 @@
+assert-not-first-4.bpl(15,5): Error: This gate of FOO might not hold.
+Execution trace:
+    assert-not-first-4.bpl(8,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

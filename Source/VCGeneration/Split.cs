@@ -21,11 +21,12 @@ namespace VC
     DateTime startTime,
     ProverInterface.Outcome outcome,
     TimeSpan runTime,
-    int resourceCount,
-    List<Counterexample> counterExamples
+    List<Counterexample> counterExamples,
+    IEnumerable<AssertCmd> asserts,
+    int resourceCount
   );
 
-  public class Split
+  public class Split : ProofRun
   {
       private VCGenOptions options;
 
@@ -83,6 +84,7 @@ namespace VC
 
 
       private readonly List<Block> blocks;
+      public IEnumerable<AssertCmd> Asserts => blocks.SelectMany(block => block.cmds.OfType<AssertCmd>());
       public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
       readonly List<Block> bigBlocks = new();
 
@@ -128,7 +130,7 @@ namespace VC
 
       // async interface
       private Checker checker;
-      private int splitNum;
+      private int splitIndex;
       internal VCGen.ErrorReporter reporter;
 
       public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
@@ -794,7 +796,7 @@ namespace VC
             Contract.Assert(c != null);
             if (c is AssertCmd)
             {
-              return VCGen.AssertCmdToCounterexample(options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context);
+              return VCGen.AssertCmdToCounterexample(options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context, this);
             }
           }
         }
@@ -1294,29 +1296,27 @@ namespace VC
         }
       }
 
-      public void ReadOutcome(VerifierCallback callback, ref ConditionGeneration.Outcome curOutcome, out bool proverFailed, ref int totalResourceCount)
+      public void ReadOutcome(VerifierCallback callback, ref ConditionGeneration.Outcome curOutcome, out VCResult result, out bool proverFailed, ref int totalResourceCount)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
 
-        if (options.Trace && splitNum >= 0)
+        if (options.Trace && splitIndex >= 0)
         {
-          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitNum + 1,
+          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitIndex + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
         var resourceCount = checker.GetProverResourceCount().Result;
         var counterExamples = new List<Counterexample>(); // TODO
-
-        var result = new VCResult(splitNum + 1, checker.ProverStart, outcome, checker.ProverRunTime, resourceCount, counterExamples);
+        totalResourceCount += resourceCount;
+        result = new VCResult(splitIndex + 1, checker.ProverStart, outcome, checker.ProverRunTime, counterExamples, Asserts, resourceCount);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
         {
-          DumpDot(splitNum);
+          DumpDot(splitIndex);
         }
-
-        totalResourceCount += resourceCount;
 
         proverFailed = false;
 
@@ -1364,15 +1364,66 @@ namespace VC
         }
       }
 
+      class SplitVerifierCallback : VerifierCallback {
+        private readonly VerifierCallback underlying;
+        private readonly Split split;
+
+        public SplitVerifierCallback(VerifierCallback underlying, Split split) : base(CoreOptions.ProverWarnings.None) {
+          this.underlying = underlying;
+          this.split = split;
+        }
+        // reason == null means this is genuine counterexample returned by the prover
+        // other reason means it's time out/memory out/crash
+        public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
+        {
+          split.Counterexamples.Add(ce);
+          underlying.OnCounterexample(ce, reason);
+        }
+
+        // called in case resource is exceeded and we don't have counterexample
+        public override void OnTimeout(string reason)
+        {
+          underlying.OnTimeout(reason);
+        }
+
+        public override void OnOutOfMemory(string reason)
+        {
+          underlying.OnOutOfMemory(reason);
+        }
+
+        public override void OnOutOfResource(string reason) {
+          underlying.OnOutOfResource(reason);
+        }
+
+        public override void OnUnreachableCode(Implementation impl)
+        {
+          underlying.OnUnreachableCode(impl);
+        }
+
+        public override void OnWarning(string msg)
+        {
+          underlying.OnWarning(msg);
+        }
+
+        public override void OnVCResult(VCResult result)
+        {
+          underlying.OnVCResult(result);
+        }
+        
+      }
+
+      public List<Counterexample> Counterexamples { get; } = new();
+
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
       /// </summary>
-      public void BeginCheck(Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int no, uint timeout, uint rlimit, CancellationToken cancellationToken)
+      public void BeginCheck(Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int splitIndex, uint timeout,
+        uint rlimit, CancellationToken cancellationToken)
       {
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
-
-        splitNum = no;
+        callback = new SplitVerifierCallback(callback, this);
+        this.splitIndex = splitIndex;
 
         // Lock impl since we're setting impl.Blocks that is used to generate the VC.
         lock (Implementation) {
@@ -1399,21 +1450,28 @@ namespace VC
           VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
           vc = exprGen.Implies(eqExpr, vc);
           reporter = new VCGen.ErrorReporter(options, gotoCmdOrigins, absyIds, Implementation.Blocks, parent.debugInfos, callback,
-            mvInfo, Checker.TheoremProver.Context, parent.program);
+            mvInfo, Checker.TheoremProver.Context, parent.program, this);
           
-          if (options.TraceVerify && no >= 0)
+          if (options.TraceVerify && splitIndex >= 0)
           {
-            Console.WriteLine("-- after split #{0}", no);
+            Console.WriteLine("-- after split #{0}", splitIndex);
             Print();
           }
 
-          string desc = cce.NonNull(Implementation.Name);
-          if (no >= 0)
-          {
-            desc += "_split" + no;
+          checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
+        }
+      }
+
+      public string Description
+      {
+        get
+        {
+          string description = cce.NonNull(Implementation.Name);
+          if (splitIndex >= 0) {
+            description += "_split" + splitIndex;
           }
 
-          checker.BeginCheck(desc, vc, reporter, timeout, rlimit, cancellationToken);
+          return description;
         }
       }
 

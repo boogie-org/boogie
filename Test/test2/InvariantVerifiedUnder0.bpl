@@ -1,5 +1,6 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+// UNSUPPORTED: batch_mode
 
 procedure Test0()
 {
