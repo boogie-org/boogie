@@ -416,15 +416,15 @@ namespace Microsoft.Boogie.Houdini
       this.Options = options;
     }
 
-    public Houdini(HoudiniOptions options, Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.txt")
+    public Houdini(TextWriter traceWriter, HoudiniOptions options, Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.txt")
     {
       this.Options = options;
       this.program = program;
       this.cexTraceFile = cexTraceFile;
-      Initialize(program, stats);
+      Initialize(traceWriter, program, stats);
     }
 
-    protected void Initialize(Program program, HoudiniSession.HoudiniStatistics stats)
+    protected void Initialize(TextWriter traceWriter, Program program, HoudiniSession.HoudiniStatistics stats)
     {
       if (Options.Trace)
       {
@@ -490,7 +490,7 @@ namespace Microsoft.Boogie.Houdini
           }
 
           HoudiniSession session =
-            new HoudiniSession(this, vcgen, proverInterface, program, impl, stats, taskID: GetTaskID());
+            new HoudiniSession(traceWriter, this, vcgen, proverInterface, program, impl, stats, taskID: GetTaskID());
           houdiniSessions.Add(impl, session);
         }
         catch (VCGenException)
