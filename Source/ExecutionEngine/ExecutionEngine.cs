@@ -1009,8 +1009,7 @@ namespace Microsoft.Boogie
             }
           }
         }
-      }
-      catch (VCGenException e) {
+      } catch (VCGenException e) {
         var errorInfo = ErrorInformationFactory.CreateErrorInformation(impl.tok,
           $"{e.Message} (encountered in implementation {impl.Name}).", requestId, "Error");
         errorInfo.ImplementationName = impl.Name;
@@ -1023,30 +1022,19 @@ namespace Microsoft.Boogie
 
         verificationResult.Errors = null;
         verificationResult.Outcome = VCGen.Outcome.Inconclusive;
-      }
-      catch (ProverDiedException) {
+      } catch (ProverDiedException) {
         throw;
-      }
-      catch (UnexpectedProverOutputException upo) {
-        Options.Printer.AdvisoryWriteLine(traceWriter, "Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}",
+      } catch (UnexpectedProverOutputException upo) {
+        Options.Printer.AdvisoryWriteLine(traceWriter,
+          "Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}",
           impl.Name, upo.Message);
         verificationResult.Errors = null;
         verificationResult.Outcome = VCGen.Outcome.Inconclusive;
-      }
-      catch (AggregateException ae) {
-        ae.Flatten().Handle(e =>
-        {
-          // TODO Do we need to move this into a catch?
-          if (e is IOException) {
-            Options.Printer.AdvisoryWriteLine(traceWriter, "Advisory: {0} SKIPPED due to I/O exception: {1}",
-              impl.Name, e.Message);
-            verificationResult.Errors = null;
-            verificationResult.Outcome = VCGen.Outcome.SolverException;
-            return true;
-          }
-
-          return false;
-        });
+      } catch (IOException e) {
+        Options.Printer.AdvisoryWriteLine(traceWriter, "Advisory: {0} SKIPPED due to I/O exception: {1}",
+          impl.Name, e.Message);
+        verificationResult.Errors = null;
+        verificationResult.Outcome = VCGen.Outcome.SolverException;
       }
 
       verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
