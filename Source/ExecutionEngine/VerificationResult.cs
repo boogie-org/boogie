@@ -33,7 +33,8 @@ public sealed class VerificationResult
   public List<Counterexample> Errors;
   public List<VCResult> VCResults;
 
-  public ISet<byte[]> AssertionChecksums { get; private set; }
+  public ISet<byte[]> AssertionChecksums { get; }
+  public ErrorInformation ErrorBeforeVerification { get; set; }
 
   public VerificationResult(string requestId, Implementation implementation, string programId = null)
   {
@@ -47,9 +48,13 @@ public sealed class VerificationResult
     MessageIfVerifies = implementation.FindStringAttribute("msg_if_verifies");
   }
 
-  public void Emit(ExecutionEngine engine, PipelineStatistics stats, ErrorReporterDelegate er, int index,
-    OutputCollector outputCollector, StringWriter output, Implementation impl, bool wasCached)
+  public void Emit(ExecutionEngine engine, PipelineStatistics stats, ErrorReporterDelegate er, TextWriter output,
+    Implementation impl, bool wasCached)
   {
+    if (ErrorBeforeVerification != null) {
+      ExecutionEngine.printer.WriteErrorInformation(ErrorBeforeVerification, output);
+    }
+
     engine.ProcessOutcome(Outcome, Errors, engine.TimeIndication(this), stats,
       output, impl.GetTimeLimit(engine.Options), er, ImplementationName,
       ImplementationToken,
@@ -70,14 +75,6 @@ public sealed class VerificationResult
           End, End - Start,
           ResourceCount);
       }
-    }
-
-    outputCollector.Add(index, output);
-
-    outputCollector.WriteMoreOutput();
-
-    if (Outcome == VCGen.Outcome.Errors || engine.Options.Trace) {
-      Console.Out.Flush();
     }
   }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using System.IO;
 using System.Linq;
 
 namespace Microsoft.Boogie.Houdini
@@ -18,14 +19,14 @@ namespace Microsoft.Boogie.Houdini
       get { return refutedSharedAnnotations; }
     }
 
-    public ConcurrentHoudini(HoudiniOptions options, int taskId, Program program, HoudiniSession.HoudiniStatistics stats,
+    public ConcurrentHoudini(TextWriter traceWriter, HoudiniOptions options, int taskId, Program program, HoudiniSession.HoudiniStatistics stats,
       string cexTraceFile = "houdiniCexTrace.txt") : base(options)
     {
       Contract.Assert(taskId >= 0);
       this.program = program;
       this.cexTraceFile = cexTraceFile;
       this.taskID = taskId;
-      Initialize(program, stats);
+      Initialize(traceWriter, program, stats);
     }
 
     static ConcurrentHoudini()

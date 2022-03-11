@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.BaseTypes;
 using VC;
@@ -152,7 +153,7 @@ namespace Microsoft.Boogie.Houdini
       return false;
     }
 
-    public HoudiniSession(Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program,
+    public HoudiniSession(TextWriter traceWriter, Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program,
       Implementation impl, HoudiniStatistics stats, int taskID = -1)
     {
       this.Description = impl.Name;
@@ -162,7 +163,7 @@ namespace Microsoft.Boogie.Houdini
       collector.OnProgress?.Invoke("HdnVCGen", 0, 0, 0.0);
 
       vcgen.ConvertCFG2DAG(impl, taskID: taskID);
-      var gotoCmdOrigins = vcgen.PassifyImpl(impl, out var mvInfo);
+      var gotoCmdOrigins = vcgen.PassifyImpl(new ImplementationRun(impl, traceWriter), out var mvInfo);
 
       ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl, out var ecollector);
       this.houdiniAssertConstants = ecollector.houdiniAssertConstants;

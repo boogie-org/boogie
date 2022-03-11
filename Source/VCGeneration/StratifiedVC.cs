@@ -109,7 +109,7 @@ namespace VC
       {
         var vcgen = info.vcgen;
         var gen = vcgen.prover.VCExprGen;
-        var impl = info.impl;
+        var impl = info.Implementation;
         mustReachVar = new Dictionary<Block, VCExprVar>();
         mustReachBindings = new List<VCExprLetBinding>();
         foreach (Block b in impl.Blocks)
@@ -182,7 +182,7 @@ namespace VC
 
     public override string ToString()
     {
-      return info.impl.Name;
+      return info.Implementation.Name;
     }
   }
 
@@ -339,7 +339,7 @@ namespace VC
   {
     private VCGenOptions options;
     public StratifiedVCGenBase vcgen;
-    public Implementation impl;
+    public ImplementationRun run;
     public Function function;
     public Variable controlFlowVariable;
     public Cmd exitAssertCmd;
@@ -358,12 +358,14 @@ namespace VC
     // boolControlVC (block -> its Bool variable)
     public Dictionary<Block, VCExprVar> blockToControlVar;
 
-    public StratifiedInliningInfo(VCGenOptions options, Implementation implementation, StratifiedVCGenBase stratifiedVcGen,
+    public Implementation Implementation => run.Implementation;
+
+    public StratifiedInliningInfo(VCGenOptions options, ImplementationRun run, StratifiedVCGenBase stratifiedVcGen,
       Action<Implementation> PassiveImplInstrumentation)
     {
       vcgen = stratifiedVcGen;
-      impl = implementation;
       this.PassiveImplInstrumentation = PassiveImplInstrumentation;
+      this.run = run;
       this.options = options;
 
       List<Variable> functionInterfaceVars = new List<Variable>();
@@ -373,19 +375,19 @@ namespace VC
           true));
       }
 
-      foreach (Variable v in impl.InParams)
+      foreach (Variable v in Implementation.InParams)
       {
         functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", v.TypedIdent.Type),
           true));
       }
 
-      foreach (Variable v in impl.OutParams)
+      foreach (Variable v in Implementation.OutParams)
       {
         functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", v.TypedIdent.Type),
           true));
       }
 
-      foreach (IdentifierExpr e in impl.Proc.Modifies)
+      foreach (IdentifierExpr e in Implementation.Proc.Modifies)
       {
         if (e.Decl == null)
         {
@@ -397,7 +399,7 @@ namespace VC
       }
 
       Formal returnVar = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Bpl.Type.Bool), false);
-      function = new Function(Token.NoToken, impl.Name, functionInterfaceVars, returnVar);
+      function = new Function(Token.NoToken, Implementation.Name, functionInterfaceVars, returnVar);
       vcgen.prover.Context.DeclareFunction(function, "");
 
       List<Expr> exprs = new List<Expr>();
@@ -407,19 +409,19 @@ namespace VC
         exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
       }
 
-      foreach (Variable v in impl.Proc.InParams)
+      foreach (Variable v in Implementation.Proc.InParams)
       {
         Contract.Assert(v != null);
         exprs.Add(new IdentifierExpr(Token.NoToken, v));
       }
 
-      foreach (Variable v in impl.Proc.OutParams)
+      foreach (Variable v in Implementation.Proc.OutParams)
       {
         Contract.Assert(v != null);
         exprs.Add(new IdentifierExpr(Token.NoToken, v));
       }
 
-      foreach (IdentifierExpr ie in impl.Proc.Modifies)
+      foreach (IdentifierExpr ie in Implementation.Proc.Modifies)
       {
         Contract.Assert(ie != null);
         if (ie.Decl == null)
@@ -431,7 +433,7 @@ namespace VC
       }
 
       Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(function), exprs);
-      impl.Proc.Ensures.Add(new Ensures(Token.NoToken, true, freePostExpr, "",
+      Implementation.Proc.Ensures.Add(new Ensures(Token.NoToken, true, freePostExpr, "",
         new QKeyValue(Token.NoToken, "si_fcall", new List<object>(), null)));
 
       initialized = false;
@@ -445,16 +447,16 @@ namespace VC
       // fix names for exit variables
       var outputVariables = new List<Variable>();
       var assertConjuncts = new List<Expr>();
-      foreach (Variable v in impl.OutParams)
+      foreach (Variable v in Implementation.OutParams)
       {
         Constant c = new Constant(Token.NoToken,
-          new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
+          new TypedIdent(Token.NoToken, Implementation.Name + "_" + v.Name, v.TypedIdent.Type));
         outputVariables.Add(c);
         Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
         assertConjuncts.Add(eqExpr);
       }
 
-      foreach (IdentifierExpr e in impl.Proc.Modifies)
+      foreach (IdentifierExpr e in Implementation.Proc.Modifies)
       {
         if (e.Decl == null)
         {
@@ -463,7 +465,7 @@ namespace VC
 
         Variable v = e.Decl;
         Constant c = new Constant(Token.NoToken,
-          new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
+          new TypedIdent(Token.NoToken, Implementation.Name + "_" + v.Name, v.TypedIdent.Type));
         outputVariables.Add(c);
         Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
         assertConjuncts.Add(eqExpr);
@@ -475,19 +477,19 @@ namespace VC
       // Passify
       Program program = vcgen.program;
       ProverInterface proverInterface = vcgen.prover;
-      vcgen.ConvertCFG2DAG(impl);
-      vcgen.PassifyImpl(impl, out mvInfo);
+      vcgen.ConvertCFG2DAG(Implementation);
+      vcgen.PassifyImpl(run, out mvInfo);
 
       VCExpressionGenerator gen = proverInterface.VCExprGen;
       var exprGen = proverInterface.Context.ExprGen;
       var translator = proverInterface.Context.BoogieExprTranslator;
 
       // add a boolean variable at each call site
-      vcgen.InstrumentCallSites(impl);
+      vcgen.InstrumentCallSites(Implementation);
 
       // typecheck
       var tc = new TypecheckingContext(null, options);
-      impl.Typecheck(tc);
+      Implementation.Typecheck(tc);
 
       ///////////////////
       // Generate the VC
@@ -495,13 +497,13 @@ namespace VC
 
       // block -> bool variable
       blockToControlVar = new Dictionary<Block, VCExprVar>();
-      foreach (var b in impl.Blocks)
+      foreach (var b in Implementation.Blocks)
       {
         blockToControlVar.Add(b, gen.Variable(b.Label + "_holds", Bpl.Type.Bool));
       }
 
       vcexpr = VCExpressionGenerator.True;
-      foreach (var b in impl.Blocks)
+      foreach (var b in Implementation.Blocks)
       {
         // conjoin all assume cmds
         VCExpr c = VCExpressionGenerator.True;
@@ -541,21 +543,21 @@ namespace VC
       }
 
       // assert start block
-      vcexpr = gen.AndSimp(vcexpr, blockToControlVar[impl.Blocks[0]]);
+      vcexpr = gen.AndSimp(vcexpr, blockToControlVar[Implementation.Blocks[0]]);
 
       //Console.WriteLine("VC of {0}: {1}", impl.Name, vcexpr);
       // Collect other information
-      callSites = vcgen.CollectCallSites(impl);
-      recordProcCallSites = vcgen.CollectRecordProcedureCallSites(impl);
+      callSites = vcgen.CollectCallSites(Implementation);
+      recordProcCallSites = vcgen.CollectRecordProcedureCallSites(Implementation);
 
       // record interface variables
       privateExprVars = new List<VCExprVar>();
-      foreach (Variable v in impl.LocVars)
+      foreach (Variable v in Implementation.LocVars)
       {
         privateExprVars.Add(translator.LookupVariable(v));
       }
 
-      foreach (Variable v in impl.OutParams)
+      foreach (Variable v in Implementation.OutParams)
       {
         privateExprVars.Add(translator.LookupVariable(v));
       }
@@ -568,7 +570,7 @@ namespace VC
         interfaceExprVars.Add(translator.LookupVariable(v));
       }
 
-      foreach (Variable v in impl.InParams)
+      foreach (Variable v in Implementation.InParams)
       {
         interfaceExprVars.Add(translator.LookupVariable(v));
       }
@@ -595,16 +597,16 @@ namespace VC
 
       List<Variable> outputVariables = new List<Variable>();
       List<Expr> assertConjuncts = new List<Expr>();
-      foreach (Variable v in impl.OutParams)
+      foreach (Variable v in Implementation.OutParams)
       {
         Constant c = new Constant(Token.NoToken,
-          new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
+          new TypedIdent(Token.NoToken, Implementation.Name + "_" + v.Name, v.TypedIdent.Type));
         outputVariables.Add(c);
         Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
         assertConjuncts.Add(eqExpr);
       }
 
-      foreach (IdentifierExpr e in impl.Proc.Modifies)
+      foreach (IdentifierExpr e in Implementation.Proc.Modifies)
       {
         if (e.Decl == null)
         {
@@ -613,7 +615,7 @@ namespace VC
 
         Variable v = e.Decl;
         Constant c = new Constant(Token.NoToken,
-          new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
+          new TypedIdent(Token.NoToken, Implementation.Name + "_" + v.Name, v.TypedIdent.Type));
         outputVariables.Add(c);
         Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
         assertConjuncts.Add(eqExpr);
@@ -623,8 +625,8 @@ namespace VC
 
       Program program = vcgen.program;
       ProverInterface proverInterface = vcgen.prover;
-      vcgen.ConvertCFG2DAG(impl);
-      vcgen.PassifyImpl(impl, out mvInfo);
+      vcgen.ConvertCFG2DAG(Implementation);
+      vcgen.PassifyImpl(run, out mvInfo);
 
       VCExpressionGenerator gen = proverInterface.VCExprGen;
       var exprGen = proverInterface.Context.ExprGen;
@@ -634,37 +636,37 @@ namespace VC
         new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
       VCExpr controlFlowVariableExpr = translator.LookupVariable(controlFlowVariable);
 
-      vcgen.InstrumentCallSites(impl);
+      vcgen.InstrumentCallSites(Implementation);
 
       if (PassiveImplInstrumentation != null)
       {
-        PassiveImplInstrumentation(impl);
+        PassiveImplInstrumentation(Implementation);
       }
 
       var absyIds = new ControlFlowIdMap<Absy>();
       
-      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(options, absyIds, proverInterface.Context);
+      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(run.TraceWriter, options, absyIds, proverInterface.Context);
       translator.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
-      vcexpr = gen.Not(vcgen.GenerateVCAux(impl, controlFlowVariableExpr, absyIds, proverInterface.Context));
+      vcexpr = gen.Not(vcgen.GenerateVCAux(Implementation, controlFlowVariableExpr, absyIds, proverInterface.Context));
 
       if (controlFlowVariableExpr != null)
       {
         VCExpr controlFlowFunctionAppl =
           exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
-        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(impl.Blocks[0]))));
+        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
         vcexpr = exprGen.And(eqExpr, vcexpr);
       }
 
-      callSites = vcgen.CollectCallSites(impl);
-      recordProcCallSites = vcgen.CollectRecordProcedureCallSites(impl);
+      callSites = vcgen.CollectCallSites(Implementation);
+      recordProcCallSites = vcgen.CollectRecordProcedureCallSites(Implementation);
 
       privateExprVars = new List<VCExprVar>();
-      foreach (Variable v in impl.LocVars)
+      foreach (Variable v in Implementation.LocVars)
       {
         privateExprVars.Add(translator.LookupVariable(v));
       }
 
-      foreach (Variable v in impl.OutParams)
+      foreach (Variable v in Implementation.OutParams)
       {
         privateExprVars.Add(translator.LookupVariable(v));
       }
@@ -675,7 +677,7 @@ namespace VC
         interfaceExprVars.Add(translator.LookupVariable(v));
       }
 
-      foreach (Variable v in impl.InParams)
+      foreach (Variable v in Implementation.InParams)
       {
         interfaceExprVars.Add(translator.LookupVariable(v));
       }
@@ -697,7 +699,7 @@ namespace VC
     public Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
     public ProverInterface prover;
 
-    public StratifiedVCGenBase(VCGenOptions options, Program program, string logFilePath /*?*/, bool appendLogFile, CheckerPool checkerPool,
+    public StratifiedVCGenBase(TextWriter traceWriter, VCGenOptions options, Program program, string logFilePath /*?*/, bool appendLogFile, CheckerPool checkerPool,
       Action<Implementation> PassiveImplInstrumentation)
       : base(program, checkerPool)
     {
@@ -705,7 +707,7 @@ namespace VC
       prover = ProverInterface.CreateProver(options, program, logFilePath, appendLogFile, options.TimeLimit);
       foreach (var impl in program.Implementations)
       {
-        implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(options, impl, this, PassiveImplInstrumentation);
+        implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(options, new ImplementationRun(impl, traceWriter), this, PassiveImplInstrumentation);
       }
 
       GenerateRecordFunctions();
@@ -971,9 +973,7 @@ namespace VC
         return false;
       }
 
-      var lp = info.impl.Proc as LoopProcedure;
-
-      if (lp == null)
+      if (info.Implementation.Proc is not LoopProcedure)
       {
         return false;
       }

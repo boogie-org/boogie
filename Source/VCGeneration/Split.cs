@@ -1364,7 +1364,7 @@ namespace VC
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
       /// </summary>
-      public void BeginCheck(Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int splitIndex, uint timeout,
+      public void BeginCheck(TextWriter traceWriter, Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int splitIndex, uint timeout,
         uint rlimit, CancellationToken cancellationToken)
       {
         Contract.Requires(checker != null);
@@ -1382,7 +1382,7 @@ namespace VC
 
           ProverContext ctx = checker.TheoremProver.Context;
           Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
-          var cc = new VCGen.CodeExprConversionClosure(checker.Pool.Options, absyIds, ctx);
+          var cc = new VCGen.CodeExprConversionClosure(traceWriter, checker.Pool.Options, absyIds, ctx);
           bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
 
           var exprGen = ctx.ExprGen;
