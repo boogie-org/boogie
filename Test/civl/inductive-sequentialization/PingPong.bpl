@@ -73,24 +73,9 @@ PING' (x:int, {:linear_in "pid"} pid:int)
 returns ({:pending_async "PING"} PAs:[PA]int)
 modifies ping_channel, pong_channel;
 {
-  assert x > 0;
-  assert pid == ping_id;
-  assert (forall m:int :: ping_channel[m] > 0 ==> m == x);
   assert (exists {:pool "INV"} m:int :: ping_channel[m] > 0) && (forall m:int :: pong_channel[m] == 0);
+  call PAs := PING(x, pid);
 
-  assume ping_channel[x] > 0;
-  ping_channel[x] := ping_channel[x] - 1;
-
-  if (*)
-  {
-    pong_channel[x+1] := pong_channel[x+1] + 1;
-    PAs := NoPAs()[PING(x+1, pid) := 1];
-  }
-  else
-  {
-    pong_channel[0] := pong_channel[0] + 1;
-    PAs := NoPAs();
-  }
 }
 
 procedure {:IS_abstraction}{:layer 2}
@@ -98,24 +83,8 @@ PONG' (y:int, {:linear_in "pid"} pid:int)
 returns ({:pending_async "PONG"} PAs:[PA]int)
 modifies ping_channel, pong_channel;
 {
-  assert y > 0;
-  assert pid == pong_id;
-  assert (forall m:int :: pong_channel[m] > 0 ==> m == y || m == 0);
   assert (exists {:pool "INV"} m:int :: pong_channel[m] > 0) && (forall m:int :: ping_channel[m] == 0);
-
-  if (*)
-  {
-    assume pong_channel[y] > 0;
-    pong_channel[y] := pong_channel[y] - 1;
-    ping_channel[y] := ping_channel[y] + 1;
-    PAs := NoPAs()[PONG(y+1, pid) := 1];
-  }
-  else
-  {
-    assume pong_channel[0] > 0;
-    pong_channel[0] := pong_channel[0] - 1;
-    PAs := NoPAs();
-  }
+  call PAs := PONG(y, pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

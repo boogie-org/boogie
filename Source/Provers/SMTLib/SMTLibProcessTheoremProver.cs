@@ -524,22 +524,10 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(descriptiveName != null);
       Contract.Ensures(Contract.Result<TextWriter>() != null);
 
-      string filename = options.LogFilename;
-      filename = Helpers.SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
-      var curFilename = filename;
+      string filenameTemplate = options.LogFilename;
+      var (filename, reused) = Helpers.GetLogFilename(descriptiveName, filenameTemplate, false);
 
-      lock (usedLogNames)
-      {
-        int n = 1;
-        while (usedLogNames.Contains(curFilename))
-        {
-          curFilename = filename + "." + n++;
-        }
-
-        usedLogNames.Add(curFilename);
-      }
-
-      return new StreamWriter(curFilename, false);
+      return new StreamWriter(filename, reused);
     }
 
     protected void FlushProverWarnings()
