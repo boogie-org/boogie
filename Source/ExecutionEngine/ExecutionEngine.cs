@@ -1042,15 +1042,14 @@ namespace Microsoft.Boogie
         return null;
       }
 
-      Options.Printer.Inform($"Retrieving cached verification result for implementation {impl.Name}...", output);
       if (Options.VerifySnapshots < 3 ||
           cachedResults.Outcome == ConditionGeneration.Outcome.Correct) {
+        Options.Printer.Inform($"Retrieving cached verification result for implementation {impl.Name}...", output);
         return cachedResults;
       }
 
       return null;
     }
-
 
     private ConditionGeneration CreateVCGen(Program program)
     {
