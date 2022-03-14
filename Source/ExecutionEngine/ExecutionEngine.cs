@@ -173,26 +173,21 @@ namespace Microsoft.Boogie
 
   #endregion
 
-  public class ExecutionEngine : IDisposable
-  {
+  public class ExecutionEngine : IDisposable {
     public static ErrorInformationFactory ErrorInformationFactory { get; } = new();
 
     static int autoRequestIdCount;
 
     static readonly string AutoRequestIdPrefix = "auto_request_id_";
 
-    public static string FreshRequestId()
-    {
+    public static string FreshRequestId() {
       var id = Interlocked.Increment(ref autoRequestIdCount);
       return AutoRequestIdPrefix + id;
     }
 
-    public static int AutoRequestId(string id)
-    {
-      if (id.StartsWith(AutoRequestIdPrefix))
-      {
-        if (int.TryParse(id.Substring(AutoRequestIdPrefix.Length), out var result))
-        {
+    public static int AutoRequestId(string id) {
+      if (id.StartsWith(AutoRequestIdPrefix)) {
+        if (int.TryParse(id.Substring(AutoRequestIdPrefix.Length), out var result)) {
           return result;
         }
       }
@@ -205,16 +200,14 @@ namespace Microsoft.Boogie
     static readonly MemoryCache programCache = new MemoryCache("ProgramCache");
 
     static readonly CacheItemPolicy policy = new CacheItemPolicy
-      {SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default};
+      { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };
 
-    public static Program CachedProgram(string programId)
-    {
+    public static Program CachedProgram(string programId) {
       var result = programCache.Get(programId) as Program;
       return result;
     }
 
-    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache)
-    {
+    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache) {
       Options = options;
       Cache = cache;
       checkerPool = new CheckerPool(options);
@@ -245,20 +238,17 @@ namespace Microsoft.Boogie
 
     static ThreadTaskScheduler LargeStackScheduler = new ThreadTaskScheduler(16 * 1024 * 1024);
 
-    public bool ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true, string programId = null)
-    {
+    public bool ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
+      string programId = null) {
       Contract.Requires(cce.NonNullElements(fileNames));
 
-      if (Options.VerifySeparately && 1 < fileNames.Count)
-      {
-        return fileNames.All(f => ProcessFiles( output, new List<string> {f}, lookForSnapshots, f));
+      if (Options.VerifySeparately && 1 < fileNames.Count) {
+        return fileNames.All(f => ProcessFiles(output, new List<string> { f }, lookForSnapshots, f));
       }
 
-      if (0 <= Options.VerifySnapshots && lookForSnapshots)
-      {
+      if (0 <= Options.VerifySnapshots && lookForSnapshots) {
         var snapshotsByVersion = LookForSnapshots(fileNames);
-        return snapshotsByVersion.All(s =>
-        {
+        return snapshotsByVersion.All(s => {
           // BUG: Reusing checkers during snapshots doesn't work, even though it should. We create a new engine (and thus checker pool) to workaround this.
           using var engine = new ExecutionEngine(Options, Cache);
           return engine.ProcessFiles(output, new List<string>(s), false, programId);
@@ -268,11 +258,17 @@ namespace Microsoft.Boogie
       using XmlFileScope xf = new XmlFileScope(Options.XmlSink, fileNames[^1]);
       Program program = ParseBoogieProgram(fileNames, false);
       var bplFileName = fileNames[^1];
-      if (program == null)
-      {
+      if (program == null) {
         return true;
       }
+
       return ProcessProgram(output, program, bplFileName, programId).Result;
+    }
+
+    [Obsolete("Please inline this method call")]
+    public bool ProcessProgram(Program program, string bplFileName,
+      string programId = null) {
+      return ProcessProgram(Console.Out, program, bplFileName, programId).Result;
     }
 
     public async Task<bool> ProcessProgram(TextWriter output, Program program, string bplFileName, string programId = null)
@@ -658,6 +654,14 @@ namespace Microsoft.Boogie
       }
     }
 
+    [Obsolete("Please inline this method call")]
+    public PipelineOutcome InferAndVerify(
+      Program program,
+      PipelineStatistics stats,
+      string programId = null,
+      ErrorReporterDelegate er = null, string requestId = null) {
+      return InferAndVerify(Console.Out, program, stats, programId, er, requestId).Result;
+    }
 
     /// <summary>
     /// Given a resolved and type checked Boogie program, infers invariants for the program
