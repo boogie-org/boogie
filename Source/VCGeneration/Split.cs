@@ -833,7 +833,9 @@ namespace VC
             Contract.Assert(c != null);
             if (c is AssertCmd)
             {
-              return VCGen.AssertCmdToCounterexample(options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context, this);
+              var counterexample = VCGen.AssertCmdToCounterexample(options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context, this);
+              Counterexamples.Add(counterexample);
+              return counterexample;
             }
           }
         }
@@ -1346,7 +1348,15 @@ namespace VC
 
         var resourceCount = checker.GetProverResourceCount().Result;
         totalResourceCount += resourceCount;
-        result = new VCResult(splitIndex + 1, checker.ProverStart, outcome, checker.ProverRunTime, Checker.Options.ErrorLimit, this.Counterexamples, Asserts.ToList(), resourceCount);
+        result = new VCResult(
+          splitIndex + 1,
+          checker.ProverStart,
+          outcome,
+          checker.ProverRunTime,
+          Checker.Options.ErrorLimit,
+          Counterexamples,
+          Asserts.ToList(),
+          resourceCount);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)

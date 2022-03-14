@@ -124,6 +124,7 @@ namespace Microsoft.Boogie.Houdini
     public string Description { get; }
     private readonly Houdini houdini;
     public HoudiniStatistics stats;
+    public List<Counterexample> Counterexamples { get; } = new();
     private VCExpr conjecture;
     private ProverInterface.ErrorHandler handler;
     ConditionGeneration.VerificationResultCollector collector;

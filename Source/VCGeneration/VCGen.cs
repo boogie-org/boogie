@@ -1030,6 +1030,7 @@ namespace VC
         #endregion
 
         callback.OnCounterexample(newCounterexample, null);
+        split.Counterexamples.Add(newCounterexample);
       }
 
       public override Absy Label2Absy(string label)

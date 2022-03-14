@@ -13,7 +13,7 @@ namespace VC
   class SplitAndVerifyWorker
   {
     private readonly VCGenOptions options;
-    private readonly VerifierCallback verifierCallback;
+    private readonly VerifierCallback callback;
     private readonly ModelViewInfo mvInfo;
     private readonly ImplementationRun run;
       
@@ -23,7 +23,7 @@ namespace VC
     private readonly bool splitOnEveryAssert;
       
     private bool DoSplitting => manualSplits.Count > 1 || KeepGoing || splitOnEveryAssert;
-    private bool TrackingProgress => DoSplitting && (verifierCallback.OnProgress != null || options.Trace); 
+    private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
     private bool KeepGoing => maxKeepGoingSplits > 1;
 
     private VCGen vcGen;
@@ -36,11 +36,11 @@ namespace VC
     private int totalResourceCount;
     
     public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, ImplementationRun run,
-      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback verifierCallback, ModelViewInfo mvInfo,
+      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
       Outcome outcome)
     {
       this.options = options;
-      this.verifierCallback = verifierCallback;
+      this.callback = callback;
       this.mvInfo = mvInfo;
       this.run = run;
       this.outcome = outcome;
@@ -102,17 +102,16 @@ namespace VC
 
       try {
         cancellationToken.ThrowIfCancellationRequested();
-        var splitCallback = new SplitVerifierCallback(verifierCallback, split);
-        StartCheck(split, splitCallback, checker, cancellationToken);
+        StartCheck(split, checker, cancellationToken);
         await split.ProverTask;
-        await ProcessResult(split, splitCallback, cancellationToken);
+        await ProcessResult(split, cancellationToken);
       }
       finally {
         split.ReleaseChecker();
       }
     }
 
-    private void StartCheck(Split split, VerifierCallback callback, Checker checker, CancellationToken cancellationToken)
+    private void StartCheck(Split split, Checker checker, CancellationToken cancellationToken)
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
       if (options.Trace && DoSplitting) {
@@ -131,7 +130,7 @@ namespace VC
 
     private Implementation Implementation => run.Implementation;
 
-    private async Task ProcessResult(Split split, VerifierCallback callback, CancellationToken cancellationToken)
+    private async Task ProcessResult(Split split, CancellationToken cancellationToken)
     {
       if (TrackingProgress) {
         lock (this) {
