@@ -16,7 +16,7 @@ namespace Microsoft.Boogie
 {
   #region Output printing
 
-  public interface OutputPrinter : IConditionGenerationLogger
+  public interface OutputPrinter : IConditionGenerationPrinter
   {
     void ErrorWriteLine(TextWriter tw, string s);
     void ErrorWriteLine(TextWriter tw, string format, params object[] args);
@@ -179,7 +179,6 @@ namespace Microsoft.Boogie
 
   public class ExecutionEngine : IDisposable
   {
-    // Should it be set per request?
     public static OutputPrinter printer;
 
     public static ErrorInformationFactory errorInformationFactory = new ErrorInformationFactory();
@@ -785,8 +784,7 @@ namespace Microsoft.Boogie
 
       // operate on a stable copy, in case it gets updated while we're running
       Implementation[] stablePrioritizedImpls = null;
-      // Ask the printer for custom priorities to verify implementations
-      
+
       if (0 < Options.VerifySnapshots) {
         OtherDefinitionAxiomsCollector.Collect(Options, program.Axioms);
         DependencyCollector.Collect(Options, program);
@@ -967,8 +965,9 @@ namespace Microsoft.Boogie
 
       printer.Inform("", output); // newline
       printer.Inform($"Verifying {impl.Name} ...", output);
-      var verificationResult = GetCachedVerificationResult(impl, output);
       printer.ReportStartVerifyImplementation(impl);
+
+      var verificationResult = GetCachedVerificationResult(impl, output);
 
       var wasCached = true;
       if (verificationResult == null) {
@@ -982,6 +981,7 @@ namespace Microsoft.Boogie
         }
       }
       verificationResult.Emit(this, stats, er, output, impl, wasCached);
+      printer.ReportEndVerifyImplementation(impl, verificationResult);
 
       if (verificationResult.Outcome == VCGen.Outcome.Errors || Options.Trace) {
         output.Flush();
@@ -1074,7 +1074,6 @@ namespace Microsoft.Boogie
         verificationResult.End = DateTime.UtcNow;
         verificationResult.ResourceCount = vcgen.ResourceCount;
       }
-      printer.ReportEndVerifyImplementation(impl, verificationResult);
       return verificationResult;
     }
 

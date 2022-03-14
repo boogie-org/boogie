@@ -23,8 +23,8 @@ namespace VC
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
     [NotDelayed]
-    public VCGen(Program program, CheckerPool checkerPool, IConditionGenerationLogger logger = null)
-      : base(program, checkerPool, logger)
+    public VCGen(Program program, CheckerPool checkerPool, IConditionGenerationPrinter printer = null)
+      : base(program, checkerPool, printer)
     {
       Contract.Requires(program != null);
     }

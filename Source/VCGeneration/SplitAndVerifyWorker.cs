@@ -13,7 +13,7 @@ namespace VC
   class SplitAndVerifyWorker
   {
     private readonly VCGenOptions options;
-    private readonly VerifierCallback callback;
+    private readonly VerifierCallback verifierCallback;
     private readonly ModelViewInfo mvInfo;
     private readonly ImplementationRun run;
       
@@ -23,7 +23,7 @@ namespace VC
     private readonly bool splitOnEveryAssert;
       
     private bool DoSplitting => manualSplits.Count > 1 || KeepGoing || splitOnEveryAssert;
-    private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
+    private bool TrackingProgress => DoSplitting && (verifierCallback.OnProgress != null || options.Trace); 
     private bool KeepGoing => maxKeepGoingSplits > 1;
 
     private VCGen vcGen;
@@ -36,11 +36,11 @@ namespace VC
     private int totalResourceCount;
     
     public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, ImplementationRun run,
-      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
+      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback verifierCallback, ModelViewInfo mvInfo,
       Outcome outcome)
     {
       this.options = options;
-      this.callback = callback;
+      this.verifierCallback = verifierCallback;
       this.mvInfo = mvInfo;
       this.run = run;
       this.outcome = outcome;
@@ -102,7 +102,7 @@ namespace VC
 
       try {
         cancellationToken.ThrowIfCancellationRequested();
-        var splitCallback = new SplitVerifierCallback(callback, split);
+        var splitCallback = new SplitVerifierCallback(verifierCallback, split);
         StartCheck(split, splitCallback, checker, cancellationToken);
         await split.ProverTask;
         await ProcessResult(split, splitCallback, cancellationToken);
@@ -155,7 +155,7 @@ namespace VC
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
       if (!proverFailed) {
-        split.parent.Logger?.ReportSplitResult(split, result);
+        split.parent.Printer?.ReportSplitResult(split, result);
         return;
       }
 
@@ -174,7 +174,7 @@ namespace VC
         var result = vcResult with {
           counterExamples = split.Counterexamples
         };
-        split.parent.Logger?.ReportSplitResult(split, result);
+        split.parent.Printer?.ReportSplitResult(split, result);
         outcome = Outcome.Errors;
         return;
       }
@@ -215,7 +215,7 @@ namespace VC
 
         callback.OnOutOfResource(msg);
       }
-      split.parent.Logger?.ReportSplitResult(split, vcResult);
+      split.parent.Printer?.ReportSplitResult(split, vcResult);
     }
   }
 }

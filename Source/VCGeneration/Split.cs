@@ -38,9 +38,9 @@ namespace VC
           if (counterExample is AssertCounterexample assertCounterexample) {
             underlyingAssert = assertCounterexample.FailingAssert;
           } else if (counterExample is CallCounterexample callCounterexample) {
-            underlyingAssert = callCounterexample.UnderlyingAssert;
+            underlyingAssert = callCounterexample.FailingAssert;
           } else if (counterExample is ReturnCounterexample returnCounterexample) {
-            underlyingAssert = returnCounterexample.UnderlyingAssert;
+            underlyingAssert = returnCounterexample.FailingAssert;
           } else {
             continue;
           }

@@ -508,7 +508,7 @@ namespace Microsoft.Boogie
   {
     public CallCmd FailingCall;
     public Requires FailingRequires;
-    public AssertRequiresCmd UnderlyingAssert;
+    public AssertRequiresCmd FailingAssert;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -531,7 +531,7 @@ namespace Microsoft.Boogie
       Contract.Requires(failingRequires != null);
       this.FailingCall = failingCall;
       this.FailingRequires = failingRequires;
-      this.UnderlyingAssert = assertRequiresCmd;
+      this.FailingAssert = assertRequiresCmd;
       this.checksum = checksum;
       this.SugaredCmdChecksum = failingCall.Checksum;
     }
@@ -550,7 +550,7 @@ namespace Microsoft.Boogie
 
     public override Counterexample Clone()
     {
-      var ret = new CallCounterexample(options, Trace, AugmentedTrace, UnderlyingAssert, Model, MvInfo, Context, ProofRun, Checksum);
+      var ret = new CallCounterexample(options, Trace, AugmentedTrace, FailingAssert, Model, MvInfo, Context, ProofRun, Checksum);
       ret.calleeCounterexamples = calleeCounterexamples;
       return ret;
     }
@@ -560,7 +560,7 @@ namespace Microsoft.Boogie
   {
     public TransferCmd FailingReturn;
     public Ensures FailingEnsures;
-    public AssertEnsuresCmd UnderlyingAssert;
+    public AssertEnsuresCmd FailingAssert;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -582,7 +582,7 @@ namespace Microsoft.Boogie
       Contract.Requires(!failingEnsures.Free);
       this.FailingReturn = failingReturn;
       this.FailingEnsures = failingEnsures;
-      this.UnderlyingAssert = assertEnsuresCmd;
+      this.FailingAssert = assertEnsuresCmd;
       this.checksum = checksum;
     }
 
@@ -603,7 +603,7 @@ namespace Microsoft.Boogie
 
     public override Counterexample Clone()
     {
-      var ret = new ReturnCounterexample(options, Trace, AugmentedTrace, UnderlyingAssert, FailingReturn, Model, MvInfo, Context, ProofRun, checksum);
+      var ret = new ReturnCounterexample(options, Trace, AugmentedTrace, FailingAssert, FailingReturn, Model, MvInfo, Context, ProofRun, checksum);
       ret.calleeCounterexamples = calleeCounterexamples;
       return ret;
     }
@@ -677,11 +677,11 @@ namespace Microsoft.Boogie
   
   // Intercepts callbacks to record counter-examples in splits
   class SplitVerifierCallback : VerifierCallback {
-    private readonly VerifierCallback underlying;
+    private readonly VerifierCallback verifierCallback;
     private readonly Split split;
 
-    public SplitVerifierCallback(VerifierCallback underlying, Split split) : base(CoreOptions.ProverWarnings.None) {
-      this.underlying = underlying;
+    public SplitVerifierCallback(VerifierCallback verifierCallback, Split split) : base(CoreOptions.ProverWarnings.None) {
+      this.verifierCallback = verifierCallback;
       this.split = split;
     }
     // reason == null means this is genuine counterexample returned by the prover
@@ -689,38 +689,39 @@ namespace Microsoft.Boogie
     public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
     {
       split.Counterexamples.Add(ce);
-      underlying.OnCounterexample(ce, reason);
+      verifierCallback.OnCounterexample(ce, reason);
     }
 
     // called in case resource is exceeded and we don't have counterexample
     public override void OnTimeout(string reason)
     {
-      underlying.OnTimeout(reason);
+      verifierCallback.OnTimeout(reason);
     }
 
     public override void OnOutOfMemory(string reason)
     {
-      underlying.OnOutOfMemory(reason);
+      verifierCallback.OnOutOfMemory(reason);
     }
 
     public override void OnOutOfResource(string reason) {
-      underlying.OnOutOfResource(reason);
+      verifierCallback.OnOutOfResource(reason);
     }
 
     public override void OnUnreachableCode(Implementation impl)
     {
-      underlying.OnUnreachableCode(impl);
+      verifierCallback.OnUnreachableCode(impl);
     }
 
     public override void OnWarning(string msg)
     {
-      underlying.OnWarning(msg);
+      verifierCallback.OnWarning(msg);
     }
 
     public override void OnVCResult(VCResult result)
     {
-      underlying.OnVCResult(result);
+      verifierCallback.OnVCResult(result);
     }
-        
+    
+    public override ProgressDelegate OnProgress => verifierCallback.OnProgress;
   }
 }

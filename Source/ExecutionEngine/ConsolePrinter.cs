@@ -191,10 +191,6 @@ public class ConsolePrinter : OutputPrinter
     // Do not print anything to console
   }
 
-  public int GetVerificationPriority(IToken implTok) {
-    return 0;
-  }
-
   public void ReportSplitResult(Split split, VCResult splitResult) {
     // Do not print anything to console
   }
