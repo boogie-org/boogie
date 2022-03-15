@@ -110,13 +110,13 @@ namespace Microsoft.Boogie.SMTLib
       FlushLogFile();
     }
 
-    public override void Reset(VCExpressionGenerator generator)
+    public override async Task Reset(VCExpressionGenerator generator)
     {
       if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
       {
         this.gen = generator;
         SendThisVC("(reset)");
-        RecoverIfProverCrashedAfterReset();
+        await RecoverIfProverCrashedAfterReset();
 
         if (0 < common.Length)
         {
@@ -132,9 +132,9 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private void RecoverIfProverCrashedAfterReset()
+    private async Task RecoverIfProverCrashedAfterReset()
     {
-      if (Process.GetExceptionIfProverDied().Result is not null)
+      if (await Process.GetExceptionIfProverDied() is not null)
       {
         // We recover the process but don't issue the `(reset)` command that fails.
         SetupProcess();

@@ -87,8 +87,8 @@ namespace Microsoft.Boogie.SMTLib
       FlushLogFile();
     }
 
-    public override void Reset(VCExpressionGenerator generator)
-    {
+    public override Task Reset(VCExpressionGenerator generator) {
+      return Task.CompletedTask;
     }
 
     public override void FullReset(VCExpressionGenerator generator)
