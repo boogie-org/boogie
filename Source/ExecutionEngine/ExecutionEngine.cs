@@ -854,12 +854,12 @@ namespace Microsoft.Boogie
 
         ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
 
-        var coreTask = new Task<VerificationResult>(() => VerifyImplementation(program, stats, er, requestId,
+        var coreTask = new Task<Task<VerificationResult>>(() => VerifyImplementation(program, stats, er, requestId,
           extractLoopMappingInfo, implementation,
-          programId, taskWriter).Result, cts.Token, TaskCreationOptions.None);
+          programId, taskWriter), cts.Token, TaskCreationOptions.None);
 
         coreTask.Start(LargeStackScheduler);
-        var verificationResult = await coreTask;
+        var verificationResult = await await coreTask;
         var output = verificationResult.GetOutput(Options.Printer, this, stats, er, implementation);
 
         await taskWriter.WriteAsync(output);
