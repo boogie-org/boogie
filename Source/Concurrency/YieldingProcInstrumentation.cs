@@ -250,31 +250,34 @@ namespace Microsoft.Boogie
       foreach (var impl in absyMap.Keys.OfType<Implementation>())
       {
         var initCmds = new List<Cmd>();
+
+        // Global variables must be havoced to model the yield upon entering a yielding procedure
         if (civlTypeChecker.GlobalVariables.Count() > 0)
         {
           initCmds.Add(CmdHelper.HavocCmd(
             civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList()));
-          linearPermissionInstrumentation.DisjointnessExprs(impl, true).ForEach(
-            expr => initCmds.Add(CmdHelper.AssumeCmd(expr)));
+        }
 
-          Substitution procToImplInParams = Substituter.SubstitutionFromDictionary(impl.Proc.InParams
-            .Zip(impl.InParams).ToDictionary(x => x.Item1, x => (Expr) Expr.Ident(x.Item2)));
+        linearPermissionInstrumentation.DisjointnessExprs(impl, true).ForEach(
+          expr => initCmds.Add(CmdHelper.AssumeCmd(expr)));
 
-          impl.Proc.Requires.ForEach(req =>
-            initCmds.Add(new AssumeCmd(req.tok, Substituter.Apply(procToImplInParams, req.Condition))));
+        Substitution procToImplInParams = Substituter.SubstitutionFromDictionary(impl.Proc.InParams
+          .Zip(impl.InParams).ToDictionary(x => x.Item1, x => (Expr) Expr.Ident(x.Item2)));
 
-          foreach (var callCmd in GetYieldingProc(impl).yieldRequires)
+        impl.Proc.Requires.ForEach(req =>
+          initCmds.Add(new AssumeCmd(req.tok, Substituter.Apply(procToImplInParams, req.Condition))));
+
+        foreach (var callCmd in GetYieldingProc(impl).yieldRequires)
+        {
+          var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
+          if (layerNum == yieldInvariant.LayerNum)
           {
-            var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
-            if (layerNum == yieldInvariant.LayerNum)
-            {
-              Substitution callFormalsToActuals = Substituter.SubstitutionFromDictionary(callCmd.Proc.InParams
-                .Zip(callCmd.Ins)
-                .ToDictionary(x => x.Item1, x => (Expr) ExprHelper.Old(x.Item2)));
-              callCmd.Proc.Requires.ForEach(req => initCmds.Add(new AssumeCmd(req.tok,
-                Substituter.Apply(procToImplInParams,
-                  Substituter.Apply(callFormalsToActuals, req.Condition)))));
-            }
+            Substitution callFormalsToActuals = Substituter.SubstitutionFromDictionary(callCmd.Proc.InParams
+              .Zip(callCmd.Ins)
+              .ToDictionary(x => x.Item1, x => (Expr) ExprHelper.Old(x.Item2)));
+            callCmd.Proc.Requires.ForEach(req => initCmds.Add(new AssumeCmd(req.tok,
+              Substituter.Apply(procToImplInParams,
+                Substituter.Apply(callFormalsToActuals, req.Condition)))));
           }
         }
 
