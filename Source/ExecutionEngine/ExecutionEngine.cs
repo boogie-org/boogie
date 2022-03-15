@@ -804,23 +804,11 @@ namespace Microsoft.Boogie
         foreach (var task in tasks) {
           task.Result.ProcessXml(this);
         }
-      }
-      catch (AggregateException ae) {
-        ae.Flatten().Handle(e =>
-        {
-          if (e is ProverException) {
-            Options.Printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e.Message);
-            outcome = PipelineOutcome.FatalError;
-            return true;
-          }
-
-          if (e is OperationCanceledException) {
-            outcome = PipelineOutcome.Cancelled;
-            return true;
-          }
-
-          return false;
-        });
+      } catch(TaskCanceledException e) {
+        outcome = PipelineOutcome.Cancelled;
+      } catch(ProverException e) {
+        Options.Printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e.Message);
+        outcome = PipelineOutcome.FatalError;
       }
       finally {
         CleanupRequest(requestId);
