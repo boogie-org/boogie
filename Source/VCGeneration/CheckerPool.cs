@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Threading;
@@ -9,8 +10,8 @@ namespace VC
 {
   public class CheckerPool
   {
-    private readonly Stack<Checker> availableCheckers = new();
-    private readonly Queue<TaskCompletionSource<Checker>> checkerWaiters = new();
+    private readonly ConcurrentStack<Checker> availableCheckers = new();
+    private readonly ConcurrentQueue<TaskCompletionSource<Checker>> checkerWaiters = new();
     private int notCreatedCheckers;
     private bool disposed;
 
@@ -24,35 +25,33 @@ namespace VC
 
     public Task<Checker> FindCheckerFor(ConditionGeneration vcgen, Split split = null)
     {
-      lock (this) {
-        if (disposed) {
-          return Task.FromException<Checker>(new Exception("CheckerPool was already disposed"));
-        }
-        
-        if (availableCheckers.TryPop(out var result)) {
-          PrepareChecker(vcgen.program, split, result);
-          Contract.Assert(result != null);
-          return Task.FromResult(result);
-        }
-
-        if (notCreatedCheckers > 0) {
-          notCreatedCheckers--;
-          var checker = CreateNewChecker();
-          PrepareChecker(vcgen.program, split, checker);
-          Contract.Assert(checker != null);
-          return Task.FromResult(checker);
-        }
-
-        var source = new TaskCompletionSource<Checker>();
-        checkerWaiters.Enqueue(source);
-        return source.Task.ContinueWith(t =>
-        {
-          PrepareChecker(vcgen.program, split, t.Result);
-          Contract.Assert(t.Result != null);
-          return t.Result;
-        });
+      if (disposed) {
+        return Task.FromException<Checker>(new Exception("CheckerPool was already disposed"));
       }
-      
+        
+      if (availableCheckers.TryPop(out var result)) {
+        PrepareChecker(vcgen.program, split, result);
+        Contract.Assert(result != null);
+        return Task.FromResult(result);
+      }
+
+      var afterDecrement = Interlocked.Decrement(ref notCreatedCheckers);
+      if (afterDecrement >= 0) {
+        var checker = CreateNewChecker();
+        PrepareChecker(vcgen.program, split, checker);
+        Contract.Assert(checker != null);
+        return Task.FromResult(checker);
+      }
+      Interlocked.Increment(ref notCreatedCheckers);
+
+      var source = new TaskCompletionSource<Checker>();
+      checkerWaiters.Enqueue(source);
+      return source.Task.ContinueWith(t =>
+      {
+        PrepareChecker(vcgen.program, split, t.Result);
+        Contract.Assert(t.Result != null);
+        return t.Result;
+      });
     }
 
     private Checker CreateNewChecker()
@@ -67,15 +66,10 @@ namespace VC
 
     public void Dispose()
     {
-      lock (this) {
-        foreach (var checker in availableCheckers)
-        {
-          Contract.Assert(checker != null);
-          checker.Close();
-        }
-        availableCheckers.Clear();
-        disposed = true;
+      while (availableCheckers.TryPop(out var checker)) {
+        checker.Close();
       }
+      disposed = true;
     }
 
     void PrepareChecker(Program program, Split split, Checker checker)
@@ -99,26 +93,21 @@ namespace VC
         checker.Close();
         return;
       }
-      lock(this)
-      {
-        if (checkerWaiters.TryDequeue(out var waiter)) {
-          if (waiter.TrySetResult(checker)) {
-            return;
-          }
+      if (checkerWaiters.TryDequeue(out var waiter)) {
+        if (waiter.TrySetResult(checker)) {
+          return;
         }
-
-        availableCheckers.Push(checker);
       }
+
+      availableCheckers.Push(checker);
     }
 
     public void CheckerDied()
     {
-      lock (this) {
-        if (checkerWaiters.TryDequeue(out var waiter)) {
-          waiter.SetResult(CreateNewChecker());
-        } else {
-          notCreatedCheckers++;
-        }
+      if (checkerWaiters.TryDequeue(out var waiter)) {
+        waiter.SetResult(CreateNewChecker());
+      } else {
+        Interlocked.Increment(ref notCreatedCheckers);
       }
     }
   }
