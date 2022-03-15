@@ -804,7 +804,7 @@ namespace Microsoft.Boogie
         foreach (var task in tasks) {
           task.Result.ProcessXml(this);
         }
-      } catch(TaskCanceledException e) {
+      } catch(TaskCanceledException) {
         outcome = PipelineOutcome.Cancelled;
       } catch(ProverException e) {
         Options.Printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e.Message);
