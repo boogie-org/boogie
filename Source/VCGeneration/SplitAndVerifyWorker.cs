@@ -154,7 +154,7 @@ namespace VC
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
       if (!proverFailed) {
-        split.parent.Printer?.ReportSplitResult(split, result);
+        split.Finish(result);
         return;
       }
 
@@ -173,7 +173,7 @@ namespace VC
         var result = vcResult with {
           counterExamples = split.Counterexamples
         };
-        split.parent.Printer?.ReportSplitResult(split, result);
+        split.Finish(result);
         outcome = Outcome.Errors;
         return;
       }
@@ -214,7 +214,7 @@ namespace VC
 
         callback.OnOutOfResource(msg);
       }
-      split.parent.Printer?.ReportSplitResult(split, vcResult);
+      split.Finish(vcResult);
     }
   }
 }

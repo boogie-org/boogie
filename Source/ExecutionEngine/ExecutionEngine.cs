@@ -943,8 +943,6 @@ namespace Microsoft.Boogie
       if (RequestIdToCancellationTokenSource.TryGetValue(requestId, out var cts))
       {
         cts.Cancel();
-
-        CleanupRequest(requestId);
       }
     }
 
