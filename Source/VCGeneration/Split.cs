@@ -1560,7 +1560,6 @@ namespace VC
       }
 
       public void Finish(VCResult result) {
-        Checker.TheoremProver.Close();
         parent.Printer?.ReportSplitResult(this, result);
       }
   }
