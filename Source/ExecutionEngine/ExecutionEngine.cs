@@ -11,6 +11,8 @@ using BoogiePL = Microsoft.Boogie;
 using System.Runtime.Caching;
 using System.Diagnostics;
 using System.Net.Mime;
+using Core;
+using Microsoft.Boogie.Houdini;
 
 namespace Microsoft.Boogie
 {
@@ -717,9 +719,8 @@ namespace Microsoft.Boogie
       }
 
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo = null;
-      if (Options.ExtractLoops)
-      {
-        extractLoopMappingInfo = program.ExtractLoops(Options);
+      if (Options.ExtractLoops) {
+        (extractLoopMappingInfo, _) = LoopExtractor.ExtractLoops(Options, program);
       }
 
       if (Options.PrintInstrumented)
@@ -738,7 +739,6 @@ namespace Microsoft.Boogie
       {
         return RunHoudini(program, stats, er);
       }
-
       var stablePrioritizedImpls = GetPrioritizedImplementations(program);
 
       if (1 < Options.VerifySnapshots)
@@ -1048,9 +1048,9 @@ namespace Microsoft.Boogie
         return RunStagedHoudini(program, stats, er);
       }
 
-      Houdini.HoudiniSession.HoudiniStatistics houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
-      Houdini.Houdini houdini = new Houdini.Houdini(Console.Out, Options, program, houdiniStats);
-      Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
+      var houdiniStats = new HoudiniSession.HoudiniStatistics();
+      var houdini = new Houdini.Houdini(Console.Out, Options, program, houdiniStats);
+      HoudiniOutcome outcome = houdini.PerformHoudiniInference();
       houdini.Close();
 
       if (Options.PrintAssignment)
