@@ -395,8 +395,8 @@ namespace Microsoft.Boogie.Houdini
       do
       {
         hardAssumptions.Add(controlExprNoop);
-        (outcome, var unsatisfiedSoftAssumptions) = proverInterface.CheckAssumptions(hardAssumptions,
-          softAssumptions, handler, CancellationToken.None).Result;
+        (outcome, var unsatisfiedSoftAssumptions) = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions,
+          handler, CancellationToken.None).Result;
         hardAssumptions.RemoveAt(hardAssumptions.Count - 1);
 
         if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory ||

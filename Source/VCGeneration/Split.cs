@@ -1551,12 +1551,9 @@ namespace VC
         }
       }
 
-      public void ReleaseChecker()
+      public void ResetChecker()
       {
-        if (checker != null) {
-          Checker.GoBackToIdle();
-          checker = null;
-        }
+        checker = null;
       }
 
       public void Finish(VCResult result) {

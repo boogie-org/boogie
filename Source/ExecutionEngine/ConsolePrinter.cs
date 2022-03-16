@@ -8,12 +8,7 @@ namespace Microsoft.Boogie;
 
 public class ConsolePrinter : OutputPrinter
 {
-  private ExecutionEngineOptions options;
-
-  public ConsolePrinter(ExecutionEngineOptions options)
-  {
-    this.options = options;
-  }
+  public ExecutionEngineOptions Options { get; set; }
 
   public void ErrorWriteLine(TextWriter tw, string s)
   {
@@ -58,7 +53,7 @@ public class ConsolePrinter : OutputPrinter
   }
 
 
-  public void AdvisoryWriteLine(string format, params object[] args)
+  public void AdvisoryWriteLine(TextWriter output, string format, params object[] args)
   {
     Contract.Requires(format != null);
     ConsoleColor col = Console.ForegroundColor;
@@ -74,58 +69,58 @@ public class ConsolePrinter : OutputPrinter
   /// </summary>
   public void Inform(string s, TextWriter tw)
   {
-    if (options.Trace || options.TraceProofObligations)
+    if (Options.Trace || Options.TraceProofObligations)
     {
       tw.WriteLine(s);
     }
   }
 
 
-  public void WriteTrailer(PipelineStatistics stats)
+  public void WriteTrailer(TextWriter textWriter, PipelineStatistics stats)
   {
     Contract.Requires(stats != null);
     Contract.Requires(0 <= stats.VerifiedCount && 0 <= stats.ErrorCount && 0 <= stats.InconclusiveCount &&
                       0 <= stats.TimeoutCount && 0 <= stats.OutOfMemoryCount);
 
-    Console.WriteLine();
-    if (options.ShowVerifiedProcedureCount)
+    textWriter.WriteLine();
+    if (Options.ShowVerifiedProcedureCount)
     {
-      Console.Write("{0} finished with {1} verified, {2} error{3}", options.DescriptiveToolName,
+      textWriter.Write("{0} finished with {1} verified, {2} error{3}", Options.DescriptiveToolName,
         stats.VerifiedCount, stats.ErrorCount, stats.ErrorCount == 1 ? "" : "s");
     }
     else
     {
-      Console.Write("{0} finished with {1} error{2}", options.DescriptiveToolName, stats.ErrorCount,
+      textWriter.Write("{0} finished with {1} error{2}", Options.DescriptiveToolName, stats.ErrorCount,
         stats.ErrorCount == 1 ? "" : "s");
     }
 
     if (stats.InconclusiveCount != 0)
     {
-      Console.Write(", {0} inconclusive{1}", stats.InconclusiveCount, stats.InconclusiveCount == 1 ? "" : "s");
+      textWriter.Write(", {0} inconclusive{1}", stats.InconclusiveCount, stats.InconclusiveCount == 1 ? "" : "s");
     }
 
     if (stats.TimeoutCount != 0)
     {
-      Console.Write(", {0} time out{1}", stats.TimeoutCount, stats.TimeoutCount == 1 ? "" : "s");
+      textWriter.Write(", {0} time out{1}", stats.TimeoutCount, stats.TimeoutCount == 1 ? "" : "s");
     }
 
     if (stats.OutOfMemoryCount != 0)
     {
-      Console.Write(", {0} out of memory", stats.OutOfMemoryCount);
+      textWriter.Write(", {0} out of memory", stats.OutOfMemoryCount);
     }
 
     if (stats.OutOfResourceCount != 0)
     {
-      Console.Write(", {0} out of resource", stats.OutOfResourceCount);
+      textWriter.Write(", {0} out of resource", stats.OutOfResourceCount);
     }
 
     if (stats.SolverExceptionCount != 0)
     {
-      Console.Write(", {0} solver exceptions", stats.SolverExceptionCount);
+      textWriter.Write(", {0} solver exceptions", stats.SolverExceptionCount);
     }
 
-    Console.WriteLine();
-    Console.Out.Flush();
+    textWriter.WriteLine();
+    textWriter.Flush();
   }
 
 
@@ -161,7 +156,7 @@ public class ConsolePrinter : OutputPrinter
     string s;
     if (tok != null)
     {
-      s = string.Format("{0}({1},{2}): {3}", ExecutionEngine.GetFileNameForConsole(options, tok.filename), tok.line, tok.col,
+      s = string.Format("{0}({1},{2}): {3}", ExecutionEngine.GetFileNameForConsole(Options, tok.filename), tok.line, tok.col,
         message);
     }
     else
