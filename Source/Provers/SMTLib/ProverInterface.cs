@@ -183,7 +183,7 @@ public abstract class ProverInterface
   {
   }
 
-  public abstract void Reset(VCExpressionGenerator gen);
+  public abstract Task Reset(VCExpressionGenerator gen);
 
   public abstract void FullReset(VCExpressionGenerator gen);
 

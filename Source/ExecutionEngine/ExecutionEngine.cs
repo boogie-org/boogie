@@ -804,23 +804,11 @@ namespace Microsoft.Boogie
         foreach (var task in tasks) {
           task.Result.ProcessXml(this);
         }
-      }
-      catch (AggregateException ae) {
-        ae.Flatten().Handle(e =>
-        {
-          if (e is ProverException) {
-            Options.Printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e.Message);
-            outcome = PipelineOutcome.FatalError;
-            return true;
-          }
-
-          if (e is OperationCanceledException) {
-            outcome = PipelineOutcome.Cancelled;
-            return true;
-          }
-
-          return false;
-        });
+      } catch(TaskCanceledException) {
+        outcome = PipelineOutcome.Cancelled;
+      } catch(ProverException e) {
+        Options.Printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e.Message);
+        outcome = PipelineOutcome.FatalError;
       }
       finally {
         CleanupRequest(requestId);
@@ -854,12 +842,12 @@ namespace Microsoft.Boogie
 
         ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
 
-        var coreTask = new Task<VerificationResult>(() => VerifyImplementation(program, stats, er, requestId,
+        var coreTask = new Task<Task<VerificationResult>>(() => VerifyImplementation(program, stats, er, requestId,
           extractLoopMappingInfo, implementation,
-          programId, taskWriter).Result, cts.Token, TaskCreationOptions.None);
+          programId, taskWriter), cts.Token, TaskCreationOptions.None);
 
         coreTask.Start(LargeStackScheduler);
-        var verificationResult = await coreTask;
+        var verificationResult = await await coreTask;
         var output = verificationResult.GetOutput(Options.Printer, this, stats, er, implementation);
 
         await taskWriter.WriteAsync(output);
