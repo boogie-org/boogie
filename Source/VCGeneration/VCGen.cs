@@ -819,7 +819,7 @@ namespace VC
 
     private VCGenOptions Options => CheckerPool.Options;
 
-    public override Outcome VerifyImplementation(ImplementationRun run, VerifierCallback callback,
+    public override async Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -883,7 +883,7 @@ namespace VC
       }
 
       var worker = new SplitAndVerifyWorker(Options, this, run, gotoCmdOrigins, callback, mvInfo, outcome);
-      outcome = worker.WorkUntilDone(cancellationToken).Result;
+      outcome = await worker.WorkUntilDone(cancellationToken);
       ResourceCount = worker.ResourceCount;
       
       if (outcome == Outcome.Correct && smoke_tester != null)

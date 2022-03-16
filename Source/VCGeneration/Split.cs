@@ -1306,7 +1306,6 @@ namespace VC
 
         var resourceCount = checker.GetProverResourceCount().Result;
         totalResourceCount += resourceCount;
-
         var result = new VCResult(splitIndex + 1, checker.ProverStart, outcome, checker.ProverRunTime, Asserts, resourceCount);
         callback.OnVCResult(result);
 
@@ -1501,9 +1500,8 @@ namespace VC
         }
       }
 
-      public void ReleaseChecker()
+      public void ResetChecker()
       {
-        Checker.GoBackToIdle();
         checker = null;
       }
     }
