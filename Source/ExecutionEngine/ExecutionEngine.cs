@@ -796,6 +796,8 @@ namespace Microsoft.Boogie
       var cts = new CancellationTokenSource();
       RequestIdToCancellationTokenSource.AddOrUpdate(requestId, cts, (k, ov) => cts);
 
+      Options.Printer.ReportImplementationsBeforeVerification(stablePrioritizedImpls);
+      
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
         var result = await VerifyImplementationWithLargeStackScheduler(program, stats, programId, er, requestId,
@@ -952,7 +954,7 @@ namespace Microsoft.Boogie
 
       Options.Printer.Inform("", traceWriter); // newline
       Options.Printer.Inform($"Verifying {implementation.Name} ...", traceWriter);
-      printer.ReportStartVerifyImplementation(impl);
+      Options.Printer.ReportStartVerifyImplementation(implementation);
 
       verificationResult = await VerifyImplementationWithoutCaching(program, stats, er, requestId,
         extractLoopMappingInfo, programId, implementation, traceWriter);
@@ -961,7 +963,7 @@ namespace Microsoft.Boogie
       {
         Cache.Insert(implementation, verificationResult);
       }
-      printer.ReportEndVerifyImplementation(impl, verificationResult);
+      Options.Printer.ReportEndVerifyImplementation(implementation, verificationResult);
 
       return verificationResult;
     }
