@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <AssemblyName>Boogie.AbsInt</AssemblyName>
-    <RootNamespace>AbsInt</RootNamespace>
+    <AssemblyName>Boogie.AbstractInterpretation</AssemblyName>
+    <RootNamespace>AbstractInterpretation</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
