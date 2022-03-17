@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -8,6 +9,7 @@ namespace Microsoft.Boogie;
 
 public interface ExecutionEngineOptions : HoudiniOptions, ConcurrencyOptions
 {
+  public OutputPrinter Printer { get; }
   bool ShowVerifiedProcedureCount { get; }
   string DescriptiveToolName { get; }
   bool TraceProofObligations { get; }
@@ -31,7 +33,7 @@ public interface ExecutionEngineOptions : HoudiniOptions, ConcurrencyOptions
   bool ForceBplErrors { get; }
   bool PrintAssignment { get; }
   bool ExtractLoops { get; }
-  string PrintErrorModelFile { get; }
+  TextWriter ModelWriter { get; }
   bool ExpandLambdas { get; }
   bool PrintLambdaLifting { get; }
   bool UseAbstractInterpretation { get; }

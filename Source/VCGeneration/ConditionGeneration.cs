@@ -26,7 +26,7 @@ namespace VC
   [ContractClassFor(typeof(ConditionGeneration))]
   public abstract class ConditionGenerationContracts : ConditionGeneration
   {
-    public override Outcome VerifyImplementation(ImplementationRun run, VerifierCallback callback,
+    public override Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken)
     {
       Contract.Requires(run != null);
@@ -117,39 +117,30 @@ namespace VC
     /// each counterexample consisting of an array of labels.
     /// </summary>
     /// <param name="impl"></param>
-    public Outcome VerifyImplementation(ImplementationRun run, out List<Counterexample> /*?*/ errors,
-      out List<VCResult> vcResults,
-      string requestId, CancellationToken cancellationToken)
+    public async Task<(Outcome, List<Counterexample> /*?*/ errors, List<VCResult> vcResults)>
+      VerifyImplementation(ImplementationRun run, string requestId, CancellationToken cancellationToken)
     {
       Contract.Requires(run != null);
 
-      Contract.Ensures(Contract.ValueAtReturn(out errors) == null ||
-                       Contract.ForAll(Contract.ValueAtReturn(out errors), i => i != null));
-      Contract.Ensures(Contract.Result<Outcome>() != Outcome.Errors || errors != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       Helpers.ExtraTraceInformation(Options, "Starting implementation verification");
 
-      VerificationResultCollector collector = new VerificationResultCollector(Options);
+      var collector = new VerificationResultCollector(Options);
       collector.RequestId = requestId;
-      Outcome outcome = VerifyImplementation(run, collector, cancellationToken);
+      Outcome outcome = await VerifyImplementation(run, collector, cancellationToken);
+      List<Counterexample> /*?*/ errors = null;
       if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
-          outcome == Outcome.OutOfResource)
-      {
+          outcome == Outcome.OutOfResource) {
         errors = collector.examples;
       }
-      else
-      {
-        errors = null;
-      }
-      vcResults = collector.vcResults;
 
       Helpers.ExtraTraceInformation(Options, "Finished implementation verification");
-      return outcome;
+      return (outcome, errors, collector.vcResults);
     }
 
     private VCGenOptions Options => CheckerPool.Options;
 
-    public abstract Outcome VerifyImplementation(ImplementationRun run, VerifierCallback callback,
+    public abstract Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////

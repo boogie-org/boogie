@@ -100,16 +100,17 @@ namespace VC
 
       try {
         cancellationToken.ThrowIfCancellationRequested();
-        StartCheck(split, checker, cancellationToken);
+        await StartCheck(split, checker, cancellationToken);
         await split.ProverTask;
         await ProcessResult(split, cancellationToken);
       }
       finally {
-        split.ReleaseChecker();
+        checker.GoBackToIdle();
+        split.ResetChecker();
       }
     }
 
-    private void StartCheck(Split split, Checker checker, CancellationToken cancellationToken)
+    private async Task StartCheck(Split split, Checker checker, CancellationToken cancellationToken)
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
       if (options.Trace && DoSplitting) {
@@ -123,7 +124,7 @@ namespace VC
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
         run.Implementation.GetTimeLimit(options);
-      split.BeginCheck(run.TraceWriter, checker, callback, mvInfo, currentSplitNumber, timeout, Implementation.GetResourceLimit(options), cancellationToken);
+      await split.BeginCheck(run.TraceWriter, checker, callback, mvInfo, currentSplitNumber, timeout, Implementation.GetResourceLimit(options), cancellationToken);
     }
 
     private Implementation Implementation => run.Implementation;
