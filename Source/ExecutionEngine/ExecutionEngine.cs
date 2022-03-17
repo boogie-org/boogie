@@ -11,6 +11,7 @@ using BoogiePL = Microsoft.Boogie;
 using System.Runtime.Caching;
 using System.Diagnostics;
 using System.Net.Mime;
+using System.Runtime.CompilerServices;
 using Core;
 using Microsoft.Boogie.Houdini;
 
@@ -176,6 +177,9 @@ namespace Microsoft.Boogie
   #endregion
 
   public class ExecutionEngine : IDisposable {
+
+    private static readonly ConditionalWeakTable<Program, Action<VCGen, Implementation, VerificationResult>> ResultPostProcessors = new ();
+
     public static ErrorInformationFactory ErrorInformationFactory { get; } = new();
 
     static int autoRequestIdCount;
@@ -718,9 +722,8 @@ namespace Microsoft.Boogie
         program.UnrollLoops(Options.LoopUnrollCount, Options.SoundLoopUnrolling);
       }
 
-      Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo = null;
       if (Options.ExtractLoops) {
-        (extractLoopMappingInfo, _) = LoopExtractor.ExtractLoops(Options, program);
+        ExtractLoops(program);
       }
 
       if (Options.PrintInstrumented)
@@ -747,7 +750,7 @@ namespace Microsoft.Boogie
           out stats.CachingActionCounts);
       }
 
-      var outcome = await VerifyEachImplementation(output, program, stats, programId, er, requestId, stablePrioritizedImpls, extractLoopMappingInfo);
+      var outcome = await VerifyEachImplementation(output, program, stats, programId, er, requestId, stablePrioritizedImpls);
 
       if (1 < Options.VerifySnapshots && programId != null)
       {
@@ -758,6 +761,19 @@ namespace Microsoft.Boogie
       TraceCachingForBenchmarking(stats, requestId, start);
 
       return outcome;
+    }
+
+    private void ExtractLoops(Program program)
+    {
+      var (extractLoopMappingInfo, _) = LoopExtractor.ExtractLoops(Options, program);
+      ResultPostProcessors.Add(program, (vcgen, impl, result) =>
+      {
+        if (result.Errors != null) {
+          for (int i = 0; i < result.Errors.Count; i++) {
+            result.Errors[i] = vcgen.ExtractLoopTrace(result.Errors[i], impl.Name, program, extractLoopMappingInfo);
+          }
+        }
+      });
     }
 
     private Implementation[] GetPrioritizedImplementations(Program program)
@@ -782,8 +798,7 @@ namespace Microsoft.Boogie
 
     private async Task<PipelineOutcome> VerifyEachImplementation(TextWriter output, Program program,
       PipelineStatistics stats,
-      string programId, ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls,
-      Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
+      string programId, ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls)
     {
       var consoleCollector = new ConcurrentToSequentialWriteManager(output);
       program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(Options, program);
@@ -794,7 +809,7 @@ namespace Microsoft.Boogie
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
         var result = await VerifyImplementationWithLargeStackScheduler(program, stats, programId, er, requestId,
-          stablePrioritizedImpls, extractLoopMappingInfo, cts, index, taskWriter);
+          stablePrioritizedImpls, cts, index, taskWriter);
         return result;
       }).ToList();
       var outcome = PipelineOutcome.VerificationCompleted;
@@ -827,7 +842,6 @@ namespace Microsoft.Boogie
     async Task<VerificationResult> VerifyImplementationWithLargeStackScheduler(
       Program program, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls,
-      Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
       CancellationTokenSource cts,
       int index, TextWriter taskWriter)
     {
@@ -843,7 +857,7 @@ namespace Microsoft.Boogie
         ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
 
         var coreTask = new Task<Task<VerificationResult>>(() => VerifyImplementation(program, stats, er, requestId,
-          extractLoopMappingInfo, implementation,
+           implementation,
           programId, taskWriter), cts.Token, TaskCreationOptions.None);
 
         coreTask.Start(LargeStackScheduler);
@@ -924,7 +938,7 @@ namespace Microsoft.Boogie
       Program program,
       PipelineStatistics stats,
       ErrorReporterDelegate er,
-      string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
+      string requestId,
       Implementation implementation,
       string programId,
       TextWriter traceWriter)
@@ -939,7 +953,7 @@ namespace Microsoft.Boogie
       Options.Printer.Inform($"Verifying {implementation.Name} ...", traceWriter);
 
       verificationResult = await VerifyImplementationWithoutCaching(program, stats, er, requestId,
-        extractLoopMappingInfo, programId, implementation, traceWriter);
+        programId, implementation, traceWriter);
 
       if (0 < Options.VerifySnapshots && !string.IsNullOrEmpty(implementation.Checksum))
       {
@@ -978,7 +992,6 @@ namespace Microsoft.Boogie
 
     private async Task<VerificationResult> VerifyImplementationWithoutCaching(Program program,
       PipelineStatistics stats, ErrorReporterDelegate er, string requestId,
-      Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
       string programId, Implementation impl, TextWriter traceWriter)
     {
       var verificationResult = new VerificationResult(requestId, impl, programId);
@@ -993,13 +1006,8 @@ namespace Microsoft.Boogie
         var cancellationToken = RequestIdToCancellationTokenSource[requestId].Token;
         (verificationResult.Outcome, verificationResult.Errors, verificationResult.VCResults) =
           await vcgen.VerifyImplementation(new ImplementationRun(impl, traceWriter), requestId, cancellationToken);
-        if (Options.ExtractLoops && verificationResult.Errors != null) {
-          if (vcgen is VCGen vcg) {
-            for (int i = 0; i < verificationResult.Errors.Count; i++) {
-              verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name,
-                program, extractLoopMappingInfo);
-            }
-          }
+        if (ResultPostProcessors.TryGetValue(program, out var postProcess)) {
+          postProcess!(vcgen, impl, verificationResult);
         }
       } catch (VCGenException e) {
         var errorInfo = ErrorInformationFactory.CreateErrorInformation(impl.tok,
@@ -1013,7 +1021,7 @@ namespace Microsoft.Boogie
         }
 
         verificationResult.Errors = null;
-        verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+        verificationResult.Outcome = ConditionGeneration.Outcome.Inconclusive;
       } catch (ProverDiedException) {
         throw;
       } catch (UnexpectedProverOutputException upo) {
@@ -1021,12 +1029,12 @@ namespace Microsoft.Boogie
           "Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}",
           impl.Name, upo.Message);
         verificationResult.Errors = null;
-        verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+        verificationResult.Outcome = ConditionGeneration.Outcome.Inconclusive;
       } catch (IOException e) {
         Options.Printer.AdvisoryWriteLine(traceWriter, "Advisory: {0} SKIPPED due to I/O exception: {1}",
           impl.Name, e.Message);
         verificationResult.Errors = null;
-        verificationResult.Outcome = VCGen.Outcome.SolverException;
+        verificationResult.Outcome = ConditionGeneration.Outcome.SolverException;
       }
 
       verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;

@@ -1771,7 +1771,7 @@ namespace VC
 
       #region Support for stratified inlining
 
-      addExitAssert(impl.Name, exitBlock);
+      AddExitAssert(impl.Name, exitBlock);
 
       #endregion
 
@@ -2136,11 +2136,11 @@ namespace VC
     }
 
     // Used by stratified inlining
-    protected virtual void addExitAssert(string implName, Block exitBlock)
+    protected virtual void AddExitAssert(string implName, Block exitBlock)
     {
     }
 
-    public virtual Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program,
+    public virtual Counterexample ExtractLoopTrace(Counterexample cex, string mainProcName, Program program,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
       // Construct the set of inlined procs in the original program
@@ -2153,12 +2153,12 @@ namespace VC
         }
       }
 
-      return extractLoopTraceRec(
+      return ExtractLoopTraceRec(
         new CalleeCounterexampleInfo(cex, new List<object>()),
         mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
     }
 
-    protected CalleeCounterexampleInfo extractLoopTraceRec(
+    protected CalleeCounterexampleInfo ExtractLoopTraceRec(
       CalleeCounterexampleInfo cexInfo, string currProc,
       HashSet<string> inlinedProcs,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
@@ -2204,7 +2204,7 @@ namespace VC
           var calleeTrace = cex.calleeCounterexamples[loc];
           Debug.Assert(calleeTrace != null);
 
-          var origTrace = extractLoopTraceRec(calleeTrace, callee, inlinedProcs, extractLoopMappingInfo);
+          var origTrace = ExtractLoopTraceRec(calleeTrace, callee, inlinedProcs, extractLoopMappingInfo);
 
           if (elIsLoop(callee))
           {
