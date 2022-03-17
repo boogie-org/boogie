@@ -962,7 +962,7 @@ namespace VC
         mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
     }
 
-    protected override bool elIsLoop(string procname)
+    protected override bool ProcIsLoop(string procname)
     {
       StratifiedInliningInfo info = null;
       if (implName2StratifiedInliningInfo.ContainsKey(procname))

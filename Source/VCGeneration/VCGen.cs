@@ -2178,7 +2178,7 @@ namespace VC
       for (int numBlock = 0; numBlock < cex.Trace.Count; numBlock++)
       {
         Block block = cex.Trace[numBlock];
-        var origBlock = elGetBlock(currProc, block, extractLoopMappingInfo);
+        var origBlock = ProcGetBlock(currProc, block, extractLoopMappingInfo);
         if (origBlock != null)
         {
           ret.Trace.Add(origBlock);
@@ -2206,7 +2206,7 @@ namespace VC
 
           var origTrace = ExtractLoopTraceRec(calleeTrace, callee, inlinedProcs, extractLoopMappingInfo);
 
-          if (elIsLoop(callee))
+          if (ProcIsLoop(callee))
           {
             // Absorb the trace into the current trace
 
@@ -2286,12 +2286,12 @@ namespace VC
       return procCalled;
     }
 
-    protected virtual bool elIsLoop(string procname)
+    protected virtual bool ProcIsLoop(string procname)
     {
       return false;
     }
 
-    private Block elGetBlock(string procname, Block block,
+    private Block ProcGetBlock(string procname, Block block,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
       Contract.Requires(procname != null);
