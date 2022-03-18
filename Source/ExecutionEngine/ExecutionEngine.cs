@@ -844,7 +844,7 @@ namespace Microsoft.Boogie
         }
       } catch (VCGenException e) {
         var errorInfo = ErrorInformationFactory.CreateErrorInformation(impl.tok,
-          $"{e.Message} (encountered in implementation {impl.Name}).", requestId, "Error");
+          $"{e.Message} (encountered in implementation {impl.Name}).", "Error");
         errorInfo.ImplementationName = impl.Name;
         verificationResult.ErrorBeforeVerification = errorInfo;
         if (er != null) {
@@ -1025,7 +1025,7 @@ namespace Microsoft.Boogie
                 (errors != null && errors.Any(e => e.IsAuxiliaryCexForDiagnosingTimeouts)))
             {
               errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
-                string.Format("Verification of '{1}' timed out after {0} seconds", timeLimit, implName), requestId);
+                string.Format("Verification of '{1}' timed out after {0} seconds", timeLimit, implName));
             }
 
             //  Report timed out assertions as auxiliary info.
@@ -1079,7 +1079,7 @@ namespace Microsoft.Boogie
           if (implName != null && implTok != null)
           {
             errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
-              "Verification out of resource (" + implName + ")", requestId);
+              "Verification out of resource (" + implName + ")");
           }
 
           break;
@@ -1087,7 +1087,7 @@ namespace Microsoft.Boogie
           if (implName != null && implTok != null)
           {
             errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
-              "Verification out of memory (" + implName + ")", requestId);
+              "Verification out of memory (" + implName + ")");
           }
 
           break;
@@ -1095,7 +1095,7 @@ namespace Microsoft.Boogie
           if (implName != null && implTok != null)
           {
             errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
-              "Verification encountered solver exception (" + implName + ")", requestId);
+              "Verification encountered solver exception (" + implName + ")");
           }
 
           break;
@@ -1104,7 +1104,7 @@ namespace Microsoft.Boogie
           if (implName != null && implTok != null)
           {
             errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
-              "Verification inconclusive (" + implName + ")", requestId);
+              "Verification inconclusive (" + implName + ")");
           }
 
           break;
@@ -1342,7 +1342,7 @@ namespace Microsoft.Boogie
         {
           errorInfo = ErrorInformationFactory.CreateErrorInformation(callError.FailingCall.tok,
             callError.FailingCall.ErrorData as string ?? callError.FailingCall.Description.FailureDescription,
-            callError.RequestId, callError.OriginalRequestId, cause);
+            cause);
           errorInfo.Kind = ErrorKind.Precondition;
           errorInfo.AddAuxInfo(callError.FailingRequires.tok,
             callError.FailingRequires.ErrorData as string ?? callError.FailingRequires.Description.FailureDescription,
@@ -1350,9 +1350,8 @@ namespace Microsoft.Boogie
         }
         else
         {
-          errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(null,
-            callError.FailingRequires.ErrorMessage,
-            callError.RequestId, callError.OriginalRequestId);
+          errorInfo = ErrorInformationFactory.CreateErrorInformation(null,
+            callError.FailingRequires.ErrorMessage);
         }
       }
       else if (error is ReturnCounterexample returnError)
@@ -1360,8 +1359,7 @@ namespace Microsoft.Boogie
         if (returnError.FailingEnsures.ErrorMessage == null || Options.ForceBplErrors)
         {
           errorInfo = ErrorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok,
-            returnError.FailingReturn.Description.FailureDescription,
-            returnError.RequestId, returnError.OriginalRequestId, cause);
+            returnError.FailingReturn.Description.FailureDescription);
           errorInfo.Kind = ErrorKind.Postcondition;
           errorInfo.AddAuxInfo(returnError.FailingEnsures.tok,
             returnError.FailingEnsures.ErrorData as string ?? returnError.FailingEnsures.Description.FailureDescription,
@@ -1369,9 +1367,8 @@ namespace Microsoft.Boogie
         }
         else
         {
-          errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(null,
-            returnError.FailingEnsures.ErrorMessage,
-            returnError.RequestId, returnError.OriginalRequestId);
+          errorInfo = ErrorInformationFactory.CreateErrorInformation(null,
+            returnError.FailingEnsures.ErrorMessage);
         }
       }
       else // error is AssertCounterexample
@@ -1381,8 +1378,7 @@ namespace Microsoft.Boogie
         if (assertError.FailingAssert is LoopInitAssertCmd or LoopInvMaintainedAssertCmd)
         {
           errorInfo = ErrorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok,
-            assertError.FailingAssert.Description.FailureDescription,
-            assertError.RequestId, assertError.OriginalRequestId, cause);
+            assertError.FailingAssert.Description.FailureDescription);
           errorInfo.Kind = assertError.FailingAssert is LoopInitAssertCmd ?
             ErrorKind.InvariantEntry : ErrorKind.InvariantMaintainance;
           if ((assertError.FailingAssert.ErrorData as string) != null)
@@ -1397,15 +1393,13 @@ namespace Microsoft.Boogie
           {
             string msg = assertError.FailingAssert.ErrorData as string ??
                          assertError.FailingAssert.Description.FailureDescription;
-            errorInfo = ErrorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg,
-              assertError.RequestId, assertError.OriginalRequestId, cause);
+            errorInfo = ErrorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg);
             errorInfo.Kind = ErrorKind.Assertion;
           }
           else
           {
-            errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(null,
-              assertError.FailingAssert.ErrorMessage,
-              assertError.RequestId, assertError.OriginalRequestId);
+            errorInfo = ErrorInformationFactory.CreateErrorInformation(null,
+              assertError.FailingAssert.ErrorMessage);
           }
         }
       }
