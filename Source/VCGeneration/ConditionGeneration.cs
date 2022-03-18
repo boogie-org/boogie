@@ -35,8 +35,8 @@ namespace VC
       throw new NotImplementedException();
     }
 
-    public ConditionGenerationContracts(Program p, CheckerPool checkerPool)
-      : base(p, checkerPool)
+    public ConditionGenerationContracts(Program program, CheckerPool checkerPool)
+      : base(program, checkerPool)
     {
     }
   }
@@ -103,10 +103,10 @@ namespace VC
     public Program program;
     public CheckerPool CheckerPool { get; }
 
-    public ConditionGeneration(Program p, CheckerPool checkerPool)
+    public ConditionGeneration(Program program, CheckerPool checkerPool)
     {
-      Contract.Requires(p != null && checkerPool != null);
-      program = p;
+      Contract.Requires(program != null && checkerPool != null);
+      this.program = program;
       CheckerPool = checkerPool;
     }
 
