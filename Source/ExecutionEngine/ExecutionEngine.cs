@@ -535,44 +535,7 @@ namespace Microsoft.Boogie
 
       var start = DateTime.UtcNow;
 
-      #region Do some pre-abstract-interpretation preprocessing on the program
-
-      // Doing lambda expansion before abstract interpretation means that the abstract interpreter
-      // never needs to see any lambda expressions.  (On the other hand, if it were useful for it
-      // to see lambdas, then it would be better to more lambda expansion until after inference.)
-      if (Options.ExpandLambdas)
-      {
-        LambdaHelper.ExpandLambdas(Options, program);
-        if (Options.PrintFile != null && Options.PrintLambdaLifting)
-        {
-          PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
-        }
-      }
-
-      #endregion
-
-      if (Options.UseAbstractInterpretation)
-      {
-        new AbstractInterpretation.NativeAbstractInterpretation(Options).RunAbstractInterpretation(program);
-      }
-
-      #region Do some post-abstract-interpretation preprocessing on the program (e.g., loop unrolling)
-
-      if (Options.LoopUnrollCount != -1)
-      {
-        program.UnrollLoops(Options.LoopUnrollCount, Options.SoundLoopUnrolling);
-      }
-
-      if (Options.ExtractLoops) {
-        ExtractLoops(program);
-      }
-
-      if (Options.PrintInstrumented)
-      {
-        program.Emit(new TokenTextWriter(Console.Out, Options.PrettyPrint, Options));
-      }
-
-      #endregion
+      PreProcessProgram(program);
 
       if (!Options.Verify)
       {
@@ -602,6 +565,37 @@ namespace Microsoft.Boogie
       TraceCachingForBenchmarking(stats, requestId, start);
 
       return outcome;
+    }
+
+    private void PreProcessProgram(Program program)
+    {
+      // Doing lambda expansion before abstract interpretation means that the abstract interpreter
+      // never needs to see any lambda expressions.  (On the other hand, if it were useful for it
+      // to see lambdas, then it would be better to more lambda expansion until after inference.)
+      if (Options.ExpandLambdas) {
+        LambdaHelper.ExpandLambdas(Options, program);
+        if (Options.PrintFile != null && Options.PrintLambdaLifting) {
+          PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
+        }
+      }
+
+      if (Options.UseAbstractInterpretation) {
+        new AbstractInterpretation.NativeAbstractInterpretation(Options).RunAbstractInterpretation(program);
+      }
+
+      if (Options.LoopUnrollCount != -1) {
+        program.UnrollLoops(Options.LoopUnrollCount, Options.SoundLoopUnrolling);
+      }
+
+      if (Options.ExtractLoops) {
+        ExtractLoops(program);
+      }
+
+      if (Options.PrintInstrumented) {
+        program.Emit(new TokenTextWriter(Console.Out, Options.PrettyPrint, Options));
+      }
+
+      program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(Options, program);
     }
 
     private void ExtractLoops(Program program)
@@ -642,7 +636,6 @@ namespace Microsoft.Boogie
       string programId, ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls)
     {
       var consoleCollector = new ConcurrentToSequentialWriteManager(output);
-      program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(Options, program);
 
       var cts = new CancellationTokenSource();
       RequestIdToCancellationTokenSource.AddOrUpdate(requestId, cts, (k, ov) => cts);
@@ -650,7 +643,7 @@ namespace Microsoft.Boogie
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
         var result = await VerifyImplementationWithLargeStackScheduler(program, stats, programId, er, requestId,
-          stablePrioritizedImpls, cts, index, taskWriter);
+          stablePrioritizedImpls[index], cts, taskWriter);
         return result;
       }).ToList();
       var outcome = PipelineOutcome.VerificationCompleted;
@@ -682,11 +675,10 @@ namespace Microsoft.Boogie
 
     async Task<VerificationResult> VerifyImplementationWithLargeStackScheduler(
       Program program, PipelineStatistics stats,
-      string programId, ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls,
+      string programId, ErrorReporterDelegate er, string requestId, Implementation implementation,
       CancellationTokenSource cts,
-      int index, TextWriter taskWriter)
+      TextWriter taskWriter)
     {
-      var implementation = stablePrioritizedImpls[index];
       var id = implementation.Id;
       if (ImplIdToCancellationTokenSource.TryGetValue(id, out var old)) {
         old.Cancel();
