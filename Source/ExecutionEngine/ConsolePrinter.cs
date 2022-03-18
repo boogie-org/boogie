@@ -6,7 +6,7 @@ namespace Microsoft.Boogie;
 
 public class ConsolePrinter : OutputPrinter
 {
-  public ExecutionEngineOptions Options { get; set; }
+  public ExecutionEngineOptions? Options { get; set; }
 
   public void ErrorWriteLine(TextWriter tw, string s)
   {

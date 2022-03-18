@@ -8,7 +8,6 @@ namespace Microsoft.Boogie;
 
 public sealed class VerificationResult
 {
-  public readonly string RequestId;
   public readonly string Checksum;
   public readonly string DependeciesChecksum;
   public readonly string ImplementationName;
@@ -36,11 +35,10 @@ public sealed class VerificationResult
   public ISet<byte[]> AssertionChecksums { get; }
   public ErrorInformation ErrorBeforeVerification { get; set; }
 
-  public VerificationResult(string requestId, Implementation implementation, string programId = null)
+  public VerificationResult(Implementation implementation, string programId = null)
   {
     Checksum = implementation.Checksum;
     DependeciesChecksum = implementation.DependencyChecksum;
-    RequestId = requestId;
     ImplementationName = implementation.Name;
     ImplementationToken = implementation.tok;
     ProgramId = programId;
@@ -59,7 +57,7 @@ public sealed class VerificationResult
 
     engine.ProcessOutcome(printer, Outcome, Errors, TimeIndication(engine.Options), stats,
       result, implementation.GetTimeLimit(engine.Options), er, ImplementationName, ImplementationToken,
-      RequestId, MessageIfVerifies);
+      MessageIfVerifies);
 
     engine.ProcessErrors(printer, Errors, Outcome, result, er, implementation);
 

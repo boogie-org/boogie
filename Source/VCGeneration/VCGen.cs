@@ -873,10 +873,6 @@ namespace VC
               // If possible, we use the old counterexample, but with the location information of "a"
               var cex = AssertCmdToCloneCounterexample(CheckerPool.Options, a, oldCex, impl.Blocks[0], gotoCmdOrigins);
               callback.OnCounterexample(cex, null);
-              // OnCounterexample may have had side effects on the RequestId and OriginalRequestId fields.  We make
-              // any such updates available in oldCex. (Is this really a good design? --KRML)
-              oldCex.RequestId = cex.RequestId;
-              oldCex.OriginalRequestId = cex.OriginalRequestId;
             }
           }
         }

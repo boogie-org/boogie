@@ -118,7 +118,7 @@ namespace VC
     /// </summary>
     /// <param name="impl"></param>
     public async Task<(Outcome, List<Counterexample> /*?*/ errors, List<VCResult> vcResults)>
-      VerifyImplementation(ImplementationRun run, string requestId, CancellationToken cancellationToken)
+      VerifyImplementation(ImplementationRun run, CancellationToken cancellationToken)
     {
       Contract.Requires(run != null);
 
@@ -126,7 +126,6 @@ namespace VC
       Helpers.ExtraTraceInformation(Options, "Starting implementation verification");
 
       var collector = new VerificationResultCollector(Options);
-      collector.RequestId = requestId;
       Outcome outcome = await VerifyImplementation(run, collector, cancellationToken);
       List<Counterexample> /*?*/ errors = null;
       if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
@@ -525,26 +524,12 @@ namespace VC
         Contract.Invariant(cce.NonNullElements(vcResults));
       }
 
-      public string RequestId;
-
-      public readonly List<Counterexample> /*!>!*/
-        examples = new List<Counterexample>();
-      public readonly List<VCResult> /*!>!*/
-        vcResults = new List<VCResult>();
+      public readonly List<Counterexample> /*!>!*/ examples = new List<Counterexample>();
+      public readonly List<VCResult> /*!>!*/ vcResults = new List<VCResult>();
 
       public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
       {
         //Contract.Requires(ce != null);
-        if (RequestId != null)
-        {
-          ce.RequestId = RequestId;
-        }
-
-        if (ce.OriginalRequestId == null && 1 < options.VerifySnapshots)
-        {
-          ce.OriginalRequestId = RequestId;
-        }
-
         examples.Add(ce);
       }
 

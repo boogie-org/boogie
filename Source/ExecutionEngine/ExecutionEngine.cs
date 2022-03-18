@@ -642,7 +642,7 @@ namespace Microsoft.Boogie
 
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
-        var result = await VerifyImplementationWithLargeStackScheduler(program, stats, programId, er, requestId,
+        var result = await VerifyImplementationWithLargeStackScheduler(program, stats, programId, er,
           stablePrioritizedImpls[index], cts, taskWriter);
         return result;
       }).ToList();
@@ -675,7 +675,7 @@ namespace Microsoft.Boogie
 
     async Task<VerificationResult> VerifyImplementationWithLargeStackScheduler(
       Program program, PipelineStatistics stats,
-      string programId, ErrorReporterDelegate er, string requestId, Implementation implementation,
+      string programId, ErrorReporterDelegate er, Implementation implementation,
       CancellationTokenSource cts,
       TextWriter taskWriter)
     {
@@ -689,8 +689,8 @@ namespace Microsoft.Boogie
 
         ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
 
-        var coreTask = new Task<Task<VerificationResult>>(() => VerifyImplementation(program, stats, er, requestId,
-           implementation,
+        var coreTask = new Task<Task<VerificationResult>>(() => VerifyImplementation(program, stats, er, cts.Token,
+          implementation,
           programId, taskWriter), cts.Token, TaskCreationOptions.None);
 
         coreTask.Start(LargeStackScheduler);
@@ -771,7 +771,7 @@ namespace Microsoft.Boogie
       Program program,
       PipelineStatistics stats,
       ErrorReporterDelegate er,
-      string requestId,
+      CancellationToken cancellationToken,
       Implementation implementation,
       string programId,
       TextWriter traceWriter)
@@ -785,7 +785,7 @@ namespace Microsoft.Boogie
       Options.Printer.Inform("", traceWriter); // newline
       Options.Printer.Inform($"Verifying {implementation.Name} ...", traceWriter);
 
-      verificationResult = await VerifyImplementationWithoutCaching(program, stats, er, requestId,
+      verificationResult = await VerifyImplementationWithoutCaching(program, stats, er, cancellationToken,
         programId, implementation, traceWriter);
 
       if (0 < Options.VerifySnapshots && !string.IsNullOrEmpty(implementation.Checksum))
@@ -824,10 +824,10 @@ namespace Microsoft.Boogie
     }
 
     private async Task<VerificationResult> VerifyImplementationWithoutCaching(Program program,
-      PipelineStatistics stats, ErrorReporterDelegate er, string requestId,
+      PipelineStatistics stats, ErrorReporterDelegate er, CancellationToken cancellationToken,
       string programId, Implementation impl, TextWriter traceWriter)
     {
-      var verificationResult = new VerificationResult(requestId, impl, programId);
+      var verificationResult = new VerificationResult(impl, programId);
 
       using var vcgen = new VCGen(program, checkerPool);
 
@@ -836,9 +836,8 @@ namespace Microsoft.Boogie
       verificationResult.Start = DateTime.UtcNow;
 
       try {
-        var cancellationToken = RequestIdToCancellationTokenSource[requestId].Token;
         (verificationResult.Outcome, verificationResult.Errors, verificationResult.VCResults) =
-          await vcgen.VerifyImplementation(new ImplementationRun(impl, traceWriter), requestId, cancellationToken);
+          await vcgen.VerifyImplementation(new ImplementationRun(impl, traceWriter), cancellationToken);
         if (ResultPostProcessors.TryGetValue(program, out var postProcess)) {
           postProcess!(vcgen, impl, verificationResult);
         }
@@ -989,7 +988,7 @@ namespace Microsoft.Boogie
 
     public void ProcessOutcome(OutputPrinter printer, ConditionGeneration.Outcome outcome, List<Counterexample> errors, string timeIndication,
       PipelineStatistics stats, TextWriter tw, uint timeLimit, ErrorReporterDelegate er = null, string implName = null,
-      IToken implTok = null, string requestId = null, string msgIfVerifies = null)
+      IToken implTok = null, string msgIfVerifies = null)
     {
       Contract.Requires(stats != null);
 
@@ -997,12 +996,12 @@ namespace Microsoft.Boogie
 
       printer.Inform(timeIndication + OutcomeIndication(outcome, errors), tw);
 
-      ReportOutcome(printer, outcome, er, implName, implTok, requestId, msgIfVerifies, tw, timeLimit, errors);
+      ReportOutcome(printer, outcome, er, implName, implTok, msgIfVerifies, tw, timeLimit, errors);
     }
 
     public void ReportOutcome(OutputPrinter printer,
       ConditionGeneration.Outcome outcome, ErrorReporterDelegate er, string implName,
-      IToken implTok, string requestId, string msgIfVerifies, TextWriter tw, uint timeLimit, List<Counterexample> errors)
+      IToken implTok, string msgIfVerifies, TextWriter tw, uint timeLimit, List<Counterexample> errors)
     {
       ErrorInformation errorInfo = null;
 

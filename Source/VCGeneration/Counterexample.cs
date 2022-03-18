@@ -81,8 +81,6 @@ namespace Microsoft.Boogie
     public Model Model;
     public VC.ModelViewInfo MvInfo;
     public ProverContext Context;
-    public string OriginalRequestId;
-    public string RequestId;
     public abstract byte[] Checksum { get; }
     public byte[] SugaredCmdChecksum;
     public bool IsAuxiliaryCexForDiagnosingTimeouts;
