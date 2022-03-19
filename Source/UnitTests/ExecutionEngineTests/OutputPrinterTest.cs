@@ -50,8 +50,9 @@ namespace ExecutionEngineTests
     [Test]
     public async Task InferAndVerifyCanBeCancelledWhileWaitingForProver() {
       var printer = new TestPrinter();
-      var options = new CommandLineOptions(printer);
-      using var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
+      var options = CommandLineOptions.FromArguments(printer);
+      var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
+      
       var terminatingProgram = GetProgram(executionEngine, fast);
       
       // We limit the number of checkers to 1.
@@ -59,8 +60,8 @@ namespace ExecutionEngineTests
 
       var requestId = ExecutionEngine.FreshRequestId();
       
-      var outcome =
-        executionEngine.InferAndVerify(terminatingProgram, new PipelineStatistics(), requestId, null, requestId);
+      var outcome = await
+        executionEngine.InferAndVerify(Console.Out, terminatingProgram, new PipelineStatistics(), requestId, null, requestId);
       Assert.AreEqual(outcome, PipelineOutcome.VerificationCompleted);
       Assert.AreEqual(1, printer.SplitResults.Count);
       Assert.AreEqual(1, printer.Implementations.Count);
