@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
 using NUnit.Framework;
@@ -13,7 +14,6 @@ namespace ExecutionEngineTests
         engine.Options.UseBaseNameForFileName);
       Assert.AreEqual(0, errorCount);
 
-      ExecutionEngine.printer = new ConsolePrinter(engine.Options);
       engine.ResolveAndTypecheck(program, bplFileName, out _);
       engine.EliminateDeadVariables(program);
       engine.CollectModSets(program);
@@ -33,13 +33,14 @@ namespace ExecutionEngineTests
       options.VcsCores = 1;
 
       var requestId = ExecutionEngine.FreshRequestId();
-      var outcomeTask = Task.Run(() => executionEngine.InferAndVerify(infiniteProgram, new PipelineStatistics(), requestId, null, requestId));
+      var outcomeTask =
+        executionEngine.InferAndVerify(Console.Out, infiniteProgram, new PipelineStatistics(), requestId, null, requestId);
       await Task.Delay(1000);
       ExecutionEngine.CancelRequest(requestId);
       var outcome = await outcomeTask;
       Assert.AreEqual(PipelineOutcome.Cancelled, outcome);
       var requestId2 = ExecutionEngine.FreshRequestId();
-      var outcome2 = executionEngine.InferAndVerify(terminatingProgram, new PipelineStatistics(), requestId2, null, requestId2);
+      var outcome2 = await executionEngine.InferAndVerify(Console.Out, terminatingProgram, new PipelineStatistics(), requestId2, null, requestId2);
       Assert.AreEqual(PipelineOutcome.VerificationCompleted, outcome2);
     }
 

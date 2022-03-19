@@ -20,7 +20,6 @@ namespace ExecutionEngineTests
         engine.Options.UseBaseNameForFileName);
       Assert.AreEqual(0, errorCount);
 
-      ExecutionEngine.printer = new ConsolePrinter(engine.Options);
       engine.ResolveAndTypecheck(program, bplFileName, out _);
       engine.EliminateDeadVariables(program);
       engine.CollectModSets(program);
@@ -50,7 +49,8 @@ namespace ExecutionEngineTests
     
     [Test]
     public async Task InferAndVerifyCanBeCancelledWhileWaitingForProver() {
-      var options = CommandLineOptions.FromArguments();
+      var printer = new TestPrinter();
+      var options = new CommandLineOptions(printer);
       using var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
       var terminatingProgram = GetProgram(executionEngine, fast);
       
@@ -58,8 +58,7 @@ namespace ExecutionEngineTests
       options.VcsCores = 1;
 
       var requestId = ExecutionEngine.FreshRequestId();
-      var printer = new TestPrinter();
-      ExecutionEngine.printer = printer;
+      
       var outcome =
         executionEngine.InferAndVerify(terminatingProgram, new PipelineStatistics(), requestId, null, requestId);
       Assert.AreEqual(outcome, PipelineOutcome.VerificationCompleted);
@@ -86,11 +85,17 @@ procedure easy() ensures 1 + 1 == 0; {
       SplitResults.Add(new Tuple<Split, VCResult>(split, splitResult));
     }
 
+    public ExecutionEngineOptions Options { get; set; }
+
     public void ErrorWriteLine(TextWriter tw, string s) {
       //
     }
 
     public void ErrorWriteLine(TextWriter tw, string format, params object[] args) {
+      //
+    }
+
+    public void AdvisoryWriteLine(TextWriter output, string format, params object[] args) {
       //
     }
 
@@ -100,6 +105,10 @@ procedure easy() ensures 1 + 1 == 0; {
 
     public void Inform(string s, TextWriter tw) {
       //
+    }
+
+    public void WriteTrailer(TextWriter textWriter, PipelineStatistics stats) {
+      throw new NotImplementedException();
     }
 
     public void WriteTrailer(PipelineStatistics stats) {
