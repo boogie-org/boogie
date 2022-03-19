@@ -945,7 +945,7 @@ namespace Microsoft.Boogie
       Options.Printer.ReportStartVerifyImplementation(implementation);
 
       verificationResult = await VerifyImplementationWithoutCaching(program, stats, er, requestId,
-        extractLoopMappingInfo, programId, implementation, traceWriter);
+        extractLoopMappingInfo, programId, implementation, traceWriter, Options.Printer);
 
       if (0 < Options.VerifySnapshots && !string.IsNullOrEmpty(implementation.Checksum))
       {
@@ -978,19 +978,14 @@ namespace Microsoft.Boogie
       return null;
     }
 
-    private ConditionGeneration CreateVCGen(Program program)
-    {
-      return new VCGen(program, checkerPool);
-    }
-
     private async Task<VerificationResult> VerifyImplementationWithoutCaching(Program program,
       PipelineStatistics stats, ErrorReporterDelegate er, string requestId,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
-      string programId, Implementation impl, TextWriter traceWriter)
+      string programId, Implementation impl, TextWriter traceWriter, IConditionGenerationPrinter printer)
     {
       var verificationResult = new VerificationResult(requestId, impl, programId);
 
-      using var vcgen = new VCGen(program, checkerPool);
+      using var vcgen = new VCGen(program, checkerPool, printer);
 
       vcgen.CachingActionCounts = stats.CachingActionCounts;
       verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
