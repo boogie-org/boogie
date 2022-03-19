@@ -1415,13 +1415,14 @@ namespace VC
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
       /// </summary>
-      public void BeginCheck(TextWriter traceWriter, Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int splitIndex, uint timeout,
+      public async Task BeginCheck(TextWriter traceWriter, Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int splitIndex, uint timeout,
         uint rlimit, CancellationToken cancellationToken)
       {
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
         this.splitIndex = splitIndex;
 
+        VCExpr vc;
         // Lock impl since we're setting impl.Blocks that is used to generate the VC.
         lock (Implementation) {
           Implementation.Blocks = blocks;
@@ -1437,7 +1438,7 @@ namespace VC
 
           var exprGen = ctx.ExprGen;
           VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
-          VCExpr vc = parent.GenerateVCAux(Implementation, controlFlowVariableExpr, absyIds, checker.TheoremProver.Context);
+          vc = parent.GenerateVCAux(Implementation, controlFlowVariableExpr, absyIds, checker.TheoremProver.Context);
           Contract.Assert(vc != null);
 
           vc = QuantifierInstantiationEngine.Instantiate(Implementation, exprGen, bet, vc);
@@ -1448,15 +1449,15 @@ namespace VC
           vc = exprGen.Implies(eqExpr, vc);
           reporter = new VCGen.ErrorReporter(options, gotoCmdOrigins, absyIds, Implementation.Blocks, parent.debugInfos, callback,
             mvInfo, Checker.TheoremProver.Context, parent.program, this);
-          
-          if (options.TraceVerify && splitIndex >= 0)
-          {
-            Console.WriteLine("-- after split #{0}", splitIndex);
-            Print();
-          }
-
-          checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
         }
+
+        if (options.TraceVerify && splitIndex >= 0)
+        {
+          Console.WriteLine("-- after split #{0}", splitIndex);
+          Print();
+        }
+
+        await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
       }
 
       public string Description
