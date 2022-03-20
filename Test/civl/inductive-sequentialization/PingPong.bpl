@@ -1,32 +1,41 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-// This example shows how to use a bidirectional shared channel to communicate between two processes.
+// This example shows how to use a bidirectional shared channel to communicate between
+// two processes. The modeling of bidirectional channels is generic.
+// Its usage is specifically illustrated here on a PingPong example.
 
 // A bidirectional channel is a pair of ordinary channels with two ends---left and right.
 type {:datatype} ChannelPair;
 function {:constructor} ChannelPair(left: [int]int, right: [int]int): ChannelPair;
 
+// The id type for indexing into the pool of bidirectional channels.
 type ChannelId;
+
+// The following global variables models al instances of a bidirectional channel indexed
+// the ChannelId type. A single instance of PingPong will only use a single channel id.
 var {:layer 0,3} channel: [ChannelId]ChannelPair;
 
 // The id of a bidirectional channel can be split into two permissions---Left and Right.
 // Left permission is used to receive from the left channel and send to the right channel.
 // Right permission is used to receive from the right channel and send to the left channel.
-type {:linear "cid"} {:datatype} Permission;
-function {:constructor} Left(cid: ChannelId): Permission;
-function {:constructor} Right(cid: ChannelId): Permission;
-function {:inline} ChannelId(p: Permission) : ChannelId {
+type {:linear "cid"} {:datatype} ChannelHandle;
+function {:constructor} Left(cid: ChannelId): ChannelHandle;
+function {:constructor} Right(cid: ChannelId): ChannelHandle;
+function {:inline} ChannelId(p: ChannelHandle) : ChannelId {
   if is#Left(p) then cid#Left(p) else cid#Right(p)
 }
 
-function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [Permission]bool {
+function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [ChannelHandle]bool {
   MapConst(false)[Left(cid) := true][Right(cid) := true]
 }
 
+// This datatype declares the pending asyncs for Ping and Pong processes.
+// These two processes share a channel pair with Ping holding its left channel handle
+// and Pong holding its right channel handle.
 type {:pending_async}{:datatype} PA;
-function {:constructor} PING(x: int, left: Permission): PA;
-function {:constructor} PONG(x: int, right: Permission): PA;
+function {:constructor} PING(x: int, left: ChannelHandle): PA;
+function {:constructor} PONG(x: int, right: ChannelHandle): PA;
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }
@@ -75,7 +84,7 @@ modifies channel;
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:IS_abstraction}{:layer 2}
-PING' (x: int, {:linear_in "cid"} left: Permission)
+PING' (x: int, {:linear_in "cid"} left: ChannelHandle)
 returns ({:pending_async "PING"} PAs: [PA]int)
 modifies channel;
 {
@@ -94,7 +103,7 @@ modifies channel;
 }
 
 procedure {:IS_abstraction}{:layer 2}
-PONG' (y: int, {:linear_in "cid"} right: Permission)
+PONG' (y: int, {:linear_in "cid"} right: ChannelHandle)
 returns ({:pending_async "PONG"} PAs: [PA]int)
 modifies channel;
 {
@@ -125,7 +134,7 @@ modifies channel;
 }
 
 procedure {:atomic}{:layer 2}
-PING (x: int, {:linear_in "cid"} left: Permission)
+PING (x: int, {:linear_in "cid"} left: ChannelHandle)
 returns ({:pending_async "PING"} PAs: [PA]int)
 modifies channel;
 {
@@ -158,7 +167,7 @@ modifies channel;
 }
 
 procedure {:atomic}{:layer 2}
-PONG (y: int, {:linear_in "cid"} right: Permission)
+PONG (y: int, {:linear_in "cid"} right: ChannelHandle)
 returns ({:pending_async "PONG"} PAs: [PA]int)
 modifies channel;
 {
@@ -195,8 +204,8 @@ modifies channel;
 procedure {:yields}{:layer 1}{:refines "MAIN"}
 main ({:linear_in "cid"} cid: ChannelId)
 {
-  var {:linear "cid"} left: Permission;
-  var {:linear "cid"} right: Permission;
+  var {:linear "cid"} left: ChannelHandle;
+  var {:linear "cid"} right: ChannelHandle;
 
   call left, right := split(cid);
   call send(left, 1);
@@ -205,7 +214,7 @@ main ({:linear_in "cid"} cid: ChannelId)
 }
 
 procedure {:yields}{:layer 1}{:refines "PING"}
-ping (x: int, {:linear_in "cid"} left: Permission)
+ping (x: int, {:linear_in "cid"} left: ChannelHandle)
 {
   var x': int;
 
@@ -223,7 +232,7 @@ ping (x: int, {:linear_in "cid"} left: Permission)
 }
 
 procedure {:yields}{:layer 1}{:refines "PONG"}
-pong (y: int, {:linear_in "cid"} right: Permission)
+pong (y: int, {:linear_in "cid"} right: ChannelHandle)
 {
   var y': int;
 
@@ -239,7 +248,7 @@ pong (y: int, {:linear_in "cid"} right: Permission)
 ////////////////////////////////////////////////////////////////////////////////
 // Bidirectional channels
 
-procedure {:right}{:layer 1} RECEIVE (permission: Permission) returns (m: int)
+procedure {:right}{:layer 1} RECEIVE (permission: ChannelHandle) returns (m: int)
 modifies channel;
 {
   var cid: ChannelId;
@@ -259,7 +268,7 @@ modifies channel;
   channel[cid] := ChannelPair(left_channel, right_channel);
 }
 
-procedure {:left}{:layer 1} SEND (permission: Permission, m: int)
+procedure {:left}{:layer 1} SEND (permission: ChannelHandle, m: int)
 modifies channel;
 {
   var cid: ChannelId;
@@ -278,13 +287,13 @@ modifies channel;
 }
 
 procedure {:both}{:layer 1} SPLIT({:linear_in "cid"} cid: ChannelId)
-  returns ({:linear "cid"} left: Permission, {:linear "cid"} right: Permission)
+  returns ({:linear "cid"} left: ChannelHandle, {:linear "cid"} right: ChannelHandle)
 {
   left := Left(cid);
   right := Right(cid);
 }
 
-procedure {:yields}{:layer 0}{:refines "RECEIVE"} receive (permission: Permission) returns (m: int);
-procedure {:yields}{:layer 0}{:refines "SEND"} send (permission: Permission, m: int);
+procedure {:yields}{:layer 0}{:refines "RECEIVE"} receive (permission: ChannelHandle) returns (m: int);
+procedure {:yields}{:layer 0}{:refines "SEND"} send (permission: ChannelHandle, m: int);
 procedure {:yields}{:layer 0}{:refines "SPLIT"} split({:linear_in "cid"} cid: ChannelId)
-  returns ({:linear "cid"} left: Permission, {:linear "cid"} right: Permission);
+  returns ({:linear "cid"} left: ChannelHandle, {:linear "cid"} right: ChannelHandle);
