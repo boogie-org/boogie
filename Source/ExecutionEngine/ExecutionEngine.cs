@@ -791,7 +791,7 @@ namespace Microsoft.Boogie
 
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
-        var result = await VerifyImplementationWithLargeStackScheduler(program, stats, programId, er, requestId,
+        var result = await VerifyImplementationAsynchronously(program, stats, programId, er, requestId,
           stablePrioritizedImpls, extractLoopMappingInfo, cts, index, taskWriter);
         return result;
       }).ToList();
@@ -822,7 +822,7 @@ namespace Microsoft.Boogie
 
     }
 
-    async Task<VerificationResult> VerifyImplementationWithLargeStackScheduler(
+    async Task<VerificationResult> VerifyImplementationAsynchronously(
       Program program, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
