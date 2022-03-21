@@ -14,7 +14,7 @@ namespace VC
     private readonly VCGenOptions options;
     private readonly VerifierCallback callback;
     private readonly ModelViewInfo mvInfo;
-    private readonly Implementation implementation;
+    private readonly ImplementationRun run;
       
     private readonly int maxKeepGoingSplits;
     private readonly List<Split> manualSplits;
@@ -33,35 +33,35 @@ namespace VC
 
     private int totalResourceCount;
     
-    public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, Implementation implementation,
+    public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, ImplementationRun run,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
       Outcome outcome)
     {
       this.options = options;
       this.callback = callback;
       this.mvInfo = mvInfo;
-      this.implementation = implementation;
+      this.run = run;
       this.outcome = outcome;
-      
+
       var maxSplits = options.VcsMaxSplits;
-      VCGen.CheckIntAttributeOnImpl(implementation, "vcs_max_splits", ref maxSplits);
+      VCGen.CheckIntAttributeOnImpl(Implementation, "vcs_max_splits", ref maxSplits);
       
       maxKeepGoingSplits = options.VcsMaxKeepGoingSplits;
-      VCGen.CheckIntAttributeOnImpl(implementation, "vcs_max_keep_going_splits", ref maxKeepGoingSplits);
+      VCGen.CheckIntAttributeOnImpl(Implementation, "vcs_max_keep_going_splits", ref maxKeepGoingSplits);
       
       maxVcCost = options.VcsMaxCost;
       var tmpMaxVcCost = -1;
-      VCGen.CheckIntAttributeOnImpl(implementation, "vcs_max_cost", ref tmpMaxVcCost);
+      VCGen.CheckIntAttributeOnImpl(Implementation, "vcs_max_cost", ref tmpMaxVcCost);
       if (tmpMaxVcCost >= 0)
       {
         maxVcCost = tmpMaxVcCost;
       }
       
       splitOnEveryAssert = options.VcsSplitOnEveryAssert;
-      implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
+      Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
-      ResetPredecessors(implementation.Blocks);
-      manualSplits = Split.FocusAndSplit(options, implementation, gotoCmdOrigins, vcGen, splitOnEveryAssert);
+      ResetPredecessors(Implementation.Blocks);
+      manualSplits = Split.FocusAndSplit(options, Implementation, gotoCmdOrigins, vcGen, splitOnEveryAssert);
       
       if (manualSplits.Count == 1 && maxSplits > 1) {
         manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);
@@ -100,16 +100,17 @@ namespace VC
 
       try {
         cancellationToken.ThrowIfCancellationRequested();
-        StartCheck(split, checker, cancellationToken);
+        await StartCheck(split, checker, cancellationToken);
         await split.ProverTask;
         await ProcessResult(split, cancellationToken);
       }
       finally {
-        split.ReleaseChecker();
+        checker.GoBackToIdle();
+        split.ResetChecker();
       }
     }
 
-    private void StartCheck(Split split, Checker checker, CancellationToken cancellationToken)
+    private async Task StartCheck(Split split, Checker checker, CancellationToken cancellationToken)
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
       if (options.Trace && DoSplitting) {
@@ -122,9 +123,11 @@ namespace VC
 
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
-        implementation.GetTimeLimit(options);
-      split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.GetResourceLimit(options), cancellationToken);
+        run.Implementation.GetTimeLimit(options);
+      await split.BeginCheck(run.TraceWriter, checker, callback, mvInfo, currentSplitNumber, timeout, Implementation.GetResourceLimit(options), cancellationToken);
     }
+
+    private Implementation Implementation => run.Implementation;
 
     private async Task ProcessResult(Split split, CancellationToken cancellationToken)
     {

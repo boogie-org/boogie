@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using Microsoft.Boogie.VCExprAST;
 using System.Threading.Tasks;
+using Microsoft.Boogie.SMTLib;
 using VC;
 
 namespace Microsoft.Boogie
@@ -261,7 +262,7 @@ namespace Microsoft.Boogie
       return thmProver.GetRCount();
     }
 
-    private async Task WaitForOutput(object dummy, CancellationToken cancellationToken)
+    private async Task WaitForOutput(CancellationToken cancellationToken)
     {
       try {
         outcome = await thmProver.CheckOutcome(cce.NonNull(handler), Options.ErrorLimit,
@@ -305,7 +306,7 @@ namespace Microsoft.Boogie
       proverRunTime = DateTime.UtcNow - ProverStart;
     }
 
-    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, CancellationToken cancellationToken)
+    public async Task BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, CancellationToken cancellationToken)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
@@ -317,7 +318,7 @@ namespace Microsoft.Boogie
       outputExn = null;
       this.handler = handler;
 
-      thmProver.Reset(gen);
+      await thmProver.Reset(gen);
       if (0 < rlimit)
       {
         timeout = 0;
@@ -328,7 +329,7 @@ namespace Microsoft.Boogie
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 
-      ProverTask = WaitForOutput(null, cancellationToken);
+      ProverTask = WaitForOutput(cancellationToken);
     }
 
     public ProverInterface.Outcome ReadOutcome()
@@ -395,7 +396,7 @@ namespace Microsoft.Boogie
       throw new NotImplementedException();
     }
 
-    public override void Reset(VCExpressionGenerator gen)
+    public override Task Reset(VCExpressionGenerator gen)
     {
       throw new NotImplementedException();
     }

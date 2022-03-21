@@ -1,5 +1,6 @@
 // RUN: %parallel-boogie "%s" -infer:j /errorTrace:0 > "%t"
 // RUN: %diff "%s.expect" "%t"
+// UNSUPPORTED: batch_mode
 procedure P()
 {
   var a: int, b: int, c: int;

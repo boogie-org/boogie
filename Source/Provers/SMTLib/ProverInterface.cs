@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Boogie.SMTLib;
 using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie;
@@ -182,7 +183,7 @@ public abstract class ProverInterface
   {
   }
 
-  public abstract void Reset(VCExpressionGenerator gen);
+  public abstract Task Reset(VCExpressionGenerator gen);
 
   public abstract void FullReset(VCExpressionGenerator gen);
 
@@ -259,7 +260,7 @@ public abstract class ProverInterface
   }
 
   public virtual Task<Outcome> CheckOutcomeCore(ErrorHandler handler,
-    CancellationToken cancellationToken, int taskID = -1)
+    CancellationToken cancellationToken, int errorLimit)
   {
     throw new NotImplementedException();
   }

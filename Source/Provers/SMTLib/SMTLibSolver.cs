@@ -12,6 +12,8 @@ public abstract class SMTLibSolver
   public abstract Task<SExpr> GetProverResponse();
   public abstract void NewProblem(string descriptiveName);
 
+  public abstract void IndicateEndOfInput();
+
   protected abstract void HandleError(string msg);
 
   public void Ping()

@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BoogieDriver", "BoogieDriver\BoogieDriver.csproj", "{FB1ECBFD-5805-4551-977D-0125F22E33E6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AbsInt", "AbsInt\AbsInt.csproj", "{C2A2C226-1511-4801-A7EC-B3140ED896ED}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AbstractInterpretation", "AbstractInterpretation\AbstractInterpretation.csproj", "{C2A2C226-1511-4801-A7EC-B3140ED896ED}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Provers", "Provers", "{EC2B5ECD-B97D-43D6-86F8-28163710B717}"
 EndProject

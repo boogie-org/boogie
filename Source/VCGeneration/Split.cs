@@ -20,10 +20,12 @@ namespace VC
     int vcNum,
     DateTime startTime,
     ProverInterface.Outcome outcome,
-    TimeSpan runTime
+    TimeSpan runTime,
+    IEnumerable<AssertCmd> asserts,
+    int resourceCount
   );
 
-  public class Split
+  public class Split : ProofRun
   {
       private VCGenOptions options;
 
@@ -81,6 +83,7 @@ namespace VC
 
 
       private readonly List<Block> blocks;
+      public IEnumerable<AssertCmd> Asserts => blocks.SelectMany(block => block.cmds.OfType<AssertCmd>());
       public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
       readonly List<Block> bigBlocks = new();
 
@@ -124,7 +127,7 @@ namespace VC
 
       // async interface
       private Checker checker;
-      private int splitNum;
+      private int splitIndex;
       internal VCGen.ErrorReporter reporter;
 
       public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
@@ -790,7 +793,7 @@ namespace VC
             Contract.Assert(c != null);
             if (c is AssertCmd)
             {
-              return VCGen.AssertCmdToCounterexample(options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context);
+              return VCGen.AssertCmdToCounterexample(options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context, this);
             }
           }
         }
@@ -1295,21 +1298,21 @@ namespace VC
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
 
-        if (options.Trace && splitNum >= 0)
+        if (options.Trace && splitIndex >= 0)
         {
-          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitNum + 1,
+          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitIndex + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
-        var result = new VCResult(splitNum + 1, checker.ProverStart, outcome, checker.ProverRunTime);
+        var resourceCount = checker.GetProverResourceCount().Result;
+        totalResourceCount += resourceCount;
+        var result = new VCResult(splitIndex + 1, checker.ProverStart, outcome, checker.ProverRunTime, Asserts, resourceCount);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
         {
-          DumpDot(splitNum);
+          DumpDot(splitIndex);
         }
-
-        totalResourceCount += checker.GetProverResourceCount().Result;
 
         proverFailed = false;
 
@@ -1360,13 +1363,15 @@ namespace VC
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
       /// </summary>
-      public void BeginCheck(Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int no, uint timeout, uint rlimit, CancellationToken cancellationToken)
+      public async Task BeginCheck(TextWriter traceWriter, Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int splitIndex, uint timeout,
+        uint rlimit, CancellationToken cancellationToken)
       {
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
 
-        splitNum = no;
+        this.splitIndex = splitIndex;
 
+        VCExpr vc;
         // Lock impl since we're setting impl.Blocks that is used to generate the VC.
         lock (Implementation) {
           Implementation.Blocks = blocks;
@@ -1377,12 +1382,12 @@ namespace VC
 
           ProverContext ctx = checker.TheoremProver.Context;
           Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
-          var cc = new VCGen.CodeExprConversionClosure(checker.Pool.Options, absyIds, ctx);
+          var cc = new VCGen.CodeExprConversionClosure(traceWriter, checker.Pool.Options, absyIds, ctx);
           bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
 
           var exprGen = ctx.ExprGen;
           VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
-          VCExpr vc = parent.GenerateVCAux(Implementation, controlFlowVariableExpr, absyIds, checker.TheoremProver.Context);
+          vc = parent.GenerateVCAux(Implementation, controlFlowVariableExpr, absyIds, checker.TheoremProver.Context);
           Contract.Assert(vc != null);
 
           vc = QuantifierInstantiationEngine.Instantiate(Implementation, exprGen, bet, vc);
@@ -1392,21 +1397,28 @@ namespace VC
           VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
           vc = exprGen.Implies(eqExpr, vc);
           reporter = new VCGen.ErrorReporter(options, gotoCmdOrigins, absyIds, Implementation.Blocks, parent.debugInfos, callback,
-            mvInfo, Checker.TheoremProver.Context, parent.program);
-          
-          if (options.TraceVerify && no >= 0)
-          {
-            Console.WriteLine("-- after split #{0}", no);
-            Print();
+            mvInfo, Checker.TheoremProver.Context, parent.program, this);
+        }
+
+        if (options.TraceVerify && splitIndex >= 0)
+        {
+          Console.WriteLine("-- after split #{0}", splitIndex);
+          Print();
+        }
+
+        await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
+      }
+
+      public string Description
+      {
+        get
+        {
+          string description = cce.NonNull(Implementation.Name);
+          if (splitIndex >= 0) {
+            description += "_split" + splitIndex;
           }
 
-          string desc = cce.NonNull(Implementation.Name);
-          if (no >= 0)
-          {
-            desc += "_split" + no;
-          }
-
-          checker.BeginCheck(desc, vc, reporter, timeout, rlimit, cancellationToken);
+          return description;
         }
       }
 
@@ -1489,9 +1501,8 @@ namespace VC
         }
       }
 
-      public void ReleaseChecker()
+      public void ResetChecker()
       {
-        Checker.GoBackToIdle();
         checker = null;
       }
     }

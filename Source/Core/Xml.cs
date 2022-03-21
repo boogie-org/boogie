@@ -44,15 +44,13 @@ namespace Microsoft.Boogie
       }
 
       cce.BeginExpose(this);
-      {
-        XmlWriterSettings settings = new XmlWriterSettings();
-        settings.Indent = true;
-        wr = XmlWriter.Create(filename, settings);
-        wr.WriteStartDocument();
-        wr.WriteStartElement("boogie");
-        wr.WriteAttributeString("version", options.VersionNumber);
-        wr.WriteAttributeString("commandLine", Environment.CommandLine);
-      }
+      XmlWriterSettings settings = new XmlWriterSettings();
+      settings.Indent = true;
+      wr = XmlWriter.Create(filename, settings);
+      wr.WriteStartDocument();
+      wr.WriteStartElement("boogie");
+      wr.WriteAttributeString("version", options.VersionNumber);
+      wr.WriteAttributeString("commandLine", Environment.CommandLine);
       cce.EndExpose();
       return null; // success
     }
@@ -82,11 +80,9 @@ namespace Microsoft.Boogie
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
       cce.BeginExpose(this);
-      {
-        wr.WriteStartElement("method");
-        wr.WriteAttributeString("name", methodName);
-        wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
-      }
+      wr.WriteStartElement("method");
+      wr.WriteAttributeString("name", methodName);
+      wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
       cce.EndExpose();
     }
 
@@ -115,7 +111,8 @@ namespace Microsoft.Boogie
       cce.EndExpose();
     }
 
-    public void WriteSplit(int splitNum, DateTime startTime, string outcome, TimeSpan elapsed)
+    public void WriteSplit(int splitNum, IEnumerable<AssertCmd> asserts, DateTime startTime,
+                           string outcome, TimeSpan elapsed, int? resourceCount)
     {
       Contract.Requires(splitNum > 0);
       Contract.Requires(outcome != null);
@@ -126,16 +123,30 @@ namespace Microsoft.Boogie
 
       cce.BeginExpose(this);
       {
-        wr.WriteStartElement("split");
+        wr.WriteStartElement("assertionBatch");
         wr.WriteAttributeString("number", splitNum.ToString());
         wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
+
+        foreach(var assert in asserts)
+        {
+          var token = assert.tok;
+          wr.WriteStartElement("assertion");
+          wr.WriteAttributeString("file", token.filename);
+          wr.WriteAttributeString("line", token.line.ToString());
+          wr.WriteAttributeString("column", token.col.ToString());
+          wr.WriteEndElement(); // assertion
+        }
 
         wr.WriteStartElement("conclusion");
         wr.WriteAttributeString("duration", elapsed.TotalSeconds.ToString());
         wr.WriteAttributeString("outcome", outcome);
-        wr.WriteEndElement(); // outcome
+        if (resourceCount is not null)
+        {
+          wr.WriteAttributeString("resourceCount", resourceCount.ToString());
+        }
+        wr.WriteEndElement(); // conclusion
 
-        wr.WriteEndElement(); // split
+        wr.WriteEndElement(); // assertionBatch
       }
       cce.EndExpose();
     }

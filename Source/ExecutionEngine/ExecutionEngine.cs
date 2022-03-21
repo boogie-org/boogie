@@ -10,6 +10,7 @@ using VC;
 using BoogiePL = Microsoft.Boogie;
 using System.Runtime.Caching;
 using System.Diagnostics;
+using System.Net.Mime;
 
 namespace Microsoft.Boogie
 {
@@ -17,11 +18,12 @@ namespace Microsoft.Boogie
 
   public interface OutputPrinter
   {
+    ExecutionEngineOptions Options { get; set; }
     void ErrorWriteLine(TextWriter tw, string s);
     void ErrorWriteLine(TextWriter tw, string format, params object[] args);
-    void AdvisoryWriteLine(string format, params object[] args);
+    void AdvisoryWriteLine(TextWriter output, string format, params object[] args);
     void Inform(string s, TextWriter tw);
-    void WriteTrailer(PipelineStatistics stats);
+    void WriteTrailer(TextWriter textWriter, PipelineStatistics stats);
     void WriteErrorInformation(ErrorInformation errorInfo, TextWriter tw, bool skipExecutionTrace = true);
     void ReportBplError(IToken tok, string message, bool error, TextWriter tw, string category = null);
   }
@@ -99,7 +101,7 @@ namespace Microsoft.Boogie
     public ErrorKind Kind { get; set; }
     public string ImplementationName { get; set; }
     public TextWriter Out = new StringWriter();
-    public TextWriter Model = new StringWriter();
+    public TextWriter ModelWriter = new StringWriter();
 
     public string FullMsg
     {
@@ -171,71 +173,21 @@ namespace Microsoft.Boogie
 
   #endregion
 
-
-  public sealed class VerificationResult
-  {
-    public readonly string RequestId;
-    public readonly string Checksum;
-    public readonly string DependeciesChecksum;
-    public readonly string ImplementationName;
-    public readonly IToken ImplementationToken;
-    public readonly string ProgramId;
-    public readonly string MessageIfVerifies;
-
-    public DateTime Start { get; set; }
-    public DateTime End { get; set; }
-
-    public int ResourceCount { get; set; }
-
-    public int ProofObligationCount
-    {
-      get { return ProofObligationCountAfter - ProofObligationCountBefore; }
-    }
-
-    public int ProofObligationCountBefore { get; set; }
-    public int ProofObligationCountAfter { get; set; }
-
-    public ConditionGeneration.Outcome Outcome { get; set; }
-    public List<Counterexample> Errors;
-    public List<VCResult> VCResults;
-
-    public ISet<byte[]> AssertionChecksums { get; private set; }
-
-    public VerificationResult(string requestId, Implementation implementation, string programId = null)
-    {
-      Checksum = implementation.Checksum;
-      DependeciesChecksum = implementation.DependencyChecksum;
-      RequestId = requestId;
-      ImplementationName = implementation.Name;
-      ImplementationToken = implementation.tok;
-      ProgramId = programId;
-      AssertionChecksums = implementation.AssertionChecksums;
-      MessageIfVerifies = implementation.FindStringAttribute("msg_if_verifies");
-    }
-  }
-
-  public class ExecutionEngine : IDisposable
-  {
-    public static OutputPrinter printer;
-
-    public static ErrorInformationFactory errorInformationFactory = new ErrorInformationFactory();
+  public class ExecutionEngine : IDisposable {
+    public static ErrorInformationFactory ErrorInformationFactory { get; } = new();
 
     static int autoRequestIdCount;
 
     static readonly string AutoRequestIdPrefix = "auto_request_id_";
 
-    public static string FreshRequestId()
-    {
+    public static string FreshRequestId() {
       var id = Interlocked.Increment(ref autoRequestIdCount);
       return AutoRequestIdPrefix + id;
     }
 
-    public static int AutoRequestId(string id)
-    {
-      if (id.StartsWith(AutoRequestIdPrefix))
-      {
-        if (int.TryParse(id.Substring(AutoRequestIdPrefix.Length), out var result))
-        {
+    public static int AutoRequestId(string id) {
+      if (id.StartsWith(AutoRequestIdPrefix)) {
+        if (int.TryParse(id.Substring(AutoRequestIdPrefix.Length), out var result)) {
           return result;
         }
       }
@@ -248,19 +200,18 @@ namespace Microsoft.Boogie
     static readonly MemoryCache programCache = new MemoryCache("ProgramCache");
 
     static readonly CacheItemPolicy policy = new CacheItemPolicy
-      {SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default};
+      { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };
 
-    public static Program CachedProgram(string programId)
-    {
+    public static Program CachedProgram(string programId) {
       var result = programCache.Get(programId) as Program;
       return result;
     }
 
-    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache)
-    {
+    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache) {
       Options = options;
       Cache = cache;
       checkerPool = new CheckerPool(options);
+      verifyImplementationSemaphore = new SemaphoreSlim(Options.VcsCores);
     }
 
     public static ExecutionEngine CreateWithoutSharedCache(ExecutionEngineOptions options) {
@@ -269,6 +220,7 @@ namespace Microsoft.Boogie
 
     public ExecutionEngineOptions Options { get; }
     private readonly CheckerPool checkerPool;
+    private readonly SemaphoreSlim verifyImplementationSemaphore;
 
     static DateTime FirstRequestStart;
 
@@ -284,41 +236,40 @@ namespace Microsoft.Boogie
     static readonly ConcurrentDictionary<string, CancellationTokenSource> RequestIdToCancellationTokenSource =
       new ConcurrentDictionary<string, CancellationTokenSource>();
 
-    static ThreadTaskScheduler Scheduler = new ThreadTaskScheduler();
-
-    static TextWriter ModelWriter = null;
-
-    public bool ProcessFiles(IList<string> fileNames, bool lookForSnapshots = true, string programId = null)
-    {
+    public bool ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
+      string programId = null) {
       Contract.Requires(cce.NonNullElements(fileNames));
 
-      if (Options.VerifySeparately && 1 < fileNames.Count)
-      {
-        return fileNames.All(f => ProcessFiles( new List<string> {f}, lookForSnapshots, f));
+      if (Options.VerifySeparately && 1 < fileNames.Count) {
+        return fileNames.All(f => ProcessFiles(output, new List<string> { f }, lookForSnapshots, f));
       }
 
-      if (0 <= Options.VerifySnapshots && lookForSnapshots)
-      {
+      if (0 <= Options.VerifySnapshots && lookForSnapshots) {
         var snapshotsByVersion = LookForSnapshots(fileNames);
-        return snapshotsByVersion.All(s =>
-        {
+        return snapshotsByVersion.All(s => {
           // BUG: Reusing checkers during snapshots doesn't work, even though it should. We create a new engine (and thus checker pool) to workaround this.
           using var engine = new ExecutionEngine(Options, Cache);
-          return engine.ProcessFiles(new List<string>(s), false, programId);
+          return engine.ProcessFiles(output, new List<string>(s), false, programId);
         });
       }
 
       using XmlFileScope xf = new XmlFileScope(Options.XmlSink, fileNames[^1]);
       Program program = ParseBoogieProgram(fileNames, false);
       var bplFileName = fileNames[^1];
-      if (program == null)
-      {
+      if (program == null) {
         return true;
       }
-      return ProcessProgram(program, bplFileName, programId);
+
+      return ProcessProgram(output, program, bplFileName, programId).Result;
     }
 
-    public bool ProcessProgram(Program program, string bplFileName, string programId = null)
+    [Obsolete("Please inline this method call")]
+    public bool ProcessProgram(Program program, string bplFileName,
+      string programId = null) {
+      return ProcessProgram(Console.Out, program, bplFileName, programId).Result;
+    }
+
+    public async Task<bool> ProcessProgram(TextWriter output, Program program, string bplFileName, string programId = null)
     {
       if (programId == null)
       {
@@ -329,8 +280,8 @@ namespace Microsoft.Boogie
         PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
       }
 
-      PipelineOutcome oc = ResolveAndTypecheck(program, bplFileName, out var civlTypeChecker);
-      if (oc != PipelineOutcome.ResolvedAndTypeChecked) {
+      PipelineOutcome outcome = ResolveAndTypecheck(program, bplFileName, out var civlTypeChecker);
+      if (outcome != PipelineOutcome.ResolvedAndTypeChecked) {
         return true;
       }
 
@@ -357,11 +308,11 @@ namespace Microsoft.Boogie
       Inline(program);
 
       var stats = new PipelineStatistics();
-      oc = InferAndVerify(program, stats, 1 < Options.VerifySnapshots ? programId : null);
-      switch (oc) {
+      outcome = await InferAndVerify(output, program, stats, 1 < Options.VerifySnapshots ? programId : null);
+      switch (outcome) {
         case PipelineOutcome.Done:
         case PipelineOutcome.VerificationCompleted:
-          printer.WriteTrailer(stats);
+          Options.Printer.WriteTrailer(output, stats);
           return true;
         case PipelineOutcome.FatalError:
           return false;
@@ -510,7 +461,7 @@ namespace Microsoft.Boogie
         }
         catch (IOException e)
         {
-          printer.ErrorWriteLine(Console.Out, "Error opening file \"{0}\": {1}",
+          Options.Printer.ErrorWriteLine(Console.Out, "Error opening file \"{0}\": {1}",
             GetFileNameForConsole(Options, bplFileName), e.Message);
           okay = false;
         }
@@ -701,6 +652,14 @@ namespace Microsoft.Boogie
       }
     }
 
+    [Obsolete("Please inline this method call")]
+    public PipelineOutcome InferAndVerify(
+      Program program,
+      PipelineStatistics stats,
+      string programId = null,
+      ErrorReporterDelegate er = null, string requestId = null) {
+      return InferAndVerify(Console.Out, program, stats, programId, er, requestId).Result;
+    }
 
     /// <summary>
     /// Given a resolved and type checked Boogie program, infers invariants for the program
@@ -710,7 +669,8 @@ namespace Microsoft.Boogie
     ///  - VerificationCompleted if inference and verification completed, in which the out
     ///    parameters contain meaningful values
     /// </summary>
-    public PipelineOutcome InferAndVerify(
+    public async Task<PipelineOutcome> InferAndVerify(
+      TextWriter output,
       Program program,
       PipelineStatistics stats,
       string programId = null,
@@ -721,15 +681,8 @@ namespace Microsoft.Boogie
       Contract.Ensures(0 <= Contract.ValueAtReturn(out stats.InconclusiveCount) &&
                        0 <= Contract.ValueAtReturn(out stats.TimeoutCount));
 
-      if (requestId == null)
-      {
-        requestId = FreshRequestId();
-      }
+      requestId ??= FreshRequestId();
 
-      if (Options.PrintErrorModelFile != null)
-      {
-        ExecutionEngine.ModelWriter = new StreamWriter(Options.PrintErrorModelFile, false);
-      }
 
       var start = DateTime.UtcNow;
 
@@ -749,14 +702,10 @@ namespace Microsoft.Boogie
 
       #endregion
 
-      #region Infer invariants using Abstract Interpretation
-
       if (Options.UseAbstractInterpretation)
       {
         new AbstractInterpretation.NativeAbstractInterpretation(Options).RunAbstractInterpretation(program);
       }
-
-      #endregion
 
       #region Do some post-abstract-interpretation preprocessing on the program (e.g., loop unrolling)
 
@@ -783,36 +732,12 @@ namespace Microsoft.Boogie
         return PipelineOutcome.Done;
       }
 
-      #region Run Houdini and verify
-
       if (Options.ContractInfer)
       {
         return RunHoudini(program, stats, er);
       }
 
-      #endregion
-
-      #region Select and prioritize implementations that should be verified
-
-      var impls = program.Implementations.Where(
-        impl => impl != null && Options.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) &&
-                !impl.IsSkipVerification(Options));
-
-      // operate on a stable copy, in case it gets updated while we're running
-      Implementation[] stablePrioritizedImpls = null;
-      if (0 < Options.VerifySnapshots)
-      {
-        OtherDefinitionAxiomsCollector.Collect(Options, program.Axioms);
-        DependencyCollector.Collect(Options, program);
-        stablePrioritizedImpls = impls.OrderByDescending(
-          impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl, Options.RunDiagnosticsOnTimeout)).ToArray();
-      }
-      else
-      {
-        stablePrioritizedImpls = impls.OrderByDescending(impl => impl.Priority).ToArray();
-      }
-
-      #endregion
+      var stablePrioritizedImpls = GetPrioritizedImplementations(program);
 
       if (1 < Options.VerifySnapshots)
       {
@@ -820,112 +745,7 @@ namespace Microsoft.Boogie
           out stats.CachingActionCounts);
       }
 
-      #region Verify each implementation
-      program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(Options, program);
-      var outputCollector = new OutputCollector(stablePrioritizedImpls);
-      var outcome = PipelineOutcome.VerificationCompleted;
-
-      try
-      {
-        var cts = new CancellationTokenSource();
-        RequestIdToCancellationTokenSource.AddOrUpdate(requestId, cts, (k, ov) => cts);
-
-        var tasks = new Task[stablePrioritizedImpls.Length];
-        // We use this semaphore to limit the number of tasks that are currently executing.
-        var semaphore = new SemaphoreSlim(Options.VcsCores);
-
-        // Create a task per implementation.
-        for (int i = 0; i < stablePrioritizedImpls.Length; i++)
-        {
-          var taskIndex = i;
-          var id = stablePrioritizedImpls[taskIndex].Id;
-
-          if (ImplIdToCancellationTokenSource.TryGetValue(id, out var old))
-          {
-            old.Cancel();
-          }
-
-          ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
-
-          var t = new Task((dummy) =>
-          {
-            try
-            {
-              if (outcome == PipelineOutcome.FatalError)
-              {
-                return;
-              }
-
-              if (cts.Token.IsCancellationRequested)
-              {
-                cts.Token.ThrowIfCancellationRequested();
-              }
-
-              VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls,
-                taskIndex, outputCollector, checkerPool, programId);
-              ImplIdToCancellationTokenSource.TryRemove(id, out old);
-            }
-            finally
-            {
-              semaphore.Release();
-            }
-          }, cts.Token, TaskCreationOptions.None);
-          tasks[taskIndex] = t;
-        }
-
-        // Execute the tasks.
-        int j = 0;
-        for (; j < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; j++)
-        {
-          try
-          {
-            semaphore.Wait(cts.Token);
-          }
-          catch (OperationCanceledException)
-          {
-            break;
-          }
-
-          tasks[j].Start(Scheduler);
-        }
-
-        // Don't wait for tasks that haven't been started yet.
-        tasks = tasks.Take(j).ToArray();
-        Task.WaitAll(tasks);
-      }
-      catch (AggregateException ae)
-      {
-        ae.Flatten().Handle(e =>
-        {
-          if (e is ProverException)
-          {
-            printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e.Message);
-            outcome = PipelineOutcome.FatalError;
-            return true;
-          }
-
-          if (e is OperationCanceledException)
-          {
-            outcome = PipelineOutcome.Cancelled;
-            return true;
-          }
-
-          return false;
-        });
-      }
-      finally
-      {
-        CleanupRequest(requestId);
-      }
-
-      if (Options.PrintNecessaryAssumes && program.NecessaryAssumes.Any())
-      {
-        Console.WriteLine("Necessary assume command(s): {0}", string.Join(", ", program.NecessaryAssumes));
-      }
-
-      cce.NonNull(Options.TheProverFactory).Close();
-
-      outputCollector.WriteMoreOutput();
+      var outcome = await VerifyEachImplementation(output, program, stats, programId, er, requestId, stablePrioritizedImpls, extractLoopMappingInfo);
 
       if (1 < Options.VerifySnapshots && programId != null)
       {
@@ -933,11 +753,116 @@ namespace Microsoft.Boogie
         programCache.Set(programId, program, policy);
       }
 
-      if (0 <= Options.VerifySnapshots && Options.TraceCachingForBenchmarking)
-      {
+      TraceCachingForBenchmarking(stats, requestId, start);
+
+      return outcome;
+    }
+
+    private Implementation[] GetPrioritizedImplementations(Program program)
+    {
+      var impls = program.Implementations.Where(
+        impl => impl != null && Options.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) &&
+                !impl.IsSkipVerification(Options));
+
+      // operate on a stable copy, in case it gets updated while we're running
+      Implementation[] stablePrioritizedImpls = null;
+      if (0 < Options.VerifySnapshots) {
+        OtherDefinitionAxiomsCollector.Collect(Options, program.Axioms);
+        DependencyCollector.Collect(Options, program);
+        stablePrioritizedImpls = impls.OrderByDescending(
+          impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl, Options.RunDiagnosticsOnTimeout)).ToArray();
+      } else {
+        stablePrioritizedImpls = impls.OrderByDescending(impl => impl.Priority).ToArray();
+      }
+
+      return stablePrioritizedImpls;
+    }
+
+    private async Task<PipelineOutcome> VerifyEachImplementation(TextWriter output, Program program,
+      PipelineStatistics stats,
+      string programId, ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls,
+      Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
+    {
+      var consoleCollector = new ConcurrentToSequentialWriteManager(output);
+      program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(Options, program);
+
+      var cts = new CancellationTokenSource();
+      RequestIdToCancellationTokenSource.AddOrUpdate(requestId, cts, (k, ov) => cts);
+
+      var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
+        await using var taskWriter = consoleCollector.AppendWriter();
+        var result = await VerifyImplementationWithLargeStackScheduler(program, stats, programId, er, requestId,
+          stablePrioritizedImpls, extractLoopMappingInfo, cts, index, taskWriter);
+        return result;
+      }).ToList();
+      var outcome = PipelineOutcome.VerificationCompleted;
+
+      try {
+        await Task.WhenAll(tasks);
+        foreach (var task in tasks) {
+          task.Result.ProcessXml(this);
+        }
+      } catch(TaskCanceledException) {
+        outcome = PipelineOutcome.Cancelled;
+      } catch(ProverException e) {
+        Options.Printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e.Message);
+        outcome = PipelineOutcome.FatalError;
+      }
+      finally {
+        CleanupRequest(requestId);
+      }
+
+      if (Options.PrintNecessaryAssumes && program.NecessaryAssumes.Any()) {
+        Console.WriteLine("Necessary assume command(s): {0}", string.Join(", ", program.NecessaryAssumes.OrderBy(s => s)));
+      }
+
+      cce.NonNull(Options.TheProverFactory).Close();
+
+      return outcome;
+
+    }
+
+    async Task<VerificationResult> VerifyImplementationWithLargeStackScheduler(
+      Program program, PipelineStatistics stats,
+      string programId, ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls,
+      Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
+      CancellationTokenSource cts,
+      int index, TextWriter taskWriter)
+    {
+      var implementation = stablePrioritizedImpls[index];
+      var id = implementation.Id;
+      if (ImplIdToCancellationTokenSource.TryGetValue(id, out var old)) {
+        old.Cancel();
+      }
+
+      await verifyImplementationSemaphore.WaitAsync(cts.Token);
+      try {
+
+        ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
+
+        var coreTask = Task.Run(() => VerifyImplementation(program, stats, er, requestId,
+          extractLoopMappingInfo, implementation,
+          programId, taskWriter), cts.Token);
+
+        var verificationResult = await coreTask;
+        var output = verificationResult.GetOutput(Options.Printer, this, stats, er, implementation);
+
+        await taskWriter.WriteAsync(output);
+        return verificationResult;
+      }
+      finally {
+        taskWriter.Close();
+        verifyImplementationSemaphore.Release();
+        ImplIdToCancellationTokenSource.TryRemove(id, out old);
+      }
+    }
+
+    private void TraceCachingForBenchmarking(PipelineStatistics stats,
+      string requestId, DateTime start)
+    {
+      if (0 <= Options.VerifySnapshots && Options.TraceCachingForBenchmarking) {
         var end = DateTime.UtcNow;
-        if (TimePerRequest.Count == 0)
-        {
+        if (TimePerRequest.Count == 0) {
           FirstRequestStart = start;
         }
 
@@ -953,8 +878,7 @@ namespace Microsoft.Boogie
         Console.Out.WriteLine(
           "Request ID{0}, Error, E (C), Inconclusive, I (C), Out of Memory, OoM (C), Timeout, T (C), Verified, V (C), {1}",
           printTimes ? ", Time (ms)" : "", actions);
-        foreach (var kv in TimePerRequest.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key)))
-        {
+        foreach (var kv in TimePerRequest.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key))) {
           var s = StatisticsPerRequest[kv.Key];
           var cacs = s.CachingActionCounts;
           var c = cacs != null ? ", " + cacs.Select(ac => string.Format("{0,3}", ac)).Concat(", ") : "";
@@ -965,17 +889,12 @@ namespace Microsoft.Boogie
             s.CachedOutOfMemoryCount, s.TimeoutCount, s.CachedTimeoutCount, s.VerifiedCount, s.CachedVerifiedCount, c);
         }
 
-        if (printTimes)
-        {
+        if (printTimes) {
           Console.Out.WriteLine();
           Console.Out.WriteLine("Total time (ms) since first request: {0:F0}",
             end.Subtract(FirstRequestStart).TotalMilliseconds);
         }
       }
-
-      #endregion
-
-      return outcome;
     }
 
     public static void CancelRequest(string requestId)
@@ -998,203 +917,122 @@ namespace Microsoft.Boogie
       }
     }
 
-
-    private void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er,
+    private async Task<VerificationResult> VerifyImplementation(
+      Program program,
+      PipelineStatistics stats,
+      ErrorReporterDelegate er,
       string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
-      Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, CheckerPool checkerPool,
-      string programId)
+      Implementation implementation,
+      string programId,
+      TextWriter traceWriter)
     {
-      Implementation impl = stablePrioritizedImpls[index];
-      VerificationResult verificationResult = null;
-      var output = new StringWriter();
-
-      printer.Inform("", output); // newline
-      printer.Inform(string.Format("Verifying {0} ...", impl.Name), output);
-
-      int priority = 0;
-      var wasCached = false;
-      if (0 < Options.VerifySnapshots)
-      {
-        var cachedResults = Cache.Lookup(impl, Options.RunDiagnosticsOnTimeout, out priority);
-        if (cachedResults != null && priority == Priority.SKIP)
-        {
-          printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name),
-            output);
-          if (Options.VerifySnapshots < 3 ||
-              cachedResults.Outcome == ConditionGeneration.Outcome.Correct)
-          {
-            verificationResult = cachedResults;
-            wasCached = true;
-          }
-        }
+      VerificationResult verificationResult = GetCachedVerificationResult(implementation, traceWriter);
+      if (verificationResult != null) {
+        UpdateCachedStatistics(stats, verificationResult.Outcome, verificationResult.Errors);
+        return verificationResult;
       }
 
-      if (!wasCached)
+      Options.Printer.Inform("", traceWriter); // newline
+      Options.Printer.Inform($"Verifying {implementation.Name} ...", traceWriter);
+
+      verificationResult = await VerifyImplementationWithoutCaching(program, stats, er, requestId,
+        extractLoopMappingInfo, programId, implementation, traceWriter);
+
+      if (0 < Options.VerifySnapshots && !string.IsNullOrEmpty(implementation.Checksum))
       {
-        #region Verify the implementation
-
-        verificationResult = new VerificationResult(requestId, impl, programId);
-
-        using (var vcgen = CreateVCGen(program, checkerPool))
-        {
-          vcgen.CachingActionCounts = stats.CachingActionCounts;
-          verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
-          verificationResult.Start = DateTime.UtcNow;
-
-          try {
-            var cancellationToken = RequestIdToCancellationTokenSource[requestId].Token;
-            verificationResult.Outcome =
-              vcgen.VerifyImplementation(impl, out verificationResult.Errors,
-                out verificationResult.VCResults, requestId, cancellationToken);
-            if (Options.ExtractLoops && verificationResult.Errors != null) {
-              var vcg = vcgen as VCGen;
-              if (vcg != null) {
-                for (int i = 0; i < verificationResult.Errors.Count; i++) {
-                  verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name,
-                    program, extractLoopMappingInfo);
-                }
-              }
-            }
-          }
-          catch (VCGenException e)
-          {
-            var errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok,
-              String.Format("{0} (encountered in implementation {1}).", e.Message, impl.Name), requestId, "Error");
-            errorInfo.ImplementationName = impl.Name;
-            printer.WriteErrorInformation(errorInfo, output);
-            if (er != null)
-            {
-              lock (er)
-              {
-                er(errorInfo);
-              }
-            }
-
-            verificationResult.Errors = null;
-            verificationResult.Outcome = VCGen.Outcome.Inconclusive;
-          }
-          catch (ProverDiedException)
-          {
-            throw;
-          }
-          catch (UnexpectedProverOutputException upo)
-          {
-            printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}",
-              impl.Name, upo.Message);
-            verificationResult.Errors = null;
-            verificationResult.Outcome = VCGen.Outcome.Inconclusive;
-          }
-          catch(AggregateException ae)
-          {
-            ae.Flatten().Handle(e =>
-            {
-              if (e is IOException)
-              {
-                printer.AdvisoryWriteLine("Advisory: {0} SKIPPED due to I/O exception: {1}",
-                  impl.Name, e.Message);
-                verificationResult.Errors = null;
-                verificationResult.Outcome = VCGen.Outcome.SolverException;
-                return true;
-              }
-
-              return false;
-            });
-          }
-
-          verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
-          verificationResult.End = DateTime.UtcNow;
-          verificationResult.ResourceCount = vcgen.ResourceCount;
-        }
-
-        #endregion
-
-        #region Cache the verification result
-
-        if (0 < Options.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
-        {
-          Cache.Insert(impl, verificationResult);
-        }
-
-        #endregion
+        Cache.Insert(implementation, verificationResult);
       }
 
-      #region Process the verification results and statistics
-
-      ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats,
-        output, impl.GetTimeLimit(Options), er, verificationResult.ImplementationName, verificationResult.ImplementationToken,
-        verificationResult.RequestId, verificationResult.MessageIfVerifies, wasCached);
-
-      ProcessErrors(verificationResult.Errors, verificationResult.Outcome, output, er, impl);
-
-      if (Options.XmlSink != null)
-      {
-        lock (Options.XmlSink) {
-          Options.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
-
-          foreach (var vcResult in verificationResult.VCResults.OrderBy(s => s.vcNum)) {
-            Options.XmlSink.WriteSplit(vcResult.vcNum, vcResult.startTime,
-              vcResult.outcome.ToString().ToLowerInvariant(), vcResult.runTime);
-          }
-
-          Options.XmlSink.WriteEndMethod(verificationResult.Outcome.ToString().ToLowerInvariant(),
-            verificationResult.End, verificationResult.End - verificationResult.Start,
-            verificationResult.ResourceCount);
-        }
-      }
-
-      outputCollector.Add(index, output);
-
-      outputCollector.WriteMoreOutput();
-
-      if (verificationResult.Outcome == VCGen.Outcome.Errors || Options.Trace)
-      {
-        Console.Out.Flush();
-      }
-
-      #endregion
+      return verificationResult;
     }
 
-
-    class OutputCollector
+    private VerificationResult GetCachedVerificationResult(Implementation impl, TextWriter output)
     {
-      StringWriter[] outputs;
-
-      int nextPrintableIndex = 0;
-
-      public OutputCollector(Implementation[] implementations)
+      if (0 >= Options.VerifySnapshots)
       {
-        outputs = new StringWriter[implementations.Length];
+        return null;
       }
 
-      public void WriteMoreOutput()
+      var cachedResults = Cache.Lookup(impl, Options.RunDiagnosticsOnTimeout, out var priority);
+      if (cachedResults == null || priority != Priority.SKIP)
       {
-        lock (outputs)
-        {
-          for (; nextPrintableIndex < outputs.Length && outputs[nextPrintableIndex] != null; nextPrintableIndex++)
-          {
-            Console.Write(outputs[nextPrintableIndex].ToString());
-            outputs[nextPrintableIndex] = null;
-            Console.Out.Flush();
-          }
-        }
+        return null;
       }
 
-      public void Add(int index, StringWriter output)
-      {
-        Contract.Requires(0 <= index && index < outputs.Length);
-        Contract.Requires(output != null);
-
-        lock (this)
-        {
-          outputs[index] = output;
-        }
+      if (Options.VerifySnapshots < 3 ||
+          cachedResults.Outcome == ConditionGeneration.Outcome.Correct) {
+        Options.Printer.Inform($"Retrieving cached verification result for implementation {impl.Name}...", output);
+        return cachedResults;
       }
+
+      return null;
     }
 
-    private static ConditionGeneration CreateVCGen(Program program, CheckerPool checkerPool)
+    private ConditionGeneration CreateVCGen(Program program)
     {
       return new VCGen(program, checkerPool);
     }
+
+    private async Task<VerificationResult> VerifyImplementationWithoutCaching(Program program,
+      PipelineStatistics stats, ErrorReporterDelegate er, string requestId,
+      Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
+      string programId, Implementation impl, TextWriter traceWriter)
+    {
+      var verificationResult = new VerificationResult(requestId, impl, programId);
+
+      using var vcgen = new VCGen(program, checkerPool);
+
+      vcgen.CachingActionCounts = stats.CachingActionCounts;
+      verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
+      verificationResult.Start = DateTime.UtcNow;
+
+      try {
+        var cancellationToken = RequestIdToCancellationTokenSource[requestId].Token;
+        (verificationResult.Outcome, verificationResult.Errors, verificationResult.VCResults) =
+          await vcgen.VerifyImplementation(new ImplementationRun(impl, traceWriter), requestId, cancellationToken);
+        if (Options.ExtractLoops && verificationResult.Errors != null) {
+          if (vcgen is VCGen vcg) {
+            for (int i = 0; i < verificationResult.Errors.Count; i++) {
+              verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name,
+                program, extractLoopMappingInfo);
+            }
+          }
+        }
+      } catch (VCGenException e) {
+        var errorInfo = ErrorInformationFactory.CreateErrorInformation(impl.tok,
+          $"{e.Message} (encountered in implementation {impl.Name}).", requestId, "Error");
+        errorInfo.ImplementationName = impl.Name;
+        verificationResult.ErrorBeforeVerification = errorInfo;
+        if (er != null) {
+          lock (er) {
+            er(errorInfo);
+          }
+        }
+
+        verificationResult.Errors = null;
+        verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+      } catch (ProverDiedException) {
+        throw;
+      } catch (UnexpectedProverOutputException upo) {
+        Options.Printer.AdvisoryWriteLine(traceWriter,
+          "Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}",
+          impl.Name, upo.Message);
+        verificationResult.Errors = null;
+        verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+      } catch (IOException e) {
+        Options.Printer.AdvisoryWriteLine(traceWriter, "Advisory: {0} SKIPPED due to I/O exception: {1}",
+          impl.Name, e.Message);
+        verificationResult.Errors = null;
+        verificationResult.Outcome = VCGen.Outcome.SolverException;
+      }
+
+      verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
+      verificationResult.End = DateTime.UtcNow;
+      verificationResult.ResourceCount = vcgen.ResourceCount;
+
+      return verificationResult;
+    }
+
 
     #region Houdini
 
@@ -1208,7 +1046,7 @@ namespace Microsoft.Boogie
       }
 
       Houdini.HoudiniSession.HoudiniStatistics houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
-      Houdini.Houdini houdini = new Houdini.Houdini(Options, program, houdiniStats);
+      Houdini.Houdini houdini = new Houdini.Houdini(Console.Out, Options, program, houdiniStats);
       Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
       houdini.Close();
 
@@ -1243,8 +1081,8 @@ namespace Microsoft.Boogie
 
       foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
       {
-        ProcessOutcome(x.outcome, x.errors, "", stats, Console.Out, Options.TimeLimit, er);
-        ProcessErrors(x.errors, x.outcome, Console.Out, er);
+        ProcessOutcome(Options.Printer, x.outcome, x.errors, "", stats, Console.Out, Options.TimeLimit, er);
+        ProcessErrors(Options.Printer, x.errors, x.outcome, Console.Out, er);
       }
 
       return PipelineOutcome.Done;
@@ -1262,7 +1100,7 @@ namespace Microsoft.Boogie
     private PipelineOutcome RunStagedHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
     {
       Houdini.HoudiniSession.HoudiniStatistics houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
-      var stagedHoudini = new Houdini.StagedHoudini(Options, program, houdiniStats, ProgramFromFile);
+      var stagedHoudini = new Houdini.StagedHoudini(Console.Out, Options, program, houdiniStats, ProgramFromFile);
       Houdini.HoudiniOutcome outcome = stagedHoudini.PerformStagedHoudiniInference();
 
       if (Options.PrintAssignment)
@@ -1296,8 +1134,8 @@ namespace Microsoft.Boogie
 
       foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
       {
-        ProcessOutcome(x.outcome, x.errors, "", stats, Console.Out, Options.TimeLimit, er);
-        ProcessErrors(x.errors, x.outcome, Console.Out, er);
+        ProcessOutcome(Options.Printer, x.outcome, x.errors, "", stats, Console.Out, Options.TimeLimit, er);
+        ProcessErrors(Options.Printer, x.errors, x.outcome, Console.Out, er);
       }
 
       return PipelineOutcome.Done;
@@ -1305,43 +1143,21 @@ namespace Microsoft.Boogie
 
     #endregion
 
-
-    private string TimeIndication(VerificationResult verificationResult)
-    {
-      var result = "";
-      if (Options.Trace)
-      {
-        result = string.Format("  [{0:F3} s, solver resource count: {1}, {2} proof obligation{3}]  ",
-          (verificationResult.End - verificationResult.Start).TotalSeconds,
-          verificationResult.ResourceCount,
-          verificationResult.ProofObligationCount,
-          verificationResult.ProofObligationCount == 1 ? "" : "s");
-      }
-      else if (Options.TraceProofObligations)
-      {
-        result = string.Format("  [{0} proof obligation{1}]  ", verificationResult.ProofObligationCount,
-          verificationResult.ProofObligationCount == 1 ? "" : "s");
-      }
-
-      return result;
-    }
-
-
-    private void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
+    public void ProcessOutcome(OutputPrinter printer, ConditionGeneration.Outcome outcome, List<Counterexample> errors, string timeIndication,
       PipelineStatistics stats, TextWriter tw, uint timeLimit, ErrorReporterDelegate er = null, string implName = null,
-      IToken implTok = null, string requestId = null, string msgIfVerifies = null, bool wasCached = false)
+      IToken implTok = null, string requestId = null, string msgIfVerifies = null)
     {
       Contract.Requires(stats != null);
 
-      UpdateStatistics(stats, outcome, errors, wasCached);
+      UpdateStatistics(stats, outcome, errors);
 
       printer.Inform(timeIndication + OutcomeIndication(outcome, errors), tw);
 
-      ReportOutcome(outcome, er, implName, implTok, requestId, msgIfVerifies, tw, timeLimit, errors);
+      ReportOutcome(printer, outcome, er, implName, implTok, requestId, msgIfVerifies, tw, timeLimit, errors);
     }
 
-
-    private void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, string implName,
+    public void ReportOutcome(OutputPrinter printer,
+      ConditionGeneration.Outcome outcome, ErrorReporterDelegate er, string implName,
       IToken implTok, string requestId, string msgIfVerifies, TextWriter tw, uint timeLimit, List<Counterexample> errors)
     {
       ErrorInformation errorInfo = null;
@@ -1351,12 +1167,11 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.Correct:
           if (msgIfVerifies != null)
           {
-            tw.WriteLine(msgIfVerifies); 
+            tw.WriteLine(msgIfVerifies);
           }
           break;
         case VCGen.Outcome.ReachedBound:
-          tw.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}",
-            Options.RecursionBound));
+          tw.WriteLine($"Stratified Inlining: Reached recursion bound of {Options.RecursionBound}");
           break;
         case VCGen.Outcome.Errors:
         case VCGen.Outcome.TimedOut:
@@ -1365,7 +1180,7 @@ namespace Microsoft.Boogie
             if (outcome == ConditionGeneration.Outcome.TimedOut ||
                 (errors != null && errors.Any(e => e.IsAuxiliaryCexForDiagnosingTimeouts)))
             {
-              errorInfo = errorInformationFactory.CreateErrorInformation(implTok,
+              errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
                 string.Format("Verification of '{1}' timed out after {0} seconds", timeLimit, implName), requestId);
             }
 
@@ -1377,8 +1192,7 @@ namespace Microsoft.Boogie
               timedOutAssertions.Sort(cmpr);
               if (0 < timedOutAssertions.Count)
               {
-                errorInfo.Msg += string.Format(" with {0} check(s) that timed out individually",
-                  timedOutAssertions.Count);
+                errorInfo.Msg += $" with {timedOutAssertions.Count} check(s) that timed out individually";
               }
 
               foreach (Counterexample error in timedOutAssertions)
@@ -1391,39 +1205,24 @@ namespace Microsoft.Boogie
                 if (callError != null)
                 {
                   tok = callError.FailingCall.tok;
-                  msg = callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.";
+                  msg = callError.FailingCall.ErrorData as string ??
+                        callError.FailingCall.Description.FailureDescription;
                 }
                 else if (returnError != null)
                 {
                   tok = returnError.FailingReturn.tok;
-                  msg = "A postcondition might not hold on this return path.";
+                  msg = returnError.FailingReturn.Description.FailureDescription;
                 }
                 else
                 {
                   tok = assertError.FailingAssert.tok;
-                  if (assertError.FailingAssert is LoopInitAssertCmd)
-                  {
-                    msg = "This loop invariant might not hold on entry.";
-                  }
-                  else if (assertError.FailingAssert is LoopInvMaintainedAssertCmd)
-                  {
-                    msg = "This loop invariant might not be maintained by the loop.";
-                  }
-                  else
-                  {
-                    if (assertError.FailingAssert.ErrorMessage == null || Options.ForceBplErrors)
-                    {
+                  if (assertError.FailingAssert.ErrorMessage == null || Options.ForceBplErrors) {
                       msg = assertError.FailingAssert.ErrorData as string;
-                    }
-                    else
-                    {
-                      msg = assertError.FailingAssert.ErrorMessage;
-                    }
-                    if (msg == null)
-                    {
-                      msg = "This assertion might not hold.";
-                    }
                   }
+                  else {
+                    msg = assertError.FailingAssert.ErrorMessage;
+                  }
+                  msg ??= assertError.FailingAssert.Description.FailureDescription;
                 }
 
                 errorInfo.AddAuxInfo(tok, msg, "Unverified check due to timeout");
@@ -1435,7 +1234,7 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.OutOfResource:
           if (implName != null && implTok != null)
           {
-            errorInfo = errorInformationFactory.CreateErrorInformation(implTok,
+            errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
               "Verification out of resource (" + implName + ")", requestId);
           }
 
@@ -1443,7 +1242,7 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.OutOfMemory:
           if (implName != null && implTok != null)
           {
-            errorInfo = errorInformationFactory.CreateErrorInformation(implTok,
+            errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
               "Verification out of memory (" + implName + ")", requestId);
           }
 
@@ -1451,7 +1250,7 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.SolverException:
           if (implName != null && implTok != null)
           {
-            errorInfo = errorInformationFactory.CreateErrorInformation(implTok,
+            errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
               "Verification encountered solver exception (" + implName + ")", requestId);
           }
 
@@ -1460,7 +1259,7 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.Inconclusive:
           if (implName != null && implTok != null)
           {
-            errorInfo = errorInformationFactory.CreateErrorInformation(implTok,
+            errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
               "Verification inconclusive (" + implName + ")", requestId);
           }
 
@@ -1524,8 +1323,7 @@ namespace Microsoft.Boogie
     }
 
 
-    private static void UpdateStatistics(PipelineStatistics stats, VC.VCGen.Outcome outcome,
-      List<Counterexample> errors, bool wasCached)
+    private static void UpdateStatistics(PipelineStatistics stats, VC.VCGen.Outcome outcome, List<Counterexample> errors)
     {
       Contract.Requires(stats != null);
 
@@ -1536,128 +1334,142 @@ namespace Microsoft.Boogie
           throw new cce.UnreachableException();
         case VCGen.Outcome.ReachedBound:
           Interlocked.Increment(ref stats.VerifiedCount);
-          if (wasCached)
-          {
-            Interlocked.Increment(ref stats.CachedVerifiedCount);
-          }
 
           break;
         case VCGen.Outcome.Correct:
           Interlocked.Increment(ref stats.VerifiedCount);
-          if (wasCached)
-          {
-            Interlocked.Increment(ref stats.CachedVerifiedCount);
-          }
 
           break;
         case VCGen.Outcome.TimedOut:
           Interlocked.Increment(ref stats.TimeoutCount);
-          if (wasCached)
-          {
-            Interlocked.Increment(ref stats.CachedTimeoutCount);
-          }
 
           break;
         case VCGen.Outcome.OutOfResource:
           Interlocked.Increment(ref stats.OutOfResourceCount);
-          if (wasCached)
-          {
-            Interlocked.Increment(ref stats.CachedOutOfResourceCount);
-          }
 
           break;
         case VCGen.Outcome.OutOfMemory:
           Interlocked.Increment(ref stats.OutOfMemoryCount);
-          if (wasCached)
-          {
-            Interlocked.Increment(ref stats.CachedOutOfMemoryCount);
-          }
 
           break;
         case VCGen.Outcome.SolverException:
           Interlocked.Increment(ref stats.SolverExceptionCount);
-          if (wasCached)
-          {
-            Interlocked.Increment(ref stats.CachedSolverExceptionCount);
-          }
 
           break;
         case VCGen.Outcome.Inconclusive:
           Interlocked.Increment(ref stats.InconclusiveCount);
-          if (wasCached)
-          {
-            Interlocked.Increment(ref stats.CachedInconclusiveCount);
-          }
 
           break;
         case VCGen.Outcome.Errors:
-          int cnt = errors.Where(e => !e.IsAuxiliaryCexForDiagnosingTimeouts).Count();
+          int cnt = errors.Count(e => !e.IsAuxiliaryCexForDiagnosingTimeouts);
           Interlocked.Add(ref stats.ErrorCount, cnt);
-          if (wasCached)
-          {
-            Interlocked.Add(ref stats.CachedErrorCount, cnt);
-          }
 
           break;
       }
     }
 
+    private static void UpdateCachedStatistics(PipelineStatistics stats, VC.VCGen.Outcome outcome, List<Counterexample> errors) {
+      Contract.Requires(stats != null);
 
-    private void ProcessErrors(List<Counterexample> errors, VC.VCGen.Outcome outcome, TextWriter tw,
+      switch (outcome)
+      {
+        default:
+          Contract.Assert(false); // unexpected outcome
+          throw new cce.UnreachableException();
+        case VCGen.Outcome.ReachedBound:
+          Interlocked.Increment(ref stats.CachedVerifiedCount);
+
+          break;
+        case VCGen.Outcome.Correct:
+          Interlocked.Increment(ref stats.CachedVerifiedCount);
+
+          break;
+        case VCGen.Outcome.TimedOut:
+          Interlocked.Increment(ref stats.CachedTimeoutCount);
+
+          break;
+        case VCGen.Outcome.OutOfResource:
+          Interlocked.Increment(ref stats.CachedOutOfResourceCount);
+
+          break;
+        case VCGen.Outcome.OutOfMemory:
+          Interlocked.Increment(ref stats.CachedOutOfMemoryCount);
+
+          break;
+        case VCGen.Outcome.SolverException:
+          Interlocked.Increment(ref stats.CachedSolverExceptionCount);
+
+          break;
+        case VCGen.Outcome.Inconclusive:
+          Interlocked.Increment(ref stats.CachedInconclusiveCount);
+
+          break;
+        case VCGen.Outcome.Errors:
+          int cnt = errors.Count(e => !e.IsAuxiliaryCexForDiagnosingTimeouts);
+          Interlocked.Add(ref stats.CachedErrorCount, cnt);
+
+          break;
+      }
+    }
+
+    public void ProcessErrors(OutputPrinter printer,
+      List<Counterexample> errors,
+      ConditionGeneration.Outcome outcome, TextWriter tw,
       ErrorReporterDelegate er, Implementation impl = null)
     {
-      var implName = impl != null ? impl.Name : null;
+      var implName = impl?.Name;
 
-      if (errors != null)
+      if (errors == null)
       {
-        errors.Sort(new CounterexampleComparer());
-        foreach (Counterexample error in errors)
+        return;
+      }
+
+      errors.Sort(new CounterexampleComparer());
+      foreach (Counterexample error in errors)
+      {
+        if (error.IsAuxiliaryCexForDiagnosingTimeouts)
         {
-          if (error.IsAuxiliaryCexForDiagnosingTimeouts)
+          continue;
+        }
+
+        var errorInfo = CreateErrorInformation(error, outcome);
+        errorInfo.ImplementationName = implName;
+
+        if (Options.XmlSink != null)
+        {
+          WriteErrorInformationToXmlSink(Options.XmlSink, errorInfo, error.Trace);
+        }
+
+        if (Options.ErrorTrace > 0)
+        {
+          errorInfo.Out.WriteLine("Execution trace:");
+          error.Print(4, errorInfo.Out, b => { errorInfo.AddAuxInfo(b.tok, b.Label, "Execution trace"); });
+          if (Options.EnhancedErrorMessages == 1 && error.AugmentedTrace != null && error.AugmentedTrace.Count > 0)
           {
-            continue;
+            errorInfo.Out.WriteLine("Augmented execution trace:");
+            error.AugmentedTrace.Iter(elem => errorInfo.Out.Write(elem));
           }
-
-          var errorInfo = CreateErrorInformation(error, outcome);
-          errorInfo.ImplementationName = implName;
-
-          if (Options.XmlSink != null)
+          if (Options.PrintErrorModel >= 1 && error.Model != null)
           {
-            WriteErrorInformationToXmlSink(Options.XmlSink, errorInfo, error.Trace);
+            error.Model.Write(Options.ModelWriter ?? errorInfo.Out);
           }
+        }
 
-          if (Options.ErrorTrace > 0)
+        if (Options.ModelViewFile != null) {
+          error.PrintModel(errorInfo.ModelWriter, error);
+        }
+
+        printer.WriteErrorInformation(errorInfo, tw);
+
+        if (er != null)
+        {
+          lock (er)
           {
-            errorInfo.Out.WriteLine("Execution trace:");
-            error.Print(4, errorInfo.Out, b => { errorInfo.AddAuxInfo(b.tok, b.Label, "Execution trace"); });
-            if (Options.EnhancedErrorMessages == 1 && error.AugmentedTrace != null && error.AugmentedTrace.Count > 0)
-            {
-              errorInfo.Out.WriteLine("Augmented execution trace:");
-              error.AugmentedTrace.Iter(elem => errorInfo.Out.Write(elem));
-            }
-            if (Options.PrintErrorModel >= 1 && error.Model != null)
-            {
-              error.Model.Write(ExecutionEngine.ModelWriter == null ? errorInfo.Out : ExecutionEngine.ModelWriter);
-            }
-          }
-
-          if (Options.ModelViewFile != null) {
-            error.PrintModel(errorInfo.Model, error);
-          }
-
-          printer.WriteErrorInformation(errorInfo, tw);
-
-          if (er != null)
-          {
-            lock (er)
-            {
-              er(errorInfo);
-            }
+            er(errorInfo);
           }
         }
       }
     }
-
 
     private ErrorInformation CreateErrorInformation(Counterexample error, VC.VCGen.Outcome outcome)
     {
@@ -1684,17 +1496,17 @@ namespace Microsoft.Boogie
       {
         if (callError.FailingRequires.ErrorMessage == null || Options.ForceBplErrors)
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok,
-            callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.",
+          errorInfo = ErrorInformationFactory.CreateErrorInformation(callError.FailingCall.tok,
+            callError.FailingCall.ErrorData as string ?? callError.FailingCall.Description.FailureDescription,
             callError.RequestId, callError.OriginalRequestId, cause);
           errorInfo.Kind = ErrorKind.Precondition;
           errorInfo.AddAuxInfo(callError.FailingRequires.tok,
-            callError.FailingRequires.ErrorData as string ?? "This is the precondition that might not hold.",
+            callError.FailingRequires.ErrorData as string ?? callError.FailingRequires.Description.FailureDescription,
             "Related location");
         }
         else
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(null,
+          errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(null,
             callError.FailingRequires.ErrorMessage,
             callError.RequestId, callError.OriginalRequestId);
         }
@@ -1703,17 +1515,17 @@ namespace Microsoft.Boogie
       {
         if (returnError.FailingEnsures.ErrorMessage == null || Options.ForceBplErrors)
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok,
-            "A postcondition might not hold on this return path.",
+          errorInfo = ErrorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok,
+            returnError.FailingReturn.Description.FailureDescription,
             returnError.RequestId, returnError.OriginalRequestId, cause);
           errorInfo.Kind = ErrorKind.Postcondition;
           errorInfo.AddAuxInfo(returnError.FailingEnsures.tok,
-            returnError.FailingEnsures.ErrorData as string ?? "This is the postcondition that might not hold.",
+            returnError.FailingEnsures.ErrorData as string ?? returnError.FailingEnsures.Description.FailureDescription,
             "Related location");
         }
         else
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(null,
+          errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(null,
             returnError.FailingEnsures.ErrorMessage,
             returnError.RequestId, returnError.OriginalRequestId);
         }
@@ -1722,24 +1534,13 @@ namespace Microsoft.Boogie
       {
         Debug.Assert(error is AssertCounterexample);
         var assertError = (AssertCounterexample)error;
-        if (assertError.FailingAssert is LoopInitAssertCmd)
+        if (assertError.FailingAssert is LoopInitAssertCmd or LoopInvMaintainedAssertCmd)
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok,
-            "This loop invariant might not hold on entry.",
+          errorInfo = ErrorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok,
+            assertError.FailingAssert.Description.FailureDescription,
             assertError.RequestId, assertError.OriginalRequestId, cause);
-          errorInfo.Kind = ErrorKind.InvariantEntry;
-          if ((assertError.FailingAssert.ErrorData as string) != null)
-          {
-            errorInfo.AddAuxInfo(assertError.FailingAssert.tok, assertError.FailingAssert.ErrorData as string,
-              "Related message");
-          }
-        }
-        else if (assertError.FailingAssert is LoopInvMaintainedAssertCmd)
-        {
-          errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok,
-            "This loop invariant might not be maintained by the loop.",
-            assertError.RequestId, assertError.OriginalRequestId, cause);
-          errorInfo.Kind = ErrorKind.InvariantMaintainance;
+          errorInfo.Kind = assertError.FailingAssert is LoopInitAssertCmd ?
+            ErrorKind.InvariantEntry : ErrorKind.InvariantMaintainance;
           if ((assertError.FailingAssert.ErrorData as string) != null)
           {
             errorInfo.AddAuxInfo(assertError.FailingAssert.tok, assertError.FailingAssert.ErrorData as string,
@@ -1750,14 +1551,15 @@ namespace Microsoft.Boogie
         {
           if (assertError.FailingAssert.ErrorMessage == null || Options.ForceBplErrors)
           {
-            string msg = assertError.FailingAssert.ErrorData as string ?? "This assertion might not hold.";
-            errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg,
+            string msg = assertError.FailingAssert.ErrorData as string ??
+                         assertError.FailingAssert.Description.FailureDescription;
+            errorInfo = ErrorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg,
               assertError.RequestId, assertError.OriginalRequestId, cause);
             errorInfo.Kind = ErrorKind.Assertion;
           }
           else
           {
-            errorInfo = errorInformationFactory.CreateErrorInformation(null, 
+            errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(null,
               assertError.FailingAssert.ErrorMessage,
               assertError.RequestId, assertError.OriginalRequestId);
           }

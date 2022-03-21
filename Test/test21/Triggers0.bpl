@@ -2,6 +2,7 @@
 // RUN: %diff "%s.p.expect" "%t"
 // RUN: %parallel-boogie -typeEncoding:a -logPrefix:0a "%s" > "%t"
 // RUN: %diff "%s.a.expect" "%t"
+// UNSUPPORTED: batch_mode
 
 
 const ar : [int]bool;
