@@ -707,7 +707,6 @@ namespace Microsoft.Boogie
         return verificationResult;
       }
       finally {
-        taskWriter.Close();
         verifyImplementationSemaphore.Release();
         ImplIdToCancellationTokenSource.TryRemove(id, out old);
       }
