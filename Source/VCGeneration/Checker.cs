@@ -326,7 +326,7 @@ namespace Microsoft.Boogie
       SetTimeout(timeout);
       SetRlimit(rlimit);
       ProverStart = DateTime.UtcNow;
-      thmProver.BeginCheck(descriptiveName, vc, handler);
+      await thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 
       ProverTask = WaitForOutput(cancellationToken);
@@ -380,7 +380,7 @@ namespace Microsoft.Boogie
       throw new NotImplementedException();
     }
 
-    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
+    public override Task BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
       /*Contract.Requires(descriptiveName != null);*/
       //Contract.Requires(vc != null);
