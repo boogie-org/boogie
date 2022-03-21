@@ -72,12 +72,12 @@ namespace Microsoft.Boogie
       status = CheckerStatus.Idle;
       try {
         await thmProver.GoBackToIdle().WaitAsync(TimeSpan.FromMilliseconds(100));
+        Pool.AddChecker(this);
       }
       catch(TimeoutException) {
         Pool.CheckerDied();
         Close();
       }
-      Pool.AddChecker(this);
     }
 
     public Task ProverTask { get; set; }
