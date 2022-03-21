@@ -105,7 +105,7 @@ namespace VC
         await ProcessResult(split, cancellationToken);
       }
       finally {
-        checker.GoBackToIdle();
+        await checker.GoBackToIdle();
         split.ResetChecker();
       }
     }

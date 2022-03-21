@@ -367,7 +367,7 @@ namespace VC
         }
         finally
         {
-          ch.GoBackToIdle();
+          ch.GoBackToIdle().Wait();
         }
 
         parent.CurrentLocalVariables = null;

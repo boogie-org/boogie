@@ -59,7 +59,7 @@ namespace Microsoft.Boogie
       status = CheckerStatus.Ready;
     }
 
-    public void GoBackToIdle()
+    public async Task GoBackToIdle()
     {
       Contract.Requires(IsBusy);
       if (Options.ModelViewFile != null) {
@@ -70,13 +70,14 @@ namespace Microsoft.Boogie
       }
 
       status = CheckerStatus.Idle;
-      var becameIdle = thmProver.GoBackToIdle().Wait(TimeSpan.FromMilliseconds(100));
-      if (becameIdle) {
-        Pool.AddChecker(this);
-      } else {
+      try {
+        await thmProver.GoBackToIdle().WaitAsync(TimeSpan.FromMilliseconds(100));
+      }
+      catch(TimeoutException) {
         Pool.CheckerDied();
         Close();
       }
+      Pool.AddChecker(this);
     }
 
     public Task ProverTask { get; set; }
