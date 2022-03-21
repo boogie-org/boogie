@@ -1,11 +1,9 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
+using Microsoft.Boogie;
 
-namespace Microsoft.Boogie;
-
-
-public delegate void ErrorReporterDelegate(ErrorInformation errInfo);
+namespace VCGeneration;
 
 public enum ErrorKind
 {
@@ -94,6 +92,8 @@ public class ErrorInformation
 
 public class ErrorInformationFactory
 {
+  public static ErrorInformationFactory Instance { get; } = new();
+
   public virtual ErrorInformation CreateErrorInformation(IToken tok, string msg,string category = null)
   {
     Contract.Requires(1 <= tok.line && 1 <= tok.col);

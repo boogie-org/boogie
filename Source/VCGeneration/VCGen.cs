@@ -2187,7 +2187,7 @@ namespace VC
           var loc = new TraceLocation(numBlock, numInstr);
           if (!cex.calleeCounterexamples.ContainsKey(loc))
           {
-            if (GetCallee(cex.getTraceCmd(loc), inlinedProcs) != null)
+            if (GetCallee(cex.GetTraceCmd(loc), inlinedProcs) != null)
             {
               callCnt++;
             }
@@ -2195,7 +2195,7 @@ namespace VC
             continue;
           }
 
-          string callee = cex.getCalledProcName(cex.getTraceCmd(loc));
+          string callee = cex.GetCalledProcName(cex.GetTraceCmd(loc));
           Contract.Assert(callee != null);
           var calleeTrace = cex.calleeCounterexamples[loc];
           Debug.Assert(calleeTrace != null);

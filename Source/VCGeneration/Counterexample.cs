@@ -6,6 +6,7 @@ using System.IO;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 using VC;
+using VCGeneration;
 using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Microsoft.Boogie
@@ -66,6 +67,7 @@ namespace Microsoft.Boogie
 
   public abstract class Counterexample
   {
+
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
@@ -132,7 +134,7 @@ namespace Microsoft.Boogie
     }
 
     // Looks up the Cmd at a given index into the trace
-    public Cmd getTraceCmd(TraceLocation loc)
+    public Cmd GetTraceCmd(TraceLocation loc)
     {
       Debug.Assert(loc.numBlock < Trace.Count);
       Block b = Trace[loc.numBlock];
@@ -142,7 +144,7 @@ namespace Microsoft.Boogie
 
     // Looks up the name of the called procedure.
     // Asserts that the name exists
-    public string getCalledProcName(Cmd cmd)
+    public string GetCalledProcName(Cmd cmd)
     {
       // There are two options:
       // 1. cmd is a CallCmd
@@ -192,8 +194,8 @@ namespace Microsoft.Boogie
               var loc = new TraceLocation(numBlock, numInstr);
               if (calleeCounterexamples.ContainsKey(loc))
               {
-                var cmd = getTraceCmd(loc);
-                var calleeName = getCalledProcName(cmd);
+                var cmd = GetTraceCmd(loc);
+                var calleeName = GetCalledProcName(cmd);
                 if (calleeName.StartsWith(VC.StratifiedVCGenBase.recordProcName) &&
                     options.StratifiedInlining > 0)
                 {
@@ -384,6 +386,98 @@ namespace Microsoft.Boogie
     }
 
     public abstract int GetLocation();
+
+    public ErrorInformation CreateErrorInformation(ConditionGeneration.Outcome outcome, bool forceBplErrors)
+    {
+      ErrorInformation errorInfo;
+      var cause = "Error";
+      if (outcome == VCGen.Outcome.TimedOut)
+      {
+        cause = "Timed out on";
+      }
+      else if (outcome == VCGen.Outcome.OutOfMemory)
+      {
+        cause = "Out of memory on";
+      }
+      else if (outcome == VCGen.Outcome.SolverException)
+      {
+        cause = "Solver exception on";
+      }
+      else if (outcome == VCGen.Outcome.OutOfResource)
+      {
+        cause = "Out of resource on";
+      }
+
+      if (this is CallCounterexample callError)
+      {
+        if (callError.FailingRequires.ErrorMessage == null || forceBplErrors)
+        {
+          errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(callError.FailingCall.tok,
+            callError.FailingCall.ErrorData as string ?? callError.FailingCall.Description.FailureDescription,
+            cause);
+          errorInfo.Kind = ErrorKind.Precondition;
+          errorInfo.AddAuxInfo(callError.FailingRequires.tok,
+            callError.FailingRequires.ErrorData as string ?? callError.FailingRequires.Description.FailureDescription,
+            "Related location");
+        }
+        else
+        {
+          errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(null,
+            callError.FailingRequires.ErrorMessage);
+        }
+      }
+      else if (this is ReturnCounterexample returnError)
+      {
+        if (returnError.FailingEnsures.ErrorMessage == null || forceBplErrors)
+        {
+          errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(returnError.FailingReturn.tok,
+            returnError.FailingReturn.Description.FailureDescription);
+          errorInfo.Kind = ErrorKind.Postcondition;
+          errorInfo.AddAuxInfo(returnError.FailingEnsures.tok,
+            returnError.FailingEnsures.ErrorData as string ?? returnError.FailingEnsures.Description.FailureDescription,
+            "Related location");
+        }
+        else
+        {
+          errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(null,
+            returnError.FailingEnsures.ErrorMessage);
+        }
+      }
+      else // error is AssertCounterexample
+      {
+        Debug.Assert(this is AssertCounterexample);
+        var assertError = (AssertCounterexample)this;
+        if (assertError.FailingAssert is LoopInitAssertCmd or LoopInvMaintainedAssertCmd)
+        {
+          errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(assertError.FailingAssert.tok,
+            assertError.FailingAssert.Description.FailureDescription);
+          errorInfo.Kind = assertError.FailingAssert is LoopInitAssertCmd ?
+            ErrorKind.InvariantEntry : ErrorKind.InvariantMaintainance;
+          if ((assertError.FailingAssert.ErrorData as string) != null)
+          {
+            errorInfo.AddAuxInfo(assertError.FailingAssert.tok, assertError.FailingAssert.ErrorData as string,
+              "Related message");
+          }
+        }
+        else
+        {
+          if (assertError.FailingAssert.ErrorMessage == null || forceBplErrors)
+          {
+            string msg = assertError.FailingAssert.ErrorData as string ??
+                         assertError.FailingAssert.Description.FailureDescription;
+            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(assertError.FailingAssert.tok, msg);
+            errorInfo.Kind = ErrorKind.Assertion;
+          }
+          else
+          {
+            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(null,
+              assertError.FailingAssert.ErrorMessage);
+          }
+        }
+      }
+
+      return errorInfo;
+    }
   }
 
   public class CounterexampleComparer : IComparer<Counterexample>, IEqualityComparer<Counterexample>

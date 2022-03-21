@@ -14,14 +14,13 @@ using System.Net.Mime;
 using System.Runtime.CompilerServices;
 using Core;
 using Microsoft.Boogie.Houdini;
+using VCGeneration;
 
 namespace Microsoft.Boogie
 {
   public class ExecutionEngine : IDisposable {
 
     private static readonly ConditionalWeakTable<Program, Action<VCGen, Implementation, VerificationResult>> ResultPostProcessors = new ();
-
-    public static ErrorInformationFactory ErrorInformationFactory { get; } = new();
 
     static int autoRequestIdCount;
 
@@ -847,7 +846,7 @@ namespace Microsoft.Boogie
           postProcess!(vcgen, impl, verificationResult);
         }
       } catch (VCGenException e) {
-        var errorInfo = ErrorInformationFactory.CreateErrorInformation(impl.tok,
+        var errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(impl.tok,
           $"{e.Message} (encountered in implementation {impl.Name}).", "Error");
         errorInfo.ImplementationName = impl.Name;
         verificationResult.ErrorBeforeVerification = errorInfo;
@@ -1028,7 +1027,7 @@ namespace Microsoft.Boogie
             if (outcome == ConditionGeneration.Outcome.TimedOut ||
                 (errors != null && errors.Any(e => e.IsAuxiliaryCexForDiagnosingTimeouts)))
             {
-              errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
+              errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
                 string.Format("Verification of '{1}' timed out after {0} seconds", timeLimit, implName));
             }
 
@@ -1082,7 +1081,7 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.OutOfResource:
           if (implName != null && implTok != null)
           {
-            errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
+            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
               "Verification out of resource (" + implName + ")");
           }
 
@@ -1090,7 +1089,7 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.OutOfMemory:
           if (implName != null && implTok != null)
           {
-            errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
+            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
               "Verification out of memory (" + implName + ")");
           }
 
@@ -1098,7 +1097,7 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.SolverException:
           if (implName != null && implTok != null)
           {
-            errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
+            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
               "Verification encountered solver exception (" + implName + ")");
           }
 
@@ -1107,7 +1106,7 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.Inconclusive:
           if (implName != null && implTok != null)
           {
-            errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(implTok,
+            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
               "Verification inconclusive (" + implName + ")");
           }
 
@@ -1280,7 +1279,7 @@ namespace Microsoft.Boogie
           continue;
         }
 
-        var errorInfo = CreateErrorInformation(error, outcome);
+        var errorInfo = error.CreateErrorInformation(outcome, Options.ForceBplErrors);
         errorInfo.ImplementationName = implName;
 
         if (Options.XmlSink != null)
@@ -1319,98 +1318,6 @@ namespace Microsoft.Boogie
       }
     }
 
-    private ErrorInformation CreateErrorInformation(Counterexample error, VC.VCGen.Outcome outcome)
-    {
-      ErrorInformation errorInfo;
-      var cause = "Error";
-      if (outcome == VCGen.Outcome.TimedOut)
-      {
-        cause = "Timed out on";
-      }
-      else if (outcome == VCGen.Outcome.OutOfMemory)
-      {
-        cause = "Out of memory on";
-      }
-      else if (outcome == VCGen.Outcome.SolverException)
-      {
-        cause = "Solver exception on";
-      }
-      else if (outcome == VCGen.Outcome.OutOfResource)
-      {
-        cause = "Out of resource on";
-      }
-
-      if (error is CallCounterexample callError)
-      {
-        if (callError.FailingRequires.ErrorMessage == null || Options.ForceBplErrors)
-        {
-          errorInfo = ErrorInformationFactory.CreateErrorInformation(callError.FailingCall.tok,
-            callError.FailingCall.ErrorData as string ?? callError.FailingCall.Description.FailureDescription,
-            cause);
-          errorInfo.Kind = ErrorKind.Precondition;
-          errorInfo.AddAuxInfo(callError.FailingRequires.tok,
-            callError.FailingRequires.ErrorData as string ?? callError.FailingRequires.Description.FailureDescription,
-            "Related location");
-        }
-        else
-        {
-          errorInfo = ErrorInformationFactory.CreateErrorInformation(null,
-            callError.FailingRequires.ErrorMessage);
-        }
-      }
-      else if (error is ReturnCounterexample returnError)
-      {
-        if (returnError.FailingEnsures.ErrorMessage == null || Options.ForceBplErrors)
-        {
-          errorInfo = ErrorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok,
-            returnError.FailingReturn.Description.FailureDescription);
-          errorInfo.Kind = ErrorKind.Postcondition;
-          errorInfo.AddAuxInfo(returnError.FailingEnsures.tok,
-            returnError.FailingEnsures.ErrorData as string ?? returnError.FailingEnsures.Description.FailureDescription,
-            "Related location");
-        }
-        else
-        {
-          errorInfo = ErrorInformationFactory.CreateErrorInformation(null,
-            returnError.FailingEnsures.ErrorMessage);
-        }
-      }
-      else // error is AssertCounterexample
-      {
-        Debug.Assert(error is AssertCounterexample);
-        var assertError = (AssertCounterexample)error;
-        if (assertError.FailingAssert is LoopInitAssertCmd or LoopInvMaintainedAssertCmd)
-        {
-          errorInfo = ErrorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok,
-            assertError.FailingAssert.Description.FailureDescription);
-          errorInfo.Kind = assertError.FailingAssert is LoopInitAssertCmd ?
-            ErrorKind.InvariantEntry : ErrorKind.InvariantMaintainance;
-          if ((assertError.FailingAssert.ErrorData as string) != null)
-          {
-            errorInfo.AddAuxInfo(assertError.FailingAssert.tok, assertError.FailingAssert.ErrorData as string,
-              "Related message");
-          }
-        }
-        else
-        {
-          if (assertError.FailingAssert.ErrorMessage == null || Options.ForceBplErrors)
-          {
-            string msg = assertError.FailingAssert.ErrorData as string ??
-                         assertError.FailingAssert.Description.FailureDescription;
-            errorInfo = ErrorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg);
-            errorInfo.Kind = ErrorKind.Assertion;
-          }
-          else
-          {
-            errorInfo = ErrorInformationFactory.CreateErrorInformation(null,
-              assertError.FailingAssert.ErrorMessage);
-          }
-        }
-      }
-
-      return errorInfo;
-    }
-
     private static void WriteErrorInformationToXmlSink(XmlSink sink, ErrorInformation errorInfo, List<Block> trace)
     {
       var msg = "assertion violation";
@@ -1443,3 +1350,5 @@ namespace Microsoft.Boogie
     }
   }
 }
+
+public delegate void ErrorReporterDelegate(ErrorInformation errInfo);
