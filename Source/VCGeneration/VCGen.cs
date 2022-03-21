@@ -100,11 +100,11 @@ namespace VC
         initial = GetCopiedBlocks()[0];
       }
 
-      internal void Test(TextWriter traceWriter)
+      internal Task Test(TextWriter traceWriter)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-        DFS(traceWriter, initial);
+        return DepthFirstSearch(traceWriter, initial);
       }
       
       void TopologicalSortImpl()
@@ -283,7 +283,7 @@ namespace VC
         return BooleanEval(e, ref val) && !val;
       }
 
-      bool CheckUnreachable(TextWriter traceWriter, Block cur, List<Cmd> seq)
+      async Task<bool> CheckUnreachable(TextWriter traceWriter, Block cur, List<Cmd> seq)
       {
         Contract.Requires(cur != null);
         Contract.Requires(seq != null);
@@ -330,14 +330,15 @@ namespace VC
         ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
         try
         {
+          VCExpr vc;
+          var absyIds = new ControlFlowIdMap<Absy>();
           lock (ch)
           {
             var exprGen = ch.TheoremProver.Context.ExprGen;
             VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
 
-            var absyIds = new ControlFlowIdMap<Absy>();
-            
-            VCExpr vc = parent.GenerateVC(run.Implementation, controlFlowVariableExpr, absyIds, ch.TheoremProver.Context);
+
+            vc = parent.GenerateVC(run.Implementation, controlFlowVariableExpr, absyIds, ch.TheoremProver.Context);
             Contract.Assert(vc != null);
 
             VCExpr controlFlowFunctionAppl =
@@ -353,12 +354,11 @@ namespace VC
               System.Console.WriteLine(" --- smoke #{0}, after passify", id);
               Emit();
             }
-
-            ch.BeginCheck(cce.NonNull(Implementation.Name + "_smoke" + id++), vc, new ErrorHandler(Options, absyIds, callback),
-              Options.SmokeTimeout, Options.ResourceLimit, CancellationToken.None).Wait();
           }
+          await ch.BeginCheck(cce.NonNull(Implementation.Name + "_smoke" + id++), vc, new ErrorHandler(Options, absyIds, callback),
+            Options.SmokeTimeout, Options.ResourceLimit, CancellationToken.None);
 
-          ch.ProverTask.Wait();
+          await ch.ProverTask;
 
           lock (ch)
           {
@@ -367,7 +367,7 @@ namespace VC
         }
         finally
         {
-          ch.GoBackToIdle().Wait();
+          await ch.GoBackToIdle();
         }
 
         parent.CurrentLocalVariables = null;
@@ -401,7 +401,7 @@ namespace VC
 
       const bool turnAssertIntoAssumes = false;
 
-      void DFS(TextWriter traceWriter, Block cur)
+      async Task DepthFirstSearch(TextWriter traceWriter, Block cur)
       {
         Contract.Requires(cur != null);
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -461,7 +461,7 @@ namespace VC
 
           if (assumeFalse)
           {
-            CheckUnreachable(traceWriter, cur, seq);
+            await CheckUnreachable(traceWriter, cur, seq);
             return;
           }
 
@@ -477,7 +477,7 @@ namespace VC
         if (ret != null || (go != null && cce.NonNull(go.labelTargets).Count == 0))
         {
           // we end in return, so there will be no more places to check
-          CheckUnreachable(traceWriter, cur, seq);
+          await CheckUnreachable(traceWriter, cur, seq);
         }
         else if (go != null)
         {
@@ -495,13 +495,13 @@ namespace VC
 
           if (needToCheck)
           {
-            CheckUnreachable(traceWriter, cur, seq);
+            await CheckUnreachable(traceWriter, cur, seq);
           }
 
           foreach (Block target in go.labelTargets)
           {
             Contract.Assert(target != null);
-            DFS(traceWriter, target);
+            await DepthFirstSearch(traceWriter, target);
           }
         }
       }
@@ -888,7 +888,7 @@ namespace VC
       
       if (outcome == Outcome.Correct && smoke_tester != null)
       {
-        smoke_tester.Test(run.TraceWriter);
+        await smoke_tester.Test(run.TraceWriter);
       }
 
       callback.OnProgress?.Invoke("done", 0, 0, 1.0);
