@@ -82,10 +82,10 @@ public class CommandLineParseState
   /// then call "setArg" with that number mapped to a boolean and return "true".
   /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
   /// </summary>
-  public bool GetNumericArgument(Action<bool> setArg)
+  public bool GetIntArgument(Action<bool> setArg)
   {
     int intArg = 0;
-    var result = GetNumericArgument(ref intArg, x => x < 2);
+    var result = GetIntArgument(ref intArg, x => x < 2);
     if (result) {
       setArg(intArg != 0);
     }
@@ -96,10 +96,10 @@ public class CommandLineParseState
   /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
   /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
   /// </summary>
-  public bool GetNumericArgument(ref bool arg)
+  public bool GetIntArgument(ref bool arg)
   {
     int intArg = 0;
-    var result = GetNumericArgument(ref intArg, x => x < 2);
+    var result = GetIntArgument(ref intArg, x => x < 2);
     if (result) {
       arg = intArg != 0;
     }
@@ -110,7 +110,7 @@ public class CommandLineParseState
   /// If there is one argument and it is a non-negative integer, then call "setArg" with that number and return "true".
   /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
   /// </summary>
-  public bool GetNumericArgument(Action<int> setArg, Predicate<int> filter = null)
+  public bool GetIntArgument(Action<int> setArg, Predicate<int> filter = null)
   {
     filter ??= a => 0 <= a;
 
@@ -149,10 +149,10 @@ public class CommandLineParseState
   /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
   /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
   /// </summary>
-  public bool GetNumericArgument(ref int arg)
+  public bool GetIntArgument(ref int arg)
   {
     //modifies nextIndex, encounteredErrors, Console.Error.*;
-    return GetNumericArgument(ref arg, a => 0 <= a);
+    return GetIntArgument(ref arg, a => 0 <= a);
   }
 
   public bool GetUnsignedNumericArgument(Action<uint> setArg, Predicate<uint> filter = null)
@@ -221,7 +221,7 @@ public class CommandLineParseState
   /// If there is one argument and the filtering predicate holds, then set "arg" to that number and return "true".
   /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
   /// </summary>
-  public bool GetNumericArgument(ref int arg, Predicate<int> filter)
+  public bool GetIntArgument(ref int arg, Predicate<int> filter)
   {
     Contract.Requires(filter != null);
 
@@ -259,11 +259,11 @@ public class CommandLineParseState
   /// then call "setArg" with that number and return "true".
   /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
   /// </summary>
-  public bool GetNumericArgument(Action<int> setArg, int limit)
+  public bool GetIntArgument(Action<int> setArg, int limit)
   {
     Contract.Requires(this.i < args.Length);
     int a = 0;
-    if (!GetNumericArgument(x => a = x))
+    if (!GetIntArgument(x => a = x))
     {
       return false;
     }
@@ -282,14 +282,14 @@ public class CommandLineParseState
   /// then set "arg" to that number and return "true".
   /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
   /// </summary>
-  public bool GetNumericArgument(ref int arg, int limit)
+  public bool GetIntArgument(ref int arg, int limit)
   {
     Contract.Requires(this.i < args.Length);
     Contract.Ensures(Math.Min(arg, 0) <= Contract.ValueAtReturn(out arg) &&
                      Contract.ValueAtReturn(out arg) < limit);
     //modifies nextIndex, encounteredErrors, Console.Error.*;
     int a = arg;
-    if (!GetNumericArgument(ref a))
+    if (!GetIntArgument(ref a))
     {
       return false;
     }
@@ -306,12 +306,12 @@ public class CommandLineParseState
   }
 
   /// <summary>
-  /// If there is one argument and it is a non-negative real, then set "arg" to that number and return "true".
-  /// Otherwise, emit an error message, leave "arg" unchanged, and return "false".
+  /// If there is one argument and it is a non-negative real,
+  /// then call "setArg" with that number and return "true".
+  /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
   /// </summary>
-  public bool GetNumericArgument(ref double arg)
+  public bool GetDoubleArgument(Action<double> setArg)
   {
-    Contract.Ensures(Contract.ValueAtReturn(out arg) >= 0);
     //modifies nextIndex, encounteredErrors, Console.Error.*;
     if (this.ConfirmArgumentCount(1))
     {
@@ -320,9 +320,8 @@ public class CommandLineParseState
         Contract.Assume(args[i] != null);
         Contract.Assert(args[i] is string); // needed to prove args[i].IsPeerConsistent
         double d = Convert.ToDouble(this.args[this.i]);
-        if (0 <= d)
-        {
-          arg = d;
+        if (0 <= d) {
+          setArg(d);
           return true;
         }
       }
