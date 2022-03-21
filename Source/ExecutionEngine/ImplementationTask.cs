@@ -23,8 +23,6 @@ public class ImplementationTask {
     source = new CancellationTokenSource();
     ActualTask = engine.VerifyImplementationWithLargeStackScheduler(program, new PipelineStatistics(), null, null,
       Implementation, source, TextWriter.Null);
-
-    // When do we process the output?
   }
 
   public void Cancel() {

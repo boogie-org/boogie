@@ -675,8 +675,7 @@ namespace Microsoft.Boogie
 
     }
 
-    public IReadOnlyList<ImplementationTask> GetImplementationTasks(Program program, PipelineStatistics stats,
-      CancellationTokenSource cts) {
+    public IReadOnlyList<ImplementationTask> GetImplementationTasks(Program program) {
       PreProcessProgram(program);
       return GetPrioritizedImplementations(program).Select(implementation => new ImplementationTask(this, program, implementation)).ToList();
     }
