@@ -1537,34 +1537,54 @@ namespace Microsoft.Boogie
       {
         Debug.Assert(error is AssertCounterexample);
         var assertError = (AssertCounterexample)error;
-        if (assertError.FailingAssert is LoopInitAssertCmd or LoopInvMaintainedAssertCmd)
+        var failingAssert = assertError.FailingAssert;
+        if (failingAssert is LoopInitAssertCmd or LoopInvMaintainedAssertCmd)
         {
-          errorInfo = ErrorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok,
-            assertError.FailingAssert.Description.FailureDescription,
+          errorInfo = ErrorInformationFactory.CreateErrorInformation(failingAssert.tok,
+            failingAssert.Description.FailureDescription,
             assertError.RequestId, assertError.OriginalRequestId, cause);
-          errorInfo.Kind = assertError.FailingAssert is LoopInitAssertCmd ?
+          errorInfo.Kind = failingAssert is LoopInitAssertCmd ?
             ErrorKind.InvariantEntry : ErrorKind.InvariantMaintainance;
-          if ((assertError.FailingAssert.ErrorData as string) != null)
+          string relatedMessage = null;
+          if ((failingAssert.ErrorData as string) != null)
           {
-            errorInfo.AddAuxInfo(assertError.FailingAssert.tok, assertError.FailingAssert.ErrorData as string,
-              "Related message");
+            relatedMessage = failingAssert.ErrorData as string;
+          }
+          else if (failingAssert is LoopInitAssertCmd initCmd)
+          {
+            var desc = initCmd.originalAssert.Description;
+            if (desc.ShortDescription != "assert")
+            {
+              relatedMessage = desc.FailureDescription;
+            }
+          }
+          else if (failingAssert is LoopInvMaintainedAssertCmd maintCmd)
+          {
+            var desc = maintCmd.originalAssert.Description;
+            if (desc.ShortDescription != "assert")
+            {
+              relatedMessage = desc.FailureDescription;
+            }
+          }
+
+          if (relatedMessage != null) {
+            errorInfo.AddAuxInfo(failingAssert.tok, relatedMessage, "Related message");
           }
         }
         else
         {
-          if (assertError.FailingAssert.ErrorMessage == null || Options.ForceBplErrors)
+          if (failingAssert.ErrorMessage == null || Options.ForceBplErrors)
           {
-            string msg = assertError.FailingAssert.ErrorData as string ??
-                         assertError.FailingAssert.Description.FailureDescription;
-            errorInfo = ErrorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg,
+            string msg = failingAssert.ErrorData as string ??
+                         failingAssert.Description.FailureDescription;
+            errorInfo = ErrorInformationFactory.CreateErrorInformation(failingAssert.tok, msg,
               assertError.RequestId, assertError.OriginalRequestId, cause);
             errorInfo.Kind = ErrorKind.Assertion;
           }
           else
           {
             errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(null,
-              assertError.FailingAssert.ErrorMessage,
-              assertError.RequestId, assertError.OriginalRequestId);
+              failingAssert.ErrorMessage, assertError.RequestId, assertError.OriginalRequestId);
           }
         }
       }
