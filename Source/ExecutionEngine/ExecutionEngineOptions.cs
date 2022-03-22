@@ -9,7 +9,7 @@ namespace Microsoft.Boogie;
 
 public interface ExecutionEngineOptions : HoudiniOptions, ConcurrencyOptions
 {
-  public OutputPrinter Printer { get; }
+  public new OutputPrinter Printer { get; }
   bool ShowVerifiedProcedureCount { get; }
   string DescriptiveToolName { get; }
   bool TraceProofObligations { get; }
