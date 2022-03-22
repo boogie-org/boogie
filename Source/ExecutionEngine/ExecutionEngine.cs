@@ -236,21 +236,26 @@ namespace Microsoft.Boogie
     static readonly ConcurrentDictionary<string, CancellationTokenSource> RequestIdToCancellationTokenSource =
       new ConcurrentDictionary<string, CancellationTokenSource>();
 
-    public bool ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
+    public async Task<bool> ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
       string programId = null) {
       Contract.Requires(cce.NonNullElements(fileNames));
 
       if (Options.VerifySeparately && 1 < fileNames.Count) {
-        return fileNames.All(f => ProcessFiles(output, new List<string> { f }, lookForSnapshots, f));
+        var success = true;
+        foreach (var fileName in fileNames) {
+          success &= await ProcessFiles(output, new List<string> { fileName }, lookForSnapshots, fileName);
+        }
+        return success;
       }
 
       if (0 <= Options.VerifySnapshots && lookForSnapshots) {
         var snapshotsByVersion = LookForSnapshots(fileNames);
-        return snapshotsByVersion.All(s => {
-          // BUG: Reusing checkers during snapshots doesn't work, even though it should. We create a new engine (and thus checker pool) to workaround this.
+        var success = true;
+        foreach (var snapshots in snapshotsByVersion) {
           using var engine = new ExecutionEngine(Options, Cache);
-          return engine.ProcessFiles(output, new List<string>(s), false, programId);
-        });
+          success &= await engine.ProcessFiles(output, new List<string>(snapshots), false, programId);
+        }
+        return success;
       }
 
       using XmlFileScope xf = new XmlFileScope(Options.XmlSink, fileNames[^1]);
@@ -260,7 +265,7 @@ namespace Microsoft.Boogie
         return true;
       }
 
-      return ProcessProgram(output, program, bplFileName, programId).Result;
+      return await ProcessProgram(output, program, bplFileName, programId);
     }
 
     [Obsolete("Please inline this method call")]

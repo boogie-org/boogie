@@ -63,7 +63,7 @@ namespace Microsoft.Boogie
 
       Helpers.ExtraTraceInformation(options, "Becoming sentient");
 
-      var success = executionEngine.ProcessFiles(Console.Out, fileList);
+      var success = executionEngine.ProcessFiles(Console.Out, fileList).Result;
 
       if (options.XmlSink != null)
       {
