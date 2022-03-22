@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,8 +18,8 @@ namespace Microsoft.Boogie.SMTLib
     readonly Process prover;
     readonly Inspector inspector;
     readonly SMTLibProverOptions options;
-    readonly Queue<string> proverOutput = new();
-    readonly Queue<string> proverErrors = new();
+    readonly ConcurrentQueue<string> proverOutput = new();
+    private readonly ConcurrentQueue<TaskCompletionSource<string>> outputReceivers = new();
     private TextWriter toProver;
     readonly int smtProcessId;
     static int smtProcessIdSeq = 0;
@@ -418,8 +419,6 @@ namespace Microsoft.Boogie.SMTLib
     #endregion
 
     #region handling input from the prover
-
-    private readonly Queue<TaskCompletionSource<string>> outputReceivers = new();
     
     Task<string> ReadProver()
     {
