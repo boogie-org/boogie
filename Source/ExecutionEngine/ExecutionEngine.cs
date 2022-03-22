@@ -768,7 +768,9 @@ namespace Microsoft.Boogie
     {
       var impls = program.Implementations.Where(
         impl => impl != null && Options.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) &&
-                !impl.IsSkipVerification(Options));
+                !impl.IsSkipVerification(Options)).ToArray();
+      
+      Options.Printer.ReportImplementationsBeforeVerification(impls);
 
       // operate on a stable copy, in case it gets updated while we're running
       Implementation[] stablePrioritizedImpls = null;
@@ -795,8 +797,6 @@ namespace Microsoft.Boogie
 
       var cts = new CancellationTokenSource();
       RequestIdToCancellationTokenSource.AddOrUpdate(requestId, cts, (k, ov) => cts);
-
-      Options.Printer.ReportImplementationsBeforeVerification(stablePrioritizedImpls);
       
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
