@@ -69,6 +69,18 @@ namespace ExecutionEngineTests
       Assert.AreEqual(1, printer.FinishedImplementations.Count);
       Assert.AreEqual(1, printer.FinishedImplementations[0].Item2.Errors.Count());
       Assert.AreEqual(true, printer.FinishedImplementations[0].Item2.Errors[0] is ReturnCounterexample);
+      var vcResult = printer.SplitResults[0].Item2;
+      Assert.AreEqual(1, vcResult.asserts.Count);
+      var assertion = vcResult.asserts[0];
+      vcResult.ComputePerAssertOutcomes(out var perAssertOutcome, out var perAssertCounterExamples);
+      Assert.Contains(assertion, perAssertOutcome.Keys);
+      Assert.Contains(assertion, perAssertCounterExamples.Keys);
+      var outcomeAssertion = perAssertOutcome[assertion];
+      var counterExampleAssertion = perAssertCounterExamples[assertion];
+      Assert.AreEqual(ProverInterface.Outcome.Invalid, outcomeAssertion);
+      Assert.AreEqual(true, counterExampleAssertion is ReturnCounterexample);
+      var returnCounterExample = (ReturnCounterexample)counterExampleAssertion;
+      Assert.AreEqual(returnCounterExample.FailingAssert, assertion);
     }
 
     private string fast = @"

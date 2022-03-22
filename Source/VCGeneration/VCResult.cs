@@ -33,7 +33,6 @@ namespace VC
         perAssertOutcome = asserts.ToDictionary(cmd => cmd, assertCmd => ProverInterface.Outcome.Valid);
       } else {
         foreach (var counterExample in counterExamples) {
-          // Only deal with the ocunter-examples that cover the asserts of this split.
           AssertCmd underlyingAssert;
           if (counterExample is AssertCounterexample assertCounterexample) {
             underlyingAssert = assertCounterexample.FailingAssert;
@@ -45,6 +44,7 @@ namespace VC
             continue;
           }
 
+          // We ensure that the underlyingAssert is among the original asserts
           if (!asserts.Contains(underlyingAssert)) {
             continue;
           }
@@ -55,9 +55,14 @@ namespace VC
 
         var remainingOutcome =
           outcome == ProverInterface.Outcome.Invalid && counterExamples.Count < maxCounterExamples
+            // We could not extract more counterexamples, remaining assertions are thus valid 
             ? ProverInterface.Outcome.Valid
-            : outcome;
-        // Everything not listed is successful if no counter-example covers it and we did not reach the limit of counter-examples
+            : outcome == ProverInterface.Outcome.Invalid
+              // We reached the maximum number of counterexamples, we can't infer anything for the remaining assertions
+              ? ProverInterface.Outcome.Undetermined
+              // TimeOut, OutOfMemory, OutOfResource, Undetermined for a single split also applies to assertions
+              : outcome;
+
         foreach (var assert in asserts) {
           perAssertOutcome.TryAdd(assert, remainingOutcome);
         }
