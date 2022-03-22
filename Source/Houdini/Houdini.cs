@@ -885,7 +885,7 @@ namespace Microsoft.Boogie.Houdini
       return nonCandidateErrors.Count > 0;
     }
 
-    protected async Task FlushWorkList(int stage, IEnumerable<int> completedStages)
+    protected async Task FlushWorkList(int stage, IReadOnlyList<int> completedStages)
     {
       this.NotifyFlushStart();
       while (currentHoudiniState.WorkQueue.Count > 0)
@@ -1489,7 +1489,7 @@ namespace Microsoft.Boogie.Houdini
       return null;
     }
 
-    private async Task<(ProverInterface.Outcome, List<Counterexample> errors)> TryCatchVerify(HoudiniSession session, int stage, IEnumerable<int> completedStages)
+    private async Task<(ProverInterface.Outcome, List<Counterexample> errors)> TryCatchVerify(HoudiniSession session, int stage, IReadOnlyList<int> completedStages)
     {
       try {
         return await session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), GetErrorLimit());
@@ -1516,7 +1516,7 @@ namespace Microsoft.Boogie.Houdini
       return errorLimit;
     }
 
-    protected Dictionary<Variable, bool> GetAssignmentWithStages(int currentStage, IEnumerable<int> completedStages)
+    protected Dictionary<Variable, bool> GetAssignmentWithStages(int currentStage, IReadOnlyList<int> completedStages)
     {
       Dictionary<Variable, bool> result = new Dictionary<Variable, bool>(currentHoudiniState.Assignment);
       foreach (var c in program.Constants)
@@ -1530,7 +1530,7 @@ namespace Microsoft.Boogie.Houdini
         int stageComplete = QKeyValue.FindIntAttribute(c.Attributes, "stage_complete", -1);
         if (stageComplete != -1)
         {
-          result[c] = (completedStages.Contains(stageComplete));
+          result[c] = completedStages.Contains(stageComplete);
         }
       }
 
@@ -1570,7 +1570,7 @@ namespace Microsoft.Boogie.Houdini
 
           foreach (var refutedAnnotation in refutedAnnotations)
           {
-            session.Explain(proverInterface, currentHoudiniState.Assignment, refutedAnnotation.Constant);
+            await session.Explain(proverInterface, currentHoudiniState.Assignment, refutedAnnotation.Constant);
           }
         }
 
@@ -1584,11 +1584,12 @@ namespace Microsoft.Boogie.Houdini
           await FlushWorkList(stage, completedStages);
           return;
         }
-        else if (UpdateAssignmentWorkList(outcome, errors))
+
+        if (UpdateAssignmentWorkList(outcome, errors))
         {
           if (Options.UseUnsatCoreForContractInfer && outcome == ProverInterface.Outcome.Valid)
           {
-            session.UpdateUnsatCore(proverInterface, currentHoudiniState.Assignment);
+            await session.UpdateUnsatCore(proverInterface, currentHoudiniState.Assignment);
           }
 
           currentHoudiniState.WorkQueue.Dequeue();
