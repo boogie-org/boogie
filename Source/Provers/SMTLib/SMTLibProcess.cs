@@ -74,10 +74,8 @@ namespace Microsoft.Boogie.SMTLib
 
     private void prover_Exited(object sender, EventArgs e)
     {
-      lock (this) {
-        while (outputReceivers.TryDequeue(out var source)) {
-          source.SetResult(null);
-        }
+      while (outputReceivers.TryDequeue(out var source)) {
+        source.SetResult(null);
       }
 
       DisposeProver();
@@ -425,15 +423,13 @@ namespace Microsoft.Boogie.SMTLib
     
     Task<string> ReadProver()
     {
-      lock (this) {
-        if (proverOutput.TryDequeue(out var result)) {
-          return Task.FromResult(result);
-        }
-
-        var taskCompletionSource = new TaskCompletionSource<string>();
-        outputReceivers.Enqueue(taskCompletionSource);
-        return taskCompletionSource.Task;
+      if (proverOutput.TryDequeue(out var result)) {
+        return Task.FromResult(result);
       }
+
+      var taskCompletionSource = new TaskCompletionSource<string>();
+      outputReceivers.Enqueue(taskCompletionSource);
+      return taskCompletionSource.Task;
     }
 
     void DisposeProver()
@@ -457,12 +453,10 @@ namespace Microsoft.Boogie.SMTLib
           Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
         }
 
-        lock (this) {
-          if (outputReceivers.TryDequeue(out var source)) {
-            source.SetResult(e.Data);
-          } else {
-            proverOutput.Enqueue(e.Data);
-          }
+        if (outputReceivers.TryDequeue(out var source)) {
+          source.SetResult(e.Data);
+        } else {
+          proverOutput.Enqueue(e.Data);
         }
     }
 
@@ -473,15 +467,12 @@ namespace Microsoft.Boogie.SMTLib
         return;
       }
 
-      lock (this) {
-
-        if (options.Verbosity >= 1)
-        {
-          Console.WriteLine("[SMT-ERR-{0}] {1}", smtProcessId, e.Data);
-        }
-
-        HandleError(e.Data);
+      if (options.Verbosity >= 1)
+      {
+        Console.WriteLine("[SMT-ERR-{0}] {1}", smtProcessId, e.Data);
       }
+
+      HandleError(e.Data);
     }
 
     #endregion
