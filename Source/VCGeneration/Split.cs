@@ -1507,7 +1507,7 @@ namespace VC
       }
 
       public void Finish(VCResult result) {
-        parent.Printer?.ReportSplitResult(this, result);
+        parent.CheckerPool.Options.Printer?.ReportSplitResult(this, result);
       }
   }
 }

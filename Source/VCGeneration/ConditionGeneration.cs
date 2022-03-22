@@ -102,14 +102,12 @@ namespace VC
 
     public Program program;
     public CheckerPool CheckerPool { get; }
-    public IConditionGenerationPrinter Printer { get; }
 
-    public ConditionGeneration(Program p, CheckerPool checkerPool, IConditionGenerationPrinter printer = null)
+    public ConditionGeneration(Program p, CheckerPool checkerPool)
     {
       Contract.Requires(p != null && checkerPool != null);
       program = p;
       CheckerPool = checkerPool;
-      Printer = printer;
     }
 
     /// <summary>

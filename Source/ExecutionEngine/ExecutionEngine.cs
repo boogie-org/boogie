@@ -985,7 +985,7 @@ namespace Microsoft.Boogie
     {
       var verificationResult = new VerificationResult(requestId, impl, programId);
 
-      using var vcgen = new VCGen(program, checkerPool, Options.Printer);
+      using var vcgen = new VCGen(program, checkerPool);
 
       vcgen.CachingActionCounts = stats.CachingActionCounts;
       verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
