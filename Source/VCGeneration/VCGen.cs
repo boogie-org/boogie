@@ -324,7 +324,7 @@ namespace VC
 
         parent.CurrentLocalVariables = run.Implementation.LocVars;
         parent.PassifyImpl(run, out var mvInfo);
-        Checker ch = parent.CheckerPool.FindCheckerFor(parent).Result;
+        Checker ch = await parent.CheckerPool.FindCheckerFor(parent);
         Contract.Assert(ch != null);
 
         ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
