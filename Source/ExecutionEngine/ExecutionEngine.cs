@@ -734,7 +734,7 @@ namespace Microsoft.Boogie
 
       if (Options.ContractInfer)
       {
-        return RunHoudini(program, stats, er);
+        return await RunHoudini(program, stats, er);
       }
 
       var stablePrioritizedImpls = GetPrioritizedImplementations(program);
@@ -1036,18 +1036,18 @@ namespace Microsoft.Boogie
 
     #region Houdini
 
-    private PipelineOutcome RunHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
+    private async Task<PipelineOutcome> RunHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
     {
       Contract.Requires(stats != null);
       
       if (Options.StagedHoudini != null)
       {
-        return RunStagedHoudini(program, stats, er);
+        return await RunStagedHoudini(program, stats, er);
       }
 
       Houdini.HoudiniSession.HoudiniStatistics houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
       Houdini.Houdini houdini = new Houdini.Houdini(Console.Out, Options, program, houdiniStats);
-      Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
+      Houdini.HoudiniOutcome outcome = await houdini.PerformHoudiniInference();
       houdini.Close();
 
       if (Options.PrintAssignment)
@@ -1097,11 +1097,11 @@ namespace Microsoft.Boogie
       return p;
     }
 
-    private PipelineOutcome RunStagedHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
+    private async Task<PipelineOutcome> RunStagedHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
     {
       Houdini.HoudiniSession.HoudiniStatistics houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
       var stagedHoudini = new Houdini.StagedHoudini(Console.Out, Options, program, houdiniStats, ProgramFromFile);
-      Houdini.HoudiniOutcome outcome = stagedHoudini.PerformStagedHoudiniInference();
+      Houdini.HoudiniOutcome outcome = await stagedHoudini.PerformStagedHoudiniInference();
 
       if (Options.PrintAssignment)
       {

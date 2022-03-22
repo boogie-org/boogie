@@ -64,7 +64,7 @@ namespace Microsoft.Boogie.SMTLib
       if (options.LogFilename != null && currentLogFile == null)
       {
         currentLogFile = OpenOutputFile(descriptiveName);
-        currentLogFile.Write(common.ToString());
+        await currentLogFile.WriteAsync(common.ToString());
       }
 
       PrepareCommon();

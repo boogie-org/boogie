@@ -7,6 +7,7 @@ using Microsoft.BaseTypes;
 using VC;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.Houdini
 {
@@ -248,8 +249,10 @@ namespace Microsoft.Boogie.Houdini
 
     public HoudiniOptions Options => houdini.Options;
 
-    public ProverInterface.Outcome Verify(ProverInterface proverInterface, Dictionary<Variable, bool> assignment,
-      out List<Counterexample> errors, int errorLimit)
+    public async Task<(ProverInterface.Outcome, List<Counterexample> errors)> Verify(
+      ProverInterface proverInterface,
+      Dictionary<Variable, bool> assignment,
+      int errorLimit)
     {
       collector.examples.Clear();
 
@@ -261,8 +264,8 @@ namespace Microsoft.Boogie.Houdini
       DateTime now = DateTime.UtcNow;
 
       VCExpr vc = proverInterface.VCExprGen.Implies(BuildAxiom(proverInterface, assignment), conjecture);
-      proverInterface.BeginCheck(Description, vc, handler);
-      ProverInterface.Outcome proverOutcome = proverInterface.CheckOutcome(handler, errorLimit, CancellationToken.None).Result;
+      await proverInterface.BeginCheck(Description, vc, handler);
+      ProverInterface.Outcome proverOutcome = await proverInterface.CheckOutcome(handler, errorLimit, CancellationToken.None);
 
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
       stats.proverTime += queryTime;
@@ -273,8 +276,7 @@ namespace Microsoft.Boogie.Houdini
         Console.WriteLine("Time taken = " + queryTime);
       }
 
-      errors = collector.examples;
-      return proverOutcome;
+      return (proverOutcome, collector.examples);
     }
 
     // MAXSAT
