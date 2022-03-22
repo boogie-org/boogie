@@ -1546,7 +1546,7 @@ namespace Microsoft.Boogie
           errorInfo.Kind = failingAssert is LoopInitAssertCmd ?
             ErrorKind.InvariantEntry : ErrorKind.InvariantMaintainance;
           string relatedMessage = null;
-          if ((failingAssert.ErrorData as string) != null)
+          if (failingAssert.ErrorData is string)
           {
             relatedMessage = failingAssert.ErrorData as string;
           }
