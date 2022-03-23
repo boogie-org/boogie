@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace Microsoft.Boogie;
 
@@ -28,6 +30,7 @@ public class ConcurrentToSequentialWriteManager
         Writer.Write(writers.Peek().SetTargetAndGetBuffer(Writer));
       }
     }
+    Writer.Flush();
   }
 
   public TextWriter AppendWriter() {

@@ -11,6 +11,8 @@ namespace Microsoft.Boogie.SMTLib
 {
   /*
    * Not thread-safe.
+   * The locks inside this class serve to synchronize between the single external user and the
+   * internal IO threads.
    */
   public class SMTLibProcess : SMTLibSolver
   {
