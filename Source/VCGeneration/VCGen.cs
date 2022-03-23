@@ -307,8 +307,8 @@ namespace VC
                   (ar != null) ? new AssertRequiresCmd(ar.Call,
                     new Requires(e.tok, ar.Requires.Free, fe(e), ar.Requires.Comment)) :
                   (ae != null) ? new AssertEnsuresCmd(new Ensures(e.tok, ae.Ensures.Free, fe(e), ae.Ensures.Comment)) :
-                  (ai != null) ? new LoopInitAssertCmd(e.tok, fe(e)) :
-                  (am != null) ? new LoopInvMaintainedAssertCmd(e.tok, fe(e)) :
+                  (ai != null) ? new LoopInitAssertCmd(e.tok, fe(e), ai.originalAssert) :
+                  (am != null) ? new LoopInvMaintainedAssertCmd(e.tok, fe(e), am.originalAssert) :
                   new AssertCmd(e.tok, fe(e));
                 new_c.Description = a.Description;
                 new_c.Attributes = new QKeyValue(e.tok, "subsumption",
@@ -705,16 +705,16 @@ namespace VC
                 Contract.Assert(taskID >= 0);
                 if (Options.Cho[taskID].DisableLoopInvEntryAssert)
                 {
-                  b = new LoopInitAssertCmd(c.tok, Expr.True);
+                  b = new LoopInitAssertCmd(c.tok, Expr.True, c);
                 }
                 else
                 {
-                  b = new LoopInitAssertCmd(c.tok, c.Expr);
+                  b = new LoopInitAssertCmd(c.tok, c.Expr, c);
                 }
               }
               else
               {
-                b = new LoopInitAssertCmd(c.tok, c.Expr);
+                b = new LoopInitAssertCmd(c.tok, c.Expr, c);
               }
 
               b.Attributes = c.Attributes;
@@ -726,16 +726,16 @@ namespace VC
                 Contract.Assert(taskID >= 0);
                 if (Options.Cho[taskID].DisableLoopInvMaintainedAssert)
                 {
-                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True);
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True, c);
                 }
                 else
                 {
-                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c);
                 }
               }
               else
               {
-                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c);
               }
 
               b.Attributes = c.Attributes;

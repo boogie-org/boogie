@@ -3898,9 +3898,12 @@ namespace Microsoft.Boogie
   // An AssertCmd that is a loop invariant check before the loop iteration starts
   public class LoopInitAssertCmd : AssertCmd
   {
-    public LoopInitAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr)
+    public readonly AssertCmd originalAssert;
+
+    public LoopInitAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, AssertCmd original)
       : base(tok, expr, new InvariantEstablishedDescription())
     {
+      this.originalAssert = original;
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
     }
@@ -3909,9 +3912,12 @@ namespace Microsoft.Boogie
   // An AssertCmd that is a loop invariant check to maintain the invariant after iteration
   public class LoopInvMaintainedAssertCmd : AssertCmd
   {
-    public LoopInvMaintainedAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr)
+    public readonly AssertCmd originalAssert;
+
+    public LoopInvMaintainedAssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, AssertCmd original)
       : base(tok, expr, new InvariantMaintainedDescription())
     {
+      this.originalAssert = original;
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
     }
