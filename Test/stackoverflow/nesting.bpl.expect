@@ -1,0 +1,21 @@
+nesting.bpl(46,35): Error: This assertion might not hold.
+Execution trace:
+    nesting.bpl(18,3): anon0
+    nesting.bpl(19,5): anon17_Then
+    nesting.bpl(20,7): anon18_Then
+    nesting.bpl(21,9): anon19_Then
+    nesting.bpl(22,11): anon20_Then
+    nesting.bpl(23,13): anon21_Then
+    nesting.bpl(24,15): anon22_Then
+    nesting.bpl(25,17): anon23_Then
+    nesting.bpl(26,19): anon24_Then
+    nesting.bpl(27,21): anon25_Then
+    nesting.bpl(28,23): anon26_Then
+    nesting.bpl(29,25): anon27_Then
+    nesting.bpl(30,27): anon28_Then
+    nesting.bpl(31,29): anon29_Then
+    nesting.bpl(32,31): anon30_Then
+    nesting.bpl(33,33): anon31_Then
+    nesting.bpl(46,35): anon32_Then
+
+Boogie program verifier finished with 0 verified, 1 error
