@@ -240,23 +240,27 @@ namespace Microsoft.Boogie
     static readonly ConcurrentDictionary<string, CancellationTokenSource> RequestIdToCancellationTokenSource =
       new ConcurrentDictionary<string, CancellationTokenSource>();
 
-    static ThreadTaskScheduler LargeStackScheduler = new ThreadTaskScheduler(16 * 1024 * 1024);
-
-    public bool ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
+    public async Task<bool> ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
       string programId = null) {
       Contract.Requires(cce.NonNullElements(fileNames));
 
       if (Options.VerifySeparately && 1 < fileNames.Count) {
-        return fileNames.All(f => ProcessFiles(output, new List<string> { f }, lookForSnapshots, f));
+        var success = true;
+        foreach (var fileName in fileNames) {
+          success &= await ProcessFiles(output, new List<string> { fileName }, lookForSnapshots, fileName);
+        }
+        return success;
       }
 
       if (0 <= Options.VerifySnapshots && lookForSnapshots) {
         var snapshotsByVersion = LookForSnapshots(fileNames);
-        return snapshotsByVersion.All(s => {
+        var success = true;
+        foreach (var snapshots in snapshotsByVersion) {
           // BUG: Reusing checkers during snapshots doesn't work, even though it should. We create a new engine (and thus checker pool) to workaround this.
           using var engine = new ExecutionEngine(Options, Cache);
-          return engine.ProcessFiles(output, new List<string>(s), false, programId);
-        });
+          success &= await engine.ProcessFiles(output, new List<string>(snapshots), false, programId);
+        }
+        return success;
       }
 
       using XmlFileScope xf = new XmlFileScope(Options.XmlSink, fileNames[^1]);
@@ -266,7 +270,7 @@ namespace Microsoft.Boogie
         return true;
       }
 
-      return ProcessProgram(output, program, bplFileName, programId).Result;
+      return await ProcessProgram(output, program, bplFileName, programId);
     }
 
     [Obsolete("Please inline this method call")]
@@ -740,7 +744,7 @@ namespace Microsoft.Boogie
 
       if (Options.ContractInfer)
       {
-        return RunHoudini(program, stats, er);
+        return await RunHoudini(program, stats, er);
       }
 
       var stablePrioritizedImpls = GetPrioritizedImplementations(program);
@@ -800,7 +804,7 @@ namespace Microsoft.Boogie
       
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
-        var result = await VerifyImplementationWithLargeStackScheduler(program, stats, programId, er, requestId,
+        var result = await VerifyImplementationAsynchronously(program, stats, programId, er, requestId,
           stablePrioritizedImpls, extractLoopMappingInfo, cts, index, taskWriter);
         return result;
       }).ToList();
@@ -831,7 +835,7 @@ namespace Microsoft.Boogie
 
     }
 
-    async Task<VerificationResult> VerifyImplementationWithLargeStackScheduler(
+    async Task<VerificationResult> VerifyImplementationAsynchronously(
       Program program, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo,
@@ -849,12 +853,11 @@ namespace Microsoft.Boogie
 
         ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
 
-        var coreTask = new Task<Task<VerificationResult>>(() => VerifyImplementation(program, stats, er, requestId,
+        var coreTask = Task.Run(() => VerifyImplementation(program, stats, er, requestId,
           extractLoopMappingInfo, implementation,
-          programId, taskWriter), cts.Token, TaskCreationOptions.None);
+          programId, taskWriter), cts.Token);
 
-        coreTask.Start(LargeStackScheduler);
-        var verificationResult = await await coreTask;
+        var verificationResult = await coreTask;
         var output = verificationResult.GetOutput(Options.Printer, this, stats, er, implementation);
 
         await taskWriter.WriteAsync(output);
@@ -1040,18 +1043,18 @@ namespace Microsoft.Boogie
 
     #region Houdini
 
-    private PipelineOutcome RunHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
+    private async Task<PipelineOutcome> RunHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
     {
       Contract.Requires(stats != null);
       
       if (Options.StagedHoudini != null)
       {
-        return RunStagedHoudini(program, stats, er);
+        return await RunStagedHoudini(program, stats, er);
       }
 
       Houdini.HoudiniSession.HoudiniStatistics houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
       Houdini.Houdini houdini = new Houdini.Houdini(Console.Out, Options, program, houdiniStats);
-      Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
+      Houdini.HoudiniOutcome outcome = await houdini.PerformHoudiniInference();
       houdini.Close();
 
       if (Options.PrintAssignment)
@@ -1101,11 +1104,11 @@ namespace Microsoft.Boogie
       return p;
     }
 
-    private PipelineOutcome RunStagedHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
+    private async Task<PipelineOutcome> RunStagedHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
     {
       Houdini.HoudiniSession.HoudiniStatistics houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
       var stagedHoudini = new Houdini.StagedHoudini(Console.Out, Options, program, houdiniStats, ProgramFromFile);
-      Houdini.HoudiniOutcome outcome = stagedHoudini.PerformStagedHoudiniInference();
+      Houdini.HoudiniOutcome outcome = await stagedHoudini.PerformStagedHoudiniInference();
 
       if (Options.PrintAssignment)
       {
@@ -1538,34 +1541,54 @@ namespace Microsoft.Boogie
       {
         Debug.Assert(error is AssertCounterexample);
         var assertError = (AssertCounterexample)error;
-        if (assertError.FailingAssert is LoopInitAssertCmd or LoopInvMaintainedAssertCmd)
+        var failingAssert = assertError.FailingAssert;
+        if (failingAssert is LoopInitAssertCmd or LoopInvMaintainedAssertCmd)
         {
-          errorInfo = ErrorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok,
-            assertError.FailingAssert.Description.FailureDescription,
+          errorInfo = ErrorInformationFactory.CreateErrorInformation(failingAssert.tok,
+            failingAssert.Description.FailureDescription,
             assertError.RequestId, assertError.OriginalRequestId, cause);
-          errorInfo.Kind = assertError.FailingAssert is LoopInitAssertCmd ?
+          errorInfo.Kind = failingAssert is LoopInitAssertCmd ?
             ErrorKind.InvariantEntry : ErrorKind.InvariantMaintainance;
-          if ((assertError.FailingAssert.ErrorData as string) != null)
+          string relatedMessage = null;
+          if (failingAssert.ErrorData is string)
           {
-            errorInfo.AddAuxInfo(assertError.FailingAssert.tok, assertError.FailingAssert.ErrorData as string,
-              "Related message");
+            relatedMessage = failingAssert.ErrorData as string;
+          }
+          else if (failingAssert is LoopInitAssertCmd initCmd)
+          {
+            var desc = initCmd.originalAssert.Description;
+            if (desc is not AssertionDescription)
+            {
+              relatedMessage = desc.FailureDescription;
+            }
+          }
+          else if (failingAssert is LoopInvMaintainedAssertCmd maintCmd)
+          {
+            var desc = maintCmd.originalAssert.Description;
+            if (desc is not AssertionDescription)
+            {
+              relatedMessage = desc.FailureDescription;
+            }
+          }
+
+          if (relatedMessage != null) {
+            errorInfo.AddAuxInfo(failingAssert.tok, relatedMessage, "Related message");
           }
         }
         else
         {
-          if (assertError.FailingAssert.ErrorMessage == null || Options.ForceBplErrors)
+          if (failingAssert.ErrorMessage == null || Options.ForceBplErrors)
           {
-            string msg = assertError.FailingAssert.ErrorData as string ??
-                         assertError.FailingAssert.Description.FailureDescription;
-            errorInfo = ErrorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg,
+            string msg = failingAssert.ErrorData as string ??
+                         failingAssert.Description.FailureDescription;
+            errorInfo = ErrorInformationFactory.CreateErrorInformation(failingAssert.tok, msg,
               assertError.RequestId, assertError.OriginalRequestId, cause);
             errorInfo.Kind = ErrorKind.Assertion;
           }
           else
           {
             errorInfo = ExecutionEngine.ErrorInformationFactory.CreateErrorInformation(null,
-              assertError.FailingAssert.ErrorMessage,
-              assertError.RequestId, assertError.OriginalRequestId);
+              failingAssert.ErrorMessage, assertError.RequestId, assertError.OriginalRequestId);
           }
         }
       }

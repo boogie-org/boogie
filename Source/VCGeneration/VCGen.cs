@@ -60,490 +60,6 @@ namespace VC
 
     #region Soundness smoke tester
 
-    class SmokeTester
-    {
-      [ContractInvariantMethod]
-      void ObjectInvariant()
-      {
-        Contract.Invariant(parent != null);
-        Contract.Invariant(run != null);
-        Contract.Invariant(initial != null);
-        Contract.Invariant(cce.NonNullDictionaryAndValues(copies));
-        Contract.Invariant(cce.NonNull(visited));
-        Contract.Invariant(callback != null);
-      }
-
-      VCGen parent;
-      ImplementationRun run;
-      Block initial;
-      int id;
-      Dictionary<Block, Block> copies = new Dictionary<Block, Block>();
-      HashSet<Block> visited = new HashSet<Block>();
-      VerifierCallback callback;
-
-      internal SmokeTester(VCGen par, ImplementationRun run, VerifierCallback callback)
-      {
-        Contract.Requires(par != null);
-        Contract.Requires(run != null);
-        Contract.Requires(callback != null);
-        parent = par;
-        this.run = run;
-        initial = run.Implementation.Blocks[0];
-        this.callback = callback;
-      }
-
-      private VCGenOptions Options => parent.Options;
-
-      internal void Copy()
-      {
-        CloneBlock(run.Implementation.Blocks[0]);
-        initial = GetCopiedBlocks()[0];
-      }
-
-      internal void Test(TextWriter traceWriter)
-      {
-        Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-
-        DFS(traceWriter, initial);
-      }
-      
-      void TopologicalSortImpl()
-      {
-        Graph<Block> dag = Program.GraphFromImpl(run.Implementation);
-        run.Implementation.Blocks = new List<Block>();
-        foreach (Block b in dag.TopologicalSort())
-        {
-          Contract.Assert(b != null);
-          run.Implementation.Blocks.Add(b);
-        }
-      }
-
-      void Emit()
-      {
-        TopologicalSortImpl();
-        EmitImpl(Options, run.Implementation, false);
-      }
-
-      // this one copies forward
-      Block CloneBlock(Block b)
-      {
-        Contract.Requires(b != null);
-        Contract.Ensures(Contract.Result<Block>() != null);
-
-        if (copies.TryGetValue(b, out var fake_res))
-        {
-          return cce.NonNull(fake_res);
-        }
-
-        Block res = new Block(b.tok, b.Label, new List<Cmd>(b.Cmds), null);
-        copies[b] = res;
-        if (b.TransferCmd is GotoCmd)
-        {
-          foreach (Block ch in cce.NonNull((GotoCmd) b.TransferCmd).labelTargets)
-          {
-            Contract.Assert(ch != null);
-            CloneBlock(ch);
-          }
-        }
-
-        foreach (Block p in b.Predecessors)
-        {
-          Contract.Assert(p != null);
-          res.Predecessors.Add(CloneBlock(p));
-        }
-
-        return res;
-      }
-
-      // this one copies backwards
-      Block CopyBlock(Block b)
-      {
-        Contract.Requires(b != null);
-        Contract.Ensures(Contract.Result<Block>() != null);
-
-        if (copies.TryGetValue(b, out var fake_res))
-        {
-          // fake_res should be Block! but the compiler fails
-          return cce.NonNull(fake_res);
-        }
-
-        Block res;
-        List<Cmd> seq = new List<Cmd>();
-        foreach (Cmd c in b.Cmds)
-        {
-          Contract.Assert(c != null);
-          AssertCmd turn = c as AssertCmd;
-          if (!turnAssertIntoAssumes || turn == null)
-          {
-            seq.Add(c);
-          }
-          else
-          {
-            seq.Add(AssertTurnedIntoAssume(Options, turn));
-          }
-        }
-
-        res = new Block(b.tok, b.Label, seq, null);
-        copies[b] = res;
-        foreach (Block p in b.Predecessors)
-        {
-          Contract.Assert(p != null);
-          res.Predecessors.Add(CopyBlock(p));
-        }
-
-        return res;
-      }
-
-      List<Block> GetCopiedBlocks()
-      {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
-
-        // the order of nodes in res is random (except for the first one, being the entry)
-        List<Block> res = new List<Block>();
-        res.Add(copies[initial]);
-
-        foreach (KeyValuePair<Block, Block> kv in copies)
-        {
-          Contract.Assert(kv.Key != null && kv.Value != null);
-          GotoCmd go = kv.Key.TransferCmd as GotoCmd;
-          ReturnCmd ret = kv.Key.TransferCmd as ReturnCmd;
-          if (kv.Key != initial)
-          {
-            res.Add(kv.Value);
-          }
-
-          if (go != null)
-          {
-            GotoCmd copy = new GotoCmd(go.tok, new List<String>(), new List<Block>());
-            kv.Value.TransferCmd = copy;
-            foreach (Block b in cce.NonNull(go.labelTargets))
-            {
-              Contract.Assert(b != null);
-              if (copies.TryGetValue(b, out var c))
-              {
-                copy.AddTarget(cce.NonNull(c));
-              }
-            }
-          }
-          else if (ret != null)
-          {
-            kv.Value.TransferCmd = ret;
-          }
-          else
-          {
-            Contract.Assume(false);
-            throw new cce.UnreachableException();
-          }
-        }
-
-        copies.Clear();
-
-        return res;
-      }
-
-      // check if e is true, false, !true, !false
-      // if so return true and the value of the expression in val
-      bool BooleanEval(Expr e, ref bool val)
-      {
-        Contract.Requires(e != null);
-        LiteralExpr lit = e as LiteralExpr;
-        NAryExpr call = e as NAryExpr;
-
-        if (lit != null && lit.isBool)
-        {
-          val = lit.asBool;
-          return true;
-        }
-        else if (call != null &&
-                 call.Fun is UnaryOperator &&
-                 ((UnaryOperator) call.Fun).Op == UnaryOperator.Opcode.Not &&
-                 BooleanEval(cce.NonNull(call.Args[0]), ref val))
-        {
-          val = !val;
-          return true;
-        }
-        // this is for the 0bv32 != 0bv32 generated by vcc
-        else if (call != null &&
-                 call.Fun is BinaryOperator &&
-                 ((BinaryOperator) call.Fun).Op == BinaryOperator.Opcode.Neq &&
-                 call.Args[0] is LiteralExpr &&
-                 cce.NonNull(call.Args[0]).Equals(call.Args[1]))
-        {
-          val = false;
-          return true;
-        }
-
-        return false;
-      }
-
-      bool IsFalse(Expr e)
-      {
-        Contract.Requires(e != null);
-        bool val = false;
-        return BooleanEval(e, ref val) && !val;
-      }
-
-      bool CheckUnreachable(TextWriter traceWriter, Block cur, List<Cmd> seq)
-      {
-        Contract.Requires(cur != null);
-        Contract.Requires(seq != null);
-        Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-        foreach (Cmd cmd in seq)
-        {
-          AssertCmd assrt = cmd as AssertCmd;
-          if (assrt != null && QKeyValue.FindBoolAttribute(assrt.Attributes, "PossiblyUnreachable"))
-          {
-            return false;
-          }
-        }
-
-        DateTime start = DateTime.UtcNow;
-        if (Options.Trace)
-        {
-          System.Console.Write("    soundness smoke test #{0} ... ", id);
-        }
-
-        callback.OnProgress?.Invoke("smoke", id, id, 0.0);
-
-        Token tok = new Token();
-        tok.val = "soundness smoke test assertion";
-        seq.Add(new AssertCmd(tok, Expr.False));
-        Block copy = CopyBlock(cur);
-        Contract.Assert(copy != null);
-        copy.Cmds = seq;
-        List<Block> backup = run.Implementation.Blocks;
-        Contract.Assert(backup != null);
-        run.Implementation.Blocks = GetCopiedBlocks();
-        copy.TransferCmd = new ReturnCmd(Token.NoToken);
-        if (Options.TraceVerify)
-        {
-          System.Console.WriteLine();
-          System.Console.WriteLine(" --- smoke #{0}, before passify", id);
-          Emit();
-        }
-
-        parent.CurrentLocalVariables = run.Implementation.LocVars;
-        parent.PassifyImpl(run, out var mvInfo);
-        Checker ch = parent.CheckerPool.FindCheckerFor(parent).Result;
-        Contract.Assert(ch != null);
-
-        ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
-        try
-        {
-          lock (ch)
-          {
-            var exprGen = ch.TheoremProver.Context.ExprGen;
-            VCExpr controlFlowVariableExpr = exprGen.Integer(BigNum.ZERO);
-
-            var absyIds = new ControlFlowIdMap<Absy>();
-            
-            VCExpr vc = parent.GenerateVC(run.Implementation, controlFlowVariableExpr, absyIds, ch.TheoremProver.Context);
-            Contract.Assert(vc != null);
-
-            VCExpr controlFlowFunctionAppl =
-              exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-            VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl,
-              exprGen.Integer(BigNum.FromInt(absyIds.GetId(run.Implementation.Blocks[0]))));
-            vc = exprGen.Implies(eqExpr, vc);
-
-            run.Implementation.Blocks = backup;
-
-            if (Options.TraceVerify)
-            {
-              System.Console.WriteLine(" --- smoke #{0}, after passify", id);
-              Emit();
-            }
-
-            ch.BeginCheck(cce.NonNull(Implementation.Name + "_smoke" + id++), vc, new ErrorHandler(Options, absyIds, callback),
-              Options.SmokeTimeout, Options.ResourceLimit, CancellationToken.None).Wait();
-          }
-
-          ch.ProverTask.Wait();
-
-          lock (ch)
-          {
-            outcome = ch.ReadOutcome();
-          }
-        }
-        finally
-        {
-          ch.GoBackToIdle();
-        }
-
-        parent.CurrentLocalVariables = null;
-
-        DateTime end = DateTime.UtcNow;
-        TimeSpan elapsed = end - start;
-        if (Options.Trace)
-        {
-          System.Console.WriteLine("  [{0} s] {1}", elapsed.TotalSeconds,
-            outcome == ProverInterface.Outcome.Valid
-              ? "OOPS"
-              : "OK" + (outcome == ProverInterface.Outcome.Invalid ? "" : " (" + outcome + ")"));
-        }
-
-        if (outcome == ProverInterface.Outcome.Valid)
-        {
-          // copy it again, so we get the version with calls, assignments and such
-          copy = CopyBlock(cur);
-          copy.Cmds = seq;
-          Implementation.Blocks = GetCopiedBlocks();
-          TopologicalSortImpl();
-          callback.OnUnreachableCode(Implementation);
-          Implementation.Blocks = backup;
-          return true;
-        }
-
-        return false;
-      }
-
-      private Implementation Implementation => run.Implementation;
-
-      const bool turnAssertIntoAssumes = false;
-
-      void DFS(TextWriter traceWriter, Block cur)
-      {
-        Contract.Requires(cur != null);
-        Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-        if (visited.Contains(cur))
-        {
-          return;
-        }
-
-        visited.Add(cur);
-
-        List<Cmd> seq = new List<Cmd>();
-        foreach (Cmd cmd_ in cur.Cmds)
-        {
-          Cmd cmd = cmd_;
-          Contract.Assert(cmd != null);
-          AssertCmd assrt = cmd as AssertCmd;
-          AssumeCmd assm = cmd as AssumeCmd;
-          CallCmd call = cmd as CallCmd;
-
-          bool assumeFalse = false;
-
-          if (assrt != null)
-          {
-            // we're not going any further
-            // it's clear the user expected unreachable code here
-            // it's not clear where did he expect it, maybe it would be right to insert
-            // a check just one command before
-            if (IsFalse(assrt.Expr))
-            {
-              return;
-            }
-
-#if TURN_ASSERT_INFO_ASSUMES
-            if (turnAssertIntoAssumes) {
-              cmd = AssertTurnedIntoAssume(assrt);
-            }
-#endif
-          }
-          else if (assm != null)
-          {
-            if (IsFalse(assm.Expr))
-            {
-              assumeFalse = true;
-            }
-          }
-          else if (call != null)
-          {
-            foreach (Ensures e in (cce.NonNull(call.Proc)).Ensures)
-            {
-              Contract.Assert(e != null);
-              if (IsFalse(e.Condition))
-              {
-                assumeFalse = true;
-              }
-            }
-          }
-
-          if (assumeFalse)
-          {
-            CheckUnreachable(traceWriter, cur, seq);
-            return;
-          }
-
-          seq.Add(cmd);
-        }
-
-
-        GotoCmd go = cur.TransferCmd as GotoCmd;
-        ReturnCmd ret = cur.TransferCmd as ReturnCmd;
-
-        Contract.Assume(!(go != null && go.labelTargets == null && go.labelNames != null && go.labelNames.Count > 0));
-
-        if (ret != null || (go != null && cce.NonNull(go.labelTargets).Count == 0))
-        {
-          // we end in return, so there will be no more places to check
-          CheckUnreachable(traceWriter, cur, seq);
-        }
-        else if (go != null)
-        {
-          bool needToCheck = true;
-          // if all of our children have more than one parent, then
-          // we're in the right place to check
-          foreach (Block target in cce.NonNull(go.labelTargets))
-          {
-            Contract.Assert(target != null);
-            if (target.Predecessors.Count == 1)
-            {
-              needToCheck = false;
-            }
-          }
-
-          if (needToCheck)
-          {
-            CheckUnreachable(traceWriter, cur, seq);
-          }
-
-          foreach (Block target in go.labelTargets)
-          {
-            Contract.Assert(target != null);
-            DFS(traceWriter, target);
-          }
-        }
-      }
-
-      class ErrorHandler : ProverInterface.ErrorHandler
-      {
-        ControlFlowIdMap<Absy> absyIds;
-        VerifierCallback callback;
-
-        [ContractInvariantMethod]
-        void ObjectInvariant()
-        {
-          Contract.Invariant(absyIds != null);
-          Contract.Invariant(callback != null);
-        }
-
-
-        public ErrorHandler(VCGenOptions options, ControlFlowIdMap<Absy> absyIds, VerifierCallback callback)  : base(options)
-        {
-          Contract.Requires(absyIds != null);
-          Contract.Requires(callback != null);
-          this.absyIds = absyIds;
-          this.callback = callback;
-        }
-
-        public override Absy Label2Absy(string label)
-        {
-          //Contract.Requires(label != null);
-          Contract.Ensures(Contract.Result<Absy>() != null);
-
-          int id = int.Parse(label);
-          return cce.NonNull((Absy) absyIds.GetValue(id));
-        }
-
-        public override void OnProverWarning(string msg)
-        {
-          //Contract.Requires(msg != null);
-          this.callback.OnWarning(msg);
-        }
-      }
-    }
-
     #endregion
 
     public class CodeExprConversionClosure
@@ -791,8 +307,8 @@ namespace VC
                   (ar != null) ? new AssertRequiresCmd(ar.Call,
                     new Requires(e.tok, ar.Requires.Free, fe(e), ar.Requires.Comment)) :
                   (ae != null) ? new AssertEnsuresCmd(new Ensures(e.tok, ae.Ensures.Free, fe(e), ae.Ensures.Comment)) :
-                  (ai != null) ? new LoopInitAssertCmd(e.tok, fe(e)) :
-                  (am != null) ? new LoopInvMaintainedAssertCmd(e.tok, fe(e)) :
+                  (ai != null) ? new LoopInitAssertCmd(e.tok, fe(e), ai.originalAssert) :
+                  (am != null) ? new LoopInvMaintainedAssertCmd(e.tok, fe(e), am.originalAssert) :
                   new AssertCmd(e.tok, fe(e));
                 new_c.Description = a.Description;
                 new_c.Attributes = new QKeyValue(e.tok, "subsumption",
@@ -817,7 +333,7 @@ namespace VC
       }
     }
 
-    private VCGenOptions Options => CheckerPool.Options;
+    public VCGenOptions Options => CheckerPool.Options;
 
     public override async Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken)
@@ -888,7 +404,7 @@ namespace VC
       
       if (outcome == Outcome.Correct && smoke_tester != null)
       {
-        smoke_tester.Test(run.TraceWriter);
+        await smoke_tester.Test(run.TraceWriter);
       }
 
       callback.OnProgress?.Invoke("done", 0, 0, 1.0);
@@ -1190,16 +706,16 @@ namespace VC
                 Contract.Assert(taskID >= 0);
                 if (Options.Cho[taskID].DisableLoopInvEntryAssert)
                 {
-                  b = new LoopInitAssertCmd(c.tok, Expr.True);
+                  b = new LoopInitAssertCmd(c.tok, Expr.True, c);
                 }
                 else
                 {
-                  b = new LoopInitAssertCmd(c.tok, c.Expr);
+                  b = new LoopInitAssertCmd(c.tok, c.Expr, c);
                 }
               }
               else
               {
-                b = new LoopInitAssertCmd(c.tok, c.Expr);
+                b = new LoopInitAssertCmd(c.tok, c.Expr, c);
               }
 
               b.Attributes = c.Attributes;
@@ -1211,16 +727,16 @@ namespace VC
                 Contract.Assert(taskID >= 0);
                 if (Options.Cho[taskID].DisableLoopInvMaintainedAssert)
                 {
-                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True);
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True, c);
                 }
                 else
                 {
-                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c);
                 }
               }
               else
               {
-                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c);
               }
 
               b.Attributes = c.Attributes;

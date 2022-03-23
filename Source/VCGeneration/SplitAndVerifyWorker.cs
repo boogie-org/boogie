@@ -107,7 +107,7 @@ namespace VC
         await ProcessResult(split, cancellationToken);
       }
       finally {
-        checker.GoBackToIdle();
+        await checker.GoBackToIdle();
         split.ResetChecker();
       }
     }
@@ -138,7 +138,13 @@ namespace VC
           remainingCost -= split.Cost;
         }
       }
-      split.ReadOutcome(callback, ref outcome, out var result, out var proverFailed, ref totalResourceCount);
+
+      var (newOutcome, result, newResourceCount) = await split.ReadOutcome(callback);
+      lock (this) {
+        outcome = MergeOutcomes(outcome, newOutcome);
+        totalResourceCount += newResourceCount;
+      }
+      var proverFailed = IsProverFailed(newOutcome);
 
       if (TrackingProgress) {
         lock (this) {
@@ -160,6 +166,65 @@ namespace VC
       }
 
       await HandleProverFailure(split, callback, result, cancellationToken);
+    }
+
+    private static bool IsProverFailed(ProverInterface.Outcome outcome)
+    {
+      switch (outcome)
+      {
+        case ProverInterface.Outcome.Valid:
+        case ProverInterface.Outcome.Invalid:
+        case ProverInterface.Outcome.Undetermined:
+          return false;
+        case ProverInterface.Outcome.OutOfMemory:
+        case ProverInterface.Outcome.TimeOut:
+        case ProverInterface.Outcome.OutOfResource:
+          return true;
+        default:
+          Contract.Assert(false);
+          throw new cce.UnreachableException();
+      }
+    }
+
+    private static Outcome MergeOutcomes(Outcome currentOutcome, ProverInterface.Outcome newOutcome)
+    {
+      switch (newOutcome)
+      {
+        case ProverInterface.Outcome.Valid:
+          return currentOutcome;
+        case ProverInterface.Outcome.Invalid:
+          return Outcome.Errors;
+        case ProverInterface.Outcome.OutOfMemory:
+          if (currentOutcome != Outcome.Errors && currentOutcome != Outcome.Inconclusive)
+          {
+            return Outcome.OutOfMemory;
+          }
+
+          return currentOutcome;
+        case ProverInterface.Outcome.TimeOut:
+          if (currentOutcome != Outcome.Errors && currentOutcome != Outcome.Inconclusive)
+          {
+            return Outcome.TimedOut;
+          }
+
+          return currentOutcome;
+        case ProverInterface.Outcome.OutOfResource:
+          if (currentOutcome != Outcome.Errors && currentOutcome != Outcome.Inconclusive)
+          {
+            return Outcome.OutOfResource;
+          }
+
+          return currentOutcome;
+        case ProverInterface.Outcome.Undetermined:
+          if (currentOutcome != Outcome.Errors)
+          {
+            return Outcome.Inconclusive;
+          }
+          return currentOutcome;
+        default:
+          Contract.Assert(false);
+          throw new cce.UnreachableException();
+      }
     }
 
     private async Task HandleProverFailure(Split split, VerifierCallback callback, VCResult vcResult, CancellationToken cancellationToken)

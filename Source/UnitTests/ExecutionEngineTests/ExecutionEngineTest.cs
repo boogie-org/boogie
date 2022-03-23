@@ -1,9 +1,19 @@
+using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
 using NUnit.Framework;
 
+
 namespace ExecutionEngineTests;
+
+public class FakeDescription : ProofObligationDescription
+{
+  public override string SuccessDescription => "fake success";
+  public override string FailureDescription => "fake failure";
+  public override string ShortDescription => "fake";
+}
 
 [TestFixture]
 public class ExecutionEngineTest {
@@ -49,6 +59,54 @@ Execution trace:
 
 Boogie program verifier finished with 1 verified, 1 error
 ".ReplaceLineEndings();
+    Assert.AreEqual(expected, output);
+  }
+
+  [Test]
+  public async Task LoopInvariantDescriptions()
+  {
+    var options = CommandLineOptions.FromArguments();
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+
+    var writer = new StringWriter();
+
+    var programString = @"procedure Test()
+{
+  var i: int;
+
+  entry:
+    i := 0;
+    goto block850;
+
+  block850:
+    assert i == 0;
+    havoc i;
+    goto block850;
+
+}
+";
+
+    Parser.Parse(programString, "fakeFilename", out var program1);
+    foreach (var block in program1.Implementations.First().Blocks) {
+      foreach (var cmd in block.cmds) {
+        if (cmd is AssertCmd assertCmd) {
+          assertCmd.Description = new FakeDescription();
+        }
+      }
+    }
+
+    await engine.ProcessProgram(writer, program1, "fakeFilename");
+    await writer.DisposeAsync();
+    var output = writer.ToString();
+    var expected = @"fakeFilename(10,5): Error: This loop invariant might not be maintained by the loop.
+fakeFilename(10,5): Related message: fake failure
+Execution trace:
+    fakeFilename(5,3): entry
+    fakeFilename(9,3): block850
+
+Boogie program verifier finished with 0 verified, 1 error
+".ReplaceLineEndings();
+
     Assert.AreEqual(expected, output);
   }
 }

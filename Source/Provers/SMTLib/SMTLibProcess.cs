@@ -11,6 +11,8 @@ namespace Microsoft.Boogie.SMTLib
 {
   /*
    * Not thread-safe.
+   * The locks inside this class serve to synchronize between the single external user and the
+   * internal IO threads.
    */
   public class SMTLibProcess : SMTLibSolver
   {
@@ -422,7 +424,7 @@ namespace Microsoft.Boogie.SMTLib
     #region handling input from the prover
 
     private readonly Queue<TaskCompletionSource<string>> outputReceivers = new();
-    
+
     Task<string> ReadProver()
     {
       lock (this) {
@@ -457,13 +459,13 @@ namespace Microsoft.Boogie.SMTLib
           Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
         }
 
+        TaskCompletionSource<string> source;
         lock (this) {
-          if (outputReceivers.TryDequeue(out var source)) {
-            source.SetResult(e.Data);
-          } else {
+          if (!outputReceivers.TryDequeue(out source)) {
             proverOutput.Enqueue(e.Data);
           }
         }
+        source?.SetResult(e.Data);
     }
 
     void prover_ErrorDataReceived(object sender, DataReceivedEventArgs e)

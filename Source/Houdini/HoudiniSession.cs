@@ -7,6 +7,7 @@ using Microsoft.BaseTypes;
 using VC;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.Houdini
 {
@@ -249,8 +250,10 @@ namespace Microsoft.Boogie.Houdini
 
     public HoudiniOptions Options => houdini.Options;
 
-    public ProverInterface.Outcome Verify(ProverInterface proverInterface, Dictionary<Variable, bool> assignment,
-      out List<Counterexample> errors, int errorLimit)
+    public async Task<(ProverInterface.Outcome, List<Counterexample> errors)> Verify(
+      ProverInterface proverInterface,
+      Dictionary<Variable, bool> assignment,
+      int errorLimit)
     {
       collector.examples.Clear();
 
@@ -262,8 +265,8 @@ namespace Microsoft.Boogie.Houdini
       DateTime now = DateTime.UtcNow;
 
       VCExpr vc = proverInterface.VCExprGen.Implies(BuildAxiom(proverInterface, assignment), conjecture);
-      proverInterface.BeginCheck(Description, vc, handler);
-      ProverInterface.Outcome proverOutcome = proverInterface.CheckOutcome(handler, errorLimit, CancellationToken.None).Result;
+      await proverInterface.BeginCheck(Description, vc, handler);
+      ProverInterface.Outcome proverOutcome = await proverInterface.CheckOutcome(handler, errorLimit, CancellationToken.None);
 
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
       stats.proverTime += queryTime;
@@ -274,12 +277,11 @@ namespace Microsoft.Boogie.Houdini
         Console.WriteLine("Time taken = " + queryTime);
       }
 
-      errors = collector.examples;
-      return proverOutcome;
+      return (proverOutcome, collector.examples);
     }
 
     // MAXSAT
-    public void Explain(ProverInterface proverInterface,
+    public async Task Explain(ProverInterface proverInterface,
       Dictionary<Variable, bool> assignment, Variable refutedConstant)
     {
       Contract.Assert(houdini.Options.ExplainHoudini);
@@ -395,8 +397,8 @@ namespace Microsoft.Boogie.Houdini
       do
       {
         hardAssumptions.Add(controlExprNoop);
-        (outcome, var unsatisfiedSoftAssumptions) = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions,
-          handler, CancellationToken.None).Result;
+        (outcome, var unsatisfiedSoftAssumptions) = await proverInterface.CheckAssumptions(hardAssumptions, softAssumptions,
+          handler, CancellationToken.None);
         hardAssumptions.RemoveAt(hardAssumptions.Count - 1);
 
         if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory ||
@@ -430,8 +432,8 @@ namespace Microsoft.Boogie.Houdini
           hardAssumptions.Add(softAssumptions[i]);
         }
 
-        (outcome, var unsatisfiedSoftAssumptions2) = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions2,
-          handler, CancellationToken.None).Result;
+        (outcome, var unsatisfiedSoftAssumptions2) = await proverInterface.CheckAssumptions(hardAssumptions, softAssumptions2,
+          handler, CancellationToken.None);
 
         if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory ||
             outcome == ProverInterface.Outcome.OutOfResource || outcome == ProverInterface.Outcome.Undetermined)
@@ -482,7 +484,7 @@ namespace Microsoft.Boogie.Houdini
       }
     }
 
-    public void UpdateUnsatCore(ProverInterface proverInterface, Dictionary<Variable, bool> assignment)
+    public async Task UpdateUnsatCore(ProverInterface proverInterface, Dictionary<Variable, bool> assignment)
     {
       DateTime now = DateTime.UtcNow;
 
@@ -512,7 +514,7 @@ namespace Microsoft.Boogie.Houdini
         assumptionExprs.Add(exprTranslator.LookupVariable(v));
       }
 
-      (ProverInterface.Outcome tmp, var unsatCore) = proverInterface.CheckAssumptions(assumptionExprs, handler, CancellationToken.None).Result;
+      (ProverInterface.Outcome tmp, var unsatCore) = await proverInterface.CheckAssumptions(assumptionExprs, handler, CancellationToken.None);
       System.Diagnostics.Debug.Assert(tmp == ProverInterface.Outcome.Valid);
       unsatCoreSet = new HashSet<Variable>();
       foreach (int i in unsatCore)
