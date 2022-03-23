@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,8 +17,8 @@ namespace Microsoft.Boogie.SMTLib
     readonly Process prover;
     readonly Inspector inspector;
     readonly SMTLibProverOptions options;
-    readonly ConcurrentQueue<string> proverOutput = new();
-    private readonly ConcurrentQueue<TaskCompletionSource<string>> outputReceivers = new();
+    readonly Queue<string> proverOutput = new();
+    readonly Queue<string> proverErrors = new();
     private TextWriter toProver;
     readonly int smtProcessId;
     static int smtProcessIdSeq = 0;
@@ -75,8 +74,10 @@ namespace Microsoft.Boogie.SMTLib
 
     private void prover_Exited(object sender, EventArgs e)
     {
-      while (outputReceivers.TryDequeue(out var source)) {
-        source.SetResult(null);
+      lock (this) {
+        while (outputReceivers.TryDequeue(out var source)) {
+          source.SetResult(null);
+        }
       }
 
       DisposeProver();
@@ -419,16 +420,20 @@ namespace Microsoft.Boogie.SMTLib
     #endregion
 
     #region handling input from the prover
-    
+
+    private readonly Queue<TaskCompletionSource<string>> outputReceivers = new();
+
     Task<string> ReadProver()
     {
-      if (proverOutput.TryDequeue(out var result)) {
-        return Task.FromResult(result);
-      }
+      lock (this) {
+        if (proverOutput.TryDequeue(out var result)) {
+          return Task.FromResult(result);
+        }
 
-      var taskCompletionSource = new TaskCompletionSource<string>();
-      outputReceivers.Enqueue(taskCompletionSource);
-      return taskCompletionSource.Task;
+        var taskCompletionSource = new TaskCompletionSource<string>();
+        outputReceivers.Enqueue(taskCompletionSource);
+        return taskCompletionSource.Task;
+      }
     }
 
     void DisposeProver()
@@ -452,11 +457,13 @@ namespace Microsoft.Boogie.SMTLib
           Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
         }
 
-        if (outputReceivers.TryDequeue(out var source)) {
-          source.SetResult(e.Data);
-        } else {
-          proverOutput.Enqueue(e.Data);
+        TaskCompletionSource<string> source;
+        lock (this) {
+          if (!outputReceivers.TryDequeue(out source)) {
+            proverOutput.Enqueue(e.Data);
+          }
         }
+        source?.SetResult(e.Data);
     }
 
     void prover_ErrorDataReceived(object sender, DataReceivedEventArgs e)
@@ -466,12 +473,15 @@ namespace Microsoft.Boogie.SMTLib
         return;
       }
 
-      if (options.Verbosity >= 1)
-      {
-        Console.WriteLine("[SMT-ERR-{0}] {1}", smtProcessId, e.Data);
-      }
+      lock (this) {
 
-      HandleError(e.Data);
+        if (options.Verbosity >= 1)
+        {
+          Console.WriteLine("[SMT-ERR-{0}] {1}", smtProcessId, e.Data);
+        }
+
+        HandleError(e.Data);
+      }
     }
 
     #endregion
