@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AbsInt\AbsInt.csproj" />
+    <ProjectReference Include="..\AbstractInterpretation\AbstractInterpretation.csproj" />
     <ProjectReference Include="..\BaseTypes\BaseTypes.csproj" />
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender.csproj" />
     <ProjectReference Include="..\Concurrency\Concurrency.csproj" />

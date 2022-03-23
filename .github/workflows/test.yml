@@ -12,7 +12,7 @@ on:
 env:
   SOLUTION: Source/Boogie.sln
   Z3URL: https://github.com/Z3Prover/z3/releases/download/z3-4.8.8/z3-4.8.8-x64-ubuntu-16.04.zip
-  CVC5URL: https://github.com/cvc5/cvc5/releases/latest/download/cvc5-Linux
+  CVC5URL: https://github.com/cvc5/cvc5/releases/download/cvc5-0.0.7/cvc5-Linux
 
 jobs:
   job0:
@@ -61,5 +61,7 @@ jobs:
           # Run lit test suite
           lit --param ${{ matrix.lit_param }} -v --timeout=120 -D configuration=${{ matrix.configuration }} Test
       - name: Deploy to nuget
-        if: matrix.configuration == 'Release' && startsWith(github.ref, 'refs/tags/v')
+        # Note: if you change the build matrix, update the following
+        # line to ensure it matches only one element of the matrix.
+        if: matrix.configuration == 'Release' && matrix.lit_param == 'batch_mode=False' && startsWith(github.ref, 'refs/tags/v')
         run: dotnet nuget push "Source/**/bin/${{ matrix.configuration }}/Boogie*.nupkg" -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
