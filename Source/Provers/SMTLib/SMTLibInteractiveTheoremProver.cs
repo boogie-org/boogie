@@ -54,7 +54,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     private bool hasReset;
-    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
+    public override async Task BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
       if (options.SeparateLogFiles)
       {
@@ -64,7 +64,7 @@ namespace Microsoft.Boogie.SMTLib
       if (options.LogFilename != null && currentLogFile == null)
       {
         currentLogFile = OpenOutputFile(descriptiveName);
-        currentLogFile.Write(common.ToString());
+        await currentLogFile.WriteAsync(common.ToString());
       }
 
       PrepareCommon();
@@ -95,7 +95,7 @@ namespace Microsoft.Boogie.SMTLib
 
       if (Process != null)
       {
-        Process.PingPong().Wait(); // flush any errors
+        await Process.PingPong(); // flush any errors
         Process.NewProblem(descriptiveName);
       }
 

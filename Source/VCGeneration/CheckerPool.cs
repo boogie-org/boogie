@@ -46,11 +46,11 @@ namespace VC
 
       var source = new TaskCompletionSource<Checker>();
       checkerWaiters.Enqueue(source);
-      return source.Task.ContinueWith(t =>
+      return source.Task.ContinueWith(task =>
       {
-        PrepareChecker(vcgen.program, split, t.Result);
-        Contract.Assert(t.Result != null);
-        return t.Result;
+        PrepareChecker(vcgen.program, split, task.Result);
+        Contract.Assert(task.Result != null);
+        return task.Result;
       });
     }
 

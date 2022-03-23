@@ -169,7 +169,7 @@ public abstract class ProverInterface
     }
   }
 
-  public abstract void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler);
+  public abstract Task BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler);
 
   [NoDefaultContract]
   public abstract Task<Outcome> CheckOutcome(ErrorHandler handler, int errorLimit, CancellationToken cancellationToken);

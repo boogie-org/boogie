@@ -54,7 +54,7 @@ namespace Microsoft.Boogie.SMTLib
       return 0;
     }
 
-    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
+    public override Task BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
       SetupProcess();
       CheckSatSent = false;
@@ -85,6 +85,7 @@ namespace Microsoft.Boogie.SMTLib
       Pop();
 
       FlushLogFile();
+      return Task.CompletedTask;
     }
 
     public override Task Reset(VCExpressionGenerator generator) {

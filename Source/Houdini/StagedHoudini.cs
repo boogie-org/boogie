@@ -148,12 +148,12 @@ namespace Microsoft.Boogie.Houdini
       return plan == null;
     }
 
-    public HoudiniOutcome PerformStagedHoudiniInference()
+    public async Task<HoudiniOutcome> PerformStagedHoudiniInference()
     {
       if (NoStages())
       {
         Houdini houdini = new Houdini(traceWriter, options, program, houdiniStats);
-        return houdini.PerformHoudiniInference();
+        return await houdini.PerformHoudiniInference();
       }
 
       EmitProgram(tempFilename);
@@ -163,8 +163,7 @@ namespace Microsoft.Boogie.Houdini
       foreach (var s in plan)
       {
         Debug.Assert(!plan.GetDependences(s).Contains(s));
-        tasks.Add(new StagedHoudiniTask(s,
-          new Task(o => { ExecuteStage((ScheduledStage) o); }, s, TaskCreationOptions.LongRunning)));
+        tasks.Add(new StagedHoudiniTask(s, Task.Run(() => ExecuteStage(s))));
       }
 
       #endregion
@@ -176,11 +175,11 @@ namespace Microsoft.Boogie.Houdini
         t.parallelTask.Start();
       }
 
-      Task.WaitAll(tasks.Select(Item => Item.parallelTask).ToArray());
+      await Task.WhenAll(tasks.Select(item => item.parallelTask));
       int count = 0;
       foreach (var h in houdiniInstances)
       {
-        if (h.Count() > 0)
+        if (h.Any())
         {
           count++;
           System.Diagnostics.Debug.Assert(h.Count() == 1);
@@ -220,7 +219,7 @@ namespace Microsoft.Boogie.Houdini
       return result;
     }
 
-    private void ExecuteStage(ScheduledStage s)
+    private async Task ExecuteStage(ScheduledStage s)
     {
       Task.WaitAll(tasks.Where(
         Item => plan.GetDependences(s).Contains(Item.stage)).Select(Item => Item.parallelTask).ToArray());
@@ -245,16 +244,16 @@ namespace Microsoft.Boogie.Houdini
       Dictionary<string, bool> mergedAssignment = null;
 
       List<Dictionary<string, bool>> relevantAssignments;
-      IEnumerable<int> completedStages;
+      IReadOnlyList<int> completedStages;
       lock (outcomes)
       {
         relevantAssignments =
           outcomes.Where(Item => plan.Contains(Item.Key)).Select(Item => Item.Value).Select(Item => Item.assignment)
             .ToList();
-        completedStages = plan.GetDependences(s).Select(Item => Item.GetId());
+        completedStages = plan.GetDependences(s).Select(Item => Item.GetId()).ToList();
       }
 
-      if (relevantAssignments.Count() > 0)
+      if (relevantAssignments.Any())
       {
         mergedAssignment = new Dictionary<string, bool>();
         foreach (var v in relevantAssignments[0].Keys)
@@ -263,7 +262,7 @@ namespace Microsoft.Boogie.Houdini
         }
       }
 
-      HoudiniOutcome outcome = h[0].PerformHoudiniInference(
+      HoudiniOutcome outcome = await h[0].PerformHoudiniInference(
         s.GetId(),
         completedStages,
         mergedAssignment);

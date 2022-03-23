@@ -1293,7 +1293,7 @@ namespace VC
         }
       }
 
-      public void ReadOutcome(VerifierCallback callback, ref ConditionGeneration.Outcome curOutcome, out bool proverFailed, ref int totalResourceCount)
+      public async Task<(ProverInterface.Outcome outcome, int resourceCount)> ReadOutcome(VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
@@ -1304,8 +1304,7 @@ namespace VC
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
-        var resourceCount = checker.GetProverResourceCount().Result;
-        totalResourceCount += resourceCount;
+        var resourceCount = await checker.GetProverResourceCount();
         var result = new VCResult(splitIndex + 1, checker.ProverStart, outcome, checker.ProverRunTime, Asserts, resourceCount);
         callback.OnVCResult(result);
 
@@ -1314,50 +1313,7 @@ namespace VC
           DumpDot(splitIndex);
         }
 
-        proverFailed = false;
-
-        switch (outcome)
-        {
-          case ProverInterface.Outcome.Valid:
-            return;
-          case ProverInterface.Outcome.Invalid:
-            curOutcome = ConditionGeneration.Outcome.Errors;
-            return;
-          case ProverInterface.Outcome.OutOfMemory:
-            proverFailed = true;
-            if (curOutcome != ConditionGeneration.Outcome.Errors && curOutcome != ConditionGeneration.Outcome.Inconclusive)
-            {
-              curOutcome = ConditionGeneration.Outcome.OutOfMemory;
-            }
-
-            return;
-          case ProverInterface.Outcome.TimeOut:
-            proverFailed = true;
-            if (curOutcome != ConditionGeneration.Outcome.Errors && curOutcome != ConditionGeneration.Outcome.Inconclusive)
-            {
-              curOutcome = ConditionGeneration.Outcome.TimedOut;
-            }
-
-            return;
-          case ProverInterface.Outcome.OutOfResource:
-            proverFailed = true;
-            if (curOutcome != ConditionGeneration.Outcome.Errors && curOutcome != ConditionGeneration.Outcome.Inconclusive)
-            {
-              curOutcome = ConditionGeneration.Outcome.OutOfResource;
-            }
-
-            return;
-          case ProverInterface.Outcome.Undetermined:
-            if (curOutcome != ConditionGeneration.Outcome.Errors)
-            {
-              curOutcome = ConditionGeneration.Outcome.Inconclusive;
-            }
-
-            return;
-          default:
-            Contract.Assert(false);
-            throw new cce.UnreachableException();
-        }
+        return (outcome, resourceCount);
       }
 
       /// <summary>

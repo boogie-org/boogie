@@ -91,7 +91,7 @@ namespace VC
 
     protected Implementation currentImplementation;
 
-    protected List<Variable> CurrentLocalVariables = null;
+    public List<Variable> CurrentLocalVariables { get; set; } = null;
 
     // shared across each implementation; created anew for each implementation
     protected Dictionary<Variable, int> variable2SequenceNumber;
