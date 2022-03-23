@@ -12,7 +12,7 @@ on:
 env:
   SOLUTION: Source/Boogie.sln
   Z3URL: https://github.com/Z3Prover/z3/releases/download/z3-4.8.8/z3-4.8.8-x64-ubuntu-16.04.zip
-  CVC5URL: https://github.com/cvc5/cvc5/releases/latest/download/cvc5-Linux
+  CVC5URL: https://github.com/cvc5/cvc5/releases/download/cvc5-0.0.7/cvc5-Linux
 
 jobs:
   job0:
