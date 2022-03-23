@@ -53,9 +53,10 @@ public class ConcurrentToSequentialWriteManager
     }
 
     public string SetTargetAndGetBuffer(TextWriter newTarget) {
-      var result = buffering ? ((StringWriter)target).ToString() : "";
-      buffering = false;
+      var oldTarget = target;
       target = newTarget;
+      var result = buffering ? ((StringWriter)oldTarget).ToString() : "";
+      buffering = false;
       return result;
     }
 
