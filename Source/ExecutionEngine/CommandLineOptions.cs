@@ -989,7 +989,7 @@ namespace Microsoft.Boogie
               {
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
-              } // postcondition of GetNumericArgument guarantees that we don't get here
+              } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
 
@@ -1016,7 +1016,7 @@ namespace Microsoft.Boogie
               {
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
-              } // postcondition of GetNumericArgument guarantees that we don't get here
+              } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
 
@@ -1109,7 +1109,7 @@ namespace Microsoft.Boogie
               {
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
-              } // postcondition of GetNumericArgument guarantees that we don't get here
+              } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
 
