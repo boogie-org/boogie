@@ -138,9 +138,11 @@ namespace VC
       }
 
       var (newOutcome, newResourceCount) = await split.ReadOutcome(callback);
-      outcome = MergeOutcomes(outcome, newOutcome);
+      lock (this) {
+        outcome = MergeOutcomes(outcome, newOutcome);
+        totalResourceCount += newResourceCount;
+      }
       var proverFailed = IsProverFailed(newOutcome);
-      totalResourceCount += newResourceCount;
 
       if (TrackingProgress) {
         lock (this) {
