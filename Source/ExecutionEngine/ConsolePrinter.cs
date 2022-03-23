@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
+using VC;
 
 namespace Microsoft.Boogie;
 
@@ -170,5 +172,21 @@ public class ConsolePrinter : OutputPrinter
     {
       tw.WriteLine(s);
     }
+  }
+
+  public void ReportImplementationsBeforeVerification(Implementation[] implementations) {
+    // Do not print anything to console
+  }
+
+  public void ReportStartVerifyImplementation(Implementation implementation) {
+    // Do not print anything to console
+  }
+
+  public void ReportEndVerifyImplementation(Implementation implementation, VerificationResult result) {
+    // Do not print anything to console
+  }
+
+  public void ReportSplitResult(Split split, VCResult splitResult) {
+    // Do not print anything to console
   }
 }

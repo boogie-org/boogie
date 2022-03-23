@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
+using VC;
 
 namespace Microsoft.Boogie
 {
@@ -266,8 +267,7 @@ namespace Microsoft.Boogie
       return FromArguments(new ConsolePrinter(), arguments);
     }
 
-    public static CommandLineOptions FromArguments(OutputPrinter printer, params string[] arguments)
-    {
+    public static CommandLineOptions FromArguments(OutputPrinter printer, params string[] arguments) {
       var result = new CommandLineOptions(printer);
       result.Parse(arguments);
       return result;
@@ -646,6 +646,7 @@ namespace Microsoft.Boogie
     }
 
     public bool RemoveEmptyBlocks { get; set; } = true;
+    IConditionGenerationPrinter VCGenOptions.Printer => Printer;
     public bool CoalesceBlocks { get; set; } = true;
     public bool PruneInfeasibleEdges { get; set; } = true;
 
@@ -988,7 +989,7 @@ namespace Microsoft.Boogie
               {
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
-              } // postcondition of GetNumericArgument guarantees that we don't get here
+              } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
 
@@ -1015,7 +1016,7 @@ namespace Microsoft.Boogie
               {
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
-              } // postcondition of GetNumericArgument guarantees that we don't get here
+              } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
 
@@ -1108,7 +1109,7 @@ namespace Microsoft.Boogie
               {
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
-              } // postcondition of GetNumericArgument guarantees that we don't get here
+              } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
 

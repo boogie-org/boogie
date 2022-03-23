@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Microsoft.Boogie;
-using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
 using System.IO;
 using Microsoft.BaseTypes;
@@ -14,16 +13,6 @@ namespace VC
 {
   using Bpl = Microsoft.Boogie;
   using System.Threading.Tasks;
-
-  public record VCResult
-  (
-    int vcNum,
-    DateTime startTime,
-    ProverInterface.Outcome outcome,
-    TimeSpan runTime,
-    IEnumerable<AssertCmd> asserts,
-    int resourceCount
-  );
 
   public class Split : ProofRun
   {
@@ -89,8 +78,8 @@ namespace VC
 
       readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
         stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
-
       static int currentId = -1;
+
       Block splitBlock;
       bool assertToAssume;
 
@@ -793,7 +782,9 @@ namespace VC
             Contract.Assert(c != null);
             if (c is AssertCmd)
             {
-              return VCGen.AssertCmdToCounterexample(options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context, this);
+              var counterexample = VCGen.AssertCmdToCounterexample(options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context, this);
+              Counterexamples.Add(counterexample);
+              return counterexample;
             }
           }
         }
@@ -1293,7 +1284,7 @@ namespace VC
         }
       }
 
-      public async Task<(ProverInterface.Outcome outcome, int resourceCount)> ReadOutcome(VerifierCallback callback)
+      public async Task<(ProverInterface.Outcome outcome, VCResult result, int resourceCount)> ReadOutcome(VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
@@ -1305,7 +1296,15 @@ namespace VC
         }
 
         var resourceCount = await checker.GetProverResourceCount();
-        var result = new VCResult(splitIndex + 1, checker.ProverStart, outcome, checker.ProverRunTime, Asserts, resourceCount);
+        var result = new VCResult(
+          splitIndex + 1,
+          checker.ProverStart,
+          outcome,
+          checker.ProverRunTime,
+          Checker.Options.ErrorLimit,
+          Counterexamples,
+          Asserts.ToList(),
+          resourceCount);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
@@ -1313,8 +1312,10 @@ namespace VC
           DumpDot(splitIndex);
         }
 
-        return (outcome, resourceCount);
+        return (outcome, result, resourceCount);
       }
+
+      public List<Counterexample> Counterexamples { get; } = new();
 
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
@@ -1324,7 +1325,6 @@ namespace VC
       {
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
-
         this.splitIndex = splitIndex;
 
         VCExpr vc;
@@ -1461,5 +1461,9 @@ namespace VC
       {
         checker = null;
       }
-    }
+
+      public void Finish(VCResult result) {
+        parent.CheckerPool.Options.Printer?.ReportSplitResult(this, result);
+      }
+  }
 }

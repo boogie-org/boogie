@@ -16,7 +16,7 @@ namespace Microsoft.Boogie
 {
   #region Output printing
 
-  public interface OutputPrinter
+  public interface OutputPrinter : IConditionGenerationPrinter
   {
     ExecutionEngineOptions Options { get; set; }
     void ErrorWriteLine(TextWriter tw, string s);
@@ -26,6 +26,10 @@ namespace Microsoft.Boogie
     void WriteTrailer(TextWriter textWriter, PipelineStatistics stats);
     void WriteErrorInformation(ErrorInformation errorInfo, TextWriter tw, bool skipExecutionTrace = true);
     void ReportBplError(IToken tok, string message, bool error, TextWriter tw, string category = null);
+
+    void ReportImplementationsBeforeVerification(Implementation[] implementations);
+    void ReportStartVerifyImplementation(Implementation implementation);
+    void ReportEndVerifyImplementation(Implementation implementation, VerificationResult result);
   }
 
   #endregion
@@ -768,10 +772,13 @@ namespace Microsoft.Boogie
     {
       var impls = program.Implementations.Where(
         impl => impl != null && Options.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) &&
-                !impl.IsSkipVerification(Options));
+                !impl.IsSkipVerification(Options)).ToArray();
+      
+      Options.Printer.ReportImplementationsBeforeVerification(impls);
 
       // operate on a stable copy, in case it gets updated while we're running
       Implementation[] stablePrioritizedImpls = null;
+
       if (0 < Options.VerifySnapshots) {
         OtherDefinitionAxiomsCollector.Collect(Options, program.Axioms);
         DependencyCollector.Collect(Options, program);
@@ -794,7 +801,7 @@ namespace Microsoft.Boogie
 
       var cts = new CancellationTokenSource();
       RequestIdToCancellationTokenSource.AddOrUpdate(requestId, cts, (k, ov) => cts);
-
+      
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
         var result = await VerifyImplementationAsynchronously(program, stats, programId, er, requestId,
@@ -910,8 +917,6 @@ namespace Microsoft.Boogie
       if (RequestIdToCancellationTokenSource.TryGetValue(requestId, out var cts))
       {
         cts.Cancel();
-
-        CleanupRequest(requestId);
       }
     }
 
@@ -940,6 +945,7 @@ namespace Microsoft.Boogie
 
       Options.Printer.Inform("", traceWriter); // newline
       Options.Printer.Inform($"Verifying {implementation.Name} ...", traceWriter);
+      Options.Printer.ReportStartVerifyImplementation(implementation);
 
       verificationResult = await VerifyImplementationWithoutCaching(program, stats, er, requestId,
         extractLoopMappingInfo, programId, implementation, traceWriter);
@@ -948,6 +954,7 @@ namespace Microsoft.Boogie
       {
         Cache.Insert(implementation, verificationResult);
       }
+      Options.Printer.ReportEndVerifyImplementation(implementation, verificationResult);
 
       return verificationResult;
     }
@@ -972,11 +979,6 @@ namespace Microsoft.Boogie
       }
 
       return null;
-    }
-
-    private ConditionGeneration CreateVCGen(Program program)
-    {
-      return new VCGen(program, checkerPool);
     }
 
     private async Task<VerificationResult> VerifyImplementationWithoutCaching(Program program,
@@ -1031,7 +1033,6 @@ namespace Microsoft.Boogie
         verificationResult.Errors = null;
         verificationResult.Outcome = VCGen.Outcome.SolverException;
       }
-
       verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
       verificationResult.End = DateTime.UtcNow;
       verificationResult.ResourceCount = vcgen.ResourceCount;

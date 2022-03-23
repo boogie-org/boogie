@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -24,7 +25,8 @@ namespace VC
     private bool DoSplitting => manualSplits.Count > 1 || KeepGoing || splitOnEveryAssert;
     private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
     private bool KeepGoing => maxKeepGoingSplits > 1;
-      
+
+    private VCGen vcGen;
     private Outcome outcome;
     private double remainingCost;
     private double provenCost;
@@ -42,7 +44,7 @@ namespace VC
       this.mvInfo = mvInfo;
       this.run = run;
       this.outcome = outcome;
-
+      this.vcGen = vcGen;
       var maxSplits = options.VcsMaxSplits;
       VCGen.CheckIntAttributeOnImpl(Implementation, "vcs_max_splits", ref maxSplits);
       
@@ -137,7 +139,7 @@ namespace VC
         }
       }
 
-      var (newOutcome, newResourceCount) = await split.ReadOutcome(callback);
+      var (newOutcome, result, newResourceCount) = await split.ReadOutcome(callback);
       lock (this) {
         outcome = MergeOutcomes(outcome, newOutcome);
         totalResourceCount += newResourceCount;
@@ -159,10 +161,11 @@ namespace VC
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
       if (!proverFailed) {
+        split.Finish(result);
         return;
       }
 
-      await HandleProverFailure(split, cancellationToken);
+      await HandleProverFailure(split, callback, result, cancellationToken);
     }
 
     private static bool IsProverFailed(ProverInterface.Outcome outcome)
@@ -224,15 +227,19 @@ namespace VC
       }
     }
 
-    private async Task HandleProverFailure(Split split, CancellationToken cancellationToken)
+    private async Task HandleProverFailure(Split split, VerifierCallback callback, VCResult vcResult, CancellationToken cancellationToken)
     {
       if (split.LastChance) {
         string msg = "some timeout";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
         }
-
         callback.OnCounterexample(split.ToCounterexample(split.Checker.TheoremProver.Context), msg);
+        // Update one last time the result with the dummy counter-example to indicate the position of the timeout
+        var result = vcResult with {
+          counterExamples = split.Counterexamples
+        };
+        split.Finish(result);
         outcome = Outcome.Errors;
         return;
       }
@@ -273,6 +280,7 @@ namespace VC
 
         callback.OnOutOfResource(msg);
       }
+      split.Finish(vcResult);
     }
   }
 }

@@ -19,13 +19,13 @@ public class ConcurrentToSequentialWriteManagerTest {
 
     await second.WriteLineAsync("secondLine1");
     await first.WriteLineAsync("firstLine1");
-    Assert.AreEqual("firstLine1\n", writer.ToString());
+    Assert.AreEqual("firstLine1\n", writer.ToString().Replace("\r\n", "\n"));
 
     await first.DisposeAsync();
     await second.WriteLineAsync("secondLine2");
     await third.WriteLineAsync("thirdLine1");
-    Assert.AreEqual("firstLine1\nsecondLine1\nsecondLine2\n", writer.ToString());
+    Assert.AreEqual("firstLine1\nsecondLine1\nsecondLine2\n", writer.ToString().Replace("\r\n", "\n"));
     await second.DisposeAsync();
-    Assert.AreEqual("firstLine1\nsecondLine1\nsecondLine2\nthirdLine1\n", writer.ToString());
+    Assert.AreEqual("firstLine1\nsecondLine1\nsecondLine2\nthirdLine1\n", writer.ToString().Replace("\r\n", "\n"));
   }
 }

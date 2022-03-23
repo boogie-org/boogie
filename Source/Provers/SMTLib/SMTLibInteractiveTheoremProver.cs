@@ -29,6 +29,10 @@ namespace Microsoft.Boogie.SMTLib
 
     public override Task GoBackToIdle()
     {
+      if (Process == null) {
+        ProcessNeedsRestart = true;
+        return Task.CompletedTask;
+      }
       return Process.PingPong();
     }
 
