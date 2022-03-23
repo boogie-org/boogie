@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
@@ -11,7 +12,7 @@ namespace VC
   public class CheckerPool
   {
     private readonly ConcurrentStack<Checker> availableCheckers = new();
-    private readonly ConcurrentQueue<TaskCompletionSource<Checker>> checkerWaiters = new();
+    private readonly ConcurrentQueue<(TaskCompletionSource<Checker>, CancellationToken?)> checkerWaiters = new();
     private int notCreatedCheckers;
     private bool disposed;
 
@@ -23,7 +24,7 @@ namespace VC
       notCreatedCheckers = options.VcsCores;
     }
 
-    public Task<Checker> FindCheckerFor(ConditionGeneration vcgen, Split split = null)
+    public Task<Checker> FindCheckerFor(ConditionGeneration vcgen, Split split = null, CancellationToken? cancellationToken = null)
     {
       if (disposed) {
         return Task.FromException<Checker>(new Exception("CheckerPool was already disposed"));
@@ -45,7 +46,7 @@ namespace VC
       Interlocked.Increment(ref notCreatedCheckers);
 
       var source = new TaskCompletionSource<Checker>();
-      checkerWaiters.Enqueue(source);
+      checkerWaiters.Enqueue((source, cancellationToken));
       return source.Task.ContinueWith(task =>
       {
         PrepareChecker(vcgen.program, split, task.Result);
@@ -93,7 +94,13 @@ namespace VC
         checker.Close();
         return;
       }
-      if (checkerWaiters.TryDequeue(out var waiter)) {
+      if (checkerWaiters.TryDequeue(out var waiterCancellation)) {
+        var (waiter, cancellationToken) = waiterCancellation;
+        if (cancellationToken is {IsCancellationRequested: true}) {
+          waiter.TrySetCanceled();
+          AddChecker(checker);
+          return;
+        }
         if (waiter.TrySetResult(checker)) {
           return;
         }
@@ -104,7 +111,12 @@ namespace VC
 
     public void CheckerDied()
     {
-      if (checkerWaiters.TryDequeue(out var waiter)) {
+      if (checkerWaiters.TryDequeue(out var waiterCancellation)) {
+        var (waiter, cancellationToken) = waiterCancellation;
+        if (cancellationToken is {IsCancellationRequested: true}) {
+          waiter.TrySetCanceled(); // No need to assign a checker if the task is cancelled. 
+          CheckerDied();           // Maybe other waiters need a checker
+        }
         waiter.SetResult(CreateNewChecker());
       } else {
         Interlocked.Increment(ref notCreatedCheckers);

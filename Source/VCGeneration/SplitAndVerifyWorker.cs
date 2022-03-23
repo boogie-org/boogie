@@ -98,10 +98,9 @@ namespace VC
 
     async Task DoWork(Split split, CancellationToken cancellationToken)
     {
-      var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split);
+      var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split, cancellationToken).WaitAsync(cancellationToken);
 
       try {
-        cancellationToken.ThrowIfCancellationRequested();
         await StartCheck(split, checker, cancellationToken);
         await split.ProverTask;
         await ProcessResult(split, cancellationToken);
