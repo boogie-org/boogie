@@ -69,8 +69,6 @@ Boogie program verifier finished with 1 verified, 1 error
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
     var writer = new StringWriter();
-    var concurrentWriterManager = new ConcurrentToSequentialWriteManager(writer);
-    var taskWriter = concurrentWriterManager.AppendWriter();
 
     var programString = @"procedure Test()
 {
@@ -97,8 +95,8 @@ Boogie program verifier finished with 1 verified, 1 error
       }
     }
 
-    await engine.ProcessProgram(taskWriter, program1, "fakeFilename");
-    await taskWriter.DisposeAsync();
+    await engine.ProcessProgram(writer, program1, "fakeFilename");
+    await writer.DisposeAsync();
     var output = writer.ToString();
     var expected = @"fakeFilename(10,5): Error: This loop invariant might not be maintained by the loop.
 fakeFilename(10,5): Related message: fake failure
