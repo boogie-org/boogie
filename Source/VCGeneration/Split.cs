@@ -1295,7 +1295,7 @@ namespace VC
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
-        var resourceCount = await checker.GetProverResourceCount().Result;
+        var resourceCount = await checker.GetProverResourceCount();
         var result = new VCResult(
           splitIndex + 1,
           checker.ProverStart,
