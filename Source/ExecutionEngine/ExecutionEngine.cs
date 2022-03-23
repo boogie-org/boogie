@@ -252,6 +252,7 @@ namespace Microsoft.Boogie
         var snapshotsByVersion = LookForSnapshots(fileNames);
         var success = true;
         foreach (var snapshots in snapshotsByVersion) {
+          // BUG: Reusing checkers during snapshots doesn't work, even though it should. We create a new engine (and thus checker pool) to workaround this.
           using var engine = new ExecutionEngine(Options, Cache);
           success &= await engine.ProcessFiles(output, new List<string>(snapshots), false, programId);
         }
