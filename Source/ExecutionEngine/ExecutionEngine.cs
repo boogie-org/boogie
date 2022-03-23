@@ -1553,7 +1553,7 @@ namespace Microsoft.Boogie
           else if (failingAssert is LoopInitAssertCmd initCmd)
           {
             var desc = initCmd.originalAssert.Description;
-            if (desc.ShortDescription != "assert")
+            if (desc is not AssertionDescription)
             {
               relatedMessage = desc.FailureDescription;
             }
@@ -1561,7 +1561,7 @@ namespace Microsoft.Boogie
           else if (failingAssert is LoopInvMaintainedAssertCmd maintCmd)
           {
             var desc = maintCmd.originalAssert.Description;
-            if (desc.ShortDescription != "assert")
+            if (desc is not AssertionDescription)
             {
               relatedMessage = desc.FailureDescription;
             }
