@@ -15,56 +15,31 @@ namespace Microsoft.Boogie;
 /// Assert.AreEqual(3, await itemTask);
 ///
 /// All methods are thread-safe.
-/// Also supports pushing elements to the front of the queue.
 /// </summary>
 public class AsyncQueue<T>
 {
   private readonly object myLock = new();
   // At all times, either items or customers is empty.
-  private readonly LinkedList<T> items = new();
+  private readonly Queue<T> items = new();
   private readonly Queue<TaskCompletionSource<T>> customers = new();
 
   public void Enqueue(T value)
   {
     lock (myLock) {
-      if (TryEnqueue(value))
-      {
-        return;
+      while (customers.TryDequeue(out var customer)) {
+        if (customer.TrySetResult(value)) {
+          return;
+        }
       }
 
-      items.AddLast(value);
-    }
-  }
-
-  private bool TryEnqueue(T value)
-  {
-    while (customers.TryDequeue(out var customer)) {
-      if (customer.TrySetResult(value)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  public void Push(T value)
-  {
-    lock (myLock) {
-      if (TryEnqueue(value))
-      {
-        return;
-      }
-      items.AddFirst(value);
+      items.Enqueue(value);
     }
   }
 
   public Task<T> Dequeue(CancellationToken cancellationToken)
   {
     lock (myLock) {
-      var first = items.First;
-      if (first != null) {
-        var result = first.Value;
-        items.RemoveFirst();
+      if (items.TryDequeue(out var result)) {
         return Task.FromResult(result);
       }
 
@@ -74,13 +49,6 @@ public class AsyncQueue<T>
       // Ensure that the TrySetResult call in Enqueue completes immediately.
       return source.Task.ContinueWith(t => t.Result, cancellationToken,
         TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Current);
-    }
-  }
-
-  public T[] ClearItems()
-  {
-    lock (myLock) {
-      return items.ToArray();
     }
   }
 }

@@ -16,22 +16,14 @@ public class AsyncQueueTest
     var queue = new AsyncQueue<int>();
     var firstValue = 1;
     var secondValue = 2;
-    var thirdValue = 3;
-    var fourthValue = 4;
     var waitingDequeueTask = queue.Dequeue(CancellationToken.None);
     queue.Enqueue(firstValue);
     queue.Enqueue(secondValue);
-    queue.Push(thirdValue);
-    queue.Enqueue(fourthValue);
     var firstResult = await waitingDequeueTask;
     var secondResult = await queue.Dequeue(CancellationToken.None);
-    var thirdResult = await queue.Dequeue(CancellationToken.None);
-    var fourthResult = await queue.Dequeue(CancellationToken.None);
 
     Assert.AreEqual(firstValue, firstResult);
-    Assert.AreEqual(thirdValue, secondResult);
-    Assert.AreEqual(secondValue, thirdResult);
-    Assert.AreEqual(fourthValue, fourthResult);
+    Assert.AreEqual(secondValue, secondResult);
   }
 
   [Test]
@@ -70,7 +62,7 @@ public class AsyncQueueTest
 
     var results = tasks.Select(t => t.Result).ToList();
     for (int i = 0; i < 100; i++) {
-      Assert.AreEqual(i, results);
+      Assert.AreEqual(i, results[i]);
     }
   }
 
@@ -138,20 +130,4 @@ public class AsyncQueueTest
     Assert.AreEqual(2 * amount, tasks1.Count + tasks2.Count);
     await Task.WhenAll(tasks1.Concat(tasks2));
   }
-
-  [Test]
-  public async Task ClearItems()
-  {
-    var queue = new AsyncQueue<int>();
-    queue.Enqueue(1);
-    queue.Enqueue(2);
-
-    var items = queue.ClearItems();
-    Assert.AreEqual(1, items[0]);
-    Assert.AreEqual(2, items[1]);
-
-    queue.Enqueue(3);
-    Assert.AreEqual(3, await queue.Dequeue(CancellationToken.None));
-  }
-
 }

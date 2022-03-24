@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
@@ -8,9 +9,8 @@ namespace VC
 {
   public class CheckerPool
   {
-    // Holds both created and not yet created checkers.
-    // Created checkers are kept at the front and uncreated ones at the end.
-    private readonly AsyncQueue<Checker?> checkerLine = new();
+    private readonly ConcurrentBag<Checker> checkerLine = new();
+    private readonly SemaphoreSlim checkersSemaphore;
     private bool disposed;
 
     public VCGenOptions Options { get; }
@@ -18,9 +18,7 @@ namespace VC
     public CheckerPool(VCGenOptions options)
     {
       Options = options;
-      for (var index = 0; index < options.VcsCores; index++) {
-        checkerLine.Enqueue(null);
-      }
+      checkersSemaphore = new(options.VcsCores);
     }
 
     public async Task<Checker> FindCheckerFor(ConditionGeneration vcgen, Split? split, CancellationToken cancellationToken)
@@ -29,7 +27,10 @@ namespace VC
         throw new Exception("CheckerPool was already disposed");
       }
 
-      var checker = await checkerLine.Dequeue(cancellationToken) ?? CreateNewChecker();
+      await checkersSemaphore.WaitAsync(cancellationToken);
+      if (!checkerLine.TryTake(out var checker)) {
+        checker ??= CreateNewChecker();
+      }
 
       PrepareChecker(vcgen.program, split, checker);
       return checker;
@@ -42,7 +43,7 @@ namespace VC
       var index = Interlocked.Increment(ref createdCheckers) - 1;
       if (log != null && !log.Contains("@PROC@") && index > 0) {
         log = log + "." + index;
-      } 
+      }
 
       return new Checker(this, log, Options.ProverLogFileAppend);
     }
@@ -52,8 +53,8 @@ namespace VC
       lock(checkerLine)
       {
         disposed = true;
-        foreach (var checker in checkerLine.ClearItems()) {
-          checker?.Close();
+        foreach (var checker in checkerLine.ToArray()) {
+          checker.Close();
         }
       }
     }
@@ -81,13 +82,14 @@ namespace VC
           checker.Close();
           return;
         }
-        checkerLine.Push(checker);
+        checkerLine.Add(checker);
+        checkersSemaphore.Release();
       }
     }
 
     public void CheckerDied()
     {
-      checkerLine.Enqueue(null);
+      checkersSemaphore.Release();
     }
   }
 }
