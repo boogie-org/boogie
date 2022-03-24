@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 namespace Microsoft.Boogie;
 
 /// <summary>
-/// A queue from which items can be retrieved even if they have not been added yet.
+/// A queue from which items can be dequeued even if they have not been enqueued yet.
+/// All methods are thread-safe
 /// </summary>
 public class AsyncQueue<T>
 {
