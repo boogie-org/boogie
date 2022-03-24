@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,6 +30,55 @@ public class ConcurrentToSequentialWriteManagerTest {
     Assert.AreEqual("firstLine1\nsecondLine1\nsecondLine2\n", writer.ToString().Replace("\r\n", "\n"));
     await second.DisposeAsync();
     Assert.AreEqual("firstLine1\nsecondLine1\nsecondLine2\nthirdLine1\n", writer.ToString().Replace("\r\n", "\n"));
+  }
+
+  [Test]
+  public void ManyConcurrentWriterHandovers()
+  {
+    var writer = new StringWriter();
+    var manager = new ConcurrentToSequentialWriteManager(writer);
+    Exception thread1Exception = null;
+    var amount = 1000;
+    var running = true;
+
+    var first = manager.AppendWriter();
+    var second = manager.AppendWriter();
+
+    var thread1 = new Thread(() =>
+    {
+      try {
+        while (running) {
+          second.WriteLine("a");
+        }
+      }
+      catch (Exception e) {
+        thread1Exception = e;
+      }
+    });
+
+    Exception thread2Exception = null;
+    var thread2 = new Thread(() =>
+    {
+      try {
+        for (int i = 0; i < 1000; i++) {
+          first.Dispose();
+          var newSecond = manager.AppendWriter();
+          first = second;
+          second = newSecond;
+        }
+      }
+      catch (Exception e) {
+        thread2Exception = e;
+      }
+    });
+
+    thread1.Start();
+    thread2.Start();
+    thread2.Join();
+    running = false;
+    thread1.Join();
+    Assert.IsNull(thread1Exception);
+    Assert.IsNull(thread2Exception);
   }
 
   [Test]
