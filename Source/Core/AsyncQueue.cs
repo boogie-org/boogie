@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace Microsoft.Boogie;
 
 /// <summary>
-/// A queue from which items can be popped even if they have not been enqueued yet.
+/// A queue from which items can be dequeued even if they have not been enqueued yet.
 /// All methods are thread-safe.
 /// Also supports pushing elements to the front of the queue.
 /// </summary>
