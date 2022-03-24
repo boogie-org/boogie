@@ -22,65 +22,43 @@ public class AsyncQueue<T>
   private readonly object myLock = new();
   // At all times, either items or customers is empty.
   private readonly LinkedList<T> items = new();
-  private readonly Queue<TaskCompletionSource<T>> customers = new();
+  private readonly SemaphoreSlim semaphore = new(0);
 
   public void Enqueue(T value)
   {
     lock (myLock) {
-      if (TryEnqueue(value))
-      {
-        return;
-      }
-
       items.AddLast(value);
     }
-  }
-
-  private bool TryEnqueue(T value)
-  {
-    while (customers.TryDequeue(out var customer)) {
-      if (customer.TrySetResult(value)) {
-        return true;
-      }
-    }
-
-    return false;
+    semaphore.Release();
   }
 
   public void Push(T value)
   {
     lock (myLock) {
-      if (TryEnqueue(value))
-      {
-        return;
-      }
       items.AddFirst(value);
     }
+    semaphore.Release();
   }
 
-  public Task<T> Dequeue(CancellationToken cancellationToken)
+  public async Task<T> Dequeue(CancellationToken cancellationToken)
   {
-    lock (myLock) {
-      var first = items.First;
-      if (first != null) {
-        var result = first.Value;
-        items.RemoveFirst();
-        return Task.FromResult(result);
-      }
+    await semaphore.WaitAsync(cancellationToken);
 
-      var source = new TaskCompletionSource<T>();
-      cancellationToken.Register(() => source.SetCanceled(cancellationToken));
-      customers.Enqueue(source);
-      // Ensure that the TrySetResult call in Enqueue completes immediately.
-      return source.Task.ContinueWith(t => t.Result, cancellationToken,
-        TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Current);
+    lock (myLock) {
+
+      var first = items.First!;
+      var result = first.Value;
+      items.RemoveFirst();
+      return result;
     }
   }
 
   public T[] ClearItems()
   {
     lock (myLock) {
-      return items.ToArray();
+      var clearItems = items.ToArray();
+      items.Clear();
+      return clearItems;
     }
   }
 }
