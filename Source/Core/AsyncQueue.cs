@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,7 +37,8 @@ public class AsyncQueue<T>
       cancellationToken.Register(() => source.SetCanceled(cancellationToken));
       customers.Enqueue(source);
       // Ensure that the TrySetResult call in Enqueue completes immediately.
-      return source.Task.ContinueWith(t => t.Result, TaskContinuationOptions.RunContinuationsAsynchronously);
+      return source.Task.ContinueWith(t => t.Result, cancellationToken,
+        TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Current);
     }
   }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Reflection.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
@@ -47,6 +48,28 @@ public class AsyncQueueTest
     var secondResult = await secondResultTask;
     Assert.AreEqual(firstValue, firstResult);
     Assert.AreEqual(secondValue, secondResult);
+  }
+
+  [Test]
+  public async Task CancellationSupport()
+  {
+    var queue = new AsyncQueue<int>();
+    var source = new CancellationTokenSource();
+    var firstResultTask = queue.Dequeue(source.Token);
+    var secondResultTask = queue.Dequeue(CancellationToken.None);
+    var firstValue = 3;
+    source.Cancel();
+    queue.Enqueue(firstValue);
+
+    try {
+      await firstResultTask;
+      Assert.True(false);
+    }
+    catch (TaskCanceledException _) {
+      Assert.True(firstResultTask.IsCanceled);
+    }
+    var secondResult = await secondResultTask;
+    Assert.AreEqual(firstValue, secondResult);
   }
 
   [Test]
