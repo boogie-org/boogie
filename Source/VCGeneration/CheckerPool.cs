@@ -9,7 +9,7 @@ namespace VC
 {
   public class CheckerPool
   {
-    private readonly ConcurrentBag<Checker> checkerLine = new();
+    private readonly ConcurrentBag<Checker> availableCheckers = new();
     private readonly SemaphoreSlim checkersSemaphore;
     private bool disposed;
 
@@ -28,7 +28,7 @@ namespace VC
       }
 
       await checkersSemaphore.WaitAsync(cancellationToken);
-      if (!checkerLine.TryTake(out var checker)) {
+      if (!availableCheckers.TryTake(out var checker)) {
         checker ??= CreateNewChecker();
       }
 
@@ -50,10 +50,10 @@ namespace VC
 
     public void Dispose()
     {
-      lock(checkerLine)
+      lock(availableCheckers)
       {
         disposed = true;
-        foreach (var checker in checkerLine.ToArray()) {
+        foreach (var checker in availableCheckers.ToArray()) {
           checker.Close();
         }
       }
@@ -77,12 +77,12 @@ namespace VC
         throw new Exception();
       }
 
-      lock (checkerLine) {
+      lock (availableCheckers) {
         if (disposed) {
           checker.Close();
           return;
         }
-        checkerLine.Add(checker);
+        availableCheckers.Add(checker);
         checkersSemaphore.Release();
       }
     }
