@@ -6,7 +6,13 @@ using System.Threading.Tasks;
 namespace Microsoft.Boogie;
 
 /// <summary>
-/// A queue from which items can be asynchronously dequeued before adding them.
+/// A queue from which items can be asynchronously dequeued before adding them. For example:
+///
+/// var queue = new AsyncQueue<int>()
+/// var itemTask = queue.Dequeue();
+/// queue.Enqueue(3);
+/// Assert.AreEqual(3, await itemTask);
+///
 /// All methods are thread-safe.
 /// Also supports pushing elements to the front of the queue.
 /// </summary>
