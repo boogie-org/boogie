@@ -140,4 +140,19 @@ public class AsyncQueueTest
     await Task.WhenAll(tasks1.Concat(tasks2));
   }
 
+  [Test]
+  public async Task ClearItems()
+  {
+    var queue = new AsyncQueue<int>();
+    queue.Enqueue(1);
+    queue.Enqueue(2);
+
+    var items = queue.ClearItems();
+    Assert.AreEqual(1, items[0]);
+    Assert.AreEqual(2, items[1]);
+
+    queue.Enqueue(3);
+    Assert.AreEqual(3, await queue.Dequeue(CancellationToken.None));
+  }
+
 }
