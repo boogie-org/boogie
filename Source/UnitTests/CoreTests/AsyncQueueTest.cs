@@ -1,8 +1,5 @@
-using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
@@ -14,43 +11,27 @@ namespace CoreTests;
 public class AsyncQueueTest
 {
   [Test]
-  public async Task EnqueueBeforeDequeue()
+  public async Task DequeueOrder()
   {
     var queue = new AsyncQueue<int>();
-    var firstValue = 3;
-    queue.Enqueue(firstValue);
-
-    var firstResult = await queue.Dequeue(CancellationToken.None);
-    Assert.AreEqual(firstValue, firstResult);
-  }
-
-  [Test]
-  public async Task DequeueBeforeEnqueue()
-  {
-    var queue = new AsyncQueue<int>();
-    var firstResultTask = queue.Dequeue(CancellationToken.None);
-    var firstValue = 3;
-    queue.Enqueue(firstValue);
-
-    var firstResult = await firstResultTask;
-    Assert.AreEqual(firstValue, firstResult);
-  }
-
-  [Test]
-  public async Task FirstInFirstOut()
-  {
-    var queue = new AsyncQueue<int>();
-    var firstResultTask = queue.Dequeue(CancellationToken.None);
-    var secondResultTask = queue.Dequeue(CancellationToken.None);
-    var firstValue = 3;
+    var firstValue = 1;
     var secondValue = 2;
+    var thirdValue = 3;
+    var fourthValue = 4;
+    var waitingDequeueTask = queue.DequeueAsync(CancellationToken.None);
     queue.Enqueue(firstValue);
     queue.Enqueue(secondValue);
+    queue.Push(thirdValue);
+    queue.Enqueue(fourthValue);
+    var firstResult = await waitingDequeueTask;
+    var secondResult = await queue.DequeueAsync(CancellationToken.None);
+    var thirdResult = await queue.DequeueAsync(CancellationToken.None);
+    var fourthResult = await queue.DequeueAsync(CancellationToken.None);
 
-    var firstResult = await firstResultTask;
-    var secondResult = await secondResultTask;
     Assert.AreEqual(firstValue, firstResult);
-    Assert.AreEqual(secondValue, secondResult);
+    Assert.AreEqual(thirdValue, secondResult);
+    Assert.AreEqual(secondValue, thirdResult);
+    Assert.AreEqual(fourthValue, fourthResult);
   }
 
   [Test]
@@ -58,8 +39,8 @@ public class AsyncQueueTest
   {
     var queue = new AsyncQueue<int>();
     var source = new CancellationTokenSource();
-    var firstResultTask = queue.Dequeue(source.Token);
-    var secondResultTask = queue.Dequeue(CancellationToken.None);
+    var firstResultTask = queue.DequeueAsync(source.Token);
+    var secondResultTask = queue.DequeueAsync(CancellationToken.None);
     var firstValue = 3;
     source.Cancel();
     queue.Enqueue(firstValue);
@@ -81,7 +62,7 @@ public class AsyncQueueTest
     var queue = new AsyncQueue<int>();
     var semaphore = new Semaphore(0, 1);
 
-    var firstResultTask = queue.Dequeue(CancellationToken.None);
+    var firstResultTask = queue.DequeueAsync(CancellationToken.None);
     var secondValue = 2;
     var mappedTask = firstResultTask.ContinueWith(t =>
     {
@@ -114,13 +95,13 @@ public class AsyncQueueTest
     void DequeueAction1()
     {
       for (int i = 0; i < amount; i++) {
-        tasks1.Add(queue.Dequeue(CancellationToken.None));
+        tasks1.Add(queue.DequeueAsync(CancellationToken.None));
       }
     }
     void DequeueAction2()
     {
       for (int i = 0; i < amount; i++) {
-        tasks2.Add(queue.Dequeue(CancellationToken.None));
+        tasks2.Add(queue.DequeueAsync(CancellationToken.None));
       }
     }
 
@@ -152,7 +133,7 @@ public class AsyncQueueTest
     Assert.AreEqual(2, items[1]);
 
     queue.Enqueue(3);
-    Assert.AreEqual(3, await queue.Dequeue(CancellationToken.None));
+    Assert.AreEqual(3, await queue.DequeueAsync(CancellationToken.None));
   }
 
 }

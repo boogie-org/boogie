@@ -6,12 +6,13 @@ using System.Threading.Tasks;
 namespace Microsoft.Boogie;
 
 /// <summary>
-/// A queue from which items can be dequeued even if they have not been enqueued yet.
-/// All methods are thread-safe
+/// A queue from which items can be popped even if they have not been enqueued yet.
+/// All methods are thread-safe.
+/// Also supports pushing elements to the front of the queue.
 /// </summary>
 public class AsyncQueue<T>
 {
-  private readonly Queue<T> items = new();
+  private readonly LinkedList<T> items = new();
   private readonly Queue<TaskCompletionSource<T>> customers = new();
 
   public void Enqueue(T value)
@@ -22,15 +23,30 @@ public class AsyncQueue<T>
           return;
         }
       }
-      items.Enqueue(value);
+      items.AddLast(value);
     }
   }
 
-  public Task<T> Dequeue(CancellationToken cancellationToken)
+  public void Push(T value)
   {
     lock (this) {
-      if (items.TryDequeue(out var item)) {
-        return Task.FromResult(item);
+      while (customers.TryDequeue(out var customer)) {
+        if (customer.TrySetResult(value)) {
+          return;
+        }
+      }
+      items.AddFirst(value);
+    }
+  }
+
+  public Task<T> DequeueAsync(CancellationToken cancellationToken)
+  {
+    lock (this) {
+      var first = items.First;
+      if (first != null) {
+        var result = first.Value;
+        items.RemoveFirst();
+        return Task.FromResult(result);
       }
 
       var source = new TaskCompletionSource<T>();
@@ -45,7 +61,8 @@ public class AsyncQueue<T>
   public T[] ClearItems()
   {
     lock (this) {
-      var result = items.ToArray();
+      var result = new T[items.Count];
+      items.CopyTo(result, 0);
       items.Clear();
       return result;
     }

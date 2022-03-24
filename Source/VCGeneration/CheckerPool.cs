@@ -9,6 +9,7 @@ namespace VC
   public class CheckerPool
   {
     // Holds both created and not yet created checkers.
+    // Created checkers are kept at the front and uncreated ones at the end.
     private readonly AsyncQueue<Checker?> checkerLine = new();
     private bool disposed;
 
@@ -28,7 +29,7 @@ namespace VC
         throw new Exception("CheckerPool was already disposed");
       }
 
-      var checker = await checkerLine.Dequeue(cancellationToken) ?? CreateNewChecker();
+      var checker = await checkerLine.DequeueAsync(cancellationToken) ?? CreateNewChecker();
 
       PrepareChecker(vcgen.program, split, checker);
       return checker;
@@ -75,7 +76,7 @@ namespace VC
         checker.Close();
         return;
       }
-      checkerLine.Enqueue(checker);
+      checkerLine.Push(checker);
     }
 
     public void CheckerDied()
