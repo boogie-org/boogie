@@ -12,28 +12,40 @@ namespace Microsoft.Boogie;
 /// </summary>
 public class AsyncQueue<T>
 {
+  private readonly object myLock = new();
+  // At all times, either items or customers is empty.
   private readonly LinkedList<T> items = new();
   private readonly Queue<TaskCompletionSource<T>> customers = new();
 
   public void Enqueue(T value)
   {
     lock (this) {
-      while (customers.TryDequeue(out var customer)) {
-        if (customer.TrySetResult(value)) {
-          return;
-        }
+      if (TryEnqueue(value))
+      {
+        return;
       }
+
       items.AddLast(value);
     }
   }
 
+  private bool TryEnqueue(T value)
+  {
+    while (customers.TryDequeue(out var customer)) {
+      if (customer.TrySetResult(value)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   public void Push(T value)
   {
-    lock (this) {
-      while (customers.TryDequeue(out var customer)) {
-        if (customer.TrySetResult(value)) {
-          return;
-        }
+    lock (myLock) {
+      if (TryEnqueue(value))
+      {
+        return;
       }
       items.AddFirst(value);
     }
@@ -41,7 +53,7 @@ public class AsyncQueue<T>
 
   public Task<T> Dequeue(CancellationToken cancellationToken)
   {
-    lock (this) {
+    lock (myLock) {
       var first = items.First;
       if (first != null) {
         var result = first.Value;
@@ -60,7 +72,7 @@ public class AsyncQueue<T>
 
   public T[] ClearItems()
   {
-    lock (this) {
+    lock (myLock) {
       var result = new T[items.Count];
       items.CopyTo(result, 0);
       items.Clear();
