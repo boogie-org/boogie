@@ -25,7 +25,7 @@ public class AsyncQueue<T>
 
   public void Enqueue(T value)
   {
-    lock (this) {
+    lock (myLock) {
       if (TryEnqueue(value))
       {
         return;
