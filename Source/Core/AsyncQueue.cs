@@ -20,7 +20,6 @@ namespace Microsoft.Boogie;
 public class AsyncQueue<T>
 {
   private readonly object myLock = new();
-  // At all times, either items or customers is empty.
   private readonly LinkedList<T> items = new();
   private readonly SemaphoreSlim semaphore = new(0);
 
