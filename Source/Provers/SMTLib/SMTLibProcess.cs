@@ -428,7 +428,7 @@ namespace Microsoft.Boogie.SMTLib
 
     Task<string> ReadProver()
     {
-      return proverOutput.GetItem(CancellationToken.None);
+      return proverOutput.Dequeue(CancellationToken.None);
     }
 
     void DisposeProver()
@@ -452,7 +452,7 @@ namespace Microsoft.Boogie.SMTLib
           Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
         }
 
-        proverOutput.AddItem(e.Data);
+        proverOutput.Enqueue(e.Data);
     }
 
     void prover_ErrorDataReceived(object sender, DataReceivedEventArgs e)

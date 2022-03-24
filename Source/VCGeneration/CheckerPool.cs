@@ -18,7 +18,7 @@ namespace VC
     {
       Options = options;
       for (var index = 0; index < options.VcsCores; index++) {
-        checkerLine.AddItem(null);
+        checkerLine.Enqueue(null);
       }
     }
 
@@ -28,7 +28,7 @@ namespace VC
         throw new Exception("CheckerPool was already disposed");
       }
 
-      var checker = await checkerLine.GetItem(cancellationToken) ?? CreateNewChecker();
+      var checker = await checkerLine.Dequeue(cancellationToken) ?? CreateNewChecker();
 
       PrepareChecker(vcgen.program, split, checker);
       return checker;
@@ -75,12 +75,12 @@ namespace VC
         checker.Close();
         return;
       }
-      checkerLine.AddItem(checker);
+      checkerLine.Enqueue(checker);
     }
 
     public void CheckerDied()
     {
-      checkerLine.AddItem(null);
+      checkerLine.Enqueue(null);
     }
   }
 }
