@@ -1,7 +1,5 @@
+#nullable enable
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
@@ -10,55 +8,39 @@ namespace VC
 {
   public class CheckerPool
   {
-    private readonly ConcurrentStack<Checker> availableCheckers = new();
-    private readonly ConcurrentQueue<TaskCompletionSource<Checker>> checkerWaiters = new();
-    private int notCreatedCheckers;
+    // Holds both created and not yet created checkers.
+    private readonly AsyncQueue<Checker?> checkerLine = new();
     private bool disposed;
 
     public VCGenOptions Options { get; }
 
     public CheckerPool(VCGenOptions options)
     {
-      this.Options = options;
-      notCreatedCheckers = options.VcsCores;
+      Options = options;
+      for (var index = 0; index < options.VcsCores; index++) {
+        checkerLine.AddItem(null);
+      }
     }
 
-    public Task<Checker> FindCheckerFor(ConditionGeneration vcgen, Split split = null)
+    public async Task<Checker> FindCheckerFor(ConditionGeneration vcgen, Split? split, CancellationToken cancellationToken)
     {
       if (disposed) {
-        return Task.FromException<Checker>(new Exception("CheckerPool was already disposed"));
-      }
-        
-      if (availableCheckers.TryPop(out var result)) {
-        PrepareChecker(vcgen.program, split, result);
-        Contract.Assert(result != null);
-        return Task.FromResult(result);
+        throw new Exception("CheckerPool was already disposed");
       }
 
-      var afterDecrement = Interlocked.Decrement(ref notCreatedCheckers);
-      if (afterDecrement >= 0) {
-        var checker = CreateNewChecker();
-        PrepareChecker(vcgen.program, split, checker);
-        Contract.Assert(checker != null);
-        return Task.FromResult(checker);
-      }
-      Interlocked.Increment(ref notCreatedCheckers);
+      var checker = await checkerLine.GetItem(cancellationToken) ?? CreateNewChecker();
 
-      var source = new TaskCompletionSource<Checker>();
-      checkerWaiters.Enqueue(source);
-      return source.Task.ContinueWith(task =>
-      {
-        PrepareChecker(vcgen.program, split, task.Result);
-        Contract.Assert(task.Result != null);
-        return task.Result;
-      });
+      PrepareChecker(vcgen.program, split, checker);
+      return checker;
     }
 
+    private int createdCheckers;
     private Checker CreateNewChecker()
     {
       var log = Options.ProverLogFilePath;
-      if (log != null && !log.Contains("@PROC@") && availableCheckers.Count > 0) {
-        log = log + "." + availableCheckers.Count;
+      var index = Interlocked.Increment(ref createdCheckers) - 1;
+      if (log != null && !log.Contains("@PROC@") && index > 0) {
+        log = log + "." + index;
       } 
 
       return new Checker(this, log, Options.ProverLogFileAppend);
@@ -66,13 +48,13 @@ namespace VC
 
     public void Dispose()
     {
-      while (availableCheckers.TryPop(out var checker)) {
-        checker.Close();
-      }
       disposed = true;
+      foreach (var checker in checkerLine.ClearItems()) {
+        checker?.Close();
+      }
     }
 
-    void PrepareChecker(Program program, Split split, Checker checker)
+    void PrepareChecker(Program program, Split? split, Checker checker)
     {
       if (checker.WillingToHandle(program) && (split == null || checker.SolverOptions.RandomSeed == split.RandomSeed && !Options.Prune))
       {
@@ -93,22 +75,12 @@ namespace VC
         checker.Close();
         return;
       }
-      if (checkerWaiters.TryDequeue(out var waiter)) {
-        if (waiter.TrySetResult(checker)) {
-          return;
-        }
-      }
-
-      availableCheckers.Push(checker);
+      checkerLine.AddItem(checker);
     }
 
     public void CheckerDied()
     {
-      if (checkerWaiters.TryDequeue(out var waiter)) {
-        waiter.SetResult(CreateNewChecker());
-      } else {
-        Interlocked.Increment(ref notCreatedCheckers);
-      }
+      checkerLine.AddItem(null);
     }
   }
 }
