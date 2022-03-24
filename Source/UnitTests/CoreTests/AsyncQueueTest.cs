@@ -58,6 +58,24 @@ public class AsyncQueueTest
   }
 
   [Test]
+  public void ItemsAreKeptInOrder()
+  {
+    var queue = new AsyncQueue<int>();
+    var tasks = new List<Task<int>>();
+    for (int i = 0; i < 100; i++) {
+      tasks.Add(queue.Dequeue(CancellationToken.None));
+    }
+    for (int i = 0; i < 100; i++) {
+      queue.Enqueue(i);
+    }
+
+    var results = tasks.Select(t => t.Result).ToList();
+    for (int i = 0; i < 100; i++) {
+      Assert.AreEqual(i, results);
+    }
+  }
+
+  [Test]
   public async Task EnqueueReturnsBeforeCompletingDequeueTask()
   {
     var queue = new AsyncQueue<int>();
