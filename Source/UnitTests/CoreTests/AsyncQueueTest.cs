@@ -68,7 +68,7 @@ public class AsyncQueueTest
       await firstResultTask;
       Assert.True(false);
     }
-    catch (TaskCanceledException _) {
+    catch (TaskCanceledException) {
       Assert.True(firstResultTask.IsCanceled);
     }
     var secondResult = await secondResultTask;
