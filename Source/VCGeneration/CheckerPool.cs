@@ -29,7 +29,7 @@ namespace VC
         throw new Exception("CheckerPool was already disposed");
       }
 
-      var checker = await checkerLine.DequeueAsync(cancellationToken) ?? CreateNewChecker();
+      var checker = await checkerLine.Dequeue(cancellationToken) ?? CreateNewChecker();
 
       PrepareChecker(vcgen.program, split, checker);
       return checker;

@@ -39,7 +39,7 @@ public class AsyncQueue<T>
     }
   }
 
-  public Task<T> DequeueAsync(CancellationToken cancellationToken)
+  public Task<T> Dequeue(CancellationToken cancellationToken)
   {
     lock (this) {
       var first = items.First;
