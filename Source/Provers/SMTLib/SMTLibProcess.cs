@@ -426,6 +426,10 @@ namespace Microsoft.Boogie.SMTLib
 
     private readonly Queue<TaskCompletionSource<string>> outputReceivers = new();
 
+    /// <summary>
+    /// This asynchronous method can not be cancelled because prover output is not reusable
+    /// so once it is expected to arrive it has to be consumed to keep the output queue free of garbage.
+    /// </summary>
     Task<string> ReadProver()
     {
       return proverOutput.Dequeue(CancellationToken.None);
