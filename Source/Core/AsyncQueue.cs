@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -79,10 +80,7 @@ public class AsyncQueue<T>
   public T[] ClearItems()
   {
     lock (myLock) {
-      var result = new T[items.Count];
-      items.CopyTo(result, 0);
-      items.Clear();
-      return result;
+      return items.ToArray();
     }
   }
 }
