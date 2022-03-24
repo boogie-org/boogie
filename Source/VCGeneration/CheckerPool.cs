@@ -49,9 +49,12 @@ namespace VC
 
     public void Dispose()
     {
-      disposed = true;
-      foreach (var checker in checkerLine.ClearItems()) {
-        checker?.Close();
+      lock(checkerLine)
+      {
+        disposed = true;
+        foreach (var checker in checkerLine.ClearItems()) {
+          checker?.Close();
+        }
       }
     }
 
@@ -72,11 +75,14 @@ namespace VC
       if (checker.IsClosed) {
         throw new Exception();
       }
-      if (disposed) {
-        checker.Close();
-        return;
+
+      lock (checkerLine) {
+        if (disposed) {
+          checker.Close();
+          return;
+        }
+        checkerLine.Push(checker);
       }
-      checkerLine.Push(checker);
     }
 
     public void CheckerDied()
