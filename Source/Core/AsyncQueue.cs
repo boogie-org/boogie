@@ -44,7 +44,6 @@ public class AsyncQueue<T>
     await semaphore.WaitAsync(cancellationToken);
 
     lock (myLock) {
-
       var first = items.First!;
       var result = first.Value;
       items.RemoveFirst();
