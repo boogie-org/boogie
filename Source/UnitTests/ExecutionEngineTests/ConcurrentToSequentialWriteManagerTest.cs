@@ -35,50 +35,49 @@ public class ConcurrentToSequentialWriteManagerTest {
   [Test]
   public void ManyConcurrentWriterHandovers()
   {
-    var writer = new StringWriter();
-    var manager = new ConcurrentToSequentialWriteManager(writer);
-    Exception thread1Exception = null;
-    var amount = 1000;
-    var running = true;
+    for (int i = 0; i < 100; i++) {
+      var writer = new StringWriter();
+      var manager = new ConcurrentToSequentialWriteManager(writer);
+      Exception thread1Exception = null;
 
-    var first = manager.AppendWriter();
-    var second = manager.AppendWriter();
+      var running = true;
 
-    var thread1 = new Thread(() =>
-    {
-      try {
-        while (running) {
-          second.WriteLine("a");
+      var first = manager.AppendWriter();
+      var second = manager.AppendWriter();
+
+      var thread1 = new Thread(() =>
+      {
+        try {
+          // ReSharper disable once AccessToModifiedClosure
+          while (running) {
+            second.WriteLine("a");
+          }
         }
-      }
-      catch (Exception e) {
-        thread1Exception = e;
-      }
-    });
+        catch (Exception e) {
+          thread1Exception = e;
+        }
+      });
 
-    Exception thread2Exception = null;
-    var thread2 = new Thread(() =>
-    {
-      try {
-        for (int i = 0; i < 1000; i++) {
+      Exception thread2Exception = null;
+      var thread2 = new Thread(() =>
+      {
+        try {
+          Thread.Sleep(1);
           first.Dispose();
-          var newSecond = manager.AppendWriter();
-          first = second;
-          second = newSecond;
         }
-      }
-      catch (Exception e) {
-        thread2Exception = e;
-      }
-    });
+        catch (Exception e) {
+          thread2Exception = e;
+        }
+      });
 
-    thread1.Start();
-    thread2.Start();
-    thread2.Join();
-    running = false;
-    thread1.Join();
-    Assert.IsNull(thread1Exception);
-    Assert.IsNull(thread2Exception);
+      thread1.Start();
+      thread2.Start();
+      thread2.Join();
+      running = false;
+      thread1.Join();
+      Assert.IsNull(thread1Exception);
+      Assert.IsNull(thread2Exception);
+    }
   }
 
   [Test]

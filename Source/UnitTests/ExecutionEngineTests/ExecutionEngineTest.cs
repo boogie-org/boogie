@@ -46,16 +46,11 @@ Execution trace:
 Boogie program verifier finished with 0 verified, 2 errors
 ".ReplaceLineEndings();
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 300; i++) {
       var writer = new StringWriter();
       Parser.Parse(programString, "fakeFilename1", out var program);
       await engine.ProcessProgram(writer, program, "fakeFilename");
-      var result = writer.ToString();
-      if (!result.Equals(expected)) {
-        Console.WriteLine("Got:\n" + result);
-        Assert.True(false);
-      }
-      // Assert.AreEqual(expected, writer.ToString());
+      Assert.AreEqual(expected, writer.ToString());
     }
   }
 
