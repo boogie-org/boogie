@@ -20,43 +20,67 @@ namespace Microsoft.Boogie;
 public class AsyncQueue<T>
 {
   private readonly object myLock = new();
+  // At all times, either items or customers is empty.
   private readonly LinkedList<T> items = new();
-  private readonly SemaphoreSlim semaphore = new(0);
+  private readonly Queue<TaskCompletionSource<T>> customers = new();
 
   public void Enqueue(T value)
   {
     lock (myLock) {
+      if (TryEnqueue(value))
+      {
+        return;
+      }
+
       items.AddLast(value);
     }
-    semaphore.Release();
+  }
+
+  private bool TryEnqueue(T value)
+  {
+    while (customers.TryDequeue(out var customer)) {
+      if (customer.TrySetResult(value)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   public void Push(T value)
   {
     lock (myLock) {
+      if (TryEnqueue(value))
+      {
+        return;
+      }
       items.AddFirst(value);
     }
-    semaphore.Release();
   }
 
-  public async Task<T> Dequeue(CancellationToken cancellationToken)
+  public Task<T> Dequeue(CancellationToken cancellationToken)
   {
-    await semaphore.WaitAsync(cancellationToken);
-
     lock (myLock) {
-      var first = items.First!;
-      var result = first.Value;
-      items.RemoveFirst();
-      return result;
+      var first = items.First;
+      if (first != null) {
+        var result = first.Value;
+        items.RemoveFirst();
+        return Task.FromResult(result);
+      }
+
+      var source = new TaskCompletionSource<T>();
+      cancellationToken.Register(() => source.SetCanceled(cancellationToken));
+      customers.Enqueue(source);
+      // Ensure that the TrySetResult call in Enqueue completes immediately.
+      return source.Task.ContinueWith(t => t.Result, cancellationToken,
+        TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Current);
     }
   }
 
   public T[] ClearItems()
   {
     lock (myLock) {
-      var clearItems = items.ToArray();
-      items.Clear();
-      return clearItems;
+      return items.ToArray();
     }
   }
 }

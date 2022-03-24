@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -50,7 +49,7 @@ public class AsyncQueueTest
       await firstResultTask;
       Assert.True(false);
     }
-    catch (OperationCanceledException) {
+    catch (TaskCanceledException) {
       Assert.True(firstResultTask.IsCanceled);
     }
     var secondResult = await secondResultTask;
