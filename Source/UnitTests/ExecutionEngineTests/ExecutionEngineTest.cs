@@ -19,6 +19,42 @@ public class FakeDescription : ProofObligationDescription
 public class ExecutionEngineTest {
 
   [Test]
+  public async Task VerifyProceduresConcurrently()
+  {
+
+    var programString = @"procedure Bad(y: int)
+{
+  assert 2 == 1;
+}
+
+procedure Bad2(y: int)
+{
+  assert 2 == 3;
+}
+";
+    var options = CommandLineOptions.FromArguments();
+    options.VcsCores = 4;
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+
+    var expected = @"fakeFilename1(3,3): Error: This assertion might not hold.
+Execution trace:
+    fakeFilename1(3,3): anon0
+fakeFilename1(8,3): Error: This assertion might not hold.
+Execution trace:
+    fakeFilename1(8,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+".ReplaceLineEndings();
+
+    for (int i = 0; i < 300; i++) {
+      var writer = new StringWriter();
+      Parser.Parse(programString, "fakeFilename1", out var program);
+      await engine.ProcessProgram(writer, program, "fakeFilename");
+      Assert.AreEqual(expected, writer.ToString());
+    }
+  }
+
+  [Test]
   public async Task ConcurrentInferAndVerifyCalls() {
     var options = CommandLineOptions.FromArguments();
     options.VcsCores = 4;

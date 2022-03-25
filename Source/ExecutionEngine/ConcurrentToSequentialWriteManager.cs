@@ -26,9 +26,6 @@ public class ConcurrentToSequentialWriteManager
         var disposedWriter = writers.Dequeue();
         Writer.Write(disposedWriter.SetTargetAndGetBuffer(null));
       }
-      if (writers.Count > 0) {
-        Writer.Write(writers.Peek().SetTargetAndGetBuffer(Writer));
-      }
     }
     Writer.Flush();
   }
@@ -52,10 +49,12 @@ public class ConcurrentToSequentialWriteManager
       buffering = target == null;
     }
 
+    /// <summary>
+    /// Only called for disposed writers that aren't being written to any more.
+    /// </summary>
     public string SetTargetAndGetBuffer(TextWriter newTarget) {
-      var oldTarget = target;
+      var result = buffering ? ((StringWriter)target).ToString() : "";
       target = newTarget;
-      var result = buffering ? ((StringWriter)oldTarget).ToString() : "";
       buffering = false;
       return result;
     }
