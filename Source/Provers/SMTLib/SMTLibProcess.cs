@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Diagnostics;
 using System.IO;
 using System.Diagnostics.Contracts;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.SMTLib
@@ -19,8 +21,7 @@ namespace Microsoft.Boogie.SMTLib
     readonly Process prover;
     readonly Inspector inspector;
     readonly SMTLibProverOptions options;
-    readonly Queue<string> proverOutput = new();
-    readonly Queue<string> proverErrors = new();
+    private readonly AsyncQueue<string> proverOutput = new();
     private TextWriter toProver;
     readonly int smtProcessId;
     static int smtProcessIdSeq = 0;
@@ -425,17 +426,13 @@ namespace Microsoft.Boogie.SMTLib
 
     private readonly Queue<TaskCompletionSource<string>> outputReceivers = new();
 
+    /// <summary>
+    /// This asynchronous method can not be cancelled because prover output is not reusable
+    /// so once it is expected to arrive it has to be consumed to keep the output queue free of garbage.
+    /// </summary>
     Task<string> ReadProver()
     {
-      lock (this) {
-        if (proverOutput.TryDequeue(out var result)) {
-          return Task.FromResult(result);
-        }
-
-        var taskCompletionSource = new TaskCompletionSource<string>();
-        outputReceivers.Enqueue(taskCompletionSource);
-        return taskCompletionSource.Task;
-      }
+      return proverOutput.Dequeue(CancellationToken.None);
     }
 
     void DisposeProver()
@@ -459,13 +456,7 @@ namespace Microsoft.Boogie.SMTLib
           Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
         }
 
-        TaskCompletionSource<string> source;
-        lock (this) {
-          if (!outputReceivers.TryDequeue(out source)) {
-            proverOutput.Enqueue(e.Data);
-          }
-        }
-        source?.SetResult(e.Data);
+        proverOutput.Enqueue(e.Data);
     }
 
     void prover_ErrorDataReceived(object sender, DataReceivedEventArgs e)
