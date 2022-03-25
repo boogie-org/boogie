@@ -41,7 +41,7 @@ public class ConcurrentToSequentialWriteManager
     }
   }
 
-  class SubWriter : WriterWrapper {
+  class SubWriter : SyncWriterWrapper {
     private readonly ConcurrentToSequentialWriteManager collector;
     private StringWriter bufferWriter;
     public bool Disposed { get; private set; }
@@ -50,7 +50,7 @@ public class ConcurrentToSequentialWriteManager
       this.collector = collector;
       if (target == null) {
         bufferWriter = new StringWriter();
-        this.target = Synchronized(bufferWriter);
+        this.target = bufferWriter;
       } else {
         this.target = target;
         bufferWriter = null;
@@ -64,7 +64,7 @@ public class ConcurrentToSequentialWriteManager
       // If we are buffering, target is a `Synchronized(bufferWriter)` which locks on itself,
       // so by locking on target we're preventing concurrent writes to bufferWriter,
       // which allows us to call bufferWriter.ToString()
-      lock (target) {
+      lock (Lock) {
         if (bufferWriter == null && newTarget != target && newTarget != null) {
           throw new Exception("Can not change the target when not buffering, except to null");
         }
