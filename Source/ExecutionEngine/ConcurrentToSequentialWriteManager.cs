@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Microsoft.Boogie;
@@ -41,22 +43,34 @@ public class ConcurrentToSequentialWriteManager
 
   class SubWriter : WriterWrapper {
     private readonly ConcurrentToSequentialWriteManager collector;
-    private bool buffering;
+    private StringWriter bufferWriter;
     public bool Disposed { get; private set; }
 
-    public SubWriter(ConcurrentToSequentialWriteManager collector, TextWriter target) : base(target ?? new StringWriter()) {
+    public SubWriter(ConcurrentToSequentialWriteManager collector, TextWriter target) : base(null) {
       this.collector = collector;
-      buffering = target == null;
+      if (target == null) {
+        bufferWriter = new StringWriter();
+        this.target = Synchronized(bufferWriter);
+      } else {
+        this.target = target;
+        bufferWriter = null;
+      }
     }
 
     /// <summary>
     /// Only called for disposed writers that aren't being written to any more.
     /// </summary>
     public string SetTargetAndGetBuffer(TextWriter newTarget) {
-      var result = buffering ? ((StringWriter)target).ToString() : "";
-      target = newTarget;
-      buffering = false;
-      return result;
+      // If we are buffering, the target is a `SyncTextWriter` which locks on this, so by locking on target we're locking on the same object.
+      lock (target) {
+        if (bufferWriter == null && newTarget != target && newTarget != null) {
+          throw new Exception("Can not change the target when not buffering, except to null");
+        }
+        var result = bufferWriter?.ToString() ?? "";
+        target = newTarget;
+        bufferWriter = null;
+        return result;
+      }
     }
 
     protected override void Dispose(bool disposing) {
