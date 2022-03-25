@@ -23,7 +23,9 @@ public class ConcurrentToSequentialWriteManager
     lock (myLock) {
       while (writers.Count > 0 && writers.Peek().Disposed) {
         var disposedWriter = writers.Dequeue();
-        Writer.Write(disposedWriter.SetTargetAndGetBuffer(null));
+        lock (disposedWriter.Lock) {
+          Writer.Write(disposedWriter.SetTargetAndGetBuffer(null));
+        }
       }
       if (writers.Count > 0) {
         var subWriter = writers.Peek();
