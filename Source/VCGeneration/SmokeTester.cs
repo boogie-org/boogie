@@ -275,7 +275,7 @@ class SmokeTester
 
     parent.CurrentLocalVariables = run.Implementation.LocVars;
     parent.PassifyImpl(run, out var mvInfo);
-    Checker checker = await parent.CheckerPool.FindCheckerFor(parent);
+    Checker checker = await parent.CheckerPool.FindCheckerFor(parent, null, CancellationToken.None);
     Contract.Assert(checker != null);
 
     ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
