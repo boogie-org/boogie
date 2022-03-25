@@ -26,7 +26,10 @@ public class ConcurrentToSequentialWriteManager
         Writer.Write(disposedWriter.SetTargetAndGetBuffer(null));
       }
       if (writers.Count > 0) {
-        Writer.Write(writers.Peek().SetTargetAndGetBuffer(Writer));
+        var subWriter = writers.Peek();
+        lock (subWriter.Lock) {
+          Writer.Write(subWriter.SetTargetAndGetBuffer(Writer));
+        }
       }
     }
     Writer.Flush();
@@ -45,6 +48,8 @@ public class ConcurrentToSequentialWriteManager
     private readonly ConcurrentToSequentialWriteManager collector;
     private StringWriter bufferWriter;
     public bool Disposed { get; private set; }
+
+    public new object Lock => base.Lock;
 
     public SubWriter(ConcurrentToSequentialWriteManager collector, TextWriter target) : base(null) {
       this.collector = collector;
