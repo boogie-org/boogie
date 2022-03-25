@@ -58,7 +58,9 @@ public class ConcurrentToSequentialWriteManager
     /// Only called for disposed writers that aren't being written to any more.
     /// </summary>
     public string SetTargetAndGetBuffer(TextWriter newTarget) {
-      // If we are buffering, the target is a `SyncTextWriter` which locks on this, so by locking on target we're locking on the same object.
+      // If we are buffering, the target is a `SyncTextWriter` which locks on itself,
+      // so by locking on target we're locking on the same object,
+      // which allows us to wait for writes to this TextWriter to complete before calling bufferWriter.ToString()
       lock (target) {
         if (bufferWriter == null && newTarget != target && newTarget != null) {
           throw new Exception("Can not change the target when not buffering, except to null");
