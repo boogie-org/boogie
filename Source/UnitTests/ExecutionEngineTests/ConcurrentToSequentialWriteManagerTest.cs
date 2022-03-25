@@ -12,7 +12,7 @@ namespace ExecutionEngineTests;
 public class ConcurrentToSequentialWriteManagerTest {
 
   [Test]
-  public async Task WritesOnlyHappenAfterDispose() {
+  public async Task WritesToTheFirstWriterAreInstant() {
     var writer = new StringWriter();
     var manager = new ConcurrentToSequentialWriteManager(writer);
 
@@ -27,9 +27,9 @@ public class ConcurrentToSequentialWriteManagerTest {
     await first.DisposeAsync();
     await second.WriteLineAsync("secondLine2");
     await third.WriteLineAsync("thirdLine1");
-    Assert.AreEqual("firstLine1\n", writer.ToString().Replace("\r\n", "\n"));
-    await second.DisposeAsync();
     Assert.AreEqual("firstLine1\nsecondLine1\nsecondLine2\n", writer.ToString().Replace("\r\n", "\n"));
+    await second.DisposeAsync();
+    Assert.AreEqual("firstLine1\nsecondLine1\nsecondLine2\nthirdLine1\n", writer.ToString().Replace("\r\n", "\n"));
   }
 
   [Test]

@@ -25,6 +25,9 @@ public class ConcurrentToSequentialWriteManager
         var disposedWriter = writers.Dequeue();
         Writer.Write(disposedWriter.SetTargetAndGetBuffer(null));
       }
+      if (writers.Count > 0) {
+        Writer.Write(writers.Peek().SetTargetAndGetBuffer(Writer));
+      }
     }
     Writer.Flush();
   }
