@@ -287,7 +287,7 @@ namespace Microsoft.Boogie
       }
       
       if (Options.PrintFile != null) {
-        PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
+        PrintBplFile(Options.PrintFile, program, false, false, Options.PrettyPrint);
       }
 
       PipelineOutcome outcome = ResolveAndTypecheck(program, bplFileName, out var civlTypeChecker);

@@ -3982,9 +3982,6 @@ namespace Microsoft.Boogie
         Contract.Assert(e != null);
         e.Emit(stream, level);
       }
-
-      stream.WriteLine();
-      stream.WriteLine();
     }
 
     public override void Register(ResolutionContext rc)
@@ -4577,9 +4574,6 @@ namespace Microsoft.Boogie
       }
 
       stream.WriteLine(level, "{0}", '}');
-
-      stream.WriteLine();
-      stream.WriteLine();
     }
 
     public override void Register(ResolutionContext rc)

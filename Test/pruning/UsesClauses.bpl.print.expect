@@ -17,8 +17,14 @@ procedure hasAxioms();
   ensures ConsumerFunc(4) == 3;
   ensures four == 4;
 
-
-
 implementation hasAxioms()
+{
+}
+
+procedure doesNotHaveAxioms();
+  ensures ConsumerFunc(4) == 3;
+  ensures four == 4;
+
+implementation doesNotHaveAxioms()
 {
 }
