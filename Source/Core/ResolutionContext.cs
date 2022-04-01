@@ -118,9 +118,12 @@ namespace Microsoft.Boogie
 
   public class ResolutionContext : CheckingContext
   {
-    public ResolutionContext(IErrorSink errorSink)
+    public CoreOptions Options { get; }
+
+    public ResolutionContext(IErrorSink errorSink, CoreOptions options)
       : base(errorSink)
     {
+      this.Options = options;
     }
     
     // user-defined types, which can be either TypeCtorDecl or TypeSynonymDecl
@@ -740,12 +743,14 @@ namespace Microsoft.Boogie
 
   public class TypecheckingContext : CheckingContext
   {
+    public CoreOptions Options { get; }
     public List<IdentifierExpr> Frame; // used in checking the assignment targets of implementation bodies
     public bool Yields;
 
-    public TypecheckingContext(IErrorSink errorSink)
+    public TypecheckingContext(IErrorSink errorSink, CoreOptions options)
       : base(errorSink)
     {
+      this.Options = options;
     }
 
     public bool InFrame(Variable v)

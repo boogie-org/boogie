@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics.Contracts;
+using System.Threading;
 using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Microsoft.Boogie
@@ -94,14 +95,14 @@ namespace Microsoft.Boogie
 
     public abstract BinderKind Kind { get; }
 
-    protected static bool CompareAttributesAndTriggers = false;
+    protected static ThreadLocal<bool> CompareAttributesAndTriggers = new(() => false);
 
     public static bool EqualWithAttributesAndTriggers(object a, object b)
     {
-      CompareAttributesAndTriggers = true;
+      CompareAttributesAndTriggers.Value = true;
       var res = object.Equals(a, b);
-      Contract.Assert(CompareAttributesAndTriggers);
-      CompareAttributesAndTriggers = false;
+      Contract.Assert(CompareAttributesAndTriggers.Value);
+      CompareAttributesAndTriggers.Value = false;
       return res;
     }
 
@@ -129,7 +130,7 @@ namespace Microsoft.Boogie
 
       return this.TypeParameters.SequenceEqual(other.TypeParameters)
              && this.Dummies.SequenceEqual(other.Dummies)
-             && (!CompareAttributesAndTriggers || object.Equals(this.Attributes, other.Attributes))
+             && (!CompareAttributesAndTriggers.Value || object.Equals(this.Attributes, other.Attributes))
              && object.Equals(this.Body, other.Body);
     }
 
@@ -252,7 +253,7 @@ namespace Microsoft.Boogie
 
         // establish a canonical order of the type parameters
         this.TypeParameters = Type.SortTypeParams(TypeParameters,
-          new List<Type>(Dummies.Select(Item => Item.TypedIdent.Type).ToArray()), null);
+          Dummies.Select(Item => Item.TypedIdent.Type).ToList(), null);
       }
       finally
       {
@@ -312,7 +313,7 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
       List<TypeVariable> /*!*/
-        dummyParameters = Type.FreeVariablesIn(new List<Type>(Dummies.Select(Item => Item.TypedIdent.Type).ToArray()));
+        dummyParameters = Type.FreeVariablesIn(Dummies.Select(Item => Item.TypedIdent.Type).ToList());
       Contract.Assert(dummyParameters != null);
       List<TypeVariable> /*!*/
         unmentionedParameters = new List<TypeVariable>();
@@ -1114,7 +1115,7 @@ namespace Microsoft.Boogie
       else
       {
         return this.BinderEquals(obj) &&
-               (!CompareAttributesAndTriggers || object.Equals(Triggers, other.Triggers));
+               (!CompareAttributesAndTriggers.Value || object.Equals(Triggers, other.Triggers));
       }
     }
 

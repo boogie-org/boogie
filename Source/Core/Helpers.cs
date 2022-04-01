@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie
@@ -252,10 +254,10 @@ namespace Microsoft.Boogie
 
     private static readonly DateTime StartUp = DateTime.UtcNow;
 
-    public static void ExtraTraceInformation(string point)
+    public static void ExtraTraceInformation(CoreOptions options, string point)
     {
       Contract.Requires(point != null);
-      if (CommandLineOptions.Clo.TraceTimes)
+      if (options.TraceTimes)
       {
         DateTime now = DateTime.UtcNow;
         TimeSpan timeSinceStartUp = now - StartUp;
@@ -263,18 +265,30 @@ namespace Microsoft.Boogie
       }
     }
 
-    // Substitute @PROC@ in a filename with the given descName
-    public static string SubstituteAtPROC(string descName, string fileName)
+    private static readonly ConcurrentDictionary<string, int> UsedLogNames = new();
+    public static (string fileName, bool reused) GetLogFilename(string descriptiveName, string filename, bool allowReuse)
     {
-      Contract.Requires(fileName != null);
-      Contract.Requires(descName != null);
+      filename = SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
+
+      var reused = false;
+      var index = UsedLogNames.AddOrUpdate(filename, 0, (_, i) => {
+        reused = allowReuse;
+        return allowReuse ? i : i + 1;
+      });
+      var filenameWithIndex = index > 0 ? filename + "." + index : filename;
+
+      return (filenameWithIndex, reused);
+    }
+
+    private static string SubstituteAtPROC(string descriptiveName, string filename)
+    {
+      Contract.Requires(filename != null);
+      Contract.Requires(descriptiveName != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      System.Text.StringBuilder /*!*/
-        sb =
-          new System.Text.StringBuilder(descName.Length);
+      var /*!*/ sb = new System.Text.StringBuilder(descriptiveName.Length);
       // quote the name, characters like ^ cause trouble in CMD
       // while $ could cause trouble in SH
-      foreach (char c in descName)
+      foreach (char c in descriptiveName)
       {
         if (Char.IsLetterOrDigit(c) || c == '.')
         {
@@ -291,13 +305,13 @@ namespace Microsoft.Boogie
       // do it by truncating the @PROC@ replacement, which leaves unchanged
       // any filename extension specified by the user.  We base our
       // calculations on that there is at most one occurrence of @PROC@.
-      if (180 <= fileName.Length - 6 + pn.Length)
+      if (180 <= filename.Length - 6 + pn.Length)
       {
-        pn = pn.Substring(0, Math.Max(180 - (fileName.Length - 6), 0)) + "-n" +
+        pn = pn.Substring(0, Math.Max(180 - (filename.Length - 6), 0)) + "-n" +
              System.Threading.Interlocked.Increment(ref sequenceId);
       }
 
-      return fileName.Replace("@PROC@", pn);
+      return filename.Replace("@PROC@", pn);
     }
 
     private static int sequenceId = -1;

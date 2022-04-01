@@ -22,6 +22,8 @@ namespace Microsoft.Boogie
       this.failurePreservationCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
     }
 
+    private ConcurrencyOptions Options => civlTypeChecker.Options;
+
     public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
       MoverCheck moverChecking = new MoverCheck(civlTypeChecker, decls);
@@ -176,7 +178,7 @@ namespace Microsoft.Boogie
       };
       foreach (var lemma in civlTypeChecker.commutativityHints.GetLemmas(first, second))
       {
-        cmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(lemma.function, lemma.args.ToArray())));
+        cmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(Options, lemma.function, lemma.args.ToArray())));
       }
       cmds.Add(commutativityCheck);
 

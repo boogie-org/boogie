@@ -1,17 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.IO;
-using System.Linq;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
-using System.Text.RegularExpressions;
+using System.IO;
+using VC;
 
 namespace Microsoft.Boogie
 {
+
   public class CommandLineOptionEngine
   {
-    public readonly string ToolName;
-    public readonly string DescriptiveToolName;
+    public string ToolName { get; set; }
+    public string DescriptiveToolName { get; set; }
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -23,8 +24,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(this._fileTimestamp != null);
     }
 
-    private string /*!*/
-      _environment = "";
+    private string /*!*/ _environment = "";
 
     public string Environment
     {
@@ -40,8 +40,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private readonly List<string /*!*/> /*!*/
-      _files = new List<string /*!*/>();
+    private readonly List<string /*!*/> /*!*/ _files = new List<string /*!*/>();
 
     public IList<string /*!*/> /*!*/ Files
     {
@@ -111,14 +110,14 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void ExpandFilename(ref string pattern, string logPrefix, string fileTimestamp)
+    public void ExpandFilename(string pattern, Action<string> setPattern, string logPrefix, string fileTimestamp)
     {
       if (pattern != null)
       {
         pattern = pattern.Replace("@PREFIX@", logPrefix).Replace("@TIME@", fileTimestamp);
         string fn = Files.Count == 0 ? "" : Files[Files.Count - 1];
         fn = Util.EscapeFilename(fn);
-        pattern = pattern.Replace("@FILE@", fn);
+        setPattern(pattern.Replace("@FILE@", fn));
       }
     }
 
@@ -142,258 +141,7 @@ namespace Microsoft.Boogie
       return false; // unrecognized option
     }
 
-    protected class CommandLineParseState
-    {
-      public string s;
-      public bool hasColonArgument;
-
-      public readonly string[] /*!*/
-        args;
-
-      public int i;
-      public int nextIndex;
-      public bool EncounteredErrors;
-      public readonly string ToolName;
-
-      [ContractInvariantMethod]
-      void ObjectInvariant()
-      {
-        Contract.Invariant(args != null);
-        Contract.Invariant(0 <= i && i <= args.Length);
-        Contract.Invariant(0 <= nextIndex && nextIndex <= args.Length);
-      }
-
-
-      public CommandLineParseState(string[] args, string toolName)
-      {
-        Contract.Requires(args != null);
-        Contract.Requires(Contract.ForAll(0, args.Length, i => args[i] != null));
-        Contract.Requires(toolName != null);
-        Contract.Ensures(this.args == args);
-        this.ToolName = toolName;
-        this.s = null; // set later by client
-        this.hasColonArgument = false; // set later by client
-        this.args = args;
-        this.i = 0;
-        this.nextIndex = 0; // set later by client
-        this.EncounteredErrors = false;
-      }
-
-      public bool CheckBooleanFlag(string flagName, ref bool flag, bool valueWhenPresent)
-      {
-        Contract.Requires(flagName != null);
-        //modifies nextIndex, encounteredErrors, Console.Error.*;
-        bool flagPresent = false;
-
-        if ((s == "/" + flagName || s == "-" + flagName) && ConfirmArgumentCount(0))
-        {
-          flag = valueWhenPresent;
-          flagPresent = true;
-        }
-
-        return flagPresent;
-      }
-
-      public bool CheckBooleanFlag(string flagName, ref bool flag)
-      {
-        Contract.Requires(flagName != null);
-        //modifies nextIndex, encounteredErrors, Console.Error.*;
-        return CheckBooleanFlag(flagName, ref flag, true);
-      }
-
-      /// <summary>
-      /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
-      /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
-      /// </summary>
-      public bool GetNumericArgument(ref bool arg)
-      {
-        int intArg = 0;
-        var result = GetNumericArgument(ref intArg, x => x < 2);
-        if (result) {
-          arg = intArg != 0;
-        }
-        return result;
-      }
-      
-      /// <summary>
-      /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
-      /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
-      /// </summary>
-      public bool GetNumericArgument(ref int arg)
-      {
-        //modifies nextIndex, encounteredErrors, Console.Error.*;
-        return GetNumericArgument(ref arg, a => 0 <= a);
-      }
-
-      public bool GetUnsignedNumericArgument(ref uint arg, Predicate<uint> filter)
-      {
-        if (this.ConfirmArgumentCount(1))
-        {
-          try
-          {
-            Contract.Assume(args[i] != null);
-            Contract.Assert(args[i] is string); // needed to prove args[i].IsPeerConsistent
-            uint d = Convert.ToUInt32(this.args[this.i]);
-            if (filter == null || filter(d))
-            {
-              arg = d;
-              return true;
-            }
-          }
-          catch (System.FormatException)
-          {
-          }
-          catch (System.OverflowException)
-          {
-          }
-        }
-        else
-        {
-          return false;
-        }
-
-        Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
-        return false;
-      }
-
-      /// <summary>
-      /// If there is one argument and the filtering predicate holds, then set "arg" to that number and return "true".
-      /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
-      /// </summary>
-      public bool GetNumericArgument(ref int arg, Predicate<int> filter)
-      {
-        Contract.Requires(filter != null);
-
-        if (this.ConfirmArgumentCount(1))
-        {
-          try
-          {
-            Contract.Assume(args[i] != null);
-            Contract.Assert(args[i] is string); // needed to prove args[i].IsPeerConsistent
-            int d = Convert.ToInt32(this.args[this.i]);
-            if (filter == null || filter(d))
-            {
-              arg = d;
-              return true;
-            }
-          }
-          catch (System.FormatException)
-          {
-          }
-          catch (System.OverflowException)
-          {
-          }
-        }
-        else
-        {
-          return false;
-        }
-
-        Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
-        return false;
-      }
-
-      /// <summary>
-      /// If there is one argument and it is a non-negative integer less than "limit",
-      /// then set "arg" to that number and return "true".
-      /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
-      /// </summary>
-      public bool GetNumericArgument(ref int arg, int limit)
-      {
-        Contract.Requires(this.i < args.Length);
-        Contract.Ensures(Math.Min(arg, 0) <= Contract.ValueAtReturn(out arg) &&
-                         Contract.ValueAtReturn(out arg) < limit);
-        //modifies nextIndex, encounteredErrors, Console.Error.*;
-        int a = arg;
-        if (!GetNumericArgument(ref a))
-        {
-          return false;
-        }
-        else if (a < limit)
-        {
-          arg = a;
-          return true;
-        }
-        else
-        {
-          Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
-          return false;
-        }
-      }
-
-      /// <summary>
-      /// If there is one argument and it is a non-negative real, then set "arg" to that number and return "true".
-      /// Otherwise, emit an error message, leave "arg" unchanged, and return "false".
-      /// </summary>
-      public bool GetNumericArgument(ref double arg)
-      {
-        Contract.Ensures(Contract.ValueAtReturn(out arg) >= 0);
-        //modifies nextIndex, encounteredErrors, Console.Error.*;
-        if (this.ConfirmArgumentCount(1))
-        {
-          try
-          {
-            Contract.Assume(args[i] != null);
-            Contract.Assert(args[i] is string); // needed to prove args[i].IsPeerConsistent
-            double d = Convert.ToDouble(this.args[this.i]);
-            if (0 <= d)
-            {
-              arg = d;
-              return true;
-            }
-          }
-          catch (System.FormatException)
-          {
-          }
-          catch (System.OverflowException)
-          {
-          }
-        }
-        else
-        {
-          return false;
-        }
-
-        Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
-        return false;
-      }
-
-      public bool ConfirmArgumentCount(int argCount)
-      {
-        Contract.Requires(0 <= argCount);
-        //modifies nextIndex, encounteredErrors, Console.Error.*;
-        Contract.Ensures(Contract.Result<bool>() ==
-                         (!(hasColonArgument && argCount != 1) && !(args.Length < i + argCount)));
-        if (hasColonArgument && argCount != 1)
-        {
-          Error("\"{0}\" cannot take a colon argument", s);
-          nextIndex = args.Length;
-          return false;
-        }
-        else if (args.Length < i + argCount)
-        {
-          Error("\"{0}\" expects {1} argument{2}", s, argCount.ToString(), (string) (argCount == 1 ? "" : "s"));
-          nextIndex = args.Length;
-          return false;
-        }
-        else
-        {
-          nextIndex = i + argCount;
-          return true;
-        }
-      }
-
-      public void Error(string message, params string[] args)
-      {
-        Contract.Requires(args != null);
-        Contract.Requires(message != null);
-        //modifies encounteredErrors, Console.Error.*;
-        Console.Error.WriteLine("{0}: Error: {1}", ToolName, String.Format(message, args));
-        EncounteredErrors = true;
-      }
-    }
-
-    public virtual string Help =>
+    protected virtual string HelpHeader =>
       $"Usage: {ToolName} [ option ... ] [ filename ... ]" + @"
 
   ---- General options -------------------------------------------------------
@@ -401,6 +149,11 @@ namespace Microsoft.Boogie
   /version      print the " + ToolName + @" version number
   /help         print this message
   /attrHelp     print a message about supported declaration attributes";
+
+    protected virtual string HelpBody => "";
+
+    public virtual string Help =>
+      HelpHeader + HelpBody;
 
     public virtual string AttributeHelp => "";
 
@@ -507,35 +260,31 @@ namespace Microsoft.Boogie
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
-  public class CommandLineOptions : CommandLineOptionEngine, SMTLibOptions
+  public class CommandLineOptions : CommandLineOptionEngine, ExecutionEngineOptions
   {
     public static CommandLineOptions FromArguments(params string[] arguments)
     {
-      var result = new CommandLineOptions();
+      return FromArguments(new ConsolePrinter(), arguments);
+    }
+
+    public static CommandLineOptions FromArguments(OutputPrinter printer, params string[] arguments) {
+      var result = new CommandLineOptions(printer);
       result.Parse(arguments);
       return result;
     }
-    
-    public CommandLineOptions()
-      : base("Boogie", "Boogie program verifier")
-    {
+
+    public CommandLineOptions(OutputPrinter printer)
+      : this("Boogie", "Boogie program verifier", printer) {
     }
 
-    protected CommandLineOptions(string toolName, string descriptiveName)
+    protected CommandLineOptions(string toolName, string descriptiveName, OutputPrinter printer)
       : base(toolName, descriptiveName)
     {
       Contract.Requires(toolName != null);
       Contract.Requires(descriptiveName != null);
-    }
-
-    private static CommandLineOptions clo;
-
-    public static CommandLineOptions /*!*/ Clo => clo;
-
-    public static void Install(CommandLineOptions options)
-    {
-      Contract.Requires(options != null);
-      clo = options;
+      Contract.Requires(printer.Options == null);
+      Printer = printer;
+      printer.Options = this;
     }
 
     // Flags and arguments
@@ -546,7 +295,7 @@ namespace Microsoft.Boogie
                                   StratifiedInlining > 0 && !StratifiedInliningWithoutModels;
 
     public bool ProduceModel => ExplainHoudini || UseProverEvaluate || ExpectingModel;
-    
+
     public bool RunningBoogieFromCommandLine { get; set; }
 
     [ContractInvariantMethod]
@@ -558,10 +307,10 @@ namespace Microsoft.Boogie
                          3); // 0 = print only structured,  1 = both structured and unstructured,  2 = only unstructured
     }
 
-    public int VerifySnapshots = -1;
-    public bool VerifySeparately = false;
-    public string PrintFile = null;
-    public string PrintPrunedFile = null;
+    public int VerifySnapshots { get; set; } = -1;
+    public bool VerifySeparately { get; set; }
+    public string PrintFile { get; set; }
+    public string PrintPrunedFile { get; set; }
 
     /**
      * Whether to emit {:qid}, {:skolemid} and set-info :boogie-vc-id
@@ -571,46 +320,50 @@ namespace Microsoft.Boogie
       get => emitDebugInformation;
       set => emitDebugInformation = value;
     }
-    
+
     public int PrintUnstructured {
       get => printUnstructured;
       set => printUnstructured = value;
     }
 
-    public bool UseBaseNameForFileName = false;
+    public bool UseBaseNameForFileName { get; set; }
 
     public bool PrintDesugarings {
       get => printDesugarings;
       set => printDesugarings = value;
     }
 
-    public bool PrintLambdaLifting = false;
-    public bool FreeVarLambdaLifting = false;
-    public string ProverLogFilePath = null;
-    public bool ProverLogFileAppend = false;
+    public bool PrintLambdaLifting { get; set; }
+    public bool FreeVarLambdaLifting { get; set; }
+    public string ProverLogFilePath { get; set; }
+    public bool ProverLogFileAppend { get; set; }
 
     public bool PrintInstrumented {
       get => printInstrumented;
       set => printInstrumented = value;
     }
 
-    public bool InstrumentWithAsserts = false;
-    public string ProverPreamble { get; set; }= null;
-    public bool WarnNotEliminatedVars = false;
-    
+    public bool InstrumentWithAsserts
+    {
+      get;
+      set;
+    }
+    public string ProverPreamble { get; set; }
+    public bool WarnNotEliminatedVars { get; set; }
+
     /**
      * Pruning will remove any top-level Boogie declarations that are not accessible by the implementation that is about to be verified.
      *
      * # Why pruning?
      * Without pruning, a change to any part of a Boogie program has the potential to affect the verification of any other part of the program.
-     * 
+     *
      * When pruning is used, a declaration of a Boogie program can be changed with the guarantee that the verification of
      * implementations that do not depend on the modified declaration, remains unchanged.
      *
      * # How to use pruning
      * Pruning depends on the dependency graph of Boogie declarations.
      * This graph must contain both incoming and outgoing edges for axioms.
-     * 
+     *
      * Outgoing edges for axioms are detected automatically:
      * an axiom has an outgoing edge to each declaration that it references.
      *
@@ -629,12 +382,12 @@ namespace Microsoft.Boogie
      *   ensures F(x) - x == x
      * { }
      * ```
-     * 
+     *
      * When verifying FMultipliedByTwo, pruning will remove G and its axiom, but not F and its axiom.
      *
      * Axioms defined in a uses clause have an incoming edge from the clause's declaration.
      * Uses clauses can be placed on functions and constants.
-     * 
+     *
      * Adding the {:include_dep} attribute to an axiom will give it an incoming edge from each declaration that it references.
      * The {:include_dep} attribute is useful in a migration scenario.
      * When turning on pruning in a Boogie program with many axioms,
@@ -649,26 +402,20 @@ namespace Microsoft.Boogie
      * The merge node is traversable in the reachability analysis only if each of its incoming edges has been reached.
      *
      */
-    public bool Prune = false;
+    public bool Prune { get; set; }
 
-    public enum InstrumentationPlaces
-    {
-      LoopHeaders,
-      Everywhere
-    }
-
-    public InstrumentationPlaces InstrumentInfer = InstrumentationPlaces.LoopHeaders;
+    public CoreOptions.InstrumentationPlaces InstrumentInfer { get; set; } = CoreOptions.InstrumentationPlaces.LoopHeaders;
 
     public int? RandomSeed { get; set; }
-    
+
     public bool PrintWithUniqueASTIds {
       get => printWithUniqueAstIds;
       set => printWithUniqueAstIds = value;
     }
 
-    private string XmlSinkFilename = null;
-    [Peer] public XmlSink XmlSink = null;
-    public bool Wait = false;
+    private string XmlSinkFilename { get; set; }
+    [Peer] public XmlSink XmlSink { get; set; }
+    public bool Wait { get; set; }
 
     public bool Trace {
       get => trace;
@@ -680,7 +427,7 @@ namespace Microsoft.Boogie
       get => normalizeNames;
       set => normalizeNames = value;
     }
-    
+
     public bool NormalizeDeclarationOrder
     {
       get => normalizeDeclarationOrder;
@@ -692,8 +439,10 @@ namespace Microsoft.Boogie
     public bool ProduceUnsatCores => PrintNecessaryAssumes || EnableUnSatCoreExtract == 1 ||
                                      ContractInfer && (UseUnsatCoreForContractInfer || ExplainHoudini);
 
-    public bool TraceTimes = false;
-    public bool TraceProofObligations = false;
+    public bool BatchModeSolver { get; set; }
+
+    public bool TraceTimes { get; set; }
+    public bool TraceProofObligations { get; set; }
 
     public bool TraceCachingForTesting
     {
@@ -710,16 +459,16 @@ namespace Microsoft.Boogie
       get { return TraceCaching == 3; }
     }
 
-    internal int TraceCaching = 0;
-    public bool NoResolve = false;
-    public bool NoTypecheck = false;
-    public bool OverlookBoogieTypeErrors = false;
-    public bool Verify = true;
-    public bool TraceVerify = false;
+    internal int TraceCaching { get; set; }
+    public bool NoResolve { get; set; }
+    public bool NoTypecheck { get; set; }
+    public bool OverlookBoogieTypeErrors { get; set; }
+    public bool Verify { get; set; } = true;
+    public bool TraceVerify { get; set; }
 
     public int /*(0:3)*/
-      ErrorTrace = 1;
-    
+      ErrorTrace { get; set; } = 1;
+
     public bool IntraproceduralInfer { get; set; }= true;
 
     public bool ContractInfer {
@@ -737,33 +486,33 @@ namespace Microsoft.Boogie
       set => reverseHoudiniWorklist = value;
     }
 
-    public bool ConcurrentHoudini  { get; set; } = false;
-    public bool ModifyTopologicalSorting  { get; set; } = false;
-    public bool DebugConcurrentHoudini  { get; set; } = false;
+    public bool ConcurrentHoudini  { get; set; }
+    public bool ModifyTopologicalSorting  { get; set; }
+    public bool DebugConcurrentHoudini  { get; set; }
 
     public bool HoudiniUseCrossDependencies {
       get => houdiniUseCrossDependencies;
       set => houdiniUseCrossDependencies = value;
     }
 
-    public string StagedHoudini  { get; set; } = null;
-    public bool DebugStagedHoudini  { get; set; } = false;
-    public bool StagedHoudiniReachabilityAnalysis  { get; set; } = false;
-    public bool StagedHoudiniMergeIgnoredAnnotations  { get; set; } = false;
+    public string StagedHoudini  { get; set; }
+    public bool DebugStagedHoudini  { get; set; }
+    public bool StagedHoudiniReachabilityAnalysis  { get; set; }
+    public bool StagedHoudiniMergeIgnoredAnnotations  { get; set; }
 
     public int StagedHoudiniThreads {
       get => stagedHoudiniThreads;
       set => stagedHoudiniThreads = value;
     }
 
-    public string VariableDependenceIgnore  { get; set; } = null;
+    public string VariableDependenceIgnore  { get; set; }
 
     public bool UseUnsatCoreForContractInfer {
       get => useUnsatCoreForContractInfer;
       set => useUnsatCoreForContractInfer = value;
     }
 
-    public bool PrintAssignment = false;
+    public bool PrintAssignment  { get; set; }
 
     // TODO(wuestholz): Add documentation for this flag.
     public bool PrintNecessaryAssumes {
@@ -771,19 +520,18 @@ namespace Microsoft.Boogie
       set => printNecessaryAssumes = value;
     }
 
-    public int InlineDepth = -1;
+    public int InlineDepth  { get; set; } = -1;
 
     public bool UseProverEvaluate {
       get => useProverEvaluate;
       set => useProverEvaluate = value;
     } // Use ProverInterface's Evaluate method, instead of model to get variable values
 
-    public bool SoundnessSmokeTest = false;
-    public int KInductionDepth = -1;
-    public int EnableUnSatCoreExtract { get; set; }= 0;
+    public bool SoundnessSmokeTest  { get; set; }
+    public int KInductionDepth { get; set; } = -1;
+    public int EnableUnSatCoreExtract { get; set; }
 
-    private string /*!*/
-      _logPrefix = "";
+    private string /*!*/ _logPrefix = "";
 
     public string LogPrefix
     {
@@ -799,37 +547,20 @@ namespace Microsoft.Boogie
       }
     }
 
-    public bool PrettyPrint = true;
+    public bool PrettyPrint { get; set; } = true;
 
-    public enum ProverWarnings
-    {
-      None,
-      Stdout,
-      Stderr
-    }
+    public CoreOptions.ProverWarnings PrintProverWarnings { get; set; } = CoreOptions.ProverWarnings.None;
 
-    public ProverWarnings PrintProverWarnings = ProverWarnings.None;
 
-    public enum SubsumptionOption
-    {
-      Never,
-      NotForQuantifiers,
-      Always
-    }
+    public CoreOptions.SubsumptionOption UseSubsumption { get; set; } = CoreOptions.SubsumptionOption.Always;
 
-    public SubsumptionOption UseSubsumption = SubsumptionOption.Always;
+    public bool AlwaysAssumeFreeLoopInvariants { get; set; }
 
-    public bool AlwaysAssumeFreeLoopInvariants = false;
+    public ExecutionEngineOptions.ShowEnvironment ShowEnv { get; set; } = ExecutionEngineOptions.ShowEnvironment.DuringPrint;
 
-    public enum ShowEnvironment
-    {
-      Never,
-      DuringPrint,
-      Always
-    }
+    public OutputPrinter Printer { get; set;  }
 
-    public ShowEnvironment ShowEnv = ShowEnvironment.DuringPrint;
-    public bool ShowVerifiedProcedureCount = true;
+    public bool ShowVerifiedProcedureCount { get; set; } = true;
 
     [ContractInvariantMethod]
     void ObjectInvariant3()
@@ -841,27 +572,27 @@ namespace Microsoft.Boogie
       Contract.Invariant(cce.NonNullElements(this.ProverOptions));
     }
 
-    public int LoopUnrollCount = -1; // -1 means don't unroll loops
-    public bool SoundLoopUnrolling = false;
-    public int PrintErrorModel { get; set; } = 0;
-    public string PrintErrorModelFile = null;
+    public int LoopUnrollCount { get; set; } = -1; // -1 means don't unroll loops
+    public bool SoundLoopUnrolling { get; set; }
+    public int PrintErrorModel { get; set; }
+    private string printErrorModelFile;
 
-    public string /*?*/ ModelViewFile { get; set; } = null;
+    public string /*?*/ ModelViewFile { get; set; }
 
     public int EnhancedErrorMessages {
       get => enhancedErrorMessages;
       set => enhancedErrorMessages = value;
     }
 
-    public string PrintCFGPrefix = null;
-    public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
+    public string PrintCFGPrefix { get; set; }
+    public bool ForceBplErrors { get; set; } = false; // if true, boogie error is shown even if "msg" attribute is present
 
     public bool UseArrayTheory {
       get => useArrayTheory;
       set => useArrayTheory = value;
     }
-    
-    public bool RelaxFocus = false;
+
+    public bool RelaxFocus { get; set; }
 
     public bool RunDiagnosticsOnTimeout {
       get => runDiagnosticsOnTimeout;
@@ -883,16 +614,18 @@ namespace Microsoft.Boogie
       set => siBoolControlVc = value;
     }
 
-    public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
+    public TextWriter ModelWriter { get; private set; }
+
+    public bool ExpandLambdas { get; set; } = true; // not useful from command line, only to be set to false programatically
 
     public bool DoModSetAnalysis {
       get => doModSetAnalysis;
       set => doModSetAnalysis = value;
     }
 
-    public bool UseAbstractInterpretation  { get; set; } = false;
+    public bool UseAbstractInterpretation { get; set; }
 
-    public string CivlDesugaredFile  { get; set; } = null;
+    public string CivlDesugaredFile { get; set; }
 
     public bool TrustMoverTypes {
       get => trustMoverTypes;
@@ -904,19 +637,20 @@ namespace Microsoft.Boogie
       set => trustNoninterference = value;
     }
 
-    public int TrustLayersUpto = -1;
-    public int TrustLayersDownto = int.MaxValue;
+    public int TrustLayersUpto { get; set; } = -1;
+    public int TrustLayersDownto { get; set; } = int.MaxValue;
 
     public bool TrustInductiveSequentialization {
       get => trustInductiveSequentialization;
       set => trustInductiveSequentialization = value;
     }
 
-    public bool RemoveEmptyBlocks = true;
-    public bool CoalesceBlocks = true;
-    public bool PruneInfeasibleEdges = true;
+    public bool RemoveEmptyBlocks { get; set; } = true;
+    IConditionGenerationPrinter VCGenOptions.Printer => Printer;
+    public bool CoalesceBlocks { get; set; } = true;
+    public bool PruneInfeasibleEdges { get; set; } = true;
 
-    [Rep] public ProverFactory TheProverFactory;
+    [Rep] public ProverFactory TheProverFactory { get; set; }
     public string ProverDllName;
 
     public bool ProverHelpRequested {
@@ -924,7 +658,7 @@ namespace Microsoft.Boogie
       set => proverHelpRequested = value;
     }
 
-    public List<string> ProverOptions  { get; set; } = new List<string>();
+    public List<string> ProverOptions { get; set; } = new();
 
     private int bracketIdsInVC = -1; // -1 - not specified, 0 - no, 1 - yes
 
@@ -942,34 +676,34 @@ namespace Microsoft.Boogie
       }
     }
 
-    public uint TimeLimit = 0; // 0 means no limit
-    public uint ResourceLimit = 0; // default to 0
-    public uint SmokeTimeout = 10; // default to 10s
+    public uint TimeLimit { get; set; } = 0; // 0 means no limit
+    public uint ResourceLimit { get; set; } = 0; // default to 0
+    public uint SmokeTimeout { get; set; } = 10; // default to 10s
 
     public int ErrorLimit {
       get => errorLimit;
       set => errorLimit = value;
-    } // 0 means attempt to falsify each assertion in a desugared implementation 
+    } // 0 means attempt to falsify each assertion in a desugared implementation
 
     public bool RestartProverPerVC {
       get => restartProverPerVc;
       set => restartProverPerVc = value;
     }
 
-    public double VcsMaxCost = 1.0;
-    public double VcsPathJoinMult = 0.8;
-    public double VcsPathCostMult = 1.0;
-    public double VcsAssumeMult = 0.01;
-    public double VcsPathSplitMult = 0.5; // 0.5-always, 2-rarely do path splitting
-    public int VcsMaxSplits = 1;
-    public int VcsMaxKeepGoingSplits = 1;
-    public bool VcsSplitOnEveryAssert = false;
-    public uint VcsFinalAssertTimeout = 30;
-    public uint VcsKeepGoingTimeout = 1;
-    public int VcsCores = 1;
-    public bool VcsDumpSplits = false;
+    public double VcsMaxCost { get; set; } = 1.0;
+    public double VcsPathJoinMult { get; set; } = 0.8;
+    public double VcsPathCostMult { get; set; } = 1.0;
+    public double VcsAssumeMult { get; set; } = 0.01;
+    public double VcsPathSplitMult { get; set; } = 0.5; // 0.5-always, 2-rarely do path splitting
+    public int VcsMaxSplits { get; set; } = 1;
+    public int VcsMaxKeepGoingSplits { get; set; } = 1;
+    public bool VcsSplitOnEveryAssert { get; set; } = false;
+    public uint VcsFinalAssertTimeout { get; set; } = 30;
+    public uint VcsKeepGoingTimeout { get; set; } = 1;
+    public int VcsCores { get; set; } = 1;
+    public bool VcsDumpSplits { get; set; } = false;
 
-    public bool DebugRefuted = false;
+    public bool DebugRefuted { get; set; } = false;
 
     public XmlSink XmlRefuted
     {
@@ -986,81 +720,54 @@ namespace Microsoft.Boogie
       }
     }
 
-    // whether procedure inlining is enabled at call sites.
-    public enum Inlining
-    {
-      None,
-      Assert,
-      Assume,
-      Spec
-    }
-
-    public Inlining ProcedureInlining = Inlining.Assume;
+    public CoreOptions.Inlining ProcedureInlining { get; set; } = CoreOptions.Inlining.Assume;
 
     public bool PrintInlined {
       get => printInlined;
       set => printInlined = value;
     }
 
-    public bool ExtractLoops = false;
-    public bool DeterministicExtractLoops = false;
+    public bool ExtractLoops { get; set; } = false;
+    public bool DeterministicExtractLoops { get; set; } = false;
 
     // Enables VC generation for Stratified Inlining.
     // Set programmatically by Corral.
     public int StratifiedInlining  { get; set; } = 0;
 
     // disable model generation, used by Corral/SI
-    public bool StratifiedInliningWithoutModels { get; set; } 
+    public bool StratifiedInliningWithoutModels { get; set; }
 
     // Sets the recursion bound, used for loop extraction, etc.
-    public int RecursionBound = 500;
+    public int RecursionBound { get; set; } = 500;
 
-    public bool ExtractLoopsUnrollIrreducible = true; // unroll irreducible loops? (set programmatically)
+    public bool ExtractLoopsUnrollIrreducible { get; set; } = true; // unroll irreducible loops? (set programmatically)
 
-    public enum TypeEncoding
-    {
-      Predicates,
-      Arguments,
-      Monomorphic
-    }
 
-    public TypeEncoding TypeEncodingMethod { get; set; } = TypeEncoding.Predicates;
+    public CoreOptions.TypeEncoding TypeEncodingMethod { get; set; } = CoreOptions.TypeEncoding.Predicates;
 
-    public bool Monomorphize = false;
+    public bool Monomorphize { get; set; } = false;
 
-    public bool ReflectAdd = false;
+    public bool ReflectAdd { get; set; } = false;
 
-    public int LiveVariableAnalysis = 1;
+    public int LiveVariableAnalysis { get; set; } = 1;
 
-    public bool UseLibrary = false;
+    public bool UseLibrary { get; set; } = false;
 
     // Note that procsToCheck stores all patterns <p> supplied with /proc:<p>
     // (and similarly procsToIgnore for /noProc:<p>). Thus, if procsToCheck
     // is empty it means that all procedures should be checked.
     public List<string> ProcsToCheck { get; } = new();
-    private List<string /*!*/> procsToIgnore = new List<string /*!*/>();
+    public List<string /*!*/> ProcsToIgnore { get; set; } = new();
 
     [ContractInvariantMethod]
     void ObjectInvariant5()
     {
       Contract.Invariant(cce.NonNullElements(this.ProcsToCheck, true));
-      Contract.Invariant(cce.NonNullElements(this.procsToIgnore, true));
+      Contract.Invariant(cce.NonNullElements(this.ProcsToIgnore, true));
       Contract.Invariant(Ai != null);
     }
 
-    public class AiFlags
-    {
-      public bool J_Trivial = false;
-      public bool J_Intervals = false;
-
-      public int /*0..9*/
-        StepsBeforeWidening = 0;
-
-      public bool DebugStatistics = false;
-    }
-
-    public readonly AiFlags /*!*/
-      Ai = new AiFlags();
+    public CoreOptions.AiFlags /*!*/ Ai  { get; private set; } = new();
 
     private bool proverHelpRequested = false;
     private bool restartProverPerVc = false;
@@ -1093,18 +800,9 @@ namespace Microsoft.Boogie
     private bool normalizeNames;
     private bool normalizeDeclarationOrder = true;
 
-    public class ConcurrentHoudiniOptions
-    {
-      public List<string> ProverOptions = new List<string>();
-      public int ErrorLimit = 5;
-      public bool DisableLoopInvEntryAssert = false;
-      public bool DisableLoopInvMaintainedAssert = false;
-      public bool ModifyTopologicalSorting = false;
-    }
+    public List<CoreOptions.ConcurrentHoudiniOptions> Cho { get; set; } = new();
 
-    public List<ConcurrentHoudiniOptions> Cho { get; set; } = new();
-
-    protected override bool ParseOption(string name, CommandLineOptionEngine.CommandLineParseState ps)
+    protected override bool ParseOption(string name, CommandLineParseState ps)
     {
       var args = ps.args; // convenient synonym
       switch (name)
@@ -1180,7 +878,7 @@ namespace Microsoft.Boogie
         case "noProc":
           if (ps.ConfirmArgumentCount(1))
           {
-            this.procsToIgnore.Add(cce.NonNull(args[ps.i]));
+            this.ProcsToIgnore.Add(cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -1211,7 +909,7 @@ namespace Microsoft.Boogie
 
         case "pretty":
           int val = 1;
-          if (ps.GetNumericArgument(ref val, 2))
+          if (ps.GetIntArgument(x => val = x, 2))
           {
             PrettyPrint = val == 1;
           }
@@ -1229,7 +927,7 @@ namespace Microsoft.Boogie
         case "trustLayersUpto":
           if (ps.ConfirmArgumentCount(1))
           {
-            ps.GetNumericArgument(ref TrustLayersUpto);
+            ps.GetIntArgument(x => TrustLayersUpto = x);
           }
 
           return true;
@@ -1237,7 +935,7 @@ namespace Microsoft.Boogie
         case "trustLayersDownto":
           if (ps.ConfirmArgumentCount(1))
           {
-            ps.GetNumericArgument(ref TrustLayersDownto);
+            ps.GetIntArgument(x => TrustLayersDownto = x);
           }
 
           return true;
@@ -1268,30 +966,30 @@ namespace Microsoft.Boogie
           return true;
 
         case "errorTrace":
-          ps.GetNumericArgument(ref ErrorTrace, 3);
+          ps.GetIntArgument(x => ErrorTrace = x, 3);
           return true;
 
         case "proverWarnings":
         {
           int pw = 0;
-          if (ps.GetNumericArgument(ref pw, 3))
+          if (ps.GetIntArgument(x => pw = x, 3))
           {
             switch (pw)
             {
               case 0:
-                PrintProverWarnings = ProverWarnings.None;
+                PrintProverWarnings = CoreOptions.ProverWarnings.None;
                 break;
               case 1:
-                PrintProverWarnings = ProverWarnings.Stdout;
+                PrintProverWarnings = CoreOptions.ProverWarnings.Stdout;
                 break;
               case 2:
-                PrintProverWarnings = ProverWarnings.Stderr;
+                PrintProverWarnings = CoreOptions.ProverWarnings.Stderr;
                 break;
               default:
               {
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
-              } // postcondition of GetNumericArgument guarantees that we don't get here
+              } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
 
@@ -1301,24 +999,24 @@ namespace Microsoft.Boogie
         case "env":
         {
           int e = 0;
-          if (ps.GetNumericArgument(ref e, 3))
+          if (ps.GetIntArgument(x => e = x, 3))
           {
             switch (e)
             {
               case 0:
-                ShowEnv = ShowEnvironment.Never;
+                ShowEnv = ExecutionEngineOptions.ShowEnvironment.Never;
                 break;
               case 1:
-                ShowEnv = ShowEnvironment.DuringPrint;
+                ShowEnv = ExecutionEngineOptions.ShowEnvironment.DuringPrint;
                 break;
               case 2:
-                ShowEnv = ShowEnvironment.Always;
+                ShowEnv = ExecutionEngineOptions.ShowEnvironment.Always;
                 break;
               default:
               {
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
-              } // postcondition of GetNumericArgument guarantees that we don't get here
+              } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
 
@@ -1328,7 +1026,7 @@ namespace Microsoft.Boogie
         case "printVerifiedProceduresCount":
         {
           int n = 0;
-          if (ps.GetNumericArgument(ref n, 2))
+          if (ps.GetIntArgument(x => n = x, 2))
           {
             ShowVerifiedProcedureCount = n != 0;
           }
@@ -1337,7 +1035,7 @@ namespace Microsoft.Boogie
         }
 
         case "loopUnroll":
-          ps.GetNumericArgument(ref LoopUnrollCount);
+          ps.GetIntArgument(x => LoopUnrollCount = x);
           return true;
 
         case "printModel":
@@ -1370,13 +1068,13 @@ namespace Microsoft.Boogie
         case "printModelToFile":
           if (ps.ConfirmArgumentCount(1))
           {
-            PrintErrorModelFile = args[ps.i];
+            printErrorModelFile = args[ps.i];
           }
 
           return true;
 
         case "enhancedErrorMessages":
-          ps.GetNumericArgument(ref enhancedErrorMessages, 2);
+          ps.GetIntArgument(x => enhancedErrorMessages = x, 2);
           return true;
 
         case "printCFG":
@@ -1388,30 +1086,30 @@ namespace Microsoft.Boogie
           return true;
 
         case "inlineDepth":
-          ps.GetNumericArgument(ref InlineDepth);
+          ps.GetIntArgument(x => InlineDepth = x);
           return true;
 
         case "subsumption":
         {
           int s = 0;
-          if (ps.GetNumericArgument(ref s, 3))
+          if (ps.GetIntArgument(x => s = x, 3))
           {
             switch (s)
             {
               case 0:
-                UseSubsumption = SubsumptionOption.Never;
+                UseSubsumption = CoreOptions.SubsumptionOption.Never;
                 break;
               case 1:
-                UseSubsumption = SubsumptionOption.NotForQuantifiers;
+                UseSubsumption = CoreOptions.SubsumptionOption.NotForQuantifiers;
                 break;
               case 2:
-                UseSubsumption = SubsumptionOption.Always;
+                UseSubsumption = CoreOptions.SubsumptionOption.Always;
                 break;
               default:
               {
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
-              } // postcondition of GetNumericArgument guarantees that we don't get here
+              } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
 
@@ -1421,7 +1119,7 @@ namespace Microsoft.Boogie
         case "liveVariableAnalysis":
         {
           int lva = 0;
-          if (ps.GetNumericArgument(ref lva, 3))
+          if (ps.GetIntArgument(x => lva = x, 3))
           {
             LiveVariableAnalysis = lva;
           }
@@ -1432,7 +1130,7 @@ namespace Microsoft.Boogie
         case "removeEmptyBlocks":
         {
           int reb = 0;
-          if (ps.GetNumericArgument(ref reb, 2))
+          if (ps.GetIntArgument(x => reb = x, 2))
           {
             RemoveEmptyBlocks = reb == 1;
           }
@@ -1443,7 +1141,7 @@ namespace Microsoft.Boogie
         case "coalesceBlocks":
         {
           int cb = 0;
-          if (ps.GetNumericArgument(ref cb, 2))
+          if (ps.GetIntArgument(x => cb = x, 2))
           {
             CoalesceBlocks = cb == 1;
           }
@@ -1482,7 +1180,7 @@ namespace Microsoft.Boogie
 
         case "stagedHoudiniThreads":
         {
-          ps.GetNumericArgument(ref stagedHoudiniThreads);
+          ps.GetIntArgument(x => stagedHoudiniThreads = x);
           return true;
         }
 
@@ -1566,16 +1264,16 @@ namespace Microsoft.Boogie
             switch (args[ps.i])
             {
               case "none":
-                ProcedureInlining = Inlining.None;
+                ProcedureInlining = CoreOptions.Inlining.None;
                 break;
               case "assert":
-                ProcedureInlining = Inlining.Assert;
+                ProcedureInlining = CoreOptions.Inlining.Assert;
                 break;
               case "assume":
-                ProcedureInlining = Inlining.Assume;
+                ProcedureInlining = CoreOptions.Inlining.Assume;
                 break;
               case "spec":
-                ProcedureInlining = Inlining.Spec;
+                ProcedureInlining = CoreOptions.Inlining.Spec;
                 break;
               default:
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
@@ -1606,11 +1304,11 @@ namespace Microsoft.Boogie
             {
               case "p":
               case "predicates":
-                TypeEncodingMethod = TypeEncoding.Predicates;
+                TypeEncodingMethod = CoreOptions.TypeEncoding.Predicates;
                 break;
               case "a":
               case "arguments":
-                TypeEncodingMethod = TypeEncoding.Arguments;
+                TypeEncodingMethod = CoreOptions.TypeEncoding.Arguments;
                 break;
               default:
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
@@ -1634,10 +1332,10 @@ namespace Microsoft.Boogie
             switch (args[ps.i])
             {
               case "e":
-                InstrumentInfer = InstrumentationPlaces.Everywhere;
+                InstrumentInfer = CoreOptions.InstrumentationPlaces.Everywhere;
                 break;
               case "h":
-                InstrumentInfer = InstrumentationPlaces.LoopHeaders;
+                InstrumentInfer = CoreOptions.InstrumentationPlaces.LoopHeaders;
                 break;
               default:
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
@@ -1672,35 +1370,35 @@ namespace Microsoft.Boogie
           return true;
 
         case "vcBrackets":
-          ps.GetNumericArgument(ref bracketIdsInVC, 2);
+          ps.GetIntArgument(x => bracketIdsInVC = x, 2);
           return true;
 
         case "vcsMaxCost":
-          ps.GetNumericArgument(ref VcsMaxCost);
+          ps.GetDoubleArgument(x => VcsMaxCost = x);
           return true;
 
         case "vcsPathJoinMult":
-          ps.GetNumericArgument(ref VcsPathJoinMult);
+          ps.GetDoubleArgument(x => VcsPathJoinMult = x);
           return true;
 
         case "vcsPathCostMult":
-          ps.GetNumericArgument(ref VcsPathCostMult);
+          ps.GetDoubleArgument(x => VcsPathCostMult = x);
           return true;
 
         case "vcsAssumeMult":
-          ps.GetNumericArgument(ref VcsAssumeMult);
+          ps.GetDoubleArgument(x => VcsAssumeMult = x);
           return true;
 
         case "vcsPathSplitMult":
-          ps.GetNumericArgument(ref VcsPathSplitMult);
+          ps.GetDoubleArgument(x => VcsPathSplitMult = x);
           return true;
 
         case "vcsMaxSplits":
-          ps.GetNumericArgument(ref VcsMaxSplits);
+          ps.GetIntArgument(x => VcsMaxSplits = x);
           return true;
 
         case "vcsMaxKeepGoingSplits":
-          ps.GetNumericArgument(ref VcsMaxKeepGoingSplits);
+          ps.GetIntArgument(x => VcsMaxKeepGoingSplits = x);
           return true;
 
         case "vcsSplitOnEveryAssert":
@@ -1711,20 +1409,20 @@ namespace Microsoft.Boogie
           return true;
 
         case "vcsFinalAssertTimeout":
-          ps.GetUnsignedNumericArgument(ref VcsFinalAssertTimeout, null);
+          ps.GetUnsignedNumericArgument(x => VcsFinalAssertTimeout = x);
           return true;
 
         case "vcsKeepGoingTimeout":
-          ps.GetUnsignedNumericArgument(ref VcsKeepGoingTimeout, null);
+          ps.GetUnsignedNumericArgument(x => VcsKeepGoingTimeout = x);
           return true;
 
         case "vcsCores":
-          ps.GetNumericArgument(ref VcsCores, a => 1 <= a);
+          ps.GetIntArgument(x => VcsCores = x, a => 1 <= a);
           return true;
 
         case "vcsLoad":
           double load = 0.0;
-          if (ps.GetNumericArgument(ref load))
+          if (ps.GetDoubleArgument(x => load = x))
           {
             if (3.0 <= load)
             {
@@ -1739,110 +1437,110 @@ namespace Microsoft.Boogie
           return true;
 
         case "timeLimit":
-          ps.GetUnsignedNumericArgument(ref TimeLimit, null);
+          ps.GetUnsignedNumericArgument(x => TimeLimit = x, null);
           return true;
 
         case "rlimit":
-          ps.GetUnsignedNumericArgument(ref ResourceLimit, null);
+          ps.GetUnsignedNumericArgument(x => ResourceLimit = x, null);
           return true;
 
         case "timeLimitPerAssertionInPercent":
-          ps.GetUnsignedNumericArgument(ref timeLimitPerAssertionInPercent, a => 0 < a);
+          ps.GetUnsignedNumericArgument(x => timeLimitPerAssertionInPercent = x, a => 0 < a);
           return true;
 
         case "smokeTimeout":
-          ps.GetUnsignedNumericArgument(ref SmokeTimeout, null);
+          ps.GetUnsignedNumericArgument(x => SmokeTimeout = x, null);
           return true;
 
         case "errorLimit":
-          ps.GetNumericArgument(ref errorLimit);
+          ps.GetIntArgument(x => errorLimit = x);
           return true;
 
         case "randomSeed":
           int randomSeed = 0;
-          ps.GetNumericArgument(ref randomSeed);
+          ps.GetIntArgument(x => randomSeed = x);
           RandomSeed = randomSeed;
           return true;
         
         case "verifySnapshots":
-          ps.GetNumericArgument(ref VerifySnapshots, 4);
+          ps.GetIntArgument(x => VerifySnapshots = x, 4);
           return true;
 
         case "traceCaching":
-          ps.GetNumericArgument(ref TraceCaching, 4);
+          ps.GetIntArgument(x => TraceCaching = x, 4);
           return true;
 
         case "kInductionDepth":
-          ps.GetNumericArgument(ref KInductionDepth);
+          ps.GetIntArgument(x => KInductionDepth = x);
           return true;
           
         case "emitDebugInformation":
-          ps.GetNumericArgument(ref emitDebugInformation);
+          ps.GetIntArgument(x => emitDebugInformation = x);
           return true;
 
         case "normalizeNames":
-          ps.GetNumericArgument(ref normalizeNames);
+          ps.GetIntArgument(x => normalizeNames = x);
           return true;
         
         case "normalizeDeclarationOrder":
-          ps.GetNumericArgument(ref normalizeDeclarationOrder);
+          ps.GetIntArgument(x => normalizeDeclarationOrder = x);
           return true;
 
         default:
           bool optionValue = false;
-          if (ps.CheckBooleanFlag("printUnstructured", ref optionValue))
+          if (ps.CheckBooleanFlag("printUnstructured", x => optionValue = x))
           {
             PrintUnstructured = optionValue ? 1 : 0;
             return true;
           }
 
-          if (ps.CheckBooleanFlag("printDesugared", ref printDesugarings) ||
-              ps.CheckBooleanFlag("printLambdaLifting", ref PrintLambdaLifting) ||
-              ps.CheckBooleanFlag("printInstrumented", ref printInstrumented) ||
-              ps.CheckBooleanFlag("printWithUniqueIds", ref printWithUniqueAstIds) ||
-              ps.CheckBooleanFlag("wait", ref Wait) ||
-              ps.CheckBooleanFlag("trace", ref trace) ||
-              ps.CheckBooleanFlag("traceTimes", ref TraceTimes) ||
-              ps.CheckBooleanFlag("tracePOs", ref TraceProofObligations) ||
-              ps.CheckBooleanFlag("noResolve", ref NoResolve) ||
-              ps.CheckBooleanFlag("noTypecheck", ref NoTypecheck) ||
-              ps.CheckBooleanFlag("overlookTypeErrors", ref OverlookBoogieTypeErrors) ||
-              ps.CheckBooleanFlag("noVerify", ref Verify, false) ||
-              ps.CheckBooleanFlag("traceverify", ref TraceVerify) ||
-              ps.CheckBooleanFlag("alwaysAssumeFreeLoopInvariants", ref AlwaysAssumeFreeLoopInvariants, true) ||
-              ps.CheckBooleanFlag("proverHelp", ref proverHelpRequested) ||
-              ps.CheckBooleanFlag("proverLogAppend", ref ProverLogFileAppend) ||
-              ps.CheckBooleanFlag("soundLoopUnrolling", ref SoundLoopUnrolling) ||
-              ps.CheckBooleanFlag("checkInfer", ref InstrumentWithAsserts) ||
-              ps.CheckBooleanFlag("restartProver", ref restartProverPerVc) ||
-              ps.CheckBooleanFlag("printInlined", ref printInlined) ||
-              ps.CheckBooleanFlag("smoke", ref SoundnessSmokeTest) ||
-              ps.CheckBooleanFlag("vcsDumpSplits", ref VcsDumpSplits) ||
-              ps.CheckBooleanFlag("dbgRefuted", ref DebugRefuted) ||
-              ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
-              ps.CheckBooleanFlag("useArrayTheory", ref useArrayTheory) ||
-              ps.CheckBooleanFlag("relaxFocus", ref RelaxFocus) ||
-              ps.CheckBooleanFlag("doModSetAnalysis", ref doModSetAnalysis) ||
-              ps.CheckBooleanFlag("runDiagnosticsOnTimeout", ref runDiagnosticsOnTimeout) ||
-              ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", ref traceDiagnosticsOnTimeout) ||
-              ps.CheckBooleanFlag("boolControlVC", ref siBoolControlVc, true) ||
-              ps.CheckBooleanFlag("contractInfer", ref contractInfer) ||
-              ps.CheckBooleanFlag("explainHoudini", ref explainHoudini) ||
-              ps.CheckBooleanFlag("reverseHoudiniWorklist", ref reverseHoudiniWorklist) ||
-              ps.CheckBooleanFlag("crossDependencies", ref houdiniUseCrossDependencies) ||
-              ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref useUnsatCoreForContractInfer) ||
-              ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
-              ps.CheckBooleanFlag("printNecessaryAssumes", ref printNecessaryAssumes) ||
-              ps.CheckBooleanFlag("useProverEvaluate", ref useProverEvaluate) ||
-              ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
-              ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
-              ps.CheckBooleanFlag("trustMoverTypes", ref trustMoverTypes) ||
-              ps.CheckBooleanFlag("trustNoninterference", ref trustNoninterference) ||
-              ps.CheckBooleanFlag("trustInductiveSequentialization", ref trustInductiveSequentialization) ||
-              ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName) ||
-              ps.CheckBooleanFlag("freeVarLambdaLifting", ref FreeVarLambdaLifting) ||
-              ps.CheckBooleanFlag("prune", ref Prune) ||
-              ps.CheckBooleanFlag("warnNotEliminatedVars", ref WarnNotEliminatedVars)
+          if (ps.CheckBooleanFlag("printDesugared", x => printDesugarings = x) ||
+              ps.CheckBooleanFlag("printLambdaLifting", x => PrintLambdaLifting = x) ||
+              ps.CheckBooleanFlag("printInstrumented", x => printInstrumented = x) ||
+              ps.CheckBooleanFlag("printWithUniqueIds", x => printWithUniqueAstIds = x) ||
+              ps.CheckBooleanFlag("wait", x => Wait = x) ||
+              ps.CheckBooleanFlag("trace", x => trace = x) ||
+              ps.CheckBooleanFlag("traceTimes", x => TraceTimes = x) ||
+              ps.CheckBooleanFlag("tracePOs", x => TraceProofObligations = x) ||
+              ps.CheckBooleanFlag("noResolve", x => NoResolve = x) ||
+              ps.CheckBooleanFlag("noTypecheck", x => NoTypecheck = x) ||
+              ps.CheckBooleanFlag("overlookTypeErrors", x => OverlookBoogieTypeErrors = x) ||
+              ps.CheckBooleanFlag("noVerify", x => Verify = x, false) ||
+              ps.CheckBooleanFlag("traceverify", x => TraceVerify = x) ||
+              ps.CheckBooleanFlag("alwaysAssumeFreeLoopInvariants", x => AlwaysAssumeFreeLoopInvariants = x, true) ||
+              ps.CheckBooleanFlag("proverHelp", x => proverHelpRequested = x) ||
+              ps.CheckBooleanFlag("proverLogAppend", x => ProverLogFileAppend = x) ||
+              ps.CheckBooleanFlag("soundLoopUnrolling", x => SoundLoopUnrolling = x) ||
+              ps.CheckBooleanFlag("checkInfer", x => InstrumentWithAsserts = x) ||
+              ps.CheckBooleanFlag("restartProver", x => restartProverPerVc = x) ||
+              ps.CheckBooleanFlag("printInlined", x => printInlined = x) ||
+              ps.CheckBooleanFlag("smoke", x => SoundnessSmokeTest = x) ||
+              ps.CheckBooleanFlag("vcsDumpSplits", x => VcsDumpSplits = x) ||
+              ps.CheckBooleanFlag("dbgRefuted", x => DebugRefuted = x) ||
+              ps.CheckBooleanFlag("reflectAdd", x => ReflectAdd = x) ||
+              ps.CheckBooleanFlag("useArrayTheory", x => useArrayTheory = x) ||
+              ps.CheckBooleanFlag("relaxFocus", x => RelaxFocus = x) ||
+              ps.CheckBooleanFlag("doModSetAnalysis", x => doModSetAnalysis = x) ||
+              ps.CheckBooleanFlag("runDiagnosticsOnTimeout", x => runDiagnosticsOnTimeout = x) ||
+              ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", x => traceDiagnosticsOnTimeout = x) ||
+              ps.CheckBooleanFlag("boolControlVC", x => siBoolControlVc = x, true) ||
+              ps.CheckBooleanFlag("contractInfer", x => contractInfer = x) ||
+              ps.CheckBooleanFlag("explainHoudini", x => explainHoudini = x) ||
+              ps.CheckBooleanFlag("reverseHoudiniWorklist", x => reverseHoudiniWorklist = x) ||
+              ps.CheckBooleanFlag("crossDependencies", x => houdiniUseCrossDependencies = x) ||
+              ps.CheckBooleanFlag("useUnsatCoreForContractInfer", x => useUnsatCoreForContractInfer = x) ||
+              ps.CheckBooleanFlag("printAssignment", x => PrintAssignment = x) ||
+              ps.CheckBooleanFlag("printNecessaryAssumes", x => printNecessaryAssumes = x) ||
+              ps.CheckBooleanFlag("useProverEvaluate", x => useProverEvaluate = x) ||
+              ps.CheckBooleanFlag("deterministicExtractLoops", x => DeterministicExtractLoops = x) ||
+              ps.CheckBooleanFlag("verifySeparately", x => VerifySeparately = x) ||
+              ps.CheckBooleanFlag("trustMoverTypes", x => trustMoverTypes = x) ||
+              ps.CheckBooleanFlag("trustNoninterference", x => trustNoninterference = x) ||
+              ps.CheckBooleanFlag("trustInductiveSequentialization", x => trustInductiveSequentialization = x) ||
+              ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
+              ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
+              ps.CheckBooleanFlag("prune", x => Prune = x) ||
+              ps.CheckBooleanFlag("warnNotEliminatedVars", x => WarnNotEliminatedVars = x)
           )
           {
             // one of the boolean flags matched
@@ -1861,16 +1559,21 @@ namespace Microsoft.Boogie
 
       base.ApplyDefaultOptions();
 
+
       // expand macros in filenames, now that LogPrefix is fully determined
-      ExpandFilename(ref XmlSinkFilename, LogPrefix, FileTimestamp);
-      ExpandFilename(ref PrintFile, LogPrefix, FileTimestamp);
-      ExpandFilename(ref ProverLogFilePath, LogPrefix, FileTimestamp);
-      ExpandFilename(ref PrintErrorModelFile, LogPrefix, FileTimestamp);
+      ExpandFilename(XmlSinkFilename, x => XmlSinkFilename = x, LogPrefix, FileTimestamp);
+      ExpandFilename(PrintFile, x => PrintFile = x, LogPrefix, FileTimestamp);
+      ExpandFilename(ProverLogFilePath, x => ProverLogFilePath = x, LogPrefix, FileTimestamp);
+      ExpandFilename(printErrorModelFile, x => printErrorModelFile = x, LogPrefix, FileTimestamp);
 
       Contract.Assume(XmlSink == null); // XmlSink is to be set here
       if (XmlSinkFilename != null)
       {
-        XmlSink = new XmlSink(XmlSinkFilename);
+        XmlSink = new XmlSink(this, XmlSinkFilename);
+      }
+
+      if (printErrorModelFile != null) {
+        ModelWriter = new StreamWriter(printErrorModelFile, false);
       }
 
       if (TheProverFactory == null)
@@ -1881,7 +1584,7 @@ namespace Microsoft.Boogie
 
       if (StratifiedInlining > 0)
       {
-        TypeEncodingMethod = TypeEncoding.Monomorphic;
+        TypeEncodingMethod = CoreOptions.TypeEncoding.Monomorphic;
         UseArrayTheory = true;
         UseAbstractInterpretation = false;
         if (ProverDllName == "SMTLib")
@@ -1917,15 +1620,9 @@ namespace Microsoft.Boogie
       return false;
     }
 
-    public bool UserWantsToCheckRoutine(string methodFullname)
-    {
-      Contract.Requires(methodFullname != null);
-      Func<string, bool> match = s => Regex.IsMatch(methodFullname, "^" + Regex.Escape(s).Replace(@"\*", ".*") + "$");
-      return (ProcsToCheck.Count == 0 || ProcsToCheck.Any(match)) && !procsToIgnore.Any(match);
-    }
 
     // Used by Dafny to decide if it should perform compilation
-    public bool UserConstrainedProcsToCheck => ProcsToCheck.Count > 0 || procsToIgnore.Count > 0;
+    public bool UserConstrainedProcsToCheck => ProcsToCheck.Count > 0 || ProcsToIgnore.Count > 0;
 
     public virtual StringCollection ParseNamedArgumentList(string argList)
     {
@@ -1979,7 +1676,7 @@ namespace Microsoft.Boogie
       return semicolonIndex;
     }
 
-    public string ProverHelp => TheProverFactory.BlankProverOptions().Help;
+    public string ProverHelp => TheProverFactory.BlankProverOptions(this).Help;
 
     public override string AttributeHelp =>
 @"Boogie: The following attributes are supported by this version.
@@ -2243,8 +1940,8 @@ namespace Microsoft.Boogie
      {:backward}
        Backward assignment in atomic action.";
 
-    public override string Help =>
-      base.Help + @"
+    protected override string HelpHeader =>
+      base.HelpHeader + @"
   /env:<n>      print command line arguments
                   0 - never, 1 (default) - during BPL print and prover log,
                   2 - like 1 and also to standard output
@@ -2253,7 +1950,10 @@ namespace Microsoft.Boogie
                 1 (default) - yes
   /wait         await Enter from keyboard before terminating program
   /xml:<file>   also produce output in XML format to <file>
+";
 
+    protected override string HelpBody =>
+      @"
   ---- Boogie options --------------------------------------------------------
 
   Multiple .bpl files supplied on the command line are concatenated into one

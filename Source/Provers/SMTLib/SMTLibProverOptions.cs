@@ -45,6 +45,10 @@ namespace Microsoft.Boogie.SMTLib
     // Z3 specific (at the moment; some of them make sense also for other provers)
     public string Inspector = null;
 
+    public SMTLibProverOptions(SMTLibOptions libOptions) : base(libOptions)
+    {
+    }
+
     public void AddSolverArgument(string s)
     {
       SolverArguments.Add(s);
@@ -173,10 +177,13 @@ namespace Microsoft.Boogie.SMTLib
           @"
 SMT-specific options:
 ~~~~~~~~~~~~~~~~~~~~~
-SOLVER=<string>           Use the given SMT solver (z3, cvc5, yices2, noop; default: z3)
-                          The noop solver never does any solving and always returns unknown.
-LOGIC=<string>            Pass (set-logic <string>) to the prover (default: empty, 'ALL' for CVC5)
-USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas (default: true)
+SOLVER=<string>           Use the given SMT solver (z3, cvc5, yices2, noop;
+                          default: z3). The noop solver never does any solving
+                          and always returns unknown.
+LOGIC=<string>            Pass (set-logic <string>) to the prover
+                          (default: empty, 'ALL' for CVC5)
+USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas
+                          (default: true)
 VERBOSITY=<int>           1 - print prover output (default: 0)
 O:<name>=<value>          Pass (set-option :<name> <value>) to the SMT solver.
 C:<string>                Pass <string> to the SMT solver on the command line.

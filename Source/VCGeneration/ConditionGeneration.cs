@@ -7,6 +7,10 @@ using System.Threading;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
+using System.IO;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using VC;
 using Set = Microsoft.Boogie.GSet<object>;
 
 namespace VC
@@ -22,9 +26,10 @@ namespace VC
   [ContractClassFor(typeof(ConditionGeneration))]
   public abstract class ConditionGenerationContracts : ConditionGeneration
   {
-    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback)
+    public override Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
+      CancellationToken cancellationToken)
     {
-      Contract.Requires(impl != null);
+      Contract.Requires(run != null);
       Contract.Requires(callback != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       throw new NotImplementedException();
@@ -39,8 +44,6 @@ namespace VC
   [ContractClass(typeof(ConditionGenerationContracts))]
   public abstract class ConditionGeneration : IDisposable
   {
-    protected internal object CheckerCommonState;
-
     public enum Outcome
     {
       Correct,
@@ -88,7 +91,7 @@ namespace VC
 
     protected Implementation currentImplementation;
 
-    protected List<Variable> CurrentLocalVariables = null;
+    public List<Variable> CurrentLocalVariables { get; set; } = null;
 
     // shared across each implementation; created anew for each implementation
     protected Dictionary<Variable, int> variable2SequenceNumber;
@@ -114,35 +117,31 @@ namespace VC
     /// each counterexample consisting of an array of labels.
     /// </summary>
     /// <param name="impl"></param>
-    public Outcome VerifyImplementation(Implementation impl, out List<Counterexample> /*?*/ errors,
-      string requestId = null)
+    public async Task<(Outcome, List<Counterexample> /*?*/ errors, List<VCResult> vcResults)>
+      VerifyImplementation(ImplementationRun run, string requestId, CancellationToken cancellationToken)
     {
-      Contract.Requires(impl != null);
+      Contract.Requires(run != null);
 
-      Contract.Ensures(Contract.ValueAtReturn(out errors) == null ||
-                       Contract.ForAll(Contract.ValueAtReturn(out errors), i => i != null));
-      Contract.Ensures(Contract.Result<Outcome>() != Outcome.Errors || errors != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-      Helpers.ExtraTraceInformation("Starting implementation verification");
+      Helpers.ExtraTraceInformation(Options, "Starting implementation verification");
 
-      CounterexampleCollector collector = new CounterexampleCollector();
+      var collector = new VerificationResultCollector(Options);
       collector.RequestId = requestId;
-      Outcome outcome = VerifyImplementation(impl, collector);
+      Outcome outcome = await VerifyImplementation(run, collector, cancellationToken);
+      List<Counterexample> /*?*/ errors = null;
       if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
-          outcome == Outcome.OutOfResource)
-      {
+          outcome == Outcome.OutOfResource) {
         errors = collector.examples;
       }
-      else
-      {
-        errors = null;
-      }
 
-      Helpers.ExtraTraceInformation("Finished implementation verification");
-      return outcome;
+      Helpers.ExtraTraceInformation(Options, "Finished implementation verification");
+      return (outcome, errors, collector.vcResults);
     }
 
-    public abstract Outcome VerifyImplementation(Implementation impl, VerifierCallback callback);
+    private VCGenOptions Options => CheckerPool.Options;
+
+    public abstract Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
+      CancellationToken cancellationToken);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
 
@@ -218,20 +217,20 @@ namespace VC
     /// </summary>
     /// <param name="impl"></param>
     /// <param name="startCmds"></param>
-    protected static void InjectPreconditions(Implementation impl, [Captured] List<Cmd> startCmds)
+    protected static void InjectPreconditions(VCGenOptions options, Implementation impl, [Captured] List<Cmd> startCmds)
     {
       Contract.Requires(impl != null);
       Contract.Requires(startCmds != null);
       Contract.Requires(impl.Proc != null);
 
       TokenTextWriter debugWriter = null;
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (options.PrintWithUniqueASTIds)
       {
-        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false);
+        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options);
         debugWriter.WriteLine("Effective precondition:");
       }
 
-      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap());
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
       string blockLabel = "PreconditionGeneratedEntry";
 
       Block origStartBlock = impl.Blocks[0];
@@ -280,7 +279,7 @@ namespace VC
     /// already been constructed for the implementation (and so
     /// is already an element of impl.Blocks)
     /// </param>
-    protected static void InjectPostConditions(Implementation impl, Block unifiedExitBlock,
+    protected static void InjectPostConditions(VCGenOptions options, Implementation impl, Block unifiedExitBlock,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
     {
       Contract.Requires(impl != null);
@@ -290,13 +289,13 @@ namespace VC
       Contract.Requires(unifiedExitBlock.TransferCmd is ReturnCmd);
 
       TokenTextWriter debugWriter = null;
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (options.PrintWithUniqueASTIds)
       {
-        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false);
+        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options);
         debugWriter.WriteLine("Effective postcondition:");
       }
 
-      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap());
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
 
       // (free and checked) ensures clauses
       foreach (Ensures ens in impl.Proc.Ensures)
@@ -338,7 +337,7 @@ namespace VC
     /// Get the pre-condition of an implementation, including the where clauses from the in-parameters.
     /// </summary>
     /// <param name="impl"></param>
-    protected static List<Cmd> GetPre(Implementation impl)
+    protected static List<Cmd> GetPre(VCGenOptions options, Implementation impl)
     {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
@@ -346,13 +345,13 @@ namespace VC
 
 
       TokenTextWriter debugWriter = null;
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (options.PrintWithUniqueASTIds)
       {
-        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false);
+        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options);
         debugWriter.WriteLine("Effective precondition:");
       }
 
-      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap());
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
       List<Cmd> pre = new List<Cmd>();
 
       // (free and checked) requires clauses
@@ -383,18 +382,18 @@ namespace VC
     /// Get the post-condition of an implementation.
     /// </summary>
     /// <param name="impl"></param>
-    protected static List<Cmd> GetPost(Implementation impl)
+    protected static List<Cmd> GetPost(VCGenOptions options, Implementation impl)
     {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (options.PrintWithUniqueASTIds)
       {
         Console.WriteLine("Effective postcondition:");
       }
 
       // Construct an Expr for the post-condition
-      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap());
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
       List<Cmd> post = new List<Cmd>();
       foreach (Ensures ens in impl.Proc.Ensures)
       {
@@ -409,14 +408,14 @@ namespace VC
           ((AssertEnsuresCmd) c).ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
           post.Add(c);
 
-          if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+          if (options.PrintWithUniqueASTIds)
           {
-            c.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false), 1);
+            c.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options), 1);
           }
         }
       }
 
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (options.PrintWithUniqueASTIds)
       {
         Console.WriteLine();
       }
@@ -430,19 +429,19 @@ namespace VC
     /// As a side effect, this method adds these where clauses to the out parameters.
     /// </summary>
     /// <param name="impl"></param>
-    protected static List<Cmd> GetParamWhereClauses(Implementation impl)
+    protected static List<Cmd> GetParamWhereClauses(VCGenOptions options, Implementation impl)
     {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       TokenTextWriter debugWriter = null;
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      if (options.PrintWithUniqueASTIds)
       {
-        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false);
+        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options);
         debugWriter.WriteLine("Effective precondition from where-clauses:");
       }
 
-      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap());
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
       List<Cmd> whereClauses = new List<Cmd>();
 
       // where clauses of in-parameters
@@ -510,18 +509,28 @@ namespace VC
     }
 
 
-    public class CounterexampleCollector : VerifierCallback
+    public class VerificationResultCollector : VerifierCallback
     {
+      private readonly VCGenOptions options;
+
+      public VerificationResultCollector(VCGenOptions options) : base(options.PrintProverWarnings)
+      {
+        this.options = options;
+      }
+
       [ContractInvariantMethod]
       void ObjectInvariant()
       {
         Contract.Invariant(cce.NonNullElements(examples));
+        Contract.Invariant(cce.NonNullElements(vcResults));
       }
 
       public string RequestId;
 
       public readonly List<Counterexample> /*!>!*/
         examples = new List<Counterexample>();
+      public readonly List<VCResult> /*!>!*/
+        vcResults = new List<VCResult>();
 
       public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
       {
@@ -531,7 +540,7 @@ namespace VC
           ce.RequestId = RequestId;
         }
 
-        if (ce.OriginalRequestId == null && 1 < CommandLineOptions.Clo.VerifySnapshots)
+        if (ce.OriginalRequestId == null && 1 < options.VerifySnapshots)
         {
           ce.OriginalRequestId = RequestId;
         }
@@ -543,21 +552,26 @@ namespace VC
       {
         //Contract.Requires(impl != null);
         System.Console.WriteLine("found unreachable code:");
-        EmitImpl(impl, false);
+        EmitImpl(options, impl, false);
         // TODO report error about next to last in seq
+      }
+
+      public override void OnVCResult(VCResult result)
+      {
+        vcResults.Add(result);
       }
     }
 
-    public static void EmitImpl(Implementation impl, bool printDesugarings)
+    public static void EmitImpl(VCGenOptions options, Implementation impl, bool printDesugarings)
     {
       Contract.Requires(impl != null);
-      int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-      CommandLineOptions.Clo.PrintUnstructured = 2; // print only the unstructured program
-      bool oldPrintDesugaringSetting = CommandLineOptions.Clo.PrintDesugarings;
-      CommandLineOptions.Clo.PrintDesugarings = printDesugarings;
-      impl.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false), 0);
-      CommandLineOptions.Clo.PrintDesugarings = oldPrintDesugaringSetting;
-      CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+      int oldPrintUnstructured = options.PrintUnstructured;
+      options.PrintUnstructured = 2; // print only the unstructured program
+      bool oldPrintDesugaringSetting = options.PrintDesugarings;
+      options.PrintDesugarings = printDesugarings;
+      impl.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options), 0);
+      options.PrintDesugarings = oldPrintDesugaringSetting;
+      options.PrintUnstructured = oldPrintUnstructured;
     }
 
 
@@ -808,7 +822,7 @@ namespace VC
       preHavocIncarnationMap =
         null; // null = the previous command was not an HashCmd. Otherwise, a *copy* of the map before the havoc statement
 
-    protected void TurnIntoPassiveBlock(Block b, Dictionary<Variable, Expr> incarnationMap, ModelViewInfo mvInfo,
+    protected void TurnIntoPassiveBlock(TextWriter traceWriter, Block b, Dictionary<Variable, Expr> incarnationMap, ModelViewInfo mvInfo,
       Substitution oldFrameSubst, MutableVariableCollector variableCollector, byte[] currentChecksum = null)
     {
       Contract.Requires(b != null);
@@ -823,10 +837,10 @@ namespace VC
       {
         Contract.Assert(
           c != null); // walk forward over the commands because the map gets modified in a forward direction
-        ChecksumHelper.ComputeChecksums(c, currentImplementation, variableCollector.UsedVariables, currentChecksum);
+        ChecksumHelper.ComputeChecksums(Options, c, currentImplementation, variableCollector.UsedVariables, currentChecksum);
         variableCollector.Visit(c);
         currentChecksum = c.Checksum;
-        TurnIntoPassiveCmd(c, b, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
+        TurnIntoPassiveCmd(traceWriter, c, b, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
       }
 
       b.Checksum = currentChecksum;
@@ -843,46 +857,45 @@ namespace VC
       #endregion
     }
 
-    protected Dictionary<Variable, Expr> Convert2PassiveCmd(Implementation impl, ModelViewInfo mvInfo)
+    protected Dictionary<Variable, Expr> Convert2PassiveCmd(ImplementationRun run, ModelViewInfo mvInfo)
     {
-      Contract.Requires(impl != null);
+      Contract.Requires(run != null);
       Contract.Requires(mvInfo != null);
 
-      currentImplementation = impl;
+      var implementation = run.Implementation;
+      currentImplementation = run.Implementation;
 
       var start = DateTime.UtcNow;
 
-      Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(impl.Blocks, impl.Proc.Modifies, mvInfo);
+      Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(run.TraceWriter, implementation.Blocks, implementation.Proc.Modifies, mvInfo);
 
       var end = DateTime.UtcNow;
 
-      if (CommandLineOptions.Clo.TraceCachingForDebugging)
+      if (Options.TraceCachingForDebugging)
       {
-        Console.Out.WriteLine("Turned implementation into passive commands within {0:F0} ms.\n",
+        run.TraceWriter.WriteLine("Turned implementation into passive commands within {0:F0} ms.\n",
           end.Subtract(start).TotalMilliseconds);
-      }
 
-      if (CommandLineOptions.Clo.TraceCachingForDebugging) {
-        using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
-        var pd = CommandLineOptions.Clo.PrintDesugarings;
-        var pu = CommandLineOptions.Clo.PrintUnstructured;
-        CommandLineOptions.Clo.PrintDesugarings = true;
-        CommandLineOptions.Clo.PrintUnstructured = 1;
-        impl.Emit(tokTxtWr, 0);
-        CommandLineOptions.Clo.PrintDesugarings = pd;
-        CommandLineOptions.Clo.PrintUnstructured = pu;
+        var tokTxtWr = new TokenTextWriter("<console>", run.TraceWriter, false, false, Options);
+        var pd = Options.PrintDesugarings;
+        var pu = Options.PrintUnstructured;
+        Options.PrintDesugarings = true;
+        Options.PrintUnstructured = 1;
+        implementation.Emit(tokTxtWr, 0);
+        Options.PrintDesugarings = pd;
+        Options.PrintUnstructured = pu;
       }
 
       currentImplementation = null;
 
-      RestoreParamWhereClauses(impl);
+      RestoreParamWhereClauses(implementation);
 
       #region Debug Tracing
 
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (Options.TraceVerify)
       {
         Console.WriteLine("after conversion to passive commands");
-        EmitImpl(impl, true);
+        EmitImpl(Options, implementation, true);
       }
 
       #endregion
@@ -890,7 +903,7 @@ namespace VC
       return r;
     }
 
-    protected Dictionary<Variable, Expr> ConvertBlocks2PassiveCmd(List<Block> blocks, List<IdentifierExpr> modifies,
+    protected Dictionary<Variable, Expr> ConvertBlocks2PassiveCmd(TextWriter traceWriter, List<Block> blocks, List<IdentifierExpr> modifies,
       ModelViewInfo mvInfo)
     {
       Contract.Requires(blocks != null);
@@ -903,7 +916,7 @@ namespace VC
 
       Graph<Block> dag = Program.GraphFromBlocks(blocks);
       IEnumerable sortedNodes;
-      if (CommandLineOptions.Clo.ModifyTopologicalSorting)
+      if (Options.ModifyTopologicalSorting)
       {
         sortedNodes = dag.TopologicalSort(true);
       }
@@ -971,7 +984,7 @@ namespace VC
 
         #endregion Each block's map needs to be available to successor blocks
 
-        TurnIntoPassiveBlock(b, incarnationMap, mvInfo, oldFrameSubst, mvc, currentChecksum);
+        TurnIntoPassiveBlock(traceWriter, b, incarnationMap, mvInfo, oldFrameSubst, mvc, currentChecksum);
         exitBlock = b;
         exitIncarnationMap = incarnationMap;
       }
@@ -1017,19 +1030,19 @@ namespace VC
 
     public long[] CachingActionCounts;
 
-    void TraceCachingAction(Cmd cmd, CachingAction action)
+    void TraceCachingAction(TextWriter traceWriter, Cmd cmd, CachingAction action)
     {
-      if (CommandLineOptions.Clo.TraceCachingForTesting) {
-        using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false);
+      if (Options.TraceCachingForTesting) {
+        var tokTxtWr = new TokenTextWriter("<console>", traceWriter, false, false, Options);
         var loc = cmd.tok != null && cmd.tok != Token.NoToken
           ? string.Format("{0}({1},{2})", cmd.tok.filename, cmd.tok.line, cmd.tok.col)
           : "<unknown location>";
-        Console.Write("Processing command (at {0}) ", loc);
+        traceWriter.Write("Processing command (at {0}) ", loc);
         cmd.Emit(tokTxtWr, 0);
-        Console.Out.WriteLine("  >>> {0}", action);
+        traceWriter.WriteLine("  >>> {0}", action);
       }
 
-      if (CommandLineOptions.Clo.TraceCachingForBenchmarking && CachingActionCounts != null)
+      if (Options.TraceCachingForBenchmarking && CachingActionCounts != null)
       {
         Interlocked.Increment(ref CachingActionCounts[(int) action]);
       }
@@ -1082,7 +1095,7 @@ namespace VC
     /// In that case, it remembers the incarnation map BEFORE the havoc.
     /// Meanwhile, record any information needed to later reconstruct a model view.
     /// </summary>
-    protected void TurnIntoPassiveCmd(Cmd c, Block enclosingBlock, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst,
+    protected void TurnIntoPassiveCmd(TextWriter traceWriter, Cmd c, Block enclosingBlock, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst,
       List<Cmd> passiveCmds, ModelViewInfo mvInfo)
     {
       Contract.Requires(c != null);
@@ -1131,7 +1144,7 @@ namespace VC
         }
 
         Expr copy = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, pc.Expr);
-        if (CommandLineOptions.Clo.ModelViewFile != null && pc is AssumeCmd captureStateAssumeCmd)
+        if (Options.ModelViewFile != null && pc is AssumeCmd captureStateAssumeCmd)
         {
           string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
           if (description != null)
@@ -1161,10 +1174,10 @@ namespace VC
           Contract.Assert(ac.IncarnationMap == null);
           ac.IncarnationMap = (Dictionary<Variable, Expr>) cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
 
-          var subsumption = Wlp.Subsumption(ac);
+          var subsumption = Wlp.Subsumption(Options, ac);
           if (relevantDoomedAssumpVars.Any())
           {
-            TraceCachingAction(pc, CachingAction.DoNothingToAssert);
+            TraceCachingAction(traceWriter, pc, CachingAction.DoNothingToAssert);
           }
           else if (currentImplementation != null
                    && currentImplementation.HasCachedSnapshot
@@ -1176,12 +1189,12 @@ namespace VC
                 && currentImplementation.InjectedAssumptionVariables.Count == 1
                 && relevantAssumpVars.Count == 1)
             {
-              TraceCachingAction(pc, CachingAction.MarkAsPartiallyVerified);
+              TraceCachingAction(traceWriter, pc, CachingAction.MarkAsPartiallyVerified);
             }
             else
             {
               var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out var isTrue);
-              TraceCachingAction(pc,
+              TraceCachingAction(traceWriter, pc,
                 !isTrue ? CachingAction.MarkAsPartiallyVerified : CachingAction.MarkAsFullyVerified);
               var litExpr = ac.Expr as LiteralExpr;
               if (litExpr == null || !litExpr.IsTrue)
@@ -1201,7 +1214,7 @@ namespace VC
                    && currentImplementation.IsAssertionChecksumInCachedSnapshot(checksum)
                    && currentImplementation.IsErrorChecksumInCachedSnapshot(checksum))
           {
-            TraceCachingAction(pc, CachingAction.RecycleError);
+            TraceCachingAction(traceWriter, pc, CachingAction.RecycleError);
             ac.MarkAsVerifiedUnder(Expr.True);
             currentImplementation.AddRecycledFailingAssertion(ac);
             pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(),
@@ -1209,7 +1222,7 @@ namespace VC
           }
           else
           {
-            TraceCachingAction(pc, CachingAction.DoNothingToAssert);
+            TraceCachingAction(traceWriter, pc, CachingAction.DoNothingToAssert);
           }
         }
         else if (pc is AssumeCmd
@@ -1225,16 +1238,16 @@ namespace VC
             if (!isTrue)
             {
               copy = LiteralExpr.Imp(assmVars, copy);
-              TraceCachingAction(pc, CachingAction.MarkAsPartiallyVerified);
+              TraceCachingAction(traceWriter, pc, CachingAction.MarkAsPartiallyVerified);
             }
             else
             {
-              TraceCachingAction(pc, CachingAction.MarkAsFullyVerified);
+              TraceCachingAction(traceWriter, pc, CachingAction.MarkAsFullyVerified);
             }
           }
           else
           {
-            TraceCachingAction(pc, CachingAction.DropAssume);
+            TraceCachingAction(traceWriter, pc, CachingAction.DropAssume);
             dropCmd = true;
           }
         }
@@ -1385,7 +1398,7 @@ namespace VC
               QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption") &&
               incarnationMap.TryGetValue(identExpr.Decl, out var incarnation))
           {
-            TraceCachingAction(assign, CachingAction.AssumeNegationOfAssumptionVariable);
+            TraceCachingAction(traceWriter, assign, CachingAction.AssumeNegationOfAssumptionVariable);
             passiveCmds.Add(new AssumeCmd(c.tok, Expr.Not(incarnation)));
           }
         }
@@ -1462,9 +1475,9 @@ namespace VC
       }
       else if (c is SugaredCmd sug)
       {
-        Cmd cmd = sug.Desugaring;
+        Cmd cmd = sug.GetDesugaring(Options);
         Contract.Assert(cmd != null);
-        TurnIntoPassiveCmd(cmd, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
+        TurnIntoPassiveCmd(traceWriter, cmd, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
       }
       else if (c is StateCmd st)
       {
@@ -1485,7 +1498,7 @@ namespace VC
         foreach (Cmd s in st.Cmds)
         {
           Contract.Assert(s != null);
-          TurnIntoPassiveCmd(s, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
+          TurnIntoPassiveCmd(traceWriter, s, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
         }
 
         // remove the local variables from the incarnation map
@@ -1641,5 +1654,9 @@ namespace VC
         _disposed = true;
       }
     }
+  }
+
+  public record ImplementationRun(Implementation Implementation, TextWriter TraceWriter) {
+
   }
 }

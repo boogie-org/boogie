@@ -5,6 +5,7 @@ using VC;
 using System.IO;
 using Microsoft.Boogie.GraphUtil;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.Houdini
 {
@@ -402,6 +403,8 @@ namespace Microsoft.Boogie.Houdini
 
     protected string cexTraceFile;
 
+    public HoudiniOptions Options { get; }
+
     public HoudiniState CurrentHoudiniState
     {
       get { return currentHoudiniState; }
@@ -409,40 +412,42 @@ namespace Microsoft.Boogie.Houdini
 
     public static TextWriter explainHoudiniDottyFile;
 
-    protected Houdini()
+    protected Houdini(HoudiniOptions options)
     {
+      this.Options = options;
     }
 
-    public Houdini(Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.txt")
+    public Houdini(TextWriter traceWriter, HoudiniOptions options, Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.txt")
     {
+      this.Options = options;
       this.program = program;
       this.cexTraceFile = cexTraceFile;
-      Initialize(program, stats);
+      Initialize(traceWriter, program, stats);
     }
 
-    protected void Initialize(Program program, HoudiniSession.HoudiniStatistics stats)
+    protected void Initialize(TextWriter traceWriter, Program program, HoudiniSession.HoudiniStatistics stats)
     {
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
         Console.WriteLine("Collecting existential constants...");
       }
 
       this.houdiniConstants = CollectExistentialConstants();
 
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
         Console.WriteLine("Building call graph...");
       }
 
-      this.callGraph = Program.BuildCallGraph(program);
-      if (CommandLineOptions.Clo.Trace)
+      this.callGraph = Program.BuildCallGraph(Options, program);
+      if (Options.Trace)
       {
         Console.WriteLine("Number of implementations = {0}", callGraph.Nodes.Count);
       }
 
-      if (CommandLineOptions.Clo.HoudiniUseCrossDependencies)
+      if (Options.HoudiniUseCrossDependencies)
       {
-        if (CommandLineOptions.Clo.Trace)
+        if (Options.Trace)
         {
           Console.WriteLine("Computing procedure cross dependencies ...");
         }
@@ -454,24 +459,24 @@ namespace Microsoft.Boogie.Houdini
       Inline();
       /*
       {
-          int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-          CommandLineOptions.Clo.PrintUnstructured = 1;
+          int oldPrintUnstructured = Options.PrintUnstructured;
+          Options.PrintUnstructured = 1;
           using (TokenTextWriter stream = new TokenTextWriter("houdini_inline.bpl"))
           {
               program.Emit(stream);
           }
-          CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+          Options.PrintUnstructured = oldPrintUnstructured;
       }
       */
 
-      var checkerPool = new CheckerPool(CommandLineOptions.Clo);
+      var checkerPool = new CheckerPool(Options);
       this.vcgen = new VCGen(program, checkerPool);
-      this.proverInterface = ProverInterface.CreateProver(program, CommandLineOptions.Clo.ProverLogFilePath,
-        CommandLineOptions.Clo.ProverLogFileAppend, CommandLineOptions.Clo.TimeLimit, taskID: GetTaskID());
+      this.proverInterface = ProverInterface.CreateProver(Options, program, Options.ProverLogFilePath,
+        Options.ProverLogFileAppend, Options.TimeLimit, taskID: GetTaskID());
 
       vcgenFailures = new HashSet<Implementation>();
       Dictionary<Implementation, HoudiniSession> houdiniSessions = new Dictionary<Implementation, HoudiniSession>();
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
         Console.WriteLine("Beginning VC generation for Houdini...");
       }
@@ -480,18 +485,18 @@ namespace Microsoft.Boogie.Houdini
       {
         try
         {
-          if (CommandLineOptions.Clo.Trace)
+          if (Options.Trace)
           {
             Console.WriteLine("Generating VC for {0}", impl.Name);
           }
 
           HoudiniSession session =
-            new HoudiniSession(this, vcgen, proverInterface, program, impl, stats, taskID: GetTaskID());
+            new HoudiniSession(traceWriter, this, vcgen, proverInterface, program, impl, stats, taskID: GetTaskID());
           houdiniSessions.Add(impl, session);
         }
         catch (VCGenException)
         {
-          if (CommandLineOptions.Clo.Trace)
+          if (Options.Trace)
           {
             Console.WriteLine("VC generation failed");
           }
@@ -502,7 +507,7 @@ namespace Microsoft.Boogie.Houdini
 
       this.houdiniSessions = new ReadOnlyDictionary<Implementation, HoudiniSession>(houdiniSessions);
 
-      if (CommandLineOptions.Clo.ExplainHoudini)
+      if (Options.ExplainHoudini)
       {
         // Print results of ExplainHoudini to a dotty file
         explainHoudiniDottyFile = new StreamWriter("explainHoudini.dot");
@@ -518,7 +523,7 @@ namespace Microsoft.Boogie.Houdini
 
     protected void Inline()
     {
-      if (CommandLineOptions.Clo.InlineDepth <= 0)
+      if (Options.InlineDepth <= 0)
       {
         return;
       }
@@ -537,10 +542,10 @@ namespace Microsoft.Boogie.Houdini
 
       foreach (Implementation impl in callGraph.Nodes)
       {
-        CommandLineOptions.Inlining savedOption = CommandLineOptions.Clo.ProcedureInlining;
-        CommandLineOptions.Clo.ProcedureInlining = CommandLineOptions.Inlining.Spec;
-        Inliner.ProcessImplementationForHoudini(program, impl);
-        CommandLineOptions.Clo.ProcedureInlining = savedOption;
+        CoreOptions.Inlining savedOption = Options.ProcedureInlining;
+        Options.ProcedureInlining = CoreOptions.Inlining.Spec;
+        Inliner.ProcessImplementationForHoudini(Options, program, impl);
+        Options.ProcedureInlining = savedOption;
       }
 
       foreach (Implementation impl in callGraph.Nodes)
@@ -561,7 +566,7 @@ namespace Microsoft.Boogie.Houdini
         callGraph.AddEdge(edge.Item1, edge.Item2);
       }
 
-      int count = CommandLineOptions.Clo.InlineDepth;
+      int count = Options.InlineDepth;
       while (count > 0)
       {
         foreach (Implementation impl in oldCallGraph.Nodes)
@@ -673,7 +678,7 @@ namespace Microsoft.Boogie.Houdini
         }
       }
 
-      if (CommandLineOptions.Clo.ReverseHoudiniWorklist)
+      if (Options.ReverseHoudiniWorklist)
       {
         queue = queue.Reverse();
       }
@@ -800,7 +805,7 @@ namespace Microsoft.Boogie.Houdini
     // Precondition: MatchCandidate returns true
     public Expr InsertCandidateControl(Expr boogieExpr, Variable vpos, Variable vneg)
     {
-      Contract.Assert(CommandLineOptions.Clo.ExplainHoudini);
+      Contract.Assert(Options.ExplainHoudini);
 
       NAryExpr e = boogieExpr as NAryExpr;
       if (e != null && e.Fun is BinaryOperator && ((BinaryOperator) e.Fun).Op == BinaryOperator.Opcode.Imp)
@@ -880,7 +885,7 @@ namespace Microsoft.Boogie.Houdini
       return nonCandidateErrors.Count > 0;
     }
 
-    protected void FlushWorkList(int stage, IEnumerable<int> completedStages)
+    protected async Task FlushWorkList(int stage, IReadOnlyList<int> completedStages)
     {
       this.NotifyFlushStart();
       while (currentHoudiniState.WorkQueue.Count > 0)
@@ -891,7 +896,7 @@ namespace Microsoft.Boogie.Houdini
         this.NotifyImplementation(currentHoudiniState.Implementation);
 
         houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out var session);
-        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors);
+        var (outcome, errors) = await TryCatchVerify(session, stage, completedStages);
         UpdateHoudiniOutcome(currentHoudiniState.Outcome, currentHoudiniState.Implementation, outcome, errors);
         this.NotifyOutcome(outcome);
 
@@ -904,7 +909,7 @@ namespace Microsoft.Boogie.Houdini
 
     protected void UpdateAssignment(RefutedAnnotation refAnnot)
     {
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
         Console.WriteLine("Removing " + refAnnot.Constant);
         using var cexWriter = new System.IO.StreamWriter(cexTraceFile, true);
@@ -960,12 +965,12 @@ namespace Microsoft.Boogie.Houdini
 
               #region Extra debugging output
 
-              if (CommandLineOptions.Clo.Trace) {
+              if (Options.Trace) {
                 using var cexWriter = new System.IO.StreamWriter(cexTraceFile, true);
                 cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
                 cexWriter.Write(error.ToString());
                 cexWriter.WriteLine();
-                using var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter, /*pretty=*/ false);
+                using var writer = new TokenTextWriter(cexWriter, false, Options);
                 foreach (Microsoft.Boogie.Block blk in error.Trace)
                 {
                   blk.Emit(writer, 15);
@@ -984,7 +989,7 @@ namespace Microsoft.Boogie.Houdini
 
           break;
         default:
-          if (CommandLineOptions.Clo.Trace)
+          if (Options.Trace)
           {
             Console.WriteLine("Timeout/Spaceout while verifying " + currentHoudiniState.Implementation.Name);
           }
@@ -992,7 +997,7 @@ namespace Microsoft.Boogie.Houdini
           houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out var houdiniSession);
           foreach (Variable v in houdiniSession.houdiniAssertConstants)
           {
-            if (CommandLineOptions.Clo.Trace)
+            if (Options.Trace)
             {
               Console.WriteLine("Removing " + v);
             }
@@ -1147,8 +1152,8 @@ namespace Microsoft.Boogie.Houdini
       }
     }
 
-    public HoudiniOutcome PerformHoudiniInference(int stage = 0,
-      IEnumerable<int> completedStages = null,
+    public async Task<HoudiniOutcome> PerformHoudiniInference(int stage = 0,
+      IReadOnlyList<int> completedStages = null,
       Dictionary<string, bool> initialAssignment = null)
     {
       this.NotifyStart(program, houdiniConstants.Count);
@@ -1178,7 +1183,7 @@ namespace Microsoft.Boogie.Houdini
         this.NotifyImplementation(currentHoudiniState.Implementation);
 
         this.houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out var session);
-        HoudiniVerifyCurrent(session, stage, completedStages);
+        await HoudiniVerifyCurrent(session, stage, completedStages);
       }
 
       this.NotifyEnd(true);
@@ -1196,7 +1201,7 @@ namespace Microsoft.Boogie.Houdini
     {
       vcgen.Close();
       proverInterface.Close();
-      if (CommandLineOptions.Clo.ExplainHoudini)
+      if (Options.ExplainHoudini)
       {
         explainHoudiniDottyFile.WriteLine("};");
         explainHoudiniDottyFile.Close();
@@ -1255,7 +1260,7 @@ namespace Microsoft.Boogie.Houdini
 
           break;
         case RefutedAnnotationKind.ASSERT: //the implementation is already in queue
-          if (CommandLineOptions.Clo.HoudiniUseCrossDependencies &&
+          if (Options.HoudiniUseCrossDependencies &&
               crossDependencies.assumedInImpl.ContainsKey(refutedAnnotation.Constant.Name))
           {
             foreach (var impl in crossDependencies.assumedInImpl[refutedAnnotation.Constant.Name])
@@ -1411,7 +1416,7 @@ namespace Microsoft.Boogie.Houdini
 
     protected void DebugRefutedCandidates(Implementation curFunc, List<Counterexample> errors)
     {
-      XmlSink xmlRefuted = CommandLineOptions.Clo.XmlRefuted;
+      XmlSink xmlRefuted = Options.XmlRefuted;
       if (xmlRefuted != null && errors != null)
       {
         DateTime start = DateTime.UtcNow;
@@ -1484,38 +1489,34 @@ namespace Microsoft.Boogie.Houdini
       return null;
     }
 
-    private ProverInterface.Outcome TryCatchVerify(HoudiniSession session, int stage, IEnumerable<int> completedStages,
-      out List<Counterexample> errors)
+    private async Task<(ProverInterface.Outcome, List<Counterexample> errors)> TryCatchVerify(HoudiniSession session, int stage, IReadOnlyList<int> completedStages)
     {
-      ProverInterface.Outcome outcome;
       try {
-        outcome = session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), out errors, GetErrorLimit());
+        return await session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), GetErrorLimit());
       }
       catch (UnexpectedProverOutputException upo)
       {
         Contract.Assume(upo != null);
-        errors = null;
-        outcome = ProverInterface.Outcome.Undetermined;
+        return (ProverInterface.Outcome.Undetermined, null);
       }
 
-      return outcome;
     }
 
     private int GetErrorLimit()
     {
       var taskID = GetTaskID();
       int errorLimit;
-      if (CommandLineOptions.Clo.ConcurrentHoudini) {
+      if (Options.ConcurrentHoudini) {
         Contract.Assert(taskID >= 0);
-        errorLimit = CommandLineOptions.Clo.Cho[taskID].ErrorLimit;
+        errorLimit = Options.Cho[taskID].ErrorLimit;
       } else {
-        errorLimit = CommandLineOptions.Clo.ErrorLimit;
+        errorLimit = Options.ErrorLimit;
       }
 
       return errorLimit;
     }
 
-    protected Dictionary<Variable, bool> GetAssignmentWithStages(int currentStage, IEnumerable<int> completedStages)
+    protected Dictionary<Variable, bool> GetAssignmentWithStages(int currentStage, IReadOnlyList<int> completedStages)
     {
       Dictionary<Variable, bool> result = new Dictionary<Variable, bool>(currentHoudiniState.Assignment);
       foreach (var c in program.Constants)
@@ -1529,28 +1530,28 @@ namespace Microsoft.Boogie.Houdini
         int stageComplete = QKeyValue.FindIntAttribute(c.Attributes, "stage_complete", -1);
         if (stageComplete != -1)
         {
-          result[c] = (completedStages.Contains(stageComplete));
+          result[c] = completedStages.Contains(stageComplete);
         }
       }
 
       return result;
     }
 
-    private void HoudiniVerifyCurrent(HoudiniSession session, int stage, IEnumerable<int> completedStages)
+    private async Task HoudiniVerifyCurrent(HoudiniSession session, int stage, IReadOnlyList<int> completedStages)
     {
       while (true)
       {
         this.NotifyAssignment(currentHoudiniState.Assignment);
 
         //check the VC with the current assignment
-        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors);
+        var (outcome, errors) = await TryCatchVerify(session, stage, completedStages);
         this.NotifyOutcome(outcome);
 
         DebugRefutedCandidates(currentHoudiniState.Implementation, errors);
 
         #region Explain Houdini
 
-        if (CommandLineOptions.Clo.ExplainHoudini && outcome == ProverInterface.Outcome.Invalid)
+        if (Options.ExplainHoudini && outcome == ProverInterface.Outcome.Invalid)
         {
           Contract.Assume(errors != null);
           // make a copy of this variable
@@ -1569,7 +1570,7 @@ namespace Microsoft.Boogie.Houdini
 
           foreach (var refutedAnnotation in refutedAnnotations)
           {
-            session.Explain(proverInterface, currentHoudiniState.Assignment, refutedAnnotation.Constant);
+            await session.Explain(proverInterface, currentHoudiniState.Assignment, refutedAnnotation.Constant);
           }
         }
 
@@ -1580,14 +1581,15 @@ namespace Microsoft.Boogie.Houdini
           // abort
           currentHoudiniState.WorkQueue.Dequeue();
           this.NotifyDequeue();
-          FlushWorkList(stage, completedStages);
+          await FlushWorkList(stage, completedStages);
           return;
         }
-        else if (UpdateAssignmentWorkList(outcome, errors))
+
+        if (UpdateAssignmentWorkList(outcome, errors))
         {
-          if (CommandLineOptions.Clo.UseUnsatCoreForContractInfer && outcome == ProverInterface.Outcome.Valid)
+          if (Options.UseUnsatCoreForContractInfer && outcome == ProverInterface.Outcome.Valid)
           {
-            session.UpdateUnsatCore(proverInterface, currentHoudiniState.Assignment);
+            await session.UpdateUnsatCore(proverInterface, currentHoudiniState.Assignment);
           }
 
           currentHoudiniState.WorkQueue.Dequeue();

@@ -2,14 +2,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 using System.Threading;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie.Houdini
 {
-  public class StagedHoudini
-  {
+  public class StagedHoudini {
+    private TextWriter traceWriter;
+    private readonly HoudiniOptions options;
     private Program program;
     private HoudiniSession.HoudiniStatistics houdiniStats;
     private Func<string, Program> ProgramFromFile;
@@ -20,28 +22,31 @@ namespace Microsoft.Boogie.Houdini
 
     private const string tempFilename = "__stagedHoudiniTemp.bpl";
 
-    public StagedHoudini(Program program, HoudiniSession.HoudiniStatistics houdiniStats,
+    public StagedHoudini(TextWriter traceWriter, HoudiniOptions options, Program program,
+      HoudiniSession.HoudiniStatistics houdiniStats,
       Func<string, Program> ProgramFromFile)
     {
+      this.options = options;
       this.program = program;
       this.houdiniStats = houdiniStats;
       this.ProgramFromFile = ProgramFromFile;
-      this.houdiniInstances = new List<Houdini>[CommandLineOptions.Clo.StagedHoudiniThreads];
-      for (int i = 0; i < CommandLineOptions.Clo.StagedHoudiniThreads; i++)
+      this.traceWriter = traceWriter;
+      this.houdiniInstances = new List<Houdini>[options.StagedHoudiniThreads];
+      for (int i = 0; i < options.StagedHoudiniThreads; i++)
       {
         houdiniInstances[i] = new List<Houdini>();
       }
 
       BreakApartConjunctionsInAnnotations();
 
-      var annotationDependenceAnalyser = new AnnotationDependenceAnalyser(program);
+      var annotationDependenceAnalyser = new AnnotationDependenceAnalyser(options, program);
       annotationDependenceAnalyser.Analyse();
       this.plan = annotationDependenceAnalyser.ApplyStages();
-      if (CommandLineOptions.Clo.Trace)
+      if (options.Trace)
       {
         annotationDependenceAnalyser.dump();
 
-        if (CommandLineOptions.Clo.DebugStagedHoudini)
+        if (options.DebugStagedHoudini)
         {
           Console.WriteLine("Plan\n====\n");
           if (plan == null)
@@ -143,12 +148,12 @@ namespace Microsoft.Boogie.Houdini
       return plan == null;
     }
 
-    public HoudiniOutcome PerformStagedHoudiniInference()
+    public async Task<HoudiniOutcome> PerformStagedHoudiniInference()
     {
       if (NoStages())
       {
-        Houdini houdini = new Houdini(program, houdiniStats);
-        return houdini.PerformHoudiniInference();
+        Houdini houdini = new Houdini(traceWriter, options, program, houdiniStats);
+        return await houdini.PerformHoudiniInference();
       }
 
       EmitProgram(tempFilename);
@@ -158,8 +163,7 @@ namespace Microsoft.Boogie.Houdini
       foreach (var s in plan)
       {
         Debug.Assert(!plan.GetDependences(s).Contains(s));
-        tasks.Add(new StagedHoudiniTask(s,
-          new Task(o => { ExecuteStage((ScheduledStage) o); }, s, TaskCreationOptions.LongRunning)));
+        tasks.Add(new StagedHoudiniTask(s, Task.Run(() => ExecuteStage(s))));
       }
 
       #endregion
@@ -171,11 +175,11 @@ namespace Microsoft.Boogie.Houdini
         t.parallelTask.Start();
       }
 
-      Task.WaitAll(tasks.Select(Item => Item.parallelTask).ToArray());
+      await Task.WhenAll(tasks.Select(item => item.parallelTask));
       int count = 0;
       foreach (var h in houdiniInstances)
       {
-        if (h.Count() > 0)
+        if (h.Any())
         {
           count++;
           System.Diagnostics.Debug.Assert(h.Count() == 1);
@@ -215,7 +219,7 @@ namespace Microsoft.Boogie.Houdini
       return result;
     }
 
-    private void ExecuteStage(ScheduledStage s)
+    private async Task ExecuteStage(ScheduledStage s)
     {
       Task.WaitAll(tasks.Where(
         Item => plan.GetDependences(s).Contains(Item.stage)).Select(Item => Item.parallelTask).ToArray());
@@ -229,9 +233,9 @@ namespace Microsoft.Boogie.Houdini
 
       List<Houdini> h = AcquireHoudiniInstance();
 
-      if (h.Count() == 0)
+      if (!h.Any())
       {
-        h.Add(new Houdini(ProgramFromFile(tempFilename), new HoudiniSession.HoudiniStatistics(),
+        h.Add(new Houdini(traceWriter, options, ProgramFromFile(tempFilename), new HoudiniSession.HoudiniStatistics(),
           "houdiniCexTrace_" + s.GetId() + ".txt"));
       }
 
@@ -240,16 +244,16 @@ namespace Microsoft.Boogie.Houdini
       Dictionary<string, bool> mergedAssignment = null;
 
       List<Dictionary<string, bool>> relevantAssignments;
-      IEnumerable<int> completedStages;
+      IReadOnlyList<int> completedStages;
       lock (outcomes)
       {
         relevantAssignments =
           outcomes.Where(Item => plan.Contains(Item.Key)).Select(Item => Item.Value).Select(Item => Item.assignment)
             .ToList();
-        completedStages = plan.GetDependences(s).Select(Item => Item.GetId());
+        completedStages = plan.GetDependences(s).Select(Item => Item.GetId()).ToList();
       }
 
-      if (relevantAssignments.Count() > 0)
+      if (relevantAssignments.Any())
       {
         mergedAssignment = new Dictionary<string, bool>();
         foreach (var v in relevantAssignments[0].Keys)
@@ -258,7 +262,7 @@ namespace Microsoft.Boogie.Houdini
         }
       }
 
-      HoudiniOutcome outcome = h[0].PerformHoudiniInference(
+      HoudiniOutcome outcome = await h[0].PerformHoudiniInference(
         s.GetId(),
         completedStages,
         mergedAssignment);
@@ -294,11 +298,11 @@ namespace Microsoft.Boogie.Houdini
 
     private void EmitProgram(string filename)
     {
-      using TokenTextWriter writer = new TokenTextWriter(filename, true);
-      int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-      CommandLineOptions.Clo.PrintUnstructured = 2;
+      using TokenTextWriter writer = new TokenTextWriter(filename, true, options);
+      int oldPrintUnstructured = options.PrintUnstructured;
+      options.PrintUnstructured = 2;
       program.Emit(writer);
-      CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+      options.PrintUnstructured = oldPrintUnstructured;
     }
 
 

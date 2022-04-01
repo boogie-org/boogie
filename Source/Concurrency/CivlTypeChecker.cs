@@ -8,6 +8,7 @@ namespace Microsoft.Boogie
 {
   public class CivlTypeChecker
   {
+    public ConcurrencyOptions Options { get; }
     public CheckingContext checkingContext;
     public Program program;
 
@@ -47,10 +48,11 @@ namespace Microsoft.Boogie
 
     public AtomicAction SkipAtomicAction;
 
-    public CivlTypeChecker(Program program)
+    public CivlTypeChecker(ConcurrencyOptions options, Program program)
     {
       this.checkingContext = new CheckingContext(null);
       this.program = program;
+      this.Options = options;
       this.linearTypeChecker = new LinearTypeChecker(this);
 
       this.globalVarToLayerRange = new Dictionary<Variable, LayerRange>();
@@ -96,7 +98,7 @@ namespace Microsoft.Boogie
         new List<Variable>(),
         new List<Variable>(),
         new List<Block> {BlockHelper.Block("init", new List<Cmd>())});
-      SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both);
+      SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both, Options);
     }
 
     public string AddNamePrefix(string name)
@@ -142,8 +144,13 @@ namespace Microsoft.Boogie
       TypeCheckGlobalVariables();
       TypeCheckLemmaProcedures();
       TypeCheckYieldInvariants();
-
-      TypeCheckActionDecls();
+      TypeCheckActions();
+      
+      if (checkingContext.ErrorCount > 0)
+      {
+        return;
+      }
+      
       TypeCheckPendingAsyncMachinery();
 
       if (checkingContext.ErrorCount > 0)
@@ -152,6 +159,7 @@ namespace Microsoft.Boogie
       }
 
       linearTypeChecker.TypeCheck();
+      
       if (checkingContext.ErrorCount > 0)
       {
         return;
@@ -165,8 +173,7 @@ namespace Microsoft.Boogie
       {
         return;
       }
-
-      TypeCheckActionImpls();
+      
       TypeCheckYieldingProcedureImpls();
 
       if (checkingContext.ErrorCount > 0)
@@ -248,60 +255,49 @@ namespace Microsoft.Boogie
       }
     }
 
-    private void TypeCheckActionDecls()
+    private void TypeCheckActions()
     {
       // Atomic action:
       // * no {:yield}
       // * {:right}, {:left}, {:both}, {:atomic}, {:intro}, {:IS_invariant}, {:IS_abstraction}
       // * layer range
-      foreach (var proc in program.Procedures.Where(IsAction))
+      var actionProcs = program.Procedures.Where(IsAction).ToHashSet();
+      var actionProcToImpl = new Dictionary<Procedure, Implementation>();
+      foreach (var impl in program.Implementations)
       {
-        LayerRange layerRange = ToLayerRange(FindLayers(proc.Attributes), proc);
+        if (actionProcToImpl.ContainsKey(impl.Proc))
+        {
+          Error(impl.Proc, "More then one action specification provided");
+          continue;
+        }
+        if (actionProcs.Contains(impl.Proc))
+        {
+          actionProcToImpl.Add(impl.Proc, impl);
+        }
+      }
+      var actionProcToLayerRange = new Dictionary<Procedure, LayerRange>();
+      foreach (var proc in actionProcs)
+      {
         if (proc.Requires.Count + proc.Ensures.Count > 0)
         {
           Error(proc, "Action cannot have preconditions or postconditions");
         }
-
-        var actionImpls = program.Implementations.Where(i => i.Name == proc.Name).ToList();
-        if (actionImpls.Count == 0)
+        if (!actionProcToImpl.ContainsKey(proc))
         {
           Error(proc, "Action specification missing");
           continue;
         }
 
-        if (actionImpls.Count > 1)
-        {
-          Error(proc, "More then one action specification provided");
-          continue;
-        }
-
-        Implementation impl = actionImpls[0];
-        impl.PruneUnreachableBlocks();
+        Implementation impl = actionProcToImpl[proc];
+        impl.PruneUnreachableBlocks(Options);
         Graph<Block> cfg = Program.GraphFromImpl(impl);
-        if (!Graph<Block>.Acyclic(cfg, impl.Blocks[0]))
+        if (!Graph<Block>.Acyclic(cfg))
         {
           Error(proc, "Action specification cannot have loops");
           continue;
         }
-
-        bool inGate = true;
-        foreach (var cmd in impl.Blocks[0].cmds)
-        {
-          if (inGate && !(cmd is AssertCmd))
-          {
-            inGate = false;
-          }
-          else if (!inGate && cmd is AssertCmd)
-          {
-            Error(cmd, "Assert is only allowed in the gate of an action");
-          }
-        }
-
-        foreach (var cmd in impl.Blocks.Skip(1).SelectMany(b => b.cmds).OfType<AssertCmd>())
-        {
-          Error(cmd, "Assert is only allowed in the gate of an action");
-        }
-
+        LayerRange layerRange = ToLayerRange(FindLayers(proc.Attributes), proc);
+        actionProcToLayerRange.Add(proc, layerRange);
         if (proc.HasAttribute(CivlAttributes.INTRO))
         {
           if (GetMoverType(proc) != null)
@@ -316,14 +312,59 @@ namespace Microsoft.Boogie
           {
             Error(proc, "Introduction actions can modify a global variable only on its introduction layer");
           }
-          else
-          {
-            procToIntroductionAction[proc] = new IntroductionAction(proc, impl, layerRange);
-          }
+        }
+      }
+
+      var actionImplVisitor = new ActionImplVisitor(this, actionProcToLayerRange);
+      foreach (var impl in actionProcToImpl.Values)
+      {
+        actionImplVisitor.VisitImplementation(impl);
+      }
+      if (!actionImplVisitor.IsCallGraphAcyclic())
+      {
+        Error(program, "Call graph over atomic actions must be acyclic");
+      }
+
+      if (checkingContext.ErrorCount > 0)
+      {
+        return;
+      }
+
+      CivlUtil.AddInlineAttribute(SkipAtomicAction.proc);
+      CivlUtil.AddInlineAttribute(SkipAtomicAction.impl);
+      actionProcs.Iter(proc =>
+      {
+        CivlUtil.AddInlineAttribute(proc);
+        CivlUtil.AddInlineAttribute(actionProcToImpl[proc]);
+      });
+      actionProcs.Iter(proc =>
+      {
+        var impl = actionProcToImpl[proc];
+        impl.OriginalBlocks = impl.Blocks;
+        impl.OriginalLocVars = impl.LocVars;
+      });
+      actionProcs.Iter(proc =>
+      {
+        Inliner.ProcessImplementation(Options, program, actionProcToImpl[proc]);
+      });
+      actionProcs.Iter(proc =>
+      {
+        var impl = actionProcToImpl[proc];
+        impl.OriginalBlocks = null;
+        impl.OriginalLocVars = null;
+      });
+
+      foreach (var proc in actionProcs)
+      {
+        Implementation impl = actionProcToImpl[proc];
+        LayerRange layerRange = actionProcToLayerRange[proc];
+        if (proc.HasAttribute(CivlAttributes.INTRO))
+        {
+          procToIntroductionAction[proc] = new IntroductionAction(proc, impl, layerRange);
         }
         else
         {
-          var action = new AtomicAction(proc, impl, layerRange, GetActionMoverType(proc));
+          var action = new AtomicAction(proc, impl, layerRange, GetActionMoverType(proc), Options);
           if (proc.HasAttribute(CivlAttributes.IS_INVARIANT))
           {
             procToIsInvariant[proc] = action;
@@ -339,16 +380,7 @@ namespace Microsoft.Boogie
         }
       }
     }
-
-    private void TypeCheckActionImpls()
-    {
-      ActionVisitor actionVisitor = new ActionVisitor(this);
-      foreach (var action in Enumerable.Concat<Action>(AllAtomicActions, procToIntroductionAction.Values))
-      {
-        actionVisitor.VisitAction(action);
-      }
-    }
-
+    
     private void TypeCheckInductiveSequentializations()
     {
       foreach (var action in procToAtomicAction.Values)
@@ -1357,25 +1389,18 @@ namespace Microsoft.Boogie
 
     #endregion
 
-    private class ActionVisitor : ReadOnlyVisitor
+    private class ActionImplVisitor : ReadOnlyVisitor
     {
       private CivlTypeChecker civlTypeChecker;
-      private Action action;
+      private Dictionary<Procedure, LayerRange> actionProcToLayerRange;
+      private Graph<Procedure> callGraph;
+      private Procedure proc;
 
-      public ActionVisitor(CivlTypeChecker civlTypeChecker)
+      public ActionImplVisitor(CivlTypeChecker civlTypeChecker, Dictionary<Procedure, LayerRange> actionProcToLayerRange)
       {
         this.civlTypeChecker = civlTypeChecker;
-      }
-
-      internal void VisitAction(Action action)
-      {
-        this.action = action;
-        foreach (var g in action.gate)
-        {
-          VisitAssertCmd(g);
-        }
-
-        VisitImplementation(action.impl);
+        this.actionProcToLayerRange = actionProcToLayerRange;
+        this.callGraph = new Graph<Procedure>();
       }
 
       public override Procedure VisitProcedure(Procedure node)
@@ -1384,14 +1409,20 @@ namespace Microsoft.Boogie
         return node;
       }
 
+      public override Implementation VisitImplementation(Implementation node)
+      {
+        this.proc = node.Proc;
+        return base.VisitImplementation(node);
+      }
+      
       public override Expr VisitIdentifierExpr(IdentifierExpr node)
       {
+        var layerRange = actionProcToLayerRange[proc];
         if (node.Decl is GlobalVariable)
         {
           var globalVarLayerRange = civlTypeChecker.GlobalVariableLayerRange(node.Decl);
-          if (!action.layerRange.Subset(globalVarLayerRange) ||
-              (globalVarLayerRange.lowerLayerNum == action.layerRange.lowerLayerNum &&
-               action is AtomicAction))
+          if (!layerRange.Subset(globalVarLayerRange) ||
+              globalVarLayerRange.lowerLayerNum == layerRange.lowerLayerNum && !proc.HasAttribute(CivlAttributes.INTRO))
             // a global variable introduced at layer n is visible to an atomic action only at layer n+1 or higher
             // thus, a global variable with layer range [n,n] is not accessible by an atomic action
             // however, an introduction action may access the global variable at layer n
@@ -1400,17 +1431,38 @@ namespace Microsoft.Boogie
               node.Decl.Name);
           }
         }
-
         return base.VisitIdentifierExpr(node);
       }
 
       public override Cmd VisitCallCmd(CallCmd node)
       {
-        civlTypeChecker.Error(node, "Call command not allowed inside an atomic action");
+        if (!actionProcToLayerRange.ContainsKey(node.Proc))
+        {
+          civlTypeChecker.Error(node, "An atomic action can only call other atomic actions");
+        }
+        else if (!actionProcToLayerRange[proc].Subset(actionProcToLayerRange[node.Proc]))
+        {
+          civlTypeChecker.Error(node, "Caller layer range must be subset of callee layer range");
+        }
+        else if (actionProcToLayerRange[proc].lowerLayerNum == actionProcToLayerRange[node.Proc].lowerLayerNum &&
+                 node.Proc.HasAttribute(CivlAttributes.INTRO) && 
+                 !proc.HasAttribute(CivlAttributes.INTRO))
+        {
+          civlTypeChecker.Error(node, "Lower layer of caller must be greater that lower layer of callee");
+        }
+        else
+        {
+          callGraph.AddEdge(proc, node.Proc);
+        }
         return base.VisitCallCmd(node);
       }
-    }
 
+      public bool IsCallGraphAcyclic()
+      {
+        return Graph<Procedure>.Acyclic(callGraph);
+      }
+    }
+    
     private class LemmaProcedureVisitor : ReadOnlyVisitor
     {
       private CivlTypeChecker civlTypeChecker;
@@ -1509,6 +1561,8 @@ namespace Microsoft.Boogie
       static List<LinearKind> RequiresAvailable = new List<LinearKind> { LinearKind.LINEAR, LinearKind.LINEAR_IN };
       static List<LinearKind> EnsuresAvailable = new List<LinearKind> { LinearKind.LINEAR, LinearKind.LINEAR_OUT };
       static List<LinearKind> PreservesAvailable = new List<LinearKind> { LinearKind.LINEAR };
+
+      private ConcurrencyOptions Options => civlTypeChecker.Options;
 
       public static CallCmd CheckRequires(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller)
       {
@@ -1615,7 +1669,7 @@ namespace Microsoft.Boogie
 
         callCmd = new CallCmd(attr.tok, yieldingProc.Name, exprs, new List<IdentifierExpr>()) { Proc = yieldingProc };
 
-        if (CivlUtil.ResolveAndTypecheck(callCmd) != 0)
+        if (CivlUtil.ResolveAndTypecheck(Options, callCmd) != 0)
         {
           callCmd = null;
         }

@@ -1,18 +1,22 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Boogie.SMTLib;
 using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie;
 
 public abstract class ProverInterface
 {
-  public static ProverInterface CreateProver(Program prog, string /*?*/ logFilePath, bool appendLogFile, uint timeout,
+  public static ProverInterface CreateProver(SMTLibOptions libOptions, Program prog,
+    string /*?*/ logFilePath, bool appendLogFile, uint timeout,
     int taskID = -1)
   {
     Contract.Requires(prog != null);
 
-    ProverOptions options = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
+    ProverOptions options = cce.NonNull(libOptions.TheProverFactory).BlankProverOptions(libOptions);
 
     if (logFilePath != null)
     {
@@ -30,14 +34,14 @@ public abstract class ProverInterface
 
     if (taskID >= 0)
     {
-      options.Parse(CommandLineOptions.Clo.Cho[taskID].ProverOptions);
+      options.Parse(libOptions.Cho[taskID].ProverOptions);
     }
     else
     {
-      options.Parse(CommandLineOptions.Clo.ProverOptions);
+      options.Parse(libOptions.ProverOptions);
     }
 
-    ProverContext ctx = (ProverContext) CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
+    ProverContext ctx = libOptions.TheProverFactory.NewProverContext(options);
 
     // set up the context
     foreach (Declaration decl in prog.TopLevelDeclarations)
@@ -83,7 +87,7 @@ public abstract class ProverInterface
       }
     }
 
-    return (ProverInterface) CommandLineOptions.Clo.TheProverFactory.SpawnProver(CommandLineOptions.Clo, options, ctx);
+    return libOptions.TheProverFactory.SpawnProver(libOptions, options, ctx);
   }
 
   public enum Outcome
@@ -102,6 +106,18 @@ public abstract class ProverInterface
 
   public class ErrorHandler
   {
+    private SMTLibOptions options;
+
+    public ErrorHandler(SMTLibOptions options)
+    {
+      this.options = options;
+    }
+
+    public virtual void AddNecessaryAssume(string id)
+    {
+      throw new System.NotImplementedException();
+    }
+
     // Used in CheckOutcomeCore
     public virtual int StartingProcId()
     {
@@ -122,14 +138,14 @@ public abstract class ProverInterface
     public virtual void OnProverWarning(string message)
     {
       Contract.Requires(message != null);
-      switch (CommandLineOptions.Clo.PrintProverWarnings)
+      switch (options.PrintProverWarnings)
       {
-        case CommandLineOptions.ProverWarnings.None:
+        case CoreOptions.ProverWarnings.None:
           break;
-        case CommandLineOptions.ProverWarnings.Stdout:
+        case CoreOptions.ProverWarnings.Stdout:
           Console.WriteLine("Prover warning: " + message);
           break;
-        case CommandLineOptions.ProverWarnings.Stderr:
+        case CoreOptions.ProverWarnings.Stderr:
           Console.Error.WriteLine("Prover warning: " + message);
           break;
         default:
@@ -153,15 +169,10 @@ public abstract class ProverInterface
     }
   }
 
-  public abstract void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler);
+  public abstract Task BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler);
 
   [NoDefaultContract]
-  public abstract Outcome CheckOutcome(ErrorHandler handler, int errorLimit);
-
-  public virtual string[] CalculatePath(int controlFlowConstant)
-  {
-    throw new System.NotImplementedException();
-  }
+  public abstract Task<Outcome> CheckOutcome(ErrorHandler handler, int errorLimit, CancellationToken cancellationToken);
 
   public virtual void LogComment(string comment)
   {
@@ -172,7 +183,7 @@ public abstract class ProverInterface
   {
   }
 
-  public abstract void Reset(VCExpressionGenerator gen);
+  public abstract Task Reset(VCExpressionGenerator gen);
 
   public abstract void FullReset(VCExpressionGenerator gen);
 
@@ -236,18 +247,20 @@ public abstract class ProverInterface
   }
 
   // (check-sat + get-unsat-core + checkOutcome)
-  public virtual Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore, ErrorHandler handler)
+  public virtual Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> assumptions, ErrorHandler handler,
+    CancellationToken cancellationToken)
   {
     throw new NotImplementedException();
   }
 
-  public virtual Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
-    out List<int> unsatisfiedSoftAssumptions, ErrorHandler handler)
+  public virtual Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
+    ErrorHandler handler, CancellationToken cancellationToken)
   {
     throw new NotImplementedException();
   }
 
-  public virtual Outcome CheckOutcomeCore(ErrorHandler handler, int taskID = -1)
+  public virtual Task<Outcome> CheckOutcomeCore(ErrorHandler handler,
+    CancellationToken cancellationToken, int errorLimit)
   {
     throw new NotImplementedException();
   }
@@ -267,7 +280,7 @@ public abstract class ProverInterface
   {
   }
 
-  public virtual int GetRCount()
+  public virtual Task<int> GetRCount()
   {
     throw new NotImplementedException();
   }
@@ -285,7 +298,7 @@ public abstract class ProverInterface
   {
   }
 
-  public virtual object Evaluate(VCExpr expr)
+  public virtual Task<object> Evaluate(VCExpr expr)
   {
     throw new NotImplementedException();
   }
@@ -294,5 +307,22 @@ public abstract class ProverInterface
   public virtual void AssertNamed(VCExpr vc, bool polarity, string name)
   {
     throw new NotImplementedException();
+  }
+
+  public abstract Task GoBackToIdle();
+}
+public class UnexpectedProverOutputException : ProverException
+{
+  public UnexpectedProverOutputException(string s)
+    : base(s)
+  {
+  }
+}
+
+public class ProverDiedException : UnexpectedProverOutputException
+{
+  public ProverDiedException()
+    : base("Prover died with no further output, perhaps it ran out of memory or was killed.")
+  {
   }
 }

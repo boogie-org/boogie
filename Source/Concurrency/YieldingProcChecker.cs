@@ -11,8 +11,8 @@ namespace Microsoft.Boogie
       // Generate the refinement checks for every layer
       foreach (int layerNum in civlTypeChecker.allRefinementLayers)
       {
-        if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum ||
-            layerNum <= CommandLineOptions.Clo.TrustLayersUpto)
+        if (civlTypeChecker.Options.TrustLayersDownto <= layerNum ||
+            layerNum <= civlTypeChecker.Options.TrustLayersUpto)
         {
           continue;
         }

@@ -9,6 +9,11 @@
 // CHECK-L: (set-option :smt.random_seed 99)
 // CHECK-L: (set-option :smt.random_seed 55)
 // CHECK-L: (set-info :boogie-vc-id WithoutRandomSeed1)
+
+// Depends on all output going to a single file, so incompatible with
+// batch mode.
+// UNSUPPORTED: batch_mode
+
 procedure {:random_seed 100} WithRandomSeed0()
 {
 }

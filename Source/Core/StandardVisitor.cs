@@ -78,6 +78,7 @@ namespace Microsoft.Boogie
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       node.Expr = this.VisitExpr(node.Expr);
+      VisitAttributes(node);
       return node;
     }
 
@@ -90,7 +91,7 @@ namespace Microsoft.Boogie
         node.SetLhs(i, cce.NonNull((AssignLhs) this.Visit(node.Lhss[i])));
         node.SetRhs(i, cce.NonNull((Expr /*!*/) this.VisitExpr(node.Rhss[i])));
       }
-
+      VisitAttributes(node);
       return node;
     }
 
@@ -99,6 +100,7 @@ namespace Microsoft.Boogie
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       node.Expr = this.VisitExpr(node.Expr);
+      VisitAttributes(node);
       return node;
     }
 
@@ -234,7 +236,7 @@ namespace Microsoft.Boogie
           node.Outs[i] = (IdentifierExpr) this.VisitIdentifierExpr(cce.NonNull(node.Outs[i]));
         }
       }
-
+      VisitAttributes(node);
       return node;
     }
 
@@ -249,7 +251,7 @@ namespace Microsoft.Boogie
           node.CallCmds[i] = (CallCmd) this.VisitCallCmd(node.CallCmds[i]);
         }
       }
-
+      VisitAttributes(node);
       return node;
     }
 
@@ -433,6 +435,7 @@ namespace Microsoft.Boogie
       node.Rhss = this.VisitExprSeq(node.Rhss);
       node.Dummies = this.VisitVariableSeq(node.Dummies);
       node.Body = this.VisitExpr(node.Body);
+      VisitAttributes(node);
       return node;
     }
 
@@ -457,7 +460,6 @@ namespace Microsoft.Boogie
       {
         node.DefinitionBody = (NAryExpr) this.VisitExpr(node.DefinitionBody);
       }
-
       return node;
     }
 
@@ -651,6 +653,7 @@ namespace Microsoft.Boogie
       node.Body = this.VisitExpr(node.Body);
       node.Dummies = this.VisitVariableSeq(node.Dummies);
       //node.Type = this.VisitType(node.Type);
+      VisitAttributes(node);
       return node;
     }
 
@@ -864,6 +867,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Cmd>() != null);
       node.Ensures = this.VisitEnsures(node.Ensures);
       node.Expr = this.VisitExpr(node.Expr);
+      VisitAttributes(node);
       return node;
     }
 
@@ -873,7 +877,24 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Cmd>() != null);
       node.Requires = this.VisitRequires(node.Requires);
       node.Expr = this.VisitExpr(node.Expr);
+      VisitAttributes(node);
       return node;
+    }
+
+    /*
+     * VisitAttributes is being called in the visitor of those subtypes of Cmd
+     * and Expr that implement ICarriesAttributes. This behavior is introduced so
+     * that hints for pool-based quantifier instantiation present in attributes
+     * are processed naturally during monomorphization and inlining. There
+     * are other subtypes of Absy that implement ICarriesAttributes; if
+     * necessary, this method could be in the visitor for those types also.
+     */
+    private void VisitAttributes(ICarriesAttributes node)
+    {
+      if (node.Attributes != null)
+      {
+        node.Attributes = VisitQKeyValue(node.Attributes);
+      }
     }
   }
 

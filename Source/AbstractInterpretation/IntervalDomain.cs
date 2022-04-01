@@ -14,7 +14,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
     class E_Bottom : E_Common
     {
-      public override Expr ToExpr()
+      public override Expr ToExpr(CoreOptions options)
       {
         return Expr.False;
       }
@@ -33,12 +33,12 @@ namespace Microsoft.Boogie.AbstractInterpretation
         N = n;
       }
 
-      public override Expr ToExpr()
+      public override Expr ToExpr(CoreOptions options)
       {
         Expr expr = Expr.True;
         for (var n = N; n != null; n = n.Next)
         {
-          expr = BplAnd(expr, n.ToExpr());
+          expr = BplAnd(expr, n.ToExpr(options));
         }
 
         return expr;
@@ -212,10 +212,10 @@ namespace Microsoft.Boogie.AbstractInterpretation
         }
       }
 
-      public Expr ToExpr()
+      public Expr ToExpr(CoreOptions options)
       {
-        if (!V.IsMutable && CommandLineOptions.Clo.InstrumentInfer !=
-          CommandLineOptions.InstrumentationPlaces.Everywhere)
+        if (!V.IsMutable && options.InstrumentInfer !=
+          CoreOptions.InstrumentationPlaces.Everywhere)
         {
           // omit invariants about readonly variables
           return Expr.True;

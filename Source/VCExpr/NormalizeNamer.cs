@@ -14,6 +14,10 @@ namespace Microsoft.Boogie.VCExprAST
     {
     }
 
+    public static NormalizeNamer Create(ScopedNamer namer = null) {
+      return namer != null ? new NormalizeNamer(namer) : new NormalizeNamer();
+    }
+
     protected override string GetModifiedName(string uniqueInherentName)
     {
       return "$generated";

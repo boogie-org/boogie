@@ -1,10 +1,13 @@
 using System;
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.BaseTypes;
 using VC;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.Houdini
 {
@@ -70,7 +73,7 @@ namespace Microsoft.Boogie.Houdini
         houdiniAssertConstants.Add(houdiniConstant);
       }
 
-      if (houdiniConstant != null && CommandLineOptions.Clo.ExplainHoudini &&
+      if (houdiniConstant != null && houdini.Options.ExplainHoudini &&
           !constToControl.ContainsKey(houdiniConstant.Name))
       {
         // For each houdini constant c, create two more constants c_pos and c_neg.
@@ -95,7 +98,7 @@ namespace Microsoft.Boogie.Houdini
     private Tuple<Variable, Variable> createNewExplainConstants(Variable v)
     {
       Contract.Assert(impl != null);
-      Contract.Assert(CommandLineOptions.Clo.ExplainHoudini);
+      Contract.Assert(houdini.Options.ExplainHoudini);
       Variable v1 = new Constant(Token.NoToken,
         new TypedIdent(Token.NoToken, string.Format("{0}_{1}_{2}", v.Name, impl.Name, "pos"),
           Microsoft.Boogie.BasicType.Bool));
@@ -108,7 +111,7 @@ namespace Microsoft.Boogie.Houdini
   }
 
 
-  public class HoudiniSession
+  public class HoudiniSession : ProofRun
   {
     public class HoudiniStatistics
     {
@@ -119,11 +122,13 @@ namespace Microsoft.Boogie.Houdini
       public int numUnsatCorePrunings = 0;
     }
 
-    public string descriptiveName;
+    public string Description { get; }
+    private readonly Houdini houdini;
     public HoudiniStatistics stats;
+    public List<Counterexample> Counterexamples { get; } = new();
     private VCExpr conjecture;
     private ProverInterface.ErrorHandler handler;
-    ConditionGeneration.CounterexampleCollector collector;
+    ConditionGeneration.VerificationResultCollector collector;
     HashSet<Variable> unsatCoreSet;
     HashSet<Variable> houdiniConstants;
     public HashSet<Variable> houdiniAssertConstants;
@@ -150,16 +155,17 @@ namespace Microsoft.Boogie.Houdini
       return false;
     }
 
-    public HoudiniSession(Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program,
+    public HoudiniSession(TextWriter traceWriter, Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program,
       Implementation impl, HoudiniStatistics stats, int taskID = -1)
     {
-      this.descriptiveName = impl.Name;
+      this.Description = impl.Name;
+      this.houdini = houdini;
       this.stats = stats;
-      collector = new ConditionGeneration.CounterexampleCollector();
+      collector = new ConditionGeneration.VerificationResultCollector(houdini.Options);
       collector.OnProgress?.Invoke("HdnVCGen", 0, 0, 0.0);
 
       vcgen.ConvertCFG2DAG(impl, taskID: taskID);
-      var gotoCmdOrigins = vcgen.PassifyImpl(impl, out var mvInfo);
+      var gotoCmdOrigins = vcgen.PassifyImpl(new ImplementationRun(impl, traceWriter), out var mvInfo);
 
       ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl, out var ecollector);
       this.houdiniAssertConstants = ecollector.houdiniAssertConstants;
@@ -183,12 +189,12 @@ namespace Microsoft.Boogie.Houdini
       VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(impl.Blocks[0]))));
       conjecture = exprGen.Implies(eqExpr, conjecture);
 
-      Macro macro = new Macro(Token.NoToken, descriptiveName, new List<Variable>(),
+      Macro macro = new Macro(Token.NoToken, Description, new List<Variable>(),
         new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false));
       proverInterface.DefineMacro(macro, conjecture);
       conjecture = exprGen.Function(macro);
-      handler = new VCGen.ErrorReporter(gotoCmdOrigins, absyIds, impl.Blocks, vcgen.debugInfos, collector,
-        mvInfo, proverInterface.Context, program);
+      handler = new VCGen.ErrorReporter(this.houdini.Options, gotoCmdOrigins, absyIds, impl.Blocks, vcgen.debugInfos, collector,
+        mvInfo, proverInterface.Context, program, this);
     }
 
     private VCExpr BuildAxiom(ProverInterface proverInterface, Dictionary<Variable, bool> currentAssignment)
@@ -213,7 +219,7 @@ namespace Microsoft.Boogie.Houdini
         }
       }
 
-      if (CommandLineOptions.Clo.ExplainHoudini)
+      if (houdini.Options.ExplainHoudini)
       {
         // default values for ExplainHoudini control variables
         foreach (var constant in explainConstantsNegative.Concat(explainConstantsPositive))
@@ -234,7 +240,7 @@ namespace Microsoft.Boogie.Houdini
       }
        */
 
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
         Console.WriteLine("Houdini assignment axiom: " + expr);
       }
@@ -242,40 +248,43 @@ namespace Microsoft.Boogie.Houdini
       return expr;
     }
 
-    public ProverInterface.Outcome Verify(ProverInterface proverInterface, Dictionary<Variable, bool> assignment,
-      out List<Counterexample> errors, int errorLimit)
+    public HoudiniOptions Options => houdini.Options;
+
+    public async Task<(ProverInterface.Outcome, List<Counterexample> errors)> Verify(
+      ProverInterface proverInterface,
+      Dictionary<Variable, bool> assignment,
+      int errorLimit)
     {
       collector.examples.Clear();
 
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
-        Console.WriteLine("Verifying " + descriptiveName);
+        Console.WriteLine("Verifying " + Description);
       }
 
       DateTime now = DateTime.UtcNow;
 
       VCExpr vc = proverInterface.VCExprGen.Implies(BuildAxiom(proverInterface, assignment), conjecture);
-      proverInterface.BeginCheck(descriptiveName, vc, handler);
-      ProverInterface.Outcome proverOutcome = proverInterface.CheckOutcome(handler, errorLimit);
+      await proverInterface.BeginCheck(Description, vc, handler);
+      ProverInterface.Outcome proverOutcome = await proverInterface.CheckOutcome(handler, errorLimit, CancellationToken.None);
 
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
       stats.proverTime += queryTime;
       stats.numProverQueries++;
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
         Console.WriteLine("Outcome = " + proverOutcome);
         Console.WriteLine("Time taken = " + queryTime);
       }
 
-      errors = collector.examples;
-      return proverOutcome;
+      return (proverOutcome, collector.examples);
     }
 
     // MAXSAT
-    public void Explain(ProverInterface proverInterface,
+    public async Task Explain(ProverInterface proverInterface,
       Dictionary<Variable, bool> assignment, Variable refutedConstant)
     {
-      Contract.Assert(CommandLineOptions.Clo.ExplainHoudini);
+      Contract.Assert(houdini.Options.ExplainHoudini);
 
       collector.examples.Clear();
 
@@ -373,23 +382,23 @@ namespace Microsoft.Boogie.Houdini
       var controlExprFalse = exprGen.And(controlExpr,
         exprGen.And(exprGen.Not(exprTranslator.LookupVariable(pc)), exprGen.Not(exprTranslator.LookupVariable(nc))));
 
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
-        Console.WriteLine("Verifying (MaxSat) " + descriptiveName);
+        Console.WriteLine("Verifying (MaxSat) " + Description);
       }
 
       DateTime now = DateTime.UtcNow;
 
-      var el = CommandLineOptions.Clo.ErrorLimit;
-      CommandLineOptions.Clo.ErrorLimit = 1;
+      var el = Options.ErrorLimit;
+      Options.ErrorLimit = 1;
 
       var outcome = ProverInterface.Outcome.Undetermined;
 
       do
       {
         hardAssumptions.Add(controlExprNoop);
-        outcome = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions, out var unsatisfiedSoftAssumptions,
-          handler);
+        (outcome, var unsatisfiedSoftAssumptions) = await proverInterface.CheckAssumptions(hardAssumptions, softAssumptions,
+          handler, CancellationToken.None);
         hardAssumptions.RemoveAt(hardAssumptions.Count - 1);
 
         if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory ||
@@ -400,7 +409,7 @@ namespace Microsoft.Boogie.Houdini
 
         var reason = new HashSet<string>();
         unsatisfiedSoftAssumptions.Iter(i => reason.Add(softAssumptions[i].ToString()));
-        if (CommandLineOptions.Clo.Trace)
+        if (Options.Trace)
         {
           Console.Write("Reason for removal of {0}: ", refutedConstant.Name);
           reason.Iter(r => Console.Write("{0} ", r));
@@ -423,9 +432,8 @@ namespace Microsoft.Boogie.Houdini
           hardAssumptions.Add(softAssumptions[i]);
         }
 
-        var unsatisfiedSoftAssumptions2 = new List<int>();
-        outcome = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions2, out unsatisfiedSoftAssumptions2,
-          handler);
+        (outcome, var unsatisfiedSoftAssumptions2) = await proverInterface.CheckAssumptions(hardAssumptions, softAssumptions2,
+          handler, CancellationToken.None);
 
         if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory ||
             outcome == ProverInterface.Outcome.OutOfResource || outcome == ProverInterface.Outcome.Undetermined)
@@ -437,7 +445,7 @@ namespace Microsoft.Boogie.Houdini
         var reason1 = new HashSet<string>(); //these are the reasons for inconsistency
         unsatisfiedSoftAssumptions2.Iter(i => reason1.Add(softAssumptions2[i].ToString()));
 
-        if (CommandLineOptions.Clo.Trace)
+        if (Options.Trace)
         {
           Console.Write("Revised reason for removal of {0}: ", refutedConstant.Name);
           reason.Iter(r => Console.Write("{0} ", r));
@@ -447,14 +455,14 @@ namespace Microsoft.Boogie.Houdini
         foreach (var r in reason)
         {
           Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name,
-            r, descriptiveName);
+            r, Description);
         }
 
         //also add the removed reasons using dotted edges (requires- x != 0, requires- x == 0 ==> assert x != 0)
         foreach (var r in reason1)
         {
           Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=blue style=dotted ];",
-            refutedConstant.Name, r, descriptiveName);
+            refutedConstant.Name, r, Description);
         }
       } while (false);
 
@@ -462,21 +470,21 @@ namespace Microsoft.Boogie.Houdini
           outcome == ProverInterface.Outcome.OutOfResource || outcome == ProverInterface.Outcome.Undetermined)
       {
         Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name,
-          "TimeOut", descriptiveName);
+          "TimeOut", Description);
       }
 
-      CommandLineOptions.Clo.ErrorLimit = el;
+      Options.ErrorLimit = el;
 
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
       stats.proverTime += queryTime;
       stats.numProverQueries++;
-      if (CommandLineOptions.Clo.Trace)
+      if (Options.Trace)
       {
         Console.WriteLine("Time taken = " + queryTime);
       }
     }
 
-    public void UpdateUnsatCore(ProverInterface proverInterface, Dictionary<Variable, bool> assignment)
+    public async Task UpdateUnsatCore(ProverInterface proverInterface, Dictionary<Variable, bool> assignment)
     {
       DateTime now = DateTime.UtcNow;
 
@@ -506,7 +514,7 @@ namespace Microsoft.Boogie.Houdini
         assumptionExprs.Add(exprTranslator.LookupVariable(v));
       }
 
-      ProverInterface.Outcome tmp = proverInterface.CheckAssumptions(assumptionExprs, out var unsatCore, handler);
+      (ProverInterface.Outcome tmp, var unsatCore) = await proverInterface.CheckAssumptions(assumptionExprs, handler, CancellationToken.None);
       System.Diagnostics.Debug.Assert(tmp == ProverInterface.Outcome.Valid);
       unsatCoreSet = new HashSet<Variable>();
       foreach (int i in unsatCore)

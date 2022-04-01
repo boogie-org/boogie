@@ -24,6 +24,7 @@ namespace Microsoft.Boogie
     private List<Expr> pathTranslations;
 
     private bool IsJoint => second != null;
+    private ConcurrencyOptions Options => civlTypeChecker.Options;
 
     private IEnumerable<Variable> AllVariables =>
       frame.Union(allInParams).Union(allOutParams).Union(allLocVars).Distinct();
@@ -89,8 +90,8 @@ namespace Microsoft.Boogie
         messagePrefix);
       trc.EnumeratePaths();
       var transitionRelation = Expr.Or(trc.pathTranslations);
-      transitionRelation.Resolve(new ResolutionContext(null) {StateMode = ResolutionContext.State.Two});
-      transitionRelation.Typecheck(new TypecheckingContext(null));
+      transitionRelation.Resolve(new ResolutionContext(null, civlTypeChecker.Options) {StateMode = ResolutionContext.State.Two});
+      transitionRelation.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
       return transitionRelation;
     }
 
@@ -172,7 +173,7 @@ namespace Microsoft.Boogie
       var pathTranslation = new PathTranslation(this);
       pathTranslations.Add(pathTranslation.TransitionRelationExpr);
 
-      if (CommandLineOptions.Clo.WarnNotEliminatedVars)
+      if (civlTypeChecker.Options.WarnNotEliminatedVars)
       {
         var quantifiedVars = pathTranslation.GetQuantifiedOriginalVariables();
         if (quantifiedVars.Any())
@@ -207,6 +208,8 @@ namespace Microsoft.Boogie
 
       private IEnumerable<Variable> IntermediateFrameWithWitnesses =>
         trc.FrameWithWitnesses.Select(v => frameIntermediateCopy[v]);
+
+      private ConcurrencyOptions Options => trc.Options;
 
       class Assignment
       {
@@ -359,6 +362,7 @@ namespace Microsoft.Boogie
       {
         TryElimination(Enumerable.Empty<Variable>());
         TryElimination(trc.allLocVars.Select(v => varCopies[v][0]));
+        TryElimination(trc.allLocVars.Where(v => varCopies[v].Count > 1).Select(v => varCopies[v][1]));
 
         if (trc.ignorePostState)
         {
@@ -433,7 +437,7 @@ namespace Microsoft.Boogie
               if (v == varCopies[orig].First() && trc.triggers.ContainsKey(orig))
               {
                 var f = trc.triggers[orig];
-                exprs.Add(ExprHelper.FunctionCall(f, Expr.Ident(existsVarMap[v])));
+                exprs.Add(ExprHelper.FunctionCall(Options, f, Expr.Ident(existsVarMap[v])));
               }
             }
 
@@ -531,7 +535,7 @@ namespace Microsoft.Boogie
             Enumerable.Zip(varToWitnesses.Keys, witnessSet, Tuple.Create))
           {
             CommutativityWitness witness = pair.Item2;
-            witnessSubst[pair.Item1] = ExprHelper.FunctionCall(
+            witnessSubst[pair.Item1] = ExprHelper.FunctionCall(Options,
               witness.function, witness.args.ToArray()
             );
           }
