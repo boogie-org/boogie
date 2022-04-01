@@ -134,7 +134,7 @@ namespace VC
         this.options = options;
         Interlocked.Increment(ref currentId);
 
-        TopLevelDeclarations = par.program.TopLevelDeclarations;
+        TopLevelDeclarations = par.program.TopLevelDeclarations.ToList(); // TODO should this line be removed?
         PrintTopLevelDeclarationsForPruning(par.program, implementation, "before");        
         TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.program, blocks).ToList();
         PrintTopLevelDeclarationsForPruning(par.program, implementation, "after");

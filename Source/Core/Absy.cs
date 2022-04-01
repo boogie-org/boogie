@@ -531,12 +531,12 @@ namespace Microsoft.Boogie
 
     [Rep] private List<Declaration /*!*/> /*!*/ topLevelDeclarations;
 
-    public IReadOnlyList<Declaration> TopLevelDeclarations
+    public IEnumerable<Declaration> TopLevelDeclarations
     {
       get
       {
         Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Declaration>>()));
-        return topLevelDeclarations.AsReadOnly();
+        return topLevelDeclarations.SelectMany(d => d.SelfAndChildren);
       }
 
       set
@@ -1565,6 +1565,8 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(DeclarationContracts))]
   public abstract class Declaration : Absy, ICarriesAttributes
   {
+    public virtual IEnumerable<Declaration> SelfAndChildren => Enumerable.Repeat(this, 1);
+
     public virtual int ContentHash => 1; 
     
     public QKeyValue Attributes { get; set; }
@@ -2517,6 +2519,8 @@ namespace Microsoft.Boogie
 
     public override bool IsMutable => false;
 
+    public override IEnumerable<Declaration> SelfAndChildren => base.SelfAndChildren.Concat(DefinitionAxioms);
+
     public override void Emit(TokenTextWriter stream, int level)
     {
       //Contract.Requires(stream != null);
@@ -3364,6 +3368,8 @@ namespace Microsoft.Boogie
       //:this(tok, name, typeParams, args, result, comment);
       this.Attributes = kv;
     }
+
+    public override IEnumerable<Declaration> SelfAndChildren => base.SelfAndChildren.Concat(DefinitionAxioms);
 
     public override void Emit(TokenTextWriter stream, int level)
     {
