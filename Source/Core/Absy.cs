@@ -3302,7 +3302,7 @@ namespace Microsoft.Boogie
 
     public Expr Body; // Only set if the function is declared with {:inline}
     public NAryExpr DefinitionBody; // Only set if the function is declared with {:define}
-    public Axiom DefinitionAxiom;
+    public Axiom DefinitionAxiom { get; set; }
 
     private readonly IList<Axiom> otherDefinitionAxioms = new List<Axiom>();
 
@@ -3379,7 +3379,7 @@ namespace Microsoft.Boogie
       this.Attributes = kv;
     }
 
-    public override IEnumerable<Declaration> SelfAndChildren => base.SelfAndChildren.Concat(DefinitionAxioms);
+    public override IEnumerable<Declaration> SelfAndChildren => base.SelfAndChildren.Concat(OtherDefinitionAxioms);
 
     public override void Emit(TokenTextWriter stream, int level)
     {
@@ -3585,7 +3585,6 @@ namespace Microsoft.Boogie
           new Trigger(tok, true, new List<Expr> {call}, null),
           def);
       }
-
       DefinitionAxiom = new Axiom(tok, def);
       return DefinitionAxiom;
     }

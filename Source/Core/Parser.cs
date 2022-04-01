@@ -486,7 +486,7 @@ private class BvBounds : Expr {
 		     SemErr("function with :define attribute has to be monomorphic");
 		   func.DefinitionBody = func.CreateFunctionDefinition(definition);
 		 } else {
-		   func.CreateDefinitionAxiom(definition, kv);
+		   ds.Add(func.CreateDefinitionAxiom(definition, kv));
 		 }
 		}
 		
