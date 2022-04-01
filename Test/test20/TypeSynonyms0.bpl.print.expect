@@ -28,10 +28,10 @@ const y: Field int bool;
 const z: Set int bool;
 
 const d: <a,b>[notAllParams a b]int;
-<console>(14,-1): Error: type synonym could not be resolved because of cycles: Cyclic0 (replacing body with "bool" to continue resolving)
-<console>(16,-1): Error: type synonym could not be resolved because of cycles: Cyclic1 (replacing body with "bool" to continue resolving)
-<console>(18,-1): Error: type synonym could not be resolved because of cycles: AlsoCyclic (replacing body with "bool" to continue resolving)
-<console>(26,8): Error: type constructor received wrong number of arguments: Field
-<console>(28,8): Error: type synonym received wrong number of arguments: Set
-<console>(30,8): Error: type variable must occur in map arguments: a
+TypeSynonyms0.bpl(13,5): Error: type synonym could not be resolved because of cycles: Cyclic0 (replacing body with "bool" to continue resolving)
+TypeSynonyms0.bpl(14,5): Error: type synonym could not be resolved because of cycles: Cyclic1 (replacing body with "bool" to continue resolving)
+TypeSynonyms0.bpl(16,5): Error: type synonym could not be resolved because of cycles: AlsoCyclic (replacing body with "bool" to continue resolving)
+TypeSynonyms0.bpl(26,10): Error: type constructor received wrong number of arguments: Field
+TypeSynonyms0.bpl(27,10): Error: type synonym received wrong number of arguments: Set
+TypeSynonyms0.bpl(30,10): Error: type variable must occur in map arguments: a
 6 name resolution errors detected in TypeSynonyms0.bpl
