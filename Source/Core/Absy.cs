@@ -3304,7 +3304,8 @@ namespace Microsoft.Boogie
     public NAryExpr DefinitionBody; // Only set if the function is declared with {:define}
     public Axiom DefinitionAxiom;
 
-    public IList<Axiom> otherDefinitionAxioms = new List<Axiom>();
+    private readonly IList<Axiom> otherDefinitionAxioms = new List<Axiom>();
+
     public IEnumerable<Axiom> DefinitionAxioms => 
       (DefinitionAxiom == null ? Enumerable.Empty<Axiom>() : new[]{ DefinitionAxiom }).Concat(otherDefinitionAxioms);
 
@@ -3982,6 +3983,8 @@ namespace Microsoft.Boogie
         Contract.Assert(e != null);
         e.Emit(stream, level);
       }
+      stream.WriteLine();
+      stream.WriteLine();
     }
 
     public override void Register(ResolutionContext rc)
@@ -4574,6 +4577,8 @@ namespace Microsoft.Boogie
       }
 
       stream.WriteLine(level, "{0}", '}');
+      stream.WriteLine();
+      stream.WriteLine();
     }
 
     public override void Register(ResolutionContext rc)

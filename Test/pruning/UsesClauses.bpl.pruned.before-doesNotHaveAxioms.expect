@@ -28,18 +28,26 @@ procedure hasAxioms();
   ensures ConsumerFunc(4) == 3;
   ensures four == 4;
 
+
+
 implementation hasAxioms()
 {
     assert ConsumerFunc(4) == 3;
     assert four == 4;
 }
 
+
+
 procedure doesNotHaveAxioms();
   ensures ConsumerFunc(4) == 3;
   ensures four == 4;
+
+
 
 implementation doesNotHaveAxioms()
 {
     assert ConsumerFunc(4) == 3;
     assert four == 4;
 }
+
+
