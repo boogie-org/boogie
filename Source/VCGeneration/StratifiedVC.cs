@@ -931,7 +931,7 @@ namespace VC
     {
       // Construct the set of inlined procs in the original program
       var inlinedProcs = new HashSet<string>();
-      foreach (var decl in program.TopLevelDeclarations)
+      foreach (var decl in program.Declarations)
       {
         // Implementations
         if (decl is Implementation)

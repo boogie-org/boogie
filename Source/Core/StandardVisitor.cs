@@ -619,7 +619,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Program>() != null);
-      var decls = node.TopLevelDeclarations.ToList();
+      var decls = node.Declarations.ToList();
       node.ClearTopLevelDeclarations();
       node.AddTopLevelDeclarations(this.VisitDeclarationList(decls));
       return node;
@@ -1403,7 +1403,7 @@ namespace Microsoft.Boogie
     public override Program VisitProgram(Program node)
     {
       Contract.Ensures(Contract.Result<Program>() == node);
-      this.VisitDeclarationList(node.TopLevelDeclarations.ToList());
+      this.VisitDeclarationList(node.Declarations.ToList());
       return node;
     }
 

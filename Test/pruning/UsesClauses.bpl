@@ -1,5 +1,6 @@
-// RUN: %parallel-boogie /prune /printPruned:"%tpruned" /errorTrace:0 "%s" > "%t"
+// RUN: %parallel-boogie /print:"%t.print" /prune /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+// RUN: %diff -I "//*" "%s.print.expect" "%t.print"
 // UNSUPPORTED: batch_mode
 
 const unique four: int;

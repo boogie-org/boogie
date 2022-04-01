@@ -58,15 +58,15 @@ namespace Microsoft.Boogie
     {
       if (program.DeclarationDependencies == null || blocks == null || !options.Prune)
       {
-        return program.TopLevelDeclarations;
+        return program.Declarations;
       }
 
       BlocksVisitor blocksNode = new BlocksVisitor(blocks);
       blocksNode.Blocks.ForEach(blk => blocksNode.Visit(blk));
 
-      var keepRoots = program.TopLevelDeclarations.Where(d => QKeyValue.FindBoolAttribute(d.Attributes, "keep"));
+      var keepRoots = program.Declarations.Where(d => QKeyValue.FindBoolAttribute(d.Attributes, "keep"));
       var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing.Concat(keepRoots).ToHashSet()).ToHashSet();
-      return program.TopLevelDeclarations.Where(d => 
+      return program.Declarations.Where(d =>
         d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
     }
   }

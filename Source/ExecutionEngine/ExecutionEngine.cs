@@ -483,7 +483,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        if (program.TopLevelDeclarations.Any(d => d.HasCivlAttribute()))
+        if (program.Declarations.Any(d => d.HasCivlAttribute()))
         {
           Options.UseLibrary = true;
         }
@@ -493,7 +493,7 @@ namespace Microsoft.Boogie
           Options.UseArrayTheory = true;
           Options.Monomorphize = true;
           var library = Parser.ParseLibraryDefinitions();
-          program.AddTopLevelDeclarations(library.TopLevelDeclarations);
+          program.AddTopLevelDeclarations(library.Declarations);
         }
 
         return program;
@@ -586,7 +586,7 @@ namespace Microsoft.Boogie
           "Option /useArrayTheory only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
         return PipelineOutcome.FatalError;
       } 
-      else if (program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>().Any())
+      else if (program.Declarations.OfType<DatatypeTypeCtorDecl>().Any())
       {
         Console.WriteLine(
           "Datatypes only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
@@ -624,7 +624,7 @@ namespace Microsoft.Boogie
       }
 
       // Inline
-      var TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
+      var TopLevelDeclarations = cce.NonNull(program.Declarations);
 
       if (Options.ProcedureInlining != CoreOptions.Inlining.None)
       {

@@ -1612,7 +1612,7 @@ namespace Microsoft.Boogie.Houdini
     /// </summary>
     public static void ApplyAssignment(Program prog, HoudiniOutcome outcome)
     {
-      var Candidates = prog.TopLevelDeclarations.OfType<Constant>().Where(
+      var Candidates = prog.Declarations.OfType<Constant>().Where(
         Item => QKeyValue.FindBoolAttribute(Item.Attributes, "existential")).Select(Item => Item.Name);
 
       // Treat all assertions

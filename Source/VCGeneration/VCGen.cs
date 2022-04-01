@@ -1244,7 +1244,7 @@ namespace VC
       {
         List<Cmd> cc = new List<Cmd>();
         // where clauses of global variables
-        lock (program.TopLevelDeclarations)
+        lock (program.Declarations)
         {
           foreach (var gvar in program.GlobalVariables)
           {

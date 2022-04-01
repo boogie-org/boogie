@@ -18,7 +18,7 @@ namespace VC
       Contract.Requires(impl != null);
 
       // global variables
-      lock (program.TopLevelDeclarations)
+      lock (program.Declarations)
       {
         foreach (var v in program.Variables)
         {

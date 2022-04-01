@@ -11,9 +11,9 @@ namespace Microsoft.Boogie
       Program program = linearTypeChecker.program;
 
       // Store the original declarations of yielding procedures, which will be removed after desugaring below.
-      var origProc = program.TopLevelDeclarations.OfType<Procedure>()
+      var origProc = program.Declarations.OfType<Procedure>()
         .Where(p => civlTypeChecker.procToYieldingProc.ContainsKey(p));
-      var origImpl = program.TopLevelDeclarations.OfType<Implementation>()
+      var origImpl = program.Declarations.OfType<Implementation>()
         .Where(i => civlTypeChecker.procToYieldingProc.ContainsKey(i.Proc));
       List<Declaration> originalDecls = Enumerable.Union<Declaration>(origProc, origImpl).ToList();
 
