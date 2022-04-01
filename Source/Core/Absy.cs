@@ -605,7 +605,7 @@ namespace Microsoft.Boogie
           return implementationsCache.Values;
         }
 
-        var result = Declarations.OfType<Implementation>();
+        var result = TopLevelDeclarations.OfType<Implementation>();
         if (topLevelDeclarationsAreFrozen)
         {
           implementationsCache = result.ToDictionary(p => p.Id);

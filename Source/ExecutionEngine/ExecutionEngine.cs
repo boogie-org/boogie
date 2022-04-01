@@ -780,7 +780,7 @@ namespace Microsoft.Boogie
       Implementation[] stablePrioritizedImpls = null;
 
       if (0 < Options.VerifySnapshots) {
-        OtherDefinitionAxiomsCollector.Collect(Options, program.Axioms);
+        OtherDefinitionAxiomsCollector.Collect(Options, program.TopLevelDeclarations.OfType<Axiom>());
         DependencyCollector.Collect(Options, program);
         stablePrioritizedImpls = impls.OrderByDescending(
           impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl, Options.RunDiagnosticsOnTimeout)).ToArray();
