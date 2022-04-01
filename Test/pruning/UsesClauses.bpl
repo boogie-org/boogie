@@ -1,5 +1,6 @@
-// RUN: %parallel-boogie /print:"%t.print" /prune /printPruned:"%t.pruned" /errorTrace:0 "%s" > "%t"
+// RUN: %parallel-boogie /prune /printPruned:"%t.pruned" /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+// RUN: %parallel-boogie /print:"%t.print" /noVerify "%s"
 // RUN: %diff -I "//*" "%s.print.expect" "%t.print"
 // RUN: %diff "%s.pruned.before-doesNotHaveAxioms.expect" "%t.pruned-before-doesNotHaveAxioms"
 // RUN: %diff "%s.pruned.after-doesNotHaveAxioms.expect" "%t.pruned-after-doesNotHaveAxioms"

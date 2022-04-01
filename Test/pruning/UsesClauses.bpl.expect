@@ -1,6 +1,6 @@
-UsesClauses.bpl(33,1): Error: A postcondition might not hold on this return path.
-UsesClauses.bpl(29,3): Related location: This is the postcondition that might not hold.
-UsesClauses.bpl(33,1): Error: A postcondition might not hold on this return path.
+UsesClauses.bpl(34,1): Error: A postcondition might not hold on this return path.
 UsesClauses.bpl(30,3): Related location: This is the postcondition that might not hold.
+UsesClauses.bpl(34,1): Error: A postcondition might not hold on this return path.
+UsesClauses.bpl(31,3): Related location: This is the postcondition that might not hold.
  
 Boogie program verifier finished with 1 verified, 2 errors
