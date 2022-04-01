@@ -1,6 +1,8 @@
-// RUN: %parallel-boogie /print:"%t.print" /prune /errorTrace:0 "%s" > "%t"
+// RUN: %parallel-boogie /print:"%t.print" /prune /printPruned:"%t.pruned" /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // RUN: %diff -I "//*" "%s.print.expect" "%t.print"
+// RUN: %diff "%s.pruned.before-doesNotHaveAxioms.expect" "%t.pruned-before-doesNotHaveAxioms"
+// RUN: %diff "%s.pruned.after-doesNotHaveAxioms.expect" "%t.pruned-after-doesNotHaveAxioms"
 // UNSUPPORTED: batch_mode
 
 const unique four: int;

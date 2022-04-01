@@ -134,7 +134,6 @@ namespace VC
         this.options = options;
         Interlocked.Increment(ref currentId);
 
-        TopLevelDeclarations = par.program.Declarations.ToList(); // TODO should this line be removed?
         PrintTopLevelDeclarationsForPruning(par.program, implementation, "before");        
         TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.program, blocks).ToList();
         PrintTopLevelDeclarationsForPruning(par.program, implementation, "after");
@@ -150,9 +149,8 @@ namespace VC
         using var writer = new TokenTextWriter(
           $"{options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}", false,
           options.PrettyPrint, options);
-        foreach (var declaration in TopLevelDeclarations ?? program.Declarations) {
-          declaration.Emit(writer, 0);
-        }
+
+        (TopLevelDeclarations ?? program.Declarations).ToList().Emit(writer);
 
         writer.Close();
       }
