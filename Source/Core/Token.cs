@@ -29,6 +29,8 @@ namespace Microsoft.Boogie
     public int _pos; // token position in the source text (starting at 0)
     public int _col; // token column (starting at 1)
     public int _line; // token line (starting at 1)
+    public string/*!*/ _trailingTrivia; // Trivia after this token attached to it (whitespace and comments)
+    public string/*!*/ _leadingTrivia; // Trivia before this token attached to it
 
     public string /*!*/
       _val; // token value
@@ -37,9 +39,6 @@ namespace Microsoft.Boogie
 
     public static readonly IToken /*!*/
       NoToken = new Token();
-
-    private string/*!*/ _trailingTrivia;
-    private string/*!*/ _leadingTrivia;
 
     public Token()
     {
@@ -101,7 +100,36 @@ namespace Microsoft.Boogie
       get { return this._trailingTrivia; }
       set { this._trailingTrivia = value; }
     }
+    
+    /// <summary>
+    /// Duplicates this token and removes the borrowed trivia in the original
+    /// Returns a fresh "detached" token that contains the borrowed trivia
+    /// Used for outer expressions to determine ranges
+    /// </summary>
+    /// <returns>A freshly cloned token with the borrowed leading or trailing trivia</returns>
+    public Token BorrowTrivia(bool leading = false, bool trailing = false) {
+      string borrowedTrailingTrivia = null;
+      string borrowedLeadingTrivia = null;
+      if (leading) {
+        borrowedLeadingTrivia = leadingTrivia;
+        leadingTrivia = null;
+      }
+      if (trailing) {
+        borrowedTrailingTrivia = trailingTrivia;
+        trailingTrivia = null;
+      }
 
+      var result = new Token(line, col) {
+        filename = filename,
+        kind = kind,
+        pos = pos,
+        trailingTrivia = borrowedTrailingTrivia,
+        leadingTrivia = borrowedLeadingTrivia,
+        val = val
+      };
+      return result;
+    }
+    
     public bool IsValid
     {
       get { return this._filename != null; }
