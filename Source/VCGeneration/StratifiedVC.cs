@@ -369,7 +369,7 @@ namespace VC
       this.options = options;
 
       List<Variable> functionInterfaceVars = new List<Variable>();
-      foreach (Variable v in vcgen.program.GlobalVariables)
+      foreach (Variable v in vcgen.Program.GlobalVariables)
       {
         functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", v.TypedIdent.Type),
           true));
@@ -403,7 +403,7 @@ namespace VC
       vcgen.prover.Context.DeclareFunction(function, "");
 
       List<Expr> exprs = new List<Expr>();
-      foreach (Variable v in vcgen.program.GlobalVariables)
+      foreach (Variable v in vcgen.Program.GlobalVariables)
       {
         Contract.Assert(v != null);
         exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
@@ -475,7 +475,7 @@ namespace VC
       (exitAssertCmd as AssumeCmd).Attributes = new QKeyValue(Token.NoToken, "exitAssert", new List<object>(), null);
 
       // Passify
-      Program program = vcgen.program;
+      Program program = vcgen.Program;
       ProverInterface proverInterface = vcgen.prover;
       vcgen.ConvertCFG2DAG(Implementation);
       vcgen.PassifyImpl(run, out mvInfo);
@@ -623,7 +623,7 @@ namespace VC
 
       exitAssertCmd = new AssertCmd(Token.NoToken, Expr.Not(Expr.BinaryTreeAnd(assertConjuncts)));
 
-      Program program = vcgen.program;
+      Program program = vcgen.Program;
       ProverInterface proverInterface = vcgen.prover;
       vcgen.ConvertCFG2DAG(Implementation);
       vcgen.PassifyImpl(run, out mvInfo);
@@ -715,7 +715,7 @@ namespace VC
 
     private void GenerateRecordFunctions()
     {
-      foreach (var proc in program.Procedures)
+      foreach (var proc in Program.Procedures)
       {
         if (!proc.Name.StartsWith(recordProcName))
         {
@@ -931,7 +931,7 @@ namespace VC
     {
       // Construct the set of inlined procs in the original program
       var inlinedProcs = new HashSet<string>();
-      foreach (var decl in program.TopLevelDeclarations)
+      foreach (var decl in program.Declarations)
       {
         // Implementations
         if (decl is Implementation)

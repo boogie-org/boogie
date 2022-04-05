@@ -44,7 +44,7 @@ public abstract class ProverInterface
     ProverContext ctx = libOptions.TheProverFactory.NewProverContext(options);
 
     // set up the context
-    foreach (Declaration decl in prog.TopLevelDeclarations)
+    foreach (Declaration decl in prog.Declarations)
     {
       Contract.Assert(decl != null);
       TypeCtorDecl t = decl as TypeCtorDecl;
@@ -54,7 +54,7 @@ public abstract class ProverInterface
       }
     }
 
-    foreach (Declaration decl in prog.TopLevelDeclarations)
+    foreach (Declaration decl in prog.Declarations)
     {
       Contract.Assert(decl != null);
       Constant c = decl as Constant;
@@ -77,7 +77,7 @@ public abstract class ProverInterface
       ctx.AddAxiom(ax, null);
     }
 
-    foreach (Declaration decl in prog.TopLevelDeclarations)
+    foreach (Declaration decl in prog.Declarations)
     {
       Contract.Assert(decl != null);
       GlobalVariable v = decl as GlobalVariable;

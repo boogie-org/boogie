@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using Microsoft.Boogie.GraphUtil;
+using VC;
 
 namespace Microsoft.Boogie
 {
@@ -58,16 +59,40 @@ namespace Microsoft.Boogie
     {
       if (program.DeclarationDependencies == null || blocks == null || !options.Prune)
       {
-        return program.TopLevelDeclarations;
+        return program.Declarations;
       }
 
       BlocksVisitor blocksNode = new BlocksVisitor(blocks);
       blocksNode.Blocks.ForEach(blk => blocksNode.Visit(blk));
 
-      var keepRoots = program.TopLevelDeclarations.Where(d => QKeyValue.FindBoolAttribute(d.Attributes, "keep"));
+      var keepRoots = program.Declarations.Where(d => QKeyValue.FindBoolAttribute(d.Attributes, "keep"));
       var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing.Concat(keepRoots).ToHashSet()).ToHashSet();
-      return program.TopLevelDeclarations.Where(d => 
-        d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
+      return program.Declarations.Where(d => !IsPrunableType(d) || reachableDeclarations.Contains(d));
+    }
+
+    private static bool IsPrunableType(Declaration d)
+    {
+      return d is Constant || d is Axiom || d is Function;
+    }
+
+    public static void PrintTopLevelDeclarationsForPruning(Split split, string suffix)
+    {
+      if (!split.Options.Prune || split.Options.PrintPrunedFile == null)
+      {
+        return;
+      }
+
+      using var writer = new TokenTextWriter(
+        $"{split.Options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(split.Implementation.Name)}", false,
+        split.Options.PrettyPrint, split.Options);
+
+      IEnumerable<Declaration> declarationsToPrint;
+      if (split.TopLevelDeclarations != null) {
+        declarationsToPrint = split.Parent.Program.TopLevelDeclarations.Intersect(split.TopLevelDeclarations);
+      } else {
+        declarationsToPrint = split.Parent.Program.TopLevelDeclarations;
+      }
+      declarationsToPrint.Where(IsPrunableType).ToList().Emit(writer);
     }
   }
 }

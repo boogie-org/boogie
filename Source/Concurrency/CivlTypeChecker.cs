@@ -71,9 +71,9 @@ namespace Microsoft.Boogie
       this.implToPendingAsyncCollector = new Dictionary<Implementation, Variable>();
       this.inductiveSequentializations = new List<InductiveSequentialization>();
 
-      IEnumerable<string> declNames = program.TopLevelDeclarations.OfType<NamedDeclaration>().Select(x => x.Name);
+      IEnumerable<string> declNames = program.Declarations.OfType<NamedDeclaration>().Select(x => x.Name);
       IEnumerable<string> localVarNames = VariableNameCollector.Collect(program);
-      IEnumerable<string> blockLabels = program.TopLevelDeclarations.OfType<Implementation>()
+      IEnumerable<string> blockLabels = program.Declarations.OfType<Implementation>()
         .SelectMany(x => x.Blocks.Select(y => y.Label));
       var allNames = declNames.Union(localVarNames).Union(blockLabels);
       namePrefix = "Civl_";
@@ -970,7 +970,7 @@ namespace Microsoft.Boogie
 
     private void TypeCheckPendingAsyncMachinery()
     {
-      foreach (var datatypeTypeCtorDecl in program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>())
+      foreach (var datatypeTypeCtorDecl in program.Declarations.OfType<DatatypeTypeCtorDecl>())
       {
         if (datatypeTypeCtorDecl.HasAttribute(CivlAttributes.PENDING_ASYNC))
         {

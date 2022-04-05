@@ -32,7 +32,7 @@ namespace VC
         checker ??= CreateNewChecker();
       }
 
-      PrepareChecker(vcgen.program, split, checker);
+      PrepareChecker(vcgen.Program, split, checker);
       return checker;
     }
 

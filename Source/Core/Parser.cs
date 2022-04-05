@@ -356,9 +356,6 @@ private class BvBounds : Expr {
 		 var constant = new Constant(y, x, u, ParentsClone, ChildrenComplete, kv, axioms);
 		 ds.Add(constant);
 		}
-		foreach(var axiom in axioms) {
-		 ds.Add(axiom);
-		}
 		
 	}
 
@@ -440,7 +437,6 @@ private class BvBounds : Expr {
 		Function/*!*/ func = new Function(z, z.val, typeParams, arguments,
 		                                 new Formal(retTyd.tok, retTyd, false, argKv), null, kv);
 		foreach(var axiom in axioms) {
-		   ds.Add(axiom);
 		   func.AddOtherDefinitionAxiom(axiom);
 		}
 		
