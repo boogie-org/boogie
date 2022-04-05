@@ -493,7 +493,7 @@ namespace Microsoft.Boogie
           Options.UseArrayTheory = true;
           Options.Monomorphize = true;
           var library = Parser.ParseLibraryDefinitions();
-          program.AddTopLevelDeclarations(library.Declarations);
+          program.AddTopLevelDeclarations(library.TopLevelDeclarations);
         }
 
         return program;

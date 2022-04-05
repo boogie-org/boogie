@@ -399,8 +399,6 @@ namespace Microsoft.Boogie
 
       ResolveTypes(rc);
 
-      var prunedTopLevelDeclarations = new List<Declaration /*!*/>();
-
       foreach (var datatypeTypeCtorDecl in Declarations.OfType<DatatypeTypeCtorDecl>())
       {
         foreach (var f in datatypeTypeCtorDecl.Constructors)
@@ -424,6 +422,7 @@ namespace Microsoft.Boogie
         }
       }
 
+      var implementationsToIgnore = new HashSet<Implementation>();
       foreach (var d in Declarations)
       {
         if (QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
@@ -436,18 +435,19 @@ namespace Microsoft.Boogie
         {
           int e = rc.ErrorCount;
           d.Resolve(rc);
-          if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation)
+          if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation implementation)
           {
             // ignore this implementation
             System.Console.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors",
-              ((Implementation) d).Name);
+              implementation.Name);
             rc.ErrorCount = e;
+            implementationsToIgnore.Add(implementation);
             continue;
           }
         }
-        prunedTopLevelDeclarations.Add(d);
       }
 
+      var prunedTopLevelDeclarations = TopLevelDeclarations.Except(implementationsToIgnore).ToList();
       ClearTopLevelDeclarations();
       AddTopLevelDeclarations(prunedTopLevelDeclarations);
 

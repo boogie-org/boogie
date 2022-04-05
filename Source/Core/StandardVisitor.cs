@@ -619,7 +619,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Program>() != null);
-      var decls = node.Declarations.ToList();
+      var decls = node.TopLevelDeclarations.ToList();
       node.ClearTopLevelDeclarations();
       node.AddTopLevelDeclarations(this.VisitDeclarationList(decls));
       return node;
