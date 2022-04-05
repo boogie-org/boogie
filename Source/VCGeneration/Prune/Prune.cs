@@ -67,8 +67,7 @@ namespace Microsoft.Boogie
 
       var keepRoots = program.Declarations.Where(d => QKeyValue.FindBoolAttribute(d.Attributes, "keep"));
       var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing.Concat(keepRoots).ToHashSet()).ToHashSet();
-      return program.Declarations.Where(d =>
-        !IsPrunableType(d) || reachableDeclarations.Contains(d));
+      return program.Declarations.Where(d => !IsPrunableType(d) || reachableDeclarations.Contains(d));
     }
 
     private static bool IsPrunableType(Declaration d)
@@ -87,7 +86,13 @@ namespace Microsoft.Boogie
         $"{split.Options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(split.Implementation.Name)}", false,
         split.Options.PrettyPrint, split.Options);
 
-      (split.TopLevelDeclarations ?? split.Parent.Program.TopLevelDeclarations).Where(IsPrunableType).ToList().Emit(writer);
+      IEnumerable<Declaration> declarationsToPrint;
+      if (split.TopLevelDeclarations != null) {
+        declarationsToPrint = split.Parent.Program.TopLevelDeclarations.Intersect(split.TopLevelDeclarations);
+      } else {
+        declarationsToPrint = split.Parent.Program.TopLevelDeclarations;
+      }
+      declarationsToPrint.Where(IsPrunableType).ToList().Emit(writer);
     }
   }
 }
