@@ -1,0 +1,11 @@
+const unique four: int;
+
+const unique ProducerConst: bool uses {
+  axiom four == 4;
+}
+
+function ConsumerFunc(x: int) : int;
+
+function ProducerFunc(x: int) : bool uses {
+  axiom (forall x: int :: ConsumerFunc(x) == 3);
+}
