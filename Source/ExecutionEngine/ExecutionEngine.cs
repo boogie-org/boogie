@@ -534,7 +534,7 @@ namespace Microsoft.Boogie
 
       var start = DateTime.UtcNow;
 
-      PreProcessProgram(program);
+      PreProcessProgramVerification(program);
 
       if (!Options.Verify)
       {
@@ -566,7 +566,7 @@ namespace Microsoft.Boogie
       return outcome;
     }
 
-    private void PreProcessProgram(Program program)
+    private void PreProcessProgramVerification(Program program)
     {
       // Doing lambda expansion before abstract interpretation means that the abstract interpreter
       // never needs to see any lambda expressions.  (On the other hand, if it were useful for it
@@ -676,7 +676,15 @@ namespace Microsoft.Boogie
     }
 
     public IReadOnlyList<ImplementationTask> GetImplementationTasks(Program program) {
-      PreProcessProgram(program);
+      program.Resolve(Options);
+      program.Typecheck(Options);
+
+      EliminateDeadVariables(program);
+      CollectModSets(program);
+      CoalesceBlocks(program);
+      Inline(program);
+
+      PreProcessProgramVerification(program);
       return GetPrioritizedImplementations(program).Select(implementation => new ImplementationTask(this, program, implementation)).ToList();
     }
 
@@ -1004,114 +1012,9 @@ namespace Microsoft.Boogie
 
     public void ReportOutcome(OutputPrinter printer,
       ConditionGeneration.Outcome outcome, ErrorReporterDelegate er, string implName,
-      IToken implTok, string msgIfVerifies, TextWriter tw, uint timeLimit, List<Counterexample> errors)
-    {
-      ErrorInformation errorInfo = null;
+      IToken implTok, string msgIfVerifies, TextWriter tw, uint timeLimit, List<Counterexample> errors) {
 
-      switch (outcome)
-      {
-        case VCGen.Outcome.Correct:
-          if (msgIfVerifies != null)
-          {
-            tw.WriteLine(msgIfVerifies);
-          }
-          break;
-        case VCGen.Outcome.ReachedBound:
-          tw.WriteLine($"Stratified Inlining: Reached recursion bound of {Options.RecursionBound}");
-          break;
-        case VCGen.Outcome.Errors:
-        case VCGen.Outcome.TimedOut:
-          if (implName != null && implTok != null)
-          {
-            if (outcome == ConditionGeneration.Outcome.TimedOut ||
-                (errors != null && errors.Any(e => e.IsAuxiliaryCexForDiagnosingTimeouts)))
-            {
-              errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
-                string.Format("Verification of '{1}' timed out after {0} seconds", timeLimit, implName));
-            }
-
-            //  Report timed out assertions as auxiliary info.
-            if (errors != null)
-            {
-              var cmpr = new CounterexampleComparer();
-              var timedOutAssertions = errors.Where(e => e.IsAuxiliaryCexForDiagnosingTimeouts).Distinct(cmpr).ToList();
-              timedOutAssertions.Sort(cmpr);
-              if (0 < timedOutAssertions.Count)
-              {
-                errorInfo.Msg += $" with {timedOutAssertions.Count} check(s) that timed out individually";
-              }
-
-              foreach (Counterexample error in timedOutAssertions)
-              {
-                var callError = error as CallCounterexample;
-                var returnError = error as ReturnCounterexample;
-                var assertError = error as AssertCounterexample;
-                IToken tok = null;
-                string msg = null;
-                if (callError != null)
-                {
-                  tok = callError.FailingCall.tok;
-                  msg = callError.FailingCall.ErrorData as string ??
-                        callError.FailingCall.Description.FailureDescription;
-                }
-                else if (returnError != null)
-                {
-                  tok = returnError.FailingReturn.tok;
-                  msg = returnError.FailingReturn.Description.FailureDescription;
-                }
-                else
-                {
-                  tok = assertError.FailingAssert.tok;
-                  if (assertError.FailingAssert.ErrorMessage == null || Options.ForceBplErrors) {
-                      msg = assertError.FailingAssert.ErrorData as string;
-                  }
-                  else {
-                    msg = assertError.FailingAssert.ErrorMessage;
-                  }
-                  msg ??= assertError.FailingAssert.Description.FailureDescription;
-                }
-
-                errorInfo.AddAuxInfo(tok, msg, "Unverified check due to timeout");
-              }
-            }
-          }
-
-          break;
-        case VCGen.Outcome.OutOfResource:
-          if (implName != null && implTok != null)
-          {
-            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
-              "Verification out of resource (" + implName + ")");
-          }
-
-          break;
-        case VCGen.Outcome.OutOfMemory:
-          if (implName != null && implTok != null)
-          {
-            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
-              "Verification out of memory (" + implName + ")");
-          }
-
-          break;
-        case VCGen.Outcome.SolverException:
-          if (implName != null && implTok != null)
-          {
-            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
-              "Verification encountered solver exception (" + implName + ")");
-          }
-
-          break;
-
-        case VCGen.Outcome.Inconclusive:
-          if (implName != null && implTok != null)
-          {
-            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
-              "Verification inconclusive (" + implName + ")");
-          }
-
-          break;
-      }
-
+      var errorInfo = GetOutcomeError(outcome, implName, implTok, msgIfVerifies, tw, timeLimit, errors);
       if (errorInfo != null)
       {
         errorInfo.ImplementationName = implName;
@@ -1127,6 +1030,103 @@ namespace Microsoft.Boogie
           printer.WriteErrorInformation(errorInfo, tw);
         }
       }
+    }
+
+    private ErrorInformation GetOutcomeError(ConditionGeneration.Outcome outcome, string implName, IToken implTok, string msgIfVerifies,
+      TextWriter tw, uint timeLimit, List<Counterexample> errors)
+    {
+      ErrorInformation errorInfo = null;
+
+      switch (outcome) {
+        case VCGen.Outcome.Correct:
+          if (msgIfVerifies != null) {
+            tw.WriteLine(msgIfVerifies);
+          }
+
+          break;
+        case VCGen.Outcome.ReachedBound:
+          tw.WriteLine($"Stratified Inlining: Reached recursion bound of {Options.RecursionBound}");
+          break;
+        case VCGen.Outcome.Errors:
+        case VCGen.Outcome.TimedOut:
+          if (implName != null && implTok != null) {
+            if (outcome == ConditionGeneration.Outcome.TimedOut ||
+                (errors != null && errors.Any(e => e.IsAuxiliaryCexForDiagnosingTimeouts))) {
+              errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
+                string.Format("Verification of '{1}' timed out after {0} seconds", timeLimit, implName));
+            }
+
+            //  Report timed out assertions as auxiliary info.
+            if (errors != null) {
+              var cmpr = new CounterexampleComparer();
+              var timedOutAssertions = errors.Where(e => e.IsAuxiliaryCexForDiagnosingTimeouts).Distinct(cmpr).ToList();
+              timedOutAssertions.Sort(cmpr);
+              if (0 < timedOutAssertions.Count) {
+                errorInfo.Msg += $" with {timedOutAssertions.Count} check(s) that timed out individually";
+              }
+
+              foreach (Counterexample error in timedOutAssertions) {
+                var callError = error as CallCounterexample;
+                var returnError = error as ReturnCounterexample;
+                var assertError = error as AssertCounterexample;
+                IToken tok = null;
+                string msg = null;
+                if (callError != null) {
+                  tok = callError.FailingCall.tok;
+                  msg = callError.FailingCall.ErrorData as string ??
+                        callError.FailingCall.Description.FailureDescription;
+                } else if (returnError != null) {
+                  tok = returnError.FailingReturn.tok;
+                  msg = returnError.FailingReturn.Description.FailureDescription;
+                } else {
+                  tok = assertError.FailingAssert.tok;
+                  if (assertError.FailingAssert.ErrorMessage == null || Options.ForceBplErrors) {
+                    msg = assertError.FailingAssert.ErrorData as string;
+                  } else {
+                    msg = assertError.FailingAssert.ErrorMessage;
+                  }
+
+                  msg ??= assertError.FailingAssert.Description.FailureDescription;
+                }
+
+                errorInfo.AddAuxInfo(tok, msg, "Unverified check due to timeout");
+              }
+            }
+          }
+
+          break;
+        case VCGen.Outcome.OutOfResource:
+          if (implName != null && implTok != null) {
+            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
+              "Verification out of resource (" + implName + ")");
+          }
+
+          break;
+        case VCGen.Outcome.OutOfMemory:
+          if (implName != null && implTok != null) {
+            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
+              "Verification out of memory (" + implName + ")");
+          }
+
+          break;
+        case VCGen.Outcome.SolverException:
+          if (implName != null && implTok != null) {
+            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
+              "Verification encountered solver exception (" + implName + ")");
+          }
+
+          break;
+
+        case VCGen.Outcome.Inconclusive:
+          if (implName != null && implTok != null) {
+            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
+              "Verification inconclusive (" + implName + ")");
+          }
+
+          break;
+      }
+
+      return errorInfo;
     }
 
 

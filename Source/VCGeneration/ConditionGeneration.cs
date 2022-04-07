@@ -127,7 +127,7 @@ namespace VC
 
       var collector = new VerificationResultCollector(Options);
       Outcome outcome = await VerifyImplementation(run, collector, cancellationToken);
-      List<Counterexample> /*?*/ errors = null;
+      List<Counterexample> /*?*/ errors = new List<Counterexample>();
       if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
           outcome == Outcome.OutOfResource) {
         errors = collector.examples;

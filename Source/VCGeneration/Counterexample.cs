@@ -226,18 +226,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      if (!Model.ModelHasStatesAlready)
-      {
-        if (counterexample is AssertCounterexample assertError) {
-          PopulateModelWithStates(counterexample.Trace, assertError.FailingAssert);
-        } else if (counterexample is CallCounterexample callError) {
-          PopulateModelWithStates(counterexample.Trace, callError.FailingCall);
-        } else {
-          Contract.Assert(counterexample is ReturnCounterexample);
-          PopulateModelWithStates(counterexample.Trace, null);
-        }
-        Model.ModelHasStatesAlready = true;
-      }
+      InitializeStates();
 
       if (filenameTemplate == "-")
       {
@@ -248,6 +237,22 @@ namespace Microsoft.Boogie
         var (filename, reused) = Helpers.GetLogFilename(ProofRun.Description, filenameTemplate, true);
         using var wr = new StreamWriter(filename, reused);
         Model.Write(wr);
+      }
+    }
+
+    public void InitializeStates()
+    {
+      if (!Model.ModelHasStatesAlready) {
+        if (this is AssertCounterexample assertError) {
+          PopulateModelWithStates(Trace, assertError.FailingAssert);
+        } else if (this is CallCounterexample callError) {
+          PopulateModelWithStates(Trace, callError.FailingCall);
+        } else {
+          Contract.Assert(this is ReturnCounterexample);
+          PopulateModelWithStates(Trace, null);
+        }
+
+        Model.ModelHasStatesAlready = true;
       }
     }
 
