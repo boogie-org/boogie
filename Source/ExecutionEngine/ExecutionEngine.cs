@@ -644,7 +644,7 @@ namespace Microsoft.Boogie
         var implementation = stablePrioritizedImpls[index];
         var result = await VerifyImplementationWithLargeStackScheduler(program, stats, programId, er,
           implementation, cts, taskWriter);
-        var output = result.GetOutput(Options.Printer, this, stats, er, implementation);
+        var output = result.GetOutput(Options.Printer, this, stats, er);
         await taskWriter.WriteAsync(output);
         return result;
       }).ToList();
@@ -1014,7 +1014,7 @@ namespace Microsoft.Boogie
       ConditionGeneration.Outcome outcome, ErrorReporterDelegate er, string implName,
       IToken implTok, string msgIfVerifies, TextWriter tw, uint timeLimit, List<Counterexample> errors) {
 
-      var errorInfo = GetOutcomeError(outcome, implName, implTok, msgIfVerifies, tw, timeLimit, errors);
+      var errorInfo = GetOutcomeError(Options, outcome, implName, implTok, msgIfVerifies, tw, timeLimit, errors);
       if (errorInfo != null)
       {
         errorInfo.ImplementationName = implName;
@@ -1032,7 +1032,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private ErrorInformation GetOutcomeError(ConditionGeneration.Outcome outcome, string implName, IToken implTok, string msgIfVerifies,
+    internal static ErrorInformation GetOutcomeError(ExecutionEngineOptions options, ConditionGeneration.Outcome outcome, string implName, IToken implTok, string msgIfVerifies,
       TextWriter tw, uint timeLimit, List<Counterexample> errors)
     {
       ErrorInformation errorInfo = null;
@@ -1045,7 +1045,7 @@ namespace Microsoft.Boogie
 
           break;
         case VCGen.Outcome.ReachedBound:
-          tw.WriteLine($"Stratified Inlining: Reached recursion bound of {Options.RecursionBound}");
+          tw.WriteLine($"Stratified Inlining: Reached recursion bound of {options.RecursionBound}");
           break;
         case VCGen.Outcome.Errors:
         case VCGen.Outcome.TimedOut:
@@ -1080,7 +1080,7 @@ namespace Microsoft.Boogie
                   msg = returnError.FailingReturn.Description.FailureDescription;
                 } else {
                   tok = assertError.FailingAssert.tok;
-                  if (assertError.FailingAssert.ErrorMessage == null || Options.ForceBplErrors) {
+                  if (assertError.FailingAssert.ErrorMessage == null || options.ForceBplErrors) {
                     msg = assertError.FailingAssert.ErrorData as string;
                   } else {
                     msg = assertError.FailingAssert.ErrorMessage;

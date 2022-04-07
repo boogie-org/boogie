@@ -9,12 +9,9 @@ namespace Microsoft.Boogie;
 
 public sealed class VerificationResult
 {
-  public readonly string Checksum;
-  public readonly string DependeciesChecksum;
-  public readonly string ImplementationName;
-  public readonly IToken ImplementationToken;
+  private readonly Implementation implementation;
   public readonly string ProgramId;
-  public readonly string MessageIfVerifies;
+  public string MessageIfVerifies => implementation.FindStringAttribute("msg_if_verifies");
 
   public DateTime Start { get; set; }
   public DateTime End { get; set; }
@@ -33,31 +30,29 @@ public sealed class VerificationResult
   public List<Counterexample> Errors = new();
   public List<VCResult> VCResults;
 
-  public ISet<byte[]> AssertionChecksums { get; }
   public ErrorInformation ErrorBeforeVerification { get; set; }
 
   public VerificationResult(Implementation implementation, string programId = null)
   {
-    Checksum = implementation.Checksum;
-    DependeciesChecksum = implementation.DependencyChecksum;
-    ImplementationName = implementation.Name;
-    ImplementationToken = implementation.tok;
+    this.implementation = implementation;
     ProgramId = programId;
-    AssertionChecksums = implementation.AssertionChecksums;
-    MessageIfVerifies = implementation.FindStringAttribute("msg_if_verifies");
+  }
+
+  public ErrorInformation GetOutcomeError(ExecutionEngineOptions options) {
+    return ExecutionEngine.GetOutcomeError(options, Outcome, implementation.Name, implementation.tok, MessageIfVerifies,
+      TextWriter.Null, implementation.GetTimeLimit(options), Errors);
   }
 
   public String GetOutput(OutputPrinter printer,
     ExecutionEngine engine,
-    PipelineStatistics stats, ErrorReporterDelegate er,
-    Implementation implementation) {
+    PipelineStatistics stats, ErrorReporterDelegate er) {
     var result = new StringWriter();
     if (ErrorBeforeVerification != null) {
       printer.WriteErrorInformation(ErrorBeforeVerification, result);
     }
 
     engine.ProcessOutcome(printer, Outcome, Errors, TimeIndication(engine.Options), stats,
-      result, implementation.GetTimeLimit(engine.Options), er, ImplementationName, ImplementationToken,
+      result, implementation.GetTimeLimit(engine.Options), er, implementation.Name, implementation.tok,
       MessageIfVerifies);
 
     engine.ProcessErrors(printer, Errors, Outcome, result, er, implementation);
@@ -71,7 +66,7 @@ public sealed class VerificationResult
     }
 
     lock (engine.Options.XmlSink) {
-      engine.Options.XmlSink.WriteStartMethod(ImplementationName, Start);
+      engine.Options.XmlSink.WriteStartMethod(implementation.Name, Start);
 
       foreach (var vcResult in VCResults.OrderBy(s => s.vcNum)) {
         engine.Options.XmlSink.WriteSplit(vcResult.vcNum, vcResult.asserts, vcResult.startTime,
