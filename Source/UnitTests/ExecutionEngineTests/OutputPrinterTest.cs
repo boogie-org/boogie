@@ -8,6 +8,7 @@ using Microsoft.Boogie.SMTLib;
 using Microsoft.Boogie.VCExprAST;
 using NUnit.Framework;
 using VC;
+using VCGeneration;
 
 namespace ExecutionEngineTests
 {
