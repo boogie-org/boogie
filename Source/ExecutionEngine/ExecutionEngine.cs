@@ -855,7 +855,7 @@ namespace Microsoft.Boogie
         }
       } catch (VCGenException e) {
         var errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(impl.tok,
-          $"{e.Message} (encountered in implementation {impl.Name}).", "Error");
+          $"{e.Message} (encountered in implementation {impl.Name}).");
         errorInfo.ImplementationName = impl.Name;
         verificationResult.ErrorBeforeVerification = errorInfo;
         if (er != null) {
