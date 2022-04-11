@@ -51,7 +51,7 @@ namespace CoreTests
                 }
             ", "file.bpl");
 
-      var assertCmd = program.TopLevelDeclarations.OfType<Implementation>().First().Blocks.SelectMany(c => c.Cmds)
+      var assertCmd = program.Declarations.OfType<Implementation>().First().Blocks.SelectMany(c => c.Cmds)
         .OfType<AssertCmd>().First();
       Assert.AreEqual(BasicType.Bool, assertCmd.Expr.ShallowType);
     }

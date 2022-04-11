@@ -256,7 +256,7 @@ namespace Microsoft.Boogie
     private Dictionary<string, Type> GetPermissionTypes()
     {
       var permissionTypes = new Dictionary<string, Type>();
-      foreach (var decl in program.TopLevelDeclarations.Where(decl => decl is TypeCtorDecl || decl is TypeSynonymDecl))
+      foreach (var decl in program.Declarations.Where(decl => decl is TypeCtorDecl || decl is TypeSynonymDecl))
       {
         foreach (var domainName in FindDomainNames(decl.Attributes))
         {

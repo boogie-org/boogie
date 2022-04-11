@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
+using VC;
 
 namespace Microsoft.Boogie
 {
@@ -266,8 +267,7 @@ namespace Microsoft.Boogie
       return FromArguments(new ConsolePrinter(), arguments);
     }
 
-    public static CommandLineOptions FromArguments(OutputPrinter printer, params string[] arguments)
-    {
+    public static CommandLineOptions FromArguments(OutputPrinter printer, params string[] arguments) {
       var result = new CommandLineOptions(printer);
       result.Parse(arguments);
       return result;
@@ -646,6 +646,7 @@ namespace Microsoft.Boogie
     }
 
     public bool RemoveEmptyBlocks { get; set; } = true;
+    IConditionGenerationPrinter VCGenOptions.Printer => Printer;
     public bool CoalesceBlocks { get; set; } = true;
     public bool PruneInfeasibleEdges { get; set; } = true;
 
@@ -908,7 +909,7 @@ namespace Microsoft.Boogie
 
         case "pretty":
           int val = 1;
-          if (ps.GetNumericArgument(x => val = x, 2))
+          if (ps.GetIntArgument(x => val = x, 2))
           {
             PrettyPrint = val == 1;
           }
@@ -926,7 +927,7 @@ namespace Microsoft.Boogie
         case "trustLayersUpto":
           if (ps.ConfirmArgumentCount(1))
           {
-            ps.GetNumericArgument(x => TrustLayersUpto = x);
+            ps.GetIntArgument(x => TrustLayersUpto = x);
           }
 
           return true;
@@ -934,7 +935,7 @@ namespace Microsoft.Boogie
         case "trustLayersDownto":
           if (ps.ConfirmArgumentCount(1))
           {
-            ps.GetNumericArgument(x => TrustLayersDownto = x);
+            ps.GetIntArgument(x => TrustLayersDownto = x);
           }
 
           return true;
@@ -965,13 +966,13 @@ namespace Microsoft.Boogie
           return true;
 
         case "errorTrace":
-          ps.GetNumericArgument(x => ErrorTrace = x, 3);
+          ps.GetIntArgument(x => ErrorTrace = x, 3);
           return true;
 
         case "proverWarnings":
         {
           int pw = 0;
-          if (ps.GetNumericArgument(x => pw = x, 3))
+          if (ps.GetIntArgument(x => pw = x, 3))
           {
             switch (pw)
             {
@@ -988,7 +989,7 @@ namespace Microsoft.Boogie
               {
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
-              } // postcondition of GetNumericArgument guarantees that we don't get here
+              } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
 
@@ -998,7 +999,7 @@ namespace Microsoft.Boogie
         case "env":
         {
           int e = 0;
-          if (ps.GetNumericArgument(x => e = x, 3))
+          if (ps.GetIntArgument(x => e = x, 3))
           {
             switch (e)
             {
@@ -1015,7 +1016,7 @@ namespace Microsoft.Boogie
               {
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
-              } // postcondition of GetNumericArgument guarantees that we don't get here
+              } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
 
@@ -1025,7 +1026,7 @@ namespace Microsoft.Boogie
         case "printVerifiedProceduresCount":
         {
           int n = 0;
-          if (ps.GetNumericArgument(x => n = x, 2))
+          if (ps.GetIntArgument(x => n = x, 2))
           {
             ShowVerifiedProcedureCount = n != 0;
           }
@@ -1034,7 +1035,7 @@ namespace Microsoft.Boogie
         }
 
         case "loopUnroll":
-          ps.GetNumericArgument(x => LoopUnrollCount = x);
+          ps.GetIntArgument(x => LoopUnrollCount = x);
           return true;
 
         case "printModel":
@@ -1073,7 +1074,7 @@ namespace Microsoft.Boogie
           return true;
 
         case "enhancedErrorMessages":
-          ps.GetNumericArgument(x => enhancedErrorMessages = x, 2);
+          ps.GetIntArgument(x => enhancedErrorMessages = x, 2);
           return true;
 
         case "printCFG":
@@ -1085,13 +1086,13 @@ namespace Microsoft.Boogie
           return true;
 
         case "inlineDepth":
-          ps.GetNumericArgument(x => InlineDepth = x);
+          ps.GetIntArgument(x => InlineDepth = x);
           return true;
 
         case "subsumption":
         {
           int s = 0;
-          if (ps.GetNumericArgument(x => s = x, 3))
+          if (ps.GetIntArgument(x => s = x, 3))
           {
             switch (s)
             {
@@ -1108,7 +1109,7 @@ namespace Microsoft.Boogie
               {
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
-              } // postcondition of GetNumericArgument guarantees that we don't get here
+              } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
 
@@ -1118,7 +1119,7 @@ namespace Microsoft.Boogie
         case "liveVariableAnalysis":
         {
           int lva = 0;
-          if (ps.GetNumericArgument(x => lva = x, 3))
+          if (ps.GetIntArgument(x => lva = x, 3))
           {
             LiveVariableAnalysis = lva;
           }
@@ -1129,7 +1130,7 @@ namespace Microsoft.Boogie
         case "removeEmptyBlocks":
         {
           int reb = 0;
-          if (ps.GetNumericArgument(x => reb = x, 2))
+          if (ps.GetIntArgument(x => reb = x, 2))
           {
             RemoveEmptyBlocks = reb == 1;
           }
@@ -1140,7 +1141,7 @@ namespace Microsoft.Boogie
         case "coalesceBlocks":
         {
           int cb = 0;
-          if (ps.GetNumericArgument(x => cb = x, 2))
+          if (ps.GetIntArgument(x => cb = x, 2))
           {
             CoalesceBlocks = cb == 1;
           }
@@ -1179,7 +1180,7 @@ namespace Microsoft.Boogie
 
         case "stagedHoudiniThreads":
         {
-          ps.GetNumericArgument(x => stagedHoudiniThreads = x);
+          ps.GetIntArgument(x => stagedHoudiniThreads = x);
           return true;
         }
 
@@ -1369,35 +1370,35 @@ namespace Microsoft.Boogie
           return true;
 
         case "vcBrackets":
-          ps.GetNumericArgument(x => bracketIdsInVC = x, 2);
+          ps.GetIntArgument(x => bracketIdsInVC = x, 2);
           return true;
 
         case "vcsMaxCost":
-          ps.GetNumericArgument(x => VcsMaxCost = x);
+          ps.GetDoubleArgument(x => VcsMaxCost = x);
           return true;
 
         case "vcsPathJoinMult":
-          ps.GetNumericArgument(x => VcsPathJoinMult = x);
+          ps.GetDoubleArgument(x => VcsPathJoinMult = x);
           return true;
 
         case "vcsPathCostMult":
-          ps.GetNumericArgument(x => VcsPathCostMult = x);
+          ps.GetDoubleArgument(x => VcsPathCostMult = x);
           return true;
 
         case "vcsAssumeMult":
-          ps.GetNumericArgument(x => VcsAssumeMult = x);
+          ps.GetDoubleArgument(x => VcsAssumeMult = x);
           return true;
 
         case "vcsPathSplitMult":
-          ps.GetNumericArgument(x => VcsPathSplitMult = x);
+          ps.GetDoubleArgument(x => VcsPathSplitMult = x);
           return true;
 
         case "vcsMaxSplits":
-          ps.GetNumericArgument(x => VcsMaxSplits = x);
+          ps.GetIntArgument(x => VcsMaxSplits = x);
           return true;
 
         case "vcsMaxKeepGoingSplits":
-          ps.GetNumericArgument(x => VcsMaxKeepGoingSplits = x);
+          ps.GetIntArgument(x => VcsMaxKeepGoingSplits = x);
           return true;
 
         case "vcsSplitOnEveryAssert":
@@ -1416,12 +1417,12 @@ namespace Microsoft.Boogie
           return true;
 
         case "vcsCores":
-          ps.GetNumericArgument(x => VcsCores = x, a => 1 <= a);
+          ps.GetIntArgument(x => VcsCores = x, a => 1 <= a);
           return true;
 
         case "vcsLoad":
           double load = 0.0;
-          if (ps.GetNumericArgument(x => load = x))
+          if (ps.GetDoubleArgument(x => load = x))
           {
             if (3.0 <= load)
             {
@@ -1452,37 +1453,37 @@ namespace Microsoft.Boogie
           return true;
 
         case "errorLimit":
-          ps.GetNumericArgument(x => errorLimit = x);
+          ps.GetIntArgument(x => errorLimit = x);
           return true;
 
         case "randomSeed":
           int randomSeed = 0;
-          ps.GetNumericArgument(x => randomSeed = x);
+          ps.GetIntArgument(x => randomSeed = x);
           RandomSeed = randomSeed;
           return true;
         
         case "verifySnapshots":
-          ps.GetNumericArgument(x => VerifySnapshots = x, 4);
+          ps.GetIntArgument(x => VerifySnapshots = x, 4);
           return true;
 
         case "traceCaching":
-          ps.GetNumericArgument(x => TraceCaching = x, 4);
+          ps.GetIntArgument(x => TraceCaching = x, 4);
           return true;
 
         case "kInductionDepth":
-          ps.GetNumericArgument(x => KInductionDepth = x);
+          ps.GetIntArgument(x => KInductionDepth = x);
           return true;
           
         case "emitDebugInformation":
-          ps.GetNumericArgument(x => emitDebugInformation = x);
+          ps.GetIntArgument(x => emitDebugInformation = x);
           return true;
 
         case "normalizeNames":
-          ps.GetNumericArgument(x => normalizeNames = x);
+          ps.GetIntArgument(x => normalizeNames = x);
           return true;
         
         case "normalizeDeclarationOrder":
-          ps.GetNumericArgument(x => normalizeDeclarationOrder = x);
+          ps.GetIntArgument(x => normalizeDeclarationOrder = x);
           return true;
 
         default:

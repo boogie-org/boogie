@@ -1,3 +1,5 @@
+using VC;
+
 namespace Microsoft.Boogie;
 
 public interface VCGenOptions : SMTLibOptions
@@ -6,4 +8,5 @@ public interface VCGenOptions : SMTLibOptions
   bool AlwaysAssumeFreeLoopInvariants { get; }
   int LiveVariableAnalysis { get; }
   bool RemoveEmptyBlocks { get; }
+  IConditionGenerationPrinter Printer {get; }
 }

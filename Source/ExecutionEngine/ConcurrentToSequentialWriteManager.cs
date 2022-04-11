@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -22,12 +23,18 @@ public class ConcurrentToSequentialWriteManager
     lock (myLock) {
       while (writers.Count > 0 && writers.Peek().Disposed) {
         var disposedWriter = writers.Dequeue();
-        Writer.Write(disposedWriter.SetTargetAndGetBuffer(null));
+        lock (disposedWriter.Lock) {
+          Writer.Write(disposedWriter.SetTargetAndGetBuffer(null));
+        }
       }
       if (writers.Count > 0) {
-        Writer.Write(writers.Peek().SetTargetAndGetBuffer(Writer));
+        var subWriter = writers.Peek();
+        lock (subWriter.Lock) {
+          Writer.Write(subWriter.SetTargetAndGetBuffer(Writer));
+        }
       }
     }
+    Writer.Flush();
   }
 
   public TextWriter AppendWriter() {
@@ -39,21 +46,37 @@ public class ConcurrentToSequentialWriteManager
     }
   }
 
-  class SubWriter : WriterWrapper {
+  class SubWriter : SyncWriterWrapper {
     private readonly ConcurrentToSequentialWriteManager collector;
-    private bool buffering;
+    private StringWriter bufferWriter;
     public bool Disposed { get; private set; }
 
-    public SubWriter(ConcurrentToSequentialWriteManager collector, TextWriter target) : base(target ?? new StringWriter()) {
+    public new object Lock => base.Lock;
+
+    public SubWriter(ConcurrentToSequentialWriteManager collector, TextWriter target) : base(null) {
       this.collector = collector;
-      buffering = target == null;
+      if (target == null) {
+        bufferWriter = new StringWriter();
+        this.target = bufferWriter;
+      } else {
+        this.target = target;
+        bufferWriter = null;
+      }
     }
 
+    /// <summary>
+    /// Only called for disposed writers that aren't being written to any more.
+    /// </summary>
     public string SetTargetAndGetBuffer(TextWriter newTarget) {
-      var result = buffering ? ((StringWriter)target).ToString() : "";
-      buffering = false;
-      target = newTarget;
-      return result;
+      lock (Lock) {
+        if (bufferWriter == null && newTarget != target && newTarget != null) {
+          throw new Exception("Can not change the target when not buffering, except to null");
+        }
+        var result = bufferWriter?.ToString() ?? "";
+        target = newTarget;
+        bufferWriter = null;
+        return result;
+      }
     }
 
     protected override void Dispose(bool disposing) {

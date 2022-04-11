@@ -9,7 +9,7 @@ namespace Microsoft.Boogie
         {
             var checkingContext = new CheckingContext(null);
             var functionDependencyChecker = new FunctionDependencyChecker();
-            program.TopLevelDeclarations.OfType<Function>().Iter(function =>
+            program.Declarations.OfType<Function>().Iter(function =>
             {
                 var expr = QKeyValue.FindExprAttribute(function.Attributes, "inline");
                 if (expr != null && expr.Type != Type.Bool)
@@ -36,7 +36,7 @@ namespace Microsoft.Boogie
             {
                 return false;
             }
-            program.TopLevelDeclarations.OfType<Function>()
+            program.Declarations.OfType<Function>()
                 .Iter(function => functionDependencyChecker.VisitFunction(function));
             var functionDependencyGraph = functionDependencyChecker.functionDependencyGraph;
             var selfLoops = functionDependencyGraph.Edges.SelectMany(edge =>

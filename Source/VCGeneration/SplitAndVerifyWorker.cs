@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -24,7 +25,8 @@ namespace VC
     private bool DoSplitting => manualSplits.Count > 1 || KeepGoing || splitOnEveryAssert;
     private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
     private bool KeepGoing => maxKeepGoingSplits > 1;
-      
+
+    private VCGen vcGen;
     private Outcome outcome;
     private double remainingCost;
     private double provenCost;
@@ -42,7 +44,7 @@ namespace VC
       this.mvInfo = mvInfo;
       this.run = run;
       this.outcome = outcome;
-
+      this.vcGen = vcGen;
       var maxSplits = options.VcsMaxSplits;
       VCGen.CheckIntAttributeOnImpl(Implementation, "vcs_max_splits", ref maxSplits);
       
@@ -96,7 +98,7 @@ namespace VC
 
     async Task DoWork(Split split, CancellationToken cancellationToken)
     {
-      var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split);
+      var checker = await split.Parent.CheckerPool.FindCheckerFor(split.Parent, split, cancellationToken);
 
       try {
         cancellationToken.ThrowIfCancellationRequested();
@@ -105,7 +107,7 @@ namespace VC
         await ProcessResult(split, cancellationToken);
       }
       finally {
-        checker.GoBackToIdle();
+        await checker.GoBackToIdle();
         split.ResetChecker();
       }
     }
@@ -137,7 +139,12 @@ namespace VC
         }
       }
 
-      split.ReadOutcome(callback, ref outcome, out var proverFailed, ref totalResourceCount);
+      var (newOutcome, result, newResourceCount) = await split.ReadOutcome(callback);
+      lock (this) {
+        outcome = MergeOutcomes(outcome, newOutcome);
+        totalResourceCount += newResourceCount;
+      }
+      var proverFailed = IsProverFailed(newOutcome);
 
       if (TrackingProgress) {
         lock (this) {
@@ -154,21 +161,85 @@ namespace VC
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
       if (!proverFailed) {
+        split.Finish(result);
         return;
       }
 
-      await HandleProverFailure(split, cancellationToken);
+      await HandleProverFailure(split, callback, result, cancellationToken);
     }
 
-    private async Task HandleProverFailure(Split split, CancellationToken cancellationToken)
+    private static bool IsProverFailed(ProverInterface.Outcome outcome)
+    {
+      switch (outcome)
+      {
+        case ProverInterface.Outcome.Valid:
+        case ProverInterface.Outcome.Invalid:
+        case ProverInterface.Outcome.Undetermined:
+          return false;
+        case ProverInterface.Outcome.OutOfMemory:
+        case ProverInterface.Outcome.TimeOut:
+        case ProverInterface.Outcome.OutOfResource:
+          return true;
+        default:
+          Contract.Assert(false);
+          throw new cce.UnreachableException();
+      }
+    }
+
+    private static Outcome MergeOutcomes(Outcome currentOutcome, ProverInterface.Outcome newOutcome)
+    {
+      switch (newOutcome)
+      {
+        case ProverInterface.Outcome.Valid:
+          return currentOutcome;
+        case ProverInterface.Outcome.Invalid:
+          return Outcome.Errors;
+        case ProverInterface.Outcome.OutOfMemory:
+          if (currentOutcome != Outcome.Errors && currentOutcome != Outcome.Inconclusive)
+          {
+            return Outcome.OutOfMemory;
+          }
+
+          return currentOutcome;
+        case ProverInterface.Outcome.TimeOut:
+          if (currentOutcome != Outcome.Errors && currentOutcome != Outcome.Inconclusive)
+          {
+            return Outcome.TimedOut;
+          }
+
+          return currentOutcome;
+        case ProverInterface.Outcome.OutOfResource:
+          if (currentOutcome != Outcome.Errors && currentOutcome != Outcome.Inconclusive)
+          {
+            return Outcome.OutOfResource;
+          }
+
+          return currentOutcome;
+        case ProverInterface.Outcome.Undetermined:
+          if (currentOutcome != Outcome.Errors)
+          {
+            return Outcome.Inconclusive;
+          }
+          return currentOutcome;
+        default:
+          Contract.Assert(false);
+          throw new cce.UnreachableException();
+      }
+    }
+
+    private async Task HandleProverFailure(Split split, VerifierCallback callback, VCResult vcResult, CancellationToken cancellationToken)
     {
       if (split.LastChance) {
         string msg = "some timeout";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
         }
-
         callback.OnCounterexample(split.ToCounterexample(split.Checker.TheoremProver.Context), msg);
+        // Update one last time the result with the dummy counter-example to indicate the position of the timeout
+        var result = vcResult with {
+          counterExamples = split.Counterexamples
+        };
+        split.Finish(result);
         outcome = Outcome.Errors;
         return;
       }
@@ -209,6 +280,7 @@ namespace VC
 
         callback.OnOutOfResource(msg);
       }
+      split.Finish(vcResult);
     }
   }
 }

@@ -5,6 +5,7 @@ using VC;
 using System.IO;
 using Microsoft.Boogie.GraphUtil;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.Houdini
 {
@@ -884,7 +885,7 @@ namespace Microsoft.Boogie.Houdini
       return nonCandidateErrors.Count > 0;
     }
 
-    protected void FlushWorkList(int stage, IEnumerable<int> completedStages)
+    protected async Task FlushWorkList(int stage, IReadOnlyList<int> completedStages)
     {
       this.NotifyFlushStart();
       while (currentHoudiniState.WorkQueue.Count > 0)
@@ -895,7 +896,7 @@ namespace Microsoft.Boogie.Houdini
         this.NotifyImplementation(currentHoudiniState.Implementation);
 
         houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out var session);
-        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors);
+        var (outcome, errors) = await TryCatchVerify(session, stage, completedStages);
         UpdateHoudiniOutcome(currentHoudiniState.Outcome, currentHoudiniState.Implementation, outcome, errors);
         this.NotifyOutcome(outcome);
 
@@ -1151,8 +1152,8 @@ namespace Microsoft.Boogie.Houdini
       }
     }
 
-    public HoudiniOutcome PerformHoudiniInference(int stage = 0,
-      IEnumerable<int> completedStages = null,
+    public async Task<HoudiniOutcome> PerformHoudiniInference(int stage = 0,
+      IReadOnlyList<int> completedStages = null,
       Dictionary<string, bool> initialAssignment = null)
     {
       this.NotifyStart(program, houdiniConstants.Count);
@@ -1182,7 +1183,7 @@ namespace Microsoft.Boogie.Houdini
         this.NotifyImplementation(currentHoudiniState.Implementation);
 
         this.houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out var session);
-        HoudiniVerifyCurrent(session, stage, completedStages);
+        await HoudiniVerifyCurrent(session, stage, completedStages);
       }
 
       this.NotifyEnd(true);
@@ -1488,21 +1489,17 @@ namespace Microsoft.Boogie.Houdini
       return null;
     }
 
-    private ProverInterface.Outcome TryCatchVerify(HoudiniSession session, int stage, IEnumerable<int> completedStages,
-      out List<Counterexample> errors)
+    private async Task<(ProverInterface.Outcome, List<Counterexample> errors)> TryCatchVerify(HoudiniSession session, int stage, IReadOnlyList<int> completedStages)
     {
-      ProverInterface.Outcome outcome;
       try {
-        outcome = session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), out errors, GetErrorLimit());
+        return await session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), GetErrorLimit());
       }
       catch (UnexpectedProverOutputException upo)
       {
         Contract.Assume(upo != null);
-        errors = null;
-        outcome = ProverInterface.Outcome.Undetermined;
+        return (ProverInterface.Outcome.Undetermined, null);
       }
 
-      return outcome;
     }
 
     private int GetErrorLimit()
@@ -1519,7 +1516,7 @@ namespace Microsoft.Boogie.Houdini
       return errorLimit;
     }
 
-    protected Dictionary<Variable, bool> GetAssignmentWithStages(int currentStage, IEnumerable<int> completedStages)
+    protected Dictionary<Variable, bool> GetAssignmentWithStages(int currentStage, IReadOnlyList<int> completedStages)
     {
       Dictionary<Variable, bool> result = new Dictionary<Variable, bool>(currentHoudiniState.Assignment);
       foreach (var c in program.Constants)
@@ -1533,21 +1530,21 @@ namespace Microsoft.Boogie.Houdini
         int stageComplete = QKeyValue.FindIntAttribute(c.Attributes, "stage_complete", -1);
         if (stageComplete != -1)
         {
-          result[c] = (completedStages.Contains(stageComplete));
+          result[c] = completedStages.Contains(stageComplete);
         }
       }
 
       return result;
     }
 
-    private void HoudiniVerifyCurrent(HoudiniSession session, int stage, IEnumerable<int> completedStages)
+    private async Task HoudiniVerifyCurrent(HoudiniSession session, int stage, IReadOnlyList<int> completedStages)
     {
       while (true)
       {
         this.NotifyAssignment(currentHoudiniState.Assignment);
 
         //check the VC with the current assignment
-        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out var errors);
+        var (outcome, errors) = await TryCatchVerify(session, stage, completedStages);
         this.NotifyOutcome(outcome);
 
         DebugRefutedCandidates(currentHoudiniState.Implementation, errors);
@@ -1573,7 +1570,7 @@ namespace Microsoft.Boogie.Houdini
 
           foreach (var refutedAnnotation in refutedAnnotations)
           {
-            session.Explain(proverInterface, currentHoudiniState.Assignment, refutedAnnotation.Constant);
+            await session.Explain(proverInterface, currentHoudiniState.Assignment, refutedAnnotation.Constant);
           }
         }
 
@@ -1584,14 +1581,15 @@ namespace Microsoft.Boogie.Houdini
           // abort
           currentHoudiniState.WorkQueue.Dequeue();
           this.NotifyDequeue();
-          FlushWorkList(stage, completedStages);
+          await FlushWorkList(stage, completedStages);
           return;
         }
-        else if (UpdateAssignmentWorkList(outcome, errors))
+
+        if (UpdateAssignmentWorkList(outcome, errors))
         {
           if (Options.UseUnsatCoreForContractInfer && outcome == ProverInterface.Outcome.Valid)
           {
-            session.UpdateUnsatCore(proverInterface, currentHoudiniState.Assignment);
+            await session.UpdateUnsatCore(proverInterface, currentHoudiniState.Assignment);
           }
 
           currentHoudiniState.WorkQueue.Dequeue();
@@ -1614,7 +1612,7 @@ namespace Microsoft.Boogie.Houdini
     /// </summary>
     public static void ApplyAssignment(Program prog, HoudiniOutcome outcome)
     {
-      var Candidates = prog.TopLevelDeclarations.OfType<Constant>().Where(
+      var Candidates = prog.Declarations.OfType<Constant>().Where(
         Item => QKeyValue.FindBoolAttribute(Item.Attributes, "existential")).Select(Item => Item.Name);
 
       // Treat all assertions

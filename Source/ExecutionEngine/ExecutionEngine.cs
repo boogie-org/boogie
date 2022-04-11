@@ -82,23 +82,27 @@ namespace Microsoft.Boogie
     static readonly ConcurrentDictionary<string, CancellationTokenSource> RequestIdToCancellationTokenSource =
       new ConcurrentDictionary<string, CancellationTokenSource>();
 
-    static ThreadTaskScheduler LargeStackScheduler = new ThreadTaskScheduler(16 * 1024 * 1024);
-
-    public bool ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
+    public async Task<bool> ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
       string programId = null) {
       Contract.Requires(cce.NonNullElements(fileNames));
 
       if (Options.VerifySeparately && 1 < fileNames.Count) {
-        return fileNames.All(f => ProcessFiles(output, new List<string> { f }, lookForSnapshots, f));
+        var success = true;
+        foreach (var fileName in fileNames) {
+          success &= await ProcessFiles(output, new List<string> { fileName }, lookForSnapshots, fileName);
+        }
+        return success;
       }
 
       if (0 <= Options.VerifySnapshots && lookForSnapshots) {
         var snapshotsByVersion = LookForSnapshots(fileNames);
-        return snapshotsByVersion.All(s => {
+        var success = true;
+        foreach (var snapshots in snapshotsByVersion) {
           // BUG: Reusing checkers during snapshots doesn't work, even though it should. We create a new engine (and thus checker pool) to workaround this.
           using var engine = new ExecutionEngine(Options, Cache);
-          return engine.ProcessFiles(output, new List<string>(s), false, programId);
-        });
+          success &= await engine.ProcessFiles(output, new List<string>(snapshots), false, programId);
+        }
+        return success;
       }
 
       using XmlFileScope xf = new XmlFileScope(Options.XmlSink, fileNames[^1]);
@@ -108,7 +112,7 @@ namespace Microsoft.Boogie
         return true;
       }
 
-      return ProcessProgram(output, program, bplFileName, programId).Result;
+      return await ProcessProgram(output, program, bplFileName, programId);
     }
 
     [Obsolete("Please inline this method call")]
@@ -321,7 +325,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        if (program.TopLevelDeclarations.Any(d => d.HasCivlAttribute()))
+        if (program.Declarations.Any(d => d.HasCivlAttribute()))
         {
           Options.UseLibrary = true;
         }
@@ -424,7 +428,7 @@ namespace Microsoft.Boogie
           "Option /useArrayTheory only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
         return PipelineOutcome.FatalError;
       } 
-      else if (program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>().Any())
+      else if (program.Declarations.OfType<DatatypeTypeCtorDecl>().Any())
       {
         Console.WriteLine(
           "Datatypes only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
@@ -462,7 +466,7 @@ namespace Microsoft.Boogie
       }
 
       // Inline
-      var TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
+      var TopLevelDeclarations = cce.NonNull(program.Declarations);
 
       if (Options.ProcedureInlining != CoreOptions.Inlining.None)
       {
@@ -543,7 +547,7 @@ namespace Microsoft.Boogie
 
       if (Options.ContractInfer)
       {
-        return RunHoudini(program, stats, er);
+        return await RunHoudini(program, stats, er);
       }
       var stablePrioritizedImpls = GetPrioritizedImplementations(program);
 
@@ -614,12 +618,15 @@ namespace Microsoft.Boogie
     {
       var impls = program.Implementations.Where(
         impl => impl != null && Options.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) &&
-                !impl.IsSkipVerification(Options));
+                !impl.IsSkipVerification(Options)).ToArray();
+      
+      Options.Printer.ReportImplementationsBeforeVerification(impls);
 
       // operate on a stable copy, in case it gets updated while we're running
       Implementation[] stablePrioritizedImpls = null;
+
       if (0 < Options.VerifySnapshots) {
-        OtherDefinitionAxiomsCollector.Collect(Options, program.Axioms);
+        OtherDefinitionAxiomsCollector.Collect(Options, program.TopLevelDeclarations.OfType<Axiom>());
         DependencyCollector.Collect(Options, program);
         stablePrioritizedImpls = impls.OrderByDescending(
           impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl, Options.RunDiagnosticsOnTimeout)).ToArray();
@@ -638,7 +645,7 @@ namespace Microsoft.Boogie
 
       var cts = new CancellationTokenSource();
       RequestIdToCancellationTokenSource.AddOrUpdate(requestId, cts, (k, ov) => cts);
-
+      
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
         var implementation = stablePrioritizedImpls[index];
@@ -704,12 +711,11 @@ namespace Microsoft.Boogie
 
         ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
 
-        var coreTask = new Task<Task<VerificationResult>>(() => VerifyImplementation(program, stats, er, cts.Token,
+        var coreTask = Task.Run(() => VerifyImplementation(program, stats, er, cts.Token,
           implementation,
-          programId, taskWriter), cts.Token, TaskCreationOptions.None);
+          programId, taskWriter), cts.Token);
 
-        coreTask.Start(LargeStackScheduler);
-        var verificationResult = await await coreTask;
+        var verificationResult = await coreTask;
         return verificationResult;
       }
       finally {
@@ -765,8 +771,6 @@ namespace Microsoft.Boogie
       if (RequestIdToCancellationTokenSource.TryGetValue(requestId, out var cts))
       {
         cts.Cancel();
-
-        CleanupRequest(requestId);
       }
     }
 
@@ -795,6 +799,7 @@ namespace Microsoft.Boogie
 
       Options.Printer.Inform("", traceWriter); // newline
       Options.Printer.Inform($"Verifying {implementation.Name} ...", traceWriter);
+      Options.Printer.ReportStartVerifyImplementation(implementation);
 
       verificationResult = await VerifyImplementationWithoutCaching(program, stats, er, cancellationToken,
         programId, implementation, traceWriter);
@@ -803,6 +808,7 @@ namespace Microsoft.Boogie
       {
         Cache.Insert(implementation, verificationResult);
       }
+      Options.Printer.ReportEndVerifyImplementation(implementation, verificationResult);
 
       return verificationResult;
     }
@@ -827,11 +833,6 @@ namespace Microsoft.Boogie
       }
 
       return null;
-    }
-
-    private ConditionGeneration CreateVCGen(Program program)
-    {
-      return new VCGen(program, checkerPool);
     }
 
     private async Task<VerificationResult> VerifyImplementationWithoutCaching(Program program,
@@ -879,7 +880,6 @@ namespace Microsoft.Boogie
         verificationResult.Errors = null;
         verificationResult.Outcome = ConditionGeneration.Outcome.SolverException;
       }
-
       verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
       verificationResult.End = DateTime.UtcNow;
       verificationResult.ResourceCount = vcgen.ResourceCount;
@@ -890,18 +890,18 @@ namespace Microsoft.Boogie
 
     #region Houdini
 
-    private PipelineOutcome RunHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
+    private async Task<PipelineOutcome> RunHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
     {
       Contract.Requires(stats != null);
       
       if (Options.StagedHoudini != null)
       {
-        return RunStagedHoudini(program, stats, er);
+        return await RunStagedHoudini(program, stats, er);
       }
 
-      var houdiniStats = new HoudiniSession.HoudiniStatistics();
+      var houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
       var houdini = new Houdini.Houdini(Console.Out, Options, program, houdiniStats);
-      HoudiniOutcome outcome = houdini.PerformHoudiniInference();
+      var outcome = await houdini.PerformHoudiniInference();
       houdini.Close();
 
       if (Options.PrintAssignment)
@@ -951,11 +951,11 @@ namespace Microsoft.Boogie
       return p;
     }
 
-    private PipelineOutcome RunStagedHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
+    private async Task<PipelineOutcome> RunStagedHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
     {
       Houdini.HoudiniSession.HoudiniStatistics houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
       var stagedHoudini = new Houdini.StagedHoudini(Console.Out, Options, program, houdiniStats, ProgramFromFile);
-      Houdini.HoudiniOutcome outcome = stagedHoudini.PerformStagedHoudiniInference();
+      Houdini.HoudiniOutcome outcome = await stagedHoudini.PerformStagedHoudiniInference();
 
       if (Options.PrintAssignment)
       {

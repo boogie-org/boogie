@@ -605,6 +605,7 @@ namespace Microsoft.Boogie
   {
     public CallCmd FailingCall;
     public Requires FailingRequires;
+    public AssertRequiresCmd FailingAssert;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -614,10 +615,12 @@ namespace Microsoft.Boogie
     }
 
 
-    public CallCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, CallCmd failingCall, Requires failingRequires, Model model,
+    public CallCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, AssertRequiresCmd assertRequiresCmd, Model model,
       VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, byte[] checksum = null)
       : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun)
     {
+      var failingRequires = assertRequiresCmd.Requires;
+      var failingCall = assertRequiresCmd.Call;
       Contract.Requires(!failingRequires.Free);
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
@@ -625,6 +628,7 @@ namespace Microsoft.Boogie
       Contract.Requires(failingRequires != null);
       this.FailingCall = failingCall;
       this.FailingRequires = failingRequires;
+      this.FailingAssert = assertRequiresCmd;
       this.checksum = checksum;
       this.SugaredCmdChecksum = failingCall.Checksum;
     }
@@ -643,7 +647,7 @@ namespace Microsoft.Boogie
 
     public override Counterexample Clone()
     {
-      var ret = new CallCounterexample(options, Trace, AugmentedTrace, FailingCall, FailingRequires, Model, MvInfo, Context, ProofRun, Checksum);
+      var ret = new CallCounterexample(options, Trace, AugmentedTrace, FailingAssert, Model, MvInfo, Context, ProofRun, Checksum);
       ret.calleeCounterexamples = calleeCounterexamples;
       return ret;
     }
@@ -653,6 +657,7 @@ namespace Microsoft.Boogie
   {
     public TransferCmd FailingReturn;
     public Ensures FailingEnsures;
+    public AssertEnsuresCmd FailingAssert;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -662,10 +667,11 @@ namespace Microsoft.Boogie
     }
 
 
-    public ReturnCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, TransferCmd failingReturn, Ensures failingEnsures, Model model,
+    public ReturnCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, AssertEnsuresCmd assertEnsuresCmd, TransferCmd failingReturn, Model model,
       VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, byte[] checksum)
       : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun)
     {
+      var failingEnsures = assertEnsuresCmd.Ensures;
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
       Contract.Requires(failingReturn != null);
@@ -673,6 +679,7 @@ namespace Microsoft.Boogie
       Contract.Requires(!failingEnsures.Free);
       this.FailingReturn = failingReturn;
       this.FailingEnsures = failingEnsures;
+      this.FailingAssert = assertEnsuresCmd;
       this.checksum = checksum;
     }
 
@@ -693,7 +700,7 @@ namespace Microsoft.Boogie
 
     public override Counterexample Clone()
     {
-      var ret = new ReturnCounterexample(options, Trace, AugmentedTrace, FailingReturn, FailingEnsures, Model, MvInfo, Context, ProofRun, checksum);
+      var ret = new ReturnCounterexample(options, Trace, AugmentedTrace, FailingAssert, FailingReturn, Model, MvInfo, Context, ProofRun, checksum);
       ret.calleeCounterexamples = calleeCounterexamples;
       return ret;
     }

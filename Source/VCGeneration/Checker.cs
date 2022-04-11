@@ -59,7 +59,7 @@ namespace Microsoft.Boogie
       status = CheckerStatus.Ready;
     }
 
-    public void GoBackToIdle()
+    public async Task GoBackToIdle()
     {
       Contract.Requires(IsBusy);
       if (Options.ModelViewFile != null) {
@@ -70,10 +70,11 @@ namespace Microsoft.Boogie
       }
 
       status = CheckerStatus.Idle;
-      var becameIdle = thmProver.GoBackToIdle().Wait(TimeSpan.FromMilliseconds(100));
-      if (becameIdle) {
+      try {
+        await thmProver.GoBackToIdle().WaitAsync(TimeSpan.FromMilliseconds(100));
         Pool.AddChecker(this);
-      } else {
+      }
+      catch(TimeoutException) {
         Pool.CheckerDied();
         Close();
       }
@@ -163,9 +164,9 @@ namespace Microsoft.Boogie
       
       Program = prog;
       // TODO(wuestholz): Is this lock necessary?
-      lock (Program.TopLevelDeclarations)
+      lock (Program.Declarations)
       {
-        var declarations = split == null ? prog.TopLevelDeclarations : split.TopLevelDeclarations;
+        var declarations = split == null ? prog.Declarations : split.TopLevelDeclarations;
         var reorderedDeclarations = GetReorderedDeclarations(declarations, random);
         foreach (var declaration in reorderedDeclarations) {
           Contract.Assert(declaration != null);
@@ -326,7 +327,7 @@ namespace Microsoft.Boogie
       SetTimeout(timeout);
       SetRlimit(rlimit);
       ProverStart = DateTime.UtcNow;
-      thmProver.BeginCheck(descriptiveName, vc, handler);
+      await thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 
       ProverTask = WaitForOutput(cancellationToken);
@@ -380,7 +381,7 @@ namespace Microsoft.Boogie
       throw new NotImplementedException();
     }
 
-    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
+    public override Task BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
       /*Contract.Requires(descriptiveName != null);*/
       //Contract.Requires(vc != null);

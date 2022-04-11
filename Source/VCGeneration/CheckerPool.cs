@@ -1,7 +1,6 @@
+#nullable enable
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
@@ -10,69 +9,57 @@ namespace VC
 {
   public class CheckerPool
   {
-    private readonly ConcurrentStack<Checker> availableCheckers = new();
-    private readonly ConcurrentQueue<TaskCompletionSource<Checker>> checkerWaiters = new();
-    private int notCreatedCheckers;
+    private readonly ConcurrentBag<Checker> availableCheckers = new();
+    private readonly SemaphoreSlim checkersSemaphore;
     private bool disposed;
 
     public VCGenOptions Options { get; }
 
     public CheckerPool(VCGenOptions options)
     {
-      this.Options = options;
-      notCreatedCheckers = options.VcsCores;
+      Options = options;
+      checkersSemaphore = new(options.VcsCores);
     }
 
-    public Task<Checker> FindCheckerFor(ConditionGeneration vcgen, Split split = null)
+    public async Task<Checker> FindCheckerFor(ConditionGeneration vcgen, Split? split, CancellationToken cancellationToken)
     {
       if (disposed) {
-        return Task.FromException<Checker>(new Exception("CheckerPool was already disposed"));
-      }
-        
-      if (availableCheckers.TryPop(out var result)) {
-        PrepareChecker(vcgen.program, split, result);
-        Contract.Assert(result != null);
-        return Task.FromResult(result);
+        throw new Exception("CheckerPool was already disposed");
       }
 
-      var afterDecrement = Interlocked.Decrement(ref notCreatedCheckers);
-      if (afterDecrement >= 0) {
-        var checker = CreateNewChecker();
-        PrepareChecker(vcgen.program, split, checker);
-        Contract.Assert(checker != null);
-        return Task.FromResult(checker);
+      await checkersSemaphore.WaitAsync(cancellationToken);
+      if (!availableCheckers.TryTake(out var checker)) {
+        checker ??= CreateNewChecker();
       }
-      Interlocked.Increment(ref notCreatedCheckers);
 
-      var source = new TaskCompletionSource<Checker>();
-      checkerWaiters.Enqueue(source);
-      return source.Task.ContinueWith(t =>
-      {
-        PrepareChecker(vcgen.program, split, t.Result);
-        Contract.Assert(t.Result != null);
-        return t.Result;
-      });
+      PrepareChecker(vcgen.Program, split, checker);
+      return checker;
     }
 
+    private int createdCheckers;
     private Checker CreateNewChecker()
     {
       var log = Options.ProverLogFilePath;
-      if (log != null && !log.Contains("@PROC@") && availableCheckers.Count > 0) {
-        log = log + "." + availableCheckers.Count;
-      } 
+      var index = Interlocked.Increment(ref createdCheckers) - 1;
+      if (log != null && !log.Contains("@PROC@") && index > 0) {
+        log = log + "." + index;
+      }
 
       return new Checker(this, log, Options.ProverLogFileAppend);
     }
 
     public void Dispose()
     {
-      while (availableCheckers.TryPop(out var checker)) {
-        checker.Close();
+      lock(availableCheckers)
+      {
+        disposed = true;
+        foreach (var checker in availableCheckers.ToArray()) {
+          checker.Close();
+        }
       }
-      disposed = true;
     }
 
-    void PrepareChecker(Program program, Split split, Checker checker)
+    void PrepareChecker(Program program, Split? split, Checker checker)
     {
       if (checker.WillingToHandle(program) && (split == null || checker.SolverOptions.RandomSeed == split.RandomSeed && !Options.Prune))
       {
@@ -89,26 +76,20 @@ namespace VC
       if (checker.IsClosed) {
         throw new Exception();
       }
-      if (disposed) {
-        checker.Close();
-        return;
-      }
-      if (checkerWaiters.TryDequeue(out var waiter)) {
-        if (waiter.TrySetResult(checker)) {
+
+      lock (availableCheckers) {
+        if (disposed) {
+          checker.Close();
           return;
         }
+        availableCheckers.Add(checker);
+        checkersSemaphore.Release();
       }
-
-      availableCheckers.Push(checker);
     }
 
     public void CheckerDied()
     {
-      if (checkerWaiters.TryDequeue(out var waiter)) {
-        waiter.SetResult(CreateNewChecker());
-      } else {
-        Interlocked.Increment(ref notCreatedCheckers);
-      }
+      checkersSemaphore.Release();
     }
   }
 }

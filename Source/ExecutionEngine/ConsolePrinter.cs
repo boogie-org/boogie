@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
 using VCGeneration;
+using VC;
 
 namespace Microsoft.Boogie;
 
@@ -9,7 +11,7 @@ public class ConsolePrinter : OutputPrinter
 {
   public ExecutionEngineOptions Options { get; set; }
 
-  public void ErrorWriteLine(TextWriter tw, string s)
+  public virtual void ErrorWriteLine(TextWriter tw, string s)
   {
     Contract.Requires(s != null);
     if (!s.Contains("Error: ") && !s.Contains("Error BP"))
@@ -44,7 +46,7 @@ public class ConsolePrinter : OutputPrinter
   }
 
 
-  public void ErrorWriteLine(TextWriter tw, string format, params object[] args)
+  public virtual void ErrorWriteLine(TextWriter tw, string format, params object[] args)
   {
     Contract.Requires(format != null);
     string s = string.Format(format, args);
@@ -52,7 +54,7 @@ public class ConsolePrinter : OutputPrinter
   }
 
 
-  public void AdvisoryWriteLine(TextWriter output, string format, params object[] args)
+  public virtual void AdvisoryWriteLine(TextWriter output, string format, params object[] args)
   {
     Contract.Requires(format != null);
     ConsoleColor col = Console.ForegroundColor;
@@ -66,7 +68,7 @@ public class ConsolePrinter : OutputPrinter
   /// Inform the user about something and proceed with translation normally.
   /// Print newline after the message.
   /// </summary>
-  public void Inform(string s, TextWriter tw)
+  public virtual void Inform(string s, TextWriter tw)
   {
     if (Options.Trace || Options.TraceProofObligations)
     {
@@ -75,7 +77,7 @@ public class ConsolePrinter : OutputPrinter
   }
 
 
-  public void WriteTrailer(TextWriter textWriter, PipelineStatistics stats)
+  public virtual void WriteTrailer(TextWriter textWriter, PipelineStatistics stats)
   {
     Contract.Requires(stats != null);
     Contract.Requires(0 <= stats.VerifiedCount && 0 <= stats.ErrorCount && 0 <= stats.InconclusiveCount &&
@@ -123,7 +125,7 @@ public class ConsolePrinter : OutputPrinter
   }
 
 
-  public void WriteErrorInformation(ErrorInformation errorInfo, TextWriter tw, bool skipExecutionTrace = true)
+  public virtual void WriteErrorInformation(ErrorInformation errorInfo, TextWriter tw, bool skipExecutionTrace = true)
   {
     Contract.Requires(errorInfo != null);
 
@@ -171,5 +173,21 @@ public class ConsolePrinter : OutputPrinter
     {
       tw.WriteLine(s);
     }
+  }
+
+  public virtual void ReportImplementationsBeforeVerification(Implementation[] implementations) {
+    // Do not print anything to console
+  }
+
+  public virtual void ReportStartVerifyImplementation(Implementation implementation) {
+    // Do not print anything to console
+  }
+
+  public virtual void ReportEndVerifyImplementation(Implementation implementation, VerificationResult result) {
+    // Do not print anything to console
+  }
+
+  public virtual void ReportSplitResult(Split split, VCResult splitResult) {
+    // Do not print anything to console
   }
 }

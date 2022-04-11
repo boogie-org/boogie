@@ -4,6 +4,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
@@ -123,8 +124,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       Contract.Requires(t != null);
 
-      TypeSynonymAnnotation syn = t as TypeSynonymAnnotation;
-      if (syn != null)
+      if (t is TypeSynonymAnnotation syn)
       {
         TypeToStringHelper(syn.ExpandedType, sb);
       }
@@ -132,15 +132,15 @@ namespace Microsoft.Boogie.SMTLib
       {
         if (t.IsMap && LibOptions.UseArrayTheory)
         {
-          MapType m = t.AsMap;
+          MapType mapType = t.AsMap;
           // Contract.Assert(m.MapArity == 1);
           sb.Append("(Array ");
-          foreach (Type tp in m.Arguments)
+          foreach (Type tp in mapType.Arguments)
           {
             sb.Append(TypeToString(tp)).Append(" ");
           }
 
-          sb.Append(TypeToString(m.Result)).Append(")");
+          sb.Append(TypeToString(mapType.Result)).Append(")");
         }
         else if (t.IsMap)
         {
