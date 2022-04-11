@@ -12,6 +12,10 @@ public sealed class VerificationResult
   private readonly Implementation implementation;
   public readonly string ProgramId;
   public string MessageIfVerifies => implementation.FindStringAttribute("msg_if_verifies");
+  public string Checksum => implementation.Checksum;
+  public string DependenciesChecksum => implementation.DependencyChecksum;
+
+  public ISet<byte[]> AssertionChecksums => implementation.AssertionChecksums;
 
   public DateTime Start { get; set; }
   public DateTime End { get; set; }

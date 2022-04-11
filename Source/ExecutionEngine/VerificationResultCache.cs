@@ -704,7 +704,7 @@ namespace Microsoft.Boogie
       {
         priority = Priority.MEDIUM;
       }
-      else if (impl.DependencyChecksum == null || result.DependeciesChecksum != impl.DependencyChecksum)
+      else if (impl.DependencyChecksum == null || result.DependenciesChecksum != impl.DependencyChecksum)
       {
         priority = Priority.LOW;
       }
