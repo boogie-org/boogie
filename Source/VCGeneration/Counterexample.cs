@@ -393,6 +393,7 @@ namespace Microsoft.Boogie
     public abstract int GetLocation();
 
     public ErrorInformation CreateErrorInformation(ConditionGeneration.Outcome outcome, bool forceBplErrors)
+
     {
       ErrorInformation errorInfo;
       var cause = "Error";
@@ -436,7 +437,7 @@ namespace Microsoft.Boogie
         if (returnError.FailingEnsures.ErrorMessage == null || forceBplErrors)
         {
           errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(returnError.FailingReturn.tok,
-            returnError.FailingReturn.Description.FailureDescription);
+            returnError.FailingReturn.Description.FailureDescription, cause);
           errorInfo.Kind = ErrorKind.Postcondition;
           errorInfo.AddAuxInfo(returnError.FailingEnsures.tok,
             returnError.FailingEnsures.ErrorData as string ?? returnError.FailingEnsures.Description.FailureDescription,
@@ -452,31 +453,51 @@ namespace Microsoft.Boogie
       {
         Debug.Assert(this is AssertCounterexample);
         var assertError = (AssertCounterexample)this;
-        if (assertError.FailingAssert is LoopInitAssertCmd or LoopInvMaintainedAssertCmd)
+        var failingAssert = assertError.FailingAssert;
+        if (failingAssert is LoopInitAssertCmd or LoopInvMaintainedAssertCmd)
         {
-          errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(assertError.FailingAssert.tok,
-            assertError.FailingAssert.Description.FailureDescription);
-          errorInfo.Kind = assertError.FailingAssert is LoopInitAssertCmd ?
+          errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(failingAssert.tok,
+            failingAssert.Description.FailureDescription, cause);
+          errorInfo.Kind = failingAssert is LoopInitAssertCmd ?
             ErrorKind.InvariantEntry : ErrorKind.InvariantMaintainance;
-          if ((assertError.FailingAssert.ErrorData as string) != null)
+          string relatedMessage = null;
+          if (failingAssert.ErrorData is string)
           {
-            errorInfo.AddAuxInfo(assertError.FailingAssert.tok, assertError.FailingAssert.ErrorData as string,
-              "Related message");
+            relatedMessage = failingAssert.ErrorData as string;
+          }
+          else if (failingAssert is LoopInitAssertCmd initCmd)
+          {
+            var desc = initCmd.originalAssert.Description;
+            if (desc is not AssertionDescription)
+            {
+              relatedMessage = desc.FailureDescription;
+            }
+          }
+          else if (failingAssert is LoopInvMaintainedAssertCmd maintCmd)
+          {
+            var desc = maintCmd.originalAssert.Description;
+            if (desc is not AssertionDescription)
+            {
+              relatedMessage = desc.FailureDescription;
+            }
+          }
+
+          if (relatedMessage != null) {
+            errorInfo.AddAuxInfo(failingAssert.tok, relatedMessage, "Related message");
           }
         }
         else
         {
-          if (assertError.FailingAssert.ErrorMessage == null || forceBplErrors)
+          if (failingAssert.ErrorMessage == null || forceBplErrors)
           {
-            string msg = assertError.FailingAssert.ErrorData as string ??
-                         assertError.FailingAssert.Description.FailureDescription;
-            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(assertError.FailingAssert.tok, msg);
+            string msg = failingAssert.ErrorData as string ??
+                         failingAssert.Description.FailureDescription;
+            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(failingAssert.tok, msg, cause);
             errorInfo.Kind = ErrorKind.Assertion;
           }
           else
           {
-            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(null,
-              assertError.FailingAssert.ErrorMessage);
+            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(null, failingAssert.ErrorMessage);
           }
         }
       }
