@@ -3,7 +3,9 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
+using Microsoft.VisualStudio.TestPlatform.Common.Utilities;
 using NUnit.Framework;
+using VC;
 
 
 namespace ExecutionEngineTests;
@@ -17,6 +19,36 @@ public class FakeDescription : ProofObligationDescription
 
 [TestFixture]
 public class ExecutionEngineTest {
+
+  [Test]
+  public async Task GetImplementationTasks() {
+    var programString = @"
+procedure First(y: int)
+{
+  assert 2 == 1;
+}
+
+procedure Second(y: int)
+{
+  assert 2 == 2;
+}
+".Trim();
+    Parser.Parse(programString, "fakeFilename1", out var program);
+    var options = CommandLineOptions.FromArguments();
+    options.PrintErrorModel = 1;
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+    var tasks = engine.GetImplementationTasks(program);
+    Assert.AreEqual(2, tasks.Count);
+    Assert.NotNull(tasks[0].Implementation);
+    tasks[0].Run();
+    var firstResult = await tasks[0].ActualTask;
+    Assert.AreEqual(ConditionGeneration.Outcome.Errors, firstResult.Outcome);
+    Assert.AreEqual(true, firstResult.Errors[0].Model.ModelHasStatesAlready);
+
+    tasks[1].Run();
+    tasks[1].Cancel();
+    Assert.CatchAsync<TaskCanceledException>(() => tasks[1].ActualTask);
+  }
 
   [Test]
   public async Task VerifyProceduresConcurrently()
