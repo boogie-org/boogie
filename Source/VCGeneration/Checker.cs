@@ -73,6 +73,9 @@ namespace Microsoft.Boogie
       try {
         await thmProver.GoBackToIdle().WaitAsync(TimeSpan.FromMilliseconds(100));
         Pool.AddChecker(this);
+      } catch (ProverDiedException) {
+        Pool.CheckerDied();
+        Close();
       }
       catch(TimeoutException) {
         Pool.CheckerDied();
