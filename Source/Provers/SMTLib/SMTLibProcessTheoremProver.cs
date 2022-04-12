@@ -1108,7 +1108,7 @@ namespace Microsoft.Boogie.SMTLib
 
     ////////////////////////////////////////////////////////////////////////////
 
-    private static string _backgroundPredicates;
+    private string _backgroundPredicates;
 
     private void InitializeGlobalInformation()
     {

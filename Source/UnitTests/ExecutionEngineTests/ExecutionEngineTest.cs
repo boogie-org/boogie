@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
 using Microsoft.VisualStudio.TestPlatform.Common.Utilities;
@@ -33,7 +34,7 @@ procedure Second(y: int)
   assert 2 == 2;
 }
 ".Trim();
-    Parser.Parse(programString, "fakeFilename1", out var program);
+    Parser.Parse(programString, "fakeFilename10", out var program);
     var options = CommandLineOptions.FromArguments();
     options.PrintErrorModel = 1;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
@@ -108,9 +109,9 @@ procedure Good(y: int)
     Parser.Parse(programString, "fakeFilename1", out var program1);
     Parser.Parse(programString, "fakeFilename2", out var program2);
     var task1Writer = concurrentWriterManager.AppendWriter();
-    var task1 = engine.ProcessProgram(task1Writer, program1, "fakeFilename");
+    var task1 = engine.ProcessProgram(task1Writer, program1, "fakeFilename1");
     var task2Writer = concurrentWriterManager.AppendWriter();
-    var task2 = engine.ProcessProgram(task2Writer, program2, "fakeFilename");
+    var task2 = engine.ProcessProgram(task2Writer, program2, "fakeFilename2");
     await Task.WhenAll(task1, task2);
 
     await task1Writer.DisposeAsync();
