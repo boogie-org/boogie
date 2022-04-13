@@ -8,9 +8,9 @@ namespace VC
 {
   public class ModelViewInfo
   {
-    public readonly List<Variable> AllVariables = new();
+    public readonly List<Variable> AllVariables = new List<Variable>();
 
-    public readonly Dictionary<Block, List<(AssumeCmd, Mapping)>> BlockToCapturePointIndex = new();
+    public readonly Dictionary<Block, List<(AssumeCmd, Mapping)>> BlockToCapturePointIndex = new Dictionary<Block, List<(AssumeCmd, Mapping)>>();
 
     public ModelViewInfo(Program program, Implementation impl)
     {
