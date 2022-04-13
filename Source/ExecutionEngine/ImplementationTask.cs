@@ -12,12 +12,12 @@ public interface IImplementationTask {
 public class ImplementationTask : IImplementationTask {
   private CancellationTokenSource source;
   private readonly ExecutionEngine engine;
-  private readonly Program program;
+  private readonly ProcessedProgram program;
 
   public Task<VerificationResult> ActualTask { get; private set; }
   public Implementation Implementation { get; }
 
-  public ImplementationTask(ExecutionEngine engine, Program program, Implementation implementation) {
+  public ImplementationTask(ExecutionEngine engine, ProcessedProgram program, Implementation implementation) {
     this.engine = engine;
     this.program = program;
     Implementation = implementation;

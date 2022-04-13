@@ -15,9 +15,12 @@ using VCGeneration;
 
 namespace Microsoft.Boogie
 {
-  public class ExecutionEngine : IDisposable {
+  public record ProcessedProgram(Program Program, Action<VCGen, Implementation, VerificationResult> PostProcessResult) {
+    public ProcessedProgram(Program program) : this(program, (_, _, _) => { }) {
+    }
+  }
 
-    private static readonly ConditionalWeakTable<Program, Action<VCGen, Implementation, VerificationResult>> ResultPostProcessors = new ();
+  public class ExecutionEngine : IDisposable {
 
     static int autoRequestIdCount;
 
@@ -535,7 +538,7 @@ namespace Microsoft.Boogie
 
       var start = DateTime.UtcNow;
 
-      PreProcessProgramVerification(program);
+      var processedProgram = PreProcessProgramVerification(program);
 
       if (!Options.Verify)
       {
@@ -554,7 +557,7 @@ namespace Microsoft.Boogie
           out stats.CachingActionCounts);
       }
 
-      var outcome = await VerifyEachImplementation(output, program, stats, programId, er, requestId, stablePrioritizedImpls);
+      var outcome = await VerifyEachImplementation(output, processedProgram, stats, programId, er, requestId, stablePrioritizedImpls);
 
       if (1 < Options.VerifySnapshots && programId != null)
       {
@@ -567,7 +570,7 @@ namespace Microsoft.Boogie
       return outcome;
     }
 
-    private void PreProcessProgramVerification(Program program)
+    private ProcessedProgram PreProcessProgramVerification(Program program)
     {
       // Doing lambda expansion before abstract interpretation means that the abstract interpreter
       // never needs to see any lambda expressions.  (On the other hand, if it were useful for it
@@ -587,21 +590,20 @@ namespace Microsoft.Boogie
         program.UnrollLoops(Options.LoopUnrollCount, Options.SoundLoopUnrolling);
       }
 
-      if (Options.ExtractLoops) {
-        ExtractLoops(program);
-      }
+      var processedProgram = Options.ExtractLoops ? ExtractLoops(program) : new ProcessedProgram(program);
 
       if (Options.PrintInstrumented) {
         program.Emit(new TokenTextWriter(Console.Out, Options.PrettyPrint, Options));
       }
 
       program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(Options, program);
+      return processedProgram;
     }
 
-    private void ExtractLoops(Program program)
+    private ProcessedProgram ExtractLoops(Program program)
     {
       var (extractLoopMappingInfo, _) = LoopExtractor.ExtractLoops(Options, program);
-      ResultPostProcessors.Add(program, (vcgen, impl, result) =>
+      return new ProcessedProgram(program, (vcgen, impl, result) =>
       {
         if (result.Errors != null) {
           for (int i = 0; i < result.Errors.Count; i++) {
@@ -634,7 +636,7 @@ namespace Microsoft.Boogie
       return stablePrioritizedImpls;
     }
 
-    private async Task<PipelineOutcome> VerifyEachImplementation(TextWriter output, Program program,
+    private async Task<PipelineOutcome> VerifyEachImplementation(TextWriter output, ProcessedProgram program,
       PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls)
     {
@@ -669,8 +671,8 @@ namespace Microsoft.Boogie
         CleanupRequest(requestId);
       }
 
-      if (Options.PrintNecessaryAssumes && program.NecessaryAssumes.Any()) {
-        Console.WriteLine("Necessary assume command(s): {0}", string.Join(", ", program.NecessaryAssumes.OrderBy(s => s)));
+      if (Options.PrintNecessaryAssumes && program.Program.NecessaryAssumes.Any()) {
+        Console.WriteLine("Necessary assume command(s): {0}", string.Join(", ", program.Program.NecessaryAssumes.OrderBy(s => s)));
       }
 
       cce.NonNull(Options.TheProverFactory).Close();
@@ -688,12 +690,12 @@ namespace Microsoft.Boogie
       CoalesceBlocks(program);
       Inline(program);
 
-      PreProcessProgramVerification(program);
-      return GetPrioritizedImplementations(program).Select(implementation => new ImplementationTask(this, program, implementation)).ToList();
+      var processedProgram = PreProcessProgramVerification(program);
+      return GetPrioritizedImplementations(program).Select(implementation => new ImplementationTask(this, processedProgram, implementation)).ToList();
     }
 
     public async Task<VerificationResult> VerifyImplementationWithLargeStackScheduler(
-      Program program, PipelineStatistics stats,
+      ProcessedProgram program, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, Implementation implementation,
       CancellationTokenSource cts,
       TextWriter taskWriter)
@@ -780,7 +782,7 @@ namespace Microsoft.Boogie
     }
 
     private async Task<VerificationResult> VerifyImplementation(
-      Program program,
+      ProcessedProgram program,
       PipelineStatistics stats,
       ErrorReporterDelegate er,
       CancellationToken cancellationToken,
@@ -832,13 +834,13 @@ namespace Microsoft.Boogie
       return null;
     }
 
-    private async Task<VerificationResult> VerifyImplementationWithoutCaching(Program program,
+    private async Task<VerificationResult> VerifyImplementationWithoutCaching(ProcessedProgram program,
       PipelineStatistics stats, ErrorReporterDelegate er, CancellationToken cancellationToken,
       string programId, Implementation impl, TextWriter traceWriter)
     {
       var verificationResult = new VerificationResult(impl, programId);
 
-      using var vcgen = new VCGen(program, checkerPool);
+      using var vcgen = new VCGen(program.Program, checkerPool);
 
       vcgen.CachingActionCounts = stats.CachingActionCounts;
       verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
@@ -847,9 +849,7 @@ namespace Microsoft.Boogie
       try {
         (verificationResult.Outcome, verificationResult.Errors, verificationResult.VCResults) =
           await vcgen.VerifyImplementation(new ImplementationRun(impl, traceWriter), cancellationToken);
-        if (ResultPostProcessors.TryGetValue(program, out var postProcess)) {
-          postProcess!(vcgen, impl, verificationResult);
-        }
+        program.PostProcessResult(vcgen, impl, verificationResult);
       } catch (VCGenException e) {
         string msg = $"{e.Message} (encountered in implementation {impl.Name}).";
         var errorInfo = ErrorInformation.Create(impl.tok, msg, null);
