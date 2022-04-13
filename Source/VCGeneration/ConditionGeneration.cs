@@ -530,6 +530,7 @@ namespace VC
       public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
       {
         //Contract.Requires(ce != null);
+        ce.InitializeStates();
         examples.Add(ce);
       }
 
