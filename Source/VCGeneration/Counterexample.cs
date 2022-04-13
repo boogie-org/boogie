@@ -242,7 +242,7 @@ namespace Microsoft.Boogie
 
     public void InitializeStates()
     {
-      if (!Model.ModelHasStatesAlready) {
+      if (Model is { ModelHasStatesAlready: false }) {
         if (this is AssertCounterexample assertError) {
           PopulateModelWithStates(Trace, assertError.FailingAssert);
         } else if (this is CallCounterexample callError) {
