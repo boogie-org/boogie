@@ -851,8 +851,8 @@ namespace Microsoft.Boogie
           postProcess!(vcgen, impl, verificationResult);
         }
       } catch (VCGenException e) {
-        var errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(impl.tok,
-          $"{e.Message} (encountered in implementation {impl.Name}).");
+        string msg = $"{e.Message} (encountered in implementation {impl.Name}).";
+        var errorInfo = ErrorInformation.Create(impl.tok, msg, null);
         errorInfo.ImplementationName = impl.Name;
         verificationResult.ErrorBeforeVerification = errorInfo;
         if (er != null) {
@@ -1049,8 +1049,8 @@ namespace Microsoft.Boogie
           if (implName != null && implTok != null) {
             if (outcome == ConditionGeneration.Outcome.TimedOut ||
                 (errors != null && errors.Any(e => e.IsAuxiliaryCexForDiagnosingTimeouts))) {
-              errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
-                string.Format("Verification of '{1}' timed out after {0} seconds", timeLimit, implName));
+              string msg = string.Format("Verification of '{1}' timed out after {0} seconds", timeLimit, implName);
+              errorInfo = ErrorInformation.Create(implTok, msg, null);
             }
 
             //  Report timed out assertions as auxiliary info.
@@ -1094,30 +1094,30 @@ namespace Microsoft.Boogie
           break;
         case VCGen.Outcome.OutOfResource:
           if (implName != null && implTok != null) {
-            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
-              "Verification out of resource (" + implName + ")");
+            string msg = "Verification out of resource (" + implName + ")";
+            errorInfo = ErrorInformation.Create(implTok, msg, null);
           }
 
           break;
         case VCGen.Outcome.OutOfMemory:
           if (implName != null && implTok != null) {
-            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
-              "Verification out of memory (" + implName + ")");
+            string msg = "Verification out of memory (" + implName + ")";
+            errorInfo = ErrorInformation.Create(implTok, msg, null);
           }
 
           break;
         case VCGen.Outcome.SolverException:
           if (implName != null && implTok != null) {
-            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
-              "Verification encountered solver exception (" + implName + ")");
+            string msg = "Verification encountered solver exception (" + implName + ")";
+            errorInfo = ErrorInformation.Create(implTok, msg, null);
           }
 
           break;
 
         case VCGen.Outcome.Inconclusive:
           if (implName != null && implTok != null) {
-            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(implTok,
-              "Verification inconclusive (" + implName + ")");
+            string msg = "Verification inconclusive (" + implName + ")";
+            errorInfo = ErrorInformation.Create(implTok, msg, null);
           }
 
           break;

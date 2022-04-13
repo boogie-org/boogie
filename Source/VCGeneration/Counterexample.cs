@@ -417,9 +417,8 @@ namespace Microsoft.Boogie
       {
         if (callError.FailingRequires.ErrorMessage == null || forceBplErrors)
         {
-          errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(callError.FailingCall.tok,
-            callError.FailingCall.ErrorData as string ?? callError.FailingCall.Description.FailureDescription,
-            cause);
+          string msg = callError.FailingCall.ErrorData as string ?? callError.FailingCall.Description.FailureDescription;
+          errorInfo = ErrorInformation.Create(callError.FailingCall.tok, msg, cause);
           errorInfo.Kind = ErrorKind.Precondition;
           errorInfo.AddAuxInfo(callError.FailingRequires.tok,
             callError.FailingRequires.ErrorData as string ?? callError.FailingRequires.Description.FailureDescription,
@@ -427,16 +426,14 @@ namespace Microsoft.Boogie
         }
         else
         {
-          errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(null,
-            callError.FailingRequires.ErrorMessage);
+          errorInfo = ErrorInformation.Create(null, callError.FailingRequires.ErrorMessage, null);
         }
       }
       else if (this is ReturnCounterexample returnError)
       {
         if (returnError.FailingEnsures.ErrorMessage == null || forceBplErrors)
         {
-          errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(returnError.FailingReturn.tok,
-            returnError.FailingReturn.Description.FailureDescription, cause);
+          errorInfo = ErrorInformation.Create(returnError.FailingReturn.tok, returnError.FailingReturn.Description.FailureDescription, cause);
           errorInfo.Kind = ErrorKind.Postcondition;
           errorInfo.AddAuxInfo(returnError.FailingEnsures.tok,
             returnError.FailingEnsures.ErrorData as string ?? returnError.FailingEnsures.Description.FailureDescription,
@@ -444,8 +441,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(null,
-            returnError.FailingEnsures.ErrorMessage);
+          errorInfo = ErrorInformation.Create(null, returnError.FailingEnsures.ErrorMessage, null);
         }
       }
       else // error is AssertCounterexample
@@ -455,8 +451,7 @@ namespace Microsoft.Boogie
         var failingAssert = assertError.FailingAssert;
         if (failingAssert is LoopInitAssertCmd or LoopInvMaintainedAssertCmd)
         {
-          errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(failingAssert.tok,
-            failingAssert.Description.FailureDescription, cause);
+          errorInfo = ErrorInformation.Create(failingAssert.tok, failingAssert.Description.FailureDescription, cause);
           errorInfo.Kind = failingAssert is LoopInitAssertCmd ?
             ErrorKind.InvariantEntry : ErrorKind.InvariantMaintainance;
           string relatedMessage = null;
@@ -491,12 +486,12 @@ namespace Microsoft.Boogie
           {
             string msg = failingAssert.ErrorData as string ??
                          failingAssert.Description.FailureDescription;
-            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(failingAssert.tok, msg, cause);
+            errorInfo = ErrorInformation.Create(failingAssert.tok, msg, cause);
             errorInfo.Kind = ErrorKind.Assertion;
           }
           else
           {
-            errorInfo = ErrorInformationFactory.Instance.CreateErrorInformation(null, failingAssert.ErrorMessage);
+            errorInfo = ErrorInformation.Create(null, failingAssert.ErrorMessage, null);
           }
         }
       }

@@ -62,10 +62,11 @@ public class ErrorInformation
     Msg = CleanUp(msg);
   }
 
-  internal static ErrorInformation CreateErrorInformation(IToken tok, string msg, string category = null)
+  public static ErrorInformation Create(IToken tok, string msg, string category = null)
   {
-    var result = new ErrorInformation(tok, msg);
-    result.Category = category;
+    var result = new ErrorInformation(tok, msg) {
+      Category = category
+    };
     return result;
   }
 
@@ -87,16 +88,6 @@ public class ErrorInformation
     {
       return msg;
     }
-  }
-}
-
-public class ErrorInformationFactory
-{
-  public static ErrorInformationFactory Instance { get; } = new();
-
-  public ErrorInformation CreateErrorInformation(IToken tok, string msg, string category = null)
-  {
-    return ErrorInformation.CreateErrorInformation(tok, msg, category);
   }
 }
 
