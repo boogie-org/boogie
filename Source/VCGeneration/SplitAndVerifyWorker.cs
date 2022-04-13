@@ -103,12 +103,11 @@ namespace VC
       try {
         cancellationToken.ThrowIfCancellationRequested();
         await StartCheck(split, checker, cancellationToken);
-        await split.ProverTask;
-        await ProcessResult(split, cancellationToken);
+        await checker.ProverTask;
+        await ProcessResult(split, checker, cancellationToken);
       }
       finally {
         await checker.GoBackToIdle();
-        split.ResetChecker();
       }
     }
 
@@ -131,7 +130,7 @@ namespace VC
 
     private Implementation Implementation => run.Implementation;
 
-    private async Task ProcessResult(Split split, CancellationToken cancellationToken)
+    private async Task ProcessResult(Split split, Checker checker, CancellationToken cancellationToken)
     {
       if (TrackingProgress) {
         lock (this) {
@@ -139,7 +138,7 @@ namespace VC
         }
       }
 
-      var (newOutcome, result, newResourceCount) = await split.ReadOutcome(callback);
+      var (newOutcome, result, newResourceCount) = await split.ReadOutcome(checker, callback);
       lock (this) {
         outcome = MergeOutcomes(outcome, newOutcome);
         totalResourceCount += newResourceCount;
@@ -165,7 +164,7 @@ namespace VC
         return;
       }
 
-      await HandleProverFailure(split, callback, result, cancellationToken);
+      await HandleProverFailure(split, checker, callback, result, cancellationToken);
     }
 
     private static bool IsProverFailed(ProverInterface.Outcome outcome)
@@ -227,14 +226,14 @@ namespace VC
       }
     }
 
-    private async Task HandleProverFailure(Split split, VerifierCallback callback, VCResult vcResult, CancellationToken cancellationToken)
+    private async Task HandleProverFailure(Split split, Checker checker, VerifierCallback callback, VCResult vcResult, CancellationToken cancellationToken)
     {
       if (split.LastChance) {
         string msg = "some timeout";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
         }
-        callback.OnCounterexample(split.ToCounterexample(split.Checker.TheoremProver.Context), msg);
+        callback.OnCounterexample(split.ToCounterexample(checker.TheoremProver.Context), msg);
         // Update one last time the result with the dummy counter-example to indicate the position of the timeout
         var result = vcResult with {
           counterExamples = split.Counterexamples

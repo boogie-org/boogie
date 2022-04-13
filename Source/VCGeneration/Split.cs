@@ -114,7 +114,6 @@ namespace VC
         keepAtAll = new HashSet<Block /*!*/>();
 
       // async interface
-      private Checker checker;
       private int splitIndex;
       internal VCGen.ErrorReporter reporter;
 
@@ -1245,27 +1244,7 @@ namespace VC
         }
       }
 
-      public Checker Checker
-      {
-        get
-        {
-          Contract.Ensures(Contract.Result<Checker>() != null);
-
-          Contract.Assert(checker != null);
-          return checker;
-        }
-      }
-
-      public Task ProverTask
-      {
-        get
-        {
-          Contract.Assert(checker != null);
-          return checker.ProverTask;
-        }
-      }
-
-      public async Task<(ProverInterface.Outcome outcome, VCResult result, int resourceCount)> ReadOutcome(VerifierCallback callback)
+      public async Task<(ProverInterface.Outcome outcome, VCResult result, int resourceCount)> ReadOutcome(Checker checker, VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
@@ -1282,7 +1261,7 @@ namespace VC
           checker.ProverStart,
           outcome,
           checker.ProverRunTime,
-          Checker.Options.ErrorLimit,
+          checker.Options.ErrorLimit,
           Counterexamples,
           Asserts.ToList(),
           resourceCount);
@@ -1313,8 +1292,6 @@ namespace VC
         lock (Implementation) {
           Implementation.Blocks = blocks;
 
-          this.checker = checker;
-
           var absyIds = new ControlFlowIdMap<Absy>();
 
           ProverContext ctx = checker.TheoremProver.Context;
@@ -1334,7 +1311,7 @@ namespace VC
           VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
           vc = exprGen.Implies(eqExpr, vc);
           reporter = new VCGen.ErrorReporter(Options, gotoCmdOrigins, absyIds, Implementation.Blocks, Parent.debugInfos, callback,
-            mvInfo, Checker.TheoremProver.Context, Parent.Program, this);
+            mvInfo, checker.TheoremProver.Context, Parent.Program, this);
         }
 
         if (Options.TraceVerify && splitIndex >= 0)
@@ -1436,11 +1413,6 @@ namespace VC
 
           SoundnessCheck(cache, exit, newcopies);
         }
-      }
-
-      public void ResetChecker()
-      {
-        checker = null;
       }
 
       public void Finish(VCResult result) {
