@@ -2234,8 +2234,10 @@ namespace Microsoft.Boogie
                 rounded to the nearest integer (where 0.0 <= f <= 3.0),
                 but never to less than 1.
   /vcsStabilityIterations:<n>
-                Attempt to prove each VC n times, each time with a different
-                solver configuration (e.g., different random seed).
+                Attempt to prove each VC n times. If /randomSeed has been
+                provided, each proof attempt will use a new random seed
+                derived from this original seed. If not, each attempt will
+                be identical (which generally isn't very useful).
 
   ---- Prover options --------------------------------------------------------
 
