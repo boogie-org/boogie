@@ -8,21 +8,24 @@ j ->
 j@0 -> 2
 j@1 -> 3
 j@2 -> 4
-r ->
-s ->
+r -> T@ref!val!0
+s -> T@ref!val!0
 ControlFlow -> {
+  0 0 -> 4
   0 2 -> (- 3)
   0 4 -> 2
-  else -> 4
+  else -> (- 3)
 }
 tickleBool -> {
+  false -> true
+  true -> true
   else -> true
 }
 *** STATE <initial>
   i ->
   j ->
-  r ->
-  s ->
+  r -> T@ref!val!0
+  s -> T@ref!val!0
 *** END_STATE
 *** END_MODEL
 
