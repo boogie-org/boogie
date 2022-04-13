@@ -14,15 +14,14 @@ public class ImplementationTask : IImplementationTask {
   private readonly ExecutionEngine engine;
   private readonly Program program;
 
+  public Task<VerificationResult> ActualTask { get; private set; }
+  public Implementation Implementation { get; }
+
   public ImplementationTask(ExecutionEngine engine, Program program, Implementation implementation) {
     this.engine = engine;
     this.program = program;
     Implementation = implementation;
   }
-
-  public Task<VerificationResult> ActualTask { get; private set; }
-
-  public Implementation Implementation { get; }
 
   public void Run() {
     source = new CancellationTokenSource();

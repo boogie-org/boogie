@@ -393,7 +393,6 @@ namespace Microsoft.Boogie
     public abstract int GetLocation();
 
     public ErrorInformation CreateErrorInformation(ConditionGeneration.Outcome outcome, bool forceBplErrors)
-
     {
       ErrorInformation errorInfo;
       var cause = "Error";

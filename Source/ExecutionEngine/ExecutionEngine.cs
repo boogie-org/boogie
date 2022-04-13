@@ -10,10 +10,7 @@ using VC;
 using BoogiePL = Microsoft.Boogie;
 using System.Runtime.Caching;
 using System.Diagnostics;
-using System.Net.Mime;
 using System.Runtime.CompilerServices;
-using Core;
-using Microsoft.Boogie.Houdini;
 using VCGeneration;
 
 namespace Microsoft.Boogie
@@ -1349,5 +1346,3 @@ namespace Microsoft.Boogie
     }
   }
 }
-
-public delegate void ErrorReporterDelegate(ErrorInformation errInfo);

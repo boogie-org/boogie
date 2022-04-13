@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using Set = Microsoft.Boogie.GSet<object>;
 
-namespace Core;
+namespace Microsoft.Boogie;
 
 public class LoopExtractor {
 

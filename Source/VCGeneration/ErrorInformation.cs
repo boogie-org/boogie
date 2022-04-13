@@ -94,11 +94,10 @@ public class ErrorInformationFactory
 {
   public static ErrorInformationFactory Instance { get; } = new();
 
-  public virtual ErrorInformation CreateErrorInformation(IToken tok, string msg, string category = null)
+  public ErrorInformation CreateErrorInformation(IToken tok, string msg, string category = null)
   {
-    Contract.Requires(1 <= tok.line && 1 <= tok.col);
-    Contract.Requires(msg != null);
-
     return ErrorInformation.CreateErrorInformation(tok, msg, category);
   }
 }
+
+public delegate void ErrorReporterDelegate(ErrorInformation errInfo);
