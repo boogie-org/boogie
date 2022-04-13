@@ -76,7 +76,7 @@ namespace VC
     public async Task<Outcome> WorkUntilDone(CancellationToken cancellationToken)
     {
       TrackSplitsCost(manualSplits);
-      await Task.WhenAll(manualSplits.Select(split => DoWork(split, cancellationToken)));
+      await Task.WhenAll(manualSplits.Select(split => DoWorkForMultipleIterations(split, cancellationToken)));
 
       return outcome;
     }
@@ -96,7 +96,13 @@ namespace VC
       }
     }
 
-    async Task DoWork(Split split, CancellationToken cancellationToken)
+    async Task DoWorkForMultipleIterations(Split split, CancellationToken cancellationToken)
+    {
+      var tasks = Enumerable.Range(0, options.VcsStabilityIterations).Select(i => DoWork(split, i, cancellationToken));
+      await Task.WhenAll(tasks);
+    }
+
+    async Task DoWork(Split split, int iteration, CancellationToken cancellationToken)
     {
       var checker = await split.Parent.CheckerPool.FindCheckerFor(split.Parent, split, cancellationToken);
 
@@ -252,7 +258,7 @@ namespace VC
         if (outcome != Outcome.Errors) {
           outcome = Outcome.Correct;
         }
-        await Task.WhenAll(newSplits.Select(newSplit => DoWork(newSplit, cancellationToken)));
+        await Task.WhenAll(newSplits.Select(newSplit => DoWork(newSplit, 0, cancellationToken)));
         return;
       }
 

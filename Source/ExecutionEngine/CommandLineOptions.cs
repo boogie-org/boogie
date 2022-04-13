@@ -701,6 +701,7 @@ namespace Microsoft.Boogie
     public uint VcsFinalAssertTimeout { get; set; } = 30;
     public uint VcsKeepGoingTimeout { get; set; } = 1;
     public int VcsCores { get; set; } = 1;
+    public int VcsStabilityIterations { get; set; } = 1;
     public bool VcsDumpSplits { get; set; } = false;
 
     public bool DebugRefuted { get; set; } = false;
@@ -1418,6 +1419,10 @@ namespace Microsoft.Boogie
 
         case "vcsCores":
           ps.GetIntArgument(x => VcsCores = x, a => 1 <= a);
+          return true;
+
+        case "vcsStabilityIterations":
+          ps.GetIntArgument(x => VcsStabilityIterations = x, a => 1 <= a);
           return true;
 
         case "vcsLoad":
@@ -2228,6 +2233,9 @@ namespace Microsoft.Boogie
   /vcsLoad:<f>  Sets vcsCores to the machine's ProcessorCount * f,
                 rounded to the nearest integer (where 0.0 <= f <= 3.0),
                 but never to less than 1.
+  /vcsStabilityIterations:<n>
+                Attempt to prove each VC n times, each time with a different
+                solver configuration (e.g., different random seed).
 
   ---- Prover options --------------------------------------------------------
 
