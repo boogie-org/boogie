@@ -1299,7 +1299,7 @@ namespace Microsoft.Boogie
         }
 
         if (Options.ModelViewFile != null) {
-          error.PrintModel(errorInfo.ModelWriter, error);
+          error.PrintModel(errorInfo.ModelWriter);
         }
 
         printer.WriteErrorInformation(errorInfo, tw);
