@@ -4,16 +4,16 @@ Execution trace:
 *** MODEL
 i -> 0
 ControlFlow -> {
-  0 0 -> 3
   0 2 -> (- 1)
   0 3 -> 2
-  else -> (- 1)
+  else -> 3
 }
 tickleBool -> {
-  false -> true
-  true -> true
   else -> true
 }
+*** STATE <initial>
+  i -> 0
+*** END_STATE
 *** END_MODEL
 
 Boogie program verifier finished with 0 verified, 1 error
