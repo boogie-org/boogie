@@ -80,8 +80,7 @@ public class ErrorInformation
 
   protected static string CleanUp(string msg)
   {
-    if (msg.ToLower().StartsWith("error: "))
-    {
+    if (msg.ToLower().StartsWith("error: ")) {
       return msg.Substring(7);
     }
     else
