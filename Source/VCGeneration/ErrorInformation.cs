@@ -82,9 +82,7 @@ public class ErrorInformation
   {
     if (msg.ToLower().StartsWith("error: ")) {
       return msg.Substring(7);
-    }
-    else
-    {
+    } else {
       return msg;
     }
   }
