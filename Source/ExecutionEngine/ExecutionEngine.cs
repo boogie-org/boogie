@@ -1021,9 +1021,7 @@ namespace Microsoft.Boogie
           {
             er(errorInfo);
           }
-        }
-        else
-        {
+        } else {
           printer.WriteErrorInformation(errorInfo, tw);
         }
       }
