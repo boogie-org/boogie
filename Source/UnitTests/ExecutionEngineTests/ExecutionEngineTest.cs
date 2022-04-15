@@ -22,7 +22,7 @@ public class FakeDescription : ProofObligationDescription
 public class ExecutionEngineTest {
 
   [Test]
-  public async Task GetImplementationTasks() {
+  public async Task GetImplementationTasksTest() {
     var programString = @"
 procedure First(y: int)
 {

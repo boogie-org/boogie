@@ -636,7 +636,7 @@ namespace Microsoft.Boogie
       return stablePrioritizedImpls;
     }
 
-    private async Task<PipelineOutcome> VerifyEachImplementation(TextWriter output, ProcessedProgram program,
+    private async Task<PipelineOutcome> VerifyEachImplementation(TextWriter output, ProcessedProgram processedProgram,
       PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls)
     {
@@ -648,7 +648,7 @@ namespace Microsoft.Boogie
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
         var implementation = stablePrioritizedImpls[index];
-        var result = await VerifyImplementationWithLargeStackScheduler(program, stats, programId, er,
+        var result = await VerifyImplementationWithLargeStackScheduler(processedProgram, stats, programId, er,
           implementation, cts, taskWriter);
         var output = result.GetOutput(Options.Printer, this, stats, er);
         await taskWriter.WriteAsync(output);
@@ -671,8 +671,8 @@ namespace Microsoft.Boogie
         CleanupRequest(requestId);
       }
 
-      if (Options.PrintNecessaryAssumes && program.Program.NecessaryAssumes.Any()) {
-        Console.WriteLine("Necessary assume command(s): {0}", string.Join(", ", program.Program.NecessaryAssumes.OrderBy(s => s)));
+      if (Options.PrintNecessaryAssumes && processedProgram.Program.NecessaryAssumes.Any()) {
+        Console.WriteLine("Necessary assume command(s): {0}", string.Join(", ", processedProgram.Program.NecessaryAssumes.OrderBy(s => s)));
       }
 
       cce.NonNull(Options.TheProverFactory).Close();
@@ -695,7 +695,7 @@ namespace Microsoft.Boogie
     }
 
     public async Task<VerificationResult> VerifyImplementationWithLargeStackScheduler(
-      ProcessedProgram program, PipelineStatistics stats,
+      ProcessedProgram processedProgram, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, Implementation implementation,
       CancellationTokenSource cts,
       TextWriter taskWriter)
@@ -710,7 +710,7 @@ namespace Microsoft.Boogie
 
         ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
 
-        var coreTask = Task.Run(() => VerifyImplementation(program, stats, er, cts.Token,
+        var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cts.Token,
           implementation,
           programId, taskWriter), cts.Token);
 
@@ -782,7 +782,7 @@ namespace Microsoft.Boogie
     }
 
     private async Task<VerificationResult> VerifyImplementation(
-      ProcessedProgram program,
+      ProcessedProgram processedProgram,
       PipelineStatistics stats,
       ErrorReporterDelegate er,
       CancellationToken cancellationToken,
@@ -800,7 +800,7 @@ namespace Microsoft.Boogie
       Options.Printer.Inform($"Verifying {implementation.Name} ...", traceWriter);
       Options.Printer.ReportStartVerifyImplementation(implementation);
 
-      verificationResult = await VerifyImplementationWithoutCaching(program, stats, er, cancellationToken,
+      verificationResult = await VerifyImplementationWithoutCaching(processedProgram, stats, er, cancellationToken,
         programId, implementation, traceWriter);
 
       if (0 < Options.VerifySnapshots && !string.IsNullOrEmpty(implementation.Checksum))
@@ -834,13 +834,13 @@ namespace Microsoft.Boogie
       return null;
     }
 
-    private async Task<VerificationResult> VerifyImplementationWithoutCaching(ProcessedProgram program,
+    private async Task<VerificationResult> VerifyImplementationWithoutCaching(ProcessedProgram processedProgram,
       PipelineStatistics stats, ErrorReporterDelegate er, CancellationToken cancellationToken,
       string programId, Implementation impl, TextWriter traceWriter)
     {
       var verificationResult = new VerificationResult(impl, programId);
 
-      using var vcgen = new VCGen(program.Program, checkerPool);
+      using var vcgen = new VCGen(processedProgram.Program, checkerPool);
 
       vcgen.CachingActionCounts = stats.CachingActionCounts;
       verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
@@ -849,7 +849,7 @@ namespace Microsoft.Boogie
       try {
         (verificationResult.Outcome, verificationResult.Errors, verificationResult.VCResults) =
           await vcgen.VerifyImplementation(new ImplementationRun(impl, traceWriter), cancellationToken);
-        program.PostProcessResult(vcgen, impl, verificationResult);
+        processedProgram.PostProcessResult(vcgen, impl, verificationResult);
       } catch (VCGenException e) {
         string msg = $"{e.Message} (encountered in implementation {impl.Name}).";
         var errorInfo = ErrorInformation.Create(impl.tok, msg, null);

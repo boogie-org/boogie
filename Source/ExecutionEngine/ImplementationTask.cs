@@ -12,20 +12,20 @@ public interface IImplementationTask {
 public class ImplementationTask : IImplementationTask {
   private CancellationTokenSource source;
   private readonly ExecutionEngine engine;
-  private readonly ProcessedProgram program;
+  private readonly ProcessedProgram processedProgram;
 
   public Task<VerificationResult> ActualTask { get; private set; }
   public Implementation Implementation { get; }
 
-  public ImplementationTask(ExecutionEngine engine, ProcessedProgram program, Implementation implementation) {
+  public ImplementationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Implementation implementation) {
     this.engine = engine;
-    this.program = program;
+    this.processedProgram = processedProgram;
     Implementation = implementation;
   }
 
   public void Run() {
     source = new CancellationTokenSource();
-    ActualTask = engine.VerifyImplementationWithLargeStackScheduler(program, new PipelineStatistics(), null, null,
+    ActualTask = engine.VerifyImplementationWithLargeStackScheduler(processedProgram, new PipelineStatistics(), null, null,
       Implementation, source, TextWriter.Null);
   }
 
