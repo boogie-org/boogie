@@ -159,7 +159,9 @@ namespace Microsoft.Boogie
     /// </summary>
     private void Setup(Program prog, ProverContext ctx, Split split = null)
     {
-      SolverOptions.RandomSeed ??= (split?.RandomSeed ?? Options.RandomSeed);
+      if (Options.VcsStabilityIterations < 2 || SolverOptions.RandomSeed == null) {
+        SolverOptions.RandomSeed = (split?.RandomSeed ?? Options.RandomSeed);
+      }
       var random = SolverOptions.RandomSeed == null ? null : new Random(SolverOptions.RandomSeed.Value);
       if (1 < Options.VcsStabilityIterations) {
         SolverOptions.RandomSeed = random?.Next();
