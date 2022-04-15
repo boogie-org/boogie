@@ -243,15 +243,7 @@ namespace Microsoft.Boogie
     public void InitializeStates()
     {
       if (Model is { ModelHasStatesAlready: false }) {
-        if (this is AssertCounterexample assertError) {
-          PopulateModelWithStates(Trace, assertError.FailingAssert);
-        } else if (this is CallCounterexample callError) {
-          PopulateModelWithStates(Trace, callError.FailingCall);
-        } else {
-          Contract.Assert(this is ReturnCounterexample);
-          PopulateModelWithStates(Trace, null);
-        }
-
+        PopulateModelWithStates(Trace, ModelFailingCommand);
         Model.ModelHasStatesAlready = true;
       }
     }
@@ -273,6 +265,8 @@ namespace Microsoft.Boogie
 
       Model.Substitute(mapping);
     }
+
+    protected abstract Cmd ModelFailingCommand { get; }
 
     public void PopulateModelWithStates(List<Block> trace, Cmd/*?*/ failingCmd)
     {
@@ -395,23 +389,13 @@ namespace Microsoft.Boogie
     public ErrorInformation CreateErrorInformation(ConditionGeneration.Outcome outcome, bool forceBplErrors)
     {
       ErrorInformation errorInfo;
-      var cause = "Error";
-      if (outcome == VCGen.Outcome.TimedOut)
-      {
-        cause = "Timed out on";
-      }
-      else if (outcome == VCGen.Outcome.OutOfMemory)
-      {
-        cause = "Out of memory on";
-      }
-      else if (outcome == VCGen.Outcome.SolverException)
-      {
-        cause = "Solver exception on";
-      }
-      else if (outcome == VCGen.Outcome.OutOfResource)
-      {
-        cause = "Out of resource on";
-      }
+      var cause = outcome switch {
+        VCGen.Outcome.TimedOut => "Timed out on",
+        VCGen.Outcome.OutOfMemory => "Out of memory on",
+        VCGen.Outcome.SolverException => "Solver exception on",
+        VCGen.Outcome.OutOfResource => "Out of resource on",
+        _ => "Error"
+      };
 
       if (this is CallCounterexample callError)
       {
@@ -598,6 +582,8 @@ namespace Microsoft.Boogie
       this.FailingAssert = failingAssert;
     }
 
+    protected override Cmd ModelFailingCommand => FailingAssert;
+
     public override int GetLocation()
     {
       return FailingAssert.tok.line * 1000 + FailingAssert.tok.col;
@@ -648,6 +634,8 @@ namespace Microsoft.Boogie
       this.SugaredCmdChecksum = failingCall.Checksum;
     }
 
+    protected override Cmd ModelFailingCommand => FailingCall;
+
     public override int GetLocation()
     {
       return FailingCall.tok.line * 1000 + FailingCall.tok.col;
@@ -697,6 +685,8 @@ namespace Microsoft.Boogie
       this.FailingAssert = assertEnsuresCmd;
       this.checksum = checksum;
     }
+
+    protected override Cmd ModelFailingCommand => null;
 
     public override int GetLocation()
     {
