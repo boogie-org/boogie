@@ -62,12 +62,6 @@ namespace Microsoft.Boogie
     public async Task GoBackToIdle()
     {
       Contract.Requires(IsBusy);
-      if (Options.ModelViewFile != null) {
-        // Don't re-use theorem provers whose ProverContext still needs to be queried to extract model data.
-        Pool.CheckerDied();
-        Close();
-        return;
-      }
 
       status = CheckerStatus.Idle;
       try {

@@ -389,10 +389,6 @@ namespace VC
               // If possible, we use the old counterexample, but with the location information of "a"
               var cex = AssertCmdToCloneCounterexample(CheckerPool.Options, a, oldCex, impl.Blocks[0], gotoCmdOrigins);
               callback.OnCounterexample(cex, null);
-              // OnCounterexample may have had side effects on the RequestId and OriginalRequestId fields.  We make
-              // any such updates available in oldCex. (Is this really a good design? --KRML)
-              oldCex.RequestId = cex.RequestId;
-              oldCex.OriginalRequestId = cex.OriginalRequestId;
             }
           }
         }
@@ -1288,7 +1284,7 @@ namespace VC
 
       #region Support for stratified inlining
 
-      addExitAssert(impl.Name, exitBlock);
+      AddExitAssert(impl.Name, exitBlock);
 
       #endregion
 
@@ -1653,11 +1649,11 @@ namespace VC
     }
 
     // Used by stratified inlining
-    protected virtual void addExitAssert(string implName, Block exitBlock)
+    protected virtual void AddExitAssert(string implName, Block exitBlock)
     {
     }
 
-    public virtual Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program,
+    public virtual Counterexample ExtractLoopTrace(Counterexample cex, string mainProcName, Program program,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
       // Construct the set of inlined procs in the original program
@@ -1670,12 +1666,12 @@ namespace VC
         }
       }
 
-      return extractLoopTraceRec(
+      return ExtractLoopTraceRec(
         new CalleeCounterexampleInfo(cex, new List<object>()),
         mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
     }
 
-    protected CalleeCounterexampleInfo extractLoopTraceRec(
+    protected CalleeCounterexampleInfo ExtractLoopTraceRec(
       CalleeCounterexampleInfo cexInfo, string currProc,
       HashSet<string> inlinedProcs,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
@@ -1695,7 +1691,7 @@ namespace VC
       for (int numBlock = 0; numBlock < cex.Trace.Count; numBlock++)
       {
         Block block = cex.Trace[numBlock];
-        var origBlock = elGetBlock(currProc, block, extractLoopMappingInfo);
+        var origBlock = ProcGetBlock(currProc, block, extractLoopMappingInfo);
         if (origBlock != null)
         {
           ret.Trace.Add(origBlock);
@@ -1708,7 +1704,7 @@ namespace VC
           var loc = new TraceLocation(numBlock, numInstr);
           if (!cex.calleeCounterexamples.ContainsKey(loc))
           {
-            if (GetCallee(cex.getTraceCmd(loc), inlinedProcs) != null)
+            if (GetCallee(cex.GetTraceCmd(loc), inlinedProcs) != null)
             {
               callCnt++;
             }
@@ -1716,14 +1712,14 @@ namespace VC
             continue;
           }
 
-          string callee = cex.getCalledProcName(cex.getTraceCmd(loc));
+          string callee = cex.GetCalledProcName(cex.GetTraceCmd(loc));
           Contract.Assert(callee != null);
           var calleeTrace = cex.calleeCounterexamples[loc];
           Debug.Assert(calleeTrace != null);
 
-          var origTrace = extractLoopTraceRec(calleeTrace, callee, inlinedProcs, extractLoopMappingInfo);
+          var origTrace = ExtractLoopTraceRec(calleeTrace, callee, inlinedProcs, extractLoopMappingInfo);
 
-          if (elIsLoop(callee))
+          if (ProcIsLoop(callee))
           {
             // Absorb the trace into the current trace
 
@@ -1803,12 +1799,12 @@ namespace VC
       return procCalled;
     }
 
-    protected virtual bool elIsLoop(string procname)
+    protected virtual bool ProcIsLoop(string procname)
     {
       return false;
     }
 
-    private Block elGetBlock(string procname, Block block,
+    private Block ProcGetBlock(string procname, Block block,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
       Contract.Requires(procname != null);

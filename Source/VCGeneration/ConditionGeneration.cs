@@ -35,8 +35,8 @@ namespace VC
       throw new NotImplementedException();
     }
 
-    public ConditionGenerationContracts(Program p, CheckerPool checkerPool)
-      : base(p, checkerPool)
+    public ConditionGenerationContracts(Program program, CheckerPool checkerPool)
+      : base(program, checkerPool)
     {
     }
   }
@@ -103,10 +103,10 @@ namespace VC
     public Program Program { get; }
     public CheckerPool CheckerPool { get; }
 
-    public ConditionGeneration(Program p, CheckerPool checkerPool)
+    public ConditionGeneration(Program program, CheckerPool checkerPool)
     {
-      Contract.Requires(p != null && checkerPool != null);
-      Program = p;
+      Contract.Requires(program != null && checkerPool != null);
+      Program = program;
       CheckerPool = checkerPool;
     }
 
@@ -118,7 +118,7 @@ namespace VC
     /// </summary>
     /// <param name="impl"></param>
     public async Task<(Outcome, List<Counterexample> /*?*/ errors, List<VCResult> vcResults)>
-      VerifyImplementation(ImplementationRun run, string requestId, CancellationToken cancellationToken)
+      VerifyImplementation(ImplementationRun run, CancellationToken cancellationToken)
     {
       Contract.Requires(run != null);
 
@@ -126,9 +126,8 @@ namespace VC
       Helpers.ExtraTraceInformation(Options, "Starting implementation verification");
 
       var collector = new VerificationResultCollector(Options);
-      collector.RequestId = requestId;
       Outcome outcome = await VerifyImplementation(run, collector, cancellationToken);
-      List<Counterexample> /*?*/ errors = null;
+      var /*?*/ errors = new List<Counterexample>();
       if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
           outcome == Outcome.OutOfResource) {
         errors = collector.examples;
@@ -525,26 +524,13 @@ namespace VC
         Contract.Invariant(cce.NonNullElements(vcResults));
       }
 
-      public string RequestId;
-
-      public readonly List<Counterexample> /*!>!*/
-        examples = new List<Counterexample>();
-      public readonly List<VCResult> /*!>!*/
-        vcResults = new List<VCResult>();
+      public readonly List<Counterexample> /*!>!*/ examples = new List<Counterexample>();
+      public readonly List<VCResult> /*!>!*/ vcResults = new List<VCResult>();
 
       public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
       {
         //Contract.Requires(ce != null);
-        if (RequestId != null)
-        {
-          ce.RequestId = RequestId;
-        }
-
-        if (ce.OriginalRequestId == null && 1 < options.VerifySnapshots)
-        {
-          ce.OriginalRequestId = RequestId;
-        }
-
+        ce.InitializeModelStates();
         examples.Add(ce);
       }
 

@@ -18,6 +18,9 @@ tickleBool -> {
   true -> true
   else -> true
 }
+*** STATE <initial>
+  a -> |T@[Int]float24e8!val!0|
+*** END_STATE
 *** END_MODEL
 
 Boogie program verifier finished with 0 verified, 1 error
