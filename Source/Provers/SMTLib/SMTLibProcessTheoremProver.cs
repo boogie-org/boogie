@@ -21,6 +21,7 @@ namespace Microsoft.Boogie.SMTLib
     protected VCExpressionGenerator gen;
     protected SMTLibProverOptions options;
     protected bool usingUnsatCore;
+    private string _backgroundPredicates;
 
     [ContractInvariantMethod]
     private void ObjectInvariant()
@@ -1107,8 +1108,6 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     ////////////////////////////////////////////////////////////////////////////
-
-    private static string _backgroundPredicates;
 
     private void InitializeGlobalInformation()
     {

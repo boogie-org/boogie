@@ -6,6 +6,7 @@ using System.IO;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 using VC;
+using VCGeneration;
 using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Microsoft.Boogie
@@ -66,6 +67,7 @@ namespace Microsoft.Boogie
 
   public abstract class Counterexample
   {
+
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
@@ -81,8 +83,6 @@ namespace Microsoft.Boogie
     public Model Model;
     public VC.ModelViewInfo MvInfo;
     public ProverContext Context;
-    public string OriginalRequestId;
-    public string RequestId;
     public abstract byte[] Checksum { get; }
     public byte[] SugaredCmdChecksum;
     public bool IsAuxiliaryCexForDiagnosingTimeouts;
@@ -134,7 +134,7 @@ namespace Microsoft.Boogie
     }
 
     // Looks up the Cmd at a given index into the trace
-    public Cmd getTraceCmd(TraceLocation loc)
+    public Cmd GetTraceCmd(TraceLocation loc)
     {
       Debug.Assert(loc.numBlock < Trace.Count);
       Block b = Trace[loc.numBlock];
@@ -144,7 +144,7 @@ namespace Microsoft.Boogie
 
     // Looks up the name of the called procedure.
     // Asserts that the name exists
-    public string getCalledProcName(Cmd cmd)
+    public string GetCalledProcName(Cmd cmd)
     {
       // There are two options:
       // 1. cmd is a CallCmd
@@ -194,8 +194,8 @@ namespace Microsoft.Boogie
               var loc = new TraceLocation(numBlock, numInstr);
               if (calleeCounterexamples.ContainsKey(loc))
               {
-                var cmd = getTraceCmd(loc);
-                var calleeName = getCalledProcName(cmd);
+                var cmd = GetTraceCmd(loc);
+                var calleeName = GetCalledProcName(cmd);
                 if (calleeName.StartsWith(VC.StratifiedVCGenBase.recordProcName) &&
                     options.StratifiedInlining > 0)
                 {
@@ -226,18 +226,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      if (!Model.ModelHasStatesAlready)
-      {
-        if (counterexample is AssertCounterexample assertError) {
-          PopulateModelWithStates(counterexample.Trace, assertError.FailingAssert);
-        } else if (counterexample is CallCounterexample callError) {
-          PopulateModelWithStates(counterexample.Trace, callError.FailingCall);
-        } else {
-          Contract.Assert(counterexample is ReturnCounterexample);
-          PopulateModelWithStates(counterexample.Trace, null);
-        }
-        Model.ModelHasStatesAlready = true;
-      }
+      InitializeModelStates();
 
       if (filenameTemplate == "-")
       {
@@ -248,6 +237,14 @@ namespace Microsoft.Boogie
         var (filename, reused) = Helpers.GetLogFilename(ProofRun.Description, filenameTemplate, true);
         using var wr = new StreamWriter(filename, reused);
         Model.Write(wr);
+      }
+    }
+
+    public void InitializeModelStates()
+    {
+      if (Model is { ModelHasStatesAlready: false }) {
+        PopulateModelWithStates(Trace, ModelFailingCommand);
+        Model.ModelHasStatesAlready = true;
       }
     }
 
@@ -268,6 +265,8 @@ namespace Microsoft.Boogie
 
       Model.Substitute(mapping);
     }
+
+    protected abstract Cmd ModelFailingCommand { get; }
 
     public void PopulateModelWithStates(List<Block> trace, Cmd/*?*/ failingCmd)
     {
@@ -386,6 +385,102 @@ namespace Microsoft.Boogie
     }
 
     public abstract int GetLocation();
+
+    public ErrorInformation CreateErrorInformation(ConditionGeneration.Outcome outcome, bool forceBplErrors)
+    {
+      ErrorInformation errorInfo;
+      var cause = outcome switch {
+        VCGen.Outcome.TimedOut => "Timed out on",
+        VCGen.Outcome.OutOfMemory => "Out of memory on",
+        VCGen.Outcome.SolverException => "Solver exception on",
+        VCGen.Outcome.OutOfResource => "Out of resource on",
+        _ => "Error"
+      };
+
+      if (this is CallCounterexample callError)
+      {
+        if (callError.FailingRequires.ErrorMessage == null || forceBplErrors)
+        {
+          string msg = callError.FailingCall.ErrorData as string ?? callError.FailingCall.Description.FailureDescription;
+          errorInfo = ErrorInformation.Create(callError.FailingCall.tok, msg, cause);
+          errorInfo.Kind = ErrorKind.Precondition;
+          errorInfo.AddAuxInfo(callError.FailingRequires.tok,
+            callError.FailingRequires.ErrorData as string ?? callError.FailingRequires.Description.FailureDescription,
+            "Related location");
+        }
+        else
+        {
+          errorInfo = ErrorInformation.Create(null, callError.FailingRequires.ErrorMessage, null);
+        }
+      }
+      else if (this is ReturnCounterexample returnError)
+      {
+        if (returnError.FailingEnsures.ErrorMessage == null || forceBplErrors)
+        {
+          errorInfo = ErrorInformation.Create(returnError.FailingReturn.tok, returnError.FailingReturn.Description.FailureDescription, cause);
+          errorInfo.Kind = ErrorKind.Postcondition;
+          errorInfo.AddAuxInfo(returnError.FailingEnsures.tok,
+            returnError.FailingEnsures.ErrorData as string ?? returnError.FailingEnsures.Description.FailureDescription,
+            "Related location");
+        }
+        else
+        {
+          errorInfo = ErrorInformation.Create(null, returnError.FailingEnsures.ErrorMessage, null);
+        }
+      }
+      else // error is AssertCounterexample
+      {
+        var assertError = (AssertCounterexample)this;
+        var failingAssert = assertError.FailingAssert;
+        if (failingAssert is LoopInitAssertCmd or LoopInvMaintainedAssertCmd)
+        {
+          errorInfo = ErrorInformation.Create(failingAssert.tok, failingAssert.Description.FailureDescription, cause);
+          errorInfo.Kind = failingAssert is LoopInitAssertCmd ?
+            ErrorKind.InvariantEntry : ErrorKind.InvariantMaintainance;
+          string relatedMessage = null;
+          if (failingAssert.ErrorData is string)
+          {
+            relatedMessage = failingAssert.ErrorData as string;
+          }
+          else if (failingAssert is LoopInitAssertCmd initCmd)
+          {
+            var desc = initCmd.originalAssert.Description;
+            if (desc is not AssertionDescription)
+            {
+              relatedMessage = desc.FailureDescription;
+            }
+          }
+          else if (failingAssert is LoopInvMaintainedAssertCmd maintCmd)
+          {
+            var desc = maintCmd.originalAssert.Description;
+            if (desc is not AssertionDescription)
+            {
+              relatedMessage = desc.FailureDescription;
+            }
+          }
+
+          if (relatedMessage != null) {
+            errorInfo.AddAuxInfo(failingAssert.tok, relatedMessage, "Related message");
+          }
+        }
+        else
+        {
+          if (failingAssert.ErrorMessage == null || forceBplErrors)
+          {
+            string msg = failingAssert.ErrorData as string ??
+                         failingAssert.Description.FailureDescription;
+            errorInfo = ErrorInformation.Create(failingAssert.tok, msg, cause);
+            errorInfo.Kind = ErrorKind.Assertion;
+          }
+          else
+          {
+            errorInfo = ErrorInformation.Create(null, failingAssert.ErrorMessage, null);
+          }
+        }
+      }
+
+      return errorInfo;
+    }
   }
 
   public class CounterexampleComparer : IComparer<Counterexample>, IEqualityComparer<Counterexample>
@@ -486,6 +581,8 @@ namespace Microsoft.Boogie
       this.FailingAssert = failingAssert;
     }
 
+    protected override Cmd ModelFailingCommand => FailingAssert;
+
     public override int GetLocation()
     {
       return FailingAssert.tok.line * 1000 + FailingAssert.tok.col;
@@ -536,6 +633,8 @@ namespace Microsoft.Boogie
       this.SugaredCmdChecksum = failingCall.Checksum;
     }
 
+    protected override Cmd ModelFailingCommand => FailingCall;
+
     public override int GetLocation()
     {
       return FailingCall.tok.line * 1000 + FailingCall.tok.col;
@@ -585,6 +684,8 @@ namespace Microsoft.Boogie
       this.FailingAssert = assertEnsuresCmd;
       this.checksum = checksum;
     }
+
+    protected override Cmd ModelFailingCommand => null;
 
     public override int GetLocation()
     {

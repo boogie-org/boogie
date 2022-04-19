@@ -15,6 +15,9 @@ tickleBool -> {
   true -> true
   else -> true
 }
+*** STATE <initial>
+  s -> T@ref!val!0
+*** END_STATE
 *** END_MODEL
 
 Boogie program verifier finished with 0 verified, 1 error

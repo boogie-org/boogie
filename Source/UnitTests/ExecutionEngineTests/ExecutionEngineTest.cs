@@ -1,9 +1,12 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
+using Microsoft.VisualStudio.TestPlatform.Common.Utilities;
 using NUnit.Framework;
+using VC;
 
 
 namespace ExecutionEngineTests;
@@ -17,6 +20,36 @@ public class FakeDescription : ProofObligationDescription
 
 [TestFixture]
 public class ExecutionEngineTest {
+
+  [Test]
+  public async Task GetImplementationTasksTest() {
+    var programString = @"
+procedure First(y: int)
+{
+  assert 2 == 1;
+}
+
+procedure Second(y: int)
+{
+  assert 2 == 2;
+}
+".Trim();
+    Parser.Parse(programString, "fakeFilename10", out var program);
+    var options = CommandLineOptions.FromArguments();
+    options.PrintErrorModel = 1;
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+    var tasks = engine.GetImplementationTasks(program);
+    Assert.AreEqual(2, tasks.Count);
+    Assert.NotNull(tasks[0].Implementation);
+    tasks[0].Run();
+    var firstResult = await tasks[0].ActualTask;
+    Assert.AreEqual(ConditionGeneration.Outcome.Errors, firstResult.Outcome);
+    Assert.AreEqual(true, firstResult.Errors[0].Model.ModelHasStatesAlready);
+
+    tasks[1].Run();
+    tasks[1].Cancel();
+    Assert.CatchAsync<TaskCanceledException>(() => tasks[1].ActualTask);
+  }
 
   [Test]
   public async Task VerifyProceduresConcurrently()
@@ -76,9 +109,9 @@ procedure Good(y: int)
     Parser.Parse(programString, "fakeFilename1", out var program1);
     Parser.Parse(programString, "fakeFilename2", out var program2);
     var task1Writer = concurrentWriterManager.AppendWriter();
-    var task1 = engine.ProcessProgram(task1Writer, program1, "fakeFilename");
+    var task1 = engine.ProcessProgram(task1Writer, program1, "fakeFilename1");
     var task2Writer = concurrentWriterManager.AppendWriter();
-    var task2 = engine.ProcessProgram(task2Writer, program2, "fakeFilename");
+    var task2 = engine.ProcessProgram(task2Writer, program2, "fakeFilename2");
     await Task.WhenAll(task1, task2);
 
     await task1Writer.DisposeAsync();

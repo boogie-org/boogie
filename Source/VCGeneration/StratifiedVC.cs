@@ -14,6 +14,9 @@ namespace VC
 {
   using Bpl = Microsoft.Boogie;
 
+  /// <summary>
+  /// Used in Corral https://github.com/boogie-org/corral
+  /// </summary>
   public class StratifiedVC
   {
     public StratifiedInliningInfo info;
@@ -913,8 +916,7 @@ namespace VC
       return idCountForStratifiedInlining++;
     }
 
-    // Used inside PassifyImpl
-    protected override void addExitAssert(string implName, Block exitBlock)
+    protected override void AddExitAssert(string implName, Block exitBlock)
     {
       if (implName2StratifiedInliningInfo != null && implName2StratifiedInliningInfo.ContainsKey(implName))
       {
@@ -926,7 +928,7 @@ namespace VC
       }
     }
 
-    public override Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program,
+    public override Counterexample ExtractLoopTrace(Counterexample cex, string mainProcName, Program program,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
       // Construct the set of inlined procs in the original program
@@ -955,12 +957,12 @@ namespace VC
         }
       }
 
-      return extractLoopTraceRec(
+      return ExtractLoopTraceRec(
         new CalleeCounterexampleInfo(cex, new List<object>()),
         mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
     }
 
-    protected override bool elIsLoop(string procname)
+    protected override bool ProcIsLoop(string procname)
     {
       StratifiedInliningInfo info = null;
       if (implName2StratifiedInliningInfo.ContainsKey(procname))
