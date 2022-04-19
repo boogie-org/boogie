@@ -525,8 +525,6 @@ namespace VC
         Contract.Invariant(cce.NonNullElements(vcResults));
       }
 
-      public string RequestId;
-
       public readonly ConcurrentQueue<Counterexample> /*!>!*/
         examples = new ConcurrentQueue<Counterexample>();
       public readonly ConcurrentQueue<VCResult> /*!>!*/
