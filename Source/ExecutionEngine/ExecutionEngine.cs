@@ -1048,7 +1048,7 @@ namespace Microsoft.Boogie
             if (outcome == ConditionGeneration.Outcome.TimedOut ||
                 (errors != null && errors.Any(e => e.IsAuxiliaryCexForDiagnosingTimeouts))) {
               string msg = string.Format("Verification of '{1}' timed out after {0} seconds", timeLimit, implName);
-              errorInfo = ErrorInformation.Create(implTok, msg, null);
+              errorInfo = ErrorInformation.Create(implTok, msg);
             }
 
             //  Report timed out assertions as auxiliary info.
@@ -1093,21 +1093,21 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.OutOfResource:
           if (implName != null && implTok != null) {
             string msg = "Verification out of resource (" + implName + ")";
-            errorInfo = ErrorInformation.Create(implTok, msg, null);
+            errorInfo = ErrorInformation.Create(implTok, msg);
           }
 
           break;
         case VCGen.Outcome.OutOfMemory:
           if (implName != null && implTok != null) {
             string msg = "Verification out of memory (" + implName + ")";
-            errorInfo = ErrorInformation.Create(implTok, msg, null);
+            errorInfo = ErrorInformation.Create(implTok, msg);
           }
 
           break;
         case VCGen.Outcome.SolverException:
           if (implName != null && implTok != null) {
             string msg = "Verification encountered solver exception (" + implName + ")";
-            errorInfo = ErrorInformation.Create(implTok, msg, null);
+            errorInfo = ErrorInformation.Create(implTok, msg);
           }
 
           break;
@@ -1115,7 +1115,7 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.Inconclusive:
           if (implName != null && implTok != null) {
             string msg = "Verification inconclusive (" + implName + ")";
-            errorInfo = ErrorInformation.Create(implTok, msg, null);
+            errorInfo = ErrorInformation.Create(implTok, msg);
           }
 
           break;

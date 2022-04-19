@@ -127,7 +127,7 @@ namespace VC
 
       var collector = new VerificationResultCollector(Options);
       Outcome outcome = await VerifyImplementation(run, collector, cancellationToken);
-      List<Counterexample> /*?*/ errors = new List<Counterexample>();
+      var /*?*/ errors = new List<Counterexample>();
       if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
           outcome == Outcome.OutOfResource) {
         errors = collector.examples;
@@ -530,7 +530,7 @@ namespace VC
       public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
       {
         //Contract.Requires(ce != null);
-        ce.InitializeStates();
+        ce.InitializeModelStates();
         examples.Add(ce);
       }
 

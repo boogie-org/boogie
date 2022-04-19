@@ -226,7 +226,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      InitializeStates();
+      InitializeModelStates();
 
       if (filenameTemplate == "-")
       {
@@ -240,7 +240,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void InitializeStates()
+    public void InitializeModelStates()
     {
       if (Model is { ModelHasStatesAlready: false }) {
         PopulateModelWithStates(Trace, ModelFailingCommand);
@@ -430,7 +430,6 @@ namespace Microsoft.Boogie
       }
       else // error is AssertCounterexample
       {
-        Debug.Assert(this is AssertCounterexample);
         var assertError = (AssertCounterexample)this;
         var failingAssert = assertError.FailingAssert;
         if (failingAssert is LoopInitAssertCmd or LoopInvMaintainedAssertCmd)
