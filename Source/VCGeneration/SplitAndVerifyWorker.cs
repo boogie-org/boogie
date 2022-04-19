@@ -261,7 +261,7 @@ namespace VC
         if (outcome != Outcome.Errors) {
           outcome = Outcome.Correct;
         }
-        await Task.WhenAll(newSplits.Select(newSplit => DoWork(0, 0, newSplit, cancellationToken)));
+        await Task.WhenAll(newSplits.Select(newSplit => DoWorkForMultipleIterations(newSplit, cancellationToken)));
         return;
       }
 
