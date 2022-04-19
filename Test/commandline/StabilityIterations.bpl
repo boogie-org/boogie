@@ -2,7 +2,7 @@
 // RUN: %parallel-boogie -randomSeed:0 -vcsStabilityIterations:2 -xml:"%t-2.xml" "%s"
 // RUN: grep -Eo "resourceCount=\"[0-9]+\"" "%t-1.xml" | sort -g > "%t-res1"
 // RUN: grep -Eo "resourceCount=\"[0-9]+\"" "%t-2.xml" | sort -g > "%t-res2"
-// // RUN: diff "%t-res1" "%t-res2"
+// RUN: diff "%t-res1" "%t-res2"
 // Chop off the first line, since OutputCheck expects ASCII and can't handle the byte-order mark
 // RUN: tail -n +2 "%t-1.xml" > "%t.trimmed.xml"
 // RUN: %OutputCheck "%s" --file-to-check="%t.trimmed.xml"
