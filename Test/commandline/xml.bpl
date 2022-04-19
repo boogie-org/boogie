@@ -9,11 +9,11 @@
 // We only check for one of the methods in the XML because there's no
 // guarantee about what order they'll appear in.
 // CHECK: \<method name="ExampleWithSplits" startTime=".*"\>
-// CHECK:   \<assertionBatch number="1" startTime=".*"\>
+// CHECK:   \<assertionBatch number="1" iteration="0" startTime=".*"\>
 // CHECK:     \<assertion file="xml.bpl" line="25" column="3" /\>
 // CHECK:     \<conclusion duration=".*" outcome="valid" resourceCount=".*" /\>
 // CHECK:   \</assertionBatch\>
-// CHECK:   \<assertionBatch number="2" startTime=".*"\>
+// CHECK:   \<assertionBatch number="2" iteration="0" startTime=".*"\>
 // CHECK:     \<assertion file="xml.bpl" line="27" column="3" /\>
 // CHECK:     \<conclusion duration=".*" outcome="valid" resourceCount=".*" /\>
 // CHECK:   \</assertionBatch\>

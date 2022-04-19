@@ -1244,20 +1244,21 @@ namespace VC
         }
       }
 
-      public async Task<(ProverInterface.Outcome outcome, VCResult result, int resourceCount)> ReadOutcome(Checker checker, VerifierCallback callback)
+      public async Task<(ProverInterface.Outcome outcome, VCResult result, int resourceCount)> ReadOutcome(int splitIdx, int iteration, Checker checker, VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
 
-        if (Options.Trace && splitIndex >= 0)
+        if (Options.Trace && splitIdx >= 0)
         {
-          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitIndex + 1,
+          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitIdx + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
         var resourceCount = await checker.GetProverResourceCount();
         var result = new VCResult(
-          splitIndex + 1,
+          splitIdx + 1,
+          iteration,
           checker.ProverStart,
           outcome,
           checker.ProverRunTime,
@@ -1269,7 +1270,7 @@ namespace VC
 
         if (Options.VcsDumpSplits)
         {
-          DumpDot(splitIndex);
+          DumpDot(splitIdx);
         }
 
         return (outcome, result, resourceCount);

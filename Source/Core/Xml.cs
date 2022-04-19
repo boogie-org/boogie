@@ -111,7 +111,7 @@ namespace Microsoft.Boogie
       cce.EndExpose();
     }
 
-    public void WriteSplit(int splitNum, IEnumerable<AssertCmd> asserts, DateTime startTime,
+    public void WriteSplit(int splitNum, int iteration, IEnumerable<AssertCmd> asserts, DateTime startTime,
                            string outcome, TimeSpan elapsed, int? resourceCount)
     {
       Contract.Requires(splitNum > 0);
@@ -125,6 +125,7 @@ namespace Microsoft.Boogie
       {
         wr.WriteStartElement("assertionBatch");
         wr.WriteAttributeString("number", splitNum.ToString());
+        wr.WriteAttributeString("iteration", iteration.ToString());
         wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
 
         foreach(var assert in asserts)
