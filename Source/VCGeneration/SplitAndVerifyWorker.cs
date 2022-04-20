@@ -242,7 +242,10 @@ namespace VC
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
         }
-        callback.OnCounterexample(split.ToCounterexample(checker.TheoremProver.Context), msg);
+
+        var cex = split.ToCounterexample(checker.TheoremProver.Context);
+        callback.OnCounterexample(cex, msg);
+        split.Counterexamples.Add(cex);
         // Update one last time the result with the dummy counter-example to indicate the position of the timeout
         var result = vcResult with {
           counterExamples = split.Counterexamples
