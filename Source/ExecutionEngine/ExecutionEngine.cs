@@ -648,7 +648,7 @@ namespace Microsoft.Boogie
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
         var implementation = stablePrioritizedImpls[index];
-        var result = await VerifyImplementationWithLargeStackScheduler(processedProgram, stats, programId, er,
+        var result = await EnqueueVerifyImplementation(processedProgram, stats, programId, er,
           implementation, cts, taskWriter);
         var output = result.GetOutput(Options.Printer, this, stats, er);
         await taskWriter.WriteAsync(output);
@@ -694,7 +694,7 @@ namespace Microsoft.Boogie
       return GetPrioritizedImplementations(program).Select(implementation => new ImplementationTask(this, processedProgram, implementation)).ToList();
     }
 
-    public async Task<VerificationResult> VerifyImplementationWithLargeStackScheduler(
+    public async Task<VerificationResult> EnqueueVerifyImplementation(
       ProcessedProgram processedProgram, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, Implementation implementation,
       CancellationTokenSource cts,

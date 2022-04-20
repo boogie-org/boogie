@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 namespace Microsoft.Boogie;
 
 public interface IImplementationTask {
+  public ProcessedProgram ProcessedProgram { get; }
+  public Implementation Implementation { get; }
   public Task<VerificationResult> ActualTask { get; }
   void Run();
 }
@@ -12,20 +14,20 @@ public interface IImplementationTask {
 public class ImplementationTask : IImplementationTask {
   private CancellationTokenSource source;
   private readonly ExecutionEngine engine;
-  private readonly ProcessedProgram processedProgram;
+  public ProcessedProgram ProcessedProgram { get; }
 
   public Task<VerificationResult> ActualTask { get; private set; }
   public Implementation Implementation { get; }
 
   public ImplementationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Implementation implementation) {
     this.engine = engine;
-    this.processedProgram = processedProgram;
+    this.ProcessedProgram = processedProgram;
     Implementation = implementation;
   }
 
   public void Run() {
     source = new CancellationTokenSource();
-    ActualTask = engine.VerifyImplementationWithLargeStackScheduler(processedProgram, new PipelineStatistics(), null, null,
+    ActualTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(), null, null,
       Implementation, source, TextWriter.Null);
   }
 
