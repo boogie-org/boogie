@@ -60,7 +60,7 @@ namespace Microsoft.Boogie
     TypeEncoding TypeEncodingMethod { get; set; }
     SubsumptionOption UseSubsumption { get; }
     int VcsCores { get; }
-    int VcsStabilityIterations { get; }
+    int RandomSeedIterations { get; }
     List<string> ProverOptions { get; }
     bool Prune { get; }
     bool RunDiagnosticsOnTimeout { get; }

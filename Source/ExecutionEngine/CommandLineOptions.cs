@@ -408,6 +408,8 @@ namespace Microsoft.Boogie
 
     public int? RandomSeed { get; set; }
 
+    public int RandomSeedIterations { get; set; } = 1;
+
     public bool PrintWithUniqueASTIds {
       get => printWithUniqueAstIds;
       set => printWithUniqueAstIds = value;
@@ -701,7 +703,6 @@ namespace Microsoft.Boogie
     public uint VcsFinalAssertTimeout { get; set; } = 30;
     public uint VcsKeepGoingTimeout { get; set; } = 1;
     public int VcsCores { get; set; } = 1;
-    public int VcsStabilityIterations { get; set; } = 1;
     public bool VcsDumpSplits { get; set; } = false;
 
     public bool DebugRefuted { get; set; } = false;
@@ -1421,9 +1422,9 @@ namespace Microsoft.Boogie
           ps.GetIntArgument(x => VcsCores = x, a => 1 <= a);
           return true;
 
-        case "vcsStabilityIterations":
-          ps.GetIntArgument(x => VcsStabilityIterations = x, a => 1 <= a);
-          RandomSeed ??= 0; // Using /vcsStabilityIterations without any randomness isn't very useful
+        case "randomSeedIterations":
+          ps.GetIntArgument(x => RandomSeedIterations = x, a => 1 <= a);
+          RandomSeed ??= 0; // Using /randomSeedIterations without any randomness isn't very useful
           return true;
 
         case "vcsLoad":
@@ -2178,6 +2179,13 @@ namespace Microsoft.Boogie
                 reordering declarations in the input, and by setting 
                 solver options that have similar effects.
 
+  /randomSeedIterations:<n>
+                Attempt to prove each VC n times with n random seeds. If
+                /randomSeed has been provided, each proof attempt will use
+                a new random seed derived from this original seed. If not,
+                it will implicitly assume /randomSeed:0 to ensure difference
+                between iterations.
+
   ---- Verification-condition splitting --------------------------------------
 
   /vcsMaxCost:<f>
@@ -2234,11 +2242,6 @@ namespace Microsoft.Boogie
   /vcsLoad:<f>  Sets vcsCores to the machine's ProcessorCount * f,
                 rounded to the nearest integer (where 0.0 <= f <= 3.0),
                 but never to less than 1.
-  /vcsStabilityIterations:<n>
-                Attempt to prove each VC n times. If /randomSeed has been
-                provided, each proof attempt will use a new random seed
-                derived from this original seed. If not, it will implicitly
-                assume /randomSeed:0 to ensure difference between iterations.
 
   ---- Prover options --------------------------------------------------------
 
