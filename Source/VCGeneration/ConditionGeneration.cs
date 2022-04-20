@@ -525,10 +525,8 @@ namespace VC
         Contract.Invariant(cce.NonNullElements(vcResults));
       }
 
-      public readonly ConcurrentQueue<Counterexample> /*!>!*/
-        examples = new ConcurrentQueue<Counterexample>();
-      public readonly ConcurrentQueue<VCResult> /*!>!*/
-        vcResults = new ConcurrentQueue<VCResult>();
+      public readonly ConcurrentQueue<Counterexample> examples = new();
+      public readonly ConcurrentQueue<VCResult> vcResults = new();
 
       public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
       {
