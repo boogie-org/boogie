@@ -151,16 +151,11 @@ namespace Microsoft.Boogie
     /// <summary>
     /// Set up the context.
     /// </summary>
-    private void Setup(Program prog, ProverContext ctx, Split split = null)
+    private void Setup(Program prog, ProverContext ctx, Split split)
     {
-      if (Options.VcsStabilityIterations < 2 || SolverOptions.RandomSeed == null) {
-        SolverOptions.RandomSeed = (split?.RandomSeed ?? Options.RandomSeed);
-      }
+      SolverOptions.RandomSeed = 1 < Options.VcsStabilityIterations ? split.NextRandom() : split.RandomSeed;
       var random = SolverOptions.RandomSeed == null ? null : new Random(SolverOptions.RandomSeed.Value);
-      if (1 < Options.VcsStabilityIterations) {
-        SolverOptions.RandomSeed = random?.Next();
-      }
-      
+
       Program = prog;
       // TODO(wuestholz): Is this lock necessary?
       lock (Program.Declarations)

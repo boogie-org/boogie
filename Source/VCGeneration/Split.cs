@@ -19,6 +19,7 @@ namespace VC
       public VCGenOptions Options { get; }
 
       public int? RandomSeed => Implementation.RandomSeed ?? Options.RandomSeed;
+      private Random randomGen;
 
       class BlockStats
       {
@@ -135,6 +136,7 @@ namespace VC
         Prune.PrintTopLevelDeclarationsForPruning(this, "before");
         TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.Program, blocks).ToList();
         Prune.PrintTopLevelDeclarationsForPruning(this, "after");
+        randomGen = new Random(RandomSeed ?? 0);
       }
 
       public double Cost
@@ -1417,6 +1419,10 @@ namespace VC
 
       public void Finish(VCResult result) {
         Parent.CheckerPool.Options.Printer?.ReportSplitResult(this, result);
+      }
+
+      public int NextRandom() {
+        return randomGen.Next();
       }
   }
 }
