@@ -19,7 +19,7 @@ namespace VC
       public VCGenOptions Options { get; }
 
       public int? RandomSeed => Implementation.RandomSeed ?? Options.RandomSeed;
-    
+
       class BlockStats
       {
         public bool bigBlock;
@@ -114,7 +114,7 @@ namespace VC
         keepAtAll = new HashSet<Block /*!*/>();
 
       // async interface
-      private int splitIndex;
+      public int SplitIndex { get; set; }
       internal VCGen.ErrorReporter reporter;
 
       public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
@@ -1244,20 +1244,20 @@ namespace VC
         }
       }
 
-      public async Task<(ProverInterface.Outcome outcome, VCResult result, int resourceCount)> ReadOutcome(int splitIdx, int iteration, Checker checker, VerifierCallback callback)
+      public async Task<(ProverInterface.Outcome outcome, VCResult result, int resourceCount)> ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
 
-        if (Options.Trace && splitIdx >= 0)
+        if (Options.Trace && SplitIndex >= 0)
         {
-          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitIdx + 1,
+          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", SplitIndex + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
         var resourceCount = await checker.GetProverResourceCount();
         var result = new VCResult(
-          splitIdx + 1,
+          SplitIndex + 1,
           iteration,
           checker.ProverStart,
           outcome,
@@ -1270,7 +1270,7 @@ namespace VC
 
         if (Options.VcsDumpSplits)
         {
-          DumpDot(splitIdx);
+          DumpDot(SplitIndex);
         }
 
         return (outcome, result, resourceCount);
@@ -1281,12 +1281,11 @@ namespace VC
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
       /// </summary>
-      public async Task BeginCheck(TextWriter traceWriter, Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int splitIndex, uint timeout,
+      public async Task BeginCheck(TextWriter traceWriter, Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, uint timeout,
         uint rlimit, CancellationToken cancellationToken)
       {
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
-        this.splitIndex = splitIndex;
 
         VCExpr vc;
         // Lock impl since we're setting impl.Blocks that is used to generate the VC.
@@ -1315,9 +1314,9 @@ namespace VC
             mvInfo, checker.TheoremProver.Context, Parent.Program, this);
         }
 
-        if (Options.TraceVerify && splitIndex >= 0)
+        if (Options.TraceVerify && SplitIndex >= 0)
         {
-          Console.WriteLine("-- after split #{0}", splitIndex);
+          Console.WriteLine("-- after split #{0}", SplitIndex);
           Print();
         }
 
@@ -1329,8 +1328,8 @@ namespace VC
         get
         {
           string description = cce.NonNull(Implementation.Name);
-          if (splitIndex >= 0) {
-            description += "_split" + splitIndex;
+          if (SplitIndex >= 0) {
+            description += "_split" + SplitIndex;
           }
 
           return description;

@@ -99,47 +99,48 @@ namespace VC
     async Task DoWorkForMultipleIterations(Split split, CancellationToken cancellationToken)
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
+      split.SplitIndex = currentSplitNumber;
       var tasks = Enumerable.Range(0, options.VcsStabilityIterations).Select(iteration =>
-        DoWork(currentSplitNumber, iteration, split, cancellationToken));
+        DoWork(iteration, split, cancellationToken));
       await Task.WhenAll(tasks);
     }
 
-    async Task DoWork(int splitIdx, int iteration, Split split, CancellationToken cancellationToken)
+    async Task DoWork(int iteration, Split split, CancellationToken cancellationToken)
     {
       var checker = await split.Parent.CheckerPool.FindCheckerFor(split.Parent, split, cancellationToken);
 
       try {
         cancellationToken.ThrowIfCancellationRequested();
-        await StartCheck(splitIdx, iteration, split, checker, cancellationToken);
+        await StartCheck(iteration, split, checker, cancellationToken);
         await checker.ProverTask;
-        await ProcessResult(splitIdx, iteration, split, checker, cancellationToken);
+        await ProcessResult(iteration, split, checker, cancellationToken);
       }
       finally {
         await checker.GoBackToIdle();
       }
     }
 
-    private async Task StartCheck(int splitIdx, int iteration, Split split, Checker checker, CancellationToken cancellationToken)
+    private async Task StartCheck(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
     {
       if (options.Trace && DoSplitting) {
-        var splitNum = splitIdx + 1;
+        var splitNum = split.SplitIndex + 1;
         var splitIdxStr = options.VcsStabilityIterations > 1 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
         Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
           split.Stats, splitIdxStr, total, 100 * provenCost / (provenCost + remainingCost));
       }
 
-      callback.OnProgress?.Invoke("VCprove", splitIdx, total,
+      callback.OnProgress?.Invoke("VCprove", split.SplitIndex, total,
         provenCost / (remainingCost + provenCost));
 
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
         run.Implementation.GetTimeLimit(options);
-      await split.BeginCheck(run.TraceWriter, checker, callback, mvInfo, splitIdx, timeout, Implementation.GetResourceLimit(options), cancellationToken);
+      await split.BeginCheck(run.TraceWriter, checker, callback, mvInfo, timeout, Implementation.GetResourceLimit(options), cancellationToken);
     }
 
     private Implementation Implementation => run.Implementation;
 
-    private async Task ProcessResult(int splitIdx, int iteration, Split split, Checker checker, CancellationToken cancellationToken)
+    private async Task ProcessResult(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
     {
       if (TrackingProgress) {
         lock (this) {
@@ -147,7 +148,7 @@ namespace VC
         }
       }
 
-      var (newOutcome, result, newResourceCount) = await split.ReadOutcome(splitIdx, iteration, checker, callback);
+      var (newOutcome, result, newResourceCount) = await split.ReadOutcome(iteration, checker, callback);
       lock (this) {
         outcome = MergeOutcomes(outcome, newOutcome);
         totalResourceCount += newResourceCount;

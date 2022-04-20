@@ -1423,6 +1423,7 @@ namespace Microsoft.Boogie
 
         case "vcsStabilityIterations":
           ps.GetIntArgument(x => VcsStabilityIterations = x, a => 1 <= a);
+          RandomSeed ??= 0; // Using /vcsStabilityIterations without any randomness isn't very useful
           return true;
 
         case "vcsLoad":
@@ -2236,8 +2237,8 @@ namespace Microsoft.Boogie
   /vcsStabilityIterations:<n>
                 Attempt to prove each VC n times. If /randomSeed has been
                 provided, each proof attempt will use a new random seed
-                derived from this original seed. If not, each attempt will
-                be identical (which generally isn't very useful).
+                derived from this original seed. If not, it will implicitly
+                assume /randomSeed:0 to ensure difference between iterations.
 
   ---- Prover options --------------------------------------------------------
 
