@@ -73,7 +73,7 @@ namespace VC
 
 
       private readonly List<Block> blocks;
-      public IEnumerable<AssertCmd> Asserts => blocks.SelectMany(block => block.cmds.OfType<AssertCmd>());
+      public List<AssertCmd> Asserts => blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToList();
       public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
       readonly List<Block> bigBlocks = new();
 
@@ -1266,7 +1266,7 @@ namespace VC
           checker.ProverRunTime,
           checker.Options.ErrorLimit,
           Counterexamples,
-          Asserts.ToList(),
+          Asserts,
           resourceCount);
         callback.OnVCResult(result);
 
