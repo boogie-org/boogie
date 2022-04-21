@@ -649,7 +649,7 @@ namespace Microsoft.Boogie
         await using var taskWriter = consoleCollector.AppendWriter();
         var implementation = stablePrioritizedImpls[index];
         var result = await EnqueueVerifyImplementation(processedProgram, stats, programId, er,
-          implementation, cts, taskWriter);
+          implementation, cts, taskWriter).Unwrap();
         var output = result.GetOutput(Options.Printer, this, stats, er);
         await taskWriter.WriteAsync(output);
         return result;
@@ -706,21 +706,17 @@ namespace Microsoft.Boogie
       }
 
       await verifyImplementationSemaphore.WaitAsync(cts.Token);
-      try {
+      ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
 
-        ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
+      var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cts.Token,
+        implementation,
+        programId, taskWriter), cts.Token);
 
-        var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cts.Token,
-          implementation,
-          programId, taskWriter), cts.Token);
-
-        var verificationResult = await coreTask;
-        return verificationResult;
-      }
-      finally {
+      var _ = coreTask.ContinueWith(t => {
         verifyImplementationSemaphore.Release();
         ImplIdToCancellationTokenSource.TryRemove(id, out old);
-      }
+      });
+      return coreTask;
     }
 
     private void TraceCachingForBenchmarking(PipelineStatistics stats,
