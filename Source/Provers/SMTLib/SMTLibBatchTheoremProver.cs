@@ -33,11 +33,15 @@ namespace Microsoft.Boogie.SMTLib
     private bool CheckSatSent;
     private int resourceCount;
     private Model errorModel;
+    internal override ScopedNamer Namer { get; }
 
     [NotDelayed]
     public SMTLibBatchTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx) : base(libOptions, options, gen, ctx)
     {
+      var namer = GetNamer(libOptions, options);
+      Namer = namer;
+      DeclCollector = new TypeDeclCollector(libOptions, namer);
       if (usingUnsatCore) {
         throw new NotSupportedException("Batch mode solver interface does not support unsat cores.");
       }

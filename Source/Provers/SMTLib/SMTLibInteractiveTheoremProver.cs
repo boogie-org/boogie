@@ -15,22 +15,27 @@ namespace Microsoft.Boogie.SMTLib
 {
   public class SMTLibInteractiveTheoremProver : SMTLibProcessTheoremProver
   {
-    private bool ProcessNeedsRestart;
+    private bool processNeedsRestart;
+    private ScopedNamer commonNamer;
+    private ScopedNamer finalNamer;
 
     [NotDelayed]
     public SMTLibInteractiveTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
-      SMTLibProverContext ctx) : base(libOptions, options, gen, ctx)
-    {
+      SMTLibProverContext ctx) : base(libOptions, options, gen, ctx) {
+      commonNamer = GetNamer(libOptions, options);
+      DeclCollector = new TypeDeclCollector(libOptions, new ProverNamer(this));
       SetupProcess();
       if (libOptions.ImmediatelyAcceptCommands) {
         PrepareCommon();
       }
     }
 
+    internal override ScopedNamer Namer => finalNamer ?? commonNamer;
+
     public override Task GoBackToIdle()
     {
       if (Process == null) {
-        ProcessNeedsRestart = true;
+        processNeedsRestart = true;
         return Task.CompletedTask;
       }
       return Process.PingPong();
@@ -38,8 +43,8 @@ namespace Microsoft.Boogie.SMTLib
 
     private void PossiblyRestart()
     {
-      if (Process != null && ProcessNeedsRestart) {
-        ProcessNeedsRestart = false;
+      if (Process != null && processNeedsRestart) {
+        processNeedsRestart = false;
         SetupProcess();
         Process.Send(common.ToString());
       }
@@ -57,7 +62,7 @@ namespace Microsoft.Boogie.SMTLib
       return 0;
     }
 
-    private bool hasReset;
+    private bool hasReset = true;
     public override async Task BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
       if (options.SeparateLogFiles)
@@ -77,8 +82,7 @@ namespace Microsoft.Boogie.SMTLib
       if (hasReset)
       {
         AxBuilder = (TypeAxiomBuilder) CachedAxBuilder?.Clone();
-        Namer = ResetNamer(CachedNamer);
-        DeclCollector.SetNamer(Namer);
+        finalNamer = ResetNamer(commonNamer);
         DeclCollector.Push();
       }
 
@@ -152,6 +156,8 @@ namespace Microsoft.Boogie.SMTLib
         this.gen = generator;
         SendThisVC("(reset)");
         SendThisVC("(set-option :" + Z3.RlimitOption + " 0)");
+        commonNamer = GetNamer(libOptions, options);
+        finalNamer = null;
         hasReset = true;
         common.Clear();
         SetupAxiomBuilder(gen);
@@ -303,7 +309,7 @@ namespace Microsoft.Boogie.SMTLib
 
         if (libOptions.RestartProverPerVC && Process != null)
         {
-          ProcessNeedsRestart = true;
+          processNeedsRestart = true;
         }
 
         return globalResult;
@@ -566,7 +572,7 @@ namespace Microsoft.Boogie.SMTLib
 
           result = ParseReasonUnknown(resp, result);
           if (result == Outcome.OutOfMemory) {
-            ProcessNeedsRestart = true;
+            processNeedsRestart = true;
           }
         }
       }
