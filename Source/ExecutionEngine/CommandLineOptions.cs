@@ -2183,7 +2183,7 @@ namespace Microsoft.Boogie
                 Attempt to prove each VC n times with n random seeds. If
                 /randomSeed has been provided, each proof attempt will use
                 a new random seed derived from this original seed. If not,
-                it will implicitly assume /randomSeed:0 to ensure difference
+                it will implicitly use /randomSeed:0 to ensure a difference
                 between iterations.
 
   ---- Verification-condition splitting --------------------------------------
