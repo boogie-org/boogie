@@ -47,7 +47,7 @@ namespace Microsoft.Boogie
       DataValue
     }
 
-    abstract public class Element
+    public abstract class Element
     {
       public readonly Model Model;
       internal List<FuncTuple> references = new List<FuncTuple>();

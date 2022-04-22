@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,13 +17,13 @@ public interface IImplementationTask {
   public Implementation Implementation { get; }
   public Task<VerificationResult> ActualTask { get; }
   void Run();
+  void InitialiseStatus();
 }
 
 public class ImplementationTask : IImplementationTask {
-  private CancellationTokenSource source;
-  private readonly ExecutionEngine engine;
+  private readonly CancellationTokenSource source;
 
-  private readonly Subject<VerificationStatus> observableStatus = new();
+  private readonly ReplaySubject<VerificationStatus> observableStatus = new();
   
   private VerificationStatus currentStatus;
   public IObservable<VerificationStatus> ObservableStatus => observableStatus;
@@ -37,35 +38,46 @@ public class ImplementationTask : IImplementationTask {
 
   public ProcessedProgram ProcessedProgram { get; }
 
-  public Task<VerificationResult> ActualTask { get; private set; }
+  public Task<VerificationResult> ActualTask { get; private set; } // TODO can we figure out how to immediately get this in the created state?
   public Implementation Implementation { get; }
 
+  private readonly TaskCompletionSource runSource = new();
+  
   public ImplementationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Implementation implementation) {
-    this.engine = engine;
     ProcessedProgram = processedProgram;
     Implementation = implementation;
-    currentStatus = VerificationStatus.Stale; // TODO use caching to determine if it's really stale.
+    source = new CancellationTokenSource();
+
+    ActualTask = runSource.Task.ContinueWith(t => {
+
+      var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(), null, null,
+        Implementation, source, TextWriter.Null);
+
+      if (!enqueueTask.IsCompleted) {
+        CurrentStatus = VerificationStatus.Queued;
+      }
+
+      enqueueTask.ContinueWith(_ => {
+        CurrentStatus = VerificationStatus.Verifying;
+      });
+
+      var result = enqueueTask.Unwrap();
+      result.ContinueWith(task => {
+        CurrentStatus = task.Result.Outcome == ConditionGeneration.Outcome.Correct
+          ? VerificationStatus.Correct
+          : VerificationStatus.Error;
+        observableStatus.OnCompleted();
+      });
+      return result;
+    }).Unwrap();
+  }
+
+  public void InitialiseStatus() {
+    CurrentStatus = VerificationStatus.Stale; // TODO use caching to determine if it's really stale.
   }
 
   public void Run() {
-    CurrentStatus = VerificationStatus.Queued;
-    
-    source = new CancellationTokenSource();
-    var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(), null, null,
-      Implementation, source, TextWriter.Null);
-
-    enqueueTask.ContinueWith(t => {
-      CurrentStatus = VerificationStatus.Verifying;
-    });
-    
-    ActualTask = enqueueTask.Unwrap();
-
-    ActualTask.ContinueWith(t => {
-      CurrentStatus = t.Result.Outcome == ConditionGeneration.Outcome.Correct
-        ? VerificationStatus.Correct
-        : VerificationStatus.Error;
-      observableStatus.OnCompleted();
-    });
+    runSource.SetResult();
   }
 
   public void Cancel() {
