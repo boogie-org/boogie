@@ -1,0 +1,130 @@
+CommonVariablesPruning.bpl(28,3): Error: This assertion might not hold.
+Execution trace:
+    CommonVariablesPruning.bpl(19,3): anon0
+    CommonVariablesPruning.bpl(20,3): anon3_Else
+    CommonVariablesPruning.bpl(27,5): anon2
+*** MODEL
+a -> T@U!val!0
+b -> T@U!val!1
+boolType -> T@T!val!2
+intType -> T@T!val!0
+r -> 
+realType -> T@T!val!1
+regexType -> T@T!val!5
+rmodeType -> T@T!val!3
+stringType -> T@T!val!4
+x -> 
+y -> 
+z -> 
+ControlFlow -> {
+  0 2 -> (- 3)
+  0 7 -> 2
+  0 8 -> 7
+  0 9 -> 8
+  else -> 9
+}
+Ctor -> {
+  T@T!val!0 -> 0
+  T@T!val!1 -> 1
+  T@T!val!2 -> 2
+  T@T!val!3 -> 3
+  T@T!val!4 -> 4
+  T@T!val!5 -> 5
+  else -> 6
+}
+Length -> {
+  T@U!val!1 -> (- 1)
+  else -> 0
+}
+MapType0Type -> {
+  T@T!val!0 T@T!val!2 -> T@T!val!7
+  else -> T@T!val!6
+}
+MapType0TypeInv0 -> {
+  else -> T@T!val!0
+}
+MapType0TypeInv1 -> {
+  T@T!val!7 -> T@T!val!2
+  else -> T@T!val!0
+}
+tickleBool -> {
+  else -> true
+}
+type -> {
+  T@U!val!1 -> T@T!val!7
+  else -> T@T!val!6
+}
+*** STATE <initial>
+  r -> 
+  x -> 
+  y -> 
+  z -> 
+*** END_STATE
+*** STATE before
+*** END_STATE
+*** END_MODEL
+CommonVariablesPruning.bpl(44,3): Error: This assertion might not hold.
+Execution trace:
+    CommonVariablesPruning.bpl(36,3): anon0
+    CommonVariablesPruning.bpl(37,3): anon3_Else
+    CommonVariablesPruning.bpl(44,3): anon2
+*** MODEL
+a -> T@U!val!0
+b -> T@U!val!1
+boolType -> T@T!val!2
+intType -> T@T!val!0
+realType -> T@T!val!1
+regexType -> T@T!val!5
+rmodeType -> T@T!val!3
+stringType -> T@T!val!4
+x -> 
+y -> 
+z -> 
+ControlFlow -> {
+  0 2 -> (- 3)
+  0 7 -> 2
+  0 8 -> 7
+  0 9 -> 8
+  else -> 9
+}
+Ctor -> {
+  T@T!val!0 -> 0
+  T@T!val!1 -> 1
+  T@T!val!2 -> 2
+  T@T!val!3 -> 3
+  T@T!val!4 -> 4
+  T@T!val!5 -> 5
+  else -> 6
+}
+Length -> {
+  T@U!val!1 -> (- 1)
+  else -> 0
+}
+MapType0Type -> {
+  T@T!val!0 T@T!val!2 -> T@T!val!7
+  else -> T@T!val!6
+}
+MapType0TypeInv0 -> {
+  else -> T@T!val!0
+}
+MapType0TypeInv1 -> {
+  T@T!val!7 -> T@T!val!2
+  else -> T@T!val!0
+}
+tickleBool -> {
+  else -> true
+}
+type -> {
+  T@U!val!1 -> T@T!val!7
+  else -> T@T!val!6
+}
+*** STATE <initial>
+  x -> 
+  y -> 
+  z -> 
+*** END_STATE
+*** STATE before
+*** END_STATE
+*** END_MODEL
+
+Boogie program verifier finished with 0 verified, 2 errors
