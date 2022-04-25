@@ -150,7 +150,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void FullReset(VCExpressionGenerator generator)
     {
-      Console.WriteLine("Full reset called");
+      Console.Error.WriteLine("Full reset called");
       if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
       {
         this.gen = generator;
