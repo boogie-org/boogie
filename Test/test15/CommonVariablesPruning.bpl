@@ -28,6 +28,7 @@ procedure M0(z : int) returns (r: int)
   assert false;
 }
 
+// By verifying another procedure, we can see whether common variables are named again, which would trigger a name increment (like type@@0 instead of type)
 procedure M1(z : int)
   ensures true;
 {
