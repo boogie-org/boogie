@@ -125,7 +125,6 @@ namespace Microsoft.Boogie.SMTLib
         this.gen = generator;
         SendThisVC("(reset)");
         await RecoverIfProverCrashedAfterReset();
-
         if (0 < common.Length)
         {
           var c = common.ToString();
@@ -718,6 +717,13 @@ namespace Microsoft.Boogie.SMTLib
         currentLogFile.WriteLine(s);
         currentLogFile.Flush();
       }
+    }
+
+    protected override void SetupAxioms() {
+      var currentNamer = finalNamer;
+      finalNamer = null;
+      base.SetupAxioms();
+      finalNamer = currentNamer;
     }
 
     public override async Task<int> GetRCount()

@@ -18,7 +18,7 @@ namespace VC
     public CheckerPool(VCGenOptions options)
     {
       Options = options;
-      checkersSemaphore = new(options.VcsCores);
+      checkersSemaphore = new(1);
     }
 
     public async Task<Checker> FindCheckerFor(ConditionGeneration vcgen, Split? split, CancellationToken cancellationToken)

@@ -405,26 +405,26 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       if (!AxiomsAreSetup) {
-        var axioms = ctx.Axioms;
-        if (axioms is VCExprNAry nary && nary.Op == VCExpressionGenerator.AndOp)
-        {
-          foreach (var expr in nary.UniformArguments)
-          {
-            var str = VCExpr2String(expr, -1);
-            if (str != "true")
-            {
-              AddAxiom(str);
-            }
+        SetupAxioms();
+      }
+    }
+
+    protected virtual void SetupAxioms()
+    {
+      var axioms = ctx.Axioms;
+      if (axioms is VCExprNAry nary && nary.Op == VCExpressionGenerator.AndOp) {
+        foreach (var expr in nary.UniformArguments) {
+          var str = VCExpr2String(expr, -1);
+          if (str != "true") {
+            AddAxiom(str);
           }
         }
-        else
-        {
-          AddAxiom(VCExpr2String(axioms, -1));
-        }
-
-        AxiomsAreSetup = true;
-        CachedAxBuilder = AxBuilder;
+      } else {
+        AddAxiom(VCExpr2String(axioms, -1));
       }
+
+      AxiomsAreSetup = true;
+      CachedAxBuilder = AxBuilder;
     }
 
     protected void FlushAxioms()
