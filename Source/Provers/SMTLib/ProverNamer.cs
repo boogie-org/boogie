@@ -3,9 +3,9 @@ using Microsoft.Boogie.VCExprAST;
 namespace Microsoft.Boogie.SMTLib;
 
 class ProverNamer : UniqueNamer {
-  private readonly SMTLibInteractiveTheoremProver prover;
+  private readonly SMTLibProcessTheoremProver prover;
 
-  public ProverNamer(SMTLibInteractiveTheoremProver prover) {
+  public ProverNamer(SMTLibProcessTheoremProver prover) {
     this.prover = prover;
   }
 
