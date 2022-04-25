@@ -110,7 +110,7 @@ namespace Microsoft.Boogie.VCExprAST
       {
         candidate = baseName + Spacer + counter;
         if (candidate.StartsWith("type")) {
-          throw new Exception();
+          Console.Error.WriteLine("candidate: " + candidate);
         }
         counter = counter + 1;
       }
