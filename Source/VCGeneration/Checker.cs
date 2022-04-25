@@ -60,7 +60,7 @@ namespace Microsoft.Boogie
     }
 
     public async Task GoBackToIdle()
-    {      
+    {
       Contract.Requires(IsBusy);
 
       status = CheckerStatus.Idle;
