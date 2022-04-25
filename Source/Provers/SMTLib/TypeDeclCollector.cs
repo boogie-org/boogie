@@ -122,11 +122,6 @@ namespace Microsoft.Boogie.SMTLib
       _KnownSelectFunctions.Pop();
     }
 
-    public void SetNamer(UniqueNamer namer)
-    {
-      Namer = namer;
-    }
-
     public List<string /*!>!*/> AllDeclarations
     {
       get
