@@ -351,7 +351,7 @@ namespace Microsoft.Boogie.SMTLib
       generatedFuncDefs.Iter(SendCommon); // Flush function definitions
     }
 
-    protected void PrepareCommon()
+    protected virtual void PrepareCommon()
     {
       if (common.Length == 0)
       {

@@ -719,10 +719,10 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    protected override void SetupAxioms() {
+    protected override void PrepareCommon() {
       var currentNamer = finalNamer;
       finalNamer = null;
-      base.SetupAxioms();
+      base.PrepareCommon();
       finalNamer = currentNamer;
     }
 
