@@ -63,11 +63,11 @@ type -> {
 *** STATE before
 *** END_STATE
 *** END_MODEL
-CommonVariablesPruning.bpl(44,3): Error: This assertion might not hold.
+CommonVariablesPruning.bpl(45,3): Error: This assertion might not hold.
 Execution trace:
-    CommonVariablesPruning.bpl(36,3): anon0
-    CommonVariablesPruning.bpl(37,3): anon3_Else
-    CommonVariablesPruning.bpl(44,3): anon2
+    CommonVariablesPruning.bpl(37,3): anon0
+    CommonVariablesPruning.bpl(38,3): anon3_Else
+    CommonVariablesPruning.bpl(45,3): anon2
 *** MODEL
 a -> T@U!val!0
 b -> T@U!val!1

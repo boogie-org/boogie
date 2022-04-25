@@ -22,7 +22,6 @@ namespace Microsoft.Boogie.SMTLib
     protected SMTLibProverOptions options;
     protected bool usingUnsatCore;
     private string backgroundPredicates;
-
     internal TypeAxiomBuilder AxBuilder { get; set; }
     protected TypeAxiomBuilder CachedAxBuilder;
     internal abstract ScopedNamer Namer { get; }
@@ -75,7 +74,7 @@ namespace Microsoft.Boogie.SMTLib
     }
     protected static ScopedNamer GetNamer(SMTLibOptions libOptions, ProverOptions options, ScopedNamer namer = null)
     {
-      return (RandomSeed: options.RandomSeed, libOptions.NormalizeNames) switch
+      return (options.RandomSeed, libOptions.NormalizeNames) switch
       {
         (null, true) => NormalizeNamer.Create(namer),
         (null, false) => KeepOriginalNamer.Create(namer),

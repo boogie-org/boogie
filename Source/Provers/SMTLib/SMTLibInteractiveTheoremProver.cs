@@ -470,7 +470,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private async Task<string[]> CalculatePath(int controlFlowConstant, CancellationToken cancellationToken)
     {
-      SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " 0)))");
+      SendThisVC($"(get-value (({VCExpressionGenerator.ControlFlowName} " + controlFlowConstant + " 0)))");
       var path = new List<string>();
       while (true)
       {

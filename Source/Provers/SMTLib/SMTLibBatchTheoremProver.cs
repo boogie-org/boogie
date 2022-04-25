@@ -190,7 +190,7 @@ namespace Microsoft.Boogie.SMTLib
         return path.ToArray();
       }
 
-      var function = model.TryGetFunc("ControlFlow");
+      var function = model.TryGetFunc(VCExpressionGenerator.ControlFlowName);
       var controlFlowElement = model.TryMkElement(controlFlowConstant.ToString());
       var zeroElement = model.TryMkElement("0");
       var v = zeroElement;
