@@ -79,21 +79,19 @@ namespace Microsoft.Boogie.SMTLib
       PrepareCommon();
       FlushAndCacheCommons();
 
+      OptimizationRequests.Clear();
+
+      string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
+      FlushAxioms();
+
+      PossiblyRestart();
+
       if (hasReset)
       {
         AxBuilder = (TypeAxiomBuilder) CachedAxBuilder?.Clone();
         finalNamer = ResetNamer(commonNamer);
         DeclCollector.Push();
       }
-
-      OptimizationRequests.Clear();
-
-      string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
-
-      FlushAxioms();
-
-      PossiblyRestart();
-
       SendThisVC("(push 1)");
       SendVCAndOptions(descriptiveName, vcString);
 
