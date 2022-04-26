@@ -58,6 +58,10 @@ namespace Microsoft.Boogie.TypeErasure
 
   public class TypeAxiomBuilderPremisses : TypeAxiomBuilderIntBoolU
   {
+    private const string TypeName = "type";
+    static TypeAxiomBuilderPremisses() {
+      ScopedNamer.AddBoogieDeterminedName(TypeName);
+    }
     public CoreOptions Options { get; }
 
     public TypeAxiomBuilderPremisses(VCExpressionGenerator gen, CoreOptions options)
@@ -96,7 +100,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     public override void Setup()
     {
-      TypeFunction = HelperFuns.BoogieFunction("type", U, T);
+      TypeFunction = HelperFuns.BoogieFunction(TypeName, U, T);
       base.Setup();
     }
 

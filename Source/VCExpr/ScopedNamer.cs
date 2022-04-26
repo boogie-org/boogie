@@ -11,7 +11,12 @@ namespace Microsoft.Boogie.VCExprAST
    */
   public abstract class ScopedNamer : UniqueNamer
   {
-    private const string controlFlow = "ControlFlow"; // This is a hardcoded name used by Boogie to inspect the SMT model.
+    private static ISet<string> boogieDeterminedNames = new HashSet<string>() { };
+
+    public static void AddBoogieDeterminedName(string name) {
+      boogieDeterminedNames.Add(name);
+    }
+      
     public string Spacer = "@@";
     protected IDictionary<Object /*!*/, string /*!*/> /*!*/ GlobalNames;
 
@@ -169,7 +174,7 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       var uniqueInherentName = NextFreeName(thing, inherentName);
-      if (inherentName == controlFlow)
+      if (boogieDeterminedNames.Contains(inherentName))
       {
         result = uniqueInherentName;
       }
@@ -197,7 +202,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(inherentName != null);
       Contract.Requires(thing != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      if (inherentName != controlFlow) {
+      if (!boogieDeterminedNames.Contains(inherentName)) {
         inherentName = GetModifiedName(inherentName);
       }
 
