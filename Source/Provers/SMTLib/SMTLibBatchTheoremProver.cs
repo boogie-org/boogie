@@ -100,6 +100,7 @@ namespace Microsoft.Boogie.SMTLib
     public override void FullReset(VCExpressionGenerator generator)
     {
       this.gen = generator;
+      SendThisVC("(reset)");
       common.Clear();
       SetupAxiomBuilder(gen);
       namer = GetNamer(libOptions, options);
