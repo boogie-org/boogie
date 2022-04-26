@@ -15,22 +15,26 @@ namespace Microsoft.Boogie.SMTLib
 {
   public class SMTLibInteractiveTheoremProver : SMTLibProcessTheoremProver
   {
-    private bool ProcessNeedsRestart;
+    private bool processNeedsRestart;
+    private ScopedNamer commonNamer;
+    private ScopedNamer finalNamer;
 
     [NotDelayed]
     public SMTLibInteractiveTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
-      SMTLibProverContext ctx) : base(libOptions, options, gen, ctx)
-    {
+      SMTLibProverContext ctx) : base(libOptions, options, gen, ctx) {
+      DeclCollector = new TypeDeclCollector(libOptions, new ProverNamer(this));
       SetupProcess();
       if (libOptions.ImmediatelyAcceptCommands) {
         PrepareCommon();
       }
     }
 
+    internal override ScopedNamer Namer => finalNamer ?? (commonNamer ??= GetNamer(libOptions, options));
+
     public override Task GoBackToIdle()
     {
       if (Process == null) {
-        ProcessNeedsRestart = true;
+        processNeedsRestart = true;
         return Task.CompletedTask;
       }
       return Process.PingPong();
@@ -38,8 +42,8 @@ namespace Microsoft.Boogie.SMTLib
 
     private void PossiblyRestart()
     {
-      if (Process != null && ProcessNeedsRestart) {
-        ProcessNeedsRestart = false;
+      if (Process != null && processNeedsRestart) {
+        processNeedsRestart = false;
         SetupProcess();
         Process.Send(common.ToString());
       }
@@ -57,7 +61,7 @@ namespace Microsoft.Boogie.SMTLib
       return 0;
     }
 
-    private bool hasReset;
+    private bool hasReset = true;
     public override async Task BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
       if (options.SeparateLogFiles)
@@ -74,23 +78,19 @@ namespace Microsoft.Boogie.SMTLib
       PrepareCommon();
       FlushAndCacheCommons();
 
-      if (hasReset)
-      {
-        AxBuilder = (TypeAxiomBuilder) CachedAxBuilder?.Clone();
-        Namer = ResetNamer(CachedNamer);
-        DeclCollector.SetNamer(Namer);
-        DeclCollector.Push();
-      }
-
       OptimizationRequests.Clear();
-
-      string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
-
-      FlushAxioms();
 
       PossiblyRestart();
 
+      if (hasReset)
+      {
+        AxBuilder = (TypeAxiomBuilder) CachedAxBuilder?.Clone();
+        finalNamer = ResetNamer(commonNamer);
+      }
       SendThisVC("(push 1)");
+      DeclCollector.Push();
+      string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
+      FlushAxioms();
       SendVCAndOptions(descriptiveName, vcString);
 
       SendOptimizationRequests();
@@ -103,9 +103,9 @@ namespace Microsoft.Boogie.SMTLib
         Process.NewProblem(descriptiveName);
       }
 
+      DeclCollector.Pop();
       if (hasReset)
       {
-        DeclCollector.Pop();
         common = new StringBuilder(CachedCommon);
         hasReset = false;
       }
@@ -121,7 +121,6 @@ namespace Microsoft.Boogie.SMTLib
         this.gen = generator;
         SendThisVC("(reset)");
         await RecoverIfProverCrashedAfterReset();
-
         if (0 < common.Length)
         {
           var c = common.ToString();
@@ -152,6 +151,8 @@ namespace Microsoft.Boogie.SMTLib
         this.gen = generator;
         SendThisVC("(reset)");
         SendThisVC("(set-option :" + Z3.RlimitOption + " 0)");
+        commonNamer = null;
+        finalNamer = null;
         hasReset = true;
         common.Clear();
         SetupAxiomBuilder(gen);
@@ -303,7 +304,7 @@ namespace Microsoft.Boogie.SMTLib
 
         if (libOptions.RestartProverPerVC && Process != null)
         {
-          ProcessNeedsRestart = true;
+          processNeedsRestart = true;
         }
 
         return globalResult;
@@ -464,7 +465,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private async Task<string[]> CalculatePath(int controlFlowConstant, CancellationToken cancellationToken)
     {
-      SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " 0)))");
+      SendThisVC($"(get-value (({VCExpressionGenerator.ControlFlowName} " + controlFlowConstant + " 0)))");
       var path = new List<string>();
       while (true)
       {
@@ -566,7 +567,7 @@ namespace Microsoft.Boogie.SMTLib
 
           result = ParseReasonUnknown(resp, result);
           if (result == Outcome.OutOfMemory) {
-            ProcessNeedsRestart = true;
+            processNeedsRestart = true;
           }
         }
       }
@@ -712,6 +713,13 @@ namespace Microsoft.Boogie.SMTLib
         currentLogFile.WriteLine(s);
         currentLogFile.Flush();
       }
+    }
+
+    protected override void PrepareCommon() {
+      var currentNamer = finalNamer;
+      finalNamer = null;
+      base.PrepareCommon();
+      finalNamer = currentNamer;
     }
 
     public override async Task<int> GetRCount()

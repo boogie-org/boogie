@@ -33,11 +33,16 @@ namespace Microsoft.Boogie.SMTLib
     private bool CheckSatSent;
     private int resourceCount;
     private Model errorModel;
+    private ScopedNamer namer;
+
+    internal override ScopedNamer Namer => namer;
 
     [NotDelayed]
     public SMTLibBatchTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx) : base(libOptions, options, gen, ctx)
     {
+      namer = GetNamer(libOptions, options);
+      DeclCollector = new TypeDeclCollector(libOptions, new ProverNamer(this));
       if (usingUnsatCore) {
         throw new NotSupportedException("Batch mode solver interface does not support unsat cores.");
       }
@@ -95,8 +100,10 @@ namespace Microsoft.Boogie.SMTLib
     public override void FullReset(VCExpressionGenerator generator)
     {
       this.gen = generator;
+      SendThisVC("(reset)");
       common.Clear();
       SetupAxiomBuilder(gen);
+      namer = GetNamer(libOptions, options);
       Axioms.Clear();
       TypeDecls.Clear();
       AxiomsAreSetup = false;
@@ -186,7 +193,7 @@ namespace Microsoft.Boogie.SMTLib
         return path.ToArray();
       }
 
-      var function = model.TryGetFunc("ControlFlow");
+      var function = model.TryGetFunc(VCExpressionGenerator.ControlFlowName);
       var controlFlowElement = model.TryMkElement(controlFlowConstant.ToString());
       var zeroElement = model.TryMkElement("0");
       var v = zeroElement;

@@ -122,11 +122,6 @@ namespace Microsoft.Boogie.SMTLib
       _KnownSelectFunctions.Pop();
     }
 
-    public void SetNamer(UniqueNamer namer)
-    {
-      Namer = namer;
-    }
-
     public List<string /*!>!*/> AllDeclarations
     {
       get
@@ -243,7 +238,7 @@ namespace Microsoft.Boogie.SMTLib
             Contract.Assert(printedName != null);
 
             Contract.Assert(f.OutParams.Count == 1);
-            var argTypes = f.InParams.Cast<Variable>().MapConcat(p => TypeToStringReg(p.TypedIdent.Type), " ");
+            var argTypes = f.InParams.MapConcat(p => TypeToStringReg(p.TypedIdent.Type), " ");
             string decl;
             if (RegisteredRelations.Contains(op.Func))
             {
