@@ -109,9 +109,6 @@ namespace Microsoft.Boogie.VCExprAST
       if (CurrentCounters.TryGetValue(baseName, out var counter))
       {
         candidate = baseName + Spacer + counter;
-        if (candidate.StartsWith("type")) {
-          Console.Error.WriteLine("candidate: " + candidate);
-        }
         counter = counter + 1;
       }
       else

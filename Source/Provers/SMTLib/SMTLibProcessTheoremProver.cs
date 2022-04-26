@@ -409,7 +409,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    protected virtual void SetupAxioms()
+    private void SetupAxioms()
     {
       var axioms = ctx.Axioms;
       if (axioms is VCExprNAry nary && nary.Op == VCExpressionGenerator.AndOp) {
