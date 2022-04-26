@@ -16,13 +16,15 @@ x@0 -> false
 y -> 
 y@0 -> 11
 bool_2_U -> {
-  else -> T@U!val!3
+ false -> false
+ else -> false
 }
 ControlFlow -> {
+  0 0 -> 9
   0 2 -> (- 1)
   0 8 -> 2
   0 9 -> 8
-  else -> 9
+  else -> (- 1)
 }
 Ctor -> {
   T@T!val!0 -> 0
@@ -31,47 +33,100 @@ Ctor -> {
   T@T!val!3 -> 3
   T@T!val!4 -> 4
   T@T!val!5 -> 5
-  else -> 6
+  T@T!val!6 -> 6
+  T@T!val!7 -> 6
+   else -> 6
 }
 int_2_U -> {
   1 -> 1
-  11 -> T@U!val!5
+  11 -> 11
+  2 -> 2
   else -> 2
 }
 Length -> {
+  T@U!val!0 -> 7
+  T@U!val!1 -> 7
   else -> 7
 }
 MapType0Select -> {
-  T@U!val!0 1 -> T@U!val!5
-  else -> T@U!val!3
+  T@U!val!0 1 -> 11
+  T@U!val!1 2 -> false
+  else -> false
+}
+MapType0Store -> {
+  else -> false
 }
 MapType0Type -> {
+  T@T!val!0 T@T!val!0 -> T@T!val!6
   T@T!val!0 T@T!val!2 -> T@T!val!7
   else -> T@T!val!6
 }
 MapType0TypeInv0 -> {
+  T@T!val!6 -> T@T!val!0
+  T@T!val!7 -> T@T!val!0
   else -> T@T!val!0
 }
 MapType0TypeInv1 -> {
+  T@T!val!6 -> T@T!val!0
   T@T!val!7 -> T@T!val!2
   else -> T@T!val!0
 }
+real_2_U -> {
+  else -> false
+}
+real_pow -> {
+  else -> 0.0
+}
+regex_2_U -> {
+  else -> false
+}
+rmode_2_U -> {
+  else -> false
+}
+string_2_U -> {
+  else -> false
+}
 tickleBool -> {
+  false -> true
+  true -> true
   else -> true
 }
 type -> {
+  1 -> T@T!val!0
+  11 -> T@T!val!0
+  2 -> T@T!val!0
+  false -> T@T!val!2
   T@U!val!0 -> T@T!val!6
   T@U!val!1 -> T@T!val!7
-  T@U!val!3 -> T@T!val!2
   else -> T@T!val!0
 }
 U_2_bool -> {
+  false -> false
   else -> false
 }
 U_2_int -> {
   1 -> 1
+  11 -> 11
   2 -> 2
   else -> 11
+}
+U_2_real -> {
+  else -> 0.0
+}
+U_2_regex -> {
+  else -> (str.to.re (""))
+}
+U_2_rmode -> {
+  else -> (roundTowardZero)
+}
+U_2_string -> {
+  else -> ("")
+}
+UOrdering2 -> {
+  else -> false
+}
+UOrdering3 -> {
+  else -> false
 }
 *** STATE <initial>
   x -> 
@@ -102,13 +157,15 @@ x@0 -> false
 y -> 
 y@0 -> 10
 bool_2_U -> {
-  else -> T@U!val!3
+  false -> false
+  else -> false
 }
 ControlFlow -> {
+  0 0 -> 9
   0 2 -> (- 1)
   0 8 -> 2
   0 9 -> 8
-  else -> 9
+  else -> (- 1)
 }
 Ctor -> {
   T@T!val!0 -> 0
@@ -117,47 +174,100 @@ Ctor -> {
   T@T!val!3 -> 3
   T@T!val!4 -> 4
   T@T!val!5 -> 5
+  T@T!val!6 -> 6
+  T@T!val!7 -> 6
   else -> 6
 }
 int_2_U -> {
   1 -> 1
-  10 -> T@U!val!5
+  10 -> 10
+  2 -> 2
   else -> 2
 }
-Length -> {
+ Length -> {
+  T@U!val!0 -> 5
+  T@U!val!1 -> 5
   else -> 5
 }
 MapType0Select -> {
-  T@U!val!0 1 -> T@U!val!5
-  else -> T@U!val!3
+  T@U!val!0 1 -> 10
+  T@U!val!1 2 -> false
+  else -> false
+}
+MapType0Store -> {
+  else -> false
 }
 MapType0Type -> {
+  T@T!val!0 T@T!val!0 -> T@T!val!6
   T@T!val!0 T@T!val!2 -> T@T!val!7
   else -> T@T!val!6
 }
 MapType0TypeInv0 -> {
+  T@T!val!6 -> T@T!val!0
+  T@T!val!7 -> T@T!val!0
   else -> T@T!val!0
 }
 MapType0TypeInv1 -> {
+  T@T!val!6 -> T@T!val!0
   T@T!val!7 -> T@T!val!2
   else -> T@T!val!0
 }
+real_2_U -> {
+  else -> false
+}
+real_pow -> {
+  else -> 0.0
+}
+regex_2_U -> {
+  else -> false
+}
+rmode_2_U -> {
+  else -> false
+}
+string_2_U -> {
+  else -> false
+}
 tickleBool -> {
+  false -> true
+  true -> true
   else -> true
 }
 type -> {
+  1 -> T@T!val!0
+  10 -> T@T!val!0
+  2 -> T@T!val!0
+  false -> T@T!val!2
   T@U!val!0 -> T@T!val!6
   T@U!val!1 -> T@T!val!7
-  T@U!val!3 -> T@T!val!2
   else -> T@T!val!0
 }
 U_2_bool -> {
-  else -> false
+  false -> false
+   else -> false
 }
 U_2_int -> {
   1 -> 1
+  10 -> 10
   2 -> 2
   else -> 10
+q}
+U_2_real -> {
+  else -> 0.0
+}
+U_2_regex -> {
+  else -> (str.to.re (""))
+}
+U_2_rmode -> {
+  else -> (roundTowardZero)
+}
+U_2_string -> {
+  else -> ("")
+}
+UOrdering2 -> {
+  else -> false
+}
+UOrdering3 -> {
+  else -> false
 }
 *** STATE <initial>
   x -> 
