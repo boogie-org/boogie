@@ -86,9 +86,9 @@ namespace Microsoft.Boogie.SMTLib
       {
         AxBuilder = (TypeAxiomBuilder) CachedAxBuilder?.Clone();
         finalNamer = ResetNamer(commonNamer);
-        DeclCollector.Push();
       }
       SendThisVC("(push 1)");
+      DeclCollector.Push();
       string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
       FlushAxioms();
       SendVCAndOptions(descriptiveName, vcString);
@@ -103,9 +103,9 @@ namespace Microsoft.Boogie.SMTLib
         Process.NewProblem(descriptiveName);
       }
 
+      DeclCollector.Pop();
       if (hasReset)
       {
-        DeclCollector.Pop();
         common = new StringBuilder(CachedCommon);
         hasReset = false;
       }
