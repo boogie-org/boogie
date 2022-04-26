@@ -1,3 +1,5 @@
+// VcsCores:1 means we only use a single solver for both procedures in this Boogie program.
+// Prune triggers a full reset after using the solver on one problem
 // RUN: %boogie "%s" -vcsCores:1 -normalizeNames:1 -prune -mv:- > "%t"
 // RUN: %diff "%s.expect" "%t"
 

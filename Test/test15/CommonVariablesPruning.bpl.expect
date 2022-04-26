@@ -1,7 +1,7 @@
-CommonVariablesPruning.bpl(26,5): Error: This assertion might not hold.
+CommonVariablesPruning.bpl(28,5): Error: This assertion might not hold.
 Execution trace:
-    CommonVariablesPruning.bpl(19,3): anon0
-    CommonVariablesPruning.bpl(21,7): anon2_Then
+    CommonVariablesPruning.bpl(22,3): anon0
+    CommonVariablesPruning.bpl(23,7): anon2_Then
 *** MODEL
 a -> T@U!val!0
 b -> T@U!val!1
@@ -139,10 +139,10 @@ UOrdering3 -> {
   y -> 11
 *** END_STATE
 *** END_MODEL
-CommonVariablesPruning.bpl(43,5): Error: This assertion might not hold.
+CommonVariablesPruning.bpl(45,5): Error: This assertion might not hold.
 Execution trace:
-    CommonVariablesPruning.bpl(36,3): anon0
-    CommonVariablesPruning.bpl(38,7): anon2_Then
+    CommonVariablesPruning.bpl(38,3): anon0
+    CommonVariablesPruning.bpl(40,7): anon2_Then
 *** MODEL
 a -> T@U!val!0
 b -> T@U!val!1
