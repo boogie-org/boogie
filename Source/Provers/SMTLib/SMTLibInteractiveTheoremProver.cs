@@ -22,7 +22,6 @@ namespace Microsoft.Boogie.SMTLib
     [NotDelayed]
     public SMTLibInteractiveTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx) : base(libOptions, options, gen, ctx) {
-      commonNamer = GetNamer(libOptions, options);
       DeclCollector = new TypeDeclCollector(libOptions, new ProverNamer(this));
       SetupProcess();
       if (libOptions.ImmediatelyAcceptCommands) {
@@ -30,7 +29,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    internal override ScopedNamer Namer => finalNamer ?? commonNamer;
+    internal override ScopedNamer Namer => finalNamer ?? (commonNamer = GetNamer(libOptions, options));
 
     public override Task GoBackToIdle()
     {
@@ -81,9 +80,6 @@ namespace Microsoft.Boogie.SMTLib
 
       OptimizationRequests.Clear();
 
-      string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
-      FlushAxioms();
-
       PossiblyRestart();
 
       if (hasReset)
@@ -93,6 +89,8 @@ namespace Microsoft.Boogie.SMTLib
         DeclCollector.Push();
       }
       SendThisVC("(push 1)");
+      string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
+      FlushAxioms();
       SendVCAndOptions(descriptiveName, vcString);
 
       SendOptimizationRequests();
@@ -153,7 +151,7 @@ namespace Microsoft.Boogie.SMTLib
         this.gen = generator;
         SendThisVC("(reset)");
         SendThisVC("(set-option :" + Z3.RlimitOption + " 0)");
-        commonNamer = GetNamer(libOptions, options);
+        commonNamer = null;
         finalNamer = null;
         hasReset = true;
         common.Clear();
