@@ -1,6 +1,6 @@
 CommonVariablesPruning.bpl(28,5): Error: This assertion might not hold.
 Execution trace:
-    CommonVariablesPruning.bpl(22,3): anon0
+    CommonVariablesPruning.bpl(21,3): anon0
     CommonVariablesPruning.bpl(23,7): anon2_Then
 *** MODEL
 a -> T@U!val!0
