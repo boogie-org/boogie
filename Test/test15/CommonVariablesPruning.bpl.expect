@@ -1,25 +1,26 @@
-CommonVariablesPruning.bpl(28,3): Error: This assertion might not hold.
+CommonVariablesPruning.bpl(26,5): Error: This assertion might not hold.
 Execution trace:
     CommonVariablesPruning.bpl(19,3): anon0
-    CommonVariablesPruning.bpl(20,3): anon3_Else
-    CommonVariablesPruning.bpl(27,5): anon2
+    CommonVariablesPruning.bpl(21,7): anon2_Then
 *** MODEL
 a -> T@U!val!0
 b -> T@U!val!1
 boolType -> T@T!val!2
 intType -> T@T!val!0
-r -> 
 realType -> T@T!val!1
 regexType -> T@T!val!5
 rmodeType -> T@T!val!3
 stringType -> T@T!val!4
 x -> 
+x@0 -> false
 y -> 
-z -> 
+y@0 -> 11
+bool_2_U -> {
+  else -> T@U!val!3
+}
 ControlFlow -> {
-  0 2 -> (- 3)
-  0 7 -> 2
-  0 8 -> 7
+  0 2 -> (- 1)
+  0 8 -> 2
   0 9 -> 8
   else -> 9
 }
@@ -32,9 +33,17 @@ Ctor -> {
   T@T!val!5 -> 5
   else -> 6
 }
+int_2_U -> {
+  1 -> 1
+  11 -> T@U!val!5
+  else -> 2
+}
 Length -> {
-  T@U!val!1 -> (- 1)
-  else -> 0
+  else -> 7
+}
+MapType0Select -> {
+  T@U!val!0 1 -> T@U!val!5
+  else -> T@U!val!3
 }
 MapType0Type -> {
   T@T!val!0 T@T!val!2 -> T@T!val!7
@@ -51,23 +60,34 @@ tickleBool -> {
   else -> true
 }
 type -> {
+  T@U!val!0 -> T@T!val!6
   T@U!val!1 -> T@T!val!7
-  else -> T@T!val!6
+  T@U!val!3 -> T@T!val!2
+  else -> T@T!val!0
+}
+U_2_bool -> {
+  else -> false
+}
+U_2_int -> {
+  1 -> 1
+  2 -> 2
+  else -> 11
 }
 *** STATE <initial>
-  r -> 
   x -> 
   y -> 
-  z -> 
 *** END_STATE
 *** STATE before
+*** END_STATE
+*** STATE after
+  x -> false
+  y -> 11
 *** END_STATE
 *** END_MODEL
-CommonVariablesPruning.bpl(45,3): Error: This assertion might not hold.
+CommonVariablesPruning.bpl(43,5): Error: This assertion might not hold.
 Execution trace:
-    CommonVariablesPruning.bpl(37,3): anon0
-    CommonVariablesPruning.bpl(38,3): anon3_Else
-    CommonVariablesPruning.bpl(45,3): anon2
+    CommonVariablesPruning.bpl(36,3): anon0
+    CommonVariablesPruning.bpl(38,7): anon2_Then
 *** MODEL
 a -> T@U!val!0
 b -> T@U!val!1
@@ -78,12 +98,15 @@ regexType -> T@T!val!5
 rmodeType -> T@T!val!3
 stringType -> T@T!val!4
 x -> 
+x@0 -> false
 y -> 
-z -> 
+y@0 -> 10
+bool_2_U -> {
+  else -> T@U!val!3
+}
 ControlFlow -> {
-  0 2 -> (- 3)
-  0 7 -> 2
-  0 8 -> 7
+  0 2 -> (- 1)
+  0 8 -> 2
   0 9 -> 8
   else -> 9
 }
@@ -96,9 +119,17 @@ Ctor -> {
   T@T!val!5 -> 5
   else -> 6
 }
+int_2_U -> {
+  1 -> 1
+  10 -> T@U!val!5
+  else -> 2
+}
 Length -> {
-  T@U!val!1 -> (- 1)
-  else -> 0
+  else -> 5
+}
+MapType0Select -> {
+  T@U!val!0 1 -> T@U!val!5
+  else -> T@U!val!3
 }
 MapType0Type -> {
   T@T!val!0 T@T!val!2 -> T@T!val!7
@@ -115,15 +146,28 @@ tickleBool -> {
   else -> true
 }
 type -> {
+  T@U!val!0 -> T@T!val!6
   T@U!val!1 -> T@T!val!7
-  else -> T@T!val!6
+  T@U!val!3 -> T@T!val!2
+  else -> T@T!val!0
+}
+U_2_bool -> {
+  else -> false
+}
+U_2_int -> {
+  1 -> 1
+  2 -> 2
+  else -> 10
 }
 *** STATE <initial>
   x -> 
   y -> 
-  z -> 
 *** END_STATE
 *** STATE before
+*** END_STATE
+*** STATE after
+  x -> false
+  y -> 10
 *** END_STATE
 *** END_MODEL
 

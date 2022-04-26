@@ -11,7 +11,7 @@ const b: [int]bool;
 axiom Length(a) == 3;
 axiom Length(b) == 5; 
 
-procedure M0(z : int) returns (r: int)
+procedure M0()
   ensures true;
 {
   var x: bool;
@@ -23,13 +23,12 @@ procedure M0(z : int) returns (r: int)
     assume {:captureState "after"} true;
     assert x == b[2];
     assert y == a[1];
+    assert false;
   }
-  r := 2;
-  assert false;
 }
 
 // By verifying another procedure, we can see whether common variables are named again, which would trigger a name increment (like type@@0 instead of type)
-procedure M1(z : int)
+procedure M1()
   ensures true;
 {
   var x: bool;
@@ -41,6 +40,6 @@ procedure M1(z : int)
     assume {:captureState "after"} true;
     assert x == b[2];
     assert y == a[1];
+    assert false;
   }
-  assert false;
 }
