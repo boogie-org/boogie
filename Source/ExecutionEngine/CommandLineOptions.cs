@@ -188,15 +188,14 @@ namespace Microsoft.Boogie
     /// Parses the command-line arguments "args" into the global flag variables.  Returns true
     /// if there were no errors.
     /// </summary>
-    /// <param name="args">Consumed ("captured" and possibly modified) by the method.</param>
-    public bool Parse([Captured] string[] /*!*/ args)
+    public virtual bool Parse(string[] /*!*/ args)
     {
       Contract.Requires(cce.NonNullElements(args));
 
       // save the command line options for the log files
       Environment += "Command Line Options: " + args.Concat(" ");
       args = cce.NonNull((string[]) args.Clone()); // the operations performed may mutate the array, so make a copy
-      var ps = new CommandLineParseState(args, ToolName);
+      var ps = InitializeCommandLineParseState(args);
 
       while (ps.i < args.Length)
       {
@@ -227,17 +226,17 @@ namespace Microsoft.Boogie
           {
             if (Path.DirectorySeparatorChar == '/' && ps.s.StartsWith("/"))
             {
-              this._files.Add(arg);
+              AddFile(arg, ps);
             }
             else
             {
-              ps.Error("unknown switch: {0}", ps.s);
+              UnknownSwitch(ps);
             }
           }
         }
         else
         {
-          this._files.Add(arg);
+          AddFile(arg, ps);
         }
 
         ps.i = ps.nextIndex;
@@ -253,6 +252,18 @@ namespace Microsoft.Boogie
         this.ApplyDefaultOptions();
         return true;
       }
+    }
+
+    protected virtual void UnknownSwitch(CommandLineParseState ps) {
+      ps.Error("unknown switch: {0}", ps.s);
+    }
+
+    protected virtual void AddFile(string file, CommandLineParseState ps) {
+      this._files.Add(file);
+    }
+
+    protected virtual CommandLineParseState InitializeCommandLineParseState(string[] args) {
+      return new CommandLineParseState(args, ToolName);
     }
   }
 
