@@ -325,7 +325,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        if (program.Declarations.Any(d => d.HasCivlAttribute()))
+        if (program.TopLevelDeclarations.Any(d => d.HasCivlAttribute()))
         {
           Options.UseLibrary = true;
         }
@@ -428,7 +428,7 @@ namespace Microsoft.Boogie
           "Option /useArrayTheory only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
         return PipelineOutcome.FatalError;
       } 
-      else if (program.Declarations.OfType<DatatypeTypeCtorDecl>().Any())
+      else if (program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>().Any())
       {
         Console.WriteLine(
           "Datatypes only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
@@ -466,7 +466,7 @@ namespace Microsoft.Boogie
       }
 
       // Inline
-      var TopLevelDeclarations = cce.NonNull(program.Declarations);
+      var TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
 
       if (Options.ProcedureInlining != CoreOptions.Inlining.None)
       {
@@ -625,7 +625,7 @@ namespace Microsoft.Boogie
       Implementation[] stablePrioritizedImpls = null;
 
       if (0 < Options.VerifySnapshots) {
-        OtherDefinitionAxiomsCollector.Collect(Options, program.TopLevelDeclarations.OfType<Axiom>());
+        OtherDefinitionAxiomsCollector.Collect(Options, program.Axioms);
         DependencyCollector.Collect(Options, program);
         stablePrioritizedImpls = impls.OrderByDescending(
           impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl, Options.RunDiagnosticsOnTimeout)).ToArray();

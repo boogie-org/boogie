@@ -732,7 +732,7 @@ namespace Microsoft.Boogie
         useProcedurePredicates = proc => oldUPP(proc) && !uni.IsUniform(proc.Name);
       }
 
-      foreach (var decl in p.Declarations.ToList())
+      foreach (var decl in p.TopLevelDeclarations.ToList())
       {
         if (decl is Procedure || decl is Implementation)
         {
