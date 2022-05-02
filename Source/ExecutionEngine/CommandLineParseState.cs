@@ -366,7 +366,7 @@ public class CommandLineParseState
     }
   }
 
-  public void Error(string message, params string[] args)
+  public virtual void Error(string message, params string[] args)
   {
     Contract.Requires(args != null);
     Contract.Requires(message != null);
