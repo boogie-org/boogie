@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
@@ -130,11 +131,11 @@ namespace VC
       var /*?*/ errors = new List<Counterexample>();
       if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
           outcome == Outcome.OutOfResource) {
-        errors = collector.examples;
+        errors = collector.examples.ToList();
       }
 
       Helpers.ExtraTraceInformation(Options, "Finished implementation verification");
-      return (outcome, errors, collector.vcResults);
+      return (outcome, errors, collector.vcResults.ToList());
     }
 
     private VCGenOptions Options => CheckerPool.Options;
@@ -524,14 +525,14 @@ namespace VC
         Contract.Invariant(cce.NonNullElements(vcResults));
       }
 
-      public readonly List<Counterexample> /*!>!*/ examples = new List<Counterexample>();
-      public readonly List<VCResult> /*!>!*/ vcResults = new List<VCResult>();
+      public readonly ConcurrentQueue<Counterexample> examples = new();
+      public readonly ConcurrentQueue<VCResult> vcResults = new();
 
       public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
       {
         //Contract.Requires(ce != null);
         ce.InitializeModelStates();
-        examples.Add(ce);
+        examples.Enqueue(ce);
       }
 
       public override void OnUnreachableCode(Implementation impl)
@@ -544,7 +545,7 @@ namespace VC
 
       public override void OnVCResult(VCResult result)
       {
-        vcResults.Add(result);
+        vcResults.Enqueue(result);
       }
     }
 

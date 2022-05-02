@@ -277,7 +277,7 @@ namespace Microsoft.Boogie.Houdini
         Console.WriteLine("Time taken = " + queryTime);
       }
 
-      return (proverOutcome, collector.examples);
+      return (proverOutcome, collector.examples.ToList());
     }
 
     // MAXSAT
