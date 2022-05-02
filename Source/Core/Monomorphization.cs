@@ -155,7 +155,7 @@ namespace Microsoft.Boogie
     {
       this.program = program;
       this.isMonomorphizable = true;
-      this.polymorphicFunctionAxioms = program.Declarations.OfType<Function>()
+      this.polymorphicFunctionAxioms = program.TopLevelDeclarations.OfType<Function>()
         .Where(f => f.TypeParameters.Count > 0 && f.DefinitionAxiom != null)
         .Select(f => f.DefinitionAxiom).ToHashSet();
       this.axiomsToBeInstantiated = new Dictionary<Axiom, TypeCtorDecl>();
@@ -229,7 +229,7 @@ namespace Microsoft.Boogie
 
     private void CheckTypeCtorInstantiatedAxiom(Axiom axiom, string typeCtorName)
     {
-      var tcDecl = program.Declarations.OfType<TypeCtorDecl>().FirstOrDefault(tcd => tcd.Name == typeCtorName);
+      var tcDecl = program.TopLevelDeclarations.OfType<TypeCtorDecl>().FirstOrDefault(tcd => tcd.Name == typeCtorName);
       if (tcDecl == null)
       {
         isMonomorphizable = false;
@@ -876,27 +876,27 @@ namespace Microsoft.Boogie
       this.program = program;
       this.axiomsToBeInstantiated = axiomsToBeInstantiated;
       implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();
-      program.Declarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).Iter(
+      program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).Iter(
         impl =>
         {
           implInstantiations.Add(impl, new Dictionary<List<Type>, Implementation>(new ListComparer<Type>()));
         });
       procInstantiations = new Dictionary<Procedure, Dictionary<List<Type>, Procedure>>();
-      program.Declarations.OfType<Procedure>().Where(proc => proc.TypeParameters.Count > 0).Iter(
+      program.TopLevelDeclarations.OfType<Procedure>().Where(proc => proc.TypeParameters.Count > 0).Iter(
         proc =>
         {
           procInstantiations.Add(proc, new Dictionary<List<Type>, Procedure>(new ListComparer<Type>()));
         });
       functionInstantiations = new Dictionary<Function, Dictionary<List<Type>, Function>>();
       nameToFunction = new Dictionary<string, Function>();
-      program.Declarations.OfType<Function>().Where(function => function.TypeParameters.Count > 0).Iter(
+      program.TopLevelDeclarations.OfType<Function>().Where(function => function.TypeParameters.Count > 0).Iter(
         function =>
         {
           nameToFunction.Add(function.Name, function);
           functionInstantiations.Add(function, new Dictionary<List<Type>, Function>(new ListComparer<Type>()));
         });
       typeInstantiations = new Dictionary<TypeCtorDecl, Dictionary<List<Type>, TypeCtorDecl>>();
-      program.Declarations.OfType<TypeCtorDecl>()
+      program.TopLevelDeclarations.OfType<TypeCtorDecl>()
         .Where(typeCtorDecl => MonomorphismChecker.DoesTypeCtorDeclNeedMonomorphization(typeCtorDecl)).Iter(
           typeCtorDecl =>
             typeInstantiations.Add(typeCtorDecl, new Dictionary<List<Type>, TypeCtorDecl>(new ListComparer<Type>())));
@@ -911,7 +911,7 @@ namespace Microsoft.Boogie
       this.visitedFunctions = new HashSet<Function>();
       monomorphizationDuplicator = new MonomorphizationDuplicator(this);
       this.procToImpl = new Dictionary<Procedure, Implementation>();
-      program.Declarations.OfType<Implementation>().Iter(impl => this.procToImpl[impl.Proc] = impl);
+      program.TopLevelDeclarations.OfType<Implementation>().Iter(impl => this.procToImpl[impl.Proc] = impl);
       program.RemoveTopLevelDeclarations(decl => 
         decl is Implementation impl && implInstantiations.ContainsKey(impl) ||
         decl is Procedure proc && procInstantiations.ContainsKey(proc) ||

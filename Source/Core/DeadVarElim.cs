@@ -1265,7 +1265,7 @@ namespace Microsoft.Boogie
       varsLiveAtEntry.Clear();
       varsLiveSummary.Clear();
 
-      foreach (var decl in program.Declarations)
+      foreach (var decl in program.TopLevelDeclarations)
       {
         Contract.Assert(decl != null);
         if (decl is Implementation)

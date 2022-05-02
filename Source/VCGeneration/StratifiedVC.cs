@@ -372,7 +372,7 @@ namespace VC
       this.options = options;
 
       List<Variable> functionInterfaceVars = new List<Variable>();
-      foreach (Variable v in vcgen.Program.GlobalVariables)
+      foreach (Variable v in vcgen.program.GlobalVariables)
       {
         functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", v.TypedIdent.Type),
           true));
@@ -406,7 +406,7 @@ namespace VC
       vcgen.prover.Context.DeclareFunction(function, "");
 
       List<Expr> exprs = new List<Expr>();
-      foreach (Variable v in vcgen.Program.GlobalVariables)
+      foreach (Variable v in vcgen.program.GlobalVariables)
       {
         Contract.Assert(v != null);
         exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
@@ -478,7 +478,7 @@ namespace VC
       (exitAssertCmd as AssumeCmd).Attributes = new QKeyValue(Token.NoToken, "exitAssert", new List<object>(), null);
 
       // Passify
-      Program program = vcgen.Program;
+      Program program = vcgen.program;
       ProverInterface proverInterface = vcgen.prover;
       vcgen.ConvertCFG2DAG(Implementation);
       vcgen.PassifyImpl(run, out mvInfo);
@@ -626,7 +626,7 @@ namespace VC
 
       exitAssertCmd = new AssertCmd(Token.NoToken, Expr.Not(Expr.BinaryTreeAnd(assertConjuncts)));
 
-      Program program = vcgen.Program;
+      Program program = vcgen.program;
       ProverInterface proverInterface = vcgen.prover;
       vcgen.ConvertCFG2DAG(Implementation);
       vcgen.PassifyImpl(run, out mvInfo);
@@ -718,7 +718,7 @@ namespace VC
 
     private void GenerateRecordFunctions()
     {
-      foreach (var proc in Program.Procedures)
+      foreach (var proc in program.Procedures)
       {
         if (!proc.Name.StartsWith(recordProcName))
         {
@@ -933,7 +933,7 @@ namespace VC
     {
       // Construct the set of inlined procs in the original program
       var inlinedProcs = new HashSet<string>();
-      foreach (var decl in program.Declarations)
+      foreach (var decl in program.TopLevelDeclarations)
       {
         // Implementations
         if (decl is Implementation)

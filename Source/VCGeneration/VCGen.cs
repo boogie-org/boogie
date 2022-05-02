@@ -1218,7 +1218,7 @@ namespace VC
     public Dictionary<TransferCmd, ReturnCmd> PassifyImpl(ImplementationRun run, out ModelViewInfo mvInfo)
     {
       Contract.Requires(run != null);
-      Contract.Requires(Program != null);
+      Contract.Requires(program != null);
       Contract.Ensures(Contract.Result<Dictionary<TransferCmd, ReturnCmd>>() != null);
 
       var impl = run.Implementation;
@@ -1240,9 +1240,9 @@ namespace VC
       {
         List<Cmd> cc = new List<Cmd>();
         // where clauses of global variables
-        lock (Program.Declarations)
+        lock (program.TopLevelDeclarations)
         {
-          foreach (var gvar in Program.GlobalVariables)
+          foreach (var gvar in program.GlobalVariables)
           {
             if (gvar != null && gvar.TypedIdent.WhereExpr != null)
             {
@@ -1316,7 +1316,7 @@ namespace VC
         new LiveVariableAnalysis(Options).ComputeLiveVariables(impl);
       }
 
-      mvInfo = new ModelViewInfo(Program, impl);
+      mvInfo = new ModelViewInfo(program, impl);
       Convert2PassiveCmd(run, mvInfo);
 
       if (QKeyValue.FindBoolAttribute(impl.Attributes, "may_unverified_instrumentation"))

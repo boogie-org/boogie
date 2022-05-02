@@ -82,7 +82,7 @@ namespace VC
     void ObjectInvariant()
     {
       Contract.Invariant(cce.NonNullDictionaryAndValues(incarnationOriginMap));
-      Contract.Invariant(Program != null);
+      Contract.Invariant(program != null);
     }
 
     public int CumulativeAssertionCount; // for statistics
@@ -101,13 +101,13 @@ namespace VC
 
     public Dictionary<Cmd, List<object>> debugInfos = new Dictionary<Cmd, List<object>>();
 
-    public Program Program { get; }
+    public Program program;
     public CheckerPool CheckerPool { get; }
 
     public ConditionGeneration(Program program, CheckerPool checkerPool)
     {
       Contract.Requires(program != null && checkerPool != null);
-      Program = program;
+      this.program = program;
       CheckerPool = checkerPool;
     }
 

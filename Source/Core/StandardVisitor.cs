@@ -1403,7 +1403,7 @@ namespace Microsoft.Boogie
     public override Program VisitProgram(Program node)
     {
       Contract.Ensures(Contract.Result<Program>() == node);
-      this.VisitDeclarationList(node.Declarations.ToList());
+      this.VisitDeclarationList(node.TopLevelDeclarations.ToList());
       return node;
     }
 
