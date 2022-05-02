@@ -419,6 +419,8 @@ namespace Microsoft.Boogie
 
     public int? RandomSeed { get; set; }
 
+    public int RandomSeedIterations { get; set; } = 1;
+
     public bool PrintWithUniqueASTIds {
       get => printWithUniqueAstIds;
       set => printWithUniqueAstIds = value;
@@ -1431,6 +1433,11 @@ namespace Microsoft.Boogie
           ps.GetIntArgument(x => VcsCores = x, a => 1 <= a);
           return true;
 
+        case "randomSeedIterations":
+          ps.GetIntArgument(x => RandomSeedIterations = x, a => 1 <= a);
+          RandomSeed ??= 0; // Using /randomSeedIterations without any randomness isn't very useful
+          return true;
+
         case "vcsLoad":
           double load = 0.0;
           if (ps.GetDoubleArgument(x => load = x))
@@ -2182,6 +2189,13 @@ namespace Microsoft.Boogie
                 The /randomSeed option is implemented by renaming variables and 
                 reordering declarations in the input, and by setting 
                 solver options that have similar effects.
+
+  /randomSeedIterations:<n>
+                Attempt to prove each VC n times with n random seeds. If
+                /randomSeed has been provided, each proof attempt will use
+                a new random seed derived from this original seed. If not,
+                it will implicitly use /randomSeed:0 to ensure a difference
+                between iterations.
 
   ---- Verification-condition splitting --------------------------------------
 

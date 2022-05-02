@@ -19,7 +19,8 @@ namespace VC
       private VCGenOptions options;
 
       public int? RandomSeed => Implementation.RandomSeed ?? options.RandomSeed;
-    
+      private Random randomGen;
+
       class BlockStats
       {
         public bool bigBlock;
@@ -72,7 +73,7 @@ namespace VC
 
 
       private readonly List<Block> blocks;
-      public IEnumerable<AssertCmd> Asserts => blocks.SelectMany(block => block.cmds.OfType<AssertCmd>());
+      public List<AssertCmd> Asserts => blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToList();
       public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
       readonly List<Block> bigBlocks = new();
 
@@ -115,8 +116,7 @@ namespace VC
         keepAtAll = new HashSet<Block /*!*/>();
 
       // async interface
-      private Checker checker;
-      private int splitIndex;
+      public int SplitIndex { get; set; }
       internal VCGen.ErrorReporter reporter;
 
       public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
@@ -134,27 +134,11 @@ namespace VC
         this.options = options;
         Interlocked.Increment(ref currentId);
 
-        TopLevelDeclarations = par.program.TopLevelDeclarations;
-        PrintTopLevelDeclarationsForPruning(par.program, implementation, "before");        
-        TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.program, blocks).ToList();
-        PrintTopLevelDeclarationsForPruning(par.program, implementation, "after");
-      }
+        Prune.PrintTopLevelDeclarationsForPruning(this, "before");
+        TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.Program, blocks).ToList();
+        Prune.PrintTopLevelDeclarationsForPruning(this, "after");
+        randomGen = new Random(RandomSeed ?? 0);
 
-      private void PrintTopLevelDeclarationsForPruning(Program program, Implementation implementation, string suffix)
-      {
-        if (!options.Prune || options.PrintPrunedFile == null)
-        {
-          return;
-        }
-
-        using var writer = new TokenTextWriter(
-          $"{options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}", false,
-          options.PrettyPrint, options);
-        foreach (var declaration in TopLevelDeclarations ?? program.TopLevelDeclarations) {
-          declaration.Emit(writer, 0);
-        }
-
-        writer.Close();
       }
 
       public double Cost
@@ -1264,52 +1248,33 @@ namespace VC
         }
       }
 
-      public Checker Checker
-      {
-        get
-        {
-          Contract.Ensures(Contract.Result<Checker>() != null);
-
-          Contract.Assert(checker != null);
-          return checker;
-        }
-      }
-
-      public Task ProverTask
-      {
-        get
-        {
-          Contract.Assert(checker != null);
-          return checker.ProverTask;
-        }
-      }
-
-      public async Task<(ProverInterface.Outcome outcome, VCResult result, int resourceCount)> ReadOutcome(VerifierCallback callback)
+      public async Task<(ProverInterface.Outcome outcome, VCResult result, int resourceCount)> ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
 
         if (options.Trace && splitIndex >= 0)
         {
-          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitIndex + 1,
+          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", SplitIndex + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
         var resourceCount = await checker.GetProverResourceCount();
         var result = new VCResult(
-          splitIndex + 1,
+          SplitIndex + 1,
+          iteration,
           checker.ProverStart,
           outcome,
           checker.ProverRunTime,
-          Checker.Options.ErrorLimit,
+          checker.Options.ErrorLimit,
           Counterexamples,
-          Asserts.ToList(),
+          Asserts,
           resourceCount);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
         {
-          DumpDot(splitIndex);
+          DumpDot(SplitIndex);
         }
 
         return (outcome, result, resourceCount);
@@ -1320,19 +1285,16 @@ namespace VC
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
       /// </summary>
-      public async Task BeginCheck(TextWriter traceWriter, Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int splitIndex, uint timeout,
+      public async Task BeginCheck(TextWriter traceWriter, Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, uint timeout,
         uint rlimit, CancellationToken cancellationToken)
       {
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
-        this.splitIndex = splitIndex;
 
         VCExpr vc;
         // Lock impl since we're setting impl.Blocks that is used to generate the VC.
         lock (Implementation) {
           Implementation.Blocks = blocks;
-
-          this.checker = checker;
 
           var absyIds = new ControlFlowIdMap<Absy>();
 
@@ -1353,12 +1315,12 @@ namespace VC
           VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
           vc = exprGen.Implies(eqExpr, vc);
           reporter = new VCGen.ErrorReporter(options, gotoCmdOrigins, absyIds, Implementation.Blocks, parent.debugInfos, callback,
-            mvInfo, Checker.TheoremProver.Context, parent.program, this);
+            mvInfo, checker.TheoremProver.Context, parent.program, this);
         }
 
         if (options.TraceVerify && splitIndex >= 0)
         {
-          Console.WriteLine("-- after split #{0}", splitIndex);
+          Console.WriteLine("-- after split #{0}", SplitIndex);
           Print();
         }
 
@@ -1370,8 +1332,8 @@ namespace VC
         get
         {
           string description = cce.NonNull(Implementation.Name);
-          if (splitIndex >= 0) {
-            description += "_split" + splitIndex;
+          if (SplitIndex >= 0) {
+            description += "_split" + SplitIndex;
           }
 
           return description;
@@ -1457,13 +1419,12 @@ namespace VC
         }
       }
 
-      public void ResetChecker()
-      {
-        checker = null;
-      }
-
       public void Finish(VCResult result) {
         parent.CheckerPool.Options.Printer?.ReportSplitResult(this, result);
+      }
+
+      public int NextRandom() {
+        return randomGen.Next();
       }
   }
 }

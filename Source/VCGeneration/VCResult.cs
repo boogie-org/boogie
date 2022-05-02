@@ -17,6 +17,7 @@ namespace VC
   public record VCResult
   (
     int vcNum,
+    int iteration,
     DateTime startTime,
     ProverInterface.Outcome outcome,
     TimeSpan runTime,
