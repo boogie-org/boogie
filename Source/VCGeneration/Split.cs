@@ -134,11 +134,28 @@ namespace VC
         this.options = options;
         Interlocked.Increment(ref currentId);
 
-        Prune.PrintTopLevelDeclarationsForPruning(this, "before");
-        TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.Program, blocks).ToList();
-        Prune.PrintTopLevelDeclarationsForPruning(this, "after");
+        TopLevelDeclarations = par.program.TopLevelDeclarations;
+        PrintTopLevelDeclarationsForPruning(par.program, implementation, "before");
+        TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.program, blocks).ToList();
+        PrintTopLevelDeclarationsForPruning(par.program, implementation, "after");
         randomGen = new Random(RandomSeed ?? 0);
+      }
 
+      private void PrintTopLevelDeclarationsForPruning(Program program, Implementation implementation, string suffix)
+      {
+        if (!options.Prune || options.PrintPrunedFile == null)
+        {
+          return;
+        }
+
+        using var writer = new TokenTextWriter(
+          $"{options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}", false,
+          options.PrettyPrint, options);
+        foreach (var declaration in TopLevelDeclarations ?? program.TopLevelDeclarations) {
+          declaration.Emit(writer, 0);
+        }
+
+        writer.Close();
       }
 
       public double Cost
@@ -1253,7 +1270,7 @@ namespace VC
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
 
-        if (options.Trace && splitIndex >= 0)
+        if (options.Trace && SplitIndex >= 0)
         {
           System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", SplitIndex + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
@@ -1318,7 +1335,7 @@ namespace VC
             mvInfo, checker.TheoremProver.Context, parent.program, this);
         }
 
-        if (options.TraceVerify && splitIndex >= 0)
+        if (options.TraceVerify && SplitIndex >= 0)
         {
           Console.WriteLine("-- after split #{0}", SplitIndex);
           Print();
