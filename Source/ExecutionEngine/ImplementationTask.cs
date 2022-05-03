@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,19 +8,17 @@ using VC;
 namespace Microsoft.Boogie;
 
 public interface IImplementationTask {
-  
   IObservable<VerificationStatus> ObservableStatus { get; }
   VerificationStatus CurrentStatus { get; }
-  
-  public ProcessedProgram ProcessedProgram { get; }
-  public Implementation Implementation { get; }
-  public Task<VerificationResult> ActualTask { get; }
+  ProcessedProgram ProcessedProgram { get; }
+  Implementation Implementation { get; }
+  Task<VerificationResult> ActualTask { get; }
   void Run();
   void InitialiseStatus();
 }
 
 public class ImplementationTask : IImplementationTask {
-  private readonly CancellationTokenSource source;
+  private readonly CancellationTokenSource taskCancellationSource;
 
   private readonly ReplaySubject<VerificationStatus> observableStatus = new();
   
@@ -30,7 +27,7 @@ public class ImplementationTask : IImplementationTask {
 
   public VerificationStatus CurrentStatus {
     get => currentStatus;
-    set {
+    private set {
       currentStatus = value;
       observableStatus.OnNext(value);
     }
@@ -38,7 +35,7 @@ public class ImplementationTask : IImplementationTask {
 
   public ProcessedProgram ProcessedProgram { get; }
 
-  public Task<VerificationResult> ActualTask { get; private set; } // TODO can we figure out how to immediately get this in the created state?
+  public Task<VerificationResult> ActualTask { get; }
   public Implementation Implementation { get; }
 
   private readonly TaskCompletionSource runSource = new();
@@ -46,12 +43,12 @@ public class ImplementationTask : IImplementationTask {
   public ImplementationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Implementation implementation) {
     ProcessedProgram = processedProgram;
     Implementation = implementation;
-    source = new CancellationTokenSource();
+    taskCancellationSource = new CancellationTokenSource();
 
     ActualTask = runSource.Task.ContinueWith(t => {
 
       var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(), null, null,
-        Implementation, source, TextWriter.Null);
+        Implementation, taskCancellationSource, TextWriter.Null);
 
       if (!enqueueTask.IsCompleted) {
         CurrentStatus = VerificationStatus.Queued;
@@ -69,7 +66,7 @@ public class ImplementationTask : IImplementationTask {
         observableStatus.OnCompleted();
       });
       return result;
-    }).Unwrap();
+    }, TaskContinuationOptions.ExecuteSynchronously).Unwrap();
   }
 
   public void InitialiseStatus() {
@@ -81,7 +78,7 @@ public class ImplementationTask : IImplementationTask {
   }
 
   public void Cancel() {
-    source.Cancel();
+    taskCancellationSource.Cancel();
   }
 }
 

@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
@@ -177,5 +180,47 @@ Boogie program verifier finished with 0 verified, 1 error
 ".ReplaceLineEndings();
 
     Assert.AreEqual(expected, output);
+  }
+
+  [Test]
+  public async Task StatusTest() {
+    
+    var options = CommandLineOptions.FromArguments();
+    options.VcsCores = 1;
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+
+    var programString = @"procedure Bad(y: int)
+{
+  assert 2 == 1;
+}
+
+procedure Good(y: int)
+{
+  assert 2 == 2;
+}
+";
+    Parser.Parse(programString, "fakeFilename1", out var program1);
+    var tasks = engine.GetImplementationTasks(program1);
+    var statusList = new List<(ImplementationTask, VerificationStatus)>();
+
+    var first = tasks[0];
+    var second = tasks[1];
+    var statuses = first.ObservableStatus.Select(s => (implementationTask: first, s)).
+      Merge(second.ObservableStatus.Select(status => (second, s: status)));
+    statuses.Subscribe(t => statusList.Add(t));
+    
+    first.Run();
+    second.Run();
+    await statuses.ToTask();
+    
+    Assert.True(statusList.SequenceEqual(new[] {
+      // (first, VerificationStatus.Stale),
+      // (second, VerificationStatus.Stale),
+      (first, VerificationStatus.Verifying),
+      (second, VerificationStatus.Queued),
+      (first, VerificationStatus.Error),
+      (second, VerificationStatus.Verifying),
+      (second, VerificationStatus.Correct),
+    }));
   }
 }
