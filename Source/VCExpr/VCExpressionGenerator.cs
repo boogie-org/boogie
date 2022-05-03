@@ -10,6 +10,7 @@ namespace Microsoft.Boogie
   {
     public static readonly VCExpr False = new VCExprLiteral(Type.Bool);
     public static readonly VCExpr True = new VCExprLiteral(Type.Bool);
+    public const string ControlFlowName = "ControlFlow";
 
     private Function ControlFlowFunction = null;
 
@@ -30,7 +31,7 @@ namespace Microsoft.Boogie
         inputs.Add(second);
         Formal /*!*/
           returnVar = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Int), false);
-        ControlFlowFunction = new Function(Token.NoToken, "ControlFlow", inputs, returnVar);
+        ControlFlowFunction = new Function(Token.NoToken, ControlFlowName, inputs, returnVar);
       }
 
       List<VCExpr /*!*/> args = new List<VCExpr /*!*/>();
@@ -543,6 +544,8 @@ namespace Microsoft.Boogie
 
     static VCExpressionGenerator()
     {
+      ScopedNamer.AddBoogieDeterminedName(ControlFlowName);
+
       SingletonOpDict = new Dictionary<VCExprOp /*!*/, SingletonOp>();
       SingletonOpDict.Add(NotOp, SingletonOp.NotOp);
       SingletonOpDict.Add(EqOp, SingletonOp.EqOp);

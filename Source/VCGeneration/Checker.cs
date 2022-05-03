@@ -118,6 +118,7 @@ namespace Microsoft.Boogie
 
       var ctx = Pool.Options.TheProverFactory.NewProverContext(SolverOptions);
 
+      SolverOptions.RandomSeed = Options.RandomSeed;
       var prover = Pool.Options.TheProverFactory.SpawnProver(Pool.Options, SolverOptions, ctx);
       
       thmProver = prover;

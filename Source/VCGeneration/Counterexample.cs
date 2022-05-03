@@ -80,8 +80,8 @@ namespace Microsoft.Boogie
     protected readonly VCGenOptions options;
     [Peer] public List<Block> Trace;
     public List<object> AugmentedTrace;
-    public Model Model;
-    public VC.ModelViewInfo MvInfo;
+    public Model Model { get; }
+    public ModelViewInfo MvInfo;
     public ProverContext Context;
     public abstract byte[] Checksum { get; }
     public byte[] SugaredCmdChecksum;
@@ -225,8 +225,10 @@ namespace Microsoft.Boogie
       {
         return;
       }
-
-      InitializeModelStates();
+      
+      if (!Model.ModelHasStatesAlready) {
+        throw new InvalidOperationException("Model should have states before being printed");
+      }
 
       if (filenameTemplate == "-")
       {

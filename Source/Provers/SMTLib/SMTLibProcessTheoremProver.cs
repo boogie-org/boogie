@@ -21,8 +21,18 @@ namespace Microsoft.Boogie.SMTLib
     protected VCExpressionGenerator gen;
     protected SMTLibProverOptions options;
     protected bool usingUnsatCore;
-    private string _backgroundPredicates;
-
+    private string backgroundPredicates;
+    internal TypeAxiomBuilder AxBuilder { get; set; }
+    protected TypeAxiomBuilder CachedAxBuilder;
+    internal abstract ScopedNamer Namer { get; }
+    protected TypeDeclCollector DeclCollector;
+    protected readonly List<string> proverErrors = new();
+    protected readonly List<string> proverWarnings = new();
+    protected StringBuilder common = new();
+    protected string CachedCommon = null;
+    protected TextWriter currentLogFile;
+    protected volatile ErrorHandler currentErrorHandler;
+    
     [ContractInvariantMethod]
     private void ObjectInvariant()
     {
@@ -31,7 +41,7 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Invariant(DeclCollector != null);
       Contract.Invariant(cce.NonNullElements(Axioms));
       Contract.Invariant(cce.NonNullElements(TypeDecls));
-      Contract.Invariant(_backgroundPredicates != null);
+      Contract.Invariant(backgroundPredicates != null);
     }
 
     [NotDelayed]
@@ -42,7 +52,6 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
 
-
       this.options = (SMTLibProverOptions) options;
       this.libOptions = libOptions;
       this.ctx = ctx;
@@ -52,10 +61,7 @@ namespace Microsoft.Boogie.SMTLib
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
 
-      Namer = GetNamer(libOptions, options);
-
       ctx.parent = this;
-      DeclCollector = new TypeDeclCollector(libOptions, Namer);
 
       if (libOptions.ImmediatelyAcceptCommands)
       {
@@ -68,7 +74,7 @@ namespace Microsoft.Boogie.SMTLib
     }
     protected static ScopedNamer GetNamer(SMTLibOptions libOptions, ProverOptions options, ScopedNamer namer = null)
     {
-      return (RandomSeed: options.RandomSeed, libOptions.NormalizeNames) switch
+      return (options.RandomSeed, libOptions.NormalizeNames) switch
       {
         (null, true) => NormalizeNamer.Create(namer),
         (null, false) => KeepOriginalNamer.Create(namer),
@@ -122,18 +128,6 @@ namespace Microsoft.Boogie.SMTLib
         return ctx;
       }
     }
-
-    internal TypeAxiomBuilder AxBuilder { get; set; }
-    protected TypeAxiomBuilder CachedAxBuilder;
-    protected ScopedNamer CachedNamer;
-    internal ScopedNamer Namer { get; set; }
-    protected TypeDeclCollector DeclCollector;
-    protected readonly List<string> proverErrors = new List<string>();
-    protected readonly List<string> proverWarnings = new List<string>();
-    protected StringBuilder common = new StringBuilder();
-    protected string CachedCommon = null;
-    protected TextWriter currentLogFile;
-    protected volatile ErrorHandler currentErrorHandler;
 
     private void FeedTypeDeclsToProver()
     {
@@ -357,7 +351,7 @@ namespace Microsoft.Boogie.SMTLib
       generatedFuncDefs.Iter(SendCommon); // Flush function definitions
     }
 
-    protected void PrepareCommon()
+    protected virtual void PrepareCommon()
     {
       if (common.Length == 0)
       {
@@ -387,7 +381,7 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         SendCommon("; done setting options\n");
-        SendCommon(_backgroundPredicates);
+        SendCommon(backgroundPredicates);
 
         if (options.UseTickleBool)
         {
@@ -410,30 +404,27 @@ namespace Microsoft.Boogie.SMTLib
         PrepareFunctionDefinitions();
       }
 
-      if (!AxiomsAreSetup)
-      {
-        var axioms = ctx.Axioms;
-        var nary = axioms as VCExprNAry;
-        if (nary != null && nary.Op == VCExpressionGenerator.AndOp)
-        {
-          foreach (var expr in nary.UniformArguments)
-          {
-            var str = VCExpr2String(expr, -1);
-            if (str != "true")
-            {
-              AddAxiom(str);
-            }
+      if (!AxiomsAreSetup) {
+        SetupAxioms();
+      }
+    }
+
+    private void SetupAxioms()
+    {
+      var axioms = ctx.Axioms;
+      if (axioms is VCExprNAry nary && nary.Op == VCExpressionGenerator.AndOp) {
+        foreach (var expr in nary.UniformArguments) {
+          var str = VCExpr2String(expr, -1);
+          if (str != "true") {
+            AddAxiom(str);
           }
         }
-        else
-        {
-          AddAxiom(VCExpr2String(axioms, -1));
-        }
-
-        AxiomsAreSetup = true;
-        CachedAxBuilder = AxBuilder;
-        CachedNamer = Namer;
+      } else {
+        AddAxiom(VCExpr2String(axioms, -1));
       }
+
+      AxiomsAreSetup = true;
+      CachedAxBuilder = AxBuilder;
     }
 
     protected void FlushAxioms()
@@ -1111,17 +1102,17 @@ namespace Microsoft.Boogie.SMTLib
 
     private void InitializeGlobalInformation()
     {
-      Contract.Ensures(_backgroundPredicates != null);
+      Contract.Ensures(backgroundPredicates != null);
       //throws ProverException, System.IO.FileNotFoundException;
-      if (_backgroundPredicates == null)
+      if (backgroundPredicates == null)
       {
         if (libOptions.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic)
         {
-          _backgroundPredicates = "";
+          backgroundPredicates = "";
         }
         else
         {
-          _backgroundPredicates = @"
+          backgroundPredicates = @"
 (set-info :category ""industrial"")
 (declare-sort |T@U| 0)
 (declare-sort |T@T| 0)
