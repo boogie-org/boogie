@@ -72,8 +72,8 @@ public sealed class VerificationResult
     lock (engine.Options.XmlSink) {
       engine.Options.XmlSink.WriteStartMethod(implementation.Name, Start);
 
-      foreach (var vcResult in VCResults.OrderBy(s => s.vcNum)) {
-        engine.Options.XmlSink.WriteSplit(vcResult.vcNum, vcResult.asserts, vcResult.startTime,
+      foreach (var vcResult in VCResults.OrderBy(s => (s.vcNum, s.iteration))) {
+        engine.Options.XmlSink.WriteSplit(vcResult.vcNum, vcResult.iteration, vcResult.asserts, vcResult.startTime,
           vcResult.outcome.ToString().ToLowerInvariant(), vcResult.runTime, vcResult.resourceCount);
       }
 

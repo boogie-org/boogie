@@ -224,7 +224,7 @@ namespace Microsoft.Boogie
       Contract.Requires(impl != null);
       Contract.Ensures(impl.Proc != null);
       ResolutionContext rc = new ResolutionContext(new DummyErrorSink(), options);
-      foreach (var decl in program.Declarations)
+      foreach (var decl in program.TopLevelDeclarations)
       {
         decl.Register(rc);
       }

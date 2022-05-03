@@ -72,7 +72,7 @@ namespace CoreTests
       // Check global is a copy
       int counter = 0;
       GlobalVariable gv2 = null;
-      foreach (var g in p2.Declarations)
+      foreach (var g in p2.TopLevelDeclarations)
       {
         ++counter;
         Assert.IsInstanceOf<GlobalVariable>(g);
@@ -90,7 +90,7 @@ namespace CoreTests
       p2.AddTopLevelDeclaration(gv3);
 
       counter = 0;
-      foreach (var g in p2.Declarations)
+      foreach (var g in p2.TopLevelDeclarations)
       {
         ++counter;
         Assert.IsInstanceOf<GlobalVariable>(g);
@@ -100,7 +100,7 @@ namespace CoreTests
 
       // The original program should still only have one global variable
       counter = 0;
-      foreach (var g in p.Declarations)
+      foreach (var g in p.TopLevelDeclarations)
       {
         ++counter;
         Assert.IsInstanceOf<GlobalVariable>(g);
@@ -139,7 +139,7 @@ namespace CoreTests
         }
       ");
 
-      var main = p.Declarations.OfType<Implementation>().Where(x => x.Name == "main").First();
+      var main = p.TopLevelDeclarations.OfType<Implementation>().Where(x => x.Name == "main").First();
 
       // Access blocks via their labels of gotocmds
       var oldEntryBlock = (main.Blocks[1].TransferCmd as GotoCmd).labelTargets[0];
@@ -155,7 +155,7 @@ namespace CoreTests
       var newProgram = (Program) d.Visit(p);
 
       // First lets check blocks have been duplicated
-      var newMain = newProgram.Declarations.OfType<Implementation>().Where(x => x.Name == "main").First();
+      var newMain = newProgram.TopLevelDeclarations.OfType<Implementation>().Where(x => x.Name == "main").First();
       var newEntryBlock = newMain.Blocks[0];
       Assert.AreEqual("entry", newEntryBlock.Label);
       Assert.AreNotSame(newEntryBlock, oldEntryBlock);
@@ -199,8 +199,8 @@ namespace CoreTests
       ");
 
       // Check resolved
-      var oldMainImpl = p.Declarations.OfType<Implementation>().Where(i => i.Name == "main").First();
-      var oldMainProc = p.Declarations.OfType<Procedure>().Where(i => i.Name == "main").First();
+      var oldMainImpl = p.TopLevelDeclarations.OfType<Implementation>().Where(i => i.Name == "main").First();
+      var oldMainProc = p.TopLevelDeclarations.OfType<Procedure>().Where(i => i.Name == "main").First();
       Assert.AreSame(oldMainImpl.Proc, oldMainProc);
 
       // Now duplicate the program
@@ -211,8 +211,8 @@ namespace CoreTests
       newProgram.Resolve(rc);
 
       // Check resolved
-      var newMainImpl = newProgram.Declarations.OfType<Implementation>().Where(i => i.Name == "main").First();
-      var newMainProc = newProgram.Declarations.OfType<Procedure>().Where(i => i.Name == "main").First();
+      var newMainImpl = newProgram.TopLevelDeclarations.OfType<Implementation>().Where(i => i.Name == "main").First();
+      var newMainProc = newProgram.TopLevelDeclarations.OfType<Procedure>().Where(i => i.Name == "main").First();
       Assert.AreSame(newMainImpl.Proc, newMainProc);
     }
 
@@ -238,11 +238,11 @@ namespace CoreTests
       ");
 
       // Get hold of the procedures that will be used with the CallCmd
-      var oldFoo = p.Declarations.OfType<Procedure>().Where(i => i.Name == "foo").First();
-      var oldBar = p.Declarations.OfType<Procedure>().Where(i => i.Name == "bar").First();
+      var oldFoo = p.TopLevelDeclarations.OfType<Procedure>().Where(i => i.Name == "foo").First();
+      var oldBar = p.TopLevelDeclarations.OfType<Procedure>().Where(i => i.Name == "bar").First();
 
       // Get the CallCmds to foo and bar
-      var oldCmdsInMain = p.Declarations.OfType<Implementation>().Where(i => i.Name == "main")
+      var oldCmdsInMain = p.TopLevelDeclarations.OfType<Implementation>().Where(i => i.Name == "main")
         .SelectMany(i => i.Blocks).SelectMany(b => b.Cmds);
       var oldCallToFoo = oldCmdsInMain.OfType<CallCmd>().Where(c => c.callee == "foo").First();
       var oldCallToBar = oldCmdsInMain.OfType<CallCmd>().Where(c => c.callee == "bar").First();
@@ -254,11 +254,11 @@ namespace CoreTests
       // Now duplicate the program and check that the calls are resolved correctly
       var newProgram = (Program) d.Visit(p);
 
-      var foo = newProgram.Declarations.OfType<Procedure>().Where(i => i.Name == "foo").First();
-      var bar = newProgram.Declarations.OfType<Procedure>().Where(i => i.Name == "bar").First();
+      var foo = newProgram.TopLevelDeclarations.OfType<Procedure>().Where(i => i.Name == "foo").First();
+      var bar = newProgram.TopLevelDeclarations.OfType<Procedure>().Where(i => i.Name == "bar").First();
 
       // Get the call to Foo
-      var cmdsInMain = newProgram.Declarations.OfType<Implementation>().Where(i => i.Name == "main")
+      var cmdsInMain = newProgram.TopLevelDeclarations.OfType<Implementation>().Where(i => i.Name == "main")
         .SelectMany(i => i.Blocks).SelectMany(b => b.Cmds);
       var callToFoo = cmdsInMain.OfType<CallCmd>().Where(c => c.callee == "foo").First();
       var callToBar = cmdsInMain.OfType<CallCmd>().Where(c => c.callee == "bar").First();

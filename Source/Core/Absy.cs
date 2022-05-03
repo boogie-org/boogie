@@ -288,7 +288,7 @@ namespace Microsoft.Boogie
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(cce.NonNullElements(this.TopLevelDeclarations));
+      Contract.Invariant(cce.NonNullElements(this.topLevelDeclarations));
       Contract.Invariant(cce.NonNullElements(this.globalVariablesCache, true));
     }
 
@@ -297,14 +297,14 @@ namespace Microsoft.Boogie
     public Program()
       : base(Token.NoToken)
     {
-      this.TopLevelDeclarations = new List<Declaration>();
+      this.topLevelDeclarations = new List<Declaration>();
     }
 
     public void Emit(TokenTextWriter stream)
     {
       Contract.Requires(stream != null);
       stream.SetToken(this);
-      this.TopLevelDeclarations.Emit(stream);
+      this.topLevelDeclarations.Emit(stream);
     }
 
     public void ProcessDatatypeConstructors(Errors errors)
@@ -391,14 +391,16 @@ namespace Microsoft.Boogie
       //Contract.Requires(rc != null);
       Helpers.ExtraTraceInformation(rc.Options, "Starting resolution");
 
-      foreach (var d in Declarations)
+      foreach (var d in TopLevelDeclarations)
       {
         d.Register(rc);
       }
 
       ResolveTypes(rc);
 
-      foreach (var datatypeTypeCtorDecl in Declarations.OfType<DatatypeTypeCtorDecl>())
+      var prunedTopLevelDeclarations = new List<Declaration /*!*/>();
+
+      foreach (var datatypeTypeCtorDecl in TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>())
       {
         foreach (var f in datatypeTypeCtorDecl.Constructors)
         {
@@ -421,8 +423,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      var implementationsToIgnore = new HashSet<Implementation>();
-      foreach (var d in Declarations)
+      foreach (var d in TopLevelDeclarations)
       {
         if (QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
         {
@@ -434,19 +435,18 @@ namespace Microsoft.Boogie
         {
           int e = rc.ErrorCount;
           d.Resolve(rc);
-          if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation implementation)
+          if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation)
           {
             // ignore this implementation
             System.Console.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors",
-              implementation.Name);
+              ((Implementation) d).Name);
             rc.ErrorCount = e;
-            implementationsToIgnore.Add(implementation);
             continue;
           }
         }
+        prunedTopLevelDeclarations.Add(d);
       }
 
-      var prunedTopLevelDeclarations = TopLevelDeclarations.Except(implementationsToIgnore).ToList();
       ClearTopLevelDeclarations();
       AddTopLevelDeclarations(prunedTopLevelDeclarations);
 
@@ -460,7 +460,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(rc != null);
       // first resolve type constructors
-      foreach (var d in Declarations.OfType<TypeCtorDecl>())
+      foreach (var d in TopLevelDeclarations.OfType<TypeCtorDecl>())
       {
         if (!QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
         {
@@ -471,7 +471,7 @@ namespace Microsoft.Boogie
       // collect type synonym declarations
       List<TypeSynonymDecl /*!*/> /*!*/
         synonymDecls = new List<TypeSynonymDecl /*!*/>();
-      foreach (var d in Declarations.OfType<TypeSynonymDecl>())
+      foreach (var d in TopLevelDeclarations.OfType<TypeSynonymDecl>())
       {
         Contract.Assert(d != null);
         if (!QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
@@ -503,7 +503,7 @@ namespace Microsoft.Boogie
       Helpers.ExtraTraceInformation(tc.Options, "Starting typechecking");
 
       int oldErrorCount = tc.ErrorCount;
-      foreach (var d in Declarations)
+      foreach (var d in TopLevelDeclarations)
       {
         d.Typecheck(tc);
       }
@@ -513,7 +513,7 @@ namespace Microsoft.Boogie
         // check whether any type proxies have remained uninstantiated
         TypeAmbiguitySeeker /*!*/
           seeker = new TypeAmbiguitySeeker(tc);
-        foreach (var d in Declarations)
+        foreach (var d in TopLevelDeclarations)
         {
           seeker.Visit(d);
         }
@@ -523,19 +523,33 @@ namespace Microsoft.Boogie
     public override Absy Clone()
     {
       var cloned = (Program) base.Clone();
-      cloned.TopLevelDeclarations = new List<Declaration>();
-      cloned.AddTopLevelDeclarations(TopLevelDeclarations);
+      cloned.topLevelDeclarations = new List<Declaration>();
+      cloned.AddTopLevelDeclarations(topLevelDeclarations);
       return cloned;
     }
 
-    [field: Rep] public List<Declaration> TopLevelDeclarations { get; private set; }
+    [Rep] private List<Declaration /*!*/> /*!*/ topLevelDeclarations;
 
-    public IEnumerable<Declaration> Declarations
+    public IReadOnlyList<Declaration> TopLevelDeclarations
     {
       get
       {
         Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Declaration>>()));
-        return TopLevelDeclarations.SelectMany(d => d.SelfAndChildren);
+        return topLevelDeclarations.AsReadOnly();
+      }
+
+      set
+      {
+        Contract.Requires(value != null);
+        // materialize the decls, in case there is any dependency
+        // back on topLevelDeclarations
+        var v = value.ToList();
+        // remove null elements
+        v.RemoveAll(d => (d == null));
+        // now clear the decls
+        ClearTopLevelDeclarations();
+        // and add the values
+        AddTopLevelDeclarations(v);
       }
     }
 
@@ -544,7 +558,7 @@ namespace Microsoft.Boogie
       Contract.Requires(!TopLevelDeclarationsAreFrozen);
       Contract.Requires(decl != null);
 
-      TopLevelDeclarations.Add(decl);
+      topLevelDeclarations.Add(decl);
       this.globalVariablesCache = null;
     }
 
@@ -553,7 +567,7 @@ namespace Microsoft.Boogie
       Contract.Requires(!TopLevelDeclarationsAreFrozen);
       Contract.Requires(cce.NonNullElements(decls));
 
-      TopLevelDeclarations.AddRange(decls);
+      topLevelDeclarations.AddRange(decls);
       this.globalVariablesCache = null;
     }
 
@@ -561,7 +575,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(!TopLevelDeclarationsAreFrozen);
 
-      TopLevelDeclarations.Remove(decl);
+      topLevelDeclarations.Remove(decl);
       this.globalVariablesCache = null;
     }
 
@@ -569,7 +583,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(!TopLevelDeclarationsAreFrozen);
 
-      TopLevelDeclarations.RemoveAll(match);
+      topLevelDeclarations.RemoveAll(match);
       this.globalVariablesCache = null;
     }
 
@@ -577,7 +591,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(!TopLevelDeclarationsAreFrozen);
 
-      TopLevelDeclarations.Clear();
+      topLevelDeclarations.Clear();
       this.globalVariablesCache = null;
     }
 
@@ -638,7 +652,7 @@ namespace Microsoft.Boogie
           return axiomsCache;
         }
 
-        var result = Declarations.OfType<Axiom>();
+        var result = TopLevelDeclarations.OfType<Axiom>();
         if (topLevelDeclarationsAreFrozen)
         {
           axiomsCache = result.ToList();
@@ -659,7 +673,7 @@ namespace Microsoft.Boogie
           return proceduresCache.Values;
         }
 
-        var result = Declarations.OfType<Procedure>();
+        var result = TopLevelDeclarations.OfType<Procedure>();
         if (topLevelDeclarationsAreFrozen)
         {
           proceduresCache = result.ToDictionary(p => p.Name);
@@ -693,7 +707,7 @@ namespace Microsoft.Boogie
           return functionsCache.Values;
         }
 
-        var result = Declarations.OfType<Function>();
+        var result = TopLevelDeclarations.OfType<Function>();
         if (topLevelDeclarationsAreFrozen)
         {
           functionsCache = result.ToDictionary(f => f.Name);
@@ -718,12 +732,12 @@ namespace Microsoft.Boogie
 
     public IEnumerable<Variable> Variables
     {
-      get { return Declarations.OfType<Variable>(); }
+      get { return TopLevelDeclarations.OfType<Variable>(); }
     }
 
     public IEnumerable<Constant> Constants
     {
-      get { return Declarations.OfType<Constant>(); }
+      get { return TopLevelDeclarations.OfType<Constant>(); }
     }
 
     private IEnumerable<GlobalVariable /*!*/> globalVariablesCache = null;
@@ -736,7 +750,7 @@ namespace Microsoft.Boogie
 
         if (globalVariablesCache == null)
         {
-          globalVariablesCache = Declarations.OfType<GlobalVariable>();
+          globalVariablesCache = TopLevelDeclarations.OfType<GlobalVariable>();
         }
 
         return new List<GlobalVariable>(globalVariablesCache);
@@ -752,7 +766,7 @@ namespace Microsoft.Boogie
 
     public void ComputeStronglyConnectedComponents()
     {
-      foreach (var d in this.Declarations)
+      foreach (var d in this.TopLevelDeclarations)
       {
         d.ComputeStronglyConnectedComponents();
       }
@@ -763,7 +777,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public void ResetAbstractInterpretationState()
     {
-      foreach (var d in this.Declarations)
+      foreach (var d in this.TopLevelDeclarations)
       {
         d.ResetAbstractInterpretationState();
       }
@@ -940,8 +954,6 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(DeclarationContracts))]
   public abstract class Declaration : Absy, ICarriesAttributes
   {
-    public virtual IEnumerable<Declaration> SelfAndChildren => Enumerable.Repeat(this, 1);
-
     public virtual int ContentHash => 1; 
     
     public QKeyValue Attributes { get; set; }
@@ -1358,26 +1370,6 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<string>() != null);
       return cce.NonNull(Name);
-    }
-
-    public static bool EmitDefinitionAxioms(TokenTextWriter stream, int level, IList<Axiom> definitionAxioms)
-    {
-      if (!definitionAxioms.Any()) {
-        return true;
-      }
-
-      stream.WriteLine(" uses {");
-      for (var index = 0; index < definitionAxioms.Count; index++) {
-        if (index > 0) {
-          stream.WriteLine();
-        }
-
-        var definitionAxiom = definitionAxioms[index];
-        definitionAxiom.Emit(stream, level + 1);
-      }
-
-      stream.WriteLine("}");
-      return false;
     }
   }
 
@@ -1914,8 +1906,6 @@ namespace Microsoft.Boogie
 
     public override bool IsMutable => false;
 
-    public override IEnumerable<Declaration> SelfAndChildren => base.SelfAndChildren.Concat(DefinitionAxioms);
-
     public override void Emit(TokenTextWriter stream, int level)
     {
       //Contract.Requires(stream != null);
@@ -1951,11 +1941,8 @@ namespace Microsoft.Boogie
           stream.Write(this, level, " complete");
         }
       }
-      var requiresColon = EmitDefinitionAxioms(stream, level, DefinitionAxioms);
 
-      if (requiresColon) {
-        stream.WriteLine(";");
-      }
+      stream.WriteLine(";");
     }
 
     public override void Register(ResolutionContext rc)
@@ -2691,10 +2678,9 @@ namespace Microsoft.Boogie
 
     public Expr Body; // Only set if the function is declared with {:inline}
     public NAryExpr DefinitionBody; // Only set if the function is declared with {:define}
-    public Axiom DefinitionAxiom { get; set; }
+    public Axiom DefinitionAxiom;
 
-    private readonly IList<Axiom> otherDefinitionAxioms = new List<Axiom>();
-
+    public IList<Axiom> otherDefinitionAxioms = new List<Axiom>();
     public IEnumerable<Axiom> DefinitionAxioms => 
       (DefinitionAxiom == null ? Enumerable.Empty<Axiom>() : new[]{ DefinitionAxiom }).Concat(otherDefinitionAxioms);
 
@@ -2768,8 +2754,6 @@ namespace Microsoft.Boogie
       this.Attributes = kv;
     }
 
-    public override IEnumerable<Declaration> SelfAndChildren => base.SelfAndChildren.Concat(OtherDefinitionAxioms);
-
     public override void Emit(TokenTextWriter stream, int level)
     {
       //Contract.Requires(stream != null);
@@ -2809,7 +2793,6 @@ namespace Microsoft.Boogie
       }
 
       EmitSignature(stream, true);
-      var requiresColon = true;
       if (Body != null)
       {
         Contract.Assert(DefinitionBody == null);
@@ -2819,7 +2802,6 @@ namespace Microsoft.Boogie
         Body.Emit(stream);
         stream.WriteLine();
         stream.WriteLine("}");
-        requiresColon = false;
       }
       else if (DefinitionBody != null)
       {
@@ -2829,11 +2811,8 @@ namespace Microsoft.Boogie
         DefinitionBody.Args[1].Emit(stream);
         stream.WriteLine();
         stream.WriteLine("}");
-        requiresColon = false;
       }
-
-      requiresColon &= EmitDefinitionAxioms(stream, level, otherDefinitionAxioms);
-      if (requiresColon)
+      else
       {
         stream.WriteLine(";");
       }
@@ -2974,6 +2953,7 @@ namespace Microsoft.Boogie
           new Trigger(tok, true, new List<Expr> {call}, null),
           def);
       }
+
       DefinitionAxiom = new Axiom(tok, def);
       return DefinitionAxiom;
     }
@@ -3371,6 +3351,7 @@ namespace Microsoft.Boogie
         Contract.Assert(e != null);
         e.Emit(stream, level);
       }
+
       stream.WriteLine();
       stream.WriteLine();
     }
@@ -3965,6 +3946,7 @@ namespace Microsoft.Boogie
       }
 
       stream.WriteLine(level, "{0}", '}');
+
       stream.WriteLine();
       stream.WriteLine();
     }
