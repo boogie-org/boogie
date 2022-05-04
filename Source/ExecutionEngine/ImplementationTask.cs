@@ -14,7 +14,6 @@ public interface IImplementationTask {
   Implementation Implementation { get; }
   Task<VerificationResult> ActualTask { get; }
   void Run();
-  void InitialiseStatus();
 }
 
 public class ImplementationTask : IImplementationTask {
@@ -32,7 +31,6 @@ public class ImplementationTask : IImplementationTask {
       observableStatus.OnNext(value);
     }
   }
-
   public ProcessedProgram ProcessedProgram { get; }
 
   public Task<VerificationResult> ActualTask { get; }
@@ -44,33 +42,42 @@ public class ImplementationTask : IImplementationTask {
     ProcessedProgram = processedProgram;
     Implementation = implementation;
     taskCancellationSource = new CancellationTokenSource();
+    
+    VerificationResult verificationResult = engine.GetCachedVerificationResult(Implementation, TextWriter.Null);
+    if (verificationResult != null) {
+      ActualTask = Task.FromResult(verificationResult);
+      CurrentStatus = StatusFromVerificationResult(verificationResult);
+    } else {
+      CurrentStatus = VerificationStatus.Stale;
+      ActualTask = runSource.Task.ContinueWith(t => {
 
-    ActualTask = runSource.Task.ContinueWith(t => {
+        var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(), null, null,
+          Implementation, taskCancellationSource, TextWriter.Null);
 
-      var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(), null, null,
-        Implementation, taskCancellationSource, TextWriter.Null);
+        if (!enqueueTask.IsCompleted) {
+          CurrentStatus = VerificationStatus.Queued;
+        }
 
-      if (!enqueueTask.IsCompleted) {
-        CurrentStatus = VerificationStatus.Queued;
-      }
+        enqueueTask.ContinueWith(_ => {
+          CurrentStatus = VerificationStatus.Verifying;
+        });
 
-      enqueueTask.ContinueWith(_ => {
-        CurrentStatus = VerificationStatus.Verifying;
-      });
-
-      var result = enqueueTask.Unwrap();
-      result.ContinueWith(task => {
-        CurrentStatus = task.Result.Outcome == ConditionGeneration.Outcome.Correct
-          ? VerificationStatus.Correct
-          : VerificationStatus.Error;
-        observableStatus.OnCompleted();
-      });
-      return result;
-    }, TaskContinuationOptions.ExecuteSynchronously).Unwrap();
+        var result = enqueueTask.Unwrap();
+        result.ContinueWith(task => {
+          CurrentStatus = StatusFromVerificationResult(task.Result);
+          observableStatus.OnCompleted();
+        });
+        return result;
+      }, TaskContinuationOptions.ExecuteSynchronously).Unwrap();
+    }
+    
   }
 
-  public void InitialiseStatus() {
-    CurrentStatus = VerificationStatus.Stale; // TODO use caching to determine if it's really stale.
+  private static VerificationStatus StatusFromVerificationResult(VerificationResult verificationResult)
+  {
+    return verificationResult.Outcome == ConditionGeneration.Outcome.Correct
+      ? VerificationStatus.Correct
+      : VerificationStatus.Error;
   }
 
   public void Run() {

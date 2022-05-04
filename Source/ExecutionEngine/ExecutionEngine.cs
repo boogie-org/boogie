@@ -808,7 +808,7 @@ namespace Microsoft.Boogie
       return verificationResult;
     }
 
-    private VerificationResult GetCachedVerificationResult(Implementation impl, TextWriter output)
+    public VerificationResult GetCachedVerificationResult(Implementation impl, TextWriter output)
     {
       if (0 >= Options.VerifySnapshots)
       {

@@ -187,14 +187,15 @@ Boogie program verifier finished with 0 verified, 1 error
     
     var options = CommandLineOptions.FromArguments();
     options.VcsCores = 1;
+    options.VerifySnapshots = 1;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
-    var programString = @"procedure Bad(y: int)
+    var programString = @"procedure {:checksum ""stable""} Bad(y: int)
 {
   assert 2 == 1;
 }
 
-procedure Good(y: int)
+procedure {:checksum ""stable""} Good(y: int)
 {
   assert 2 == 2;
 }
@@ -220,5 +221,11 @@ procedure Good(y: int)
       (second, VerificationStatus.Verifying),
       (second, VerificationStatus.Correct),
     }));
+    
+    var tasks2 = engine.GetImplementationTasks(program1);
+    Assert.AreEqual(VerificationStatus.Error, tasks2[0].CurrentStatus);
+    Assert.AreEqual(VerificationStatus.Correct, tasks2[1].CurrentStatus);
+    var statuses2 = first.ObservableStatus.Merge(second.ObservableStatus);
+    Assert.IsFalse(await statuses2.Any().ToTask());
   }
 }
