@@ -202,23 +202,25 @@ procedure {:checksum ""stable""} Good(y: int)
 ";
     Parser.Parse(programString, "fakeFilename1", out var program1);
     var tasks = engine.GetImplementationTasks(program1);
-    var statusList = new List<(ImplementationTask, VerificationStatus)>();
+    var statusList = new List<(string, VerificationStatus)>();
 
     var first = tasks[0];
     var second = tasks[1];
-    var statuses = first.ObservableStatus.Select(s => (implementationTask: first, s)).
-      Merge(second.ObservableStatus.Select(status => (second, s: status)));
+    var statuses = first.ObservableStatus.Select(s => (implementationTask: first.Implementation.Name, s)).
+      Merge(second.ObservableStatus.Select(status => (second.Implementation.Name, s: status)));
     statuses.Subscribe(t => statusList.Add(t));
     
     first.Run();
     second.Run();
     await statuses.ToTask();
-    
-    Assert.AreEqual((first, VerificationStatus.Verifying), statusList[0]);
-    Assert.AreEqual((second, VerificationStatus.Queued), statusList[1]);
-    Assert.AreEqual((first, VerificationStatus.Error), statusList[2]);
-    Assert.AreEqual((second, VerificationStatus.Verifying), statusList[3]);
-    Assert.AreEqual((second, VerificationStatus.Correct), statusList[4]);
+
+    var firstName = first.Implementation.Name;
+    var secondName = second.Implementation.Name;
+    Assert.AreEqual((firstName, VerificationStatus.Verifying), statusList[0]);
+    Assert.AreEqual((secondName, VerificationStatus.Queued), statusList[1]);
+    Assert.AreEqual((firstName, VerificationStatus.Error), statusList[2]);
+    Assert.AreEqual((secondName, VerificationStatus.Verifying), statusList[3]);
+    Assert.AreEqual((secondName, VerificationStatus.Correct), statusList[4]);
     
     var tasks2 = engine.GetImplementationTasks(program1);
     Assert.AreEqual(VerificationStatus.Error, tasks2[0].CurrentStatus);
