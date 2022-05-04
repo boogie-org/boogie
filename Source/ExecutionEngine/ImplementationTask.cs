@@ -54,13 +54,12 @@ public class ImplementationTask : IImplementationTask {
         var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(), null, null,
           Implementation, taskCancellationSource, TextWriter.Null);
 
-        if (!enqueueTask.IsCompleted) {
-          CurrentStatus = VerificationStatus.Queued;
-        }
-
-        enqueueTask.ContinueWith(_ => {
+        if (enqueueTask.IsCompleted) {
           CurrentStatus = VerificationStatus.Verifying;
-        });
+        } else {
+          CurrentStatus = VerificationStatus.Queued;
+          enqueueTask.ContinueWith(_ => { CurrentStatus = VerificationStatus.Verifying; });
+        }
 
         var result = enqueueTask.Unwrap();
         result.ContinueWith(task => {
