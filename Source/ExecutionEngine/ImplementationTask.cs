@@ -20,7 +20,7 @@ public interface IImplementationTask {
 public class ImplementationTask : IImplementationTask {
   private readonly CancellationTokenSource taskCancellationSource;
 
-  private readonly ReplaySubject<VerificationStatus> observableStatus = new();
+  private readonly Subject<VerificationStatus> observableStatus = new();
   
   private VerificationStatus currentStatus;
   public IObservable<VerificationStatus> ObservableStatus => observableStatus;

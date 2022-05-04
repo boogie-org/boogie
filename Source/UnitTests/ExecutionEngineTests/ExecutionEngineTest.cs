@@ -214,8 +214,6 @@ procedure Good(y: int)
     await statuses.ToTask();
     
     Assert.True(statusList.SequenceEqual(new[] {
-      // (first, VerificationStatus.Stale),
-      // (second, VerificationStatus.Stale),
       (first, VerificationStatus.Verifying),
       (second, VerificationStatus.Queued),
       (first, VerificationStatus.Error),
