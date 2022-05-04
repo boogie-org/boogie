@@ -214,13 +214,11 @@ procedure {:checksum ""stable""} Good(y: int)
     second.Run();
     await statuses.ToTask();
     
-    Assert.True(statusList.SequenceEqual(new[] {
-      (first, VerificationStatus.Verifying),
-      (second, VerificationStatus.Queued),
-      (first, VerificationStatus.Error),
-      (second, VerificationStatus.Verifying),
-      (second, VerificationStatus.Correct),
-    }));
+    Assert.AreEqual((first, VerificationStatus.Verifying), statusList[0]);
+    Assert.AreEqual((second, VerificationStatus.Queued), statusList[1]);
+    Assert.AreEqual((first, VerificationStatus.Error), statusList[2]);
+    Assert.AreEqual((second, VerificationStatus.Verifying), statusList[3]);
+    Assert.AreEqual((second, VerificationStatus.Correct), statusList[4]);
     
     var tasks2 = engine.GetImplementationTasks(program1);
     Assert.AreEqual(VerificationStatus.Error, tasks2[0].CurrentStatus);
