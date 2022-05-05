@@ -55,24 +55,21 @@ public class ImplementationTask : IImplementationTask {
     }
   }
 
-  private Task<VerificationResult> VerifyImplementationWithStatusTracking(ExecutionEngine engine)
+  private async Task<VerificationResult> VerifyImplementationWithStatusTracking(ExecutionEngine engine)
   {
     var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(), null, null,
       Implementation, taskCancellationSource, TextWriter.Null);
 
-    if (enqueueTask.IsCompleted) {
+    CurrentStatus = enqueueTask.IsCompleted ? VerificationStatus.Running : VerificationStatus.Queued;
+
+    var verifyTask = await enqueueTask;
+    if (CurrentStatus != VerificationStatus.Running) {
       CurrentStatus = VerificationStatus.Running;
-    } else {
-      CurrentStatus = VerificationStatus.Queued;
-      enqueueTask.ContinueWith(_ => { CurrentStatus = VerificationStatus.Running; });
     }
 
-    var result = enqueueTask.Unwrap();
-    result.ContinueWith(task =>
-    {
-      CurrentStatus = VerificationStatus.Completed;
-      observableStatus.OnCompleted();
-    });
+    var result = await verifyTask;
+    CurrentStatus = VerificationStatus.Completed;
+    observableStatus.OnCompleted();
     return result;
   }
 
