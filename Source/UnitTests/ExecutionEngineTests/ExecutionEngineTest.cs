@@ -230,7 +230,10 @@ procedure {:checksum ""stable""} Good(y: int)
     
     var tasks2 = engine.GetImplementationTasks(program);
     Assert.AreEqual(VerificationStatus.Completed, tasks2[0].CurrentStatus);
+    Assert.AreEqual(ConditionGeneration.Outcome.Errors, tasks2[0].ActualTask.Result.Outcome);
+
     Assert.AreEqual(VerificationStatus.Completed, tasks2[1].CurrentStatus);
+    Assert.AreEqual(ConditionGeneration.Outcome.Correct, tasks2[1].ActualTask.Result.Outcome);
     var statuses2 = first.ObservableStatus.Merge(second.ObservableStatus);
     Assert.IsFalse(await statuses2.Any().ToTask());
   }
