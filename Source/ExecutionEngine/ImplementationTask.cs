@@ -36,7 +36,7 @@ public class ImplementationTask : IImplementationTask {
   public Task<VerificationResult> ActualTask { get; }
   public Implementation Implementation { get; }
 
-  private readonly TaskCompletionSource runSource = new();
+  private readonly TaskCompletionSource runWasCalled = new();
   
   public ImplementationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Implementation implementation) {
     ProcessedProgram = processedProgram;
@@ -49,16 +49,15 @@ public class ImplementationTask : IImplementationTask {
       CurrentStatus = VerificationStatus.Completed;
     } else {
       CurrentStatus = VerificationStatus.Stale;
-      ActualTask = runSource.Task.ContinueWith(
-        _ => VerifyImplementationWithStatusTracking(engine),
-        TaskContinuationOptions.ExecuteSynchronously).Unwrap();
+      ActualTask = VerifyImplementationWithStatusTracking(engine);
     }
   }
 
-  private async Task<VerificationResult> VerifyImplementationWithStatusTracking(ExecutionEngine engine)
-  {
-    var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(), null, null,
-      Implementation, taskCancellationSource, TextWriter.Null);
+  private async Task<VerificationResult> VerifyImplementationWithStatusTracking(ExecutionEngine engine) {
+    await runWasCalled.Task;
+
+    var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(),
+      null, null, Implementation, taskCancellationSource, TextWriter.Null);
 
     CurrentStatus = enqueueTask.IsCompleted ? VerificationStatus.Running : VerificationStatus.Queued;
 
@@ -74,11 +73,12 @@ public class ImplementationTask : IImplementationTask {
   }
 
   public void Run() {
-    runSource.SetResult();
+    runWasCalled.SetResult();
   }
 
   public void Cancel() {
     taskCancellationSource.Cancel();
+    runWasCalled.TrySetCanceled(taskCancellationSource.Token);
   }
 }
 
