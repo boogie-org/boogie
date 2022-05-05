@@ -43,40 +43,37 @@ public class ImplementationTask : IImplementationTask {
     Implementation = implementation;
     taskCancellationSource = new CancellationTokenSource();
     
-    VerificationResult verificationResult = engine.GetCachedVerificationResult(Implementation, TextWriter.Null);
-    if (verificationResult != null) {
-      ActualTask = Task.FromResult(verificationResult);
-      CurrentStatus = StatusFromVerificationResult(verificationResult);
+    var cachedVerificationResult = engine.GetCachedVerificationResult(Implementation, TextWriter.Null);
+    if (cachedVerificationResult != null) {
+      ActualTask = Task.FromResult(cachedVerificationResult);
+      CurrentStatus = VerificationStatus.Completed;
     } else {
       CurrentStatus = VerificationStatus.Stale;
-      ActualTask = runSource.Task.ContinueWith(t => {
-
-        var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(), null, null,
-          Implementation, taskCancellationSource, TextWriter.Null);
-
-        if (enqueueTask.IsCompleted) {
-          CurrentStatus = VerificationStatus.Verifying;
-        } else {
-          CurrentStatus = VerificationStatus.Queued;
-          enqueueTask.ContinueWith(_ => { CurrentStatus = VerificationStatus.Verifying; });
-        }
-
-        var result = enqueueTask.Unwrap();
-        result.ContinueWith(task => {
-          CurrentStatus = StatusFromVerificationResult(task.Result);
-          observableStatus.OnCompleted();
-        });
-        return result;
-      }, TaskContinuationOptions.ExecuteSynchronously).Unwrap();
+      ActualTask = runSource.Task.ContinueWith(
+        _ => VerifyImplementationWithStatusTracking(engine),
+        TaskContinuationOptions.ExecuteSynchronously).Unwrap();
     }
-    
   }
 
-  private static VerificationStatus StatusFromVerificationResult(VerificationResult verificationResult)
+  private Task<VerificationResult> VerifyImplementationWithStatusTracking(ExecutionEngine engine)
   {
-    return verificationResult.Outcome == ConditionGeneration.Outcome.Correct
-      ? VerificationStatus.Correct
-      : VerificationStatus.Error;
+    var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(), null, null,
+      Implementation, taskCancellationSource, TextWriter.Null);
+
+    if (enqueueTask.IsCompleted) {
+      CurrentStatus = VerificationStatus.Running;
+    } else {
+      CurrentStatus = VerificationStatus.Queued;
+      enqueueTask.ContinueWith(_ => { CurrentStatus = VerificationStatus.Running; });
+    }
+
+    var result = enqueueTask.Unwrap();
+    result.ContinueWith(task =>
+    {
+      CurrentStatus = VerificationStatus.Completed;
+      observableStatus.OnCompleted();
+    });
+    return result;
   }
 
   public void Run() {
@@ -89,9 +86,8 @@ public class ImplementationTask : IImplementationTask {
 }
 
 public enum VerificationStatus {
-  Stale,
-  Queued,
-  Verifying,
-  Correct,
-  Error
+  Stale,      // Not scheduled to be run
+  Queued,     // Scheduled to be run but waiting for resources
+  Running,    // Currently running
+  Completed,  // Results are available
 }

@@ -214,20 +214,23 @@ procedure {:checksum ""stable""} Good(y: int)
     var statuses = first.ObservableStatus.Select(s => (implementationTask: first.Implementation.Name, s)).
       Merge(second.ObservableStatus.Select(status => (second.Implementation.Name, s: status)));
     statuses.Subscribe(t => statusList.Add(t));
-    
+
+    Assert.AreEqual(VerificationStatus.Stale, first.CurrentStatus);
+    Assert.AreEqual(VerificationStatus.Stale, second.CurrentStatus);
+
     first.Run();
     second.Run();
     await statuses.ToTask();
 
-    Assert.AreEqual((firstName, VerificationStatus.Verifying), statusList[0]);
+    Assert.AreEqual((firstName, VerificationStatus.Running), statusList[0]);
     Assert.AreEqual((secondName, VerificationStatus.Queued), statusList[1]);
-    Assert.AreEqual((firstName, VerificationStatus.Error), statusList[2]);
-    Assert.AreEqual((secondName, VerificationStatus.Verifying), statusList[3]);
-    Assert.AreEqual((secondName, VerificationStatus.Correct), statusList[4]);
+    Assert.AreEqual((firstName, VerificationStatus.Completed), statusList[2]);
+    Assert.AreEqual((secondName, VerificationStatus.Running), statusList[3]);
+    Assert.AreEqual((secondName, VerificationStatus.Completed), statusList[4]);
     
     var tasks2 = engine.GetImplementationTasks(program);
-    Assert.AreEqual(VerificationStatus.Error, tasks2[0].CurrentStatus);
-    Assert.AreEqual(VerificationStatus.Correct, tasks2[1].CurrentStatus);
+    Assert.AreEqual(VerificationStatus.Completed, tasks2[0].CurrentStatus);
+    Assert.AreEqual(VerificationStatus.Completed, tasks2[1].CurrentStatus);
     var statuses2 = first.ObservableStatus.Merge(second.ObservableStatus);
     Assert.IsFalse(await statuses2.Any().ToTask());
   }
