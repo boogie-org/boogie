@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
@@ -177,5 +180,61 @@ Boogie program verifier finished with 0 verified, 1 error
 ".ReplaceLineEndings();
 
     Assert.AreEqual(expected, output);
+  }
+
+  [Test]
+  public async Task StatusTest() {
+    
+    var options = CommandLineOptions.FromArguments();
+    options.VcsCores = 1;
+    options.VerifySnapshots = 1;
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+
+    var programString = @"procedure {:checksum ""stable""} Bad(y: int)
+{
+  assert 2 == 1;
+}
+
+procedure {:checksum ""stable""} Good(y: int)
+{
+  assert 2 == 2;
+}
+";
+    Parser.Parse(programString, "fakeFilename1", out var program);
+    Assert.AreEqual("Bad", program.Implementations.ElementAt(0).Name);
+    var tasks = engine.GetImplementationTasks(program);
+    var statusList = new List<(string, VerificationStatus)>();
+
+    var first = tasks[0];
+    var second = tasks[1];
+    var firstName = first.Implementation.Name;
+    var secondName = second.Implementation.Name;
+    Assert.AreEqual("Bad", firstName);
+    Assert.AreEqual("Good", secondName);
+    var statuses = first.ObservableStatus.Select(s => (implementationTask: first.Implementation.Name, s)).
+      Merge(second.ObservableStatus.Select(status => (second.Implementation.Name, s: status)));
+    statuses.Subscribe(t => statusList.Add(t));
+
+    Assert.AreEqual(VerificationStatus.Stale, first.CurrentStatus);
+    Assert.AreEqual(VerificationStatus.Stale, second.CurrentStatus);
+
+    first.Run();
+    second.Run();
+    await statuses.ToTask();
+
+    Assert.AreEqual((firstName, VerificationStatus.Running), statusList[0]);
+    Assert.AreEqual((secondName, VerificationStatus.Queued), statusList[1]);
+    Assert.AreEqual((firstName, VerificationStatus.Completed), statusList[2]);
+    Assert.AreEqual((secondName, VerificationStatus.Running), statusList[3]);
+    Assert.AreEqual((secondName, VerificationStatus.Completed), statusList[4]);
+    
+    var tasks2 = engine.GetImplementationTasks(program);
+    Assert.AreEqual(VerificationStatus.Completed, tasks2[0].CurrentStatus);
+    Assert.AreEqual(ConditionGeneration.Outcome.Errors, tasks2[0].ActualTask.Result.Outcome);
+
+    Assert.AreEqual(VerificationStatus.Completed, tasks2[1].CurrentStatus);
+    Assert.AreEqual(ConditionGeneration.Outcome.Correct, tasks2[1].ActualTask.Result.Outcome);
+    var statuses2 = first.ObservableStatus.Merge(second.ObservableStatus);
+    Assert.IsFalse(await statuses2.Any().ToTask());
   }
 }

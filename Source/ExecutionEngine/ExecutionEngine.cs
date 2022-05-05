@@ -648,8 +648,8 @@ namespace Microsoft.Boogie
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
         var implementation = stablePrioritizedImpls[index];
-        var result = await VerifyImplementationWithLargeStackScheduler(processedProgram, stats, programId, er,
-          implementation, cts, taskWriter);
+        var result = await EnqueueVerifyImplementation(processedProgram, stats, programId, er,
+          implementation, cts, taskWriter).Unwrap();
         var output = result.GetOutput(Options.Printer, this, stats, er);
         await taskWriter.WriteAsync(output);
         return result;
@@ -694,7 +694,9 @@ namespace Microsoft.Boogie
       return GetPrioritizedImplementations(program).Select(implementation => new ImplementationTask(this, processedProgram, implementation)).ToList();
     }
 
-    public async Task<VerificationResult> VerifyImplementationWithLargeStackScheduler(
+    /// The outer task is to wait for a semaphore to let verification start
+    /// The inner task is the actual verification of the implementation
+    public async Task<Task<VerificationResult>> EnqueueVerifyImplementation(
       ProcessedProgram processedProgram, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, Implementation implementation,
       CancellationTokenSource cts,
@@ -706,21 +708,17 @@ namespace Microsoft.Boogie
       }
 
       await verifyImplementationSemaphore.WaitAsync(cts.Token);
-      try {
+      ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
 
-        ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
+      var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cts.Token,
+        implementation,
+        programId, taskWriter), cts.Token);
 
-        var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cts.Token,
-          implementation,
-          programId, taskWriter), cts.Token);
-
-        var verificationResult = await coreTask;
-        return verificationResult;
-      }
-      finally {
+      var _ = coreTask.ContinueWith(t => {
         verifyImplementationSemaphore.Release();
         ImplIdToCancellationTokenSource.TryRemove(id, out old);
-      }
+      });
+      return coreTask;
     }
 
     private void TraceCachingForBenchmarking(PipelineStatistics stats,
@@ -812,7 +810,7 @@ namespace Microsoft.Boogie
       return verificationResult;
     }
 
-    private VerificationResult GetCachedVerificationResult(Implementation impl, TextWriter output)
+    public VerificationResult GetCachedVerificationResult(Implementation impl, TextWriter output)
     {
       if (0 >= Options.VerifySnapshots)
       {
