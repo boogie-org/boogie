@@ -14,6 +14,7 @@ public interface IImplementationTask {
   Implementation Implementation { get; }
   Task<VerificationResult> ActualTask { get; }
   void Run();
+  void Cancel();
 }
 
 public class ImplementationTask : IImplementationTask {

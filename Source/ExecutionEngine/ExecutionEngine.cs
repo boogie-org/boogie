@@ -681,7 +681,7 @@ namespace Microsoft.Boogie
 
     }
 
-    public IReadOnlyList<ImplementationTask> GetImplementationTasks(Program program) {
+    public IReadOnlyList<IImplementationTask> GetImplementationTasks(Program program) {
       program.Resolve(Options);
       program.Typecheck(Options);
 
