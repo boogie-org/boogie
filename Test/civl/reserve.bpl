@@ -5,10 +5,6 @@ const memHi: int;
 axiom 0 < memLo && memLo <= memHi;
 function memAddr(i: int) returns (bool) { memLo <= i && i < memHi }
 
-const numMutators: int;
-axiom 0 < numMutators;
-function {:inline} mutatorAddr(tid: Tid) returns (bool) { 1 <= tid && tid <= numMutators }
-
 type {:datatype} Bijection;
 function {:constructor} Bijection(domain: [Tid]bool, range: [int]bool, tidToPtr: [Tid]int, ptrToTid: [int]Tid): Bijection;
 
@@ -42,6 +38,20 @@ procedure {:lemma} SizeLemma2<T>(X: [T]bool, Y: [T]bool);
 requires MapDiff(X, Y) == MapConst(false);
 ensures Size(Y) == Size(X) + Size(MapDiff(Y, X));
 
+procedure {:yields} {:layer 0} {:refines "atomic_DecrementFreeSpace"} DecrementFreeSpace({:linear "tid"} tid: Tid);
+
+procedure {:atomic} {:layer 1} atomic_DecrementFreeSpace({:linear "tid"} tid: Tid)
+modifies freeSpace, allocMap;
+{
+    var ptr: int;
+    assume 0 < freeSpace;
+    assert !domain#Bijection(allocMap)[tid];
+    assert freeSpace == Size(MapDiff(Free, range#Bijection(allocMap)));
+    assume MapDiff(Free, range#Bijection(allocMap))[ptr];
+    freeSpace := freeSpace - 1;
+    call allocMap := Reserve(allocMap, tid, ptr);
+}
+
 procedure {:atomic} Reserve(allocMap: Bijection, tid: Tid, ptr: int) returns (allocMap': Bijection) {
     assert !domain#Bijection(allocMap)[tid];
     assert !range#Bijection(allocMap)[ptr];
@@ -51,6 +61,23 @@ procedure {:atomic} Reserve(allocMap: Bijection, tid: Tid, ptr: int) returns (al
                     range#Bijection(allocMap)[ptr := true],
                     tidToPtr#Bijection(allocMap)[tid := ptr],
                     ptrToTid#Bijection(allocMap)[ptr := tid]);
+}
+
+procedure {:yields} {:layer 0} {:refines "atomic_AllocIfPtrFree"} AllocIfPtrFree({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool);
+
+procedure {:atomic} {:layer 1} atomic_AllocIfPtrFree({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool)
+modifies Free, allocMap;
+{
+    var tid': Tid;
+    var ptr': int;
+    assert memAddr(ptr);
+    assert Free[ptr] || memAddr(ptr + 1);
+    assert domain#Bijection(allocMap)[tid];
+    spaceFound := Free[ptr];
+    if (spaceFound) {
+        Free[ptr] := false;
+        call allocMap := Alloc(allocMap, tid, ptr);
+    }
 }
 
 procedure {:atomic} Alloc(allocMap: Bijection, tid: Tid, ptr: int) returns (allocMap': Bijection) {
@@ -77,36 +104,8 @@ procedure {:atomic} Alloc(allocMap: Bijection, tid: Tid, ptr: int) returns (allo
                     ptrToTid#Bijection(allocMap'));
 }
 
-procedure {:yields} {:layer 0} {:refines "atomic_DecrementFreeSpace"} DecrementFreeSpace({:linear "tid"} tid: Tid);
-procedure {:atomic} {:layer 1} atomic_DecrementFreeSpace({:linear "tid"} tid: Tid)
-modifies freeSpace, allocMap;
-{
-    var ptr: int;
-    assume 0 < freeSpace;
-    assert !domain#Bijection(allocMap)[tid];
-    assert freeSpace == Size(MapDiff(Free, range#Bijection(allocMap)));
-    assume MapDiff(Free, range#Bijection(allocMap))[ptr];
-    freeSpace := freeSpace - 1;
-    call allocMap := Reserve(allocMap, tid, ptr);
-}
-
-procedure {:yields} {:layer 0} {:refines "atomic_AllocIfPtrFree"} AllocIfPtrFree({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool);
-procedure {:atomic} {:layer 1} atomic_AllocIfPtrFree({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool)
-modifies Free, allocMap;
-{
-    var tid': Tid;
-    var ptr': int;
-    assert memAddr(ptr);
-    assert Free[ptr] || memAddr(ptr + 1);
-    assert domain#Bijection(allocMap)[tid];
-    spaceFound := Free[ptr];
-    if (spaceFound) {
-        Free[ptr] := false;
-        call allocMap := Alloc(allocMap, tid, ptr);
-    }
-}
-
 procedure {:yields} {:layer 0} {:refines "atomic_Reclaim"} Reclaim() returns (ptr: int);
+
 procedure {:atomic} {:layer 1} atomic_Reclaim() returns (ptr: int)
 modifies freeSpace, Free;
 {
@@ -127,15 +126,6 @@ requires {:layer 1} !domain#Bijection(allocMap)[tid];
     call DecrementFreeSpace(tid);
     i := memLo;
     call {:layer 1} SizeLemma1(MapDiff(Free, range#Bijection(allocMap)), tidToPtr#Bijection(allocMap)[tid]);
-
-    assert {:layer 1} memAddr(i) && domain#Bijection(allocMap)[tid];
-    assert {:layer 1} i <= tidToPtr#Bijection(allocMap)[tid];
-    assert {:layer 1} 0 <= freeSpace;
-    assert {:layer 1} BijectionInvariant(allocMap);
-    assert {:layer 1} (forall y: int :: Free[y] ==> memAddr(y));
-    assert {:layer 1} MapDiff(range#Bijection(allocMap), Free) == MapConst(false);
-    assert {:layer 1} freeSpace == Size(MapDiff(Free, range#Bijection(allocMap)));
-
     while (i < memHi)
     invariant {:yields} {:layer 1} memAddr(i) && domain#Bijection(allocMap)[tid];
     invariant {:yields} {:layer 1} i <= tidToPtr#Bijection(allocMap)[tid];
@@ -149,11 +139,6 @@ requires {:layer 1} !domain#Bijection(allocMap)[tid];
         if (spaceFound)
         {
             call {:layer 1} SizeLemma2(range#Bijection(allocMap), Free);
-
-            assert {:layer 1} BijectionInvariant(allocMap);
-            assert {:layer 1} MapDiff(range#Bijection(allocMap), Free) == MapConst(false);
-            assert {:layer 1} freeSpace == Size(MapDiff(Free, range#Bijection(allocMap)));
-
             return;
         }
         i := i + 1;
