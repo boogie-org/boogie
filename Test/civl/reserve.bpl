@@ -1,3 +1,6 @@
+// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
 type {:linear "tid"} Tid = int;
 
 const memLo: int;
