@@ -447,7 +447,10 @@ namespace Microsoft.Boogie.SMTLib
           weight = 1;
         }
 
-        var hasAttrs = node.Triggers.Count > 0 || info.qid != null || weight != 1 || info.uniqueId != -1;
+        var hasAttrs = node.Triggers.Count > 0 ||
+                       weight != 1 ||
+                       (LibOptions.EmitDebugInformation &&
+                        (info.qid != null || info.uniqueId != -1));
 
         if (hasAttrs)
         {
