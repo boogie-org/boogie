@@ -50,7 +50,10 @@ procedure Second(y: int)
     Assert.AreEqual(true, firstResult.Errors[0].Model.ModelHasStatesAlready);
 
     tasks[1].Run();
+    var taskSource = new TaskCompletionSource();
+    tasks[1].ObservableStatus.Subscribe(_ => { }, () => taskSource.SetResult());
     tasks[1].Cancel();
+    await taskSource.Task;
     Assert.CatchAsync<TaskCanceledException>(() => tasks[1].ActualTask);
   }
 
