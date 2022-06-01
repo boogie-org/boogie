@@ -74,11 +74,12 @@ public class ImplementationTask : IImplementationTask {
   }
 
   public void Run() {
-    runWasCalled.SetResult();
+    runWasCalled.TrySetResult();
   }
 
   public void Cancel() {
     taskCancellationSource.Cancel();
+    observableStatus.OnCompleted();
     runWasCalled.TrySetCanceled(taskCancellationSource.Token);
   }
 }
