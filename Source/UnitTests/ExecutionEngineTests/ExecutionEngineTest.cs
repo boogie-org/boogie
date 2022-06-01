@@ -53,6 +53,7 @@ procedure Second(y: int)
     var taskSource = new TaskCompletionSource();
     tasks[1].ObservableStatus.Subscribe(_ => { }, () => taskSource.SetResult());
     tasks[1].Cancel();
+    tasks[1].Run();
     await taskSource.Task;
     Assert.CatchAsync<TaskCanceledException>(() => tasks[1].ActualTask);
   }
