@@ -147,7 +147,7 @@ namespace Microsoft.Boogie
             ? string.Format("{0}({1},{2})", currentImplementation.tok.filename, currentImplementation.tok.line,
               currentImplementation.tok.col)
             : "<unknown location>";
-          Console.Out.WriteLine("Processing implementation {0} (at {1}):", currentImplementation.Name, loc);
+          Console.Out.WriteLine("Processing implementation {0} (at {1}):", currentImplementation.DisplayName, loc);
           foreach (var a in axioms)
           {
             Console.Out.Write("  >>> added axiom: ");
@@ -335,8 +335,8 @@ namespace Microsoft.Boogie
           var loc = node.tok != null && node.tok != Token.NoToken
             ? string.Format("{0}({1},{2})", node.tok.filename, node.tok.line, node.tok.col)
             : "<unknown location>";
-          Console.Out.WriteLine("Processing call to procedure {0} in implementation {1} (at {2}):", node.Proc.Name,
-            currentImplementation.Name, loc);
+          Console.Out.WriteLine("Processing call to procedure {0} in implementation {1} (at {2}):", node.Proc.DisplayName,
+            currentImplementation.DisplayName, loc);
           foreach (var a in axioms)
           {
             Console.Out.Write("  >>> added axiom: ");

@@ -1307,6 +1307,13 @@ namespace Microsoft.Boogie
       Contract.Invariant(name != null);
     }
 
+    public string /*!*/ DisplayName
+    {
+      get {
+        return QKeyValue.FindStringAttribute(Attributes, "displayName") ?? Name;
+      }
+    }
+
     public string /*!*/ Name
     {
       get
