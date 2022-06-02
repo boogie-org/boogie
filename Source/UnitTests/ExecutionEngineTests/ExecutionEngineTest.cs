@@ -219,8 +219,8 @@ procedure {:checksum ""stable""} Good(y: int)
       Merge(second.ObservableStatus.Select(status => (second.Implementation.Name, s: status)));
     statuses.Subscribe(t => statusList.Add(t));
 
-    Assert.AreEqual(VerificationStatus.Stale, first.CurrentStatus);
-    Assert.AreEqual(VerificationStatus.Stale, second.CurrentStatus);
+    Assert.AreEqual(VerificationStatus.Stale, first.CacheStatus);
+    Assert.AreEqual(VerificationStatus.Stale, second.CacheStatus);
 
     first.Run();
     second.Run();
@@ -233,10 +233,10 @@ procedure {:checksum ""stable""} Good(y: int)
     Assert.AreEqual((secondName, VerificationStatus.Completed), statusList[4]);
     
     var tasks2 = engine.GetImplementationTasks(program);
-    Assert.AreEqual(VerificationStatus.Completed, tasks2[0].CurrentStatus);
+    Assert.AreEqual(VerificationStatus.Completed, tasks2[0].CacheStatus);
     Assert.AreEqual(ConditionGeneration.Outcome.Errors, tasks2[0].ActualTask.Result.Outcome);
 
-    Assert.AreEqual(VerificationStatus.Completed, tasks2[1].CurrentStatus);
+    Assert.AreEqual(VerificationStatus.Completed, tasks2[1].CacheStatus);
     Assert.AreEqual(ConditionGeneration.Outcome.Correct, tasks2[1].ActualTask.Result.Outcome);
     var statuses2 = first.ObservableStatus.Merge(second.ObservableStatus);
     Assert.IsFalse(await statuses2.Any().ToTask());
