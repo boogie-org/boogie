@@ -9,13 +9,26 @@ namespace Microsoft.Boogie;
 
 public interface IVerificationStatus {}
 
-public record Completed(VerificationResult Result) : IVerificationStatus; // Results are available
+/// <summary>
+/// Results are available
+/// </summary>
+public record Completed(VerificationResult Result) : IVerificationStatus;
 
-public record Queued : IVerificationStatus; // Scheduled to be run but waiting for resources
 
-public record Stale : IVerificationStatus; // Not scheduled to be run
+/// <summary>
+/// Scheduled to be run but waiting for resources
+/// </summary>
+public record Queued : IVerificationStatus;
 
-public record Running : IVerificationStatus; // Currently running
+/// <summary>
+/// Not scheduled to be run
+/// </summary>
+public record Stale : IVerificationStatus;
+
+/// <summary>
+///
+/// </summary>
+public record Running : IVerificationStatus;
 
 public interface IImplementationTask {
   IVerificationStatus CacheStatus { get; }
@@ -53,7 +66,7 @@ public class ImplementationTask : IImplementationTask {
 
   public IObservable<IVerificationStatus> RunAndAllowCancel() {
     if (cancellationSource != null) {
-      throw new InvalidOperationException();
+      throw new InvalidOperationException("Cancel must be called after Run before calling Run again");
     }
 
     cancellationSource = new();
