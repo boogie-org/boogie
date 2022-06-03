@@ -1,34 +1,40 @@
 using System;
 using System.IO;
 using System.Reactive.Subjects;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Boogie;
 
-public enum VerificationStatus {
-  Stale,      // Not scheduled to be run
-  Queued,     // Scheduled to be run but waiting for resources
-  Running,    // Currently running
-  Completed,  // Results are available
-}
+public interface IVerificationStatus {}
+
+public record Completed(VerificationResult Result) : IVerificationStatus; // Results are available
+
+public record Queued : IVerificationStatus; // Scheduled to be run but waiting for resources
+
+public record Stale : IVerificationStatus; // Not scheduled to be run
+
+public record Running : IVerificationStatus; // Currently running
 
 public interface IImplementationTask {
-  VerificationStatus CacheStatus { get; }
+  IVerificationStatus CacheStatus { get; }
+
   ProcessedProgram ProcessedProgram { get; }
   Implementation Implementation { get; }
-  (Task<VerificationResult>, IObservable<VerificationStatus>) Run(CancellationToken cancellationToken);
+
+  IObservable<IVerificationStatus> RunAndAllowCancel();
+  void Cancel();
 }
 
 public class ImplementationTask : IImplementationTask {
   private readonly ExecutionEngine engine;
 
-  public VerificationStatus CacheStatus { get; }
+  public IVerificationStatus CacheStatus { get; }
 
   public ProcessedProgram ProcessedProgram { get; }
 
   public Implementation Implementation { get; }
-  private VerificationResult cachedResult;
   
   public ImplementationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Implementation implementation) {
     this.engine = engine;
@@ -37,16 +43,39 @@ public class ImplementationTask : IImplementationTask {
     
     var cachedVerificationResult = engine.GetCachedVerificationResult(Implementation, TextWriter.Null);
     if (cachedVerificationResult != null) {
-      cachedResult = cachedVerificationResult;
-      CacheStatus = VerificationStatus.Completed;
+      CacheStatus = new Completed(cachedVerificationResult);
     } else {
-      CacheStatus = VerificationStatus.Stale;
+      CacheStatus = new Stale();
     }
   }
 
-  public (Task<VerificationResult>, IObservable<VerificationStatus>) Run(CancellationToken cancellationToken)
+  private CancellationTokenSource cancellationSource;
+
+  public IObservable<IVerificationStatus> RunAndAllowCancel() {
+    if (cancellationSource != null) {
+      throw new InvalidOperationException();
+    }
+
+    cancellationSource = new();
+    return Run(cancellationSource.Token);
+  }
+
+  public void Cancel() {
+    if (cancellationSource == null) {
+      throw new InvalidOperationException();
+    }
+
+    cancellationSource.Cancel();
+    cancellationSource = null;
+  }
+
+  public IObservable<IVerificationStatus> Run(CancellationToken cancellationToken)
   {
-    var observableStatus = new Subject<VerificationStatus>();
+    var observableStatus = new ReplaySubject<IVerificationStatus>();
+    cancellationToken.Register(() => {
+      observableStatus.OnNext(new Stale());
+      observableStatus.OnCompleted();
+    });
     var task = RunInternal(cancellationToken, observableStatus.OnNext);
     task.ContinueWith(r =>
     {
@@ -56,24 +85,24 @@ public class ImplementationTask : IImplementationTask {
         observableStatus.OnCompleted();
       }
     }, TaskScheduler.Current);
-    return (task, observableStatus);
+    return observableStatus;
   }
 
-  private async Task<VerificationResult> RunInternal(CancellationToken cancellationToken, Action<VerificationStatus> notifyStatusChange) {
+  private async Task<VerificationResult> RunInternal(CancellationToken cancellationToken, Action<IVerificationStatus> notifyStatusChange) {
 
     var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(),
       null, null, Implementation, cancellationToken, TextWriter.Null);
 
-    var afterEnqueueStatus = enqueueTask.IsCompleted ? VerificationStatus.Running : VerificationStatus.Queued;
+    var afterEnqueueStatus = enqueueTask.IsCompleted ? (IVerificationStatus)new Running() : new Queued();
     notifyStatusChange(afterEnqueueStatus);
 
     var verifyTask = await enqueueTask;
-    if (afterEnqueueStatus != VerificationStatus.Running) {
-      notifyStatusChange(VerificationStatus.Running);
+    if (afterEnqueueStatus is not Running) {
+      notifyStatusChange(new Running());
     }
 
     var result = await verifyTask;
-    notifyStatusChange(VerificationStatus.Completed);
+    notifyStatusChange(new Completed(result));
     return result;
   }
 }
