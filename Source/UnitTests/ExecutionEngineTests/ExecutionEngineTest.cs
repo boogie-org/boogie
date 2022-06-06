@@ -184,7 +184,25 @@ Boogie program verifier finished with 0 verified, 1 error
 
   [Test]
   public async Task RunCancelRun() {
+    var options = CommandLineOptions.FromArguments();
+    options.VcsCores = 1;
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
+    var source = CancellationTests.Slow;
+    Parser.Parse(source, "fakeFilename1", out var program);
+    var tasks = engine.GetImplementationTasks(program)[0];
+    var statusList = new List<IVerificationStatus>();
+    var firstStatuses = tasks.RunAndAllowCancel();
+    firstStatuses.Subscribe(statusList.Add);
+    tasks.Cancel();
+    var secondStatuses = tasks.RunAndAllowCancel();
+    secondStatuses.Subscribe(statusList.Add);
+    var finalResult = await secondStatuses.ToTask();
+    Assert.IsTrue(finalResult is Completed);
+    var expected = new List<IVerificationStatus>() {
+      new Running(), new Stale(), new Running(), finalResult
+    };
+    Assert.AreEqual(expected, statusList);
   }
 
   [Test]

@@ -3494,8 +3494,8 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class Implementation : DeclWithFormals
-  {
+  public class Implementation : DeclWithFormals {
+
     public List<Variable> /*!*/
       LocVars;
 

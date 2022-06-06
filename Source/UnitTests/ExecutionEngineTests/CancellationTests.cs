@@ -26,7 +26,7 @@ namespace ExecutionEngineTests
     public async Task InferAndVerifyCanBeCancelledWhileWaitingForProver() {
       var options = CommandLineOptions.FromArguments();
       using var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
-      var infiniteProgram = GetProgram(executionEngine, slow);
+      var infiniteProgram = GetProgram(executionEngine, Slow);
       var terminatingProgram = GetProgram(executionEngine, fast);
       
       // We limit the number of checkers to 1.
@@ -44,12 +44,12 @@ namespace ExecutionEngineTests
       Assert.AreEqual(PipelineOutcome.VerificationCompleted, outcome2);
     }
 
-    private string fast = @"
+    public const string fast = @"
 procedure easy() ensures 1 + 1 == 0; {
 }
 ";
 
-    string slow = @"
+    public const string Slow = @"
   type LayerType;
   function {:identity} LitInt(x: int) : int;
   axiom (forall x: int :: {:identity} { LitInt(x): int } LitInt(x): int == x);
