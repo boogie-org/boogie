@@ -164,7 +164,8 @@ namespace Microsoft.Boogie.SMTLib
     {
       var outcomeSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
       if (outcomeSExp.Name.Equals("timeout")) {
-        return Outcome.OutOfResource;
+        currentErrorHandler.OnResourceExceeded("hard solver timeout");
+        return Outcome.TimeOut;
       }
       var result = ParseOutcome(outcomeSExp, out var wasUnknown);
 
