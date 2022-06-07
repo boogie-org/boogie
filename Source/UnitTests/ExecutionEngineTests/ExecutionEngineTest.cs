@@ -44,12 +44,12 @@ procedure Second(y: int)
     var tasks = engine.GetImplementationTasks(program);
     Assert.AreEqual(2, tasks.Count);
     Assert.NotNull(tasks[0].Implementation);
-    var result1 = await tasks[0].RunAndAllowCancel().ToTask();
+    var result1 = await tasks[0].Run().ToTask();
     var verificationResult1 = ((Completed)result1).Result;
     Assert.AreEqual(ConditionGeneration.Outcome.Errors, verificationResult1.Outcome);
     Assert.AreEqual(true, verificationResult1.Errors[0].Model.ModelHasStatesAlready);
 
-    var result2 = await tasks[1].RunAndAllowCancel().ToTask();
+    var result2 = await tasks[1].Run().ToTask();
     var verificationResult2 = ((Completed)result2).Result;
     Assert.AreEqual(ConditionGeneration.Outcome.Correct, verificationResult2.Outcome);
   }
@@ -192,10 +192,10 @@ Boogie program verifier finished with 0 verified, 1 error
     Parser.Parse(source, "fakeFilename1", out var program);
     var tasks = engine.GetImplementationTasks(program)[0];
     var statusList = new List<IVerificationStatus>();
-    var firstStatuses = tasks.RunAndAllowCancel();
+    var firstStatuses = tasks.Run();
     firstStatuses.Subscribe(statusList.Add);
     tasks.Cancel();
-    var secondStatuses = tasks.RunAndAllowCancel();
+    var secondStatuses = tasks.Run();
     secondStatuses.Subscribe(statusList.Add);
     var finalResult = await secondStatuses.ToTask();
     Assert.IsTrue(finalResult is Completed);
@@ -238,9 +238,9 @@ procedure {:checksum ""stable""} Good(y: int)
     Assert.True(first.CacheStatus is Stale);
     Assert.True(second.CacheStatus is Stale);
 
-    var firstStatuses = first.RunAndAllowCancel();
+    var firstStatuses = first.Run();
     firstStatuses.Subscribe(t => statusList.Add(new (firstName, t)));
-    var secondStatuses = second.RunAndAllowCancel();
+    var secondStatuses = second.Run();
     secondStatuses.Subscribe(t => statusList.Add((secondName, t)));
     await firstStatuses.Concat(secondStatuses).ToTask();
 
