@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Reactive.Subjects;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -36,7 +35,7 @@ public interface IImplementationTask {
   ProcessedProgram ProcessedProgram { get; }
   Implementation Implementation { get; }
 
-  IObservable<IVerificationStatus> RunAndAllowCancel();
+  IObservable<IVerificationStatus> Run();
   void Cancel();
 }
 
@@ -64,15 +63,6 @@ public class ImplementationTask : IImplementationTask {
 
   private CancellationTokenSource cancellationSource;
 
-  public IObservable<IVerificationStatus> RunAndAllowCancel() {
-    if (cancellationSource != null) {
-      throw new InvalidOperationException("Cancel must be called after Run before calling Run again");
-    }
-
-    cancellationSource = new();
-    return Run(cancellationSource.Token);
-  }
-
   public void Cancel() {
     if (cancellationSource == null) {
       throw new InvalidOperationException();
@@ -82,8 +72,14 @@ public class ImplementationTask : IImplementationTask {
     cancellationSource = null;
   }
 
-  public IObservable<IVerificationStatus> Run(CancellationToken cancellationToken)
+  public IObservable<IVerificationStatus> Run()
   {
+    if (cancellationSource != null) {
+      throw new InvalidOperationException("Cancel must be called after Run before calling Run again");
+    }
+    cancellationSource = new();
+    var cancellationToken = cancellationSource.Token;
+
     var observableStatus = new ReplaySubject<IVerificationStatus>();
     cancellationToken.Register(() => {
       observableStatus.OnNext(new Stale());
