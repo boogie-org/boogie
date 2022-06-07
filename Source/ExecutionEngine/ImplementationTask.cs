@@ -65,7 +65,7 @@ public class ImplementationTask : IImplementationTask {
 
   public void Cancel() {
     if (cancellationSource == null) {
-      throw new InvalidOperationException("There is no ongoing run to cancel");
+      throw new InvalidOperationException("There is no ongoing run to cancel.");
     }
 
     cancellationSource.Cancel();
