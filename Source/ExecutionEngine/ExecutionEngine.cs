@@ -694,8 +694,10 @@ namespace Microsoft.Boogie
       return GetPrioritizedImplementations(program).Select(implementation => new ImplementationTask(this, processedProgram, implementation)).ToList();
     }
 
+    /// <returns>
     /// The outer task is to wait for a semaphore to let verification start
     /// The inner task is the actual verification of the implementation
+    /// </returns>
     public Task<Task<VerificationResult>> EnqueueVerifyImplementation(
       ProcessedProgram processedProgram, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, Implementation implementation,
@@ -716,8 +718,10 @@ namespace Microsoft.Boogie
       return result;
     }
 
+    /// <returns>
     /// The outer task is to wait for a semaphore to let verification start
     /// The inner task is the actual verification of the implementation
+    /// </returns>
     public async Task<Task<VerificationResult>> EnqueueVerifyImplementation(
       ProcessedProgram processedProgram, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, Implementation implementation,

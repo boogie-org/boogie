@@ -65,7 +65,7 @@ public class ImplementationTask : IImplementationTask {
 
   public void Cancel() {
     if (cancellationSource == null) {
-      throw new InvalidOperationException();
+      throw new InvalidOperationException("There is no ongoing run to cancel");
     }
 
     cancellationSource.Cancel();
@@ -75,7 +75,7 @@ public class ImplementationTask : IImplementationTask {
   public IObservable<IVerificationStatus> Run()
   {
     if (cancellationSource != null) {
-      throw new InvalidOperationException("Cancel must be called after Run before calling Run again");
+      throw new InvalidOperationException("There already an ongoing run.");
     }
     cancellationSource = new();
     var cancellationToken = cancellationSource.Token;
