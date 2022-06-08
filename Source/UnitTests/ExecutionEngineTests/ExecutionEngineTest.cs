@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
+using System.Reflection.Emit;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
@@ -188,8 +189,16 @@ Boogie program verifier finished with 0 verified, 1 error
     options.VcsCores = 1;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
-    var source = CancellationTests.Slow;
-    Parser.Parse(source, "fakeFilename1", out var program);
+    var source = @"
+function Fib(x: int): int;
+axiom (forall x: int :: (x <= 1 || Fib(x) == Fib(x - 1) + Fib(x - 2)));
+axiom (Fib(1) == 1);
+axiom (Fib(0) == 1);
+procedure FibTest() {
+  assert Fib(31) == 1346269;
+}".TrimStart();
+    var result = Parser.Parse(source, "fakeFilename1", out var program);
+    Assert.AreEqual(0, result);
     var tasks = engine.GetImplementationTasks(program)[0];
     var statusList = new List<IVerificationStatus>();
     var firstStatuses = tasks.Run();
@@ -200,7 +209,7 @@ Boogie program verifier finished with 0 verified, 1 error
     var finalResult = await secondStatuses.ToTask();
     Assert.IsTrue(finalResult is Completed);
     var expected = new List<IVerificationStatus>() {
-      new Running(), new Stale(), new Running(), finalResult
+      new Running(), new Stale(), new Queued(), new Running(), finalResult
     };
     Assert.AreEqual(expected, statusList);
   }

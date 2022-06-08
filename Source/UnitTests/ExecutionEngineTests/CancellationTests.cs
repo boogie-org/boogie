@@ -26,7 +26,7 @@ namespace ExecutionEngineTests
     public async Task InferAndVerifyCanBeCancelledWhileWaitingForProver() {
       var options = CommandLineOptions.FromArguments();
       using var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
-      var infiniteProgram = GetProgram(executionEngine, Slow);
+      var infiniteProgram = GetProgram(executionEngine, SuperSlow);
       var terminatingProgram = GetProgram(executionEngine, fast);
       
       // We limit the number of checkers to 1.
@@ -49,7 +49,7 @@ procedure easy() ensures 1 + 1 == 0; {
 }
 ";
 
-    public const string Slow = @"
+    public const string SuperSlow = @"
   type LayerType;
   function {:identity} LitInt(x: int) : int;
   axiom (forall x: int :: {:identity} { LitInt(x): int } LitInt(x): int == x);
