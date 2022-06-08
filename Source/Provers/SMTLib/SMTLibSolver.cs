@@ -16,9 +16,14 @@ public abstract class SMTLibSolver
 
   protected abstract void HandleError(string msg);
 
-  public void Ping()
+  public void Ping1()
   {
     Send("(get-info :name)");
+  }
+  
+  public void Ping2()
+  {
+    Send("(get-info :version)");
   }
 
   /// <summary>
@@ -26,7 +31,7 @@ public abstract class SMTLibSolver
   /// </summary>
   public async Task PingPong(int msBeforeAssumingProverDied)
   {
-    Ping();
+    Ping2();
     while (true) {
       SExpr sx;
       try {
@@ -39,17 +44,22 @@ public abstract class SMTLibSolver
       {
         throw new ProverDiedException();
       }
-        
-      if (IsPong(sx))
+      
+      if (IsPong2(sx))
       {
-        return;
+        break;
       }
     }
   }
 
-  public bool IsPong(SExpr sx)
+  public bool IsPong1(SExpr sx)
   {
     return sx is { Name: ":name" };
+  }
+  
+  public bool IsPong2(SExpr sx)
+  {
+    return sx is { Name: ":version" };
   }
 
   public async Task<ProverDiedException> GetExceptionIfProverDied(int msBeforeAssumingProverDied)

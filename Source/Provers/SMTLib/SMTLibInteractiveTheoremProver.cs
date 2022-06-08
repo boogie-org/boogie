@@ -517,62 +517,68 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       SendThisVC("(get-model)");
-      Process.Ping();
-      Model theModel = null;
+
+      Model model = await ReadOutputAsync<Model>(
+        null,
+        (resp, theModel) => {
+          if (theModel != null)
+          {
+            HandleProverError("Expecting only one model but got many");
+          }
+
+          return ParseErrorModel(resp);
+        },
+        cancellationToken);
+
+      return model;
+    }
+    
+    /// <summary>
+    /// Sends a ping, and until the result is a pong,
+    /// passes intermediate results to collector
+    /// Returns the final result returned by collector, or the default value
+    /// </summary>
+    private async Task<T> ReadOutputAsync<T>(T defaultValue, Func<SExpr, T, T> collector, CancellationToken cancellationToken) {
+      Process.Ping1();
+
+      T result = defaultValue;
+
       while (true)
       {
         var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-        if (resp == null || Process.IsPong(resp))
+        if (resp == null || Process.IsPong1(resp))
         {
           break;
         }
 
-        if (theModel != null)
-        {
-          HandleProverError("Expecting only one model but got many");
-        }
-
-        theModel = ParseErrorModel(resp);
+        result = collector(resp, result);
       }
 
-      return theModel;
+      return result;
     }
 
     private async Task<Outcome> GetResponse(CancellationToken cancellationToken)
     {
-      var result = Outcome.Undetermined;
       var wasUnknown = false;
 
-      Process.Ping();
-
-      while (true)
-      {
-        var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-        if (resp == null || Process.IsPong(resp))
-        {
-          break;
-        }
-
-        result = ParseOutcome(resp, out wasUnknown);
-      }
+      var result = await ReadOutputAsync(
+        Outcome.Undetermined,
+        (sExpr, _) => ParseOutcome(sExpr, out wasUnknown),
+        cancellationToken);
 
       if (wasUnknown)
       {
         SendThisVC("(get-info :reason-unknown)");
-        Process.Ping();
-        while (true)
-        {
-          var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-          if (resp == null || Process.IsPong(resp))
-          {
-            break;
-          }
 
-          result = ParseReasonUnknown(resp, result);
-          if (result == Outcome.OutOfMemory) {
-            processNeedsRestart = true;
-          }
-        }
+        result = await ReadOutputAsync(result,
+          (sExpr, intermediateResult) => {
+            var newResult = ParseReasonUnknown(sExpr, intermediateResult);
+            if (newResult == Outcome.OutOfMemory) {
+              processNeedsRestart = true;
+            }
+            return newResult;
+          },
+          cancellationToken);
       }
 
       return result;
