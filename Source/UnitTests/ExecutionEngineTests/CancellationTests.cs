@@ -27,7 +27,7 @@ namespace ExecutionEngineTests
       var options = CommandLineOptions.FromArguments();
       using var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
       var infiniteProgram = GetProgram(executionEngine, SuperSlow);
-      var terminatingProgram = GetProgram(executionEngine, fast);
+      var terminatingProgram = GetProgram(executionEngine, Fast);
       
       // We limit the number of checkers to 1.
       options.VcsCores = 1;
@@ -44,12 +44,12 @@ namespace ExecutionEngineTests
       Assert.AreEqual(PipelineOutcome.VerificationCompleted, outcome2);
     }
 
-    public const string fast = @"
+    private const string Fast = @"
 procedure easy() ensures 1 + 1 == 0; {
 }
 ";
 
-    public const string SuperSlow = @"
+    private const string SuperSlow = @"
   type LayerType;
   function {:identity} LitInt(x: int) : int;
   axiom (forall x: int :: {:identity} { LitInt(x): int } LitInt(x): int == x);

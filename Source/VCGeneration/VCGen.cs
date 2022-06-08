@@ -380,9 +380,9 @@ namespace VC
       }
 
       if (!data.Passified) {
+        data.Passified = true;
         data.GotoCmdOrigins = PassifyImpl(run, out var mvInfo);
         data.ModelViewInfo = mvInfo;
-        data.Passified = true;
 
         ExpandAsserts(impl);
       }
