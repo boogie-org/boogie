@@ -42,7 +42,7 @@ public interface IImplementationTask {
 public class ImplementationTask : IImplementationTask {
   private readonly ExecutionEngine engine;
 
-  public IVerificationStatus CacheStatus { get; }
+  public IVerificationStatus CacheStatus { get; private set; }
 
   public ProcessedProgram ProcessedProgram { get; }
 
@@ -74,6 +74,10 @@ public class ImplementationTask : IImplementationTask {
 
   public IObservable<IVerificationStatus> Run()
   {
+    if (CacheStatus is not Stale) {
+      throw new InvalidOperationException("Can not start task that's already completed");
+    }
+
     if (cancellationSource != null) {
       throw new InvalidOperationException("There already an ongoing run.");
     }
@@ -111,7 +115,9 @@ public class ImplementationTask : IImplementationTask {
     }
 
     var result = await verifyTask;
-    notifyStatusChange(new Completed(result));
+    CacheStatus = new Completed(result);
+    cancellationSource = null;
+    notifyStatusChange(CacheStatus);
     return result;
   }
 }
