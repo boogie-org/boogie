@@ -65,10 +65,9 @@ namespace Microsoft.Boogie
 
       status = CheckerStatus.Idle;
       try {
-        await thmProver.GoBackToIdle().WaitAsync(TimeSpan.FromMilliseconds(100));
+        await thmProver.GoBackToIdle(100);
         Pool.AddChecker(this);
-      }
-      catch(TimeoutException) {
+      } catch (ProverDiedException) {
         Pool.CheckerDied();
         Close();
       }
@@ -371,7 +370,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public override Task GoBackToIdle()
+    public override Task GoBackToIdle(int msBeforeAssumingProverDied)
     {
       throw new NotImplementedException();
     }

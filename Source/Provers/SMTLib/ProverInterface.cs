@@ -309,7 +309,7 @@ public abstract class ProverInterface
     throw new NotImplementedException();
   }
 
-  public abstract Task GoBackToIdle();
+  public abstract Task GoBackToIdle(int msBeforeAssumingProverDied);
 }
 public class UnexpectedProverOutputException : ProverException
 {

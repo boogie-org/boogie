@@ -21,24 +21,28 @@ public abstract class SMTLibSolver
     Send("(get-info :name)");
   }
 
-  public async Task PingPong()
+  /// <summary>
+  /// Throws an ProverDiedException if the prover does not answer after msBeforeAssumingProverDied
+  /// </summary>
+  public async Task PingPong(int msBeforeAssumingProverDied)
   {
     Ping();
-    while (true)
-    {
-      var sx = await GetProverResponse();
+    while (true) {
+      SExpr sx;
+      try {
+        sx = await GetProverResponse().WaitAsync(TimeSpan.FromMilliseconds(msBeforeAssumingProverDied));
+      } catch (TimeoutException) {
+        sx = null;
+      }
+
       if (sx == null)
       {
         throw new ProverDiedException();
       }
-
+        
       if (IsPong(sx))
       {
         return;
-      }
-      else
-      {
-        HandleError("Invalid PING response from the prover: " + sx.ToString());
       }
     }
   }
@@ -48,11 +52,11 @@ public abstract class SMTLibSolver
     return sx is { Name: ":name" };
   }
 
-  public async Task<ProverDiedException> GetExceptionIfProverDied()
+  public async Task<ProverDiedException> GetExceptionIfProverDied(int msBeforeAssumingProverDied)
   {
     try
     {
-      await PingPong();
+      await PingPong(msBeforeAssumingProverDied);
       return null;
     }
     catch (ProverDiedException e)

@@ -48,7 +48,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public override Task GoBackToIdle()
+    public override Task GoBackToIdle(int msBeforeAssumingProverDied)
     {
       return Task.CompletedTask;
     }
@@ -127,6 +127,7 @@ namespace Microsoft.Boogie.SMTLib
     public override async Task<Outcome> CheckOutcomeCore(ErrorHandler handler, CancellationToken cancellationToken,
       int errorLimit)
     {
+      // TODO: shouldn't we restart the prover if proverErrors.Count > 0 ?
       if (Process == null || proverErrors.Count > 0) {
         return Outcome.Undetermined;
       }

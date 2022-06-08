@@ -18,6 +18,8 @@ namespace Microsoft.Boogie.SMTLib
     private bool processNeedsRestart;
     private ScopedNamer commonNamer;
     private ScopedNamer finalNamer;
+    
+    public const int MS_BEFORE_ASSUMING_PROVER_DIED = 1000;
 
     [NotDelayed]
     public SMTLibInteractiveTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
@@ -31,13 +33,13 @@ namespace Microsoft.Boogie.SMTLib
 
     internal override ScopedNamer Namer => finalNamer ?? (commonNamer ??= GetNamer(libOptions, options));
 
-    public override Task GoBackToIdle()
+    public override Task GoBackToIdle(int msBeforeAssumingProverDied)
     {
       if (Process == null) {
         processNeedsRestart = true;
         return Task.CompletedTask;
       }
-      return Process.PingPong();
+      return Process.PingPong(msBeforeAssumingProverDied);
     }
 
     private void PossiblyRestart()
@@ -99,7 +101,7 @@ namespace Microsoft.Boogie.SMTLib
 
       if (Process != null)
       {
-        await Process.PingPong(); // flush any errors
+        await Process.PingPong(MS_BEFORE_ASSUMING_PROVER_DIED); // flush any errors
         Process.NewProblem(descriptiveName);
       }
 
@@ -137,7 +139,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private async Task RecoverIfProverCrashedAfterReset()
     {
-      if (await Process.GetExceptionIfProverDied() is not null)
+      if (await Process.GetExceptionIfProverDied(MS_BEFORE_ASSUMING_PROVER_DIED) is not null)
       {
         // We recover the process but don't issue the `(reset)` command that fails.
         SetupProcess();
@@ -189,6 +191,7 @@ namespace Microsoft.Boogie.SMTLib
 
       var result = Outcome.Undetermined;
 
+      // TODO: shouldn't we restart the prover if proverErrors.Count > 0 ?
       if (Process == null || proverErrors.Count > 0)
       {
         return result;
