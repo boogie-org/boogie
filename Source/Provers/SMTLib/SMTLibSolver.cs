@@ -9,6 +9,8 @@ public abstract class SMTLibSolver
   public abstract event Action<string> ErrorHandler;
   public abstract void Close();
   public abstract void Send(string cmd);
+  public abstract Task<SExpr> SendRequest(string cmd);
+  
   public abstract Task<SExpr> GetProverResponse();
   public abstract void NewProblem(string descriptiveName);
 

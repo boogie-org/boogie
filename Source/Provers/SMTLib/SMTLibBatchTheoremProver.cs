@@ -59,8 +59,8 @@ namespace Microsoft.Boogie.SMTLib
       return 0;
     }
 
-    public override Task BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
-    {
+    public override Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
+      CancellationToken cancellationToken) {
       SetupProcess();
       CheckSatSent = false;
       FullReset(gen);
@@ -90,7 +90,8 @@ namespace Microsoft.Boogie.SMTLib
       Pop();
 
       FlushLogFile();
-      return Task.CompletedTask;
+
+      return CheckOutcomeCore(handler, cancellationToken, errorLimit);
     }
 
     public override Task Reset(VCExpressionGenerator generator) {
@@ -112,19 +113,8 @@ namespace Microsoft.Boogie.SMTLib
       UsedNamedAssumes = null;
     }
 
-    // TODO: move to base?
     [NoDefaultContract]
-    public override async Task<Outcome> CheckOutcome(ErrorHandler handler, int errorLimit, CancellationToken cancellationToken)
-    {
-      var result = await CheckOutcomeCore(handler, cancellationToken, errorLimit);
-
-      FlushLogFile();
-
-      return result;
-    }
-
-    [NoDefaultContract]
-    public override async Task<Outcome> CheckOutcomeCore(ErrorHandler handler, CancellationToken cancellationToken,
+    public async Task<Outcome> CheckOutcomeCore(ErrorHandler handler, CancellationToken cancellationToken,
       int errorLimit)
     {
       if (Process == null || proverErrors.Count > 0) {

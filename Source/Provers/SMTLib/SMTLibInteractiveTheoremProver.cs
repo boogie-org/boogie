@@ -62,7 +62,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     private bool hasReset = true;
-    public override async Task BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
+    public override async Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit, CancellationToken cancellationToken)
     {
       if (options.SeparateLogFiles)
       {
@@ -110,8 +110,10 @@ namespace Microsoft.Boogie.SMTLib
         hasReset = false;
       }
 
-      SendCheckSat();
-      FlushLogFile();
+      var result = await CheckSat(handler, cancellationToken, errorLimit);
+      SendThisVC("(pop 1)");
+
+      return result;
     }
 
     public override async Task Reset(VCExpressionGenerator generator)
@@ -170,21 +172,11 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     [NoDefaultContract]
-    public override async Task<Outcome> CheckOutcome(ErrorHandler handler, int errorLimit, CancellationToken cancellationToken)
-    {
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-
-      var result = await CheckOutcomeCore(handler, cancellationToken, errorLimit);
-      SendThisVC("(pop 1)");
-      FlushLogFile();
-
-      return result;
-    }
-
-    [NoDefaultContract]
-    public override async Task<Outcome> CheckOutcomeCore(ErrorHandler handler, CancellationToken cancellationToken,
+    public async Task<Outcome> CheckSat(ErrorHandler handler, CancellationToken cancellationToken,
       int errorLimit)
     {
+      UsedNamedAssumes = null;
+
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
       var result = Outcome.Undetermined;
@@ -212,7 +204,7 @@ namespace Microsoft.Boogie.SMTLib
           {
             errorsDiscovered++;
 
-            result = await GetResponse(cancellationToken);
+            result = await CheckSatAndGetResponse(cancellationToken);
 
             var reporter = handler;
             // TODO(wuestholz): Is the reporter ever null?
@@ -221,8 +213,7 @@ namespace Microsoft.Boogie.SMTLib
               if (usingUnsatCore)
               {
                 UsedNamedAssumes = new HashSet<string>();
-                SendThisVC("(get-unsat-core)");
-                var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
+                var resp = await SendVcRequest("(get-unsat-core)").WaitAsync(cancellationToken);
                 if (resp.Name != "")
                 {
                   UsedNamedAssumes.Add(resp.Name);
@@ -297,7 +288,6 @@ namespace Microsoft.Boogie.SMTLib
           var target = labels[^1];
           // block the assert which was falsified by this counterexample
           SendThisVC($"(assert (not (= (ControlFlow 0 {source}) (- {target}))))");
-          SendCheckSat();
         }
 
         FlushLogFile();
@@ -313,6 +303,18 @@ namespace Microsoft.Boogie.SMTLib
       {
         currentErrorHandler = null;
       }
+    }
+
+    private Task<SExpr> SendVcRequest(string s) {
+      s = Sanitize(s);
+
+      if (currentLogFile != null)
+      {
+        currentLogFile.WriteLine(s);
+        currentLogFile.Flush();
+      }
+
+      return Process.SendRequest(s);
     }
 
     private T WrapInPushPop<T>(ref bool popLater, Func<T> action)
@@ -458,18 +460,17 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       FlushLogFile();
-      SendCheckSat();
       queries++;
-      return GetResponse(cancellationToken);
+      return CheckSatAndGetResponse(cancellationToken);
     }
 
     private async Task<string[]> CalculatePath(int controlFlowConstant, CancellationToken cancellationToken)
     {
-      SendThisVC($"(get-value (({VCExpressionGenerator.ControlFlowName} " + controlFlowConstant + " 0)))");
       var path = new List<string>();
+      string v = "0";
       while (true)
       {
-        var response = await Process.GetProverResponse().WaitAsync(cancellationToken);
+        var response = await Process.SendRequest($"(get-value (({VCExpressionGenerator.ControlFlowName} {controlFlowConstant} {v})))").WaitAsync(cancellationToken);
         if (response == null)
         {
           break;
@@ -487,7 +488,7 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         response = response.Arguments[1];
-        var v = response.Name;
+        v = response.Name;
         if (v == "-" && response.ArgCount == 1)
         {
           v = response.Arguments[0].Name;
@@ -500,7 +501,6 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         path.Add(v);
-        SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " " + v + ")))");
       }
 
       return path.ToArray();
@@ -535,37 +535,23 @@ namespace Microsoft.Boogie.SMTLib
       return theModel;
     }
 
-    private async Task<Outcome> GetResponse(CancellationToken cancellationToken)
+    private async Task<Outcome> CheckSatAndGetResponse(CancellationToken cancellationToken)
     {
       var result = Outcome.Undetermined;
       var wasUnknown = false;
 
-      Process.Ping();
-
-      while (true)
+      var checkSatResponse = await SendVcRequest("(check-sat)").WaitAsync(cancellationToken);
+      if (checkSatResponse != null)
       {
-        var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-        if (resp == null || Process.IsPong(resp))
-        {
-          break;
-        }
-
-        result = ParseOutcome(resp, out wasUnknown);
+        result = ParseOutcome(checkSatResponse, out wasUnknown);
       }
 
       if (wasUnknown)
       {
-        SendThisVC("(get-info :reason-unknown)");
-        Process.Ping();
-        while (true)
+        var getInfoResponse = await SendVcRequest("(get-info :reason-unknown)").WaitAsync(cancellationToken);
+        if (getInfoResponse != null)
         {
-          var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-          if (resp == null || Process.IsPong(resp))
-          {
-            break;
-          }
-
-          result = ParseReasonUnknown(resp, result);
+          result = ParseReasonUnknown(getInfoResponse, result);
           if (result == Outcome.OutOfMemory) {
             processNeedsRestart = true;
           }
@@ -683,7 +669,6 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void Check()
     {
-      PrepareCommon();
       SendCheckSat();
       FlushLogFile();
     }
@@ -759,9 +744,8 @@ namespace Microsoft.Boogie.SMTLib
         i++;
       }
 
-      Check();
-
-      var outcome = await CheckOutcomeCore(handler, cancellationToken, libOptions.ErrorLimit);
+      PrepareCommon();
+      var outcome = await CheckSat(handler, cancellationToken, libOptions.ErrorLimit);
 
       if (outcome != Outcome.Valid)
       {
@@ -815,8 +799,8 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC("(assert " + a + ")");
       }
 
-      Check();
-      var outcome = await GetResponse(cancellationToken);
+      PrepareCommon();
+      var outcome = await CheckSatAndGetResponse(cancellationToken);
       if (outcome != Outcome.Invalid)
       {
         Pop();
@@ -834,8 +818,8 @@ namespace Microsoft.Boogie.SMTLib
           SendThisVC("(assert " + a + ")");
         }
 
-        Check();
-        outcome = await CheckOutcomeCore(handler, cancellationToken, libOptions.ErrorLimit);
+        PrepareCommon();
+        outcome = await CheckSat(handler, cancellationToken, libOptions.ErrorLimit);
         if (outcome != Outcome.Valid)
         {
           break;

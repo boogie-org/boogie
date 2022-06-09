@@ -19,7 +19,6 @@ namespace Microsoft.Boogie.SMTLib
   public class SMTLibProcess : SMTLibSolver
   {
     readonly Process prover;
-    readonly Inspector inspector;
     readonly SMTLibProverOptions options;
     private readonly AsyncQueue<string> proverOutput = new();
     private TextWriter toProver;
@@ -43,7 +42,7 @@ namespace Microsoft.Boogie.SMTLib
 
       if (options.Inspector != null)
       {
-        this.inspector = new Inspector(options);
+        this.Inspector = new Inspector(options);
       }
 
       if (libOptions.RunningBoogieFromCommandLine)
@@ -137,7 +136,14 @@ namespace Microsoft.Boogie.SMTLib
       toProver.WriteLine(cmd);
     }
 
-    internal Inspector Inspector => inspector;
+    public override Task<SExpr> SendRequest(string cmd) {
+      lock (this) {
+        Send(cmd);
+        return GetProverResponse();
+      }
+    }
+
+    private Inspector Inspector { get; }
 
     public override async Task<SExpr> GetProverResponse()
     {
@@ -174,7 +180,7 @@ namespace Microsoft.Boogie.SMTLib
             return null;
           }
         } else if (resp.Name == "progress") {
-          if (inspector != null) {
+          if (Inspector != null) {
             var sb = new StringBuilder();
             foreach (var a in resp.Arguments) {
               if (a.Name == "labels") {
@@ -191,7 +197,7 @@ namespace Microsoft.Boogie.SMTLib
                 continue;
               }
 
-              inspector.StatsLine(sb.ToString());
+              Inspector.StatsLine(sb.ToString());
               sb.Clear();
             }
           }
