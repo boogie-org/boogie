@@ -16,22 +16,24 @@ public abstract class SMTLibSolver
 
   protected abstract void HandleError(string msg);
 
-  public void Ping1()
+  private int pingpongCounter = 0;
+
+  /// <summary>
+  /// Sends a ping command and returns the a predicate that checks if an SExpr is a matching pong
+  /// </summary>
+  /// <param name="value"></param>
+  /// <returns></returns>
+  public Func<SExpr, bool> Ping(string value)
   {
-    Send("(get-info :name)");
-  }
-  
-  public void Ping2()
-  {
-    Send("(get-info :version)");
+    Send($"(echo \"({value})\")");
+    return sx => sx is { Name: var obtainedName } && obtainedName == value;
   }
 
   /// <summary>
   /// Throws an ProverDiedException if the prover does not answer after msBeforeAssumingProverDied
   /// </summary>
-  public async Task PingPong(int msBeforeAssumingProverDied)
-  {
-    Ping2();
+  public async Task PingPong(int msBeforeAssumingProverDied) {
+    var isPong = Ping($"PingPong{pingpongCounter++}");
     while (true) {
       SExpr sx;
       try {
@@ -45,23 +47,13 @@ public abstract class SMTLibSolver
         throw new ProverDiedException();
       }
       
-      if (IsPong2(sx))
+      if (isPong(sx))
       {
         break;
       }
     }
   }
-
-  public bool IsPong1(SExpr sx)
-  {
-    return sx is { Name: ":name" };
-  }
   
-  public bool IsPong2(SExpr sx)
-  {
-    return sx is { Name: ":version" };
-  }
-
   public async Task<ProverDiedException> GetExceptionIfProverDied(int msBeforeAssumingProverDied)
   {
     try

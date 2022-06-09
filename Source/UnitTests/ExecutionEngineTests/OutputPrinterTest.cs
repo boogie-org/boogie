@@ -44,7 +44,7 @@ namespace ExecutionEngineTests
         );
       smtLibInteractiveTheoremProver.Close();
       // No null pointer exception should arise here
-      await smtLibInteractiveTheoremProver.GoBackToIdle();
+      await smtLibInteractiveTheoremProver.GoBackToIdle(1000);
       Assert.IsTrue(true);
     }
     

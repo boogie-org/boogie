@@ -539,14 +539,14 @@ namespace Microsoft.Boogie.SMTLib
     /// Returns the final result returned by collector, or the default value
     /// </summary>
     private async Task<T> ReadOutputAsync<T>(T defaultValue, Func<SExpr, T, T> collector, CancellationToken cancellationToken) {
-      Process.Ping1();
+      var isPong = Process.Ping("readOutput");
 
       T result = defaultValue;
 
       while (true)
       {
         var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-        if (resp == null || Process.IsPong1(resp))
+        if (resp == null || isPong(resp))
         {
           break;
         }
