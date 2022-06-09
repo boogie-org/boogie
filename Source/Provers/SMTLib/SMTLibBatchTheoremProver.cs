@@ -117,10 +117,10 @@ namespace Microsoft.Boogie.SMTLib
     private Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests) {
       var sanitizedRequests = requests.Select(Sanitize).ToList();
       foreach (var request in sanitizedRequests) {
-        currentLogFile.WriteLine(request);
+        currentLogFile?.WriteLine(request);
       }
-      currentLogFile.Flush();
-      return Process.SendRequestsAndClose(sanitizedRequests);
+      currentLogFile?.Flush();
+      return Process.SendRequestsAndCloseInput(sanitizedRequests);
     }
 
     private async Task<Outcome> CheckSat(ErrorHandler handler, CancellationToken cancellationToken)

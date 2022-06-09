@@ -142,7 +142,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public override async Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests) {
+    public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests) {
       List<Task<SExpr>> responses;
       lock (myLock) {
         foreach (var request in requests) {

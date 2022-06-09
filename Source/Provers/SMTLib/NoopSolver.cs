@@ -42,7 +42,7 @@ class NoopSolver : SMTLibSolver
     return GetProverResponse();
   }
 
-  public override async Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests) {
+  public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests) {
 
     foreach (var request in requests) {
       Send(request);

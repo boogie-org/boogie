@@ -11,7 +11,7 @@ public abstract class SMTLibSolver
   public abstract void Send(string cmd);
   public abstract Task<SExpr> SendRequest(string request);
 
-  public abstract Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests);
+  public abstract Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests);
 
   public abstract void NewProblem(string descriptiveName);
 
