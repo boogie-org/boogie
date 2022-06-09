@@ -111,7 +111,6 @@ namespace Microsoft.Boogie.SMTLib
       AxiomsAreSetup = false;
       DeclCollector.Reset();
       NamedAssumes.Clear();
-      UsedNamedAssumes = null;
     }
 
     private Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests) {
@@ -125,7 +124,6 @@ namespace Microsoft.Boogie.SMTLib
 
     private async Task<Outcome> CheckSat(ErrorHandler handler, CancellationToken cancellationToken)
     {
-      UsedNamedAssumes = null;
       var requests = new List<string>();
       requests.Add("(check-sat)");
       requests.Add("(get-info :reason-unknown)");

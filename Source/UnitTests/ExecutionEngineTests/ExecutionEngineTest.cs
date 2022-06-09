@@ -87,7 +87,8 @@ Boogie program verifier finished with 0 verified, 2 errors
       var writer = new StringWriter();
       Parser.Parse(programString, "fakeFilename1", out var program);
       await engine.ProcessProgram(writer, program, "fakeFilename");
-      Assert.AreEqual(expected, writer.ToString());
+      var result = writer.ToString();
+      Assert.AreEqual(expected, result, "iteration {0}", i);
     }
   }
 

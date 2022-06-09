@@ -175,8 +175,6 @@ namespace Microsoft.Boogie.SMTLib
     public async Task<Outcome> CheckSat(ErrorHandler handler, CancellationToken cancellationToken,
       int errorLimit)
     {
-      UsedNamedAssumes = null;
-
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
       var result = Outcome.Undetermined;
@@ -647,18 +645,6 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(get-unsat-core)");
       var resp = await SendVcRequest("(get-unsat-core)");
       return ParseUnsatCore(resp.ToString());
-    }
-
-    public override void Check()
-    {
-      SendCheckSat();
-      FlushLogFile();
-    }
-
-    private void SendCheckSat()
-    {
-      UsedNamedAssumes = null;
-      SendThisVC("(check-sat)");
     }
 
     protected override void Send(string s, bool isCommon)
