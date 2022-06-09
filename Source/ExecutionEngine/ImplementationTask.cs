@@ -3,89 +3,121 @@ using System.IO;
 using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
-using VC;
 
 namespace Microsoft.Boogie;
 
+public interface IVerificationStatus {}
+
+/// <summary>
+/// Results are available
+/// </summary>
+public record Completed(VerificationResult Result) : IVerificationStatus;
+
+
+/// <summary>
+/// Scheduled to be run but waiting for resources
+/// </summary>
+public record Queued : IVerificationStatus;
+
+/// <summary>
+/// Not scheduled to be run
+/// </summary>
+public record Stale : IVerificationStatus;
+
+/// <summary>
+///
+/// </summary>
+public record Running : IVerificationStatus;
+
 public interface IImplementationTask {
-  IObservable<VerificationStatus> ObservableStatus { get; }
-  VerificationStatus CurrentStatus { get; }
+  IVerificationStatus CacheStatus { get; }
+
   ProcessedProgram ProcessedProgram { get; }
   Implementation Implementation { get; }
-  Task<VerificationResult> ActualTask { get; }
-  void Run();
+
+  IObservable<IVerificationStatus> Run();
   void Cancel();
 }
 
 public class ImplementationTask : IImplementationTask {
-  private readonly CancellationTokenSource taskCancellationSource;
+  private readonly ExecutionEngine engine;
 
-  private readonly Subject<VerificationStatus> observableStatus = new();
-  
-  private VerificationStatus currentStatus;
-  public IObservable<VerificationStatus> ObservableStatus => observableStatus;
+  public IVerificationStatus CacheStatus { get; private set; }
 
-  public VerificationStatus CurrentStatus {
-    get => currentStatus;
-    private set {
-      currentStatus = value;
-      observableStatus.OnNext(value);
-    }
-  }
   public ProcessedProgram ProcessedProgram { get; }
 
-  public Task<VerificationResult> ActualTask { get; }
   public Implementation Implementation { get; }
-
-  private readonly TaskCompletionSource runWasCalled = new();
   
   public ImplementationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Implementation implementation) {
+    this.engine = engine;
     ProcessedProgram = processedProgram;
     Implementation = implementation;
-    taskCancellationSource = new CancellationTokenSource();
     
     var cachedVerificationResult = engine.GetCachedVerificationResult(Implementation, TextWriter.Null);
     if (cachedVerificationResult != null) {
-      ActualTask = Task.FromResult(cachedVerificationResult);
-      CurrentStatus = VerificationStatus.Completed;
+      CacheStatus = new Completed(cachedVerificationResult);
     } else {
-      CurrentStatus = VerificationStatus.Stale;
-      ActualTask = VerifyImplementationWithStatusTracking(engine);
+      CacheStatus = new Stale();
     }
   }
 
-  private async Task<VerificationResult> VerifyImplementationWithStatusTracking(ExecutionEngine engine) {
-    await runWasCalled.Task;
+  private CancellationTokenSource cancellationSource;
+
+  public void Cancel() {
+    if (cancellationSource == null) {
+      throw new InvalidOperationException("There is no ongoing run to cancel.");
+    }
+
+    cancellationSource.Cancel();
+    cancellationSource = null;
+  }
+
+  public IObservable<IVerificationStatus> Run()
+  {
+    if (CacheStatus is not Stale) {
+      throw new InvalidOperationException("Can not start task that's already completed");
+    }
+
+    if (cancellationSource != null) {
+      throw new InvalidOperationException("There already an ongoing run.");
+    }
+    cancellationSource = new();
+    var cancellationToken = cancellationSource.Token;
+
+    var observableStatus = new ReplaySubject<IVerificationStatus>();
+    cancellationToken.Register(() => {
+      observableStatus.OnNext(new Stale());
+      observableStatus.OnCompleted();
+    });
+    var task = RunInternal(cancellationToken, observableStatus.OnNext);
+    task.ContinueWith(r =>
+    {
+      if (r.Exception != null) {
+        observableStatus.OnError(r.Exception);
+      } else {
+        observableStatus.OnCompleted();
+      }
+    }, TaskScheduler.Current);
+    return observableStatus;
+  }
+
+  private async Task<VerificationResult> RunInternal(CancellationToken cancellationToken, Action<IVerificationStatus> notifyStatusChange) {
 
     var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(),
-      null, null, Implementation, taskCancellationSource, TextWriter.Null);
+      null, null, Implementation, cancellationToken, TextWriter.Null);
 
-    CurrentStatus = enqueueTask.IsCompleted ? VerificationStatus.Running : VerificationStatus.Queued;
+    var afterEnqueueStatus = enqueueTask.IsCompleted ? (IVerificationStatus)new Running() : new Queued();
+    notifyStatusChange(afterEnqueueStatus);
 
     var verifyTask = await enqueueTask;
-    if (CurrentStatus != VerificationStatus.Running) {
-      CurrentStatus = VerificationStatus.Running;
+    if (afterEnqueueStatus is not Running) {
+      notifyStatusChange(new Running());
     }
 
     var result = await verifyTask;
-    CurrentStatus = VerificationStatus.Completed;
-    observableStatus.OnCompleted();
+    CacheStatus = new Completed(result);
+    cancellationSource = null;
+    notifyStatusChange(CacheStatus);
     return result;
   }
-
-  public void Run() {
-    runWasCalled.SetResult();
-  }
-
-  public void Cancel() {
-    taskCancellationSource.Cancel();
-    runWasCalled.TrySetCanceled(taskCancellationSource.Token);
-  }
-}
-
-public enum VerificationStatus {
-  Stale,      // Not scheduled to be run
-  Queued,     // Scheduled to be run but waiting for resources
-  Running,    // Currently running
-  Completed,  // Results are available
 }
