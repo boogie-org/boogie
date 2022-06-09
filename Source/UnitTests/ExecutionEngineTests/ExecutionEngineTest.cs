@@ -222,12 +222,12 @@ procedure FibTest() {
     options.VerifySnapshots = 1;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
-    var programString = @"procedure {:checksum ""stable""} Bad(y: int)
+    var programString = @"procedure {:priority 3} {:checksum ""stable""} Bad(y: int)
 {
   assert 2 == 1;
 }
 
-procedure {:checksum ""stable""} Good(y: int)
+procedure {:priority 2} {:checksum ""stable""} Good(y: int)
 {
   assert 2 == 2;
 }
