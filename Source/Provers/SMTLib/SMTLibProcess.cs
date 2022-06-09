@@ -19,6 +19,7 @@ namespace Microsoft.Boogie.SMTLib
     private readonly Process prover;
     private readonly SMTLibProverOptions options;
     private readonly AsyncQueue<string> proverOutput = new();
+    private readonly AsyncQueue<SExpr> responses = new();
     private TextWriter toProver;
     private readonly int smtProcessId;
     private static int smtProcessIdSeq = 0;
@@ -65,11 +66,20 @@ namespace Microsoft.Boogie.SMTLib
         toProver = prover.StandardInput;
         prover.BeginErrorReadLine();
         prover.BeginOutputReadLine();
+        var _ = ReadResponses();
       }
       catch (System.ComponentModel.Win32Exception e)
       {
         throw new ProverException(string.Format("Unable to start the process {0}: {1}", psi.FileName, e.Message));
       }
+    }
+
+    async Task ReadResponses() {
+      while (true) {
+        var response = await GetProverResponse();
+        responses.Enqueue(response);
+      }
+      // ReSharper disable once FunctionNeverReturns
     }
 
     private void prover_Exited(object sender, EventArgs e)
@@ -138,18 +148,18 @@ namespace Microsoft.Boogie.SMTLib
     public override Task<SExpr> SendRequest(string request) {
       lock (myLock) {
         Send(request);
-        return GetProverResponse();
+        return responses.Dequeue(CancellationToken.None);
       }
     }
 
     public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests) {
-      List<Task<SExpr>> responses;
+      List<Task<SExpr>> responses = new();
       lock (myLock) {
         foreach (var request in requests) {
           Send(request);
+          responses.Add(this.responses.Dequeue(CancellationToken.None));
         }
         IndicateEndOfInput();
-        responses = requests.Select(_ => GetProverResponse()).ToList();
       }
       var result = new List<SExpr>();
       foreach (var response in responses) {
