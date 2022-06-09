@@ -142,9 +142,9 @@ namespace Microsoft.Boogie.SMTLib
       try {
         await previousRequestsAreDone.WaitAsync();
         Console.WriteLine($"entered for {GetHashCode()}");
+        Send(request);
+        Send(PingRequest);
         while (true) {
-          Send(request);
-          Send(PingRequest);
           var response = await GetProverResponse();
           if (IsPong(response)) {
             if (previousResponse == null) {
