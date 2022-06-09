@@ -111,6 +111,15 @@ namespace Microsoft.Boogie.SMTLib
       UsedNamedAssumes = null;
     }
 
+    private Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests) {
+      var sanitizedRequests = requests.Select(Sanitize).ToList();
+      foreach (var request in sanitizedRequests) {
+        currentLogFile.WriteLine(request);
+      }
+      currentLogFile.Flush();
+      return Process.SendRequestsAndClose(sanitizedRequests);
+    }
+
     private async Task<Outcome> CheckSat(ErrorHandler handler, CancellationToken cancellationToken)
     {
       UsedNamedAssumes = null;
@@ -130,7 +139,7 @@ namespace Microsoft.Boogie.SMTLib
         currentErrorHandler = handler;
         FlushProverWarnings();
 
-        var responses = await Process.SendRequestsAndClose(requests.Select(Sanitize).ToList()).WaitAsync(cancellationToken);
+        var responses = await SendRequestsAndClose(requests).WaitAsync(cancellationToken);
 
         var outcomeSExp = responses[0];
         var result = ParseOutcome(outcomeSExp, out var wasUnknown);
