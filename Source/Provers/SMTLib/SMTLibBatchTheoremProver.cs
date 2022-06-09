@@ -32,6 +32,7 @@ namespace Microsoft.Boogie.SMTLib
   /// </summary>
   public class SMTLibBatchTheoremProver : SMTLibProcessTheoremProver
   {
+    private bool checkSatSent;
     private int resourceCount;
     private Model errorModel;
     private ScopedNamer namer;
@@ -63,6 +64,7 @@ namespace Microsoft.Boogie.SMTLib
     public override Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
       CancellationToken cancellationToken) {
       SetupProcess();
+      checkSatSent = false;
       FullReset(gen);
 
       if (options.LogFilename != null && currentLogFile == null) {
@@ -81,6 +83,7 @@ namespace Microsoft.Boogie.SMTLib
       Push();
       SendVCAndOptions(descriptiveName, vcString);
       SendOptimizationRequests();
+      checkSatSent = true;
 
       FlushLogFile();
 
@@ -241,7 +244,9 @@ namespace Microsoft.Boogie.SMTLib
       // Boogie emits comments after the solver has responded. In batch
       // mode, sending these to the solver is problematic. But they'll
       // still get sent to the log below.
-      // Process.Send(s);
+      if (Process != null && !checkSatSent) {
+        Process.Send(s);
+      }
 
       if (currentLogFile != null) {
         currentLogFile.WriteLine(s);
