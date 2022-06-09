@@ -37,8 +37,8 @@ class NoopSolver : SMTLibSolver
     if (response is not null) { responses.Enqueue(response); }
   }
 
-  public override Task<SExpr> SendRequest(string cmd) {
-    Send(cmd);
+  public override Task<SExpr> SendRequest(string request) {
+    Send(request);
     return GetProverResponse();
   }
 

@@ -9,7 +9,7 @@ public abstract class SMTLibSolver
   public abstract event Action<string> ErrorHandler;
   public abstract void Close();
   public abstract void Send(string cmd);
-  public abstract Task<SExpr> SendRequest(string cmd);
+  public abstract Task<SExpr> SendRequest(string request);
 
   public abstract Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests);
 

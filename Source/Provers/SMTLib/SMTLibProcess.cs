@@ -135,9 +135,9 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     // TODO, consider building in a PingPong to catch a missing response.
-    public override Task<SExpr> SendRequest(string cmd) {
+    public override Task<SExpr> SendRequest(string request) {
       lock (myLock) {
-        Send(cmd);
+        Send(request);
         return GetProverResponse();
       }
     }
