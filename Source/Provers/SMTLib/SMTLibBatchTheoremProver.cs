@@ -83,11 +83,11 @@ namespace Microsoft.Boogie.SMTLib
       Push();
       SendVCAndOptions(descriptiveName, vcString);
       SendOptimizationRequests();
-      checkSatSent = true;
 
       FlushLogFile();
 
       Process.NewProblem(descriptiveName);
+      checkSatSent = true;
 
       var result = CheckSat(handler, cancellationToken);
       Pop();
