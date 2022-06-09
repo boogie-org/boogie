@@ -11,19 +11,18 @@ using System.Threading.Tasks;
 namespace Microsoft.Boogie.SMTLib
 {
   /*
-   * Not thread-safe.
    * The locks inside this class serve to synchronize between the single external user and the
    * internal IO threads.
    */
-  public class SMTLibProcess : SMTLibSolver
-  {
-    readonly Process prover;
-    readonly SMTLibProverOptions options;
+  public class SMTLibProcess : SMTLibSolver {
+    private readonly object myLock = new();
+    private readonly Process prover;
+    private readonly SMTLibProverOptions options;
     private readonly AsyncQueue<string> proverOutput = new();
     private TextWriter toProver;
-    readonly int smtProcessId;
-    static int smtProcessIdSeq = 0;
-    ConsoleCancelEventHandler cancelEvent;
+    private readonly int smtProcessId;
+    private static int smtProcessIdSeq = 0;
+    private ConsoleCancelEventHandler cancelEvent;
 
     public SMTLibProcess(SMTLibOptions libOptions, SMTLibProverOptions options)
     {
@@ -137,22 +136,25 @@ namespace Microsoft.Boogie.SMTLib
 
     // TODO, consider building in a PingPong to catch a missing response.
     public override Task<SExpr> SendRequest(string cmd) {
-      lock (this) {
+      lock (myLock) {
         Send(cmd);
         return GetProverResponse();
       }
     }
 
     public override async Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests) {
-      foreach (var request in requests) {
-        Send(request);
+      List<Task<SExpr>> responses;
+      lock (myLock) {
+        foreach (var request in requests) {
+          Send(request);
+        }
+        IndicateEndOfInput();
+        responses = requests.Select(_ => GetProverResponse()).ToList();
       }
-      IndicateEndOfInput();
       var result = new List<SExpr>();
-      foreach (var request in requests) {
-        result.Add(await GetProverResponse());
+      foreach (var response in responses) {
+        result.Add(await response);
       }
-
       return result;
     }
 
