@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
 using Microsoft.Boogie.VCExprAST;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,7 +32,6 @@ namespace Microsoft.Boogie.SMTLib
   /// </summary>
   public class SMTLibBatchTheoremProver : SMTLibProcessTheoremProver
   {
-    private bool CheckSatSent;
     private int resourceCount;
     private Model errorModel;
     private ScopedNamer namer;
@@ -62,7 +63,6 @@ namespace Microsoft.Boogie.SMTLib
     public override Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
       CancellationToken cancellationToken) {
       SetupProcess();
-      CheckSatSent = false;
       FullReset(gen);
 
       if (options.LogFilename != null && currentLogFile == null) {
@@ -86,12 +86,10 @@ namespace Microsoft.Boogie.SMTLib
 
       Process.NewProblem(descriptiveName);
 
-      SendCheckSat();
+      var result = CheckSat(handler, cancellationToken);
       Pop();
+      return result;
 
-      FlushLogFile();
-
-      return CheckOutcomeCore(handler, cancellationToken, errorLimit);
     }
 
     public override Task Reset(VCExpressionGenerator generator) {
@@ -113,10 +111,17 @@ namespace Microsoft.Boogie.SMTLib
       UsedNamedAssumes = null;
     }
 
-    [NoDefaultContract]
-    public async Task<Outcome> CheckOutcomeCore(ErrorHandler handler, CancellationToken cancellationToken,
-      int errorLimit)
+    private async Task<Outcome> CheckSat(ErrorHandler handler, CancellationToken cancellationToken)
     {
+      UsedNamedAssumes = null;
+      var requests = new List<string>();
+      requests.Add("(check-sat)");
+      requests.Add("(get-info :reason-unknown)");
+      if (options.Solver == SolverKind.Z3) {
+        requests.Add($"(get-info :{Z3.RlimitOption})");
+      }
+      requests.Add("(get-model)");
+
       if (Process == null || proverErrors.Count > 0) {
         return Outcome.Undetermined;
       }
@@ -125,7 +130,23 @@ namespace Microsoft.Boogie.SMTLib
         currentErrorHandler = handler;
         FlushProverWarnings();
 
-        var result = await GetResponse(cancellationToken);
+        var responses = await Process.SendRequestsAndClose(requests.Select(Sanitize).ToList()).WaitAsync(cancellationToken);
+
+        var outcomeSExp = responses[0];
+        var result = ParseOutcome(outcomeSExp, out var wasUnknown);
+
+        var unknownSExp = responses[1];
+        if (wasUnknown) {
+          result = ParseReasonUnknown(unknownSExp, result);
+        }
+
+        if (options.Solver == SolverKind.Z3) {
+          var rlimitSExp = responses[2];
+          resourceCount = ParseRCount(rlimitSExp);
+        }
+
+        var modelSExp = responses[3];
+        errorModel = ParseErrorModel(modelSExp);
 
         if (result == Outcome.Invalid) {
           var labels = CalculatePath(handler.StartingProcId(), errorModel);
@@ -148,27 +169,6 @@ namespace Microsoft.Boogie.SMTLib
         Close();
         currentErrorHandler = null;
       }
-    }
-
-    private async Task<Outcome> GetResponse(CancellationToken cancellationToken)
-    {
-      var outcomeSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-      var result = ParseOutcome(outcomeSExp, out var wasUnknown);
-
-      var unknownSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-      if (wasUnknown) {
-        result = ParseReasonUnknown(unknownSExp, result);
-      }
-
-      if (options.Solver == SolverKind.Z3) {
-        var rlimitSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-        resourceCount = ParseRCount(rlimitSExp);
-      }
-
-      var modelSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-      errorModel = ParseErrorModel(modelSExp);
-
-      return result;
     }
 
     // Note: This could probably be made to work with the result of
@@ -221,19 +221,6 @@ namespace Microsoft.Boogie.SMTLib
       throw new NotSupportedException("Batch mode solver interface does not support the Check call.");
     }
 
-    private void SendCheckSat()
-    {
-      UsedNamedAssumes = null;
-      SendThisVC("(check-sat)");
-      SendThisVC("(get-info :reason-unknown)");
-      if (options.Solver == SolverKind.Z3) {
-        SendThisVC($"(get-info :{Z3.RlimitOption})");
-      }
-      SendThisVC("(get-model)");
-      CheckSatSent = true;
-      Process.IndicateEndOfInput();
-    }
-
     protected override void Send(string s, bool isCommon)
     {
       s = Sanitize(s);
@@ -245,9 +232,7 @@ namespace Microsoft.Boogie.SMTLib
       // Boogie emits comments after the solver has responded. In batch
       // mode, sending these to the solver is problematic. But they'll
       // still get sent to the log below.
-      if (Process != null && !CheckSatSent) {
-        Process.Send(s);
-      }
+      // Process.Send(s);
 
       if (currentLogFile != null) {
         currentLogFile.WriteLine(s);

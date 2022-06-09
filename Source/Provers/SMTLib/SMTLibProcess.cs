@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -94,7 +93,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public override void IndicateEndOfInput()
+    private void IndicateEndOfInput()
     {
       prover.StandardInput.Close();
       toProver = null;
@@ -144,9 +143,22 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    public override async Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests) {
+      foreach (var request in requests) {
+        Send(request);
+      }
+      IndicateEndOfInput();
+      var result = new List<SExpr>();
+      foreach (var request in requests) {
+        result.Add(await GetProverResponse());
+      }
+
+      return result;
+    }
+
     private Inspector Inspector { get; }
 
-    public override async Task<SExpr> GetProverResponse()
+    private async Task<SExpr> GetProverResponse()
     {
       if (toProver != null) {
         await toProver.FlushAsync();

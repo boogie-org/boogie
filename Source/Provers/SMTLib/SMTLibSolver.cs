@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,11 +11,10 @@ public abstract class SMTLibSolver
   public abstract void Close();
   public abstract void Send(string cmd);
   public abstract Task<SExpr> SendRequest(string cmd);
-  
-  public abstract Task<SExpr> GetProverResponse();
-  public abstract void NewProblem(string descriptiveName);
 
-  public abstract void IndicateEndOfInput();
+  public abstract Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests);
+
+  public abstract void NewProblem(string descriptiveName);
 
   protected abstract void HandleError(string msg);
 

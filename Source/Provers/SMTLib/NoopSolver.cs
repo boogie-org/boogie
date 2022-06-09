@@ -42,13 +42,22 @@ class NoopSolver : SMTLibSolver
     return GetProverResponse();
   }
 
-  public override Task<SExpr> GetProverResponse()
-  {
-    return Task.FromResult(responses.Count > 0 ? responses.Dequeue() : null);
+  public override async Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests) {
+
+    foreach (var request in requests) {
+      Send(request);
+    }
+    var result = new List<SExpr>();
+    foreach (var request in requests) {
+      result.Add(await GetProverResponse());
+    }
+
+    return result;
   }
 
-  public override void IndicateEndOfInput()
+  private Task<SExpr> GetProverResponse()
   {
+    return Task.FromResult(responses.Count > 0 ? responses.Dequeue() : null);
   }
 
   public override void NewProblem(string descriptiveName)
