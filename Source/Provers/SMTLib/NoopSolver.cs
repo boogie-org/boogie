@@ -68,4 +68,8 @@ class NoopSolver : SMTLibSolver
   {
     throw new NotSupportedException();
   }
+
+  public override Task PingPong() {
+    return Task.CompletedTask;
+  }
 }

@@ -15,11 +15,10 @@ namespace Microsoft.Boogie.SMTLib
    * internal IO threads.
    */
   public class SMTLibProcess : SMTLibSolver {
-    private readonly object myLock = new();
     private readonly Process prover;
     private readonly SMTLibProverOptions options;
     private readonly AsyncQueue<string> proverOutput = new();
-    private readonly AsyncQueue<SExpr> responses = new();
+    private SemaphoreSlim previousRequestsAreDone = new(1);
     private TextWriter toProver;
     private readonly int smtProcessId;
     private static int smtProcessIdSeq = 0;
@@ -66,20 +65,11 @@ namespace Microsoft.Boogie.SMTLib
         toProver = prover.StandardInput;
         prover.BeginErrorReadLine();
         prover.BeginOutputReadLine();
-        var _ = ReadResponses();
       }
       catch (System.ComponentModel.Win32Exception e)
       {
         throw new ProverException(string.Format("Unable to start the process {0}: {1}", psi.FileName, e.Message));
       }
-    }
-
-    async Task ReadResponses() {
-      while (true) {
-        var response = await GetProverResponse();
-        responses.Enqueue(response);
-      }
-      // ReSharper disable once FunctionNeverReturns
     }
 
     private void prover_Exited(object sender, EventArgs e)
@@ -141,31 +131,81 @@ namespace Microsoft.Boogie.SMTLib
         Console.WriteLine("[SMT-INP-{0}] {1}", smtProcessId, log);
       }
 
+      Console.WriteLine($"{GetHashCode()}: sent " + cmd);
       toProver.WriteLine(cmd);
+      toProver.Flush();
     }
 
     // TODO, consider building in a PingPong to catch a missing response.
-    public override Task<SExpr> SendRequest(string request) {
-      lock (myLock) {
-        Send(request);
-        return responses.Dequeue(CancellationToken.None);
+    public override async Task<SExpr> SendRequest(string request) {
+      SExpr previousResponse = null;
+      try {
+        await previousRequestsAreDone.WaitAsync();
+        Console.WriteLine($"entered for {GetHashCode()}");
+        while (true) {
+          Send(request);
+          Send(PingRequest);
+          var response = await GetProverResponse();
+          if (IsPong(response)) {
+            if (previousResponse == null) {
+              throw new Exception("Request returned no response");
+            }
+            return previousResponse;
+          }
+          previousResponse = response;
+        }
+      }
+      finally {
+        Console.WriteLine($"left for {GetHashCode()}");
+        previousRequestsAreDone.Release();
+      }
+    }
+
+    public override async Task PingPong() {
+      try {
+        await previousRequestsAreDone.WaitAsync();
+        Console.WriteLine($"entered for {GetHashCode()}");
+        Send(PingRequest);
+        while (true) {
+          var response = await GetProverResponse();
+          if (response == null)
+          {
+            throw new ProverDiedException();
+          }
+
+          if (IsPong(response))
+          {
+            return;
+          }
+
+          //HandleError("Invalid PING response from the prover: " + response.ToString());
+        }
+      }
+      finally {
+        Console.WriteLine($"left for {GetHashCode()}");
+        previousRequestsAreDone.Release();
       }
     }
 
     public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests) {
-      List<Task<SExpr>> responses = new();
-      lock (myLock) {
+      try {
+        await previousRequestsAreDone.WaitAsync();
+        Console.WriteLine($"entered for {GetHashCode()}");
+        var result = new List<SExpr>();
         foreach (var request in requests) {
           Send(request);
-          responses.Add(this.responses.Dequeue(CancellationToken.None));
         }
-        IndicateEndOfInput();
+        foreach (var request in requests) {
+          var response = await GetProverResponse();
+          result.Add(response);
+        }
+
+        return result;
       }
-      var result = new List<SExpr>();
-      foreach (var response in responses) {
-        result.Add(await response);
+      finally {
+        Console.WriteLine($"left for {GetHashCode()}");
+        previousRequestsAreDone.Release();
       }
-      return result;
     }
 
     private Inspector Inspector { get; }
@@ -487,6 +527,7 @@ namespace Microsoft.Boogie.SMTLib
           Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
         }
 
+        Console.WriteLine($"{GetHashCode()}: received " + e.Data);
         proverOutput.Enqueue(e.Data);
     }
 
