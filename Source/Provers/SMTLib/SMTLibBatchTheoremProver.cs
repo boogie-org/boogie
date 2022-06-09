@@ -260,7 +260,7 @@ namespace Microsoft.Boogie.SMTLib
       return Task.FromResult(resourceCount);
     }
 
-    public override List<string> UnsatCore()
+    public override Task<List<string>> UnsatCore()
     {
       throw new NotSupportedException("Batch mode solver interface does not support unsat cores.");
     }

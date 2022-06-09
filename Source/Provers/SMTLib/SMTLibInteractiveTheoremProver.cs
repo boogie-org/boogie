@@ -305,6 +305,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    // TODO seems like there's a sort of empty line being returned that we can use to check that the solver is done, but this code doesn't use it.
     private Task<SExpr> SendVcRequest(string s) {
       s = Sanitize(s);
 
@@ -513,26 +514,8 @@ namespace Microsoft.Boogie.SMTLib
         return null;
       }
 
-      SendThisVC("(get-model)");
-      Process.Ping();
-      Model theModel = null;
-      while (true)
-      {
-        var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-        if (resp == null || Process.IsPong(resp))
-        {
-          break;
-        }
-
-        if (theModel != null)
-        {
-          HandleProverError("Expecting only one model but got many");
-        }
-
-        theModel = ParseErrorModel(resp);
-      }
-
-      return theModel;
+      var resp = await SendVcRequest("(get-model)").WaitAsync(cancellationToken);
+      return resp != null ? ParseErrorModel(resp) : null;
     }
 
     private async Task<Outcome> CheckSatAndGetResponse(CancellationToken cancellationToken)
@@ -564,8 +547,7 @@ namespace Microsoft.Boogie.SMTLib
     public override async Task<object> Evaluate(VCExpr expr)
     {
       string vcString = VCExpr2String(expr, 1);
-      SendThisVC("(get-value (" + vcString + "))");
-      var resp = await Process.GetProverResponse();
+      var resp = await SendVcRequest($"(get-value ({vcString}))");
       if (resp == null)
       {
         throw new VCExprEvaluationException();
@@ -660,11 +642,11 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public override List<string> UnsatCore()
+    public override async Task<List<string>> UnsatCore()
     {
       SendThisVC("(get-unsat-core)");
-      var resp = Process.GetProverResponse().ToString();
-      return ParseUnsatCore(resp);
+      var resp = await SendVcRequest("(get-unsat-core)");
+      return ParseUnsatCore(resp.ToString());
     }
 
     public override void Check()
@@ -716,8 +698,7 @@ namespace Microsoft.Boogie.SMTLib
         return 0;
       }
 
-      SendThisVC($"(get-info :{Z3.RlimitOption})");
-      return ParseRCount(await Process.GetProverResponse());
+      return ParseRCount(await SendVcRequest($"(get-info :{Z3.RlimitOption})"));
     }
 
     /// <summary>
@@ -754,8 +735,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
-      SendThisVC("(get-unsat-core)");
-      var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
+      var resp = await SendVcRequest("(get-unsat-core)").WaitAsync(cancellationToken);
       var unsatCore = new List<int>();
       if (resp is not null && resp.Name != "")
       {
@@ -844,9 +824,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         foreach (var relaxVar in relaxVars)
         {
-          SendThisVC("(get-value (" + relaxVar + "))");
-          FlushLogFile();
-          var resp = await Process.GetProverResponse().WaitAsync(cancellationToken);
+          var resp = await SendVcRequest("(get-value ({relaxVar}))").WaitAsync(cancellationToken);
           if (resp == null)
           {
             break;

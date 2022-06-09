@@ -225,7 +225,7 @@ public abstract class ProverInterface
     throw new NotImplementedException();
   }
 
-  public virtual List<string> UnsatCore()
+  public virtual Task<List<string>> UnsatCore()
   {
     throw new NotImplementedException();
   }
