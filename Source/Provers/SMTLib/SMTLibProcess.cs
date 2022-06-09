@@ -131,7 +131,6 @@ namespace Microsoft.Boogie.SMTLib
         Console.WriteLine("[SMT-INP-{0}] {1}", smtProcessId, log);
       }
 
-      Console.WriteLine($"{GetHashCode()}: sent " + cmd);
       toProver.WriteLine(cmd);
       toProver.Flush();
     }
@@ -141,7 +140,6 @@ namespace Microsoft.Boogie.SMTLib
       SExpr previousResponse = null;
       try {
         await previousRequestsAreDone.WaitAsync();
-        Console.WriteLine($"entered for {GetHashCode()}");
         Send(request);
         Send(PingRequest);
         while (true) {
@@ -156,7 +154,6 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
       finally {
-        Console.WriteLine($"left for {GetHashCode()}");
         previousRequestsAreDone.Release();
       }
     }
@@ -164,7 +161,6 @@ namespace Microsoft.Boogie.SMTLib
     public override async Task PingPong() {
       try {
         await previousRequestsAreDone.WaitAsync();
-        Console.WriteLine($"entered for {GetHashCode()}");
         Send(PingRequest);
         while (true) {
           var response = await GetProverResponse();
@@ -178,11 +174,10 @@ namespace Microsoft.Boogie.SMTLib
             return;
           }
 
-          //HandleError("Invalid PING response from the prover: " + response.ToString());
+          HandleError("Invalid PING response from the prover: " + response.ToString());
         }
       }
       finally {
-        Console.WriteLine($"left for {GetHashCode()}");
         previousRequestsAreDone.Release();
       }
     }
@@ -190,7 +185,6 @@ namespace Microsoft.Boogie.SMTLib
     public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests) {
       try {
         await previousRequestsAreDone.WaitAsync();
-        Console.WriteLine($"entered for {GetHashCode()}");
         var result = new List<SExpr>();
         foreach (var request in requests) {
           Send(request);
@@ -203,7 +197,6 @@ namespace Microsoft.Boogie.SMTLib
         return result;
       }
       finally {
-        Console.WriteLine($"left for {GetHashCode()}");
         previousRequestsAreDone.Release();
       }
     }
@@ -527,7 +520,6 @@ namespace Microsoft.Boogie.SMTLib
           Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
         }
 
-        Console.WriteLine($"{GetHashCode()}: received " + e.Data);
         proverOutput.Enqueue(e.Data);
     }
 
