@@ -18,7 +18,7 @@ namespace Microsoft.Boogie.SMTLib
     private readonly Process prover;
     private readonly SMTLibProverOptions options;
     private readonly AsyncQueue<string> proverOutput = new();
-    private SemaphoreSlim previousRequestsAreDone = new(1);
+    private readonly SemaphoreSlim asyncLock = new(1);
     private TextWriter toProver;
     private readonly int smtProcessId;
     private static int smtProcessIdSeq = 0;
@@ -139,7 +139,7 @@ namespace Microsoft.Boogie.SMTLib
     public override async Task<SExpr> SendRequest(string request) {
       SExpr previousResponse = null;
       try {
-        await previousRequestsAreDone.WaitAsync();
+        await asyncLock.WaitAsync();
         Send(request);
         Send(PingRequest);
         while (true) {
@@ -154,13 +154,13 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
       finally {
-        previousRequestsAreDone.Release();
+        asyncLock.Release();
       }
     }
 
     public override async Task PingPong() {
       try {
-        await previousRequestsAreDone.WaitAsync();
+        await asyncLock.WaitAsync();
         Send(PingRequest);
         while (true) {
           var response = await GetProverResponse();
@@ -178,13 +178,13 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
       finally {
-        previousRequestsAreDone.Release();
+        asyncLock.Release();
       }
     }
 
     public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests) {
       try {
-        await previousRequestsAreDone.WaitAsync();
+        await asyncLock.WaitAsync();
         var result = new List<SExpr>();
         foreach (var request in requests) {
           Send(request);
@@ -193,12 +193,13 @@ namespace Microsoft.Boogie.SMTLib
         foreach (var request in requests) {
           var response = await GetProverResponse();
           result.Add(response);
+          Console.WriteLine($"response for request {request} was {response}");
         }
 
         return result;
       }
       finally {
-        previousRequestsAreDone.Release();
+        asyncLock.Release();
       }
     }
 

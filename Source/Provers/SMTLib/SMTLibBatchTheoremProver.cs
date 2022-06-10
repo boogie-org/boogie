@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
@@ -141,21 +142,22 @@ namespace Microsoft.Boogie.SMTLib
         FlushProverWarnings();
 
         var responses = await SendRequestsAndClose(requests).WaitAsync(cancellationToken);
+        var responseStack = new Stack<SExpr>(responses.Reverse());
 
-        var outcomeSExp = responses[0];
+        var outcomeSExp = responseStack.Pop();
         var result = ParseOutcome(outcomeSExp, out var wasUnknown);
 
-        var unknownSExp = responses[1];
+        var unknownSExp = responseStack.Pop();
         if (wasUnknown) {
           result = ParseReasonUnknown(unknownSExp, result);
         }
 
         if (options.Solver == SolverKind.Z3) {
-          var rlimitSExp = responses[2];
+          var rlimitSExp = responseStack.Pop();
           resourceCount = ParseRCount(rlimitSExp);
         }
 
-        var modelSExp = responses[3];
+        var modelSExp = responseStack.Pop();
         errorModel = ParseErrorModel(modelSExp);
 
         if (result == Outcome.Invalid) {
