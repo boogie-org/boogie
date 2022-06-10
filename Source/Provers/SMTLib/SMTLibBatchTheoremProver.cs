@@ -141,15 +141,18 @@ namespace Microsoft.Boogie.SMTLib
         currentErrorHandler = handler;
         FlushProverWarnings();
 
-        var responses = await SendRequestsAndClose(requests).WaitAsync(cancellationToken);
-        var responseStack = new Stack<SExpr>(responses.Reverse());
-
-        var outcomeSExp = responseStack.Pop();
-        if (outcomeSExp.Name.Equals("timeout")) {
+        IReadOnlyList<SExpr> responses;
+        try {
+          responses = await SendRequestsAndClose(requests).WaitAsync(cancellationToken);
+        }
+        catch (TimeoutException) {
           currentErrorHandler.OnResourceExceeded("hard solver timeout");
           resourceCount = -1;
           return Outcome.TimeOut;
         }
+        var responseStack = new Stack<SExpr>(responses.Reverse());
+
+        var outcomeSExp = responseStack.Pop();
         var result = ParseOutcome(outcomeSExp, out var wasUnknown);
 
         var unknownSExp = responseStack.Pop();

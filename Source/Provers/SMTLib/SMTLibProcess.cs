@@ -190,6 +190,9 @@ namespace Microsoft.Boogie.SMTLib
         IndicateEndOfInput();
         foreach (var request in requests) {
           var response = await GetProverResponse();
+          if (response.Name.Equals("timeout")) {
+            throw new TimeoutException();
+          }
           result.Add(response);
         }
 
