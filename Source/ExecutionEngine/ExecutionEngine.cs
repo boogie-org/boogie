@@ -694,9 +694,11 @@ namespace Microsoft.Boogie
       return GetPrioritizedImplementations(program).Select(implementation => new ImplementationTask(this, processedProgram, implementation)).ToList();
     }
 
+    /// <returns>
     /// The outer task is to wait for a semaphore to let verification start
     /// The inner task is the actual verification of the implementation
-    public async Task<Task<VerificationResult>> EnqueueVerifyImplementation(
+    /// </returns>
+    public Task<Task<VerificationResult>> EnqueueVerifyImplementation(
       ProcessedProgram processedProgram, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, Implementation implementation,
       CancellationTokenSource cts,
@@ -707,17 +709,35 @@ namespace Microsoft.Boogie
         old.Cancel();
       }
 
-      await verifyImplementationSemaphore.WaitAsync(cts.Token);
-      ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
+      var result = EnqueueVerifyImplementation(processedProgram, stats, programId, er, implementation, cts.Token,
+        taskWriter);
+      var _ = result.Unwrap().ContinueWith(t =>
+      {
+        ImplIdToCancellationTokenSource.TryRemove(id, out old);
+      });
+      return result;
+    }
 
-      var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cts.Token,
+    /// <returns>
+    /// The outer task is to wait for a semaphore to let verification start
+    /// The inner task is the actual verification of the implementation
+    /// </returns>
+    public async Task<Task<VerificationResult>> EnqueueVerifyImplementation(
+      ProcessedProgram processedProgram, PipelineStatistics stats,
+      string programId, ErrorReporterDelegate er, Implementation implementation,
+      CancellationToken cancellationToken,
+      TextWriter taskWriter)
+    {
+
+      await verifyImplementationSemaphore.WaitAsync(cancellationToken);
+
+      var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cancellationToken,
         implementation,
-        programId, taskWriter), cts.Token);
+        programId, taskWriter), cancellationToken);
 
       var _ = coreTask.ContinueWith(t => {
         verifyImplementationSemaphore.Release();
-        ImplIdToCancellationTokenSource.TryRemove(id, out old);
-      });
+      }, CancellationToken.None);
       return coreTask;
     }
 
