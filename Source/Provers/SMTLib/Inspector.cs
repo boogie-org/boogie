@@ -20,7 +20,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
 
-    public Inspector(SMTLibProverOptions opts)
+    public Inspector(SMTLibSolverOptions opts)
     {
       Contract.Requires(opts != null);
       ProcessStartInfo psi = new ProcessStartInfo(opts.Inspector);

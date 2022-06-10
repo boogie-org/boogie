@@ -34,7 +34,7 @@ namespace ExecutionEngineTests
       SMTLibOptions smtLibOptions = CommandLineOptions.FromArguments();
       VCExpressionGenerator vgen = new VCExpressionGenerator();
       VCGenerationOptions genOptions = new VCGenerationOptions(new List<string>(){});
-      var smtLibProverOptions = new SMTLibProverOptions(smtLibOptions);
+      var smtLibProverOptions = new SMTLibSolverOptions(smtLibOptions);
       smtLibProverOptions.Solver = SolverKind.NoOpWithZ3Options;
       var smtLibInteractiveTheoremProver = new SMTLibInteractiveTheoremProver(
         smtLibOptions,

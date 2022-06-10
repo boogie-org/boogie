@@ -16,8 +16,6 @@ public abstract class SMTLibSolver
 
   public abstract void NewProblem(string descriptiveName);
 
-  protected abstract void HandleError(string msg);
-
   public abstract Task PingPong();
 
   public static bool IsPong(SExpr response)

@@ -33,7 +33,7 @@ namespace Microsoft.Boogie.SMTLib
     NoOpWithZ3Options
   }
 
-  public class SMTLibProverOptions : ProverOptions
+  public class SMTLibSolverOptions : ProverOptions
   {
     public bool UseWeights = true;
     public bool UseTickleBool => Solver == SolverKind.Z3;
@@ -45,7 +45,7 @@ namespace Microsoft.Boogie.SMTLib
     // Z3 specific (at the moment; some of them make sense also for other provers)
     public string Inspector = null;
 
-    public SMTLibProverOptions(SMTLibOptions libOptions) : base(libOptions)
+    public SMTLibSolverOptions(SMTLibOptions libOptions) : base(libOptions)
     {
     }
 

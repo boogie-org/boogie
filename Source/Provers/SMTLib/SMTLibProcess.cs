@@ -10,21 +10,19 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  /*
-   * The locks inside this class serve to synchronize between the single external user and the
-   * internal IO threads.
-   */
   public class SMTLibProcess : SMTLibSolver {
-    private readonly Process prover;
-    private readonly SMTLibProverOptions options;
-    private readonly AsyncQueue<string> proverOutput = new();
+    private readonly Process solver;
+    private readonly SMTLibSolverOptions options;
+    // Used to synchronise between solver output and the request currently being processed.
+    private readonly AsyncQueue<string> solverOutput = new();
+    // Used to synchronise between requests into this class.
     private readonly SemaphoreSlim asyncLock = new(1);
     private TextWriter toProver;
     private readonly int smtProcessId;
     private static int smtProcessIdSeq = 0;
     private ConsoleCancelEventHandler cancelEvent;
 
-    public SMTLibProcess(SMTLibOptions libOptions, SMTLibProverOptions options)
+    public SMTLibProcess(SMTLibOptions libOptions, SMTLibSolverOptions options)
     {
       this.options = options;
       smtProcessId = smtProcessIdSeq++;
@@ -56,15 +54,15 @@ namespace Microsoft.Boogie.SMTLib
 
       try
       {
-        prover = new Process();
-        prover.StartInfo = psi;
-        prover.ErrorDataReceived += prover_ErrorDataReceived;
-        prover.OutputDataReceived += prover_OutputDataReceived;
-        prover.Exited += prover_Exited;
-        prover.Start();
-        toProver = prover.StandardInput;
-        prover.BeginErrorReadLine();
-        prover.BeginOutputReadLine();
+        solver = new Process();
+        solver.StartInfo = psi;
+        solver.ErrorDataReceived += SolverErrorDataReceived;
+        solver.OutputDataReceived += SolverOutputDataReceived;
+        solver.Exited += SolverExited;
+        solver.Start();
+        toProver = solver.StandardInput;
+        solver.BeginErrorReadLine();
+        solver.BeginOutputReadLine();
       }
       catch (System.ComponentModel.Win32Exception e)
       {
@@ -72,7 +70,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private void prover_Exited(object sender, EventArgs e)
+    private void SolverExited(object sender, EventArgs e)
     {
       lock (this) {
         while (outputReceivers.TryDequeue(out var source)) {
@@ -86,7 +84,7 @@ namespace Microsoft.Boogie.SMTLib
     [NoDefaultContract] // important, since we have no idea what state the object might be in when this handler is invoked
     void ControlCHandler(object o, ConsoleCancelEventArgs a)
     {
-      if (prover != null)
+      if (solver != null)
       {
         TerminateProver();
       }
@@ -94,7 +92,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private void IndicateEndOfInput()
     {
-      prover.StandardInput.Close();
+      solver.StandardInput.Close();
       toProver = null;
     }
 
@@ -106,9 +104,9 @@ namespace Microsoft.Boogie.SMTLib
         IndicateEndOfInput();
 
         // Give it a chance to exit cleanly (e.g. to flush buffers)
-        if (!prover.WaitForExit(timeout))
+        if (!solver.WaitForExit(timeout))
         {
-          prover.Kill();
+          solver.Kill();
         }
       }
       catch
@@ -285,7 +283,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       try
       {
-        TotalUserTime += prover.UserProcessorTime;
+        TotalUserTime += solver.UserProcessorTime;
       }
       catch (Exception e)
       {
@@ -301,7 +299,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override event Action<string> ErrorHandler;
 
-    protected override void HandleError(string msg)
+    private void HandleError(string msg)
     {
       if (options.Verbosity >= 2)
       {
@@ -497,7 +495,7 @@ namespace Microsoft.Boogie.SMTLib
     /// </summary>
     Task<string> ReadProver()
     {
-      return proverOutput.Dequeue(CancellationToken.None);
+      return solverOutput.Dequeue(CancellationToken.None);
     }
 
     void DisposeProver()
@@ -509,7 +507,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    void prover_OutputDataReceived(object sender, DataReceivedEventArgs e)
+    void SolverOutputDataReceived(object sender, DataReceivedEventArgs e)
     {
         if (e.Data == null)
         {
@@ -521,10 +519,10 @@ namespace Microsoft.Boogie.SMTLib
           Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
         }
 
-        proverOutput.Enqueue(e.Data);
+        solverOutput.Enqueue(e.Data);
     }
 
-    void prover_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+    void SolverErrorDataReceived(object sender, DataReceivedEventArgs e)
     {
       if (e.Data == null)
       {

@@ -29,14 +29,14 @@ namespace Microsoft.Boogie.SMTLib
   {
     public SMTLibOptions LibOptions { get; }
 
-    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
+    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibOptions libOptions, SMTLibSolverOptions opts,
       ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null) : this(libOptions)
     {
       Contract.Requires(wr != null);
       Contract.Requires(namer != null);
       this.wr = wr;
       this.Namer = namer;
-      this.ProverOptions = opts;
+      this.solverOptions = opts;
       this.OptimizationRequests = optReqs;
       this.NamedAssumes = namedAssumes;
     }
@@ -62,7 +62,7 @@ namespace Microsoft.Boogie.SMTLib
       return "Select_" + TypeToString(node[0].Type);
     }
     
-    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
+    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibOptions libOptions, SMTLibSolverOptions opts,
       ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null, ISet<VCExprVar> tryAssumes = null)
     {
       Contract.Requires(e != null);
@@ -106,7 +106,7 @@ namespace Microsoft.Boogie.SMTLib
 
     internal readonly UniqueNamer Namer;
     internal int UnderQuantifier = 0;
-    internal readonly SMTLibProverOptions ProverOptions;
+    internal readonly SMTLibSolverOptions solverOptions;
 
     readonly IList<string> OptimizationRequests;
     readonly ISet<VCExprVar> NamedAssumes;
@@ -386,7 +386,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         string optOp = node.Op.Equals(VCExpressionGenerator.MinimizeOp) ? "minimize" : "maximize";
         OptimizationRequests.Add(string.Format("({0} {1})", optOp,
-          ToString(node[0], Namer, LibOptions, ProverOptions, NamedAssumes)));
+          ToString(node[0], Namer, LibOptions, solverOptions, NamedAssumes)));
         Linearise(node[1], options);
         return true;
       }
@@ -442,7 +442,7 @@ namespace Microsoft.Boogie.SMTLib
 
         VCQuantifierInfo info = node.Info;
         var weight = info.weight;
-        if (!ProverOptions.UseWeights)
+        if (!solverOptions.UseWeights)
         {
           weight = 1;
         }
@@ -706,7 +706,7 @@ namespace Microsoft.Boogie.SMTLib
       public bool VisitCustomOp(VCExprNAry node, LineariserOptions options)
       {
         VCExprCustomOp op = (VCExprCustomOp) node.Op;
-        if (!ExprLineariser.ProverOptions.UseTickleBool && op.Name == "tickleBool")
+        if (!ExprLineariser.solverOptions.UseTickleBool && op.Name == "tickleBool")
         {
           ExprLineariser.Linearise(VCExpressionGenerator.True, options);
         }
