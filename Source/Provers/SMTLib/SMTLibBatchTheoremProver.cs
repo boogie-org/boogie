@@ -145,6 +145,11 @@ namespace Microsoft.Boogie.SMTLib
         var responseStack = new Stack<SExpr>(responses.Reverse());
 
         var outcomeSExp = responseStack.Pop();
+        if (outcomeSExp.Name.Equals("timeout")) {
+          currentErrorHandler.OnResourceExceeded("hard solver timeout");
+          resourceCount = -1;
+          return Outcome.TimeOut;
+        }
         var result = ParseOutcome(outcomeSExp, out var wasUnknown);
 
         var unknownSExp = responseStack.Pop();
