@@ -19,7 +19,7 @@ namespace Microsoft.Boogie.SMTLib
     protected SMTLibOptions libOptions;
     protected SMTLibProverContext ctx;
     protected VCExpressionGenerator gen;
-    protected SMTLibProverOptions options;
+    protected SMTLibSolverOptions options;
     protected bool usingUnsatCore;
     private string backgroundPredicates;
     internal TypeAxiomBuilder AxBuilder { get; set; }
@@ -52,7 +52,7 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
 
-      this.options = (SMTLibProverOptions) options;
+      this.options = (SMTLibSolverOptions) options;
       this.libOptions = libOptions;
       this.ctx = ctx;
       this.gen = gen;
@@ -1661,7 +1661,7 @@ namespace Microsoft.Boogie.SMTLib
       List<string> /*!>!*/
         proverCommands = new List<string /*!*/>();
       proverCommands.Add("smtlib");
-      var opts = (SMTLibProverOptions) options;
+      var opts = (SMTLibSolverOptions) options;
       if (opts.Solver == SolverKind.Z3)
       {
         proverCommands.Add("z3");
@@ -1677,7 +1677,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override ProverOptions BlankProverOptions(SMTLibOptions libOptions)
     {
-      return new SMTLibProverOptions(libOptions);
+      return new SMTLibSolverOptions(libOptions);
     }
 
     protected virtual SMTLibProcessTheoremProver SpawnProver(SMTLibOptions libOptions, ProverOptions options,

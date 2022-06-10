@@ -87,7 +87,8 @@ Boogie program verifier finished with 0 verified, 2 errors
       var writer = new StringWriter();
       Parser.Parse(programString, "fakeFilename1", out var program);
       await engine.ProcessProgram(writer, program, "fakeFilename");
-      Assert.AreEqual(expected, writer.ToString());
+      var result = writer.ToString();
+      Assert.AreEqual(expected, result, $"iteration {i}, result {result}");
     }
   }
 
@@ -222,12 +223,12 @@ procedure FibTest() {
     options.VerifySnapshots = 1;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
-    var programString = @"procedure {:checksum ""stable""} Bad(y: int)
+    var programString = @"procedure {:priority 7} {:checksum ""stable""} Bad(y: int)
 {
   assert 2 == 1;
 }
 
-procedure {:checksum ""stable""} Good(y: int)
+procedure {:priority 4} {:checksum ""stable""} Good(y: int)
 {
   assert 2 == 2;
 }

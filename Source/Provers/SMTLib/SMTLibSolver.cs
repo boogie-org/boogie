@@ -1,51 +1,26 @@
 using System;
-using System.Threading;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.SMTLib;
 
 public abstract class SMTLibSolver
 {
+  public const string PingRequest = "(get-info :name)";
   public abstract event Action<string> ErrorHandler;
   public abstract void Close();
   public abstract void Send(string cmd);
-  public abstract Task<SExpr> GetProverResponse();
+  public abstract Task<SExpr> SendRequest(string request);
+
+  public abstract Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests);
+
   public abstract void NewProblem(string descriptiveName);
 
-  public abstract void IndicateEndOfInput();
+  public abstract Task PingPong();
 
-  protected abstract void HandleError(string msg);
-
-  public void Ping()
+  public static bool IsPong(SExpr response)
   {
-    Send("(get-info :name)");
-  }
-
-  public async Task PingPong()
-  {
-    Ping();
-    while (true)
-    {
-      var sx = await GetProverResponse();
-      if (sx == null)
-      {
-        throw new ProverDiedException();
-      }
-
-      if (IsPong(sx))
-      {
-        return;
-      }
-      else
-      {
-        HandleError("Invalid PING response from the prover: " + sx.ToString());
-      }
-    }
-  }
-
-  public bool IsPong(SExpr sx)
-  {
-    return sx is { Name: ":name" };
+    return response is { Name: ":name" };
   }
 
   public async Task<ProverDiedException> GetExceptionIfProverDied()

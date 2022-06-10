@@ -265,8 +265,7 @@ namespace Microsoft.Boogie.Houdini
       DateTime now = DateTime.UtcNow;
 
       VCExpr vc = proverInterface.VCExprGen.Implies(BuildAxiom(proverInterface, assignment), conjecture);
-      await proverInterface.BeginCheck(Description, vc, handler);
-      ProverInterface.Outcome proverOutcome = await proverInterface.CheckOutcome(handler, errorLimit, CancellationToken.None);
+      var proverOutcome = await proverInterface.Check(Description, vc, handler, errorLimit, CancellationToken.None);
 
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
       stats.proverTime += queryTime;

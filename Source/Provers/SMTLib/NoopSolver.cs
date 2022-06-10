@@ -37,21 +37,34 @@ class NoopSolver : SMTLibSolver
     if (response is not null) { responses.Enqueue(response); }
   }
 
-  public override Task<SExpr> GetProverResponse()
-  {
-    return Task.FromResult(responses.Count > 0 ? responses.Dequeue() : null);
+  public override Task<SExpr> SendRequest(string request) {
+    Send(request);
+    return GetProverResponse();
   }
 
-  public override void IndicateEndOfInput()
+  public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests) {
+
+    foreach (var request in requests) {
+      Send(request);
+    }
+    var result = new List<SExpr>();
+    foreach (var request in requests) {
+      result.Add(await GetProverResponse());
+    }
+
+    return result;
+  }
+
+  private Task<SExpr> GetProverResponse()
   {
+    return Task.FromResult(responses.Count > 0 ? responses.Dequeue() : null);
   }
 
   public override void NewProblem(string descriptiveName)
   {
   }
 
-  protected override void HandleError(string msg)
-  {
-    throw new NotSupportedException();
+  public override Task PingPong() {
+    return Task.CompletedTask;
   }
 }

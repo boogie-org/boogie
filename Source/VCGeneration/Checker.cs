@@ -258,10 +258,10 @@ namespace Microsoft.Boogie
       return thmProver.GetRCount();
     }
 
-    private async Task WaitForOutput(CancellationToken cancellationToken)
-    {
+
+    private async Task Check(string descriptiveName, VCExpr vc, CancellationToken cancellationToken) {
       try {
-        outcome = await thmProver.CheckOutcome(cce.NonNull(handler), Options.ErrorLimit,
+        outcome = await thmProver.Check(descriptiveName, vc, cce.NonNull(handler), Options.ErrorLimit,
           cancellationToken);
       }
       catch (OperationCanceledException) {
@@ -270,6 +270,9 @@ namespace Microsoft.Boogie
       catch (UnexpectedProverOutputException e)
       {
         outputExn = e;
+      }
+      catch (ProverException) {
+        throw;
       }
       catch (Exception e)
       {
@@ -322,10 +325,8 @@ namespace Microsoft.Boogie
       SetTimeout(timeout);
       SetRlimit(rlimit);
       ProverStart = DateTime.UtcNow;
-      await thmProver.BeginCheck(descriptiveName, vc, handler);
-      //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 
-      ProverTask = WaitForOutput(cancellationToken);
+      ProverTask = Check(descriptiveName, vc, cancellationToken);
     }
 
     public ProverInterface.Outcome ReadOutcome()
@@ -376,19 +377,8 @@ namespace Microsoft.Boogie
       throw new NotImplementedException();
     }
 
-    public override Task BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
-    {
-      /*Contract.Requires(descriptiveName != null);*/
-      //Contract.Requires(vc != null);
-      //Contract.Requires(handler != null);
-      throw new NotImplementedException();
-    }
-
-    [NoDefaultContract]
-    public override Task<Outcome> CheckOutcome(ErrorHandler handler, int taskID, CancellationToken cancellationToken)
-    {
-      //Contract.Requires(handler != null);
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+    public override Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
+      CancellationToken cancellationToken) {
       throw new NotImplementedException();
     }
 
