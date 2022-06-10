@@ -193,7 +193,6 @@ namespace Microsoft.Boogie.SMTLib
         foreach (var request in requests) {
           var response = await GetProverResponse();
           result.Add(response);
-          Console.WriteLine($"response for request {request} was {response}");
         }
 
         return result;
