@@ -102,7 +102,6 @@ public abstract class ProverInterface
   }
 
   public readonly ISet<VCExprVar> NamedAssumes = new HashSet<VCExprVar>();
-  public ISet<string> UsedNamedAssumes { get; protected set; }
 
   public class ErrorHandler
   {

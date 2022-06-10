@@ -18,6 +18,7 @@ namespace Microsoft.Boogie.SMTLib
     private bool processNeedsRestart;
     private ScopedNamer commonNamer;
     private ScopedNamer finalNamer;
+    private ISet<string> usedNamedAssumes;
 
     [NotDelayed]
     public SMTLibInteractiveTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
@@ -166,7 +167,7 @@ namespace Microsoft.Boogie.SMTLib
         ctx.parent = this;
         DeclCollector.Reset();
         NamedAssumes.Clear();
-        UsedNamedAssumes = null;
+        usedNamedAssumes = null;
         SendThisVC("; did a full reset");
       }
     }
@@ -210,11 +211,11 @@ namespace Microsoft.Boogie.SMTLib
             {
               if (usingUnsatCore)
               {
-                UsedNamedAssumes = new HashSet<string>();
+                usedNamedAssumes = new HashSet<string>();
                 var resp = await SendVcRequest("(get-unsat-core)").WaitAsync(cancellationToken);
                 if (resp.Name != "")
                 {
-                  UsedNamedAssumes.Add(resp.Name);
+                  usedNamedAssumes.Add(resp.Name);
                   if (libOptions.PrintNecessaryAssumes)
                   {
                     reporter.AddNecessaryAssume(resp.Name.Substring("aux$$assume$$".Length));
@@ -223,7 +224,7 @@ namespace Microsoft.Boogie.SMTLib
 
                 foreach (var arg in resp.Arguments)
                 {
-                  UsedNamedAssumes.Add(arg.Name);
+                  usedNamedAssumes.Add(arg.Name);
                   if (libOptions.PrintNecessaryAssumes)
                   {
                     reporter.AddNecessaryAssume(arg.Name.Substring("aux$$assume$$".Length));
@@ -232,7 +233,7 @@ namespace Microsoft.Boogie.SMTLib
               }
               else
               {
-                UsedNamedAssumes = null;
+                usedNamedAssumes = null;
               }
             }
 
