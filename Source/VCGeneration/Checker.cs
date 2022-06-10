@@ -271,7 +271,7 @@ namespace Microsoft.Boogie
       {
         outputExn = e;
       }
-      catch (ProverException e) {
+      catch (ProverException) {
         throw;
       }
       catch (Exception e)
