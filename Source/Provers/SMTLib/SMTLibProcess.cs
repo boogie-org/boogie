@@ -189,6 +189,7 @@ namespace Microsoft.Boogie.SMTLib
         foreach (var request in requests) {
           Send(request);
         }
+        IndicateEndOfInput();
         foreach (var request in requests) {
           var response = await GetProverResponse();
           result.Add(response);
