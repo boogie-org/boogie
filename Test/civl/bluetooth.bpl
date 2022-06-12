@@ -50,10 +50,8 @@ procedure {:yield_invariant} {:layer 2} Inv2();
 requires stopped ==> stoppingFlag;
 
 procedure {:yield_invariant} {:layer 1} Inv1();
-requires stoppingEvent ==> stoppingFlag;
-requires stoppingEvent ==> usersInDriver == MapConst(false);
-requires stoppingFlag ==> Size(usersInDriver) == pendingIo;
-requires !stoppingFlag ==> 1 + Size(usersInDriver) == pendingIo;
+requires stoppingEvent ==> stoppingFlag && usersInDriver == MapConst(false);
+requires pendingIo == Size(usersInDriver) + (if stoppingFlag then 0 else 1);
 
 procedure {:yields} {:layer 2}
 {:yield_preserves "Inv2"}
@@ -79,7 +77,7 @@ procedure {:yields} {:layer 2} {:refines "AtomicSetStoppingFlag"}
 Stopper({:linear "perm"} i: int)
 requires {:layer 2} i == 0;
 {
-    call SetStoppingFlagAndClose(i);
+    call Close(i);
     call WaitAndStop();
 }
 
@@ -122,7 +120,7 @@ procedure {:yields} {:layer 1} {:refines "AtomicExit"}
 {:yield_preserves "Inv1"}
 Exit({:layer 1} {:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
 {
-    call Close();
+    call DeleteReference();
     call {:layer 1} SizeLemma(usersInDriver, i);
     call RemoveFromBarrier(p, i);
     call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver);
@@ -130,10 +128,10 @@ Exit({:layer 1} {:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
 
 procedure {:yields} {:layer 1} {:refines "AtomicSetStoppingFlag"}
 {:yield_preserves "Inv1"}
-SetStoppingFlagAndClose({:linear "perm"} i: int)
+Close({:linear "perm"} i: int)
 {
     call SetStoppingFlag(i);
-    call Close();
+    call DeleteReference();
     call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver);
 }
 
@@ -188,7 +186,7 @@ modifies stoppingFlag;
 }
 procedure {:yields} {:layer 0} {:refines "AtomicSetStoppingFlag"} SetStoppingFlag({:linear "perm"} i: int);
 
-procedure {:atomic} {:layer 1} AtomicClose()
+procedure {:atomic} {:layer 1} AtomicDeleteReference()
 modifies pendingIo, stoppingEvent;
 {
     pendingIo := pendingIo - 1;
@@ -196,7 +194,7 @@ modifies pendingIo, stoppingEvent;
         stoppingEvent := true;
     }
 }
-procedure {:yields} {:layer 0} {:refines "AtomicClose"} Close();
+procedure {:yields} {:layer 0} {:refines "AtomicDeleteReference"} DeleteReference();
 
 procedure {:atomic} {:layer 1} AtomicWaitOnStoppingEvent()
 {
