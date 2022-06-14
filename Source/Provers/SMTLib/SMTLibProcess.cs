@@ -133,12 +133,15 @@ namespace Microsoft.Boogie.SMTLib
       toProver.Flush();
     }
 
-    // TODO, consider building in a PingPong to catch a missing response.
     public override async Task<SExpr> SendRequest(string request) {
       SExpr previousResponse = null;
       try {
         await asyncLock.WaitAsync();
         Send(request);
+        // Because Z3 may return a response multiple times for a single request,
+        // We use a ping/pong to determine when Z3 has finished sending responses.
+        // We assume the last response is the correct one, although in practice
+        // We've seen the responses are duplicates.
         Send(PingRequest);
         while (true) {
           var response = await GetProverResponse();
