@@ -13,7 +13,6 @@ public interface IVerificationStatus {}
 /// </summary>
 public record Completed(VerificationResult Result) : IVerificationStatus;
 
-
 /// <summary>
 /// Scheduled to be run but waiting for resources
 /// </summary>
@@ -25,7 +24,7 @@ public record Queued : IVerificationStatus;
 public record Stale : IVerificationStatus;
 
 /// <summary>
-///
+/// Currently being run
 /// </summary>
 public record Running : IVerificationStatus;
 
@@ -37,6 +36,8 @@ public interface IImplementationTask {
 
   IObservable<IVerificationStatus> Run();
   void Cancel();
+
+  bool IsRunning { get; }
 }
 
 public class ImplementationTask : IImplementationTask {
@@ -71,6 +72,8 @@ public class ImplementationTask : IImplementationTask {
     cancellationSource.Cancel();
     cancellationSource = null;
   }
+
+  public bool IsRunning => cancellationSource != null;
 
   public IObservable<IVerificationStatus> Run()
   {
