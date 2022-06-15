@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,23 +10,19 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  /*
-   * Not thread-safe.
-   * The locks inside this class serve to synchronize between the single external user and the
-   * internal IO threads.
-   */
-  public class SMTLibProcess : SMTLibSolver
-  {
-    readonly Process prover;
-    readonly Inspector inspector;
-    readonly SMTLibProverOptions options;
-    private readonly AsyncQueue<string> proverOutput = new();
+  public class SMTLibProcess : SMTLibSolver {
+    private readonly Process solver;
+    private readonly SMTLibSolverOptions options;
+    // Used to synchronise between solver output and the request currently being processed.
+    private readonly AsyncQueue<string> solverOutput = new();
+    // Used to synchronise between requests into this class.
+    private readonly SemaphoreSlim asyncLock = new(1);
     private TextWriter toProver;
-    readonly int smtProcessId;
-    static int smtProcessIdSeq = 0;
-    ConsoleCancelEventHandler cancelEvent;
+    private readonly int smtProcessId;
+    private static int smtProcessIdSeq = 0;
+    private ConsoleCancelEventHandler cancelEvent;
 
-    public SMTLibProcess(SMTLibOptions libOptions, SMTLibProverOptions options)
+    public SMTLibProcess(SMTLibOptions libOptions, SMTLibSolverOptions options)
     {
       this.options = options;
       smtProcessId = smtProcessIdSeq++;
@@ -43,7 +38,7 @@ namespace Microsoft.Boogie.SMTLib
 
       if (options.Inspector != null)
       {
-        this.inspector = new Inspector(options);
+        this.Inspector = new Inspector(options);
       }
 
       if (libOptions.RunningBoogieFromCommandLine)
@@ -59,15 +54,15 @@ namespace Microsoft.Boogie.SMTLib
 
       try
       {
-        prover = new Process();
-        prover.StartInfo = psi;
-        prover.ErrorDataReceived += prover_ErrorDataReceived;
-        prover.OutputDataReceived += prover_OutputDataReceived;
-        prover.Exited += prover_Exited;
-        prover.Start();
-        toProver = prover.StandardInput;
-        prover.BeginErrorReadLine();
-        prover.BeginOutputReadLine();
+        solver = new Process();
+        solver.StartInfo = psi;
+        solver.ErrorDataReceived += SolverErrorDataReceived;
+        solver.OutputDataReceived += SolverOutputDataReceived;
+        solver.Exited += SolverExited;
+        solver.Start();
+        toProver = solver.StandardInput;
+        solver.BeginErrorReadLine();
+        solver.BeginOutputReadLine();
       }
       catch (System.ComponentModel.Win32Exception e)
       {
@@ -75,7 +70,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private void prover_Exited(object sender, EventArgs e)
+    private void SolverExited(object sender, EventArgs e)
     {
       lock (this) {
         while (outputReceivers.TryDequeue(out var source)) {
@@ -89,15 +84,15 @@ namespace Microsoft.Boogie.SMTLib
     [NoDefaultContract] // important, since we have no idea what state the object might be in when this handler is invoked
     void ControlCHandler(object o, ConsoleCancelEventArgs a)
     {
-      if (prover != null)
+      if (solver != null)
       {
         TerminateProver();
       }
     }
 
-    public override void IndicateEndOfInput()
+    private void IndicateEndOfInput()
     {
-      prover.StandardInput.Close();
+      solver.StandardInput.Close();
       toProver = null;
     }
 
@@ -109,9 +104,9 @@ namespace Microsoft.Boogie.SMTLib
         IndicateEndOfInput();
 
         // Give it a chance to exit cleanly (e.g. to flush buffers)
-        if (!prover.WaitForExit(timeout))
+        if (!solver.WaitForExit(timeout))
         {
-          prover.Kill();
+          solver.Kill();
         }
       }
       catch
@@ -135,11 +130,84 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       toProver.WriteLine(cmd);
+      toProver.Flush();
     }
 
-    internal Inspector Inspector => inspector;
+    public override async Task<SExpr> SendRequest(string request) {
+      SExpr previousResponse = null;
+      try {
+        await asyncLock.WaitAsync();
+        Send(request);
+        // Because Z3 4.8.5 may return a response multiple times for a single request,
+        // We use a ping/pong to determine when Z3 has finished sending responses.
+        // We assume the last response is the correct one.
+        Send(PingRequest);
+        while (true) {
+          var response = await GetProverResponse();
+          if (IsPong(response)) {
+            if (previousResponse == null) {
+              throw new Exception("Request returned no response");
+            }
+            return previousResponse;
+          }
+          previousResponse = response;
+        }
+      }
+      finally {
+        asyncLock.Release();
+      }
+    }
 
-    public override async Task<SExpr> GetProverResponse()
+    public override async Task PingPong() {
+      try {
+        await asyncLock.WaitAsync();
+        Send(PingRequest);
+        while (true) {
+          var response = await GetProverResponse();
+          if (response == null)
+          {
+            throw new ProverDiedException();
+          }
+
+          if (IsPong(response))
+          {
+            return;
+          }
+
+          HandleError("Invalid PING response from the prover: " + response.ToString());
+        }
+      }
+      finally {
+        asyncLock.Release();
+      }
+    }
+
+    public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests) {
+      try {
+        await asyncLock.WaitAsync();
+        var result = new List<SExpr>();
+        foreach (var request in requests) {
+          Send(request);
+        }
+        IndicateEndOfInput();
+        foreach (var request in requests) {
+          var response = await GetProverResponse();
+          if (response is { Name: "timeout" }) {
+            throw new TimeoutException();
+          }
+          result.Add(response);
+        }
+
+        return result;
+      }
+      finally {
+        asyncLock.Release();
+      }
+    }
+
+    private Inspector Inspector { get; }
+
+    private async Task<SExpr> GetProverResponse()
     {
       if (toProver != null) {
         await toProver.FlushAsync();
@@ -174,7 +242,7 @@ namespace Microsoft.Boogie.SMTLib
             return null;
           }
         } else if (resp.Name == "progress") {
-          if (inspector != null) {
+          if (Inspector != null) {
             var sb = new StringBuilder();
             foreach (var a in resp.Arguments) {
               if (a.Name == "labels") {
@@ -191,7 +259,7 @@ namespace Microsoft.Boogie.SMTLib
                 continue;
               }
 
-              inspector.StatsLine(sb.ToString());
+              Inspector.StatsLine(sb.ToString());
               sb.Clear();
             }
           }
@@ -220,7 +288,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       try
       {
-        TotalUserTime += prover.UserProcessorTime;
+        TotalUserTime += solver.UserProcessorTime;
       }
       catch (Exception e)
       {
@@ -236,7 +304,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override event Action<string> ErrorHandler;
 
-    protected override void HandleError(string msg)
+    private void HandleError(string msg)
     {
       if (options.Verbosity >= 2)
       {
@@ -432,7 +500,7 @@ namespace Microsoft.Boogie.SMTLib
     /// </summary>
     Task<string> ReadProver()
     {
-      return proverOutput.Dequeue(CancellationToken.None);
+      return solverOutput.Dequeue(CancellationToken.None);
     }
 
     void DisposeProver()
@@ -444,7 +512,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    void prover_OutputDataReceived(object sender, DataReceivedEventArgs e)
+    void SolverOutputDataReceived(object sender, DataReceivedEventArgs e)
     {
         if (e.Data == null)
         {
@@ -456,10 +524,10 @@ namespace Microsoft.Boogie.SMTLib
           Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
         }
 
-        proverOutput.Enqueue(e.Data);
+        solverOutput.Enqueue(e.Data);
     }
 
-    void prover_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+    void SolverErrorDataReceived(object sender, DataReceivedEventArgs e)
     {
       if (e.Data == null)
       {

@@ -102,7 +102,6 @@ public abstract class ProverInterface
   }
 
   public readonly ISet<VCExprVar> NamedAssumes = new HashSet<VCExprVar>();
-  public ISet<string> UsedNamedAssumes { get; protected set; }
 
   public class ErrorHandler
   {
@@ -169,10 +168,7 @@ public abstract class ProverInterface
     }
   }
 
-  public abstract Task BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler);
-
-  [NoDefaultContract]
-  public abstract Task<Outcome> CheckOutcome(ErrorHandler handler, int errorLimit, CancellationToken cancellationToken);
+  public abstract Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit, CancellationToken cancellationToken);
 
   public virtual void LogComment(string comment)
   {
@@ -228,7 +224,7 @@ public abstract class ProverInterface
     throw new NotImplementedException();
   }
 
-  public virtual List<string> UnsatCore()
+  public virtual Task<List<string>> UnsatCore()
   {
     throw new NotImplementedException();
   }
@@ -255,12 +251,6 @@ public abstract class ProverInterface
 
   public virtual Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
     ErrorHandler handler, CancellationToken cancellationToken)
-  {
-    throw new NotImplementedException();
-  }
-
-  public virtual Task<Outcome> CheckOutcomeCore(ErrorHandler handler,
-    CancellationToken cancellationToken, int errorLimit)
   {
     throw new NotImplementedException();
   }

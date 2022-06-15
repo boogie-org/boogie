@@ -335,6 +335,16 @@ namespace VC
 
     public VCGenOptions Options => CheckerPool.Options;
 
+    record ImplementationTransformationData {
+
+      public bool Passified { get; set; } = false;
+      public bool ConvertedToDAG { get; set; } = false;
+      public Dictionary<TransferCmd, ReturnCmd> GotoCmdOrigins { get; set; }
+      public ModelViewInfo ModelViewInfo { get; set; }
+    }
+
+    private static ConditionalWeakTable<Implementation, ImplementationTransformationData> implementationData = new();
+
     public override async Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken)
     {
@@ -356,18 +366,26 @@ namespace VC
       watch.Start();
 #endif
 
-      ConvertCFG2DAG(run.Implementation);
-
-      SmokeTester smoke_tester = null;
-      if (Options.SoundnessSmokeTest)
-      {
-        smoke_tester = new SmokeTester(this, run, callback);
-        smoke_tester.Copy();
+      var data = implementationData.GetOrCreateValue(run.Implementation)!;
+      if (!data.ConvertedToDAG) {
+        data.ConvertedToDAG = true;
+        ConvertCFG2DAG(run.Implementation);
       }
 
-      var gotoCmdOrigins = PassifyImpl(run, out var mvInfo);
+      SmokeTester smokeTester = null;
+      if (Options.SoundnessSmokeTest)
+      {
+        smokeTester = new SmokeTester(this, run, callback);
+        smokeTester.Copy();
+      }
 
-      ExpandAsserts(impl);
+      if (!data.Passified) {
+        data.Passified = true;
+        data.GotoCmdOrigins = PassifyImpl(run, out var mvInfo);
+        data.ModelViewInfo = mvInfo;
+
+        ExpandAsserts(impl);
+      }
 
       Outcome outcome = Outcome.Correct;
 
@@ -387,20 +405,21 @@ namespace VC
             else
             {
               // If possible, we use the old counterexample, but with the location information of "a"
-              var cex = AssertCmdToCloneCounterexample(CheckerPool.Options, a, oldCex, impl.Blocks[0], gotoCmdOrigins);
+              var cex = AssertCmdToCloneCounterexample(CheckerPool.Options, a, oldCex, impl.Blocks[0], data.GotoCmdOrigins);
               callback.OnCounterexample(cex, null);
             }
           }
         }
       }
 
-      var worker = new SplitAndVerifyWorker(Options, this, run, gotoCmdOrigins, callback, mvInfo, outcome);
+      var worker = new SplitAndVerifyWorker(Options, this, run, data.GotoCmdOrigins, callback,
+        data.ModelViewInfo, outcome);
       outcome = await worker.WorkUntilDone(cancellationToken);
       ResourceCount = worker.ResourceCount;
-      
-      if (outcome == Outcome.Correct && smoke_tester != null)
+
+      if (outcome == Outcome.Correct && smokeTester != null)
       {
-        await smoke_tester.Test(run.TraceWriter);
+        await smokeTester.Test(run.TraceWriter);
       }
 
       callback.OnProgress?.Invoke("done", 0, 0, 1.0);
