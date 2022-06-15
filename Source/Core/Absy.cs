@@ -1307,6 +1307,13 @@ namespace Microsoft.Boogie
       Contract.Invariant(name != null);
     }
 
+    // A name for a declaration that may be more verbose than, and use
+    // characters not allowed by, standard Boogie identifiers. This can
+    // be useful for encoding the original source names of languages
+    // translated to Boogie.
+    public string VerboseName =>
+      QKeyValue.FindStringAttribute(Attributes, "verboseName") ?? Name;
+
     public string /*!*/ Name
     {
       get
