@@ -70,11 +70,12 @@ public class ImplementationTask : IImplementationTask {
 
   public IObservable<IVerificationStatus>? TryRun()
   {
-    if (CacheStatus is not Stale) {
+    if (CacheStatus is Completed) {
       return null;
     }
 
-    if (cancellationSource != null) {
+    var alreadyRunning = cancellationSource != null;
+    if (alreadyRunning) {
       return null;
     }
     cancellationSource = new();
