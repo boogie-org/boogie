@@ -4,7 +4,7 @@
 // RUN: %OutputCheck "%s" --file-to-check="%t.trimmed.xml"
 // CHECK: \<method name="SomethingTotallyDifferent" startTime=".*"\>
 
-procedure {:displayName "SomethingTotallyDifferent"} OriginalProcedureName()
+procedure {:verboseName "SomethingTotallyDifferent"} OriginalProcedureName()
 {
   assert 1 + 1 == 2;
   assert 2 + 2 == 4;

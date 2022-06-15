@@ -43,7 +43,7 @@ public sealed class VerificationResult
   }
 
   public ErrorInformation GetOutcomeError(ExecutionEngineOptions options) {
-    return ExecutionEngine.GetOutcomeError(options, Outcome, implementation.DisplayName, implementation.tok, MessageIfVerifies,
+    return ExecutionEngine.GetOutcomeError(options, Outcome, implementation.VerboseName, implementation.tok, MessageIfVerifies,
       TextWriter.Null, implementation.GetTimeLimit(options), Errors);
   }
 
@@ -56,7 +56,7 @@ public sealed class VerificationResult
     }
 
     engine.ProcessOutcome(printer, Outcome, Errors, TimeIndication(engine.Options), stats,
-      result, implementation.GetTimeLimit(engine.Options), er, implementation.DisplayName, implementation.tok,
+      result, implementation.GetTimeLimit(engine.Options), er, implementation.VerboseName, implementation.tok,
       MessageIfVerifies);
 
     engine.ProcessErrors(printer, Errors, Outcome, result, er, implementation);
@@ -70,7 +70,7 @@ public sealed class VerificationResult
     }
 
     lock (engine.Options.XmlSink) {
-      engine.Options.XmlSink.WriteStartMethod(implementation.DisplayName, Start);
+      engine.Options.XmlSink.WriteStartMethod(implementation.VerboseName, Start);
 
       foreach (var vcResult in VCResults.OrderBy(s => (s.vcNum, s.iteration))) {
         engine.Options.XmlSink.WriteSplit(vcResult.vcNum, vcResult.iteration, vcResult.asserts, vcResult.startTime,

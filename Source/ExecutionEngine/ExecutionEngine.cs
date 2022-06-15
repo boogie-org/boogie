@@ -489,7 +489,7 @@ namespace Microsoft.Boogie
 
           foreach (var impl in TopLevelDeclarations.OfType<Implementation>())
           {
-            if (Options.UserWantsToCheckRoutine(impl.DisplayName) && !impl.IsSkipVerification(Options))
+            if (Options.UserWantsToCheckRoutine(impl.VerboseName) && !impl.IsSkipVerification(Options))
             {
               Inliner.ProcessImplementation(Options, program, impl);
             }
@@ -616,7 +616,7 @@ namespace Microsoft.Boogie
     private Implementation[] GetPrioritizedImplementations(Program program)
     {
       var impls = program.Implementations.Where(
-        impl => impl != null && Options.UserWantsToCheckRoutine(cce.NonNull(impl.DisplayName)) &&
+        impl => impl != null && Options.UserWantsToCheckRoutine(cce.NonNull(impl.VerboseName)) &&
                 !impl.IsSkipVerification(Options)).ToArray();
       
       Options.Printer.ReportImplementationsBeforeVerification(impls);
@@ -795,7 +795,7 @@ namespace Microsoft.Boogie
       }
 
       Options.Printer.Inform("", traceWriter); // newline
-      Options.Printer.Inform($"Verifying {implementation.DisplayName} ...", traceWriter);
+      Options.Printer.Inform($"Verifying {implementation.VerboseName} ...", traceWriter);
       Options.Printer.ReportStartVerifyImplementation(implementation);
 
       verificationResult = await VerifyImplementationWithoutCaching(processedProgram, stats, er, cancellationToken,
@@ -825,7 +825,7 @@ namespace Microsoft.Boogie
 
       if (Options.VerifySnapshots < 3 ||
           cachedResults.Outcome == ConditionGeneration.Outcome.Correct) {
-        Options.Printer.Inform($"Retrieving cached verification result for implementation {impl.DisplayName}...", output);
+        Options.Printer.Inform($"Retrieving cached verification result for implementation {impl.VerboseName}...", output);
         return cachedResults;
       }
 
@@ -849,9 +849,9 @@ namespace Microsoft.Boogie
           await vcgen.VerifyImplementation(new ImplementationRun(impl, traceWriter), cancellationToken);
         processedProgram.PostProcessResult(vcgen, impl, verificationResult);
       } catch (VCGenException e) {
-        string msg = $"{e.Message} (encountered in implementation {impl.DisplayName}).";
+        string msg = $"{e.Message} (encountered in implementation {impl.VerboseName}).";
         var errorInfo = ErrorInformation.Create(impl.tok, msg, null);
-        errorInfo.ImplementationName = impl.DisplayName;
+        errorInfo.ImplementationName = impl.VerboseName;
         verificationResult.ErrorBeforeVerification = errorInfo;
         if (er != null) {
           lock (er) {
@@ -866,12 +866,12 @@ namespace Microsoft.Boogie
       } catch (UnexpectedProverOutputException upo) {
         Options.Printer.AdvisoryWriteLine(traceWriter,
           "Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}",
-          impl.DisplayName, upo.Message);
+          impl.VerboseName, upo.Message);
         verificationResult.Errors = null;
         verificationResult.Outcome = ConditionGeneration.Outcome.Inconclusive;
       } catch (IOException e) {
         Options.Printer.AdvisoryWriteLine(traceWriter, "Advisory: {0} SKIPPED due to I/O exception: {1}",
-          impl.DisplayName, e.Message);
+          impl.VerboseName, e.Message);
         verificationResult.Errors = null;
         verificationResult.Outcome = ConditionGeneration.Outcome.SolverException;
       }
@@ -1256,7 +1256,7 @@ namespace Microsoft.Boogie
       ConditionGeneration.Outcome outcome, TextWriter tw,
       ErrorReporterDelegate er, Implementation impl = null)
     {
-      var implName = impl?.DisplayName;
+      var implName = impl?.VerboseName;
 
       if (errors == null)
       {

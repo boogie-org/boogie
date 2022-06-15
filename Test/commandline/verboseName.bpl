@@ -2,7 +2,7 @@
 // RUN: %OutputCheck "%s" --file-to-check="%t"
 // CHECK: Verifying SomethingTotallyDifferent.*
 
-procedure {:displayName "SomethingTotallyDifferent"} OriginalProcedureName()
+procedure {:verboseName "SomethingTotallyDifferent"} OriginalProcedureName()
 {
   assert 1 + 1 == 2;
   assert 2 + 2 == 4;
