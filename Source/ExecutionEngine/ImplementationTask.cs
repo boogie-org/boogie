@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.IO;
 using System.Reactive.Subjects;
@@ -34,10 +35,8 @@ public interface IImplementationTask {
   ProcessedProgram ProcessedProgram { get; }
   Implementation Implementation { get; }
 
-  IObservable<IVerificationStatus> Run();
+  IObservable<IVerificationStatus>? TryRun();
   void Cancel();
-
-  bool IsRunning { get; }
 }
 
 public class ImplementationTask : IImplementationTask {
@@ -62,27 +61,22 @@ public class ImplementationTask : IImplementationTask {
     }
   }
 
-  private CancellationTokenSource cancellationSource;
+  private CancellationTokenSource? cancellationSource;
 
   public void Cancel() {
-    if (cancellationSource == null) {
-      throw new InvalidOperationException("There is no ongoing run to cancel.");
-    }
-
-    cancellationSource.Cancel();
+    cancellationSource?.Cancel();
     cancellationSource = null;
   }
 
-  public bool IsRunning => cancellationSource != null;
-
-  public IObservable<IVerificationStatus> Run()
+  public IObservable<IVerificationStatus>? TryRun()
   {
-    if (CacheStatus is not Stale) {
-      throw new InvalidOperationException("Can not start task that's already completed");
+    if (CacheStatus is Completed) {
+      return null;
     }
 
-    if (cancellationSource != null) {
-      throw new InvalidOperationException("There already an ongoing run.");
+    var alreadyRunning = cancellationSource != null;
+    if (alreadyRunning) {
+      return null;
     }
     cancellationSource = new();
     var cancellationToken = cancellationSource.Token;

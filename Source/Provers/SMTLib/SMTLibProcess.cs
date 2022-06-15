@@ -138,10 +138,9 @@ namespace Microsoft.Boogie.SMTLib
       try {
         await asyncLock.WaitAsync();
         Send(request);
-        // Because Z3 may return a response multiple times for a single request,
+        // Because Z3 4.8.5 may return a response multiple times for a single request,
         // We use a ping/pong to determine when Z3 has finished sending responses.
-        // We assume the last response is the correct one, although in practice
-        // We've seen the responses are duplicates.
+        // We assume the last response is the correct one.
         Send(PingRequest);
         while (true) {
           var response = await GetProverResponse();
