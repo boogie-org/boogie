@@ -220,12 +220,12 @@ procedure FibTest() {
     options.VerifySnapshots = 1;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
-    var programString = @"procedure {:priority 7} {:checksum ""stable""} Bad(y: int)
+    var programString = @"procedure {:priority 3} {:checksum ""stable""} Bad(y: int)
 {
   assert 2 == 1;
 }
 
-procedure {:priority 4} {:checksum ""stable""} Good(y: int)
+procedure {:priority 2} {:checksum ""stable""} Good(y: int)
 {
   assert 2 == 2;
 }
@@ -253,9 +253,10 @@ procedure {:priority 4} {:checksum ""stable""} Good(y: int)
 
     Assert.AreEqual((firstName, new Running()), statusList[0]);
     Assert.AreEqual((secondName, new Queued()), statusList[1]);
-    Assert.AreEqual(firstName, statusList[2].Item1);
-    Assert.IsTrue(statusList[2].Item2 is Completed);
-    Assert.AreEqual((secondName, new Running()), statusList[3]);
+    var indexTwoAndThreeOrdered = statusList.Skip(2).Take(2).OrderByDescending(k => k.Item1 == firstName).ToList();
+    Assert.AreEqual(firstName, indexTwoAndThreeOrdered[0].Item1);
+    Assert.IsTrue(indexTwoAndThreeOrdered[0].Item2 is Completed);
+    Assert.AreEqual((secondName, new Running()), indexTwoAndThreeOrdered[1]);
     Assert.AreEqual(secondName, statusList[4].Item1);
     Assert.IsTrue(statusList[4].Item2 is Completed);
     
