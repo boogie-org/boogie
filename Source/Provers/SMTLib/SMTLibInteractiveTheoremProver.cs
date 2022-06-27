@@ -41,6 +41,19 @@ namespace Microsoft.Boogie.SMTLib
       return Process.PingPong();
     }
 
+    public void ClearProverErrors()
+    {
+      lock (proverErrors)
+      {
+        if (proverErrors.Count > 0)
+        {
+          proverWarnings.RemoveAll(x => true);
+          proverErrors.RemoveAll(x => true);
+          SetupProcess();
+        }
+      }
+    }
+
     private void PossiblyRestart()
     {
       if (Process != null && processNeedsRestart) {
@@ -75,6 +88,7 @@ namespace Microsoft.Boogie.SMTLib
         currentLogFile = OpenOutputFile(descriptiveName);
         await currentLogFile.WriteAsync(common.ToString());
       }
+      ClearProverErrors(); //Will restart the prover if it had errors previously
 
       PrepareCommon();
       FlushAndCacheCommons();
