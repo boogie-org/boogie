@@ -377,11 +377,6 @@ namespace Microsoft.Boogie
       throw new NotImplementedException();
     }
 
-    public override void ClearProverErrors()
-    {
-      throw new NotImplementedException();
-    }
-
     public override Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
       CancellationToken cancellationToken) {
       throw new NotImplementedException();
