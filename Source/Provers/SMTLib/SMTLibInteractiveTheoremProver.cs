@@ -49,7 +49,7 @@ namespace Microsoft.Boogie.SMTLib
         {
           proverWarnings.RemoveAll(x => true);
           proverErrors.RemoveAll(x => true);
-          SetupProcess();
+          processNeedsRestart = true;
         }
       }
     }

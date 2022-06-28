@@ -157,7 +157,7 @@ namespace Microsoft.Boogie.SMTLib
         : new SMTLibProcess(libOptions, options);
       Process.ErrorHandler += HandleProverError;
     }
-    
+
     public override void Close()
     {
       base.Close();
