@@ -133,7 +133,7 @@ namespace Microsoft.Boogie.SMTLib
       }
       requests.Add("(get-model)");
 
-      if (Process == null || ProverErrors.Count > 0) {
+      if (Process == null || ProverProblems.Errors.Count > 0) {
         return Outcome.Undetermined;
       }
 

@@ -43,7 +43,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public void ClearProverErrors()
     {
-      if (ProverErrors.Count > 0)
+      if (ProverProblems.Errors.Count > 0)
       {
         processNeedsRestart = true;
       }
@@ -189,7 +189,7 @@ namespace Microsoft.Boogie.SMTLib
 
       var result = Outcome.Undetermined;
 
-      if (Process == null || ProverErrors.Count > 0)
+      if (Process == null || ProverProblems.Errors.Count > 0)
       {
         return result;
       }

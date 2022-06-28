@@ -26,36 +26,8 @@ namespace Microsoft.Boogie.SMTLib
     internal abstract ScopedNamer Namer { get; }
     protected TypeDeclCollector DeclCollector;
 
-    private readonly ConditionalWeakTable<SMTLibSolver, ConcurrentStack<string>> allProverErrors = new();
-    private readonly ConditionalWeakTable<SMTLibSolver, ConcurrentStack<string>> allProverWarnings = new();
-
-    protected ConcurrentStack<string> ProverErrors
-    {
-      get
-      {
-        var process = Process; // Makes it thread-safe
-        if (process != null)
-        {
-          return allProverErrors.GetOrCreateValue(process);
-        }
-
-        return new(); // Nothing will be recorded but that's ok.
-      }
-    }
-
-    protected ConcurrentStack<string> ProverWarnings
-    {
-      get
-      {
-        var process = Process;
-        if (process != null)
-        {
-          return allProverWarnings.GetOrCreateValue(process);
-        }
-
-        return new(); // Nothing will be recorded but that's ok.
-      }
-    }
+    protected ProverProblemCollector ProverProblems { get; set; }
+    
     protected StringBuilder common = new();
     protected string CachedCommon = null;
     protected TextWriter currentLogFile;
@@ -85,6 +57,7 @@ namespace Microsoft.Boogie.SMTLib
       this.ctx = ctx;
       this.gen = gen;
       usingUnsatCore = false;
+      ProverProblems = new ProverProblemCollector(this);
 
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
@@ -183,7 +156,8 @@ namespace Microsoft.Boogie.SMTLib
       Process = options.Solver == SolverKind.NoOpWithZ3Options
         ? new NoopSolver()
         : new SMTLibProcess(libOptions, options);
-      Process.ErrorHandler += HandleProverError;
+      ProverProblems = new ProverProblemCollector(this);
+      Process.ErrorHandler += ProverProblems.HandleProverError;
     }
 
     public override void Close()
@@ -555,9 +529,17 @@ namespace Microsoft.Boogie.SMTLib
       var handler = currentErrorHandler;
       if (handler != null)
       {
-        ProverWarnings.Iter(handler.OnProverWarning);
-        ProverWarnings.Clear();
+        var proverProblems = ProverProblems;
+        while (proverProblems.Warnings.TryDequeue(out var warning))
+        {
+          handler.OnProverWarning(warning);
+        }
       }
+    }
+
+    protected void HandleProverError(string s)
+    {
+      ProverProblems.HandleProverError(s);
     }
 
     private void ReportProverError(string err)
@@ -567,45 +549,6 @@ namespace Microsoft.Boogie.SMTLib
       {
         handler.OnProverError(err);
       }
-    }
-
-    protected void HandleProverError(string s)
-    {
-      // Trying to match prover warnings of the form:
-      // - for Z3: WARNING: warning_message
-      // - for CVC5: query.smt2:222.24: warning: warning_message
-      // All other lines are considered to be errors.
-
-      s = s.Replace("\r", "");
-      const string ProverWarning = "WARNING: ";
-      string errors = "";
-
-      var proverWarnings = ProverWarnings;
-      foreach (var line in s.Split('\n'))
-      {
-        int idx = line.IndexOf(ProverWarning, StringComparison.OrdinalIgnoreCase);
-        if (idx >= 0)
-        {
-          string warn = line.Substring(idx + ProverWarning.Length);
-          proverWarnings.Push(warn);
-        }
-        else
-        {
-          errors += (line + "\n");
-        }
-      }
-
-      FlushProverWarnings();
-
-      if (errors == "")
-      {
-        return;
-      }
-      
-      ProverErrors.Push(errors);
-      Console.WriteLine("Prover error: " + errors);
-
-      ReportProverError(errors);
     }
 
     protected class SMTErrorModelConverter
@@ -1571,7 +1514,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         // If anything goes wrong with parsing the response from the solver,
         // it's better to be able to continue, even with uninformative data.
-        ProverWarnings.Push($"Failed to parse resource count from solver. Got: {resp}");
+        ProverProblems.Warnings.Enqueue($"Failed to parse resource count from solver. Got: {resp}");
         return -1;
       }
     }
@@ -1580,6 +1523,59 @@ namespace Microsoft.Boogie.SMTLib
     {
       SendThisVC("(push 1)");
       DeclCollector.Push();
+    }
+    
+    
+  
+  
+    public class ProverProblemCollector
+    {
+      public ConcurrentQueue<string> Warnings = new();
+      public ConcurrentStack<string> Errors = new();
+      private readonly SMTLibProcessTheoremProver smtLibProcessTheoremProver;
+
+      public ProverProblemCollector(SMTLibProcessTheoremProver smtLibProcessTheoremProver)
+      {
+        this.smtLibProcessTheoremProver = smtLibProcessTheoremProver;
+      }
+
+      internal void HandleProverError(string s)
+      {
+        // Trying to match prover warnings of the form:
+        // - for Z3: WARNING: warning_message
+        // - for CVC5: query.smt2:222.24: warning: warning_message
+        // All other lines are considered to be errors.
+
+        s = s.Replace("\r", "");
+        const string ProverWarning = "WARNING: ";
+        string errors = "";
+      
+        foreach (var line in s.Split('\n'))
+        {
+          int idx = line.IndexOf(ProverWarning, StringComparison.OrdinalIgnoreCase);
+          if (idx >= 0)
+          {
+            string warn = line.Substring(idx + ProverWarning.Length);
+            Warnings.Enqueue(warn);
+          }
+          else
+          {
+            errors += (line + "\n");
+          }
+        }
+
+        smtLibProcessTheoremProver.FlushProverWarnings();
+
+        if (errors == "")
+        {
+          return;
+        }
+
+        Errors.Push(errors);
+        Console.WriteLine("Prover error: " + errors);
+
+        smtLibProcessTheoremProver.ReportProverError(errors);
+      }
     }
   }
 
