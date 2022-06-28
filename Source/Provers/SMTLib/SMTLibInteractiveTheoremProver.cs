@@ -43,12 +43,9 @@ namespace Microsoft.Boogie.SMTLib
 
     public void ClearProverErrors()
     {
-      lock (proverErrorAndWarningLock)
+      if (ProverErrors.Count > 0)
       {
-        if (ProverErrors.Count > 0)
-        {
-          processNeedsRestart = true;
-        }
+        processNeedsRestart = true;
       }
     }
 

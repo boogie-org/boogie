@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,10 +8,7 @@ using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
-using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.SMTLib
 {
@@ -27,38 +25,32 @@ namespace Microsoft.Boogie.SMTLib
     protected TypeAxiomBuilder CachedAxBuilder;
     internal abstract ScopedNamer Namer { get; }
     protected TypeDeclCollector DeclCollector;
-    
-    protected object proverErrorAndWarningLock = new ();
 
-    private readonly ConditionalWeakTable<SMTLibSolver, List<string>> allProverErrors = new();
-    private readonly ConditionalWeakTable<SMTLibSolver, List<string>> allProverWarnings = new();
+    private readonly ConditionalWeakTable<SMTLibSolver, ConcurrentStack<string>> allProverErrors = new();
+    private readonly ConditionalWeakTable<SMTLibSolver, ConcurrentStack<string>> allProverWarnings = new();
 
-    protected List<string> ProverErrors
+    protected ConcurrentStack<string> ProverErrors
     {
       get
       {
-        lock (proverErrorAndWarningLock)
+        var process = Process; // Makes it thread-safe
+        if (process != null)
         {
-          if (Process != null)
-          {
-            return allProverErrors.GetOrCreateValue(Process);
-          }
+          return allProverErrors.GetOrCreateValue(process);
         }
 
         return new(); // Nothing will be recorded but that's ok.
       }
     }
 
-    protected List<string> ProverWarnings
+    protected ConcurrentStack<string> ProverWarnings
     {
       get
       {
-        lock (proverErrorAndWarningLock)
+        var process = Process;
+        if (process != null)
         {
-          if (Process != null)
-          {
-            return allProverWarnings.GetOrCreateValue(Process);
-          }
+          return allProverWarnings.GetOrCreateValue(process);
         }
 
         return new(); // Nothing will be recorded but that's ok.
@@ -563,11 +555,8 @@ namespace Microsoft.Boogie.SMTLib
       var handler = currentErrorHandler;
       if (handler != null)
       {
-        lock (proverErrorAndWarningLock)
-        {
-          ProverWarnings.Iter(handler.OnProverWarning);
-          ProverWarnings.Clear();
-        }
+        ProverWarnings.Iter(handler.OnProverWarning);
+        ProverWarnings.Clear();
       }
     }
 
@@ -591,20 +580,18 @@ namespace Microsoft.Boogie.SMTLib
       const string ProverWarning = "WARNING: ";
       string errors = "";
 
-      lock (proverErrorAndWarningLock)
+      var proverWarnings = ProverWarnings;
+      foreach (var line in s.Split('\n'))
       {
-        foreach (var line in s.Split('\n'))
+        int idx = line.IndexOf(ProverWarning, StringComparison.OrdinalIgnoreCase);
+        if (idx >= 0)
         {
-          int idx = line.IndexOf(ProverWarning, StringComparison.OrdinalIgnoreCase);
-          if (idx >= 0)
-          {
-            string warn = line.Substring(idx + ProverWarning.Length);
-            ProverWarnings.Add(warn);
-          }
-          else
-          {
-            errors += (line + "\n");
-          }
+          string warn = line.Substring(idx + ProverWarning.Length);
+          proverWarnings.Push(warn);
+        }
+        else
+        {
+          errors += (line + "\n");
         }
       }
 
@@ -614,12 +601,9 @@ namespace Microsoft.Boogie.SMTLib
       {
         return;
       }
-
-      lock (proverErrorAndWarningLock)
-      {
-        ProverErrors.Add(errors);
-        Console.WriteLine("Prover error: " + errors);
-      }
+      
+      ProverErrors.Push(errors);
+      Console.WriteLine("Prover error: " + errors);
 
       ReportProverError(errors);
     }
@@ -1587,10 +1571,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         // If anything goes wrong with parsing the response from the solver,
         // it's better to be able to continue, even with uninformative data.
-        lock (proverErrorAndWarningLock)
-        {
-          ProverWarnings.Add($"Failed to parse resource count from solver. Got: {resp}");
-        }
+        ProverWarnings.Push($"Failed to parse resource count from solver. Got: {resp}");
         return -1;
       }
     }
