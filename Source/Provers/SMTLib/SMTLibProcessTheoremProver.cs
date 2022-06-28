@@ -8,6 +8,7 @@ using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -26,8 +27,43 @@ namespace Microsoft.Boogie.SMTLib
     protected TypeAxiomBuilder CachedAxBuilder;
     internal abstract ScopedNamer Namer { get; }
     protected TypeDeclCollector DeclCollector;
-    protected readonly List<string> proverErrors = new();
-    protected readonly List<string> proverWarnings = new();
+    
+    protected object proverErrorAndWarningLock = new ();
+
+    private readonly ConditionalWeakTable<SMTLibSolver, List<string>> allProverErrors = new();
+    private readonly ConditionalWeakTable<SMTLibSolver, List<string>> allProverWarnings = new();
+
+    protected List<string> ProverErrors
+    {
+      get
+      {
+        lock (proverErrorAndWarningLock)
+        {
+          if (Process != null)
+          {
+            return allProverErrors.GetOrCreateValue(Process);
+          }
+        }
+
+        return new(); // Nothing will be recorded but that's ok.
+      }
+    }
+
+    protected List<string> ProverWarnings
+    {
+      get
+      {
+        lock (proverErrorAndWarningLock)
+        {
+          if (Process != null)
+          {
+            return allProverWarnings.GetOrCreateValue(Process);
+          }
+        }
+
+        return new(); // Nothing will be recorded but that's ok.
+      }
+    }
     protected StringBuilder common = new();
     protected string CachedCommon = null;
     protected TextWriter currentLogFile;
@@ -527,10 +563,10 @@ namespace Microsoft.Boogie.SMTLib
       var handler = currentErrorHandler;
       if (handler != null)
       {
-        lock (proverWarnings)
+        lock (proverErrorAndWarningLock)
         {
-          proverWarnings.Iter(handler.OnProverWarning);
-          proverWarnings.Clear();
+          ProverWarnings.Iter(handler.OnProverWarning);
+          ProverWarnings.Clear();
         }
       }
     }
@@ -555,7 +591,7 @@ namespace Microsoft.Boogie.SMTLib
       const string ProverWarning = "WARNING: ";
       string errors = "";
 
-      lock (proverWarnings)
+      lock (proverErrorAndWarningLock)
       {
         foreach (var line in s.Split('\n'))
         {
@@ -563,7 +599,7 @@ namespace Microsoft.Boogie.SMTLib
           if (idx >= 0)
           {
             string warn = line.Substring(idx + ProverWarning.Length);
-            proverWarnings.Add(warn);
+            ProverWarnings.Add(warn);
           }
           else
           {
@@ -579,9 +615,9 @@ namespace Microsoft.Boogie.SMTLib
         return;
       }
 
-      lock (proverErrors)
+      lock (proverErrorAndWarningLock)
       {
-        proverErrors.Add(errors);
+        ProverErrors.Add(errors);
         Console.WriteLine("Prover error: " + errors);
       }
 
@@ -1551,9 +1587,9 @@ namespace Microsoft.Boogie.SMTLib
       {
         // If anything goes wrong with parsing the response from the solver,
         // it's better to be able to continue, even with uninformative data.
-        lock (proverWarnings)
+        lock (proverErrorAndWarningLock)
         {
-          proverWarnings.Add($"Failed to parse resource count from solver. Got: {resp}");
+          ProverWarnings.Add($"Failed to parse resource count from solver. Got: {resp}");
         }
         return -1;
       }

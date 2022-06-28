@@ -43,12 +43,10 @@ namespace Microsoft.Boogie.SMTLib
 
     public void ClearProverErrors()
     {
-      lock (proverErrors)
+      lock (proverErrorAndWarningLock)
       {
-        if (proverErrors.Count > 0)
+        if (ProverErrors.Count > 0)
         {
-          proverWarnings.RemoveAll(x => true);
-          proverErrors.RemoveAll(x => true);
           processNeedsRestart = true;
         }
       }
@@ -194,7 +192,7 @@ namespace Microsoft.Boogie.SMTLib
 
       var result = Outcome.Undetermined;
 
-      if (Process == null || proverErrors.Count > 0)
+      if (Process == null || ProverErrors.Count > 0)
       {
         return result;
       }
