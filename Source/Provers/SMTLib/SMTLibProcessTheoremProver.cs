@@ -1531,7 +1531,8 @@ namespace Microsoft.Boogie.SMTLib
     public class ProverProblemCollector
     {
       public ConcurrentQueue<string> Warnings = new();
-      public ConcurrentStack<string> Errors = new();
+      private readonly ConcurrentStack<string> errors = new();
+      public bool HadErrors => errors.Count > 0;
       private readonly SMTLibProcessTheoremProver smtLibProcessTheoremProver;
 
       public ProverProblemCollector(SMTLibProcessTheoremProver smtLibProcessTheoremProver)
@@ -1571,7 +1572,7 @@ namespace Microsoft.Boogie.SMTLib
           return;
         }
 
-        Errors.Push(errors);
+        this.errors.Push(errors);
         Console.WriteLine("Prover error: " + errors);
 
         smtLibProcessTheoremProver.ReportProverError(errors);

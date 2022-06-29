@@ -41,14 +41,6 @@ namespace Microsoft.Boogie.SMTLib
       return Process.PingPong();
     }
 
-    public void ClearProverErrors()
-    {
-      if (ProverProblems.Errors.Count > 0)
-      {
-        processNeedsRestart = true;
-      }
-    }
-
     private void PossiblyRestart()
     {
       if (Process != null && processNeedsRestart) {
@@ -83,7 +75,11 @@ namespace Microsoft.Boogie.SMTLib
         currentLogFile = OpenOutputFile(descriptiveName);
         await currentLogFile.WriteAsync(common.ToString());
       }
-      ClearProverErrors(); //Will restart the prover if it had errors previously
+
+      if (ProverProblems.HadErrors)
+      {
+        processNeedsRestart = true;
+      }
 
       PrepareCommon();
       FlushAndCacheCommons();
@@ -189,7 +185,7 @@ namespace Microsoft.Boogie.SMTLib
 
       var result = Outcome.Undetermined;
 
-      if (Process == null || ProverProblems.Errors.Count > 0)
+      if (Process == null || ProverProblems.HadErrors)
       {
         return result;
       }
