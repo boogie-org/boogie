@@ -65,61 +65,70 @@ namespace Microsoft.Boogie.SMTLib
     private bool hasReset = true;
     public override async Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit, CancellationToken cancellationToken)
     {
-      if (options.SeparateLogFiles)
+      currentErrorHandler = handler;
+      try
       {
-        CloseLogFile(); // shouldn't really happen
-      }
+        if (options.SeparateLogFiles)
+        {
+          CloseLogFile(); // shouldn't really happen
+        }
 
-      if (options.LogFilename != null && currentLogFile == null)
+        if (options.LogFilename != null && currentLogFile == null)
+        {
+          currentLogFile = OpenOutputFile(descriptiveName);
+          await currentLogFile.WriteAsync(common.ToString());
+        }
+
+        if (HadErrors)
+        {
+          processNeedsRestart = true;
+        }
+
+        PrepareCommon();
+        FlushAndCacheCommons();
+
+        OptimizationRequests.Clear();
+
+        PossiblyRestart();
+
+        if (hasReset)
+        {
+          AxBuilder = (TypeAxiomBuilder) CachedAxBuilder?.Clone();
+          finalNamer = ResetNamer(commonNamer);
+        }
+
+        SendThisVC("(push 1)");
+        DeclCollector.Push();
+        string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
+        FlushAxioms();
+        SendVCAndOptions(descriptiveName, vcString);
+
+        SendOptimizationRequests();
+
+        FlushLogFile();
+
+        if (Process != null)
+        {
+          await Process.PingPong(); // flush any errors
+          Process.NewProblem(descriptiveName);
+        }
+
+        DeclCollector.Pop();
+        if (hasReset)
+        {
+          common = new StringBuilder(CachedCommon);
+          hasReset = false;
+        }
+
+        var result = await CheckSat(cancellationToken, errorLimit);
+        SendThisVC("(pop 1)");
+
+        return result;
+      }
+      finally
       {
-        currentLogFile = OpenOutputFile(descriptiveName);
-        await currentLogFile.WriteAsync(common.ToString());
+        currentErrorHandler = null;
       }
-
-      if (ProverProblems.HadErrors)
-      {
-        processNeedsRestart = true;
-      }
-
-      PrepareCommon();
-      FlushAndCacheCommons();
-
-      OptimizationRequests.Clear();
-
-      PossiblyRestart();
-
-      if (hasReset)
-      {
-        AxBuilder = (TypeAxiomBuilder) CachedAxBuilder?.Clone();
-        finalNamer = ResetNamer(commonNamer);
-      }
-      SendThisVC("(push 1)");
-      DeclCollector.Push();
-      string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
-      FlushAxioms();
-      SendVCAndOptions(descriptiveName, vcString);
-
-      SendOptimizationRequests();
-
-      FlushLogFile();
-
-      if (Process != null)
-      {
-        await Process.PingPong(); // flush any errors
-        Process.NewProblem(descriptiveName);
-      }
-
-      DeclCollector.Pop();
-      if (hasReset)
-      {
-        common = new StringBuilder(CachedCommon);
-        hasReset = false;
-      }
-
-      var result = await CheckSat(handler, cancellationToken, errorLimit);
-      SendThisVC("(pop 1)");
-
-      return result;
     }
 
     public override async Task Reset(VCExpressionGenerator generator)
@@ -178,135 +187,124 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     [NoDefaultContract]
-    public async Task<Outcome> CheckSat(ErrorHandler handler, CancellationToken cancellationToken,
+    public async Task<Outcome> CheckSat(CancellationToken cancellationToken,
       int errorLimit)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
       var result = Outcome.Undetermined;
 
-      if (Process == null || ProverProblems.HadErrors)
+      if (Process == null || HadErrors)
       {
         return result;
       }
+      var errorsDiscovered = 0;
 
-      try
+      var globalResult = Outcome.Undetermined;
+
+      while (true)
       {
-        currentErrorHandler = handler;
-        FlushProverWarnings();
+        string[] labels = null;
+        var popLater = false;
 
-        var errorsDiscovered = 0;
-
-        var globalResult = Outcome.Undetermined;
-
-        while (true)
+        try
         {
-          string[] labels = null;
-          var popLater = false;
+          errorsDiscovered++;
 
-          try
+          result = await CheckSatAndGetResponse(cancellationToken);
+
+          var reporter = currentErrorHandler;
+          // TODO(wuestholz): Is the reporter ever null?
+          if (usingUnsatCore && result == Outcome.Valid && reporter != null && 0 < NamedAssumes.Count)
           {
-            errorsDiscovered++;
-
-            result = await CheckSatAndGetResponse(cancellationToken);
-
-            var reporter = handler;
-            // TODO(wuestholz): Is the reporter ever null?
-            if (usingUnsatCore && result == Outcome.Valid && reporter != null && 0 < NamedAssumes.Count)
+            if (usingUnsatCore)
             {
-              if (usingUnsatCore)
+              usedNamedAssumes = new HashSet<string>();
+              var resp = await SendVcRequest("(get-unsat-core)").WaitAsync(cancellationToken);
+              if (resp.Name != "")
               {
-                usedNamedAssumes = new HashSet<string>();
-                var resp = await SendVcRequest("(get-unsat-core)").WaitAsync(cancellationToken);
-                if (resp.Name != "")
+                usedNamedAssumes.Add(resp.Name);
+                if (libOptions.PrintNecessaryAssumes)
                 {
-                  usedNamedAssumes.Add(resp.Name);
-                  if (libOptions.PrintNecessaryAssumes)
-                  {
-                    reporter.AddNecessaryAssume(resp.Name.Substring("aux$$assume$$".Length));
-                  }
-                }
-
-                foreach (var arg in resp.Arguments)
-                {
-                  usedNamedAssumes.Add(arg.Name);
-                  if (libOptions.PrintNecessaryAssumes)
-                  {
-                    reporter.AddNecessaryAssume(arg.Name.Substring("aux$$assume$$".Length));
-                  }
-                }
-              }
-              else
-              {
-                usedNamedAssumes = null;
-              }
-            }
-
-            if (libOptions.RunDiagnosticsOnTimeout && result == Outcome.TimeOut) {
-              (result, popLater) = await RunTimeoutDiagnostics(handler, result, cancellationToken);
-            }
-
-            if (globalResult == Outcome.Undetermined)
-            {
-              globalResult = result;
-            }
-
-            if (result == Outcome.Invalid)
-            {
-              Model model = await GetErrorModel(cancellationToken);
-              if (libOptions.SIBoolControlVC)
-              {
-                labels = Array.Empty<string>();
-              }
-              else
-              {
-                labels = await CalculatePath(handler.StartingProcId(), cancellationToken);
-                if (labels.Length == 0)
-                {
-                  // Without a path to an error, we don't know what to report
-                  globalResult = Outcome.Undetermined;
-                  break;
+                  reporter.AddNecessaryAssume(resp.Name.Substring("aux$$assume$$".Length));
                 }
               }
 
-              handler.OnModel(labels, model, result);
+              foreach (var arg in resp.Arguments)
+              {
+                usedNamedAssumes.Add(arg.Name);
+                if (libOptions.PrintNecessaryAssumes)
+                {
+                  reporter.AddNecessaryAssume(arg.Name.Substring("aux$$assume$$".Length));
+                }
+              }
             }
-
-            Debug.Assert(errorsDiscovered > 0);
-            // if errorLimit is 0, loop will break only if there are no more 
-            // counterexamples to be discovered.
-            if (labels == null || !labels.Any() || errorsDiscovered == errorLimit)
+            else
             {
-              break;
-            }
-          }
-          finally
-          {
-            if (popLater)
-            {
-              SendThisVC("(pop 1)");
+              usedNamedAssumes = null;
             }
           }
 
-          var source = labels[^2];
-          var target = labels[^1];
-          // block the assert which was falsified by this counterexample
-          SendThisVC($"(assert (not (= (ControlFlow 0 {source}) (- {target}))))");
+          if (libOptions.RunDiagnosticsOnTimeout && result == Outcome.TimeOut) {
+            (result, popLater) = await RunTimeoutDiagnostics(currentErrorHandler, result, cancellationToken);
+          }
+
+          if (globalResult == Outcome.Undetermined)
+          {
+            globalResult = result;
+          }
+
+          if (result == Outcome.Invalid)
+          {
+            Model model = await GetErrorModel(cancellationToken);
+            if (libOptions.SIBoolControlVC)
+            {
+              labels = Array.Empty<string>();
+            }
+            else
+            {
+              labels = await CalculatePath(currentErrorHandler.StartingProcId(), cancellationToken);
+              if (labels.Length == 0)
+              {
+                // Without a path to an error, we don't know what to report
+                globalResult = Outcome.Undetermined;
+                break;
+              }
+            }
+
+            currentErrorHandler.OnModel(labels, model, result);
+          }
+
+          Debug.Assert(errorsDiscovered > 0);
+          // if errorLimit is 0, loop will break only if there are no more 
+          // counterexamples to be discovered.
+          if (labels == null || !labels.Any() || errorsDiscovered == errorLimit)
+          {
+            break;
+          }
         }
-
-        FlushLogFile();
-
-        if (libOptions.RestartProverPerVC && Process != null)
+        finally
         {
-          processNeedsRestart = true;
+          if (popLater)
+          {
+            SendThisVC("(pop 1)");
+          }
         }
 
-        return globalResult;
+        var source = labels[^2];
+        var target = labels[^1];
+        // block the assert which was falsified by this counterexample
+        SendThisVC($"(assert (not (= (ControlFlow 0 {source}) (- {target}))))");
       }
-      finally
+
+      FlushLogFile();
+
+      if (libOptions.RestartProverPerVC && Process != null)
       {
-        currentErrorHandler = null;
+        processNeedsRestart = true;
       }
+
+      return globalResult;
     }
 
     // TODO seems like there's a sort of empty line being returned that we can use to check that the solver is done, but this code doesn't use it.
@@ -701,159 +699,174 @@ namespace Microsoft.Boogie.SMTLib
     public override async Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> assumptions,
       ErrorHandler handler, CancellationToken cancellationToken)
     {
-      Push();
-      // Name the assumptions
-      var nameToAssumption = new Dictionary<string, int>();
-      int i = 0;
-      foreach (var vc in assumptions)
+      currentErrorHandler = handler;
+      try
       {
-        var name = "a" + nameCounter.ToString();
-        nameCounter++;
-        nameToAssumption.Add(name, i);
-
-        string vcString = VCExpr2String(vc, 1);
-        AssertAxioms();
-        SendThisVC(string.Format("(assert (! {0} :named {1}))", vcString, name));
-        i++;
-      }
-
-      PrepareCommon();
-      var outcome = await CheckSat(handler, cancellationToken, libOptions.ErrorLimit);
-
-      if (outcome != Outcome.Valid)
-      {
-        Pop();
-        return (outcome, new List<int>());
-      }
-
-      Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
-      var resp = await SendVcRequest("(get-unsat-core)").WaitAsync(cancellationToken);
-      var unsatCore = new List<int>();
-      if (resp is not null && resp.Name != "")
-      {
-        unsatCore.Add(nameToAssumption[resp.Name]);
-      }
-
-      if (resp is not null)
-      {
-        foreach (var s in resp.Arguments)
+        Push();
+        // Name the assumptions
+        var nameToAssumption = new Dictionary<string, int>();
+        int i = 0;
+        foreach (var vc in assumptions)
         {
-          unsatCore.Add(nameToAssumption[s.Name]);
-        }
-      }
+          var name = "a" + nameCounter.ToString();
+          nameCounter++;
+          nameToAssumption.Add(name, i);
 
-      FlushLogFile();
-      Pop();
-      return (outcome, unsatCore);
+          string vcString = VCExpr2String(vc, 1);
+          AssertAxioms();
+          SendThisVC(string.Format("(assert (! {0} :named {1}))", vcString, name));
+          i++;
+        }
+
+        PrepareCommon();
+        var outcome = await CheckSat(cancellationToken, libOptions.ErrorLimit);
+
+        if (outcome != Outcome.Valid)
+        {
+          Pop();
+          return (outcome, new List<int>());
+        }
+
+        Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
+        var resp = await SendVcRequest("(get-unsat-core)").WaitAsync(cancellationToken);
+        var unsatCore = new List<int>();
+        if (resp is not null && resp.Name != "")
+        {
+          unsatCore.Add(nameToAssumption[resp.Name]);
+        }
+
+        if (resp is not null)
+        {
+          foreach (var s in resp.Arguments)
+          {
+            unsatCore.Add(nameToAssumption[s.Name]);
+          }
+        }
+
+        FlushLogFile();
+        Pop();
+        return (outcome, unsatCore);
+      }
+      finally
+      {
+        currentErrorHandler = null;
+      }
     }
 
     public override async Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
       ErrorHandler handler, CancellationToken cancellationToken)
     {
-
-      // First, convert both hard and soft assumptions to SMTLIB strings
-      var hardAssumptionStrings = new List<string>();
-      foreach (var a in hardAssumptions)
+      currentErrorHandler = handler;
+      try
       {
-        hardAssumptionStrings.Add(VCExpr2String(a, 1));
-      }
+        // First, convert both hard and soft assumptions to SMTLIB strings
+        var hardAssumptionStrings = new List<string>();
+        foreach (var a in hardAssumptions)
+        {
+          hardAssumptionStrings.Add(VCExpr2String(a, 1));
+        }
 
-      var currAssumptionStrings = new List<string>();
-      foreach (var a in softAssumptions)
-      {
-        currAssumptionStrings.Add(VCExpr2String(a, 1));
-      }
+        var currAssumptionStrings = new List<string>();
+        foreach (var a in softAssumptions)
+        {
+          currAssumptionStrings.Add(VCExpr2String(a, 1));
+        }
 
-      Push();
-      AssertAxioms();
-      foreach (var a in hardAssumptionStrings)
-      {
-        SendThisVC("(assert " + a + ")");
-      }
-
-      PrepareCommon();
-      var outcome = await CheckSatAndGetResponse(cancellationToken);
-      if (outcome != Outcome.Invalid)
-      {
-        Pop();
-        return (outcome, new List<int>());
-      }
-
-      var k = 0;
-      var relaxVars = new List<string>();
-      var unsatisfiedSoftAssumptions = new List<int>();
-      while (true)
-      {
         Push();
-        foreach (var a in currAssumptionStrings)
+        AssertAxioms();
+        foreach (var a in hardAssumptionStrings)
         {
           SendThisVC("(assert " + a + ")");
         }
 
         PrepareCommon();
-        outcome = await CheckSat(handler, cancellationToken, libOptions.ErrorLimit);
-        if (outcome != Outcome.Valid)
+        var outcome = await CheckSatAndGetResponse(cancellationToken);
+        if (outcome != Outcome.Invalid)
         {
-          break;
+          Pop();
+          return (outcome, new List<int>());
+        }
+
+        var k = 0;
+        var relaxVars = new List<string>();
+        var unsatisfiedSoftAssumptions = new List<int>();
+        while (true)
+        {
+          Push();
+          foreach (var a in currAssumptionStrings)
+          {
+            SendThisVC("(assert " + a + ")");
+          }
+
+          PrepareCommon();
+          outcome = await CheckSat(cancellationToken, libOptions.ErrorLimit);
+          if (outcome != Outcome.Valid)
+          {
+            break;
+          }
+
+          Pop();
+          var relaxVar = "relax_" + k;
+          relaxVars.Add(relaxVar);
+          SendThisVC("(declare-fun " + relaxVar + " () Int)");
+          var nextAssumptionStrings = new List<string>();
+          for (var i = 0; i < currAssumptionStrings.Count; i++)
+          {
+            var constraint = "(= " + relaxVar + " " + i + ")";
+            nextAssumptionStrings.Add("(or " + currAssumptionStrings[i] + " " + constraint + ")");
+          }
+
+          currAssumptionStrings = nextAssumptionStrings;
+          k++;
+        }
+
+        if (outcome == Outcome.Invalid)
+        {
+          foreach (var relaxVar in relaxVars)
+          {
+            var resp = await SendVcRequest("(get-value ({relaxVar}))").WaitAsync(cancellationToken);
+            if (resp == null)
+            {
+              break;
+            }
+
+            if (!(resp.Name == "" && resp.ArgCount == 1))
+            {
+              break;
+            }
+
+            resp = resp.Arguments[0];
+            if (!(resp.Name != "" && resp.ArgCount == 1))
+            {
+              break;
+            }
+
+            resp = resp.Arguments[0];
+            if (resp.ArgCount != 0)
+            {
+              break;
+            }
+
+            if (int.TryParse(resp.Name, out var v))
+            {
+              unsatisfiedSoftAssumptions.Add(v);
+            }
+            else
+            {
+              break;
+            }
+          }
+
+          Pop();
         }
 
         Pop();
-        var relaxVar = "relax_" + k;
-        relaxVars.Add(relaxVar);
-        SendThisVC("(declare-fun " + relaxVar + " () Int)");
-        var nextAssumptionStrings = new List<string>();
-        for (var i = 0; i < currAssumptionStrings.Count; i++)
-        {
-          var constraint = "(= " + relaxVar + " " + i + ")";
-          nextAssumptionStrings.Add("(or " + currAssumptionStrings[i] + " " + constraint + ")");
-        }
-
-        currAssumptionStrings = nextAssumptionStrings;
-        k++;
+        return (outcome, unsatisfiedSoftAssumptions);
       }
-
-      if (outcome == Outcome.Invalid)
+      finally
       {
-        foreach (var relaxVar in relaxVars)
-        {
-          var resp = await SendVcRequest("(get-value ({relaxVar}))").WaitAsync(cancellationToken);
-          if (resp == null)
-          {
-            break;
-          }
-
-          if (!(resp.Name == "" && resp.ArgCount == 1))
-          {
-            break;
-          }
-
-          resp = resp.Arguments[0];
-          if (!(resp.Name != "" && resp.ArgCount == 1))
-          {
-            break;
-          }
-
-          resp = resp.Arguments[0];
-          if (resp.ArgCount != 0)
-          {
-            break;
-          }
-
-          if (int.TryParse(resp.Name, out var v))
-          {
-            unsatisfiedSoftAssumptions.Add(v);
-          }
-          else
-          {
-            break;
-          }
-        }
-
-        Pop();
+        currentErrorHandler = null;
       }
-
-      Pop();
-      return (outcome, unsatisfiedSoftAssumptions);
     }
   }
 }

@@ -26,7 +26,7 @@ namespace Microsoft.Boogie.SMTLib
     internal abstract ScopedNamer Namer { get; }
     protected TypeDeclCollector DeclCollector;
 
-    protected ProverProblemCollector ProverProblems { get; set; }
+    public bool HadErrors { get; protected set; }
     
     protected StringBuilder common = new();
     protected string CachedCommon = null;
@@ -57,7 +57,6 @@ namespace Microsoft.Boogie.SMTLib
       this.ctx = ctx;
       this.gen = gen;
       usingUnsatCore = false;
-      ProverProblems = new ProverProblemCollector(this);
 
       InitializeGlobalInformation();
       SetupAxiomBuilder(gen);
@@ -156,8 +155,7 @@ namespace Microsoft.Boogie.SMTLib
       Process = options.Solver == SolverKind.NoOpWithZ3Options
         ? new NoopSolver()
         : new SMTLibProcess(libOptions, options);
-      ProverProblems = new ProverProblemCollector(this);
-      Process.ErrorHandler += ProverProblems.HandleProverError;
+      Process.ErrorHandler += HandleProverError;
     }
 
     public override void Close()
@@ -524,22 +522,43 @@ namespace Microsoft.Boogie.SMTLib
       return new StreamWriter(filename, reused);
     }
 
-    protected void FlushProverWarnings()
-    {
-      var handler = currentErrorHandler;
-      if (handler != null)
-      {
-        var proverProblems = ProverProblems;
-        while (proverProblems.Warnings.TryDequeue(out var warning))
-        {
-          handler.OnProverWarning(warning);
-        }
-      }
-    }
-
     protected void HandleProverError(string s)
     {
-      ProverProblems.HandleProverError(s);
+      // Trying to match prover warnings of the form:
+      // - for Z3: WARNING: warning_message
+      // - for CVC5: query.smt2:222.24: warning: warning_message
+      // All other lines are considered to be errors.
+
+      s = s.Replace("\r", "");
+      const string ProverWarning = "WARNING: ";
+      string errors = "";
+      
+      foreach (var line in s.Split('\n'))
+      {
+        int idx = line.IndexOf(ProverWarning, StringComparison.OrdinalIgnoreCase);
+        if (idx >= 0)
+        {
+          string warn = line.Substring(idx + ProverWarning.Length);
+          if (currentErrorHandler != null)
+          {
+            currentErrorHandler.OnProverWarning(warn);
+          }
+        }
+        else
+        {
+          errors += (line + "\n");
+        }
+      }
+
+      if (errors == "")
+      {
+        return;
+      }
+      
+      Console.WriteLine("Prover error: " + errors);
+
+      ReportProverError(errors);
+      HadErrors = true;
     }
 
     private void ReportProverError(string err)
@@ -1514,7 +1533,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         // If anything goes wrong with parsing the response from the solver,
         // it's better to be able to continue, even with uninformative data.
-        ProverProblems.Warnings.Enqueue($"Failed to parse resource count from solver. Got: {resp}");
+        currentErrorHandler.OnProverWarning($"Failed to parse resource count from solver. Got: {resp}");
         return -1;
       }
     }
@@ -1540,43 +1559,7 @@ namespace Microsoft.Boogie.SMTLib
         this.smtLibProcessTheoremProver = smtLibProcessTheoremProver;
       }
 
-      internal void HandleProverError(string s)
-      {
-        // Trying to match prover warnings of the form:
-        // - for Z3: WARNING: warning_message
-        // - for CVC5: query.smt2:222.24: warning: warning_message
-        // All other lines are considered to be errors.
-
-        s = s.Replace("\r", "");
-        const string ProverWarning = "WARNING: ";
-        string errors = "";
       
-        foreach (var line in s.Split('\n'))
-        {
-          int idx = line.IndexOf(ProverWarning, StringComparison.OrdinalIgnoreCase);
-          if (idx >= 0)
-          {
-            string warn = line.Substring(idx + ProverWarning.Length);
-            Warnings.Enqueue(warn);
-          }
-          else
-          {
-            errors += (line + "\n");
-          }
-        }
-
-        smtLibProcessTheoremProver.FlushProverWarnings();
-
-        if (errors == "")
-        {
-          return;
-        }
-
-        this.errors.Push(errors);
-        Console.WriteLine("Prover error: " + errors);
-
-        smtLibProcessTheoremProver.ReportProverError(errors);
-      }
     }
   }
 
