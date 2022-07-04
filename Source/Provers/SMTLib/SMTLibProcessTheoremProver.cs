@@ -1543,24 +1543,6 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(push 1)");
       DeclCollector.Push();
     }
-    
-    
-  
-  
-    public class ProverProblemCollector
-    {
-      public ConcurrentQueue<string> Warnings = new();
-      private readonly ConcurrentStack<string> errors = new();
-      public bool HadErrors => errors.Count > 0;
-      private readonly SMTLibProcessTheoremProver smtLibProcessTheoremProver;
-
-      public ProverProblemCollector(SMTLibProcessTheoremProver smtLibProcessTheoremProver)
-      {
-        this.smtLibProcessTheoremProver = smtLibProcessTheoremProver;
-      }
-
-      
-    }
   }
 
   public class SMTLibProverContext : DeclFreeProverContext
