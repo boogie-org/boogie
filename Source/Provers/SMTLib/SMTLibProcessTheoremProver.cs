@@ -26,7 +26,7 @@ namespace Microsoft.Boogie.SMTLib
     internal abstract ScopedNamer Namer { get; }
     protected TypeDeclCollector DeclCollector;
 
-    public bool HadErrors { get; protected set; }
+    protected bool HadErrors { get; set; }
     
     protected StringBuilder common = new();
     protected string CachedCommon = null;
@@ -539,10 +539,7 @@ namespace Microsoft.Boogie.SMTLib
         if (idx >= 0)
         {
           string warn = line.Substring(idx + ProverWarning.Length);
-          if (currentErrorHandler != null)
-          {
-            currentErrorHandler.OnProverWarning(warn);
-          }
+          currentErrorHandler?.OnProverWarning(warn);
         }
         else
         {
@@ -557,17 +554,9 @@ namespace Microsoft.Boogie.SMTLib
       
       Console.WriteLine("Prover error: " + errors);
 
-      ReportProverError(errors);
-      HadErrors = true;
-    }
-
-    private void ReportProverError(string err)
-    {
       var handler = currentErrorHandler;
-      if (handler != null)
-      {
-        handler.OnProverError(err);
-      }
+      handler?.OnProverError(errors);
+      HadErrors = true;
     }
 
     protected class SMTErrorModelConverter
