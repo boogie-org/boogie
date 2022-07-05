@@ -1522,7 +1522,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         // If anything goes wrong with parsing the response from the solver,
         // it's better to be able to continue, even with uninformative data.
-        currentErrorHandler.OnProverWarning($"Failed to parse resource count from solver. Got: {resp}");
+        currentErrorHandler?.OnProverWarning($"Failed to parse resource count from solver. Got: {resp}");
         return -1;
       }
     }
