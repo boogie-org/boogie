@@ -239,8 +239,8 @@ modifies channels;
   var head, tail: int;
   var cid: ChannelId;
 
+  assert is#Receive(receive_handle);
   cid := Cid(receive_handle);
-  assert receive_handle == Receive(cid);
   channel := channels[cid];
   C := C#Channel(channel);
   head := head#Channel(channel);
