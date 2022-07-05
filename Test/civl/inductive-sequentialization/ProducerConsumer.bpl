@@ -220,8 +220,8 @@ modifies channels;
   var head, tail: int;
   var cid: ChannelId;
 
+  assert is#Send(send_handle);
   cid := Cid(send_handle);
-  assert send_handle == Send(cid);
   channel := channels[cid];
   C := C#Channel(channel);
   head := head#Channel(channel);
