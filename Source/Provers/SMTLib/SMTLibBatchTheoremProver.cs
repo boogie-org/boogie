@@ -62,7 +62,7 @@ namespace Microsoft.Boogie.SMTLib
       return 0;
     }
 
-    public override Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
+    public override async Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
       CancellationToken cancellationToken)
     {
       currentErrorHandler = handler;
@@ -75,7 +75,7 @@ namespace Microsoft.Boogie.SMTLib
         if (options.LogFilename != null && currentLogFile == null)
         {
           currentLogFile = OpenOutputFile(descriptiveName);
-          currentLogFile.Write(common.ToString());
+          await currentLogFile.WriteAsync(common.ToString());
         }
 
         PrepareCommon();
@@ -97,7 +97,7 @@ namespace Microsoft.Boogie.SMTLib
 
         var result = CheckSat(cancellationToken);
         Pop();
-        return result;
+        return await result;
       }
       finally
       {
