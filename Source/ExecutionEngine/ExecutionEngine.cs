@@ -722,23 +722,24 @@ namespace Microsoft.Boogie
     /// The outer task is to wait for a semaphore to let verification start
     /// The inner task is the actual verification of the implementation
     /// </returns>
-    public async Task<Task<VerificationResult>> EnqueueVerifyImplementation(
+    public Task<Task<VerificationResult>> EnqueueVerifyImplementation(
       ProcessedProgram processedProgram, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, Implementation implementation,
       CancellationToken cancellationToken,
       TextWriter taskWriter)
     {
+      return verifyImplementationSemaphore.WaitAsync(cancellationToken).ContinueWith(t =>
+      {
+        var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cancellationToken,
+          implementation,
+          programId, taskWriter), cancellationToken);
 
-      await verifyImplementationSemaphore.WaitAsync(cancellationToken);
-
-      var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cancellationToken,
-        implementation,
-        programId, taskWriter), cancellationToken);
-
-      var _ = coreTask.ContinueWith(t => {
-        verifyImplementationSemaphore.Release();
-      }, CancellationToken.None);
-      return coreTask;
+        var _ = coreTask.ContinueWith(_ =>
+        {
+          verifyImplementationSemaphore.Release();
+        }, CancellationToken.None);
+        return coreTask;
+      }, cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Current);
     }
 
     private void TraceCachingForBenchmarking(PipelineStatistics stats,

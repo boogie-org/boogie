@@ -86,7 +86,9 @@ public class ImplementationTask : IImplementationTask {
       observableStatus.OnNext(new Stale());
       observableStatus.OnCompleted();
     });
-    var task = RunInternal(cancellationToken, observableStatus.OnNext);
+    var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(),
+      null, null, Implementation, cancellationToken, TextWriter.Null);
+    var task = RunInternal(enqueueTask, observableStatus.OnNext);
     task.ContinueWith(r =>
     {
       if (r.Exception != null) {
@@ -98,10 +100,9 @@ public class ImplementationTask : IImplementationTask {
     return observableStatus;
   }
 
-  private async Task<VerificationResult> RunInternal(CancellationToken cancellationToken, Action<IVerificationStatus> notifyStatusChange) {
-
-    var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(),
-      null, null, Implementation, cancellationToken, TextWriter.Null);
+  private async Task<VerificationResult> RunInternal(
+    Task<Task<VerificationResult>> enqueueTask,
+    Action<IVerificationStatus> notifyStatusChange) {
 
     var afterEnqueueStatus = enqueueTask.IsCompleted ? (IVerificationStatus)new Running() : new Queued();
     notifyStatusChange(afterEnqueueStatus);
