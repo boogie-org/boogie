@@ -212,6 +212,29 @@ procedure FibTest() {
     Assert.AreEqual(expected, statusList, $"Items: {string.Join(", ", statusList)}");
   }
 
+  /*
+   * P(6) == true
+   * P(5) == true
+   * P(4) == false
+   *
+   * function A[0](x: int) {
+   *   P(x)[1] && A(x - 1)[2]
+   * }
+   *
+   * Inlined once by Boogie
+   * function A[0](x: int) {
+   *   P(x-1)[1] && P(x)[1] && A(x - 2)[2]
+   * }
+   *
+   * assert A(6)
+   *        ^^^ assertion doesn't hold
+   * Related location: LocOf(function A)
+   * Related location: LocOf(function A)
+   * Related location: LocOf(P(x))
+   *
+   * Always inlining leads to non-termination in cases of assert A(b)
+   * Idea: follow the fuel rules for inlining
+   */
   [Test]
   public async Task StatusTest() {
     

@@ -722,25 +722,49 @@ namespace Microsoft.Boogie
     /// The outer task is to wait for a semaphore to let verification start
     /// The inner task is the actual verification of the implementation
     /// </returns>
-    public Task<Task<VerificationResult>> EnqueueVerifyImplementation(
+    ///
+    public async Task<Task<VerificationResult>> EnqueueVerifyImplementation(
       ProcessedProgram processedProgram, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, Implementation implementation,
       CancellationToken cancellationToken,
       TextWriter taskWriter)
     {
-      return verifyImplementationSemaphore.WaitAsync(cancellationToken).ContinueWith(t =>
-      {
-        var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cancellationToken,
-          implementation,
-          programId, taskWriter), cancellationToken);
+      Console.WriteLine($"Waiting with {verifyImplementationSemaphore.CurrentCount}");
 
-        var _ = coreTask.ContinueWith(_ =>
-        {
-          verifyImplementationSemaphore.Release();
-        }, CancellationToken.None);
-        return coreTask;
-      }, cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Current);
+      await verifyImplementationSemaphore.WaitAsync(cancellationToken);
+      var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cancellationToken,
+        implementation,
+        programId, taskWriter), cancellationToken);
+
+      var _ = coreTask.ContinueWith(_ =>
+      {
+        verifyImplementationSemaphore.Release();
+        Console.WriteLine("released");
+      }, CancellationToken.None);
+      return coreTask;
     }
+    // public Task<Task<VerificationResult>> EnqueueVerifyImplementation(
+    //   ProcessedProgram processedProgram, PipelineStatistics stats,
+    //   string programId, ErrorReporterDelegate er, Implementation implementation,
+    //   CancellationToken cancellationToken,
+    //   TextWriter taskWriter)
+    // {
+    //   Console.WriteLine($"Waiting with {verifyImplementationSemaphore.CurrentCount}");
+    //
+    //   return verifyImplementationSemaphore.WaitAsync(cancellationToken).ContinueWith(t =>
+    //   {
+    //     var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cancellationToken,
+    //       implementation,
+    //       programId, taskWriter), cancellationToken);
+    //
+    //     var _ = coreTask.ContinueWith(_ =>
+    //     {
+    //       verifyImplementationSemaphore.Release();
+    //       Console.WriteLine("released");
+    //     }, CancellationToken.None);
+    //     return coreTask;
+    //   }, cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Current);
+    // }
 
     private void TraceCachingForBenchmarking(PipelineStatistics stats,
       string requestId, DateTime start)
