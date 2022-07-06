@@ -729,7 +729,6 @@ namespace Microsoft.Boogie
       CancellationToken cancellationToken,
       TextWriter taskWriter)
     {
-      Console.WriteLine($"Waiting with {verifyImplementationSemaphore.CurrentCount}");
 
       await verifyImplementationSemaphore.WaitAsync(cancellationToken);
       var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cancellationToken,
@@ -739,7 +738,6 @@ namespace Microsoft.Boogie
       var _ = coreTask.ContinueWith(_ =>
       {
         verifyImplementationSemaphore.Release();
-        Console.WriteLine("released");
       }, CancellationToken.None);
       return coreTask;
     }
