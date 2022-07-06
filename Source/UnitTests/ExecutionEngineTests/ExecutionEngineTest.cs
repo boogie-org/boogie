@@ -209,7 +209,7 @@ procedure FibTest() {
     var expected = new List<IVerificationStatus>() {
       new Running(), new Stale(), new Queued(), new Running(), finalResult
     };
-    Assert.AreEqual(expected, statusList);
+    Assert.AreEqual(expected, statusList, $"Items: {string.Join(", ", statusList)}");
   }
 
   [Test]
@@ -251,14 +251,15 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     secondStatuses.Subscribe(t => statusList.Add((secondName, t)));
     await firstStatuses.Concat(secondStatuses).ToTask();
 
-    Assert.AreEqual((firstName, new Running()), statusList[0]);
-    Assert.AreEqual((secondName, new Queued()), statusList[1]);
+    var debugMessage = $"Items: {string.Join(", ", statusList)}";
+    Assert.AreEqual((firstName, new Running()), statusList[0], debugMessage);
+    Assert.AreEqual((secondName, new Queued()), statusList[1], debugMessage);
     var indexTwoAndThreeOrdered = statusList.Skip(2).Take(2).OrderByDescending(k => k.Item1 == firstName).ToList();
-    Assert.AreEqual(firstName, indexTwoAndThreeOrdered[0].Item1);
-    Assert.IsTrue(indexTwoAndThreeOrdered[0].Item2 is Completed);
-    Assert.AreEqual((secondName, new Running()), indexTwoAndThreeOrdered[1]);
-    Assert.AreEqual(secondName, statusList[4].Item1);
-    Assert.IsTrue(statusList[4].Item2 is Completed);
+    Assert.AreEqual(firstName, indexTwoAndThreeOrdered[0].Item1, debugMessage);
+    Assert.IsTrue(indexTwoAndThreeOrdered[0].Item2 is Completed, debugMessage);
+    Assert.AreEqual((secondName, new Running()), indexTwoAndThreeOrdered[1], debugMessage);
+    Assert.AreEqual(secondName, statusList[4].Item1, debugMessage);
+    Assert.IsTrue(statusList[4].Item2 is Completed, debugMessage);
     
     var tasks2 = engine.GetImplementationTasks(program);
     Assert.True(tasks2[0].CacheStatus is Completed);
