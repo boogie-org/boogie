@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,9 +8,7 @@ using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
-using System.Numerics;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.Boogie.SMTLib
 {
@@ -26,8 +25,9 @@ namespace Microsoft.Boogie.SMTLib
     protected TypeAxiomBuilder CachedAxBuilder;
     internal abstract ScopedNamer Namer { get; }
     protected TypeDeclCollector DeclCollector;
-    protected readonly List<string> proverErrors = new();
-    protected readonly List<string> proverWarnings = new();
+
+    protected bool HadErrors { get; set; }
+    
     protected StringBuilder common = new();
     protected string CachedCommon = null;
     protected TextWriter currentLogFile;
@@ -522,28 +522,6 @@ namespace Microsoft.Boogie.SMTLib
       return new StreamWriter(filename, reused);
     }
 
-    protected void FlushProverWarnings()
-    {
-      var handler = currentErrorHandler;
-      if (handler != null)
-      {
-        lock (proverWarnings)
-        {
-          proverWarnings.Iter(handler.OnProverWarning);
-          proverWarnings.Clear();
-        }
-      }
-    }
-
-    private void ReportProverError(string err)
-    {
-      var handler = currentErrorHandler;
-      if (handler != null)
-      {
-        handler.OnProverError(err);
-      }
-    }
-
     protected void HandleProverError(string s)
     {
       // Trying to match prover warnings of the form:
@@ -554,38 +532,31 @@ namespace Microsoft.Boogie.SMTLib
       s = s.Replace("\r", "");
       const string ProverWarning = "WARNING: ";
       string errors = "";
-
-      lock (proverWarnings)
+      
+      foreach (var line in s.Split('\n'))
       {
-        foreach (var line in s.Split('\n'))
+        int idx = line.IndexOf(ProverWarning, StringComparison.OrdinalIgnoreCase);
+        if (idx >= 0)
         {
-          int idx = line.IndexOf(ProverWarning, StringComparison.OrdinalIgnoreCase);
-          if (idx >= 0)
-          {
-            string warn = line.Substring(idx + ProverWarning.Length);
-            proverWarnings.Add(warn);
-          }
-          else
-          {
-            errors += (line + "\n");
-          }
+          string warn = line.Substring(idx + ProverWarning.Length);
+          currentErrorHandler?.OnProverWarning(warn);
+        }
+        else
+        {
+          errors += (line + "\n");
         }
       }
-
-      FlushProverWarnings();
 
       if (errors == "")
       {
         return;
       }
+      
+      Console.WriteLine("Prover error: " + errors);
 
-      lock (proverErrors)
-      {
-        proverErrors.Add(errors);
-        Console.WriteLine("Prover error: " + errors);
-      }
-
-      ReportProverError(errors);
+      var handler = currentErrorHandler;
+      handler?.OnProverError(errors);
+      HadErrors = true;
     }
 
     protected class SMTErrorModelConverter
@@ -1551,10 +1522,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         // If anything goes wrong with parsing the response from the solver,
         // it's better to be able to continue, even with uninformative data.
-        lock (proverWarnings)
-        {
-          proverWarnings.Add($"Failed to parse resource count from solver. Got: {resp}");
-        }
+        currentErrorHandler?.OnProverWarning($"Failed to parse resource count from solver. Got: {resp}");
         return -1;
       }
     }

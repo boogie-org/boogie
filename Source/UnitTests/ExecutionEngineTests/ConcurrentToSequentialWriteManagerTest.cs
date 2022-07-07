@@ -121,7 +121,7 @@ public class ConcurrentToSequentialWriteManagerTest {
     thread2.Join();
     thread3.Join();
 
-    var output = writer.ToString().TrimEnd().Split("\n");
+    var output = writer.ToString().TrimEnd().Replace("\r", "").Split("\n");
 
     for (int i = 0; i < amount; i++) {
       Assert.AreEqual(i.ToString(), output[i]);

@@ -62,38 +62,47 @@ namespace Microsoft.Boogie.SMTLib
       return 0;
     }
 
-    public override Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
-      CancellationToken cancellationToken) {
-      SetupProcess();
-      checkSatSent = false;
-      FullReset(gen);
+    public override async Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
+      CancellationToken cancellationToken)
+    {
+      currentErrorHandler = handler;
+      try
+      {
+        SetupProcess();
+        checkSatSent = false;
+        FullReset(gen);
 
-      if (options.LogFilename != null && currentLogFile == null) {
-        currentLogFile = OpenOutputFile(descriptiveName);
-        currentLogFile.Write(common.ToString());
+        if (options.LogFilename != null && currentLogFile == null)
+        {
+          currentLogFile = OpenOutputFile(descriptiveName);
+          await currentLogFile.WriteAsync(common.ToString());
+        }
+
+        PrepareCommon();
+        FlushAxioms();
+
+        OptimizationRequests.Clear();
+
+        string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
+        FlushAxioms();
+
+        Push();
+        SendVCAndOptions(descriptiveName, vcString);
+        SendOptimizationRequests();
+
+        FlushLogFile();
+
+        Process.NewProblem(descriptiveName);
+        checkSatSent = true;
+
+        var result = CheckSat(cancellationToken);
+        Pop();
+        return await result;
       }
-
-      PrepareCommon();
-      FlushAxioms();
-
-      OptimizationRequests.Clear();
-
-      string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
-      FlushAxioms();
-
-      Push();
-      SendVCAndOptions(descriptiveName, vcString);
-      SendOptimizationRequests();
-
-      FlushLogFile();
-
-      Process.NewProblem(descriptiveName);
-      checkSatSent = true;
-
-      var result = CheckSat(handler, cancellationToken);
-      Pop();
-      return result;
-
+      finally
+      {
+        currentErrorHandler = null;
+      }
     }
 
     public override Task Reset(VCExpressionGenerator generator) {
@@ -123,7 +132,7 @@ namespace Microsoft.Boogie.SMTLib
       return Process.SendRequestsAndCloseInput(sanitizedRequests);
     }
 
-    private async Task<Outcome> CheckSat(ErrorHandler handler, CancellationToken cancellationToken)
+    private async Task<Outcome> CheckSat(CancellationToken cancellationToken)
     {
       var requests = new List<string>();
       requests.Add("(check-sat)");
@@ -133,14 +142,11 @@ namespace Microsoft.Boogie.SMTLib
       }
       requests.Add("(get-model)");
 
-      if (Process == null || proverErrors.Count > 0) {
+      if (Process == null || HadErrors) {
         return Outcome.Undetermined;
       }
 
       try {
-        currentErrorHandler = handler;
-        FlushProverWarnings();
-
         IReadOnlyList<SExpr> responses;
         try {
           responses = await SendRequestsAndClose(requests).WaitAsync(cancellationToken);
@@ -169,12 +175,12 @@ namespace Microsoft.Boogie.SMTLib
         errorModel = ParseErrorModel(modelSExp);
 
         if (result == Outcome.Invalid) {
-          var labels = CalculatePath(handler.StartingProcId(), errorModel);
+          var labels = CalculatePath(currentErrorHandler.StartingProcId(), errorModel);
           if (labels.Length == 0) {
             // Without a path to an error, we don't know what to report
             result = Outcome.Undetermined;
           } else {
-            handler.OnModel(labels, errorModel, result);
+            currentErrorHandler.OnModel(labels, errorModel, result);
           }
         }
 
@@ -187,7 +193,6 @@ namespace Microsoft.Boogie.SMTLib
         return result;
       } finally {
         Close();
-        currentErrorHandler = null;
       }
     }
 
