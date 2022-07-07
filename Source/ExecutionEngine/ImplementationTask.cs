@@ -105,10 +105,14 @@ public class ImplementationTask : IImplementationTask {
     Action<IVerificationStatus> notifyStatusChange) {
 
     var afterEnqueueStatus = enqueueTask.IsCompleted ? (IVerificationStatus)new Running() : new Queued();
+    if (enqueueTask.IsCompleted) {
+      Console.WriteLine("sending running for " + Implementation.Name);
+    }
     notifyStatusChange(afterEnqueueStatus);
 
     var verifyTask = await enqueueTask;
     if (afterEnqueueStatus is not Running) {
+      Console.WriteLine("sending running for " + Implementation.Name);
       notifyStatusChange(new Running());
     }
 
