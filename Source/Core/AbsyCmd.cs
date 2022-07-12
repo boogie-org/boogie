@@ -2455,10 +2455,11 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(stream != null);
       stream.WriteLine(this, level, "{");
+      var alreadySeen = new HashSet<Declaration>();
       foreach (Variable /*!*/ v in Locals)
       {
         Contract.Assert(v != null);
-        v.Emit(stream, level + 1);
+        v.Emit(stream, level + 1, alreadySeen);
       }
 
       foreach (Cmd /*!*/ c in Cmds)

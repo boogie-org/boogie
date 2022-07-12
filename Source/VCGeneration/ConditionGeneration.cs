@@ -556,7 +556,7 @@ namespace VC
       options.PrintUnstructured = 2; // print only the unstructured program
       bool oldPrintDesugaringSetting = options.PrintDesugarings;
       options.PrintDesugarings = printDesugarings;
-      impl.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options), 0);
+      impl.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options), 0, new HashSet<Declaration>());
       options.PrintDesugarings = oldPrintDesugaringSetting;
       options.PrintUnstructured = oldPrintUnstructured;
     }
@@ -868,7 +868,7 @@ namespace VC
         var pu = Options.PrintUnstructured;
         Options.PrintDesugarings = true;
         Options.PrintUnstructured = 1;
-        implementation.Emit(tokTxtWr, 0);
+        implementation.Emit(tokTxtWr, 0, new HashSet<Declaration>());
         Options.PrintDesugarings = pd;
         Options.PrintUnstructured = pu;
       }

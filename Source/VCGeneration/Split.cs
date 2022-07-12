@@ -151,8 +151,11 @@ namespace VC
         using var writer = new TokenTextWriter(
           $"{options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}", false,
           options.PrettyPrint, options);
+        var alreadySeen = new HashSet<Declaration>();
         foreach (var declaration in TopLevelDeclarations ?? program.TopLevelDeclarations) {
-          declaration.Emit(writer, 0);
+          if (alreadySeen.Add(declaration)) {
+            declaration.Emit(writer, 0, alreadySeen);
+          }
         }
 
         writer.Close();
@@ -228,7 +231,7 @@ namespace VC
           List<Block> backup = Implementation.Blocks;
           Contract.Assert(backup != null);
           Implementation.Blocks = blocks;
-          Implementation.Emit(new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false, options), 0);
+          Implementation.Emit(new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false, options), 0, new HashSet<Declaration>());
           Implementation.Blocks = backup;
           options.PrintDesugarings = oldPrintDesugaringSetting;
           options.PrintUnstructured = oldPrintUnstructured;

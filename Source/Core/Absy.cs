@@ -1127,7 +1127,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public abstract void Emit(TokenTextWriter /*!*/ stream, int level);
+    public abstract void Emit(TokenTextWriter stream /*!*/, int level, ISet<Declaration> alreadySeen);
     public abstract void Register(ResolutionContext /*!*/ rc);
 
     /// <summary>
@@ -1161,7 +1161,7 @@ namespace Microsoft.Boogie
       throw new NotImplementedException();
     }
 
-    public override void Emit(TokenTextWriter stream, int level)
+    public override void Emit(TokenTextWriter stream, int level, ISet<Declaration> alreadySeen)
     {
       Contract.Requires(stream != null);
       throw new NotImplementedException();
@@ -1247,7 +1247,7 @@ namespace Microsoft.Boogie
 
     public override int ContentHash => Util.GetHashCode(1218192003, expression.ContentHash);
 
-    public override void Emit(TokenTextWriter stream, int level)
+    public override void Emit(TokenTextWriter stream, int level, ISet<Declaration> alreadySeen)
     {
       //Contract.Requires(stream != null);
       if (Comment != null)
@@ -1401,7 +1401,7 @@ namespace Microsoft.Boogie
       this.Attributes = kv;
     }
 
-    public override void Emit(TokenTextWriter stream, int level)
+    public override void Emit(TokenTextWriter stream, int level, ISet<Declaration> alreadySeen)
     {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "type ");
@@ -1459,10 +1459,10 @@ namespace Microsoft.Boogie
       this.constructors = new List<DatatypeConstructor>();
     }
 
-    public override void Emit(TokenTextWriter stream, int level)
+    public override void Emit(TokenTextWriter stream, int level, ISet<Declaration> alreadySeen)
     {
-      base.Emit(stream, level);
-      constructors.Iter(constructor => constructor.Emit(stream, level));
+      base.Emit(stream, level, alreadySeen);
+      constructors.Iter(constructor => constructor.Emit(stream, level, alreadySeen));
     }
   }
 
@@ -1534,7 +1534,7 @@ namespace Microsoft.Boogie
       this.Attributes = kv;
     }
 
-    public override void Emit(TokenTextWriter stream, int level)
+    public override void Emit(TokenTextWriter stream, int level, ISet<Declaration> alreadySeen)
     {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "type ");
@@ -1763,7 +1763,7 @@ namespace Microsoft.Boogie
 
     public abstract bool IsMutable { get; }
 
-    public override void Emit(TokenTextWriter stream, int level)
+    public override void Emit(TokenTextWriter stream, int level, ISet<Declaration> alreadySeen)
     {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "var ");
@@ -1913,7 +1913,7 @@ namespace Microsoft.Boogie
 
     public override bool IsMutable => false;
 
-    public override void Emit(TokenTextWriter stream, int level)
+    public override void Emit(TokenTextWriter stream, int level, ISet<Declaration> alreadySeen)
     {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "const ");
@@ -1948,8 +1948,12 @@ namespace Microsoft.Boogie
           stream.Write(this, level, " complete");
         }
       }
+      var requiresColon = Emitter.EmitDefinitionAxioms(stream, level, DefinitionAxioms, alreadySeen);
 
       stream.WriteLine(";");
+      if (requiresColon) {
+        stream.WriteLine(";");
+      }
     }
 
     public override void Register(ResolutionContext rc)
@@ -2644,7 +2648,7 @@ namespace Microsoft.Boogie
       this.index = index;
     }
 
-    public override void Emit(TokenTextWriter stream, int level)
+    public override void Emit(TokenTextWriter stream, int level, ISet<Declaration> alreadySeen)
     {
     }
   }
@@ -2674,7 +2678,7 @@ namespace Microsoft.Boogie
       this.constructor = constructor;
     }
 
-    public override void Emit(TokenTextWriter stream, int level)
+    public override void Emit(TokenTextWriter stream, int level, ISet<Declaration> alreadySeen)
     {
     }
   }
@@ -2761,7 +2765,7 @@ namespace Microsoft.Boogie
       this.Attributes = kv;
     }
 
-    public override void Emit(TokenTextWriter stream, int level)
+    public override void Emit(TokenTextWriter stream, int level, ISet<Declaration> alreadySeen)
     {
       //Contract.Requires(stream != null);
       if (Comment != null)
@@ -2800,6 +2804,7 @@ namespace Microsoft.Boogie
       }
 
       EmitSignature(stream, true);
+      var requiresColon = true;
       if (Body != null)
       {
         Contract.Assert(DefinitionBody == null);
@@ -2809,6 +2814,7 @@ namespace Microsoft.Boogie
         Body.Emit(stream);
         stream.WriteLine();
         stream.WriteLine("}");
+        requiresColon = false;
       }
       else if (DefinitionBody != null)
       {
@@ -2818,9 +2824,11 @@ namespace Microsoft.Boogie
         DefinitionBody.Args[1].Emit(stream);
         stream.WriteLine();
         stream.WriteLine("}");
+        requiresColon = false;
       }
-      else
-      {
+
+      requiresColon &= Emitter.EmitDefinitionAxioms(stream, level, otherDefinitionAxioms, alreadySeen);
+      if (requiresColon) {
         stream.WriteLine(";");
       }
     }
@@ -3329,7 +3337,7 @@ namespace Microsoft.Boogie
       this.Attributes = kv;
     }
 
-    public override void Emit(TokenTextWriter stream, int level)
+    public override void Emit(TokenTextWriter stream, int level, ISet<Declaration> alreadySeen)
     {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "procedure ");
@@ -3903,7 +3911,7 @@ namespace Microsoft.Boogie
       Attributes = kv;
     }
 
-    public override void Emit(TokenTextWriter stream, int level)
+    public override void Emit(TokenTextWriter stream, int level, ISet<Declaration> alreadySeen)
     {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "implementation ");
@@ -3917,7 +3925,7 @@ namespace Microsoft.Boogie
       foreach (Variable /*!*/ v in this.LocVars)
       {
         Contract.Assert(v != null);
-        v.Emit(stream, level + 1);
+        v.Emit(stream, level + 1, alreadySeen);
       }
 
       if (this.StructuredStmts != null && !stream.Options.PrintInstrumented &&
@@ -4193,10 +4201,11 @@ namespace Microsoft.Boogie
           Console.WriteLine("Implementation.GetImplFormalMap on {0}:", this.Name);
           using TokenTextWriter stream =
             new TokenTextWriter("<console>", Console.Out, /*setTokens=*/false, /*pretty=*/ false, options);
+          var alreadySeen = new HashSet<Declaration>();
           foreach (var e in map)
           {
             Console.Write("  ");
-            cce.NonNull((Variable /*!*/) e.Key).Emit(stream, 0);
+            cce.NonNull((Variable /*!*/) e.Key).Emit(stream, 0, alreadySeen);
             Console.Write("  --> ");
             cce.NonNull((Expr) e.Value).Emit(stream);
             Console.WriteLine();
@@ -4635,15 +4644,39 @@ namespace Microsoft.Boogie
 
   public static class Emitter
   {
-    public static void Emit(this List<Declaration /*!*/> /*!*/ decls, TokenTextWriter stream)
+    public static bool EmitDefinitionAxioms(TokenTextWriter stream, int level, IList<Axiom> definitionAxioms,
+      ISet<Declaration> alreadySeen)
+    {
+      if (!definitionAxioms.Any()) {
+        return true;
+      }
+
+      stream.WriteLine(" uses {");
+      for (var index = 0; index < definitionAxioms.Count; index++) {
+        if (index > 0) {
+          stream.WriteLine();
+        }
+
+        var definitionAxiom = definitionAxioms[index];
+        definitionAxiom.Emit(stream, level + 1, alreadySeen);
+      }
+
+      stream.WriteLine("}");
+      return false;
+    }
+
+    public static void Emit(this IEnumerable /*!*/ decls, TokenTextWriter stream)
     {
       Contract.Requires(stream != null);
-      Contract.Requires(cce.NonNullElements(decls));
+      var alreadySeen = new HashSet<Declaration>();
       bool first = true;
       foreach (Declaration d in decls)
       {
         if (d == null)
         {
+          continue;
+        }
+        if (!alreadySeen.Add(d)) {
           continue;
         }
 
@@ -4656,7 +4689,7 @@ namespace Microsoft.Boogie
           stream.WriteLine();
         }
 
-        d.Emit(stream, 0);
+        d.Emit(stream, 0, alreadySeen);
       }
     }
 

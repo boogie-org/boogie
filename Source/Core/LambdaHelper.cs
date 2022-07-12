@@ -24,15 +24,20 @@ namespace Microsoft.Boogie
         Console.WriteLine("Desugaring of lambda expressions produced {0} functions and {1} axioms:", functions.Count,
           axioms.Count);
         TokenTextWriter wr = new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false, options);
+        var alreadySeen = new HashSet<Declaration>();
         foreach (Function f in functions)
         {
-          f.Emit(wr, 0);
+          if (alreadySeen.Add(f)) {
+            f.Emit(wr, 0, alreadySeen);
+          }
         }
 
         foreach (var ax in axioms)
         {
-          ax.Emit(wr, 0);
-          Console.WriteLine();
+          if (alreadySeen.Add(ax)) {
+            ax.Emit(wr, 0, alreadySeen);
+            Console.WriteLine();
+          }
         }
       }
 

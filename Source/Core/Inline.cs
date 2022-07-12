@@ -145,7 +145,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    protected void ProcessImplementation(Program program, Implementation impl)
+    private void ProcessImplementation(Program program, Implementation impl)
     {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
@@ -202,8 +202,9 @@ namespace Microsoft.Boogie
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
       Console.WriteLine("after inlining procedure calls");
-      impl.Proc.Emit(new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false, options), 0);
-      impl.Emit(new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false, options), 0);
+      var alreadySeen = new HashSet<Declaration>();
+      impl.Proc.Emit(new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false, options), 0, alreadySeen);
+      impl.Emit(new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false, options), 0, alreadySeen);
     }
 
     private sealed class DummyErrorSink : IErrorSink
