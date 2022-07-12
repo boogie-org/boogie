@@ -1,0 +1,3 @@
+const unique four: int;
+
+function ConsumerFunc(x: int) : int;
