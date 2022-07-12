@@ -1949,8 +1949,6 @@ namespace Microsoft.Boogie
         }
       }
       var requiresColon = Emitter.EmitDefinitionAxioms(stream, level, DefinitionAxioms, alreadySeen);
-
-      stream.WriteLine(";");
       if (requiresColon) {
         stream.WriteLine(";");
       }
@@ -4659,6 +4657,7 @@ namespace Microsoft.Boogie
 
         var definitionAxiom = definitionAxioms[index];
         definitionAxiom.Emit(stream, level + 1, alreadySeen);
+        alreadySeen.Add(definitionAxiom);
       }
 
       stream.WriteLine("}");

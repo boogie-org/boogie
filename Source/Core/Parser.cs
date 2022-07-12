@@ -439,13 +439,13 @@ private class BvBounds : Expr {
 		}
 		Function/*!*/ func = new Function(z, z.val, typeParams, arguments,
 		                                 new Formal(retTyd.tok, retTyd, false, argKv), null, kv);
+		
+		Contract.Assert(func != null);
+		ds.Add(func);
 		foreach(var axiom in axioms) {
 		   ds.Add(axiom);
 		   func.AddOtherDefinitionAxiom(axiom);
 		}
-		
-		Contract.Assert(func != null);
-		ds.Add(func);
 		bool allUnnamed = true;
 		foreach(Formal/*!*/ f in arguments) {
 		 Contract.Assert(f != null);
