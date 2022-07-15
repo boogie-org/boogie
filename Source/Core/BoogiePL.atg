@@ -922,6 +922,7 @@ LabelOrAssign<out Cmd c, out IToken label>
      List<AssignLhs/*!*/>/*!*/ lhss;
      List<Expr/*!*/>/*!*/ rhss;
      List<Expr/*!*/>/*!*/ indexes;
+     FieldAccess fieldAccess;
      QKeyValue kv = null;
   .)
   Ident<out id>              (. x = t; .)
@@ -930,13 +931,21 @@ LabelOrAssign<out Cmd c, out IToken label>
   | (. lhss = new List<AssignLhs/*!*/>(); .)
     (. lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); .)
 
-    { MapAssignIndex<out y, out indexes>    (. lhs = new MapAssignLhs(y, lhs, indexes); .) }
+    { 
+      MapAssignIndex<out y, out indexes>  (. lhs = new MapAssignLhs(y, lhs, indexes); .) 
+      |
+      FieldAccess<out y, out fieldAccess> (. lhs = new FieldAssignLhs(y, lhs, fieldAccess); .)
+    }
     (. lhss.Add(lhs); .)
 
     { ","
       Ident<out id>
       (. lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); .)
-      { MapAssignIndex<out y, out indexes>    (. lhs = new MapAssignLhs(y, lhs, indexes); .) }
+      { 
+        MapAssignIndex<out y, out indexes>    (. lhs = new MapAssignLhs(y, lhs, indexes); .)
+        |
+        FieldAccess<out y, out fieldAccess> (. lhs = new FieldAssignLhs(y, lhs, fieldAccess); .)
+      }
       (. lhss.Add(lhs); .)
     }
 
@@ -963,6 +972,12 @@ MapAssignIndex<.out IToken/*!*/ x, out List<Expr/*!*/>/*!*/ indexes.>
       }
     ]
   "]"
+  .
+
+FieldAccess<.out IToken x, out FieldAccess fieldAccess.>
+= (. Contract.Ensures(Contract.ValueAtReturn(out fieldAccess) != null); IToken id; .)
+  "->" (. x = t; .)
+  Ident<out id> (. fieldAccess = new FieldAccess(id, id.val); .)
   .
 
 /*------------------------------------------------------------------------*/
@@ -1249,7 +1264,9 @@ CoercionExpression<out Expr/*!*/ e>
 
 /*------------------------------------------------------------------------*/
 ArrayExpression<out Expr/*!*/ e>
-= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
+= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); 
+     IToken/*!*/ x;
+     FieldAccess fieldAccess;
      Expr/*!*/ index0 = dummyExpr; Expr/*!*/ e1;
      bool store; bool bvExtract;
      List<Expr>/*!*/ allArgs = dummyExprSeq;
@@ -1289,9 +1306,10 @@ ArrayExpression<out Expr/*!*/ e>
        else
          e = new NAryExpr(x, new MapSelect(x, allArgs.Count - 1), allArgs);
     .)
+    |
+      FieldAccess<out x, out fieldAccess> (. e = new NAryExpr(x, fieldAccess, new List<Expr> { e }); .)
   }
   .
-
 
 /*------------------------------------------------------------------------*/
 AtomExpression<out Expr/*!*/ e>
@@ -1340,9 +1358,8 @@ AtomExpression<out Expr/*!*/ e>
     Expression<out e>
     ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToReal), new List<Expr>{ e }); .)
 
-		| "(" ( Expression<out e>                 (. if (e is BvBounds)
-                                                 this.SemErr("parentheses around bitvector bounds " +
-                                                        "are not allowed"); .)
+  | "(" ( Expression<out e>                 (. if (e is BvBounds)
+                                                 this.SemErr("parentheses around bitvector bounds are not allowed"); .)
         | Forall                            (. x = t; .)
           QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e>
                                             (. if (typeParams.Count + ds.Count > 0)

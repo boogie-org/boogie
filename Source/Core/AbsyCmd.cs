@@ -2345,6 +2345,106 @@ namespace Microsoft.Boogie
     }
   }
 
+  public class FieldAssignLhs : AssignLhs
+  {
+    public AssignLhs Datatype;
+
+    public FieldAccess FieldAccess;
+
+    [ContractInvariantMethod]
+    void ObjectInvariant()
+    {
+      Contract.Invariant(Datatype != null);
+      Contract.Invariant(FieldAccess != null);
+    }
+
+    public TypeParamInstantiation TypeParameters = null;
+
+    private Type TypeAttr = null;
+
+    public override Type Type
+    {
+      get { return TypeAttr; }
+    }
+
+    public override IdentifierExpr DeepAssignedIdentifier
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IdentifierExpr>() != null);
+        return Datatype.DeepAssignedIdentifier;
+      }
+    }
+
+    public override Variable DeepAssignedVariable
+    {
+      get { return Datatype.DeepAssignedVariable; }
+    }
+
+    public FieldAssignLhs(IToken tok, AssignLhs datatype, FieldAccess fieldAccess)
+      : base(tok)
+    {
+      Contract.Requires(datatype != null);
+      Contract.Requires(tok != null);
+      Contract.Requires(fieldAccess != null);
+      Datatype = datatype;
+      this.FieldAccess = fieldAccess;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      Datatype.Resolve(rc);
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      Datatype.Typecheck(tc);
+      TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+      if (Datatype.Type != null)
+      {
+        TypeAttr = FieldAccess.Typecheck(Datatype.Type, tc);
+      }
+    }
+
+    public override void Emit(TokenTextWriter stream)
+    {
+      Datatype.Emit(stream);
+      stream.Write("->{0}", FieldAccess.fieldName);
+    }
+
+    public override Expr AsExpr
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<Expr>() != null);
+        var res = FieldAccess.Select(tok, Datatype.AsExpr);
+        Contract.Assert(res != null);
+        res.TypeParameters = this.TypeParameters;
+        res.Type = this.Type;
+        return res;
+      }
+    }
+
+    internal override void AsSimpleAssignment(Expr rhs,
+      out IdentifierExpr simpleLhs,
+      out Expr simpleRhs)
+    {
+      Contract.Ensures(Contract.ValueAtReturn(out simpleLhs) != null);
+      Contract.Ensures(Contract.ValueAtReturn(out simpleRhs) != null);
+      var newRhs = FieldAccess.Update(tok, Datatype.AsExpr, rhs);
+      Contract.Assert(newRhs != null);
+      newRhs.TypeParameters = this.TypeParameters;
+      newRhs.Type = Datatype.Type;
+      Datatype.AsSimpleAssignment(newRhs, out simpleLhs, out simpleRhs);
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      Contract.Ensures(Contract.Result<Absy>() != null);
+      return visitor.VisitFieldAssignLhs(this);
+    }
+  }
+
   /// <summary>
   /// A StateCmd is like an imperative-let binding around a sequence of commands.
   /// There is no user syntax for a StateCmd.  Instead, a StateCmd is only used

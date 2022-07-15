@@ -1559,6 +1559,7 @@ namespace Microsoft.Boogie
     T Visit(TypeCoercion /*!*/ typeCoercion);
     T Visit(ArithmeticCoercion /*!*/ arithCoercion);
     T Visit(IfThenElse /*!*/ ifThenElse);
+    T Visit(FieldAccess /*!*/ fieldAccess);
   }
 
   [ContractClassFor(typeof(IAppliableVisitor<>))]
@@ -1614,6 +1615,11 @@ namespace Microsoft.Boogie
       throw new NotImplementedException();
     }
 
+    public T Visit(FieldAccess fieldAccess)
+    {
+      Contract.Requires(fieldAccess != null);
+      throw new NotImplementedException();
+    }
     #endregion
   }
 
@@ -3837,6 +3843,194 @@ namespace Microsoft.Boogie
     }
   }
 
+  public class FieldAccess : IAppliable
+  {
+    private IToken _tok;
+
+    private string _fieldName;
+    
+    private DatatypeSelector _selector;
+
+    public IToken tok
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IToken>() != null);
+        return this._tok;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._tok = value;
+      }
+    }
+    
+    public string fieldName
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IToken>() != null);
+        return this._fieldName;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._fieldName = value;
+      }
+    }
+    
+    public DatatypeSelector selector
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IToken>() != null);
+        return this._selector;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._selector = value;
+      }
+    }
+
+    [ContractInvariantMethod]
+    void ObjectInvariant()
+    {
+      Contract.Invariant(this._tok != null);
+    }
+
+    public FieldAccess(IToken tok, string fieldName)
+    {
+      Contract.Requires(tok != null);
+      this._tok = tok;
+      this._fieldName = fieldName;
+    }
+    
+    public FieldAccess(IToken tok, DatatypeSelector selector)
+    {
+      Contract.Requires(tok != null);
+      this._tok = tok;
+      this._selector = selector;
+      this._fieldName = selector.Name;
+    }
+
+    public string FunctionName
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<string>() != null);
+
+        return "field-access";
+      }
+    }
+
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj is FieldAccess fieldAccess)
+      {
+        return selector.Equals(fieldAccess.selector);
+      }
+      return false;
+    }
+
+    [Pure]
+    public override int GetHashCode()
+    {
+      return 1;
+    }
+
+    public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
+    {
+      stream.SetToken(this);
+      Contract.Assert(args.Count == 1);
+      stream.push();
+      stream.Write("(");
+      cce.NonNull(args[0]).Emit(stream, 0x00, false);
+      stream.Write("->{0}", fieldName);
+      stream.Write(")");
+      stream.pop();
+    }
+
+    public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting)
+    {
+      // The work of resolution is delayed to type checking when the datatype is known.
+    }
+
+    public int ArgumentCount
+    {
+      get { return 1; }
+    }
+
+    public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
+    {
+      Contract.Ensures(args != null);
+      Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
+      Contract.Assert(args.Count == 1);
+      tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+      return Typecheck(cce.NonNull(args[0]).Type, tc);
+    }
+    
+    public Type Typecheck(Type argType, TypecheckingContext tc)
+    {
+      var type = argType.AsCtor;
+      if (type == null)
+      {
+        tc.Error(this.tok, "type {0} is not a constructor type", argType);
+        return null;
+      }
+      if (!(type.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl))
+      {
+        tc.Error(this.tok, "the first argument to field-access should be a datatype, not {0}", type);
+        return null;
+      }
+      var selectors = datatypeTypeCtorDecl.GetSelectors(fieldName);
+      if (selectors == null)
+      {
+        tc.Error(this.tok, "datatype {0} does not have a field with name {1}", type, fieldName);
+        return null;
+      }
+      Contract.Assert(selectors.Count > 0);
+      if (selectors.Count > 1)
+      {
+        tc.Error(this.tok, "datatype {0} has several fields with name {1}", type, fieldName);
+        return null;
+      }
+      _selector = selectors[0];
+      return selector.OutParams[0].TypedIdent.Type;
+    }
+
+    public Type ShallowType(IList<Expr> args)
+    {
+      Contract.Ensures(Contract.Result<Type>() != null);
+      return selector.OutParams[0].TypedIdent.Type;
+    }
+
+    public T Dispatch<T>(IAppliableVisitor<T> visitor)
+    {
+      return visitor.Visit(this);
+    }
+
+    public NAryExpr Select(IToken token, Expr record)
+    {
+      return new NAryExpr(token, this, new List<Expr> { record });
+    }
+
+    public NAryExpr Update(IToken token, Expr record, Expr rhs)
+    {
+      var args = selector.constructor.selectors.Select(x =>
+      {
+        if (x == selector)
+        {
+          return rhs;
+        }
+        var fieldAccess = new FieldAccess(tok, x);
+        return fieldAccess.Select(token, record);
+      }).ToList();
+      return new NAryExpr(token, new FunctionCall(selector.constructor), args);
+    }
+  }
 
   public class CodeExpr : Expr
   {

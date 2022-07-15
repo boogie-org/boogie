@@ -531,7 +531,7 @@ namespace Microsoft.Boogie
         newConstructor.membership = DatatypeMembership.NewDatatypeMembership(newConstructor);
         for (int i = 0; i < newConstructor.InParams.Count; i++)
         {
-          newConstructor.selectors.Add(DatatypeSelector.NewDatatypeSelector(newConstructor, i));
+          newConstructor.AddSelector(DatatypeSelector.NewDatatypeSelector(newConstructor, i));
         }
       }
 

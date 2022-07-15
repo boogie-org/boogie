@@ -220,6 +220,12 @@ namespace Microsoft.Boogie
       this.SetToken(t => expr.tok = t);
     }
 
+    public void SetToken(FieldAccess expr)
+    {
+      Contract.Requires(expr != null);
+      this.SetToken(t => expr.tok = t);
+    }
+    
     public void SetToken(Action<IToken> setter)
     {
       Contract.Requires(setter != null);

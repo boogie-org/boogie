@@ -552,6 +552,14 @@ namespace Microsoft.Boogie
       return node;
     }
 
+    public virtual AssignLhs VisitFieldAssignLhs(FieldAssignLhs node)
+    {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<AssignLhs>() != null);
+      node.Datatype = cce.NonNull((AssignLhs) this.Visit(node.Datatype));
+      return node;
+    }
+    
     public virtual MapType VisitMapType(MapType node)
     {
       Contract.Requires(node != null);
