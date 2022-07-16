@@ -3971,37 +3971,36 @@ namespace Microsoft.Boogie
       return Typecheck(cce.NonNull(args[0]).Type, tc, out tpInstantiation);
     }
     
-    public Type Typecheck(Type argType, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
+    public Type Typecheck(Type type, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
     {
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
-      var type = argType.AsCtor;
-      if (type == null)
+      if (!(type is CtorType ctorType))
       {
-        tc.Error(this.tok, "type {0} is not a constructor type", argType);
+        tc.Error(this.tok, "type {0} is not a constructor type", type);
         return null;
       }
-      if (!(type.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl))
+      if (!(ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl))
       {
-        tc.Error(this.tok, "the first argument to field-access should be a datatype, not {0}", type);
+        tc.Error(this.tok, "field-access must be applied to a datatype, {0} is not a datatype", ctorType);
         return null;
       }
       var selectors = datatypeTypeCtorDecl.GetSelectors(fieldName);
       if (selectors == null)
       {
-        tc.Error(this.tok, "datatype {0} does not have a field with name {1}", type, fieldName);
+        tc.Error(this.tok, "datatype {0} does not have a field with name {1}", ctorType, fieldName);
         return null;
       }
       Contract.Assert(selectors.Count > 0);
       if (selectors.Count > 1)
       {
-        tc.Error(this.tok, "datatype {0} has several fields with name {1}", type, fieldName);
+        tc.Error(this.tok, "datatype {0} has several fields with name {1}", ctorType, fieldName);
         return null;
       }
       _selector = selectors[0];
-      var typeSubst = selector.TypeParameters.Zip(type.Arguments).ToDictionary(
+      var typeSubst = selector.TypeParameters.Zip(ctorType.Arguments).ToDictionary(
           x => x.Item1, 
           x => x.Item2);
-      tpInstantiation = SimpleTypeParamInstantiation.From(selector.TypeParameters, type.Arguments);
+      tpInstantiation = SimpleTypeParamInstantiation.From(selector.TypeParameters, ctorType.Arguments);
       return selector.OutParams[0].TypedIdent.Type.Substitute(typeSubst);
     }
 
