@@ -402,6 +402,13 @@ namespace Microsoft.Boogie
       return base.VisitMapAssignLhs(clone);
     }
 
+    public override AssignLhs VisitFieldAssignLhs(FieldAssignLhs node)
+    {
+      Contract.Ensures(Contract.Result<AssignLhs>() != null);
+      FieldAssignLhs clone = (FieldAssignLhs) node.Clone();
+      return base.VisitFieldAssignLhs(node);
+    }
+
     public override MapType VisitMapType(MapType node)
     {
       //Contract.Requires(node != null);

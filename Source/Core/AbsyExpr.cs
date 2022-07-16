@@ -3968,12 +3968,12 @@ namespace Microsoft.Boogie
       Contract.Ensures(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Assert(args.Count == 1);
-      tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
-      return Typecheck(cce.NonNull(args[0]).Type, tc);
+      return Typecheck(cce.NonNull(args[0]).Type, tc, out tpInstantiation);
     }
     
-    public Type Typecheck(Type argType, TypecheckingContext tc)
+    public Type Typecheck(Type argType, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
     {
+      tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
       var type = argType.AsCtor;
       if (type == null)
       {
@@ -3998,7 +3998,11 @@ namespace Microsoft.Boogie
         return null;
       }
       _selector = selectors[0];
-      return selector.OutParams[0].TypedIdent.Type;
+      var typeSubst = selector.TypeParameters.Zip(type.Arguments).ToDictionary(
+          x => x.Item1, 
+          x => x.Item2);
+      tpInstantiation = SimpleTypeParamInstantiation.From(selector.TypeParameters, type.Arguments);
+      return selector.OutParams[0].TypedIdent.Type.Substitute(typeSubst);
     }
 
     public Type ShallowType(IList<Expr> args)

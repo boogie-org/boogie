@@ -2402,7 +2402,7 @@ namespace Microsoft.Boogie
       TypeParameters = SimpleTypeParamInstantiation.EMPTY;
       if (Datatype.Type != null)
       {
-        TypeAttr = FieldAccess.Typecheck(Datatype.Type, tc);
+        TypeAttr = FieldAccess.Typecheck(Datatype.Type, tc, out TypeParameters);
       }
     }
 
