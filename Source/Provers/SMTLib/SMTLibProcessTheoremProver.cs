@@ -152,9 +152,8 @@ namespace Microsoft.Boogie.SMTLib
     protected void SetupProcess()
     {
       Process?.Close();
-      Process = options.Solver == SolverKind.NoOpWithZ3Options
-        ? new NoopSolver()
-        : new SMTLibProcess(libOptions, options);
+      Process = libOptions.CreateSolver(libOptions, options);
+      
       Process.ErrorHandler += HandleProverError;
     }
 
