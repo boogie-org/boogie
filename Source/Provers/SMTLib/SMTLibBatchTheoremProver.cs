@@ -1,7 +1,10 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
 using Microsoft.Boogie.VCExprAST;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,7 +33,7 @@ namespace Microsoft.Boogie.SMTLib
   /// </summary>
   public class SMTLibBatchTheoremProver : SMTLibProcessTheoremProver
   {
-    private bool CheckSatSent;
+    private bool checkSatSent;
     private int resourceCount;
     private Model errorModel;
     private ScopedNamer namer;
@@ -59,38 +62,47 @@ namespace Microsoft.Boogie.SMTLib
       return 0;
     }
 
-    public override Task BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
+    public override async Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
+      CancellationToken cancellationToken)
     {
-      SetupProcess();
-      CheckSatSent = false;
-      FullReset(gen);
+      currentErrorHandler = handler;
+      try
+      {
+        SetupProcess();
+        checkSatSent = false;
+        FullReset(gen);
 
-      if (options.LogFilename != null && currentLogFile == null) {
-        currentLogFile = OpenOutputFile(descriptiveName);
-        currentLogFile.Write(common.ToString());
+        if (options.LogFilename != null && currentLogFile == null)
+        {
+          currentLogFile = OpenOutputFile(descriptiveName);
+          await currentLogFile.WriteAsync(common.ToString());
+        }
+
+        PrepareCommon();
+        FlushAxioms();
+
+        OptimizationRequests.Clear();
+
+        string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
+        FlushAxioms();
+
+        Push();
+        SendVCAndOptions(descriptiveName, vcString);
+        SendOptimizationRequests();
+
+        FlushLogFile();
+
+        Process.NewProblem(descriptiveName);
+        checkSatSent = true;
+
+        var result = CheckSat(cancellationToken);
+        Pop();
+        return await result;
       }
-
-      PrepareCommon();
-      FlushAxioms();
-
-      OptimizationRequests.Clear();
-
-      string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
-      FlushAxioms();
-
-      Push();
-      SendVCAndOptions(descriptiveName, vcString);
-      SendOptimizationRequests();
-
-      FlushLogFile();
-
-      Process.NewProblem(descriptiveName);
-
-      SendCheckSat();
-      Pop();
-
-      FlushLogFile();
-      return Task.CompletedTask;
+      finally
+      {
+        currentErrorHandler = null;
+      }
     }
 
     public override Task Reset(VCExpressionGenerator generator) {
@@ -109,41 +121,66 @@ namespace Microsoft.Boogie.SMTLib
       AxiomsAreSetup = false;
       DeclCollector.Reset();
       NamedAssumes.Clear();
-      UsedNamedAssumes = null;
     }
 
-    // TODO: move to base?
-    [NoDefaultContract]
-    public override async Task<Outcome> CheckOutcome(ErrorHandler handler, int errorLimit, CancellationToken cancellationToken)
-    {
-      var result = await CheckOutcomeCore(handler, cancellationToken, errorLimit);
-
-      FlushLogFile();
-
-      return result;
+    private Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests) {
+      var sanitizedRequests = requests.Select(Sanitize).ToList();
+      foreach (var request in sanitizedRequests) {
+        currentLogFile?.WriteLine(request);
+      }
+      currentLogFile?.Flush();
+      return Process.SendRequestsAndCloseInput(sanitizedRequests);
     }
 
-    [NoDefaultContract]
-    public override async Task<Outcome> CheckOutcomeCore(ErrorHandler handler, CancellationToken cancellationToken,
-      int errorLimit)
+    private async Task<Outcome> CheckSat(CancellationToken cancellationToken)
     {
-      if (Process == null || proverErrors.Count > 0) {
+      var requests = new List<string>();
+      requests.Add("(check-sat)");
+      requests.Add("(get-info :reason-unknown)");
+      if (options.Solver == SolverKind.Z3) {
+        requests.Add($"(get-info :{Z3.RlimitOption})");
+      }
+      requests.Add("(get-model)");
+
+      if (Process == null || HadErrors) {
         return Outcome.Undetermined;
       }
 
       try {
-        currentErrorHandler = handler;
-        FlushProverWarnings();
+        IReadOnlyList<SExpr> responses;
+        try {
+          responses = await SendRequestsAndClose(requests).WaitAsync(cancellationToken);
+        }
+        catch (TimeoutException) {
+          currentErrorHandler.OnResourceExceeded("hard solver timeout");
+          resourceCount = -1;
+          return Outcome.TimeOut;
+        }
+        var responseStack = new Stack<SExpr>(responses.Reverse());
 
-        var result = await GetResponse(cancellationToken);
+        var outcomeSExp = responseStack.Pop();
+        var result = ParseOutcome(outcomeSExp, out var wasUnknown);
+
+        var unknownSExp = responseStack.Pop();
+        if (wasUnknown) {
+          result = ParseReasonUnknown(unknownSExp, result);
+        }
+
+        if (options.Solver == SolverKind.Z3) {
+          var rlimitSExp = responseStack.Pop();
+          resourceCount = ParseRCount(rlimitSExp);
+        }
+
+        var modelSExp = responseStack.Pop();
+        errorModel = ParseErrorModel(modelSExp);
 
         if (result == Outcome.Invalid) {
-          var labels = CalculatePath(handler.StartingProcId(), errorModel);
+          var labels = CalculatePath(currentErrorHandler.StartingProcId(), errorModel);
           if (labels.Length == 0) {
             // Without a path to an error, we don't know what to report
             result = Outcome.Undetermined;
           } else {
-            handler.OnModel(labels, errorModel, result);
+            currentErrorHandler.OnModel(labels, errorModel, result);
           }
         }
 
@@ -156,29 +193,7 @@ namespace Microsoft.Boogie.SMTLib
         return result;
       } finally {
         Close();
-        currentErrorHandler = null;
       }
-    }
-
-    private async Task<Outcome> GetResponse(CancellationToken cancellationToken)
-    {
-      var outcomeSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-      var result = ParseOutcome(outcomeSExp, out var wasUnknown);
-
-      var unknownSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-      if (wasUnknown) {
-        result = ParseReasonUnknown(unknownSExp, result);
-      }
-
-      if (options.Solver == SolverKind.Z3) {
-        var rlimitSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-        resourceCount = ParseRCount(rlimitSExp);
-      }
-
-      var modelSExp = await Process.GetProverResponse().WaitAsync(cancellationToken);
-      errorModel = ParseErrorModel(modelSExp);
-
-      return result;
     }
 
     // Note: This could probably be made to work with the result of
@@ -231,19 +246,6 @@ namespace Microsoft.Boogie.SMTLib
       throw new NotSupportedException("Batch mode solver interface does not support the Check call.");
     }
 
-    private void SendCheckSat()
-    {
-      UsedNamedAssumes = null;
-      SendThisVC("(check-sat)");
-      SendThisVC("(get-info :reason-unknown)");
-      if (options.Solver == SolverKind.Z3) {
-        SendThisVC($"(get-info :{Z3.RlimitOption})");
-      }
-      SendThisVC("(get-model)");
-      CheckSatSent = true;
-      Process.IndicateEndOfInput();
-    }
-
     protected override void Send(string s, bool isCommon)
     {
       s = Sanitize(s);
@@ -255,7 +257,7 @@ namespace Microsoft.Boogie.SMTLib
       // Boogie emits comments after the solver has responded. In batch
       // mode, sending these to the solver is problematic. But they'll
       // still get sent to the log below.
-      if (Process != null && !CheckSatSent) {
+      if (Process != null && !checkSatSent) {
         Process.Send(s);
       }
 
@@ -270,7 +272,7 @@ namespace Microsoft.Boogie.SMTLib
       return Task.FromResult(resourceCount);
     }
 
-    public override List<string> UnsatCore()
+    public override Task<List<string>> UnsatCore()
     {
       throw new NotSupportedException("Batch mode solver interface does not support unsat cores.");
     }
