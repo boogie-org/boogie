@@ -1773,6 +1773,14 @@ namespace Microsoft.Boogie
        Set the random seed for verifying a given implementation.
        Has the same effect as setting /randomSeed but only for a single implementation.
 
+     {:verboseName <string>}
+       Set the name to use when printing messages about verification
+       status in `/trace` and selecting procedures to verify with
+       `/proc`. There are no restrictions on the characters used in the
+       string, so it can be particularly useful as a way of describing
+       the original name of an identifier translated into Boogie from
+       some other source language.
+
   ---- On Axioms -------------------------------------------------------------
 
     {:include_dep}
