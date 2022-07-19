@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
 using Microsoft.Boogie.SMTLib;
@@ -47,7 +48,27 @@ namespace ExecutionEngineTests
       await smtLibInteractiveTheoremProver.GoBackToIdle();
       Assert.IsTrue(true);
     }
-    
+
+    [Test]
+    public async Task SolverCrash()
+    {
+      var printer = new TestPrinter();
+      var options = CommandLineOptions.FromArguments(printer);
+      options.CreateSolver = (_, _) => new OverflowSolver();
+      var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
+
+      var terminatingProgram = GetProgram(executionEngine, fast);
+
+      // We limit the number of checkers to 1.
+      options.VcsCores = 1;
+
+      var outcome1 = await executionEngine.GetImplementationTasks(terminatingProgram)[0].TryRun()!.ToTask();
+      Assert.IsTrue(outcome1 is Completed completed && completed.Result.Outcome == ConditionGeneration.Outcome.Inconclusive);
+      options.CreateSolver = (_ ,_ ) => new UnsatSolver();
+      var outcome2 = await executionEngine.GetImplementationTasks(terminatingProgram)[0].TryRun()!.ToTask();
+      Assert.IsTrue(outcome2 is Completed completed2 && completed2.Result.Outcome == ConditionGeneration.Outcome.Correct);
+    }
+
     [Test]
     public async Task InferAndVerifyCanBeCancelledWhileWaitingForProver() {
       var printer = new TestPrinter();
@@ -63,7 +84,7 @@ namespace ExecutionEngineTests
       
       var outcome = await
         executionEngine.InferAndVerify(Console.Out, terminatingProgram, new PipelineStatistics(), requestId, null, requestId);
-      Assert.AreEqual(outcome, PipelineOutcome.VerificationCompleted);
+      Assert.AreEqual(PipelineOutcome.VerificationCompleted, outcome);
       Assert.AreEqual(1, printer.SplitResults.Count);
       Assert.AreEqual(1, printer.Implementations.Count);
       Assert.AreEqual(1, printer.StartedImplementations.Count);
