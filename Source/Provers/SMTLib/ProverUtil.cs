@@ -148,34 +148,7 @@ The generic options may or may not be used by the prover plugin.
         return ConfirmProverPath(ProverPath);
       }
 
-      var exes = new string[] {ProverName, ProverName + ".exe"};
-
-      // Otherwise we look in the executable directory
-      foreach (var exe in exes)
-      {
-        var tryProverPath = Path.Combine(CodebaseString(), exe);
-
-        if (File.Exists(tryProverPath))
-        {
-          return ConfirmProverPath(tryProverPath);
-        }
-      }
-
-      // And finally we look in the system PATH
-      var exePaths = Environment.GetEnvironmentVariable("PATH");
-      foreach (var exePath in exePaths.Split(Path.PathSeparator))
-      {
-        foreach (var exe in exes)
-        {
-          var tryProverPath = Path.Combine(exePath, exe);
-          if (File.Exists(tryProverPath))
-          {
-            return ConfirmProverPath(tryProverPath);
-          }
-        }
-      }
-
-      throw new ProverException("Cannot find any prover executable");
+      return ConfirmProverPath(ProverName);
     }
 
     private string ConfirmProverPath(string proverPath)
