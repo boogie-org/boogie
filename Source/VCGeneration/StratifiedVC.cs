@@ -15,6 +15,13 @@ namespace VC
   using Bpl = Microsoft.Boogie;
 
   /// <summary>
+  /// This class is a wrapper over VCExpr. It represents the VC of a
+  /// single Boogie Implementation along with meta-data that includes
+  /// information about procedure calls made in the implementation, the
+  /// list of varibles used in those calls, etc. This class is a key element
+  /// of Corral's Stratified Inlining algorithm where procedure inlining is 
+  /// performed at the VC level.
+  ///
   /// Used in Corral https://github.com/boogie-org/corral
   /// </summary>
   public class StratifiedVC
