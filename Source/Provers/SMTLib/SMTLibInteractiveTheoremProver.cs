@@ -81,6 +81,7 @@ namespace Microsoft.Boogie.SMTLib
 
         if (HadErrors)
         {
+          HadErrors = false;
           processNeedsRestart = true;
         }
 
