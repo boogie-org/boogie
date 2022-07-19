@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
+using Microsoft.Boogie.SMTLib;
 using VC;
 
 namespace Microsoft.Boogie
@@ -440,6 +441,15 @@ namespace Microsoft.Boogie
       get => normalizeNames;
       set => normalizeNames = value;
     }
+
+    public Func<SMTLibOptions, SMTLibSolverOptions, SMTLibSolver> CreateSolver { get; set; } = (libOptions, options) =>
+    {
+      return options.Solver switch
+      {
+        SolverKind.NoOpWithZ3Options => new NoopSolver(),
+        _ => new SMTLibProcess(libOptions, options)
+      };
+    };
 
     public bool NormalizeDeclarationOrder
     {
