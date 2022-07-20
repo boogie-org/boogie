@@ -72,7 +72,7 @@ public class ImplementationTask : IImplementationTask {
   }
 
   private CancellationTokenSource? cancellationSource;
-  private ReplaySubject<IVerificationStatus> status;
+  private ReplaySubject<IVerificationStatus>? status;
 
   public void Cancel() {
     cancellationSource?.Cancel();
@@ -94,7 +94,7 @@ public class ImplementationTask : IImplementationTask {
       if (cancellationSource?.IsCancellationRequested == true) {
         cancellationSource = new();
         var result = new Subject<IVerificationStatus>();
-        status.Subscribe(next => { }, () =>
+        status!.Subscribe(next => { }, () =>
         {
           var recursiveStatus = TryRun();
           if (recursiveStatus == null) {
