@@ -200,22 +200,27 @@ procedure Foo(x: int) {
     var result = Parser.Parse(source, "fakeFilename1", out var program);
     Assert.AreEqual(0, result);
     var tasks = engine.GetImplementationTasks(program)[0];
-    var statusList = new List<IVerificationStatus>();
+    var statusList1 = new List<IVerificationStatus>();
     var firstStatuses = tasks.TryRun()!;
     var runAfterRun1 = tasks.TryRun();
     Assert.AreEqual(null, runAfterRun1);
-    firstStatuses.Subscribe(statusList.Add);
+    firstStatuses.Subscribe(statusList1.Add);
     tasks.Cancel();
     var secondStatuses = tasks.TryRun()!;
     var runAfterRun2 = tasks.TryRun();
     Assert.AreEqual(null, runAfterRun2);
-    secondStatuses.Subscribe(statusList.Add);
+    var expected1 = new List<IVerificationStatus>() {
+      new Running(), new Stale()
+    };
+    Assert.AreEqual(expected1, statusList1);
+    var statusList2 = new List<IVerificationStatus>();
+    secondStatuses.Subscribe(statusList2.Add);
     var finalResult = await secondStatuses.ToTask();
     Assert.IsTrue(finalResult is Completed);
-    var expected = new List<IVerificationStatus>() {
-      new Running(), new Stale(), new Running(), finalResult
+    var expected2 = new List<IVerificationStatus>() {
+      new Running(), finalResult
     };
-    Assert.AreEqual(expected, statusList);
+    Assert.AreEqual(expected2, statusList2);
   }
 
   [Test]
