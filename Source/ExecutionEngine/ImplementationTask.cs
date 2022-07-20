@@ -93,16 +93,15 @@ public class ImplementationTask : IImplementationTask {
 
       if (cancellationSource?.IsCancellationRequested == true) {
         cancellationSource = new();
-        var result = new Subject<IVerificationStatus>();
+        var result = new ReplaySubject<IVerificationStatus>();
         status!.Subscribe(next => { }, () =>
         {
           var recursiveStatus = TryRun();
           if (recursiveStatus == null) {
-            result.OnNext(CacheStatus);
-            result.OnCompleted();
-          } else {
-            recursiveStatus.Subscribe(result);
+            throw new InvalidOperationException("Should not be possible.");
           }
+
+          recursiveStatus.Subscribe(result);
         });
         return result;
       }

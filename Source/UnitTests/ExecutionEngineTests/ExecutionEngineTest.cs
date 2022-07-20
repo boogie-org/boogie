@@ -206,13 +206,14 @@ procedure Foo(x: int) {
     Assert.AreEqual(null, runAfterRun1);
     firstStatuses.Subscribe(statusList1.Add);
     tasks.Cancel();
-    var secondStatuses = tasks.TryRun()!;
-    var runAfterRun2 = tasks.TryRun();
-    Assert.AreEqual(null, runAfterRun2);
     var expected1 = new List<IVerificationStatus>() {
       new Running(), new Stale()
     };
     Assert.AreEqual(expected1, statusList1);
+
+    var secondStatuses = tasks.TryRun()!;
+    var runAfterRun2 = tasks.TryRun();
+    Assert.AreEqual(null, runAfterRun2);
     var statusList2 = new List<IVerificationStatus>();
     secondStatuses.Subscribe(statusList2.Add);
     var finalResult = await secondStatuses.ToTask();
