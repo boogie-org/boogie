@@ -186,7 +186,7 @@ Boogie program verifier finished with 0 verified, 1 error
   }
 
   [Test]
-  public async Task RunCancelRunRun() {
+  public async Task RunRunCancelRunRun() {
     var options = CommandLineOptions.FromArguments();
     options.VcsCores = 1;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
@@ -204,11 +204,13 @@ procedure FibTest() {
     var tasks = engine.GetImplementationTasks(program)[0];
     var statusList = new List<IVerificationStatus>();
     var firstStatuses = tasks.TryRun()!;
+    var runAfterRun1 = tasks.TryRun();
+    Assert.AreEqual(null, runAfterRun1);
     firstStatuses.Subscribe(statusList.Add);
     tasks.Cancel();
     var secondStatuses = tasks.TryRun()!;
-    var runAfterRun = tasks.TryRun();
-    Assert.AreEqual(null, runAfterRun);
+    var runAfterRun2 = tasks.TryRun();
+    Assert.AreEqual(null, runAfterRun2);
     secondStatuses.Subscribe(statusList.Add);
     var finalResult = await secondStatuses.ToTask();
     Assert.IsTrue(finalResult is Completed);

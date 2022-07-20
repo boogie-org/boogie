@@ -37,6 +37,12 @@ public interface IImplementationTask {
   ProcessedProgram ProcessedProgram { get; }
   Implementation Implementation { get; }
 
+  /// <summary>
+  /// If not running, start running.
+  /// If already running and not cancelled, return null.
+  /// If already running but being cancelled, queue a new run and return its observable.
+  /// If already running but being cancelled, and a new run is queued, return null.
+  /// </summary>
   IObservable<IVerificationStatus>? TryRun();
   bool IsIdle { get; }
   void Cancel();
@@ -74,11 +80,6 @@ public class ImplementationTask : IImplementationTask {
 
   public bool IsIdle => cancellationSource == null;
 
-  /// <summary>
-  /// If already running and not cancelled, return null.
-  /// If already running but being cancelled, queue a new run and return its observable.
-  /// If already running but being cancelled, and a new run is queued, return null;
-  /// </summary>
   public IObservable<IVerificationStatus>? TryRun()
   {
     if (CacheStatus is Completed) {
@@ -93,10 +94,7 @@ public class ImplementationTask : IImplementationTask {
       if (cancellationSource?.IsCancellationRequested == true) {
         cancellationSource = new();
         var result = new Subject<IVerificationStatus>();
-        status.Subscribe(next =>
-        {
-
-        }, () =>
+        status.Subscribe(next => { }, () =>
         {
           var recursiveStatus = TryRun();
           if (recursiveStatus == null) {
