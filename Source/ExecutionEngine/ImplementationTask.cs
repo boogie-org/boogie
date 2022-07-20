@@ -82,20 +82,25 @@ public class ImplementationTask : IImplementationTask {
 
   public IObservable<IVerificationStatus>? TryRun()
   {
-    if (CacheStatus is Completed) {
-      return null;
-    }
-
+    // Lock to prevent conflicts from concurrent calls to TryRun
     lock (myLock) {
-      if (cancellationSource?.IsCancellationRequested == false) {
-        return null;
-      }
-
-      if (cancellationSource?.IsCancellationRequested == true) {
+      if (cancellationSource == null) {
+        // No other thread was running, we claim the right to run.
         cancellationSource = new();
+      } else if (!cancellationSource.IsCancellationRequested) {
+        // Another thread is running and is not cancelled, so this run fails.
+        return null;
+      } else {
+        // Another thread is running but was cancelled,
+        // so we may immediately start a new run after the cancellation completes.
+
+        // We claim the right to run.
+        cancellationSource = new();
+
+        // After the current run cancellation completes, call TryRun, assume it succeeds, and forward the observations
+        // to result.
         var result = new ReplaySubject<IVerificationStatus>();
-        status!.Subscribe(next => { }, () =>
-        {
+        status!.Subscribe(next => { }, () => {
           var recursiveStatus = TryRun();
           if (recursiveStatus == null) {
             throw new InvalidOperationException("Should not be possible.");
@@ -105,7 +110,18 @@ public class ImplementationTask : IImplementationTask {
         });
         return result;
       }
+
+      if (cancellationSource?.IsCancellationRequested == true) {
+      }
       cancellationSource = new();
+    }
+
+    // We claimed the right to run. No other thread is running nor can they get to this point,
+    // so from this point we can read and write from and to the fields CacheStatus and status as if we're the only thread.
+
+    if (CacheStatus is Completed) {
+      cancellationSource = null;
+      return null;
     }
 
     var cancellationToken = cancellationSource.Token;
@@ -117,11 +133,16 @@ public class ImplementationTask : IImplementationTask {
     var task = RunInternal(cancellationToken, status.OnNext);
     task.ContinueWith(r =>
     {
-      cancellationSource = null;
-      if (r.Exception != null) {
-        status.OnError(r.Exception);
-      } else {
-        status.OnCompleted();
+      // Lock so we may do operations after clearing cancellationSource,
+      // which releases our control over the field status.
+      lock (myLock) {
+        // Clear cancellationSource before calling status.OnCompleted, so ImplementationTask.IsIdle return false
+        cancellationSource = null;
+        if (r.Exception != null) {
+          status.OnError(r.Exception);
+        } else {
+          status.OnCompleted();
+        }
       }
     }, TaskScheduler.Current);
     return status;
