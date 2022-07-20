@@ -111,8 +111,6 @@ public class ImplementationTask : IImplementationTask {
         return result;
       }
 
-      if (cancellationSource?.IsCancellationRequested == true) {
-      }
       cancellationSource = new();
     }
 
@@ -136,7 +134,7 @@ public class ImplementationTask : IImplementationTask {
       // Lock so we may do operations after clearing cancellationSource,
       // which releases our control over the field status.
       lock (myLock) {
-        // Clear cancellationSource before calling status.OnCompleted, so ImplementationTask.IsIdle return false
+        // Clear cancellationSource before calling status.OnCompleted, so ImplementationTask.IsIdle returns false
         cancellationSource = null;
         if (r.Exception != null) {
           status.OnError(r.Exception);
