@@ -31,6 +31,9 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+      - name: Determine version
+        id: get_version
+        uses: battila7/get-version-action@v2
       - name: Install tools, build Boogie, test Boogie
         run: |
           # Download a Z3 release
@@ -65,3 +68,15 @@ jobs:
         # line to ensure it matches only one element of the matrix.
         if: matrix.configuration == 'Release' && matrix.lit_param == 'batch_mode=False' && startsWith(github.ref, 'refs/tags/v')
         run: dotnet nuget push "Source/**/bin/${{ matrix.configuration }}/Boogie*.nupkg" -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+      - name: Create draft GitHub release containing .nupkg file
+        # Note: if you change the conditional above, update the one below to match
+        if: matrix.configuration == 'Release' && matrix.lit_param == 'batch_mode=False' && startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Boogie ${{ steps.get_version.version }}
+          tag_name: ${{ steps.get_version.version }}
+          draft: false
+          prerelease: false
+          files: |
+            Source/**/bin/${{ matrix.configuration }}/Boogie*.nupkg
+          fail_on_unmatched_files: true
