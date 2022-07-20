@@ -558,7 +558,7 @@ namespace Microsoft.Boogie
 
       private FieldAccess InstantiateFieldAccess(FieldAccess fieldAccess, TypeParamInstantiation typeParameters)
       {
-        var selector = fieldAccess.selector;
+        var selector = fieldAccess.Selector;
         var constructor = selector.constructor;
         var actualTypeParams =
           typeParameters.FormalTypeParams.Select(x =>
@@ -575,7 +575,7 @@ namespace Microsoft.Boogie
       {
         var fieldAssignLhs = (FieldAssignLhs)base.VisitFieldAssignLhs(node);
         var fieldAccess = fieldAssignLhs.FieldAccess;
-        var constructor = fieldAccess.selector.constructor;
+        var constructor = fieldAccess.Selector.constructor;
         if (constructor.TypeParameters.Count == 0)
         {
           monomorphizationVisitor.VisitTypeCtorDecl(constructor.datatypeTypeCtorDecl);
@@ -597,7 +597,7 @@ namespace Microsoft.Boogie
         }
         if (returnExpr.Fun is FieldAccess fieldAccess)
         {
-          var constructor = fieldAccess.selector.constructor;
+          var constructor = fieldAccess.Selector.constructor;
           if (constructor.TypeParameters.Count == 0)
           {
             monomorphizationVisitor.VisitTypeCtorDecl(constructor.datatypeTypeCtorDecl);

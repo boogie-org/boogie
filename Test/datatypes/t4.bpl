@@ -5,26 +5,26 @@ type{:datatype} Pair;
 function{:constructor} Pair(a: int, b: int): Pair;
 
 procedure P0(p: Pair) returns (q: Pair)
-  requires p->a#Pair == 0;
-  ensures  q->a#Pair == 1;
+  requires p->a == 0;
+  ensures  q->a == 1;
 {
-  assert p->a == p->a#Pair;
+  assert p->a == a#Pair(p);
   q := p;
-  q->a#Pair := 1;
-  assert q->b == p->b#Pair;
-  q->b#Pair := 1;
+  q->a := 1;
+  assert q->b == b#Pair(p);
+  q->b := 1;
   assert q == Pair(1, 1);
 }
 
 procedure P1(p: [int]Pair, x: int) returns (q: [int]Pair)
-  requires p[x]->a#Pair == 0;
-  ensures  q[x]->a#Pair == 1;
+  requires p[x]->a == 0;
+  ensures  q[x]->a == 1;
 {
-  assert p[x]->a == p[x]->a#Pair;
+  assert p[x]->a == a#Pair(p[x]);
   q[x] := p[x];
-  q[x]->a#Pair := 1;
-  assert q[x]->b == p[x]->b#Pair;
-  q[x]->b#Pair := 1;
+  q[x]->a := 1;
+  assert q[x]->b == b#Pair(p[x]);
+  q[x]->b := 1;
   assert q[x] == Pair(1, 1);
 }
 

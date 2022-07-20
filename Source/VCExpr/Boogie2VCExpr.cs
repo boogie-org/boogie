@@ -1414,7 +1414,7 @@ namespace Microsoft.Boogie.VCExprAST
     public VCExpr Visit(FieldAccess fieldAccess)
     {
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Gen.Function(fieldAccess.selector, this.args);
+      return Gen.Function(fieldAccess.Selector, this.args);
     }
 
     ///////////////////////////////////////////////////////////////////////////////

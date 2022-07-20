@@ -3847,9 +3847,9 @@ namespace Microsoft.Boogie
   {
     private IToken _tok;
 
-    private string _fieldName;
+    private string fieldName;
     
-    private DatatypeSelector _selector;
+    private DatatypeSelector selector;
 
     public IToken tok
     {
@@ -3865,31 +3865,31 @@ namespace Microsoft.Boogie
       }
     }
     
-    public string fieldName
+    public string FieldName
     {
       get
       {
         Contract.Ensures(Contract.Result<IToken>() != null);
-        return this._fieldName;
+        return this.fieldName;
       }
       set
       {
         Contract.Requires(value != null);
-        this._fieldName = value;
+        this.fieldName = value;
       }
     }
     
-    public DatatypeSelector selector
+    public DatatypeSelector Selector
     {
       get
       {
         Contract.Ensures(Contract.Result<IToken>() != null);
-        return this._selector;
+        return this.selector;
       }
       set
       {
         Contract.Requires(value != null);
-        this._selector = value;
+        this.selector = value;
       }
     }
 
@@ -3903,15 +3903,15 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(tok != null);
       this._tok = tok;
-      this._fieldName = fieldName;
+      this.fieldName = fieldName;
     }
     
     public FieldAccess(IToken tok, DatatypeSelector selector)
     {
       Contract.Requires(tok != null);
       this._tok = tok;
-      this._selector = selector;
-      this._fieldName = selector.Name;
+      this.selector = selector;
+      this.fieldName = selector.OriginalName;
     }
 
     public string FunctionName
@@ -3930,7 +3930,7 @@ namespace Microsoft.Boogie
     {
       if (obj is FieldAccess fieldAccess)
       {
-        return selector.Equals(fieldAccess.selector);
+        return Selector.Equals(fieldAccess.Selector);
       }
       return false;
     }
@@ -3943,13 +3943,22 @@ namespace Microsoft.Boogie
 
     public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
+      const int opBindingStrength = 0x90;
+      bool parensNeeded = opBindingStrength < contextBindingStrength ||
+                          (fragileContext && opBindingStrength == contextBindingStrength);
       stream.SetToken(this);
       Contract.Assert(args.Count == 1);
       stream.push();
-      stream.Write("(");
+      if (parensNeeded)
+      {
+        stream.Write("(");
+      }
       cce.NonNull(args[0]).Emit(stream, 0x00, false);
-      stream.Write("->{0}", fieldName);
-      stream.Write(")");
+      stream.Write("->{0}", FieldName);
+      if (parensNeeded)
+      {
+        stream.Write(")");
+      }
       stream.pop();
     }
 
@@ -3984,30 +3993,30 @@ namespace Microsoft.Boogie
         tc.Error(this.tok, "field-access must be applied to a datatype, {0} is not a datatype", ctorType);
         return null;
       }
-      var selectors = datatypeTypeCtorDecl.GetSelectors(fieldName);
+      var selectors = datatypeTypeCtorDecl.GetSelectors(FieldName);
       if (selectors == null)
       {
-        tc.Error(this.tok, "datatype {0} does not have a field with name {1}", ctorType, fieldName);
+        tc.Error(this.tok, "datatype {0} does not have a field with name {1}", ctorType, FieldName);
         return null;
       }
       Contract.Assert(selectors.Count > 0);
       if (selectors.Count > 1)
       {
-        tc.Error(this.tok, "datatype {0} has several fields with name {1}", ctorType, fieldName);
+        tc.Error(this.tok, "datatype {0} has several fields with name {1}", ctorType, FieldName);
         return null;
       }
-      _selector = selectors[0];
-      var typeSubst = selector.TypeParameters.Zip(ctorType.Arguments).ToDictionary(
+      selector = selectors[0];
+      var typeSubst = Selector.TypeParameters.Zip(ctorType.Arguments).ToDictionary(
           x => x.Item1, 
           x => x.Item2);
-      tpInstantiation = SimpleTypeParamInstantiation.From(selector.TypeParameters, ctorType.Arguments);
-      return selector.OutParams[0].TypedIdent.Type.Substitute(typeSubst);
+      tpInstantiation = SimpleTypeParamInstantiation.From(Selector.TypeParameters, ctorType.Arguments);
+      return Selector.OutParams[0].TypedIdent.Type.Substitute(typeSubst);
     }
 
     public Type ShallowType(IList<Expr> args)
     {
       Contract.Ensures(Contract.Result<Type>() != null);
-      return selector.OutParams[0].TypedIdent.Type;
+      return Selector.OutParams[0].TypedIdent.Type;
     }
 
     public T Dispatch<T>(IAppliableVisitor<T> visitor)
@@ -4022,16 +4031,16 @@ namespace Microsoft.Boogie
 
     public NAryExpr Update(IToken token, Expr record, Expr rhs)
     {
-      var args = selector.constructor.selectors.Select(x =>
+      var args = Selector.constructor.selectors.Select(x =>
       {
-        if (x == selector)
+        if (x == Selector)
         {
           return rhs;
         }
         var fieldAccess = new FieldAccess(tok, x);
         return fieldAccess.Select(token, record);
       }).ToList();
-      return new NAryExpr(token, new FunctionCall(selector.constructor), args);
+      return new NAryExpr(token, new FunctionCall(Selector.constructor), args);
     }
   }
 

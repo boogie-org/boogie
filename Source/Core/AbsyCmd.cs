@@ -2409,7 +2409,7 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter stream)
     {
       Datatype.Emit(stream);
-      stream.Write("->{0}", FieldAccess.fieldName);
+      stream.Write("->{0}", FieldAccess.FieldName);
     }
 
     public override Expr AsExpr

@@ -1473,12 +1473,6 @@ namespace Microsoft.Boogie
         selectors.Add(selector.OriginalName, new List<DatatypeSelector>());
       }
       selectors[selector.OriginalName].Add(selector);
-      
-      if (!selectors.ContainsKey(selector.Name))
-      {
-        selectors.Add(selector.Name, new List<DatatypeSelector>());
-      }
-      selectors[selector.Name].Add(selector);
     }
 
     public List<DatatypeSelector> GetSelectors(string fieldName)
