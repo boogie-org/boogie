@@ -55,7 +55,7 @@ public class NoopSolver : SMTLibSolver
     return result;
   }
 
-  private Task<SExpr> GetProverResponse()
+  protected virtual Task<SExpr> GetProverResponse()
   {
     return Task.FromResult(responses.Count > 0 ? responses.Dequeue() : null);
   }

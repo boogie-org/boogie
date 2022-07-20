@@ -6,6 +6,7 @@ using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
+using Microsoft.Boogie.SMTLib;
 using NUnit.Framework;
 using VC;
 
@@ -189,15 +190,12 @@ Boogie program verifier finished with 0 verified, 1 error
   public async Task RunRunCancelRunRun() {
     var options = CommandLineOptions.FromArguments();
     options.VcsCores = 1;
+    options.CreateSolver = (_, _) => new UnsatSolver(TimeSpan.FromSeconds(1));
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
     var source = @"
-function Fib(x: int): int;
-axiom (forall x: int :: (x <= 1 || Fib(x) == Fib(x - 1) + Fib(x - 2)));
-axiom (Fib(1) == 1);
-axiom (Fib(0) == 1);
-procedure FibTest() {
-  assert Fib(31) == 1346269;
+procedure Foo(x: int) {
+  assert true;
 }".TrimStart();
     var result = Parser.Parse(source, "fakeFilename1", out var program);
     Assert.AreEqual(0, result);
