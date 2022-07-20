@@ -1,0 +1,14 @@
+t7.bpl(13,1): Error: A postcondition might not hold on this return path.
+t7.bpl(9,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    t7.bpl(11,5): anon0
+t7.bpl(21,1): Error: A postcondition might not hold on this return path.
+t7.bpl(17,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    t7.bpl(19,8): anon0
+t7.bpl(34,1): Error: A postcondition might not hold on this return path.
+t7.bpl(28,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    t7.bpl(31,5): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
