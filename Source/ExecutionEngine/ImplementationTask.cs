@@ -1,7 +1,9 @@
 #nullable enable
 using System;
 using System.IO;
+using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -36,11 +38,13 @@ public interface IImplementationTask {
   Implementation Implementation { get; }
 
   IObservable<IVerificationStatus>? TryRun();
+  bool IsIdle { get; }
   void Cancel();
 }
 
 public class ImplementationTask : IImplementationTask {
   private readonly ExecutionEngine engine;
+  private readonly object myLock = new();
 
   public IVerificationStatus CacheStatus { get; private set; }
 
@@ -62,40 +66,68 @@ public class ImplementationTask : IImplementationTask {
   }
 
   private CancellationTokenSource? cancellationSource;
+  private ReplaySubject<IVerificationStatus> status;
 
   public void Cancel() {
     cancellationSource?.Cancel();
-    cancellationSource = null;
   }
 
+  public bool IsIdle => cancellationSource == null;
+
+  /// <summary>
+  /// If already running and not cancelled, return null.
+  /// If already running but being cancelled, queue a new run and return its observable.
+  /// If already running but being cancelled, and a new run is queued, return null;
+  /// </summary>
   public IObservable<IVerificationStatus>? TryRun()
   {
     if (CacheStatus is Completed) {
       return null;
     }
 
-    var alreadyRunning = cancellationSource != null;
-    if (alreadyRunning) {
-      return null;
+    lock (myLock) {
+      if (cancellationSource?.IsCancellationRequested == false) {
+        return null;
+      }
+
+      if (cancellationSource?.IsCancellationRequested == true) {
+        cancellationSource = new();
+        var result = new Subject<IVerificationStatus>();
+        status.Subscribe(next =>
+        {
+
+        }, () =>
+        {
+          var recursiveStatus = TryRun();
+          if (recursiveStatus == null) {
+            result.OnNext(CacheStatus);
+            result.OnCompleted();
+          } else {
+            recursiveStatus.Subscribe(result);
+          }
+        });
+        return result;
+      }
+      cancellationSource = new();
     }
-    cancellationSource = new();
+
     var cancellationToken = cancellationSource.Token;
 
-    var observableStatus = new ReplaySubject<IVerificationStatus>();
+    status = new ReplaySubject<IVerificationStatus>();
     cancellationToken.Register(() => {
-      observableStatus.OnNext(new Stale());
-      observableStatus.OnCompleted();
+      status.OnNext(new Stale());
     });
-    var task = RunInternal(cancellationToken, observableStatus.OnNext);
+    var task = RunInternal(cancellationToken, status.OnNext);
     task.ContinueWith(r =>
     {
+      cancellationSource = null;
       if (r.Exception != null) {
-        observableStatus.OnError(r.Exception);
+        status.OnError(r.Exception);
       } else {
-        observableStatus.OnCompleted();
+        status.OnCompleted();
       }
     }, TaskScheduler.Current);
-    return observableStatus;
+    return status;
   }
 
   private async Task<VerificationResult> RunInternal(CancellationToken cancellationToken, Action<IVerificationStatus> notifyStatusChange) {
@@ -113,7 +145,6 @@ public class ImplementationTask : IImplementationTask {
 
     var result = await verifyTask;
     CacheStatus = new Completed(result);
-    cancellationSource = null;
     notifyStatusChange(CacheStatus);
     return result;
   }

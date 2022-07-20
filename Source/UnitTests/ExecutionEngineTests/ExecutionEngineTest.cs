@@ -47,7 +47,11 @@ procedure Second(y: int)
     Assert.AreEqual(ConditionGeneration.Outcome.Errors, verificationResult1.Outcome);
     Assert.AreEqual(true, verificationResult1.Errors[0].Model.ModelHasStatesAlready);
 
-    var result2 = await tasks[1].TryRun()!.ToTask();
+    Assert.IsTrue(tasks[1].IsIdle);
+    var runningStates = tasks[1].TryRun()!;
+    Assert.IsFalse(tasks[1].IsIdle);
+    var result2 = await runningStates.ToTask();
+    Assert.IsTrue(tasks[1].IsIdle);
     var verificationResult2 = ((Completed)result2).Result;
     Assert.AreEqual(ConditionGeneration.Outcome.Correct, verificationResult2.Outcome);
   }
@@ -182,7 +186,7 @@ Boogie program verifier finished with 0 verified, 1 error
   }
 
   [Test]
-  public async Task RunCancelRun() {
+  public async Task RunCancelRunRun() {
     var options = CommandLineOptions.FromArguments();
     options.VcsCores = 1;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
@@ -203,11 +207,13 @@ procedure FibTest() {
     firstStatuses.Subscribe(statusList.Add);
     tasks.Cancel();
     var secondStatuses = tasks.TryRun()!;
+    var runAfterRun = tasks.TryRun();
+    Assert.AreEqual(null, runAfterRun);
     secondStatuses.Subscribe(statusList.Add);
     var finalResult = await secondStatuses.ToTask();
     Assert.IsTrue(finalResult is Completed);
     var expected = new List<IVerificationStatus>() {
-      new Running(), new Stale(), new Queued(), new Running(), finalResult
+      new Running(), new Stale(), new Running(), finalResult
     };
     Assert.AreEqual(expected, statusList);
   }
