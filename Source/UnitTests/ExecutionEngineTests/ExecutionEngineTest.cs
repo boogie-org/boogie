@@ -219,7 +219,7 @@ procedure Foo(x: int) {
     var expected2 = new List<IVerificationStatus>() {
       new Stale()
     };
-    Assert.AreEqual(expected2, statusList2.Take(1));
+    Assert.AreEqual(expected2, statusList2.TakeLast(1));
   }
 
   [Test]
