@@ -135,7 +135,6 @@ public class ImplementationTask : IImplementationTask {
 
   private IObservable<IVerificationStatus>? QueueRun()
   {
-
     // We claim the right to run.
     cancellationSource = new();
     var myCancellationSource = cancellationSource;
