@@ -121,8 +121,8 @@ public class ImplementationTask : IImplementationTask {
         cancellationSource = null;
         if (cancellationToken.IsCancellationRequested && CacheStatus is not Completed) {
           status.OnNext(new Stale());
-        } else {
         }
+
         if (r.Exception != null) {
           status.OnError(r.Exception);
         } else {
