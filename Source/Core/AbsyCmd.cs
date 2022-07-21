@@ -1214,8 +1214,7 @@ namespace Microsoft.Boogie
 
     public IEnumerable<Block> Exits()
     {
-      GotoCmd g = TransferCmd as GotoCmd;
-      if (g != null)
+      if (TransferCmd is GotoCmd g)
       {
         return cce.NonNull(g.labelTargets);
       }
