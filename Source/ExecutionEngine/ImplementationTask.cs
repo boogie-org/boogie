@@ -50,7 +50,7 @@ public interface IImplementationTask {
 
 public class ImplementationTask : IImplementationTask {
   private readonly ExecutionEngine engine;
-  private readonly object myLock = new();
+  private readonly object mayAccessCancellationSource = new();
 
   public IVerificationStatus CacheStatus { get; private set; }
 
@@ -82,61 +82,42 @@ public class ImplementationTask : IImplementationTask {
 
   public IObservable<IVerificationStatus>? TryRun()
   {
-    // Lock to prevent conflicts from concurrent calls to TryRun
-    lock (myLock) {
+    lock (mayAccessCancellationSource) {
       if (cancellationSource == null) {
-        // No other thread is running or can start, so we can safely access CacheStatus
-        if (CacheStatus is Completed) {
-          return null;
-        }
+        return StartRunIfNeeded();
+      }
 
-        // We claim the right to run.
-        cancellationSource = new();
-      } else if (!cancellationSource.IsCancellationRequested) {
-        // Another thread is running and is not cancelled, so this run fails.
-        return null;
-      } else {
+      if (cancellationSource.IsCancellationRequested) {
         // Another thread is running but was cancelled,
         // so we may immediately start a new run after the cancellation completes.
-
-        // We claim the right to run.
-        cancellationSource = new();
-        var myCancellationSource = cancellationSource;
-
-        // After the current run cancellation completes, call TryRun, assume it succeeds,
-        // and forward the observations to result.
-        var result = new ReplaySubject<IVerificationStatus>();
-        status!.Subscribe(next => { }, () => {
-          if (myCancellationSource.IsCancellationRequested) {
-            // Queued run was cancelled before it started.
-            result.OnCompleted();
-          } else {
-            // The running thread has just cleared cancellationSource, so TryRun will return a non-null value.
-            var recursiveStatus = TryRun();
-            recursiveStatus!.Subscribe(result);
-            // Forward cancellation requests that happened between our
-            // myCancellationSource.IsCancellationRequested check and TryRun call
-            myCancellationSource.Token.Register(() => cancellationSource.Cancel());
-          }
-        });
-        return result;
+        return QueueRun();
       }
+
+      // Another thread is running and is not cancelled, so this run fails.
+      return null;
+    }
+  }
+
+  private IObservable<IVerificationStatus>? StartRunIfNeeded()
+  {
+    // No other thread is running or can start, so we can safely access CacheStatus
+    if (CacheStatus is Completed) {
+      return null;
     }
 
-    // We've claimed the right to run. No other thread is running nor can they get to this point,
-    // so from this point we can read and write from and to the fields CacheStatus and status as if we're the only thread.
+    // We claim the right to run.
+    cancellationSource = new();
+
     var cancellationToken = cancellationSource.Token;
 
     status = new ReplaySubject<IVerificationStatus>();
-    cancellationToken.Register(() => {
-      status.OnNext(new Stale());
-    });
+    cancellationToken.Register(() => { status.OnNext(new Stale()); });
     var task = RunInternal(cancellationToken, status.OnNext);
     task.ContinueWith(r =>
     {
       // Lock so we may do operations after clearing cancellationSource,
       // which releases our control over the field status.
-      lock (myLock) {
+      lock (mayAccessCancellationSource) {
         // Clear cancellationSource before calling status.OnCompleted, so ImplementationTask.IsIdle returns true
         cancellationSource = null;
         if (r.Exception != null) {
@@ -147,6 +128,33 @@ public class ImplementationTask : IImplementationTask {
       }
     }, TaskScheduler.Current);
     return status;
+  }
+
+  private IObservable<IVerificationStatus>? QueueRun()
+  {
+
+    // We claim the right to run.
+    cancellationSource = new();
+    var myCancellationSource = cancellationSource;
+
+    // After the current run cancellation completes, call TryRun, assume it succeeds,
+    // and forward the observations to result.
+    var result = new ReplaySubject<IVerificationStatus>();
+    status!.Subscribe(next => { }, () =>
+    {
+      if (myCancellationSource.IsCancellationRequested) {
+        // Queued run was cancelled before it started.
+        result.OnCompleted();
+      } else {
+        // The running thread has just cleared cancellationSource, so TryRun will return a non-null value.
+        var recursiveStatus = TryRun();
+        recursiveStatus!.Subscribe(result);
+        // Forward cancellation requests that happened between our
+        // myCancellationSource.IsCancellationRequested check and TryRun call
+        myCancellationSource.Token.Register(() => cancellationSource.Cancel());
+      }
+    });
+    return result;
   }
 
   private async Task<VerificationResult> RunInternal(CancellationToken cancellationToken, Action<IVerificationStatus> notifyStatusChange) {
