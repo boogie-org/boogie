@@ -119,7 +119,7 @@ public class ImplementationTask : IImplementationTask {
       lock (mayAccessCancellationSource) {
         // Clear cancellationSource before calling status.OnCompleted, so ImplementationTask.IsIdle returns true
         cancellationSource = null;
-        if (cancellationToken.IsCancellationRequested) {
+        if (cancellationToken.IsCancellationRequested && CacheStatus is not Completed) {
           Console.WriteLine("publishing stale");
           status.OnNext(new Stale());
         } else {
