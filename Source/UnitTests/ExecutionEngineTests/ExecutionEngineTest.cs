@@ -205,16 +205,16 @@ procedure Foo(x: int) {
     await firstStatuses.Where(s => s is Running).FirstAsync().ToTask();
     firstStatuses.Subscribe(statusList1.Add);
     tasks.Cancel();
-    var expected1 = new List<IVerificationStatus>() {
-      new Running(), new Stale()
-    };
-    Assert.AreEqual(expected1, statusList1);
 
     var secondStatuses = tasks.TryRun()!;
     tasks.Cancel();
     var statusList2 = new List<IVerificationStatus>();
     secondStatuses.Subscribe(statusList2.Add);
     await secondStatuses.DefaultIfEmpty().ToTask();
+    var expected1 = new List<IVerificationStatus>() {
+      new Running(), new Stale()
+    };
+    Assert.AreEqual(expected1, statusList1);
     var expected2 = new List<IVerificationStatus>();
     Assert.AreEqual(expected2, statusList2);
   }
