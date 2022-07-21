@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
 using Microsoft.Boogie.SMTLib;
@@ -190,7 +191,7 @@ Boogie program verifier finished with 0 verified, 1 error
   public async Task RunCancelRunCancel() {
     var options = CommandLineOptions.FromArguments();
     options.VcsCores = 1;
-    options.CreateSolver = (_, _) => new UnsatSolver(TimeSpan.FromSeconds(100));
+    options.CreateSolver = (_, _) => new UnsatSolver(new SemaphoreSlim(0));
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
     var source = @"
@@ -222,8 +223,9 @@ procedure Foo(x: int) {
   [Test]
   public async Task RunRunCancelRunRun() {
     var options = CommandLineOptions.FromArguments();
+    var returnCheckSat = new SemaphoreSlim(0);
     options.VcsCores = 1;
-    options.CreateSolver = (_, _) => new UnsatSolver(TimeSpan.FromSeconds(1));
+    options.CreateSolver = (_, _) => new UnsatSolver(returnCheckSat);
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
     var source = @"
@@ -249,6 +251,7 @@ procedure Foo(x: int) {
     Assert.AreEqual(null, runAfterRun2);
     var statusList2 = new List<IVerificationStatus>();
     secondStatuses.Subscribe(statusList2.Add);
+    returnCheckSat.Release();
     var finalResult = await secondStatuses.ToTask();
     Assert.IsTrue(finalResult is Completed);
     var expected2 = new List<IVerificationStatus>() {

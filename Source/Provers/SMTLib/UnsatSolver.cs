@@ -1,16 +1,17 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.SMTLib;
 
 public class UnsatSolver : NoopSolver {
-  private readonly TimeSpan delay;
+  private readonly SemaphoreSlim semaphore;
 
-  public UnsatSolver() : this(TimeSpan.Zero) {
+  public UnsatSolver() : this(new SemaphoreSlim(int.MaxValue)) {
   }
 
-  public UnsatSolver(TimeSpan delay) {
-    this.delay = delay;
+  public UnsatSolver(SemaphoreSlim semaphore) {
+    this.semaphore = semaphore;
   }
 
   public override void Send(string request)
@@ -26,7 +27,7 @@ public class UnsatSolver : NoopSolver {
 
   protected override async Task<SExpr> GetProverResponse() {
     if (responses.Peek().Name == "unsat") {
-      await Task.Delay(delay);
+      await semaphore.WaitAsync();
     }
     return await base.GetProverResponse();
   }
