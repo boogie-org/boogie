@@ -216,8 +216,10 @@ procedure Foo(x: int) {
       new Running(), new Stale()
     };
     Assert.AreEqual(expected1, statusList1);
-    var expected2 = new List<IVerificationStatus>();
-    Assert.AreEqual(expected2, statusList2);
+    var expected2 = new List<IVerificationStatus>() {
+      new Stale()
+    };
+    Assert.AreEqual(expected2, statusList2.Take(1));
   }
 
   [Test]

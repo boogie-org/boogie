@@ -149,6 +149,7 @@ public class ImplementationTask : IImplementationTask {
     {
       if (myCancellationSource.IsCancellationRequested) {
         // Queued run was cancelled before it started.
+        result.OnNext(new Stale());
         result.OnCompleted();
       } else {
         // The running thread has just cleared cancellationSource, so TryRun will return a non-null value.
