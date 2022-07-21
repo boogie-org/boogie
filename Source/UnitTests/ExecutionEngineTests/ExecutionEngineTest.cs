@@ -241,10 +241,6 @@ procedure Foo(x: int) {
     Assert.AreEqual(null, runAfterRun1);
     firstStatuses.Subscribe(statusList1.Add);
     tasks.Cancel();
-    var expected1 = new List<IVerificationStatus>() {
-      new Running(), new Stale()
-    };
-    Assert.AreEqual(expected1, statusList1);
 
     var secondStatuses = tasks.TryRun()!;
     var runAfterRun2 = tasks.TryRun();
@@ -254,6 +250,10 @@ procedure Foo(x: int) {
     returnCheckSat.Release();
     var finalResult = await secondStatuses.ToTask();
     Assert.IsTrue(finalResult is Completed);
+    var expected1 = new List<IVerificationStatus>() {
+      new Running(), new Stale()
+    };
+    Assert.AreEqual(expected1, statusList1);
     var expected2 = new List<IVerificationStatus>() {
       new Running(), finalResult
     };
