@@ -111,7 +111,6 @@ public class ImplementationTask : IImplementationTask {
     var cancellationToken = cancellationSource.Token;
 
     status = new ReplaySubject<IVerificationStatus>();
-    cancellationToken.Register(() => { status.OnNext(new Stale()); });
     var task = RunInternal(cancellationToken, status.OnNext);
     task.ContinueWith(r =>
     {
@@ -120,6 +119,9 @@ public class ImplementationTask : IImplementationTask {
       lock (mayAccessCancellationSource) {
         // Clear cancellationSource before calling status.OnCompleted, so ImplementationTask.IsIdle returns true
         cancellationSource = null;
+        if (cancellationToken.IsCancellationRequested) {
+          status.OnNext(new Stale());
+        }
         if (r.Exception != null) {
           status.OnError(r.Exception);
         } else {
