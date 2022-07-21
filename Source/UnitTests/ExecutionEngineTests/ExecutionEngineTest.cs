@@ -187,6 +187,39 @@ Boogie program verifier finished with 0 verified, 1 error
   }
 
   [Test]
+  public async Task RunCancelRunCancel() {
+    var options = CommandLineOptions.FromArguments();
+    options.VcsCores = 1;
+    options.CreateSolver = (_, _) => new UnsatSolver(TimeSpan.FromSeconds(100));
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+
+    var source = @"
+procedure Foo(x: int) {
+  assert true;
+}".TrimStart();
+    var result = Parser.Parse(source, "fakeFilename1", out var program);
+    Assert.AreEqual(0, result);
+    var tasks = engine.GetImplementationTasks(program)[0];
+    var statusList1 = new List<IVerificationStatus>();
+    var firstStatuses = tasks.TryRun()!;
+    await firstStatuses.Where(s => s is Running).FirstAsync().ToTask();
+    firstStatuses.Subscribe(statusList1.Add);
+    tasks.Cancel();
+    var expected1 = new List<IVerificationStatus>() {
+      new Running(), new Stale()
+    };
+    Assert.AreEqual(expected1, statusList1);
+
+    var secondStatuses = tasks.TryRun()!;
+    tasks.Cancel();
+    var statusList2 = new List<IVerificationStatus>();
+    secondStatuses.Subscribe(statusList2.Add);
+    await secondStatuses.DefaultIfEmpty().ToTask();
+    var expected2 = new List<IVerificationStatus>();
+    Assert.AreEqual(expected2, statusList2);
+  }
+
+  [Test]
   public async Task RunRunCancelRunRun() {
     var options = CommandLineOptions.FromArguments();
     options.VcsCores = 1;

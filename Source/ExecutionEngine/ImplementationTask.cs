@@ -85,7 +85,12 @@ public class ImplementationTask : IImplementationTask {
     // Lock to prevent conflicts from concurrent calls to TryRun
     lock (myLock) {
       if (cancellationSource == null) {
-        // No other thread was running, we claim the right to run.
+        // No other thread is running or can start, so we can safely access CacheStatus
+        if (CacheStatus is Completed) {
+          return null;
+        }
+
+        // We claim the right to run.
         cancellationSource = new();
       } else if (!cancellationSource.IsCancellationRequested) {
         // Another thread is running and is not cancelled, so this run fails.
@@ -96,32 +101,30 @@ public class ImplementationTask : IImplementationTask {
 
         // We claim the right to run.
         cancellationSource = new();
+        var myCancellationSource = cancellationSource;
 
-        // After the current run cancellation completes, call TryRun, assume it succeeds, and forward the observations
-        // to result.
+        // After the current run cancellation completes, call TryRun, assume it succeeds,
+        // and forward the observations to result.
         var result = new ReplaySubject<IVerificationStatus>();
         status!.Subscribe(next => { }, () => {
-          var recursiveStatus = TryRun();
-          if (recursiveStatus == null) {
-            throw new InvalidOperationException("Should not be possible.");
+          if (myCancellationSource.IsCancellationRequested) {
+            // Queued run was cancelled before it started.
+            result.OnCompleted();
+          } else {
+            // The running thread has just cleared cancellationSource, so TryRun will return a non-null value.
+            var recursiveStatus = TryRun();
+            recursiveStatus!.Subscribe(result);
+            // Forward cancellation requests that happened between our
+            // myCancellationSource.IsCancellationRequested check and TryRun call
+            myCancellationSource.Token.Register(() => cancellationSource.Cancel());
           }
-
-          recursiveStatus.Subscribe(result);
         });
         return result;
       }
-
-      cancellationSource = new();
     }
 
-    // We claimed the right to run. No other thread is running nor can they get to this point,
+    // We've claimed the right to run. No other thread is running nor can they get to this point,
     // so from this point we can read and write from and to the fields CacheStatus and status as if we're the only thread.
-
-    if (CacheStatus is Completed) {
-      cancellationSource = null;
-      return null;
-    }
-
     var cancellationToken = cancellationSource.Token;
 
     status = new ReplaySubject<IVerificationStatus>();
@@ -134,7 +137,7 @@ public class ImplementationTask : IImplementationTask {
       // Lock so we may do operations after clearing cancellationSource,
       // which releases our control over the field status.
       lock (myLock) {
-        // Clear cancellationSource before calling status.OnCompleted, so ImplementationTask.IsIdle returns false
+        // Clear cancellationSource before calling status.OnCompleted, so ImplementationTask.IsIdle returns true
         cancellationSource = null;
         if (r.Exception != null) {
           status.OnError(r.Exception);
