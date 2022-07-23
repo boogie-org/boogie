@@ -3845,84 +3845,26 @@ namespace Microsoft.Boogie
 
   public class FieldAccess : IAppliable
   {
-    private IToken _tok;
-
-    private string fieldName;
+    public IToken tok { get; set; }
     
-    private DatatypeSelector selector;
+    public string FieldName { get; set; }
 
-    public IToken tok
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<IToken>() != null);
-        return this._tok;
-      }
-      set
-      {
-        Contract.Requires(value != null);
-        this._tok = value;
-      }
-    }
-    
-    public string FieldName
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<IToken>() != null);
-        return this.fieldName;
-      }
-      set
-      {
-        Contract.Requires(value != null);
-        this.fieldName = value;
-      }
-    }
-    
-    public DatatypeSelector Selector
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<IToken>() != null);
-        return this.selector;
-      }
-      set
-      {
-        Contract.Requires(value != null);
-        this.selector = value;
-      }
-    }
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(this._tok != null);
-    }
+    public DatatypeSelector Selector { get; set; }
 
     public FieldAccess(IToken tok, string fieldName)
     {
-      Contract.Requires(tok != null);
-      this._tok = tok;
-      this.fieldName = fieldName;
+      this.tok = tok;
+      this.FieldName = fieldName;
     }
     
     public FieldAccess(IToken tok, DatatypeSelector selector)
     {
-      Contract.Requires(tok != null);
-      this._tok = tok;
-      this.selector = selector;
-      this.fieldName = selector.OriginalName;
+      this.tok = tok;
+      this.Selector = selector;
+      this.FieldName = selector.OriginalName;
     }
 
-    public string FunctionName
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<string>() != null);
-
-        return "field-access";
-      }
-    }
+    public string FunctionName => "field-access";
 
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
@@ -3953,7 +3895,7 @@ namespace Microsoft.Boogie
       {
         stream.Write("(");
       }
-      cce.NonNull(args[0]).Emit(stream, 0x00, false);
+      cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
       stream.Write("->{0}", FieldName);
       if (parensNeeded)
       {
@@ -3967,15 +3909,10 @@ namespace Microsoft.Boogie
       // The work of resolution is delayed to type checking when the datatype is known.
     }
 
-    public int ArgumentCount
-    {
-      get { return 1; }
-    }
+    public int ArgumentCount => 1;
 
     public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
     {
-      Contract.Ensures(args != null);
-      Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Assert(args.Count == 1);
       return Typecheck(cce.NonNull(args[0]).Type, tc, out tpInstantiation);
     }
@@ -4005,7 +3942,7 @@ namespace Microsoft.Boogie
         tc.Error(this.tok, "datatype {0} has several fields with name {1}", ctorType, FieldName);
         return null;
       }
-      selector = selectors[0];
+      Selector = selectors[0];
       var typeSubst = Selector.TypeParameters.Zip(ctorType.Arguments).ToDictionary(
           x => x.Item1, 
           x => x.Item2);
@@ -4015,7 +3952,6 @@ namespace Microsoft.Boogie
 
     public Type ShallowType(IList<Expr> args)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
       return Selector.OutParams[0].TypedIdent.Type;
     }
 

@@ -2350,42 +2350,19 @@ namespace Microsoft.Boogie
 
     public FieldAccess FieldAccess;
 
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(Datatype != null);
-      Contract.Invariant(FieldAccess != null);
-    }
-
     public TypeParamInstantiation TypeParameters = null;
 
     private Type TypeAttr = null;
 
-    public override Type Type
-    {
-      get { return TypeAttr; }
-    }
+    public override Type Type => TypeAttr;
 
-    public override IdentifierExpr DeepAssignedIdentifier
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<IdentifierExpr>() != null);
-        return Datatype.DeepAssignedIdentifier;
-      }
-    }
+    public override IdentifierExpr DeepAssignedIdentifier => Datatype.DeepAssignedIdentifier;
 
-    public override Variable DeepAssignedVariable
-    {
-      get { return Datatype.DeepAssignedVariable; }
-    }
+    public override Variable DeepAssignedVariable => Datatype.DeepAssignedVariable;
 
     public FieldAssignLhs(IToken tok, AssignLhs datatype, FieldAccess fieldAccess)
       : base(tok)
     {
-      Contract.Requires(datatype != null);
-      Contract.Requires(tok != null);
-      Contract.Requires(fieldAccess != null);
       Datatype = datatype;
       this.FieldAccess = fieldAccess;
     }
@@ -2415,7 +2392,6 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Expr>() != null);
         var res = FieldAccess.Select(tok, Datatype.AsExpr);
         Contract.Assert(res != null);
         res.TypeParameters = this.TypeParameters;
@@ -2428,8 +2404,6 @@ namespace Microsoft.Boogie
       out IdentifierExpr simpleLhs,
       out Expr simpleRhs)
     {
-      Contract.Ensures(Contract.ValueAtReturn(out simpleLhs) != null);
-      Contract.Ensures(Contract.ValueAtReturn(out simpleRhs) != null);
       var newRhs = FieldAccess.Update(tok, Datatype.AsExpr, rhs);
       Contract.Assert(newRhs != null);
       newRhs.TypeParameters = this.TypeParameters;
@@ -2439,7 +2413,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitFieldAssignLhs(this);
     }
   }
