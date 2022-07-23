@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie /monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type{:datatype} Pair;
@@ -39,4 +39,15 @@ procedure P2(p: PairOfMaps, x: int) returns (q: PairOfMaps)
   q := p;
   call t := P1(p->amap, x);
   q->bmap := t;
+}
+
+type{:datatype} GenericPair U;
+function{:constructor} GenericPair<U>(a: U, b: U): GenericPair U;
+
+procedure P3<T>(p: GenericPair T) returns (q: GenericPair T)
+  requires p->a == p->b;
+  ensures  q->a == q->b;
+{
+  q->a := p->b;
+  q->b := p->a;
 }
