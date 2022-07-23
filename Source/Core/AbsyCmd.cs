@@ -2344,6 +2344,79 @@ namespace Microsoft.Boogie
     }
   }
 
+  public class FieldAssignLhs : AssignLhs
+  {
+    public AssignLhs Datatype;
+
+    public FieldAccess FieldAccess;
+
+    public TypeParamInstantiation TypeParameters = null;
+
+    private Type TypeAttr = null;
+
+    public override Type Type => TypeAttr;
+
+    public override IdentifierExpr DeepAssignedIdentifier => Datatype.DeepAssignedIdentifier;
+
+    public override Variable DeepAssignedVariable => Datatype.DeepAssignedVariable;
+
+    public FieldAssignLhs(IToken tok, AssignLhs datatype, FieldAccess fieldAccess)
+      : base(tok)
+    {
+      Datatype = datatype;
+      this.FieldAccess = fieldAccess;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      Datatype.Resolve(rc);
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      Datatype.Typecheck(tc);
+      TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+      if (Datatype.Type != null)
+      {
+        TypeAttr = FieldAccess.Typecheck(Datatype.Type, tc, out TypeParameters);
+      }
+    }
+
+    public override void Emit(TokenTextWriter stream)
+    {
+      Datatype.Emit(stream);
+      stream.Write("->{0}", FieldAccess.FieldName);
+    }
+
+    public override Expr AsExpr
+    {
+      get
+      {
+        var res = FieldAccess.Select(tok, Datatype.AsExpr);
+        Contract.Assert(res != null);
+        res.TypeParameters = this.TypeParameters;
+        res.Type = this.Type;
+        return res;
+      }
+    }
+
+    internal override void AsSimpleAssignment(Expr rhs,
+      out IdentifierExpr simpleLhs,
+      out Expr simpleRhs)
+    {
+      var newRhs = FieldAccess.Update(tok, Datatype.AsExpr, rhs);
+      Contract.Assert(newRhs != null);
+      newRhs.TypeParameters = this.TypeParameters;
+      newRhs.Type = Datatype.Type;
+      Datatype.AsSimpleAssignment(newRhs, out simpleLhs, out simpleRhs);
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      return visitor.VisitFieldAssignLhs(this);
+    }
+  }
+
   /// <summary>
   /// A StateCmd is like an imperative-let binding around a sequence of commands.
   /// There is no user syntax for a StateCmd.  Instead, a StateCmd is only used

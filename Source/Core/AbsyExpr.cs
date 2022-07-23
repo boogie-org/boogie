@@ -1559,6 +1559,7 @@ namespace Microsoft.Boogie
     T Visit(TypeCoercion /*!*/ typeCoercion);
     T Visit(ArithmeticCoercion /*!*/ arithCoercion);
     T Visit(IfThenElse /*!*/ ifThenElse);
+    T Visit(FieldAccess /*!*/ fieldAccess);
   }
 
   [ContractClassFor(typeof(IAppliableVisitor<>))]
@@ -1614,6 +1615,11 @@ namespace Microsoft.Boogie
       throw new NotImplementedException();
     }
 
+    public T Visit(FieldAccess fieldAccess)
+    {
+      Contract.Requires(fieldAccess != null);
+      throw new NotImplementedException();
+    }
     #endregion
   }
 
@@ -3837,6 +3843,142 @@ namespace Microsoft.Boogie
     }
   }
 
+  public class FieldAccess : IAppliable
+  {
+    public IToken tok { get; set; }
+    
+    public string FieldName { get; set; }
+
+    public DatatypeSelector Selector { get; set; }
+
+    public FieldAccess(IToken tok, string fieldName)
+    {
+      this.tok = tok;
+      this.FieldName = fieldName;
+    }
+    
+    public FieldAccess(IToken tok, DatatypeSelector selector)
+    {
+      this.tok = tok;
+      this.Selector = selector;
+      this.FieldName = selector.OriginalName;
+    }
+
+    public string FunctionName => "field-access";
+
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj is FieldAccess fieldAccess)
+      {
+        return Selector.Equals(fieldAccess.Selector);
+      }
+      return false;
+    }
+
+    [Pure]
+    public override int GetHashCode()
+    {
+      return 1;
+    }
+
+    public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
+    {
+      const int opBindingStrength = 0x90;
+      bool parensNeeded = opBindingStrength < contextBindingStrength ||
+                          (fragileContext && opBindingStrength == contextBindingStrength);
+      stream.SetToken(this);
+      Contract.Assert(args.Count == 1);
+      stream.push();
+      if (parensNeeded)
+      {
+        stream.Write("(");
+      }
+      cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
+      stream.Write("->{0}", FieldName);
+      if (parensNeeded)
+      {
+        stream.Write(")");
+      }
+      stream.pop();
+    }
+
+    public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting)
+    {
+      // The work of resolution is delayed to type checking when the datatype is known.
+    }
+
+    public int ArgumentCount => 1;
+
+    public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
+    {
+      Contract.Assert(args.Count == 1);
+      return Typecheck(cce.NonNull(args[0]).Type, tc, out tpInstantiation);
+    }
+    
+    public Type Typecheck(Type type, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
+    {
+      tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+      if (!(type is CtorType ctorType))
+      {
+        tc.Error(this.tok, "type {0} is not a constructor type", type);
+        return null;
+      }
+      if (!(ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl))
+      {
+        tc.Error(this.tok, "field-access must be applied to a datatype, {0} is not a datatype", ctorType);
+        return null;
+      }
+      var selectors = datatypeTypeCtorDecl.GetSelectors(FieldName);
+      if (selectors == null)
+      {
+        tc.Error(this.tok, "datatype {0} does not have a field with name {1}", ctorType, FieldName);
+        return null;
+      }
+      Contract.Assert(selectors.Count > 0);
+      if (selectors.Count > 1)
+      {
+        tc.Error(this.tok, "datatype {0} has several fields with name {1}", ctorType, FieldName);
+        return null;
+      }
+      Selector = selectors[0];
+      var typeSubst = Selector.TypeParameters.Zip(ctorType.Arguments).ToDictionary(
+          x => x.Item1, 
+          x => x.Item2);
+      tpInstantiation = SimpleTypeParamInstantiation.From(Selector.TypeParameters, ctorType.Arguments);
+      return Selector.OutParams[0].TypedIdent.Type.Substitute(typeSubst);
+    }
+
+    public Type ShallowType(IList<Expr> args)
+    {
+      return Selector.OutParams[0].TypedIdent.Type;
+    }
+
+    public T Dispatch<T>(IAppliableVisitor<T> visitor)
+    {
+      return visitor.Visit(this);
+    }
+
+    public NAryExpr Select(IToken token, Expr record)
+    {
+      return new NAryExpr(token, this, new List<Expr> { record });
+    }
+
+    public NAryExpr Update(IToken token, Expr record, Expr rhs)
+    {
+      var args = Selector.constructor.selectors.Select(x =>
+      {
+        if (x == Selector)
+        {
+          return rhs;
+        }
+        var fieldAccess = new FieldAccess(tok, x);
+        return fieldAccess.Select(token, record);
+      }).ToList();
+      return new NAryExpr(token, new FunctionCall(Selector.constructor), args);
+    }
+  }
 
   public class CodeExpr : Expr
   {

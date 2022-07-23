@@ -414,7 +414,7 @@ namespace Microsoft.Boogie
           for (int i = 0; i < f.InParams.Count; i++)
           {
             DatatypeSelector selector = DatatypeSelector.NewDatatypeSelector(f, i);
-            f.selectors.Add(selector);
+            f.AddSelector(selector);
             selector.Register(rc);
           }
           DatatypeMembership membership = DatatypeMembership.NewDatatypeMembership(f);
@@ -1444,7 +1444,8 @@ namespace Microsoft.Boogie
   public class DatatypeTypeCtorDecl : TypeCtorDecl
   {
     private List<DatatypeConstructor> constructors;
-
+    private Dictionary<string, List<DatatypeSelector>> selectors;
+    
     public List<DatatypeConstructor> Constructors
     {
       get
@@ -1457,6 +1458,30 @@ namespace Microsoft.Boogie
       : base(typeCtorDecl.tok, typeCtorDecl.Name, typeCtorDecl.Arity, typeCtorDecl.Attributes)
     {
       this.constructors = new List<DatatypeConstructor>();
+      this.selectors = new Dictionary<string, List<DatatypeSelector>>();
+    }
+
+    public void AddConstructor(DatatypeConstructor constructor)
+    {
+      this.constructors.Add(constructor);
+    }
+
+    public void AddSelector(DatatypeSelector selector)
+    {
+      if (!selectors.ContainsKey(selector.OriginalName))
+      {
+        selectors.Add(selector.OriginalName, new List<DatatypeSelector>());
+      }
+      selectors[selector.OriginalName].Add(selector);
+    }
+
+    public List<DatatypeSelector> GetSelectors(string fieldName)
+    {
+      if (!selectors.ContainsKey(fieldName))
+      {
+        return null;
+      }
+      return selectors[fieldName];
     }
 
     public override void Emit(TokenTextWriter stream, int level)
@@ -2572,7 +2597,7 @@ namespace Microsoft.Boogie
     {
       selectors = new List<DatatypeSelector>();
       index = datatypeTypeCtorDecl.Constructors.Count;
-      datatypeTypeCtorDecl.Constructors.Add(this);
+      datatypeTypeCtorDecl.AddConstructor(this);
       this.datatypeTypeCtorDecl = datatypeTypeCtorDecl;
     }
 
@@ -2597,7 +2622,6 @@ namespace Microsoft.Boogie
           }
         }
       }
-
       base.Resolve(rc);
     }
 
@@ -2614,13 +2638,20 @@ namespace Microsoft.Boogie
       }
       base.Typecheck(tc);
     }
+
+    public void AddSelector(DatatypeSelector selector)
+    {
+      selectors.Add(selector);
+      this.datatypeTypeCtorDecl.AddSelector(selector);
+    }
   }
 
   public class DatatypeSelector : Function
   {
     public DatatypeConstructor constructor;
     public int index;
-
+    public string OriginalName => constructor.InParams[index].Name;
+    
     public static DatatypeSelector NewDatatypeSelector(DatatypeConstructor constructor, int index)
     {
       var newTypeVariables = constructor.TypeParameters.Select(tp => new TypeVariable(tp.tok, tp.Name)).ToList();

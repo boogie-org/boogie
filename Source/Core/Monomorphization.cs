@@ -531,7 +531,7 @@ namespace Microsoft.Boogie
         newConstructor.membership = DatatypeMembership.NewDatatypeMembership(newConstructor);
         for (int i = 0; i < newConstructor.InParams.Count; i++)
         {
-          newConstructor.selectors.Add(DatatypeSelector.NewDatatypeSelector(newConstructor, i));
+          newConstructor.AddSelector(DatatypeSelector.NewDatatypeSelector(newConstructor, i));
         }
       }
 
@@ -556,6 +556,37 @@ namespace Microsoft.Boogie
         }
       }
 
+      private FieldAccess InstantiateFieldAccess(FieldAccess fieldAccess, TypeParamInstantiation typeParameters)
+      {
+        var selector = fieldAccess.Selector;
+        var constructor = selector.constructor;
+        var actualTypeParams =
+          typeParameters.FormalTypeParams.Select(x =>
+              TypeProxy.FollowProxy(typeParameters[x]).Substitute(typeParamInstantiation))
+            .Select(x => LookupType(x)).ToList();
+        InstantiateType(constructor.datatypeTypeCtorDecl, actualTypeParams);
+        var datatypeTypeCtorDecl =
+          (DatatypeTypeCtorDecl)monomorphizationVisitor.typeInstantiations[constructor.datatypeTypeCtorDecl][
+            actualTypeParams];
+        return new FieldAccess(fieldAccess.tok, datatypeTypeCtorDecl.Constructors[constructor.index].selectors[selector.index]);
+      }
+      
+      public override AssignLhs VisitFieldAssignLhs(FieldAssignLhs node)
+      {
+        var fieldAssignLhs = (FieldAssignLhs)base.VisitFieldAssignLhs(node);
+        var fieldAccess = fieldAssignLhs.FieldAccess;
+        var constructor = fieldAccess.Selector.constructor;
+        if (constructor.TypeParameters.Count == 0)
+        {
+          monomorphizationVisitor.VisitTypeCtorDecl(constructor.datatypeTypeCtorDecl);
+        }
+        else
+        {
+          fieldAssignLhs.FieldAccess = InstantiateFieldAccess(fieldAssignLhs.FieldAccess, fieldAssignLhs.TypeParameters);
+        }
+        return fieldAssignLhs;
+      }
+
       public override Expr VisitNAryExpr(NAryExpr node)
       {
         var returnExpr = (NAryExpr) base.VisitNAryExpr(node);
@@ -564,7 +595,20 @@ namespace Microsoft.Boogie
         {
           return returnExpr.Args[0];
         }
-        if (returnExpr.Fun is FunctionCall functionCall)
+        if (returnExpr.Fun is FieldAccess fieldAccess)
+        {
+          var constructor = fieldAccess.Selector.constructor;
+          if (constructor.TypeParameters.Count == 0)
+          {
+            monomorphizationVisitor.VisitTypeCtorDecl(constructor.datatypeTypeCtorDecl);
+          }
+          else
+          {
+            returnExpr.Fun = InstantiateFieldAccess(fieldAccess, returnExpr.TypeParameters);
+            returnExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+          }
+        }
+        else if (returnExpr.Fun is FunctionCall functionCall)
         {
           // a non-generic function must be processed to rewrite any generic types it uses
           // to the corresponding instantiated types

@@ -1410,6 +1410,12 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Gen.Function(VCExpressionGenerator.IfThenElseOp, this.args);
     }
+    
+    public VCExpr Visit(FieldAccess fieldAccess)
+    {
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      return Gen.Function(fieldAccess.Selector, this.args);
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
 
