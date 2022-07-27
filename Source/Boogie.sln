@@ -27,8 +27,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Model", "Model\Model.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Houdini", "Houdini\Houdini.csproj", "{76BF0C63-9A33-4B65-8A56-1B52E042725E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Predication", "Predication\Predication.csproj", "{7A4B3721-D902-4265-94DB-CA8B0BB295B7}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExecutionEngine", "ExecutionEngine\ExecutionEngine.csproj", "{51768B2E-FFF9-49F0-96D7-022250A4BEB4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Concurrency", "Concurrency\Concurrency.csproj", "{4AC86856-E985-4DBC-B089-20D5B9317A99}"
