@@ -12,7 +12,6 @@
     <ProjectReference Include="..\Graph\Graph.csproj" />
     <ProjectReference Include="..\Model\Model.csproj" />
     <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj" />
-    <ProjectReference Include="..\Predication\Predication.csproj" />
     <ProjectReference Include="..\VCExpr\VCExpr.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration.csproj" />
   </ItemGroup>

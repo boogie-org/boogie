@@ -20,7 +20,6 @@
     <ProjectReference Include="..\Graph\Graph.csproj" />
     <ProjectReference Include="..\Houdini\Houdini.csproj" />
     <ProjectReference Include="..\Model\Model.csproj" />
-    <ProjectReference Include="..\Predication\Predication.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration.csproj" />
   </ItemGroup>
 
