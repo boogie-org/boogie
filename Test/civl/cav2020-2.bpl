@@ -110,7 +110,7 @@ modifies count;
 }
 procedure {:yields} {:layer 0} {:refines "atomic_WRITE"} WRITE(v: int);
 
-procedure {:inline} {:intro} {:layer 1} set_l(v: Option Tid)
+procedure {:intro} {:layer 1} set_l(v: Option Tid)
 modifies l;
 {
     l := v;
