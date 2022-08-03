@@ -324,18 +324,24 @@ namespace Microsoft.Boogie
       {
         Error(program, "Call graph over atomic actions must be acyclic");
       }
-
+      
+      actionProcs.Iter(proc =>
+      {
+        if (proc.FindAttribute("inline") != null)
+        {
+          Error(proc, "unnecessary to provide inline attribute on action");
+        }
+      });
+      
       if (checkingContext.ErrorCount > 0)
       {
         return;
       }
 
       CivlUtil.AddInlineAttribute(SkipAtomicAction.proc);
-      CivlUtil.AddInlineAttribute(SkipAtomicAction.impl);
       actionProcs.Iter(proc =>
       {
         CivlUtil.AddInlineAttribute(proc);
-        CivlUtil.AddInlineAttribute(actionProcToImpl[proc]);
       });
       actionProcs.Iter(proc =>
       {

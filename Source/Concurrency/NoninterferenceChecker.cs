@@ -157,7 +157,6 @@ namespace Microsoft.Boogie
       // Create the yield checker implementation
       var noninterferenceCheckerImpl = DeclHelper.Implementation(noninterferenceCheckerProc,
         inputs, new List<Variable>(), locals, noninterferenceCheckerBlocks);
-      CivlUtil.AddInlineAttribute(noninterferenceCheckerImpl);
       return new List<Declaration> {noninterferenceCheckerProc, noninterferenceCheckerImpl};
     }
 
