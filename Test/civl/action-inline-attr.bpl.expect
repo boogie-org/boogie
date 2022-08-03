@@ -1,3 +1,2 @@
 action-inline-attr.bpl(6,40): Error: unnecessary to provide inline attribute on action
-action-inline-attr.bpl(6,40): Error: unnecessary to provide inline attribute on action
-2 type checking errors detected in action-inline-attr.bpl
+1 type checking errors detected in action-inline-attr.bpl

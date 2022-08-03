@@ -150,10 +150,8 @@ namespace Microsoft.Boogie
 
       blocks.Insert(0, new Block(Token.NoToken, "enter", new List<Cmd>(), transferCmd));
 
-      var yieldImpl = DeclHelper.Implementation(wrapperNoninterferenceCheckerProc,
+      return DeclHelper.Implementation(wrapperNoninterferenceCheckerProc,
         inputs, new List<Variable>(), new List<Variable>(), blocks);
-      CivlUtil.AddInlineAttribute(yieldImpl);
-      return yieldImpl;
     }
 
     private Formal OldGlobalFormal(Variable v)

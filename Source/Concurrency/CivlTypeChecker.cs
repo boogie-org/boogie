@@ -331,11 +331,6 @@ namespace Microsoft.Boogie
         {
           Error(proc, "unnecessary to provide inline attribute on action");
         }
-        var impl = actionProcToImpl[proc];
-        if (impl.FindAttribute("inline") != null)
-        {
-          Error(impl, "unnecessary to provide inline attribute on action");
-        }
       });
       
       if (checkingContext.ErrorCount > 0)
@@ -344,11 +339,9 @@ namespace Microsoft.Boogie
       }
 
       CivlUtil.AddInlineAttribute(SkipAtomicAction.proc);
-      CivlUtil.AddInlineAttribute(SkipAtomicAction.impl);
       actionProcs.Iter(proc =>
       {
         CivlUtil.AddInlineAttribute(proc);
-        CivlUtil.AddInlineAttribute(actionProcToImpl[proc]);
       });
       actionProcs.Iter(proc =>
       {
