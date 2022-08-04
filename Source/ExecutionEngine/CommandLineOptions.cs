@@ -1886,7 +1886,6 @@ namespace Microsoft.Boogie
        Used on a command.  Adds the expression e, after substituting variables
        with their incarnations just before the command, to pool name.
 
-     {:skolem_add_to_pool ""name"", e}
        Used on a quantifier.  Adds the expression e, after substituting the
        bound variables with fresh skolem constants, whenever the quantifier is
        skolemized.
