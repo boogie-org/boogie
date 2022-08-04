@@ -6,15 +6,57 @@ using Set = Microsoft.Boogie.GSet<object>; // for the purposes here, "object" re
 
 namespace Microsoft.Boogie
 {
+  /// <summary>
+  /// This class is a wrapper over a Dictionary from LambdaExpr to the FunctionCall
+  /// used for creating an instance of that lambda. When a LambdaExpr is alpha-equivalent
+  /// to another, this wrapper does the point-wise append of the parameter attributes
+  /// from the duplicate to the original.
+  /// </summary>
+  public class LiftedLambdas
+  {
+    private readonly Dictionary<LambdaExpr, Tuple<LambdaExpr, FunctionCall>> liftedLambdas =
+      new(new AlphaEquality());
+      
+    public FunctionCall this[LambdaExpr expr]
+    {
+      set => liftedLambdas[expr] = new Tuple<LambdaExpr, FunctionCall>(expr, value);
+    }
+    public bool TryGetValue(LambdaExpr expr, out FunctionCall functionCall)
+    {
+      functionCall = null;
+      Tuple<LambdaExpr, FunctionCall> pair;
+      if (!liftedLambdas.TryGetValue(expr, out pair))
+      {
+        return false;
+      }
+      functionCall = pair.Item2;
+      var currExpr = pair.Item1;
+      // to the attributes of each dummy of currExpr, append the attributes of the corresponding dummy of expr 
+      currExpr.Dummies.Zip(expr.Dummies).Iter(x =>
+      {
+        if (x.Item2.Attributes == null)
+        {
+          return;
+        }
+        var clonedAttrs = (QKeyValue)x.Item2.Attributes.Clone();
+        if (x.Item1.Attributes == null)
+        {
+          x.Item1.Attributes = clonedAttrs;
+        }
+        else
+        {
+          x.Item1.Attributes.AddLast(clonedAttrs);
+        }
+      });
+      return true;
+    }
+  }
+  
   public static class LambdaHelper
   {
-    public static Program Desugar(CoreOptions options, Program program, out List<Axiom /*!*/> /*!*/ axioms,
-      out List<Function /*!*/> /*!*/ functions)
+    public static Program Desugar(CoreOptions options, Program program, out List<Axiom> axioms,
+      out List<Function> functions)
     {
-      Contract.Requires(program != null);
-      Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out functions)));
-      Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out axioms)));
-      Contract.Ensures(Contract.Result<Program>() != null);
       LambdaVisitor v = new LambdaVisitor(options);
       program = v.VisitProgram(program);
       axioms = v.lambdaAxioms;
@@ -73,8 +115,6 @@ namespace Microsoft.Boogie
     /// </summary>
     public static void ExpandLambdas(CoreOptions options, Program prog)
     {
-      Contract.Requires(prog != null);
-
       Desugar(options, prog, out var axioms, out var functions);
       foreach (var f in functions)
       {
@@ -90,21 +130,11 @@ namespace Microsoft.Boogie
     private class LambdaVisitor : VarDeclOnceStandardVisitor
     {
       private CoreOptions options;
-      private readonly Dictionary<Expr, FunctionCall> liftedLambdas =
-        new Dictionary<Expr, FunctionCall>(new AlphaEquality());
+      private readonly LiftedLambdas liftedLambdas = new();
 
-      internal List<Axiom /*!*/> /*!*/
-        lambdaAxioms = new List<Axiom /*!*/>();
+      internal List<Axiom> lambdaAxioms = new ();
 
-      internal List<Function /*!*/> /*!*/
-        lambdaFunctions = new List<Function /*!*/>();
-
-      [ContractInvariantMethod]
-      void ObjectInvariant()
-      {
-        Contract.Invariant(cce.NonNullElements(lambdaAxioms));
-        Contract.Invariant(cce.NonNullElements(lambdaFunctions));
-      }
+      internal List<Function> lambdaFunctions = new ();
 
       int lambdaid = 0;
 
@@ -277,8 +307,8 @@ namespace Microsoft.Boogie
           fcall.Func = fn; // resolve here
           liftedLambdas[lambda] = fcall;
 
-          List<Expr /*!*/> selectArgs = new List<Expr /*!*/>();
-          foreach (Variable /*!*/ v in lambda.Dummies)
+          List<Expr> selectArgs = new List<Expr>();
+          foreach (Variable v in lambda.Dummies)
           {
             Contract.Assert(v != null);
             selectArgs.Add(new IdentifierExpr(v.tok, v));
@@ -289,9 +319,9 @@ namespace Microsoft.Boogie
           axcall.TypeParameters = SimpleTypeParamInstantiation.From(freeTypeVars, fnTypeVarActuals);
           NAryExpr select = Expr.Select(axcall, selectArgs);
           select.Type = lambdaBody.Type;
-          List<Type /*!*/> selectTypeParamActuals = new List<Type /*!*/>();
+          List<Type> selectTypeParamActuals = new List<Type>();
           List<TypeVariable> forallTypeVariables = new List<TypeVariable>();
-          foreach (TypeVariable /*!*/ tp in lambda.TypeParameters)
+          foreach (TypeVariable tp in lambda.TypeParameters)
           {
             Contract.Assert(tp != null);
             selectTypeParamActuals.Add(tp);
