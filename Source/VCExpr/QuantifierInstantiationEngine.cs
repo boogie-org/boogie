@@ -7,12 +7,11 @@ namespace Microsoft.Boogie.VCExprAST
   public class QuantifierInstantiationEngine
   {
     /*
-     * The algorithm implemented by QuantifierInstantiationEngine is a fixpoint. There are two phases.
+     * The algorithm implemented by QuantifierInstantiationEngine is a fixpoint. There are three phases.
      *
      * Start:
      *   - find instantiation sources in commands
      *   - skolemize quantifiers in the verification condition
-     *
      * At this point, a collection of quantifiers to be instantiated and a collection of instances
      * are installed.
      *
@@ -786,7 +785,7 @@ namespace Microsoft.Boogie.VCExprAST
     
     public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
     {
-      FindInstantiationSources(node, "skolem_add_to_pool");
+      FindInstantiationSources(node, "add_to_pool");
       return base.VisitQuantifierExpr(node);
     }
 

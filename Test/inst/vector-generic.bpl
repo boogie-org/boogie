@@ -61,7 +61,7 @@ requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_
     A' := Vec_Append(A, e);
     B' := Vec_Swap(Vec_Append(B, e), Vec_Len(B) - 1, Vec_Len(B));
 
-    assert (forall x: int :: {:skolem_add_to_pool "Slice", x}
+    assert (forall x: int :: {:add_to_pool "Slice", x}
     Vec_Nth(Vec_Concat(Vec_Slice(A', 0, i), Vec_Slice(A', i + 1, Vec_Len(A'))), x) == Vec_Nth(Vec_Slice(B', 0, Vec_Len(B') - 1), x));
 }
 
@@ -291,7 +291,7 @@ ensures C == Vec_Concat(A, B);
     assert {:split_here} true;
     while (0 < Vec_Len(R))
     invariant Vec_Len(R) <= Vec_Len(B);
-    invariant (forall {:pool "L"} x: int :: {:skolem_add_to_pool "L", 0, x + 1}
+    invariant (forall {:pool "L"} x: int :: {:add_to_pool "L", 0, x + 1}
     0 <= x && x < Vec_Len(R) ==> Vec_Nth(B, x + Vec_Len(B) - Vec_Len(R)) == Vec_Nth(R, Vec_Len(R) - 1 - x));
     invariant C == Vec_Concat(A, Vec_Slice(B, 0, Vec_Len(B) - Vec_Len(R)));
     {

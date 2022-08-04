@@ -7,8 +7,8 @@ function {:inline} InOrder(x: int, y: int, z: int): bool {
 
 function {:inline} Permutation<E>(A: Vec E, B: Vec E): bool {
     Vec_Len(A) == Vec_Len(B) &&
-    (forall {:pool "A"} k: int :: {:skolem_add_to_pool "A", k} InOrder(0, k, Vec_Len(A)) ==>
-            (exists {:pool "B"} k': int :: {:skolem_add_to_pool "B", k'} InOrder(0, k', Vec_Len(B)) ==> Vec_Nth(A, k) == Vec_Nth(B, k')))
+    (forall {:pool "A"} k: int :: {:add_to_pool "A", k} InOrder(0, k, Vec_Len(A)) ==>
+            (exists {:pool "B"} k': int :: {:add_to_pool "B", k'} InOrder(0, k', Vec_Len(B)) ==> Vec_Nth(A, k) == Vec_Nth(B, k')))
 }
 
 procedure verify_sort(A: Vec int) returns (B: Vec int)
