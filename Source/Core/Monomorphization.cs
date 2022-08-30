@@ -1051,6 +1051,14 @@ namespace Microsoft.Boogie
       visitedFunctions.Add(node);
       return base.VisitFunction(node);
     }
+
+    public override Constant VisitConstant(Constant node)
+    {
+      node = base.VisitConstant(node);
+      node.TypedIdent = new TypedIdent(node.TypedIdent.tok, node.TypedIdent.Name,
+        monomorphizationDuplicator.VisitType(node.TypedIdent.Type));
+      return node;
+    }
   }
   
   public class Monomorphizer
