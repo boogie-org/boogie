@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -706,18 +707,33 @@ namespace Microsoft.Boogie.VCExprAST
     {
       this.qiEngine = qiEngine;
       this.instances = new HashSet<VCExprNAry>();
-      this.instancesOnStack = new Stack<VCExprNAry>();
+      this.instancesOnStack = new Stack<Tuple<VCExprNAry, HashSet<VCExprVar>>>();
+      this.letBoundVarsOnStack = new Stack<List<VCExprVar>>();
     }
 
     private QuantifierInstantiationEngine qiEngine;
     private HashSet<VCExprNAry> instances;
-    private Stack<VCExprNAry> instancesOnStack;
+    private Stack<Tuple<VCExprNAry, HashSet<VCExprVar>>> instancesOnStack;
+    private Stack<List<VCExprVar>> letBoundVarsOnStack;
 
     protected override bool StandardResult(VCExpr node, bool arg)
     {
       return true;
     }
 
+    private VCExprNAry Substitute(VCExprNAry vcExpr)
+    {
+      foreach (var letBoundVars in letBoundVarsOnStack)
+      {
+        var subst = new VCExprSubstitution(
+          letBoundVars.ToDictionary(x => x, x => BoundTermVars[x]),
+          new Dictionary<TypeVariable, Type>());
+        var substituter = new SubstitutingVCExprVisitor(qiEngine.vcExprGen);
+        vcExpr = (VCExprNAry) substituter.Mutate(vcExpr, subst);
+      }
+      return vcExpr;
+    }
+    
     public override bool Visit(VCExprNAry node, bool arg)
     {
       if (node.Op is VCExprBoogieFunctionOp functionOp)
@@ -725,8 +741,14 @@ namespace Microsoft.Boogie.VCExprAST
         var function = functionOp.Func;
         if (function.OriginalLambdaExprAsString != null && qiEngine.BindLambdaFunction(function))
         {
-          instances.Add(node);
-          instancesOnStack.Push(node);
+          // substitute all let-bound variables in the lambda expr
+          var substExpr = Substitute(node);
+          instances.Add(substExpr);
+          // push the pair of substituted lambda expr and variables bound via quantifiers
+          // if one of these bound variables is mentioned in the lambda term,
+          // then this term is ineligible and should be removed
+          instancesOnStack.Push(new Tuple<VCExprNAry, HashSet<VCExprVar>>(substExpr,
+            BoundTermVars.Keys.Where(x => BoundTermVars[x] == null).ToHashSet()));
           var retVal = base.Visit(node, arg);
           instancesOnStack.Pop();
           return retVal;
@@ -737,14 +759,28 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override bool Visit(VCExprVar node, bool arg)
     {
-      if (BoundTermVars.ContainsKey(node))
+      // check each lambda term going down the stack and remove ineligible terms if any
+      // once an eligible term is found, all terms below it must be eligible as well
+      foreach (var pair in instancesOnStack)
       {
-        foreach (var instance in instancesOnStack)
+        if (pair.Item2.Contains(node))
         {
-          instances.Remove(instance);
+          instances.Remove(pair.Item1);
+        }
+        else
+        {
+          break;
         }
       }
       return base.Visit(node, arg);
+    }
+    
+    public override bool Visit(VCExprLet node, bool arg)
+    {
+      letBoundVarsOnStack.Push(node.BoundVars);
+      var retVal = base.Visit(node, arg);
+      letBoundVarsOnStack.Pop();
+      return retVal;
     }
   }
   
