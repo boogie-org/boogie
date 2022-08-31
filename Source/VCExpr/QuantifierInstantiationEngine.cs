@@ -416,6 +416,13 @@ namespace Microsoft.Boogie.VCExprAST
   
   class QuantifierCollector : BoundVarTraversingVCExprVisitor<Dictionary<VCExprVar, Polarity>, Polarity>
   {
+    /*
+     * This method collects quantifiers embedded in vcExpr.
+     * If polarity == Polarity.Negative, a quantifier F embedded in expr is collected
+     * if it can be proved that F is a forall quantifier in the NNF version of expr.
+     * If polarity == Polarity.Positive, a quantifier F embedded in expr is collected
+     * if it can be proved that F is an exists quantifier in the NNF version of expr.
+     */
     public static HashSet<VCExprQuantifier> CollectQuantifiers(VCExpr vcExpr, Polarity polarity)
     {
       var visitor = new QuantifierCollector();
@@ -554,11 +561,6 @@ namespace Microsoft.Boogie.VCExprAST
   {
     /*
      * The method Skolemize performs best-effort skolemization of the input expression expr.
-     * If polarity == Polarity.Negative, a quantifier F embedded in expr is skolemized
-     * provided it can be proved that F is a forall quantifier in the NNF version of expr.
-     * If polarity == Polarity.Positive, a quantifier F embedded in expr is skolemized
-     * provided it can be proved that F is an exists quantifier in the NNF version of expr.
-     *
      * Factorization is performed on the resulting expression.
      */
     public static VCExpr Skolemize(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr)
@@ -622,8 +624,6 @@ namespace Microsoft.Boogie.VCExprAST
     /* 
      * The method Factorize factors out quantified expressions in expr replacing them with a bound variable.
      * The binding between the bound variable and the quantifier replaced by it is registered in qiEngine.
-     * If polarity == Polarity.Positive, forall quantifiers are factorized.
-     * If polarity == Polarity.Negative, exists quantifiers are factorized.
      */
     
     private QuantifierInstantiationEngine qiEngine;
