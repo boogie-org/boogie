@@ -93,7 +93,7 @@ namespace Microsoft.Boogie.Clustering
     public override bool Visit(VCExprVar node, bool arg)
     {
       Contract.Requires(node != null);
-      if (!BoundTermVars.Contains(node))
+      if (!BoundTermVars.ContainsKey(node))
       {
         GlobalVariables[node] = node;
       }

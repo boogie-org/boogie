@@ -528,7 +528,7 @@ namespace Microsoft.Boogie.VCExprAST
     public override Dictionary<VCExprVar, Polarity> Visit(VCExprQuantifier node, Polarity arg)
     {
       var result = base.Visit(node, arg);
-      if (arg != Polarity.Unknown && !result.Keys.Intersect(BoundTermVars).Any())
+      if (arg != Polarity.Unknown && !result.Keys.Intersect(BoundTermVars.Keys).Any())
       {
         if ((arg == Polarity.Positive) == (node.Quan == Quantifier.EX))
         {
@@ -737,7 +737,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override bool Visit(VCExprVar node, bool arg)
     {
-      if (BoundTermVars.Contains(node))
+      if (BoundTermVars.ContainsKey(node))
       {
         foreach (var instance in instancesOnStack)
         {
