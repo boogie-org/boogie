@@ -689,12 +689,14 @@ namespace Microsoft.Boogie.VCExprAST
     {
       var lambdaInstanceCollector = new LambdaInstanceCollector(qiEngine);
       lambdaInstanceCollector.Traverse(vcExpr, true);
-      var lambdaFunctionToInstances =
-        lambdaInstanceCollector.lambdaFunctions.ToDictionary(
-          x => x, x => new HashSet<List<VCExpr>>(new ListComparer<VCExpr>()));
+      var lambdaFunctionToInstances = new Dictionary<Function, HashSet<List<VCExpr>>>();
       foreach (var instance in lambdaInstanceCollector.instances)
       {
         var function = (instance.Op as VCExprBoogieFunctionOp).Func;
+        if (!lambdaFunctionToInstances.ContainsKey(function))
+        {
+          lambdaFunctionToInstances[function] = new HashSet<List<VCExpr>>(new ListComparer<VCExpr>());
+        }
         lambdaFunctionToInstances[function].Add(instance.UniformArguments.ToList());
       }
       return lambdaFunctionToInstances;
@@ -703,13 +705,11 @@ namespace Microsoft.Boogie.VCExprAST
     private LambdaInstanceCollector(QuantifierInstantiationEngine qiEngine)
     {
       this.qiEngine = qiEngine;
-      this.lambdaFunctions = new HashSet<Function>();
       this.instances = new HashSet<VCExprNAry>();
       this.instancesOnStack = new Stack<VCExprNAry>();
     }
 
     private QuantifierInstantiationEngine qiEngine;
-    private HashSet<Function> lambdaFunctions;
     private HashSet<VCExprNAry> instances;
     private Stack<VCExprNAry> instancesOnStack;
 
@@ -725,7 +725,6 @@ namespace Microsoft.Boogie.VCExprAST
         var function = functionOp.Func;
         if (function.OriginalLambdaExprAsString != null && qiEngine.BindLambdaFunction(function))
         {
-          lambdaFunctions.Add(function);
           instances.Add(node);
           instancesOnStack.Push(node);
           var retVal = base.Visit(node, arg);
