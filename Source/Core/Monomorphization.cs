@@ -308,7 +308,7 @@ namespace Microsoft.Boogie
     
     /*
      * This class monomorphizes a Boogie program. Monomorphization starts from
-     * a traversal of monomorphic procedures. Any polymorphic function or types
+     * a traversal of monomorphic procedures. Any polymorphic function or type
      * encountered is monomorphized based on actual type parameters. The body of
      * each encountered function is recursively traversed.
      *
