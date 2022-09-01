@@ -305,21 +305,22 @@ namespace Microsoft.Boogie
   class MonomorphizationVisitor : StandardVisitor
   {
     public CoreOptions Options { get; }
+    
     /*
-     * This class monomorphizes a Boogie program.
-     * Monomorphization starts from a traversal of monomorphic procedures.
-     * Any polymorphic functions and types encountered are monomorphized based on
-     * actual type parameters and then the bodies of those functions are recursively
-     * traversed.
+     * This class monomorphizes a Boogie program. Monomorphization starts from
+     * a traversal of monomorphic procedures. Any polymorphic function or types
+     * encountered is monomorphized based on actual type parameters. The body of
+     * each encountered function is recursively traversed.
      *
-     * If the program contains polymorphic procedures, a monomorphic version of the procedure
-     * is created by substituting a fresh uninterpreted type for each type parameter.
+     * If the program contains a polymorphic procedure, a monomorphic version of
+     * the procedure is created by substituting a fresh uninterpreted type for
+     * each type parameter.
      *
      * MonomorphizationVisitor uses a helper class MonomorphizationDuplicator.
      * While the former does in-place update as a result of monomorphization,
-     * the latter creates a duplicate copy.  MonomorphizationDuplicator is needed
+     * the latter creates a duplicate copy. MonomorphizationDuplicator is needed
      * because a polymorphic function, type, or procedure may be visited several
-     * types in different type contexts.
+     * times in different type contexts.
      */
     
     class MonomorphizationDuplicator : Duplicator
@@ -682,7 +683,6 @@ namespace Microsoft.Boogie
         {
           inlineAttr = impl.Proc.FindExprAttribute("inline");
         }
-
         return inlineAttr != null;
       }
 
@@ -726,7 +726,6 @@ namespace Microsoft.Boogie
         {
           node.Arguments[i] = (Type) this.Visit(node.Arguments[i]);
         }
-
         node.Result = (Type) this.Visit(node.Result);
         return node;
       }
@@ -1065,7 +1064,8 @@ namespace Microsoft.Boogie
   {
     public static MonomorphizableStatus Monomorphize(CoreOptions options, Program program)
     {
-      var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program, out var axiomsToBeInstantiated, out var polymorphicFunctionAxioms);
+      var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program, out var axiomsToBeInstantiated,
+        out var polymorphicFunctionAxioms);
       if (monomorphizableStatus == MonomorphizableStatus.Monomorphizable)
       {
         var monomorphizationVisitor = MonomorphizationVisitor.Initialize(options, program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
