@@ -169,7 +169,7 @@ namespace Microsoft.Boogie
       Contract.Requires(e1 != null);
       Contract.Requires(e0 != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      return Binary(Token.NoToken, op, e0, e1);
+      return Binary(e0.tok ?? Token.NoToken, op, e0, e1);
     }
 
     public static NAryExpr Eq(Expr e1, Expr e2)
