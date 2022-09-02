@@ -87,25 +87,6 @@ function {:inline} Vec_Concat<T>(v1: Vec T, v2: Vec T): Vec T {
 
 function {:inline} Vec_Slice<T>(v: Vec T, i: int, j: int): Vec T {
     (
-        Vec(
-            (lambda {:pool "Slice"} k: int ::
-                if (0 <= i && i < j && j <= len#Vec(v) && 0 <= k && k < j - i) then Vec_Nth(v, k + i)
-                else Default()),
-            if (0 <= i && i < j && j <= len#Vec(v)) then j - i else 0
-           )
-    )
-}
-
-/*
-// The current implementation of pool-based quantifier instantiation will 
-// not collect a lambda instance if the instance refers to a let-bound 
-// variable as in the alternative definition of Vec_Slice below.
-// This limitation is pervasive and may apply also to quantifiers that
-// occur in the definition of let-bound variables.
-// The solution is to detect that certain let-bindings are interfering 
-// with quantifier instantiation and inline them.
-function {:inline} Vec_Slice<T>(v: Vec T, i: int, j: int): Vec T {
-    (
         var cond := 0 <= i && i < j && j <= len#Vec(v);
         Vec(
             (lambda {:pool "Slice"} k: int ::
@@ -115,7 +96,6 @@ function {:inline} Vec_Slice<T>(v: Vec T, i: int, j: int): Vec T {
            )
     )
 }
-*/
 
 function {:inline} Vec_Swap<T>(v: Vec T, i: int, j: int): Vec T {
     (

@@ -263,7 +263,7 @@ namespace Microsoft.Boogie.SMTLib
     public override bool Visit(VCExprVar node, bool arg)
     {
       Contract.Requires(node != null);
-      if (!BoundTermVars.Contains(node) && !KnownVariables.Contains(node))
+      if (!BoundTermVars.ContainsKey(node) && !KnownVariables.Contains(node))
       {
         string printedName = Namer.GetQuotedName(node, node.Name);
         Contract.Assert(printedName != null);
