@@ -135,7 +135,7 @@ namespace Microsoft.Boogie
           {
             var newExpr = Substituter.ApplyReplacingOldExprs(subst, oldSubst, predCmd.Expr);
             AssertCmd assertCmd = new AssertCmd(predCmd.tok, newExpr, predCmd.Attributes);
-            assertCmd.ErrorData = "Non-interference check failed";
+            assertCmd.Description = new FailureOnlyDescription("Non-interference check failed");
             newCmds.Add(assertCmd);
           }
         }

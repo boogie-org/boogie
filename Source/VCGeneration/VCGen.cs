@@ -734,7 +734,6 @@ namespace VC
               }
 
               b.Attributes = c.Attributes;
-              b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsInit.Add(b);
 
               if (Options.ConcurrentHoudini)
@@ -755,7 +754,6 @@ namespace VC
               }
 
               b.Attributes = c.Attributes;
-              b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsMaintained.Add(b);
               header.Cmds[i] = new AssumeCmd(c.tok, c.Expr);
             }

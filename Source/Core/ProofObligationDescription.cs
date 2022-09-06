@@ -104,3 +104,19 @@ public class InvariantMaintainedDescription : AssertionDescription
 
   public override string ShortDescription => "invariant maintained";
 }
+
+public class FailureOnlyDescription : AssertionDescription
+{
+  public override string SuccessDescription =>
+    $"Error cannot occur: {errorMessage}";
+
+  public override string FailureDescription => errorMessage;
+
+  public override string ShortDescription => "assert";
+
+  private readonly string errorMessage;
+
+  public FailureOnlyDescription(string errorMessage) {
+    this.errorMessage = errorMessage;
+  }
+}

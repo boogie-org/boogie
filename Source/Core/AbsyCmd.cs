@@ -2723,7 +2723,7 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class ParCallCmd : CallCommonality, IPotentialErrorNode<object, object>
+  public class ParCallCmd : CallCommonality
   {
     public List<CallCmd> CallCmds;
 
@@ -2742,17 +2742,6 @@ namespace Microsoft.Boogie
     protected override Cmd ComputeDesugaring(PrintOptions options)
     {
       throw new NotImplementedException();
-    }
-
-    private object errorData;
-
-    // Note: the `Description` property should cover all the use cases
-    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
-    // eventually go away.
-    public object ErrorData
-    {
-      get { return errorData; }
-      set { errorData = value; }
     }
 
     public ProofObligationDescription Description { get; set; } = new PreconditionDescription();
@@ -2902,7 +2891,7 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class CallCmd : CallCommonality, IPotentialErrorNode<object, object>
+  public class CallCmd : CallCommonality
   {
     public string /*!*/ callee { get; set; }
     public Procedure Proc;
@@ -2929,18 +2918,6 @@ namespace Microsoft.Boogie
     // The instantiation of type parameters that is determined during
     // type checking
     public TypeParamInstantiation TypeParameters = null;
-
-    // TODO: convert to use generics
-    private object errorData;
-
-    // Note: the `Description` property should cover all the use cases
-    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
-    // eventually go away.
-    public object ErrorData
-    {
-      get { return errorData; }
-      set { errorData = value; }
-    }
 
     public ProofObligationDescription Description { get; set; } = new PreconditionDescription();
 
@@ -3803,7 +3780,7 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class AssertCmd : PredicateCmd, IPotentialErrorNode<object, object>
+  public class AssertCmd : PredicateCmd
   {
     public Expr OrigExpr;
     public Dictionary<Variable, Expr> IncarnationMap;
@@ -3828,18 +3805,6 @@ namespace Microsoft.Boogie
     {
       Attributes = new QKeyValue(tok, "verified_under", new List<object> {expr}, Attributes);
       verifiedUnder = expr;
-    }
-
-    // TODO: convert to use generics
-    private object errorData;
-
-    // Note: the `Description` property should cover all the use cases
-    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
-    // eventually go away.
-    public object ErrorData
-    {
-      get { return errorData; }
-      set { errorData = value; }
     }
 
     public ProofObligationDescription Description { get; set; }

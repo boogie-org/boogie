@@ -128,7 +128,7 @@ namespace Microsoft.Boogie
     public static AssertCmd AssertCmd(IToken tok, Expr expr, string msg)
     {
       return new AssertCmd(tok, expr)
-        { ErrorData = msg };
+        { Description = new FailureOnlyDescription(msg) };
     }
 
     public static AssignCmd AssignCmd(Variable v, Expr x)

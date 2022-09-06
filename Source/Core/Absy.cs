@@ -273,16 +273,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  public interface IPotentialErrorNode<out TGet>
-  {
-    TGet ErrorData { get; }
-  }
-
-  public interface IPotentialErrorNode<out TGet, in TSet> : IPotentialErrorNode<TGet>
-  {
-    new TSet ErrorData { set; }
-  }
-
   public class Program : Absy
   {
     [ContractInvariantMethod]
@@ -3037,7 +3027,7 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class Requires : Absy, ICarriesAttributes, IPotentialErrorNode<string, string>
+  public class Requires : Absy, ICarriesAttributes
   {
     public readonly bool Free;
 
@@ -3067,20 +3057,6 @@ namespace Microsoft.Boogie
     {
       Contract.Invariant(this._condition != null);
     }
-
-
-    // TODO: convert to use generics
-    private string errorData;
-
-    // Note: the `Description` property should cover all the use cases
-    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
-    // eventually go away.
-    public string ErrorData
-    {
-      get { return errorData; }
-      set { errorData = value; }
-    }
-
 
     private MiningStrategy errorDataEnhanced;
 
@@ -3173,7 +3149,7 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class Ensures : Absy, ICarriesAttributes, IPotentialErrorNode<string, string>
+  public class Ensures : Absy, ICarriesAttributes
   {
     public readonly bool Free;
 
@@ -3203,18 +3179,6 @@ namespace Microsoft.Boogie
     }
 
     public string Comment;
-
-    // TODO: convert to use generics
-    private string errorData;
-
-    // Note: the `Description` property should cover all the use cases
-    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
-    // eventually go away.
-    public string ErrorData
-    {
-      get { return errorData; }
-      set { errorData = value; }
-    }
 
     private MiningStrategy errorDataEnhanced;
 
