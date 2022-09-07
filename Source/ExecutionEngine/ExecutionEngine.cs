@@ -1086,16 +1086,13 @@ namespace Microsoft.Boogie
                 string msg = null;
                 if (callError != null) {
                   tok = callError.FailingCall.tok;
-                  msg = callError.FailingCall.ErrorData as string ??
-                        callError.FailingCall.Description.FailureDescription;
+                  msg = callError.FailingCall.Description.FailureDescription;
                 } else if (returnError != null) {
                   tok = returnError.FailingReturn.tok;
                   msg = returnError.FailingReturn.Description.FailureDescription;
                 } else {
                   tok = assertError.FailingAssert.tok;
-                  if (assertError.FailingAssert.ErrorMessage == null || options.ForceBplErrors) {
-                    msg = assertError.FailingAssert.ErrorData as string;
-                  } else {
+                  if (!(assertError.FailingAssert.ErrorMessage == null || options.ForceBplErrors)) {
                     msg = assertError.FailingAssert.ErrorMessage;
                   }
 

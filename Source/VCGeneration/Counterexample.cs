@@ -403,11 +403,11 @@ namespace Microsoft.Boogie
       {
         if (callError.FailingRequires.ErrorMessage == null || forceBplErrors)
         {
-          string msg = callError.FailingCall.ErrorData as string ?? callError.FailingCall.Description.FailureDescription;
+          string msg = callError.FailingCall.Description.FailureDescription;
           errorInfo = ErrorInformation.Create(callError.FailingCall.tok, msg, cause);
           errorInfo.Kind = ErrorKind.Precondition;
           errorInfo.AddAuxInfo(callError.FailingRequires.tok,
-            callError.FailingRequires.ErrorData as string ?? callError.FailingRequires.Description.FailureDescription,
+            callError.FailingRequires.Description.FailureDescription,
             "Related location");
         }
         else
@@ -422,7 +422,7 @@ namespace Microsoft.Boogie
           errorInfo = ErrorInformation.Create(returnError.FailingReturn.tok, returnError.FailingReturn.Description.FailureDescription, cause);
           errorInfo.Kind = ErrorKind.Postcondition;
           errorInfo.AddAuxInfo(returnError.FailingEnsures.tok,
-            returnError.FailingEnsures.ErrorData as string ?? returnError.FailingEnsures.Description.FailureDescription,
+            returnError.FailingEnsures.Description.FailureDescription,
             "Related location");
         }
         else
@@ -440,11 +440,7 @@ namespace Microsoft.Boogie
           errorInfo.Kind = failingAssert is LoopInitAssertCmd ?
             ErrorKind.InvariantEntry : ErrorKind.InvariantMaintainance;
           string relatedMessage = null;
-          if (failingAssert.ErrorData is string)
-          {
-            relatedMessage = failingAssert.ErrorData as string;
-          }
-          else if (failingAssert is LoopInitAssertCmd initCmd)
+          if (failingAssert is LoopInitAssertCmd initCmd)
           {
             var desc = initCmd.originalAssert.Description;
             if (desc is not AssertionDescription)
@@ -469,8 +465,7 @@ namespace Microsoft.Boogie
         {
           if (failingAssert.ErrorMessage == null || forceBplErrors)
           {
-            string msg = failingAssert.ErrorData as string ??
-                         failingAssert.Description.FailureDescription;
+            string msg = failingAssert.Description.FailureDescription;
             errorInfo = ErrorInformation.Create(failingAssert.tok, msg, cause);
             errorInfo.Kind = ErrorKind.Assertion;
           }
@@ -527,13 +522,12 @@ namespace Microsoft.Boogie
           return c;
         }
 
-        // TODO(wuestholz): Generalize this to compare all IPotentialErrorNodes of the counterexample.
+        // TODO(wuestholz): Generalize this to compare all Descriptions of the counterexample.
         var a1 = c1 as AssertCounterexample;
         var a2 = c2 as AssertCounterexample;
-        if (a1 != null && a2 != null)
-        {
-          var s1 = a1.FailingAssert.ErrorData as string;
-          var s2 = a2.FailingAssert.ErrorData as string;
+        if (a1 != null && a2 != null) {
+          var s1 = a1.FailingAssert.Description?.FailureDescription;
+          var s2 = a2.FailingAssert.Description?.FailureDescription;
           if (s1 != null && s2 != null)
           {
             return s1.CompareTo(s2);

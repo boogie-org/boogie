@@ -171,7 +171,7 @@ namespace Microsoft.Boogie
             subst != null
           ? (AssertCmd) Substituter.Apply(subst, gate)
           : new AssertCmd(gate.tok, gate.Expr);
-        cmd.ErrorData = msg;
+        cmd.Description = new FailureOnlyDescription(msg);
         yield return cmd;
       }
     }
