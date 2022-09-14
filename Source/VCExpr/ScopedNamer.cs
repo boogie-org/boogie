@@ -174,7 +174,7 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       var uniqueInherentName = NextFreeName(thing, inherentName);
-      if (thing is DatatypeConstructor || thing is DatatypeMembership || thing is DatatypeSelector)
+      if (thing is NamedDeclaration namedDeclaration && !namedDeclaration.MayRename)
       {
         result = uniqueInherentName;
       }

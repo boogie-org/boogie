@@ -1288,14 +1288,7 @@ namespace Microsoft.Boogie
 
   public abstract class NamedDeclaration : Declaration
   {
-    private string /*!*/
-      name;
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(name != null);
-    }
+    private string name;
 
     // A name for a declaration that may be more verbose than, and use
     // characters not allowed by, standard Boogie identifiers. This can
@@ -1304,19 +1297,10 @@ namespace Microsoft.Boogie
     public string VerboseName =>
       QKeyValue.FindStringAttribute(Attributes, "verboseName") ?? Name;
 
-    public string /*!*/ Name
+    public string Name
     {
-      get
-      {
-        Contract.Ensures(Contract.Result<string>() != null);
-
-        return this.name;
-      }
-      set
-      {
-        Contract.Requires(value != null);
-        this.name = value;
-      }
+      get => this.name;
+      set => this.name = value;
     }
 
     public uint GetTimeLimit(CoreOptions options)
@@ -1326,7 +1310,6 @@ namespace Microsoft.Boogie
       if (tl < 0) {
         tl = options.TimeLimit;
       }
-
       return tl;
     }
 
@@ -1337,7 +1320,6 @@ namespace Microsoft.Boogie
       if (rl < 0) {
         rl = options.ResourceLimit;
       }
-
       return rl;
     }
 
@@ -1354,20 +1336,19 @@ namespace Microsoft.Boogie
       }
     }
 
-    public NamedDeclaration(IToken /*!*/ tok, string /*!*/ name)
+    public NamedDeclaration(IToken tok, string name)
       : base(tok)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(name != null);
       this.name = name;
     }
 
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
       return cce.NonNull(Name);
     }
+    
+    public virtual bool MayRename => true;
   }
 
   public class TypeCtorDecl : NamedDeclaration
@@ -2634,7 +2615,9 @@ namespace Microsoft.Boogie
       selectors.Add(selector);
       this.datatypeTypeCtorDecl.AddSelector(selector);
     }
-  }
+
+    public override bool MayRename => false;
+}
 
   public class DatatypeSelector : Function
   {
@@ -2668,6 +2651,8 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter stream, int level)
     {
     }
+    
+    public override bool MayRename => false;
   }
 
   public class DatatypeMembership : Function
@@ -2698,6 +2683,8 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter stream, int level)
     {
     }
+    
+    public override bool MayRename => false;
   }
 
   public class Function : DeclWithFormals
