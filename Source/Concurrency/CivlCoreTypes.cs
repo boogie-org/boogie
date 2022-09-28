@@ -80,7 +80,7 @@ namespace Microsoft.Boogie
     public HashSet<Variable> actionUsedGlobalVars;
     public HashSet<Variable> modifiedGlobalVars;
 
-    protected Action(Procedure proc, Implementation impl, LayerRange layerRange)
+    protected Action(Procedure proc, Implementation impl, LayerRange layerRange, LinearRewriter linearRewriter)
     {
       this.proc = proc;
       this.impl = impl;
@@ -99,7 +99,7 @@ namespace Microsoft.Boogie
         impl.OutParams[i].Attributes = proc.OutParams[i].Attributes;
       }
       
-      gate = HoistAsserts(impl);
+      gate = HoistAsserts(impl, linearRewriter);
       gateUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(gate).Where(x => x is GlobalVariable));
       actionUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(impl).Where(x => x is GlobalVariable));
       modifiedGlobalVars = new HashSet<Variable>(AssignedVariables().Where(x => x is GlobalVariable));
@@ -127,7 +127,7 @@ namespace Microsoft.Boogie
      * reverse order, thus ensuring that a block is processed only once the wlp
      * of all its successors has been computed.
      */
-    private static List<AssertCmd> HoistAsserts(Implementation impl)
+    private static List<AssertCmd> HoistAsserts(Implementation impl, LinearRewriter linearRewriter)
     {
       Dictionary<Block, List<AssertCmd>> wlps = new Dictionary<Block, List<AssertCmd>>();
       Graph<Block> dag = Program.GraphFromBlocks(impl.Blocks, false);
@@ -135,13 +135,13 @@ namespace Microsoft.Boogie
       {
         if (block.TransferCmd is ReturnCmd)
         {
-          var wlp = HoistAsserts(block, new List<AssertCmd>());
+          var wlp = HoistAsserts(block, new List<AssertCmd>(), linearRewriter);
           wlps.Add(block, wlp);
         }
         else if (block.TransferCmd is GotoCmd gotoCmd)
         {
           var wlp =
-            HoistAsserts(block, gotoCmd.labelTargets.SelectMany(b => wlps[b]).ToList());
+            HoistAsserts(block, gotoCmd.labelTargets.SelectMany(b => wlps[b]).ToList(), linearRewriter);
           wlps.Add(block, wlp);
         }
         else
@@ -152,8 +152,9 @@ namespace Microsoft.Boogie
       return wlps[impl.Blocks[0]].Select(assertCmd => Forall(impl.LocVars.Union(impl.OutParams), assertCmd)).ToList();
     }
 
-    private static List<AssertCmd> HoistAsserts(Block block, List<AssertCmd> postconditions)
+    private static List<AssertCmd> HoistAsserts(Block block, List<AssertCmd> postconditions, LinearRewriter linearRewriter)
     {
+      block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds);
       for (int i = block.Cmds.Count - 1; i >= 0; i--)
       {
         var cmd = block.Cmds[i];
@@ -211,8 +212,8 @@ namespace Microsoft.Boogie
 
   public class IntroductionAction : Action
   {
-    public IntroductionAction(Procedure proc, Implementation impl, LayerRange layerRange) :
-      base(proc, impl, layerRange)
+    public IntroductionAction(Procedure proc, Implementation impl, LayerRange layerRange, LinearRewriter linearRewriter) :
+      base(proc, impl, layerRange, linearRewriter)
     {
     }
 
@@ -237,8 +238,8 @@ namespace Microsoft.Boogie
     public Dictionary<Variable, Function> triggerFunctions;
 
     public AtomicAction(Procedure proc, Implementation impl, LayerRange layerRange,
-      MoverType moverType, ConcurrencyOptions options) :
-      base(proc, impl, layerRange)
+      MoverType moverType, ConcurrencyOptions options, LinearRewriter linearRewriter) :
+      base(proc, impl, layerRange, linearRewriter)
     {
       this.moverType = moverType;
       this.options = options;

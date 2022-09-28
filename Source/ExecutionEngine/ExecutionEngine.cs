@@ -144,7 +144,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      CivlVCGeneration.Transform(Options, civlTypeChecker);
+      CivlRewriter.Transform(Options, civlTypeChecker);
       if (Options.CivlDesugaredFile != null) {
         int oldPrintUnstructured = Options.PrintUnstructured;
         Options.PrintUnstructured = 1;

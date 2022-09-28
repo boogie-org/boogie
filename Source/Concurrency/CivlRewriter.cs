@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Microsoft.Boogie
 {
-  public class CivlVCGeneration
+  public class CivlRewriter
   {
     public static void Transform(ConcurrencyOptions options, CivlTypeChecker civlTypeChecker)
     {

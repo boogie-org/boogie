@@ -406,7 +406,7 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<AssignLhs>() != null);
       FieldAssignLhs clone = (FieldAssignLhs) node.Clone();
-      return base.VisitFieldAssignLhs(node);
+      return base.VisitFieldAssignLhs(clone);
     }
 
     public override MapType VisitMapType(MapType node)

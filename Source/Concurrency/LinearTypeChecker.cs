@@ -53,21 +53,21 @@ namespace Microsoft.Boogie
       this.mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> {this.permissionType},
         Type.Int);
 
-      this.mapConstBool = program.monomorphizer.Monomorphize("MapConst",
+      this.mapConstBool = program.monomorphizer.InstantiateFunction("MapConst",
         new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Bool} });
-      this.mapConstInt = program.monomorphizer.Monomorphize("MapConst",
+      this.mapConstInt = program.monomorphizer.InstantiateFunction("MapConst",
         new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
-      this.mapOr = program.monomorphizer.Monomorphize("MapOr",
+      this.mapOr = program.monomorphizer.InstantiateFunction("MapOr",
         new Dictionary<string, Type>() { {"T", permissionType} });
-      this.mapImp = program.monomorphizer.Monomorphize("MapImp",
+      this.mapImp = program.monomorphizer.InstantiateFunction("MapImp",
         new Dictionary<string, Type>() { {"T", permissionType} });
-      this.mapEqInt = program.monomorphizer.Monomorphize("MapEq",
+      this.mapEqInt = program.monomorphizer.InstantiateFunction("MapEq",
         new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
-      this.mapAdd = program.monomorphizer.Monomorphize("MapAdd",
+      this.mapAdd = program.monomorphizer.InstantiateFunction("MapAdd",
         new Dictionary<string, Type>() { {"T", permissionType} });
-      this.mapIteInt = program.monomorphizer.Monomorphize("MapIte",
+      this.mapIteInt = program.monomorphizer.InstantiateFunction("MapIte",
         new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
-      this.mapLe = program.monomorphizer.Monomorphize("MapLe",
+      this.mapLe = program.monomorphizer.InstantiateFunction("MapLe",
         new Dictionary<string, Type>() { {"T", permissionType} });
     }
 
@@ -307,13 +307,13 @@ namespace Microsoft.Boogie
           {
             // add unit collector
             domainNameToCollectors[domainName][variableType] =
-              program.monomorphizer.Monomorphize("MapUnit", new Dictionary<string, Type>() { {"T", variableType} });
+              program.monomorphizer.InstantiateFunction("MapUnit", new Dictionary<string, Type>() { {"T", variableType} });
           }
           else if (variableType.Equals(new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type>{permissionType}, Type.Bool)))
           {
             // add identity collector
             domainNameToCollectors[domainName][variableType] =
-              program.monomorphizer.Monomorphize("Id", new Dictionary<string, Type>() { {"T", variableType} });
+              program.monomorphizer.InstantiateFunction("Id", new Dictionary<string, Type>() { {"T", variableType} });
           }
           else
           {
