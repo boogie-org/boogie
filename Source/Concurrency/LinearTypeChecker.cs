@@ -950,7 +950,6 @@ namespace Microsoft.Boogie
       foreach (Variable v in scope)
       {
         Expr expr = ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v));
-        CivlUtil.ResolveAndTypecheck(Options, expr);
         yield return expr;
       }
     }
@@ -974,8 +973,7 @@ namespace Microsoft.Boogie
 
         expr = ExprHelper.ExistsExpr(new List<Variable> {partition}, Expr.And(subsetExprs));
       }
-
-      CivlUtil.ResolveAndTypecheck(Options, expr);
+      
       return expr;
     }
 
@@ -987,8 +985,7 @@ namespace Microsoft.Boogie
       {
         expr = ExprHelper.FunctionCall(domain.mapOr, e, expr);
       }
-
-      CivlUtil.ResolveAndTypecheck(Options, expr);
+      
       return expr;
     }
 
@@ -1222,6 +1219,7 @@ namespace Microsoft.Boogie
         }
       }
 
+      // These expressions must be typechecked since the types are needed later in PermissionMultiset.
       CivlUtil.ResolveAndTypecheck(Options, pendingAsyncLinearParams);
       
       return pendingAsyncLinearParams;

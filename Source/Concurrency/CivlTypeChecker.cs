@@ -100,7 +100,7 @@ namespace Microsoft.Boogie
         new List<Variable>(),
         new List<Variable>(),
         new List<Block> {BlockHelper.Block("init", new List<Cmd>())});
-      SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both, Options, linearRewriter);
+      SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both, Options);
     }
 
     public string AddNamePrefix(string name)
@@ -365,14 +365,15 @@ namespace Microsoft.Boogie
       foreach (var proc in actionProcs)
       {
         Implementation impl = actionProcToImpl[proc];
+        impl.Blocks.Iter(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
         LayerRange layerRange = actionProcToLayerRange[proc];
         if (proc.HasAttribute(CivlAttributes.INTRO))
         {
-          procToIntroductionAction[proc] = new IntroductionAction(proc, impl, layerRange, linearRewriter);
+          procToIntroductionAction[proc] = new IntroductionAction(proc, impl, layerRange);
         }
         else
         {
-          var action = new AtomicAction(proc, impl, layerRange, GetActionMoverType(proc), Options, linearRewriter);
+          var action = new AtomicAction(proc, impl, layerRange, GetActionMoverType(proc), Options);
           if (proc.HasAttribute(CivlAttributes.IS_INVARIANT))
           {
             procToIsInvariant[proc] = action;
