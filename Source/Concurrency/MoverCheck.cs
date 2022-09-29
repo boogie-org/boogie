@@ -178,7 +178,7 @@ namespace Microsoft.Boogie
       };
       foreach (var lemma in civlTypeChecker.commutativityHints.GetLemmas(first, second))
       {
-        cmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(Options, lemma.function, lemma.args.ToArray())));
+        cmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(lemma.function, lemma.args.ToArray())));
       }
       cmds.Add(commutativityCheck);
 

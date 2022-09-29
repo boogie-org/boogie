@@ -535,7 +535,7 @@ namespace Microsoft.Boogie
 
       if (SummaryHasPendingAsyncParam)
       {
-        var collectedUnionReturned = ExprHelper.FunctionCall(Options, civlTypeChecker.pendingAsyncAdd,
+        var collectedUnionReturned = ExprHelper.FunctionCall(civlTypeChecker.pendingAsyncAdd,
           Expr.Ident(CollectedPAs), Expr.Ident(ReturnedPAs));
         newCmdSeq.Add(CmdHelper.AssignCmd(CollectedPAs, collectedUnionReturned));
       }
@@ -616,7 +616,7 @@ namespace Microsoft.Boogie
           }
         }
 
-        var pa = ExprHelper.FunctionCall(Options, paAction.pendingAsyncCtor, newIns);
+        var pa = ExprHelper.FunctionCall(paAction.pendingAsyncCtor, newIns);
         var inc = Expr.Add(Expr.Select(Expr.Ident(CollectedPAs), pa), Expr.Literal(1));
         var add = CmdHelper.AssignCmd(CollectedPAs, Expr.Store(Expr.Ident(CollectedPAs), pa, inc));
         newCmdSeq.Add(add);

@@ -22,7 +22,7 @@ namespace Microsoft.Boogie
           Expr.Imp(
             Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0)),
             Expr.Or(action.pendingAsyncs.Select(a =>
-              ExprHelper.FunctionCall(civlTypeChecker.Options, a.pendingAsyncCtor.membership, pa)))));
+              ExprHelper.FunctionCall(a.pendingAsyncCtor.membership, pa)))));
 
         CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, nonnegativeExpr);
         CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, correctTypeExpr);
