@@ -289,7 +289,7 @@ namespace Microsoft.Boogie
       {
         var f = triggerFunctions[v];
         program.AddTopLevelDeclaration(f);
-        var assume = CmdHelper.AssumeCmd(ExprHelper.FunctionCall(options, f, Expr.Ident(v)));
+        var assume = CmdHelper.AssumeCmd(ExprHelper.FunctionCall(f, Expr.Ident(v)));
         impl.Blocks[0].Cmds.Insert(0, assume);
       }
     }

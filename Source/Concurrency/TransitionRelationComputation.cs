@@ -437,7 +437,7 @@ namespace Microsoft.Boogie
               if (v == varCopies[orig].First() && trc.triggers.ContainsKey(orig))
               {
                 var f = trc.triggers[orig];
-                exprs.Add(ExprHelper.FunctionCall(Options, f, Expr.Ident(existsVarMap[v])));
+                exprs.Add(ExprHelper.FunctionCall(f, Expr.Ident(existsVarMap[v])));
               }
             }
 
@@ -535,7 +535,7 @@ namespace Microsoft.Boogie
             Enumerable.Zip(varToWitnesses.Keys, witnessSet, Tuple.Create))
           {
             CommutativityWitness witness = pair.Item2;
-            witnessSubst[pair.Item1] = ExprHelper.FunctionCall(Options,
+            witnessSubst[pair.Item1] = ExprHelper.FunctionCall(
               witness.function, witness.args.ToArray()
             );
           }
