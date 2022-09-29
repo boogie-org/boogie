@@ -1,5 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
 
 namespace Microsoft.Boogie
@@ -63,6 +63,16 @@ namespace Microsoft.Boogie
       expr.Resolve(rc);
       expr.Typecheck(new TypecheckingContext(null, options));
       return expr;
+    }
+
+    public static NAryExpr FunctionCall(Function f, params Expr[] args)
+    {
+      return new NAryExpr(Token.NoToken, new FunctionCall(f), args);
+    }
+    
+    public static NAryExpr FieldAccess(Expr path, string fieldName)
+    {
+      return new NAryExpr(Token.NoToken, new FieldAccess(Token.NoToken, fieldName), new Expr[] { path });
     }
 
     public static NAryExpr IfThenElse(Expr ifExpr, Expr thenExpr, Expr elseExpr)
@@ -131,9 +141,58 @@ namespace Microsoft.Boogie
         { Description = new FailureOnlyDescription(msg) };
     }
 
+    public static SimpleAssignLhs SimpleAssignLhs(Variable v)
+    {
+      return new SimpleAssignLhs(Token.NoToken, Expr.Ident(v));
+    }
+
+    public static FieldAssignLhs FieldAssignLhs(AssignLhs path, string fieldName)
+    {
+      return new FieldAssignLhs(Token.NoToken, path, new FieldAccess(Token.NoToken, fieldName));
+    }
+    
+    public static FieldAssignLhs FieldAssignLhs(Expr path, string fieldName)
+    {
+      return new FieldAssignLhs(Token.NoToken, ExprToAssignLhs(path), new FieldAccess(Token.NoToken, fieldName));
+    }
+    
+    public static MapAssignLhs MapAssignLhs(AssignLhs path, List<Expr> args)
+    {
+      return new MapAssignLhs(Token.NoToken, path, args);
+    }
+    
+    public static MapAssignLhs MapAssignLhs(Expr path, List<Expr> args)
+    {
+      return new MapAssignLhs(Token.NoToken, ExprToAssignLhs(path), args);
+    }
+    
+    public static AssignLhs ExprToAssignLhs(Expr e)
+    {
+      if (e is IdentifierExpr ie)
+      {
+        return SimpleAssignLhs(ie.Decl);
+      }
+      var naryExpr = (NAryExpr)e;
+      if (naryExpr.Fun is FieldAccess fieldAccess)
+      {
+        return FieldAssignLhs(naryExpr.Args[0], fieldAccess.FieldName);
+      }
+      if (naryExpr.Fun is MapSelect)
+      {
+        return MapAssignLhs(naryExpr.Args[0], naryExpr.Args.ToList().GetRange(1, naryExpr.Args.Count - 1));
+      }
+      Contract.Assume(false, "Unexpected expression");
+      return null;
+    }
+    
     public static AssignCmd AssignCmd(Variable v, Expr x)
     {
-      var lhs = new SimpleAssignLhs(Token.NoToken, Expr.Ident(v));
+      var lhs = SimpleAssignLhs(v);
+      return new AssignCmd(Token.NoToken, new List<AssignLhs> {lhs}, new List<Expr> {x});
+    }
+
+    public static AssignCmd AssignCmd(AssignLhs lhs, Expr x)
+    {
       return new AssignCmd(Token.NoToken, new List<AssignLhs> {lhs}, new List<Expr> {x});
     }
 

@@ -44,6 +44,7 @@ namespace Microsoft.Boogie
     public List<int> allRefinementLayers;
     public IEnumerable<Variable> GlobalVariables => globalVarToLayerRange.Keys;
 
+    public LinearRewriter linearRewriter;
     public LinearTypeChecker linearTypeChecker;
 
     public AtomicAction SkipAtomicAction;
@@ -53,6 +54,7 @@ namespace Microsoft.Boogie
       this.checkingContext = new CheckingContext(null);
       this.program = program;
       this.Options = options;
+      this.linearRewriter = new LinearRewriter(options, program.monomorphizer);
       this.linearTypeChecker = new LinearTypeChecker(this);
 
       this.globalVarToLayerRange = new Dictionary<Variable, LayerRange>();
@@ -98,7 +100,7 @@ namespace Microsoft.Boogie
         new List<Variable>(),
         new List<Variable>(),
         new List<Block> {BlockHelper.Block("init", new List<Cmd>())});
-      SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both, Options);
+      SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both, Options, linearRewriter);
     }
 
     public string AddNamePrefix(string name)
@@ -366,11 +368,11 @@ namespace Microsoft.Boogie
         LayerRange layerRange = actionProcToLayerRange[proc];
         if (proc.HasAttribute(CivlAttributes.INTRO))
         {
-          procToIntroductionAction[proc] = new IntroductionAction(proc, impl, layerRange);
+          procToIntroductionAction[proc] = new IntroductionAction(proc, impl, layerRange, linearRewriter);
         }
         else
         {
-          var action = new AtomicAction(proc, impl, layerRange, GetActionMoverType(proc), Options);
+          var action = new AtomicAction(proc, impl, layerRange, GetActionMoverType(proc), Options, linearRewriter);
           if (proc.HasAttribute(CivlAttributes.IS_INVARIANT))
           {
             procToIsInvariant[proc] = action;
@@ -995,7 +997,7 @@ namespace Microsoft.Boogie
 
       if (pendingAsyncType != null)
       {
-        pendingAsyncAdd = program.monomorphizer.Monomorphize("MapAdd",
+        pendingAsyncAdd = program.monomorphizer.InstantiateFunction("MapAdd",
           new Dictionary<string, Type>() { {"T", pendingAsyncType} });
 
         var pendingAsyncDatatypeTypeCtorDecl = pendingAsyncType.Decl as DatatypeTypeCtorDecl;
@@ -1442,7 +1444,11 @@ namespace Microsoft.Boogie
 
       public override Cmd VisitCallCmd(CallCmd node)
       {
-        if (!actionProcToLayerRange.ContainsKey(node.Proc))
+        if (civlTypeChecker.linearRewriter.IsPrimitive(node.Proc))
+        {
+          // Linear primitives may be called 
+        }
+        else if (!actionProcToLayerRange.ContainsKey(node.Proc))
         {
           civlTypeChecker.Error(node, "An atomic action can only call other atomic actions");
         }

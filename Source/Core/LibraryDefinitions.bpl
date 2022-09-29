@@ -12,6 +12,10 @@ function {:inline} MapDiff<T>(a: [T]bool, b: [T]bool) : [T]bool
 {
   MapAnd(a, MapNot(b))
 }
+function {:inline} MapOne<T>(a: T) : [T]bool
+{
+  MapConst(false)[a := true]
+}
 
 function {:builtin "MapAdd"} MapAdd<T>([T]int, [T]int) : [T]int;
 function {:builtin "MapSub"} MapSub<T>([T]int, [T]int) : [T]int;
@@ -123,3 +127,40 @@ function {:builtin "seq.++"} Seq_Concat<T>(a: Seq T, b: Seq T): Seq T;
 function {:builtin "seq.unit"} Seq_Unit<T>(v: T): Seq T;
 function {:builtin "seq.nth"} Seq_Nth<T>(a: Seq T, i: int): T;
 function {:builtin "seq.extract"} Seq_Extract<T>(a: Seq T, pos: int, length: int): Seq T;
+
+/// linear maps
+type Ref _;
+type {:datatype} Lmap _;
+function {:constructor} Lmap<V>(dom: [Ref V]bool, val: [Ref V]V): Lmap V;
+
+function {:inline} Lmap_Deref<V>(l: Lmap V, k: Ref V): V {
+    val#Lmap(l)[k]
+}
+function {:inline} Lmap_Contains<V>(l: Lmap V, k: Ref V): bool {
+    dom#Lmap(l)[k]
+}
+procedure Lmap_Empty<V>() returns (l: Lmap V);
+procedure Lmap_Split<V>(path: Lmap V, k: [Ref V]bool) returns (l: Lmap V);
+procedure Lmap_Transfer<V>(path1: Lmap V, path2: Lmap V);
+procedure Lmap_Read<V>(path: Lmap V, k: Ref V) returns (v: V);
+procedure Lmap_Write<V>(path: Lmap V, k: Ref V, v: V);
+procedure Lmap_Add<V>(path: Lmap V, v: V) returns (k: Ref V);
+procedure Lmap_Remove<V>(path: Lmap V, k: Ref V) returns (v: V);
+
+/// linear sets
+type {:datatype} Lset _;
+function {:constructor} Lset<V>(dom: [V]bool): Lset V;
+
+function {:inline} Lset_Contains<V>(l: Lset V, k: V): bool {
+    dom#Lset(l)[k]
+}
+procedure Lset_Empty<V>() returns (l: Lset V);
+procedure Lset_Split<V>(path: Lset V, k: [V]bool) returns (l: Lset V);
+procedure Lset_Transfer<V>(path1: Lset V, path2: Lset V);
+
+/// linear vals
+type {:datatype} Lval _;
+function {:constructor} Lval<V>(val: V): Lval V;
+
+procedure Lval_Split<V>(path: Lset V, k: V) returns (l: Lval V);
+procedure Lval_Transfer<V>(l: Lval V, path: Lset V);
