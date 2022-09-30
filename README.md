@@ -112,7 +112,7 @@ To push a new version to nuget, perform the following steps:
 - `git push origin master:release-vx.y.z` to push your change in a separate branch, where `origin` normally denotes the remote on github.com
 - [Create a pull request](https://github.com/boogie-org/boogie/compare) and wait for it to be approved and merged
 - `git tag vx.y.z` to create a local tag for the version
-- `git push vx.y.z` to push the tag once the pull request is merged
+- `git push origin vx.y.z` to push the tag once the pull request is merged
 
 The [CI workflow](.github/workflows/test.yml) will build and push the packages.
 
