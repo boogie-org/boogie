@@ -4040,7 +4040,7 @@ namespace Microsoft.Boogie
         stream.Write("(");
       }
       cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
-      stream.Write("is {0}", ConstructorName);
+      stream.Write(" is {0}", ConstructorName);
       if (parensNeeded)
       {
         stream.Write(")");
