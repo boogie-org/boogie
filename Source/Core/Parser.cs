@@ -1697,11 +1697,11 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			UnaryExpression(out e);
 			e = Expr.Unary(x, UnaryOperator.Opcode.Not, e); 
 		} else if (StartOf(15)) {
-			ArrayExpression(out e);
-			IsConstructor(out x, out isConstructor);
-			e = new NAryExpr(x, isConstructor, new List<Expr> { e }); 
-		} else if (StartOf(15)) {
 			CoercionExpression(out e);
+			if (la.val == "is") {
+				IsConstructor(out x, out isConstructor);
+				e = new NAryExpr(x, isConstructor, new List<Expr> { e }); 
+			}
 		} else SynErr(135);
 	}
 
@@ -1711,6 +1711,39 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else if (la.kind == 84) {
 			Get();
 		} else SynErr(136);
+	}
+
+	void CoercionExpression(out Expr/*!*/ e) {
+		Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
+		Bpl.Type/*!*/ coercedTo;
+		BigNum bn;
+		
+		ArrayExpression(out e);
+		while (la.kind == 12) {
+			Get();
+			x = t; 
+			if (StartOf(6)) {
+				Type(out coercedTo);
+				e = Expr.CoerceType(x, e, coercedTo); 
+			} else if (la.kind == 3) {
+				Nat(out bn);
+				if (!(e is LiteralExpr) || !((LiteralExpr)e).isBigNum) {
+				 this.SemErr("arguments of extract need to be integer literals");
+				 e = new BvBounds(x, bn, BigNum.ZERO);
+				} else {
+				 e = new BvBounds(x, bn, ((LiteralExpr)e).asBigNum);
+				}
+				
+			} else SynErr(137);
+		}
+	}
+
+	void IsConstructor(out IToken x, out IsConstructor isConstructor) {
+		Contract.Ensures(Contract.ValueAtReturn(out isConstructor) != null); IToken id; 
+		Expect(85);
+		x = t; 
+		Ident(out id);
+		isConstructor = new IsConstructor(id, id.val); 
 	}
 
 	void ArrayExpression(out Expr/*!*/ e) {
@@ -1772,39 +1805,6 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				FieldAccess(out x, out fieldAccess);
 				e = new NAryExpr(x, fieldAccess, new List<Expr> { e }); 
 			}
-		}
-	}
-
-	void IsConstructor(out IToken x, out IsConstructor isConstructor) {
-		Contract.Ensures(Contract.ValueAtReturn(out isConstructor) != null); IToken id; 
-		Expect(85);
-		x = t; 
-		Ident(out id);
-		isConstructor = new IsConstructor(id, id.val); 
-	}
-
-	void CoercionExpression(out Expr/*!*/ e) {
-		Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
-		Bpl.Type/*!*/ coercedTo;
-		BigNum bn;
-		
-		ArrayExpression(out e);
-		while (la.kind == 12) {
-			Get();
-			x = t; 
-			if (StartOf(6)) {
-				Type(out coercedTo);
-				e = Expr.CoerceType(x, e, coercedTo); 
-			} else if (la.kind == 3) {
-				Nat(out bn);
-				if (!(e is LiteralExpr) || !((LiteralExpr)e).isBigNum) {
-				 this.SemErr("arguments of extract need to be integer literals");
-				 e = new BvBounds(x, bn, BigNum.ZERO);
-				} else {
-				 e = new BvBounds(x, bn, ((LiteralExpr)e).asBigNum);
-				}
-				
-			} else SynErr(137);
 		}
 	}
 
