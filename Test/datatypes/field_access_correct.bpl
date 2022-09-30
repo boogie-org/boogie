@@ -48,6 +48,8 @@ procedure P3<T>(p: GenericPair T) returns (q: GenericPair T)
   requires p->a == p->b;
   ensures  q->a == q->b;
 {
+  assert p is GenericPair;
   q->a := p->b;
   q->b := p->a;
+  assert q is GenericPair;
 }
