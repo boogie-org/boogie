@@ -567,6 +567,20 @@ namespace Microsoft.Boogie
         }
       }
 
+      private IsConstructor InstantiateIsConstructor(IsConstructor isConstructor, TypeParamInstantiation typeParameters)
+      {
+        var constructor = isConstructor.Membership.constructor;
+        var actualTypeParams =
+          typeParameters.FormalTypeParams.Select(x =>
+              TypeProxy.FollowProxy(typeParameters[x]).Substitute(typeParamInstantiation))
+            .Select(x => LookupType(x)).ToList();
+        InstantiateTypeCtorDecl(constructor.datatypeTypeCtorDecl, actualTypeParams);
+        var datatypeTypeCtorDecl =
+          (DatatypeTypeCtorDecl)monomorphizationVisitor.typeInstantiations[constructor.datatypeTypeCtorDecl][
+            actualTypeParams];
+        return new IsConstructor(isConstructor.tok, datatypeTypeCtorDecl.Constructors[constructor.index].membership);
+      }
+
       private FieldAccess InstantiateFieldAccess(FieldAccess fieldAccess, TypeParamInstantiation typeParameters)
       {
         var selector = fieldAccess.Selector;
@@ -606,7 +620,20 @@ namespace Microsoft.Boogie
         {
           return returnExpr.Args[0];
         }
-        if (returnExpr.Fun is FieldAccess fieldAccess)
+        if (returnExpr.Fun is IsConstructor isConstructor)
+        {
+          var constructor = isConstructor.Membership.constructor;
+          if (constructor.TypeParameters.Count == 0)
+          {
+            monomorphizationVisitor.VisitTypeCtorDecl(constructor.datatypeTypeCtorDecl);
+          }
+          else
+          {
+            returnExpr.Fun = InstantiateIsConstructor(isConstructor, returnExpr.TypeParameters);
+            returnExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+          }
+        }
+        else if (returnExpr.Fun is FieldAccess fieldAccess)
         {
           var constructor = fieldAccess.Selector.constructor;
           if (constructor.TypeParameters.Count == 0)

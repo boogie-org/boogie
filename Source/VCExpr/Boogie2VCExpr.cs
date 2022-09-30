@@ -1417,6 +1417,12 @@ namespace Microsoft.Boogie.VCExprAST
       return Gen.Function(fieldAccess.Selector, this.args);
     }
 
+    public VCExpr Visit(IsConstructor isConstructor)
+    {
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      return Gen.Function(isConstructor.Membership, this.args);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
 
     private VCExpr TranslateBinaryOperator(BinaryOperator app, List<VCExpr /*!*/> /*!*/ args)

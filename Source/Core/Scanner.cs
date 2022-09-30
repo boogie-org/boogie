@@ -220,8 +220,8 @@ public class UTF8Buffer: Buffer {
 public class Scanner {
 	const char EOL = '\n';
 	const int eofSym = 0; /* pdt */
-	const int maxT = 109;
-	const int noSym = 109;
+	const int maxT = 110;
+	const int noSym = 110;
 
 
 	[ContractInvariantMethod]
@@ -549,23 +549,24 @@ public class Scanner {
 			case "par": t.kind = 56; break;
 			case "div": t.kind = 79; break;
 			case "mod": t.kind = 80; break;
-			case "false": t.kind = 85; break;
-			case "true": t.kind = 86; break;
-			case "roundNearestTiesToEven": t.kind = 87; break;
-			case "RNE": t.kind = 88; break;
-			case "roundNearestTiesToAway": t.kind = 89; break;
-			case "RNA": t.kind = 90; break;
-			case "roundTowardPositive": t.kind = 91; break;
-			case "RTP": t.kind = 92; break;
-			case "roundTowardNegative": t.kind = 93; break;
-			case "RTN": t.kind = 94; break;
-			case "roundTowardZero": t.kind = 95; break;
-			case "RTZ": t.kind = 96; break;
-			case "old": t.kind = 97; break;
-			case "then": t.kind = 100; break;
-			case "forall": t.kind = 101; break;
-			case "exists": t.kind = 103; break;
-			case "lambda": t.kind = 105; break;
+			case "is": t.kind = 85; break;
+			case "false": t.kind = 86; break;
+			case "true": t.kind = 87; break;
+			case "roundNearestTiesToEven": t.kind = 88; break;
+			case "RNE": t.kind = 89; break;
+			case "roundNearestTiesToAway": t.kind = 90; break;
+			case "RNA": t.kind = 91; break;
+			case "roundTowardPositive": t.kind = 92; break;
+			case "RTP": t.kind = 93; break;
+			case "roundTowardNegative": t.kind = 94; break;
+			case "RTN": t.kind = 95; break;
+			case "roundTowardZero": t.kind = 96; break;
+			case "RTZ": t.kind = 97; break;
+			case "old": t.kind = 98; break;
+			case "then": t.kind = 101; break;
+			case "forall": t.kind = 102; break;
+			case "exists": t.kind = 104; break;
+			case "lambda": t.kind = 106; break;
 			default: break;
 		}
 	}
@@ -894,19 +895,19 @@ public class Scanner {
 			case 89:
 				{t.kind = 84; break;}
 			case 90:
-				{t.kind = 98; break;}
-			case 91:
 				{t.kind = 99; break;}
+			case 91:
+				{t.kind = 100; break;}
 			case 92:
-				{t.kind = 102; break;}
+				{t.kind = 103; break;}
 			case 93:
-				{t.kind = 104; break;}
+				{t.kind = 105; break;}
 			case 94:
-				{t.kind = 106; break;}
-			case 95:
 				{t.kind = 107; break;}
-			case 96:
+			case 95:
 				{t.kind = 108; break;}
+			case 96:
+				{t.kind = 109; break;}
 			case 97:
 				recEnd = pos; recKind = 78;
 				if (ch == '0') {AddCh(); goto case 16;}

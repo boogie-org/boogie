@@ -1415,6 +1415,7 @@ namespace Microsoft.Boogie
   public class DatatypeTypeCtorDecl : TypeCtorDecl
   {
     private List<DatatypeConstructor> constructors;
+    private Dictionary<string, DatatypeConstructor> nameToConstructor;
     private Dictionary<string, List<DatatypeSelector>> selectors;
     
     public List<DatatypeConstructor> Constructors
@@ -1429,12 +1430,14 @@ namespace Microsoft.Boogie
       : base(typeCtorDecl.tok, typeCtorDecl.Name, typeCtorDecl.Arity, typeCtorDecl.Attributes)
     {
       this.constructors = new List<DatatypeConstructor>();
+      this.nameToConstructor = new Dictionary<string, DatatypeConstructor>();
       this.selectors = new Dictionary<string, List<DatatypeSelector>>();
     }
 
     public void AddConstructor(DatatypeConstructor constructor)
     {
       this.constructors.Add(constructor);
+      this.nameToConstructor.Add(constructor.Name, constructor);
     }
 
     public void AddSelector(DatatypeSelector selector)
@@ -1444,6 +1447,15 @@ namespace Microsoft.Boogie
         selectors.Add(selector.OriginalName, new List<DatatypeSelector>());
       }
       selectors[selector.OriginalName].Add(selector);
+    }
+
+    public DatatypeConstructor GetConstructor(string constructorName)
+    {
+      if (!nameToConstructor.ContainsKey(constructorName))
+      {
+        return null;
+      }
+      return nameToConstructor[constructorName];
     }
 
     public List<DatatypeSelector> GetSelectors(string fieldName)

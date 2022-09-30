@@ -1217,18 +1217,26 @@ Power<out Expr/*!*/ e0>
 
 /*------------------------------------------------------------------------*/
 UnaryExpression<out Expr/*!*/ e>
-= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
+= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; IsConstructor isConstructor;
      e = dummyExpr;
   .)
   ( "-"                        (. x = t; .)
     UnaryExpression<out e>     (. e = Expr.Unary(x, UnaryOperator.Opcode.Neg, e); .)
   | NegOp                      (. x = t; .)
     UnaryExpression<out e>     (. e = Expr.Unary(x, UnaryOperator.Opcode.Not, e); .)
+  | ArrayExpression<out e>
+    IsConstructor<out x, out isConstructor> (. e = new NAryExpr(x, isConstructor, new List<Expr> { e }); .)
   | CoercionExpression<out e>
   )
   .
 
 NegOp = "!" | '\u00ac'.
+
+IsConstructor<.out IToken x, out IsConstructor isConstructor.>
+= (. Contract.Ensures(Contract.ValueAtReturn(out isConstructor) != null); IToken id; .)
+  "is" (. x = t; .)
+  Ident<out id> (. isConstructor = new IsConstructor(id, id.val); .)
+  .
 
 /*------------------------------------------------------------------------*/
 
