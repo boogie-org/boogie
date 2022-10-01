@@ -6,7 +6,7 @@ function {:constructor} cons<U>(x: U, ls: List U) : List U;
 function {:constructor} nil<U>() : List U;
 
 function len<T>(ls: List T): int {
-    if (ls == nil()) then 0 else 1 + len(ls#cons(ls))
+    if (ls == nil()) then 0 else 1 + len(ls->ls)
 }
 
 type X;
@@ -16,7 +16,7 @@ ensures length == len(ls);
     if (ls == nil()) {
         length := 0;
     } else {
-        call length := find_length_X(ls#cons(ls));
+        call length := find_length_X(ls->ls);
         length := length + 1;
     }
 }
@@ -27,7 +27,7 @@ ensures length == len(ls);
     if (ls == nil()) {
         length := 0;
     } else {
-        call length := find_length_int(ls#cons(ls));
+        call length := find_length_int(ls->ls);
         length := length + 1;
     }
 }
