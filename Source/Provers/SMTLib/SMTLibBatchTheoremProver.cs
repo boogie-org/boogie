@@ -38,10 +38,10 @@ namespace Microsoft.Boogie.SMTLib
     private Model errorModel;
     private ScopedNamer namer;
 
-    internal override ScopedNamer Namer => namer;
+    protected internal override ScopedNamer Namer => namer;
 
     [NotDelayed]
-    public SMTLibBatchTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
+    public SMTLibBatchTheoremProver(SMTLibOptions libOptions, SMTLibSolverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx) : base(libOptions, options, gen, ctx)
     {
       namer = GetNamer(libOptions, options);
@@ -287,6 +287,22 @@ namespace Microsoft.Boogie.SMTLib
       ErrorHandler handler, CancellationToken cancellationToken)
     {
       throw new NotSupportedException("Batch mode solver interface does not support checking assumptions.");
+    }
+
+    protected void SetupProcess()
+    {
+      Process?.Close();
+      Process = libOptions.CreateSolver(libOptions, options);
+
+      Process.ErrorHandler += HandleProverError;
+    }
+
+    public override void Close()
+    {
+      base.Close();
+      Process?.Close();
+      Process = null;
+      CloseLogFile();
     }
   }
 }

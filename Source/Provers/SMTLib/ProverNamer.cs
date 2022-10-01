@@ -2,7 +2,7 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.SMTLib;
 
-class ProverNamer : UniqueNamer {
+public class ProverNamer : UniqueNamer {
   private readonly SMTLibProcessTheoremProver prover;
 
   public ProverNamer(SMTLibProcessTheoremProver prover) {

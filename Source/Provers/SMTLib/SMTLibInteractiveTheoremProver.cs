@@ -21,7 +21,7 @@ namespace Microsoft.Boogie.SMTLib
     private ISet<string> usedNamedAssumes;
 
     [NotDelayed]
-    public SMTLibInteractiveTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
+    public SMTLibInteractiveTheoremProver(SMTLibOptions libOptions, SMTLibSolverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx) : base(libOptions, options, gen, ctx) {
       DeclCollector = new TypeDeclCollector(libOptions, new ProverNamer(this));
       SetupProcess();
@@ -30,7 +30,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    internal override ScopedNamer Namer => finalNamer ?? (commonNamer ??= GetNamer(libOptions, options));
+    protected internal override ScopedNamer Namer => finalNamer ?? (commonNamer ??= GetNamer(libOptions, options));
 
     public override Task GoBackToIdle()
     {
@@ -868,6 +868,22 @@ namespace Microsoft.Boogie.SMTLib
       {
         currentErrorHandler = null;
       }
+    }
+
+    protected void SetupProcess()
+    {
+      Process?.Close();
+      Process = libOptions.CreateSolver(libOptions, options);
+
+      Process.ErrorHandler += HandleProverError;
+    }
+
+    public override void Close()
+    {
+      base.Close();
+      Process?.Close();
+      Process = null;
+      CloseLogFile();
     }
   }
 }
