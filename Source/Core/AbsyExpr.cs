@@ -3927,7 +3927,7 @@ namespace Microsoft.Boogie
     public Type Typecheck(Type type, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
     {
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
-      if (!(type is CtorType ctorType))
+      if (!(type.Expanded is CtorType ctorType))
       {
         tc.Error(this.tok, "type {0} is not a constructor type", type);
         return null;
@@ -4064,7 +4064,7 @@ namespace Microsoft.Boogie
     public Type Typecheck(Type type, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
     {
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
-      if (!(type is CtorType ctorType))
+      if (!(type.Expanded is CtorType ctorType))
       {
         tc.Error(this.tok, "type {0} is not a constructor type", type);
         return null;
