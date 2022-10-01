@@ -35,8 +35,8 @@ var {:layer 0, 1} rwlock: RwLock;
 procedure {:right}{:layer 1, 1} atomic_acquire_read({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
-    assume writer#RwLock(rwlock) == None();
-    rwlock := RwLock(writer#RwLock(rwlock), readers#RwLock(rwlock)[tid := true]);
+    assume rwlock->writer == None();
+    rwlock := RwLock(rwlock->writer, rwlock->readers[tid := true]);
 }
 
 // Acquiring a write lock is possbile if there is no other writer and no reader,
@@ -44,25 +44,25 @@ modifies rwlock;
 procedure {:right}{:layer 1, 1} atomic_acquire_write({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
-    assume writer#RwLock(rwlock) == None();
-    assume readers#RwLock(rwlock) == EmptySet();
-    rwlock := RwLock(Some(tid), readers#RwLock(rwlock));
+    assume rwlock->writer == None();
+    assume rwlock->readers == EmptySet();
+    rwlock := RwLock(Some(tid), rwlock->readers);
 }
 
 // The predicate for holding a read lock:
 // There is no writer and we are among the readers.
 function {:inline} holds_read_lock(tid: Tid, rwlock: RwLock): bool
 {
-    writer#RwLock(rwlock) == None() &&
-    readers#RwLock(rwlock)[tid]
+    rwlock->writer == None() &&
+    rwlock->readers[tid]
 }
 
 // The predicate for holding a write lock:
 // We are the writer and there are no readers.
 function {:inline} holds_write_lock(tid: Tid, rwlock: RwLock): bool
 {
-    writer#RwLock(rwlock) == Some(tid) &&
-    readers#RwLock(rwlock) == EmptySet()
+    rwlock->writer == Some(tid) &&
+    rwlock->readers == EmptySet()
 }
 
 // Releasing a read lock takes us out of `readers`.
@@ -70,7 +70,7 @@ procedure {:left}{:layer 1, 1} atomic_release_read({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
     assert holds_read_lock(tid, rwlock);
-    rwlock := RwLock(writer#RwLock(rwlock), readers#RwLock(rwlock)[tid := false]);
+    rwlock := RwLock(rwlock->writer, rwlock->readers[tid := false]);
 }
 
 // Releasing a write lock takes us out of `writer`.
@@ -78,7 +78,7 @@ procedure {:left}{:layer 1, 1} atomic_release_write({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
     assert holds_write_lock(tid, rwlock);
-    rwlock := RwLock(None(), readers#RwLock(rwlock));
+    rwlock := RwLock(None(), rwlock->readers);
 }
 
 procedure {:yields}{:layer 0}{:refines "atomic_acquire_read"} acquire_read({:linear "tid"} tid: Tid);
