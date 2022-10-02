@@ -23,7 +23,7 @@ modifies voteInfo, pendingAsyncs;
   assert Round(r);
   assert pendingAsyncs[A_Propose(r, ps)] > 0;
   assert ps == ProposePermissions(r);
-  assert is#None(voteInfo[r]);
+  assert voteInfo[r] is None;
 
   assume
     {:add_to_pool "NodeSet", ns}
@@ -34,7 +34,7 @@ modifies voteInfo, pendingAsyncs;
     maxRound := MaxRound(r, ns, voteInfo);
     if (maxRound != 0)
     {
-      maxValue := value#VoteInfo(t#Some(voteInfo[maxRound]));
+      maxValue := voteInfo[maxRound]->t->value;
     }
     voteInfo[r] := Some(VoteInfo(maxValue, NoNodes()));
     PAs := MapAdd(VotePAs(r, maxValue), SingletonPA(A_Conclude(r, maxValue, ConcludePerm(r))));
@@ -54,11 +54,11 @@ modifies decision, pendingAsyncs;
   assert Round(r);
   assert pendingAsyncs[A_Conclude(r, v, p)] > 0;
   assert p == ConcludePerm(r);
-  assert is#Some(voteInfo[r]);
-  assert value#VoteInfo(t#Some(voteInfo[r])) == v;
+  assert voteInfo[r] is Some;
+  assert voteInfo[r]->t->value == v;
 
   if (*) {
-    assume IsSubset(q, ns#VoteInfo(t#Some(voteInfo[r]))) && IsQuorum(q);
+    assume IsSubset(q, voteInfo[r]->t->ns) && IsQuorum(q);
     decision[r] := Some(v);
   }
 
@@ -86,9 +86,9 @@ modifies joinedNodes, voteInfo, pendingAsyncs;
   assert Round(r);
   assert p == VotePerm(r, n);
   assert pendingAsyncs[A_Vote(r, n, v, p)] > 0;
-  assert is#Some(voteInfo[r]);
-  assert value#VoteInfo(t#Some(voteInfo[r])) == v;
-  assert !ns#VoteInfo(t#Some(voteInfo[r]))[n];
+  assert voteInfo[r] is Some;
+  assert voteInfo[r]->t->value == v;
+  assert !voteInfo[r]->t->ns[n];
 
   assume
     {:add_to_pool "Round", r, r-1}
@@ -97,7 +97,7 @@ modifies joinedNodes, voteInfo, pendingAsyncs;
 
   if (*) {
     assume (forall r': Round :: Round(r') && joinedNodes[r'][n] ==> r' <= r);
-    voteInfo[r] := Some(VoteInfo(v, ns#VoteInfo(t#Some(voteInfo[r]))[n := true]));
+    voteInfo[r] := Some(VoteInfo(v, voteInfo[r]->t->ns[n := true]));
     joinedNodes[r][n] := true;
   }
 

@@ -1,4 +1,3 @@
-
 // RUN: %parallel-boogie -lib -monomorphize -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
@@ -14,23 +13,23 @@ function {:constructor} Multiset<E>(multiset: [E]int): Wrapper E;
 
 type X;
 procedure wrapper_add(w: Wrapper X, elem: X) returns (w': Wrapper X)
-requires is#Set(w);
-ensures is#Set(w');
-ensures set#Set(w') == MapOr(set#Set(w), MapConst(false)[elem := true]);
+requires w is Set;
+ensures w' is Set;
+ensures w'->set == MapOr(w->set, MapConst(false)[elem := true]);
 {
     var xset: [X]bool;
-    xset := set#Set(w);
+    xset := w->set;
     xset := xset[elem := true];
     w' := Set(xset);
 }
 
 procedure wrapper_incr(w: Wrapper X, elem: X) returns (w': Wrapper X)
-requires is#Multiset(w) && multiset#Multiset(w) == MapConst(42);
-ensures is#Multiset(w');
-ensures multiset#Multiset(w') == MapIte(MapConst(false)[elem := true], MapConst(0), MapConst(42));
+requires w is Multiset && w->multiset == MapConst(42);
+ensures w' is Multiset;
+ensures w'->multiset == MapIte(MapConst(false)[elem := true], MapConst(0), MapConst(42));
 {
     var xmultiset: [X]int;
-    xmultiset := multiset#Multiset(w);
+    xmultiset := w->multiset;
     xmultiset[elem] := 0;
     w' := Multiset(xmultiset);
 }

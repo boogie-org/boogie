@@ -22,7 +22,7 @@ function {:inline} {:linear "perm"} IntCollector(i: int) : [Perm]bool
 }
 function {:inline} {:linear "perm"} IntSetCollector(iset: [int]bool) : [Perm]bool
 {
-  (lambda p: Perm :: is#Left(p) && iset[i#Left(p)])
+  (lambda p: Perm :: p is Left && iset[p->i])
 }
 
 function Size<T>(set: [T]bool): int;

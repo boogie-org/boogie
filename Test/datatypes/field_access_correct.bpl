@@ -8,10 +8,9 @@ procedure P0(p: Pair) returns (q: Pair)
   requires p->a == 0;
   ensures  q->a == 1;
 {
-  assert p->a == a#Pair(p);
   q := p;
   q->a := 1;
-  assert q->b == b#Pair(p);
+  assert q->b == p->b;
   q->b := 1;
   assert q == Pair(1, 1);
 }
@@ -20,10 +19,9 @@ procedure P1(p: [int]Pair, x: int) returns (q: [int]Pair)
   requires p[x]->a == 0;
   ensures  q[x]->a == 1;
 {
-  assert p[x]->a == a#Pair(p[x]);
   q[x] := p[x];
   q[x]->a := 1;
-  assert q[x]->b == b#Pair(p[x]);
+  assert q[x]->b == p[x]->b;
   q[x]->b := 1;
   assert q[x] == Pair(1, 1);
 }

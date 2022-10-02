@@ -15,6 +15,6 @@ procedure p() {
   var y: Cell_bool;
   x := Mk(1);
   y := Mk(false);
-  assert x#Mk(x) == 1;
-  assert x#Mk(y) == false;
+  assert x->x == 1;
+  assert y->x == false;
 }
