@@ -404,8 +404,16 @@ namespace Microsoft.Boogie
           for (int i = 0; i < f.InParams.Count; i++)
           {
             DatatypeSelector selector = DatatypeSelector.NewDatatypeSelector(f, i);
-            f.AddSelector(selector);
-            selector.Register(rc);
+            if (f.AddSelector(selector, out DatatypeConstructor otherConstructor))
+            {
+              selector.Register(rc);
+            }
+            else
+            {
+              rc.Error(selector,
+                "type mismatch between field {0} and identically-named field in constructor {1}",
+                selector.OriginalName, otherConstructor);
+            }
           }
           DatatypeMembership membership = DatatypeMembership.NewDatatypeMembership(f);
           f.membership = membership;
@@ -1416,7 +1424,7 @@ namespace Microsoft.Boogie
   {
     private List<DatatypeConstructor> constructors;
     private Dictionary<string, DatatypeConstructor> nameToConstructor;
-    private Dictionary<string, List<DatatypeSelector>> selectors;
+    private Dictionary<string, List<Tuple<int, int>>> accessors;
     
     public List<DatatypeConstructor> Constructors
     {
@@ -1431,7 +1439,7 @@ namespace Microsoft.Boogie
     {
       this.constructors = new List<DatatypeConstructor>();
       this.nameToConstructor = new Dictionary<string, DatatypeConstructor>();
-      this.selectors = new Dictionary<string, List<DatatypeSelector>>();
+      this.accessors = new Dictionary<string, List<Tuple<int, int>>>();
     }
 
     public void AddConstructor(DatatypeConstructor constructor)
@@ -1440,13 +1448,27 @@ namespace Microsoft.Boogie
       this.nameToConstructor.Add(constructor.Name, constructor);
     }
 
-    public void AddSelector(DatatypeSelector selector)
+    public bool AddSelector(DatatypeSelector selector, out DatatypeConstructor otherConstructor)
     {
-      if (!selectors.ContainsKey(selector.OriginalName))
+      if (!accessors.ContainsKey(selector.OriginalName))
       {
-        selectors.Add(selector.OriginalName, new List<DatatypeSelector>());
+        accessors.Add(selector.OriginalName, new List<Tuple<int, int>>());
       }
-      selectors[selector.OriginalName].Add(selector);
+      accessors[selector.OriginalName].Add(Tuple.Create(selector.constructor.index, selector.index));
+      var otherAccessor = accessors[selector.OriginalName][0];
+      otherConstructor = constructors[otherAccessor.Item1];
+      var otherSelector = otherConstructor.selectors[otherAccessor.Item2];
+      return NormalizedType(otherConstructor, otherSelector).Equals(NormalizedType(otherConstructor, selector));
+    }
+
+    private static Type NormalizedType(DatatypeConstructor firstConstructor, DatatypeSelector selector)
+    {
+      var firstConstructorType = (CtorType)firstConstructor.OutParams[0].TypedIdent.Type;
+      var constructorType = (CtorType)selector.InParams[0].TypedIdent.Type;
+      var typeSubst = constructorType.Arguments.Zip(firstConstructorType.Arguments).ToDictionary(
+        x => x.Item1 as TypeVariable,
+        x => x.Item2);
+      return selector.OutParams[0].TypedIdent.Type.Substitute(typeSubst);
     }
 
     public DatatypeConstructor GetConstructor(string constructorName)
@@ -1458,13 +1480,13 @@ namespace Microsoft.Boogie
       return nameToConstructor[constructorName];
     }
 
-    public List<DatatypeSelector> GetSelectors(string fieldName)
+    public List<Tuple<int, int>> GetAccessors(string fieldName)
     {
-      if (!selectors.ContainsKey(fieldName))
+      if (!accessors.ContainsKey(fieldName))
       {
         return null;
       }
-      return selectors[fieldName];
+      return accessors[fieldName];
     }
 
     public override void Emit(TokenTextWriter stream, int level)
@@ -2622,10 +2644,10 @@ namespace Microsoft.Boogie
       base.Typecheck(tc);
     }
 
-    public void AddSelector(DatatypeSelector selector)
+    public bool AddSelector(DatatypeSelector selector, out DatatypeConstructor otherConstructor)
     {
       selectors.Add(selector);
-      this.datatypeTypeCtorDecl.AddSelector(selector);
+      return this.datatypeTypeCtorDecl.AddSelector(selector, out otherConstructor);
     }
 
     public override bool MayRename => false;
