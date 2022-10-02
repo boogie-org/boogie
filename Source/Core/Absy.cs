@@ -404,7 +404,7 @@ namespace Microsoft.Boogie
           for (int i = 0; i < f.InParams.Count; i++)
           {
             DatatypeSelector selector = DatatypeSelector.NewDatatypeSelector(f, i);
-            if (f.AddSelector(selector, out DatatypeConstructor otherConstructor))
+            if (f.AddSelector(selector, out DatatypeConstructor firstConstructor))
             {
               selector.Register(rc);
             }
@@ -412,7 +412,7 @@ namespace Microsoft.Boogie
             {
               rc.Error(selector,
                 "type mismatch between field {0} and identically-named field in constructor {1}",
-                selector.OriginalName, otherConstructor);
+                selector.OriginalName, firstConstructor);
             }
           }
           DatatypeMembership membership = DatatypeMembership.NewDatatypeMembership(f);
@@ -1448,17 +1448,17 @@ namespace Microsoft.Boogie
       this.nameToConstructor.Add(constructor.Name, constructor);
     }
 
-    public bool AddSelector(DatatypeSelector selector, out DatatypeConstructor otherConstructor)
+    public bool AddSelector(DatatypeSelector selector, out DatatypeConstructor firstConstructor)
     {
       if (!accessors.ContainsKey(selector.OriginalName))
       {
         accessors.Add(selector.OriginalName, new List<Tuple<int, int>>());
       }
       accessors[selector.OriginalName].Add(Tuple.Create(selector.constructor.index, selector.index));
-      var otherAccessor = accessors[selector.OriginalName][0];
-      otherConstructor = constructors[otherAccessor.Item1];
-      var otherSelector = otherConstructor.selectors[otherAccessor.Item2];
-      return NormalizedType(otherConstructor, otherSelector).Equals(NormalizedType(otherConstructor, selector));
+      var firstAccessor = accessors[selector.OriginalName][0];
+      firstConstructor = constructors[firstAccessor.Item1];
+      var firstSelector = firstConstructor.selectors[firstAccessor.Item2];
+      return NormalizedType(firstConstructor, firstSelector).Equals(NormalizedType(firstConstructor, selector));
     }
 
     private static Type NormalizedType(DatatypeConstructor firstConstructor, DatatypeSelector selector)
@@ -2644,10 +2644,10 @@ namespace Microsoft.Boogie
       base.Typecheck(tc);
     }
 
-    public bool AddSelector(DatatypeSelector selector, out DatatypeConstructor otherConstructor)
+    public bool AddSelector(DatatypeSelector selector, out DatatypeConstructor firstConstructor)
     {
       selectors.Add(selector);
-      return this.datatypeTypeCtorDecl.AddSelector(selector, out otherConstructor);
+      return this.datatypeTypeCtorDecl.AddSelector(selector, out firstConstructor);
     }
 
     public override bool MayRename => false;
