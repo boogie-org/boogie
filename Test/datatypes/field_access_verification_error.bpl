@@ -32,3 +32,13 @@ procedure P2(p: PairOfMaps, x: int) returns (q: PairOfMaps)
   call t := P1(p->amap, x);
   q->bmap := t;
 }
+
+type{:datatype} Perm;
+function{:constructor} Left(i: int): Perm;
+function{:constructor} Right(i: int): Perm;
+
+procedure P3(a: int) {
+  var left: Perm;
+  left->i := a;
+  assert left == Left(a);
+}

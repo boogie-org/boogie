@@ -10,5 +10,8 @@ field_access_verification_error.bpl(34,1): Error: A postcondition might not hold
 field_access_verification_error.bpl(28,3): Related location: This is the postcondition that might not hold.
 Execution trace:
     field_access_verification_error.bpl(31,5): anon0
+field_access_verification_error.bpl(43,3): Error: This assertion might not hold.
+Execution trace:
+    field_access_verification_error.bpl(42,11): anon0
 
-Boogie program verifier finished with 0 verified, 3 errors
+Boogie program verifier finished with 0 verified, 4 errors

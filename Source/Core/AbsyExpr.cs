@@ -1551,15 +1551,16 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(IAppliableVisitorContracts<>))]
   public interface IAppliableVisitor<T>
   {
-    T Visit(UnaryOperator /*!*/ unaryOperator);
-    T Visit(BinaryOperator /*!*/ binaryOperator);
-    T Visit(FunctionCall /*!*/ functionCall);
-    T Visit(MapSelect /*!*/ mapSelect);
-    T Visit(MapStore /*!*/ mapStore);
-    T Visit(TypeCoercion /*!*/ typeCoercion);
-    T Visit(ArithmeticCoercion /*!*/ arithCoercion);
-    T Visit(IfThenElse /*!*/ ifThenElse);
-    T Visit(FieldAccess /*!*/ fieldAccess);
+    T Visit(UnaryOperator unaryOperator);
+    T Visit(BinaryOperator binaryOperator);
+    T Visit(FunctionCall functionCall);
+    T Visit(MapSelect mapSelect);
+    T Visit(MapStore mapStore);
+    T Visit(TypeCoercion typeCoercion);
+    T Visit(ArithmeticCoercion arithCoercion);
+    T Visit(IfThenElse ifThenElse);
+    T Visit(FieldAccess fieldAccess);
+    T Visit(IsConstructor isConstructor);
   }
 
   [ContractClassFor(typeof(IAppliableVisitor<>))]
@@ -1618,6 +1619,12 @@ namespace Microsoft.Boogie
     public T Visit(FieldAccess fieldAccess)
     {
       Contract.Requires(fieldAccess != null);
+      throw new NotImplementedException();
+    }
+
+    public T Visit(IsConstructor isConstructor)
+    {
+      Contract.Requires(isConstructor != null);
       throw new NotImplementedException();
     }
     #endregion
@@ -3847,9 +3854,25 @@ namespace Microsoft.Boogie
   {
     public IToken tok { get; set; }
     
-    public string FieldName { get; set; }
+    public string FieldName { get; }
 
-    public DatatypeSelector Selector { get; set; }
+    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl { get; set; }
+    
+    // each accessor is specified by a pair comprising a constructor index
+    // and a selector index within the constructor corresponding to it
+    public List<Tuple<int, int>> Accessors { get; set; }
+
+    public DatatypeConstructor Constructor(int index)
+    {
+      var accessor = Accessors[index];
+      return DatatypeTypeCtorDecl.Constructors[accessor.Item1];
+    }
+    
+    public DatatypeSelector Selector(int index)
+    {
+      var accessor = Accessors[index];
+      return DatatypeTypeCtorDecl.Constructors[accessor.Item1].selectors[accessor.Item2];
+    }
 
     public FieldAccess(IToken tok, string fieldName)
     {
@@ -3857,11 +3880,12 @@ namespace Microsoft.Boogie
       this.FieldName = fieldName;
     }
     
-    public FieldAccess(IToken tok, DatatypeSelector selector)
+    public FieldAccess(IToken tok, DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<Tuple<int, int>> accessors)
     {
       this.tok = tok;
-      this.Selector = selector;
-      this.FieldName = selector.OriginalName;
+      this.DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
+      this.Accessors = accessors;
+      this.FieldName = Selector(0).OriginalName;
     }
 
     public string FunctionName => "field-access";
@@ -3872,7 +3896,7 @@ namespace Microsoft.Boogie
     {
       if (obj is FieldAccess fieldAccess)
       {
-        return Selector.Equals(fieldAccess.Selector);
+        return DatatypeTypeCtorDecl.Equals(fieldAccess.DatatypeTypeCtorDecl) && Accessors.Equals(fieldAccess.Accessors);
       }
       return false;
     }
@@ -3920,7 +3944,7 @@ namespace Microsoft.Boogie
     public Type Typecheck(Type type, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
     {
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
-      if (!(type is CtorType ctorType))
+      if (!(type.Expanded is CtorType ctorType))
       {
         tc.Error(this.tok, "type {0} is not a constructor type", type);
         return null;
@@ -3930,29 +3954,24 @@ namespace Microsoft.Boogie
         tc.Error(this.tok, "field-access must be applied to a datatype, {0} is not a datatype", ctorType);
         return null;
       }
-      var selectors = datatypeTypeCtorDecl.GetSelectors(FieldName);
-      if (selectors == null)
+      DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
+      Accessors = datatypeTypeCtorDecl.GetAccessors(FieldName);
+      if (Accessors == null)
       {
         tc.Error(this.tok, "datatype {0} does not have a field with name {1}", ctorType, FieldName);
         return null;
       }
-      Contract.Assert(selectors.Count > 0);
-      if (selectors.Count > 1)
-      {
-        tc.Error(this.tok, "datatype {0} has several fields with name {1}", ctorType, FieldName);
-        return null;
-      }
-      Selector = selectors[0];
-      var typeSubst = Selector.TypeParameters.Zip(ctorType.Arguments).ToDictionary(
+      Contract.Assert(Accessors.Count > 0);
+      tpInstantiation = SimpleTypeParamInstantiation.From(Selector(0).TypeParameters, ctorType.Arguments);
+      var typeSubst = Selector(0).TypeParameters.Zip(ctorType.Arguments).ToDictionary(
           x => x.Item1, 
           x => x.Item2);
-      tpInstantiation = SimpleTypeParamInstantiation.From(Selector.TypeParameters, ctorType.Arguments);
-      return Selector.OutParams[0].TypedIdent.Type.Substitute(typeSubst);
+      return Selector(0).OutParams[0].TypedIdent.Type.Substitute(typeSubst);
     }
 
     public Type ShallowType(IList<Expr> args)
     {
-      return Selector.OutParams[0].TypedIdent.Type;
+      return Selector(0).OutParams[0].TypedIdent.Type;
     }
 
     public T Dispatch<T>(IAppliableVisitor<T> visitor)
@@ -3967,16 +3986,146 @@ namespace Microsoft.Boogie
 
     public NAryExpr Update(IToken token, Expr record, Expr rhs)
     {
-      var args = Selector.constructor.selectors.Select(x =>
+      var expr = Update(token, record, rhs, 0);
+      for (int i = 1; i < Accessors.Count; i++)
       {
-        if (x == Selector)
+        var constructor = Constructor(i);
+        var condExpr = new NAryExpr(token,
+          new IsConstructor(token, constructor.datatypeTypeCtorDecl, constructor.index), new Expr[] { record });
+        var thenExpr = Update(token, record, rhs, i);
+        expr = new NAryExpr(token, new IfThenElse(token), new Expr[] { condExpr, thenExpr, expr });
+      }
+      return expr;
+    }
+    
+    private NAryExpr Update(IToken token, Expr record, Expr rhs, int index)
+    {
+      var args = Constructor(index).selectors.Select(x =>
+      {
+        if (x == Selector(index))
         {
           return rhs;
         }
-        var fieldAccess = new FieldAccess(tok, x);
+        var fieldAccess = new FieldAccess(tok, DatatypeTypeCtorDecl,  DatatypeTypeCtorDecl.GetAccessors(x.OriginalName));
         return fieldAccess.Select(token, record);
       }).ToList();
-      return new NAryExpr(token, new FunctionCall(Selector.constructor), args);
+      return new NAryExpr(token, new FunctionCall(Constructor(index)), args);
+    }
+  }
+
+  public class IsConstructor : IAppliable
+  {
+    public IToken tok { get; set; }
+    
+    public string ConstructorName { get; }
+    
+    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl { get; set; }
+    
+    public int ConstructorIndex { get; set; }
+    
+    public DatatypeMembership Membership => DatatypeTypeCtorDecl.Constructors[ConstructorIndex].membership;
+
+    public IsConstructor(IToken tok, string constructorName)
+    {
+      this.tok = tok;
+      this.ConstructorName = constructorName;
+    }
+    
+    public IsConstructor(IToken tok, DatatypeTypeCtorDecl datatypeTypeCtorDecl, int constructorIndex)
+    {
+      this.tok = tok;
+      this.DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
+      this.ConstructorIndex = constructorIndex;
+      this.ConstructorName = datatypeTypeCtorDecl.Constructors[constructorIndex].Name;
+    }
+
+    public string FunctionName => "is-constructor";
+
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj is IsConstructor isConstructor)
+      {
+        return DatatypeTypeCtorDecl.Equals(isConstructor.DatatypeTypeCtorDecl) &&
+               ConstructorIndex == isConstructor.ConstructorIndex;
+      }
+      return false;
+    }
+
+    [Pure]
+    public override int GetHashCode()
+    {
+      return 1;
+    }
+
+    public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
+    {
+      const int opBindingStrength = 0x90;
+      bool parensNeeded = opBindingStrength < contextBindingStrength ||
+                          (fragileContext && opBindingStrength == contextBindingStrength);
+      stream.SetToken(this);
+      Contract.Assert(args.Count == 1);
+      stream.push();
+      if (parensNeeded)
+      {
+        stream.Write("(");
+      }
+      cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
+      stream.Write(" is {0}", ConstructorName);
+      if (parensNeeded)
+      {
+        stream.Write(")");
+      }
+      stream.pop();
+    }
+
+    public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting)
+    {
+      // The work of resolution is delayed to type checking when the datatype is known.
+    }
+
+    public int ArgumentCount => 1;
+
+    public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
+    {
+      Contract.Assert(args.Count == 1);
+      return Typecheck(cce.NonNull(args[0]).Type, tc, out tpInstantiation);
+    }
+    
+    public Type Typecheck(Type type, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
+    {
+      tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+      if (!(type.Expanded is CtorType ctorType))
+      {
+        tc.Error(this.tok, "type {0} is not a constructor type", type);
+        return null;
+      }
+      if (!(ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl))
+      {
+        tc.Error(this.tok, "is-constructor must be applied to a datatype, {0} is not a datatype", ctorType);
+        return null;
+      }
+      DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
+      var constructor = datatypeTypeCtorDecl.GetConstructor(ConstructorName);
+      if (constructor == null)
+      {
+        tc.Error(this.tok, "datatype {0} does not have a constructor with name {1}", ctorType, ConstructorName);
+        return null;
+      }
+      ConstructorIndex = constructor.index;
+      tpInstantiation = SimpleTypeParamInstantiation.From(Membership.TypeParameters, ctorType.Arguments);
+      return Type.Bool;
+    }
+
+    public Type ShallowType(IList<Expr> args)
+    {
+      return Type.Bool;
+    }
+
+    public T Dispatch<T>(IAppliableVisitor<T> visitor)
+    {
+      return visitor.Visit(this);
     }
   }
 

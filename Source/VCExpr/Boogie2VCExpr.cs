@@ -1414,7 +1414,20 @@ namespace Microsoft.Boogie.VCExprAST
     public VCExpr Visit(FieldAccess fieldAccess)
     {
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Gen.Function(fieldAccess.Selector, this.args);
+      var expr = Gen.Function(fieldAccess.Selector(0), this.args);
+      for (int i = 1; i < fieldAccess.Accessors.Count; i++)
+      {
+        var condExpr = Gen.Function(fieldAccess.Constructor(i).membership, this.args);
+        var thenExpr = Gen.Function(fieldAccess.Selector(i), this.args);
+        expr = Gen.Function(VCExpressionGenerator.IfThenElseOp, new List<VCExpr>() { condExpr, thenExpr, expr });
+      }
+      return expr;
+    }
+
+    public VCExpr Visit(IsConstructor isConstructor)
+    {
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      return Gen.Function(isConstructor.Membership, this.args);
     }
 
     ///////////////////////////////////////////////////////////////////////////////

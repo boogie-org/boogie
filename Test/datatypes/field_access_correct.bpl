@@ -48,6 +48,22 @@ procedure P3<T>(p: GenericPair T) returns (q: GenericPair T)
   requires p->a == p->b;
   ensures  q->a == q->b;
 {
+  assert p is GenericPair;
   q->a := p->b;
   q->b := p->a;
+  assert q is GenericPair;
+}
+
+type{:datatype} Split _;
+function{:constructor} Left<T>(i: T): Split T;
+function{:constructor} Right<U>(i: U): Split U;
+
+procedure P4(a: int, b: int) {
+  var left, right: Split int;
+  left->i := a;
+  right->i := b;
+  assert left->i == a;
+  assert left is Left ==> left == Left(a);
+  assert right->i == b;
+  assert right is Right ==> right == Right(b);
 }
