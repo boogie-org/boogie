@@ -9,7 +9,7 @@ modifies pendingAsyncs;
     {:add_to_pool "Round", 0, numRounds}
     {:add_to_pool "NumRounds", numRounds}
     0 <= numRounds;
-  PAs := (lambda pa: PA :: if is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && Round(round#A_StartRound(pa)) && round#A_StartRound(pa) <= numRounds then 1 else 0);
+  PAs := (lambda pa: PA :: if pa is A_StartRound && pa->round == pa->round_lin && Round(pa->round) && pa->round <= numRounds then 1 else 0);
   pendingAsyncs := PAs;
 }
 
@@ -18,41 +18,41 @@ modifies pendingAsyncs;
 function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acceptorState: [Node]AcceptorState,
               permJoinChannel: JoinResponseChannel, permVoteChannel: VoteResponseChannel) : bool
 {
-  (forall p: Permission :: domain#JoinResponseChannel(permJoinChannel)[p] ==> is#JoinPerm(p) &&
-    (var r, n, joinResponse := r#JoinPerm(p), n#JoinPerm(p), contents#JoinResponseChannel(permJoinChannel)[p];
+  (forall p: Permission :: permJoinChannel->domain[p] ==> p is JoinPerm &&
+    (var r, n, joinResponse := p->r, p->n, permJoinChannel->contents[p];
       Round(r) && Node(n) &&
       (
-        var from, maxRound, maxValue := from#JoinResponse(joinResponse), lastVoteRound#JoinResponse(joinResponse), lastVoteValue#JoinResponse(joinResponse);
+        var from, maxRound, maxValue := joinResponse->from, joinResponse->lastVoteRound, joinResponse->lastVoteValue;
         n == from &&
         joinedNodes[r][from] &&
         0 <= maxRound && maxRound < r &&
-        (maxRound == 0 || (is#Some(voteInfo[maxRound]) && ns#VoteInfo(t#Some(voteInfo[maxRound]))[from] && value#VoteInfo(t#Some(voteInfo[maxRound])) == maxValue)) &&
-        (forall r': Round :: maxRound < r' && r' < r && is#Some(voteInfo[r']) ==> !ns#VoteInfo(t#Some(voteInfo[r']))[from]) &&
-        r <= lastJoinRound#AcceptorState(acceptorState[from])
+        (maxRound == 0 || (voteInfo[maxRound] is Some && voteInfo[maxRound]->t->ns[from] && voteInfo[maxRound]->t->value == maxValue)) &&
+        (forall r': Round :: maxRound < r' && r' < r && voteInfo[r'] is Some ==> !voteInfo[r']->t->ns[from]) &&
+        r <= acceptorState[from]->lastJoinRound
       )
     )
   )
   &&
-  (forall p: Permission :: domain#VoteResponseChannel(permVoteChannel)[p] ==> is#VotePerm(p) &&
-    (var r, n, voteResponse := r#VotePerm(p), n#VotePerm(p), contents#VoteResponseChannel(permVoteChannel)[p];
+  (forall p: Permission :: permVoteChannel->domain[p] ==> p is VotePerm &&
+    (var r, n, voteResponse := p->r, p->n, permVoteChannel->contents[p];
       Round(r) && Node(n) &&
       (
-        var from := from#VoteResponse(voteResponse);
+        var from := voteResponse->from;
         n == from &&
-        is#Some(voteInfo[r]) &&
-        ns#VoteInfo(t#Some(voteInfo[r]))[from]
+        voteInfo[r] is Some &&
+        voteInfo[r]->t->ns[from]
       )
     )
   )
   &&
   (forall n: Node :: Node(n) ==>
     (
-      var lastJoinRound, lastVoteRound, lastVoteValue := lastJoinRound#AcceptorState(acceptorState[n]), lastVoteRound#AcceptorState(acceptorState[n]), lastVoteValue#AcceptorState(acceptorState[n]);
+      var lastJoinRound, lastVoteRound, lastVoteValue := acceptorState[n]->lastJoinRound, acceptorState[n]->lastVoteRound, acceptorState[n]->lastVoteValue;
       lastVoteRound <= lastJoinRound &&
       (lastJoinRound == 0 || (Round(lastJoinRound) && joinedNodes[lastJoinRound][n])) &&
       (forall r: Round :: lastJoinRound < r && Round(r) ==> !joinedNodes[r][n]) &&
-      (lastVoteRound == 0 || (Round(lastVoteRound) && is#Some(voteInfo[lastVoteRound]) && ns#VoteInfo(t#Some(voteInfo[lastVoteRound]))[n] && value#VoteInfo(t#Some(voteInfo[lastVoteRound])) == lastVoteValue)) &&
-      (forall r: Round :: lastVoteRound < r && Round(r) && is#Some(voteInfo[r]) ==> !ns#VoteInfo(t#Some(voteInfo[r]))[n])
+      (lastVoteRound == 0 || (Round(lastVoteRound) && voteInfo[lastVoteRound] is Some && voteInfo[lastVoteRound]->t->ns[n] && voteInfo[lastVoteRound]->t->value == lastVoteValue)) &&
+      (forall r: Round :: lastVoteRound < r && Round(r) && voteInfo[r] is Some ==> !voteInfo[r]->t->ns[n])
     )
   )
 }
@@ -64,12 +64,12 @@ function InvChannels (joinChannel: [Round][JoinResponse]int, permJoinChannel: Jo
   (forall r: Round, vr: VoteResponse :: 0 <= voteChannel[r][vr] && voteChannel[r][vr] <= 1) &&
   (forall r: Round, jr: JoinResponse ::
     joinChannel[r][jr] > 0 ==>
-      domain#JoinResponseChannel(permJoinChannel)[JoinPerm(r, from#JoinResponse(jr))] &&
-      contents#JoinResponseChannel(permJoinChannel)[JoinPerm(r, from#JoinResponse(jr))] == jr) &&
+      permJoinChannel->domain[JoinPerm(r, jr->from)] &&
+      permJoinChannel->contents[JoinPerm(r, jr->from)] == jr) &&
   (forall r: Round, vr: VoteResponse ::
     voteChannel[r][vr] > 0 ==>
-      domain#VoteResponseChannel(permVoteChannel)[VotePerm(r, from#VoteResponse(vr))] &&
-      contents#VoteResponseChannel(permVoteChannel)[VotePerm(r, from#VoteResponse(vr))] == vr)
+      permVoteChannel->domain[VotePerm(r, vr->from)] &&
+      permVoteChannel->contents[VotePerm(r, vr->from)] == vr)
 }
 
 procedure {:yield_invariant} {:layer 1} YieldInv();
@@ -95,7 +95,7 @@ requires {:layer 1} InitLow(acceptorState, joinChannel, voteChannel, permJoinCha
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 0 <= r;
   invariant {:layer 1} (forall r': Round :: r < r' ==> rs'[r']);
-  invariant {:layer 1} PAs == (lambda pa: PA :: if (is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && Round(round#A_StartRound(pa)) && round#A_StartRound(pa) <= r) then 1 else 0);
+  invariant {:layer 1} PAs == (lambda pa: PA :: if (pa is A_StartRound && pa->round == pa->round_lin && Round(pa->round) && pa->round <= r) then 1 else 0);
   {
     r := r + 1;
     call rs', r_lin := ExtractRoundPermission(rs', r);
@@ -121,7 +121,7 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= n && n <= numNodes+1;
   invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps[JoinPerm(r, n')]);
-  invariant {:layer 1} PAs == (lambda pa: PA :: if is#A_Join(pa) && round#A_Join(pa) == r && 1 <= node#A_Join(pa) && node#A_Join(pa) < n && p#A_Join(pa) == JoinPerm(round#A_Join(pa), node#A_Join(pa)) then 1 else 0);
+  invariant {:layer 1} PAs == (lambda pa: PA :: if pa is A_Join && pa->round == r && 1 <= pa->node && pa->node < n && pa->p == JoinPerm(pa->round, pa->node) then 1 else 0);
   {
     call ps, p := ExtractJoinPermission(ps, r, n);
     async call Join(r, n, p);
@@ -138,7 +138,7 @@ requires {:layer 1} Round(r);
 requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
 requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
 ensures {:layer 1} maxRound == MaxRound(r, ns, voteInfo);
-ensures {:layer 1} Round(maxRound) ==> maxValue == value#VoteInfo(t#Some(voteInfo[maxRound]));
+ensures {:layer 1} Round(maxRound) ==> maxValue == voteInfo[maxRound]->t->value;
 ensures {:layer 1} IsSubset(ns, joinedNodes[r]) && IsQuorum(ns);
 ensures {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
 ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
@@ -156,21 +156,21 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
   invariant {:layer 1} count == Cardinality(ns);
   invariant {:layer 1} (forall x: Node :: ns[x] ==> Node(x));
   invariant {:layer 1} IsSubset(ns, joinedNodes[r]);
-  invariant {:layer 1} receivedPermissions == (lambda x: Permission :: is#JoinPerm(x) && r#JoinPerm(x) == r && ns[n#JoinPerm(x)]);
+  invariant {:layer 1} receivedPermissions == (lambda x: Permission :: x is JoinPerm && x->r == r && ns[x->n]);
   invariant {:layer 1} maxRound == MaxRound(r, ns, voteInfo);
-  invariant {:layer 1} Round(maxRound) ==> maxValue == value#VoteInfo(t#Some(voteInfo[maxRound]));
+  invariant {:layer 1} Round(maxRound) ==> maxValue == voteInfo[maxRound]->t->value;
   invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
   invariant {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
   {
     call joinResponse := ReceiveJoinResponse(r);
     call receivedPermission := ReceiveJoinResponseIntro(r, joinResponse);
-    call {:layer 1} MaxRoundLemma(voteInfo, r, ns, SingletonNode(n#JoinPerm(receivedPermission)));
-    call {:layer 1} ns := AddToQuorum(ns, n#JoinPerm(receivedPermission));
+    call {:layer 1} MaxRoundLemma(voteInfo, r, ns, SingletonNode(receivedPermission->n));
+    call {:layer 1} ns := AddToQuorum(ns, receivedPermission->n);
     call receivedPermissions := AddPermission(receivedPermissions, receivedPermission);
     count := count + 1;
-    if (lastVoteRound#JoinResponse(joinResponse) > maxRound) {
-      maxRound := lastVoteRound#JoinResponse(joinResponse);
-      maxValue := lastVoteValue#JoinResponse(joinResponse);
+    if (joinResponse->lastVoteRound > maxRound) {
+      maxRound := joinResponse->lastVoteRound;
+      maxValue := joinResponse->lastVoteValue;
     }
     if (2 * count > numNodes) {
       break;
@@ -199,7 +199,7 @@ requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, p
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= n && n <= numNodes+1;
   invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps'[VotePerm(r, n')]);
-  invariant {:layer 1} PAs == (lambda pa: PA :: if is#A_Vote(pa) && round#A_Vote(pa) == r && 1 <= node#A_Vote(pa) && node#A_Vote(pa) < n && value#A_Vote(pa) == maxValue && p#A_Vote(pa) == VotePerm(round#A_Vote(pa), node#A_Vote(pa)) then 1 else 0);
+  invariant {:layer 1} PAs == (lambda pa: PA :: if pa is A_Vote && pa->round == r && 1 <= pa->node && pa->node < n && pa->value == maxValue && pa->p == VotePerm(pa->round, pa->node) then 1 else 0);
   {
     call ps', p := ExtractVotePermission(ps', r, n);
     async call Vote(r, n, maxValue, p);
@@ -228,14 +228,14 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
   while (true)
   invariant {:layer 1} count == Cardinality(q);
   invariant {:layer 1} (forall x: Node :: q[x] ==> Node(x));
-  invariant {:layer 1} IsSubset(q, ns#VoteInfo(t#Some(voteInfo[r])));
-  invariant {:layer 1} receivedPermissions == (lambda x: Permission :: is#VotePerm(x) && r#VotePerm(x) == r && q[n#VotePerm(x)]);
+  invariant {:layer 1} IsSubset(q, voteInfo[r]->t->ns);
+  invariant {:layer 1} receivedPermissions == (lambda x: Permission :: x is VotePerm && x->r == r && q[x->n]);
   invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
   invariant {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
   {
     call voteResponse := ReceiveVoteResponse(r);
     call receivedPermission := ReceiveVoteResponseIntro(r, voteResponse);
-    call {:layer 1} q := AddToQuorum(q, n#VotePerm(receivedPermission));
+    call {:layer 1} q := AddToQuorum(q, receivedPermission->n);
     call receivedPermissions := AddPermission(receivedPermissions, receivedPermission);
     count := count + 1;
     if (2 * count > numNodes) {
@@ -296,7 +296,7 @@ modifies voteInfo;
 procedure {:intro}{:layer 1} VoteIntro(r: Round, n: Node)
 modifies voteInfo;
 {
-  voteInfo[r] := Some(VoteInfo(value#VoteInfo(t#Some(voteInfo[r])), ns#VoteInfo(t#Some(voteInfo[r]))[n := true]));
+  voteInfo[r] := Some(VoteInfo(voteInfo[r]->t->value, voteInfo[r]->t->ns[n := true]));
 }
 
 procedure {:intro}{:layer 1} AddPendingAsyncs(PAs: [PA]int)
@@ -337,10 +337,10 @@ returns (join:bool, lastVoteRound: Round, lastVoteValue: Value)
 modifies acceptorState;
 {
   var lastJoinRound: Round;
-  lastJoinRound := lastJoinRound#AcceptorState(acceptorState[n]);
+  lastJoinRound := acceptorState[n]->lastJoinRound;
   if (r > lastJoinRound) {
-    lastVoteRound := lastVoteRound#AcceptorState(acceptorState[n]);
-    lastVoteValue := lastVoteValue#AcceptorState(acceptorState[n]);
+    lastVoteRound := acceptorState[n]->lastVoteRound;
+    lastVoteValue := acceptorState[n]->lastVoteValue;
     acceptorState[n] := AcceptorState(r, lastVoteRound, lastVoteValue);
     join := true;
   } else {
@@ -353,7 +353,7 @@ returns (vote:bool)
 modifies acceptorState;
 {
   var lastJoinRound: Round;
-  lastJoinRound := lastJoinRound#AcceptorState(acceptorState[n]);
+  lastJoinRound := acceptorState[n]->lastJoinRound;
   if (r >= lastJoinRound) {
     acceptorState[n] := AcceptorState(r, r, v);
     vote := true;
@@ -419,33 +419,33 @@ procedure {:intro}{:layer 1} SendJoinResponseIntro(round: Round, from: Node, las
 modifies permJoinChannel;
 {
   permJoinChannel := JoinResponseChannel(
-    domain#JoinResponseChannel(permJoinChannel)[p := true],
-    contents#JoinResponseChannel(permJoinChannel)[p := JoinResponse(from, lastVoteRound, lastVoteValue)]);
+    permJoinChannel->domain[p := true],
+    permJoinChannel->contents[p := JoinResponse(from, lastVoteRound, lastVoteValue)]);
 }
 
 procedure {:intro}{:layer 1} ReceiveJoinResponseIntro(round: Round, joinResponse: JoinResponse) returns ({:linear "perm"} receivedPermission: Permission)
 modifies permJoinChannel;
 {
-  assert domain#JoinResponseChannel(permJoinChannel)[JoinPerm(round, from#JoinResponse(joinResponse))];
-  receivedPermission := JoinPerm(round, from#JoinResponse(joinResponse));
-  permJoinChannel := JoinResponseChannel(domain#JoinResponseChannel(permJoinChannel)[receivedPermission := false], contents#JoinResponseChannel(permJoinChannel));
+  assert permJoinChannel->domain[JoinPerm(round, joinResponse->from)];
+  receivedPermission := JoinPerm(round, joinResponse->from);
+  permJoinChannel := JoinResponseChannel(permJoinChannel->domain[receivedPermission := false], permJoinChannel->contents);
 }
 
 procedure {:intro}{:layer 1} SendVoteResponseIntro(round: Round, from: Node, {:linear_in "perm"} p: Permission)
 modifies permVoteChannel;
 {
   permVoteChannel := VoteResponseChannel(
-    domain#VoteResponseChannel(permVoteChannel)[p := true],
-    contents#VoteResponseChannel(permVoteChannel)[p := VoteResponse(from)]);
+    permVoteChannel->domain[p := true],
+    permVoteChannel->contents[p := VoteResponse(from)]);
 }
 
 procedure {:intro}{:layer 1} ReceiveVoteResponseIntro(round: Round, voteResponse: VoteResponse)
 returns ({:linear "perm"} receivedPermission: Permission)
 modifies permVoteChannel;
 {
-  assert domain#VoteResponseChannel(permVoteChannel)[VotePerm(round, from#VoteResponse(voteResponse))];
-  receivedPermission := VotePerm(round, from#VoteResponse(voteResponse));
-  permVoteChannel := VoteResponseChannel(domain#VoteResponseChannel(permVoteChannel)[receivedPermission := false], contents#VoteResponseChannel(permVoteChannel));
+  assert permVoteChannel->domain[VotePerm(round, voteResponse->from)];
+  receivedPermission := VotePerm(round, voteResponse->from);
+  permVoteChannel := VoteResponseChannel(permVoteChannel->domain[receivedPermission := false], permVoteChannel->contents);
 }
 
 //// Permission accounting
