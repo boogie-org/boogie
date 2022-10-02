@@ -19,22 +19,22 @@ function {:inline} NoPAs () : [PA]int
 function {:inline} InitialPAs (k:pid) : [PA]int
 {
   MapAdd(
-    (lambda pa:PA :: if is#BROADCAST(pa) && pid(i#BROADCAST(pa)) && i#BROADCAST(pa) < k then 1 else 0),
-    (lambda pa:PA :: if is#COLLECT(pa) && pid(i#COLLECT(pa)) && i#COLLECT(pa) < k then 1 else 0)
+    (lambda pa:PA :: if pa is BROADCAST && pid(pa->i) && pa->i < k then 1 else 0),
+    (lambda pa:PA :: if pa is COLLECT && pid(pa->i) && pa->i < k then 1 else 0)
   )
 }
 
 function {:inline} AllBroadcasts () : [PA]int
-{ (lambda pa:PA :: if is#BROADCAST(pa) && pid(i#BROADCAST(pa)) then 1 else 0) }
+{ (lambda pa:PA :: if pa is BROADCAST && pid(pa->i) then 1 else 0) }
 
 function {:inline} AllCollects () : [PA]int
-{ (lambda pa:PA :: if is#COLLECT(pa) && pid(i#COLLECT(pa)) then 1 else 0) }
+{ (lambda pa:PA :: if pa is COLLECT && pid(pa->i) then 1 else 0) }
 
 function {:inline} RemainingBroadcasts (k:pid) : [PA]int
-{ (lambda {:pool "Broadcast"} pa:PA :: if is#BROADCAST(pa) && k < i#BROADCAST(pa) && i#BROADCAST(pa) <= n then 1 else 0) }
+{ (lambda {:pool "Broadcast"} pa:PA :: if pa is BROADCAST && k < pa->i && pa->i <= n then 1 else 0) }
 
 function {:inline} RemainingCollects (k:pid) : [PA]int
-{ (lambda {:pool "Collect"} pa:PA :: if is#COLLECT(pa) && k < i#COLLECT(pa) && i#COLLECT(pa) <= n then 1 else 0) }
+{ (lambda {:pool "Collect"} pa:PA :: if pa is COLLECT && k < pa->i && pa->i <= n then 1 else 0) }
 
 ////////////////////////////////////////////////////////////////////////////////
 

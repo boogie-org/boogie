@@ -17,7 +17,7 @@ modifies x;
   assert
     {:add_to_pool "A", 0}
     n >= 0;
-  PAs := (lambda pa: PA :: if is#ADD(pa) && 1 <= i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
+  PAs := (lambda pa: PA :: if pa is ADD && 1 <= pa->i && pa->i <= n then 1 else 0);
 }
 
 procedure {:atomic}{:layer 2}
@@ -42,7 +42,7 @@ modifies x;
     {:add_to_pool "B", ADD(n)}
     0 <= i && i <= n;
   x := x + (i * (i+1)) div 2;
-  PAs := (lambda {:pool "B"} pa: PA :: if is#ADD(pa) && i < i#ADD(pa) && i#ADD(pa) <= n then 1 else 0);
+  PAs := (lambda {:pool "B"} pa: PA :: if pa is ADD && i < pa->i && pa->i <= n then 1 else 0);
   choice := ADD(i+1);
 }
 

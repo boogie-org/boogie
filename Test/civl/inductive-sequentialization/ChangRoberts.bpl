@@ -96,7 +96,7 @@ modifies channel, terminated, leader;
       pid(k) &&
       (forall i:int :: pid(i) && between(max(id),i,k) ==> terminated[i]) &&
       (forall i:int :: pid(i) && !between(max(id),i,k) ==> !terminated[i]);
-    PAs := (lambda pa:PA :: if is#P(pa) && pid(pid#P(pa)) && !between(max(id), pid#P(pa), k) then 1 else 0);
+    PAs := (lambda pa:PA :: if pa is P && pid(pa->pid) && !between(max(id), pa->pid, k) then 1 else 0);
   } else {
     assume
       k == n + 1 &&
@@ -166,7 +166,7 @@ modifies channel;
 
   assume (forall i:int :: 1 <= i && i <= n ==> channel[next(i)] == EmptyChannel()[id[i] := 1 ]);
   assume (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
-  PAs := (lambda pa:PA ::  if is#P(pa) && pid(pid#P(pa)) then 1 else 0);
+  PAs := (lambda pa:PA ::  if pa is P && pid(pa->pid) then 1 else 0);
   assume (forall i:int, msg:int :: pid(i) && channel[i][msg] > 0 ==> msg == id[prev(i)]);
 }
 
@@ -188,8 +188,8 @@ modifies channel;
     (forall i:int :: 1 <= i && i <= k ==> channel[next(i)] == EmptyChannel()[id[i] := 1 ]) &&
     (forall i:int :: k < i && i <= n ==> channel[next(i)] == EmptyChannel()) &&
     (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
-  PAs := (lambda {:pool "PInit"} pa:PA :: if is#PInit(pa) && k < pid#PInit(pa) && pid#PInit(pa) <= n then 1
-              else if is#P(pa) &&  1 <= pid#P(pa) && pid#P(pa) <= k  then 1 else 0);
+  PAs := (lambda {:pool "PInit"} pa:PA :: if pa is PInit && k < pa->pid && pa->pid <= n then 1
+              else if pa is P &&  1 <= pa->pid && pa->pid <= k  then 1 else 0);
   choice := PInit(k+1);
 }
 
@@ -204,7 +204,7 @@ returns ({:pending_async "PInit"} PAs:[PA]int)
   assume
     {:add_to_pool "INV1", 0}
     true;
-  PAs := (lambda pa:PA :: if is#PInit(pa) && pid(pid#PInit(pa)) then 1 else 0);
+  PAs := (lambda pa:PA :: if pa is PInit && pid(pa->pid) then 1 else 0);
 }
 
 procedure {:left}{:layer 2}
@@ -272,7 +272,7 @@ requires {:layer 1} Init(pids, channel, terminated, id, leader);
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} (forall ii:int :: pid(ii) && ii >= i ==> pids'[ii]);
-  invariant {:layer 1} PAs == (lambda pa:PA :: if is#PInit(pa) && pid(pid#PInit(pa)) && pid#PInit(pa) < i then 1 else 0);
+  invariant {:layer 1} PAs == (lambda pa:PA :: if pa is PInit && pid(pa->pid) && pa->pid < i then 1 else 0);
   {
     call pid, pids' := linear_transfer(i, pids');
     async call pinit(pid);

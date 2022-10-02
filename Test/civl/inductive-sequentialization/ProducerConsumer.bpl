@@ -11,7 +11,7 @@ function {:constructor} Send(cid: ChannelId): ChannelHandle;
 function {:constructor} Receive(cid: ChannelId): ChannelHandle;
 
 function {:inline} Cid(handle: ChannelHandle): ChannelId {
-  if is#Send(handle) then cid#Send(handle) else cid#Receive(handle)
+  handle->cid
 }
 
 function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [ChannelHandle]bool {
@@ -34,7 +34,7 @@ procedure {:atomic}{:layer 2}
 MAIN ({:linear_in "cid"} cid: ChannelId)
 returns ({:pending_async "PRODUCER","CONSUMER"} PAs:[PA]int)
 {
-  assert head#Channel(channels[cid]) == tail#Channel(channels[cid]);
+  assert channels[cid]->head == channels[cid]->tail;
   PAs := NoPAs()[PRODUCER(1, Send(cid)) := 1][CONSUMER(1, Receive(cid)) := 1];
 }
 
@@ -44,8 +44,8 @@ modifies channels;
 {
   var channel: Channel;
 
-  assert head#Channel(channels[cid]) == tail#Channel(channels[cid]);
-  assume head#Channel(channel) == tail#Channel(channel);
+  assert channels[cid]->head == channels[cid]->tail;
+  assume channel->head == channel->tail;
   channels[cid] := channel;
 }
 
@@ -59,11 +59,11 @@ modifies channels;
   var C: [int]int;
   var head, tail: int;
 
-  assert head#Channel(channels[cid]) == tail#Channel(channels[cid]);
-  
-  C := C#Channel(channel);
-  head := head#Channel(channel);
-  tail := tail#Channel(channel);
+  assert channels[cid]->head == channels[cid]->tail;
+
+  C := channel->C;
+  head := channel->head;
+  tail := channel->tail;
   assume {:add_to_pool "INV1", c} 0 < c;
   if (*) {
     assume head == tail;
@@ -96,12 +96,12 @@ modifies channels;
   var head, tail: int;
   var cid: ChannelId;
 
-  assert is#Send(send_handle);
+  assert send_handle is Send;
   cid := Cid(send_handle);
   channel := channels[cid];
-  C := C#Channel(channel);
-  head := head#Channel(channel);
-  tail := tail#Channel(channel);
+  C := channel->C;
+  head := channel->head;
+  tail := channel->tail;
   if (*)
   {
     C[tail] := x;
@@ -129,12 +129,12 @@ modifies channels;
   var x': int;
   var cid: ChannelId;
 
-  assert is#Receive(receive_handle);
+  assert receive_handle is Receive;
   cid := Cid(receive_handle);
   channel := channels[cid];
-  C := C#Channel(channel);
-  head := head#Channel(channel);
-  tail := tail#Channel(channel);
+  C := channel->C;
+  head := channel->head;
+  tail := channel->tail;
   assert head < tail ==> C[head] == x || C[head] == 0;  // assertion to discharge
 
   assume head < tail;
@@ -165,8 +165,8 @@ modifies channels;
 
   cid := Cid(receive_handle);
   channel := channels[cid];
-  head := head#Channel(channel);
-  tail := tail#Channel(channel);
+  head := channel->head;
+  tail := channel->tail;
   assert head < tail;
   call PAs := CONSUMER(x, receive_handle);
 }
@@ -220,12 +220,12 @@ modifies channels;
   var head, tail: int;
   var cid: ChannelId;
 
-  assert is#Send(send_handle);
+  assert send_handle is Send;
   cid := Cid(send_handle);
   channel := channels[cid];
-  C := C#Channel(channel);
-  head := head#Channel(channel);
-  tail := tail#Channel(channel);
+  C := channel->C;
+  head := channel->head;
+  tail := channel->tail;
   C[tail] := m;
   tail := tail + 1;
   channels[cid] := Channel(C, head, tail);
@@ -239,12 +239,12 @@ modifies channels;
   var head, tail: int;
   var cid: ChannelId;
 
-  assert is#Receive(receive_handle);
+  assert receive_handle is Receive;
   cid := Cid(receive_handle);
   channel := channels[cid];
-  C := C#Channel(channel);
-  head := head#Channel(channel);
-  tail := tail#Channel(channel);
+  C := channel->C;
+  head := channel->head;
+  tail := channel->tail;
   assume head < tail;
   m := C[head];
   head := head + 1;
