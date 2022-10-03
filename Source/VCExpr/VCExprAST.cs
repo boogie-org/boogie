@@ -976,6 +976,105 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
 
+  public class VCExprFieldAccessOp : VCExprOp
+  {
+    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl;
+    
+    public int ConstructorIndex;
+    
+    public int SelectorIndex;
+    public override int Arity => 1;
+    public override int TypeParamArity => 0;
+    
+    public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
+    {
+      //return DatatypeTypeCtorDecl.Constructors[ConstructorIndex].selectors[SelectorIndex].OutParams[0].TypedIdent.Type;
+      return DatatypeTypeCtorDecl.Constructors[ConstructorIndex].InParams[SelectorIndex].TypedIdent.Type;
+    }
+    
+    public override bool Equals(object that)
+    {
+      if (Object.ReferenceEquals(this, that))
+      {
+        return true;
+      }
+      if (that is VCExprFieldAccessOp thatOp)
+      {
+        return DatatypeTypeCtorDecl.Equals(thatOp.DatatypeTypeCtorDecl) &&
+               ConstructorIndex == thatOp.ConstructorIndex && SelectorIndex == thatOp.SelectorIndex;
+      }
+      return false;
+    }
+    
+    public override int GetHashCode()
+    {
+      return Arity * 1212481;
+    }
+
+    internal VCExprFieldAccessOp(DatatypeTypeCtorDecl datatypeTypeCtorDecl, int constructorIndex, int selectorIndex)
+    {
+      DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
+      ConstructorIndex = constructorIndex;
+      SelectorIndex = selectorIndex;
+    }
+
+    public override Result Accept<Result, Arg>(
+      VCExprNAry expr,
+      IVCExprOpVisitor<Result, Arg> visitor,
+      Arg arg)
+    {
+      return visitor.VisitFieldAccessOp(expr, arg);
+    }
+  }
+  
+  public class VCExprIsConstructorOp : VCExprOp
+  {
+    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl;
+    
+    public int ConstructorIndex;
+    
+    public override int Arity => 1;
+    public override int TypeParamArity => 0;
+    
+    public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
+    {
+      return Type.Bool;
+    }
+    
+    public override bool Equals(object that)
+    {
+      if (Object.ReferenceEquals(this, that))
+      {
+        return true;
+      }
+      if (that is VCExprIsConstructorOp thatOp)
+      {
+        return DatatypeTypeCtorDecl.Equals(thatOp.DatatypeTypeCtorDecl) &&
+               ConstructorIndex == thatOp.ConstructorIndex;
+      }
+      return false;
+    }
+    
+    public override int GetHashCode()
+    {
+      return Arity * 1212481;
+    }
+
+    internal VCExprIsConstructorOp(DatatypeTypeCtorDecl datatypeTypeCtorDecl, int constructorIndex)
+    {
+      DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
+      ConstructorIndex = constructorIndex;
+    }
+
+    public override Result Accept<Result, Arg>(
+      VCExprNAry expr,
+      IVCExprOpVisitor<Result, Arg> visitor,
+      Arg arg)
+    {
+      return visitor.VisitIsConstructorOp(expr, arg);
+    }
+  }
+  
   public class VCExprSelectOp : VCExprOp
   {
     private readonly int MapArity;

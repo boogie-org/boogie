@@ -65,6 +65,11 @@ namespace Microsoft.Boogie
       return new NAryExpr(Token.NoToken, new FieldAccess(Token.NoToken, fieldName), new Expr[] { path });
     }
 
+    public static NAryExpr IsConstructor(Expr path, string constructorName)
+    {
+      return new NAryExpr(Token.NoToken, new IsConstructor(Token.NoToken, constructorName), new Expr[] { path });
+    }
+    
     public static NAryExpr IfThenElse(Expr ifExpr, Expr thenExpr, Expr elseExpr)
     {
       return new NAryExpr(Token.NoToken, new IfThenElse(Token.NoToken),

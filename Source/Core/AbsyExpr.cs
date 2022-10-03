@@ -3868,7 +3868,7 @@ namespace Microsoft.Boogie
       return DatatypeTypeCtorDecl.Constructors[accessor.Item1];
     }
     
-    public DatatypeSelector Selector(int index)
+    private DatatypeSelector Selector(int index)
     {
       var accessor = Accessors[index];
       return DatatypeTypeCtorDecl.Constructors[accessor.Item1].selectors[accessor.Item2];
@@ -3997,16 +3997,18 @@ namespace Microsoft.Boogie
       }
       return expr;
     }
-    
+
     private NAryExpr Update(IToken token, Expr record, Expr rhs, int index)
     {
-      var args = Constructor(index).selectors.Select(x =>
+      var constructor = Constructor(index);
+      var args = Enumerable.Range(0, constructor.InParams.Count).Select(x =>
       {
-        if (x == Selector(index))
+        if (x == Accessors[index].Item2)
         {
           return rhs;
         }
-        var fieldAccess = new FieldAccess(tok, DatatypeTypeCtorDecl,  DatatypeTypeCtorDecl.GetAccessors(x.OriginalName));
+        var fieldAccess = new FieldAccess(tok, DatatypeTypeCtorDecl,
+          DatatypeTypeCtorDecl.GetAccessors(constructor.InParams[x].Name));
         return fieldAccess.Select(token, record);
       }).ToList();
       return new NAryExpr(token, new FunctionCall(Constructor(index)), args);
@@ -4023,7 +4025,7 @@ namespace Microsoft.Boogie
     
     public int ConstructorIndex { get; set; }
     
-    public DatatypeMembership Membership => DatatypeTypeCtorDecl.Constructors[ConstructorIndex].membership;
+    private DatatypeMembership Membership => DatatypeTypeCtorDecl.Constructors[ConstructorIndex].membership;
 
     public IsConstructor(IToken tok, string constructorName)
     {
