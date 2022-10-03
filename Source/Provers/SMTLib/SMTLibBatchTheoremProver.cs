@@ -294,7 +294,7 @@ namespace Microsoft.Boogie.SMTLib
       Process?.Close();
       Process = libOptions.CreateSolver(libOptions, options);
 
-      Process.ErrorHandler += HandleProverError;
+      Process.AddErrorHandler(HandleProverError);
     }
 
     public override void Close()

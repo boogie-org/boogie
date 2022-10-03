@@ -18,6 +18,8 @@ public abstract class SMTLibSolver
 
   public abstract Task PingPong();
 
+  public abstract void AddErrorHandler(Action<string> handler);
+
   public static bool IsPong(SExpr response)
   {
     return response is { Name: ":name" };

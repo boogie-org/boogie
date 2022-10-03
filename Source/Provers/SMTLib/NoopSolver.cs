@@ -67,4 +67,8 @@ public class NoopSolver : SMTLibSolver
   public override Task PingPong() {
     return Task.CompletedTask;
   }
+
+  public override void AddErrorHandler(Action<string> handler)
+  {
+  }
 }
