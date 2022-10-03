@@ -3868,10 +3868,10 @@ namespace Microsoft.Boogie
       return DatatypeTypeCtorDecl.Constructors[accessor.Item1];
     }
     
-    private DatatypeSelector Selector(int index)
+    private Variable Selector(int index)
     {
       var accessor = Accessors[index];
-      return DatatypeTypeCtorDecl.Constructors[accessor.Item1].selectors[accessor.Item2];
+      return DatatypeTypeCtorDecl.Constructors[accessor.Item1].InParams[accessor.Item2];
     }
 
     public FieldAccess(IToken tok, string fieldName)
@@ -3885,7 +3885,7 @@ namespace Microsoft.Boogie
       this.tok = tok;
       this.DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
       this.Accessors = accessors;
-      this.FieldName = Selector(0).OriginalName;
+      this.FieldName = Selector(0).Name;
     }
 
     public string FunctionName => "field-access";
@@ -3962,16 +3962,16 @@ namespace Microsoft.Boogie
         return null;
       }
       Contract.Assert(Accessors.Count > 0);
-      tpInstantiation = SimpleTypeParamInstantiation.From(Selector(0).TypeParameters, ctorType.Arguments);
-      var typeSubst = Selector(0).TypeParameters.Zip(ctorType.Arguments).ToDictionary(
+      tpInstantiation = SimpleTypeParamInstantiation.From(Constructor(0).TypeParameters, ctorType.Arguments);
+      var typeSubst = Constructor(0).TypeParameters.Zip(ctorType.Arguments).ToDictionary(
           x => x.Item1, 
           x => x.Item2);
-      return Selector(0).OutParams[0].TypedIdent.Type.Substitute(typeSubst);
+      return Selector(0).TypedIdent.Type.Substitute(typeSubst);
     }
 
     public Type ShallowType(IList<Expr> args)
     {
-      return Selector(0).OutParams[0].TypedIdent.Type;
+      return Selector(0).TypedIdent.Type;
     }
 
     public T Dispatch<T>(IAppliableVisitor<T> visitor)
@@ -4025,8 +4025,6 @@ namespace Microsoft.Boogie
     
     public int ConstructorIndex { get; set; }
     
-    private DatatypeMembership Membership => DatatypeTypeCtorDecl.Constructors[ConstructorIndex].membership;
-
     public IsConstructor(IToken tok, string constructorName)
     {
       this.tok = tok;
@@ -4116,7 +4114,7 @@ namespace Microsoft.Boogie
         return null;
       }
       ConstructorIndex = constructor.index;
-      tpInstantiation = SimpleTypeParamInstantiation.From(Membership.TypeParameters, ctorType.Arguments);
+      tpInstantiation = SimpleTypeParamInstantiation.From(constructor.TypeParameters, ctorType.Arguments);
       return Type.Bool;
     }
 

@@ -785,7 +785,7 @@ namespace Microsoft.Boogie.SMTLib
         var op = (VCExprIsConstructorOp)node.Op;
         var constructor = op.DatatypeTypeCtorDecl.Constructors[op.ConstructorIndex];
         var name = "is-" + constructor.Name;
-        name = ExprLineariser.Namer.GetQuotedName(constructor.membership, name);
+        name = ExprLineariser.Namer.GetQuotedName(name, name);
         WriteApplication(name, node, options);
         return true;
       }
