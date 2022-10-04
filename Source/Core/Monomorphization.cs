@@ -539,11 +539,7 @@ namespace Microsoft.Boogie
         var newConstructor = new DatatypeConstructor(newDatatypeTypeCtorDecl,
           InstantiateFunctionSignature(constructor, actualTypeParams,
             LinqExtender.Map(constructor.TypeParameters, actualTypeParams)));
-        newConstructor.membership = DatatypeMembership.NewDatatypeMembership(newConstructor);
-        for (int i = 0; i < newConstructor.InParams.Count; i++)
-        {
-          newConstructor.AddSelector(DatatypeSelector.NewDatatypeSelector(newConstructor, i), out _);
-        }
+        newDatatypeTypeCtorDecl.AddConstructor(newConstructor);
       }
 
       private static string MkInstanceName(string name, List<Type> actualTypeParams)
@@ -649,15 +645,7 @@ namespace Microsoft.Boogie
           // to the corresponding instantiated types
           if (functionCall.Func.TypeParameters.Count == 0)
           {
-            if (functionCall.Func is DatatypeMembership membership)
-            {
-              monomorphizationVisitor.VisitTypeCtorDecl(membership.constructor.datatypeTypeCtorDecl);
-            }
-            else if (functionCall.Func is DatatypeSelector selector)
-            {
-              monomorphizationVisitor.VisitTypeCtorDecl(selector.constructor.datatypeTypeCtorDecl);
-            }
-            else if (functionCall.Func is DatatypeConstructor constructor)
+            if (functionCall.Func is DatatypeConstructor constructor)
             {
               monomorphizationVisitor.VisitTypeCtorDecl(constructor.datatypeTypeCtorDecl);
             }
@@ -673,23 +661,7 @@ namespace Microsoft.Boogie
               returnExpr.TypeParameters.FormalTypeParams.Select(x =>
                   TypeProxy.FollowProxy(returnExpr.TypeParameters[x]).Substitute(typeParamInstantiation))
                 .Select(x => LookupType(x)).ToList();
-            if (functionCall.Func is DatatypeMembership membership)
-            {
-              InstantiateTypeCtorDecl(membership.constructor.datatypeTypeCtorDecl, actualTypeParams);
-              var datatypeTypeCtorDecl =
-                (DatatypeTypeCtorDecl) monomorphizationVisitor.typeInstantiations[membership.constructor.datatypeTypeCtorDecl][actualTypeParams];
-              returnExpr.Fun =
-                new FunctionCall(datatypeTypeCtorDecl.Constructors[membership.constructor.index].membership);
-            }
-            else if (functionCall.Func is DatatypeSelector selector)
-            {
-              InstantiateTypeCtorDecl(selector.constructor.datatypeTypeCtorDecl, actualTypeParams);
-              var datatypeTypeCtorDecl =
-                (DatatypeTypeCtorDecl) monomorphizationVisitor.typeInstantiations[selector.constructor.datatypeTypeCtorDecl][actualTypeParams];
-              returnExpr.Fun = new FunctionCall(datatypeTypeCtorDecl.Constructors[selector.constructor.index]
-                .selectors[selector.index]);
-            }
-            else if (functionCall.Func is DatatypeConstructor constructor)
+            if (functionCall.Func is DatatypeConstructor constructor)
             {
               InstantiateTypeCtorDecl(constructor.datatypeTypeCtorDecl, actualTypeParams);
               var datatypeTypeCtorDecl =
@@ -1105,18 +1077,11 @@ namespace Microsoft.Boogie
       visitedTypeCtorDecls.Add(node);
       if (node is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
       {
-        datatypeTypeCtorDecl.Constructors.Iter(constructor => VisitConstructor(constructor));
+        datatypeTypeCtorDecl.Constructors.Iter(constructor => base.VisitFunction(constructor));
       }
       return base.VisitTypeCtorDecl(node);
     }
 
-    private void VisitConstructor(DatatypeConstructor constructor)
-    {
-      base.VisitFunction(constructor);
-      base.VisitFunction(constructor.membership);
-      constructor.selectors.Iter(selector => base.VisitFunction(selector));
-    }
-    
     // this function may be called directly by monomorphizationDuplicator
     // if a non-generic function call is discovered in an expression
     public override Function VisitFunction(Function node)

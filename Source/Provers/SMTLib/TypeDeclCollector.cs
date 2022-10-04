@@ -225,7 +225,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
         if (op != null &&
-            !(op.Func is DatatypeConstructor) && !(op.Func is DatatypeMembership) && !(op.Func is DatatypeSelector) &&
+            !(op.Func is DatatypeConstructor) &&
             !KnownFunctions.Contains(op.Func))
         {
           Function f = op.Func;

@@ -988,7 +988,6 @@ namespace Microsoft.Boogie.VCExprAST
     
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      //return DatatypeTypeCtorDecl.Constructors[ConstructorIndex].selectors[SelectorIndex].OutParams[0].TypedIdent.Type;
       return DatatypeTypeCtorDecl.Constructors[ConstructorIndex].InParams[SelectorIndex].TypedIdent.Type;
     }
     

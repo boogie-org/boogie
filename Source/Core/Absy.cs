@@ -300,7 +300,6 @@ namespace Microsoft.Boogie
     public void ProcessDatatypeConstructors(Errors errors)
     {
       Dictionary<string, DatatypeTypeCtorDecl> datatypeTypeCtorDecls = new Dictionary<string, DatatypeTypeCtorDecl>();
-      Dictionary<string, DatatypeConstructor> constructors = new Dictionary<string, DatatypeConstructor>();
       List<Declaration> prunedTopLevelDeclarations = new List<Declaration>();
       foreach (TypeCtorDecl typeCtorDecl in TopLevelDeclarations.OfType<TypeCtorDecl>())
       {
@@ -335,12 +334,6 @@ namespace Microsoft.Boogie
           prunedTopLevelDeclarations.Add(decl);
           continue;
         }
-        if (constructors.ContainsKey(func.Name))
-        {
-          errors.SemErr(func.tok,
-            string.Format("more than one declaration of datatype constructor name: {0}", func.Name));
-          continue;
-        }
         var outputTypeName = (func.OutParams[0].TypedIdent.Type as UnresolvedTypeIdentifier).Name;
         if (!datatypeTypeCtorDecls.ContainsKey(outputTypeName))
         {
@@ -350,7 +343,11 @@ namespace Microsoft.Boogie
         }
         var datatypeTypeCtorDecl = datatypeTypeCtorDecls[outputTypeName];
         DatatypeConstructor constructor = new DatatypeConstructor(datatypeTypeCtorDecl, func);
-        constructors.Add(func.Name, constructor);
+        if (!datatypeTypeCtorDecl.AddConstructor(constructor))
+        {
+          errors.SemErr(func.tok,
+                        string.Format("more than one declaration of datatype constructor name: {0}", func.Name));
+        }
       }
       if (errors.count > 0)
       {
@@ -387,40 +384,17 @@ namespace Microsoft.Boogie
       }
 
       ResolveTypes(rc);
-
-      var prunedTopLevelDeclarations = new List<Declaration /*!*/>();
-
+      
       foreach (var datatypeTypeCtorDecl in TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>())
       {
         foreach (var f in datatypeTypeCtorDecl.Constructors)
         {
           f.Register(rc);
-          int e = rc.ErrorCount;
           f.Resolve(rc);
-          if (rc.ErrorCount != e)
-          {
-            continue;
-          }
-          for (int i = 0; i < f.InParams.Count; i++)
-          {
-            DatatypeSelector selector = DatatypeSelector.NewDatatypeSelector(f, i);
-            if (f.AddSelector(selector, out DatatypeConstructor firstConstructor))
-            {
-              selector.Register(rc);
-            }
-            else
-            {
-              rc.Error(selector,
-                "type mismatch between field {0} and identically-named field in constructor {1}",
-                selector.OriginalName, firstConstructor);
-            }
-          }
-          DatatypeMembership membership = DatatypeMembership.NewDatatypeMembership(f);
-          f.membership = membership;
-          membership.Register(rc);
         }
       }
 
+      var prunedTopLevelDeclarations = new List<Declaration /*!*/>();
       foreach (var d in TopLevelDeclarations)
       {
         if (QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
@@ -436,7 +410,7 @@ namespace Microsoft.Boogie
           if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation)
           {
             // ignore this implementation
-            System.Console.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors",
+            Console.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors",
               ((Implementation) d).Name);
             rc.ErrorCount = e;
             continue;
@@ -1425,14 +1399,8 @@ namespace Microsoft.Boogie
     private List<DatatypeConstructor> constructors;
     private Dictionary<string, DatatypeConstructor> nameToConstructor;
     private Dictionary<string, List<Tuple<int, int>>> accessors;
-    
-    public List<DatatypeConstructor> Constructors
-    {
-      get
-      {
-        return constructors;
-      }
-    }
+
+    public List<DatatypeConstructor> Constructors => constructors;
 
     public DatatypeTypeCtorDecl(TypeCtorDecl typeCtorDecl)
       : base(typeCtorDecl.tok, typeCtorDecl.Name, typeCtorDecl.Arity, typeCtorDecl.Attributes)
@@ -1442,33 +1410,59 @@ namespace Microsoft.Boogie
       this.accessors = new Dictionary<string, List<Tuple<int, int>>>();
     }
 
-    public void AddConstructor(DatatypeConstructor constructor)
+    public bool AddConstructor(DatatypeConstructor constructor)
     {
+      if (this.nameToConstructor.ContainsKey(constructor.Name))
+      {
+        return false;
+      }
+      constructor.index = constructors.Count;
       this.constructors.Add(constructor);
       this.nameToConstructor.Add(constructor.Name, constructor);
-    }
-
-    public bool AddSelector(DatatypeSelector selector, out DatatypeConstructor firstConstructor)
-    {
-      if (!accessors.ContainsKey(selector.OriginalName))
+      for (int i = 0; i < constructor.InParams.Count; i++)
       {
-        accessors.Add(selector.OriginalName, new List<Tuple<int, int>>());
+        var v = constructor.InParams[i];
+        if (!accessors.ContainsKey(v.Name))
+        {
+          accessors.Add(v.Name, new List<Tuple<int, int>>());
+        }
+        accessors[v.Name].Add(Tuple.Create(constructor.index, i));
       }
-      accessors[selector.OriginalName].Add(Tuple.Create(selector.constructor.index, selector.index));
-      var firstAccessor = accessors[selector.OriginalName][0];
-      firstConstructor = constructors[firstAccessor.Item1];
-      var firstSelector = firstConstructor.selectors[firstAccessor.Item2];
-      return NormalizedType(firstConstructor, firstSelector).Equals(NormalizedType(firstConstructor, selector));
+      return true;
     }
 
-    private static Type NormalizedType(DatatypeConstructor firstConstructor, DatatypeSelector selector)
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      accessors.Where(kv => kv.Value.Count > 1).Iter(kv =>
+      {
+        var firstAccessor = kv.Value[0];
+        var firstConstructor = constructors[firstAccessor.Item1];
+        var firstSelector = firstConstructor.InParams[firstAccessor.Item2];
+        for (int i = 1; i < kv.Value.Count; i++)
+        {
+          var accessor = kv.Value[i];
+          var constructor = constructors[accessor.Item1];
+          var index = accessor.Item2;
+          var field = constructor.InParams[index];
+          if (!NormalizedSelectorType(firstConstructor, constructor, index).Equals(firstSelector.TypedIdent.Type))
+          {
+            tc.Error(field,
+              "type mismatch between field {0} and identically-named field in constructor {1}",
+              field.Name, firstConstructor);
+          }
+        }
+      });
+      base.Typecheck(tc);
+    }
+
+    private static Type NormalizedSelectorType(DatatypeConstructor firstConstructor, DatatypeConstructor constructor, int index)
     {
       var firstConstructorType = (CtorType)firstConstructor.OutParams[0].TypedIdent.Type;
-      var constructorType = (CtorType)selector.InParams[0].TypedIdent.Type;
+      var constructorType = (CtorType)constructor.OutParams[0].TypedIdent.Type;
       var typeSubst = constructorType.Arguments.Zip(firstConstructorType.Arguments).ToDictionary(
         x => x.Item1 as TypeVariable,
         x => x.Item2);
-      return selector.OutParams[0].TypedIdent.Type.Substitute(typeSubst);
+      return constructor.InParams[index].TypedIdent.Type.Substitute(typeSubst);
     }
 
     public DatatypeConstructor GetConstructor(string constructorName)
@@ -2594,40 +2588,11 @@ namespace Microsoft.Boogie
   {
     public DatatypeTypeCtorDecl datatypeTypeCtorDecl;
     public int index;
-    public List<DatatypeSelector> selectors;
-    public DatatypeMembership membership;
 
     public DatatypeConstructor(DatatypeTypeCtorDecl datatypeTypeCtorDecl, Function func)
       : base(func.tok, func.Name, func.TypeParameters, func.InParams, func.OutParams[0], func.Comment, func.Attributes)
     {
-      selectors = new List<DatatypeSelector>();
-      index = datatypeTypeCtorDecl.Constructors.Count;
-      datatypeTypeCtorDecl.AddConstructor(this);
       this.datatypeTypeCtorDecl = datatypeTypeCtorDecl;
-    }
-
-    public override void Resolve(ResolutionContext rc)
-    {
-      HashSet<string> selectorNames = new HashSet<string>();
-      foreach (DatatypeSelector selector in selectors)
-      {
-        if (selector.Name.StartsWith("#"))
-        {
-          rc.Error(selector.tok, "The selector must be a non-empty string");
-        }
-        else
-        {
-          if (selectorNames.Contains(selector.Name))
-          {
-            rc.Error(this.tok, "The selectors for a constructor must be distinct strings");
-          }
-          else
-          {
-            selectorNames.Add(selector.Name);
-          }
-        }
-      }
-      base.Resolve(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -2644,80 +2609,6 @@ namespace Microsoft.Boogie
       base.Typecheck(tc);
     }
 
-    public bool AddSelector(DatatypeSelector selector, out DatatypeConstructor firstConstructor)
-    {
-      selectors.Add(selector);
-      return this.datatypeTypeCtorDecl.AddSelector(selector, out firstConstructor);
-    }
-
-    public override bool MayRename => false;
-}
-
-  public class DatatypeSelector : Function
-  {
-    public DatatypeConstructor constructor;
-    public int index;
-    public string OriginalName => constructor.InParams[index].Name;
-    
-    public static DatatypeSelector NewDatatypeSelector(DatatypeConstructor constructor, int index)
-    {
-      var newTypeVariables = constructor.TypeParameters.Select(tp => new TypeVariable(tp.tok, tp.Name)).ToList();
-      var typeVariableMapping = LinqExtender.Map(constructor.TypeParameters, newTypeVariables.Select(x => (Type)x).ToList());
-      return new DatatypeSelector(constructor, index, newTypeVariables, typeVariableMapping);
-    }
-
-    private DatatypeSelector(DatatypeConstructor constructor, int index, List<TypeVariable> newTypeVariables, Dictionary<TypeVariable, Type> typeVariableMapping)
-      : base(constructor.InParams[index].tok,
-        constructor.InParams[index].Name + "#" + constructor.Name,
-        newTypeVariables,
-        new List<Variable>
-        {
-          new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.OutParams[0].TypedIdent.Type.Substitute(typeVariableMapping)),
-            true)
-        },
-        new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.InParams[index].TypedIdent.Type.Substitute(typeVariableMapping)),
-          false))
-    {
-      this.constructor = constructor;
-      this.index = index;
-    }
-
-    public override void Emit(TokenTextWriter stream, int level)
-    {
-    }
-    
-    public override bool MayRename => false;
-  }
-
-  public class DatatypeMembership : Function
-  {
-    public DatatypeConstructor constructor;
-
-    public static DatatypeMembership NewDatatypeMembership(DatatypeConstructor constructor)
-    {
-      var newTypeVariables = constructor.TypeParameters.Select(tp => new TypeVariable(tp.tok, tp.Name)).ToList();
-      var typeVariableMapping = LinqExtender.Map(constructor.TypeParameters, newTypeVariables.Select(x => (Type)x).ToList());
-      return new DatatypeMembership(constructor, newTypeVariables, typeVariableMapping);
-    }
-
-    private DatatypeMembership(DatatypeConstructor constructor, List<TypeVariable> newTypeVariables, Dictionary<TypeVariable, Type> typeVariableMapping)
-      : base(constructor.tok,
-        "is#" + constructor.Name,
-        newTypeVariables,
-        new List<Variable>
-        {
-          new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.OutParams[0].TypedIdent.Type.Substitute(typeVariableMapping)),
-            true)
-        },
-        new Formal(constructor.tok, new TypedIdent(constructor.tok, "", Type.Bool), false))
-    {
-      this.constructor = constructor;
-    }
-
-    public override void Emit(TokenTextWriter stream, int level)
-    {
-    }
-    
     public override bool MayRename => false;
   }
 
