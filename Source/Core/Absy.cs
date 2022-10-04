@@ -336,7 +336,7 @@ namespace Microsoft.Boogie
         var outputTypeName = ((UnresolvedTypeIdentifier)func.OutParams[0].TypedIdent.Type).Name;
         if (!datatypeTypeCtorDecls.ContainsKey(outputTypeName))
         {
-          errors.SemErr(func.tok, $"output type of constructor does not match any datatype name: {func.Name}");
+          errors.SemErr(func.tok, $"output type of constructor {func.Name} must be a datatype");
           continue;
         }
         var datatypeTypeCtorDecl = datatypeTypeCtorDecls[outputTypeName];
@@ -2609,14 +2609,14 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      CtorType outputType = this.OutParams[0].TypedIdent.Type as CtorType;
-      if (outputType == null || !outputType.IsDatatype())
+      var outputType = (CtorType)this.OutParams[0].TypedIdent.Type;
+      if (!outputType.Arguments.All(t => t is TypeVariable))
       {
-        tc.Error(tok, "The output type of a constructor must be a datatype");
-      }
-      else if (!outputType.Arguments.All(t => t is TypeVariable))
+        tc.Error(tok, "Each argument of the output type must be a type variable");
+      } 
+      else if (TypeParameters.Count != outputType.Arguments.Count)
       {
-        tc.Error(tok, "Each type argument of the output type of a constructor must be a type variable");
+        tc.Error(tok, "Each type parameter must appear as an argument to the output type");
       }
       base.Typecheck(tc);
     }

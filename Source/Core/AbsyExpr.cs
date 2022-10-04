@@ -3856,13 +3856,13 @@ namespace Microsoft.Boogie
     
     public string FieldName { get; }
 
-    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl { get; set; }
+    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl { get; private set; }
     
     // each accessor is specified by a pair comprising a constructor index
     // and a selector index within the constructor corresponding to it
-    public List<DatatypeAccessor> Accessors { get; set; }
+    public List<DatatypeAccessor> Accessors { get; private set; }
 
-    public DatatypeConstructor Constructor(int index)
+    private DatatypeConstructor Constructor(int index)
     {
       var accessor = Accessors[index];
       return DatatypeTypeCtorDecl.Constructors[accessor.ConstructorIndex];
@@ -4021,9 +4021,9 @@ namespace Microsoft.Boogie
     
     public string ConstructorName { get; }
     
-    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl { get; set; }
+    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl { get; private set; }
     
-    public int ConstructorIndex { get; set; }
+    public int ConstructorIndex { get; private set; }
     
     public IsConstructor(IToken tok, string constructorName)
     {
