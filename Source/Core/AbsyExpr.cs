@@ -3856,22 +3856,22 @@ namespace Microsoft.Boogie
     
     public string FieldName { get; }
 
-    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl { get; set; }
+    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl { get; private set; }
     
     // each accessor is specified by a pair comprising a constructor index
     // and a selector index within the constructor corresponding to it
-    public List<Tuple<int, int>> Accessors { get; set; }
+    public List<DatatypeAccessor> Accessors { get; private set; }
 
-    public DatatypeConstructor Constructor(int index)
+    private DatatypeConstructor Constructor(int index)
     {
       var accessor = Accessors[index];
-      return DatatypeTypeCtorDecl.Constructors[accessor.Item1];
+      return DatatypeTypeCtorDecl.Constructors[accessor.ConstructorIndex];
     }
     
-    public DatatypeSelector Selector(int index)
+    private Variable Field(int index)
     {
       var accessor = Accessors[index];
-      return DatatypeTypeCtorDecl.Constructors[accessor.Item1].selectors[accessor.Item2];
+      return DatatypeTypeCtorDecl.Constructors[accessor.ConstructorIndex].InParams[accessor.FieldIndex];
     }
 
     public FieldAccess(IToken tok, string fieldName)
@@ -3880,12 +3880,12 @@ namespace Microsoft.Boogie
       this.FieldName = fieldName;
     }
     
-    public FieldAccess(IToken tok, DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<Tuple<int, int>> accessors)
+    public FieldAccess(IToken tok, DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<DatatypeAccessor> accessors)
     {
       this.tok = tok;
       this.DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
       this.Accessors = accessors;
-      this.FieldName = Selector(0).OriginalName;
+      this.FieldName = Field(0).Name;
     }
 
     public string FunctionName => "field-access";
@@ -3962,16 +3962,16 @@ namespace Microsoft.Boogie
         return null;
       }
       Contract.Assert(Accessors.Count > 0);
-      tpInstantiation = SimpleTypeParamInstantiation.From(Selector(0).TypeParameters, ctorType.Arguments);
-      var typeSubst = Selector(0).TypeParameters.Zip(ctorType.Arguments).ToDictionary(
+      tpInstantiation = SimpleTypeParamInstantiation.From(Constructor(0).TypeParameters, ctorType.Arguments);
+      var typeSubst = Constructor(0).TypeParameters.Zip(ctorType.Arguments).ToDictionary(
           x => x.Item1, 
           x => x.Item2);
-      return Selector(0).OutParams[0].TypedIdent.Type.Substitute(typeSubst);
+      return Field(0).TypedIdent.Type.Substitute(typeSubst);
     }
 
     public Type ShallowType(IList<Expr> args)
     {
-      return Selector(0).OutParams[0].TypedIdent.Type;
+      return Field(0).TypedIdent.Type;
     }
 
     public T Dispatch<T>(IAppliableVisitor<T> visitor)
@@ -3997,16 +3997,18 @@ namespace Microsoft.Boogie
       }
       return expr;
     }
-    
+
     private NAryExpr Update(IToken token, Expr record, Expr rhs, int index)
     {
-      var args = Constructor(index).selectors.Select(x =>
+      var constructor = Constructor(index);
+      var args = Enumerable.Range(0, constructor.InParams.Count).Select(x =>
       {
-        if (x == Selector(index))
+        if (x == Accessors[index].FieldIndex)
         {
           return rhs;
         }
-        var fieldAccess = new FieldAccess(tok, DatatypeTypeCtorDecl,  DatatypeTypeCtorDecl.GetAccessors(x.OriginalName));
+        var fieldAccess = new FieldAccess(tok, DatatypeTypeCtorDecl,
+          DatatypeTypeCtorDecl.GetAccessors(constructor.InParams[x].Name));
         return fieldAccess.Select(token, record);
       }).ToList();
       return new NAryExpr(token, new FunctionCall(Constructor(index)), args);
@@ -4019,12 +4021,10 @@ namespace Microsoft.Boogie
     
     public string ConstructorName { get; }
     
-    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl { get; set; }
+    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl { get; private set; }
     
-    public int ConstructorIndex { get; set; }
+    public int ConstructorIndex { get; private set; }
     
-    public DatatypeMembership Membership => DatatypeTypeCtorDecl.Constructors[ConstructorIndex].membership;
-
     public IsConstructor(IToken tok, string constructorName)
     {
       this.tok = tok;
@@ -4114,7 +4114,7 @@ namespace Microsoft.Boogie
         return null;
       }
       ConstructorIndex = constructor.index;
-      tpInstantiation = SimpleTypeParamInstantiation.From(Membership.TypeParameters, ctorType.Arguments);
+      tpInstantiation = SimpleTypeParamInstantiation.From(constructor.TypeParameters, ctorType.Arguments);
       return Type.Bool;
     }
 

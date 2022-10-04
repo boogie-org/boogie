@@ -1,2 +1,2 @@
 field_type_error.bpl(6,35): Error: type mismatch between field i and identically-named field in constructor Left
-1 name resolution errors detected in field_type_error.bpl
+1 type checking errors detected in field_type_error.bpl

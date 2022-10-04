@@ -1413,12 +1413,17 @@ namespace Microsoft.Boogie.VCExprAST
     
     public VCExpr Visit(FieldAccess fieldAccess)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-      var expr = Gen.Function(fieldAccess.Selector(0), this.args);
+      var accessor = fieldAccess.Accessors[0];
+      var expr = Gen.Function(new VCExprFieldAccessOp(fieldAccess.DatatypeTypeCtorDecl, accessor),
+        this.args);
       for (int i = 1; i < fieldAccess.Accessors.Count; i++)
       {
-        var condExpr = Gen.Function(fieldAccess.Constructor(i).membership, this.args);
-        var thenExpr = Gen.Function(fieldAccess.Selector(i), this.args);
+        accessor = fieldAccess.Accessors[i];
+        var condExpr = Gen.Function(new VCExprIsConstructorOp(fieldAccess.DatatypeTypeCtorDecl, accessor.ConstructorIndex),
+          this.args);
+        var thenExpr =
+          Gen.Function(new VCExprFieldAccessOp(fieldAccess.DatatypeTypeCtorDecl, accessor),
+            this.args);
         expr = Gen.Function(VCExpressionGenerator.IfThenElseOp, new List<VCExpr>() { condExpr, thenExpr, expr });
       }
       return expr;
@@ -1426,10 +1431,10 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExpr Visit(IsConstructor isConstructor)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Gen.Function(isConstructor.Membership, this.args);
+      return Gen.Function(new VCExprIsConstructorOp(isConstructor.DatatypeTypeCtorDecl, isConstructor.ConstructorIndex), this.args);
     }
-
+    
+    
     ///////////////////////////////////////////////////////////////////////////////
 
     private VCExpr TranslateBinaryOperator(BinaryOperator app, List<VCExpr /*!*/> /*!*/ args)

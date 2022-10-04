@@ -1100,7 +1100,7 @@ namespace Microsoft.Boogie
             // Permissions in linear output variables + linear inputs of a single pending async
             // are a subset of permissions in linear input variables.
             var exactlyOnePA = Expr.And(
-              ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa1),
+              ExprHelper.IsConstructor(pa1, pendingAsync.pendingAsyncCtor.Name),
               Expr.Eq(Expr.Select(PAs, pa1), Expr.Literal(1)));
             var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams.Union(outVars));
             linearityChecks.Add(new LinearityCheck(
@@ -1113,7 +1113,7 @@ namespace Microsoft.Boogie
             // Third kind
             // If there are two identical pending asyncs, then their input permissions mut be empty.
             var twoIdenticalPAs = Expr.And(
-              ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa1),
+              ExprHelper.IsConstructor(pa1, pendingAsync.pendingAsyncCtor.Name),
               Expr.Ge(Expr.Select(PAs, pa1), Expr.Literal(2)));
             var emptyPerms = OutPermsSubsetInPerms(domain, Enumerable.Empty<Expr>(), pendingAsyncLinearParams);
             linearityChecks.Add(new LinearityCheck(
@@ -1146,8 +1146,8 @@ namespace Microsoft.Boogie
               var membership = Expr.And(
                 Expr.Neq(pa1, pa2),
                 Expr.And(
-                  ExprHelper.FunctionCall(pendingAsync1.pendingAsyncCtor.membership, pa1),
-                  ExprHelper.FunctionCall(pendingAsync2.pendingAsyncCtor.membership, pa2)));
+                  ExprHelper.IsConstructor(pa1, pendingAsync1.pendingAsyncCtor.Name),
+                  ExprHelper.IsConstructor(pa2, pendingAsync2.pendingAsyncCtor.Name)));
 
               var existing = Expr.And(
                 Expr.Ge(Expr.Select(PAs, pa1), Expr.Literal(1)),
@@ -1214,7 +1214,7 @@ namespace Microsoft.Boogie
         var inParam = pendingAsync.proc.InParams[i];
         if (FindDomainName(inParam) == domain.domainName && InKinds.Contains(FindLinearKind(inParam)))
         {
-          var pendingAsyncParam = ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.selectors[i], pa);
+          var pendingAsyncParam = ExprHelper.FieldAccess(pa, pendingAsync.pendingAsyncCtor.InParams[i].Name);
           pendingAsyncLinearParams.Add(pendingAsyncParam);
         }
       }

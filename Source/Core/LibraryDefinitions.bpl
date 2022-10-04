@@ -54,8 +54,8 @@ function {:inline} Range(from: int, n: int): [int]bool {
   MapDiff(AtLeast(from), AtLeast(from + n))
 }
 
-axiom {:ctor "Vec"} (forall<T> x: Vec T :: {len#Vec(x)}{contents#Vec(x)} MapIte(Range(0, len#Vec(x)), MapConst(Default()), contents#Vec(x)) == MapConst(Default()));
-axiom {:ctor "Vec"} (forall<T> x: Vec T :: {len#Vec(x)} len#Vec(x) >= 0);
+axiom {:ctor "Vec"} (forall<T> x: Vec T :: {x->len}{x->contents} MapIte(Range(0, x->len), MapConst(Default()), x->contents) == MapConst(Default()));
+axiom {:ctor "Vec"} (forall<T> x: Vec T :: {x->len} x->len >= 0);
 
 function {:inline} Vec_Empty<T>(): Vec T
 {
@@ -63,19 +63,19 @@ function {:inline} Vec_Empty<T>(): Vec T
 }
 function {:inline} Vec_Append<T>(v: Vec T, x: T) : Vec T
 {
-  Vec(contents#Vec(v)[len#Vec(v) := x], len#Vec(v) + 1)
+  Vec(v->contents[v->len := x], v->len + 1)
 }
 function {:inline} Vec_Update<T>(v: Vec T, i: int, x: T) : Vec T
 {
-  if (0 <= i && i < len#Vec(v)) then Vec(contents#Vec(v)[i := x], len#Vec(v)) else v
+  if (0 <= i && i < v->len) then Vec(v->contents[i := x], v->len) else v
 }
 function {:inline} Vec_Nth<T>(v: Vec T, i: int): T
 {
-  contents#Vec(v)[i]
+  v->contents[i]
 }
 function {:inline} Vec_Len<T>(v: Vec T): int
 {
-  len#Vec(v)
+  v->len
 }
 
 function {:inline} Vec_Concat<T>(v1: Vec T, v2: Vec T): Vec T {
@@ -91,7 +91,7 @@ function {:inline} Vec_Concat<T>(v1: Vec T, v2: Vec T): Vec T {
 
 function {:inline} Vec_Slice<T>(v: Vec T, i: int, j: int): Vec T {
     (
-        var cond := 0 <= i && i < j && j <= len#Vec(v);
+        var cond := 0 <= i && i < j && j <= v->len;
         Vec(
             (lambda {:pool "Slice"} k: int ::
                 if (cond && 0 <= k && k < j - i) then Vec_Nth(v, k + i)
@@ -103,15 +103,15 @@ function {:inline} Vec_Slice<T>(v: Vec T, i: int, j: int): Vec T {
 
 function {:inline} Vec_Swap<T>(v: Vec T, i: int, j: int): Vec T {
     (
-        var cond := 0 <= i && i < len#Vec(v) && 0 <= j && j < len#Vec(v);
-        Vec(contents#Vec(v)[i := contents#Vec(v)[if (cond) then j else i]][j := contents#Vec(v)[if (cond) then i else j]], len#Vec(v))
+        var cond := 0 <= i && i < v->len && 0 <= j && j < v->len;
+        Vec(v->contents[i := v->contents[if (cond) then j else i]][j := v->contents[if (cond) then i else j]], v->len)
     )
 }
 
 function {:inline} Vec_Remove<T>(v: Vec T): Vec T {
     (
-        var cond, new_len := 0 < len#Vec(v), len#Vec(v) - 1;
-        Vec(contents#Vec(v)[new_len := if (cond) then Default() else contents#Vec(v)[new_len]], if (cond) then new_len else len#Vec(v))
+        var cond, new_len := 0 < v->len, v->len - 1;
+        Vec(v->contents[new_len := if (cond) then Default() else v->contents[new_len]], if (cond) then new_len else v->len)
     )
 }
 
@@ -134,10 +134,10 @@ type {:datatype} Lmap _;
 function {:constructor} Lmap<V>(dom: [Ref V]bool, val: [Ref V]V): Lmap V;
 
 function {:inline} Lmap_Deref<V>(l: Lmap V, k: Ref V): V {
-    val#Lmap(l)[k]
+    l->val[k]
 }
 function {:inline} Lmap_Contains<V>(l: Lmap V, k: Ref V): bool {
-    dom#Lmap(l)[k]
+    l->dom[k]
 }
 procedure Lmap_Empty<V>() returns (l: Lmap V);
 procedure Lmap_Split<V>(path: Lmap V, k: [Ref V]bool) returns (l: Lmap V);
@@ -152,7 +152,7 @@ type {:datatype} Lset _;
 function {:constructor} Lset<V>(dom: [V]bool): Lset V;
 
 function {:inline} Lset_Contains<V>(l: Lset V, k: V): bool {
-    dom#Lset(l)[k]
+    l->dom[k]
 }
 procedure Lset_Empty<V>() returns (l: Lset V);
 procedure Lset_Split<V>(path: Lset V, k: [V]bool) returns (l: Lset V);
