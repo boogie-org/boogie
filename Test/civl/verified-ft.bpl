@@ -322,7 +322,7 @@ procedure {:both} {:layer 11,20} AtomicVC.Leq({:linear "tid"} tid: Tid, v1: Shad
    assert shadow.Lock[v2] == tid;
    assert shadow.Lock[ShadowableTid(tid)] == tid;
    assert v1 is ShadowableVar ==> sx.R[v1->x] == SHARED;
-   assert !v2 is ShadowableVar;
+   assert !(v2 is ShadowableVar);
    res := (forall j : int :: {f(j)} 0 <= j && f(j) ==> EpochLeq(VCArrayGet(shadow.VC[v1], j), VCArrayGet(shadow.VC[v2], j)));
 }
 
@@ -369,8 +369,8 @@ modifies shadow.VC;
     assert shadow.Lock[ShadowableTid(tid)] == tid;
     assert shadow.Lock[v1] == tid;
     assert shadow.Lock[v2] == tid;
-    assert !v1 is ShadowableVar;
-    assert !v2 is ShadowableVar;
+    assert !(v1 is ShadowableVar);
+    assert !(v2 is ShadowableVar);
     assert VCRepOk(shadow.VC[v2]);
     assert VCRepOk(shadow.VC[v1]);
     if (*) {
@@ -428,8 +428,8 @@ modifies shadow.VC;
     assert shadow.Lock[ShadowableTid(tid)] == tid;
     assert shadow.Lock[v1] == tid;
     assert shadow.Lock[v2] == tid;
-    assert !v1 is ShadowableVar;
-    assert !v2 is ShadowableVar;
+    assert !(v1 is ShadowableVar);
+    assert !(v2 is ShadowableVar);
     assert VCRepOk(shadow.VC[v2]);
     havoc shadow.VC;
     assume VCRepOk(shadow.VC[v1]);
@@ -487,7 +487,7 @@ modifies shadow.VC;
    assert ValidTid(tid);
    assert shadow.Lock[ShadowableTid(tid)] == tid;
    assert shadow.Lock[v] == tid;
-   assert !v is ShadowableVar;
+   assert !(v is ShadowableVar);
    assert i >= 0;
    assert VCRepOk(shadow.VC[v]);
    shadow.VC[v] := VCArraySetLen(shadow.VC[v], max(VCArrayLen(shadow.VC[v]), i+1));

@@ -549,7 +549,7 @@ public class Scanner {
 			case "par": t.kind = 56; break;
 			case "div": t.kind = 79; break;
 			case "mod": t.kind = 80; break;
-			case "is": t.kind = 85; break;
+			case "is": t.kind = 83; break;
 			case "false": t.kind = 86; break;
 			case "true": t.kind = 87; break;
 			case "roundNearestTiesToEven": t.kind = 88; break;
@@ -893,7 +893,7 @@ public class Scanner {
 			case 88:
 				{t.kind = 82; break;}
 			case 89:
-				{t.kind = 84; break;}
+				{t.kind = 85; break;}
 			case 90:
 				{t.kind = 99; break;}
 			case 91:
@@ -945,9 +945,9 @@ public class Scanner {
 				else if (ch == '{') {AddCh(); goto case 90;}
 				else {t.kind = 57; break;}
 			case 105:
-				recEnd = pos; recKind = 83;
+				recEnd = pos; recKind = 84;
 				if (ch == '=') {AddCh(); goto case 81;}
-				else {t.kind = 83; break;}
+				else {t.kind = 84; break;}
 			case 106:
 				recEnd = pos; recKind = 77;
 				if (ch == '+') {AddCh(); goto case 86;}
