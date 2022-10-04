@@ -773,7 +773,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         var op = (VCExprFieldAccessOp)node.Op;
         var constructor = op.DatatypeTypeCtorDecl.Constructors[op.ConstructorIndex];
-        Variable v = constructor.InParams[op.SelectorIndex];
+        Variable v = constructor.InParams[op.FieldIndex];
         var name = v.Name + "#" + constructor.Name;
         name = ExprLineariser.Namer.GetQuotedName(v, name);
         WriteApplication(name, node, options);
