@@ -307,8 +307,7 @@ namespace Microsoft.Boogie
         {
           if (datatypeTypeCtorDecls.ContainsKey(typeCtorDecl.Name))
           {
-            errors.SemErr(typeCtorDecl.tok,
-              string.Format("more than one declaration of datatype name: {0}", typeCtorDecl.Name));
+            errors.SemErr(typeCtorDecl.tok, $"more than one declaration of datatype name: {typeCtorDecl.Name}");
           }
           else
           {
@@ -334,20 +333,15 @@ namespace Microsoft.Boogie
           prunedTopLevelDeclarations.Add(decl);
           continue;
         }
-        var outputTypeName = (func.OutParams[0].TypedIdent.Type as UnresolvedTypeIdentifier).Name;
+        var outputTypeName = ((UnresolvedTypeIdentifier)func.OutParams[0].TypedIdent.Type).Name;
         if (!datatypeTypeCtorDecls.ContainsKey(outputTypeName))
         {
-          errors.SemErr(func.tok,
-            string.Format("output type of constructor does not match any datatype name: {0}", func.Name));
+          errors.SemErr(func.tok, $"output type of constructor does not match any datatype name: {func.Name}");
           continue;
         }
         var datatypeTypeCtorDecl = datatypeTypeCtorDecls[outputTypeName];
         DatatypeConstructor constructor = new DatatypeConstructor(datatypeTypeCtorDecl, func);
-        if (!datatypeTypeCtorDecl.AddConstructor(constructor))
-        {
-          errors.SemErr(func.tok,
-                        string.Format("more than one declaration of datatype constructor name: {0}", func.Name));
-        }
+        datatypeTypeCtorDecl.AddConstructor(constructor);
       }
       if (errors.count > 0)
       {
@@ -1410,15 +1404,10 @@ namespace Microsoft.Boogie
       this.accessors = new Dictionary<string, List<Tuple<int, int>>>();
     }
 
-    public bool AddConstructor(DatatypeConstructor constructor)
+    public void AddConstructor(DatatypeConstructor constructor)
     {
-      if (this.nameToConstructor.ContainsKey(constructor.Name))
-      {
-        return false;
-      }
       constructor.index = constructors.Count;
       this.constructors.Add(constructor);
-      this.nameToConstructor.Add(constructor.Name, constructor);
       for (int i = 0; i < constructor.InParams.Count; i++)
       {
         var v = constructor.InParams[i];
@@ -1428,7 +1417,18 @@ namespace Microsoft.Boogie
         }
         accessors[v.Name].Add(Tuple.Create(constructor.index, i));
       }
-      return true;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      this.constructors.Iter(constructor =>
+      {
+        if (!this.nameToConstructor.ContainsKey(constructor.Name))
+        {
+          this.nameToConstructor.Add(constructor.Name, constructor);
+        }
+      });
+      base.Resolve(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -1444,7 +1444,7 @@ namespace Microsoft.Boogie
           var constructor = constructors[accessor.Item1];
           var index = accessor.Item2;
           var field = constructor.InParams[index];
-          if (!NormalizedSelectorType(firstConstructor, constructor, index).Equals(firstSelector.TypedIdent.Type))
+          if (!NormalizedFieldType(firstConstructor, constructor, index).Equals(firstSelector.TypedIdent.Type))
           {
             tc.Error(field,
               "type mismatch between field {0} and identically-named field in constructor {1}",
@@ -1455,7 +1455,7 @@ namespace Microsoft.Boogie
       base.Typecheck(tc);
     }
 
-    private static Type NormalizedSelectorType(DatatypeConstructor firstConstructor, DatatypeConstructor constructor, int index)
+    private static Type NormalizedFieldType(DatatypeConstructor firstConstructor, DatatypeConstructor constructor, int index)
     {
       var firstConstructorType = (CtorType)firstConstructor.OutParams[0].TypedIdent.Type;
       var constructorType = (CtorType)constructor.OutParams[0].TypedIdent.Type;

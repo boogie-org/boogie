@@ -1,2 +1,2 @@
-duplicate_constructor.bpl(6,24): error: more than one declaration of datatype constructor name: Left
-1 parse errors detected in duplicate_constructor.bpl
+duplicate_constructor.bpl(6,23): Error: more than one declaration of function name: Left
+1 name resolution errors detected in duplicate_constructor.bpl

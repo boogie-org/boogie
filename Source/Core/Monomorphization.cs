@@ -520,6 +520,7 @@ namespace Microsoft.Boogie
               .Add(actualTypeParams, newDatatypeTypeCtorDecl);
             datatypeTypeCtorDecl.Constructors.Iter(constructor =>
               InstantiateDatatypeConstructor(newDatatypeTypeCtorDecl, constructor, actualTypeParams));
+            newDatatypeTypeCtorDecl.Resolve(new ResolutionContext(null, null));
           }
           else
           {
