@@ -1414,15 +1414,15 @@ namespace Microsoft.Boogie.VCExprAST
     public VCExpr Visit(FieldAccess fieldAccess)
     {
       var accessor = fieldAccess.Accessors[0];
-      var expr = Gen.Function(new VCExprFieldAccessOp(fieldAccess.DatatypeTypeCtorDecl, accessor.Item1, accessor.Item2),
+      var expr = Gen.Function(new VCExprFieldAccessOp(fieldAccess.DatatypeTypeCtorDecl, accessor.ConstructorIndex, accessor.FieldIndex),
         this.args);
       for (int i = 1; i < fieldAccess.Accessors.Count; i++)
       {
         accessor = fieldAccess.Accessors[i];
-        var condExpr = Gen.Function(new VCExprIsConstructorOp(fieldAccess.DatatypeTypeCtorDecl, accessor.Item1),
+        var condExpr = Gen.Function(new VCExprIsConstructorOp(fieldAccess.DatatypeTypeCtorDecl, accessor.ConstructorIndex),
           this.args);
         var thenExpr =
-          Gen.Function(new VCExprFieldAccessOp(fieldAccess.DatatypeTypeCtorDecl, accessor.Item1, accessor.Item2),
+          Gen.Function(new VCExprFieldAccessOp(fieldAccess.DatatypeTypeCtorDecl, accessor.ConstructorIndex, accessor.FieldIndex),
             this.args);
         expr = Gen.Function(VCExpressionGenerator.IfThenElseOp, new List<VCExpr>() { condExpr, thenExpr, expr });
       }

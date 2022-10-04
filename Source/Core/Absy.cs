@@ -1388,11 +1388,23 @@ namespace Microsoft.Boogie
     }
   }
 
+  public class DatatypeAccessor
+  {
+    public int ConstructorIndex;
+    public int FieldIndex;
+
+    public DatatypeAccessor(int constructorIndex, int fieldIndex)
+    {
+      ConstructorIndex = constructorIndex;
+      FieldIndex = fieldIndex;
+    }
+  }
+  
   public class DatatypeTypeCtorDecl : TypeCtorDecl
   {
     private List<DatatypeConstructor> constructors;
     private Dictionary<string, DatatypeConstructor> nameToConstructor;
-    private Dictionary<string, List<Tuple<int, int>>> accessors;
+    private Dictionary<string, List<DatatypeAccessor>> accessors;
 
     public List<DatatypeConstructor> Constructors => constructors;
 
@@ -1401,7 +1413,7 @@ namespace Microsoft.Boogie
     {
       this.constructors = new List<DatatypeConstructor>();
       this.nameToConstructor = new Dictionary<string, DatatypeConstructor>();
-      this.accessors = new Dictionary<string, List<Tuple<int, int>>>();
+      this.accessors = new Dictionary<string, List<DatatypeAccessor>>();
     }
 
     public void AddConstructor(DatatypeConstructor constructor)
@@ -1413,9 +1425,9 @@ namespace Microsoft.Boogie
         var v = constructor.InParams[i];
         if (!accessors.ContainsKey(v.Name))
         {
-          accessors.Add(v.Name, new List<Tuple<int, int>>());
+          accessors.Add(v.Name, new List<DatatypeAccessor>());
         }
-        accessors[v.Name].Add(Tuple.Create(constructor.index, i));
+        accessors[v.Name].Add(new DatatypeAccessor(constructor.index, i));
       }
     }
 
@@ -1436,13 +1448,13 @@ namespace Microsoft.Boogie
       accessors.Where(kv => kv.Value.Count > 1).Iter(kv =>
       {
         var firstAccessor = kv.Value[0];
-        var firstConstructor = constructors[firstAccessor.Item1];
-        var firstSelector = firstConstructor.InParams[firstAccessor.Item2];
+        var firstConstructor = constructors[firstAccessor.ConstructorIndex];
+        var firstSelector = firstConstructor.InParams[firstAccessor.FieldIndex];
         for (int i = 1; i < kv.Value.Count; i++)
         {
           var accessor = kv.Value[i];
-          var constructor = constructors[accessor.Item1];
-          var index = accessor.Item2;
+          var constructor = constructors[accessor.ConstructorIndex];
+          var index = accessor.FieldIndex;
           var field = constructor.InParams[index];
           if (!NormalizedFieldType(firstConstructor, constructor, index).Equals(firstSelector.TypedIdent.Type))
           {
@@ -1474,7 +1486,7 @@ namespace Microsoft.Boogie
       return nameToConstructor[constructorName];
     }
 
-    public List<Tuple<int, int>> GetAccessors(string fieldName)
+    public List<DatatypeAccessor> GetAccessors(string fieldName)
     {
       if (!accessors.ContainsKey(fieldName))
       {

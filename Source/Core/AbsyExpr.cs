@@ -3860,18 +3860,18 @@ namespace Microsoft.Boogie
     
     // each accessor is specified by a pair comprising a constructor index
     // and a selector index within the constructor corresponding to it
-    public List<Tuple<int, int>> Accessors { get; set; }
+    public List<DatatypeAccessor> Accessors { get; set; }
 
     public DatatypeConstructor Constructor(int index)
     {
       var accessor = Accessors[index];
-      return DatatypeTypeCtorDecl.Constructors[accessor.Item1];
+      return DatatypeTypeCtorDecl.Constructors[accessor.ConstructorIndex];
     }
     
-    private Variable Selector(int index)
+    private Variable Field(int index)
     {
       var accessor = Accessors[index];
-      return DatatypeTypeCtorDecl.Constructors[accessor.Item1].InParams[accessor.Item2];
+      return DatatypeTypeCtorDecl.Constructors[accessor.ConstructorIndex].InParams[accessor.FieldIndex];
     }
 
     public FieldAccess(IToken tok, string fieldName)
@@ -3880,12 +3880,12 @@ namespace Microsoft.Boogie
       this.FieldName = fieldName;
     }
     
-    public FieldAccess(IToken tok, DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<Tuple<int, int>> accessors)
+    public FieldAccess(IToken tok, DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<DatatypeAccessor> accessors)
     {
       this.tok = tok;
       this.DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
       this.Accessors = accessors;
-      this.FieldName = Selector(0).Name;
+      this.FieldName = Field(0).Name;
     }
 
     public string FunctionName => "field-access";
@@ -3966,12 +3966,12 @@ namespace Microsoft.Boogie
       var typeSubst = Constructor(0).TypeParameters.Zip(ctorType.Arguments).ToDictionary(
           x => x.Item1, 
           x => x.Item2);
-      return Selector(0).TypedIdent.Type.Substitute(typeSubst);
+      return Field(0).TypedIdent.Type.Substitute(typeSubst);
     }
 
     public Type ShallowType(IList<Expr> args)
     {
-      return Selector(0).TypedIdent.Type;
+      return Field(0).TypedIdent.Type;
     }
 
     public T Dispatch<T>(IAppliableVisitor<T> visitor)
@@ -4003,7 +4003,7 @@ namespace Microsoft.Boogie
       var constructor = Constructor(index);
       var args = Enumerable.Range(0, constructor.InParams.Count).Select(x =>
       {
-        if (x == Accessors[index].Item2)
+        if (x == Accessors[index].FieldIndex)
         {
           return rhs;
         }
