@@ -519,7 +519,11 @@ namespace Microsoft.Boogie
             monomorphizationVisitor.typeInstantiations[datatypeTypeCtorDecl]
               .Add(actualTypeParams, newDatatypeTypeCtorDecl);
             datatypeTypeCtorDecl.Constructors.Iter(constructor =>
-              InstantiateDatatypeConstructor(newDatatypeTypeCtorDecl, constructor, actualTypeParams));
+            {
+              var function = InstantiateFunctionSignature(constructor, actualTypeParams,
+                LinqExtender.Map(constructor.TypeParameters, actualTypeParams));
+              newDatatypeTypeCtorDecl.AddConstructor(function);
+            });
             newDatatypeTypeCtorDecl.Resolve(new ResolutionContext(null, null));
           }
           else
@@ -532,13 +536,6 @@ namespace Microsoft.Boogie
           }
         }
         return monomorphizationVisitor.typeInstantiations[typeCtorDecl][actualTypeParams];
-      }
-
-      private void InstantiateDatatypeConstructor(DatatypeTypeCtorDecl newDatatypeTypeCtorDecl,
-        DatatypeConstructor constructor, List<Type> actualTypeParams)
-      {
-        newDatatypeTypeCtorDecl.AddConstructor(InstantiateFunctionSignature(constructor, actualTypeParams,
-          LinqExtender.Map(constructor.TypeParameters, actualTypeParams)));
       }
 
       private static string MkInstanceName(string name, List<Type> actualTypeParams)
