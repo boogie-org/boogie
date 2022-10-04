@@ -339,9 +339,7 @@ namespace Microsoft.Boogie
           errors.SemErr(func.tok, $"output type of constructor {func.Name} must be a datatype");
           continue;
         }
-        var datatypeTypeCtorDecl = datatypeTypeCtorDecls[outputTypeName];
-        DatatypeConstructor constructor = new DatatypeConstructor(datatypeTypeCtorDecl, func);
-        datatypeTypeCtorDecl.AddConstructor(constructor);
+        datatypeTypeCtorDecls[outputTypeName].AddConstructor(func);
       }
       if (errors.count > 0)
       {
@@ -1416,9 +1414,12 @@ namespace Microsoft.Boogie
       this.accessors = new Dictionary<string, List<DatatypeAccessor>>();
     }
 
-    public void AddConstructor(DatatypeConstructor constructor)
+    public void AddConstructor(Function function)
     {
-      constructor.index = constructors.Count;
+      var constructor = new DatatypeConstructor(this, function)
+      {
+        index = constructors.Count
+      };
       this.constructors.Add(constructor);
       for (int i = 0; i < constructor.InParams.Count; i++)
       {
@@ -2601,6 +2602,7 @@ namespace Microsoft.Boogie
     public DatatypeTypeCtorDecl datatypeTypeCtorDecl;
     public int index;
 
+    // This constructor should only be called by the AddConstructor method in DatatypeTypeCtorDecl
     public DatatypeConstructor(DatatypeTypeCtorDecl datatypeTypeCtorDecl, Function func)
       : base(func.tok, func.Name, func.TypeParameters, func.InParams, func.OutParams[0], func.Comment, func.Attributes)
     {

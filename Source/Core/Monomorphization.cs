@@ -537,10 +537,8 @@ namespace Microsoft.Boogie
       private void InstantiateDatatypeConstructor(DatatypeTypeCtorDecl newDatatypeTypeCtorDecl,
         DatatypeConstructor constructor, List<Type> actualTypeParams)
       {
-        var newConstructor = new DatatypeConstructor(newDatatypeTypeCtorDecl,
-          InstantiateFunctionSignature(constructor, actualTypeParams,
-            LinqExtender.Map(constructor.TypeParameters, actualTypeParams)));
-        newDatatypeTypeCtorDecl.AddConstructor(newConstructor);
+        newDatatypeTypeCtorDecl.AddConstructor(InstantiateFunctionSignature(constructor, actualTypeParams,
+          LinqExtender.Map(constructor.TypeParameters, actualTypeParams)));
       }
 
       private static string MkInstanceName(string name, List<Type> actualTypeParams)
