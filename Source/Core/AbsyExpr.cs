@@ -4061,7 +4061,7 @@ namespace Microsoft.Boogie
 
     public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      const int opBindingStrength = 0x90;
+      const int opBindingStrength = 0x68;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
                           (fragileContext && opBindingStrength == contextBindingStrength);
       stream.SetToken(this);
