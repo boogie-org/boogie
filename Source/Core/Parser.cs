@@ -104,7 +104,7 @@ public static int Parse(string s, string/*!*/ filename, out /*maybe null*/ Progr
   parser.Parse();
   if (errors.count == 0)
   {
-    parser.Pgm.ProcessDatatypeConstructors(errors);
+    parser.Pgm.ProcessDatatypes();
   }
   if (errors.count == 0)
   {
