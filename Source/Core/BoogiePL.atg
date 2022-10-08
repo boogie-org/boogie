@@ -74,11 +74,9 @@ public static int Parse(string s, string/*!*/ filename, out /*maybe null*/ Progr
   if (errors.count == 0)
   {
     parser.Pgm.ProcessDatatypes();
-  }
-  if (errors.count == 0)
-  {
     program = parser.Pgm;
-  } else
+  }
+  else
   {
     program = null;
   }
