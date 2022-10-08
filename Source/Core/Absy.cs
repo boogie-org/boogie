@@ -339,7 +339,7 @@ namespace Microsoft.Boogie
           errors.SemErr(func.tok, $"output type of constructor {func.Name} must be a datatype");
           continue;
         }
-        datatypeTypeCtorDecls[outputTypeName].AddConstructor(func);
+        prunedTopLevelDeclarations.Add(datatypeTypeCtorDecls[outputTypeName].AddConstructor(func));
       }
       if (errors.count > 0)
       {
@@ -367,7 +367,6 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       Helpers.ExtraTraceInformation(rc.Options, "Starting resolution");
 
       foreach (var d in TopLevelDeclarations)
@@ -377,15 +376,6 @@ namespace Microsoft.Boogie
 
       ResolveTypes(rc);
       
-      foreach (var datatypeTypeCtorDecl in TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>())
-      {
-        foreach (var f in datatypeTypeCtorDecl.Constructors)
-        {
-          f.Register(rc);
-          f.Resolve(rc);
-        }
-      }
-
       var prunedTopLevelDeclarations = new List<Declaration /*!*/>();
       foreach (var d in TopLevelDeclarations)
       {
@@ -395,7 +385,7 @@ namespace Microsoft.Boogie
         }
 
         // resolve all the declarations that have not been resolved yet 
-        if (!(d is TypeCtorDecl || d is TypeSynonymDecl || d is DatatypeConstructor))
+        if (!(d is TypeCtorDecl || d is TypeSynonymDecl))
         {
           int e = rc.ErrorCount;
           d.Resolve(rc);
@@ -1414,7 +1404,7 @@ namespace Microsoft.Boogie
       this.accessors = new Dictionary<string, List<DatatypeAccessor>>();
     }
 
-    public void AddConstructor(Function function)
+    public DatatypeConstructor AddConstructor(Function function)
     {
       var constructor = new DatatypeConstructor(this, function)
       {
@@ -1430,6 +1420,7 @@ namespace Microsoft.Boogie
         }
         accessors[v.Name].Add(new DatatypeAccessor(constructor.index, i));
       }
+      return constructor;
     }
 
     public override void Resolve(ResolutionContext rc)
