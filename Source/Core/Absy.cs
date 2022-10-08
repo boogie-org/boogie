@@ -297,56 +297,26 @@ namespace Microsoft.Boogie
       this.topLevelDeclarations.Emit(stream);
     }
 
-    public void ProcessDatatypeConstructors(Errors errors)
+    public void ProcessDatatypes()
     {
-      Dictionary<string, DatatypeTypeCtorDecl> datatypeTypeCtorDecls = new Dictionary<string, DatatypeTypeCtorDecl>();
-      List<Declaration> prunedTopLevelDeclarations = new List<Declaration>();
-      foreach (TypeCtorDecl typeCtorDecl in TopLevelDeclarations.OfType<TypeCtorDecl>())
-      {
-        if (QKeyValue.FindBoolAttribute(typeCtorDecl.Attributes, "datatype"))
-        {
-          if (datatypeTypeCtorDecls.ContainsKey(typeCtorDecl.Name))
-          {
-            errors.SemErr(typeCtorDecl.tok, $"more than one declaration of datatype name: {typeCtorDecl.Name}");
-          }
-          else
-          {
-            var datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(typeCtorDecl);
-            datatypeTypeCtorDecls.Add(typeCtorDecl.Name, datatypeTypeCtorDecl);
-            prunedTopLevelDeclarations.Add(datatypeTypeCtorDecl);
-          }
-        }
-        else
-        {
-          prunedTopLevelDeclarations.Add(typeCtorDecl);
-        }
-      }
+      List<Declaration> newTopLevelDeclarations = new List<Declaration>();
       foreach (Declaration decl in TopLevelDeclarations)
       {
-        if (decl is TypeCtorDecl)
+        if (decl is TypeCtorDecl typeCtorDecl && QKeyValue.FindBoolAttribute(typeCtorDecl.Attributes, "datatype"))
         {
-          continue;
+          newTopLevelDeclarations.Add(new DatatypeTypeCtorDecl(typeCtorDecl));
         }
-        Function func = decl as Function;
-        if (func == null || !QKeyValue.FindBoolAttribute(decl.Attributes, "constructor"))
+        else if (decl is Function func && QKeyValue.FindBoolAttribute(decl.Attributes, "constructor"))
         {
-          prunedTopLevelDeclarations.Add(decl);
-          continue;
+          newTopLevelDeclarations.Add(new DatatypeConstructor(func));
         }
-        var outputTypeName = ((UnresolvedTypeIdentifier)func.OutParams[0].TypedIdent.Type).Name;
-        if (!datatypeTypeCtorDecls.ContainsKey(outputTypeName))
+        else 
         {
-          errors.SemErr(func.tok, $"output type of constructor {func.Name} must be a datatype");
-          continue;
+          newTopLevelDeclarations.Add(decl);
         }
-        datatypeTypeCtorDecls[outputTypeName].AddConstructor(func);
-      }
-      if (errors.count > 0)
-      {
-        return;
       }
       ClearTopLevelDeclarations();
-      AddTopLevelDeclarations(prunedTopLevelDeclarations);
+      AddTopLevelDeclarations(newTopLevelDeclarations);
     }
 
     /// <summary>
@@ -367,7 +337,6 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       Helpers.ExtraTraceInformation(rc.Options, "Starting resolution");
 
       foreach (var d in TopLevelDeclarations)
@@ -377,15 +346,6 @@ namespace Microsoft.Boogie
 
       ResolveTypes(rc);
       
-      foreach (var datatypeTypeCtorDecl in TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>())
-      {
-        foreach (var f in datatypeTypeCtorDecl.Constructors)
-        {
-          f.Register(rc);
-          f.Resolve(rc);
-        }
-      }
-
       var prunedTopLevelDeclarations = new List<Declaration /*!*/>();
       foreach (var d in TopLevelDeclarations)
       {
@@ -395,7 +355,7 @@ namespace Microsoft.Boogie
         }
 
         // resolve all the declarations that have not been resolved yet 
-        if (!(d is TypeCtorDecl || d is TypeSynonymDecl || d is DatatypeConstructor))
+        if (!(d is TypeCtorDecl || d is TypeSynonymDecl))
         {
           int e = rc.ErrorCount;
           d.Resolve(rc);
@@ -1414,13 +1374,15 @@ namespace Microsoft.Boogie
       this.accessors = new Dictionary<string, List<DatatypeAccessor>>();
     }
 
-    public void AddConstructor(Function function)
+    public void AddConstructor(DatatypeConstructor constructor)
     {
-      var constructor = new DatatypeConstructor(this, function)
-      {
-        index = constructors.Count
-      };
+      constructor.datatypeTypeCtorDecl = this;
+      constructor.index = constructors.Count;
       this.constructors.Add(constructor);
+      if (!this.nameToConstructor.ContainsKey(constructor.Name))
+      {
+        this.nameToConstructor.Add(constructor.Name, constructor);
+      }
       for (int i = 0; i < constructor.InParams.Count; i++)
       {
         var v = constructor.InParams[i];
@@ -1430,18 +1392,6 @@ namespace Microsoft.Boogie
         }
         accessors[v.Name].Add(new DatatypeAccessor(constructor.index, i));
       }
-    }
-
-    public override void Resolve(ResolutionContext rc)
-    {
-      this.constructors.Iter(constructor =>
-      {
-        if (!this.nameToConstructor.ContainsKey(constructor.Name))
-        {
-          this.nameToConstructor.Add(constructor.Name, constructor);
-        }
-      });
-      base.Resolve(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -2602,11 +2552,24 @@ namespace Microsoft.Boogie
     public DatatypeTypeCtorDecl datatypeTypeCtorDecl;
     public int index;
 
-    // This constructor should only be called by the AddConstructor method in DatatypeTypeCtorDecl
-    public DatatypeConstructor(DatatypeTypeCtorDecl datatypeTypeCtorDecl, Function func)
+    public DatatypeConstructor(Function func)
       : base(func.tok, func.Name, func.TypeParameters, func.InParams, func.OutParams[0], func.Comment, func.Attributes)
     {
-      this.datatypeTypeCtorDecl = datatypeTypeCtorDecl;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      var outputTypeName = ((UnresolvedTypeIdentifier)OutParams[0].TypedIdent.Type).Name;
+      var typeCtorDecl = rc.LookUpType(outputTypeName);
+      if (typeCtorDecl != null && typeCtorDecl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
+      {
+        datatypeTypeCtorDecl.AddConstructor(this);
+      }
+      else 
+      {
+        rc.Error(tok, $"output type of constructor {Name} must be a datatype");
+      }
+      base.Resolve(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)

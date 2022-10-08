@@ -522,9 +522,8 @@ namespace Microsoft.Boogie
             {
               var function = InstantiateFunctionSignature(constructor, actualTypeParams,
                 LinqExtender.Map(constructor.TypeParameters, actualTypeParams));
-              newDatatypeTypeCtorDecl.AddConstructor(function);
+              newDatatypeTypeCtorDecl.AddConstructor(new DatatypeConstructor(function));
             });
-            newDatatypeTypeCtorDecl.Resolve(new ResolutionContext(null, null));
           }
           else
           {

@@ -1,7 +1,7 @@
 
-type \procedure;
-
 function \true() : bool;
+
+type \procedure;
 
 procedure \old(any: \procedure) returns (\var: \procedure);
 
