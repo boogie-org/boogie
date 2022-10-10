@@ -474,7 +474,7 @@ namespace Microsoft.Boogie.SMTLib
       string v = "0";
       while (true)
       {
-        var response = await Process.SendRequest($"(get-value (({VCExpressionGenerator.ControlFlowName} {controlFlowConstant} {v})))").WaitAsync(cancellationToken);
+        var response = await Process.SendRequest($"(get-value (({VCExpressionGenerator.ControlFlowName} {controlFlowConstant} {v})))", cancellationToken);
         if (response == null)
         {
           break;

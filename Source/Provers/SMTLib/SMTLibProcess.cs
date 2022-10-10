@@ -135,10 +135,10 @@ namespace Microsoft.Boogie.SMTLib
       toProver.Flush();
     }
 
-    public override async Task<SExpr> SendRequest(string request) {
+    public override async Task<SExpr> SendRequest(string request, CancellationToken cancellationToken = default) {
       SExpr previousResponse = null;
       try {
-        await asyncLock.WaitAsync();
+        await asyncLock.WaitAsync(cancellationToken);
         Send(request);
         // Because Z3 4.8.5 may return a response multiple times for a single request,
         // We use a ping/pong to determine when Z3 has finished sending responses.
@@ -184,9 +184,9 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests) {
+    public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests, CancellationToken cancellationToken = default) {
       try {
-        await asyncLock.WaitAsync();
+        await asyncLock.WaitAsync(cancellationToken);
         var result = new List<SExpr>();
         foreach (var request in requests) {
           Send(request);

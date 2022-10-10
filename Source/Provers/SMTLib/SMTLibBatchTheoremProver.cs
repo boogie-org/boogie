@@ -123,13 +123,13 @@ namespace Microsoft.Boogie.SMTLib
       NamedAssumes.Clear();
     }
 
-    private Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests) {
+    private Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests, CancellationToken cancellationToken) {
       var sanitizedRequests = requests.Select(Sanitize).ToList();
       foreach (var request in sanitizedRequests) {
         currentLogFile?.WriteLine(request);
       }
       currentLogFile?.Flush();
-      return Process.SendRequestsAndCloseInput(sanitizedRequests);
+      return Process.SendRequestsAndCloseInput(sanitizedRequests, cancellationToken);
     }
 
     private async Task<Outcome> CheckSat(CancellationToken cancellationToken)
@@ -149,7 +149,7 @@ namespace Microsoft.Boogie.SMTLib
       try {
         IReadOnlyList<SExpr> responses;
         try {
-          responses = await SendRequestsAndClose(requests).WaitAsync(cancellationToken);
+          responses = await SendRequestsAndClose(requests, cancellationToken);
         }
         catch (TimeoutException) {
           currentErrorHandler.OnResourceExceeded("hard solver timeout");
