@@ -21,6 +21,8 @@ namespace VC
       public int? RandomSeed => Implementation.RandomSeed ?? options.RandomSeed;
       private Random randomGen;
 
+      private ImplementationRun run;
+
       class BlockStats
       {
         public bool bigBlock;
@@ -121,7 +123,7 @@ namespace VC
 
       public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
         Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
-        VCGen /*!*/ par, Implementation /*!*/ implementation)
+        VCGen /*!*/ par, Implementation /*!*/ implementation, ImplementationRun run)
       {
         Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(gotoCmdOrigins != null);
@@ -131,6 +133,7 @@ namespace VC
         this.gotoCmdOrigins = gotoCmdOrigins;
         this.parent = par;
         this.Implementation = implementation;
+        this.run = run;
         this.options = options;
         Interlocked.Increment(ref currentId);
 
@@ -720,7 +723,7 @@ namespace VC
           }
         }
 
-        return new Split(options, newBlocks, newGotoCmdOrigins, parent, Implementation);
+        return new Split(options, newBlocks, newGotoCmdOrigins, parent, Implementation, run);
       }
 
       Split SplitAt(int idx)
@@ -956,7 +959,7 @@ namespace VC
                || c is AssertCmd && splitOnEveryAssert;
       }
       
-      public static List<Split /*!*/> FindManualSplits(Split initialSplit, bool splitOnEveryAssert)
+      public static List<Split /*!*/> FindManualSplits(Split initialSplit, ImplementationRun run, bool splitOnEveryAssert)
       {
         Contract.Requires(initialSplit.Implementation != null);
         Contract.Ensures(Contract.Result<List<Split>>() == null || cce.NonNullElements(Contract.Result<List<Split>>()));
@@ -985,21 +988,21 @@ namespace VC
           var blockAssignments = PickBlocksToVerify(initialSplit.blocks, splitPoints);
           var entryBlockHasSplit = splitPoints.Keys.Contains(entryPoint);
           var baseSplitBlocks = PostProcess(DoPreAssignedManualSplit(initialSplit.options, initialSplit.blocks, blockAssignments, -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert));
-          splits.Add(new Split(initialSplit.options, baseSplitBlocks, initialSplit.gotoCmdOrigins, initialSplit.parent, initialSplit.Implementation));
+          splits.Add(new Split(initialSplit.options, baseSplitBlocks, initialSplit.gotoCmdOrigins, initialSplit.parent, initialSplit.Implementation, run));
           foreach (KeyValuePair<Block, int> pair in splitPoints)
           {
             for (int i = 0; i < pair.Value; i++)
             {
               bool lastSplitInBlock = i == pair.Value - 1;
               var newBlocks = DoPreAssignedManualSplit(initialSplit.options, initialSplit.blocks, blockAssignments, i, pair.Key, lastSplitInBlock, splitOnEveryAssert);
-              splits.Add(new Split(initialSplit.options, PostProcess(newBlocks), initialSplit.gotoCmdOrigins, initialSplit.parent, initialSplit.Implementation)); // REVIEW: Does gotoCmdOrigins need to be changed at all?
+              splits.Add(new Split(initialSplit.options, PostProcess(newBlocks), initialSplit.gotoCmdOrigins, initialSplit.parent, initialSplit.Implementation, run)); // REVIEW: Does gotoCmdOrigins need to be changed at all?
             }
           }
         }
         return splits;
       }
 
-      public static List<Split> FocusImpl(VCGenOptions options, Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
+      public static List<Split> FocusImpl(VCGenOptions options, Implementation impl, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
       {
         bool IsFocusCmd(Cmd c) {
           return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "focus");
@@ -1019,7 +1022,7 @@ namespace VC
         }
         if (!focusBlocks.Any()) {
           var f = new List<Split>();
-          f.Add(new Split(options, impl.Blocks, gotoCmdOrigins, par, impl));
+          f.Add(new Split(options, impl.Blocks, gotoCmdOrigins, par, impl, run));
           return f;
         }
         // finds all the blocks dominated by focusBlock in the subgraph
@@ -1095,7 +1098,7 @@ namespace VC
             }
             newBlocks.Reverse();
             Contract.Assert(newBlocks[0] == oldToNewBlockMap[impl.Blocks[0]]);
-            s.Add(new Split(options, PostProcess(newBlocks), gotoCmdOrigins, par, impl));
+            s.Add(new Split(options, PostProcess(newBlocks), gotoCmdOrigins, par, impl, run));
           }
           else if (!blocks.Contains(focusBlocks[focusIdx])
                     || freeBlocks.Contains(focusBlocks[focusIdx]))
@@ -1120,14 +1123,14 @@ namespace VC
         return s;
       }
 
-      public static List<Split> FocusAndSplit(VCGenOptions options, Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par, bool splitOnEveryAssert)
+      public static List<Split> FocusAndSplit(VCGenOptions options, Implementation impl, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par, bool splitOnEveryAssert)
       {
-        List<Split> focussedImpl = FocusImpl(options, impl, gotoCmdOrigins, par);
-        var splits = focussedImpl.Select(s => FindManualSplits(s, splitOnEveryAssert)).SelectMany(x => x).ToList();
+        List<Split> focussedImpl = FocusImpl(options, impl, run, gotoCmdOrigins, par);
+        var splits = focussedImpl.Select(s => FindManualSplits(s, run, splitOnEveryAssert)).SelectMany(x => x).ToList();
         return splits;
       }
 
-      public static List<Split /*!*/> /*!*/ DoSplit(Split initial, double splitThreshold, int maxSplits)
+      public static List<Split /*!*/> /*!*/ DoSplit(Split initial, ImplementationRun run, double splitThreshold, int maxSplits)
       {
         Contract.Requires(initial != null);
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<Split>>()));
@@ -1161,29 +1164,29 @@ namespace VC
 
           if (splitStats)
           {
-            Console.WriteLine("{0} {1} -->", best.splitBlock == null ? "SLICE" : ("SPLIT@" + best.splitBlock.Label),
+            run.TraceWriter.WriteLine("{0} {1} -->", best.splitBlock == null ? "SLICE" : ("SPLIT@" + best.splitBlock.Label),
               best.Stats);
             if (best.splitBlock != null)
             {
               GotoCmd g = best.splitBlock.TransferCmd as GotoCmd;
               if (g != null)
               {
-                Console.Write("    exits: ");
+                run.TraceWriter.Write("    exits: ");
                 foreach (Block b in cce.NonNull(g.labelTargets))
                 {
                   Contract.Assert(b != null);
-                  Console.Write("{0} ", b.Label);
+                  run.TraceWriter.Write("{0} ", b.Label);
                 }
 
-                Console.WriteLine("");
-                Console.Write("    assumized: ");
+                run.TraceWriter.WriteLine("");
+                run.TraceWriter.Write("    assumized: ");
                 foreach (Block b in best.assumizedBranches)
                 {
                   Contract.Assert(b != null);
-                  Console.Write("{0} ", b.Label);
+                  run.TraceWriter.Write("{0} ", b.Label);
                 }
 
-                Console.WriteLine("");
+                run.TraceWriter.WriteLine("");
               }
             }
           }
@@ -1226,8 +1229,8 @@ namespace VC
           {
             s0.ComputeBestSplit();
             s1.ComputeBestSplit();
-            Console.WriteLine("    --> {0}", s0.Stats);
-            Console.WriteLine("    --> {0}", s1.Stats);
+            run.TraceWriter.WriteLine("    --> {0}", s0.Stats);
+            run.TraceWriter.WriteLine("    --> {0}", s1.Stats);
           }
 
           if (initial.options.TraceVerify)
@@ -1272,7 +1275,7 @@ namespace VC
 
         if (options.Trace && SplitIndex >= 0)
         {
-          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", SplitIndex + 1,
+          run.TraceWriter.WriteLine("      --> split #{0} done,  [{1} s] {2}", SplitIndex + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
@@ -1337,7 +1340,7 @@ namespace VC
 
         if (options.TraceVerify && SplitIndex >= 0)
         {
-          Console.WriteLine("-- after split #{0}", SplitIndex);
+          run.TraceWriter.WriteLine("-- after split #{0}", SplitIndex);
           Print();
         }
 

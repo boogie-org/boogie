@@ -63,10 +63,10 @@ namespace VC
       Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
       ResetPredecessors(Implementation.Blocks);
-      manualSplits = Split.FocusAndSplit(options, Implementation, gotoCmdOrigins, vcGen, splitOnEveryAssert);
+      manualSplits = Split.FocusAndSplit(options, Implementation, run, gotoCmdOrigins, vcGen, splitOnEveryAssert);
       
       if (manualSplits.Count == 1 && maxSplits > 1) {
-        manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);
+        manualSplits = Split.DoSplit(manualSplits[0], run, maxVcCost, maxSplits);
         maxVcCost = 1.0;
       }
       
@@ -125,7 +125,7 @@ namespace VC
       if (options.Trace && DoSplitting) {
         var splitNum = split.SplitIndex + 1;
         var splitIdxStr = options.RandomSeedIterations > 1 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
-        Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
+        run.TraceWriter.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
           split.Stats, splitIdxStr, total, 100 * provenCost / (provenCost + remainingCost));
       }
 
@@ -257,7 +257,7 @@ namespace VC
       }
 
       if (maxKeepGoingSplits > 1) {
-        var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
+        var newSplits = Split.DoSplit(split, run, maxVcCost, maxKeepGoingSplits);
         Contract.Assert(newSplits != null);
         maxVcCost = 1.0; // for future
         TrackSplitsCost(newSplits);
