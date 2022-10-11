@@ -34,7 +34,7 @@ namespace VC
     private int splitNumber;
 
     private int totalResourceCount;
-    
+
     public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, ImplementationRun run,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
       Outcome outcome)
@@ -82,6 +82,7 @@ namespace VC
     }
 
     public int ResourceCount => totalResourceCount;
+    public TimeSpan TotalProverElapsedTime { get; private set; }
     
     private void TrackSplitsCost(List<Split> splits)
     {
@@ -114,6 +115,7 @@ namespace VC
         await StartCheck(iteration, split, checker, cancellationToken);
         await checker.ProverTask;
         await ProcessResult(iteration, split, checker, cancellationToken);
+        TotalProverElapsedTime += checker.ProverRunTime;
       }
       finally {
         await checker.GoBackToIdle();
