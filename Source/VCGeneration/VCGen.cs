@@ -359,7 +359,6 @@ namespace VC
 
       callback.OnProgress?.Invoke("VCgen", 0, 0, 0.0);
 
-      Stopwatch watch = new Stopwatch();
 
       var data = implementationData.GetOrCreateValue(run.Implementation)!;
       if (!data.ConvertedToDAG) {
