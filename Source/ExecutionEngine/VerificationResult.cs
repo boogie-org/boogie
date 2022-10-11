@@ -21,8 +21,8 @@ public sealed class VerificationResult
   public DateTime End { get; set; }
 
   /// <summary>
-  /// Gets or sets a the elapsed time, excluding SMT solver setup costs.
-  /// (This is more narrow than <c>Start - End</c>.)
+  /// Gets or sets the elapsed time, excluding SMT solver setup costs.
+  /// (This is narrower than <c>Start - End</c>.)
   /// <c>Start</c> and <c>End</c> are kept because we need them in XML reports.
   /// </summary>
   public TimeSpan Elapsed { get; set; }
