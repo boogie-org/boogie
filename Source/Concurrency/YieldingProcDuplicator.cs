@@ -641,7 +641,6 @@ namespace Microsoft.Boogie
         civlTypeChecker,
         layerNum,
         absyMap,
-        yieldingProcs,
         refinementBlocks));
       return decls;
     }
