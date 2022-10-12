@@ -63,10 +63,10 @@ namespace VC
       Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
       ResetPredecessors(Implementation.Blocks);
-      manualSplits = Split.FocusAndSplit(options, Implementation, run, gotoCmdOrigins, vcGen, splitOnEveryAssert);
+      manualSplits = Split.FocusAndSplit(options, run, gotoCmdOrigins, vcGen, splitOnEveryAssert);
       
       if (manualSplits.Count == 1 && maxSplits > 1) {
-        manualSplits = Split.DoSplit(manualSplits[0], run, maxVcCost, maxSplits);
+        manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);
         maxVcCost = 1.0;
       }
       
@@ -257,7 +257,7 @@ namespace VC
       }
 
       if (maxKeepGoingSplits > 1) {
-        var newSplits = Split.DoSplit(split, run, maxVcCost, maxKeepGoingSplits);
+        var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
         Contract.Assert(newSplits != null);
         maxVcCost = 1.0; // for future
         TrackSplitsCost(newSplits);
