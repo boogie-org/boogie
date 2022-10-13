@@ -11,18 +11,6 @@ namespace Microsoft.Boogie
     LINEAR_OUT
   }
 
-  public class LinearQualifier
-  {
-    public LinearDomain domain;
-    public LinearKind kind;
-
-    public LinearQualifier(LinearDomain domain, LinearKind kind)
-    {
-      this.domain = domain;
-      this.kind = kind;
-    }
-  }
-
   public class LinearDomain
   {
     public string domainName;
@@ -97,11 +85,8 @@ namespace Microsoft.Boogie
     private CheckingContext checkingContext;
     private CivlTypeChecker civlTypeChecker;
     private Dictionary<string, LinearDomain> linearDomains;
-    private Dictionary<Variable, LinearQualifier> varToLinearQualifier;
     private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
 
-    public IEnumerable<LinearDomain> LinearDomains => linearDomains.Values;
-    
     public LinearTypeChecker(CivlTypeChecker civlTypeChecker)
     {
       this.civlTypeChecker = civlTypeChecker;
@@ -110,11 +95,8 @@ namespace Microsoft.Boogie
       this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
     }
 
-    private void Error(Absy node, string message)
-    {
-      checkingContext.Error(node, message);
-    }
-
+    public IEnumerable<LinearDomain> LinearDomains => linearDomains.Values;
+    
     public LinearDomain FindDomain(Variable v)
     {
       var domainName = LinearDomainCollector.FindDomainName(v);
@@ -135,7 +117,7 @@ namespace Microsoft.Boogie
 
     public void TypeCheck()
     {
-      (this.linearDomains, this.varToLinearQualifier) = LinearDomainCollector.Collect(program, civlTypeChecker);
+      this.linearDomains = LinearDomainCollector.Collect(program, civlTypeChecker);
       if (checkingContext.ErrorCount > 0)
       {
         return;
@@ -149,10 +131,13 @@ namespace Microsoft.Boogie
     
     #region Visitor Implementation
 
-    private IEnumerable<Variable> linearGlobalVariables => varToLinearQualifier.Keys.OfType<GlobalVariable>();
-    
+    private IEnumerable<Variable> LinearGlobalVariables =>
+      program.GlobalVariables.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY);
+
     public override Implementation VisitImplementation(Implementation node)
     {
+      var linearGlobalVariables = LinearGlobalVariables;
+      
       if (civlTypeChecker.procToAtomicAction.ContainsKey(node.Proc) ||
           civlTypeChecker.procToIntroductionAction.ContainsKey(node.Proc) ||
           civlTypeChecker.procToIsAbstraction.ContainsKey(node.Proc) ||
@@ -265,6 +250,11 @@ namespace Microsoft.Boogie
       return impl;
     }
 
+    private void Error(Absy node, string message)
+    {
+      checkingContext.Error(node, message);
+    }
+    
     private void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
     {
       foreach (IdentifierExpr ie in callCmd.Outs)
@@ -305,6 +295,7 @@ namespace Microsoft.Boogie
 
     private HashSet<Variable> PropagateAvailableLinearVarsAcrossBlock(Block b)
     {
+      var linearGlobalVariables = LinearGlobalVariables;
       HashSet<Variable> start = new HashSet<Variable>(availableLinearVars[b]);
       foreach (Cmd cmd in b.Cmds)
       {
