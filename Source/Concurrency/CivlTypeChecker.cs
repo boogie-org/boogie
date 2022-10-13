@@ -575,7 +575,7 @@ namespace Microsoft.Boogie
         foreach (var param in proc.InParams)
         {
           localVarToLayerRange[param] = new LayerRange(yieldInvariant.LayerNum);
-          var linearKind = linearTypeChecker.FindLinearKind(param);
+          var linearKind = LinearDomainCollector.FindLinearKind(param);
           if (linearKind == LinearKind.LINEAR_IN || linearKind == LinearKind.LINEAR_OUT)
           {
             Error(param, "Parameter to yield invariant can only be :linear");

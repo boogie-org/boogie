@@ -70,15 +70,6 @@ procedure {:yield_invariant} {:layer 1} YieldInv();
 requires BetweenSet(map(Stack), TopOfStack, null)[TopOfStack];
 requires Subset(BetweenSet(map(Stack), TopOfStack, null), Union(Singleton(null), dom(Stack)));
 
-function {:inline} {:linear "Node"} NodeCollector(x: int) : [int]bool
-{
-  MapConst(false)[x := true]
-}
-function {:inline} {:linear "Node"} NodeSetCollector(x: [int]bool) : [int]bool
-{
-  x
-}
-
 procedure {:atomic} {:layer 2} atomic_push(x: int, {:linear_in "Node"} x_lmap: lmap)
 modifies Stack, TopOfStack;
 { assert dom(x_lmap)[x]; Stack := Add(Stack, x, TopOfStack); TopOfStack := x; }

@@ -18,9 +18,3 @@ p1({:linear "lin"} a: int, {:linear_in "lin"} b: int, c: int)
 
 procedure {:yields} {:layer 1}
 p2({:linear_in "lin"} b: int);
-
-function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
-function {:inline} {:linear "lin"} TidCollector(x: int) : [int]bool
-{
-  MapConstBool(false)[x := true]
-}

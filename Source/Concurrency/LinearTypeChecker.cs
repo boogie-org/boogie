@@ -13,19 +13,18 @@ namespace Microsoft.Boogie
 
   public class LinearQualifier
   {
-    public string domainName;
+    public LinearDomain domain;
     public LinearKind kind;
 
-    public LinearQualifier(string domainName, LinearKind kind)
+    public LinearQualifier(LinearDomain domain, LinearKind kind)
     {
-      this.domainName = domainName;
+      this.domain = domain;
       this.kind = kind;
     }
   }
 
   public class LinearDomain
   {
-    private ConcurrencyOptions options;
     public string domainName;
     public Type permissionType;
     public Dictionary<Type, Function> collectors;
@@ -40,35 +39,33 @@ namespace Microsoft.Boogie
     public Function mapIteInt;
     public Function mapLe;
 
-    public LinearDomain(Program program, string domainName, Type permissionType, Dictionary<Type, Function> collectors,
-      ConcurrencyOptions options)
+    public LinearDomain(Program program, string domainName, Type permissionType, Dictionary<Type, Function> collectors)
     {
       this.domainName = domainName;
       this.permissionType = permissionType;
       this.collectors = collectors;
-      this.options = options;
 
-      this.mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> {this.permissionType},
+      this.mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.permissionType },
         Type.Bool);
-      this.mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> {this.permissionType},
+      this.mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.permissionType },
         Type.Int);
 
       this.mapConstBool = program.monomorphizer.InstantiateFunction("MapConst",
-        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Bool} });
+        new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Bool } });
       this.mapConstInt = program.monomorphizer.InstantiateFunction("MapConst",
-        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
+        new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Int } });
       this.mapOr = program.monomorphizer.InstantiateFunction("MapOr",
-        new Dictionary<string, Type>() { {"T", permissionType} });
+        new Dictionary<string, Type>() { { "T", permissionType } });
       this.mapImp = program.monomorphizer.InstantiateFunction("MapImp",
-        new Dictionary<string, Type>() { {"T", permissionType} });
+        new Dictionary<string, Type>() { { "T", permissionType } });
       this.mapEqInt = program.monomorphizer.InstantiateFunction("MapEq",
-        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
+        new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Int } });
       this.mapAdd = program.monomorphizer.InstantiateFunction("MapAdd",
-        new Dictionary<string, Type>() { {"T", permissionType} });
+        new Dictionary<string, Type>() { { "T", permissionType } });
       this.mapIteInt = program.monomorphizer.InstantiateFunction("MapIte",
-        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
+        new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Int } });
       this.mapLe = program.monomorphizer.InstantiateFunction("MapLe",
-        new Dictionary<string, Type>() { {"T", permissionType} });
+        new Dictionary<string, Type>() { { "T", permissionType } });
     }
 
     public Expr MapConstInt(int value)
@@ -98,31 +95,17 @@ namespace Microsoft.Boogie
   {
     public Program program;
     public CheckingContext checkingContext;
-    public Dictionary<string, LinearDomain> linearDomains;
-
     private CivlTypeChecker civlTypeChecker;
-
+    public Dictionary<string, LinearDomain> linearDomains;
+    private Dictionary<Variable, LinearQualifier> varToLinearQualifier;
     private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
-    private Dictionary<Variable, LinearQualifier> inParamToLinearQualifier;
-    private Dictionary<Variable, string> outParamToDomainName;
-    private Dictionary<Variable, string> globalVarToDomainName;
-
-    // Only used in visitor implementation
-    private Dictionary<string, Dictionary<Type, Function>> domainNameToCollectors;
-    private Dictionary<Variable, string> varToDomainName;
-
+    
     public LinearTypeChecker(CivlTypeChecker civlTypeChecker)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.program = civlTypeChecker.program;
       this.checkingContext = civlTypeChecker.checkingContext;
-      this.domainNameToCollectors = new Dictionary<string, Dictionary<Type, Function>>();
       this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
-      this.inParamToLinearQualifier = new Dictionary<Variable, LinearQualifier>();
-      this.outParamToDomainName = new Dictionary<Variable, string>();
-      this.globalVarToDomainName = new Dictionary<Variable, string>();
-      this.linearDomains = new Dictionary<string, LinearDomain>();
-      this.varToDomainName = new Dictionary<Variable, string>();
     }
 
     private void Error(Absy node, string message)
@@ -130,71 +113,28 @@ namespace Microsoft.Boogie
       checkingContext.Error(node, message);
     }
 
+    public LinearDomain FindDomain(Variable v)
+    {
+      var domainName = FindDomainName(v);
+      return varToLinearQualifier[v].domain;
+    }
+    
     public string FindDomainName(Variable v)
     {
-      if (globalVarToDomainName.ContainsKey(v))
+      if (!varToLinearQualifier.ContainsKey(v))
       {
-        return globalVarToDomainName[v];
+        return LinearDomainCollector.FindDomainName(v);
       }
-
-      if (inParamToLinearQualifier.ContainsKey(v))
-      {
-        return inParamToLinearQualifier[v].domainName;
-      }
-
-      if (outParamToDomainName.ContainsKey(v))
-      {
-        return outParamToDomainName[v];
-      }
-
-      string domainName = QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR);
-      if (domainName != null)
-      {
-        return domainName;
-      }
-
-      domainName = QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_IN);
-      if (domainName != null)
-      {
-        return domainName;
-      }
-
-      return QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT);
+      return varToLinearQualifier[v].domain.domainName;
     }
 
     public LinearKind FindLinearKind(Variable v)
     {
-      if (globalVarToDomainName.ContainsKey(v))
+      if (!varToLinearQualifier.ContainsKey(v))
       {
-        return LinearKind.LINEAR;
+        return LinearDomainCollector.FindLinearKind(v);
       }
-
-      if (inParamToLinearQualifier.ContainsKey(v))
-      {
-        return inParamToLinearQualifier[v].kind;
-      }
-
-      if (outParamToDomainName.ContainsKey(v))
-      {
-        return LinearKind.LINEAR;
-      }
-
-      if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR) != null)
-      {
-        return LinearKind.LINEAR;
-      }
-      else if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_IN) != null)
-      {
-        return LinearKind.LINEAR_IN;
-      }
-      else if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT) != null)
-      {
-        return LinearKind.LINEAR_OUT;
-      }
-      else
-      {
-        return LinearKind.ORDINARY;
-      }
+      return varToLinearQualifier[v].kind;
     }
 
     public Formal LinearDomainInFormal(string domainName)
@@ -207,174 +147,24 @@ namespace Microsoft.Boogie
       return civlTypeChecker.LocalVariable("linear_" + domainName + "_available", linearDomains[domainName].mapTypeBool);
     }
 
-    private static List<string> FindDomainNames(QKeyValue kv)
-    {
-      List<string> domains = new List<string>();
-      for (; kv != null; kv = kv.Next)
-      {
-        if (kv.Key != CivlAttributes.LINEAR)
-        {
-          continue;
-        }
-
-        foreach (var o in kv.Params)
-        {
-          if (o is string s)
-          {
-            domains.Add(s);
-          }
-        }
-      }
-      return domains;
-    }
-    
     public void TypeCheck()
     {
-      this.VisitProgram(program);
-      
-      var permissionTypes = GetPermissionTypes();
-      ProcessCollectors(permissionTypes);
-      
+      (this.linearDomains, this.varToLinearQualifier) = LinearDomainCollector.Collect(program, civlTypeChecker);
       if (checkingContext.ErrorCount > 0)
       {
         return;
       }
-      foreach ((var domainName, var collectors) in domainNameToCollectors)
-      {
-        if (collectors.Count != 0)
-        {
-          this.linearDomains[domainName] =
-            new LinearDomain(program, domainName, permissionTypes[domainName], collectors, Options);
-        }
-      }
+      this.VisitProgram(program);
       foreach (Absy absy in this.availableLinearVars.Keys)
       {
         availableLinearVars[absy].RemoveWhere(v => v is GlobalVariable);
       }
     }
-
-    private Dictionary<string, Type> GetPermissionTypes()
-    {
-      var permissionTypes = new Dictionary<string, Type>();
-      foreach (var decl in program.TopLevelDeclarations.Where(decl => decl is TypeCtorDecl || decl is TypeSynonymDecl))
-      {
-        foreach (var domainName in FindDomainNames(decl.Attributes))
-        {
-          if (permissionTypes.ContainsKey(domainName))
-          {
-            Error(decl, $"Duplicate permission type for domain {domainName}");
-          }
-          else if (decl is TypeCtorDecl typeCtorDecl)
-          {
-            if (typeCtorDecl.Arity > 0)
-            {
-              Error(decl, "Permission type must be fully instantiated");
-            }
-            else
-            {
-              permissionTypes[domainName] = new CtorType(Token.NoToken, typeCtorDecl, new List<Type>());
-            }
-          }
-          else
-          {
-            permissionTypes[domainName] =
-              new TypeSynonymAnnotation(Token.NoToken, (TypeSynonymDecl) decl, new List<Type>());
-          }
-        }
-      }
-      return permissionTypes;
-    }
-
-    private void ProcessCollectors(Dictionary<string, Type> permissionTypes)
-    {
-      foreach (var variable in varToDomainName.Keys)
-      {
-        string domainName = FindDomainName(variable);
-        if (!permissionTypes.ContainsKey(domainName))
-        {
-          Error(variable, $"Permission type not declared for domain {domainName}");
-          continue;
-        }
-        var permissionType = permissionTypes[domainName];
-        if (!domainNameToCollectors.ContainsKey(domainName))
-        {
-          domainNameToCollectors[domainName] = new Dictionary<Type, Function>();
-        }
-        var variableType = variable.TypedIdent.Type;
-        if (!domainNameToCollectors[domainName].ContainsKey(variableType))
-        {
-          if (variableType.Equals(permissionType))
-          {
-            // add unit collector
-            domainNameToCollectors[domainName][variableType] =
-              program.monomorphizer.InstantiateFunction("MapUnit", new Dictionary<string, Type>() { {"T", variableType} });
-          }
-          else if (variableType.Equals(new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type>{permissionType}, Type.Bool)))
-          {
-            // add identity collector
-            domainNameToCollectors[domainName][variableType] =
-              program.monomorphizer.InstantiateFunction("Id", new Dictionary<string, Type>() { {"T", variableType} });
-          }
-          else
-          {
-            Error(variable, "Missing collector for linear variable " + variable.Name);
-          }
-        }
-      }
-    }
-
+    
     #region Visitor Implementation
 
-    public override Program VisitProgram(Program node)
-    {
-      foreach (GlobalVariable g in program.GlobalVariables)
-      {
-        string domainName = FindDomainName(g);
-        if (domainName != null)
-        {
-          globalVarToDomainName[g] = domainName;
-        }
-      }
-
-      return base.VisitProgram(node);
-    }
-
-    public override Function VisitFunction(Function node)
-    {
-      string domainName = QKeyValue.FindStringAttribute(node.Attributes, CivlAttributes.LINEAR);
-      if (domainName != null)
-      {
-        if (!domainNameToCollectors.ContainsKey(domainName))
-        {
-          domainNameToCollectors[domainName] = new Dictionary<Type, Function>();
-        }
-
-        if (node.InParams.Count == 1 && node.OutParams.Count == 1)
-        {
-          Type inType = node.InParams[0].TypedIdent.Type;
-          MapType outType = node.OutParams[0].TypedIdent.Type as MapType;
-          if (domainNameToCollectors[domainName].ContainsKey(inType))
-          {
-            Error(node, "A collector for domain for input type has already been defined");
-          }
-          else if (outType == null || outType.Arguments.Count != 1 || !outType.Result.Equals(Type.Bool))
-          {
-            Error(node, "Output of a linear domain collector should be of set type");
-          }
-          else
-          {
-            domainNameToCollectors[domainName][inType] = node;
-          }
-        }
-        else
-        {
-          Error(node, "Linear domain collector should have one input and one output parameter");
-        }
-      }
-
-      return base.VisitFunction(node);
-    }
-
+    private IEnumerable<Variable> linearGlobalVariables => varToLinearQualifier.Keys.OfType<GlobalVariable>();
+    
     public override Implementation VisitImplementation(Implementation node)
     {
       if (civlTypeChecker.procToAtomicAction.ContainsKey(node.Proc) ||
@@ -391,7 +181,7 @@ namespace Microsoft.Boogie
       GraphUtil.Graph<Block> graph = Program.GraphFromImpl(node);
       graph.ComputeLoops();
 
-      HashSet<Variable> start = new HashSet<Variable>(globalVarToDomainName.Keys);
+      HashSet<Variable> start = new HashSet<Variable>(linearGlobalVariables);
       for (int i = 0; i < node.InParams.Count; i++)
       {
         Variable v = node.Proc.InParams[i];
@@ -399,20 +189,10 @@ namespace Microsoft.Boogie
         if (domainName != null)
         {
           var kind = FindLinearKind(v);
-          inParamToLinearQualifier[node.InParams[i]] = new LinearQualifier(domainName, kind);
           if (kind == LinearKind.LINEAR || kind == LinearKind.LINEAR_IN)
           {
             start.Add(node.InParams[i]);
           }
-        }
-      }
-
-      for (int i = 0; i < node.OutParams.Count; i++)
-      {
-        string domainName = FindDomainName(node.Proc.OutParams[i]);
-        if (domainName != null)
-        {
-          outParamToDomainName[node.OutParams[i]] = domainName;
         }
       }
 
@@ -435,7 +215,7 @@ namespace Microsoft.Boogie
         HashSet<Variable> end = PropagateAvailableLinearVarsAcrossBlock(b);
         if (b.TransferCmd is ReturnCmd)
         {
-          foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(end))
+          foreach (GlobalVariable g in linearGlobalVariables.Except(end))
           {
             Error(b.TransferCmd, $"Global variable {g.Name} must be available at a return");
           }
@@ -489,7 +269,7 @@ namespace Microsoft.Boogie
       {
         foreach (Block header in graph.Headers)
         {
-          foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(availableLinearVars[header]))
+          foreach (GlobalVariable g in linearGlobalVariables.Except(availableLinearVars[header]))
           {
             Error(header, $"Global variable {g.Name} must be available at a loop head");
           }
@@ -574,7 +354,7 @@ namespace Microsoft.Boogie
         }
         else if (cmd is CallCmd callCmd)
         {
-          foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
+          foreach (GlobalVariable g in linearGlobalVariables.Except(start))
           {
             Error(cmd, $"Global variable {g.Name} must be available at a call");
           }
@@ -614,7 +394,7 @@ namespace Microsoft.Boogie
         }
         else if (cmd is ParCallCmd parCallCmd)
         {
-          foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
+          foreach (GlobalVariable g in linearGlobalVariables.Except(start))
           {
             Error(cmd, $"Global variable {g.Name} must be available at a call");
           }
@@ -669,7 +449,7 @@ namespace Microsoft.Boogie
         }
         else if (cmd is YieldCmd)
         {
-          foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
+          foreach (GlobalVariable g in linearGlobalVariables.Except(start))
           {
             Error(cmd, $"Global variable {g.Name} must be available at a yield");
           }
@@ -680,26 +460,7 @@ namespace Microsoft.Boogie
 
       return start;
     }
-
-    public override Variable VisitVariable(Variable node)
-    {
-      string domainName = FindDomainName(node);
-      if (domainName != null)
-      {
-        varToDomainName[node] = domainName;
-        LinearKind kind = FindLinearKind(node);
-        if (kind != LinearKind.LINEAR)
-        {
-          if (node is GlobalVariable || node is LocalVariable || (node is Formal formal && !formal.InComing))
-          {
-            Error(node, "Variable must be declared linear (as opposed to linear_in or linear_out)");
-          }
-        }
-      }
-
-      return base.VisitVariable(node);
-    }
-
+    
     public override Cmd VisitAssignCmd(AssignCmd node)
     {
       HashSet<Variable> rhsVars = new HashSet<Variable>();
@@ -890,16 +651,6 @@ namespace Microsoft.Boogie
       }
 
       return base.VisitParCallCmd(node);
-    }
-
-    public override Requires VisitRequires(Requires requires)
-    {
-      return requires;
-    }
-
-    public override Ensures VisitEnsures(Ensures ensures)
-    {
-      return ensures;
     }
 
     #endregion

@@ -97,9 +97,3 @@ procedure {:yields}{:layer 0}{:refines "RELEASE_Y"} release_y ({:linear "tid"} t
 procedure {:yields}{:layer 0}{:refines "WRITE_X"} write_x ({:linear "tid"} tid:Tid, v:int);
 procedure {:yields}{:layer 0}{:refines "WRITE_Y"} write_y ({:linear "tid"} tid:Tid, v:int);
 procedure {:yields}{:layer 0}{:refines "READ_X"} read_x ({:linear "tid"} tid:Tid) returns (r:int);
-
-function {:builtin "MapConst"} MapConstBool(bool) : [Tid]bool;
-function {:inline}{:linear "tid"} TidCollector(tid:Tid) : [Tid]bool
-{
-  MapConstBool(false)[tid := true]
-}
