@@ -236,7 +236,6 @@ class LinearDomainCollector : ReadOnlyVisitor
       {
         continue;
       }
-
       foreach (var o in kv.Params)
       {
         if (o is string s)
@@ -245,7 +244,6 @@ class LinearDomainCollector : ReadOnlyVisitor
         }
       }
     }
-
     return domains;
   }
 }

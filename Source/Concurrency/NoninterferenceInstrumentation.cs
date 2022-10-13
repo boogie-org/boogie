@@ -39,7 +39,7 @@ namespace Microsoft.Boogie
     private Procedure yieldProc;
 
     private List<Variable> newLocalVars;
-    private Dictionary<LinearDomain, Variable> domainNameToHoleVar;
+    private Dictionary<LinearDomain, Variable> domainToHoleVar;
 
     public SomeNoninterferenceInstrumentation(
       CivlTypeChecker civlTypeChecker,
@@ -54,11 +54,11 @@ namespace Microsoft.Boogie
       this.oldGlobalMap = oldGlobalMap;
       this.yieldProc = yieldProc;
       this.newLocalVars = new List<Variable>();
-      this.domainNameToHoleVar = new Dictionary<LinearDomain, Variable>();
-      foreach (var domainName in linearTypeChecker.LinearDomains)
+      this.domainToHoleVar = new Dictionary<LinearDomain, Variable>();
+      foreach (var domain in linearTypeChecker.LinearDomains)
       {
-        Variable l = linearTypeChecker.LinearDomainAvailableLocal(domainName);
-        domainNameToHoleVar[domainName] = l;
+        Variable l = linearTypeChecker.LinearDomainAvailableLocal(domain);
+        domainToHoleVar[domain] = l;
         newLocalVars.Add(l);
       }
     }
@@ -67,13 +67,13 @@ namespace Microsoft.Boogie
 
     public List<Cmd> CreateInitCmds(Implementation impl)
     {
-      var domainNameToExpr = linearPermissionInstrumentation.PermissionExprs(impl);
+      var domainToExpr = linearPermissionInstrumentation.PermissionExprs(impl);
       List<IdentifierExpr> lhss = new List<IdentifierExpr>();
       List<Expr> rhss = new List<Expr>();
-      foreach (var domainName in linearTypeChecker.LinearDomains)
+      foreach (var domain in linearTypeChecker.LinearDomains)
       {
-        lhss.Add(Expr.Ident(domainNameToHoleVar[domainName]));
-        rhss.Add(domainNameToExpr[domainName]);
+        lhss.Add(Expr.Ident(domainToHoleVar[domain]));
+        rhss.Add(domainToExpr[domain]);
       }
 
       var initCmds = new List<Cmd>();
@@ -87,13 +87,13 @@ namespace Microsoft.Boogie
 
     public List<Cmd> CreateUpdatesToPermissionCollector(Absy absy)
     {
-      var domainNameToExpr = linearPermissionInstrumentation.PermissionExprs(absy);
+      var domainToExpr = linearPermissionInstrumentation.PermissionExprs(absy);
       List<IdentifierExpr> lhss = new List<IdentifierExpr>();
       List<Expr> rhss = new List<Expr>();
-      foreach (var domainName in linearTypeChecker.LinearDomains)
+      foreach (var domain in linearTypeChecker.LinearDomains)
       {
-        lhss.Add(Expr.Ident(domainNameToHoleVar[domainName]));
-        rhss.Add(domainNameToExpr[domainName]);
+        lhss.Add(Expr.Ident(domainToHoleVar[domain]));
+        rhss.Add(domainToExpr[domain]);
       }
 
       var cmds = new List<Cmd>();
@@ -108,16 +108,14 @@ namespace Microsoft.Boogie
     public List<Cmd> CreateCallToYieldProc()
     {
       List<Variable> inputs = new List<Variable>();
-      foreach (var domainName in linearTypeChecker.LinearDomains)
+      foreach (var domain in linearTypeChecker.LinearDomains)
       {
-        inputs.Add(domainNameToHoleVar[domainName]);
+        inputs.Add(domainToHoleVar[domain]);
       }
-
       foreach (Variable g in civlTypeChecker.GlobalVariables)
       {
         inputs.Add(oldGlobalMap[g]);
       }
-
       CallCmd yieldCallCmd = CmdHelper.CallCmd(yieldProc, inputs, new List<Variable>());
       return new List<Cmd> {yieldCallCmd};
     }

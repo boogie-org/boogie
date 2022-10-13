@@ -15,16 +15,16 @@ namespace Microsoft.Boogie
       List<Variable> declLocalVariables)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var domainNameToHoleVar = new Dictionary<LinearDomain, Variable>();
+      var domainToHoleVar = new Dictionary<LinearDomain, Variable>();
       Dictionary<Variable, Variable> localVarMap = new Dictionary<Variable, Variable>();
       Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
       List<Variable> locals = new List<Variable>();
       List<Variable> inputs = new List<Variable>();
-      foreach (var domainName in linearTypeChecker.LinearDomains)
+      foreach (var domain in linearTypeChecker.LinearDomains)
       {
-        var inParam = linearTypeChecker.LinearDomainInFormal(domainName);
+        var inParam = linearTypeChecker.LinearDomainInFormal(domain);
         inputs.Add(inParam);
-        domainNameToHoleVar[domainName] = inParam;
+        domainToHoleVar[domain] = inParam;
       }
 
       foreach (Variable local in declLocalVariables.Union(decl.InParams).Union(decl.OutParams))
@@ -48,7 +48,7 @@ namespace Microsoft.Boogie
       }
 
       var linearPermissionInstrumentation = new LinearPermissionInstrumentation(civlTypeChecker,
-        layerNum, absyMap, domainNameToHoleVar, localVarMap);
+        layerNum, absyMap, domainToHoleVar, localVarMap);
       List<YieldInfo> yieldInfos = null;
       string noninterferenceCheckerName = null;
       if (decl is Implementation impl)
