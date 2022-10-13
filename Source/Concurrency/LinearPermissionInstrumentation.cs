@@ -9,7 +9,7 @@ namespace Microsoft.Boogie
     private CivlTypeChecker civlTypeChecker;
     private int layerNum;
     private AbsyMap absyMap;
-    private Dictionary<string, Variable> domainNameToHoleVar;
+    private Dictionary<LinearDomain, Variable> domainNameToHoleVar;
     private Dictionary<Variable, Variable> localVarMap;
 
     private ConcurrencyOptions Options => civlTypeChecker.Options;
@@ -18,7 +18,7 @@ namespace Microsoft.Boogie
       CivlTypeChecker civlTypeChecker,
       int layerNum,
       AbsyMap absyMap,
-      Dictionary<string, Variable> domainNameToHoleVar,
+      Dictionary<LinearDomain, Variable> domainNameToHoleVar,
       Dictionary<Variable, Variable> localVarMap)
     {
       this.civlTypeChecker = civlTypeChecker;
@@ -36,7 +36,7 @@ namespace Microsoft.Boogie
       this.civlTypeChecker = civlTypeChecker;
       this.layerNum = layerNum;
       this.absyMap = absyMap;
-      this.domainNameToHoleVar = new Dictionary<string, Variable>();
+      this.domainNameToHoleVar = new Dictionary<LinearDomain, Variable>();
       this.localVarMap = new Dictionary<Variable, Variable>();
     }
 
@@ -60,11 +60,11 @@ namespace Microsoft.Boogie
       return DisjointnessExprs(availableVars);
     }
 
-    public Dictionary<string, Expr> PermissionExprs(Absy absy)
+    public Dictionary<LinearDomain, Expr> PermissionExprs(Absy absy)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var domainNameToScope = new Dictionary<string, HashSet<Variable>>();
-      foreach (var domainName in linearTypeChecker.linearDomains.Keys)
+      var domainNameToScope = new Dictionary<LinearDomain, HashSet<Variable>>();
+      foreach (var domainName in linearTypeChecker.LinearDomains)
       {
         domainNameToScope[domainName] = new HashSet<Variable>();
       }
@@ -72,11 +72,11 @@ namespace Microsoft.Boogie
       var availableVars = AvailableLinearLocalVars(absy).Union(LinearGlobalVars());
       foreach (var v in availableVars)
       {
-        var domainName = linearTypeChecker.FindDomainName(v);
+        var domainName = linearTypeChecker.FindDomain(v);
         domainNameToScope[domainName].Add(MapVariable(v));
       }
 
-      var domainNameToExpr = new Dictionary<string, Expr>();
+      var domainNameToExpr = new Dictionary<LinearDomain, Expr>();
       foreach (var domainName in domainNameToScope.Keys)
       {
         var permissionExprs =
@@ -127,20 +127,20 @@ namespace Microsoft.Boogie
     private List<Expr> DisjointnessExprs(IEnumerable<Variable> availableVars)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var domainNameToScope = new Dictionary<string, HashSet<Variable>>();
-      foreach (var domainName in linearTypeChecker.linearDomains.Keys)
+      var domainNameToScope = new Dictionary<LinearDomain, HashSet<Variable>>();
+      foreach (var domainName in linearTypeChecker.LinearDomains)
       {
         domainNameToScope[domainName] = new HashSet<Variable>();
       }
 
       foreach (var v in availableVars)
       {
-        var domainName = linearTypeChecker.FindDomainName(v);
+        var domainName = linearTypeChecker.FindDomain(v);
         domainNameToScope[domainName].Add(MapVariable(v));
       }
 
       var newExprs = new List<Expr>();
-      foreach (var domainName in linearTypeChecker.linearDomains.Keys)
+      foreach (var domainName in linearTypeChecker.LinearDomains)
       {
         var permissionExprs =
           linearTypeChecker
@@ -189,7 +189,7 @@ namespace Microsoft.Boogie
     private IEnumerable<Variable> Filter(IEnumerable<Variable> locals, Predicate<LinearKind> pred)
     {
       return locals.Where(v =>
-        pred(civlTypeChecker.linearTypeChecker.FindLinearKind(v)) &&
+        pred(LinearDomainCollector.FindLinearKind(v)) &&
         civlTypeChecker.LocalVariableLayerRange(v).Contains(layerNum));
     }
 
@@ -197,7 +197,7 @@ namespace Microsoft.Boogie
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       return linearTypeChecker.program.GlobalVariables.Where(v =>
-        linearTypeChecker.FindLinearKind(v) == LinearKind.LINEAR &&
+        LinearDomainCollector.FindLinearKind(v) == LinearKind.LINEAR &&
         civlTypeChecker.GlobalVariableLayerRange(v).Contains(layerNum));
     }
 

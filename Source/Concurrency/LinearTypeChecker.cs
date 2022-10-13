@@ -94,11 +94,13 @@ namespace Microsoft.Boogie
   public class LinearTypeChecker : ReadOnlyVisitor
   {
     public Program program;
-    public CheckingContext checkingContext;
+    private CheckingContext checkingContext;
     private CivlTypeChecker civlTypeChecker;
-    public Dictionary<string, LinearDomain> linearDomains;
+    private Dictionary<string, LinearDomain> linearDomains;
     private Dictionary<Variable, LinearQualifier> varToLinearQualifier;
     private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
+
+    public IEnumerable<LinearDomain> LinearDomains => linearDomains.Values;
     
     public LinearTypeChecker(CivlTypeChecker civlTypeChecker)
     {
@@ -115,35 +117,19 @@ namespace Microsoft.Boogie
 
     public LinearDomain FindDomain(Variable v)
     {
-      var domainName = FindDomainName(v);
-      return varToLinearQualifier[v].domain;
-    }
-    
-    public string FindDomainName(Variable v)
-    {
-      if (!varToLinearQualifier.ContainsKey(v))
-      {
-        return LinearDomainCollector.FindDomainName(v);
-      }
-      return varToLinearQualifier[v].domain.domainName;
+      var domainName = LinearDomainCollector.FindDomainName(v);
+      return linearDomains[domainName];
     }
 
-    public LinearKind FindLinearKind(Variable v)
+    public Formal LinearDomainInFormal(LinearDomain domain)
     {
-      if (!varToLinearQualifier.ContainsKey(v))
-      {
-        return LinearDomainCollector.FindLinearKind(v);
-      }
-      return varToLinearQualifier[v].kind;
-    }
-
-    public Formal LinearDomainInFormal(string domainName)
-    {
+      var domainName = domain.domainName;
       return civlTypeChecker.Formal("linear_" + domainName + "_in", linearDomains[domainName].mapTypeBool, true);
     }
 
-    public LocalVariable LinearDomainAvailableLocal(string domainName)
+    public LocalVariable LinearDomainAvailableLocal(LinearDomain domain)
     {
+      var domainName = domain.domainName;
       return civlTypeChecker.LocalVariable("linear_" + domainName + "_available", linearDomains[domainName].mapTypeBool);
     }
 
@@ -185,10 +171,10 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.InParams.Count; i++)
       {
         Variable v = node.Proc.InParams[i];
-        string domainName = FindDomainName(v);
+        string domainName = LinearDomainCollector.FindDomainName(v);
         if (domainName != null)
         {
-          var kind = FindLinearKind(v);
+          var kind = LinearDomainCollector.FindLinearKind(v);
           if (kind == LinearKind.LINEAR || kind == LinearKind.LINEAR_IN)
           {
             start.Add(node.InParams[i]);
@@ -222,7 +208,7 @@ namespace Microsoft.Boogie
 
           foreach (Variable v in node.InParams)
           {
-            if (FindDomainName(v) == null || FindLinearKind(v) == LinearKind.LINEAR_IN || end.Contains(v))
+            if (LinearDomainCollector.FindDomainName(v) == null || LinearDomainCollector.FindLinearKind(v) == LinearKind.LINEAR_IN || end.Contains(v))
             {
               continue;
             }
@@ -232,7 +218,7 @@ namespace Microsoft.Boogie
 
           foreach (Variable v in node.OutParams)
           {
-            if (FindDomainName(v) == null || end.Contains(v))
+            if (LinearDomainCollector.FindDomainName(v) == null || end.Contains(v))
             {
               continue;
             }
@@ -283,7 +269,7 @@ namespace Microsoft.Boogie
     {
       foreach (IdentifierExpr ie in callCmd.Outs)
       {
-        if (FindDomainName(ie.Decl) == null)
+        if (LinearDomainCollector.FindDomainName(ie.Decl) == null)
         {
           continue;
         }
@@ -296,12 +282,12 @@ namespace Microsoft.Boogie
         if (callCmd.Ins[i] is IdentifierExpr ie)
         {
           Variable v = callCmd.Proc.InParams[i];
-          if (FindDomainName(v) == null)
+          if (LinearDomainCollector.FindDomainName(v) == null)
           {
             continue;
           }
 
-          if (FindLinearKind(v) == LinearKind.LINEAR_OUT)
+          if (LinearDomainCollector.FindLinearKind(v) == LinearKind.LINEAR_OUT)
           {
             start.Add(ie.Decl);
           }
@@ -326,7 +312,7 @@ namespace Microsoft.Boogie
         {
           for (int i = 0; i < assignCmd.Lhss.Count; i++)
           {
-            if (FindDomainName(assignCmd.Lhss[i].DeepAssignedVariable) == null)
+            if (LinearDomainCollector.FindDomainName(assignCmd.Lhss[i].DeepAssignedVariable) == null)
             {
               continue;
             }
@@ -344,7 +330,7 @@ namespace Microsoft.Boogie
 
           foreach (AssignLhs assignLhs in assignCmd.Lhss)
           {
-            if (FindDomainName(assignLhs.DeepAssignedVariable) == null)
+            if (LinearDomainCollector.FindDomainName(assignLhs.DeepAssignedVariable) == null)
             {
               continue;
             }
@@ -362,13 +348,13 @@ namespace Microsoft.Boogie
           for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
           {
             Variable param = callCmd.Proc.InParams[i];
-            if (FindDomainName(param) == null)
+            if (LinearDomainCollector.FindDomainName(param) == null)
             {
               continue;
             }
 
             IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
-            LinearKind paramKind = FindLinearKind(param);
+            LinearKind paramKind = LinearDomainCollector.FindLinearKind(param);
             if (start.Contains(ie.Decl))
             {
               if (callCmd.IsAsync || paramKind == LinearKind.LINEAR_IN)
@@ -404,13 +390,13 @@ namespace Microsoft.Boogie
             for (int i = 0; i < parCallCallCmd.Proc.InParams.Count; i++)
             {
               Variable param = parCallCallCmd.Proc.InParams[i];
-              if (FindDomainName(param) == null)
+              if (LinearDomainCollector.FindDomainName(param) == null)
               {
                 continue;
               }
 
               IdentifierExpr ie = parCallCallCmd.Ins[i] as IdentifierExpr;
-              LinearKind paramKind = FindLinearKind(param);
+              LinearKind paramKind = LinearDomainCollector.FindLinearKind(param);
               if (start.Contains(ie.Decl))
               {
                 if (paramKind == LinearKind.LINEAR_IN)
@@ -439,7 +425,7 @@ namespace Microsoft.Boogie
         {
           foreach (IdentifierExpr ie in havocCmd.Vars)
           {
-            if (FindDomainName(ie.Decl) == null)
+            if (LinearDomainCollector.FindDomainName(ie.Decl) == null)
             {
               continue;
             }
@@ -468,7 +454,7 @@ namespace Microsoft.Boogie
       {
         AssignLhs lhs = node.Lhss[i];
         Variable lhsVar = lhs.DeepAssignedVariable;
-        string domainName = FindDomainName(lhsVar);
+        string domainName = LinearDomainCollector.FindDomainName(lhsVar);
         if (domainName == null)
         {
           continue;
@@ -487,7 +473,7 @@ namespace Microsoft.Boogie
           continue;
         }
 
-        string rhsDomainName = FindDomainName(rhs.Decl);
+        string rhsDomainName = LinearDomainCollector.FindDomainName(rhs.Decl);
         if (rhsDomainName == null)
         {
           Error(node, $"Only linear variable can be assigned to linear variable {lhsVar.Name}");
@@ -519,7 +505,7 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.Proc.InParams.Count; i++)
       {
         Variable formal = node.Proc.InParams[i];
-        string domainName = FindDomainName(formal);
+        string domainName = LinearDomainCollector.FindDomainName(formal);
         if (domainName == null)
         {
           continue;
@@ -532,7 +518,7 @@ namespace Microsoft.Boogie
           continue;
         }
 
-        string actualDomainName = FindDomainName(actual.Decl);
+        string actualDomainName = LinearDomainCollector.FindDomainName(actual.Decl);
         if (actualDomainName == null)
         {
           Error(actual, $"Only a linear argument can be passed to linear parameter {formal.Name}");
@@ -563,14 +549,14 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.Proc.OutParams.Count; i++)
       {
         IdentifierExpr actual = node.Outs[i];
-        string actualDomainName = FindDomainName(actual.Decl);
+        string actualDomainName = LinearDomainCollector.FindDomainName(actual.Decl);
         if (actualDomainName == null)
         {
           continue;
         }
 
         Variable formal = node.Proc.OutParams[i];
-        string domainName = FindDomainName(formal);
+        string domainName = LinearDomainCollector.FindDomainName(formal);
         if (domainName == null)
         {
           Error(node, "Only a linear variable can be passed to a linear parameter");
@@ -606,7 +592,7 @@ namespace Microsoft.Boogie
         for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
         {
           Variable formal = callCmd.Proc.InParams[i];
-          string domainName = FindDomainName(formal);
+          string domainName = LinearDomainCollector.FindDomainName(formal);
           if (domainName == null)
           {
             continue;
@@ -635,7 +621,7 @@ namespace Microsoft.Boogie
         for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
         {
           Variable formal = callCmd.Proc.InParams[i];
-          string domainName = FindDomainName(formal);
+          string domainName = LinearDomainCollector.FindDomainName(formal);
           if (domainName == null)
           {
             continue;
@@ -670,34 +656,32 @@ namespace Microsoft.Boogie
 
     public IEnumerable<Expr> DisjointnessExprForEachDomain(IEnumerable<Variable> scope)
     {
-      Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
-      foreach (var domainName in linearDomains.Keys)
+      var domainToScope = new Dictionary<LinearDomain, HashSet<Variable>>();
+      foreach (var domainName in linearDomains.Values)
       {
-        domainNameToScope[domainName] = new HashSet<Variable>();
+        domainToScope[domainName] = new HashSet<Variable>();
       }
 
       foreach (Variable v in scope)
       {
-        var domainName = FindDomainName(v);
-        if (domainName == null)
+        if (LinearDomainCollector.FindLinearKind(v) == LinearKind.ORDINARY)
         {
           continue;
         }
-
-        domainNameToScope[domainName].Add(v);
+        var domainName = FindDomain(v);
+        domainToScope[domainName].Add(v);
       }
 
-      foreach (string domainName in domainNameToScope.Keys)
+      foreach (var domainName in domainToScope.Keys)
       {
         yield return DisjointnessExprForPermissions(
           domainName,
-          PermissionExprForEachVariable(domainName, domainNameToScope[domainName]));
+          PermissionExprForEachVariable(domainName, domainToScope[domainName]));
       }
     }
 
-    public IEnumerable<Expr> PermissionExprForEachVariable(string domainName, IEnumerable<Variable> scope)
+    public IEnumerable<Expr> PermissionExprForEachVariable(LinearDomain domain, IEnumerable<Variable> scope)
     {
-      var domain = linearDomains[domainName];
       foreach (Variable v in scope)
       {
         Expr expr = ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v));
@@ -707,14 +691,14 @@ namespace Microsoft.Boogie
 
     private ConcurrencyOptions Options => civlTypeChecker.Options;
 
-    public Expr DisjointnessExprForPermissions(string domainName, IEnumerable<Expr> permissionsExprs)
+    public Expr DisjointnessExprForPermissions(LinearDomain domain, IEnumerable<Expr> permissionsExprs)
     {
       Expr expr = Expr.True;
       if (permissionsExprs.Count() > 1)
       {
         int count = 0;
         List<Expr> subsetExprs = new List<Expr>();
-        LinearDomain domain = linearDomains[domainName];
+        var domainName = domain.domainName;
         BoundVariable partition = civlTypeChecker.BoundVariable($"partition_{domainName}", domain.mapTypeInt);
         foreach (Expr e in permissionsExprs)
         {
@@ -724,19 +708,16 @@ namespace Microsoft.Boogie
 
         expr = ExprHelper.ExistsExpr(new List<Variable> {partition}, Expr.And(subsetExprs));
       }
-      
       return expr;
     }
 
-    public Expr UnionExprForPermissions(string domainName, IEnumerable<Expr> permissionExprs)
+    public Expr UnionExprForPermissions(LinearDomain domain, IEnumerable<Expr> permissionExprs)
     {
-      var domain = linearDomains[domainName];
       var expr = ExprHelper.FunctionCall(domain.mapConstBool, Expr.False);
       foreach (Expr e in permissionExprs)
       {
         expr = ExprHelper.FunctionCall(domain.mapOr, e, expr);
       }
-      
       return expr;
     }
 
@@ -810,15 +791,15 @@ namespace Microsoft.Boogie
       {
         // Linear in vars
         var inVars = inputs.Union(action.modifiedGlobalVars)
-          .Where(x => FindDomainName(x) == domain.domainName)
-          .Where(x => InKinds.Contains(FindLinearKind(x)))
+          .Where(x => LinearDomainCollector.FindDomainName(x) == domain.domainName)
+          .Where(x => InKinds.Contains(LinearDomainCollector.FindLinearKind(x)))
           .Select(Expr.Ident)
           .ToList();
         
         // Linear out vars
         var outVars = inputs.Union(outputs).Union(action.modifiedGlobalVars)
-          .Where(x => FindDomainName(x) == domain.domainName)
-          .Where(x => OutKinds.Contains(FindLinearKind(x)))
+          .Where(x => LinearDomainCollector.FindDomainName(x) == domain.domainName)
+          .Where(x => OutKinds.Contains(LinearDomainCollector.FindLinearKind(x)))
           .Select(Expr.Ident)
           .ToList();
 
@@ -963,7 +944,7 @@ namespace Microsoft.Boogie
       for (int i = 0; i < pendingAsync.proc.InParams.Count; i++)
       {
         var inParam = pendingAsync.proc.InParams[i];
-        if (FindDomainName(inParam) == domain.domainName && InKinds.Contains(FindLinearKind(inParam)))
+        if (LinearDomainCollector.FindDomainName(inParam) == domain.domainName && InKinds.Contains(LinearDomainCollector.FindLinearKind(inParam)))
         {
           var pendingAsyncParam = ExprHelper.FieldAccess(pa, pendingAsync.pendingAsyncCtor.InParams[i].Name);
           pendingAsyncLinearParams.Add(pendingAsyncParam);

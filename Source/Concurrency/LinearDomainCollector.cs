@@ -36,18 +36,15 @@ class LinearDomainCollector : ReadOnlyVisitor
     {
       return LinearKind.LINEAR;
     }
-    else if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_IN) != null)
+    if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_IN) != null)
     {
       return LinearKind.LINEAR_IN;
     }
-    else if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT) != null)
+    if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT) != null)
     {
       return LinearKind.LINEAR_OUT;
     }
-    else
-    {
-      return LinearKind.ORDINARY;
-    }
+    return LinearKind.ORDINARY;
   }
 
   public static string FindDomainName(Variable v)
@@ -67,32 +64,34 @@ class LinearDomainCollector : ReadOnlyVisitor
 
   public override Implementation VisitImplementation(Implementation node)
   {
-    if (civlTypeChecker.procToAtomicAction.ContainsKey(node.Proc) ||
-        civlTypeChecker.procToIntroductionAction.ContainsKey(node.Proc) ||
-        civlTypeChecker.procToIsAbstraction.ContainsKey(node.Proc) ||
-        civlTypeChecker.procToIsInvariant.ContainsKey(node.Proc) ||
-        civlTypeChecker.procToLemmaProc.ContainsKey(node.Proc))
+    var proc = node.Proc;
+    if (civlTypeChecker.procToAtomicAction.ContainsKey(proc) ||
+        civlTypeChecker.procToIntroductionAction.ContainsKey(proc) ||
+        civlTypeChecker.procToIsAbstraction.ContainsKey(proc) ||
+        civlTypeChecker.procToIsInvariant.ContainsKey(proc) ||
+        civlTypeChecker.procToLemmaProc.ContainsKey(proc))
     {
       return node;
     }
-    this.VisitVariableSeq(node.LocVars);
-    var proc = node.Proc;
-    this.VisitProcedure(proc);
     for (int i = 0; i < proc.InParams.Count; i++)
     {
-      if (varToLinearQualifier.ContainsKey(proc.InParams[i]))
+      var procInParam = proc.InParams[i];
+      if (procInParam.Attributes != null)
       {
-        varToLinearQualifier[node.InParams[i]] = varToLinearQualifier[proc.InParams[i]];
+        var implInParam = node.InParams[i];
+        implInParam.Attributes = (QKeyValue)procInParam.Attributes.Clone();
       }
     }
     for (int i = 0; i < proc.OutParams.Count; i++)
     {
-      if (varToLinearQualifier.ContainsKey(proc.OutParams[i]))
+      var procOutParam = proc.OutParams[i];
+      if (procOutParam.Attributes != null)
       {
-        varToLinearQualifier[node.OutParams[i]] = varToLinearQualifier[proc.OutParams[i]];
+        var implOutParam = node.OutParams[i];
+        implOutParam.Attributes = (QKeyValue)procOutParam.Attributes.Clone();
       }
     }
-    return node;
+    return base.VisitImplementation(node);
   }
 
   public override Variable VisitVariable(Variable node)

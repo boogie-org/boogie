@@ -15,12 +15,12 @@ namespace Microsoft.Boogie
       List<Variable> declLocalVariables)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      Dictionary<string, Variable> domainNameToHoleVar = new Dictionary<string, Variable>();
+      var domainNameToHoleVar = new Dictionary<LinearDomain, Variable>();
       Dictionary<Variable, Variable> localVarMap = new Dictionary<Variable, Variable>();
       Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
       List<Variable> locals = new List<Variable>();
       List<Variable> inputs = new List<Variable>();
-      foreach (var domainName in linearTypeChecker.linearDomains.Keys)
+      foreach (var domainName in linearTypeChecker.LinearDomains)
       {
         var inParam = linearTypeChecker.LinearDomainInFormal(domainName);
         inputs.Add(inParam);

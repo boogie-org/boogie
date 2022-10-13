@@ -1617,7 +1617,7 @@ namespace Microsoft.Boogie
       private YieldInvariantCallChecker(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller, List<LinearKind> kinds)
         : this(civlTypeChecker, attr,
             new HashSet<Variable>(
-              caller.InParams.Union(caller.OutParams).Where(p => kinds.Contains(civlTypeChecker.linearTypeChecker.FindLinearKind(p)))
+              caller.InParams.Union(caller.OutParams).Where(p => kinds.Contains(LinearDomainCollector.FindLinearKind(p)))
             )
           ) {}
 
@@ -1710,7 +1710,7 @@ namespace Microsoft.Boogie
       {
         foreach (var (actual, formal) in callCmd.Ins.Zip(callCmd.Proc.InParams))
         {
-          if (civlTypeChecker.linearTypeChecker.FindDomainName(formal) != null)
+          if (LinearDomainCollector.FindLinearKind(formal) != LinearKind.ORDINARY)
           {
             var decl = ((IdentifierExpr) actual).Decl;
             if (!availableLinearVars.Contains(decl))

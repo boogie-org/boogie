@@ -69,7 +69,7 @@ namespace Microsoft.Boogie
 
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       List<Variable> inputs = new List<Variable>();
-      foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+      foreach (var domainName in linearTypeChecker.LinearDomains)
       {
         inputs.Add(linearTypeChecker.LinearDomainInFormal(domainName));
       }
@@ -113,7 +113,7 @@ namespace Microsoft.Boogie
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       List<Variable> inputs = new List<Variable>();
-      foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+      foreach (var domainName in linearTypeChecker.LinearDomains)
       {
         inputs.Add(linearTypeChecker.LinearDomainInFormal(domainName));
       }
