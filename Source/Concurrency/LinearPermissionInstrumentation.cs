@@ -87,7 +87,7 @@ namespace Microsoft.Boogie
       return domainNameToExpr;
     }
 
-    public void AddDisjointnessAssumptions(Implementation impl, HashSet<Procedure> yieldingProcs)
+    public void AddDisjointnessAssumptions(Implementation impl)
     {
       // calls and parallel calls
       foreach (var b in impl.Blocks)
