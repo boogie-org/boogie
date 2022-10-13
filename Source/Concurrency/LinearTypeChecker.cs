@@ -698,8 +698,7 @@ namespace Microsoft.Boogie
       {
         int count = 0;
         List<Expr> subsetExprs = new List<Expr>();
-        var domainName = domain.domainName;
-        BoundVariable partition = civlTypeChecker.BoundVariable($"partition_{domainName}", domain.mapTypeInt);
+        BoundVariable partition = civlTypeChecker.BoundVariable($"partition_{domain.domainName}", domain.mapTypeInt);
         foreach (Expr e in permissionsExprs)
         {
           subsetExprs.Add(SubsetExpr(domain, e, partition, count));
@@ -791,15 +790,15 @@ namespace Microsoft.Boogie
       {
         // Linear in vars
         var inVars = inputs.Union(action.modifiedGlobalVars)
-          .Where(x => LinearDomainCollector.FindDomainName(x) == domain.domainName)
           .Where(x => InKinds.Contains(LinearDomainCollector.FindLinearKind(x)))
+          .Where(x => FindDomain(x) == domain)
           .Select(Expr.Ident)
           .ToList();
         
         // Linear out vars
         var outVars = inputs.Union(outputs).Union(action.modifiedGlobalVars)
-          .Where(x => LinearDomainCollector.FindDomainName(x) == domain.domainName)
           .Where(x => OutKinds.Contains(LinearDomainCollector.FindLinearKind(x)))
+          .Where(x => FindDomain(x) == domain)
           .Select(Expr.Ident)
           .ToList();
 
@@ -944,7 +943,7 @@ namespace Microsoft.Boogie
       for (int i = 0; i < pendingAsync.proc.InParams.Count; i++)
       {
         var inParam = pendingAsync.proc.InParams[i];
-        if (LinearDomainCollector.FindDomainName(inParam) == domain.domainName && InKinds.Contains(LinearDomainCollector.FindLinearKind(inParam)))
+        if (InKinds.Contains(LinearDomainCollector.FindLinearKind(inParam)) && FindDomain(inParam) == domain)
         {
           var pendingAsyncParam = ExprHelper.FieldAccess(pa, pendingAsync.pendingAsyncCtor.InParams[i].Name);
           pendingAsyncLinearParams.Add(pendingAsyncParam);
