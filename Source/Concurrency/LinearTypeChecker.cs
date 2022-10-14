@@ -647,27 +647,13 @@ namespace Microsoft.Boogie
 
     public IEnumerable<Expr> DisjointnessExprForEachDomain(IEnumerable<Variable> scope)
     {
-      var domainToScope = new Dictionary<LinearDomain, HashSet<Variable>>();
-      foreach (var domainName in linearDomains.Values)
-      {
-        domainToScope[domainName] = new HashSet<Variable>();
-      }
-
-      foreach (Variable v in scope)
-      {
-        if (LinearDomainCollector.FindLinearKind(v) == LinearKind.ORDINARY)
-        {
-          continue;
-        }
-        var domainName = FindDomain(v);
-        domainToScope[domainName].Add(v);
-      }
-
-      foreach (var domainName in domainToScope.Keys)
+      var domainToScope = LinearDomains.ToDictionary(domain => domain, _ => new HashSet<Variable>());
+      scope.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY).Iter(v => domainToScope[FindDomain(v)].Add(v));
+      foreach (var domain in domainToScope.Keys)
       {
         yield return DisjointnessExprForPermissions(
-          domainName,
-          PermissionExprForEachVariable(domainName, domainToScope[domainName]));
+          domain,
+          PermissionExprForEachVariable(domain, domainToScope[domain]));
       }
     }
 
