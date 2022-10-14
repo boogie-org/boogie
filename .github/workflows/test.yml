@@ -17,7 +17,7 @@ env:
 jobs:
   job0:
     name: Boogie CI
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         configuration: [Debug, Release]
