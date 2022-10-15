@@ -12,10 +12,6 @@ function {:inline} MapDiff<T>(a: [T]bool, b: [T]bool) : [T]bool
 {
   MapAnd(a, MapNot(b))
 }
-function {:inline} MapOne<T>(a: T) : [T]bool
-{
-  MapConst(false)[a := true]
-}
 
 function {:builtin "MapAdd"} MapAdd<T>([T]int, [T]int) : [T]int;
 function {:builtin "MapSub"} MapSub<T>([T]int, [T]int) : [T]int;
@@ -27,7 +23,7 @@ function {:builtin "MapGe"} MapGe<T>([T]int, [T]int) : [T]bool;
 function {:builtin "MapLt"} MapLt<T>([T]int, [T]int) : [T]bool;
 function {:builtin "MapLe"} MapLe<T>([T]int, [T]int) : [T]bool;
 
-function {:inline} MapUnit<T>(t: T): [T]bool
+function {:inline} MapOne<T>(t: T): [T]bool
 {
   MapConst(false)[t := true]
 }

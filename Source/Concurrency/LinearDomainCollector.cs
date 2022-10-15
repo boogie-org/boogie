@@ -262,13 +262,11 @@ namespace Microsoft.Boogie
       {
         domainNameToCollectors[domainName] = new Dictionary<Type, Function>();
         {
-          // add unit collector
           domainNameToCollectors[domainName][permissionType] =
-            program.monomorphizer.InstantiateFunction("MapUnit",
+            program.monomorphizer.InstantiateFunction("MapOne",
               new Dictionary<string, Type>() { { "T", permissionType } });
         }
         {
-          // add identity collector
           var type = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { permissionType }, Type.Bool);
           domainNameToCollectors[domainName][type] =
             program.monomorphizer.InstantiateFunction("Id", new Dictionary<string, Type>() { { "T", type } });
