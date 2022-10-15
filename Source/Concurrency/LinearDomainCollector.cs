@@ -23,10 +23,7 @@ namespace Microsoft.Boogie
     {
       var collector = new LinearDomainCollector(program, civlTypeChecker);
       collector.PopulateLinearDomains();
-      if (civlTypeChecker.checkingContext.ErrorCount == 0)
-      {
-        collector.VisitProgram(program);
-      }
+      collector.VisitProgram(program);
       return collector.linearDomains;
     }
 
@@ -73,6 +70,9 @@ namespace Microsoft.Boogie
       {
         return node;
       }
+      // Boogie parser strips the attributes from the parameters of the implementation
+      // leaving them only on the parameters of the corresponding procedures.
+      // The following code patches this problem.
       for (int i = 0; i < proc.InParams.Count; i++)
       {
         var procInParam = proc.InParams[i];
