@@ -148,20 +148,11 @@ namespace Microsoft.Boogie
       GraphUtil.Graph<Block> graph = Program.GraphFromImpl(node);
       graph.ComputeLoops();
 
-      HashSet<Variable> start = new HashSet<Variable>(linearGlobalVariables);
-      for (int i = 0; i < node.InParams.Count; i++)
+      HashSet<Variable> start = new HashSet<Variable>(linearGlobalVariables.Union(node.InParams.Where(v =>
       {
-        Variable v = node.Proc.InParams[i];
-        string domainName = LinearDomainCollector.FindDomainName(v);
-        if (domainName != null)
-        {
-          var kind = LinearDomainCollector.FindLinearKind(v);
-          if (kind == LinearKind.LINEAR || kind == LinearKind.LINEAR_IN)
-          {
-            start.Add(node.InParams[i]);
-          }
-        }
-      }
+        var kind = LinearDomainCollector.FindLinearKind(v);
+        return kind == LinearKind.LINEAR || kind == LinearKind.LINEAR_IN;
+      })));
 
       var oldErrorCount = checkingContext.ErrorCount;
       var impl = base.VisitImplementation(node);
@@ -180,55 +171,41 @@ namespace Microsoft.Boogie
         Block b = dfsStack.Pop();
         dfsStackAsSet.Remove(b);
         HashSet<Variable> end = PropagateAvailableLinearVarsAcrossBlock(b);
-        if (b.TransferCmd is ReturnCmd)
+        if (b.TransferCmd is GotoCmd gotoCmd)
         {
-          foreach (GlobalVariable g in linearGlobalVariables.Except(end))
+          foreach (Block target in gotoCmd.labelTargets)
           {
-            Error(b.TransferCmd, $"Global variable {g.Name} must be available at a return");
-          }
-
-          foreach (Variable v in node.InParams)
-          {
-            if (LinearDomainCollector.FindDomainName(v) == null || LinearDomainCollector.FindLinearKind(v) == LinearKind.LINEAR_IN || end.Contains(v))
+            if (!availableLinearVars.ContainsKey(target))
             {
-              continue;
-            }
-
-            Error(b.TransferCmd, $"Input variable {v.Name} must be available at a return");
-          }
-
-          foreach (Variable v in node.OutParams)
-          {
-            if (LinearDomainCollector.FindDomainName(v) == null || end.Contains(v))
-            {
-              continue;
-            }
-
-            Error(b.TransferCmd, $"Output variable {v.Name} must be available at a return");
-          }
-
-          continue;
-        }
-
-        GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
-        foreach (Block target in gotoCmd.labelTargets)
-        {
-          if (!availableLinearVars.ContainsKey(target))
-          {
-            availableLinearVars[target] = new HashSet<Variable>(end);
-            dfsStack.Push(target);
-            dfsStackAsSet.Add(target);
-          }
-          else
-          {
-            var savedAvailableVars = new HashSet<Variable>(availableLinearVars[target]);
-            availableLinearVars[target].IntersectWith(end);
-            if (savedAvailableVars.IsProperSupersetOf(availableLinearVars[target]) && !dfsStackAsSet.Contains(target))
-            {
+              availableLinearVars[target] = new HashSet<Variable>(end);
               dfsStack.Push(target);
               dfsStackAsSet.Add(target);
             }
+            else
+            {
+              var savedAvailableVars = new HashSet<Variable>(availableLinearVars[target]);
+              availableLinearVars[target].IntersectWith(end);
+              if (savedAvailableVars.IsProperSupersetOf(availableLinearVars[target]) && !dfsStackAsSet.Contains(target))
+              {
+                dfsStack.Push(target);
+                dfsStackAsSet.Add(target);
+              }
+            }
           }
+        }
+        else
+        {
+          linearGlobalVariables.Except(end).Iter(g =>
+          {
+            Error(b.TransferCmd, $"Global variable {g.Name} must be available at a return");
+          });
+          node.InParams.Except(end).Where(v =>
+          {
+            var kind = LinearDomainCollector.FindLinearKind(v);
+            return kind == LinearKind.LINEAR || kind == LinearKind.LINEAR_OUT;
+          }).Iter(v => { Error(b.TransferCmd, $"Input variable {v.Name} must be available at a return"); });
+          node.OutParams.Except(end).Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY)
+            .Iter(v => { Error(b.TransferCmd, $"Output variable {v.Name} must be available at a return"); });
         }
       }
 
@@ -253,27 +230,13 @@ namespace Microsoft.Boogie
     
     private void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
     {
-      foreach (IdentifierExpr ie in callCmd.Outs)
-      {
-        if (LinearDomainCollector.FindDomainName(ie.Decl) == null)
-        {
-          continue;
-        }
-
-        start.Add(ie.Decl);
-      }
-
+      callCmd.Outs.Where(ie => LinearDomainCollector.FindLinearKind(ie.Decl) != LinearKind.ORDINARY)
+        .Iter(ie => start.Add(ie.Decl));
       for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
       {
         if (callCmd.Ins[i] is IdentifierExpr ie)
         {
-          Variable v = callCmd.Proc.InParams[i];
-          if (LinearDomainCollector.FindDomainName(v) == null)
-          {
-            continue;
-          }
-
-          if (LinearDomainCollector.FindLinearKind(v) == LinearKind.LINEAR_OUT)
+          if (LinearDomainCollector.FindLinearKind(callCmd.Proc.InParams[i]) == LinearKind.LINEAR_OUT)
           {
             start.Add(ie.Decl);
           }
@@ -299,11 +262,10 @@ namespace Microsoft.Boogie
         {
           for (int i = 0; i < assignCmd.Lhss.Count; i++)
           {
-            if (LinearDomainCollector.FindDomainName(assignCmd.Lhss[i].DeepAssignedVariable) == null)
+            if (LinearDomainCollector.FindLinearKind(assignCmd.Lhss[i].DeepAssignedVariable) == LinearKind.ORDINARY)
             {
               continue;
             }
-
             IdentifierExpr ie = assignCmd.Rhss[i] as IdentifierExpr;
             if (!start.Contains(ie.Decl))
             {
@@ -314,34 +276,26 @@ namespace Microsoft.Boogie
               start.Remove(ie.Decl);
             }
           }
-
-          foreach (AssignLhs assignLhs in assignCmd.Lhss)
-          {
-            if (LinearDomainCollector.FindDomainName(assignLhs.DeepAssignedVariable) == null)
-            {
-              continue;
-            }
-
-            start.Add(assignLhs.DeepAssignedVariable);
-          }
+          assignCmd.Lhss
+            .Where(assignLhs =>
+              LinearDomainCollector.FindLinearKind(assignLhs.DeepAssignedVariable) != LinearKind.ORDINARY)
+            .Iter(assignLhs => start.Add(assignLhs.DeepAssignedVariable));
         }
         else if (cmd is CallCmd callCmd)
         {
-          foreach (GlobalVariable g in linearGlobalVariables.Except(start))
+          linearGlobalVariables.Except(start).Iter(g =>
           {
             Error(cmd, $"Global variable {g.Name} must be available at a call");
-          }
-
+          });
           for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
           {
             Variable param = callCmd.Proc.InParams[i];
-            if (LinearDomainCollector.FindDomainName(param) == null)
+            LinearKind paramKind = LinearDomainCollector.FindLinearKind(param);
+            if (paramKind == LinearKind.ORDINARY)
             {
               continue;
             }
-
             IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
-            LinearKind paramKind = LinearDomainCollector.FindLinearKind(param);
             if (start.Contains(ie.Decl))
             {
               if (callCmd.IsAsync || paramKind == LinearKind.LINEAR_IN)
@@ -361,29 +315,26 @@ namespace Microsoft.Boogie
               }
             }
           }
-
           AddAvailableVars(callCmd, start);
           availableLinearVars[callCmd] = new HashSet<Variable>(start);
         }
         else if (cmd is ParCallCmd parCallCmd)
         {
-          foreach (GlobalVariable g in linearGlobalVariables.Except(start))
+          linearGlobalVariables.Except(start).Iter(g =>
           {
             Error(cmd, $"Global variable {g.Name} must be available at a call");
-          }
-
+          });
           foreach (CallCmd parCallCallCmd in parCallCmd.CallCmds)
           {
             for (int i = 0; i < parCallCallCmd.Proc.InParams.Count; i++)
             {
               Variable param = parCallCallCmd.Proc.InParams[i];
-              if (LinearDomainCollector.FindDomainName(param) == null)
+              LinearKind paramKind = LinearDomainCollector.FindLinearKind(param);
+              if (paramKind == LinearKind.ORDINARY)
               {
                 continue;
               }
-
               IdentifierExpr ie = parCallCallCmd.Ins[i] as IdentifierExpr;
-              LinearKind paramKind = LinearDomainCollector.FindLinearKind(param);
               if (start.Contains(ie.Decl))
               {
                 if (paramKind == LinearKind.LINEAR_IN)
@@ -404,29 +355,20 @@ namespace Microsoft.Boogie
               }
             }
           }
-
           AddAvailableVars(parCallCmd, start);
           availableLinearVars[parCallCmd] = new HashSet<Variable>(start);
         }
         else if (cmd is HavocCmd havocCmd)
         {
-          foreach (IdentifierExpr ie in havocCmd.Vars)
-          {
-            if (LinearDomainCollector.FindDomainName(ie.Decl) == null)
-            {
-              continue;
-            }
-
-            start.Remove(ie.Decl);
-          }
+          havocCmd.Vars.Where(ie => LinearDomainCollector.FindLinearKind(ie.Decl) != LinearKind.ORDINARY)
+            .Iter(ie => start.Remove(ie.Decl));
         }
         else if (cmd is YieldCmd)
         {
-          foreach (GlobalVariable g in linearGlobalVariables.Except(start))
+          linearGlobalVariables.Except(start).Iter(g =>
           {
             Error(cmd, $"Global variable {g.Name} must be available at a yield");
-          }
-
+          });
           availableLinearVars[cmd] = new HashSet<Variable>(start);
         }
       }
@@ -446,43 +388,36 @@ namespace Microsoft.Boogie
         {
           continue;
         }
-
         if (!(lhs is SimpleAssignLhs))
         {
           Error(node, $"Only simple assignment allowed on linear variable {lhsVar.Name}");
           continue;
         }
-
         IdentifierExpr rhs = node.Rhss[i] as IdentifierExpr;
         if (rhs == null)
         {
           Error(node, $"Only variable can be assigned to linear variable {lhsVar.Name}");
           continue;
         }
-
         string rhsDomainName = LinearDomainCollector.FindDomainName(rhs.Decl);
         if (rhsDomainName == null)
         {
           Error(node, $"Only linear variable can be assigned to linear variable {lhsVar.Name}");
           continue;
         }
-
         if (domainName != rhsDomainName)
         {
           Error(node,
             $"Linear variable of domain {rhsDomainName} cannot be assigned to linear variable of domain {domainName}");
           continue;
         }
-
         if (rhsVars.Contains(rhs.Decl))
         {
           Error(node, $"Linear variable {rhs.Decl.Name} can occur only once in the right-hand-side of an assignment");
           continue;
         }
-
         rhsVars.Add(rhs.Decl);
       }
-
       return base.VisitAssignCmd(node);
     }
 
@@ -497,39 +432,33 @@ namespace Microsoft.Boogie
         {
           continue;
         }
-
         IdentifierExpr actual = node.Ins[i] as IdentifierExpr;
         if (actual == null)
         {
           Error(node.Ins[i], $"Only variable can be passed to linear parameter {formal.Name}");
           continue;
         }
-
         string actualDomainName = LinearDomainCollector.FindDomainName(actual.Decl);
         if (actualDomainName == null)
         {
           Error(actual, $"Only a linear argument can be passed to linear parameter {formal.Name}");
           continue;
         }
-
         if (domainName != actualDomainName)
         {
           Error(actual, "The domains of formal and actual parameters must be the same");
           continue;
         }
-
         if (actual.Decl is GlobalVariable)
         {
           Error(actual, "Only local linear variable can be an actual input parameter of a procedure call");
           continue;
         }
-
         if (inVars.Contains(actual.Decl))
         {
           Error(node, $"Linear variable {actual.Decl.Name} can occur only once as an input parameter");
           continue;
         }
-
         inVars.Add(actual.Decl);
       }
 
@@ -541,7 +470,6 @@ namespace Microsoft.Boogie
         {
           continue;
         }
-
         Variable formal = node.Proc.OutParams[i];
         string domainName = LinearDomainCollector.FindDomainName(formal);
         if (domainName == null)
@@ -549,17 +477,14 @@ namespace Microsoft.Boogie
           Error(node, "Only a linear variable can be passed to a linear parameter");
           continue;
         }
-
         if (domainName != actualDomainName)
         {
           Error(node, "The domains of formal and actual parameters must be the same");
           continue;
         }
-
         if (actual.Decl is GlobalVariable)
         {
           Error(node, "Only local linear variable can be actual output parameter of a procedure call");
-          continue;
         }
       }
 
