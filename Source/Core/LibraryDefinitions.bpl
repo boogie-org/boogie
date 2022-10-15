@@ -133,11 +133,14 @@ type Ref _;
 type {:datatype} Lmap _;
 function {:constructor} Lmap<V>(dom: [Ref V]bool, val: [Ref V]V): Lmap V;
 
-function {:inline} Lmap_Deref<V>(l: Lmap V, k: Ref V): V {
-    l->val[k]
+function {:inline} Lmap_Collector<V>(l: Lmap V): [Ref V]bool {
+    l->dom
 }
 function {:inline} Lmap_Contains<V>(l: Lmap V, k: Ref V): bool {
     l->dom[k]
+}
+function {:inline} Lmap_Deref<V>(l: Lmap V, k: Ref V): V {
+    l->val[k]
 }
 procedure Lmap_Empty<V>() returns (l: Lmap V);
 procedure Lmap_Split<V>(path: Lmap V, k: [Ref V]bool) returns (l: Lmap V);
@@ -151,6 +154,9 @@ procedure Lmap_Remove<V>(path: Lmap V, k: Ref V) returns (v: V);
 type {:datatype} Lset _;
 function {:constructor} Lset<V>(dom: [V]bool): Lset V;
 
+function {:inline} Lset_Collector<V>(l: Lset V): [V]bool {
+    l->dom
+}
 function {:inline} Lset_Contains<V>(l: Lset V, k: V): bool {
     l->dom[k]
 }
@@ -162,5 +168,8 @@ procedure Lset_Transfer<V>(path1: Lset V, path2: Lset V);
 type {:datatype} Lval _;
 function {:constructor} Lval<V>(val: V): Lval V;
 
+function {:inline} Lval_Collector<V>(l: Lval V): [V]bool {
+    MapConst(false)[l->val := true]
+}
 procedure Lval_Split<V>(path: Lset V, k: V) returns (l: Lval V);
 procedure Lval_Transfer<V>(l: Lval V, path: Lset V);

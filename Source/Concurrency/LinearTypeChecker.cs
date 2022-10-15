@@ -3,70 +3,6 @@ using System.Linq;
 
 namespace Microsoft.Boogie
 {
-  public enum LinearKind
-  {
-    ORDINARY,
-    LINEAR,
-    LINEAR_IN,
-    LINEAR_OUT
-  }
-
-  public class LinearDomain
-  {
-    public string domainName;
-    public Type permissionType;
-    public Dictionary<Type, Function> collectors;
-    public MapType mapTypeBool;
-    public MapType mapTypeInt;
-    public Function mapConstBool;
-    public Function mapConstInt;
-    public Function mapOr;
-    public Function mapImp;
-    public Function mapEqInt;
-    public Function mapAdd;
-    public Function mapIteInt;
-    public Function mapLe;
-
-    public LinearDomain(Program program, string domainName, Type permissionType, Dictionary<Type, Function> collectors)
-    {
-      this.domainName = domainName;
-      this.permissionType = permissionType;
-      this.collectors = collectors;
-
-      this.mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.permissionType },
-        Type.Bool);
-      this.mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.permissionType },
-        Type.Int);
-
-      this.mapConstBool = program.monomorphizer.InstantiateFunction("MapConst",
-        new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Bool } });
-      this.mapConstInt = program.monomorphizer.InstantiateFunction("MapConst",
-        new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Int } });
-      this.mapOr = program.monomorphizer.InstantiateFunction("MapOr",
-        new Dictionary<string, Type>() { { "T", permissionType } });
-      this.mapImp = program.monomorphizer.InstantiateFunction("MapImp",
-        new Dictionary<string, Type>() { { "T", permissionType } });
-      this.mapEqInt = program.monomorphizer.InstantiateFunction("MapEq",
-        new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Int } });
-      this.mapAdd = program.monomorphizer.InstantiateFunction("MapAdd",
-        new Dictionary<string, Type>() { { "T", permissionType } });
-      this.mapIteInt = program.monomorphizer.InstantiateFunction("MapIte",
-        new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Int } });
-      this.mapLe = program.monomorphizer.InstantiateFunction("MapLe",
-        new Dictionary<string, Type>() { { "T", permissionType } });
-    }
-
-    public Expr MapConstInt(int value)
-    {
-      return ExprHelper.FunctionCall(mapConstInt, Expr.Literal(value));
-    }
-
-    public Expr MapEqTrue(Expr expr)
-    {
-      return Expr.Eq(expr, ExprHelper.FunctionCall(mapConstBool, Expr.True));
-    }
-  }
-
   /// <summary>
   /// Type checker for linear type annotations.
   /// 
@@ -84,7 +20,8 @@ namespace Microsoft.Boogie
     public Program program;
     private CheckingContext checkingContext;
     private CivlTypeChecker civlTypeChecker;
-    private Dictionary<string, LinearDomain> linearDomains;
+    private Dictionary<string, LinearDomain> domainNameToLinearDomain;
+    private Dictionary<Type, LinearDomain> linearTypeToLinearDomain;
     private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
 
     public LinearTypeChecker(CivlTypeChecker civlTypeChecker)
@@ -95,29 +32,33 @@ namespace Microsoft.Boogie
       this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
     }
 
-    public IEnumerable<LinearDomain> LinearDomains => linearDomains.Values;
+    public IEnumerable<LinearDomain> LinearDomains => domainNameToLinearDomain.Values;
     
     public LinearDomain FindDomain(Variable v)
     {
       var domainName = LinearDomainCollector.FindDomainName(v);
-      return linearDomains[domainName];
+      if (domainName == null)
+      {
+        return linearTypeToLinearDomain[v.TypedIdent.Type];
+      }
+      return domainNameToLinearDomain[domainName];
     }
 
     public Formal LinearDomainInFormal(LinearDomain domain)
     {
-      var domainName = domain.domainName;
-      return civlTypeChecker.Formal("linear_" + domainName + "_in", linearDomains[domainName].mapTypeBool, true);
+      var domainName = domain.DomainName;
+      return civlTypeChecker.Formal("linear_" + domainName + "_in", domainNameToLinearDomain[domainName].mapTypeBool, true);
     }
 
     public LocalVariable LinearDomainAvailableLocal(LinearDomain domain)
     {
-      var domainName = domain.domainName;
-      return civlTypeChecker.LocalVariable("linear_" + domainName + "_available", linearDomains[domainName].mapTypeBool);
+      var domainName = domain.DomainName;
+      return civlTypeChecker.LocalVariable("linear_" + domainName + "_available", domainNameToLinearDomain[domainName].mapTypeBool);
     }
 
     public void TypeCheck()
     {
-      this.linearDomains = LinearDomainCollector.Collect(program, civlTypeChecker);
+      (this.domainNameToLinearDomain, this.linearTypeToLinearDomain) = LinearDomainCollector.Collect(program, civlTypeChecker);
       this.VisitProgram(program);
       foreach (Absy absy in this.availableLinearVars.Keys)
       {
@@ -487,9 +428,20 @@ namespace Microsoft.Boogie
           Error(node, "Only local linear variable can be actual output parameter of a procedure call");
         }
       }
-
       return base.VisitCallCmd(node);
     }
+
+    public override Variable VisitVariable(Variable node)
+    {
+      var kind = LinearDomainCollector.FindLinearKind(node);
+      if ((kind == LinearKind.LINEAR_IN || kind == LinearKind.LINEAR_OUT) && 
+          (node is GlobalVariable || node is LocalVariable || (node is Formal formal && !formal.InComing)))
+      {
+        checkingContext.Error(node, "Variable must be declared linear (as opposed to linear_in or linear_out)");
+      }
+      return node;
+    }
+
     #endregion
 
     #region Useful public methods
@@ -535,7 +487,7 @@ namespace Microsoft.Boogie
       {
         int count = 0;
         List<Expr> subsetExprs = new List<Expr>();
-        BoundVariable partition = civlTypeChecker.BoundVariable($"partition_{domain.domainName}", domain.mapTypeInt);
+        BoundVariable partition = civlTypeChecker.BoundVariable($"partition_{domain.DomainName}", domain.mapTypeInt);
         foreach (Expr e in permissionsExprs)
         {
           subsetExprs.Add(SubsetExpr(domain, e, partition, count));
@@ -623,7 +575,7 @@ namespace Microsoft.Boogie
       List<Requires> requires = action.gate.Select(a => new Requires(false, a.Expr)).ToList();
       List<LinearityCheck> linearityChecks = new List<LinearityCheck>();
 
-      foreach (var domain in linearDomains.Values)
+      foreach (var domain in domainNameToLinearDomain.Values)
       {
         // Linear in vars
         var inVars = inputs.Union(action.modifiedGlobalVars)
@@ -644,10 +596,10 @@ namespace Microsoft.Boogie
         if (outVars.Count > 0)
         {
           linearityChecks.Add(new LinearityCheck(
-            domain.domainName,
+            domain.DomainName,
             null,
             OutPermsSubsetInPerms(domain, inVars, outVars),
-            $"Potential linearity violation in outputs for domain {domain.domainName}.",
+            $"Potential linearity violation in outputs for domain {domain.DomainName}.",
             "variables"));
         }
 
@@ -672,10 +624,10 @@ namespace Microsoft.Boogie
               Expr.Eq(Expr.Select(PAs, pa1), Expr.Literal(1)));
             var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams.Union(outVars));
             linearityChecks.Add(new LinearityCheck(
-              domain.domainName,
+              domain.DomainName,
               exactlyOnePA,
               outSubsetInExpr,
-              $"Potential linearity violation in outputs and pending async of {pendingAsync.proc.Name} for domain {domain.domainName}.",
+              $"Potential linearity violation in outputs and pending async of {pendingAsync.proc.Name} for domain {domain.DomainName}.",
               $"single_{pendingAsync.proc.Name}"));
 
             // Third kind
@@ -685,10 +637,10 @@ namespace Microsoft.Boogie
               Expr.Ge(Expr.Select(PAs, pa1), Expr.Literal(2)));
             var emptyPerms = OutPermsSubsetInPerms(domain, Enumerable.Empty<Expr>(), pendingAsyncLinearParams);
             linearityChecks.Add(new LinearityCheck(
-              domain.domainName,
+              domain.DomainName,
               twoIdenticalPAs,
               emptyPerms,
-              $"Potential linearity violation in identical pending asyncs of {pendingAsync.proc.Name} for domain {domain.domainName}.",
+              $"Potential linearity violation in identical pending asyncs of {pendingAsync.proc.Name} for domain {domain.DomainName}.",
               $"identical_{pendingAsync.proc.Name}"));
           }
 
@@ -724,10 +676,10 @@ namespace Microsoft.Boogie
               var noDuplication = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams1.Union(pendingAsyncLinearParams2));
 
               linearityChecks.Add(new LinearityCheck(
-                domain.domainName,
+                domain.DomainName,
                 Expr.And(membership, existing),
                 noDuplication,
-                $"Potential lnearity violation in pending asyncs of {pendingAsync1.proc.Name} and {pendingAsync2.proc.Name} for domain {domain.domainName}.",
+                $"Potential lnearity violation in pending asyncs of {pendingAsync1.proc.Name} and {pendingAsync2.proc.Name} for domain {domain.DomainName}.",
                 $"distinct_{pendingAsync1.proc.Name}_{pendingAsync2.proc.Name}"));
             }
           }

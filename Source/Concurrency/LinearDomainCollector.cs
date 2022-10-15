@@ -1,15 +1,80 @@
 using System.Collections.Generic;
 using System.Linq;
 
-
 namespace Microsoft.Boogie
 {
+  public enum LinearKind
+  {
+    ORDINARY,
+    LINEAR,
+    LINEAR_IN,
+    LINEAR_OUT
+  }
+
+  public class LinearDomain
+  {
+    private string domainName;
+    public string DomainName => domainName?? permissionType.ToString();
+    public Type permissionType;
+    public Dictionary<Type, Function> collectors;
+    public MapType mapTypeBool;
+    public MapType mapTypeInt;
+    public Function mapConstBool;
+    public Function mapConstInt;
+    public Function mapOr;
+    public Function mapImp;
+    public Function mapEqInt;
+    public Function mapAdd;
+    public Function mapIteInt;
+    public Function mapLe;
+
+    public LinearDomain(Program program, string domainName, Type permissionType, Dictionary<Type, Function> collectors)
+    {
+      this.domainName = domainName;
+      this.permissionType = permissionType;
+      this.collectors = collectors;
+
+      this.mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.permissionType },
+        Type.Bool);
+      this.mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.permissionType },
+        Type.Int);
+
+      this.mapConstBool = program.monomorphizer.InstantiateFunction("MapConst",
+        new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Bool } });
+      this.mapConstInt = program.monomorphizer.InstantiateFunction("MapConst",
+        new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Int } });
+      this.mapOr = program.monomorphizer.InstantiateFunction("MapOr",
+        new Dictionary<string, Type>() { { "T", permissionType } });
+      this.mapImp = program.monomorphizer.InstantiateFunction("MapImp",
+        new Dictionary<string, Type>() { { "T", permissionType } });
+      this.mapEqInt = program.monomorphizer.InstantiateFunction("MapEq",
+        new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Int } });
+      this.mapAdd = program.monomorphizer.InstantiateFunction("MapAdd",
+        new Dictionary<string, Type>() { { "T", permissionType } });
+      this.mapIteInt = program.monomorphizer.InstantiateFunction("MapIte",
+        new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Int } });
+      this.mapLe = program.monomorphizer.InstantiateFunction("MapLe",
+        new Dictionary<string, Type>() { { "T", permissionType } });
+    }
+
+    public Expr MapConstInt(int value)
+    {
+      return ExprHelper.FunctionCall(mapConstInt, Expr.Literal(value));
+    }
+
+    public Expr MapEqTrue(Expr expr)
+    {
+      return Expr.Eq(expr, ExprHelper.FunctionCall(mapConstBool, Expr.True));
+    }
+  }
+  
   class LinearDomainCollector : ReadOnlyVisitor
   {
     public Program program;
     public CivlTypeChecker civlTypeChecker;
     public CheckingContext checkingContext;
     private Dictionary<string, LinearDomain> linearDomains;
+    private HashSet<Type> linearTypes;
 
     public LinearDomainCollector(Program program, CivlTypeChecker civlTypeChecker)
     {
@@ -17,14 +82,15 @@ namespace Microsoft.Boogie
       this.civlTypeChecker = civlTypeChecker;
       this.checkingContext = civlTypeChecker.checkingContext;
       this.linearDomains = new Dictionary<string, LinearDomain>();
+      this.linearTypes = new HashSet<Type>();
     }
 
-    public static Dictionary<string, LinearDomain> Collect(Program program, CivlTypeChecker civlTypeChecker)
+    public static (Dictionary<string, LinearDomain>, Dictionary<Type, LinearDomain>) Collect(Program program, CivlTypeChecker civlTypeChecker)
     {
       var collector = new LinearDomainCollector(program, civlTypeChecker);
       collector.PopulateLinearDomains();
       collector.VisitProgram(program);
-      return collector.linearDomains;
+      return (collector.linearDomains, collector.MakeLinearDomains());
     }
 
     public static LinearKind FindLinearKind(Variable v)
@@ -59,20 +125,72 @@ namespace Microsoft.Boogie
       return QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT);
     }
 
+    private bool HasPermissionType(Type type)
+    {
+      if (type is CtorType ctorType)
+      {
+        var originalTypeCtorDecl = program.monomorphizer.GetOriginalDecl(ctorType.Decl);
+        if (originalTypeCtorDecl == null)
+        {
+          return false;
+        }
+        var originalTypeCtorDeclName = originalTypeCtorDecl.Name;
+        return originalTypeCtorDeclName == "Lmap" || originalTypeCtorDeclName == "Lset" ||
+               originalTypeCtorDeclName == "Lval";
+      }
+      return false;
+    }
+    
+    private Type GetPermissionType(Type type)
+    {
+      var typeCtorDecl = type.AsCtor.Decl;
+      var originalTypeCtorDecl = program.monomorphizer.GetOriginalDecl(typeCtorDecl);
+      var actualTypeParams = program.monomorphizer.GetTypeInstantiation(typeCtorDecl);
+      return 
+        originalTypeCtorDecl.Name == "Lmap"
+          ? new CtorType(Token.NoToken, program.monomorphizer.InstantiateTypeCtorDecl("Ref", actualTypeParams),
+            new List<Type>())
+          : actualTypeParams[0];
+    }
+    
+    private Dictionary<Type, LinearDomain> MakeLinearDomains()
+    {
+      var permissionTypeToCollectors = new Dictionary<Type, Dictionary<Type, Function>>();
+      foreach (var type in linearTypes)
+      {
+        var typeCtorDecl = type.AsCtor.Decl;
+        var originalTypeCtorDecl = program.monomorphizer.GetOriginalDecl(typeCtorDecl);
+        var actualTypeParams = program.monomorphizer.GetTypeInstantiation(typeCtorDecl);
+        var permissionType = GetPermissionType(type); 
+        if (!permissionTypeToCollectors.ContainsKey(permissionType))
+        {
+          permissionTypeToCollectors.Add(permissionType, new Dictionary<Type, Function>());
+        }
+        if (!permissionTypeToCollectors[permissionType].ContainsKey(type))
+        {
+          var collector = 
+            originalTypeCtorDecl.Name == "Lmap" 
+              ? program.monomorphizer.InstantiateFunction("Lmap_Collector",
+                new Dictionary<string, Type> { { "V", actualTypeParams[0] } }) :
+              originalTypeCtorDecl.Name == "Lset" 
+                ? program.monomorphizer.InstantiateFunction("Lset_Collector",
+                  new Dictionary<string, Type> { { "V", actualTypeParams[0] } }) :
+                program.monomorphizer.InstantiateFunction("Lval_Collector",
+                  new Dictionary<string, Type> { { "V", actualTypeParams[0] } });
+          permissionTypeToCollectors[permissionType].Add(type, collector);
+        }
+      }
+      var permissionTypeToLinearDomain =
+        permissionTypeToCollectors.ToDictionary(kv => kv.Key, kv => new LinearDomain(program, null, kv.Key, kv.Value));
+      return linearTypes.ToDictionary(type => type, type => permissionTypeToLinearDomain[GetPermissionType(type)]);
+    }
+    
     public override Implementation VisitImplementation(Implementation node)
     {
-      var proc = node.Proc;
-      if (civlTypeChecker.procToAtomicAction.ContainsKey(proc) ||
-          civlTypeChecker.procToIntroductionAction.ContainsKey(proc) ||
-          civlTypeChecker.procToIsAbstraction.ContainsKey(proc) ||
-          civlTypeChecker.procToIsInvariant.ContainsKey(proc) ||
-          civlTypeChecker.procToLemmaProc.ContainsKey(proc))
-      {
-        return node;
-      }
       // Boogie parser strips the attributes from the parameters of the implementation
       // leaving them only on the parameters of the corresponding procedures.
-      // The following code patches this problem.
+      // This override exists only to patch this problem.
+      var proc = node.Proc;
       for (int i = 0; i < proc.InParams.Count; i++)
       {
         var procInParam = proc.InParams[i];
@@ -96,36 +214,15 @@ namespace Microsoft.Boogie
 
     public override Variable VisitVariable(Variable node)
     {
-      var kind = FindLinearKind(node);
-      if (kind == LinearKind.LINEAR_IN || kind == LinearKind.LINEAR_OUT)
+      var nodeType = node.TypedIdent.Type;
+      if (!linearTypes.Contains(nodeType) && HasPermissionType(nodeType))
       {
-        if (node is GlobalVariable || node is LocalVariable || (node is Formal formal && !formal.InComing))
-        {
-          checkingContext.Error(node, "Variable must be declared linear (as opposed to linear_in or linear_out)");
-          return node;
-        }
+        linearTypes.Add(nodeType);
       }
-      string domainName;
-      if (kind == LinearKind.LINEAR)
-      {
-        domainName = QKeyValue.FindStringAttribute(node.Attributes, CivlAttributes.LINEAR);
-      }
-      else if (kind == LinearKind.LINEAR_IN)
-      {
-        domainName = QKeyValue.FindStringAttribute(node.Attributes, CivlAttributes.LINEAR_IN);
-      }
-      else if (kind == LinearKind.LINEAR_OUT)
-      {
-        domainName = QKeyValue.FindStringAttribute(node.Attributes, CivlAttributes.LINEAR_OUT);
-      }
-      else
-      {
-        return node;
-      }
-      if (!linearDomains.ContainsKey(domainName))
+      string domainName = FindDomainName(node);
+      if (domainName != null && !linearDomains.ContainsKey(domainName))
       {
         checkingContext.Error(node, $"Permission type not declared for domain {domainName}");
-        return node;
       }
       return node;
     }
