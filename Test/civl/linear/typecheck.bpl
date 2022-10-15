@@ -1,19 +1,8 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+
 type X;
 type {:linear "A", "B", "C", "D", "D2", "x", "", "lin"} Lin = int;
-function {:inline} none() : [int]bool { (lambda i:int :: false) }
-function {:inline} {:linear "A"} A_X_Collector(a: X) : [int]bool { none() }
-function {:inline} {:linear "A"} A_int_Collector(a: int) : [int]bool { none() }
-function {:inline} {:linear "B"} B_X_Collector(a: X) : [int]bool { none() }
-function {:inline} {:linear "B"} B_XSet_Collector(a: [X]bool) : [int]bool { none() }
-function {:inline} {:linear "C"} C_X_Collector(a: X) : [int]bool { none() }
-function {:inline} {:linear "C"} C_XMulSet_Collector(a: [X]int) : [int]bool { none() }
-function {:inline} {:linear "D"} D_X_Collector(a: X) : [int]bool { none() }
-function {:inline} {:linear "D"} D_XSet_Collector(a: [X]bool) : [int]bool { none() }
-function {:inline} {:linear "D2"} A2_X_Collector(a: X) : [int]bool { none() }
-function {:inline} {:linear "x"} x_int_Collector(a: int) : [int]bool { none() }
-function {:inline} {:linear ""} empty_int_Collector(a: int) : [int]bool { none() }
 
 procedure A()
 {
