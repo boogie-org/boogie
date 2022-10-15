@@ -118,10 +118,6 @@ namespace Microsoft.Boogie
     public void TypeCheck()
     {
       this.linearDomains = LinearDomainCollector.Collect(program, civlTypeChecker);
-      if (checkingContext.ErrorCount > 0)
-      {
-        return;
-      }
       this.VisitProgram(program);
       foreach (Absy absy in this.availableLinearVars.Keys)
       {
@@ -569,67 +565,6 @@ namespace Microsoft.Boogie
 
       return base.VisitCallCmd(node);
     }
-
-    public override Cmd VisitParCallCmd(ParCallCmd node)
-    {
-      HashSet<Variable> parallelCallInvars = new HashSet<Variable>();
-      foreach (CallCmd callCmd in node.CallCmds)
-      {
-        if (civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc))
-        {
-          continue;
-        }
-
-        for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
-        {
-          Variable formal = callCmd.Proc.InParams[i];
-          string domainName = LinearDomainCollector.FindDomainName(formal);
-          if (domainName == null)
-          {
-            continue;
-          }
-
-          IdentifierExpr actual = callCmd.Ins[i] as IdentifierExpr;
-          if (parallelCallInvars.Contains(actual.Decl))
-          {
-            Error(node,
-              $"Linear variable {actual.Decl.Name} can occur only once as an input parameter of a parallel call");
-          }
-          else
-          {
-            parallelCallInvars.Add(actual.Decl);
-          }
-        }
-      }
-
-      foreach (CallCmd callCmd in node.CallCmds)
-      {
-        if (!civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc))
-        {
-          continue;
-        }
-
-        for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
-        {
-          Variable formal = callCmd.Proc.InParams[i];
-          string domainName = LinearDomainCollector.FindDomainName(formal);
-          if (domainName == null)
-          {
-            continue;
-          }
-
-          IdentifierExpr actual = callCmd.Ins[i] as IdentifierExpr;
-          if (parallelCallInvars.Contains(actual.Decl))
-          {
-            Error(node,
-              $"Linear variable {actual.Decl.Name} cannot be an input parameter to both a yield invariant and a procedure in a parallel call");
-          }
-        }
-      }
-
-      return base.VisitParCallCmd(node);
-    }
-
     #endregion
 
     #region Useful public methods
