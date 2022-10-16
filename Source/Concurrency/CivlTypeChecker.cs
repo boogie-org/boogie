@@ -1117,7 +1117,7 @@ namespace Microsoft.Boogie
       return proc.HasAttribute(CivlAttributes.YIELDS);
     }
 
-    private bool IsAction(Procedure proc)
+    public bool IsAction(Procedure proc)
     {
       return !proc.HasAttribute(CivlAttributes.YIELDS) &&
              (GetMoverType(proc) != null ||
@@ -1126,7 +1126,7 @@ namespace Microsoft.Boogie
               proc.HasAttribute(CivlAttributes.IS_ABSTRACTION));
     }
 
-    private bool IsLemmaProcedure(Procedure proc)
+    public bool IsLemmaProcedure(Procedure proc)
     {
       return !proc.HasAttribute(CivlAttributes.YIELDS) && proc.HasAttribute(CivlAttributes.LEMMA);
     }
