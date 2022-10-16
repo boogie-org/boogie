@@ -70,24 +70,22 @@ namespace Microsoft.Boogie
   
   class LinearDomainCollector : ReadOnlyVisitor
   {
-    public Program program;
-    public CivlTypeChecker civlTypeChecker;
-    public CheckingContext checkingContext;
+    private Program program;
+    private CheckingContext checkingContext;
     private Dictionary<string, LinearDomain> linearDomains;
     private HashSet<Type> linearTypes;
 
-    public LinearDomainCollector(Program program, CivlTypeChecker civlTypeChecker)
+    private LinearDomainCollector(Program program, CheckingContext checkingContext)
     {
       this.program = program;
-      this.civlTypeChecker = civlTypeChecker;
-      this.checkingContext = civlTypeChecker.checkingContext;
+      this.checkingContext = checkingContext;
       this.linearDomains = new Dictionary<string, LinearDomain>();
       this.linearTypes = new HashSet<Type>();
     }
 
-    public static (Dictionary<string, LinearDomain>, Dictionary<Type, LinearDomain>) Collect(Program program, CivlTypeChecker civlTypeChecker)
+    public static (Dictionary<string, LinearDomain>, Dictionary<Type, LinearDomain>) Collect(Program program, CheckingContext checkingContext)
     {
-      var collector = new LinearDomainCollector(program, civlTypeChecker);
+      var collector = new LinearDomainCollector(program, checkingContext);
       collector.PopulateLinearDomains();
       collector.VisitProgram(program);
       return (collector.linearDomains, collector.MakeLinearDomains());
@@ -95,15 +93,15 @@ namespace Microsoft.Boogie
 
     public static LinearKind FindLinearKind(Variable v)
     {
-      if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR) != null)
+      if (QKeyValue.FindAttribute(v.Attributes, x => x.Key == CivlAttributes.LINEAR) != null)
       {
         return LinearKind.LINEAR;
       }
-      if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_IN) != null)
+      if (QKeyValue.FindAttribute(v.Attributes, x => x.Key == CivlAttributes.LINEAR_IN) != null)
       {
         return LinearKind.LINEAR_IN;
       }
-      if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT) != null)
+      if (QKeyValue.FindAttribute(v.Attributes, x => x.Key == CivlAttributes.LINEAR_OUT) != null)
       {
         return LinearKind.LINEAR_OUT;
       }
@@ -125,8 +123,12 @@ namespace Microsoft.Boogie
       return QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT);
     }
 
-    private bool HasPermissionType(Type type)
+    private static bool HasPermissionType(Program program, Type type)
     {
+      if (program.monomorphizer == null)
+      {
+        return false;
+      }
       if (type is CtorType ctorType)
       {
         var originalTypeCtorDecl = program.monomorphizer.GetOriginalDecl(ctorType.Decl);
@@ -215,9 +217,13 @@ namespace Microsoft.Boogie
     public override Variable VisitVariable(Variable node)
     {
       var nodeType = node.TypedIdent.Type;
-      if (!linearTypes.Contains(nodeType) && HasPermissionType(nodeType))
+      if (HasPermissionType(program, nodeType))
       {
         linearTypes.Add(nodeType);
+        if (FindLinearKind(node) == LinearKind.ORDINARY)
+        {
+          node.Attributes = new QKeyValue(Token.NoToken, CivlAttributes.LINEAR, new List<object>(), node.Attributes);
+        }
       }
       string domainName = FindDomainName(node);
       if (domainName != null && !linearDomains.ContainsKey(domainName))

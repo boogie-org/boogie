@@ -143,12 +143,14 @@ namespace Microsoft.Boogie
 
     public void TypeCheck()
     {
+      var (domainNameToLinearDomain, linearTypeToLinearDomain) =
+        LinearDomainCollector.Collect(program, checkingContext);
       TypeCheckGlobalVariables();
       TypeCheckLemmaProcedures();
       TypeCheckYieldInvariants();
       TypeCheckActions();
       // linear type checking is not performed inside those decls that are accumulated so far
-      linearTypeChecker.TypeCheck();
+      linearTypeChecker.TypeCheck(domainNameToLinearDomain, linearTypeToLinearDomain);
       TypeCheckPendingAsyncMachinery();
       if (checkingContext.ErrorCount > 0)
       {

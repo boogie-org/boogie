@@ -32,7 +32,7 @@ namespace Microsoft.Boogie
       this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
     }
 
-    public IEnumerable<LinearDomain> LinearDomains => domainNameToLinearDomain.Values;
+    public IEnumerable<LinearDomain> LinearDomains => domainNameToLinearDomain.Values.Union(linearTypeToLinearDomain.Values);
     
     public LinearDomain FindDomain(Variable v)
     {
@@ -46,21 +46,20 @@ namespace Microsoft.Boogie
 
     public Formal LinearDomainInFormal(LinearDomain domain)
     {
-      var domainName = domain.DomainName;
-      return civlTypeChecker.Formal("linear_" + domainName + "_in", domainNameToLinearDomain[domainName].mapTypeBool, true);
+      return civlTypeChecker.Formal("linear_" + domain.DomainName + "_in", domain.mapTypeBool, true);
     }
 
     public LocalVariable LinearDomainAvailableLocal(LinearDomain domain)
     {
-      var domainName = domain.DomainName;
-      return civlTypeChecker.LocalVariable("linear_" + domainName + "_available", domainNameToLinearDomain[domainName].mapTypeBool);
+      return civlTypeChecker.LocalVariable("linear_" + domain.DomainName + "_available", domain.mapTypeBool);
     }
 
-    public void TypeCheck()
+    public void TypeCheck(Dictionary<string, LinearDomain> domainNameToLinearDomain, Dictionary<Type, LinearDomain> linearTypeToLinearDomain)
     {
-      (this.domainNameToLinearDomain, this.linearTypeToLinearDomain) = LinearDomainCollector.Collect(program, civlTypeChecker);
+      this.domainNameToLinearDomain = domainNameToLinearDomain;
+      this.linearTypeToLinearDomain = linearTypeToLinearDomain;
       this.VisitProgram(program);
-      foreach (Absy absy in this.availableLinearVars.Keys)
+      foreach (var absy in this.availableLinearVars.Keys)
       {
         availableLinearVars[absy].RemoveWhere(v => v is GlobalVariable);
       }
