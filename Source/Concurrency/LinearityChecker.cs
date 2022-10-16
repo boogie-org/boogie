@@ -66,7 +66,7 @@ class LinearityChecker
       List<Requires> requires = action.gate.Select(a => new Requires(false, a.Expr)).ToList();
       List<LinearityCheck> linearityChecks = new List<LinearityCheck>();
 
-      foreach (var domain in linearTypeChecker.NamedLinearDomains)
+      foreach (var domain in linearTypeChecker.NameLinearDomains)
       {
         // Linear in vars
         var inVars = inputs.Union(action.modifiedGlobalVars)

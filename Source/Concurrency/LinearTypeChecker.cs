@@ -24,16 +24,13 @@ namespace Microsoft.Boogie
 
     private IEnumerable<Variable> LinearGlobalVariables =>
       program.GlobalVariables.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY);
+    
+    private Procedure enclosingProc;
 
     public override Implementation VisitImplementation(Implementation node)
     {
-      var proc = node.Proc;
-      if (civlTypeChecker.IsAction(proc) ||
-          civlTypeChecker.IsLemmaProcedure(proc))
-      {
-        return node;
-      }
-
+      enclosingProc = node.Proc;
+      
       node.PruneUnreachableBlocks(civlTypeChecker.Options);
       node.ComputePredecessorsForBlocks();
       GraphUtil.Graph<Block> graph = Program.GraphFromImpl(node);
@@ -93,10 +90,14 @@ namespace Microsoft.Boogie
           });
           node.InParams.Except(end).Where(v =>
           {
+            if (SkipCheck(v))
+            {
+              return false;
+            }
             var kind = LinearDomainCollector.FindLinearKind(v);
             return kind == LinearKind.LINEAR || kind == LinearKind.LINEAR_OUT;
           }).Iter(v => { Error(b.TransferCmd, $"Input variable {v.Name} must be available at a return"); });
-          node.OutParams.Except(end).Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY)
+          node.OutParams.Except(end).Where(v => !SkipCheck(v))
             .Iter(v => { Error(b.TransferCmd, $"Output variable {v.Name} must be available at a return"); });
         }
       }
@@ -154,7 +155,8 @@ namespace Microsoft.Boogie
         {
           for (int i = 0; i < assignCmd.Lhss.Count; i++)
           {
-            if (LinearDomainCollector.FindLinearKind(assignCmd.Lhss[i].DeepAssignedVariable) == LinearKind.ORDINARY)
+            var lhsVar = assignCmd.Lhss[i].DeepAssignedVariable;
+            if (SkipCheck(lhsVar))
             {
               continue;
             }
@@ -268,6 +270,23 @@ namespace Microsoft.Boogie
       return start;
     }
     
+    // SkipCheck is selectively applied at a few places to allow the type checker 
+    // to be used whether the code uses name or type domains.
+    private bool SkipCheck(Variable v)
+    {
+      var lhsKind = LinearDomainCollector.FindLinearKind(v);
+      if (lhsKind == LinearKind.ORDINARY)
+      {
+        return true;
+      }
+      var domain = FindDomain(v);
+      if (domain.IsNameDomain)
+      {
+        return civlTypeChecker.IsAction(enclosingProc) || civlTypeChecker.IsLemmaProcedure(enclosingProc);
+      }
+      return false;
+    }
+
     public override Cmd VisitAssignCmd(AssignCmd node)
     {
       HashSet<Variable> rhsVars = new HashSet<Variable>();
@@ -275,8 +294,7 @@ namespace Microsoft.Boogie
       {
         AssignLhs lhs = node.Lhss[i];
         Variable lhsVar = lhs.DeepAssignedVariable;
-        var lhsKind = LinearDomainCollector.FindLinearKind(lhsVar);
-        if (lhsKind == LinearKind.ORDINARY)
+        if (SkipCheck(lhsVar))
         {
           continue;
         }
@@ -403,7 +421,9 @@ namespace Microsoft.Boogie
 
     #region Useful public methods
     
-    public IEnumerable<LinearDomain> NamedLinearDomains => domainNameToLinearDomain.Values;
+    public IEnumerable<LinearDomain> NameLinearDomains => domainNameToLinearDomain.Values;
+
+    public IEnumerable<LinearDomain> TypeLinearDomains => linearTypeToLinearDomain.Values;
 
     public IEnumerable<LinearDomain> LinearDomains => domainNameToLinearDomain.Values.Union(linearTypeToLinearDomain.Values);
     

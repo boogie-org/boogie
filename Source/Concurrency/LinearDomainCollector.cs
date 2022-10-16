@@ -66,6 +66,10 @@ namespace Microsoft.Boogie
     {
       return Expr.Eq(expr, ExprHelper.FunctionCall(mapConstBool, Expr.True));
     }
+
+    public bool IsNameDomain => domainName != null;
+
+    public bool IsTypeDomain => domainName == null;
   }
   
   class LinearDomainCollector : ReadOnlyVisitor
