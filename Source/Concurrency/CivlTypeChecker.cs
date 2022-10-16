@@ -143,14 +143,11 @@ namespace Microsoft.Boogie
 
     public void TypeCheck()
     {
-      var (domainNameToLinearDomain, linearTypeToLinearDomain) =
-        LinearDomainCollector.Collect(program, checkingContext);
+      linearTypeChecker.TypeCheck();
       TypeCheckGlobalVariables();
       TypeCheckLemmaProcedures();
       TypeCheckYieldInvariants();
       TypeCheckActions();
-      // linear type checking is not performed inside those decls that are accumulated so far
-      linearTypeChecker.TypeCheck(domainNameToLinearDomain, linearTypeToLinearDomain);
       TypeCheckPendingAsyncMachinery();
       if (checkingContext.ErrorCount > 0)
       {
@@ -1112,7 +1109,7 @@ namespace Microsoft.Boogie
 
     #region Helpers for attribute parsing
 
-    private bool IsYieldingProcedure(Procedure proc)
+    public bool IsYieldingProcedure(Procedure proc)
     {
       return proc.HasAttribute(CivlAttributes.YIELDS);
     }
@@ -1131,7 +1128,7 @@ namespace Microsoft.Boogie
       return !proc.HasAttribute(CivlAttributes.YIELDS) && proc.HasAttribute(CivlAttributes.LEMMA);
     }
 
-    private bool IsYieldInvariant(Procedure proc)
+    public bool IsYieldInvariant(Procedure proc)
     {
       return proc.HasAttribute(CivlAttributes.YIELD_INVARIANT);
     }

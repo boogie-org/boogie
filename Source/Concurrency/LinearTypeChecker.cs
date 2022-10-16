@@ -17,7 +17,7 @@ namespace Microsoft.Boogie
       this.civlTypeChecker = civlTypeChecker;
       this.program = civlTypeChecker.program;
       this.checkingContext = civlTypeChecker.checkingContext;
-      this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
+      // other fields are initialized in the TypeCheck method
     }
     
     #region Visitor Implementation
@@ -421,10 +421,10 @@ namespace Microsoft.Boogie
       return civlTypeChecker.LocalVariable("linear_" + domain.DomainName + "_available", domain.mapTypeBool);
     }
 
-    public void TypeCheck(Dictionary<string, LinearDomain> domainNameToLinearDomain, Dictionary<Type, LinearDomain> linearTypeToLinearDomain)
+    public void TypeCheck()
     {
-      this.domainNameToLinearDomain = domainNameToLinearDomain;
-      this.linearTypeToLinearDomain = linearTypeToLinearDomain;
+      (this.domainNameToLinearDomain, this.linearTypeToLinearDomain) = LinearDomainCollector.Collect(program, checkingContext);
+      this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
       this.VisitProgram(program);
       foreach (var absy in this.availableLinearVars.Keys)
       {
