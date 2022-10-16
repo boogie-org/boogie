@@ -12,7 +12,6 @@ namespace Microsoft.Boogie
       CivlTypeChecker civlTypeChecker,
       int layerNum,
       AbsyMap absyMap,
-      HashSet<Procedure> yieldingProcs,
       Dictionary<CallCmd, Block> refinementBlocks)
     {
       var linearPermissionInstrumentation =
@@ -27,7 +26,7 @@ namespace Microsoft.Boogie
       var implToPreconditions = yieldingProcInstrumentation.CreatePreconditions(linearPermissionInstrumentation);
       yieldingProcInstrumentation
         .InlineYieldRequiresAndEnsures(); // inline after creating the preconditions but before transforming the implementations
-      yieldingProcInstrumentation.TransformImpls(yieldingProcs, implToPreconditions);
+      yieldingProcInstrumentation.TransformImpls(implToPreconditions);
 
       List<Declaration> decls = new List<Declaration>();
       decls.AddRange(yieldingProcInstrumentation.noninterferenceCheckerDecls);
@@ -70,9 +69,9 @@ namespace Microsoft.Boogie
 
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       List<Variable> inputs = new List<Variable>();
-      foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+      foreach (var domain in linearTypeChecker.LinearDomains)
       {
-        inputs.Add(linearTypeChecker.LinearDomainInFormal(domainName));
+        inputs.Add(linearTypeChecker.LinearDomainInFormal(domain));
       }
 
       foreach (Variable g in civlTypeChecker.GlobalVariables)
@@ -114,9 +113,9 @@ namespace Microsoft.Boogie
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       List<Variable> inputs = new List<Variable>();
-      foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+      foreach (var domain in linearTypeChecker.LinearDomains)
       {
-        inputs.Add(linearTypeChecker.LinearDomainInFormal(domainName));
+        inputs.Add(linearTypeChecker.LinearDomainInFormal(domain));
       }
 
       foreach (Variable g in civlTypeChecker.GlobalVariables)
@@ -326,8 +325,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private void TransformImpls(HashSet<Procedure> yieldingProcs,
-      Dictionary<Implementation, List<Cmd>> implToPreconditions)
+    private void TransformImpls(Dictionary<Implementation, List<Cmd>> implToPreconditions)
     {
       foreach (var impl in absyMap.Keys.OfType<Implementation>())
       {
@@ -336,7 +334,7 @@ namespace Microsoft.Boogie
         // Disjointness assumptions after yields are added inside TransformImpl which is called for 
         // all implementations except for a mover procedure at its disappearing layer.
         // But this is fine because a mover procedure at its disappearing layer does not have a yield in it.
-        linearPermissionInstrumentation.AddDisjointnessAssumptions(impl, yieldingProcs);
+        linearPermissionInstrumentation.AddDisjointnessAssumptions(impl);
         var yieldingProc = GetYieldingProc(impl);
         if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum)
         {

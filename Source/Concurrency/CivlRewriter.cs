@@ -28,7 +28,7 @@ namespace Microsoft.Boogie
       YieldingProcChecker.AddCheckers(civlTypeChecker, decls);
 
       // Linear type checks
-      civlTypeChecker.linearTypeChecker.AddCheckers(decls);
+      LinearityChecker.AddCheckers(civlTypeChecker, decls);
 
       if (!options.TrustInductiveSequentialization)
       {

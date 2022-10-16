@@ -364,7 +364,7 @@ namespace Microsoft.Boogie
           var variableMapping = LinqExtender.Map(func.InParams, instantiatedFunction.InParams);
           newInstantiatedDeclarations.Add(instantiatedFunction);
           monomorphizationVisitor.functionInstantiations[func][actualTypeParams] = instantiatedFunction;
-          monomorphizationVisitor.declToTypeInstantiation[instantiatedFunction] =
+          monomorphizationVisitor.declWithFormalsToTypeInstantiation[instantiatedFunction] =
             Tuple.Create<DeclWithFormals, Dictionary<string, Type>>(func,
               LinqExtender.Map(func.TypeParameters.Select(x => x.Name), actualTypeParams));
           if (func.Body != null)
@@ -424,7 +424,7 @@ namespace Microsoft.Boogie
             proc.Attributes == null ? null : VisitQKeyValue(proc.Attributes));
           newInstantiatedDeclarations.Add(instantiatedProc);
           monomorphizationVisitor.procInstantiations[proc][actualTypeParams] = instantiatedProc;
-          monomorphizationVisitor.declToTypeInstantiation[instantiatedProc] =
+          monomorphizationVisitor.declWithFormalsToTypeInstantiation[instantiatedProc] =
             Tuple.Create<DeclWithFormals, Dictionary<string, Type>>(proc,
               LinqExtender.Map(proc.TypeParameters.Select(x => x.Name), actualTypeParams));
         }
@@ -458,7 +458,7 @@ namespace Microsoft.Boogie
           instantiatedImpl.Proc = InstantiateProcedure(impl.Proc, actualTypeParams);
           newInstantiatedDeclarations.Add(instantiatedImpl);
           monomorphizationVisitor.implInstantiations[impl][actualTypeParams] = instantiatedImpl;
-          monomorphizationVisitor.declToTypeInstantiation[instantiatedImpl] =
+          monomorphizationVisitor.declWithFormalsToTypeInstantiation[instantiatedImpl] =
             Tuple.Create<DeclWithFormals, Dictionary<string, Type>>(impl,
               LinqExtender.Map(impl.TypeParameters.Select(x => x.Name), actualTypeParams));
         }
@@ -518,6 +518,7 @@ namespace Microsoft.Boogie
             newInstantiatedDeclarations.Add(newDatatypeTypeCtorDecl);
             monomorphizationVisitor.typeInstantiations[datatypeTypeCtorDecl]
               .Add(actualTypeParams, newDatatypeTypeCtorDecl);
+            monomorphizationVisitor.typeCtorDeclToTypeInstantiation[newDatatypeTypeCtorDecl] = Tuple.Create(typeCtorDecl, actualTypeParams);
             datatypeTypeCtorDecl.Constructors.Iter(constructor =>
             {
               var function = InstantiateFunctionSignature(constructor, actualTypeParams,
@@ -532,6 +533,7 @@ namespace Microsoft.Boogie
                 typeCtorDecl.Attributes);
             newInstantiatedDeclarations.Add(newTypeCtorDecl);
             monomorphizationVisitor.typeInstantiations[typeCtorDecl].Add(actualTypeParams, newTypeCtorDecl);
+            monomorphizationVisitor.typeCtorDeclToTypeInstantiation[newTypeCtorDecl] = Tuple.Create(typeCtorDecl, actualTypeParams);
           }
         }
         return monomorphizationVisitor.typeInstantiations[typeCtorDecl][actualTypeParams];
@@ -920,7 +922,8 @@ namespace Microsoft.Boogie
     private Dictionary<Procedure, Dictionary<List<Type>, Procedure>> procInstantiations;
     private Dictionary<Implementation, Dictionary<List<Type>, Implementation>> implInstantiations;
     private Dictionary<TypeCtorDecl, Dictionary<List<Type>, TypeCtorDecl>> typeInstantiations;
-    private Dictionary<DeclWithFormals, Tuple<DeclWithFormals, Dictionary<string, Type>>> declToTypeInstantiation;
+    private Dictionary<DeclWithFormals, Tuple<DeclWithFormals, Dictionary<string, Type>>> declWithFormalsToTypeInstantiation;
+    private Dictionary<TypeCtorDecl, Tuple<TypeCtorDecl, List<Type>>> typeCtorDeclToTypeInstantiation;
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> triggerTypes;
     private Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes;
     private HashSet<TypeCtorDecl> visitedTypeCtorDecls;
@@ -958,7 +961,8 @@ namespace Microsoft.Boogie
           nameToFunction.Add(function.Name, function);
           functionInstantiations.Add(function, new Dictionary<List<Type>, Function>(new ListComparer<Type>()));
         });
-      declToTypeInstantiation = new Dictionary<DeclWithFormals, Tuple<DeclWithFormals, Dictionary<string, Type>>>();
+      declWithFormalsToTypeInstantiation = new Dictionary<DeclWithFormals, Tuple<DeclWithFormals, Dictionary<string, Type>>>();
+      typeCtorDeclToTypeInstantiation = new Dictionary<TypeCtorDecl, Tuple<TypeCtorDecl, List<Type>>>();
       typeInstantiations = new Dictionary<TypeCtorDecl, Dictionary<List<Type>, TypeCtorDecl>>();
       nameToTypeCtorDecl = new Dictionary<string, TypeCtorDecl>();
       program.TopLevelDeclarations.OfType<TypeCtorDecl>()
@@ -1014,7 +1018,12 @@ namespace Microsoft.Boogie
     
     public bool GetTypeInstantiation(DeclWithFormals decl, out Tuple<DeclWithFormals, Dictionary<string, Type>> value)
     {
-      return declToTypeInstantiation.TryGetValue(decl, out value);
+      return declWithFormalsToTypeInstantiation.TryGetValue(decl, out value);
+    }
+
+    public bool GetTypeInstantiation(TypeCtorDecl decl, out Tuple<TypeCtorDecl, List<Type>> value)
+    {
+      return typeCtorDeclToTypeInstantiation.TryGetValue(decl, out value);
     }
 
     public override Cmd VisitCallCmd(CallCmd node)
@@ -1140,6 +1149,24 @@ namespace Microsoft.Boogie
       return value.Item2;
     }
     
+    public TypeCtorDecl GetOriginalDecl(TypeCtorDecl decl)
+    {
+      if (!monomorphizationVisitor.GetTypeInstantiation(decl, out Tuple<TypeCtorDecl, List<Type>> value))
+      {
+        return null;
+      }
+      return value.Item1;
+    }
+    
+    public List<Type> GetTypeInstantiation(TypeCtorDecl decl)
+    {
+      if (!monomorphizationVisitor.GetTypeInstantiation(decl, out Tuple<TypeCtorDecl, List<Type>> value))
+      {
+        return null;
+      }
+      return value.Item2;
+    }
+
     private MonomorphizationVisitor monomorphizationVisitor;
     private Monomorphizer(MonomorphizationVisitor monomorphizationVisitor)
     {
