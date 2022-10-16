@@ -275,8 +275,8 @@ namespace Microsoft.Boogie
       {
         AssignLhs lhs = node.Lhss[i];
         Variable lhsVar = lhs.DeepAssignedVariable;
-        string domainName = LinearDomainCollector.FindDomainName(lhsVar);
-        if (domainName == null)
+        var lhsKind = LinearDomainCollector.FindLinearKind(lhsVar);
+        if (lhsKind == LinearKind.ORDINARY)
         {
           continue;
         }
@@ -291,16 +291,18 @@ namespace Microsoft.Boogie
           Error(node, $"Only variable can be assigned to linear variable {lhsVar.Name}");
           continue;
         }
-        string rhsDomainName = LinearDomainCollector.FindDomainName(rhs.Decl);
-        if (rhsDomainName == null)
+        var rhsKind = LinearDomainCollector.FindLinearKind(rhs.Decl);
+        if (rhsKind == LinearKind.ORDINARY)
         {
           Error(node, $"Only linear variable can be assigned to linear variable {lhsVar.Name}");
           continue;
         }
-        if (domainName != rhsDomainName)
+        var lhsDomain = FindDomain(lhsVar);
+        var rhsDomain = FindDomain(rhs.Decl);
+        if (lhsDomain != rhsDomain)
         {
           Error(node,
-            $"Linear variable of domain {rhsDomainName} cannot be assigned to linear variable of domain {domainName}");
+            $"Linear variable of domain {rhsDomain.DomainName} cannot be assigned to linear variable of domain {lhsDomain.DomainName}");
           continue;
         }
         if (rhsVars.Contains(rhs.Decl))
@@ -319,8 +321,8 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.Proc.InParams.Count; i++)
       {
         Variable formal = node.Proc.InParams[i];
-        string domainName = LinearDomainCollector.FindDomainName(formal);
-        if (domainName == null)
+        var formalKind = LinearDomainCollector.FindLinearKind(formal);
+        if (formalKind == LinearKind.ORDINARY)
         {
           continue;
         }
@@ -330,13 +332,15 @@ namespace Microsoft.Boogie
           Error(node.Ins[i], $"Only variable can be passed to linear parameter {formal.Name}");
           continue;
         }
-        string actualDomainName = LinearDomainCollector.FindDomainName(actual.Decl);
-        if (actualDomainName == null)
+        var actualKind = LinearDomainCollector.FindLinearKind(actual.Decl);
+        if (actualKind == LinearKind.ORDINARY)
         {
           Error(actual, $"Only a linear argument can be passed to linear parameter {formal.Name}");
           continue;
         }
-        if (domainName != actualDomainName)
+        var formalDomain = FindDomain(formal);
+        var actualDomain = FindDomain(actual.Decl);
+        if (formalDomain != actualDomain)
         {
           Error(actual, "The domains of formal and actual parameters must be the same");
           continue;
@@ -357,19 +361,21 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.Proc.OutParams.Count; i++)
       {
         IdentifierExpr actual = node.Outs[i];
-        string actualDomainName = LinearDomainCollector.FindDomainName(actual.Decl);
-        if (actualDomainName == null)
+        var actualKind = LinearDomainCollector.FindLinearKind(actual.Decl);
+        if (actualKind == LinearKind.ORDINARY)
         {
           continue;
         }
         Variable formal = node.Proc.OutParams[i];
-        string domainName = LinearDomainCollector.FindDomainName(formal);
-        if (domainName == null)
+        var formalKind = LinearDomainCollector.FindLinearKind(formal);
+        if (formalKind == LinearKind.ORDINARY)
         {
           Error(node, "Only a linear variable can be passed to a linear parameter");
           continue;
         }
-        if (domainName != actualDomainName)
+        var actualDomain = FindDomain(actual.Decl);
+        var formalDomain = FindDomain(formal);
+        if (formalDomain != actualDomain)
         {
           Error(node, "The domains of formal and actual parameters must be the same");
           continue;
