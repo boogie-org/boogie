@@ -456,7 +456,7 @@ namespace Microsoft.Boogie
       {
         availableLinearVars[absy].RemoveWhere(v => v is GlobalVariable);
       }
-      if (checkingContext.ErrorCount == 0)
+      if (checkingContext.ErrorCount == 0 && program.monomorphizer != null)
       {
         var impls = program.TopLevelDeclarations.OfType<Implementation>().ToList();
         impls.Iter(impl =>
