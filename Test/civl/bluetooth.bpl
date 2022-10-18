@@ -74,7 +74,7 @@ requires {:layer 2} IsUser(i);
 procedure {:yields} {:layer 2} {:refines "AtomicSetStoppingFlag"}
 {:yield_preserves "Inv2"}
 {:yield_preserves "Inv1"}
-Stopper({:linear "perm"} i: int)
+Stopper({:linear_in "perm"} i: int)
 requires {:layer 2} i == 0;
 {
     call Close(i);
@@ -128,7 +128,7 @@ Exit({:layer 1} {:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
 
 procedure {:yields} {:layer 1} {:refines "AtomicSetStoppingFlag"}
 {:yield_preserves "Inv1"}
-Close({:linear "perm"} i: int)
+Close({:linear_in "perm"} i: int)
 {
     call SetStoppingFlag(i);
     call DeleteReference();
@@ -163,14 +163,14 @@ modifies usersInDriver;
     usersInDriver[i] := false;
 }
 
-procedure {:atomic} {:layer 1} AtomicEnter({:linear "perm"} i: int)
+procedure {:atomic} {:layer 1} AtomicEnter(i: int)
 modifies pendingIo;
 {
     assert IsUser(i);
     assume !stoppingFlag;
     pendingIo := pendingIo + 1;
 }
-procedure {:yields} {:layer 0} {:refines "AtomicEnter"} Enter({:linear "perm"} i: int);
+procedure {:yields} {:layer 0} {:refines "AtomicEnter"} Enter(i: int);
 
 procedure {:atomic} {:layer 1} AtomicCheckAssert()
 {
@@ -178,13 +178,13 @@ procedure {:atomic} {:layer 1} AtomicCheckAssert()
 }
 procedure {:yields} {:layer 0} {:refines "AtomicCheckAssert"} CheckAssert();
 
-procedure {:right} {:layer 1,3} AtomicSetStoppingFlag({:linear "perm"} i: int)
+procedure {:right} {:layer 1,3} AtomicSetStoppingFlag({:linear_in "perm"} i: int)
 modifies stoppingFlag;
 {
     assert i == 0 && !stoppingFlag;
     stoppingFlag := true;
 }
-procedure {:yields} {:layer 0} {:refines "AtomicSetStoppingFlag"} SetStoppingFlag({:linear "perm"} i: int);
+procedure {:yields} {:layer 0} {:refines "AtomicSetStoppingFlag"} SetStoppingFlag({:linear_in "perm"} i: int);
 
 procedure {:atomic} {:layer 1} AtomicDeleteReference()
 modifies pendingIo, stoppingEvent;
