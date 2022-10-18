@@ -43,8 +43,7 @@ namespace Microsoft.Boogie
     // These collections are for convenience in later phases and are only initialized at the end of type checking.
     public List<int> allRefinementLayers;
     public IEnumerable<Variable> GlobalVariables => globalVarToLayerRange.Keys;
-
-    public LinearRewriter linearRewriter;
+    
     public LinearTypeChecker linearTypeChecker;
 
     public AtomicAction SkipAtomicAction;
@@ -54,7 +53,6 @@ namespace Microsoft.Boogie
       this.checkingContext = new CheckingContext(null);
       this.program = program;
       this.Options = options;
-      this.linearRewriter = new LinearRewriter(options, program.monomorphizer);
       this.linearTypeChecker = new LinearTypeChecker(this);
 
       this.globalVarToLayerRange = new Dictionary<Variable, LayerRange>();
@@ -346,7 +344,6 @@ namespace Microsoft.Boogie
       foreach (var proc in actionProcs)
       {
         Implementation impl = actionProcToImpl[proc];
-        impl.Blocks.Iter(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
         LayerRange layerRange = actionProcToLayerRange[proc];
         if (proc.HasAttribute(CivlAttributes.INTRO))
         {
@@ -1426,11 +1423,7 @@ namespace Microsoft.Boogie
 
       public override Cmd VisitCallCmd(CallCmd node)
       {
-        if (civlTypeChecker.linearRewriter.IsPrimitive(node.Proc))
-        {
-          // Linear primitives may be called 
-        }
-        else if (!actionProcToLayerRange.ContainsKey(node.Proc))
+        if (!actionProcToLayerRange.ContainsKey(node.Proc))
         {
           civlTypeChecker.Error(node, "An atomic action can only call other atomic actions");
         }

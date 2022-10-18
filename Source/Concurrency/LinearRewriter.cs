@@ -16,12 +16,15 @@ public class LinearRewriter
 
   private ConcurrencyOptions options;
 
-  public LinearRewriter(ConcurrencyOptions options, Monomorphizer monomorphizer)
+  private int? layerNum;
+
+  public LinearRewriter(ConcurrencyOptions options, Monomorphizer monomorphizer, int? layerNum)
   {
     this.monomorphizer = monomorphizer;
     this.options = options;
+    this.layerNum = layerNum;
   }
-
+  
   public bool IsPrimitive(Procedure proc)
   {
     var value = monomorphizer.GetOriginalDecl(proc);
@@ -76,9 +79,20 @@ public class LinearRewriter
       default:
         Contract.Assume(false);
         return null;
-    }  
+    }
   }
 
+  private AssertCmd AssertCmd(IToken tok, Expr expr, string msg)
+  {
+    var assertCmd = CmdHelper.AssertCmd(tok, expr, msg);
+    if (layerNum.HasValue)
+    {
+      assertCmd.Attributes =
+        new QKeyValue(Token.NoToken, "layer", new List<object> { layerNum.Value }, assertCmd.Attributes);
+    }
+    return assertCmd;
+  }
+  
   private Function MapConst(Type domain, Type range)
   {
     return monomorphizer.InstantiateFunction("MapConst",
@@ -172,9 +186,8 @@ public class LinearRewriter
     
     var mapConstFunc = MapConst(refType, Type.Bool);
     var mapImpFunc = MapImp(refType);
-    cmdSeq.Add(CmdHelper.AssertCmd(
-      callCmd.tok,
-      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, k, Dom(path)), ExprHelper.FunctionCall(mapConstFunc, Expr.True)), 
+    cmdSeq.Add(AssertCmd(callCmd.tok,
+      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, k, Dom(path)), ExprHelper.FunctionCall(mapConstFunc, Expr.True)),
       "Lmap_Split failed"));
     
     cmdSeq.Add(CmdHelper.AssignCmd(l,ExprHelper.FunctionCall(lmapConstructor, k, Val(path))));
@@ -219,8 +232,7 @@ public class LinearRewriter
     var v = callCmd.Outs[0];
 
     var lmapContainsFunc = LmapContains(type);
-    cmdSeq.Add(
-      CmdHelper.AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lmapContainsFunc, path, k),"Lmap_Read failed"));
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lmapContainsFunc, path, k), "Lmap_Read failed"));
 
     var lmapDerefFunc = LmapDeref(type);
     cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(lmapDerefFunc, path, k)));
@@ -240,8 +252,7 @@ public class LinearRewriter
     var v = callCmd.Ins[2];
     
     var lmapContainsFunc = LmapContains(type);
-    cmdSeq.Add(
-      CmdHelper.AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lmapContainsFunc, path, k),"Lmap_Write failed"));
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lmapContainsFunc, path, k), "Lmap_Write failed"));
 
     cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.MapAssignLhs(Val(path), new List<Expr>() { k }), v));
     
@@ -284,8 +295,7 @@ public class LinearRewriter
     var v = callCmd.Outs[0];
     
     var lmapContainsFunc = LmapContains(type);
-    cmdSeq.Add(
-      CmdHelper.AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lmapContainsFunc, path, k),"Lmap_Remove failed"));
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lmapContainsFunc, path, k), "Lmap_Remove failed"));
 
     var lmapDerefFunc = LmapDeref(type);
     cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(lmapDerefFunc, path, k)));
@@ -327,9 +337,8 @@ public class LinearRewriter
     
     var mapConstFunc = MapConst(type, Type.Bool);
     var mapImpFunc = MapImp(type);
-    cmdSeq.Add(CmdHelper.AssertCmd(
-      callCmd.tok,
-      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, k, Dom(path)), ExprHelper.FunctionCall(mapConstFunc, Expr.True)), 
+    cmdSeq.Add(AssertCmd(callCmd.tok,
+      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, k, Dom(path)), ExprHelper.FunctionCall(mapConstFunc, Expr.True)),
       "Lset_Split failed"));
     
     cmdSeq.Add(CmdHelper.AssignCmd(l,ExprHelper.FunctionCall(lsetConstructor, k)));
@@ -371,7 +380,7 @@ public class LinearRewriter
     var l = callCmd.Outs[0].Decl;
     
     var lsetContainsFunc = LsetContains(type);
-    cmdSeq.Add(CmdHelper.AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lsetContainsFunc,path, k),"Lval_Split failed"));
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lsetContainsFunc, path, k), "Lval_Split failed"));
     
     cmdSeq.Add(CmdHelper.AssignCmd(l,ExprHelper.FunctionCall(lvalConstructor, k)));
 
