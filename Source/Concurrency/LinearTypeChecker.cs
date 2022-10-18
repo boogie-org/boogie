@@ -456,6 +456,28 @@ namespace Microsoft.Boogie
       {
         availableLinearVars[absy].RemoveWhere(v => v is GlobalVariable);
       }
+      if (checkingContext.ErrorCount == 0)
+      {
+        var impls = program.TopLevelDeclarations.OfType<Implementation>().ToList();
+        impls.Iter(impl =>
+        {
+          int? LayerNum(Procedure proc)
+          {
+            if (!civlTypeChecker.IsYieldingProcedure(proc))
+            {
+              return null;
+            }
+            var layers = civlTypeChecker.FindLayers(proc.Attributes);
+            if (layers.Count == 0)
+            {
+              return null;
+            }
+            return layers[0];
+          }
+          var linearRewriter = new LinearRewriter(civlTypeChecker.Options, program.monomorphizer, LayerNum(impl.Proc));
+          impl.Blocks.Iter(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
+        }); 
+      }
     }
 
     public ISet<Variable> AvailableLinearVars(Absy absy)
