@@ -25,10 +25,9 @@ public class LinearRewriter
     this.layerNum = layerNum;
   }
   
-  public bool IsPrimitive(Procedure proc)
+  public static bool IsPrimitive(DeclWithFormals decl)
   {
-    var value = monomorphizer.GetOriginalDecl(proc);
-    return value != null && primitives.Contains(value.Name);
+    return decl != null && primitives.Contains(decl.Name);
   }
   
   public List<Cmd> RewriteCmdSeq(List<Cmd> cmdSeq)
@@ -36,7 +35,7 @@ public class LinearRewriter
     var newCmdSeq = new List<Cmd>();
     foreach (var cmd in cmdSeq)
     {
-      if (cmd is CallCmd callCmd && IsPrimitive(callCmd.Proc))
+      if (cmd is CallCmd callCmd && IsPrimitive(monomorphizer.GetOriginalDecl(callCmd.Proc)))
       {
         newCmdSeq.AddRange(RewriteCallCmd(callCmd));
       }
@@ -180,8 +179,8 @@ public class LinearRewriter
       out Function lsetConstructor, out Function lvalConstructor);
     
     var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var k = callCmd.Ins[1];
+    var k = callCmd.Ins[0];
+    var path = callCmd.Ins[1];
     var l = callCmd.Outs[0].Decl;
     
     var mapConstFunc = MapConst(refType, Type.Bool);
@@ -331,8 +330,8 @@ public class LinearRewriter
       out Function lsetConstructor, out Function lvalConstructor);
     
     var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var k = callCmd.Ins[1];
+    var k = callCmd.Ins[0];
+    var path = callCmd.Ins[1];
     var l = callCmd.Outs[0].Decl;
     
     var mapConstFunc = MapConst(type, Type.Bool);
@@ -375,8 +374,8 @@ public class LinearRewriter
       out Function lsetConstructor, out Function lvalConstructor);
 
     var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var k = callCmd.Ins[1];
+    var k = callCmd.Ins[0];
+    var path = callCmd.Ins[1];
     var l = callCmd.Outs[0].Decl;
     
     var lsetContainsFunc = LsetContains(type);

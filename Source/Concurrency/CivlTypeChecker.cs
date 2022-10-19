@@ -142,6 +142,11 @@ namespace Microsoft.Boogie
     public void TypeCheck()
     {
       linearTypeChecker.TypeCheck();
+      if (checkingContext.ErrorCount > 0)
+      {
+        return;
+      }
+      
       TypeCheckGlobalVariables();
       TypeCheckLemmaProcedures();
       TypeCheckYieldInvariants();

@@ -472,7 +472,7 @@ namespace Microsoft.Boogie
         var instantiatedVariables =
           variables.Select(x => (Formal) x).Select(x =>
               new Formal(x.tok, new TypedIdent(x.TypedIdent.tok, x.TypedIdent.Name, VisitType(x.TypedIdent.Type)),
-                x.InComing))
+                x.InComing, x.Attributes == null ? null : VisitQKeyValue(x.Attributes)))
             .ToList<Variable>();
         this.typeParamInstantiation = savedTypeParamInstantiation;
         return instantiatedVariables;

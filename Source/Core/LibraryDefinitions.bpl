@@ -139,8 +139,8 @@ function {:inline} Lmap_Deref<V>(l: Lmap V, k: Ref V): V {
     l->val[k]
 }
 procedure Lmap_Empty<V>() returns (l: Lmap V);
-procedure Lmap_Split<V>(path: Lmap V, k: [Ref V]bool) returns (l: Lmap V);
-procedure Lmap_Transfer<V>(path1: Lmap V, path2: Lmap V);
+procedure Lmap_Split<V>(k: [Ref V]bool, path: Lmap V) returns (l: Lmap V);
+procedure Lmap_Transfer<V>({:linear_in} path1: Lmap V, path2: Lmap V);
 procedure Lmap_Read<V>(path: Lmap V, k: Ref V) returns (v: V);
 procedure Lmap_Write<V>(path: Lmap V, k: Ref V, v: V);
 procedure Lmap_Add<V>(path: Lmap V, v: V) returns (k: Ref V);
@@ -157,8 +157,8 @@ function {:inline} Lset_Contains<V>(l: Lset V, k: V): bool {
     l->dom[k]
 }
 procedure Lset_Empty<V>() returns (l: Lset V);
-procedure Lset_Split<V>(path: Lset V, k: [V]bool) returns (l: Lset V);
-procedure Lset_Transfer<V>(path1: Lset V, path2: Lset V);
+procedure Lset_Split<V>(k: [V]bool, path: Lset V) returns (l: Lset V);
+procedure Lset_Transfer<V>({:linear_in} path1: Lset V, path2: Lset V);
 
 /// linear vals
 type {:datatype} Lval _;
@@ -167,5 +167,5 @@ function {:constructor} Lval<V>(val: V): Lval V;
 function {:inline} Lval_Collector<V>(l: Lval V): [V]bool {
     MapConst(false)[l->val := true]
 }
-procedure Lval_Split<V>(path: Lset V, k: V) returns (l: Lval V);
-procedure Lval_Transfer<V>(l: Lval V, path: Lset V);
+procedure Lval_Split<V>(k: V, path: Lset V) returns (l: Lval V);
+procedure Lval_Transfer<V>({:linear_in} l: Lval V, path: Lset V);

@@ -177,10 +177,13 @@ namespace Microsoft.Boogie
         }
         else if (cmd is CallCmd callCmd)
         {
-          linearGlobalVariables.Except(start).Iter(g =>
+          if (!LinearRewriter.IsPrimitive(program.monomorphizer.GetOriginalDecl(callCmd.Proc)))
           {
-            Error(cmd, $"Global variable {g.Name} must be available at a call");
-          });
+            linearGlobalVariables.Except(start).Iter(g =>
+            {
+              Error(cmd, $"Global variable {g.Name} must be available at a call");
+            });
+          }
           for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
           {
             Variable param = callCmd.Proc.InParams[i];
@@ -205,7 +208,7 @@ namespace Microsoft.Boogie
               }
               else
               {
-                Error(ie, "unavailable source for a linear read");
+                Error(ie, $"unavailable source {ie} for linear parameter at position {i}");
               }
             }
           }
@@ -244,7 +247,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                  Error(ie, "unavailable source for a linear read");
+                  Error(ie, $"unavailable source {ie} for linear parameter at position {i}");
                 }
               }
             }
@@ -363,7 +366,7 @@ namespace Microsoft.Boogie
           Error(actual, "The domains of formal and actual parameters must be the same");
           continue;
         }
-        if (actual.Decl is GlobalVariable)
+        if (actual.Decl is GlobalVariable && !LinearRewriter.IsPrimitive(program.monomorphizer.GetOriginalDecl(node.Proc)))
         {
           Error(actual, "Only local linear variable can be an actual input parameter of a procedure call");
           continue;
@@ -396,11 +399,6 @@ namespace Microsoft.Boogie
         if (formalDomain != actualDomain)
         {
           Error(node, "The domains of formal and actual parameters must be the same");
-          continue;
-        }
-        if (actual.Decl is GlobalVariable)
-        {
-          Error(node, "Only local linear variable can be actual output parameter of a procedure call");
         }
       }
       return base.VisitCallCmd(node);
