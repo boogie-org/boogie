@@ -472,7 +472,7 @@ namespace Microsoft.Boogie
             }
             return layers[0];
           }
-          var linearRewriter = new LinearRewriter(civlTypeChecker.Options, program.monomorphizer, LayerNum(impl.Proc));
+          var linearRewriter = new LinearRewriter(civlTypeChecker.Options, program.monomorphizer, impl.Proc.Modifies, LayerNum(impl.Proc));
           impl.Blocks.Iter(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
         }); 
       }
