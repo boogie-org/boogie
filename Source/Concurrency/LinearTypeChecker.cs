@@ -177,7 +177,7 @@ namespace Microsoft.Boogie
         }
         else if (cmd is CallCmd callCmd)
         {
-          if (!LinearRewriter.IsPrimitive(program.monomorphizer.GetOriginalDecl(callCmd.Proc)))
+          if (!IsPrimitive(callCmd.Proc))
           {
             linearGlobalVariables.Except(start).Iter(g =>
             {
@@ -271,6 +271,15 @@ namespace Microsoft.Boogie
       }
 
       return start;
+    }
+
+    private bool IsPrimitive(DeclWithFormals decl)
+    {
+      if (program.monomorphizer == null)
+      {
+        return false;
+      }
+      return LinearRewriter.IsPrimitive(program.monomorphizer.GetOriginalDecl(decl));
     }
     
     // SkipCheck is selectively applied at a few places to allow the type checker 
@@ -366,7 +375,7 @@ namespace Microsoft.Boogie
           Error(actual, "The domains of formal and actual parameters must be the same");
           continue;
         }
-        if (actual.Decl is GlobalVariable && !LinearRewriter.IsPrimitive(program.monomorphizer.GetOriginalDecl(node.Proc)))
+        if (actual.Decl is GlobalVariable && !IsPrimitive(node.Proc))
         {
           Error(actual, "Only local linear variable can be an actual input parameter of a procedure call");
           continue;
