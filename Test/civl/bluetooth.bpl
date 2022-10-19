@@ -116,7 +116,7 @@ Exit({:layer 1} {:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
 procedure {:yields} {:layer 2} {:refines "AtomicSetStoppingFlag"}
 {:yield_preserves "Inv2"}
 {:yield_preserves "Inv1"}
-Stopper({:linear_in "perm"} i: int)
+Stopper(i: Lval int)
 {
     call Close(i);
     call WaitAndStop();
@@ -124,7 +124,7 @@ Stopper({:linear_in "perm"} i: int)
 
 procedure {:yields} {:layer 1} {:refines "AtomicSetStoppingFlag"}
 {:yield_preserves "Inv1"}
-Close({:linear_in "perm"} i: int)
+Close(i: Lval int)
 {
     call SetStoppingFlag(i);
     call DeleteReference();
@@ -177,13 +177,16 @@ procedure {:atomic} {:layer 1} AtomicCheckAssert()
 }
 procedure {:yields} {:layer 0} {:refines "AtomicCheckAssert"} CheckAssert();
 
-procedure {:right} {:layer 1,3} AtomicSetStoppingFlag({:linear_in "perm"} i: int)
+procedure {:right} {:layer 1,3} AtomicSetStoppingFlag(i: Lval int)
 modifies stoppingFlag;
 {
-    assert i == 0 && !stoppingFlag;
+    // The first assertion ensures that there is at most one stopper.
+    // Otherwise AtomicSetStoppingFlag does not commute with itself.
+    assert i->val == 0;
+    assert !stoppingFlag;
     stoppingFlag := true;
 }
-procedure {:yields} {:layer 0} {:refines "AtomicSetStoppingFlag"} SetStoppingFlag({:linear_in "perm"} i: int);
+procedure {:yields} {:layer 0} {:refines "AtomicSetStoppingFlag"} SetStoppingFlag(i: Lval int);
 
 procedure {:atomic} {:layer 1} AtomicDeleteReference()
 modifies pendingIo, stoppingEvent;
