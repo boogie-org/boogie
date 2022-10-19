@@ -69,7 +69,6 @@ procedure {:yields} {:layer 2} {:refines "AtomicSetStoppingFlag"}
 {:yield_preserves "Inv2"}
 {:yield_preserves "Inv1"}
 Stopper({:linear_in "perm"} i: int)
-requires {:layer 2} i == 0;
 {
     call Close(i);
     call WaitAndStop();
