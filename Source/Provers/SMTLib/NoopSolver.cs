@@ -37,12 +37,12 @@ public class NoopSolver : SMTLibSolver
     if (response is not null) { responses.Enqueue(response); }
   }
 
-  public override Task<SExpr> SendRequest(string request) {
+  public override Task<SExpr> SendRequest(string request, CancellationToken cancellationToken = default) {
     Send(request);
     return GetProverResponse();
   }
 
-  public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests) {
+  public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests, CancellationToken cancellationToken = default) {
 
     foreach (var request in requests) {
       Send(request);
@@ -66,5 +66,9 @@ public class NoopSolver : SMTLibSolver
 
   public override Task PingPong() {
     return Task.CompletedTask;
+  }
+
+  public override void AddErrorHandler(Action<string> handler)
+  {
   }
 }

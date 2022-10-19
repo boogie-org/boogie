@@ -21,9 +21,9 @@ namespace Microsoft.Boogie.SMTLib
     protected SMTLibSolverOptions options;
     protected bool usingUnsatCore;
     private string backgroundPredicates;
-    internal TypeAxiomBuilder AxBuilder { get; set; }
+    protected internal TypeAxiomBuilder AxBuilder { get; set; }
     protected TypeAxiomBuilder CachedAxBuilder;
-    internal abstract ScopedNamer Namer { get; }
+    protected internal abstract ScopedNamer Namer { get; }
     protected TypeDeclCollector DeclCollector;
 
     protected bool HadErrors { get; set; }
@@ -45,14 +45,14 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     [NotDelayed]
-    public SMTLibProcessTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
+    public SMTLibProcessTheoremProver(SMTLibOptions libOptions, SMTLibSolverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx)
     {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
 
-      this.options = (SMTLibSolverOptions) options;
+      this.options = options;
       this.libOptions = libOptions;
       this.ctx = ctx;
       this.gen = gen;
@@ -147,22 +147,6 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       return msg;
-    }
-
-    protected void SetupProcess()
-    {
-      Process?.Close();
-      Process = libOptions.CreateSolver(libOptions, options);
-      
-      Process.ErrorHandler += HandleProverError;
-    }
-
-    public override void Close()
-    {
-      base.Close();
-      Process?.Close();
-      Process = null;
-      CloseLogFile();
     }
 
     public override void LogComment(string comment)
@@ -1656,9 +1640,9 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(ctx != null);
       Contract.Ensures(Contract.Result<SMTLibProcessTheoremProver>() != null);
       if (options.BatchMode) {
-        return new SMTLibBatchTheoremProver(libOptions, options, gen, ctx);
+        return new SMTLibBatchTheoremProver(libOptions, (SMTLibSolverOptions)options, gen, ctx);
       } else {
-        return new SMTLibInteractiveTheoremProver(libOptions, options, gen, ctx);
+        return new SMTLibInteractiveTheoremProver(libOptions, (SMTLibSolverOptions)options, gen, ctx);
       }
     }
   }
