@@ -48,6 +48,8 @@ procedure {:yield_invariant} {:layer 1} Inv1();
 requires stoppingEvent ==> stoppingFlag && usersInDriver == MapConst(false);
 requires pendingIo == Size(usersInDriver) + (if stoppingFlag then 0 else 1);
 
+// user code
+
 procedure {:yields} {:layer 2}
 {:yield_preserves "Inv2"}
 {:yield_preserves "Inv1"}
@@ -63,15 +65,6 @@ User({:linear "perm"} i: int)
         call CheckAssert#1(p, i);
         call Exit(p, i);
     }
-}
-
-procedure {:yields} {:layer 2} {:refines "AtomicSetStoppingFlag"}
-{:yield_preserves "Inv2"}
-{:yield_preserves "Inv1"}
-Stopper({:linear_in "perm"} i: int)
-{
-    call Close(i);
-    call WaitAndStop();
 }
 
 procedure {:atomic} {:layer 2} AtomicEnter#1({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm)
@@ -118,6 +111,17 @@ Exit({:layer 1} {:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
     call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver);
 }
 
+// stopper code
+
+procedure {:yields} {:layer 2} {:refines "AtomicSetStoppingFlag"}
+{:yield_preserves "Inv2"}
+{:yield_preserves "Inv1"}
+Stopper({:linear_in "perm"} i: int)
+{
+    call Close(i);
+    call WaitAndStop();
+}
+
 procedure {:yields} {:layer 1} {:refines "AtomicSetStoppingFlag"}
 {:yield_preserves "Inv1"}
 Close({:linear_in "perm"} i: int)
@@ -141,6 +145,8 @@ WaitAndStop()
     call SetStopped();
 }
 
+/// introduction actions
+
 procedure {:intro} {:layer 1} AddToBarrier({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm)
 modifies usersInDriver;
 {
@@ -154,6 +160,8 @@ modifies usersInDriver;
     assert p == Right(i) && usersInDriver[i];
     usersInDriver[i] := false;
 }
+
+/// primitive actions
 
 procedure {:atomic} {:layer 1} AtomicEnter()
 modifies pendingIo;
