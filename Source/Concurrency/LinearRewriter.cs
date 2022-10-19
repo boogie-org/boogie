@@ -30,7 +30,7 @@ public class LinearRewriter
   
   public static bool IsPrimitive(DeclWithFormals decl)
   {
-    return decl != null && primitives.Contains(decl.Name);
+    return primitives.Contains(decl.Name);
   }
   
   public List<Cmd> RewriteCmdSeq(List<Cmd> cmdSeq)

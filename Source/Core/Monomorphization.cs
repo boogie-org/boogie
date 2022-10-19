@@ -1135,7 +1135,7 @@ namespace Microsoft.Boogie
     {
       if (!monomorphizationVisitor.GetTypeInstantiation(decl, out Tuple<DeclWithFormals, Dictionary<string, Type>> value))
       {
-        return null;
+        return decl;
       }
       return value.Item1;
     }
@@ -1153,7 +1153,7 @@ namespace Microsoft.Boogie
     {
       if (!monomorphizationVisitor.GetTypeInstantiation(decl, out Tuple<TypeCtorDecl, List<Type>> value))
       {
-        return null;
+        return decl;
       }
       return value.Item1;
     }

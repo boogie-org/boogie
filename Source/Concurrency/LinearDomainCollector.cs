@@ -136,10 +136,6 @@ namespace Microsoft.Boogie
       if (type is CtorType ctorType)
       {
         var originalTypeCtorDecl = program.monomorphizer.GetOriginalDecl(ctorType.Decl);
-        if (originalTypeCtorDecl == null)
-        {
-          return false;
-        }
         var originalTypeCtorDeclName = originalTypeCtorDecl.Name;
         return originalTypeCtorDeclName == "Lmap" || originalTypeCtorDeclName == "Lset" ||
                originalTypeCtorDeclName == "Lval";
