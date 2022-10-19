@@ -35,11 +35,6 @@ procedure {:lemma} SubsetSizeRelationLemma<T>(X: [T]bool, Y: [T]bool);
 requires MapImp(X, Y) == MapConst(true);
 ensures X == Y || Size(X) < Size(Y);
 
-function {:inline} IsUser(i: int) : bool
-{
-    1 <= i
-}
-
 var {:layer 0,3} stoppingFlag: bool;
 var {:layer 0,2} stopped: bool;
 var {:layer 1,2} {:linear "perm"} usersInDriver: [int]bool;
@@ -57,7 +52,6 @@ procedure {:yields} {:layer 2}
 {:yield_preserves "Inv2"}
 {:yield_preserves "Inv1"}
 User({:linear "perm"} i: int)
-requires {:layer 2} IsUser(i);
 {
     var {:layer 1,2} {:linear "perm"} p: Perm;
 
@@ -84,7 +78,6 @@ requires {:layer 2} i == 0;
 procedure {:atomic} {:layer 2} AtomicEnter#1({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm)
 modifies usersInDriver;
 {
-    assert IsUser(i);
     assume !stoppingFlag;
     usersInDriver[i] := true;
     p := Right(i);
@@ -93,14 +86,14 @@ procedure {:yields} {:layer 1} {:refines "AtomicEnter#1"}
 {:yield_preserves "Inv1"}
 Enter#1({:linear_in "perm"} i: int) returns ({:layer 1} {:linear "perm"} p: Perm)
 {
-    call Enter(i);
+    call Enter();
     call {:layer 1} SizeLemma(usersInDriver, i);
     call p := AddToBarrier(i);
 }
 
 procedure {:left} {:layer 2} AtomicCheckAssert#1({:layer 1} {:linear "perm"} p: Perm, i: int)
 {
-    assert p == Right(i) && IsUser(i) && usersInDriver[i];
+    assert p == Right(i) && usersInDriver[i];
     assert !stopped;
 }
 procedure {:yields} {:layer 1} {:refines "AtomicCheckAssert#1"}
@@ -113,7 +106,7 @@ CheckAssert#1({:layer 1} {:linear "perm"} p: Perm, i: int)
 procedure {:left} {:layer 2} AtomicExit({:layer 1} {:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
 modifies usersInDriver;
 {
-    assert p == Right(i) && IsUser(i) && usersInDriver[i];
+    assert p == Right(i) && usersInDriver[i];
     usersInDriver[i] := false;
 }
 procedure {:yields} {:layer 1} {:refines "AtomicExit"}
@@ -163,14 +156,13 @@ modifies usersInDriver;
     usersInDriver[i] := false;
 }
 
-procedure {:atomic} {:layer 1} AtomicEnter(i: int)
+procedure {:atomic} {:layer 1} AtomicEnter()
 modifies pendingIo;
 {
-    assert IsUser(i);
     assume !stoppingFlag;
     pendingIo := pendingIo + 1;
 }
-procedure {:yields} {:layer 0} {:refines "AtomicEnter"} Enter(i: int);
+procedure {:yields} {:layer 0} {:refines "AtomicEnter"} Enter();
 
 procedure {:atomic} {:layer 1} AtomicCheckAssert()
 {
