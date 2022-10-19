@@ -147,7 +147,7 @@ namespace Microsoft.Boogie
       {
         DisjointnessRequires(
           first.firstImpl.InParams.Union(second.secondImpl.InParams)
-            .Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT),
+            .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_OUT),
           frame)
       };
       foreach (AssertCmd assertCmd in Enumerable.Union(first.firstGate, second.secondGate))
@@ -159,7 +159,7 @@ namespace Microsoft.Boogie
       var transitionRelation = TransitionRelationComputation.Commutativity(civlTypeChecker, second, first, frame, witnesses);
 
       var secondInParamsFiltered =
-        second.secondImpl.InParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_IN);
+        second.secondImpl.InParams.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_IN);
       IEnumerable<Expr> linearityAssumes = Enumerable.Union(
         linearTypeChecker.DisjointnessExprForEachDomain(first.firstImpl.OutParams.Union(secondInParamsFiltered)
           .Union(frame)),
@@ -210,7 +210,7 @@ namespace Microsoft.Boogie
       {
         DisjointnessRequires(
           first.firstImpl.InParams.Union(second.secondImpl.InParams)
-            .Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame)
+            .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame)
       };
       foreach (AssertCmd assertCmd in first.firstGate.Union(second.secondGate))
       {
@@ -263,7 +263,7 @@ namespace Microsoft.Boogie
       {
         DisjointnessRequires(
           first.firstImpl.InParams.Union(second.secondImpl.InParams)
-            .Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame)
+            .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame)
       };
       Expr firstNegatedGate = Expr.Not(Expr.And(first.firstGate.Select(a => a.Expr)));
       firstNegatedGate.Type = Type.Bool; // necessary?
@@ -310,7 +310,7 @@ namespace Microsoft.Boogie
 
       List<Requires> requires = new List<Requires>
       {
-        DisjointnessRequires(impl.InParams.Where(v => civlTypeChecker.linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT),
+        DisjointnessRequires(impl.InParams.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_OUT),
           frame)
       };
       foreach (AssertCmd assertCmd in action.gate)
