@@ -177,18 +177,21 @@ namespace Microsoft.Boogie
         }
         else if (cmd is CallCmd callCmd)
         {
-          linearGlobalVariables.Except(start).Iter(g =>
+          if (!IsPrimitive(callCmd.Proc))
           {
-            Error(cmd, $"Global variable {g.Name} must be available at a call");
-          });
+            linearGlobalVariables.Except(start).Iter(g =>
+            {
+              Error(cmd, $"Global variable {g.Name} must be available at a call");
+            });
+          }
           for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
           {
-            Variable param = callCmd.Proc.InParams[i];
-            LinearKind paramKind = LinearDomainCollector.FindLinearKind(param);
-            if (paramKind == LinearKind.ORDINARY)
+            if (SkipParameterCheckAtCall(callCmd, i))
             {
               continue;
             }
+            Variable param = callCmd.Proc.InParams[i];
+            LinearKind paramKind = LinearDomainCollector.FindLinearKind(param);
             IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
             if (start.Contains(ie.Decl))
             {
@@ -205,7 +208,7 @@ namespace Microsoft.Boogie
               }
               else
               {
-                Error(ie, "unavailable source for a linear read");
+                Error(ie, $"unavailable source {ie} for linear parameter at position {i}");
               }
             }
           }
@@ -244,7 +247,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                  Error(ie, "unavailable source for a linear read");
+                  Error(ie, $"unavailable source {ie} for linear parameter at position {i}");
                 }
               }
             }
@@ -269,6 +272,15 @@ namespace Microsoft.Boogie
 
       return start;
     }
+
+    private bool IsPrimitive(DeclWithFormals decl)
+    {
+      if (program.monomorphizer == null)
+      {
+        return false;
+      }
+      return LinearRewriter.IsPrimitive(program.monomorphizer.GetOriginalDecl(decl));
+    }
     
     // SkipCheck is selectively applied at a few places to allow the type checker 
     // to be used whether the code uses name or type domains.
@@ -287,6 +299,13 @@ namespace Microsoft.Boogie
       return false;
     }
 
+    private bool SkipParameterCheckAtCall(CallCmd callCmd, int i)
+    {
+      Variable formal = callCmd.Proc.InParams[i];
+      var formalKind = LinearDomainCollector.FindLinearKind(formal);
+      return formalKind == LinearKind.ORDINARY || IsPrimitive(callCmd.Proc) && formalKind == LinearKind.LINEAR;
+    }
+    
     public override Cmd VisitAssignCmd(AssignCmd node)
     {
       HashSet<Variable> rhsVars = new HashSet<Variable>();
@@ -333,27 +352,36 @@ namespace Microsoft.Boogie
       return base.VisitAssignCmd(node);
     }
 
+    public override Cmd VisitParCallCmd(ParCallCmd node)
+    {
+      if (node.CallCmds.Any(callCmd => IsPrimitive(callCmd.Proc)))
+      {
+        Error(node, "linear primitives may not be invoked in a parallel call");
+        return node;
+      }
+      return base.VisitParCallCmd(node);
+    }
+
     public override Cmd VisitCallCmd(CallCmd node)
     {
       HashSet<Variable> inVars = new HashSet<Variable>();
       for (int i = 0; i < node.Proc.InParams.Count; i++)
       {
-        Variable formal = node.Proc.InParams[i];
-        var formalKind = LinearDomainCollector.FindLinearKind(formal);
-        if (formalKind == LinearKind.ORDINARY)
+        if (SkipParameterCheckAtCall(node, i))
         {
           continue;
         }
+        Variable formal = node.Proc.InParams[i];
         IdentifierExpr actual = node.Ins[i] as IdentifierExpr;
         if (actual == null)
         {
-          Error(node.Ins[i], $"Only variable can be passed to linear parameter {formal.Name}");
+          Error(node.Ins[i], $"Only a variable can be passed to linear parameter {formal.Name} at position {i}");
           continue;
         }
         var actualKind = LinearDomainCollector.FindLinearKind(actual.Decl);
         if (actualKind == LinearKind.ORDINARY)
         {
-          Error(actual, $"Only a linear argument can be passed to linear parameter {formal.Name}");
+          Error(actual, $"Only a linear variable can be passed to linear parameter {formal.Name} at position {i}");
           continue;
         }
         var formalDomain = FindDomain(formal);
@@ -363,7 +391,7 @@ namespace Microsoft.Boogie
           Error(actual, "The domains of formal and actual parameters must be the same");
           continue;
         }
-        if (actual.Decl is GlobalVariable)
+        if (actual.Decl is GlobalVariable && !IsPrimitive(node.Proc))
         {
           Error(actual, "Only local linear variable can be an actual input parameter of a procedure call");
           continue;
@@ -396,11 +424,6 @@ namespace Microsoft.Boogie
         if (formalDomain != actualDomain)
         {
           Error(node, "The domains of formal and actual parameters must be the same");
-          continue;
-        }
-        if (actual.Decl is GlobalVariable)
-        {
-          Error(node, "Only local linear variable can be actual output parameter of a procedure call");
         }
       }
       return base.VisitCallCmd(node);
@@ -474,7 +497,7 @@ namespace Microsoft.Boogie
             }
             return layers[0];
           }
-          var linearRewriter = new LinearRewriter(civlTypeChecker.Options, program.monomorphizer, LayerNum(impl.Proc));
+          var linearRewriter = new LinearRewriter(civlTypeChecker.Options, program.monomorphizer, impl.Proc.Modifies, LayerNum(impl.Proc));
           impl.Blocks.Iter(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
         }); 
       }
