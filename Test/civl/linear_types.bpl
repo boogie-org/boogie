@@ -48,3 +48,13 @@ modifies g;
     call Lmap_Transfer(g, path');
     call g := Lmap_Empty();
 }
+
+type {:datatype} Foo;
+function {:constructor} Foo(f: Lmap int): Foo;
+
+procedure {:atomic} {:layer 1, 2} A7({:linear_in} path: Lmap Foo, x: Ref Foo, y: Ref int) returns (path': Lmap Foo)
+{
+    var l: Lmap int;
+    path' := path;
+    call l := Lmap_Split(MapOne(y), path'->val[x]->f);
+}

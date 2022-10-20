@@ -186,12 +186,12 @@ namespace Microsoft.Boogie
           }
           for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
           {
-            Variable param = callCmd.Proc.InParams[i];
-            LinearKind paramKind = LinearDomainCollector.FindLinearKind(param);
-            if (paramKind == LinearKind.ORDINARY)
+            if (SkipParameterCheckAtCall(callCmd, i))
             {
               continue;
             }
+            Variable param = callCmd.Proc.InParams[i];
+            LinearKind paramKind = LinearDomainCollector.FindLinearKind(param);
             IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
             if (start.Contains(ie.Decl))
             {
@@ -217,6 +217,10 @@ namespace Microsoft.Boogie
         }
         else if (cmd is ParCallCmd parCallCmd)
         {
+          if (parCallCmd.CallCmds.Any(callCmd => IsPrimitive(callCmd.Proc)))
+          {
+            Error(parCallCmd, "linear primitives may not be invoked in a parallel call");
+          }
           linearGlobalVariables.Except(start).Iter(g =>
           {
             Error(cmd, $"Global variable {g.Name} must be available at a call");
@@ -299,6 +303,13 @@ namespace Microsoft.Boogie
       return false;
     }
 
+    private bool SkipParameterCheckAtCall(CallCmd callCmd, int i)
+    {
+      Variable formal = callCmd.Proc.InParams[i];
+      var formalKind = LinearDomainCollector.FindLinearKind(formal);
+      return formalKind == LinearKind.ORDINARY || IsPrimitive(callCmd.Proc) && formalKind == LinearKind.LINEAR;
+    }
+    
     public override Cmd VisitAssignCmd(AssignCmd node)
     {
       HashSet<Variable> rhsVars = new HashSet<Variable>();
@@ -350,22 +361,21 @@ namespace Microsoft.Boogie
       HashSet<Variable> inVars = new HashSet<Variable>();
       for (int i = 0; i < node.Proc.InParams.Count; i++)
       {
-        Variable formal = node.Proc.InParams[i];
-        var formalKind = LinearDomainCollector.FindLinearKind(formal);
-        if (formalKind == LinearKind.ORDINARY)
+        if (SkipParameterCheckAtCall(node, i))
         {
           continue;
         }
+        Variable formal = node.Proc.InParams[i];
         IdentifierExpr actual = node.Ins[i] as IdentifierExpr;
         if (actual == null)
         {
-          Error(node.Ins[i], $"Only variable can be passed to linear parameter {formal.Name}");
+          Error(node.Ins[i], $"Only a variable can be passed to linear parameter {formal.Name} at position {i}");
           continue;
         }
         var actualKind = LinearDomainCollector.FindLinearKind(actual.Decl);
         if (actualKind == LinearKind.ORDINARY)
         {
-          Error(actual, $"Only a linear argument can be passed to linear parameter {formal.Name}");
+          Error(actual, $"Only a linear variable can be passed to linear parameter {formal.Name} at position {i}");
           continue;
         }
         var formalDomain = FindDomain(formal);
