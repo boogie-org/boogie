@@ -217,10 +217,6 @@ namespace Microsoft.Boogie
         }
         else if (cmd is ParCallCmd parCallCmd)
         {
-          if (parCallCmd.CallCmds.Any(callCmd => IsPrimitive(callCmd.Proc)))
-          {
-            Error(parCallCmd, "linear primitives may not be invoked in a parallel call");
-          }
           linearGlobalVariables.Except(start).Iter(g =>
           {
             Error(cmd, $"Global variable {g.Name} must be available at a call");
@@ -354,6 +350,16 @@ namespace Microsoft.Boogie
         rhsVars.Add(rhs.Decl);
       }
       return base.VisitAssignCmd(node);
+    }
+
+    public override Cmd VisitParCallCmd(ParCallCmd node)
+    {
+      if (node.CallCmds.Any(callCmd => IsPrimitive(callCmd.Proc)))
+      {
+        Error(node, "linear primitives may not be invoked in a parallel call");
+        return node;
+      }
+      return base.VisitParCallCmd(node);
     }
 
     public override Cmd VisitCallCmd(CallCmd node)
