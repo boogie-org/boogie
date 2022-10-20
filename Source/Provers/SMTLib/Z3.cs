@@ -2,7 +2,7 @@
 
 namespace Microsoft.Boogie.SMTLib
 {
-  static class Z3
+  public static class Z3
   {
     // Do not access this field directly! Use method GetVersion.
     private static Version Z3Version = null;
