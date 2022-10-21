@@ -367,6 +367,12 @@ namespace Microsoft.Boogie
             rc.ErrorCount = e;
             continue;
           }
+          if (d is DatatypeConstructor)
+          {
+            // resolving a constructor adds it to its datatype declaration
+            // so we remove it from TopLevelDeclarations
+            continue;
+          }
         }
         prunedTopLevelDeclarations.Add(d);
       }
