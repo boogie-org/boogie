@@ -16,17 +16,8 @@ type {:linear "perm"} {:datatype} Perm;
 function {:constructor} Left(i: int): Perm;
 function {:constructor} Right(i: int): Perm;
 
-function {:inline} {:linear "perm"} IntCollector(i: int) : [Perm]bool
-{
-  MapConst(false)[Left(i) := true][Right(i) := true]
-}
-function {:inline} {:linear "perm"} IntSetCollector(iset: [int]bool) : [Perm]bool
-{
-  (lambda p: Perm :: p is Left && iset[p->i])
-}
-
 function Size<T>(set: [T]bool): int;
-axiom (forall set: [int]bool :: Size(set) >= 0);
+axiom {:ctor "Lset"} (forall<T> set: [T]bool :: Size(set) >= 0);
 
 procedure {:lemma} SizeLemma<T>(X: [T]bool, x: T);
 ensures Size(X[x := false]) + 1 == Size(X[x := true]);
@@ -37,7 +28,7 @@ ensures X == Y || Size(X) < Size(Y);
 
 var {:layer 0,3} stoppingFlag: bool;
 var {:layer 0,2} stopped: bool;
-var {:layer 1,2} {:linear "perm"} usersInDriver: [int]bool;
+var {:layer 1,2} usersInDriver: Lset Perm;
 var {:layer 0,1} pendingIo: int;
 var {:layer 0,1} stoppingEvent: bool;
 
@@ -45,70 +36,71 @@ procedure {:yield_invariant} {:layer 2} Inv2();
 requires stopped ==> stoppingFlag;
 
 procedure {:yield_invariant} {:layer 1} Inv1();
-requires stoppingEvent ==> stoppingFlag && usersInDriver == MapConst(false);
-requires pendingIo == Size(usersInDriver) + (if stoppingFlag then 0 else 1);
+requires stoppingEvent ==> stoppingFlag && usersInDriver->dom == MapConst(false);
+requires pendingIo == Size(usersInDriver->dom) + (if stoppingFlag then 0 else 1);
 
 // user code
 
 procedure {:yields} {:layer 2}
 {:yield_preserves "Inv2"}
 {:yield_preserves "Inv1"}
-User({:linear "perm"} i: int)
+User(i: int, {:layer 1,2} {:linear_in} ps: Lset Perm)
+requires {:layer 2} ps->dom[Left(i)] && ps->dom[Right(i)];
 {
-    var {:layer 1,2} {:linear "perm"} p: Perm;
+    var {:layer 1,2} ps': Lset Perm;
 
+    ps' := ps;
     while (*)
-    invariant {:yields} {:layer 2} {:yield_loop "Inv2"} true;
+    invariant {:yields} {:layer 2} {:yield_loop "Inv2"} ps'->dom[Left(i)] && ps'->dom[Right(i)];
     invariant {:yields} {:layer 1} {:yield_loop "Inv1"} true;
     {
-        call p := Enter#1(i);
-        call CheckAssert#1(p, i);
-        call Exit(p, i);
+        call ps' := Enter#1(i, ps');
+        call CheckAssert#1(i, ps');
+        call ps' := Exit(i, ps');
     }
 }
 
-procedure {:atomic} {:layer 2} AtomicEnter#1({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm)
+procedure {:atomic} {:layer 2} AtomicEnter#1(i: int, {:linear_in} ps: Lset Perm) returns (ps': Lset Perm)
 modifies usersInDriver;
 {
     assume !stoppingFlag;
-    usersInDriver[i] := true;
-    p := Right(i);
+    call ps' := AddToBarrier(i, ps);
 }
 procedure {:yields} {:layer 1} {:refines "AtomicEnter#1"}
 {:yield_preserves "Inv1"}
-Enter#1({:linear_in "perm"} i: int) returns ({:layer 1} {:linear "perm"} p: Perm)
+Enter#1(i: int, {:layer 1} {:linear_in} ps: Lset Perm) returns ({:layer 1} ps': Lset Perm)
 {
     call Enter();
-    call {:layer 1} SizeLemma(usersInDriver, i);
-    call p := AddToBarrier(i);
+    call {:layer 1} SizeLemma(usersInDriver->dom, Left(i));
+    call ps' := AddToBarrier(i, ps);
 }
 
-procedure {:left} {:layer 2} AtomicCheckAssert#1({:layer 1} {:linear "perm"} p: Perm, i: int)
+procedure {:left} {:layer 2} AtomicCheckAssert#1(i: int, ps: Lset Perm)
 {
-    assert p == Right(i) && usersInDriver[i];
+    assert ps->dom[Right(i)] && usersInDriver->dom[Left(i)];
     assert !stopped;
 }
 procedure {:yields} {:layer 1} {:refines "AtomicCheckAssert#1"}
 {:yield_preserves "Inv1"}
-CheckAssert#1({:layer 1} {:linear "perm"} p: Perm, i: int)
+CheckAssert#1(i: int, {:layer 1} ps: Lset Perm)
 {
     call CheckAssert();
 }
 
-procedure {:left} {:layer 2} AtomicExit({:layer 1} {:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
+procedure {:left} {:layer 2} AtomicExit(i: int, {:linear_in} ps: Lset Perm) returns (ps': Lset Perm)
 modifies usersInDriver;
 {
-    assert p == Right(i) && usersInDriver[i];
-    usersInDriver[i] := false;
+    assert ps->dom[Right(i)] && usersInDriver->dom[Left(i)];
+    call ps' := RemoveFromBarrier(i, ps);
 }
 procedure {:yields} {:layer 1} {:refines "AtomicExit"}
 {:yield_preserves "Inv1"}
-Exit({:layer 1} {:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
+Exit(i: int, {:layer 1} {:linear_in} ps: Lset Perm) returns ({:layer 1} ps': Lset Perm)
 {
     call DeleteReference();
-    call {:layer 1} SizeLemma(usersInDriver, i);
-    call RemoveFromBarrier(p, i);
-    call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver);
+    call {:layer 1} SizeLemma(usersInDriver->dom, Left(i));
+    call ps' := RemoveFromBarrier(i, ps);
+    call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->dom);
 }
 
 // stopper code
@@ -128,13 +120,13 @@ Close(i: Lval int)
 {
     call SetStoppingFlag(i);
     call DeleteReference();
-    call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver);
+    call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->dom);
 }
 
 procedure {:atomic} {:layer 2} AtomicWaitAndStop()
 modifies stopped;
 {
-    assume usersInDriver == MapConst(false);
+    assume usersInDriver->dom == MapConst(false);
     stopped := true;
 }
 procedure {:yields} {:layer 1} {:refines "AtomicWaitAndStop"}
@@ -147,18 +139,22 @@ WaitAndStop()
 
 /// introduction actions
 
-procedure {:intro} {:layer 1} AddToBarrier({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm)
+procedure {:intro} {:layer 1, 2} AddToBarrier(i: int, {:linear_in} ps: Lset Perm) returns (ps': Lset Perm)
 modifies usersInDriver;
 {
-    usersInDriver[i] := true;
-    p := Right(i);
+    var x: Lval Perm;
+    ps' := ps;
+    call x := Lval_Split(Left(i), ps');
+    call Lval_Transfer(x, usersInDriver);
 }
 
-procedure {:intro} {:layer 1} RemoveFromBarrier({:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
+procedure {:intro} {:layer 1, 2} RemoveFromBarrier(i: int, {:linear_in} ps: Lset Perm) returns (ps': Lset Perm)
 modifies usersInDriver;
 {
-    assert p == Right(i) && usersInDriver[i];
-    usersInDriver[i] := false;
+    var x: Lval Perm;
+    ps' := ps;
+    call x := Lval_Split(Left(i), usersInDriver);
+    call Lval_Transfer(x, ps');
 }
 
 /// primitive actions
