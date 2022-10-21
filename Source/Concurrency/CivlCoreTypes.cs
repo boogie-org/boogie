@@ -209,14 +209,19 @@ namespace Microsoft.Boogie
     }
   }
 
+    /*
+     * An introduction action may have a layer range which allows it to be called
+     * from other atomic actions. But its lower layer is special because the variables
+     * it can modify must have been introduced at that layer.
+     */
   public class IntroductionAction : Action
   {
     public IntroductionAction(Procedure proc, Implementation impl, LayerRange layerRange) :
       base(proc, impl, layerRange)
     {
     }
-
-    public int LayerNum => layerRange.lowerLayerNum; // layerRange.lowerLayerNum == layerRange.upperLayerNum
+    
+    public int LayerNum => layerRange.lowerLayerNum;
   }
 
   public class AtomicAction : Action

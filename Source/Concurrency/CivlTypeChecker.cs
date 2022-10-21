@@ -290,10 +290,6 @@ namespace Microsoft.Boogie
           {
             Error(proc, "Action must be either an atomic action or introduction action");
           }
-          else if (layerRange.lowerLayerNum != layerRange.upperLayerNum)
-          {
-            Error(proc, "Layer range of an introduction action should be singleton");
-          }
           else if (proc.Modifies.Any(ie => GlobalVariableLayerRange(ie.Decl).lowerLayerNum != layerRange.lowerLayerNum))
           {
             Error(proc, "Introduction actions can modify a global variable only on its introduction layer");
