@@ -12,7 +12,7 @@ see cav2020-3.bpl for another example inspired by a concurrent
 garbage collector.
 */
 
-type {:linear "perm"} {:datatype} Perm;
+type {:datatype} Perm;
 function {:constructor} Left(i: int): Perm;
 function {:constructor} Right(i: int): Perm;
 
