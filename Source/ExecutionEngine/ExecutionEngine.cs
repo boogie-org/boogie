@@ -434,6 +434,12 @@ namespace Microsoft.Boogie
           "Datatypes only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
         return PipelineOutcome.FatalError;
       }
+      else if (program.TopLevelDeclarations.OfType<Function>().Any(f => QKeyValue.FindBoolAttribute(f.Attributes, "define")))
+      {
+        Console.WriteLine(
+          "Functions with :define attribute only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
+        return PipelineOutcome.FatalError;
+      }
 
       CollectModSets(program);
 
