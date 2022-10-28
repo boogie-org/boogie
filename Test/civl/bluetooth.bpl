@@ -88,7 +88,7 @@ CheckAssert#1(i: int, {:layer 1} r: Lval Perm)
 procedure {:left} {:layer 2} AtomicExit(i: int, {:linear_out} l: Lval Perm, r: Lval Perm)
 modifies usersInDriver;
 {
-    assert l->val == Left(i) && r->val == Right(i) && usersInDriver->dom[Left(i)];
+    assert l->val == Left(i) && r->val == Right(i);
     call RemoveFromBarrier(i, l);
 }
 procedure {:yields} {:layer 1} {:refines "AtomicExit"}
