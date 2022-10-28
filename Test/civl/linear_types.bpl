@@ -57,3 +57,9 @@ procedure {:atomic} {:layer 1, 2} A7({:linear_in} path: Lmap Foo, x: Ref Foo, y:
     path' := path;
     call l := Lmap_Split(MapOne(y), path'->val[x]->f);
 }
+
+procedure {:atomic} {:layer 1, 2} A8({:linear_out} l: Lval int, {:linear_in} path: Lset int) returns (path': Lset int)
+{
+    path' := path;
+    call Lval_Split(l, path');
+}

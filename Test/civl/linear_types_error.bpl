@@ -28,3 +28,5 @@ procedure {:atomic} {:layer 1, 2} A4({:linear_in} path: Lmap Foo, x: Ref Foo, l:
     path' := path;
     call Lmap_Transfer(path'->val[x]->f, l);
 }
+
+procedure {:atomic} {:layer 1, 2} A5({:linear_out} path: Lmap int) { }
