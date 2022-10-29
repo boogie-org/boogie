@@ -3,4 +3,5 @@ linear_types_error.bpl(8,0): Error: Input variable path must be available at a r
 linear_types_error.bpl(13,0): Error: Input variable path must be available at a return
 linear_types_error.bpl(21,0): Error: Global variable g must be available at a return
 linear_types_error.bpl(29,36): Error: Only a variable can be passed to linear parameter path1 at position 0
-5 type checking errors detected in linear_types_error.bpl
+linear_types_error.bpl(32,69): Error: Input variable path must be available at a return
+6 type checking errors detected in linear_types_error.bpl

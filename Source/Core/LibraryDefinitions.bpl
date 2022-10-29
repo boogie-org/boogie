@@ -157,7 +157,7 @@ function {:inline} Lset_Contains<V>(l: Lset V, k: V): bool {
     l->dom[k]
 }
 procedure Lset_Empty<V>() returns (l: Lset V);
-procedure Lset_Split<V>(k: [V]bool, path: Lset V) returns (l: Lset V);
+procedure Lset_Split<V>({:linear_out} k: Lset V, path: Lset V);
 procedure Lset_Transfer<V>({:linear_in} path1: Lset V, path2: Lset V);
 
 /// linear vals
@@ -167,5 +167,5 @@ function {:constructor} Lval<V>(val: V): Lval V;
 function {:inline} Lval_Collector<V>(l: Lval V): [V]bool {
     MapConst(false)[l->val := true]
 }
-procedure Lval_Split<V>(k: V, path: Lset V) returns (l: Lval V);
+procedure Lval_Split<V>({:linear_out} k: Lval V, path: Lset V);
 procedure Lval_Transfer<V>({:linear_in} l: Lval V, path: Lset V);

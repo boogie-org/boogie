@@ -335,19 +335,16 @@ public class LinearRewriter
     var cmdSeq = new List<Cmd>();
     var k = callCmd.Ins[0];
     var path = callCmd.Ins[1];
-    var l = callCmd.Outs[0].Decl;
     
     var mapConstFunc = MapConst(type, Type.Bool);
     var mapImpFunc = MapImp(type);
     cmdSeq.Add(AssertCmd(callCmd.tok,
-      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, k, Dom(path)), ExprHelper.FunctionCall(mapConstFunc, Expr.True)),
+      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, Dom(k), Dom(path)), ExprHelper.FunctionCall(mapConstFunc, Expr.True)),
       "Lset_Split failed"));
-    
-    cmdSeq.Add(CmdHelper.AssignCmd(l,ExprHelper.FunctionCall(lsetConstructor, k)));
 
     var mapDiffFunc = MapDiff(type);
     cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),ExprHelper.FunctionCall(mapDiffFunc, Dom(path), k)));
+      CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),ExprHelper.FunctionCall(mapDiffFunc, Dom(path), Dom(k))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
@@ -379,18 +376,15 @@ public class LinearRewriter
     var cmdSeq = new List<Cmd>();
     var k = callCmd.Ins[0];
     var path = callCmd.Ins[1];
-    var l = callCmd.Outs[0].Decl;
     
     var lsetContainsFunc = LsetContains(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lsetContainsFunc, path, k), "Lval_Split failed"));
-    
-    cmdSeq.Add(CmdHelper.AssignCmd(l,ExprHelper.FunctionCall(lvalConstructor, k)));
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lsetContainsFunc, path, ExprHelper.FieldAccess(k, "val")), "Lval_Split failed"));
 
     var mapOneFunc = MapOne(type);
     var mapDiffFunc = MapDiff(type);
     cmdSeq.Add(
       CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),
-        ExprHelper.FunctionCall(mapDiffFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, k))));
+        ExprHelper.FunctionCall(mapDiffFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, ExprHelper.FieldAccess(k, "val")))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
