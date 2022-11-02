@@ -2418,6 +2418,37 @@ namespace Microsoft.Boogie
   }
 
   /// <summary>
+  ///
+  public class UnpackCmd : Cmd 
+  {
+    public UnpackCmd(IToken tok, Expr lhs, IdentifierExpr rhs)
+    : base(tok)
+    {
+
+    }
+
+    public override void AddAssignedVariables(List<Variable> vars)
+    {
+      throw new NotImplementedException();
+    }
+
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      throw new NotImplementedException();
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      throw new NotImplementedException();
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      throw new NotImplementedException();
+    }
+  }
+
+  /// <summary>
   /// A StateCmd is like an imperative-let binding around a sequence of commands.
   /// There is no user syntax for a StateCmd.  Instead, a StateCmd is only used
   /// temporarily during the desugaring phase inside the VC generator.
