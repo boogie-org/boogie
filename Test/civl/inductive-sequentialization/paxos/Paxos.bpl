@@ -41,11 +41,11 @@ function {:constructor} VotePerm(r:Round, n: Node): Permission;
 function {:constructor} ConcludePerm(r: Round): Permission;
 
 type {:pending_async}{:datatype} PA;
-function {:constructor} A_StartRound(round: Round, round_lin: Round) : PA;
-function {:constructor} A_Join(round: Round, node: Node, p: Permission) : PA;
-function {:constructor} A_Propose(round: Round, ps: [Permission]bool) : PA;
-function {:constructor} A_Vote(round: Round, node: Node, value: Value, p: Permission) : PA;
-function {:constructor} A_Conclude(round: Round, value: Value, p: Permission) : PA;
+function {:constructor} A_StartRound(r: Round, r_lin: Round) : PA;
+function {:constructor} A_Join(r: Round, n: Node, p: Permission) : PA;
+function {:constructor} A_Propose(r: Round, ps: [Permission]bool) : PA;
+function {:constructor} A_Vote(r: Round, n: Node, v: Value, p: Permission) : PA;
+function {:constructor} A_Conclude(r: Round, v: Value, p: Permission) : PA;
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Functions
@@ -106,12 +106,12 @@ function {:inline} VotePermissions(r: Round) : [Permission]bool
 
 function {:inline} JoinPAs(r: Round) : [PA]int
 {
-  (lambda pa: PA :: if pa is A_Join && pa->round == r && Node(pa->node) && pa->p == JoinPerm(r, pa->node) then 1 else 0)
+  (lambda pa: PA :: if pa is A_Join && pa->r == r && Node(pa->n) && pa->p == JoinPerm(r, pa->n) then 1 else 0)
 }
 
 function {:inline} VotePAs(r: Round, v: Value) : [PA]int
 {
-  (lambda pa: PA :: if pa is A_Vote && pa->round == r && Node(pa->node) && pa->value == v && pa->p == VotePerm(r, pa->node) then 1 else 0)
+  (lambda pa: PA :: if pa is A_Vote && pa->r == r && Node(pa->n) && pa->v == v && pa->p == VotePerm(r, pa->n) then 1 else 0)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -29,7 +29,7 @@ namespace Microsoft.Boogie
 
       foreach (Variable local in declLocalVariables.Union(decl.InParams).Union(decl.OutParams))
       {
-        var copy = civlTypeChecker.LocalVariable(local.Name, local.TypedIdent.Type);
+        var copy = CopyLocal(local);
         locals.Add(copy);
         localVarMap[local] = copy;
         map[local] = Expr.Ident(copy);
@@ -205,6 +205,16 @@ namespace Microsoft.Boogie
       }
 
       return allYieldPredicates;
+    }
+
+    private static LocalVariable CopyLocal(Variable v)
+    {
+      var copy = VarHelper.LocalVariable(v.Name, v.TypedIdent.Type);
+      if (v.Attributes != null)
+      {
+        copy.Attributes = (QKeyValue)v.Attributes.Clone();
+      }
+      return copy;
     }
 
     private static Formal SnapshotGlobalFormal(CivlTypeChecker civlTypeChecker, Variable v)

@@ -818,18 +818,18 @@ namespace Microsoft.Boogie
             // For error messages below
             string name1 = formals1[i].Name;
             string name2 = formals2[i].Name;
-            string msg = (name1 == name2) ? name1 : $"{name1} (named {name2} in {decl2.Name})";
-
-            // the names of the formals are allowed to change from the proc to the impl
-            // but types must be identical
+            
             Type t1 = formals1[i].TypedIdent.Type;
             Type t2 = formals2[i].TypedIdent.Type;
-            if (!t1.Equals(t2))
+            if (name1 != name2)
             {
-              checkingContext.Error(formals1[i], $"mismatched type of {inout}-parameter in {decl2.Name}: {msg}");
+              checkingContext.Error(formals1[i], $"mismatched name of {inout}-parameter {name1}: (named {name2} in {decl2.Name})");
             }
-
-            if (checkLinearity &&
+            else if (!t1.Equals(t2))
+            {
+              checkingContext.Error(formals1[i], $"mismatched type of {inout}-parameter {name1} in {decl2.Name}");
+            }
+            else if (checkLinearity &&
                 (QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR) !=
                  QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR) ||
                  QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_IN) !=
@@ -838,7 +838,7 @@ namespace Microsoft.Boogie
                  QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_OUT)))
             {
               checkingContext.Error(formals1[i],
-                $"mismatched linearity type of {inout}-parameter in {decl2.Name}: {msg}");
+                $"mismatched linearity annotation of {inout}-parameter {name1} in {decl2.Name}");
             }
           }
         }

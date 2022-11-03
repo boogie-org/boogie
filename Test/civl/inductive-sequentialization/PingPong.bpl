@@ -35,7 +35,7 @@ function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [Channel
 // and Pong holding its right channel handle.
 type {:pending_async}{:datatype} PA;
 function {:constructor} PING(x: int, left: ChannelHandle): PA;
-function {:constructor} PONG(x: int, right: ChannelHandle): PA;
+function {:constructor} PONG(y: int, right: ChannelHandle): PA;
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }

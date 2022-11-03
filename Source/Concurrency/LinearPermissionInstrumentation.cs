@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Microsoft.Boogie
@@ -62,21 +63,9 @@ namespace Microsoft.Boogie
 
     public Dictionary<LinearDomain, Expr> PermissionExprs(Absy absy)
     {
-      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var domainToScope = linearTypeChecker.LinearDomains.ToDictionary(domain => domain, _ => new HashSet<Variable>());
       var availableVars = AvailableLinearLocalVars(absy).Union(LinearGlobalVars());
-      availableVars.Iter(v =>
-      {
-        var domain = linearTypeChecker.FindDomain(v);
-        domainToScope[domain].Add(MapVariable(v));
-      });
-      var domainToExpr = domainToScope.ToDictionary(kv => kv.Key, kv =>
-      {
-        var permissionExprs =
-          linearTypeChecker.PermissionExprForEachVariable(kv.Key, kv.Value);
-        return linearTypeChecker.UnionExprForPermissions(kv.Key, permissionExprs);
-      });
-      return domainToExpr;
+      var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
+      return civlTypeChecker.linearTypeChecker.PermissionExprs(mappedAvailableVars);
     }
 
     public void AddDisjointnessAssumptions(Implementation impl)
@@ -119,18 +108,13 @@ namespace Microsoft.Boogie
     private List<Expr> DisjointnessExprs(IEnumerable<Variable> availableVars)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var domainToScope = linearTypeChecker.LinearDomains.ToDictionary(domain => domain, _ => new HashSet<Variable>());
-      availableVars.Iter(v =>
-      {
-        var domain = linearTypeChecker.FindDomain(v);
-        domainToScope[domain].Add(MapVariable(v));
-      });
+      var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
       var newExprs = new List<Expr>();
       foreach (var domain in linearTypeChecker.LinearDomains)
       {
         var permissionExprs =
           linearTypeChecker
-            .PermissionExprForEachVariable(domain, domainToScope[domain])
+            .PermissionExprForEachVariable(domain, mappedAvailableVars)
             .Union(
               domainToHoleVar.ContainsKey(domain)
                 ? new List<Expr> {Expr.Ident(domainToHoleVar[domain])}

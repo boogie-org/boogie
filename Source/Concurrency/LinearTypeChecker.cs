@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 
 namespace Microsoft.Boogie
 {
@@ -300,6 +301,16 @@ namespace Microsoft.Boogie
       return LinearRewriter.IsPrimitive(program.monomorphizer.GetOriginalDecl(decl));
     }
     
+    private LinearDomain FindDomain(Variable v)
+    {
+      var domainName = LinearDomainCollector.FindDomainName(v);
+      if (domainName == null)
+      {
+        return linearTypeToLinearDomain[v.TypedIdent.Type];
+      }
+      return domainNameToLinearDomain[domainName];
+    }
+    
     // SkipCheck is selectively applied at a few places to allow the type checker 
     // to be used whether the code uses name or type domains.
     private bool SkipCheck(Variable v)
@@ -484,16 +495,6 @@ namespace Microsoft.Boogie
     public IEnumerable<LinearDomain> TypeLinearDomains => linearTypeToLinearDomain.Values;
 
     public IEnumerable<LinearDomain> LinearDomains => domainNameToLinearDomain.Values.Union(linearTypeToLinearDomain.Values);
-    
-    public LinearDomain FindDomain(Variable v)
-    {
-      var domainName = LinearDomainCollector.FindDomainName(v);
-      if (domainName == null)
-      {
-        return linearTypeToLinearDomain[v.TypedIdent.Type];
-      }
-      return domainNameToLinearDomain[domainName];
-    }
 
     public Formal LinearDomainInFormal(LinearDomain domain)
     {
@@ -550,25 +551,31 @@ namespace Microsoft.Boogie
       }
     }
 
+    public IEnumerable<Variable> FilterVariables(LinearDomain domain, IEnumerable<Variable> vars)
+    {
+      return vars.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY && FindDomain(v) == domain);
+    }
+    
     public IEnumerable<Expr> DisjointnessExprForEachDomain(IEnumerable<Variable> scope)
     {
-      var domainToScope = LinearDomains.ToDictionary(domain => domain, _ => new HashSet<Variable>());
-      scope.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY).Iter(v => domainToScope[FindDomain(v)].Add(v));
-      foreach (var domain in domainToScope.Keys)
+      return LinearDomains.Select(domain =>
+        DisjointnessExprForPermissions(domain, PermissionExprForEachVariable(domain, FilterVariables(domain, scope))));
+    }
+
+    public Dictionary<LinearDomain, Expr> PermissionExprs(IEnumerable<Variable> availableVars)
+    {
+      return LinearDomains.ToDictionary(domain => domain, domain =>
       {
-        yield return DisjointnessExprForPermissions(
-          domain,
-          PermissionExprForEachVariable(domain, domainToScope[domain]));
-      }
+        var permissionExprs = PermissionExprForEachVariable(domain, availableVars);
+        return UnionExprForPermissions(domain, permissionExprs);
+      });
     }
 
     public IEnumerable<Expr> PermissionExprForEachVariable(LinearDomain domain, IEnumerable<Variable> scope)
     {
-      foreach (Variable v in scope)
-      {
-        Expr expr = ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v));
-        yield return expr;
-      }
+      return scope
+        .Where(x => LinearDomainCollector.FindLinearKind(x) != LinearKind.ORDINARY && domain == FindDomain(x))
+        .Select(v => ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v)));
     }
     
     public Expr DisjointnessExprForPermissions(LinearDomain domain, IEnumerable<Expr> permissionsExprs)
@@ -584,7 +591,6 @@ namespace Microsoft.Boogie
           subsetExprs.Add(SubsetExpr(domain, e, partition, count));
           count++;
         }
-
         expr = ExprHelper.ExistsExpr(new List<Variable> {partition}, Expr.And(subsetExprs));
       }
       return expr;
