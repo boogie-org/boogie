@@ -807,12 +807,18 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Cmd VisitAssignCmd(AssignCmd node)
     {
-      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
 
+    public override Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      Contract.Ensures(Contract.Result<Cmd>() != null);
+      Contract.Assert(false);
+      throw new cce.UnreachableException();
+    }
+    
     public override Cmd VisitAssumeCmd(AssumeCmd node)
     {
       //Contract.Requires(node != null);

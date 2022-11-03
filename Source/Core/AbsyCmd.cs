@@ -2419,32 +2419,128 @@ namespace Microsoft.Boogie
 
   /// <summary>
   ///
-  public class UnpackCmd : Cmd 
+  public class UnpackCmd : SugaredCmd, ICarriesAttributes
   {
-    public UnpackCmd(IToken tok, Expr lhs, IdentifierExpr rhs)
+    private NAryExpr lhs;
+    private Expr rhs;
+    private QKeyValue kv;
+
+    public UnpackCmd(IToken tok, NAryExpr lhs, Expr rhs, QKeyValue kv)
     : base(tok)
     {
-
+      this.lhs = lhs;
+      this.rhs = rhs;
+      this.kv = kv;
     }
 
-    public override void AddAssignedVariables(List<Variable> vars)
+    public QKeyValue Attributes
     {
-      throw new NotImplementedException();
-    }
-
-    public override void Emit(TokenTextWriter stream, int level)
-    {
-      throw new NotImplementedException();
-    }
-
-    public override void Typecheck(TypecheckingContext tc)
-    {
-      throw new NotImplementedException();
+      get { return kv; }
+      set { kv = value; }
     }
 
     public override void Resolve(ResolutionContext rc)
     {
-      throw new NotImplementedException();
+      lhs.Resolve(rc);
+      rhs.Resolve(rc);
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      TypecheckAttributes(Attributes, tc);
+      lhs.Typecheck(tc);
+      rhs.Typecheck(tc);
+      this.CheckAssignments(tc);
+      Type ltype = lhs.Type;
+      Type rtype = rhs.Type;
+      if (ltype == null || rtype == null)
+      {
+        return;
+      }
+      if (!ltype.Unify(rtype))
+      {
+        tc.Error(tok,
+          "mismatched types in assignment command (cannot assign {0} to {1})",
+          rtype, ltype);
+        return;
+      }
+      var f = (FunctionCall)lhs.Fun;
+      if (!(f.Func is DatatypeConstructor))
+      {
+        tc.Error(tok, "left side of unpack command must be a constructor application");
+      }
+    }
+
+    public DatatypeConstructor Constructor => (DatatypeConstructor)((FunctionCall)lhs.Fun).Func;
+    
+    public NAryExpr Lhs
+    {
+      get
+      {
+        return lhs;
+      }
+      set
+      {
+        lhs = value;
+      }
+    }
+    
+    public Expr Rhs
+    {
+      get
+      {
+        return rhs;
+      }
+      set
+      {
+        rhs = value;
+      }
+    }
+    
+    public override void AddAssignedVariables(List<Variable> vars)
+    {
+      lhs.Args.Cast<IdentifierExpr>().Iter(arg => vars.Add(arg.Decl));
+    }
+
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      stream.Write(this, level, "");
+      lhs.Emit(stream);
+      stream.Write(" := ");
+      rhs.Emit(stream);
+      stream.WriteLine(";");
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      return visitor.VisitUnpackCmd(this);
+    }
+    
+    protected override Cmd ComputeDesugaring(PrintOptions options)
+    {
+      var cmds = new List<Cmd>();
+      var localVars = new List<Variable>();
+      Expr localRhs = rhs;
+      if (!(rhs is IdentifierExpr))
+      {
+        var v = new LocalVariable(tok, new TypedIdent(tok, $"unpack_{Constructor.Name}", rhs.Type));
+        localVars.Add(v);
+        var assignLhs = new SimpleAssignLhs(tok, new IdentifierExpr(tok, v));
+        localRhs = assignLhs.AsExpr;
+        cmds.Add(new AssignCmd(tok, new List<AssignLhs> { assignLhs }, new List<Expr> { rhs }));
+      }
+      cmds.Add(new AssertCmd(tok,
+        new NAryExpr(tok, new IsConstructor(tok, Constructor.datatypeTypeCtorDecl, Constructor.index),
+          new List<Expr> { localRhs })));
+      var assignLhss = lhs.Args.Select(arg => new SimpleAssignLhs(tok, (IdentifierExpr)arg)).ToList<AssignLhs>();
+      var assignRhss = Enumerable.Range(0, Constructor.InParams.Count).Select(i =>
+      {
+        var fieldAccess = new FieldAccess(tok, Constructor.datatypeTypeCtorDecl,
+          new List<DatatypeAccessor> { new DatatypeAccessor(Constructor.index, i) });
+        return new NAryExpr(tok, fieldAccess, new List<Expr> { localRhs });
+      }).ToList<Expr>();
+      cmds.Add(new AssignCmd(tok, assignLhss, assignRhss));
+      return new StateCmd(tok, localVars, cmds);
     }
   }
 

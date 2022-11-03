@@ -160,7 +160,7 @@ namespace Microsoft.Boogie
             {
               continue;
             }
-            IdentifierExpr ie = assignCmd.Rhss[i] as IdentifierExpr;
+            var ie = assignCmd.Rhss[i] as IdentifierExpr;
             if (!start.Contains(ie.Decl))
             {
               Error(ie, "unavailable source for a linear read");
@@ -174,6 +174,24 @@ namespace Microsoft.Boogie
             .Where(assignLhs =>
               LinearDomainCollector.FindLinearKind(assignLhs.DeepAssignedVariable) != LinearKind.ORDINARY)
             .Iter(assignLhs => start.Add(assignLhs.DeepAssignedVariable));
+        }
+        else if (cmd is UnpackCmd unpackCmd)
+        {
+          if (unpackCmd.Lhs.Args.Cast<IdentifierExpr>().Any(arg => !SkipCheck(arg.Decl)))
+          {
+            var ie = unpackCmd.Rhs as IdentifierExpr;
+            if (!start.Contains(ie.Decl))
+            {
+              Error(ie, "unavailable source for a linear read");
+            }
+            else
+            {
+              start.Remove(ie.Decl);
+              unpackCmd.Lhs.Args.Cast<IdentifierExpr>()
+                .Where(arg => LinearDomainCollector.FindLinearKind(arg.Decl) != LinearKind.ORDINARY)
+                .Iter(arg => start.Add(arg.Decl));
+            }
+          }
         }
         else if (cmd is CallCmd callCmd)
         {
@@ -352,6 +370,23 @@ namespace Microsoft.Boogie
       return base.VisitAssignCmd(node);
     }
 
+    public override Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      if (node.Lhs.Args.Cast<IdentifierExpr>().Any(arg => !SkipCheck(arg.Decl)))
+      {
+        IdentifierExpr rhs = node.Rhs as IdentifierExpr;
+        if (rhs == null || LinearDomainCollector.FindLinearKind(rhs.Decl) == LinearKind.ORDINARY)
+        {
+          Error(node, $"The source for unpack must be a linear variable");
+        }
+        else if (FindDomain(rhs.Decl).IsNameDomain)
+        {
+         Error(node, $"The source for unpack must be a linear variable of type domain"); 
+        }
+      }
+      return base.VisitUnpackCmd(node);
+    }
+    
     public override Cmd VisitParCallCmd(ParCallCmd node)
     {
       if (node.CallCmds.Any(callCmd => IsPrimitive(callCmd.Proc)))
@@ -535,9 +570,7 @@ namespace Microsoft.Boogie
         yield return expr;
       }
     }
-
-    private ConcurrencyOptions Options => civlTypeChecker.Options;
-
+    
     public Expr DisjointnessExprForPermissions(LinearDomain domain, IEnumerable<Expr> permissionsExprs)
     {
       Expr expr = Expr.True;

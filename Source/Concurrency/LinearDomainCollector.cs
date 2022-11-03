@@ -216,19 +216,27 @@ namespace Microsoft.Boogie
 
     public override Variable VisitVariable(Variable node)
     {
+      string domainName = FindDomainName(node);
       var nodeType = node.TypedIdent.Type;
-      if (HasPermissionType(program, nodeType))
+      var hasPermissionType = HasPermissionType(program, nodeType);
+      if (domainName != null)
+      {
+        if (!linearDomains.ContainsKey(domainName))
+        {
+          checkingContext.Error(node, $"Permission type not declared for domain {domainName}");
+        } 
+        else if (hasPermissionType)
+        {
+          checkingContext.Error(node, $"Variable of linear type must not have a domain name");
+        }
+      }
+      if (hasPermissionType)
       {
         linearTypes.Add(nodeType);
         if (FindLinearKind(node) == LinearKind.ORDINARY)
         {
           node.Attributes = new QKeyValue(Token.NoToken, CivlAttributes.LINEAR, new List<object>(), node.Attributes);
         }
-      }
-      string domainName = FindDomainName(node);
-      if (domainName != null && !linearDomains.ContainsKey(domainName))
-      {
-        checkingContext.Error(node, $"Permission type not declared for domain {domainName}");
       }
       return node;
     }

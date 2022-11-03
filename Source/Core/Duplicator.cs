@@ -42,14 +42,18 @@ namespace Microsoft.Boogie
 
     public override Cmd VisitAssignCmd(AssignCmd node)
     {
-      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       AssignCmd clone = (AssignCmd) node.Clone();
-      clone.Lhss = new List<AssignLhs /*!*/>(clone.Lhss);
-      clone.Rhss = new List<Expr /*!*/>(clone.Rhss);
+      clone.Lhss = new List<AssignLhs>(clone.Lhss);
+      clone.Rhss = new List<Expr>(clone.Rhss);
       return base.VisitAssignCmd(clone);
     }
 
+    public override Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      return base.VisitUnpackCmd((UnpackCmd) node.Clone());
+    }
+    
     public override Cmd VisitAssumeCmd(AssumeCmd node)
     {
       //Contract.Requires(node != null);

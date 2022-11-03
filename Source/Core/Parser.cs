@@ -10,6 +10,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Microsoft.Boogie;
 using Microsoft.BaseTypes;
@@ -1255,7 +1256,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	}
 
 	void LabelOrAssign(out Cmd c, out IToken label) {
-		IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e0;
+		IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e0; List<IToken> ids;
 		c = dummyCmd;  label = null;
 		AssignLhs/*!*/ lhs;
 		List<AssignLhs/*!*/>/*!*/ lhss;
@@ -1263,12 +1264,28 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		List<Expr/*!*/>/*!*/ indexes;
 		FieldAccess fieldAccess;
 		QKeyValue kv = null;
+		NAryExpr lhsExpr;
 		
 		Ident(out id);
 		x = t; 
 		if (la.kind == 12) {
 			Get();
-			c = null;  label = x; 
+			c = null; label = x; 
+		} else if (la.kind == 10) {
+			Get();
+			Idents(out ids);
+			Expect(11);
+			lhsExpr = new NAryExpr(x, new FunctionCall(new IdentifierExpr(id, id.val)), ids.Select(id => new IdentifierExpr(id, id.val)).ToList<Expr>());
+			
+			Expect(52);
+			x = t; /* use location of := */ 
+			while (la.kind == 25) {
+				Attribute(ref kv);
+			}
+			Expression(out e0);
+			Expect(9);
+			c = new UnpackCmd(x, lhsExpr, e0, kv); 
+			
 		} else if (StartOf(10)) {
 			lhss = new List<AssignLhs/*!*/>(); 
 			lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); 

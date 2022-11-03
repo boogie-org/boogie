@@ -1862,14 +1862,36 @@ namespace Microsoft.Boogie
                 "Layer range mismatch at position {0}: local variables accessed in rhs must be available at all layers where the lhs exists",
                 i);
             }
-
             localVariableAccesses = null;
           }
         }
-
         return cmd;
       }
 
+      public override Cmd VisitUnpackCmd(UnpackCmd node)
+      {
+        var cmd = base.VisitUnpackCmd(node);
+        localVariableAccesses = new List<IdentifierExpr>();
+        base.Visit(node.Rhs);
+        for (int i = 0; i < node.Lhs.Args.Count; i++)
+        {
+          var lhs = ((IdentifierExpr)node.Lhs.Args[i]).Decl;
+          if (lhs is LocalVariable lhsLocalVariable)
+          {
+            var lhsLayerRange = civlTypeChecker.LocalVariableLayerRange(lhsLocalVariable);
+            if (!localVariableAccesses.TrueForAll(x =>
+                  lhsLayerRange.Subset(civlTypeChecker.LocalVariableLayerRange(x.Decl))))
+            {
+              civlTypeChecker.checkingContext.Error(node,
+                "Layer range mismatch at position {0}: local variables accessed in rhs must be available at all layers where the lhs exists",
+                i);
+            }
+          }
+        }
+        localVariableAccesses = null;
+        return cmd;
+      }
+      
       public void VisitSpecPre()
       {
         globalVariableAccesses = new List<IdentifierExpr>();

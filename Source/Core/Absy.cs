@@ -79,7 +79,7 @@ namespace Microsoft.Boogie
     public abstract void Typecheck(TypecheckingContext /*!*/ tc);
 
     /// <summary>
-    /// Intorduced this so the uniqueId is not the same on a cloned object.
+    /// Introduced so the uniqueId is not the same on a cloned object.
     /// </summary>
     /// <param name="tc"></param>
     public virtual Absy Clone()

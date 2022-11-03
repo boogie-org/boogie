@@ -7,6 +7,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Microsoft.Boogie;
 using Microsoft.BaseTypes;
@@ -914,7 +915,7 @@ LabelOrCmd<out Cmd c, out IToken label>
 
 LabelOrAssign<out Cmd c, out IToken label>
 /* ensures (c == null) != (label != null) */
-= (. IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e0;
+= (. IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e0; List<IToken> ids;
      c = dummyCmd;  label = null;
      AssignLhs/*!*/ lhs;
      List<AssignLhs/*!*/>/*!*/ lhss;
@@ -922,9 +923,22 @@ LabelOrAssign<out Cmd c, out IToken label>
      List<Expr/*!*/>/*!*/ indexes;
      FieldAccess fieldAccess;
      QKeyValue kv = null;
+     NAryExpr lhsExpr;
   .)
   Ident<out id>              (. x = t; .)
-  ( ":"                      (. c = null;  label = x; .)
+  ( ":"                      (. c = null; label = x; .)
+  
+  | "(" Idents<out ids> ")"
+    (. 
+      lhsExpr = new NAryExpr(x, new FunctionCall(new IdentifierExpr(id, id.val)), ids.Select(id => new IdentifierExpr(id, id.val)).ToList<Expr>());
+    .)
+    ":=" (. x = t; /* use location of := */ .)
+    { Attribute<ref kv> }
+    Expression<out e0>    
+    ";"   
+    (. 
+       c = new UnpackCmd(x, lhsExpr, e0, kv); 
+    .)
 
   | (. lhss = new List<AssignLhs/*!*/>(); .)
     (. lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); .)

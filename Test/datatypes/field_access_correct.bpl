@@ -65,3 +65,9 @@ procedure P4(a: int, b: int) {
   assert right->i == b;
   assert right is Right ==> right == Right(b);
 }
+
+procedure P5(p: Pair) returns (a: int, b: int)
+ensures a == p->a && b == p->b;
+{
+    Pair(a, b) := p;
+}
