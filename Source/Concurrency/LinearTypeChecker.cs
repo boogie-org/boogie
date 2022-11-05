@@ -551,22 +551,12 @@ namespace Microsoft.Boogie
         DisjointnessExprForPermissions(domain, PermissionExprForEachVariable(domain, FilterVariables(domain, scope))));
     }
 
-    public Dictionary<LinearDomain, Expr> PermissionExprs(IEnumerable<Variable> availableVars)
+    public Dictionary<LinearDomain, IEnumerable<Expr>> PermissionExprs(IEnumerable<Variable> availableVars)
     {
-      return LinearDomains.ToDictionary(domain => domain, domain =>
-      {
-        var permissionExprs = PermissionExprForEachVariable(domain, availableVars);
-        return UnionExprForPermissions(domain, permissionExprs);
-      });
+      return LinearDomains.ToDictionary<LinearDomain, LinearDomain, IEnumerable<Expr>>(domain => domain,
+        domain => PermissionExprForEachVariable(domain, availableVars));
     }
 
-    public IEnumerable<Expr> PermissionExprForEachVariable(LinearDomain domain, IEnumerable<Variable> scope)
-    {
-      return scope
-        .Where(x => LinearDomainCollector.FindLinearKind(x) != LinearKind.ORDINARY && domain == FindDomain(x))
-        .Select(v => ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v)));
-    }
-    
     public Expr DisjointnessExprForPermissions(LinearDomain domain, IEnumerable<Expr> permissionsExprs)
     {
       Expr expr = Expr.True;
@@ -595,6 +585,13 @@ namespace Microsoft.Boogie
       return expr;
     }
 
+    private IEnumerable<Expr> PermissionExprForEachVariable(LinearDomain domain, IEnumerable<Variable> scope)
+    {
+      return scope
+        .Where(x => LinearDomainCollector.FindLinearKind(x) != LinearKind.ORDINARY && domain == FindDomain(x))
+        .Select(v => ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v)));
+    }
+    
     private Expr SubsetExpr(LinearDomain domain, Expr ie, Variable partition, int partitionCount)
     {
       Expr e = ExprHelper.FunctionCall(domain.mapConstInt, Expr.Literal(partitionCount));

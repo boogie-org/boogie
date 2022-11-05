@@ -64,7 +64,10 @@ namespace Microsoft.Boogie
     {
       var availableVars = AvailableLinearLocalVars(absy).Union(LinearGlobalVars());
       var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
-      return civlTypeChecker.linearTypeChecker.PermissionExprs(mappedAvailableVars);
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
+      var permissionExprs = linearTypeChecker.PermissionExprs(mappedAvailableVars);
+      return permissionExprs.Keys.ToDictionary(domain => domain,
+        domain => linearTypeChecker.UnionExprForPermissions(domain, permissionExprs[domain]));
     }
 
     public void AddDisjointnessAssumptions(Implementation impl)
@@ -108,23 +111,14 @@ namespace Microsoft.Boogie
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
-      var newExprs = new List<Expr>();
-      foreach (var domain in linearTypeChecker.LinearDomains)
+      var permissionExprs = linearTypeChecker.PermissionExprs(mappedAvailableVars);
+      return permissionExprs.Keys.Select(domain =>
       {
-        var permissionExprs =
-          linearTypeChecker
-            .PermissionExprForEachVariable(domain, mappedAvailableVars)
-            .Union(
-              domainToHoleVar.ContainsKey(domain)
-                ? new List<Expr> {Expr.Ident(domainToHoleVar[domain])}
-                : new List<Expr>());
-        var expr = linearTypeChecker.DisjointnessExprForPermissions(domain, permissionExprs);
-        if (!expr.Equals(Expr.True))
-        {
-          newExprs.Add(expr);
-        }
-      }
-      return newExprs;
+        var extraExpr = domainToHoleVar.ContainsKey(domain)
+          ? new List<Expr> { Expr.Ident(domainToHoleVar[domain]) }
+          : new List<Expr>();
+        return linearTypeChecker.DisjointnessExprForPermissions(domain, permissionExprs[domain].Union(extraExpr));
+      }).Where(expr => !expr.Equals(Expr.True)).ToList();
     }
 
     private IEnumerable<Variable> AvailableLinearLocalVars(Absy absy)
