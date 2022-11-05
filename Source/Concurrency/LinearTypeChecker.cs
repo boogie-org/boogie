@@ -495,16 +495,6 @@ namespace Microsoft.Boogie
 
     public IEnumerable<LinearDomain> LinearDomains => domainNameToLinearDomain.Values.Union(linearTypeToLinearDomain.Values);
 
-    public Formal LinearDomainInFormal(LinearDomain domain)
-    {
-      return civlTypeChecker.Formal("linear_" + domain.DomainName + "_in", domain.mapTypeBool, true);
-    }
-
-    public LocalVariable LinearDomainAvailableLocal(LinearDomain domain)
-    {
-      return civlTypeChecker.LocalVariable("linear_" + domain.DomainName + "_available", domain.mapTypeBool);
-    }
-
     public void TypeCheck()
     {
       (this.domainNameToLinearDomain, this.linearTypeToLinearDomain) = LinearDomainCollector.Collect(program, checkingContext);

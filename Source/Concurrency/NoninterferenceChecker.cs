@@ -6,6 +6,16 @@ namespace Microsoft.Boogie
 {
   public static class NoninterferenceChecker
   {
+    public static string PermissionCollectorFormalName(LinearDomain domain)
+    {
+      return "linear_" + domain.DomainName + "_in";
+    }
+    
+    public static string PermissionCollectorLocalName(LinearDomain domain)
+    {
+      return "linear_" + domain.DomainName + "_available";
+    }
+    
     public static List<Declaration> CreateNoninterferenceCheckers(
       CivlTypeChecker civlTypeChecker,
       int layerNum,
@@ -21,7 +31,7 @@ namespace Microsoft.Boogie
       List<Variable> inputs = new List<Variable>();
       foreach (var domain in linearTypeChecker.LinearDomains)
       {
-        var inParam = linearTypeChecker.LinearDomainInFormal(domain);
+        var inParam = civlTypeChecker.Formal(PermissionCollectorFormalName(domain), domain.mapTypeBool, true);
         inputs.Add(inParam);
         domainToHoleVar[domain] = inParam;
       }
