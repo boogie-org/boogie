@@ -1,5 +1,5 @@
-using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.GraphUtil;
@@ -48,10 +48,11 @@ namespace Microsoft.Boogie
     private GlobalSnapshotInstrumentation globalSnapshotInstrumentation;
     private RefinementInstrumentation refinementInstrumentation;
     private LinearPermissionInstrumentation linearPermissionInstrumentation;
-    private NoninterferenceInstrumentation noninterferenceInstrumentation;
 
     private Dictionary<CallCmd, Block> refinementBlocks;
 
+    private Dictionary<LinearDomain, Variable> localPermissionCollectors;
+    
     private YieldingProcInstrumentation(
       CivlTypeChecker civlTypeChecker,
       LinearPermissionInstrumentation linearPermissionInstrumentation,
@@ -66,12 +67,14 @@ namespace Microsoft.Boogie
       this.refinementBlocks = refinementBlocks;
       parallelCallAggregators = new Dictionary<string, Procedure>();
       noninterferenceCheckerDecls = new List<Declaration>();
+      localPermissionCollectors = new Dictionary<LinearDomain, Variable>();
 
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       List<Variable> inputs = new List<Variable>();
       foreach (var domain in linearTypeChecker.LinearDomains)
       {
         inputs.Add(linearTypeChecker.LinearDomainInFormal(domain));
+        localPermissionCollectors.Add(domain, linearTypeChecker.LinearDomainAvailableLocal(domain));
       }
 
       foreach (Variable g in civlTypeChecker.GlobalVariables)
@@ -90,19 +93,45 @@ namespace Microsoft.Boogie
       // initialize noninterferenceInstrumentation
       if (civlTypeChecker.Options.TrustNoninterference)
       {
-        noninterferenceInstrumentation = new NoneNoninterferenceInstrumentation();
-      }
-      else
-      {
-        noninterferenceInstrumentation = new SomeNoninterferenceInstrumentation(
-          civlTypeChecker,
-          linearTypeChecker,
-          linearPermissionInstrumentation,
-          globalSnapshotInstrumentation.OldGlobalMap,
-          wrapperNoninterferenceCheckerProc);
+        localPermissionCollectors.Clear();
       }
     }
 
+    private List<Cmd> CreateUpdatesToPermissionCollector(Absy absy)
+    {
+      var cmds = new List<Cmd>();
+      if (localPermissionCollectors.Count > 0)
+      {
+        Debug.Assert(!civlTypeChecker.Options.TrustNoninterference);
+        var domainToExpr = linearPermissionInstrumentation.PermissionExprs(absy);
+        var lhss = localPermissionCollectors.Values.Select(Expr.Ident).ToList();
+        var rhss = localPermissionCollectors.Keys.Select(domain => domainToExpr[domain]).ToList();
+        cmds.Add(CmdHelper.AssignCmd(lhss, rhss));
+      }
+      return cmds;
+    }
+
+    private List<Cmd> CreateCallToYieldProc()
+    {
+      var cmds = new List<Cmd>();
+      if (!civlTypeChecker.Options.TrustNoninterference)
+      {
+        List<Variable> inputs = new List<Variable>();
+        foreach (var domain in civlTypeChecker.linearTypeChecker.LinearDomains)
+        {
+          inputs.Add(localPermissionCollectors[domain]);
+        }
+        foreach (Variable g in civlTypeChecker.GlobalVariables)
+        {
+          inputs.Add(globalSnapshotInstrumentation.OldGlobalMap[g]);
+        }
+        CallCmd noninterferenceCheckerCallCmd =
+          CmdHelper.CallCmd(wrapperNoninterferenceCheckerProc, inputs, new List<Variable>());
+        cmds.Add(noninterferenceCheckerCallCmd);
+      }
+      return cmds;
+    }
+    
     private YieldingProc GetYieldingProc(Implementation impl)
     {
       var originalImpl = absyMap.Original(impl);
@@ -366,7 +395,7 @@ namespace Microsoft.Boogie
 
       impl.LocVars.AddRange(globalSnapshotInstrumentation.NewLocalVars);
       impl.LocVars.AddRange(refinementInstrumentation.NewLocalVars);
-      impl.LocVars.AddRange(noninterferenceInstrumentation.NewLocalVars);
+      impl.LocVars.AddRange(localPermissionCollectors.Values);
     }
 
     private Block CreateInitialBlock(Implementation impl, List<Cmd> preconditions)
@@ -374,7 +403,7 @@ namespace Microsoft.Boogie
       var initCmds = new List<Cmd>(preconditions);
       initCmds.AddRange(globalSnapshotInstrumentation.CreateInitCmds());
       initCmds.AddRange(refinementInstrumentation.CreateInitCmds());
-      initCmds.AddRange(noninterferenceInstrumentation.CreateInitCmds(impl));
+      initCmds.AddRange(CreateUpdatesToPermissionCollector(impl));
       return BlockHelper.Block(civlTypeChecker.AddNamePrefix("init"), initCmds, new List<Block> {impl.Blocks[0]});
     }
 
@@ -462,7 +491,7 @@ namespace Microsoft.Boogie
         newCmds.AddRange(YieldingLoopDummyAssignment());
         newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
         newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
-        newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(header));
+        newCmds.AddRange(CreateUpdatesToPermissionCollector(header));
         newCmds.AddRange(secondCmds);
         header.Cmds = newCmds;
       }
@@ -616,7 +645,7 @@ namespace Microsoft.Boogie
     private Block CreateNoninterferenceCheckerBlock()
     {
       var newCmds = new List<Cmd>();
-      newCmds.AddRange(noninterferenceInstrumentation.CreateCallToYieldProc());
+      newCmds.AddRange(CreateCallToYieldProc());
       newCmds.Add(CmdHelper.AssumeCmd(Expr.False));
       return BlockHelper.Block(civlTypeChecker.AddNamePrefix("NoninterferenceChecker"), newCmds);
     }
@@ -667,7 +696,7 @@ namespace Microsoft.Boogie
       newCmds.AddRange(linearPermissionInstrumentation.DisjointnessAssumeCmds(yieldCmd, true));
       newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
       newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
-      newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(yieldCmd));
+      newCmds.AddRange(CreateUpdatesToPermissionCollector(yieldCmd));
       newCmds.AddRange(yieldPredicates.Select(x => new AssumeCmd(x.tok, x.Expr)));
       var offsetAfterYieldPredicates = 1 + yieldPredicates.Count;
       newCmds.AddRange(block.cmds.GetRange(offsetAfterYieldPredicates, block.cmds.Count - offsetAfterYieldPredicates));
@@ -747,7 +776,7 @@ namespace Microsoft.Boogie
       newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
       newCmds.AddRange(globalSnapshotInstrumentation.CreateUpdatesToOldGlobalVars());
       newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
-      newCmds.AddRange(noninterferenceInstrumentation.CreateUpdatesToPermissionCollector(parCallCmd));
+      newCmds.AddRange(CreateUpdatesToPermissionCollector(parCallCmd));
       newCmds.AddRange(block.cmds.GetRange(1, block.cmds.Count - 1));
       block.cmds = newCmds;
     }
@@ -802,13 +831,13 @@ namespace Microsoft.Boogie
         var requires = action.gate.Select(a => new Requires(false, a.Expr)).ToList();
         var ensures = new List<Ensures>();
         var modifies = civlTypeChecker.GlobalVariables.Select(Expr.Ident).ToList();
-        var locals = globalSnapshotInstrumentation.NewLocalVars.Union(noninterferenceInstrumentation.NewLocalVars).ToList();
+        var locals = globalSnapshotInstrumentation.NewLocalVars.Union(localPermissionCollectors.Values).ToList();
         var cmds = new List<Cmd>();
 
         cmds.AddRange(globalSnapshotInstrumentation.CreateInitCmds());
-        cmds.AddRange(noninterferenceInstrumentation.CreateInitCmds(action.impl));
+        cmds.AddRange(CreateUpdatesToPermissionCollector(action.impl));
         cmds.Add(CmdHelper.CallCmd(action.proc, inputs, outputs));
-        cmds.AddRange(noninterferenceInstrumentation.CreateCallToYieldProc());
+        cmds.AddRange(CreateCallToYieldProc());
         var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
 
         var name = civlTypeChecker.AddNamePrefix($"PendingAsyncNoninterferenceChecker_{action.proc.Name}_{layerNum}");
