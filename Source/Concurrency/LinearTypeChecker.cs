@@ -303,11 +303,15 @@ namespace Microsoft.Boogie
     private LinearDomain FindDomain(Variable v)
     {
       var domainName = LinearDomainCollector.FindDomainName(v);
-      if (domainName == null)
+      if (domainName != null)
+      {
+        return domainNameToLinearDomain[domainName];
+      }
+      if (linearTypeToLinearDomain.ContainsKey(v.TypedIdent.Type))
       {
         return linearTypeToLinearDomain[v.TypedIdent.Type];
       }
-      return domainNameToLinearDomain[domainName];
+      return null;
     }
     
     // SkipCheck is selectively applied at a few places to allow the type checker 
@@ -319,12 +323,11 @@ namespace Microsoft.Boogie
       {
         return true;
       }
-      var domain = FindDomain(v);
-      if (domain.IsNameDomain)
+      if (LinearDomainCollector.FindDomainName(v) == null)
       {
-        return civlTypeChecker.IsAction(enclosingProc) || civlTypeChecker.IsLemmaProcedure(enclosingProc);
+        return false;
       }
-      return false;
+      return civlTypeChecker.IsAction(enclosingProc) || civlTypeChecker.IsLemmaProcedure(enclosingProc);
     }
 
     private bool SkipParameterCheckAtCall(CallCmd callCmd, int i)
@@ -362,12 +365,9 @@ namespace Microsoft.Boogie
           Error(node, $"Only linear variable can be assigned to linear variable {lhsVar.Name}");
           continue;
         }
-        var lhsDomain = FindDomain(lhsVar);
-        var rhsDomain = FindDomain(rhs.Decl);
-        if (lhsDomain != rhsDomain)
+        if (LinearDomainCollector.FindDomainName(lhsVar) != LinearDomainCollector.FindDomainName(rhs.Decl))
         {
-          Error(node,
-            $"Linear variable of domain {rhsDomain.DomainName} cannot be assigned to linear variable of domain {lhsDomain.DomainName}");
+          Error(node, "The domains of source and target of assignment must be the same");
           continue;
         }
         if (rhsVars.Contains(rhs.Decl))
@@ -389,7 +389,7 @@ namespace Microsoft.Boogie
         {
           Error(node, $"The source for unpack must be a linear variable");
         }
-        else if (FindDomain(rhs.Decl).IsNameDomain)
+        else if (LinearDomainCollector.FindDomainName(rhs.Decl) != null)
         {
          Error(node, $"The source for unpack must be a linear variable of type domain"); 
         }
@@ -429,9 +429,7 @@ namespace Microsoft.Boogie
           Error(actual, $"Only a linear variable can be passed to linear parameter {formal.Name} at position {i}");
           continue;
         }
-        var formalDomain = FindDomain(formal);
-        var actualDomain = FindDomain(actual.Decl);
-        if (formalDomain != actualDomain)
+        if (LinearDomainCollector.FindDomainName(formal) != LinearDomainCollector.FindDomainName(actual.Decl))
         {
           Error(actual, "The domains of formal and actual parameters must be the same");
           continue;
@@ -464,9 +462,7 @@ namespace Microsoft.Boogie
           Error(node, "Only a linear variable can be passed to a linear parameter");
           continue;
         }
-        var actualDomain = FindDomain(actual.Decl);
-        var formalDomain = FindDomain(formal);
-        if (formalDomain != actualDomain)
+        if (LinearDomainCollector.FindDomainName(formal) != LinearDomainCollector.FindDomainName(actual.Decl))
         {
           Error(node, "The domains of formal and actual parameters must be the same");
         }
@@ -540,9 +536,9 @@ namespace Microsoft.Boogie
       }
     }
 
-    public IEnumerable<Variable> FilterVariables(LinearDomain domain, IEnumerable<Variable> vars)
+    public IEnumerable<Variable> FilterVariables(LinearDomain domain, IEnumerable<Variable> scope)
     {
-      return vars.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY && FindDomain(v) == domain);
+      return scope.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY && FindDomain(v) == domain);
     }
     
     public IEnumerable<Expr> DisjointnessExprForEachDomain(IEnumerable<Variable> scope)
@@ -587,8 +583,7 @@ namespace Microsoft.Boogie
 
     private IEnumerable<Expr> PermissionExprForEachVariable(LinearDomain domain, IEnumerable<Variable> scope)
     {
-      return scope
-        .Where(x => LinearDomainCollector.FindLinearKind(x) != LinearKind.ORDINARY && domain == FindDomain(x))
+      return FilterVariables(domain, scope)
         .Select(v => ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v)));
     }
     

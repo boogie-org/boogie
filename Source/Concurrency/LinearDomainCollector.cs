@@ -66,10 +66,6 @@ namespace Microsoft.Boogie
     {
       return Expr.Eq(expr, ExprHelper.FunctionCall(mapConstBool, Expr.True));
     }
-
-    public bool IsNameDomain => domainName != null;
-
-    public bool IsTypeDomain => domainName == null;
   }
   
   class LinearDomainCollector : ReadOnlyVisitor
@@ -78,6 +74,8 @@ namespace Microsoft.Boogie
     private CheckingContext checkingContext;
     private Dictionary<string, LinearDomain> linearDomains;
     private HashSet<Type> linearTypes;
+    private HashSet<Type> permissionTypes;
+    private HashSet<Type> visitedTypes;
 
     private LinearDomainCollector(Program program, CheckingContext checkingContext)
     {
@@ -85,6 +83,8 @@ namespace Microsoft.Boogie
       this.checkingContext = checkingContext;
       this.linearDomains = new Dictionary<string, LinearDomain>();
       this.linearTypes = new HashSet<Type>();
+      this.permissionTypes = new HashSet<Type>();
+      this.visitedTypes = new HashSet<Type>();
     }
 
     public static (Dictionary<string, LinearDomain>, Dictionary<Type, LinearDomain>) Collect(Program program, CheckingContext checkingContext)
@@ -126,21 +126,38 @@ namespace Microsoft.Boogie
       }
       return QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT);
     }
-
-    private static bool HasPermissionType(Program program, Type type)
+    
+    private bool ContainsPermissionType(Type type)
     {
       if (program.monomorphizer == null)
       {
         return false;
       }
-      if (type is CtorType ctorType)
+      if (!visitedTypes.Contains(type))
       {
-        var originalTypeCtorDecl = program.monomorphizer.GetOriginalDecl(ctorType.Decl);
-        var originalTypeCtorDeclName = originalTypeCtorDecl.Name;
-        return originalTypeCtorDeclName == "Lmap" || originalTypeCtorDeclName == "Lset" ||
-               originalTypeCtorDeclName == "Lval";
+        visitedTypes.Add(type);
+        if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
+        {
+          var originalDecl = program.monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
+          var originalDeclName = originalDecl.Name;
+          if (originalDeclName == "Lmap" || originalDeclName == "Lset" || originalDeclName == "Lval")
+          {
+            permissionTypes.Add(type);
+            linearTypes.Add(type);
+          }
+          foreach (var constructor in datatypeTypeCtorDecl.Constructors)
+          {
+            foreach (var v in constructor.InParams)
+            {
+              if (ContainsPermissionType(v.TypedIdent.Type))
+              {
+                linearTypes.Add(type);
+              }
+            }
+          }
+        }
       }
-      return false;
+      return linearTypes.Contains(type);
     }
     
     private Type GetPermissionType(Type type)
@@ -158,7 +175,7 @@ namespace Microsoft.Boogie
     private Dictionary<Type, LinearDomain> MakeLinearDomains()
     {
       var permissionTypeToCollectors = new Dictionary<Type, Dictionary<Type, Function>>();
-      foreach (var type in linearTypes)
+      foreach (var type in permissionTypes)
       {
         var typeCtorDecl = type.AsCtor.Decl;
         var originalTypeCtorDecl = program.monomorphizer.GetOriginalDecl(typeCtorDecl);
@@ -184,7 +201,7 @@ namespace Microsoft.Boogie
       }
       var permissionTypeToLinearDomain =
         permissionTypeToCollectors.ToDictionary(kv => kv.Key, kv => new LinearDomain(program, null, kv.Key, kv.Value));
-      return linearTypes.ToDictionary(type => type, type => permissionTypeToLinearDomain[GetPermissionType(type)]);
+      return permissionTypes.ToDictionary(type => type, type => permissionTypeToLinearDomain[GetPermissionType(type)]);
     }
     
     public override Implementation VisitImplementation(Implementation node)
@@ -218,21 +235,20 @@ namespace Microsoft.Boogie
     {
       string domainName = FindDomainName(node);
       var nodeType = node.TypedIdent.Type;
-      var hasPermissionType = HasPermissionType(program, nodeType);
+      var containsPermissionType = ContainsPermissionType(nodeType);
       if (domainName != null)
       {
         if (!linearDomains.ContainsKey(domainName))
         {
           checkingContext.Error(node, $"Permission type not declared for domain {domainName}");
         } 
-        else if (hasPermissionType)
+        else if (containsPermissionType)
         {
           checkingContext.Error(node, $"Variable of linear type must not have a domain name");
         }
       }
-      if (hasPermissionType)
+      if (containsPermissionType)
       {
-        linearTypes.Add(nodeType);
         if (FindLinearKind(node) == LinearKind.ORDINARY)
         {
           node.Attributes = new QKeyValue(Token.NoToken, CivlAttributes.LINEAR, new List<object>(), node.Attributes);
