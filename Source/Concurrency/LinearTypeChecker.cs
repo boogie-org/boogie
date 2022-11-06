@@ -160,14 +160,32 @@ namespace Microsoft.Boogie
             {
               continue;
             }
-            var ie = assignCmd.Rhss[i] as IdentifierExpr;
-            if (!start.Contains(ie.Decl))
+            var rhsExpr = assignCmd.Rhss[i];
+            var lhsDomainName = LinearDomainCollector.FindDomainName(lhsVar);
+            if (rhsExpr is IdentifierExpr ie)
             {
-              Error(ie, "unavailable source for a linear read");
+              if (!start.Contains(ie.Decl))
+              {
+                Error(ie, "unavailable source for a linear read");
+              }
+              else
+              {
+                start.Remove(ie.Decl);
+              }
             }
             else
             {
-              start.Remove(ie.Decl);
+              // pack
+              var args = ((NAryExpr)rhsExpr).Args.Cast<IdentifierExpr>().Select(arg => arg.Decl)
+                .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY);
+              if (args.Any(v => !start.Contains(v)))
+              {
+                Error(rhsExpr, "unavailable source for a linear read");
+              }
+              else
+              {
+                start.ExceptWith(args);
+              }
             }
           }
           assignCmd.Lhss
@@ -364,8 +382,8 @@ namespace Microsoft.Boogie
       HashSet<Variable> rhsVars = new HashSet<Variable>();
       for (int i = 0; i < node.Lhss.Count; i++)
       {
-        AssignLhs lhs = node.Lhss[i];
-        Variable lhsVar = lhs.DeepAssignedVariable;
+        var lhs = node.Lhss[i];
+        var lhsVar = lhs.DeepAssignedVariable;
         if (SkipCheck(lhsVar))
         {
           continue;
@@ -375,29 +393,50 @@ namespace Microsoft.Boogie
           Error(node, $"Only simple assignment allowed on linear variable {lhsVar.Name}");
           continue;
         }
-        IdentifierExpr rhs = node.Rhss[i] as IdentifierExpr;
-        if (rhs == null)
+        var rhsExpr = node.Rhss[i];
+        var lhsDomainName = LinearDomainCollector.FindDomainName(lhsVar);
+        if (rhsExpr is IdentifierExpr rhs)
+        {
+          var rhsKind = LinearDomainCollector.FindLinearKind(rhs.Decl);
+          if (rhsKind == LinearKind.ORDINARY)
+          {
+            Error(node, $"Only linear variable can be assigned to linear variable {lhsVar.Name}");
+            continue;
+          }
+          if (LinearDomainCollector.FindDomainName(lhsVar) != LinearDomainCollector.FindDomainName(rhs.Decl))
+          {
+            Error(node, "The domains of source and target of assignment must be the same");
+            continue;
+          }
+          if (rhsVars.Contains(rhs.Decl))
+          {
+            Error(node, $"Linear variable {rhs.Decl.Name} can occur only once in the right-hand-side of an assignment");
+            continue;
+          }
+          rhsVars.Add(rhs.Decl);
+        }
+        else if (lhsDomainName == null && rhsExpr is NAryExpr nAryExpr && nAryExpr.Fun is FunctionCall functionCall && functionCall.Func is DatatypeConstructor)
+        {
+          // pack
+          var args = nAryExpr.Args.OfType<IdentifierExpr>();
+          if (args.Count() < nAryExpr.Args.Count)
+          {
+            Error(node, $"A source of pack must be a variable");
+          }
+          else if (args.Any(arg => LinearDomainCollector.FindDomainName(arg.Decl) != null))
+          {
+            Error(node, $"A target of pack must not be a linear variable of name domain");
+          }
+          else
+          {
+            rhsVars.UnionWith(args.Select(arg => arg.Decl)
+              .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY));
+          }
+        }
+        else
         {
           Error(node, $"Only variable can be assigned to linear variable {lhsVar.Name}");
-          continue;
         }
-        var rhsKind = LinearDomainCollector.FindLinearKind(rhs.Decl);
-        if (rhsKind == LinearKind.ORDINARY)
-        {
-          Error(node, $"Only linear variable can be assigned to linear variable {lhsVar.Name}");
-          continue;
-        }
-        if (LinearDomainCollector.FindDomainName(lhsVar) != LinearDomainCollector.FindDomainName(rhs.Decl))
-        {
-          Error(node, "The domains of source and target of assignment must be the same");
-          continue;
-        }
-        if (rhsVars.Contains(rhs.Decl))
-        {
-          Error(node, $"Linear variable {rhs.Decl.Name} can occur only once in the right-hand-side of an assignment");
-          continue;
-        }
-        rhsVars.Add(rhs.Decl);
       }
       return base.VisitAssignCmd(node);
     }
