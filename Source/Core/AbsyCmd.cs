@@ -2418,7 +2418,8 @@ namespace Microsoft.Boogie
   }
 
   /// <summary>
-  ///
+  /// UnpackCmd used for unpacking a constructed value into its components.
+  /// </summary>
   public class UnpackCmd : SugaredCmd, ICarriesAttributes
   {
     private NAryExpr lhs;
@@ -2496,6 +2497,8 @@ namespace Microsoft.Boogie
         rhs = value;
       }
     }
+
+    public IEnumerable<IdentifierExpr> UnpackedLhs => lhs.Args.Cast<IdentifierExpr>();
     
     public override void AddAssignedVariables(List<Variable> vars)
     {

@@ -177,7 +177,7 @@ namespace Microsoft.Boogie
         }
         else if (cmd is UnpackCmd unpackCmd)
         {
-          if (unpackCmd.Lhs.Args.Cast<IdentifierExpr>().Any(arg => !SkipCheck(arg.Decl)))
+          if (unpackCmd.UnpackedLhs.Any(arg => !SkipCheck(arg.Decl)))
           {
             var ie = unpackCmd.Rhs as IdentifierExpr;
             if (!start.Contains(ie.Decl))
@@ -187,7 +187,7 @@ namespace Microsoft.Boogie
             else
             {
               start.Remove(ie.Decl);
-              unpackCmd.Lhs.Args.Cast<IdentifierExpr>()
+              unpackCmd.UnpackedLhs
                 .Where(arg => LinearDomainCollector.FindLinearKind(arg.Decl) != LinearKind.ORDINARY)
                 .Iter(arg => start.Add(arg.Decl));
             }
@@ -404,16 +404,23 @@ namespace Microsoft.Boogie
 
     public override Cmd VisitUnpackCmd(UnpackCmd node)
     {
-      if (node.Lhs.Args.Cast<IdentifierExpr>().Any(arg => !SkipCheck(arg.Decl)))
+      if (node.UnpackedLhs.Any(arg => !SkipCheck(arg.Decl)))
       {
-        IdentifierExpr rhs = node.Rhs as IdentifierExpr;
-        if (rhs == null || LinearDomainCollector.FindLinearKind(rhs.Decl) == LinearKind.ORDINARY)
+        if (node.UnpackedLhs.Any(arg => LinearDomainCollector.FindDomainName(arg.Decl) != null))
         {
-          Error(node, $"The source for unpack must be a linear variable");
+          Error(node, $"A target of unpack must not be a linear variable of name domain");
         }
-        else if (LinearDomainCollector.FindDomainName(rhs.Decl) != null)
+        else
         {
-         Error(node, $"The source for unpack must be a linear variable of type domain"); 
+          IdentifierExpr rhs = node.Rhs as IdentifierExpr;
+          if (rhs == null || LinearDomainCollector.FindLinearKind(rhs.Decl) == LinearKind.ORDINARY)
+          {
+            Error(node, $"The source for unpack must be a linear variable");
+          }
+          else if (LinearDomainCollector.FindDomainName(rhs.Decl) != null)
+          {
+            Error(node, $"The source for unpack must be a linear variable of type domain");
+          }
         }
       }
       return base.VisitUnpackCmd(node);

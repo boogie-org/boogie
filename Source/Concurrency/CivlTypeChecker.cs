@@ -1883,8 +1883,7 @@ namespace Microsoft.Boogie
                   lhsLayerRange.Subset(civlTypeChecker.LocalVariableLayerRange(x.Decl))))
             {
               civlTypeChecker.checkingContext.Error(node,
-                "Layer range mismatch at position {0}: local variables accessed in rhs must be available at all layers where the lhs exists",
-                i);
+                $"Layer range mismatch at position {i}: local variables accessed in rhs must be available at all layers where the lhs exists");
             }
           }
         }
