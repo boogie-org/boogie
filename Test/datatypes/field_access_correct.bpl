@@ -56,7 +56,8 @@ type{:datatype} Split _;
 function{:constructor} Left<T>(i: T): Split T;
 function{:constructor} Right<U>(i: U): Split U;
 
-procedure P4(a: int, b: int) {
+procedure P4(a: int, b: int)
+{
   var left, right: Split int;
   left->i := a;
   right->i := b;
@@ -69,5 +70,18 @@ procedure P4(a: int, b: int) {
 procedure P5(p: Pair) returns (a: int, b: int)
 ensures a == p->a && b == p->b;
 {
-    Pair(a, b) := p;
+  var p': Pair;
+  Pair(a, b) := p;
+  p' := Pair(a, b);
+  assert p == p';
+}
+
+procedure P6(s: Split int) returns (i: int)
+requires s is Left;
+ensures i == s->i;
+{
+  var s': Split int;
+  Left(i) := s;
+  s' := Left(i);
+  assert s == s';
 }

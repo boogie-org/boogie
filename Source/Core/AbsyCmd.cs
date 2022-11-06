@@ -2526,15 +2526,19 @@ namespace Microsoft.Boogie
       Expr localRhs = rhs;
       if (!(rhs is IdentifierExpr))
       {
+        // read rhs into fresh local and update localRhs
         var v = new LocalVariable(tok, new TypedIdent(tok, $"unpack_{Constructor.Name}", rhs.Type));
         localVars.Add(v);
         var assignLhs = new SimpleAssignLhs(tok, new IdentifierExpr(tok, v));
         localRhs = assignLhs.AsExpr;
         cmds.Add(new AssignCmd(tok, new List<AssignLhs> { assignLhs }, new List<Expr> { rhs }));
       }
-      cmds.Add(new AssertCmd(tok,
+      // assert that unpacked value has the correct constructor
+      var assertCmd = new AssertCmd(tok,
         new NAryExpr(tok, new IsConstructor(tok, Constructor.datatypeTypeCtorDecl, Constructor.index),
-          new List<Expr> { localRhs })));
+          new List<Expr> { localRhs })) { Description = new FailureOnlyDescription("The precondition for unpack might not hold") };
+      cmds.Add(assertCmd);
+      // read fields into lhs variables from localRhs
       var assignLhss = lhs.Args.Select(arg => new SimpleAssignLhs(tok, (IdentifierExpr)arg)).ToList<AssignLhs>();
       var assignRhss = Enumerable.Range(0, Constructor.InParams.Count).Select(i =>
       {

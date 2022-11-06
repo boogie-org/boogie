@@ -23,3 +23,16 @@ requires a is Middle;
 
 procedure D(a: Perm);
 requires a->i == 0;
+
+var g: int;
+
+procedure E(x: Perm)
+{
+    Left(g) := x;
+}
+
+procedure F(x: int)
+modifies g;
+{
+    Left(g) := x;
+}
