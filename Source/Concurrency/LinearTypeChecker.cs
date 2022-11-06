@@ -204,13 +204,15 @@ namespace Microsoft.Boogie
           }
           for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
           {
-            if (SkipParameterCheckAtCall(callCmd, i))
+            Variable param = callCmd.Proc.InParams[i];
+            LinearKind paramKind = LinearDomainCollector.FindLinearKind(param);
+            if (paramKind == LinearKind.ORDINARY)
             {
               continue;
             }
-            Variable param = callCmd.Proc.InParams[i];
-            LinearKind paramKind = LinearDomainCollector.FindLinearKind(param);
-            IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
+            var ie = IsPrimitive(callCmd.Proc) && paramKind == LinearKind.LINEAR
+              ? ExtractRootFromAccessPathExpr(callCmd.Ins[i])
+              : callCmd.Ins[i] as IdentifierExpr;
             if (start.Contains(ie.Decl))
             {
               if (callCmd.IsAsync || paramKind == LinearKind.LINEAR_IN)
@@ -330,11 +332,31 @@ namespace Microsoft.Boogie
       return civlTypeChecker.IsAction(enclosingProc) || civlTypeChecker.IsLemmaProcedure(enclosingProc);
     }
 
-    private bool SkipParameterCheckAtCall(CallCmd callCmd, int i)
+    private IdentifierExpr ExtractRootFromAccessPathExpr(Expr expr)
     {
-      Variable formal = callCmd.Proc.InParams[i];
-      var formalKind = LinearDomainCollector.FindLinearKind(formal);
-      return formalKind == LinearKind.ORDINARY || IsPrimitive(callCmd.Proc) && formalKind == LinearKind.LINEAR;
+      if (expr is IdentifierExpr identifierExpr)
+      {
+        return identifierExpr;
+      }
+      if (expr is NAryExpr nAryExpr)
+      {
+        if (nAryExpr.Fun is FieldAccess)
+        {
+          return ExtractRootFromAccessPathExpr(nAryExpr.Args[0]);
+        }
+        if (nAryExpr.Fun is MapSelect)
+        {
+          var mapExpr = nAryExpr.Args[0];
+          if (mapExpr is NAryExpr lmapValExpr &&
+              lmapValExpr.Fun is FieldAccess &&
+              lmapValExpr.Args[0].Type is CtorType ctorType &&
+              program.monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lmap")
+          {
+            return ExtractRootFromAccessPathExpr(lmapValExpr.Args[0]);
+          }
+        }
+      }
+      return null;
     }
     
     public override Cmd VisitAssignCmd(AssignCmd node)
@@ -412,15 +434,25 @@ namespace Microsoft.Boogie
       HashSet<Variable> inVars = new HashSet<Variable>();
       for (int i = 0; i < node.Proc.InParams.Count; i++)
       {
-        if (SkipParameterCheckAtCall(node, i))
+        var formal = node.Proc.InParams[i];
+        var formalKind = LinearDomainCollector.FindLinearKind(formal);
+        if (formalKind == LinearKind.ORDINARY)
         {
           continue;
         }
-        Variable formal = node.Proc.InParams[i];
-        IdentifierExpr actual = node.Ins[i] as IdentifierExpr;
+        var isLinearParamInPrimitiveCall = IsPrimitive(node.Proc) && formalKind == LinearKind.LINEAR;
+        var actual = isLinearParamInPrimitiveCall ? ExtractRootFromAccessPathExpr(node.Ins[i]) : node.Ins[i] as IdentifierExpr;
         if (actual == null)
         {
-          Error(node.Ins[i], $"Only a variable can be passed to linear parameter {formal.Name} at position {i}");
+          if (isLinearParamInPrimitiveCall)
+          {
+            Error(node.Ins[i],
+              $"Invalid access path expression passed to linear parameter {formal.Name} at position {i}");
+          }
+          else
+          {
+            Error(node.Ins[i], $"Only a variable can be passed to linear parameter {formal.Name} at position {i}");
+          }
           continue;
         }
         var actualKind = LinearDomainCollector.FindLinearKind(actual.Decl);

@@ -144,16 +144,18 @@ namespace Microsoft.Boogie
           {
             permissionTypes.Add(type);
             linearTypes.Add(type);
+            var innerType = program.monomorphizer.GetTypeInstantiation(datatypeTypeCtorDecl)[0];
+            ContainsPermissionType(innerType);
           }
-          foreach (var constructor in datatypeTypeCtorDecl.Constructors)
+          else
           {
-            foreach (var v in constructor.InParams)
+            datatypeTypeCtorDecl.Constructors.Iter(constructor => constructor.InParams.Iter(v =>
             {
               if (ContainsPermissionType(v.TypedIdent.Type))
               {
                 linearTypes.Add(type);
               }
-            }
+            }));
           }
         }
       }
