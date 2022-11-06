@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 
 namespace Microsoft.Boogie;
@@ -217,8 +216,7 @@ class LinearityChecker
         .Where(v => InKinds.Contains(LinearDomainCollector.FindLinearKind(v)))
         .Select(v => ExprHelper.FieldAccess(pa, v.Name)).ToList<Expr>();
       // These expressions must be typechecked since the types are needed later in PermissionMultiset.
-      var errorCount = CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, pendingAsyncLinearParams);
-      Debug.Assert(errorCount == 0);
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, pendingAsyncLinearParams);
       return pendingAsyncLinearParams;
     }
 
