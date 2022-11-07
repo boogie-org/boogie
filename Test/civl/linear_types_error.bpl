@@ -58,3 +58,22 @@ procedure {:atomic} {:layer 1, 2} A10({:linear_in} l: Lmap int, l': Lmap int)
 {
     call Lmap_Transfer(l, l');
 }
+
+procedure {:atomic} {:layer 1, 2} A11({:linear_in} a: Foo) returns (b: Foo)
+{
+    var x: Lmap int;
+    Foo(x) := a;
+}
+
+procedure {:atomic} {:layer 1, 2} A12({:linear_in} a: Foo) returns (b: Foo)
+{
+    var x: Lmap int;
+    b := a;
+    Foo(x) := a;
+}
+
+procedure {:atomic} {:layer 1, 2} A13({:linear_in} a: Foo) returns (b: Foo)
+{
+    var x: Lmap int;
+    b := Foo(x);
+}

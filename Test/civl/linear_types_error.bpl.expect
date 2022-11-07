@@ -10,4 +10,7 @@ linear_types_error.bpl(49,30): Error: unavailable source path2 for linear parame
 linear_types_error.bpl(50,0): Error: Output variable path2 must be available at a return
 linear_types_error.bpl(54,4): Error: Primitive assigns to a global variable that is not in the enclosing procedure's modifies clause: g
 linear_types_error.bpl(59,4): Error: Primitive assigns to input variable: l'
-12 type checking errors detected in linear_types_error.bpl
+linear_types_error.bpl(66,0): Error: Output variable b must be available at a return
+linear_types_error.bpl(72,14): Error: unavailable source for a linear read
+linear_types_error.bpl(78,9): Error: unavailable source for a linear read
+15 type checking errors detected in linear_types_error.bpl
