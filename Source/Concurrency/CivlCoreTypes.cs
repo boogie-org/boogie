@@ -79,12 +79,14 @@ namespace Microsoft.Boogie
     public HashSet<Variable> gateUsedGlobalVars;
     public HashSet<Variable> actionUsedGlobalVars;
     public HashSet<Variable> modifiedGlobalVars;
+    public ConcurrencyOptions options;
 
-    protected Action(Procedure proc, Implementation impl, LayerRange layerRange)
+    protected Action(Procedure proc, Implementation impl, LayerRange layerRange, ConcurrencyOptions options)
     {
       this.proc = proc;
       this.impl = impl;
       this.layerRange = layerRange;
+      this.options = options;
 
       // We usually declare the Boogie procedure and implementation of an atomic action together.
       // Since Boogie only stores the supplied attributes (in particular linearity) in the procedure parameters,
@@ -127,7 +129,7 @@ namespace Microsoft.Boogie
      * reverse order, thus ensuring that a block is processed only once the wlp
      * of all its successors has been computed.
      */
-    private static List<AssertCmd> HoistAsserts(Implementation impl)
+    private List<AssertCmd> HoistAsserts(Implementation impl)
     {
       Dictionary<Block, List<AssertCmd>> wlps = new Dictionary<Block, List<AssertCmd>>();
       Graph<Block> dag = Program.GraphFromBlocks(impl.Blocks, false);
@@ -135,13 +137,13 @@ namespace Microsoft.Boogie
       {
         if (block.TransferCmd is ReturnCmd)
         {
-          var wlp = HoistAsserts(block, new List<AssertCmd>());
+          var wlp = HoistAsserts(block.Cmds, new List<AssertCmd>());
           wlps.Add(block, wlp);
         }
         else if (block.TransferCmd is GotoCmd gotoCmd)
         {
           var wlp =
-            HoistAsserts(block, gotoCmd.labelTargets.SelectMany(b => wlps[b]).ToList());
+            HoistAsserts(block.Cmds, gotoCmd.labelTargets.SelectMany(b => wlps[b]).ToList());
           wlps.Add(block, wlp);
         }
         else
@@ -152,11 +154,11 @@ namespace Microsoft.Boogie
       return wlps[impl.Blocks[0]].Select(assertCmd => Forall(impl.LocVars.Union(impl.OutParams), assertCmd)).ToList();
     }
 
-    private static List<AssertCmd> HoistAsserts(Block block, List<AssertCmd> postconditions)
+    private List<AssertCmd> HoistAsserts(List<Cmd> cmds, List<AssertCmd> postconditions)
     {
-      for (int i = block.Cmds.Count - 1; i >= 0; i--)
+      for (int i = cmds.Count - 1; i >= 0; i--)
       {
-        var cmd = block.Cmds[i];
+        var cmd = cmds[i];
         if (cmd is AssertCmd assertCmd)
         {
           postconditions.Add(assertCmd);
@@ -184,12 +186,17 @@ namespace Microsoft.Boogie
           postconditions = postconditions.Select(assertCmd => Forall(havocCmd.Vars.Select(ie => ie.Decl), assertCmd))
             .ToList();
         }
+        else if (cmd is UnpackCmd unpackCmd)
+        {
+          var desugaredCmd = (StateCmd) unpackCmd.GetDesugaring(options);
+          postconditions = HoistAsserts(desugaredCmd.Cmds, postconditions); // removes precondition assert from desugaredCmd.Cmds
+        }
         else
         {
           throw new cce.UnreachableException();
         }
       }
-      block.Cmds.RemoveAll(cmd => cmd is AssertCmd);
+      cmds.RemoveAll(cmd => cmd is AssertCmd);
       return postconditions;
     }
     
@@ -216,8 +223,8 @@ namespace Microsoft.Boogie
      */
   public class IntroductionAction : Action
   {
-    public IntroductionAction(Procedure proc, Implementation impl, LayerRange layerRange) :
-      base(proc, impl, layerRange)
+    public IntroductionAction(Procedure proc, Implementation impl, LayerRange layerRange, ConcurrencyOptions options) :
+      base(proc, impl, layerRange, options)
     {
     }
     
@@ -226,7 +233,6 @@ namespace Microsoft.Boogie
 
   public class AtomicAction : Action
   {
-    private ConcurrencyOptions options;
     public MoverType moverType;
     public AtomicAction refinedAction;
 
@@ -243,10 +249,9 @@ namespace Microsoft.Boogie
 
     public AtomicAction(Procedure proc, Implementation impl, LayerRange layerRange,
       MoverType moverType, ConcurrencyOptions options) :
-      base(proc, impl, layerRange)
+      base(proc, impl, layerRange, options)
     {
       this.moverType = moverType;
-      this.options = options;
       AtomicActionDuplicator.SetupCopy(this, ref firstGate, ref firstImpl, "first_");
       AtomicActionDuplicator.SetupCopy(this, ref secondGate, ref secondImpl, "second_");
       DeclareTriggerFunctions();

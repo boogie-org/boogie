@@ -23,10 +23,38 @@ procedure {:atomic} {:layer 1, 2} A3({:linear_in} path: Lmap int) returns (path'
 type {:datatype} Foo;
 function {:constructor} Foo(f: Lmap int): Foo;
 
-procedure {:atomic} {:layer 1, 2} A4({:linear_in} path: Lmap Foo, x: Ref Foo, l: Lmap int) returns (path': Lmap Foo)
+procedure {:atomic} {:layer 1, 2} A4({:linear_in} path: Lmap Foo, x: Ref Foo, {:linear_in} l: Lmap int) returns (path': Lmap Foo, l': Lmap int)
 {
     path' := path;
-    call Lmap_Transfer(path'->val[x]->f, l);
+    l' := l;
+    call Lmap_Transfer(path'->val[x]->f, l');
 }
 
 procedure {:atomic} {:layer 1, 2} A5({:linear_out} path: Lmap int) { }
+
+procedure {:atomic} {:layer 1, 2} A6({:linear_in} path: Lmap int) returns (path': Lmap int)
+{
+    path' := path;
+    call Lmap_Transfer(path', path');
+}
+
+procedure {:atomic} {:layer 1, 2} A7(path1: Lmap int, {:linear_in} path2: Lmap int) returns (path': Lmap int)
+{
+    path' := path2;
+    call Lmap_Transfer(path1, path');
+}
+
+procedure {:atomic} {:layer 1, 2} A8({:linear_in} path1: Lmap int, x: Ref Foo) returns (path2: Lmap Foo)
+{
+    call Lmap_Transfer(path1, path2->val[x]->f);
+}
+
+procedure {:atomic} {:layer 1, 2} A9({:linear_in} l: Lmap int)
+{
+    call Lmap_Transfer(l, g);
+}
+
+procedure {:atomic} {:layer 1, 2} A10({:linear_in} l: Lmap int, l': Lmap int)
+{
+    call Lmap_Transfer(l, l');
+}

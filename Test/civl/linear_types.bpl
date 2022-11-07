@@ -63,3 +63,16 @@ procedure {:atomic} {:layer 1, 2} A8({:linear_out} l: Lval int, {:linear_in} pat
     path' := path;
     call Lval_Split(l, path');
 }
+
+procedure {:atomic} {:layer 1, 2} A9({:linear_in} path1: Lmap int, x: Ref Foo) returns (path2: Lmap Foo)
+{
+    call path2 := Lmap_Empty();
+    call Lmap_Transfer(path1, path2->val[x]->f);
+}
+
+procedure {:atomic} {:layer 1, 2} A10({:linear_in} a: Foo) returns (b: Foo)
+{
+    var x: Lmap int;
+    Foo(x) := a;
+    b := Foo(x);
+}

@@ -377,6 +377,39 @@ namespace Microsoft.Boogie
       return null;
     }
     
+    private IdentifierExpr ModifiedArgument(CallCmd callCmd)
+    {
+      switch (program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
+      {
+        case "Lmap_Empty":
+          return null;
+        case "Lmap_Split":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
+        case "Lmap_Transfer":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
+        case "Lmap_Read":
+          return null;
+        case "Lmap_Write":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Lmap_Add":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Lmap_Remove":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Lset_Empty":
+          return null;
+        case "Lset_Split":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
+        case "Lset_Transfer":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
+        case "Lval_Split":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
+        case "Lval_Transfer":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
+        default:
+          throw new cce.UnreachableException();
+      }
+    }
+
     public override Cmd VisitAssignCmd(AssignCmd node)
     {
       HashSet<Variable> rhsVars = new HashSet<Variable>();
@@ -477,6 +510,7 @@ namespace Microsoft.Boogie
 
     public override Cmd VisitCallCmd(CallCmd node)
     {
+      var isPrimitive = IsPrimitive(node.Proc);
       HashSet<Variable> inVars = new HashSet<Variable>();
       for (int i = 0; i < node.Proc.InParams.Count; i++)
       {
@@ -486,35 +520,34 @@ namespace Microsoft.Boogie
         {
           continue;
         }
-        var isLinearParamInPrimitiveCall = IsPrimitive(node.Proc) && formalKind == LinearKind.LINEAR;
+        var isLinearParamInPrimitiveCall = isPrimitive && formalKind == LinearKind.LINEAR;
         var actual = isLinearParamInPrimitiveCall ? ExtractRootFromAccessPathExpr(node.Ins[i]) : node.Ins[i] as IdentifierExpr;
         if (actual == null)
         {
           if (isLinearParamInPrimitiveCall)
           {
-            Error(node.Ins[i],
-              $"Invalid access path expression passed to linear parameter {formal.Name} at position {i}");
+            Error(node, $"Invalid access path expression passed to linear parameter: {node.Ins[i]}");
           }
           else
           {
-            Error(node.Ins[i], $"Only a variable can be passed to linear parameter {formal.Name} at position {i}");
+            Error(node, $"Only variable can be passed to linear parameter: {node.Ins[i]}");
           }
           continue;
         }
         var actualKind = LinearDomainCollector.FindLinearKind(actual.Decl);
         if (actualKind == LinearKind.ORDINARY)
         {
-          Error(actual, $"Only a linear variable can be passed to linear parameter {formal.Name} at position {i}");
+          Error(node, $"Only linear variable can be passed to linear parameter: {actual}");
           continue;
         }
         if (LinearDomainCollector.FindDomainName(formal) != LinearDomainCollector.FindDomainName(actual.Decl))
         {
-          Error(actual, "The domains of formal and actual parameters must be the same");
+          Error(node, $"The domains of parameter {formal} and argument {actual} must be the same");
           continue;
         }
         if (actual.Decl is GlobalVariable && !IsPrimitive(node.Proc))
         {
-          Error(actual, "Only local linear variable can be an actual input parameter of a procedure call");
+          Error(node, $"Only local linear variable can be an argument to a procedure call: {actual}");
           continue;
         }
         if (inVars.Contains(actual.Decl))
@@ -543,6 +576,25 @@ namespace Microsoft.Boogie
         if (LinearDomainCollector.FindDomainName(formal) != LinearDomainCollector.FindDomainName(actual.Decl))
         {
           Error(node, "The domains of formal and actual parameters must be the same");
+        }
+      }
+
+      if (isPrimitive)
+      {
+        var modifiedArgument = ModifiedArgument(node)?.Decl;
+        if (modifiedArgument != null)
+        {
+          if (modifiedArgument is Formal formal && formal.InComing)
+          {
+            Error(node, $"Primitive assigns to input variable: {formal}");
+          }
+          else if (modifiedArgument is GlobalVariable &&
+                   !civlTypeChecker.IsYieldingProcedure(enclosingProc) &&
+                   enclosingProc.Modifies.All(v => v.Decl != modifiedArgument))
+          {
+            Error(node,
+              $"Primitive assigns to a global variable that is not in the enclosing procedure's modifies clause: {modifiedArgument}");
+          }
         }
       }
       return base.VisitCallCmd(node);

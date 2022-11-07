@@ -348,7 +348,7 @@ namespace Microsoft.Boogie
         LayerRange layerRange = actionProcToLayerRange[proc];
         if (proc.HasAttribute(CivlAttributes.INTRO))
         {
-          procToIntroductionAction[proc] = new IntroductionAction(proc, impl, layerRange);
+          procToIntroductionAction[proc] = new IntroductionAction(proc, impl, layerRange, Options);
         }
         else
         {
