@@ -1618,7 +1618,7 @@ namespace Microsoft.Boogie
 
         if (!(attr.Params[0] is string yieldInvariantProcName))
         {
-          civlTypeChecker.Error(attr, "Name of a yield invariant must be provided at position 1");
+          civlTypeChecker.Error(attr, $"Illegal yield invariant name: {attr.Params[0]}");
           return;
         }
 
@@ -1639,7 +1639,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            civlTypeChecker.Error(attr, $"Illegal expression at position {i}");
+            civlTypeChecker.Error(attr, $"Illegal expression: {attr.Params[i]}");
           }
         }
 
@@ -1859,8 +1859,7 @@ namespace Microsoft.Boogie
               lhsLayerRange.Subset(civlTypeChecker.LocalVariableLayerRange(x.Decl))))
             {
               civlTypeChecker.checkingContext.Error(node,
-                "Layer range mismatch at position {0}: local variables accessed in rhs must be available at all layers where the lhs exists",
-                i);
+                $"Variables accessed in the source of assignment to {lhs} must exist at all layers where {lhs} exists");
             }
             localVariableAccesses = null;
           }
@@ -1873,20 +1872,16 @@ namespace Microsoft.Boogie
         var cmd = base.VisitUnpackCmd(node);
         localVariableAccesses = new List<IdentifierExpr>();
         base.Visit(node.Rhs);
-        for (int i = 0; i < node.Lhs.Args.Count; i++)
+        node.UnpackedLhs.Select(ie => ie.Decl).OfType<LocalVariable>().Iter(lhs =>
         {
-          var lhs = ((IdentifierExpr)node.Lhs.Args[i]).Decl;
-          if (lhs is LocalVariable lhsLocalVariable)
+          var lhsLayerRange = civlTypeChecker.LocalVariableLayerRange(lhs);
+          if (!localVariableAccesses.TrueForAll(x =>
+                lhsLayerRange.Subset(civlTypeChecker.LocalVariableLayerRange(x.Decl))))
           {
-            var lhsLayerRange = civlTypeChecker.LocalVariableLayerRange(lhsLocalVariable);
-            if (!localVariableAccesses.TrueForAll(x =>
-                  lhsLayerRange.Subset(civlTypeChecker.LocalVariableLayerRange(x.Decl))))
-            {
-              civlTypeChecker.checkingContext.Error(node,
-                $"Layer range mismatch at position {i}: local variables accessed in rhs must be available at all layers where the lhs exists");
-            }
+            civlTypeChecker.checkingContext.Error(node,
+              $"Variables accessed in the unpacked expression must exist at all layers where {lhs} exists");
           }
-        }
+        });
         localVariableAccesses = null;
         return cmd;
       }

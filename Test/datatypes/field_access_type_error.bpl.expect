@@ -8,4 +8,5 @@ field_access_type_error.bpl(31,12): Error: command assigns to a global variable 
 field_access_type_error.bpl(37,12): Error: mismatched types in assignment command (cannot assign int to Perm)
 field_access_type_error.bpl(45,13): Error: variable a is assigned more than once in unpack command
 field_access_type_error.bpl(50,13): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: g
-10 type checking errors detected in field_access_type_error.bpl
+field_access_type_error.bpl(56,13): Error: command assigns to an immutable variable: a
+11 type checking errors detected in field_access_type_error.bpl

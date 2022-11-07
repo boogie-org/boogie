@@ -1,3 +1,3 @@
-local-layers.bpl(9,9): Error: Layer range mismatch at position 1: local variables accessed in rhs must be available at all layers where the lhs exists
+local-layers.bpl(9,9): Error: Variables accessed in the source of assignment to y must exist at all layers where y exists
 local-layers.bpl(10,4): Error: Local variables accessed in assume command must be available at all layers where the enclosing procedure exists
 2 type checking errors detected in local-layers.bpl

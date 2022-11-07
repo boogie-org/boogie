@@ -49,3 +49,9 @@ procedure H(p: Pair) returns (a: int)
 {
   Pair(a, g) := p;
 }
+
+procedure I(p: Pair, a: int)
+{
+  var b: int;
+  Pair(a, b) := p;
+}
