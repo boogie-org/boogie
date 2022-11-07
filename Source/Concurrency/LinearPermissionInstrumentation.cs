@@ -62,21 +62,12 @@ namespace Microsoft.Boogie
 
     public Dictionary<LinearDomain, Expr> PermissionExprs(Absy absy)
     {
-      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var domainToScope = linearTypeChecker.LinearDomains.ToDictionary(domain => domain, _ => new HashSet<Variable>());
       var availableVars = AvailableLinearLocalVars(absy).Union(LinearGlobalVars());
-      availableVars.Iter(v =>
-      {
-        var domain = linearTypeChecker.FindDomain(v);
-        domainToScope[domain].Add(MapVariable(v));
-      });
-      var domainToExpr = domainToScope.ToDictionary(kv => kv.Key, kv =>
-      {
-        var permissionExprs =
-          linearTypeChecker.PermissionExprForEachVariable(kv.Key, kv.Value);
-        return linearTypeChecker.UnionExprForPermissions(kv.Key, permissionExprs);
-      });
-      return domainToExpr;
+      var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
+      var permissionExprs = linearTypeChecker.PermissionExprs(mappedAvailableVars);
+      return permissionExprs.Keys.ToDictionary(domain => domain,
+        domain => linearTypeChecker.UnionExprForPermissions(domain, permissionExprs[domain]));
     }
 
     public void AddDisjointnessAssumptions(Implementation impl)
@@ -119,29 +110,15 @@ namespace Microsoft.Boogie
     private List<Expr> DisjointnessExprs(IEnumerable<Variable> availableVars)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var domainToScope = linearTypeChecker.LinearDomains.ToDictionary(domain => domain, _ => new HashSet<Variable>());
-      availableVars.Iter(v =>
+      var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
+      var permissionExprs = linearTypeChecker.PermissionExprs(mappedAvailableVars);
+      return permissionExprs.Keys.Select(domain =>
       {
-        var domain = linearTypeChecker.FindDomain(v);
-        domainToScope[domain].Add(MapVariable(v));
-      });
-      var newExprs = new List<Expr>();
-      foreach (var domain in linearTypeChecker.LinearDomains)
-      {
-        var permissionExprs =
-          linearTypeChecker
-            .PermissionExprForEachVariable(domain, domainToScope[domain])
-            .Union(
-              domainToHoleVar.ContainsKey(domain)
-                ? new List<Expr> {Expr.Ident(domainToHoleVar[domain])}
-                : new List<Expr>());
-        var expr = linearTypeChecker.DisjointnessExprForPermissions(domain, permissionExprs);
-        if (!expr.Equals(Expr.True))
-        {
-          newExprs.Add(expr);
-        }
-      }
-      return newExprs;
+        var extraExpr = domainToHoleVar.ContainsKey(domain)
+          ? new List<Expr> { Expr.Ident(domainToHoleVar[domain]) }
+          : new List<Expr>();
+        return linearTypeChecker.DisjointnessExprForPermissions(domain, permissionExprs[domain].Union(extraExpr));
+      }).Where(expr => !expr.Equals(Expr.True)).ToList();
     }
 
     private IEnumerable<Variable> AvailableLinearLocalVars(Absy absy)

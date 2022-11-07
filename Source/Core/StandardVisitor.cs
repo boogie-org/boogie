@@ -95,6 +95,14 @@ namespace Microsoft.Boogie
       return node;
     }
 
+    public virtual Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      node.Lhs = (NAryExpr)this.Visit(node.Lhs);
+      node.Rhs = (Expr)this.Visit(node.Rhs);
+      VisitAttributes(node);
+      return node;
+    }
+    
     public virtual Cmd VisitAssumeCmd(AssumeCmd node)
     {
       Contract.Requires(node != null);
@@ -964,7 +972,13 @@ namespace Microsoft.Boogie
         this.Visit(node.Lhss[i]);
         this.VisitExpr(node.Rhss[i]);
       }
+      return node;
+    }
 
+    public override Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      this.VisitExpr(node.Lhs);
+      this.VisitExpr(node.Rhs);
       return node;
     }
 

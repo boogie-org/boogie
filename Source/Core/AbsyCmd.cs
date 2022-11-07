@@ -2418,6 +2418,139 @@ namespace Microsoft.Boogie
   }
 
   /// <summary>
+  /// UnpackCmd used for unpacking a constructed value into its components.
+  /// </summary>
+  public class UnpackCmd : SugaredCmd, ICarriesAttributes
+  {
+    private NAryExpr lhs;
+    private Expr rhs;
+    private QKeyValue kv;
+
+    public UnpackCmd(IToken tok, NAryExpr lhs, Expr rhs, QKeyValue kv)
+    : base(tok)
+    {
+      this.lhs = lhs;
+      this.rhs = rhs;
+      this.kv = kv;
+    }
+
+    public QKeyValue Attributes
+    {
+      get { return kv; }
+      set { kv = value; }
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      lhs.Resolve(rc);
+      rhs.Resolve(rc);
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      TypecheckAttributes(Attributes, tc);
+      lhs.Typecheck(tc);
+      rhs.Typecheck(tc);
+      this.CheckAssignments(tc);
+      Type ltype = lhs.Type;
+      Type rtype = rhs.Type;
+      if (ltype == null || rtype == null)
+      {
+        return;
+      }
+      if (!ltype.Unify(rtype))
+      {
+        tc.Error(tok, "mismatched types in assignment command (cannot assign {0} to {1})", rtype, ltype);
+        return;
+      }
+      var f = (FunctionCall)lhs.Fun;
+      if (!(f.Func is DatatypeConstructor))
+      {
+        tc.Error(tok, "left side of unpack command must be a constructor application");
+      }
+      var assignedVars = new HashSet<Variable>();
+      UnpackedLhs.Iter(ie =>
+      {
+        if (assignedVars.Contains(ie.Decl))
+        {
+          tc.Error(tok, $"variable {ie.Decl} is assigned more than once in unpack command");
+        }
+        else
+        {
+          assignedVars.Add(ie.Decl);
+        }
+      });
+    }
+
+    public DatatypeConstructor Constructor => (DatatypeConstructor)((FunctionCall)lhs.Fun).Func;
+    
+    public NAryExpr Lhs
+    {
+      get
+      {
+        return lhs;
+      }
+      set
+      {
+        lhs = value;
+      }
+    }
+    
+    public Expr Rhs
+    {
+      get
+      {
+        return rhs;
+      }
+      set
+      {
+        rhs = value;
+      }
+    }
+
+    public IEnumerable<IdentifierExpr> UnpackedLhs => lhs.Args.Cast<IdentifierExpr>();
+    
+    public override void AddAssignedVariables(List<Variable> vars)
+    {
+      lhs.Args.Cast<IdentifierExpr>().Iter(arg => vars.Add(arg.Decl));
+    }
+
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      stream.Write(this, level, "");
+      lhs.Emit(stream);
+      stream.Write(" := ");
+      rhs.Emit(stream);
+      stream.WriteLine(";");
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      return visitor.VisitUnpackCmd(this);
+    }
+    
+    protected override Cmd ComputeDesugaring(PrintOptions options)
+    {
+      var cmds = new List<Cmd>();
+      // assert that unpacked value has the correct constructor
+      var assertCmd = new AssertCmd(tok,
+        new NAryExpr(tok, new IsConstructor(tok, Constructor.datatypeTypeCtorDecl, Constructor.index),
+          new List<Expr> { rhs })) { Description = new FailureOnlyDescription("The precondition for unpack might not hold") };
+      cmds.Add(assertCmd);
+      // read fields into lhs variables from localRhs
+      var assignLhss = lhs.Args.Select(arg => new SimpleAssignLhs(tok, (IdentifierExpr)arg)).ToList<AssignLhs>();
+      var assignRhss = Enumerable.Range(0, Constructor.InParams.Count).Select(i =>
+      {
+        var fieldAccess = new FieldAccess(tok, Constructor.datatypeTypeCtorDecl,
+          new List<DatatypeAccessor> { new DatatypeAccessor(Constructor.index, i) });
+        return new NAryExpr(tok, fieldAccess, new List<Expr> { rhs });
+      }).ToList<Expr>();
+      cmds.Add(new AssignCmd(tok, assignLhss, assignRhss));
+      return new StateCmd(tok, new List<Variable>(), cmds);
+    }
+  }
+
+  /// <summary>
   /// A StateCmd is like an imperative-let binding around a sequence of commands.
   /// There is no user syntax for a StateCmd.  Instead, a StateCmd is only used
   /// temporarily during the desugaring phase inside the VC generator.
@@ -2577,7 +2710,7 @@ namespace Microsoft.Boogie
     /// desugaring to the result thereof.  The method's intended use is for subclasses
     /// of StandardVisitor that need to also visit the desugaring.  Note, since the
     /// "desugaring" field is updated, this is not an appropriate method to be called
-    /// be a ReadOnlyVisitor; such visitors should instead just call
+    /// by a ReadOnlyVisitor; such visitors should instead just call
     /// visitor.Visit(sugaredCmd.Desugaring).
     /// </summary>
     public void VisitDesugaring(StandardVisitor visitor)

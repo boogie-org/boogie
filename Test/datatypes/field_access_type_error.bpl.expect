@@ -4,4 +4,9 @@ field_access_type_error.bpl(12,12): Error: field-access must be applied to a dat
 field_access_type_error.bpl(13,14): Error: is-constructor must be applied to a datatype, T is not a datatype
 field_access_type_error.bpl(21,12): Error: datatype Perm does not have a field with name f
 field_access_type_error.bpl(22,14): Error: datatype Perm does not have a constructor with name Middle
-6 type checking errors detected in field_access_type_error.bpl
+field_access_type_error.bpl(31,12): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: g
+field_access_type_error.bpl(37,12): Error: mismatched types in assignment command (cannot assign int to Perm)
+field_access_type_error.bpl(45,13): Error: variable a is assigned more than once in unpack command
+field_access_type_error.bpl(50,13): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: g
+field_access_type_error.bpl(56,13): Error: command assigns to an immutable variable: a
+11 type checking errors detected in field_access_type_error.bpl

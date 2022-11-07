@@ -69,18 +69,12 @@ class LinearityChecker
       foreach (var domain in linearTypeChecker.NameLinearDomains)
       {
         // Linear in vars
-        var inVars = inputs.Union(action.modifiedGlobalVars)
-          .Where(x => InKinds.Contains(LinearDomainCollector.FindLinearKind(x)))
-          .Where(x => linearTypeChecker.FindDomain(x) == domain)
-          .Select(Expr.Ident)
-          .ToList();
+        var inVars = linearTypeChecker.FilterVariables(domain,inputs.Union(action.modifiedGlobalVars))
+          .Where(x => InKinds.Contains(LinearDomainCollector.FindLinearKind(x))).Select(Expr.Ident).ToList();
         
         // Linear out vars
-        var outVars = inputs.Union(outputs).Union(action.modifiedGlobalVars)
-          .Where(x => OutKinds.Contains(LinearDomainCollector.FindLinearKind(x)))
-          .Where(x => linearTypeChecker.FindDomain(x) == domain)
-          .Select(Expr.Ident)
-          .ToList();
+        var outVars = linearTypeChecker.FilterVariables(domain, inputs.Union(outputs).Union(action.modifiedGlobalVars))
+          .Where(x => OutKinds.Contains(LinearDomainCollector.FindLinearKind(x))).Select(Expr.Ident).ToList();
 
         // First kind
         // Permissions in linear output variables are a subset of permissions in linear input variables.
@@ -218,21 +212,11 @@ class LinearityChecker
 
     private List<Expr> PendingAsyncLinearParams(LinearDomain domain, AtomicAction pendingAsync, IdentifierExpr pa)
     {
-      var pendingAsyncLinearParams = new List<Expr>();
-
-      for (int i = 0; i < pendingAsync.proc.InParams.Count; i++)
-      {
-        var inParam = pendingAsync.proc.InParams[i];
-        if (InKinds.Contains(LinearDomainCollector.FindLinearKind(inParam)) && linearTypeChecker.FindDomain(inParam) == domain)
-        {
-          var pendingAsyncParam = ExprHelper.FieldAccess(pa, pendingAsync.pendingAsyncCtor.InParams[i].Name);
-          pendingAsyncLinearParams.Add(pendingAsyncParam);
-        }
-      }
-
+      var pendingAsyncLinearParams = linearTypeChecker.FilterVariables(domain, pendingAsync.proc.InParams)
+        .Where(v => InKinds.Contains(LinearDomainCollector.FindLinearKind(v)))
+        .Select(v => ExprHelper.FieldAccess(pa, v.Name)).ToList<Expr>();
       // These expressions must be typechecked since the types are needed later in PermissionMultiset.
       CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, pendingAsyncLinearParams);
-      
       return pendingAsyncLinearParams;
     }
 

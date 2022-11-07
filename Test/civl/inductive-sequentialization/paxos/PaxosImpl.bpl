@@ -9,7 +9,7 @@ modifies pendingAsyncs;
     {:add_to_pool "Round", 0, numRounds}
     {:add_to_pool "NumRounds", numRounds}
     0 <= numRounds;
-  PAs := (lambda pa: PA :: if pa is A_StartRound && pa->round == pa->round_lin && Round(pa->round) && pa->round <= numRounds then 1 else 0);
+  PAs := (lambda pa: PA :: if pa is A_StartRound && pa->r == pa->r_lin && Round(pa->r) && pa->r <= numRounds then 1 else 0);
   pendingAsyncs := PAs;
 }
 
@@ -95,7 +95,7 @@ requires {:layer 1} InitLow(acceptorState, joinChannel, voteChannel, permJoinCha
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 0 <= r;
   invariant {:layer 1} (forall r': Round :: r < r' ==> rs'[r']);
-  invariant {:layer 1} PAs == (lambda pa: PA :: if (pa is A_StartRound && pa->round == pa->round_lin && Round(pa->round) && pa->round <= r) then 1 else 0);
+  invariant {:layer 1} PAs == (lambda pa: PA :: if (pa is A_StartRound && pa->r == pa->r_lin && Round(pa->r) && pa->r <= r) then 1 else 0);
   {
     r := r + 1;
     call rs', r_lin := ExtractRoundPermission(rs', r);
@@ -121,7 +121,7 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= n && n <= numNodes+1;
   invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps[JoinPerm(r, n')]);
-  invariant {:layer 1} PAs == (lambda pa: PA :: if pa is A_Join && pa->round == r && 1 <= pa->node && pa->node < n && pa->p == JoinPerm(pa->round, pa->node) then 1 else 0);
+  invariant {:layer 1} PAs == (lambda pa: PA :: if pa is A_Join && pa->r == r && 1 <= pa->n && pa->n < n && pa->p == JoinPerm(pa->r, pa->n) then 1 else 0);
   {
     call ps, p := ExtractJoinPermission(ps, r, n);
     async call Join(r, n, p);
@@ -199,7 +199,7 @@ requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, p
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= n && n <= numNodes+1;
   invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps'[VotePerm(r, n')]);
-  invariant {:layer 1} PAs == (lambda pa: PA :: if pa is A_Vote && pa->round == r && 1 <= pa->node && pa->node < n && pa->value == maxValue && pa->p == VotePerm(pa->round, pa->node) then 1 else 0);
+  invariant {:layer 1} PAs == (lambda pa: PA :: if pa is A_Vote && pa->r == r && 1 <= pa->n && pa->n < n && pa->v == maxValue && pa->p == VotePerm(pa->r, pa->n) then 1 else 0);
   {
     call ps', p := ExtractVotePermission(ps', r, n);
     async call Vote(r, n, maxValue, p);

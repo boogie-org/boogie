@@ -1,4 +1,5 @@
-signature-mismatch.bpl(17,72): Error: mismatched type of in-parameter in atomic_write_x_1: y' (named x' in atomic_write_x_1)
+signature-mismatch.bpl(17,72): Error: mismatched name of in-parameter y': (named x' in atomic_write_x_1)
 signature-mismatch.bpl(25,61): Error: mismatched number of in-parameters in atomic_write_x_2
-signature-mismatch.bpl(34,91): Error: mismatched linearity type of in-parameter in atomic_write_x_3: x'
-3 type checking errors detected in signature-mismatch.bpl
+signature-mismatch.bpl(34,91): Error: mismatched linearity annotation of in-parameter x' in atomic_write_x_3
+signature-mismatch.bpl(42,72): Error: mismatched type of in-parameter x' in atomic_write_x_4
+4 type checking errors detected in signature-mismatch.bpl
