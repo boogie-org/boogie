@@ -2460,9 +2460,7 @@ namespace Microsoft.Boogie
       }
       if (!ltype.Unify(rtype))
       {
-        tc.Error(tok,
-          "mismatched types in assignment command (cannot assign {0} to {1})",
-          rtype, ltype);
+        tc.Error(tok, "mismatched types in assignment command (cannot assign {0} to {1})", rtype, ltype);
         return;
       }
       var f = (FunctionCall)lhs.Fun;
@@ -2470,6 +2468,18 @@ namespace Microsoft.Boogie
       {
         tc.Error(tok, "left side of unpack command must be a constructor application");
       }
+      var assignedVars = new HashSet<Variable>();
+      UnpackedLhs.Iter(ie =>
+      {
+        if (assignedVars.Contains(ie.Decl))
+        {
+          tc.Error(tok, $"variable {ie.Decl} is assigned more than once in unpack command");
+        }
+        else
+        {
+          assignedVars.Add(ie.Decl);
+        }
+      });
     }
 
     public DatatypeConstructor Constructor => (DatatypeConstructor)((FunctionCall)lhs.Fun).Func;

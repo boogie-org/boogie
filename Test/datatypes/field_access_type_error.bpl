@@ -36,3 +36,16 @@ modifies g;
 {
     Left(g) := x;
 }
+
+type{:datatype} Pair;
+function{:constructor} Pair(a: int, b: int): Pair;
+
+procedure G(p: Pair) returns (a: int)
+{
+  Pair(a, a) := p;
+}
+
+procedure H(p: Pair) returns (a: int)
+{
+  Pair(a, g) := p;
+}
