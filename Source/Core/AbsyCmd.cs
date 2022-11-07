@@ -2522,21 +2522,10 @@ namespace Microsoft.Boogie
     protected override Cmd ComputeDesugaring(PrintOptions options)
     {
       var cmds = new List<Cmd>();
-      var localVars = new List<Variable>();
-      Expr localRhs = rhs;
-      if (!(rhs is IdentifierExpr))
-      {
-        // read rhs into fresh local and update localRhs
-        var v = new LocalVariable(tok, new TypedIdent(tok, $"unpack_{Constructor.Name}", rhs.Type));
-        localVars.Add(v);
-        var assignLhs = new SimpleAssignLhs(tok, new IdentifierExpr(tok, v));
-        localRhs = assignLhs.AsExpr;
-        cmds.Add(new AssignCmd(tok, new List<AssignLhs> { assignLhs }, new List<Expr> { rhs }));
-      }
       // assert that unpacked value has the correct constructor
       var assertCmd = new AssertCmd(tok,
         new NAryExpr(tok, new IsConstructor(tok, Constructor.datatypeTypeCtorDecl, Constructor.index),
-          new List<Expr> { localRhs })) { Description = new FailureOnlyDescription("The precondition for unpack might not hold") };
+          new List<Expr> { rhs })) { Description = new FailureOnlyDescription("The precondition for unpack might not hold") };
       cmds.Add(assertCmd);
       // read fields into lhs variables from localRhs
       var assignLhss = lhs.Args.Select(arg => new SimpleAssignLhs(tok, (IdentifierExpr)arg)).ToList<AssignLhs>();
@@ -2544,10 +2533,10 @@ namespace Microsoft.Boogie
       {
         var fieldAccess = new FieldAccess(tok, Constructor.datatypeTypeCtorDecl,
           new List<DatatypeAccessor> { new DatatypeAccessor(Constructor.index, i) });
-        return new NAryExpr(tok, fieldAccess, new List<Expr> { localRhs });
+        return new NAryExpr(tok, fieldAccess, new List<Expr> { rhs });
       }).ToList<Expr>();
       cmds.Add(new AssignCmd(tok, assignLhss, assignRhss));
-      return new StateCmd(tok, localVars, cmds);
+      return new StateCmd(tok, new List<Variable>(), cmds);
     }
   }
 
@@ -2711,7 +2700,7 @@ namespace Microsoft.Boogie
     /// desugaring to the result thereof.  The method's intended use is for subclasses
     /// of StandardVisitor that need to also visit the desugaring.  Note, since the
     /// "desugaring" field is updated, this is not an appropriate method to be called
-    /// be a ReadOnlyVisitor; such visitors should instead just call
+    /// by a ReadOnlyVisitor; such visitors should instead just call
     /// visitor.Visit(sugaredCmd.Desugaring).
     /// </summary>
     public void VisitDesugaring(StandardVisitor visitor)
