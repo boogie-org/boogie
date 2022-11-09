@@ -122,44 +122,35 @@ pop() returns (t: int)
   }
 }
 
-function Equal([int]bool, [int]bool) returns (bool);
-function Subset([int]bool, [int]bool) returns (bool);
+function {:inline} Empty(): [int]bool
+{
+  MapConst(false)
+}
 
-function Empty() returns ([int]bool);
-function Singleton(int) returns ([int]bool);
-function Union([int]bool, [int]bool) returns ([int]bool);
+function {:inline} Singleton(a: int): [int]bool 
+{
+  MapOne(a)
+}
 
-axiom(forall x:int :: !Empty()[x]);
+function {:inline} Union(x: [int]bool, y: [int]bool): [int]bool
+{
+  MapOr(x, y)
+}
 
-axiom(forall x:int, y:int :: {Singleton(y)[x]} Singleton(y)[x] <==> x == y);
-axiom(forall y:int :: {Singleton(y)} Singleton(y)[y]);
-
-axiom(forall x:int, S:[int]bool, T:[int]bool :: {Union(S,T)[x]}{Union(S,T),S[x]}{Union(S,T),T[x]} Union(S,T)[x] <==> S[x] || T[x]);
-
-axiom(forall S:[int]bool, T:[int]bool :: {Equal(S,T)} Equal(S,T) <==> Subset(S,T) && Subset(T,S));
-axiom(forall x:int, S:[int]bool, T:[int]bool :: {S[x],Subset(S,T)}{T[x],Subset(S,T)} S[x] && Subset(S,T) ==> T[x]);
-axiom(forall S:[int]bool, T:[int]bool :: {Subset(S,T)} Subset(S,T) || (exists x:int :: S[x] && !T[x]));
+function {:inline} Subset(x: [int]bool, y: [int]bool): bool
+{
+  MapDiff(x, y) == MapConst(false)
+}
 
 ////////////////////
 // Between predicate
 ////////////////////
 function Between(f: [int]int, x: int, y: int, z: int) returns (bool);
 function Avoiding(f: [int]int, x: int, y: int, z: int) returns (bool);
-
-
-//////////////////////////
-// Between set constructor
-//////////////////////////
-function BetweenSet(f: [int]int, x: int, z: int) returns ([int]bool);
-
-////////////////////////////////////////////////////
-// axioms relating Between and BetweenSet
-////////////////////////////////////////////////////
-axiom(forall f: [int]int, x: int, y: int, z: int :: {BetweenSet(f, x, z)[y]} BetweenSet(f, x, z)[y] <==> Between(f, x, y, z));
-axiom(forall f: [int]int, x: int, y: int, z: int :: {Between(f, x, y, z), BetweenSet(f, x, z)} Between(f, x, y, z) ==> BetweenSet(f, x, z)[y]);
-axiom(forall f: [int]int, x: int, z: int :: {BetweenSet(f, x, z)} Between(f, x, x, x));
-axiom(forall f: [int]int, x: int, z: int :: {BetweenSet(f, x, z)} Between(f, z, z, z));
-
+function {:inline} BetweenSet(f: [int]int, x: int, z: int): [int]bool 
+{
+  (lambda y: int :: Between(f, x, y, z))
+}
 
 //////////////////////////
 // Axioms for Between
@@ -205,7 +196,3 @@ axiom(forall f: [int]int, x: int, y: int, z: int :: {Between(f, x, y, z)} Betwee
 
 // update
 axiom(forall f: [int]int, u: int, v: int, x: int, p: int, q: int :: {Avoiding(f[p := q], u, v, x)} Avoiding(f[p := q], u, v, x) <==> ((Avoiding(f, u, v, p) && Avoiding(f, u, v, x)) || (Avoiding(f, u, p, x) && p != x && Avoiding(f, q, v, p) && Avoiding(f, q, v, x))));
-
-axiom (forall f: [int]int, p: int, q: int, u: int, w: int :: {BetweenSet(f[p := q], u, w)} Avoiding(f, u, w, p) ==> Equal(BetweenSet(f[p := q], u, w), BetweenSet(f, u, w)));
-axiom (forall f: [int]int, p: int, q: int, u: int, w: int :: {BetweenSet(f[p := q], u, w)} p != w && Avoiding(f, u, p, w) && Avoiding(f, q, w, p) ==> Equal(BetweenSet(f[p := q], u, w), Union(BetweenSet(f, u, p), BetweenSet(f, q, w))));
-axiom (forall f: [int]int, p: int, q: int, u: int, w: int :: {BetweenSet(f[p := q], u, w)} Avoiding(f, u, w, p) || (p != w && Avoiding(f, u, p, w) && Avoiding(f, q, w, p)) || Equal(BetweenSet(f[p := q], u, w), Empty()));
