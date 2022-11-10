@@ -141,8 +141,8 @@ function {:inline} Lmap_Deref<V>(l: Lmap V, k: Ref V): V {
 procedure Lmap_Empty<V>() returns (l: Lmap V);
 procedure Lmap_Split<V>(k: [Ref V]bool, path: Lmap V) returns (l: Lmap V);
 procedure Lmap_Transfer<V>({:linear_in} path1: Lmap V, path2: Lmap V);
-procedure Lmap_Read<V>(path: Lmap V, k: Ref V) returns (v: V);
-procedure Lmap_Write<V>(path: Lmap V, k: Ref V, v: V);
+procedure Lmap_Read<V>(path: V) returns (v: V);
+procedure Lmap_Write<V>(path: V, v: V);
 procedure Lmap_Add<V>(path: Lmap V, v: V) returns (k: Ref V);
 procedure Lmap_Remove<V>(path: Lmap V, k: Ref V) returns (v: V);
 

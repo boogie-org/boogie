@@ -228,16 +228,11 @@ public class LinearRewriter
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lmapConstructor,
       out Function lsetConstructor, out Function lvalConstructor);
     
-    var cmdSeq = new List<Cmd>();
     var path = callCmd.Ins[0];
-    var k = callCmd.Ins[1];
     var v = callCmd.Outs[0];
 
-    var lmapContainsFunc = LmapContains(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lmapContainsFunc, path, k), "Lmap_Read failed"));
-
-    var lmapDerefFunc = LmapDeref(type);
-    cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(lmapDerefFunc, path, k)));
+    var cmdSeq = CreateAccessAsserts(path, callCmd.tok, "Lmap_Read failed");
+    cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, path));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
@@ -248,18 +243,44 @@ public class LinearRewriter
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lmapConstructor,
       out Function lsetConstructor, out Function lvalConstructor);
     
-    var cmdSeq = new List<Cmd>();
     var path = callCmd.Ins[0];
-    var k = callCmd.Ins[1];
-    var v = callCmd.Ins[2];
+    var v = callCmd.Ins[1];
     
-    var lmapContainsFunc = LmapContains(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lmapContainsFunc, path, k), "Lmap_Write failed"));
-
-    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.MapAssignLhs(Val(path), new List<Expr>() { k }), v));
+    var cmdSeq = CreateAccessAsserts(path, callCmd.tok, "Lmap_Write failed");
+    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), v));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
+  }
+
+  private List<Cmd> CreateAccessAsserts(Expr expr, IToken tok, string msg)
+  {
+    if (expr is IdentifierExpr identifierExpr)
+    {
+      return new List<Cmd>();
+    }
+    if (expr is NAryExpr nAryExpr)
+    {
+      if (nAryExpr.Fun is FieldAccess)
+      {
+        return CreateAccessAsserts(nAryExpr.Args[0], tok, msg);
+      }
+      if (nAryExpr.Fun is MapSelect)
+      {
+        var mapExpr = nAryExpr.Args[0];
+        if (mapExpr is NAryExpr lmapValExpr &&
+            lmapValExpr.Fun is FieldAccess &&
+            lmapValExpr.Args[0].Type is CtorType ctorType &&
+            monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lmap")
+        {
+          var cmdSeq = CreateAccessAsserts(lmapValExpr.Args[0], tok, msg);
+          var lmapContainsFunc = LmapContains(nAryExpr.Type);
+          cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(lmapContainsFunc, lmapValExpr.Args[0], nAryExpr.Args[1]), "Lmap_Write failed"));
+          return cmdSeq;
+        }
+      }
+    }
+    throw new cce.UnreachableException();
   }
 
   private List<Cmd> RewriteLmapAdd(CallCmd callCmd)

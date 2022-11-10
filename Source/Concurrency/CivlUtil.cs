@@ -150,16 +150,6 @@ namespace Microsoft.Boogie
       return new FieldAssignLhs(Token.NoToken, ExprToAssignLhs(path), new FieldAccess(Token.NoToken, fieldName));
     }
     
-    public static MapAssignLhs MapAssignLhs(AssignLhs path, List<Expr> args)
-    {
-      return new MapAssignLhs(Token.NoToken, path, args);
-    }
-    
-    public static MapAssignLhs MapAssignLhs(Expr path, List<Expr> args)
-    {
-      return new MapAssignLhs(Token.NoToken, ExprToAssignLhs(path), args);
-    }
-    
     public static AssignLhs ExprToAssignLhs(Expr e)
     {
       if (e is IdentifierExpr ie)
@@ -173,7 +163,7 @@ namespace Microsoft.Boogie
       }
       if (naryExpr.Fun is MapSelect)
       {
-        return MapAssignLhs(naryExpr.Args[0], naryExpr.Args.ToList().GetRange(1, naryExpr.Args.Count - 1));
+        return new MapAssignLhs(Token.NoToken, ExprToAssignLhs(naryExpr.Args[0]), naryExpr.Args.ToList().GetRange(1, naryExpr.Args.Count - 1));
       }
       Contract.Assume(false, "Unexpected expression");
       return null;

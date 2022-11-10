@@ -10,8 +10,8 @@ procedure {:atomic} {:layer 1, 2} A0({:linear_in} path: Lmap int, k: [Ref int]bo
 procedure {:atomic} {:layer 1, 2} A1({:linear_in} path: Lmap int, k: Ref int, v: int) returns (path': Lmap int, v': int) {
     call path' := Lmap_Empty();
     call Lmap_Transfer(path, path');
-    call Lmap_Write(path', k, v);
-    call v' := Lmap_Read(path', k);
+    call Lmap_Write(path'->val[k], v);
+    call v' := Lmap_Read(path'->val[k]);
 }
 
 procedure {:atomic} {:layer 1, 2} A2(v: int) returns (path': Lmap int, v': int) {
