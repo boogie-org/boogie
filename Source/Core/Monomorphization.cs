@@ -989,6 +989,7 @@ namespace Microsoft.Boogie
         decl is Procedure proc && procInstantiations.ContainsKey(proc) ||
         decl is Function function && functionInstantiations.ContainsKey(function) ||
         decl is TypeCtorDecl typeCtorDecl && typeInstantiations.ContainsKey(typeCtorDecl) ||
+        decl is TypeSynonymDecl typeSynonymDecl && typeSynonymDecl.TypeParameters.Count > 0 ||
         decl is Axiom axiom && (axiomsToBeInstantiated.ContainsKey(axiom) || polymorphicFunctionAxioms.Contains(axiom)));
     }
 
@@ -1047,6 +1048,12 @@ namespace Microsoft.Boogie
     {
       base.VisitTypeSynonymAnnotation(node);
       return node.ExpandedType;
+    }
+
+    public override Declaration VisitTypeSynonymDecl(TypeSynonymDecl node)
+    {
+      node.Body = monomorphizationDuplicator.VisitType(node.Body);
+      return node;
     }
 
     public override Expr VisitExpr(Expr node)
