@@ -323,7 +323,7 @@ procedure {:both} {:layer 11,20} AtomicVC.Leq({:linear "tid"} tid: Tid, v1: Shad
    assert shadow.Lock[ShadowableTid(tid)] == tid;
    assert v1 is ShadowableVar ==> sx.R[v1->x] == SHARED;
    assert !(v2 is ShadowableVar);
-   res := (forall j : int :: {f(j)} 0 <= j && f(j) ==> EpochLeq(VCArrayGet(shadow.VC[v1], j), VCArrayGet(shadow.VC[v2], j)));
+   res := (forall j : int :: 0 <= j ==> EpochLeq(VCArrayGet(shadow.VC[v1], j), VCArrayGet(shadow.VC[v2], j)));
 }
 
 procedure {:yields} {:layer 10} {:refines "AtomicVC.Leq"}
@@ -342,14 +342,13 @@ VC.Leq({:linear "tid"} tid: Tid, v1: Shadowable, v2: Shadowable) returns (res: b
   i := 0;
   while (i < max(len1, len2))
     invariant {:layer 10} 0 <= i;
-    invariant {:layer 10} (forall j : int :: {f(j)}
-         0 <= j && j < i && f(j) ==>
+    invariant {:layer 10} (forall j : int ::
+         0 <= j && j < i ==>
          EpochLeq(VCArrayGet(shadow.VC[v1], j), VCArrayGet(shadow.VC[v2], j)));
   {
     call e1 := VCGetElem(tid, v1, i);
     call e2 := VCGetElem(tid, v2, i);
     if (!EpochLeq(e1, e2)) {
-      assert {:layer 10} f(i);
       res := false;
       return;
     }
@@ -712,8 +711,8 @@ modifies sx.W;
              ok := true;
              assume EpochLeq(sx.W[x], VCArrayGet(shadow.VC[st], sx.W[x]->tid));
              assume sx.R[x] == SHARED;
-             assume (forall j : int :: {f(j)}
-                      0 <= j && j < max(VCArrayLen(shadow.VC[sx]), VCArrayLen(shadow.VC[st])) && f(j) ==>
+             assume (forall j : int ::
+                      0 <= j && j < max(VCArrayLen(shadow.VC[sx]), VCArrayLen(shadow.VC[st])) ==>
                       EpochLeq(VCArrayGet(shadow.VC[sx], j), VCArrayGet(shadow.VC[st], j)));
              sx.W[x] := VCArrayGet(shadow.VC[st], tid);
              return;
@@ -729,8 +728,8 @@ modifies sx.W;
           SharedWriteRace:
              ok := false;
              assume sx.R[x] == SHARED;
-             assume !(forall j : int :: {f(j)}
-                      0 <= j && j < max(VCArrayLen(shadow.VC[st]),VCArrayLen(shadow.VC[sx])) && f(j) ==>
+             assume !(forall j : int ::
+                      0 <= j && j < max(VCArrayLen(shadow.VC[st]),VCArrayLen(shadow.VC[sx])) ==>
                       EpochLeq(VCArrayGet(shadow.VC[sx], j), VCArrayGet(shadow.VC[st], j)));
              return;
 }
@@ -1071,6 +1070,3 @@ modifies shadow.Lock;
     assert shadow.Lock[ShadowableLock(l)] == tid;
     shadow.Lock[ShadowableLock(l)] := nil;
 }
-
-// for matching quantifiers
-function {:inline false} f(i: int): bool {  true  }
