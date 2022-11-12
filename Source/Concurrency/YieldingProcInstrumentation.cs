@@ -289,8 +289,7 @@ namespace Microsoft.Boogie
             civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList()));
         }
 
-        linearPermissionInstrumentation.DisjointnessExprs(impl, true).ForEach(
-          expr => initCmds.Add(CmdHelper.AssumeCmd(expr)));
+        initCmds.AddRange(linearPermissionInstrumentation.DisjointnessAssumeCmds(impl, true));
 
         Substitution procToImplInParams = Substituter.SubstitutionFromDictionary(impl.Proc.InParams
           .Zip(impl.InParams).ToDictionary(x => x.Item1, x => (Expr) Expr.Ident(x.Item2)));

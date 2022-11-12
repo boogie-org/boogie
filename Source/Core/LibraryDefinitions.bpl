@@ -129,6 +129,9 @@ type Ref _;
 type {:datatype} Lmap _;
 function {:constructor} Lmap<V>(dom: [Ref V]bool, val: [Ref V]V): Lmap V;
 
+function {:inline} Lmap_WellFormed<V>(l: Lmap V): bool {
+    l->val == MapIte(l->dom, l->val, MapConst(Default())) 
+}
 function {:inline} Lmap_Collector<V>(l: Lmap V): [Ref V]bool {
     l->dom
 }

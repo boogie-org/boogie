@@ -53,23 +53,7 @@ namespace Microsoft.Boogie
       var availableVars = AvailableLinearLocalVars(absy).Union(addGlobals ? LinearGlobalVars() : new List<Variable>());
       return DisjointnessExprs(availableVars).Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
     }
-
-    public List<Expr> DisjointnessExprs(Absy absy, bool addGlobals)
-    {
-      var availableVars = AvailableLinearLocalVars(absy).Union(addGlobals ? LinearGlobalVars() : new List<Variable>());
-      return DisjointnessExprs(availableVars);
-    }
-
-    public Dictionary<LinearDomain, Expr> PermissionExprs(Absy absy)
-    {
-      var availableVars = AvailableLinearLocalVars(absy).Union(LinearGlobalVars());
-      var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
-      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var permissionExprs = linearTypeChecker.PermissionExprs(mappedAvailableVars);
-      return permissionExprs.Keys.ToDictionary(domain => domain,
-        domain => linearTypeChecker.UnionExprForPermissions(domain, permissionExprs[domain]));
-    }
-
+    
     public void AddDisjointnessAssumptions(Implementation impl)
     {
       // calls and parallel calls
@@ -84,7 +68,6 @@ namespace Microsoft.Boogie
             newCmds.AddRange(DisjointnessAssumeCmds(cmd, true));
           }
         }
-
         b.Cmds = newCmds;
       }
 
@@ -105,6 +88,16 @@ namespace Microsoft.Boogie
         newCmds.AddRange(header.Cmds);
         header.Cmds = newCmds;
       }
+    }
+
+    public Dictionary<LinearDomain, Expr> PermissionExprs(Absy absy)
+    {
+      var availableVars = AvailableLinearLocalVars(absy).Union(LinearGlobalVars());
+      var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
+      var permissionExprs = linearTypeChecker.PermissionExprs(mappedAvailableVars);
+      return permissionExprs.Keys.ToDictionary(domain => domain,
+        domain => linearTypeChecker.UnionExprForPermissions(domain, permissionExprs[domain]));
     }
 
     private List<Expr> DisjointnessExprs(IEnumerable<Variable> availableVars)
