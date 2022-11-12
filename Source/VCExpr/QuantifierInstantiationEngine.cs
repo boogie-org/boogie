@@ -847,7 +847,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
     {
-      cmdSeq.OfType<ICarriesAttributes>().Iter(cmd => FindInstantiationSources(cmd, "add_to_pool"));
+      cmdSeq.OfType<PredicateCmd>().Iter(cmd => FindInstantiationSources(cmd, "add_to_pool"));
       return base.VisitCmdSeq(cmdSeq);
     }
   }
