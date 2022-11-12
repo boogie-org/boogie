@@ -364,6 +364,7 @@ VC.Leq({:linear "tid"} tid: Tid, v1: Shadowable, v2: Shadowable) returns (res: b
 procedure {:both} {:layer 11,20} AtomicVC.Copy({:linear "tid"} tid: Tid, v1: Shadowable, v2: Shadowable)
 modifies shadow.VC;
 {
+    var {:pool "A"} vc: VC;
     assert ValidTid(tid);
     assert v1 != v2;
     assert shadow.Lock[ShadowableTid(tid)] == tid;
@@ -374,11 +375,10 @@ modifies shadow.VC;
     assert VCRepOk(shadow.VC[v2]);
     assert VCRepOk(shadow.VC[v1]);
     if (*) {
-        havoc shadow.VC;
+        shadow.VC[v1] := vc;
         assume VCRepOk(shadow.VC[v1]);
         assume VCArrayLen(shadow.VC[v1]) == max(VCArrayLen(old(shadow.VC)[v1]),VCArrayLen(old(shadow.VC)[v2]));
         assume (forall j: int :: 0 <= j ==> VCArrayGet(shadow.VC[v1], j) == VCArrayGet(old(shadow.VC)[v2], j));
-        assume shadow.VC == old(shadow.VC)[v1 := shadow.VC[v1]];
     } else {
         shadow.VC[v1] := shadow.VC[v2];
     }
@@ -417,12 +417,14 @@ VC.Copy({:linear "tid"} tid: Tid, v1: Shadowable, v2: Shadowable)
     call VCSetElem(tid, v1, i, e2);
     i := i + 1;
   }
+  assert {:layer 10} {:add_to_pool "A", shadow.VC[v1]} true;
 }
 
 
 procedure {:right} {:layer 11,20} AtomicVC.Join({:linear "tid"} tid: Tid, v1: Shadowable, v2: Shadowable)
 modifies shadow.VC;
 {
+    var {:pool "A"} vc: VC;
     assert ValidTid(tid);
     assert v1 != v2;
     assert shadow.Lock[ShadowableTid(tid)] == tid;
@@ -431,11 +433,10 @@ modifies shadow.VC;
     assert !(v1 is ShadowableVar);
     assert !(v2 is ShadowableVar);
     assert VCRepOk(shadow.VC[v2]);
-    havoc shadow.VC;
+    shadow.VC[v1] := vc;
     assume VCRepOk(shadow.VC[v1]);
     assume VCArrayLen(shadow.VC[v1]) == max(VCArrayLen(old(shadow.VC)[v1]),VCArrayLen(old(shadow.VC)[v2]));
     assume (forall j: int :: 0 <= j ==> VCArrayGet(shadow.VC[v1], j) == EpochMax(VCArrayGet(old(shadow.VC)[v1], j), VCArrayGet(old(shadow.VC)[v2], j)));
-    assume shadow.VC == old(shadow.VC)[v1 := shadow.VC[v1]];
 }
 
 procedure {:yields} {:layer 10} {:refines "AtomicVC.Join"}
@@ -472,6 +473,7 @@ VC.Join({:linear "tid"} tid: Tid, v1: Shadowable, v2: Shadowable)
     call VCSetElem(tid, v1, i, EpochMax(e1, e2));
     i := i + 1;
   }
+  assert {:layer 10} {:add_to_pool "A", shadow.VC[v1]} true;
 }
 
 
@@ -530,6 +532,7 @@ procedure {:atomic} {:layer 21,30} AtomicFork({:linear "tid"} tid:Tid, uid : Tid
 modifies shadow.VC;
 {
     var v1,v2: Shadowable;
+    var {:pool "A"} vc1, vc2: VC;
 
     assert ValidTid(tid);
     assert ValidTid(uid);
@@ -540,7 +543,8 @@ modifies shadow.VC;
     v1 := ShadowableTid(uid);
     v2 := ShadowableTid(tid);
 
-    havoc shadow.VC;
+    shadow.VC[v1] := vc1;
+    shadow.VC[v2] := vc2;
 
     assume VCArrayLen(shadow.VC[v1]) == max(VCArrayLen(old(shadow.VC)[v1]),VCArrayLen(old(shadow.VC)[v2]));
     assume VCRepOk(shadow.VC[v1]);
@@ -550,8 +554,6 @@ modifies shadow.VC;
     assume VCArrayLen(shadow.VC[v2]) == max(VCArrayLen(shadow.VC[v2]), tid+1);
     assume (forall j: int :: 0 <= j && j != tid ==> VCArrayGet(shadow.VC[v2], j) == VCArrayGet(old(shadow.VC)[v2], j));
     assume VCArrayGet(shadow.VC[v2], tid) == EpochInc(VCArrayGet(old(shadow.VC)[v2], tid));
-
-    assume shadow.VC == old(shadow.VC)[v1 := shadow.VC[v1]][v2 := shadow.VC[v2]];
 }
 
 procedure {:yields} {:layer 20} {:refines "AtomicFork"}
@@ -565,13 +567,14 @@ Fork({:linear "tid"} tid:Tid, uid : Tid)
 {
   call VC.Join(tid, ShadowableTid(uid), ShadowableTid(tid));
   call VC.Inc(tid, ShadowableTid(tid), tid);
+  assert {:layer 20} {:add_to_pool "A", shadow.VC[ShadowableTid(uid)], shadow.VC[ShadowableTid(tid)]} true;
 }
-
 
 procedure {:atomic} {:layer 21,30} AtomicJoin({:linear "tid"} tid:Tid, uid : Tid)
 modifies shadow.VC;
 {
     var v1, v2: Shadowable;
+    var vc: VC;
 
     assert ValidTid(tid);
     assert ValidTid(uid);
@@ -582,13 +585,12 @@ modifies shadow.VC;
     v1 := ShadowableTid(uid);
     v2 := ShadowableTid(tid);
 
-    havoc shadow.VC;
+    shadow.VC[v2] := vc;
     assume VCArrayLen(shadow.VC[v2]) == max(VCArrayLen(old(shadow.VC)[v1]),VCArrayLen(old(shadow.VC)[v2]));
     assume VCRepOk(shadow.VC[v2]);
     assume (forall j: int :: 0 <= j ==>
         VCArrayGet(shadow.VC[v2], j) ==
         EpochMax(VCArrayGet(old(shadow.VC)[v2], j), VCArrayGet(old(shadow.VC)[v1], j)));
-    assume shadow.VC == old(shadow.VC)[v2 := shadow.VC[v2]];
 }
 
 procedure {:yields} {:layer 20} {:refines "AtomicJoin"}
@@ -608,6 +610,7 @@ procedure {:atomic} {:layer 21,30} AtomicAcquire({:linear "tid"} tid: Tid, l: Lo
 modifies shadow.VC;
 {
     var v1, v2: Shadowable;
+    var vc: VC;
 
     assert ValidTid(tid);
     assert shadow.Lock[ShadowableLock(l)] == tid;
@@ -615,13 +618,12 @@ modifies shadow.VC;
 
     v1 := ShadowableTid(tid);
     v2 := ShadowableLock(l);
-    havoc shadow.VC;
+    shadow.VC[v1] := vc;
     assume VCRepOk(shadow.VC[v1]);
     assume VCArrayLen(shadow.VC[v1]) == max(VCArrayLen(old(shadow.VC)[v1]),VCArrayLen(old(shadow.VC)[v2]));
     assume (forall j: int :: 0 <= j ==>
         VCArrayGet(shadow.VC[v1], j) ==
         EpochMax(VCArrayGet(old(shadow.VC)[v1], j), VCArrayGet(old(shadow.VC)[v2], j)));
-    assume shadow.VC == old(shadow.VC)[v1 := shadow.VC[v1]];
 }
 
 procedure {:yields} {:layer 20} {:refines "AtomicAcquire"}
@@ -640,6 +642,7 @@ procedure {:atomic} {:layer 21,30} AtomicRelease({:linear "tid"} tid: Tid, l: Lo
 modifies shadow.VC;
 {
     var v1,v2: Shadowable;
+    var {:pool "A"} vc1, vc2: VC;
 
     assert ValidTid(tid);
     assert shadow.Lock[ShadowableTid(tid)] == tid;
@@ -648,7 +651,8 @@ modifies shadow.VC;
     v1 := ShadowableLock(l);
     v2 := ShadowableTid(tid);
 
-    havoc shadow.VC;
+    shadow.VC[v1] := vc1;
+    shadow.VC[v2] := vc2;
 
     // Use the same strategy as in Copy's atomic spec.
     if (*) {
@@ -663,8 +667,6 @@ modifies shadow.VC;
     assume VCArrayLen(shadow.VC[v2]) == max(VCArrayLen(shadow.VC[v2]), tid+1);
     assume (forall j: int :: 0 <= j && j != tid ==> VCArrayGet(shadow.VC[v2], j) == VCArrayGet(old(shadow.VC)[v2], j));
     assume VCArrayGet(shadow.VC[v2], tid) == EpochInc(VCArrayGet(old(shadow.VC)[v2], tid));
-
-    assume shadow.VC == old(shadow.VC)[v1 := shadow.VC[v1]][v2 := shadow.VC[v2]];
 }
 
 procedure {:yields} {:layer 20} {:refines "AtomicRelease"}
@@ -681,6 +683,7 @@ Release({:linear "tid"} tid: Tid, l: Lock)
 
   call VC.Copy(tid, ShadowableLock(l), ShadowableTid(tid));
   call VC.Inc(tid, ShadowableTid(tid), tid);
+  assert {:layer 20} {:add_to_pool "A", shadow.VC[ShadowableLock(l)], shadow.VC[ShadowableTid(tid)]} true;
 }
 
 
@@ -1071,22 +1074,3 @@ modifies shadow.Lock;
 
 // for matching quantifiers
 function {:inline false} f(i: int): bool {  true  }
-
-function
-{:witness "shadow.VC"}
-{:commutativity "AtomicVC.Inc","AtomicVC.Copy"}
-{:commutativity "AtomicVC.Inc","AtomicVC.Join"}
-{:commutativity "AtomicVCSetElem","AtomicVC.Copy"}
-{:commutativity "AtomicVCSetElem","AtomicVC.Join"}
-{:commutativity "AtomicVCSetElemShared","AtomicVC.Copy"}
-{:commutativity "AtomicVCSetElemShared","AtomicVC.Join"}
-{:commutativity "AtomicVCInit","AtomicVC.Copy"}
-{:commutativity "AtomicVCInit","AtomicVC.Join"}
-{:commutativity "AtomicVC.Copy","AtomicVC.Copy"}
-{:commutativity "AtomicVC.Copy","AtomicVC.Join"}
-{:commutativity "AtomicVC.Join","AtomicVC.Copy"}
-{:commutativity "AtomicVC.Join","AtomicVC.Join"}
-witness (shadow.VC:[Shadowable]VC, shadow.VC':[Shadowable]VC, second_v1:Shadowable) : [Shadowable]VC
-{
-   shadow.VC[second_v1 := shadow.VC'[second_v1]]
-}
