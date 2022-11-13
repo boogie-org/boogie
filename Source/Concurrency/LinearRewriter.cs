@@ -186,17 +186,24 @@ public class LinearRewriter
     var path = callCmd.Ins[1];
     var l = callCmd.Outs[0].Decl;
     
-    var mapConstFunc = MapConst(refType, Type.Bool);
     var mapImpFunc = MapImp(refType);
+    var mapIteFunc = MapIte(refType, type);
+    var mapConstFunc1 = MapConst(refType, Type.Bool);
+    var mapConstFunc2 = MapConst(refType, type);
+    var mapDiffFunc = MapDiff(refType);
+    
     cmdSeq.Add(AssertCmd(callCmd.tok,
-      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, k, Dom(path)), ExprHelper.FunctionCall(mapConstFunc, Expr.True)),
+      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, k, Dom(path)), ExprHelper.FunctionCall(mapConstFunc1, Expr.True)),
       "Lmap_Split failed"));
     
-    cmdSeq.Add(CmdHelper.AssignCmd(l,ExprHelper.FunctionCall(lmapConstructor, k, Val(path))));
-
-    var mapDiffFunc = MapDiff(refType);
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),ExprHelper.FunctionCall(mapDiffFunc, Dom(path), k)));
+    cmdSeq.Add(CmdHelper.AssignCmd(l,
+      ExprHelper.FunctionCall(lmapConstructor, k,
+        ExprHelper.FunctionCall(mapIteFunc, k, Val(path), ExprHelper.FunctionCall(mapConstFunc2, Default(type))))));
+    
+    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path),
+      ExprHelper.FunctionCall(lmapConstructor, ExprHelper.FunctionCall(mapDiffFunc, Dom(path), k),
+        ExprHelper.FunctionCall(mapIteFunc, ExprHelper.FunctionCall(mapDiffFunc, Dom(path), k), Val(path),
+          ExprHelper.FunctionCall(mapConstFunc2, Default(type))))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;

@@ -40,37 +40,25 @@ namespace Microsoft.Boogie
       this.localVarMap = new Dictionary<Variable, Variable>();
     }
 
-    public List<Cmd> ProcDisjointnessAssumeCmds(Procedure proc, bool atEntry)
+    public List<Cmd> ProcDisjointnessAndWellFormedAssumeCmds(Procedure proc, bool atEntry)
     {
       IEnumerable<Variable> availableVars = atEntry
         ? FilterInParams(proc.InParams)
         : FilterInOutParams(proc.InParams.Union(proc.OutParams));
-      return DisjointnessExprs(availableVars).Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
+      return DisjointnessExprs(availableVars)
+        .Union(civlTypeChecker.linearTypeChecker.LmapWellFormedExpressions(availableVars))
+        .Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
     }
 
-    public List<Cmd> DisjointnessAssumeCmds(Absy absy, bool addGlobals)
+    public List<Cmd> DisjointnessAndWellFormedAssumeCmds(Absy absy, bool addGlobals)
     {
       var availableVars = AvailableLinearLocalVars(absy).Union(addGlobals ? LinearGlobalVars() : new List<Variable>());
-      return DisjointnessExprs(availableVars).Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
+      return DisjointnessExprs(availableVars)
+        .Union(civlTypeChecker.linearTypeChecker.LmapWellFormedExpressions(availableVars))
+        .Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
     }
-
-    public List<Expr> DisjointnessExprs(Absy absy, bool addGlobals)
-    {
-      var availableVars = AvailableLinearLocalVars(absy).Union(addGlobals ? LinearGlobalVars() : new List<Variable>());
-      return DisjointnessExprs(availableVars);
-    }
-
-    public Dictionary<LinearDomain, Expr> PermissionExprs(Absy absy)
-    {
-      var availableVars = AvailableLinearLocalVars(absy).Union(LinearGlobalVars());
-      var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
-      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var permissionExprs = linearTypeChecker.PermissionExprs(mappedAvailableVars);
-      return permissionExprs.Keys.ToDictionary(domain => domain,
-        domain => linearTypeChecker.UnionExprForPermissions(domain, permissionExprs[domain]));
-    }
-
-    public void AddDisjointnessAssumptions(Implementation impl)
+    
+    public void AddDisjointnessAndWellFormedAssumptions(Implementation impl)
     {
       // calls and parallel calls
       foreach (var b in impl.Blocks)
@@ -81,10 +69,9 @@ namespace Microsoft.Boogie
           newCmds.Add(cmd);
           if (cmd is ParCallCmd)
           {
-            newCmds.AddRange(DisjointnessAssumeCmds(cmd, true));
+            newCmds.AddRange(DisjointnessAndWellFormedAssumeCmds(cmd, true));
           }
         }
-
         b.Cmds = newCmds;
       }
 
@@ -101,10 +88,20 @@ namespace Microsoft.Boogie
       var loopHeaders = new HashSet<Block>(graph.Headers);
       foreach (var header in loopHeaders)
       {
-        var newCmds = DisjointnessAssumeCmds(header, true);
+        var newCmds = DisjointnessAndWellFormedAssumeCmds(header, true);
         newCmds.AddRange(header.Cmds);
         header.Cmds = newCmds;
       }
+    }
+
+    public Dictionary<LinearDomain, Expr> PermissionExprs(Absy absy)
+    {
+      var availableVars = AvailableLinearLocalVars(absy).Union(LinearGlobalVars());
+      var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
+      var permissionExprs = linearTypeChecker.PermissionExprs(mappedAvailableVars);
+      return permissionExprs.Keys.ToDictionary(domain => domain,
+        domain => linearTypeChecker.UnionExprForPermissions(domain, permissionExprs[domain]));
     }
 
     private List<Expr> DisjointnessExprs(IEnumerable<Variable> availableVars)
