@@ -289,7 +289,7 @@ namespace Microsoft.Boogie
             civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList()));
         }
 
-        initCmds.AddRange(linearPermissionInstrumentation.DisjointnessAssumeCmds(impl, true));
+        initCmds.AddRange(linearPermissionInstrumentation.DisjointnessAndWellFormedAssumeCmds(impl, true));
 
         Substitution procToImplInParams = Substituter.SubstitutionFromDictionary(impl.Proc.InParams
           .Zip(impl.InParams).ToDictionary(x => x.Item1, x => (Expr) Expr.Ident(x.Item2)));
@@ -367,7 +367,7 @@ namespace Microsoft.Boogie
         // Disjointness assumptions after yields are added inside TransformImpl which is called for 
         // all implementations except for a mover procedure at its disappearing layer.
         // But this is fine because a mover procedure at its disappearing layer does not have a yield in it.
-        linearPermissionInstrumentation.AddDisjointnessAssumptions(impl);
+        linearPermissionInstrumentation.AddDisjointnessAndWellFormedAssumptions(impl);
         var yieldingProc = GetYieldingProc(impl);
         if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum)
         {
@@ -697,7 +697,7 @@ namespace Microsoft.Boogie
       }
 
       newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
-      newCmds.AddRange(linearPermissionInstrumentation.DisjointnessAssumeCmds(yieldCmd, true));
+      newCmds.AddRange(linearPermissionInstrumentation.DisjointnessAndWellFormedAssumeCmds(yieldCmd, true));
       newCmds.AddRange(CreateUpdatesToOldGlobalVars());
       newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
       newCmds.AddRange(CreateUpdatesToPermissionCollector(yieldCmd));

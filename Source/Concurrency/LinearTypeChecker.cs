@@ -701,6 +701,24 @@ namespace Microsoft.Boogie
       return expr;
     }
 
+    public IEnumerable<Expr> LmapWellFormedExpressions(IEnumerable<Variable> availableVars)
+    {
+      var monomorphizer = civlTypeChecker.program.monomorphizer;
+      if (monomorphizer == null)
+      {
+        return Enumerable.Empty<Expr>();
+      }
+      return availableVars.Where(v =>
+        v.TypedIdent.Type is CtorType ctorType && monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lmap").Select(
+        v =>
+        {
+          var ctorType = (CtorType)v.TypedIdent.Type;
+          var func = monomorphizer.InstantiateFunction("Lmap_WellFormed",
+            new Dictionary<string, Type>() { { "V", monomorphizer.GetTypeInstantiation(ctorType.Decl)[0] } });
+          return ExprHelper.FunctionCall(func, Expr.Ident(v));
+        });
+    }
+    
     public Expr UnionExprForPermissions(LinearDomain domain, IEnumerable<Expr> permissionExprs)
     {
       var expr = ExprHelper.FunctionCall(domain.mapConstBool, Expr.False);
