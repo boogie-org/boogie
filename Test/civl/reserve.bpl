@@ -129,8 +129,7 @@ modifies freeSpace, isFree;
 }
 
 procedure {:yields} {:layer 1}
-{:yield_requires "YieldInvariant"}
-{:yield_ensures "YieldInvariant"}
+{:yield_preserves "YieldInvariant"}
 Malloc({:linear "tid"} tid: Tid)
 requires {:layer 1} !allocMap->domain[tid];
 {
@@ -160,8 +159,7 @@ requires {:layer 1} !allocMap->domain[tid];
 }
 
 procedure {:yields} {:layer 1}
-{:yield_requires "YieldInvariant"}
-{:yield_ensures "YieldInvariant"}
+{:yield_preserves "YieldInvariant"}
 Collect()
 {
     var ptr: int;
