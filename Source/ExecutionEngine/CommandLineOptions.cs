@@ -774,7 +774,7 @@ namespace Microsoft.Boogie
 
     public int LiveVariableAnalysis { get; set; } = 1;
 
-    public bool UseLibrary { get; set; } = false;
+    public HashSet<string> Libraries { get; set; } = new HashSet<string>();
 
     // Note that procsToCheck stores all patterns <p> supplied with /proc:<p>
     // (and similarly procsToIgnore for /noProc:<p>). Thus, if procsToCheck
@@ -883,9 +883,9 @@ namespace Microsoft.Boogie
           return true;
 
         case "lib":
-          if (ps.ConfirmArgumentCount(0))
+          if (ps.ConfirmArgumentCount(1))
           {
-            this.UseLibrary = true;
+            this.Libraries.Add(cce.NonNull(args[ps.i]));
           }
 
           return true;

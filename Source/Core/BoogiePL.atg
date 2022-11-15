@@ -28,13 +28,13 @@ readonly List<Expr>/*!*/ dummyExprSeq;
 readonly TransferCmd/*!*/ dummyTransferCmd;
 readonly StructuredCmd/*!*/ dummyStructuredCmd;
 
-public static Program ParseLibraryDefinitions()
+public static Program ParseLibrary(string libraryName)
 {
-  string libraryDefinitionsFileName = "LibraryDefinitions.bpl";
+  string libraryFileName = $"{libraryName}.bpl";
   Assembly asm = Assembly.GetExecutingAssembly();
-  var resourceName = "Core.LibraryDefinitions.bpl";
+  var resourceName = $"Core.{libraryFileName}";
   using Stream resourceStream = asm.GetManifestResourceStream(resourceName);
-  Parse(new StreamReader(resourceStream), libraryDefinitionsFileName, new List<string>(), out Program program);
+  Parse(new StreamReader(resourceStream), libraryFileName, new List<string>(), out Program program);
   return program;
 }
 
