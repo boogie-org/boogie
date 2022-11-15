@@ -327,15 +327,19 @@ namespace Microsoft.Boogie
       {
         if (program.TopLevelDeclarations.Any(d => d.HasCivlAttribute()))
         {
-          Options.UseLibrary = true;
+          Options.Libraries.Add("base");
         }
 
-        if (Options.UseLibrary)
+        foreach (var libraryName in Options.Libraries)
+        {
+          var library = Parser.ParseLibrary(libraryName);
+          program.AddTopLevelDeclarations(library.TopLevelDeclarations);
+        }
+
+        if (Options.Libraries.Contains("base"))
         {
           Options.UseArrayTheory = true;
           Options.Monomorphize = true;
-          var library = Parser.ParseLibraryDefinitions();
-          program.AddTopLevelDeclarations(library.TopLevelDeclarations);
         }
 
         return program;

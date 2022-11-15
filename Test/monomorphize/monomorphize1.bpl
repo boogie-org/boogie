@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -lib -monomorphize -useArrayTheory "%s" > "%t"
+// RUN: %parallel-boogie -lib:base -monomorphize -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure add(set: [int]bool, elem: int) returns (set': [int]bool)
