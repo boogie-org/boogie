@@ -140,7 +140,15 @@ namespace Microsoft.Boogie
 
       foreach (Cmd cmd in b.Cmds)
       {
-        path.Add(cmd);
+        if (cmd is UnpackCmd unpackCmd)
+        {
+          var stateCmd = (StateCmd)unpackCmd.GetDesugaring(civlTypeChecker.Options);
+          path.AddRange(stateCmd.Cmds);
+        }
+        else 
+        {
+          path.Add(cmd);
+        }
       }
 
       if (b.TransferCmd is ReturnCmd)

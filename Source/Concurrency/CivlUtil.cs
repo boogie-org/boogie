@@ -54,6 +54,11 @@ namespace Microsoft.Boogie
   // Handy syntactic sugar missing in Expr
   public static class ExprHelper
   {
+    public static NAryExpr FunctionCall(IAppliable f, params Expr[] args)
+    {
+      return new NAryExpr(Token.NoToken, f, args);
+    }
+
     public static NAryExpr FunctionCall(Function f, params Expr[] args)
     {
       return new NAryExpr(Token.NoToken, new FunctionCall(f), args);
@@ -189,6 +194,11 @@ namespace Microsoft.Boogie
     public static HavocCmd HavocCmd(List<IdentifierExpr> vars)
     {
       return new HavocCmd(Token.NoToken, vars);
+    }
+
+    public static HavocCmd HavocCmd(params IdentifierExpr[] vars)
+    {
+      return new HavocCmd(Token.NoToken, vars.ToList());
     }
   }
 

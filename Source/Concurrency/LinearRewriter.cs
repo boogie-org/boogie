@@ -300,15 +300,13 @@ public class LinearRewriter
     var v = callCmd.Ins[1];
     var k = callCmd.Outs[0];
     
-    var mapOneFunc = MapOne(refType);
-    var mapConstFunc = MapConst(refType, type);
-    var mapOrFunc = MapOr(refType);
-    var mapIteFunc = MapIte(refType, type);
+    cmdSeq.Add(CmdHelper.HavocCmd(k));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Not(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Dom(path), k))));
     cmdSeq.Add(CmdHelper.AssignCmd(
       CmdHelper.ExprToAssignLhs(path),
       ExprHelper.FunctionCall(lmapConstructor,
-        ExprHelper.FunctionCall(mapOrFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, k)),
-        ExprHelper.FunctionCall(mapIteFunc, Dom(path), Val(path), ExprHelper.FunctionCall(mapConstFunc, v)))));
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), k, Expr.True),
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Val(path), k, v))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
@@ -330,11 +328,11 @@ public class LinearRewriter
     var lmapDerefFunc = LmapDeref(type);
     cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(lmapDerefFunc, path, k)));
 
-    var mapOneFunc = MapOne(refType);
-    var mapDiffFunc = MapDiff(refType);
     cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),
-        ExprHelper.FunctionCall(mapDiffFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, k))));
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path),
+      ExprHelper.FunctionCall(lmapConstructor,
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), k, Expr.False),
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Val(path), k, Default(type)))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
