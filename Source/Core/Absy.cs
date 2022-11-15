@@ -345,6 +345,10 @@ namespace Microsoft.Boogie
       }
 
       ResolveTypes(rc);
+      if (rc.ErrorCount > 0)
+      {
+        return;
+      }
       
       var prunedTopLevelDeclarations = new List<Declaration /*!*/>();
       foreach (var d in TopLevelDeclarations)
