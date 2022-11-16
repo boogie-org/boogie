@@ -370,7 +370,7 @@ namespace Microsoft.Boogie
       {
         TryElimination(Enumerable.Empty<Variable>());
         TryElimination(trc.allLocVars.Select(v => varCopies[v][0]));
-        TryElimination(trc.allLocVars.Where(v => varCopies[v].Count > 1).Select(v => varCopies[v][1]));
+        TryElimination(trc.allLocVars.Where(v => v.FindAttribute("pool") != null).SelectMany(v => varCopies[v]));
 
         if (trc.ignorePostState)
         {
