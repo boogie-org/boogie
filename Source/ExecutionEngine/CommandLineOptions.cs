@@ -660,7 +660,13 @@ namespace Microsoft.Boogie
       set => trustNoninterference = value;
     }
 
+    public bool TrustRefinement {
+      get => trustRefinement;
+      set => trustRefinement = value;
+    }
+    
     public int TrustLayersUpto { get; set; } = -1;
+    
     public int TrustLayersDownto { get; set; } = int.MaxValue;
 
     public bool TrustInductiveSequentialization {
@@ -808,6 +814,7 @@ namespace Microsoft.Boogie
     private bool useProverEvaluate;
     private bool trustMoverTypes = false;
     private bool trustNoninterference = false;
+    private bool trustRefinement = false;
     private bool trustInductiveSequentialization = false;
     private bool trace = false;
     private int enhancedErrorMessages = 0;
@@ -1564,6 +1571,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("verifySeparately", x => VerifySeparately = x) ||
               ps.CheckBooleanFlag("trustMoverTypes", x => trustMoverTypes = x) ||
               ps.CheckBooleanFlag("trustNoninterference", x => trustNoninterference = x) ||
+              ps.CheckBooleanFlag("trustRefinement", x => trustRefinement = x) ||
               ps.CheckBooleanFlag("trustInductiveSequentialization", x => trustInductiveSequentialization = x) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
@@ -2101,6 +2109,8 @@ namespace Microsoft.Boogie
                 do not verify mover type annotations on atomic action declarations
   /trustNoninterference
                 do not perform noninterference checks
+  /trustRefinement
+                do not perform refinement checks
   /trustLayersUpto:<n>
                 do not verify layers <n> and below
   /trustLayersDownto:<n>

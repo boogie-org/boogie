@@ -500,7 +500,7 @@ namespace Microsoft.Boogie
         header.Cmds = newCmds;
       }
 
-      // add jumps to noninterferenceCheckerBlock, returnBlock, and refinement blocks
+      // add jumps to noninterferenceChecker, returnChecker, and refinementChecker blocks
       var implRefinementCheckingBlocks = new List<Block>();
       foreach (var b in impl.Blocks)
       {
@@ -532,7 +532,6 @@ namespace Microsoft.Boogie
                     implRefinementCheckingBlocks.Add(targetBlock);
                   }
                 }
-
                 addEdge = true;
               }
             }
@@ -542,10 +541,15 @@ namespace Microsoft.Boogie
           if (addEdge)
           {
             AddEdge(gotoCmd, noninterferenceCheckerBlock);
-            AddEdge(gotoCmd,
-              blocksInYieldingLoops.Contains(b)
-                ? unchangedCheckerBlock
-                : refinementCheckerBlock);
+            if (blocksInYieldingLoops.Contains(b))
+            {
+              AddEdge(gotoCmd, unchangedCheckerBlock);
+            }
+            else
+            {
+              b.Cmds.AddRange(refinementInstrumentation.CreateActionEvaluationCmds());
+              AddEdge(gotoCmd, refinementCheckerBlock);
+            }
           }
         }
         else
@@ -555,7 +559,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      // desugar YieldCmd, CallCmd, and ParCallCmd 
+      // desugar YieldCmd and ParCallCmd 
       foreach (Block b in impl.Blocks)
       {
         if (b.cmds.Count > 0)
@@ -673,6 +677,7 @@ namespace Microsoft.Boogie
     private Block CreateReturnCheckerBlock()
     {
       var returnBlockCmds = new List<Cmd>();
+      returnBlockCmds.AddRange(refinementInstrumentation.CreateActionEvaluationCmds());
       returnBlockCmds.AddRange(refinementInstrumentation.CreateAssertCmds());
       returnBlockCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars(false));
       returnBlockCmds.AddRange(refinementInstrumentation.CreateReturnAssertCmds());
