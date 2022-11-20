@@ -1,6 +1,19 @@
 // RUN: %parallel-boogie -lib:base -lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
+/*
+Highlights:
+- Nontrivial use of nested linear maps
+- Push and pop use distinct abstractions for read/write of top of stack
+- Variable "unused" tracks nodes added to the stack linear map that do 
+  not logically become part of the stack
+- Push made atomic first before commutativity reasoning for the pop path
+
+The final layer that transforms the stack representation into a functional 
+version is not done. We expect that the proof for this layer will use 
+reasoning about node reachability.
+*/
+
 type {:datatype} Treiber T;
 function {:constructor} Treiber<T>(top: RefNode T, stack: Lmap (Node T)): Treiber T;
 type RefTreiber T = Ref (Treiber T);
