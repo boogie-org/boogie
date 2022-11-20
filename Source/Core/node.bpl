@@ -7,6 +7,31 @@ type RefNode T = Ref (Node T);
 function Nil<T>(): RefNode T;
 function {:constructor} Node<T>(next: RefNode T, val: T): Node T;
 
+function {:inline} Empty<T>(): [RefNode T]bool
+{
+  MapConst(false)
+}
+
+function {:inline} Singleton<T>(a: RefNode T): [RefNode T]bool 
+{
+  MapOne(a)
+}
+
+function {:inline} Union<T>(x: [RefNode T]bool, y: [RefNode T]bool): [RefNode T]bool
+{
+  MapOr(x, y)
+}
+
+function {:inline} Difference<T>(x: [RefNode T]bool, y: [RefNode T]bool): [RefNode T]bool
+{
+  MapDiff(x, y)
+}
+
+function {:inline} Subset<T>(x: [RefNode T]bool, y: [RefNode T]bool): bool
+{
+  MapDiff(x, y) == MapConst(false)
+}
+
 function Between<T>(f: [RefNode T]Node T, x: RefNode T, y: RefNode T, z: RefNode T): bool;
 function Avoiding<T>(f: [RefNode T]Node T, x: RefNode T, y: RefNode T, z: RefNode T): bool;
 function {:inline} BetweenSet<T>(f:[RefNode T]Node T, x: RefNode T, z: RefNode T): [RefNode T]bool
@@ -54,23 +79,3 @@ axiom {:ctor "Node"} (forall<T> f: [RefNode T]Node T, x: RefNode T, y: RefNode T
 
 // update
 axiom {:ctor "Node"} (forall<T> f: [RefNode T]Node T, u: RefNode T, v: RefNode T, x: RefNode T, p: RefNode T, q: Node T :: {Avoiding(f[p := q], u, v, x)} Avoiding(f[p := q], u, v, x) <==> ((Avoiding(f, u, v, p) && Avoiding(f, u, v, x)) || (Avoiding(f, u, p, x) && p != x && Avoiding(f, q->next, v, p) && Avoiding(f, q->next, v, x))));
-
-function {:inline} Empty<T>(): [RefNode T]bool
-{
-  MapConst(false)
-}
-
-function {:inline} Singleton<T>(a: RefNode T): [RefNode T]bool 
-{
-  MapOne(a)
-}
-
-function {:inline} Union<T>(x: [RefNode T]bool, y: [RefNode T]bool): [RefNode T]bool
-{
-  MapOr(x, y)
-}
-
-function {:inline} Subset<T>(x: [RefNode T]bool, y: [RefNode T]bool): bool
-{
-  MapDiff(x, y) == MapConst(false)
-}
