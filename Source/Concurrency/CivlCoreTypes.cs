@@ -79,14 +79,12 @@ namespace Microsoft.Boogie
     public HashSet<Variable> gateUsedGlobalVars;
     public HashSet<Variable> actionUsedGlobalVars;
     public HashSet<Variable> modifiedGlobalVars;
-    public ConcurrencyOptions options;
 
     protected Action(Procedure proc, Implementation impl, LayerRange layerRange, ConcurrencyOptions options)
     {
       this.proc = proc;
       this.impl = impl;
       this.layerRange = layerRange;
-      this.options = options;
 
       // We usually declare the Boogie procedure and implementation of an atomic action together.
       // Since Boogie only stores the supplied attributes (in particular linearity) in the procedure parameters,
@@ -101,7 +99,7 @@ namespace Microsoft.Boogie
         impl.OutParams[i].Attributes = proc.OutParams[i].Attributes;
       }
       
-      gate = HoistAsserts(impl);
+      gate = HoistAsserts(impl, options);
       gateUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(gate).Where(x => x is GlobalVariable));
       actionUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(impl).Where(x => x is GlobalVariable));
       modifiedGlobalVars = new HashSet<Variable>(AssignedVariables().Where(x => x is GlobalVariable));
@@ -129,7 +127,7 @@ namespace Microsoft.Boogie
      * reverse order, thus ensuring that a block is processed only once the wlp
      * of all its successors has been computed.
      */
-    private List<AssertCmd> HoistAsserts(Implementation impl)
+    private List<AssertCmd> HoistAsserts(Implementation impl, ConcurrencyOptions options)
     {
       Dictionary<Block, List<AssertCmd>> wlps = new Dictionary<Block, List<AssertCmd>>();
       Graph<Block> dag = Program.GraphFromBlocks(impl.Blocks, false);
@@ -137,13 +135,13 @@ namespace Microsoft.Boogie
       {
         if (block.TransferCmd is ReturnCmd)
         {
-          var wlp = HoistAsserts(block.Cmds, new List<AssertCmd>());
+          var wlp = HoistAsserts(block.Cmds, new List<AssertCmd>(), options);
           wlps.Add(block, wlp);
         }
         else if (block.TransferCmd is GotoCmd gotoCmd)
         {
           var wlp =
-            HoistAsserts(block.Cmds, gotoCmd.labelTargets.SelectMany(b => wlps[b]).ToList());
+            HoistAsserts(block.Cmds, gotoCmd.labelTargets.SelectMany(b => wlps[b]).ToList(), options);
           wlps.Add(block, wlp);
         }
         else
@@ -154,7 +152,7 @@ namespace Microsoft.Boogie
       return wlps[impl.Blocks[0]].Select(assertCmd => Forall(impl.LocVars.Union(impl.OutParams), assertCmd)).ToList();
     }
 
-    private List<AssertCmd> HoistAsserts(List<Cmd> cmds, List<AssertCmd> postconditions)
+    private List<AssertCmd> HoistAsserts(List<Cmd> cmds, List<AssertCmd> postconditions, ConcurrencyOptions options)
     {
       for (int i = cmds.Count - 1; i >= 0; i--)
       {
@@ -189,7 +187,7 @@ namespace Microsoft.Boogie
         else if (cmd is UnpackCmd unpackCmd)
         {
           var desugaredCmd = (StateCmd) unpackCmd.GetDesugaring(options);
-          postconditions = HoistAsserts(desugaredCmd.Cmds, postconditions); // removes precondition assert from desugaredCmd.Cmds
+          postconditions = HoistAsserts(desugaredCmd.Cmds, postconditions, options); // removes precondition assert from desugaredCmd.Cmds
         }
         else
         {
