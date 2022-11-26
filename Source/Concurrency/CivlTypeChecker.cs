@@ -29,7 +29,6 @@ namespace Microsoft.Boogie
     public Dictionary<Procedure, LemmaProc> procToLemmaProc;
     public Dictionary<Procedure, IntroductionAction> procToIntroductionAction;
     public Dictionary<Procedure, YieldInvariant> procToYieldInvariant;
-    public CommutativityHints commutativityHints;
 
     public List<InductiveSequentialization> inductiveSequentializations;
 
@@ -173,7 +172,6 @@ namespace Microsoft.Boogie
       }
 
       TypeCheckRefinementLayers();
-      TypeCheckCommutativityHints();
       AttributeEraser.Erase(this);
       if (checkingContext.ErrorCount > 0)
       {
@@ -224,13 +222,6 @@ namespace Microsoft.Boogie
           Error(g, $"Global variable {g.Name} cannot be hidden at layer with IS");
         }
       }
-    }
-
-    private void TypeCheckCommutativityHints()
-    {
-      CommutativityHintVisitor visitor = new CommutativityHintVisitor(this);
-      visitor.VisitFunctions();
-      this.commutativityHints = visitor.commutativityHints;
     }
 
     private void TypeCheckGlobalVariables()
