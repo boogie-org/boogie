@@ -991,6 +991,7 @@ FieldAccess<.out IToken x, out FieldAccess fieldAccess.>
   "->" (. x = t; .)
   Ident<out id> (. fieldAccess = new FieldAccess(id, id.val); .)
   .
+
 /*------------------------------------------------------------------------*/
 CallCmd<out Cmd c>
 = (. Contract.Ensures(Contract.ValueAtReturn(out c) != null);
