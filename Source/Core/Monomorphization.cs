@@ -585,6 +585,11 @@ namespace Microsoft.Boogie
             actualTypeParams];
         return new FieldAccess(fieldAccess.tok, instantiatedDatatypeTypeCtorDecl, fieldAccess.Accessors);
       }
+
+      private FieldUpdate InstantiateFieldUpdate(FieldUpdate fieldUpdate, TypeParamInstantiation typeParameters)
+      {
+        return new FieldUpdate(InstantiateFieldAccess(fieldUpdate.FieldAccess, typeParameters));
+      }
       
       public override AssignLhs VisitFieldAssignLhs(FieldAssignLhs node)
       {
@@ -633,6 +638,19 @@ namespace Microsoft.Boogie
           else
           {
             returnExpr.Fun = InstantiateFieldAccess(fieldAccess, returnExpr.TypeParameters);
+            returnExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+          }
+        }
+        else if (returnExpr.Fun is FieldUpdate fieldUpdate)
+        {
+          var datatypeTypeCtorDecl = fieldUpdate.DatatypeTypeCtorDecl;
+          if (datatypeTypeCtorDecl.Arity == 0)
+          {
+            monomorphizationVisitor.VisitTypeCtorDecl(datatypeTypeCtorDecl);
+          }
+          else
+          {
+            returnExpr.Fun = InstantiateFieldUpdate(fieldUpdate, returnExpr.TypeParameters);
             returnExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
           }
         }

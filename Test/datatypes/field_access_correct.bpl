@@ -85,3 +85,23 @@ ensures i == s->i;
   s' := Left(i);
   assert s == s';
 }
+
+procedure P7(p: Pair) returns (q: Pair)
+  requires p->a == 0;
+  ensures  q->a == 1;
+{
+  q := p->(a := 1);
+  assert q->b == p->b;
+  q := q->(b := 1);
+  assert q == Pair(1, 1);
+}
+
+procedure P8<T>(p: GenericPair T) returns (q: GenericPair T)
+  requires p->a == p->b;
+  ensures  q->a == q->b;
+{
+  assert p is GenericPair;
+  q := q->(a := p->b);
+  q := q->(b := p->a);
+  assert q is GenericPair;
+}

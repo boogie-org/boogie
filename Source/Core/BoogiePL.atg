@@ -991,7 +991,6 @@ FieldAccess<.out IToken x, out FieldAccess fieldAccess.>
   "->" (. x = t; .)
   Ident<out id> (. fieldAccess = new FieldAccess(id, id.val); .)
   .
-
 /*------------------------------------------------------------------------*/
 CallCmd<out Cmd c>
 = (. Contract.Ensures(Contract.ValueAtReturn(out c) != null);
@@ -1288,8 +1287,7 @@ CoercionExpression<out Expr/*!*/ e>
 /*------------------------------------------------------------------------*/
 ArrayExpression<out Expr/*!*/ e>
 = (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); 
-     IToken/*!*/ x;
-     FieldAccess fieldAccess;
+     IToken/*!*/ x, id;
      Expr/*!*/ index0 = dummyExpr; Expr/*!*/ e1;
      bool store; bool bvExtract;
      List<Expr>/*!*/ allArgs = dummyExprSeq;
@@ -1330,7 +1328,16 @@ ArrayExpression<out Expr/*!*/ e>
          e = new NAryExpr(x, new MapSelect(x, allArgs.Count - 1), allArgs);
     .)
     |
-      FieldAccess<out x, out fieldAccess> (. e = new NAryExpr(x, fieldAccess, new List<Expr> { e }); .)
+      "->" (. x = t; .)
+      (
+        Ident<out id> (. e = new NAryExpr(x, new FieldAccess(id, id.val), new List<Expr> { e }); .)
+        |
+        "("
+        Ident<out id>
+        ":=" (. x = t; .)
+        Expression<out e1>
+        ")" (. e = new NAryExpr(x, new FieldUpdate(id, id.val), new List<Expr> { e, e1 }); .)
+      )
   }
   .
 
