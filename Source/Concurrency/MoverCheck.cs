@@ -155,8 +155,7 @@ namespace Microsoft.Boogie
         requires.Add(new Requires(false, assertCmd.Expr));
       }
 
-      var witnesses = civlTypeChecker.commutativityHints.GetWitnesses(first, second);
-      var transitionRelation = TransitionRelationComputation.Commutativity(civlTypeChecker, second, first, frame, witnesses);
+      var transitionRelation = TransitionRelationComputation.Commutativity(civlTypeChecker, second, first, frame);
 
       var secondInParamsFiltered =
         second.secondImpl.InParams.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_IN);
@@ -176,10 +175,6 @@ namespace Microsoft.Boogie
         ActionCallCmd(first, first.firstImpl),
         ActionCallCmd(second, second.secondImpl)
       };
-      foreach (var lemma in civlTypeChecker.commutativityHints.GetLemmas(first, second))
-      {
-        cmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(lemma.function, lemma.args.ToArray())));
-      }
       cmds.Add(commutativityCheck);
 
       List<Variable> inputs = Enumerable.Union(first.firstImpl.InParams, second.secondImpl.InParams).ToList();

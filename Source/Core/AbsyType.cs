@@ -113,58 +113,12 @@ namespace Microsoft.Boogie
       // unification result up to a certain point
       IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ unifier);
 
-
     [Pure]
     public static bool IsIdempotent(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ unifier)
     {
       Contract.Requires(cce.NonNullDictionaryAndValues(unifier));
       return unifier.Values.All(val => val.FreeVariables.All(var => !unifier.ContainsKey(var)));
     }
-
-
-#if OLD_UNIFICATION
-    // Compute a most general unification of two types. null is returned if
-    // no such unifier exists. The unifier is not allowed to subtitute any
-    // type variables other than the ones in "unifiableVariables"
-    public IDictionary<TypeVariable!, Type!> Unify(Type! that,
-                                                   List<TypeVariable>! unifiableVariables) {
-      Dictionary<TypeVariable!, Type!>! result = new Dictionary<TypeVariable!, Type!> ();
-      try {
-        this.Unify(that, unifiableVariables,
-                   new List<TypeVariable> (), new List<TypeVariable> (), result);
-      } catch (UnificationFailedException) {
-        return null;
-      }
-      return result;
-    }
-
-    // Compute an idempotent most general unifier and add the result to the argument
-    // unifier. The result is true iff the unification succeeded
-    public bool Unify(Type! that,
-                      List<TypeVariable>! unifiableVariables,
-                      // given mappings that need to be taken into account
-                      // the old unifier has to be idempotent as well
-                      IDictionary<TypeVariable!, Type!>! unifier)
-      {
- Contract.Requires(Contract.ForAll(unifier.Keys , key=> unifiableVariables.Has(key)));
- Contract.Requires(IsIdempotent(unifier));
-      try {
-        this.Unify(that, unifiableVariables,
-                   new List<TypeVariable> (), new List<TypeVariable> (), unifier);
-      } catch (UnificationFailedException) {
-        return false;
-      }
-      return true;
-    }
-
-    public abstract void Unify(Type! that,
-                               List<TypeVariable>! unifiableVariables,
-                               List<TypeVariable>! thisBoundVariables,
-                               List<TypeVariable>! thatBoundVariables,
-                               // an idempotent substitution that describes the
-                               // unification result up to a certain point
-                               IDictionary<TypeVariable!, Type!>! result);
-#endif
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
@@ -466,79 +420,6 @@ namespace Microsoft.Boogie
     //------------ Match formal argument types on actual argument types
     //------------ and return the resulting substitution of type variables
 
-#if OLD_UNIFICATION
-    public static IDictionary<TypeVariable!, Type!>!
-                  MatchArgumentTypes(List<TypeVariable>! typeParams,
-                                     List<Type>! formalArgs,
-                                     List<Expr>! actualArgs,
-                                     List<Type> formalOuts,
-                                     List<IdentifierExpr> actualOuts,
-                                     string! opName,
-                                     TypecheckingContext! tc)
-      {
- Contract.Requires(formalArgs.Length == actualArgs.Length);
- Contract.Requires(formalOuts == null <==> actualOuts == null);
- Contract.Requires(formalOuts != null ==> formalOuts.Length == actualOuts.Length);
-      List<TypeVariable>! boundVarSeq0 = new List<TypeVariable> ();
-      List<TypeVariable>! boundVarSeq1 = new List<TypeVariable> ();
-      Dictionary<TypeVariable!, Type!>! subst = new Dictionary<TypeVariable!, Type!>();
-
-      for (int i = 0; i < formalArgs.Length; ++i) {
-        try {
-          Type! actualType = cce.NonNull((!)actualArgs[i]).Type;
-          // if the type variables to be matched occur in the actual
-          // argument types, something has gone very wrong
-          Contract.Assert(forall{TypeVariable! var in typeParams);
-                        !actualType.FreeVariables.Has(var)};
-          formalArgs[i].Unify(actualType,
-                              typeParams,
-                              boundVarSeq0, boundVarSeq1,
-                              subst);
-        } catch (UnificationFailedException) {
-          tc.Error(actualArgs[i],
-                   "invalid type for argument {0} in {1}: {2} (expected: {3})",
-                   i, opName, actualArgs[i].Type,
-                   // we insert the type parameters that have already been
-                   // chosen to get a more precise error message
-                   formalArgs[i].Substitute(subst));
-          // the bound variable sequences should be empty ...
-          // so that we can continue with the unification
-          Contract.Assert(boundVarSeq0.Length == 0 && boundVarSeq1.Length == 0);
-        }
-      }
-      
-      if (formalOuts != null) {
-        for (int i = 0; i < formalOuts.Length; ++i) {
-          try {
-            Type! actualType = cce.NonNull((!)actualOuts[i]).Type;
-            // if the type variables to be matched occur in the actual
-            // argument types, something has gone very wrong
-            Contract.Assert(forall{TypeVariable! var in typeParams);
-                          !actualType.FreeVariables.Has(var)};
-            formalOuts[i].Unify(actualType,
-                                typeParams,
-                                boundVarSeq0, boundVarSeq1,
-                                subst);
-          } catch (UnificationFailedException) {
-            tc.Error(actualOuts[i],
-                     "invalid type for result {0} in {1}: {2} (expected: {3})",
-                     i, opName, actualOuts[i].Type,
-                     // we insert the type parameters that have already been
-                     // chosen to get a more precise error message
-                     formalOuts[i].Substitute(subst));
-            // the bound variable sequences should be empty ...
-            // so that we can continue with the unification
-            Contract.Assert(boundVarSeq0.Length == 0 && boundVarSeq1.Length == 0);
-          }
-        }
-      }
-
-      // we only allow type parameters to be substituted
-      Contract.Assert(Contract.ForAll(subst.Keys , var=> typeParams.Has(var)));
-
-      return subst;
-    }
-#else
     public static IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
       MatchArgumentTypes(List<TypeVariable> /*!*/ typeParams,
         List<Type> /*!*/ formalArgs,
@@ -611,7 +492,6 @@ namespace Microsoft.Boogie
 
       return subst;
     }
-#endif
 
     //------------  Match formal argument types of a function or map
     //------------  on concrete types, substitute the result into the
@@ -729,35 +609,6 @@ namespace Microsoft.Boogie
       return res;
     }
 
-#if OLD_UNIFICATION
-    public static IDictionary<TypeVariable!, Type!>!
-                  InferTypeParameters(List<TypeVariable>! typeParams,
-                                      List<Type>! formalArgs,
-                                      List<Type>! actualArgs)
-      {
- Contract.Requires(formalArgs.Length == actualArgs.Length);
-      
-      List<TypeVariable>! boundVarSeq0 = new List<TypeVariable> ();
-      List<TypeVariable>! boundVarSeq1 = new List<TypeVariable> ();
-      Dictionary<TypeVariable!, Type!>! subst = new Dictionary<TypeVariable!, Type!>();
-
-      for (int i = 0; i < formalArgs.Length; ++i) {
-        try {
-          Contract.Assert(forall{TypeVariable! var in typeParams);
-                        !actualArgs[i].FreeVariables.Has(var)};
-          formalArgs[i].Unify(actualArgs[i], typeParams,
-                              boundVarSeq0, boundVarSeq1, subst);
-        } catch (UnificationFailedException) {
-          System.Diagnostics.Debug.Fail("Type unification failed: " +
-                                        formalArgs[i] + " vs " + actualArgs[i]);
-        }
-      }
-
-      // we only allow type parameters to be substituted
-      Contract.Assert(Contract.ForAll(subst.Keys , var=> typeParams.Has(var)));
-      return subst;
-    }
-#else
     /// <summary>
     /// like Type.CheckArgumentTypes, but assumes no errors
     /// (and only does arguments, not results; and takes actuals as List<Type>, not List<Expr>)
@@ -802,7 +653,6 @@ namespace Microsoft.Boogie
 
       return subst;
     }
-#endif
 
     //-----------  Helper methods to deal with bound type variables  ---------------
 
@@ -1127,22 +977,6 @@ namespace Microsoft.Boogie
         return this.Equals(that);
       }
     }
-
-#if OLD_UNIFICATION
-    public override void Unify(Type! that,
-                               List<TypeVariable>! unifiableVariables,
-                               List<TypeVariable>! thisBoundVariables,
-                               List<TypeVariable>! thatBoundVariables,
-                               IDictionary<TypeVariable!, Type!>! result) {
-      that = that.Expanded;
-      if (that is TypeVariable) {
-        that.Unify(this, unifiableVariables, thatBoundVariables, thisBoundVariables, result);
-      } else {
-        if (!this.Equals(that))
-          throw UNIFICATION_FAILED;
-      }
-    }
-#endif
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
@@ -1497,24 +1331,6 @@ namespace Microsoft.Boogie
       }
     }
 
-#if OLD_UNIFICATION
-    public override void Unify(Type that,
-                               List<TypeVariable>! unifiableVariables,
-                               List<TypeVariable>! thisBoundVariables,
-                               List<TypeVariable>! thatBoundVariables,
-                               IDictionary<TypeVariable!, Type!> result){
-Contract.Requires(result != null);
-Contract.Requires(that != null);
-      that = that.Expanded;
-      if (that is TypeVariable) {
-        that.Unify(this, unifiableVariables, thatBoundVariables, thisBoundVariables, result);
-      } else {
-        if (!this.Equals(that))
-          throw UNIFICATION_FAILED;
-      }
-    }
-#endif
-
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
     public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
@@ -1683,18 +1499,6 @@ Contract.Requires(that != null);
         throw new cce.UnreachableException();
       } // UnresolvedTypeIdentifier.Unify should never be called
     }
-
-#if OLD_UNIFICATION
-    public override void Unify(Type that,
-                               List<TypeVariable>! unifiableVariables,
-                               List<TypeVariable>! thisBoundVariables,
-                               List<TypeVariable>! thatBoundVariables,
-                               IDictionary<TypeVariable!, Type!> result){
-Contract.Requires(result != null);
-Contract.Requires(that != null);
-      System.Diagnostics.Debug.Fail("UnresolvedTypeIdentifier.Unify should never be called");
-    }
-#endif
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
@@ -2106,58 +1910,6 @@ Contract.Requires(that != null);
       Contract.Assert(IsIdempotent(oldSolution));
       return true;
     }
-
-#if OLD_UNIFICATION
-    public override void Unify(Type that,
-                               List<TypeVariable>! unifiableVariables,
-                               List<TypeVariable>! thisBoundVariables,
-                               List<TypeVariable>! thatBoundVariables,
-                               IDictionary<TypeVariable!, Type!> result){
-Contract.Requires(result != null);
-Contract.Requires(that != null);
-      that = that.Expanded;
-      int thisIndex = thisBoundVariables.LastIndexOf(this);
-      if (thisIndex == -1) {
-        // this is not a bound variable and can possibly be matched on that
-        // that must not contain any bound variables
-        List<TypeVariable>! thatFreeVars = that.FreeVariables;
-        if (thatBoundVariables.Any(var=> thatFreeVars.Has(var)))
-          throw UNIFICATION_FAILED;
-
-        // otherwise, in case that is a typevariable it cannot be bound and
-        // we can just check for equality
-        if (this.Equals(that))
-          return;
-
-        if (!unifiableVariables.Has(this)) {
-          // this cannot be instantiated with anything
-          // but that possibly can ...
-          if ((that is TypeVariable) &&
-               unifiableVariables.Has(that as TypeVariable)) {
-            that.Unify(this, unifiableVariables, thatBoundVariables, thisBoundVariables, result);
-            return;
-          } else {
-            throw UNIFICATION_FAILED;
-          }
-        }
-
-        Type previousSubst;
-        result.TryGetValue(this, out previousSubst);
-        if (previousSubst == null) {
-          addSubstitution(result, that);
-        } else {
-          // we have to unify the old instantiation with the new one
-          previousSubst.Unify(that, unifiableVariables, thisBoundVariables, thatBoundVariables, result);
-        }
-      } else {
-        // this is a bound variable, that also has to be one (with the same index)
-        if (!(that is TypeVariable) ||
-            thatBoundVariables.LastIndexOf(that) != thisIndex)
-          throw UNIFICATION_FAILED;
-      }      
-    }
-
-#endif
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
@@ -3604,17 +3356,6 @@ Contract.Requires(that != null);
       return ExpandedType.Unify(that, unifiableVariables, result);
     }
 
-#if OLD_UNIFICATION
-    public override void Unify(Type! that,
-                               List<TypeVariable>! unifiableVariables,
-                               List<TypeVariable>! thisBoundVariables,
-                               List<TypeVariable>! thatBoundVariables,
-                               IDictionary<TypeVariable!, Type!>! result) {
-      ExpandedType.Unify(that, unifiableVariables,
-                         thisBoundVariables, thatBoundVariables, result);
-    }
-#endif
-
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
     public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
@@ -3980,29 +3721,6 @@ Contract.Requires(that != null);
         return good;
       }
     }
-
-#if OLD_UNIFICATION
-    public override void Unify(Type! that,
-                               List<TypeVariable>! unifiableVariables,
-                               List<TypeVariable>! thisBoundVariables,
-                               List<TypeVariable>! thatBoundVariables,
-                               IDictionary<TypeVariable!, Type!>! result) {
-      that = that.Expanded;
-      if (that is TypeVariable) {
-        that.Unify(this, unifiableVariables, thatBoundVariables, thisBoundVariables, result);
-        return;
-      }
-
-      CtorType thatCtorType = that as CtorType;
-      if (thatCtorType == null || !thatCtorType.Decl.Equals(Decl))
-        throw UNIFICATION_FAILED;
-      for (int i = 0; i < Arguments.Length; ++i)
-        Arguments[i].Unify(thatCtorType.Arguments[i],
-                           unifiableVariables,
-                           thisBoundVariables, thatBoundVariables,
-                           result);
-    }
-#endif
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
@@ -4414,63 +4132,6 @@ Contract.Requires(that != null);
 
       return good;
     }
-
-#if OLD_UNIFICATION
-    public override void Unify(Type! that,
-                               List<TypeVariable>! unifiableVariables,
-                               List<TypeVariable>! thisBoundVariables,
-                               List<TypeVariable>! thatBoundVariables,
-                               IDictionary<TypeVariable!, Type!>! result) {
-      that = that.Expanded;
-      if (that is TypeVariable) {
-        that.Unify(this, unifiableVariables, thatBoundVariables, thisBoundVariables, result);
-        return;
-      }
-
-      MapType thatMapType = that as MapType;
-      if (thatMapType == null ||
-          this.TypeParameters.Length != thatMapType.TypeParameters.Length ||
-          this.Arguments.Length != thatMapType.Arguments.Length)
-        throw UNIFICATION_FAILED;
-
-      // ensure that no collisions occur
-      if (this.collisionsPossible(result)) {
-        ((MapType)this.Clone())
-          .Unify(that, unifiableVariables,
-                 thisBoundVariables, thatBoundVariables, result);
-        return;
-      }
-      if (thatMapType.collisionsPossible(result))
-        thatMapType = (MapType)that.Clone();
-
-      foreach(TypeVariable/*!*/ var in this.TypeParameters){
-Contract.Assert(var != null);
-        thisBoundVariables.Add(var);}
-      foreach(TypeVariable/*!*/ var in thatMapType.TypeParameters){
-Contract.Assert(var != null);
-        thatBoundVariables.Add(var);}
-
-      try {
-
-        for (int i = 0; i < Arguments.Length; ++i)
-          Arguments[i].Unify(thatMapType.Arguments[i],
-                             unifiableVariables,
-                             thisBoundVariables, thatBoundVariables,
-                             result);
-        Result.Unify(thatMapType.Result,
-                     unifiableVariables,
-                     thisBoundVariables, thatBoundVariables,
-                     result);
-
-      } finally {
-        // make sure that the bound variables are removed again
-        for (int i = 0; i < this.TypeParameters.Length; ++i) {
-          thisBoundVariables.Remove();
-          thatBoundVariables.Remove();
-        }
-      }            
-    }
-#endif
 
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
