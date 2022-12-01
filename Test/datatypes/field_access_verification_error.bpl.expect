@@ -16,5 +16,8 @@ Execution trace:
 field_access_verification_error.bpl(50,11): Error: The precondition for unpack might not hold
 Execution trace:
     field_access_verification_error.bpl(50,11): anon0
+field_access_verification_error.bpl(60,3): Error: This assertion might not hold.
+Execution trace:
+    field_access_verification_error.bpl(59,5): anon0
 
-Boogie program verifier finished with 0 verified, 5 errors
+Boogie program verifier finished with 0 verified, 6 errors
