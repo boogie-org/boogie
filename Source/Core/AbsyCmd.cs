@@ -1954,28 +1954,33 @@ namespace Microsoft.Boogie
 
       for (int i = 0; i < Lhss.Count; i++)
       {
-        var lhs = Lhss[i].AsExpr as IdentifierExpr;
-        if (lhs != null && lhs.Decl != null && QKeyValue.FindBoolAttribute(lhs.Decl.Attributes, "assumption"))
+        var lhs = Lhss[i] as SimpleAssignLhs;
+        if (lhs == null)
+        {
+          continue;
+        }
+        var decl = lhs.AssignedVariable.Decl;
+        if (lhs.AssignedVariable.Decl != null && QKeyValue.FindBoolAttribute(decl.Attributes, "assumption"))
         {
           var rhs = Rhss[i] as NAryExpr;
           if (rhs == null
               || !(rhs.Fun is BinaryOperator)
-              || ((BinaryOperator) (rhs.Fun)).Op != BinaryOperator.Opcode.And
+              || ((BinaryOperator)rhs.Fun).Op != BinaryOperator.Opcode.And
               || !(rhs.Args[0] is IdentifierExpr)
-              || ((IdentifierExpr) (rhs.Args[0])).Name != lhs.Name)
+              || ((IdentifierExpr)rhs.Args[0]).Decl != decl)
           {
             rc.Error(tok,
               string.Format(
                 "RHS of assignment to assumption variable {0} must match expression \"{0} && <boolean expression>\"",
-                lhs.Name));
+                decl.Name));
           }
-          else if (rc.HasVariableBeenAssigned(lhs.Decl.Name))
+          else if (rc.HasVariableBeenAssigned(decl.Name))
           {
             rc.Error(tok, "assumption variable may not be assigned to more than once");
           }
           else
           {
-            rc.MarkVariableAsAssigned(lhs.Decl.Name);
+            rc.MarkVariableAsAssigned(decl.Name);
           }
         }
       }
@@ -1983,6 +1988,8 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
+      int errorCount = tc.ErrorCount;
+      
       TypecheckAttributes(Attributes, tc);
       foreach (AssignLhs /*!*/ e in Lhss)
       {
@@ -1996,22 +2003,21 @@ namespace Microsoft.Boogie
         e.Typecheck(tc);
       }
 
+      if (tc.ErrorCount > errorCount)
+      {
+        // there has already been an error when typechecking the lhs or rhs
+        return;
+      }
+      
       this.CheckAssignments(tc);
-
+      
       for (int i = 0; i < Lhss.Count; ++i)
       {
         Type ltype = Lhss[i].Type;
         Type rtype = Rhss[i].Type;
-        if (ltype != null && rtype != null)
+        if (!ltype.Unify(rtype))
         {
-          // otherwise, there has already been an error when
-          // typechecking the lhs or rhs
-          if (!ltype.Unify(rtype))
-          {
-            tc.Error(Lhss[i],
-              "mismatched types in assignment command (cannot assign {0} to {1})",
-              rtype, ltype);
-          }
+          tc.Error(Lhss[i], "mismatched types in assignment command (cannot assign {0} to {1})", rtype, ltype);
         }
       }
     }
@@ -2132,10 +2138,7 @@ namespace Microsoft.Boogie
     }
 
 
-    public override Type Type
-    {
-      get { return AssignedVariable.Type; }
-    }
+    public override Type Type => AssignedVariable.Type.Expanded;
 
     public override IdentifierExpr /*!*/ DeepAssignedIdentifier
     {
@@ -2225,7 +2228,15 @@ namespace Microsoft.Boogie
 
     public override Type Type
     {
-      get { return TypeAttr; }
+      get
+      {
+        if (TypeAttr == null)
+        {
+          TypeAttr = ((MapType)TypeProxy.FollowProxy(Map.Type.Expanded)).Result.Substitute(
+            TypeParameters.FormalTypeParams.ToDictionary(x => x, x => TypeParameters[x]));
+        }
+        return TypeAttr;
+      }
     }
 
     public override IdentifierExpr /*!*/ DeepAssignedIdentifier
@@ -2354,7 +2365,17 @@ namespace Microsoft.Boogie
 
     private Type TypeAttr = null;
 
-    public override Type Type => TypeAttr;
+    public override Type Type
+    {
+      get
+      {
+        if (TypeAttr == null)
+        {
+          TypeAttr = FieldAccess.Type((CtorType)TypeProxy.FollowProxy(Datatype.Type.Expanded));
+        }
+        return TypeAttr;
+      }
+    }
 
     public override IdentifierExpr DeepAssignedIdentifier => Datatype.DeepAssignedIdentifier;
 

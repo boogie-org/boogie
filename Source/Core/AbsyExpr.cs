@@ -3976,6 +3976,14 @@ namespace Microsoft.Boogie
       return Field(0).TypedIdent.Type.Substitute(typeSubst);
     }
 
+    public Type Type(CtorType ctorType)
+    {
+      var typeSubst = Constructor(0).TypeParameters.Zip(ctorType.Arguments).ToDictionary(
+        x => x.Item1, 
+        x => x.Item2);
+      return Field(0).TypedIdent.Type.Substitute(typeSubst);
+    }
+
     public Type ShallowType(IList<Expr> args)
     {
       return Field(0).TypedIdent.Type;
