@@ -28,6 +28,10 @@ namespace Microsoft.Boogie
     private string confirmedProverPath;
     public bool BatchMode;
 
+    public List<Type> UsedTypes = new List<Type>()
+      // Default to all the base types
+      { Type.Int, Type.Real, Type.Bool, Type.RMode, Type.String, Type.RegEx };
+
 
     private string /*!*/
       stringRepr = "";
