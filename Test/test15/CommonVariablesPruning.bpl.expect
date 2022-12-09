@@ -5,19 +5,15 @@ Execution trace:
 *** MODEL
 a -> T@U!val!0
 b -> T@U!val!1
-boolType -> T@T!val!2
+boolType -> T@T!val!1
 intType -> T@T!val!0
-realType -> T@T!val!1
-regexType -> T@T!val!5
-rmodeType -> T@T!val!3
-stringType -> T@T!val!4
 x -> 
 x@0 -> false
 y -> 
-y@0 -> 11
+y@0 -> 4
 bool_2_U -> {
- false -> false
- else -> false
+  false -> false
+  else -> false
 }
 ControlFlow -> {
   0 0 -> 9
@@ -30,17 +26,13 @@ Ctor -> {
   T@T!val!0 -> 0
   T@T!val!1 -> 1
   T@T!val!2 -> 2
-  T@T!val!3 -> 3
-  T@T!val!4 -> 4
-  T@T!val!5 -> 5
-  T@T!val!6 -> 6
-  T@T!val!7 -> 6
-   else -> 6
+  T@T!val!3 -> 2
+  else -> 2
 }
 int_2_U -> {
   1 -> 1
-  11 -> 11
   2 -> 2
+  4 -> 4
   else -> 2
 }
 Length -> {
@@ -49,7 +41,7 @@ Length -> {
   else -> 7
 }
 MapType0Select -> {
-  T@U!val!0 1 -> 11
+  T@U!val!0 1 -> 4
   T@U!val!1 2 -> false
   else -> false
 }
@@ -57,34 +49,22 @@ MapType0Store -> {
   else -> false
 }
 MapType0Type -> {
-  T@T!val!0 T@T!val!0 -> T@T!val!6
-  T@T!val!0 T@T!val!2 -> T@T!val!7
-  else -> T@T!val!6
+  T@T!val!0 T@T!val!0 -> T@T!val!2
+  T@T!val!0 T@T!val!1 -> T@T!val!3
+  else -> T@T!val!2
 }
 MapType0TypeInv0 -> {
-  T@T!val!6 -> T@T!val!0
-  T@T!val!7 -> T@T!val!0
+  T@T!val!2 -> T@T!val!0
+  T@T!val!3 -> T@T!val!0
   else -> T@T!val!0
 }
 MapType0TypeInv1 -> {
-  T@T!val!6 -> T@T!val!0
-  T@T!val!7 -> T@T!val!2
+  T@T!val!2 -> T@T!val!0
+  T@T!val!3 -> T@T!val!1
   else -> T@T!val!0
-}
-real_2_U -> {
-  else -> false
 }
 real_pow -> {
   else -> 0.0
-}
-regex_2_U -> {
-  else -> false
-}
-rmode_2_U -> {
-  else -> false
-}
-string_2_U -> {
-  else -> false
 }
 tickleBool -> {
   false -> true
@@ -93,11 +73,11 @@ tickleBool -> {
 }
 type -> {
   1 -> T@T!val!0
-  11 -> T@T!val!0
   2 -> T@T!val!0
-  false -> T@T!val!2
-  T@U!val!0 -> T@T!val!6
-  T@U!val!1 -> T@T!val!7
+  4 -> T@T!val!0
+  false -> T@T!val!1
+  T@U!val!0 -> T@T!val!2
+  T@U!val!1 -> T@T!val!3
   else -> T@T!val!0
 }
 U_2_bool -> {
@@ -106,21 +86,9 @@ U_2_bool -> {
 }
 U_2_int -> {
   1 -> 1
-  11 -> 11
   2 -> 2
-  else -> 11
-}
-U_2_real -> {
-  else -> 0.0
-}
-U_2_regex -> {
-  else -> (str.to.re (""))
-}
-U_2_rmode -> {
-  else -> (roundTowardZero)
-}
-U_2_string -> {
-  else -> ("")
+  4 -> 4
+  else -> 4
 }
 UOrdering2 -> {
   else -> false
@@ -136,7 +104,7 @@ UOrdering3 -> {
 *** END_STATE
 *** STATE after
   x -> false
-  y -> 11
+  y -> 4
 *** END_STATE
 *** END_MODEL
 CommonVariablesPruning.bpl(45,5): Error: This assertion might not hold.
@@ -146,16 +114,12 @@ Execution trace:
 *** MODEL
 a -> T@U!val!0
 b -> T@U!val!1
-boolType -> T@T!val!2
+boolType -> T@T!val!1
 intType -> T@T!val!0
-realType -> T@T!val!1
-regexType -> T@T!val!5
-rmodeType -> T@T!val!3
-stringType -> T@T!val!4
 x -> 
 x@0 -> false
 y -> 
-y@0 -> 10
+y@0 -> 4
 bool_2_U -> {
   false -> false
   else -> false
@@ -171,26 +135,22 @@ Ctor -> {
   T@T!val!0 -> 0
   T@T!val!1 -> 1
   T@T!val!2 -> 2
-  T@T!val!3 -> 3
-  T@T!val!4 -> 4
-  T@T!val!5 -> 5
-  T@T!val!6 -> 6
-  T@T!val!7 -> 6
-  else -> 6
+  T@T!val!3 -> 2
+  else -> 2
 }
 int_2_U -> {
   1 -> 1
-  10 -> 10
   2 -> 2
+  4 -> 4
   else -> 2
 }
- Length -> {
+Length -> {
   T@U!val!0 -> 5
   T@U!val!1 -> 5
   else -> 5
 }
 MapType0Select -> {
-  T@U!val!0 1 -> 10
+  T@U!val!0 1 -> 4
   T@U!val!1 2 -> false
   else -> false
 }
@@ -198,34 +158,22 @@ MapType0Store -> {
   else -> false
 }
 MapType0Type -> {
-  T@T!val!0 T@T!val!0 -> T@T!val!6
-  T@T!val!0 T@T!val!2 -> T@T!val!7
-  else -> T@T!val!6
+  T@T!val!0 T@T!val!0 -> T@T!val!2
+  T@T!val!0 T@T!val!1 -> T@T!val!3
+  else -> T@T!val!2
 }
 MapType0TypeInv0 -> {
-  T@T!val!6 -> T@T!val!0
-  T@T!val!7 -> T@T!val!0
+  T@T!val!2 -> T@T!val!0
+  T@T!val!3 -> T@T!val!0
   else -> T@T!val!0
 }
 MapType0TypeInv1 -> {
-  T@T!val!6 -> T@T!val!0
-  T@T!val!7 -> T@T!val!2
+  T@T!val!2 -> T@T!val!0
+  T@T!val!3 -> T@T!val!1
   else -> T@T!val!0
-}
-real_2_U -> {
-  else -> false
 }
 real_pow -> {
   else -> 0.0
-}
-regex_2_U -> {
-  else -> false
-}
-rmode_2_U -> {
-  else -> false
-}
-string_2_U -> {
-  else -> false
 }
 tickleBool -> {
   false -> true
@@ -234,34 +182,22 @@ tickleBool -> {
 }
 type -> {
   1 -> T@T!val!0
-  10 -> T@T!val!0
   2 -> T@T!val!0
-  false -> T@T!val!2
-  T@U!val!0 -> T@T!val!6
-  T@U!val!1 -> T@T!val!7
+  4 -> T@T!val!0
+  false -> T@T!val!1
+  T@U!val!0 -> T@T!val!2
+  T@U!val!1 -> T@T!val!3
   else -> T@T!val!0
 }
 U_2_bool -> {
   false -> false
-   else -> false
+  else -> false
 }
 U_2_int -> {
   1 -> 1
-  10 -> 10
   2 -> 2
-  else -> 10
-}
-U_2_real -> {
-  else -> 0.0
-}
-U_2_regex -> {
-  else -> (str.to.re (""))
-}
-U_2_rmode -> {
-  else -> (roundTowardZero)
-}
-U_2_string -> {
-  else -> ("")
+  4 -> 4
+  else -> 4
 }
 UOrdering2 -> {
   else -> false
@@ -277,7 +213,7 @@ UOrdering3 -> {
 *** END_STATE
 *** STATE after
   x -> false
-  y -> 10
+  y -> 4
 *** END_STATE
 *** END_MODEL
 
