@@ -628,6 +628,7 @@ namespace Microsoft.Boogie
       node.Modifies = this.VisitIdentifierExprSeq(node.Modifies);
       node.OutParams = this.VisitVariableSeq(node.OutParams);
       node.Requires = this.VisitRequiresSeq(node.Requires);
+      VisitAttributes(node);
       return node;
     }
 

@@ -583,7 +583,7 @@ namespace Microsoft.Boogie
         var instantiatedDatatypeTypeCtorDecl =
           (DatatypeTypeCtorDecl)monomorphizationVisitor.typeInstantiations[fieldAccess.DatatypeTypeCtorDecl][
             actualTypeParams];
-        return new FieldAccess(fieldAccess.tok, instantiatedDatatypeTypeCtorDecl, fieldAccess.Accessors);
+        return new FieldAccess(fieldAccess.tok, fieldAccess.FieldName, instantiatedDatatypeTypeCtorDecl, fieldAccess.Accessors);
       }
 
       private FieldUpdate InstantiateFieldUpdate(FieldUpdate fieldUpdate, TypeParamInstantiation typeParameters)

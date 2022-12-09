@@ -1220,7 +1220,7 @@ namespace Microsoft.Boogie
       }
       return new List<Block>();
     }
-    
+
     [Rep] //PM: needed to verify Traverse.Visit
     public TransferCmd
       TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)
@@ -1989,7 +1989,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       int errorCount = tc.ErrorCount;
-      
+
       TypecheckAttributes(Attributes, tc);
       foreach (AssignLhs /*!*/ e in Lhss)
       {
@@ -2008,9 +2008,9 @@ namespace Microsoft.Boogie
         // there has already been an error when typechecking the lhs or rhs
         return;
       }
-      
+
       this.CheckAssignments(tc);
-      
+
       for (int i = 0; i < Lhss.Count; ++i)
       {
         Type ltype = Lhss[i].Type;
@@ -2504,7 +2504,7 @@ namespace Microsoft.Boogie
     }
 
     public DatatypeConstructor Constructor => (DatatypeConstructor)((FunctionCall)lhs.Fun).Func;
-    
+
     public NAryExpr Lhs
     {
       get
@@ -2516,7 +2516,7 @@ namespace Microsoft.Boogie
         lhs = value;
       }
     }
-    
+
     public Expr Rhs
     {
       get
@@ -2530,7 +2530,7 @@ namespace Microsoft.Boogie
     }
 
     public IEnumerable<IdentifierExpr> UnpackedLhs => lhs.Args.Cast<IdentifierExpr>();
-    
+
     public override void AddAssignedVariables(List<Variable> vars)
     {
       lhs.Args.Cast<IdentifierExpr>().Iter(arg => vars.Add(arg.Decl));
@@ -2549,7 +2549,7 @@ namespace Microsoft.Boogie
     {
       return visitor.VisitUnpackCmd(this);
     }
-    
+
     protected override Cmd ComputeDesugaring(PrintOptions options)
     {
       var cmds = new List<Cmd>();
@@ -2562,7 +2562,8 @@ namespace Microsoft.Boogie
       var assignLhss = lhs.Args.Select(arg => new SimpleAssignLhs(tok, (IdentifierExpr)arg)).ToList<AssignLhs>();
       var assignRhss = Enumerable.Range(0, Constructor.InParams.Count).Select(i =>
       {
-        var fieldAccess = new FieldAccess(tok, Constructor.datatypeTypeCtorDecl,
+        var fieldName = Constructor.InParams[i].Name;
+        var fieldAccess = new FieldAccess(tok, fieldName, Constructor.datatypeTypeCtorDecl,
           new List<DatatypeAccessor> { new DatatypeAccessor(Constructor.index, i) });
         return new NAryExpr(tok, fieldAccess, new List<Expr> { rhs });
       }).ToList<Expr>();
@@ -3246,7 +3247,7 @@ namespace Microsoft.Boogie
           return;
         }
       }
-      
+
       var id = QKeyValue.FindStringAttribute(Attributes, "id");
       if (id != null)
       {
@@ -3281,7 +3282,7 @@ namespace Microsoft.Boogie
         vars.Add(AssignedAssumptionVariable);
       }
     }
-    
+
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
