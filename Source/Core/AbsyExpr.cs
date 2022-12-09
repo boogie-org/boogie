@@ -3887,12 +3887,12 @@ namespace Microsoft.Boogie
       this.FieldName = fieldName;
     }
     
-    public FieldAccess(IToken tok, DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<DatatypeAccessor> accessors)
+    public FieldAccess(IToken tok, string fieldName, DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<DatatypeAccessor> accessors)
     {
       this.tok = tok;
+      this.FieldName = fieldName;
       this.DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
       this.Accessors = accessors;
-      this.FieldName = Field(0).Name;
     }
 
     public string FunctionName => "field-access";
@@ -3950,10 +3950,11 @@ namespace Microsoft.Boogie
     
     public Type Typecheck(Type type, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
     {
+      type = TypeProxy.FollowProxy(type);
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
       if (!(type.Expanded is CtorType ctorType))
       {
-        tc.Error(this.tok, "type {0} is not a constructor type", type);
+        tc.Error(this.tok, "field-access must be applied to a datatype, {0} is not a datatype", type);
         return null;
       }
       if (!(ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl))
@@ -4025,8 +4026,9 @@ namespace Microsoft.Boogie
         {
           return rhs;
         }
-        var fieldAccess = new FieldAccess(tok, DatatypeTypeCtorDecl,
-          DatatypeTypeCtorDecl.GetAccessors(constructor.InParams[x].Name));
+
+        var fieldName = constructor.InParams[x].Name;
+        var fieldAccess = new FieldAccess(tok, fieldName, DatatypeTypeCtorDecl, DatatypeTypeCtorDecl.GetAccessors(fieldName));
         return fieldAccess.Select(token, record);
       }).ToList();
       return new NAryExpr(token, new FunctionCall(Constructor(index)), args);
@@ -4230,10 +4232,11 @@ namespace Microsoft.Boogie
     
     public Type Typecheck(Type type, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
     {
+      type = TypeProxy.FollowProxy(type);
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
       if (!(type.Expanded is CtorType ctorType))
       {
-        tc.Error(this.tok, "type {0} is not a constructor type", type);
+        tc.Error(this.tok, "is-constructor must be applied to a datatype, {0} is not a datatype", type);
         return null;
       }
       if (!(ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl))
