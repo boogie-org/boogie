@@ -413,7 +413,7 @@ namespace Microsoft.Boogie
       return base.VisitFieldAssignLhs(clone);
     }
 
-    public override MapType VisitMapType(MapType node)
+    public override Type VisitMapType(MapType node)
     {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<MapType>() != null);
@@ -512,7 +512,7 @@ namespace Microsoft.Boogie
       return new QKeyValue(node.tok, node.Key, newParams, next);
     }
 
-    public override BinderExpr VisitBinderExpr(BinderExpr node)
+    public override Expr VisitBinderExpr(BinderExpr node)
     {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BinderExpr>() != null);
@@ -1143,7 +1143,7 @@ namespace Microsoft.Boogie
       return e;
     }
     
-    public override BinderExpr VisitBinderExpr(BinderExpr node)
+    public override Expr VisitBinderExpr(BinderExpr node)
     {
       var oldToNew = node.Dummies.ToDictionary(x => x,
         x => new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, prefix + x.Name, x.TypedIdent.Type),
@@ -1154,7 +1154,7 @@ namespace Microsoft.Boogie
         boundVarSubst.Add(x, Expr.Ident(oldToNew[x]));
       }
 
-      BinderExpr expr = base.VisitBinderExpr(node);
+      BinderExpr expr = (BinderExpr)base.VisitBinderExpr(node);
       expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
 
       // We process triggers of quantifier expressions here, because otherwise the
