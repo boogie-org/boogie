@@ -1091,7 +1091,7 @@ namespace Microsoft.Boogie.VCExprAST
       throw new cce.UnreachableException();
     }
 
-    public override MapType VisitMapType(MapType node)
+    public override Type VisitMapType(MapType node)
     {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<MapType>() != null);

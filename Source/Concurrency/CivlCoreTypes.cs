@@ -513,7 +513,7 @@ namespace Microsoft.Boogie
         bound.Add(x, Expr.Ident(oldToNew[x]));
       }
 
-      BinderExpr expr = base.VisitBinderExpr(node);
+      var expr = (BinderExpr)base.VisitBinderExpr(node);
       expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
 
       // We process triggers of quantifier expressions here, because otherwise the

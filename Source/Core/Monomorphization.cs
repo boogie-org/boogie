@@ -36,7 +36,7 @@ namespace Microsoft.Boogie
       return base.VisitDeclWithFormals(node);
     }
 
-    public override BinderExpr VisitBinderExpr(BinderExpr node)
+    public override Expr VisitBinderExpr(BinderExpr node)
     {
       if (node.TypeParameters.Count > 0)
       {
@@ -45,7 +45,7 @@ namespace Microsoft.Boogie
       return base.VisitBinderExpr(node);
     }
 
-    public override MapType VisitMapType(MapType node)
+    public override Type VisitMapType(MapType node)
     {
       if (node.TypeParameters.Count > 0)
       {
@@ -98,7 +98,7 @@ namespace Microsoft.Boogie
       return node;
     }
 
-    public override MapType VisitMapType(MapType node)
+    public override Type VisitMapType(MapType node)
     {
       insideContructedType++;
       base.VisitMapType(node);
@@ -165,7 +165,8 @@ namespace Microsoft.Boogie
 
     private bool IsFinitelyInstantiable()
     {
-      var sccs = new StronglyConnectedComponents<TypeVariable>(typeVariableDependencyGraph.Nodes, typeVariableDependencyGraph.Predecessors, typeVariableDependencyGraph.Successors);
+      var sccs = new StronglyConnectedComponents<TypeVariable>(typeVariableDependencyGraph.Nodes,
+        typeVariableDependencyGraph.Predecessors, typeVariableDependencyGraph.Successors);
       sccs.Compute();
       foreach (var scc in sccs)
       {
@@ -180,7 +181,7 @@ namespace Microsoft.Boogie
       return true;
     }
     
-    public override BinderExpr VisitBinderExpr(BinderExpr node)
+    public override Expr VisitBinderExpr(BinderExpr node)
     {
       if (node.TypeParameters.Count > 0)
       {
@@ -218,7 +219,7 @@ namespace Microsoft.Boogie
       return base.VisitCallCmd(node);
     }
 
-    public override MapType VisitMapType(MapType node)
+    public override Type VisitMapType(MapType node)
     {
       if (node.TypeParameters.Count > 0)
       {
@@ -326,10 +327,13 @@ namespace Microsoft.Boogie
     class MonomorphizationDuplicator : Duplicator
     {
       private MonomorphizationVisitor monomorphizationVisitor;
-      private HashSet<Declaration> newInstantiatedDeclarations;
+      
+      private Absy parentAbsy;
       private Dictionary<TypeVariable, Type> typeParamInstantiation;
       private Dictionary<Variable, Variable> variableMapping;
       private Dictionary<Variable, Variable> boundVarSubst;
+      
+      private HashSet<Declaration> newInstantiatedDeclarations;
 
       public MonomorphizationDuplicator(MonomorphizationVisitor monomorphizationVisitor)
       {
@@ -342,18 +346,21 @@ namespace Microsoft.Boogie
 
       public Axiom InstantiateAxiom(Axiom axiom, List<Type> actualTypeParams)
       {
-        var forallExpr = (ForallExpr) axiom.Expr;
-        var savedTypeParamInstantiation = this.typeParamInstantiation;
-        this.typeParamInstantiation = LinqExtender.Map(forallExpr.TypeParameters, actualTypeParams);
-        forallExpr = (ForallExpr) VisitExpr(forallExpr);
-        this.typeParamInstantiation = savedTypeParamInstantiation;
-        forallExpr.TypeParameters = new List<TypeVariable>();
+        var forallExpr = (ForallExpr)InstantiateBinderExpr((BinderExpr)axiom.Expr, actualTypeParams);
         var instantiatedAxiom = new Axiom(axiom.tok, forallExpr.Dummies.Count == 0 ? forallExpr.Body : forallExpr,
           axiom.Comment, axiom.Attributes);
         newInstantiatedDeclarations.Add(instantiatedAxiom);
         return instantiatedAxiom;
       }
 
+      public BinderExpr InstantiateBinderExpr(BinderExpr binderExpr, List<Type> actualTypeParams)
+      {
+        binderExpr = (BinderExpr)InstantiateAbsy(binderExpr, LinqExtender.Map(binderExpr.TypeParameters, actualTypeParams),
+          new Dictionary<Variable, Variable>());
+        binderExpr.TypeParameters = new List<TypeVariable>();
+        return binderExpr;
+      }
+      
       public Function InstantiateFunction(Function func, List<Type> actualTypeParams)
       {
         if (!monomorphizationVisitor.functionInstantiations[func].ContainsKey(actualTypeParams))
@@ -394,11 +401,14 @@ namespace Microsoft.Boogie
       private Absy InstantiateAbsy(Absy absy, Dictionary<TypeVariable, Type> typeParamInstantiation,
         Dictionary<Variable, Variable> variableMapping)
       {
+        var savedParentAbsy = parentAbsy;
+        this.parentAbsy = absy;
         var savedTypeParamInstantiation = this.typeParamInstantiation;
         this.typeParamInstantiation = typeParamInstantiation;
         var savedVariableMapping = this.variableMapping;
         this.variableMapping = variableMapping;
         var newAbsy = Visit(absy);
+        this.parentAbsy = savedParentAbsy;
         this.variableMapping = savedVariableMapping;
         this.typeParamInstantiation = savedTypeParamInstantiation;
         return newAbsy;
@@ -539,7 +549,7 @@ namespace Microsoft.Boogie
         return monomorphizationVisitor.typeInstantiations[typeCtorDecl][actualTypeParams];
       }
 
-      private static string MkInstanceName(string name, List<Type> actualTypeParams)
+      public static string MkInstanceName(string name, List<Type> actualTypeParams)
       {
         actualTypeParams.Iter(x => name = $"{name}_{x.UniqueId}");
         return name;
@@ -560,12 +570,8 @@ namespace Microsoft.Boogie
         }
       }
 
-      private IsConstructor InstantiateIsConstructor(IsConstructor isConstructor, TypeParamInstantiation typeParameters)
+      private IsConstructor InstantiateIsConstructor(IsConstructor isConstructor, List<Type> actualTypeParams)
       {
-        var actualTypeParams =
-          typeParameters.FormalTypeParams.Select(x =>
-              TypeProxy.FollowProxy(typeParameters[x]).Substitute(typeParamInstantiation))
-            .Select(x => LookupType(x)).ToList();
         InstantiateTypeCtorDecl(isConstructor.DatatypeTypeCtorDecl, actualTypeParams);
         var instantiatedDatatypeTypeCtorDecl =
           (DatatypeTypeCtorDecl)monomorphizationVisitor.typeInstantiations[isConstructor.DatatypeTypeCtorDecl][
@@ -573,12 +579,8 @@ namespace Microsoft.Boogie
         return new IsConstructor(isConstructor.tok, instantiatedDatatypeTypeCtorDecl, isConstructor.ConstructorIndex);
       }
 
-      private FieldAccess InstantiateFieldAccess(FieldAccess fieldAccess, TypeParamInstantiation typeParameters)
+      private FieldAccess InstantiateFieldAccess(FieldAccess fieldAccess, List<Type> actualTypeParams)
       {
-        var actualTypeParams =
-          typeParameters.FormalTypeParams.Select(x =>
-              TypeProxy.FollowProxy(typeParameters[x]).Substitute(typeParamInstantiation))
-            .Select(x => LookupType(x)).ToList();
         InstantiateTypeCtorDecl(fieldAccess.DatatypeTypeCtorDecl, actualTypeParams);
         var instantiatedDatatypeTypeCtorDecl =
           (DatatypeTypeCtorDecl)monomorphizationVisitor.typeInstantiations[fieldAccess.DatatypeTypeCtorDecl][
@@ -586,14 +588,18 @@ namespace Microsoft.Boogie
         return new FieldAccess(fieldAccess.tok, fieldAccess.FieldName, instantiatedDatatypeTypeCtorDecl, fieldAccess.Accessors);
       }
 
-      private FieldUpdate InstantiateFieldUpdate(FieldUpdate fieldUpdate, TypeParamInstantiation typeParameters)
+      private FieldUpdate InstantiateFieldUpdate(FieldUpdate fieldUpdate, List<Type> actualTypeParams)
       {
-        return new FieldUpdate(InstantiateFieldAccess(fieldUpdate.FieldAccess, typeParameters));
+        return new FieldUpdate(InstantiateFieldAccess(fieldUpdate.FieldAccess, actualTypeParams));
       }
       
       public override AssignLhs VisitFieldAssignLhs(FieldAssignLhs node)
       {
         var fieldAssignLhs = (FieldAssignLhs)base.VisitFieldAssignLhs(node);
+        var actualTypeParams =
+          fieldAssignLhs.TypeParameters.FormalTypeParams.Select(x =>
+              TypeProxy.FollowProxy(fieldAssignLhs.TypeParameters[x]).Substitute(typeParamInstantiation))
+            .Select(x => LookupType(x)).ToList();
         var fieldAccess = fieldAssignLhs.FieldAccess;
         var datatypeTypeCtorDecl = fieldAccess.DatatypeTypeCtorDecl;
         if (datatypeTypeCtorDecl.Arity == 0)
@@ -602,7 +608,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          fieldAssignLhs.FieldAccess = InstantiateFieldAccess(fieldAssignLhs.FieldAccess, fieldAssignLhs.TypeParameters);
+          fieldAssignLhs.FieldAccess = InstantiateFieldAccess(fieldAssignLhs.FieldAccess, actualTypeParams);
         }
         return fieldAssignLhs;
       }
@@ -611,6 +617,12 @@ namespace Microsoft.Boogie
       {
         var returnExpr = (NAryExpr) base.VisitNAryExpr(node);
         returnExpr.Type = VisitType(node.Type);
+        var actualTypeParams =
+          returnExpr.TypeParameters.FormalTypeParams.Select(x =>
+              TypeProxy.FollowProxy(returnExpr.TypeParameters[x]).Substitute(typeParamInstantiation))
+            .Select(x => LookupType(x)).ToList();
+        returnExpr.TypeParameters =
+          SimpleTypeParamInstantiation.From(returnExpr.TypeParameters.FormalTypeParams, actualTypeParams);
         if (returnExpr.Fun is TypeCoercion)
         {
           return returnExpr.Args[0];
@@ -624,7 +636,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            returnExpr.Fun = InstantiateIsConstructor(isConstructor, returnExpr.TypeParameters);
+            returnExpr.Fun = InstantiateIsConstructor(isConstructor, actualTypeParams);
             returnExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
           }
         }
@@ -637,7 +649,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            returnExpr.Fun = InstantiateFieldAccess(fieldAccess, returnExpr.TypeParameters);
+            returnExpr.Fun = InstantiateFieldAccess(fieldAccess, actualTypeParams);
             returnExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
           }
         }
@@ -650,7 +662,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            returnExpr.Fun = InstantiateFieldUpdate(fieldUpdate, returnExpr.TypeParameters);
+            returnExpr.Fun = InstantiateFieldUpdate(fieldUpdate, actualTypeParams);
             returnExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
           }
         }
@@ -672,10 +684,6 @@ namespace Microsoft.Boogie
           }
           else
           {
-            var actualTypeParams =
-              returnExpr.TypeParameters.FormalTypeParams.Select(x =>
-                  TypeProxy.FollowProxy(returnExpr.TypeParameters[x]).Substitute(typeParamInstantiation))
-                .Select(x => LookupType(x)).ToList();
             if (functionCall.Func is DatatypeConstructor constructor)
             {
               InstantiateTypeCtorDecl(constructor.datatypeTypeCtorDecl, actualTypeParams);
@@ -740,7 +748,7 @@ namespace Microsoft.Boogie
         return typeParamInstantiation[node];
       }
 
-      public override MapType VisitMapType(MapType node)
+      public override Type VisitMapType(MapType node)
       {
         node = (MapType) node.Clone();
         for (int i = 0; i < node.Arguments.Count; ++i)
@@ -811,7 +819,7 @@ namespace Microsoft.Boogie
         return identifierExpr;
       }
 
-      public override BinderExpr VisitBinderExpr(BinderExpr node)
+      public override Expr VisitBinderExpr(BinderExpr node)
       {
         var oldToNew = node.Dummies.ToDictionary(x => x,
           x => new BoundVariable(x.tok, new TypedIdent(x.tok, x.Name, VisitType(x.TypedIdent.Type)),
@@ -821,7 +829,7 @@ namespace Microsoft.Boogie
           boundVarSubst.Add(x, oldToNew[x]);
         }
 
-        BinderExpr expr = base.VisitBinderExpr(node);
+        var expr = (BinderExpr)base.VisitBinderExpr(node);
         expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
         // We process triggers of quantifier expressions here, because otherwise the
         // substitutions for bound variables have to be leaked outside this procedure.
@@ -1011,7 +1019,7 @@ namespace Microsoft.Boogie
         decl is Axiom axiom && (axiomsToBeInstantiated.ContainsKey(axiom) || polymorphicFunctionAxioms.Contains(axiom)));
     }
 
-    public void InstantiateAxioms()
+    private void InstantiateAxioms()
     {
       while (newTriggerTypes.Any(x => x.Value.Count != 0))
       {
