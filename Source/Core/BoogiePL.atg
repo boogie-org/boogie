@@ -7,6 +7,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Microsoft.Boogie;
 using Microsoft.BaseTypes;
@@ -27,13 +28,13 @@ readonly List<Expr>/*!*/ dummyExprSeq;
 readonly TransferCmd/*!*/ dummyTransferCmd;
 readonly StructuredCmd/*!*/ dummyStructuredCmd;
 
-public static Program ParseLibraryDefinitions()
+public static Program ParseLibrary(string libraryName)
 {
-  string libraryDefinitionsFileName = "LibraryDefinitions.bpl";
+  string libraryFileName = $"{libraryName}.bpl";
   Assembly asm = Assembly.GetExecutingAssembly();
-  var resourceName = "Core.LibraryDefinitions.bpl";
+  var resourceName = $"Core.{libraryFileName}";
   using Stream resourceStream = asm.GetManifestResourceStream(resourceName);
-  Parse(new StreamReader(resourceStream), libraryDefinitionsFileName, new List<string>(), out Program program);
+  Parse(new StreamReader(resourceStream), libraryFileName, new List<string>(), out Program program);
   return program;
 }
 
@@ -914,7 +915,7 @@ LabelOrCmd<out Cmd c, out IToken label>
 
 LabelOrAssign<out Cmd c, out IToken label>
 /* ensures (c == null) != (label != null) */
-= (. IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e0;
+= (. IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e0; List<IToken> ids;
      c = dummyCmd;  label = null;
      AssignLhs/*!*/ lhs;
      List<AssignLhs/*!*/>/*!*/ lhss;
@@ -922,9 +923,22 @@ LabelOrAssign<out Cmd c, out IToken label>
      List<Expr/*!*/>/*!*/ indexes;
      FieldAccess fieldAccess;
      QKeyValue kv = null;
+     NAryExpr lhsExpr;
   .)
   Ident<out id>              (. x = t; .)
-  ( ":"                      (. c = null;  label = x; .)
+  ( ":"                      (. c = null; label = x; .)
+  
+  | "(" Idents<out ids> ")"
+    (. 
+      lhsExpr = new NAryExpr(x, new FunctionCall(new IdentifierExpr(id, id.val)), ids.Select(id => new IdentifierExpr(id, id.val)).ToList<Expr>());
+    .)
+    ":=" (. x = t; /* use location of := */ .)
+    { Attribute<ref kv> }
+    Expression<out e0>    
+    ";"   
+    (. 
+       c = new UnpackCmd(x, lhsExpr, e0, kv); 
+    .)
 
   | (. lhss = new List<AssignLhs/*!*/>(); .)
     (. lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); .)
@@ -1274,8 +1288,7 @@ CoercionExpression<out Expr/*!*/ e>
 /*------------------------------------------------------------------------*/
 ArrayExpression<out Expr/*!*/ e>
 = (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); 
-     IToken/*!*/ x;
-     FieldAccess fieldAccess;
+     IToken/*!*/ x, id;
      Expr/*!*/ index0 = dummyExpr; Expr/*!*/ e1;
      bool store; bool bvExtract;
      List<Expr>/*!*/ allArgs = dummyExprSeq;
@@ -1316,7 +1329,16 @@ ArrayExpression<out Expr/*!*/ e>
          e = new NAryExpr(x, new MapSelect(x, allArgs.Count - 1), allArgs);
     .)
     |
-      FieldAccess<out x, out fieldAccess> (. e = new NAryExpr(x, fieldAccess, new List<Expr> { e }); .)
+      "->" (. x = t; .)
+      (
+        Ident<out id> (. e = new NAryExpr(x, new FieldAccess(id, id.val), new List<Expr> { e }); .)
+        |
+        "("
+        Ident<out id>
+        ":=" (. x = t; .)
+        Expression<out e1>
+        ")" (. e = new NAryExpr(x, new FieldUpdate(id, id.val), new List<Expr> { e, e1 }); .)
+      )
   }
   .
 

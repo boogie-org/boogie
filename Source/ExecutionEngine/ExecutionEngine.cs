@@ -327,15 +327,19 @@ namespace Microsoft.Boogie
       {
         if (program.TopLevelDeclarations.Any(d => d.HasCivlAttribute()))
         {
-          Options.UseLibrary = true;
+          Options.Libraries.Add("base");
         }
 
-        if (Options.UseLibrary)
+        foreach (var libraryName in Options.Libraries)
+        {
+          var library = Parser.ParseLibrary(libraryName);
+          program.AddTopLevelDeclarations(library.TopLevelDeclarations);
+        }
+
+        if (Options.Libraries.Contains("base"))
         {
           Options.UseArrayTheory = true;
           Options.Monomorphize = true;
-          var library = Parser.ParseLibraryDefinitions();
-          program.AddTopLevelDeclarations(library.TopLevelDeclarations);
         }
 
         return program;
@@ -432,6 +436,12 @@ namespace Microsoft.Boogie
       {
         Console.WriteLine(
           "Datatypes only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
+        return PipelineOutcome.FatalError;
+      }
+      else if (program.TopLevelDeclarations.OfType<Function>().Any(f => QKeyValue.FindBoolAttribute(f.Attributes, "define")))
+      {
+        Console.WriteLine(
+          "Functions with :define attribute only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
         return PipelineOutcome.FatalError;
       }
 

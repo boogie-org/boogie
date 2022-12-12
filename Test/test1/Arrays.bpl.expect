@@ -16,9 +16,7 @@ Arrays.bpl(48,15): Error: invalid type for argument 1 in map select: int (expect
 Arrays.bpl(52,6): Error: invalid type for argument 0 in map assignment: bool (expected: int)
 Arrays.bpl(53,6): Error: invalid type for argument 0 in map assignment: int (expected: bool)
 Arrays.bpl(53,8): Error: invalid type for argument 1 in map assignment: int (expected: ref)
-Arrays.bpl(53,5): Error: mismatched types in assignment command (cannot assign ref to int)
 Arrays.bpl(54,7): Error: invalid type for argument 0 in map assignment: bool (expected: int)
-Arrays.bpl(54,5): Error: mismatched types in assignment command (cannot assign int to bool)
 Arrays.bpl(55,12): Error: invalid type for argument 1 in map assignment: bool (expected: ref)
 Arrays.bpl(115,11): Error: invalid type for argument 0 in map select: name (expected: [int,int]bool)
 Arrays.bpl(116,4): Error: mismatched types in assignment command (cannot assign [int,int]bool to [[int,int]bool,[name]name]int)
@@ -50,4 +48,4 @@ Arrays.bpl(217,4): Error: mismatched types in assignment command (cannot assign 
 Arrays.bpl(218,4): Error: mismatched types in assignment command (cannot assign any to int)
 Arrays.bpl(220,24): Error: invalid type for argument 0 in call to AnyMethod: any (expected: int)
 Arrays.bpl(220,9): Error: invalid type for out-parameter 0 in call to AnyMethod: int (expected: any)
-52 type checking errors detected in Arrays.bpl
+50 type checking errors detected in Arrays.bpl

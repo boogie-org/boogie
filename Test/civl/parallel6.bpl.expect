@@ -3,6 +3,7 @@ Execution trace:
     parallel6.bpl(10,5): anon0
     parallel6.bpl(28,7): inline$atomic_incr$0$anon0
     parallel6.bpl(28,7): inline$atomic_incr$1$anon0
+    parallel6.bpl(10,5): anon0$2
     parallel6.bpl(10,5): anon0_0
     parallel6.bpl(28,7): inline$atomic_incr$2$anon0
     parallel6.bpl(28,7): inline$atomic_incr$3$anon0

@@ -270,12 +270,11 @@ namespace Microsoft.Boogie
         {
           ProcessParCallCmd((ParCallCmd) newCmd);
         }
-        else if (!(newCmd is PredicateCmd predicateCmd && predicateCmd.Expr.Equals(Expr.True)))
+        else
         {
           newCmdSeq.Add(newCmd);
         }
       }
-
       return newCmdSeq;
     }
 

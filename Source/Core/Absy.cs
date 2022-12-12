@@ -79,7 +79,7 @@ namespace Microsoft.Boogie
     public abstract void Typecheck(TypecheckingContext /*!*/ tc);
 
     /// <summary>
-    /// Intorduced this so the uniqueId is not the same on a cloned object.
+    /// Introduced so the uniqueId is not the same on a cloned object.
     /// </summary>
     /// <param name="tc"></param>
     public virtual Absy Clone()
@@ -347,13 +347,8 @@ namespace Microsoft.Boogie
       ResolveTypes(rc);
       
       var prunedTopLevelDeclarations = new List<Declaration /*!*/>();
-      foreach (var d in TopLevelDeclarations)
+      foreach (var d in TopLevelDeclarations.Where(d => !QKeyValue.FindBoolAttribute(d.Attributes, "ignore")))
       {
-        if (QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
-        {
-          continue;
-        }
-
         // resolve all the declarations that have not been resolved yet 
         if (!(d is TypeCtorDecl || d is TypeSynonymDecl))
         {
@@ -365,12 +360,6 @@ namespace Microsoft.Boogie
             Console.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors",
               ((Implementation) d).Name);
             rc.ErrorCount = e;
-            continue;
-          }
-          if (d is DatatypeConstructor)
-          {
-            // resolving a constructor adds it to its datatype declaration
-            // so we remove it from TopLevelDeclarations
             continue;
           }
         }
@@ -413,6 +402,14 @@ namespace Microsoft.Boogie
       // then resolve the type synonyms by a simple
       // fixed-point iteration
       TypeSynonymDecl.ResolveTypeSynonyms(synonymDecls, rc);
+      
+      // resolve the datatype constructors (which adds them to datatype declarations)
+      // and remove them from TopLevelDeclarations
+      foreach (var constructor in TopLevelDeclarations.OfType<DatatypeConstructor>())
+      {
+        constructor.Resolve(rc);
+      }
+      TopLevelDeclarations = TopLevelDeclarations.Where(d => !(d is DatatypeConstructor)).ToList();
     }
 
     public int Typecheck(CoreOptions options)

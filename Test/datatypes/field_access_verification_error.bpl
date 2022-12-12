@@ -42,3 +42,20 @@ procedure P3(a: int) {
   left->i := a;
   assert left == Left(a);
 }
+
+procedure P4(s: Perm) returns (i: int)
+ensures i == s->i;
+{
+  var s': Perm;
+  Left(i) := s;
+  s' := Left(i);
+  assert s == s';
+}
+
+procedure P5(p: Pair) returns (q: Pair)
+  requires p->a == 0;
+  ensures  q->a == 1;
+{
+  q := p->(a := 1);
+  assert q == Pair(1, 1);
+}

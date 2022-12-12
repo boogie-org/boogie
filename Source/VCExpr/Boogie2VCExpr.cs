@@ -496,6 +496,11 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
+      if (node.Fun is FieldUpdate fieldUpdate)
+      {
+        return TranslateNAryExpr(fieldUpdate.Update(Token.NoToken, node.Args[0], node.Args[1]));
+      }
+      
       bool flipContextForArg0 = false;
       if (node.Fun is UnaryOperator)
       {
@@ -807,12 +812,18 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Cmd VisitAssignCmd(AssignCmd node)
     {
-      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
 
+    public override Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      Contract.Ensures(Contract.Result<Cmd>() != null);
+      Contract.Assert(false);
+      throw new cce.UnreachableException();
+    }
+    
     public override Cmd VisitAssumeCmd(AssumeCmd node)
     {
       //Contract.Requires(node != null);
@@ -1080,7 +1091,7 @@ namespace Microsoft.Boogie.VCExprAST
       throw new cce.UnreachableException();
     }
 
-    public override MapType VisitMapType(MapType node)
+    public override Type VisitMapType(MapType node)
     {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<MapType>() != null);
@@ -1429,6 +1440,11 @@ namespace Microsoft.Boogie.VCExprAST
       return expr;
     }
 
+    public VCExpr Visit(FieldUpdate fieldUpdate)
+    {
+      throw new cce.UnreachableException();
+    }
+    
     public VCExpr Visit(IsConstructor isConstructor)
     {
       return Gen.Function(new VCExprIsConstructorOp(isConstructor.DatatypeTypeCtorDecl, isConstructor.ConstructorIndex), this.args);

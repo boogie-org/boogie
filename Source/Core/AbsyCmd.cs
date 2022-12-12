@@ -1220,7 +1220,7 @@ namespace Microsoft.Boogie
       }
       return new List<Block>();
     }
-    
+
     [Rep] //PM: needed to verify Traverse.Visit
     public TransferCmd
       TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)
@@ -1954,28 +1954,33 @@ namespace Microsoft.Boogie
 
       for (int i = 0; i < Lhss.Count; i++)
       {
-        var lhs = Lhss[i].AsExpr as IdentifierExpr;
-        if (lhs != null && lhs.Decl != null && QKeyValue.FindBoolAttribute(lhs.Decl.Attributes, "assumption"))
+        var lhs = Lhss[i] as SimpleAssignLhs;
+        if (lhs == null)
+        {
+          continue;
+        }
+        var decl = lhs.AssignedVariable.Decl;
+        if (lhs.AssignedVariable.Decl != null && QKeyValue.FindBoolAttribute(decl.Attributes, "assumption"))
         {
           var rhs = Rhss[i] as NAryExpr;
           if (rhs == null
               || !(rhs.Fun is BinaryOperator)
-              || ((BinaryOperator) (rhs.Fun)).Op != BinaryOperator.Opcode.And
+              || ((BinaryOperator)rhs.Fun).Op != BinaryOperator.Opcode.And
               || !(rhs.Args[0] is IdentifierExpr)
-              || ((IdentifierExpr) (rhs.Args[0])).Name != lhs.Name)
+              || ((IdentifierExpr)rhs.Args[0]).Decl != decl)
           {
             rc.Error(tok,
               string.Format(
                 "RHS of assignment to assumption variable {0} must match expression \"{0} && <boolean expression>\"",
-                lhs.Name));
+                decl.Name));
           }
-          else if (rc.HasVariableBeenAssigned(lhs.Decl.Name))
+          else if (rc.HasVariableBeenAssigned(decl.Name))
           {
             rc.Error(tok, "assumption variable may not be assigned to more than once");
           }
           else
           {
-            rc.MarkVariableAsAssigned(lhs.Decl.Name);
+            rc.MarkVariableAsAssigned(decl.Name);
           }
         }
       }
@@ -1983,6 +1988,8 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
+      int errorCount = tc.ErrorCount;
+
       TypecheckAttributes(Attributes, tc);
       foreach (AssignLhs /*!*/ e in Lhss)
       {
@@ -1996,22 +2003,21 @@ namespace Microsoft.Boogie
         e.Typecheck(tc);
       }
 
+      if (tc.ErrorCount > errorCount)
+      {
+        // there has already been an error when typechecking the lhs or rhs
+        return;
+      }
+
       this.CheckAssignments(tc);
 
       for (int i = 0; i < Lhss.Count; ++i)
       {
         Type ltype = Lhss[i].Type;
         Type rtype = Rhss[i].Type;
-        if (ltype != null && rtype != null)
+        if (!ltype.Unify(rtype))
         {
-          // otherwise, there has already been an error when
-          // typechecking the lhs or rhs
-          if (!ltype.Unify(rtype))
-          {
-            tc.Error(Lhss[i],
-              "mismatched types in assignment command (cannot assign {0} to {1})",
-              rtype, ltype);
-          }
+          tc.Error(Lhss[i], "mismatched types in assignment command (cannot assign {0} to {1})", rtype, ltype);
         }
       }
     }
@@ -2132,10 +2138,7 @@ namespace Microsoft.Boogie
     }
 
 
-    public override Type Type
-    {
-      get { return AssignedVariable.Type; }
-    }
+    public override Type Type => AssignedVariable.Type.Expanded;
 
     public override IdentifierExpr /*!*/ DeepAssignedIdentifier
     {
@@ -2225,7 +2228,15 @@ namespace Microsoft.Boogie
 
     public override Type Type
     {
-      get { return TypeAttr; }
+      get
+      {
+        if (TypeAttr == null)
+        {
+          TypeAttr = ((MapType)TypeProxy.FollowProxy(Map.Type.Expanded)).Result.Substitute(
+            TypeParameters.FormalTypeParams.ToDictionary(x => x, x => TypeParameters[x]));
+        }
+        return TypeAttr;
+      }
     }
 
     public override IdentifierExpr /*!*/ DeepAssignedIdentifier
@@ -2354,7 +2365,17 @@ namespace Microsoft.Boogie
 
     private Type TypeAttr = null;
 
-    public override Type Type => TypeAttr;
+    public override Type Type
+    {
+      get
+      {
+        if (TypeAttr == null)
+        {
+          TypeAttr = FieldAccess.Type((CtorType)TypeProxy.FollowProxy(Datatype.Type.Expanded));
+        }
+        return TypeAttr;
+      }
+    }
 
     public override IdentifierExpr DeepAssignedIdentifier => Datatype.DeepAssignedIdentifier;
 
@@ -2414,6 +2435,140 @@ namespace Microsoft.Boogie
     public override Absy StdDispatch(StandardVisitor visitor)
     {
       return visitor.VisitFieldAssignLhs(this);
+    }
+  }
+
+  /// <summary>
+  /// UnpackCmd used for unpacking a constructed value into its components.
+  /// </summary>
+  public class UnpackCmd : SugaredCmd, ICarriesAttributes
+  {
+    private NAryExpr lhs;
+    private Expr rhs;
+    private QKeyValue kv;
+
+    public UnpackCmd(IToken tok, NAryExpr lhs, Expr rhs, QKeyValue kv)
+    : base(tok)
+    {
+      this.lhs = lhs;
+      this.rhs = rhs;
+      this.kv = kv;
+    }
+
+    public QKeyValue Attributes
+    {
+      get { return kv; }
+      set { kv = value; }
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      lhs.Resolve(rc);
+      rhs.Resolve(rc);
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      TypecheckAttributes(Attributes, tc);
+      lhs.Typecheck(tc);
+      rhs.Typecheck(tc);
+      this.CheckAssignments(tc);
+      Type ltype = lhs.Type;
+      Type rtype = rhs.Type;
+      if (ltype == null || rtype == null)
+      {
+        return;
+      }
+      if (!ltype.Unify(rtype))
+      {
+        tc.Error(tok, "mismatched types in assignment command (cannot assign {0} to {1})", rtype, ltype);
+        return;
+      }
+      var f = (FunctionCall)lhs.Fun;
+      if (!(f.Func is DatatypeConstructor))
+      {
+        tc.Error(tok, "left side of unpack command must be a constructor application");
+      }
+      var assignedVars = new HashSet<Variable>();
+      UnpackedLhs.Iter(ie =>
+      {
+        if (assignedVars.Contains(ie.Decl))
+        {
+          tc.Error(tok, $"variable {ie.Decl} is assigned more than once in unpack command");
+        }
+        else
+        {
+          assignedVars.Add(ie.Decl);
+        }
+      });
+    }
+
+    public DatatypeConstructor Constructor => (DatatypeConstructor)((FunctionCall)lhs.Fun).Func;
+
+    public NAryExpr Lhs
+    {
+      get
+      {
+        return lhs;
+      }
+      set
+      {
+        lhs = value;
+      }
+    }
+
+    public Expr Rhs
+    {
+      get
+      {
+        return rhs;
+      }
+      set
+      {
+        rhs = value;
+      }
+    }
+
+    public IEnumerable<IdentifierExpr> UnpackedLhs => lhs.Args.Cast<IdentifierExpr>();
+
+    public override void AddAssignedVariables(List<Variable> vars)
+    {
+      lhs.Args.Cast<IdentifierExpr>().Iter(arg => vars.Add(arg.Decl));
+    }
+
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      stream.Write(this, level, "");
+      lhs.Emit(stream);
+      stream.Write(" := ");
+      rhs.Emit(stream);
+      stream.WriteLine(";");
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      return visitor.VisitUnpackCmd(this);
+    }
+
+    protected override Cmd ComputeDesugaring(PrintOptions options)
+    {
+      var cmds = new List<Cmd>();
+      // assert that unpacked value has the correct constructor
+      var assertCmd = new AssertCmd(tok,
+        new NAryExpr(tok, new IsConstructor(tok, Constructor.datatypeTypeCtorDecl, Constructor.index),
+          new List<Expr> { rhs })) { Description = new FailureOnlyDescription("The precondition for unpack might not hold") };
+      cmds.Add(assertCmd);
+      // read fields into lhs variables from localRhs
+      var assignLhss = lhs.Args.Select(arg => new SimpleAssignLhs(tok, (IdentifierExpr)arg)).ToList<AssignLhs>();
+      var assignRhss = Enumerable.Range(0, Constructor.InParams.Count).Select(i =>
+      {
+        var fieldName = Constructor.InParams[i].Name;
+        var fieldAccess = new FieldAccess(tok, fieldName, Constructor.datatypeTypeCtorDecl,
+          new List<DatatypeAccessor> { new DatatypeAccessor(Constructor.index, i) });
+        return new NAryExpr(tok, fieldAccess, new List<Expr> { rhs });
+      }).ToList<Expr>();
+      cmds.Add(new AssignCmd(tok, assignLhss, assignRhss));
+      return new StateCmd(tok, new List<Variable>(), cmds);
     }
   }
 
@@ -2577,7 +2732,7 @@ namespace Microsoft.Boogie
     /// desugaring to the result thereof.  The method's intended use is for subclasses
     /// of StandardVisitor that need to also visit the desugaring.  Note, since the
     /// "desugaring" field is updated, this is not an appropriate method to be called
-    /// be a ReadOnlyVisitor; such visitors should instead just call
+    /// by a ReadOnlyVisitor; such visitors should instead just call
     /// visitor.Visit(sugaredCmd.Desugaring).
     /// </summary>
     public void VisitDesugaring(StandardVisitor visitor)
@@ -3092,7 +3247,7 @@ namespace Microsoft.Boogie
           return;
         }
       }
-      
+
       var id = QKeyValue.FindStringAttribute(Attributes, "id");
       if (id != null)
       {
@@ -3127,7 +3282,7 @@ namespace Microsoft.Boogie
         vars.Add(AssignedAssumptionVariable);
       }
     }
-    
+
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);

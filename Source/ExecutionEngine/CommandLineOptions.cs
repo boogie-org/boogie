@@ -660,7 +660,13 @@ namespace Microsoft.Boogie
       set => trustNoninterference = value;
     }
 
+    public bool TrustRefinement {
+      get => trustRefinement;
+      set => trustRefinement = value;
+    }
+    
     public int TrustLayersUpto { get; set; } = -1;
+    
     public int TrustLayersDownto { get; set; } = int.MaxValue;
 
     public bool TrustInductiveSequentialization {
@@ -774,7 +780,7 @@ namespace Microsoft.Boogie
 
     public int LiveVariableAnalysis { get; set; } = 1;
 
-    public bool UseLibrary { get; set; } = false;
+    public HashSet<string> Libraries { get; set; } = new HashSet<string>();
 
     // Note that procsToCheck stores all patterns <p> supplied with /proc:<p>
     // (and similarly procsToIgnore for /noProc:<p>). Thus, if procsToCheck
@@ -808,6 +814,7 @@ namespace Microsoft.Boogie
     private bool useProverEvaluate;
     private bool trustMoverTypes = false;
     private bool trustNoninterference = false;
+    private bool trustRefinement = false;
     private bool trustInductiveSequentialization = false;
     private bool trace = false;
     private int enhancedErrorMessages = 0;
@@ -883,9 +890,9 @@ namespace Microsoft.Boogie
           return true;
 
         case "lib":
-          if (ps.ConfirmArgumentCount(0))
+          if (ps.ConfirmArgumentCount(1))
           {
-            this.UseLibrary = true;
+            this.Libraries.Add(cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -1564,6 +1571,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("verifySeparately", x => VerifySeparately = x) ||
               ps.CheckBooleanFlag("trustMoverTypes", x => trustMoverTypes = x) ||
               ps.CheckBooleanFlag("trustNoninterference", x => trustNoninterference = x) ||
+              ps.CheckBooleanFlag("trustRefinement", x => trustRefinement = x) ||
               ps.CheckBooleanFlag("trustInductiveSequentialization", x => trustInductiveSequentialization = x) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
@@ -1879,14 +1887,14 @@ namespace Microsoft.Boogie
   ---- Pool-based quantifier instantiation -----------------------------------
 
      {:pool ""name""}
-       Used on a bound variable of a quantifier or lambda.  Indicates that
+       Used on a bound variable of a quantifier or lambda. Indicates that
        expressions in pool name should be used for instantiating that variable.
 
      {:add_to_pool ""name"", e}
-       Used on a command.  Adds the expression e, after substituting variables
-       with their incarnations just before the command, to pool name.
+       Used on an assert or assume command. Adds the expression e to pool name
+       after substituting variables with their incarnations at the command.
 
-       Used on a quantifier.  Adds the expression e, after substituting the
+       Used on a quantifier. Adds the expression e, after substituting the
        bound variables with fresh skolem constants, whenever the quantifier is
        skolemized.
 
@@ -2101,6 +2109,8 @@ namespace Microsoft.Boogie
                 do not verify mover type annotations on atomic action declarations
   /trustNoninterference
                 do not perform noninterference checks
+  /trustRefinement
+                do not perform refinement checks
   /trustLayersUpto:<n>
                 do not verify layers <n> and below
   /trustLayersDownto:<n>

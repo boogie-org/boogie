@@ -198,15 +198,15 @@ producer (x:int, {:linear_in "cid"} send_handle: ChannelHandle)
 }
 
 procedure {:yields}{:layer 1}{:refines "CONSUMER"}
-consumer (y:int, {:linear_in "cid"} receive_handle: ChannelHandle)
+consumer (x:int, {:linear_in "cid"} receive_handle: ChannelHandle)
 {
-  var y': int;
+  var x': int;
 
-  call y' := receive(receive_handle);
-  if (y' != 0)
+  call x' := receive(receive_handle);
+  if (x' != 0)
   {
-    assert {:layer 1} y' == y; // low-level assertion to discharge
-    async call consumer(y'+1, receive_handle);
+    assert {:layer 1} x' == x; // low-level assertion to discharge
+    async call consumer(x'+1, receive_handle);
   }
 }
 

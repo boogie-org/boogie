@@ -159,22 +159,6 @@ procedure {:yield_invariant} {:layer 10} YieldConsistent_10 ();
 requires gConsistent(state);
 
 // ###########################################################################
-
-function
-{:witness "state"}
-{:commutativity "atomic_Coordinator_VoteNo","atomic_Coordinator_VoteNo"}
-{:commutativity "atomic_Coordinator_VoteYes","atomic_Coordinator_VoteNo"}
-{:commutativity "atomic_Coordinator_VoteNo","atomic_Coordinator_VoteYes"}
-{:commutativity "atomic_Coordinator_VoteYes","atomic_Coordinator_VoteYes"}
-{:commutativity "atomic_SetParticipantAborted","atomic_Coordinator_VoteYes"}
-{:commutativity "atomic_SetParticipantAborted","atomic_Coordinator_VoteNo"}
-{:commutativity "atomic_Participant_VoteReq","atomic_Participant_VoteReq"}
-witness (state:GState, state':GState, second_xid:Xid) : GState
-{
-   state[second_xid := state'[second_xid]]
-}
-
-// ###########################################################################
 // Main
 
 procedure {:yields} {:layer 11}
@@ -211,9 +195,9 @@ procedure {:intro} {:layer 10} GhostRead_10() returns (snapshot: GState)
 procedure {:atomic} {:layer 11} atomic_Coordinator_TransactionReq () returns (xid: Xid)
 modifies state;
 {
-  havoc state;
+  var {:pool "A"} x: XState;
+  state[xid] := x;
   assume xConsistent(state[xid]);
-  assume state == old(state)[xid := state[xid]];
 }
 
 procedure {:yields} {:layer 10} {:refines "atomic_Coordinator_TransactionReq"}
@@ -244,6 +228,8 @@ Coordinator_TransactionReq () returns (xid: Xid)
     async call {:sync} Participant_VoteReq(xid, i, pair);
     i := i + 1;
   }
+
+  assert {:layer 10} {:add_to_pool "A", state[xid]} true;
 }
 
 // ---------------------------------------------------------------------------
@@ -251,12 +237,12 @@ Coordinator_TransactionReq () returns (xid: Xid)
 procedure {:left} {:layer 10} atomic_Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state;
 {
+  var {:pool "A"} x: XState;
   assert !UnallocatedXids[xid];
   assert pair(xid, mid, pair);
   assert xConsistent(state[xid]);
-  havoc state;
+  state[xid] := x;
   assume xConsistentExtension(old(state)[xid], state[xid]);
-  assume state == old(state)[xid := state[xid]];
 }
 
 procedure {:yields} {:layer 9} {:refines "atomic_Participant_VoteReq"}
@@ -271,6 +257,8 @@ Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
     call SetParticipantAborted(xid, mid, pair);
     async call {:sync} Coordinator_VoteNo(xid, mid, pair);
   }
+
+  assert {:layer 9} {:add_to_pool "A", state[xid]} true;
 }
 
 // ---------------------------------------------------------------------------
@@ -278,15 +266,15 @@ Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 procedure {:left} {:layer 9} atomic_Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state, B;
 {
+  var {:pool "A"} x: XState;
   assert !UnallocatedXids[xid];
   assert pair(xid, mid, pair);
   assert xConsistent(state[xid]);
   B[pair] := true;
   if (*) {
-    havoc state;
+    state[xid] := x;
     assume xAllParticipantsInB(xid, B);
     assume xConsistentExtension(old(state)[xid], state[xid]);
-    assume state == old(state)[xid := state[xid]];
   }
 }
 
@@ -320,18 +308,20 @@ Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
       i := i + 1;
     }
   }
+
+  assert {:layer 8} {:add_to_pool "A", state[xid]} true;
 }
 
 procedure {:left} {:layer 9} atomic_Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state;
 {
+  var {:pool "A"} x: XState;
   assert !UnallocatedXids[xid];
   assert pair(xid, mid, pair);
   assert xUndecidedOrAborted(state[xid]);
-  havoc state;
+  state[xid] := x;
   assume xUndecidedOrAborted(state[xid]);
   assume xConsistentExtension(old(state)[xid], state[xid]);
-  assume state == old(state)[xid := state[xid]];
 }
 
 procedure {:yields} {:layer 8} {:refines "atomic_Coordinator_VoteNo"}
@@ -359,6 +349,8 @@ Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
       i := i + 1;
     }
   }
+
+  assert {:layer 8} {:add_to_pool "A", state[xid]} true;
 }
 
 // ---------------------------------------------------------------------------

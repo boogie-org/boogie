@@ -12,7 +12,6 @@ namespace Microsoft.Boogie
     private readonly Dictionary<Variable, Function> triggers;
     private readonly HashSet<Variable> frame;
     private readonly HashSet<Variable> allInParams, allOutParams, allLocVars;
-    private readonly Dictionary<Variable, List<CommutativityWitness>> globalVarToWitnesses;
     private readonly bool ignorePostState;
 
     private readonly string messagePrefix;
@@ -33,12 +32,10 @@ namespace Microsoft.Boogie
 
     private IEnumerable<Variable> PreStateVars => frame.Union(allInParams).Distinct();
 
-    private IEnumerable<Variable> FrameWithWitnesses => frame.Intersect(globalVarToWitnesses.Keys);
-
     private TransitionRelationComputation(
       CivlTypeChecker civlTypeChecker,
       Implementation first, Implementation second,
-      IEnumerable<Variable> frame, IEnumerable<CommutativityWitness> witnesses, Dictionary<Variable, Function> triggers,
+      IEnumerable<Variable> frame, Dictionary<Variable, Function> triggers,
       bool ignorePostState,
       string messagePrefix)
     {
@@ -63,30 +60,16 @@ namespace Microsoft.Boogie
       this.checkingContext = new CheckingContext(null);
 
       this.pathTranslations = new List<Expr>();
-      this.globalVarToWitnesses = new Dictionary<Variable, List<CommutativityWitness>>();
-      if (witnesses != null)
-      {
-        foreach (var witness in witnesses)
-        {
-          var gVar = witness.witnessedVariable;
-          if (!globalVarToWitnesses.ContainsKey(gVar))
-          {
-            globalVarToWitnesses[gVar] = new List<CommutativityWitness>();
-          }
-
-          globalVarToWitnesses[gVar].Add(witness);
-        }
-      }
     }
 
     private static Expr ComputeTransitionRelation(
       CivlTypeChecker civlTypeChecker,
       Implementation first, Implementation second,
-      IEnumerable<Variable> frame, Dictionary<Variable, Function> triggers, IEnumerable<CommutativityWitness> witnesses,
+      IEnumerable<Variable> frame, Dictionary<Variable, Function> triggers,
       bool ignorePostState,
       string messagePrefix)
     {
-      var trc = new TransitionRelationComputation(civlTypeChecker, first, second, frame, witnesses, triggers, ignorePostState,
+      var trc = new TransitionRelationComputation(civlTypeChecker, first, second, frame, triggers, ignorePostState,
         messagePrefix);
       trc.EnumeratePaths();
       var transitionRelation = Expr.Or(trc.pathTranslations);
@@ -98,13 +81,13 @@ namespace Microsoft.Boogie
     public static Expr Commutativity(
       CivlTypeChecker civlTypeChecker, 
       AtomicAction first, AtomicAction second,
-      HashSet<Variable> frame, IEnumerable<CommutativityWitness> witnesses)
+      HashSet<Variable> frame)
     {
       var triggers = first.triggerFunctions.Union(second.triggerFunctions).ToDictionary(kv => kv.Key, kv => kv.Value);
       return ComputeTransitionRelation(
         civlTypeChecker,
         first.secondImpl, second.firstImpl,
-        frame, triggers, witnesses, false,
+        frame, triggers, false,
         string.Format("Transition relation of {0} ∘ {1}", first.proc.Name, second.proc.Name));
     }
 
@@ -113,7 +96,7 @@ namespace Microsoft.Boogie
       return ComputeTransitionRelation(
         civlTypeChecker,
         action.impl, null,
-        frame, null, null, false,
+        frame, null, false,
         string.Format("Transition relation of {0}", action.proc.Name));
     }
 
@@ -122,7 +105,7 @@ namespace Microsoft.Boogie
       return ComputeTransitionRelation(
         civlTypeChecker,
         action.impl, null,
-        frame, null, null, true,
+        frame, null, true,
         string.Format("Cooperation expression of {0}", action.proc.Name));
     }
 
@@ -140,7 +123,15 @@ namespace Microsoft.Boogie
 
       foreach (Cmd cmd in b.Cmds)
       {
-        path.Add(cmd);
+        if (cmd is UnpackCmd unpackCmd)
+        {
+          var stateCmd = (StateCmd)unpackCmd.GetDesugaring(civlTypeChecker.Options);
+          path.AddRange(stateCmd.Cmds);
+        }
+        else 
+        {
+          path.Add(cmd);
+        }
       }
 
       if (b.TransferCmd is ReturnCmd)
@@ -196,7 +187,6 @@ namespace Microsoft.Boogie
       private Dictionary<Variable, Variable> copyToOriginalVar;
       private Dictionary<Variable, Expr> varToExpr;
       private List<Expr> pathExprs;
-      private List<Expr> witnessedTransitionRelations;
 
       private Dictionary<Variable, Variable> frameIntermediateCopy;
 
@@ -205,9 +195,6 @@ namespace Microsoft.Boogie
       public Expr TransitionRelationExpr;
 
       private const string copierFormat = "{0}#{1}";
-
-      private IEnumerable<Variable> IntermediateFrameWithWitnesses =>
-        trc.FrameWithWitnesses.Select(v => frameIntermediateCopy[v]);
 
       private ConcurrencyOptions Options => trc.Options;
 
@@ -362,7 +349,7 @@ namespace Microsoft.Boogie
       {
         TryElimination(Enumerable.Empty<Variable>());
         TryElimination(trc.allLocVars.Select(v => varCopies[v][0]));
-        TryElimination(trc.allLocVars.Where(v => varCopies[v].Count > 1).Select(v => varCopies[v][1]));
+        TryElimination(trc.allLocVars.Where(v => v.FindAttribute("pool") != null).SelectMany(v => varCopies[v]));
 
         if (trc.ignorePostState)
         {
@@ -370,10 +357,7 @@ namespace Microsoft.Boogie
         }
         else if (trc.IsJoint)
         {
-          var remainingIntermediateFrame = frameIntermediateCopy.Values.Except(varToExpr.Keys);
-          TryElimination(remainingIntermediateFrame);
-          TryElimination(remainingIntermediateFrame.Intersect(IntermediateFrameWithWitnesses));
-          // TODO: Generate warning for variables without any witness functions
+          TryElimination(frameIntermediateCopy.Values.Except(varToExpr.Keys));
         }
       }
 
@@ -416,14 +400,6 @@ namespace Microsoft.Boogie
         AddBoundVariablesForRemainingVars();
         ReplacePreOrPostStateVars();
         TransitionRelationExpr = Expr.And(pathExprs);
-        if (trc.IsJoint)
-        {
-          ComputeWitnessedTransitionRelationExprs();
-          if (witnessedTransitionRelations.Count > 0)
-          {
-            TransitionRelationExpr = Expr.Or(witnessedTransitionRelations);
-          }
-        }
 
         if (existsVarMap.Any())
         {
@@ -479,8 +455,7 @@ namespace Microsoft.Boogie
 
       private void AddBoundVariablesForRemainingVars()
       {
-        var remainingVars = NotEliminatedVars.Except(IntermediateFrameWithWitnesses);
-        existsVarMap = remainingVars.ToDictionary(v => v, v => (Variable) VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
+        existsVarMap = NotEliminatedVars.ToDictionary(v => v, v => (Variable) VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
         existsVarMap.Iter(kv =>
         {
           kv.Value.Attributes = copyToOriginalVar[kv.Key].Attributes;
@@ -519,30 +494,6 @@ namespace Microsoft.Boogie
         }
 
         pathExprs = SubstitutionHelper.Apply(sub, pathExprs).ToList();
-      }
-
-      private void ComputeWitnessedTransitionRelationExprs()
-      {
-        witnessedTransitionRelations = new List<Expr>();
-        Dictionary<Variable, List<CommutativityWitness>> varToWitnesses = trc.FrameWithWitnesses
-          .Where(x => NotEliminatedVars.Contains(frameIntermediateCopy[x])).ToDictionary(
-            x => frameIntermediateCopy[x],
-            x => trc.globalVarToWitnesses[(GlobalVariable) x]);
-        foreach (var witnessSet in varToWitnesses.Values.CartesianProduct())
-        {
-          Dictionary<Variable, Expr> witnessSubst = new Dictionary<Variable, Expr>();
-          foreach (Tuple<Variable, CommutativityWitness> pair in
-            Enumerable.Zip(varToWitnesses.Keys, witnessSet, Tuple.Create))
-          {
-            CommutativityWitness witness = pair.Item2;
-            witnessSubst[pair.Item1] = ExprHelper.FunctionCall(
-              witness.function, witness.args.ToArray()
-            );
-          }
-
-          witnessedTransitionRelations.Add(
-            SubstitutionHelper.Apply(witnessSubst, TransitionRelationExpr));
-        }
       }
 
       public IEnumerable<Variable> GetQuantifiedOriginalVariables()

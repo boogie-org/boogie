@@ -186,17 +186,24 @@ public class LinearRewriter
     var path = callCmd.Ins[1];
     var l = callCmd.Outs[0].Decl;
     
-    var mapConstFunc = MapConst(refType, Type.Bool);
     var mapImpFunc = MapImp(refType);
+    var mapIteFunc = MapIte(refType, type);
+    var mapConstFunc1 = MapConst(refType, Type.Bool);
+    var mapConstFunc2 = MapConst(refType, type);
+    var mapDiffFunc = MapDiff(refType);
+    
     cmdSeq.Add(AssertCmd(callCmd.tok,
-      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, k, Dom(path)), ExprHelper.FunctionCall(mapConstFunc, Expr.True)),
+      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, k, Dom(path)), ExprHelper.FunctionCall(mapConstFunc1, Expr.True)),
       "Lmap_Split failed"));
     
-    cmdSeq.Add(CmdHelper.AssignCmd(l,ExprHelper.FunctionCall(lmapConstructor, k, Val(path))));
-
-    var mapDiffFunc = MapDiff(refType);
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),ExprHelper.FunctionCall(mapDiffFunc, Dom(path), k)));
+    cmdSeq.Add(CmdHelper.AssignCmd(l,
+      ExprHelper.FunctionCall(lmapConstructor, k,
+        ExprHelper.FunctionCall(mapIteFunc, k, Val(path), ExprHelper.FunctionCall(mapConstFunc2, Default(type))))));
+    
+    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path),
+      ExprHelper.FunctionCall(lmapConstructor, ExprHelper.FunctionCall(mapDiffFunc, Dom(path), k),
+        ExprHelper.FunctionCall(mapIteFunc, ExprHelper.FunctionCall(mapDiffFunc, Dom(path), k), Val(path),
+          ExprHelper.FunctionCall(mapConstFunc2, Default(type))))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
@@ -228,16 +235,11 @@ public class LinearRewriter
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lmapConstructor,
       out Function lsetConstructor, out Function lvalConstructor);
     
-    var cmdSeq = new List<Cmd>();
     var path = callCmd.Ins[0];
-    var k = callCmd.Ins[1];
     var v = callCmd.Outs[0];
 
-    var lmapContainsFunc = LmapContains(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lmapContainsFunc, path, k), "Lmap_Read failed"));
-
-    var lmapDerefFunc = LmapDeref(type);
-    cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(lmapDerefFunc, path, k)));
+    var cmdSeq = CreateAccessAsserts(path, callCmd.tok, "Lmap_Read failed");
+    cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, path));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
@@ -248,18 +250,44 @@ public class LinearRewriter
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lmapConstructor,
       out Function lsetConstructor, out Function lvalConstructor);
     
-    var cmdSeq = new List<Cmd>();
     var path = callCmd.Ins[0];
-    var k = callCmd.Ins[1];
-    var v = callCmd.Ins[2];
+    var v = callCmd.Ins[1];
     
-    var lmapContainsFunc = LmapContains(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lmapContainsFunc, path, k), "Lmap_Write failed"));
-
-    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.MapAssignLhs(Val(path), new List<Expr>() { k }), v));
+    var cmdSeq = CreateAccessAsserts(path, callCmd.tok, "Lmap_Write failed");
+    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), v));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
+  }
+
+  private List<Cmd> CreateAccessAsserts(Expr expr, IToken tok, string msg)
+  {
+    if (expr is IdentifierExpr identifierExpr)
+    {
+      return new List<Cmd>();
+    }
+    if (expr is NAryExpr nAryExpr)
+    {
+      if (nAryExpr.Fun is FieldAccess)
+      {
+        return CreateAccessAsserts(nAryExpr.Args[0], tok, msg);
+      }
+      if (nAryExpr.Fun is MapSelect)
+      {
+        var mapExpr = nAryExpr.Args[0];
+        if (mapExpr is NAryExpr lmapValExpr &&
+            lmapValExpr.Fun is FieldAccess &&
+            lmapValExpr.Args[0].Type is CtorType ctorType &&
+            monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lmap")
+        {
+          var cmdSeq = CreateAccessAsserts(lmapValExpr.Args[0], tok, msg);
+          var lmapContainsFunc = LmapContains(nAryExpr.Type);
+          cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(lmapContainsFunc, lmapValExpr.Args[0], nAryExpr.Args[1]), "Lmap_Write failed"));
+          return cmdSeq;
+        }
+      }
+    }
+    throw new cce.UnreachableException();
   }
 
   private List<Cmd> RewriteLmapAdd(CallCmd callCmd)
@@ -272,15 +300,13 @@ public class LinearRewriter
     var v = callCmd.Ins[1];
     var k = callCmd.Outs[0];
     
-    var mapOneFunc = MapOne(refType);
-    var mapConstFunc = MapConst(refType, type);
-    var mapOrFunc = MapOr(refType);
-    var mapIteFunc = MapIte(refType, type);
+    cmdSeq.Add(CmdHelper.HavocCmd(k));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Not(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Dom(path), k))));
     cmdSeq.Add(CmdHelper.AssignCmd(
       CmdHelper.ExprToAssignLhs(path),
       ExprHelper.FunctionCall(lmapConstructor,
-        ExprHelper.FunctionCall(mapOrFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, k)),
-        ExprHelper.FunctionCall(mapIteFunc, Dom(path), Val(path), ExprHelper.FunctionCall(mapConstFunc, v)))));
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), k, Expr.True),
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Val(path), k, v))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
@@ -302,11 +328,11 @@ public class LinearRewriter
     var lmapDerefFunc = LmapDeref(type);
     cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(lmapDerefFunc, path, k)));
 
-    var mapOneFunc = MapOne(refType);
-    var mapDiffFunc = MapDiff(refType);
     cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),
-        ExprHelper.FunctionCall(mapDiffFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, k))));
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path),
+      ExprHelper.FunctionCall(lmapConstructor,
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), k, Expr.False),
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Val(path), k, Default(type)))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
@@ -335,19 +361,16 @@ public class LinearRewriter
     var cmdSeq = new List<Cmd>();
     var k = callCmd.Ins[0];
     var path = callCmd.Ins[1];
-    var l = callCmd.Outs[0].Decl;
     
     var mapConstFunc = MapConst(type, Type.Bool);
     var mapImpFunc = MapImp(type);
     cmdSeq.Add(AssertCmd(callCmd.tok,
-      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, k, Dom(path)), ExprHelper.FunctionCall(mapConstFunc, Expr.True)),
+      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, Dom(k), Dom(path)), ExprHelper.FunctionCall(mapConstFunc, Expr.True)),
       "Lset_Split failed"));
-    
-    cmdSeq.Add(CmdHelper.AssignCmd(l,ExprHelper.FunctionCall(lsetConstructor, k)));
 
     var mapDiffFunc = MapDiff(type);
     cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),ExprHelper.FunctionCall(mapDiffFunc, Dom(path), k)));
+      CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),ExprHelper.FunctionCall(mapDiffFunc, Dom(path), Dom(k))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
@@ -379,18 +402,15 @@ public class LinearRewriter
     var cmdSeq = new List<Cmd>();
     var k = callCmd.Ins[0];
     var path = callCmd.Ins[1];
-    var l = callCmd.Outs[0].Decl;
     
     var lsetContainsFunc = LsetContains(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lsetContainsFunc, path, k), "Lval_Split failed"));
-    
-    cmdSeq.Add(CmdHelper.AssignCmd(l,ExprHelper.FunctionCall(lvalConstructor, k)));
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lsetContainsFunc, path, ExprHelper.FieldAccess(k, "val")), "Lval_Split failed"));
 
     var mapOneFunc = MapOne(type);
     var mapDiffFunc = MapDiff(type);
     cmdSeq.Add(
       CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),
-        ExprHelper.FunctionCall(mapDiffFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, k))));
+        ExprHelper.FunctionCall(mapDiffFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, ExprHelper.FieldAccess(k, "val")))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;

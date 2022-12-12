@@ -1560,6 +1560,7 @@ namespace Microsoft.Boogie
     T Visit(ArithmeticCoercion arithCoercion);
     T Visit(IfThenElse ifThenElse);
     T Visit(FieldAccess fieldAccess);
+    T Visit(FieldUpdate fieldUpdate);
     T Visit(IsConstructor isConstructor);
   }
 
@@ -1622,6 +1623,12 @@ namespace Microsoft.Boogie
       throw new NotImplementedException();
     }
 
+    public T Visit(FieldUpdate fieldUpdate)
+    {
+      Contract.Requires(fieldUpdate != null);
+      throw new NotImplementedException();
+    }
+    
     public T Visit(IsConstructor isConstructor)
     {
       Contract.Requires(isConstructor != null);
@@ -3880,12 +3887,12 @@ namespace Microsoft.Boogie
       this.FieldName = fieldName;
     }
     
-    public FieldAccess(IToken tok, DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<DatatypeAccessor> accessors)
+    public FieldAccess(IToken tok, string fieldName, DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<DatatypeAccessor> accessors)
     {
       this.tok = tok;
+      this.FieldName = fieldName;
       this.DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
       this.Accessors = accessors;
-      this.FieldName = Field(0).Name;
     }
 
     public string FunctionName => "field-access";
@@ -3943,10 +3950,11 @@ namespace Microsoft.Boogie
     
     public Type Typecheck(Type type, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
     {
+      type = TypeProxy.FollowProxy(type);
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
       if (!(type.Expanded is CtorType ctorType))
       {
-        tc.Error(this.tok, "type {0} is not a constructor type", type);
+        tc.Error(this.tok, "field-access must be applied to a datatype, {0} is not a datatype", type);
         return null;
       }
       if (!(ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl))
@@ -3969,6 +3977,14 @@ namespace Microsoft.Boogie
       return Field(0).TypedIdent.Type.Substitute(typeSubst);
     }
 
+    public Type Type(CtorType ctorType)
+    {
+      var typeSubst = Constructor(0).TypeParameters.Zip(ctorType.Arguments).ToDictionary(
+        x => x.Item1, 
+        x => x.Item2);
+      return Field(0).TypedIdent.Type.Substitute(typeSubst);
+    }
+
     public Type ShallowType(IList<Expr> args)
     {
       return Field(0).TypedIdent.Type;
@@ -3981,7 +3997,9 @@ namespace Microsoft.Boogie
 
     public NAryExpr Select(IToken token, Expr record)
     {
-      return new NAryExpr(token, this, new List<Expr> { record });
+      var expr = new NAryExpr(token, this, new List<Expr> { record });
+      ResolveAndTypecheck(expr);
+      return expr;
     }
 
     public NAryExpr Update(IToken token, Expr record, Expr rhs)
@@ -3995,6 +4013,7 @@ namespace Microsoft.Boogie
         var thenExpr = Update(token, record, rhs, i);
         expr = new NAryExpr(token, new IfThenElse(token), new Expr[] { condExpr, thenExpr, expr });
       }
+      ResolveAndTypecheck(expr);
       return expr;
     }
 
@@ -4007,14 +4026,132 @@ namespace Microsoft.Boogie
         {
           return rhs;
         }
-        var fieldAccess = new FieldAccess(tok, DatatypeTypeCtorDecl,
-          DatatypeTypeCtorDecl.GetAccessors(constructor.InParams[x].Name));
+
+        var fieldName = constructor.InParams[x].Name;
+        var fieldAccess = new FieldAccess(tok, fieldName, DatatypeTypeCtorDecl, DatatypeTypeCtorDecl.GetAccessors(fieldName));
         return fieldAccess.Select(token, record);
       }).ToList();
       return new NAryExpr(token, new FunctionCall(Constructor(index)), args);
     }
+
+    private void ResolveAndTypecheck(Expr expr)
+    {
+      expr.Resolve(new ResolutionContext(null, null));
+      expr.Typecheck(new TypecheckingContext(null, null));
+    }
   }
 
+  public class FieldUpdate : IAppliable
+  {
+    public IToken tok
+    {
+      get => fieldAccess.tok;
+      set => fieldAccess.tok = value;
+    }
+
+    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl => fieldAccess.DatatypeTypeCtorDecl;
+
+    public FieldAccess FieldAccess => fieldAccess;
+    
+    private FieldAccess fieldAccess;
+
+    public FieldUpdate(IToken tok, string fieldName)
+    {
+      this.fieldAccess = new FieldAccess(tok, fieldName);
+    }
+    
+    public FieldUpdate(FieldAccess fieldAccess)
+    {
+      this.fieldAccess = fieldAccess;
+    }
+
+    public string FunctionName => "field-update";
+
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj is FieldUpdate fieldUpdate)
+      {
+        return fieldAccess.Equals(fieldUpdate.fieldAccess);
+      }
+      return false;
+    }
+
+    [Pure]
+    public override int GetHashCode()
+    {
+      return 1;
+    }
+
+    public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
+    {
+      const int opBindingStrength = 0x90;
+      bool parensNeeded = opBindingStrength < contextBindingStrength ||
+                          (fragileContext && opBindingStrength == contextBindingStrength);
+      stream.SetToken(this);
+      Contract.Assert(args.Count == 2);
+      stream.push();
+      if (parensNeeded)
+      {
+        stream.Write("(");
+      }
+      cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
+      stream.Write("->({0} := ", fieldAccess.FieldName);
+      cce.NonNull(args[1]).Emit(stream, opBindingStrength, false);
+      stream.Write(")");
+      if (parensNeeded)
+      {
+        stream.Write(")");
+      }
+      stream.pop();
+    }
+
+    public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting)
+    {
+      // The work of resolution is delayed to type checking when the datatype is known.
+    }
+
+    public int ArgumentCount => 2;
+
+    public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
+    {
+      Contract.Assert(args.Count == 2);
+      return Typecheck(cce.NonNull(args[0]).Type, cce.NonNull(args[1]).Type, tc, out tpInstantiation);
+    }
+    
+    public Type Typecheck(Type datatype, Type fieldType, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
+    {
+      var expectedFieldType = fieldAccess.Typecheck(datatype, tc, out tpInstantiation);
+      if (expectedFieldType == null)
+      {
+        return null;
+      }
+      if (!fieldType.Unify(expectedFieldType))
+      {
+        tc.Error(this.tok,
+          $"right-hand side in field update with wrong type: {fieldType} (expected: {expectedFieldType})");
+        return null;
+      }
+      return datatype;
+    }
+
+    public Type ShallowType(IList<Expr> args)
+    {
+      return args[0].Type;
+    }
+
+    public T Dispatch<T>(IAppliableVisitor<T> visitor)
+    {
+      return visitor.Visit(this);
+    }
+    
+    public NAryExpr Update(IToken token, Expr record, Expr rhs)
+    {
+      return fieldAccess.Update(token, record, rhs);
+    }
+  }
+  
   public class IsConstructor : IAppliable
   {
     public IToken tok { get; set; }
@@ -4095,10 +4232,11 @@ namespace Microsoft.Boogie
     
     public Type Typecheck(Type type, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
     {
+      type = TypeProxy.FollowProxy(type);
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
       if (!(type.Expanded is CtorType ctorType))
       {
-        tc.Error(this.tok, "type {0} is not a constructor type", type);
+        tc.Error(this.tok, "is-constructor must be applied to a datatype, {0} is not a datatype", type);
         return null;
       }
       if (!(ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl))

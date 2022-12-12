@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -7,6 +6,16 @@ namespace Microsoft.Boogie
 {
   public static class NoninterferenceChecker
   {
+    public static string PermissionCollectorFormalName(LinearDomain domain)
+    {
+      return "linear_" + domain.DomainName + "_in";
+    }
+    
+    public static string PermissionCollectorLocalName(LinearDomain domain)
+    {
+      return "linear_" + domain.DomainName + "_available";
+    }
+    
     public static List<Declaration> CreateNoninterferenceCheckers(
       CivlTypeChecker civlTypeChecker,
       int layerNum,
@@ -22,7 +31,7 @@ namespace Microsoft.Boogie
       List<Variable> inputs = new List<Variable>();
       foreach (var domain in linearTypeChecker.LinearDomains)
       {
-        var inParam = linearTypeChecker.LinearDomainInFormal(domain);
+        var inParam = civlTypeChecker.Formal(PermissionCollectorFormalName(domain), domain.mapTypeBool, true);
         inputs.Add(inParam);
         domainToHoleVar[domain] = inParam;
       }
@@ -55,7 +64,7 @@ namespace Microsoft.Boogie
       {
         noninterferenceCheckerName = $"impl_{absyMap.Original(impl).Name}_{layerNum}";
         yieldInfos = CollectYields(civlTypeChecker, absyMap, layerNum, impl).Select(kv =>
-          new YieldInfo(linearPermissionInstrumentation.DisjointnessAssumeCmds(kv.Key, false), kv.Value)).ToList();
+          new YieldInfo(linearPermissionInstrumentation.DisjointnessAndWellFormedAssumeCmds(kv.Key, false), kv.Value)).ToList();
       }
       else if (decl is Procedure proc)
       {
@@ -65,7 +74,7 @@ namespace Microsoft.Boogie
           noninterferenceCheckerName = $"yield_{proc.Name}";
           if (proc.Requires.Count > 0)
           {
-            var disjointnessCmds = linearPermissionInstrumentation.ProcDisjointnessAssumeCmds(proc, true);
+            var disjointnessCmds = linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(proc, true);
             var yieldPredicates = proc.Requires.Select(requires =>
               requires.Free
                 ? (PredicateCmd) new AssumeCmd(requires.tok, requires.Condition)
@@ -79,7 +88,7 @@ namespace Microsoft.Boogie
           if (proc.Requires.Count > 0)
           {
             var entryDisjointnessCmds =
-              linearPermissionInstrumentation.ProcDisjointnessAssumeCmds(proc, true);
+              linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(proc, true);
             var entryYieldPredicates = proc.Requires.Select(requires =>
               requires.Free
                 ? (PredicateCmd) new AssumeCmd(requires.tok, requires.Condition)
@@ -90,7 +99,7 @@ namespace Microsoft.Boogie
           if (proc.Ensures.Count > 0)
           {
             var exitDisjointnessCmds =
-              linearPermissionInstrumentation.ProcDisjointnessAssumeCmds(proc, false);
+              linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(proc, false);
             var exitYieldPredicates = proc.Ensures.Select(ensures =>
               ensures.Free
                 ? (PredicateCmd) new AssumeCmd(ensures.tok, ensures.Condition)
@@ -209,7 +218,12 @@ namespace Microsoft.Boogie
 
     private static LocalVariable CopyLocal(Variable v)
     {
-      return VarHelper.LocalVariable(v.Name, v.TypedIdent.Type);
+      var copy = VarHelper.LocalVariable(v.Name, v.TypedIdent.Type);
+      if (v.Attributes != null)
+      {
+        copy.Attributes = (QKeyValue)v.Attributes.Clone();
+      }
+      return copy;
     }
 
     private static Formal SnapshotGlobalFormal(CivlTypeChecker civlTypeChecker, Variable v)

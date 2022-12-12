@@ -588,7 +588,7 @@ namespace Microsoft.Boogie.VCExprAST
       var skolemizer = new Skolemizer(qiEngine, polarity, vcExpr);
       var skolemizedExpr = skolemizer.Mutate(vcExpr, true);
       LambdaInstanceCollector.CollectInstances(qiEngine, vcExpr);
-      return Factorizer.Factorize(qiEngine, QuantifierCollector.Flip(polarity), skolemizedExpr);
+      return Factorizer.Factorize(qiEngine, skolemizedExpr);
     }
 
     private Skolemizer(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr) : base(qiEngine.vcExprGen)
@@ -648,27 +648,21 @@ namespace Microsoft.Boogie.VCExprAST
      */
     
     private QuantifierInstantiationEngine qiEngine;
-    private HashSet<VCExprQuantifier> quantifiers;
 
-    public static VCExpr Factorize(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr)
+    public static VCExpr Factorize(QuantifierInstantiationEngine qiEngine, VCExpr vcExpr)
     {
-      var factorizer = new Factorizer(qiEngine, polarity, vcExpr);
+      var factorizer = new Factorizer(qiEngine);
       return factorizer.Mutate(vcExpr, true);
     }
 
-    private Factorizer(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr) : base(qiEngine.vcExprGen)
+    private Factorizer(QuantifierInstantiationEngine qiEngine) : base(qiEngine.vcExprGen)
     {
       this.qiEngine = qiEngine;
-      this.quantifiers = QuantifierCollector.CollectQuantifiers(vcExpr, polarity);
     }
 
     public override VCExpr Visit(VCExprQuantifier node, bool arg)
     {
-      if (quantifiers.Contains(node))
-      {
-        return qiEngine.BindQuantifier(node);
-      }
-      return base.Visit(node, arg);
+      return qiEngine.BindQuantifier(node);
     }
   }
   
@@ -847,7 +841,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
     {
-      cmdSeq.OfType<ICarriesAttributes>().Iter(cmd => FindInstantiationSources(cmd, "add_to_pool"));
+      cmdSeq.OfType<PredicateCmd>().Iter(cmd => FindInstantiationSources(cmd, "add_to_pool"));
       return base.VisitCmdSeq(cmdSeq);
     }
   }

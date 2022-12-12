@@ -25,22 +25,22 @@ modifies pendingAsyncs;
     {:add_to_pool "Round", 0, numRounds}
     {:add_to_pool "NumRounds", numRounds}
     0 <= numRounds;
-  PAs := (lambda pa: PA :: if pa is A_StartRound && pa->round == pa->round_lin && Round(pa->round) && pa->round <= numRounds then 1 else 0);
+  PAs := (lambda pa: PA :: if pa is A_StartRound && pa->r == pa->r_lin && Round(pa->r) && pa->r <= numRounds then 1 else 0);
   pendingAsyncs := PAs;
 }
 
 function {:inline} StartRoundPAs(k: int, numRounds: int) : [PA]int
 {
-  (lambda pa: PA :: if (pa is A_StartRound && pa->round == pa->round_lin && k < pa->round && pa->round <= numRounds) then 1 else 0)
+  (lambda pa: PA :: if (pa is A_StartRound && pa->r == pa->r_lin && k < pa->r && pa->r <= numRounds) then 1 else 0)
 }
 
 function {:inline} StartRoundPlusJoinPlusProposePAs(k: int, m: Node, numRounds: int) : [PA]int
 {
   (lambda pa : PA ::
-    if (pa is A_StartRound && pa->round == pa->round_lin && k+1 < pa->round && pa->round <= numRounds) ||
+    if (pa is A_StartRound && pa->r == pa->r_lin && k+1 < pa->r && pa->r <= numRounds) ||
        (pa == A_Propose(k+1, ProposePermissions(k+1))) ||
-       (pa is A_Join && pa->round == k+1 && m < pa->node && pa->node <= numNodes &&
-         pa->p == JoinPerm(k+1, pa->node))
+       (pa is A_Join && pa->r == k+1 && m < pa->n && pa->n <= numNodes &&
+         pa->p == JoinPerm(k+1, pa->n))
     then 1 else 0)
 }
 
@@ -52,10 +52,10 @@ function {:inline} JoinOrProposeChoice(k: int, m: Node) : PA
 function {:inline} StartRoundPlusVotePlusConcludePAs(k: int, m: Node, v: Value, numRounds: int) : [PA]int
 {
   ( lambda pa: PA ::
-    if (pa is A_StartRound && pa->round == pa->round_lin && k+1 < pa->round && pa->round <= numRounds) ||
+    if (pa is A_StartRound && pa->r == pa->r_lin && k+1 < pa->r && pa->r <= numRounds) ||
        (pa == A_Conclude(k+1, v, ConcludePerm(k+1))) ||
-       (pa is A_Vote && pa->round == k+1 && m < pa->node && pa->node <= numNodes &&
-         pa->value == v && pa->p == VotePerm(k+1, pa->node))
+       (pa is A_Vote && pa->r == k+1 && m < pa->n && pa->n <= numNodes &&
+         pa->v == v && pa->p == VotePerm(k+1, pa->n))
     then 1 else 0)
 }
 

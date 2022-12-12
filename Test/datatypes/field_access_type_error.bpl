@@ -23,3 +23,40 @@ requires a is Middle;
 
 procedure D(a: Perm);
 requires a->i == 0;
+
+var g: int;
+
+procedure E(x: Perm)
+{
+    Left(g) := x;
+}
+
+procedure F(x: int)
+modifies g;
+{
+    Left(g) := x;
+}
+
+type{:datatype} Pair;
+function{:constructor} Pair(a: int, b: int): Pair;
+
+procedure G(p: Pair) returns (a: int)
+{
+  Pair(a, a) := p;
+}
+
+procedure H(p: Pair) returns (a: int)
+{
+  Pair(a, g) := p;
+}
+
+procedure I(p: Pair, a: int)
+{
+  var b: int;
+  Pair(a, b) := p;
+}
+
+procedure J(p: Pair, x: bool) returns (q: Pair)
+{
+  q := p->(a := x);
+}

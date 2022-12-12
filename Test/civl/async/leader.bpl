@@ -124,7 +124,7 @@ procedure {:both}{:layer 1} read_init_val_atomic (pid:Pid) returns (v:int)
   v := init_val[pid];
 }
 
-procedure {:yields}{:layer 0}{:refines "Q_atomic"} Q (s:int, r:int, v:int, {:linear_in "Perm"} p:Perm);
+procedure {:yields}{:layer 0}{:refines "Q_atomic"} Q (r:int, s:int, v:int, {:linear_in "Perm"} p:Perm);
 procedure {:yields}{:layer 0}{:refines "read_init_val_atomic"} read_init_val (pid:Pid) returns (v:int);
 
 // ###########################################################################

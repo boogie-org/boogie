@@ -44,62 +44,60 @@ requires pendingIo == Size(usersInDriver->dom) + (if stoppingFlag then 0 else 1)
 procedure {:yields} {:layer 2}
 {:yield_preserves "Inv2"}
 {:yield_preserves "Inv1"}
-User(i: int, {:layer 1,2} {:linear_in} ps: Lset Perm)
-requires {:layer 2} ps->dom[Left(i)] && ps->dom[Right(i)];
+User(i: int, {:layer 1,2} l: Lval Perm, {:layer 1,2} r: Lval Perm)
+requires {:layer 1, 2} l->val == Left(i) && r->val == Right(i);
 {
-    var {:layer 1,2} ps': Lset Perm;
-
-    ps' := ps;
     while (*)
-    invariant {:yields} {:layer 2} {:yield_loop "Inv2"} ps'->dom[Left(i)] && ps'->dom[Right(i)];
+    invariant {:yields} {:layer 2} {:yield_loop "Inv2"} true;
     invariant {:yields} {:layer 1} {:yield_loop "Inv1"} true;
     {
-        call ps' := Enter#1(i, ps');
-        call CheckAssert#1(i, ps');
-        call ps' := Exit(i, ps');
+        call Enter#1(i, l, r);
+        call CheckAssert#1(i, r);
+        call Exit(i, l, r);
     }
 }
 
-procedure {:atomic} {:layer 2} AtomicEnter#1(i: int, {:linear_in} ps: Lset Perm) returns (ps': Lset Perm)
+procedure {:atomic} {:layer 2} AtomicEnter#1(i: int, {:linear_in} l: Lval Perm, r: Lval Perm)
 modifies usersInDriver;
 {
     assume !stoppingFlag;
-    call ps' := AddToBarrier(i, ps);
+    call AddToBarrier(i, l);
 }
 procedure {:yields} {:layer 1} {:refines "AtomicEnter#1"}
 {:yield_preserves "Inv1"}
-Enter#1(i: int, {:layer 1} {:linear_in} ps: Lset Perm) returns ({:layer 1} ps': Lset Perm)
+Enter#1(i: int, {:layer 1} {:linear_in} l: Lval Perm, {:layer 1} r: Lval Perm)
+requires {:layer 1} l->val == Left(i) && r->val == Right(i);
 {
     call Enter();
     call {:layer 1} SizeLemma(usersInDriver->dom, Left(i));
-    call ps' := AddToBarrier(i, ps);
+    call AddToBarrier(i, l);
 }
 
-procedure {:left} {:layer 2} AtomicCheckAssert#1(i: int, ps: Lset Perm)
+procedure {:left} {:layer 2} AtomicCheckAssert#1(i: int, r: Lval Perm)
 {
-    assert ps->dom[Right(i)] && usersInDriver->dom[Left(i)];
+    assert r->val == Right(i) && usersInDriver->dom[Left(i)];
     assert !stopped;
 }
 procedure {:yields} {:layer 1} {:refines "AtomicCheckAssert#1"}
 {:yield_preserves "Inv1"}
-CheckAssert#1(i: int, {:layer 1} ps: Lset Perm)
+CheckAssert#1(i: int, {:layer 1} r: Lval Perm)
 {
     call CheckAssert();
 }
 
-procedure {:left} {:layer 2} AtomicExit(i: int, {:linear_in} ps: Lset Perm) returns (ps': Lset Perm)
+procedure {:left} {:layer 2} AtomicExit(i: int, {:linear_out} l: Lval Perm, r: Lval Perm)
 modifies usersInDriver;
 {
-    assert ps->dom[Right(i)] && usersInDriver->dom[Left(i)];
-    call ps' := RemoveFromBarrier(i, ps);
+    assert l->val == Left(i) && r->val == Right(i);
+    call RemoveFromBarrier(i, l);
 }
 procedure {:yields} {:layer 1} {:refines "AtomicExit"}
 {:yield_preserves "Inv1"}
-Exit(i: int, {:layer 1} {:linear_in} ps: Lset Perm) returns ({:layer 1} ps': Lset Perm)
+Exit(i: int, {:layer 1} {:linear_out} l: Lval Perm, {:layer 1} r: Lval Perm)
 {
     call DeleteReference();
     call {:layer 1} SizeLemma(usersInDriver->dom, Left(i));
-    call ps' := RemoveFromBarrier(i, ps);
+    call RemoveFromBarrier(i, l);
     call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->dom);
 }
 
@@ -139,22 +137,16 @@ WaitAndStop()
 
 /// introduction actions
 
-procedure {:intro} {:layer 1, 2} AddToBarrier(i: int, {:linear_in} ps: Lset Perm) returns (ps': Lset Perm)
+procedure {:intro} {:layer 1, 2} AddToBarrier(i: int, {:linear_in} l: Lval Perm)
 modifies usersInDriver;
 {
-    var x: Lval Perm;
-    ps' := ps;
-    call x := Lval_Split(Left(i), ps');
-    call Lval_Transfer(x, usersInDriver);
+    call Lval_Transfer(l, usersInDriver);
 }
 
-procedure {:intro} {:layer 1, 2} RemoveFromBarrier(i: int, {:linear_in} ps: Lset Perm) returns (ps': Lset Perm)
+procedure {:intro} {:layer 1, 2} RemoveFromBarrier(i: int, {:linear_out} l: Lval Perm)
 modifies usersInDriver;
 {
-    var x: Lval Perm;
-    ps' := ps;
-    call x := Lval_Split(Left(i), usersInDriver);
-    call Lval_Transfer(x, ps');
+    call Lval_Split(l, usersInDriver);
 }
 
 /// primitive actions

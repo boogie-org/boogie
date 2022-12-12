@@ -1,211 +1,189 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie -lib:base -lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear "Node"} X = int;
-const null: int;
-type lmap;
-function {:linear "Node"} dom(lmap): [int]bool;
-function map(lmap): [int]int;
+/*
+Highlights:
+- Nontrivial use of nested linear maps
+- Push and pop use distinct abstractions for read/write of top of stack
+- Variable "unused" tracks nodes added to the stack linear map that do 
+  not logically become part of the stack
+- Push made atomic first before commutativity reasoning for the pop path
 
-function EmptyLmap(): (lmap);
-axiom (dom(EmptyLmap()) == MapConst(false));
+The final layer that transforms the stack representation into a functional 
+version is not done. We expect that the proof for this layer will use 
+reasoning about node reachability.
+*/
 
-function Add(x: lmap, i: int, v: int): (lmap);
-axiom (forall x: lmap, i: int, v: int :: dom(Add(x, i, v)) == dom(x)[i:=true] && map(Add(x, i, v)) == map(x)[i := v]);
+type {:datatype} Treiber T;
+function {:constructor} Treiber<T>(top: RefNode T, stack: Lmap (Node T)): Treiber T;
+type RefTreiber T = Ref (Treiber T);
 
-function Remove(x: lmap, i: int): (lmap);
-axiom (forall x: lmap, i: int :: dom(Remove(x, i)) == dom(x)[i:=false] && map(Remove(x, i)) == map(x));
+type X; // module type parameter
 
-procedure {:right} {:layer 1} AtomicReadTopOfStack() returns (v:int)
-{ assume v == null || dom(Stack)[v]; }
-procedure {:yields} {:layer 0} {:refines "AtomicReadTopOfStack"} ReadTopOfStack() returns (v:int);
+var {:layer 0, 4} ts: Lmap (Treiber X);
+var {:layer 2, 4} unused: [RefTreiber X][RefNode X]bool;
 
-procedure {:right} {:layer 1} AtomicLoad(i:int) returns (v:int)
+procedure {:layer 4} {:atomic} AtomicPopIntermediate(ref_t: RefTreiber X) returns (success: bool, x: X)
+modifies ts;
 {
-  assert dom(Stack)[i];
-  v := map(Stack)[i];
-}
-procedure {:yields} {:layer 0} {:refines "AtomicLoad"} Load(i:int) returns (v:int);
-
-procedure {:both} {:layer 1} AtomicStore({:linear_in "Node"} l_in:lmap, i:int, v:int) returns ({:linear "Node"} l_out:lmap)
-{
-  assert dom(l_in)[i];
-  l_out := Add(l_in, i, v);
-}
-procedure {:yields} {:layer 0} {:refines "AtomicStore"} Store({:linear_in "Node"} l_in:lmap, i:int, v:int) returns ({:linear "Node"} l_out:lmap);
-
-procedure {:atomic} {:layer 1} AtomicTransferToStack(oldVal: int, newVal: int, {:linear_in "Node"} l_in:lmap) returns (r: bool, {:linear "Node"} l_out:lmap)
-modifies TopOfStack, Stack;
-{
-  assert dom(l_in)[newVal];
-  if (oldVal == TopOfStack) {
-    TopOfStack := newVal;
-    l_out := EmptyLmap();
-    Stack := Add(Stack, newVal, map(l_in)[newVal]);
-    r := true;
-  } else {
-    l_out := l_in;
-    r := false;
+  var new_ref_n: RefNode X;
+  assert ts->dom[ref_t];
+  if (success) {
+    assume ts->val[ref_t]->stack->dom[ts->val[ref_t]->top];
+    Node(new_ref_n, x) := ts->val[ref_t]->stack->val[ts->val[ref_t]->top];
+    call Lmap_Write(ts->val[ref_t]->top, new_ref_n);
   }
 }
-procedure {:yields} {:layer 0} {:refines "AtomicTransferToStack"} TransferToStack(oldVal: int, newVal: int, {:linear_in "Node"} l_in:lmap) returns (r: bool, {:linear "Node"} l_out:lmap);
-
-procedure {:atomic} {:layer 1} AtomicTransferFromStack(oldVal: int, newVal: int) returns (r: bool)
-modifies TopOfStack, Stack;
+procedure {:yields} {:layer 3} {:refines "AtomicPopIntermediate"}
+{:yield_preserves "YieldInv#2", ref_t}
+{:yield_preserves "YieldInv#3", ref_t}
+PopIntermediate(ref_t: RefTreiber X) returns (success: bool, x: X)
+requires {:layer 2} ts->dom[ref_t];
 {
-  if (oldVal == TopOfStack) {
-    TopOfStack := newVal;
+  var ref_n, new_ref_n: RefNode X;
+  var node: Node X;
+
+  success := false;
+  call ref_n := ReadTopOfStack#Pop(ref_t);
+  if (ref_n == Nil()) {
+    return;
+  }
+  call node := LoadNode(ref_t, ref_n);
+  Node(new_ref_n, x) := node;
+  call success := WriteTopOfStack#Pop(ref_t, ref_n, new_ref_n);
+}
+
+procedure {:layer 3} {:atomic} AtomicPushIntermediate(ref_t: RefTreiber X, x: X) returns (success: bool)
+modifies ts, unused;
+{
+  var {:pool "A"} ref_n: RefNode X;
+  var {:pool "A"} new_ref_n: RefNode X;
+  assert ts->dom[ref_t];
+  assume {:add_to_pool "A", ref_n} true;
+  call new_ref_n := Lmap_Add(ts->val[ref_t]->stack, Node(if success then ts->val[ref_t]->top else ref_n, x));
+  if (success) {
+    call Lmap_Write(ts->val[ref_t]->top, new_ref_n);
+  } else {
+    unused[ref_t][new_ref_n] := true;
+  }
+  assume {:add_to_pool "A", new_ref_n} true;
+}
+procedure {:yields} {:layer 2} {:refines "AtomicPushIntermediate"}
+PushIntermediate(ref_t: RefTreiber X, x: X) returns (success: bool)
+{
+  var ref_n, new_ref_n: RefNode X;
+  
+  call ref_n := ReadTopOfStack#Push(ref_t);
+  call new_ref_n := AllocInStack(ref_t, Node(ref_n, x));
+  call success := WriteTopOfStack(ref_t, ref_n, new_ref_n);
+  assert {:layer 2} {:add_to_pool "A", ref_n, new_ref_n} true;
+  call AddToUnusedNodes(success, ref_t, new_ref_n);
+}
+
+procedure {:right} {:layer 3} 
+AtomicReadTopOfStack#Pop(ref_t: RefTreiber X) returns (ref_n: RefNode X)
+{ 
+  assert ts->dom[ref_t];
+  assume NilDomain(ts, ref_t, unused)[ref_n];
+}
+procedure {:yields} {:layer 2} {:refines "AtomicReadTopOfStack#Pop"}
+{:yield_preserves "YieldInv#2", ref_t}
+ReadTopOfStack#Pop(ref_t: RefTreiber X) returns (ref_n: RefNode X)
+{
+  call ref_n := ReadTopOfStack(ref_t);
+}
+
+procedure {:right} {:layer 2} 
+AtomicReadTopOfStack#Push(ref_t: RefTreiber X) returns (ref_n: RefNode X)
+{ 
+  assert ts->dom[ref_t];
+}
+procedure {:yields} {:layer 1} {:refines "AtomicReadTopOfStack#Push"} 
+ReadTopOfStack#Push(ref_t: RefTreiber X) returns (ref_n: RefNode X)
+{
+  call ref_n := ReadTopOfStack(ref_t);
+}
+
+procedure {:atomic} {:layer 1, 2} 
+AtomicReadTopOfStack(ref_t: RefTreiber X) returns (ref_n: RefNode X)
+{ 
+  assert ts->dom[ref_t];
+  ref_n := ts->val[ref_t]->top;
+}
+procedure {:yields} {:layer 0} {:refines "AtomicReadTopOfStack"} 
+ReadTopOfStack(ref_t: RefTreiber X) returns (ref_n: RefNode X);
+
+procedure {:right} {:layer 1, 3} 
+AtomicLoadNode(ref_t: RefTreiber X, ref_n: RefNode X) returns (node: Node X)
+{
+  assert ts->dom[ref_t];
+  assert ts->val[ref_t]->stack->dom[ref_n];
+  node := ts->val[ref_t]->stack->val[ref_n];
+}
+procedure {:yields} {:layer 0} {:refines "AtomicLoadNode"} 
+LoadNode(ref_t: RefTreiber X, ref_n: RefNode X) returns (node: Node X);
+
+procedure {:right} {:layer 1, 2} 
+AtomicAllocInStack(ref_t: RefTreiber X, node: Node X) returns (ref_n: RefNode X)
+modifies ts;
+{
+  assert ts->dom[ref_t];
+  call ref_n := Lmap_Add(ts->val[ref_t]->stack, node);
+}
+procedure {:yields} {:layer 0} {:refines "AtomicAllocInStack"} 
+AllocInStack(ref_t: RefTreiber X, node: Node X) returns (ref_n: RefNode X);
+
+procedure {:atomic} {:layer 3} 
+AtomicWriteTopOfStack#Pop(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool)
+modifies ts;
+{
+  assert NilDomain(ts, ref_t, unused)[new_ref_n];
+  call r := AtomicWriteTopOfStack(ref_t, old_ref_n, new_ref_n);
+}
+procedure {:yields} {:layer 2} {:refines "AtomicWriteTopOfStack#Pop"}
+{:yield_preserves "YieldInv#2", ref_t}
+WriteTopOfStack#Pop(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool)
+{
+  call r := WriteTopOfStack(ref_t, old_ref_n, new_ref_n);
+}
+
+procedure {:atomic} {:layer 1, 3} 
+AtomicWriteTopOfStack(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool)
+modifies ts;
+{ 
+  assert ts->dom[ref_t];
+  if (old_ref_n == ts->val[ref_t]->top) {
+    call Lmap_Write(ts->val[ref_t]->top, new_ref_n);
     r := true;
   }
   else {
     r := false;
   }
 }
-procedure {:yields} {:layer 0} {:refines "AtomicTransferFromStack"} TransferFromStack(oldVal: int, newVal: int) returns (r: bool);
+procedure {:yields} {:layer 0} {:refines "AtomicWriteTopOfStack"} 
+WriteTopOfStack(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool);
 
-var {:layer 0,2} TopOfStack: int;
-var {:linear "Node"} {:layer 0,2} Stack: lmap;
-
-procedure {:yield_invariant} {:layer 1} YieldInv();
-requires BetweenSet(map(Stack), TopOfStack, null)[TopOfStack];
-requires Subset(BetweenSet(map(Stack), TopOfStack, null), Union(Singleton(null), dom(Stack)));
-
-procedure {:atomic} {:layer 2} atomic_push(x: int, {:linear_in "Node"} x_lmap: lmap)
-modifies Stack, TopOfStack;
-{ assert dom(x_lmap)[x]; Stack := Add(Stack, x, TopOfStack); TopOfStack := x; }
-
-procedure {:yields} {:layer 1} {:refines "atomic_push"}
-{:yield_preserves "YieldInv"}
-push(x: int, {:linear_in "Node"} x_lmap: lmap)
-requires {:layer 1} dom(x_lmap)[x];
+procedure {:intro} {:layer 2} AddToUnusedNodes(success: bool, ref_t: RefTreiber X, ref_n: RefNode X)
+modifies unused;
 {
-  var t: int;
-  var g: bool;
-  var {:linear "Node"} t_lmap: lmap;
-
-  t_lmap := x_lmap;
-  while (true)
-  invariant {:yields} {:layer 1} {:yield_loop "YieldInv"} true;
-  invariant {:layer 1} dom(t_lmap) == dom(x_lmap);
-  {
-    call t := ReadTopOfStack();
-    call t_lmap := Store(t_lmap, x, t);
-    call g, t_lmap := TransferToStack(t, x, t_lmap);
-    if (g) {
-      break;
-    }
+  if (!success) {
+    unused[ref_t][ref_n] := true;
   }
 }
 
-procedure {:atomic} {:layer 2} atomic_pop() returns (t: int)
-modifies TopOfStack, Stack;
-{ assume TopOfStack != null; t := TopOfStack; TopOfStack := map(Stack)[t]; }
-
-procedure {:yields} {:layer 1} {:refines "atomic_pop"}
-{:yield_preserves "YieldInv"}
-pop() returns (t: int)
-{
-  var g: bool;
-  var x: int;
-
-  while (true)
-  invariant {:yields} {:layer 1} {:yield_loop "YieldInv"} true;
-  {
-    call t := ReadTopOfStack();
-    if (t != null) {
-      call x := Load(t);
-      call g := TransferFromStack(t, x);
-      if (g) {
-        break;
-      }
-    }
-  }
+function {:inline} Domain(ts: Lmap (Treiber X), ref_t: RefTreiber X, unused: [RefTreiber X][RefNode X]bool): [RefNode X]bool {
+  Difference(ts->val[ref_t]->stack->dom, unused[ref_t])
 }
 
-function Equal([int]bool, [int]bool) returns (bool);
-function Subset([int]bool, [int]bool) returns (bool);
+function {:inline} NilDomain(ts: Lmap (Treiber X), ref_t: RefTreiber X, unused: [RefTreiber X][RefNode X]bool): [RefNode X]bool {
+  Union(Singleton(Nil()), Domain(ts, ref_t, unused))
+}
 
-function Empty() returns ([int]bool);
-function Singleton(int) returns ([int]bool);
-function Union([int]bool, [int]bool) returns ([int]bool);
+procedure {:yield_invariant} {:layer 2} YieldInv#2(ref_t: RefTreiber X);
+requires Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
+requires NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
 
-axiom(forall x:int :: !Empty()[x]);
-
-axiom(forall x:int, y:int :: {Singleton(y)[x]} Singleton(y)[x] <==> x == y);
-axiom(forall y:int :: {Singleton(y)} Singleton(y)[y]);
-
-axiom(forall x:int, S:[int]bool, T:[int]bool :: {Union(S,T)[x]}{Union(S,T),S[x]}{Union(S,T),T[x]} Union(S,T)[x] <==> S[x] || T[x]);
-
-axiom(forall S:[int]bool, T:[int]bool :: {Equal(S,T)} Equal(S,T) <==> Subset(S,T) && Subset(T,S));
-axiom(forall x:int, S:[int]bool, T:[int]bool :: {S[x],Subset(S,T)}{T[x],Subset(S,T)} S[x] && Subset(S,T) ==> T[x]);
-axiom(forall S:[int]bool, T:[int]bool :: {Subset(S,T)} Subset(S,T) || (exists x:int :: S[x] && !T[x]));
-
-////////////////////
-// Between predicate
-////////////////////
-function Between(f: [int]int, x: int, y: int, z: int) returns (bool);
-function Avoiding(f: [int]int, x: int, y: int, z: int) returns (bool);
-
-
-//////////////////////////
-// Between set constructor
-//////////////////////////
-function BetweenSet(f: [int]int, x: int, z: int) returns ([int]bool);
-
-////////////////////////////////////////////////////
-// axioms relating Between and BetweenSet
-////////////////////////////////////////////////////
-axiom(forall f: [int]int, x: int, y: int, z: int :: {BetweenSet(f, x, z)[y]} BetweenSet(f, x, z)[y] <==> Between(f, x, y, z));
-axiom(forall f: [int]int, x: int, y: int, z: int :: {Between(f, x, y, z), BetweenSet(f, x, z)} Between(f, x, y, z) ==> BetweenSet(f, x, z)[y]);
-axiom(forall f: [int]int, x: int, z: int :: {BetweenSet(f, x, z)} Between(f, x, x, x));
-axiom(forall f: [int]int, x: int, z: int :: {BetweenSet(f, x, z)} Between(f, z, z, z));
-
-
-//////////////////////////
-// Axioms for Between
-//////////////////////////
-
-// reflexive
-axiom(forall f: [int]int, x: int :: Between(f, x, x, x));
-
-// step
-axiom(forall f: [int]int, x: int, y: int, z: int, w:int :: {Between(f, y, z, w), f[x]} Between(f, x, f[x], f[x]));
-
-// reach
-axiom(forall f: [int]int, x: int, y: int :: {f[x], Between(f, x, y, y)} Between(f, x, y, y) ==> x == y || Between(f, x, f[x], y));
-
-// cycle
-axiom(forall f: [int]int, x: int, y:int :: {f[x], Between(f, x, y, y)} f[x] == x && Between(f, x, y, y) ==> x == y);
-
-// sandwich
-axiom(forall f: [int]int, x: int, y: int :: {Between(f, x, y, x)} Between(f, x, y, x) ==> x == y);
-
-// order1
-axiom(forall f: [int]int, x: int, y: int, z: int :: {Between(f, x, y, y), Between(f, x, z, z)} Between(f, x, y, y) && Between(f, x, z, z) ==> Between(f, x, y, z) || Between(f, x, z, y));
-
-// order2
-axiom(forall f: [int]int, x: int, y: int, z: int :: {Between(f, x, y, z)} Between(f, x, y, z) ==> Between(f, x, y, y) && Between(f, y, z, z));
-
-// transitive1
-axiom(forall f: [int]int, x: int, y: int, z: int :: {Between(f, x, y, y), Between(f, y, z, z)} Between(f, x, y, y) && Between(f, y, z, z) ==> Between(f, x, z, z));
-
-// transitive2
-axiom(forall f: [int]int, x: int, y: int, z: int, w: int :: {Between(f, x, y, z), Between(f, y, w, z)} Between(f, x, y, z) && Between(f, y, w, z) ==> Between(f, x, y, w) && Between(f, x, w, z));
-
-// transitive3
-axiom(forall f: [int]int, x: int, y: int, z: int, w: int :: {Between(f, x, y, z), Between(f, x, w, y)} Between(f, x, y, z) && Between(f, x, w, y) ==> Between(f, x, w, z) && Between(f, w, y, z));
-
-// This axiom is required to deal with the incompleteness of the trigger for the reflexive axiom.
-// It cannot be proved using the rest of the axioms.
-axiom(forall f: [int]int, u:int, x: int :: {Between(f, u, x, x)} Between(f, u, x, x) ==> Between(f, u, u, x));
-
-// relation between Avoiding and Between
-axiom(forall f: [int]int, x: int, y: int, z: int :: {Avoiding(f, x, y, z)} Avoiding(f, x, y, z) <==> (Between(f, x, y, z) || (Between(f, x, y, y) && !Between(f, x, z, z))));
-axiom(forall f: [int]int, x: int, y: int, z: int :: {Between(f, x, y, z)} Between(f, x, y, z) <==> (Avoiding(f, x, y, z) && Avoiding(f, x, z, z)));
-
-// update
-axiom(forall f: [int]int, u: int, v: int, x: int, p: int, q: int :: {Avoiding(f[p := q], u, v, x)} Avoiding(f[p := q], u, v, x) <==> ((Avoiding(f, u, v, p) && Avoiding(f, u, v, x)) || (Avoiding(f, u, p, x) && p != x && Avoiding(f, q, v, p) && Avoiding(f, q, v, x))));
-
-axiom (forall f: [int]int, p: int, q: int, u: int, w: int :: {BetweenSet(f[p := q], u, w)} Avoiding(f, u, w, p) ==> Equal(BetweenSet(f[p := q], u, w), BetweenSet(f, u, w)));
-axiom (forall f: [int]int, p: int, q: int, u: int, w: int :: {BetweenSet(f[p := q], u, w)} p != w && Avoiding(f, u, p, w) && Avoiding(f, q, w, p) ==> Equal(BetweenSet(f[p := q], u, w), Union(BetweenSet(f, u, p), BetweenSet(f, q, w))));
-axiom (forall f: [int]int, p: int, q: int, u: int, w: int :: {BetweenSet(f[p := q], u, w)} Avoiding(f, u, w, p) || (p != w && Avoiding(f, u, p, w) && Avoiding(f, q, w, p)) || Equal(BetweenSet(f[p := q], u, w), Empty()));
+procedure {:yield_invariant} {:layer 3} YieldInv#3(ref_t: RefTreiber X);
+requires Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
+requires NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
+requires (forall ref_n: RefNode X :: Domain(ts, ref_t, unused)[ref_n] ==> NilDomain(ts, ref_t, unused)[ts->val[ref_t]->stack->val[ref_n]->next]);
