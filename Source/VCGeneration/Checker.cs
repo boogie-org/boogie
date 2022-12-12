@@ -127,12 +127,14 @@ namespace Microsoft.Boogie
 
     public void Target(Program prog, ProverContext ctx, Split split)
     {
+      var usedTypes = new BasicTypeVisitor(prog).GetBasicTypes().ToList();
       lock (this)
       {
         hasOutput = default;
         outcome = default;
         outputExn = default;
         handler = default;
+        SolverOptions.UsedTypes = usedTypes;
         TheoremProver.FullReset(gen);
         ctx.Reset();
         Setup(prog, ctx, split);

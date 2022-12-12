@@ -134,23 +134,20 @@ namespace Microsoft.Boogie.SMTLib
 
     public override async Task Reset(VCExpressionGenerator generator)
     {
-      if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
+      gen = generator;
+      SendThisVC("(reset)");
+      await RecoverIfProverCrashedAfterReset();
+      if (0 < common.Length)
       {
-        this.gen = generator;
-        SendThisVC("(reset)");
-        await RecoverIfProverCrashedAfterReset();
-        if (0 < common.Length)
+        var c = common.ToString();
+        Process.Send(c);
+        if (currentLogFile != null)
         {
-          var c = common.ToString();
-          Process.Send(c);
-          if (currentLogFile != null)
-          {
-            currentLogFile.WriteLine(c);
-          }
+          currentLogFile.WriteLine(c);
         }
-
-        hasReset = true;
       }
+
+      hasReset = true;
     }
 
     private async Task RecoverIfProverCrashedAfterReset()
@@ -164,27 +161,26 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void FullReset(VCExpressionGenerator generator)
     {
-      if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
-      {
-        this.gen = generator;
-        SendThisVC("(reset)");
+      gen = generator;
+      SendThisVC("(reset)");
+      if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options) {
         SendThisVC("(set-option :" + Z3.RlimitOption + " 0)");
-        commonNamer = null;
-        finalNamer = null;
-        hasReset = true;
-        common.Clear();
-        SetupAxiomBuilder(gen);
-        Axioms.Clear();
-        TypeDecls.Clear();
-        AxiomsAreSetup = false;
-        ctx.Reset();
-        ctx.KnownDatatypes.Clear();
-        ctx.parent = this;
-        DeclCollector.Reset();
-        NamedAssumes.Clear();
-        usedNamedAssumes = null;
-        SendThisVC("; did a full reset");
       }
+      commonNamer = null;
+      finalNamer = null;
+      hasReset = true;
+      common.Clear();
+      SetupAxiomBuilder(gen);
+      Axioms.Clear();
+      TypeDecls.Clear();
+      AxiomsAreSetup = false;
+      ctx.Reset();
+      ctx.KnownDatatypes.Clear();
+      ctx.parent = this;
+      DeclCollector.Reset();
+      NamedAssumes.Clear();
+      usedNamedAssumes = null;
+      SendThisVC("; did a full reset");
     }
 
     [NoDefaultContract]

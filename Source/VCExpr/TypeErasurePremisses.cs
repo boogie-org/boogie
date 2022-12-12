@@ -98,10 +98,10 @@ namespace Microsoft.Boogie.TypeErasure
       return new TypeAxiomBuilderPremisses(this);
     }
 
-    public override void Setup()
+    public override void Setup(List<Type> usedTypes)
     {
       TypeFunction = HelperFuns.BoogieFunction(TypeName, U, T);
-      base.Setup();
+      base.Setup(usedTypes);
     }
 
     ////////////////////////////////////////////////////////////////////////////

@@ -108,14 +108,14 @@ namespace Microsoft.Boogie.SMTLib
       {
         case CoreOptions.TypeEncoding.Arguments:
           AxBuilder = new TypeAxiomBuilderArguments(gen, libOptions);
-          AxBuilder.Setup();
+          AxBuilder.Setup(options.UsedTypes);
           break;
         case CoreOptions.TypeEncoding.Monomorphic:
           AxBuilder = null;
           break;
         default:
           AxBuilder = new TypeAxiomBuilderPremisses(gen, libOptions);
-          AxBuilder.Setup();
+          AxBuilder.Setup(options.UsedTypes);
           break;
       }
     }
