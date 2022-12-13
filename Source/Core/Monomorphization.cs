@@ -274,13 +274,13 @@ namespace Microsoft.Boogie
   public class InstantiationHintCollector : ReadOnlyVisitor
   {
     private Dictionary<TypeVariable, int> typeParameterIndexes;
-    private List<Dictionary<Function, List<int>>> typeInstantiationHints;
+    private List<Dictionary<NamedDeclaration, List<int>>> instantiationHints;
 
-    public static List<Dictionary<Function, List<int>>> CollectBindings(QuantifierExpr quantifierExpr)
+    public static List<Dictionary<NamedDeclaration, List<int>>> CollectInstantiationHints(QuantifierExpr quantifierExpr)
     {
       var instantiationHintCollector = new InstantiationHintCollector(quantifierExpr);
       instantiationHintCollector.VisitExpr(quantifierExpr);
-      return instantiationHintCollector.typeInstantiationHints;
+      return instantiationHintCollector.instantiationHints;
     }
 
     private InstantiationHintCollector(QuantifierExpr quantifierExpr)
@@ -290,30 +290,40 @@ namespace Microsoft.Boogie
       {
         typeParameterIndexes[quantifierExpr.TypeParameters[i]] = i;
       }
-      typeInstantiationHints = Enumerable.Range(0, quantifierExpr.TypeParameters.Count)
-        .Select(_ => new Dictionary<Function, List<int>>()).ToList();
+      instantiationHints = Enumerable.Range(0, quantifierExpr.TypeParameters.Count)
+        .Select(_ => new Dictionary<NamedDeclaration, List<int>>()).ToList();
     }
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      if (node.TypeParameters.FormalTypeParams.Count > 0 && node.Fun is FunctionCall functionCall)
+      if (node.Fun is FunctionCall functionCall)
       {
-        var function = functionCall.Func;
-        for (int i = 0; i < node.TypeParameters.FormalTypeParams.Count; i++)
-        {
-          if (node.TypeParameters[node.TypeParameters.FormalTypeParams[i]] is TypeVariable typeVariable
-              && typeParameterIndexes.ContainsKey(typeVariable))
-          {
-            var index = typeParameterIndexes[typeVariable];
-            if (!typeInstantiationHints[index].ContainsKey(function))
-            {
-              typeInstantiationHints[index][function] = new List<int>();
-            }
-            typeInstantiationHints[index][function].Add(i);
-          }
-        }
+        var actualTypeParams = node.TypeParameters.FormalTypeParams.Select(x => node.TypeParameters[x]).ToList();
+        PopulateInstantiationHints(actualTypeParams, functionCall.Func);
       }
       return base.VisitNAryExpr(node);
+    }
+
+    public override CtorType VisitCtorType(CtorType node)
+    {
+      PopulateInstantiationHints(node.Arguments, node.Decl);
+      return base.VisitCtorType(node);
+    }
+
+    private void PopulateInstantiationHints(List<Type> actualTypeParams, NamedDeclaration decl)
+    {
+      for (int i = 0; i < actualTypeParams.Count; i++)
+      {
+        if (actualTypeParams[i] is TypeVariable typeVariable && typeParameterIndexes.ContainsKey(typeVariable))
+        {
+          var index = typeParameterIndexes[typeVariable];
+          if (!instantiationHints[index].ContainsKey(decl))
+          {
+            instantiationHints[index][decl] = new List<int>();
+          }
+          instantiationHints[index][decl].Add(i);
+        }
+      }
     }
   }
 
@@ -370,13 +380,13 @@ namespace Microsoft.Boogie
   abstract class QuantifierExprMonomorphizer : BinderExprMonomorphizer
   {
     private QuantifierExpr quantifierExpr;
-    private List<Dictionary<Function, List<int>>> typeInstantiationHints;
+    private List<Dictionary<NamedDeclaration, List<int>>> instantiationHints;
 
     public QuantifierExprMonomorphizer(QuantifierExpr quantifierExpr, MonomorphizationVisitor monomorphizationVisitor) :
       base(monomorphizationVisitor)
     {
       this.quantifierExpr = quantifierExpr;
-      this.typeInstantiationHints = InstantiationHintCollector.CollectBindings(quantifierExpr);
+      this.instantiationHints = InstantiationHintCollector.CollectInstantiationHints(quantifierExpr);
     }
 
     public override BinderExpr BinderExpr => quantifierExpr;
@@ -384,28 +394,28 @@ namespace Microsoft.Boogie
     public override bool Instantiate()
     {
       var instanceExprsCount = instanceExprs.Count;
-      var instantiationHints = Enumerable.Range(0, quantifierExpr.TypeParameters.Count).Select(_ => new HashSet<Type>())
-        .ToList();
+      var typeParameterIndexToTypeHints = Enumerable.Range(0, quantifierExpr.TypeParameters.Count)
+        .Select(_ => new HashSet<Type>()).ToList();
       for (int typeParamterIndex = 0; typeParamterIndex < quantifierExpr.TypeParameters.Count; typeParamterIndex++)
       {
-        foreach (var (function, functionTypeParameterIndices) in typeInstantiationHints[typeParamterIndex])
+        foreach (var (decl, actualIndexes) in instantiationHints[typeParamterIndex])
         {
-          foreach (var actualTypeParameters in monomorphizationVisitor.FunctionInstances(function))
+          foreach (var actualTypeParameters in monomorphizationVisitor.NamedDeclarationInstantiations(decl))
           {
-            foreach (var index in functionTypeParameterIndices)
+            foreach (var actualIndex in actualIndexes)
             {
-              instantiationHints[typeParamterIndex].Add(actualTypeParameters[index]);
+              typeParameterIndexToTypeHints[typeParamterIndex].Add(actualTypeParameters[actualIndex]);
             }
           }
         }
       }
-      InstantiateOne(instantiationHints, new List<Type>());
+      InstantiateOne(typeParameterIndexToTypeHints, new List<Type>());
       return instanceExprsCount < instanceExprs.Count;
     }
 
-    private void InstantiateOne(List<HashSet<Type>> instantiationHints, List<Type> actualTypeParams)
+    private void InstantiateOne(List<HashSet<Type>> typeParameterIndexToTypeHints, List<Type> actualTypeParams)
     {
-      if (instantiationHints.Count == actualTypeParams.Count)
+      if (typeParameterIndexToTypeHints.Count == actualTypeParams.Count)
       {
         if (!instanceExprs.ContainsKey(actualTypeParams))
         {
@@ -415,11 +425,11 @@ namespace Microsoft.Boogie
         return;
       }
 
-      foreach (var type in instantiationHints[actualTypeParams.Count])
+      foreach (var type in typeParameterIndexToTypeHints[actualTypeParams.Count])
       {
         var addPosition = actualTypeParams.Count;
         actualTypeParams.Add(type);
-        InstantiateOne(instantiationHints, actualTypeParams);
+        InstantiateOne(typeParameterIndexToTypeHints, actualTypeParams);
         actualTypeParams.RemoveAt(addPosition);
       }
     }
@@ -1254,9 +1264,17 @@ namespace Microsoft.Boogie
       return binderExprMonomorphizers.ToDictionary(x => x.BinderExpr, x => x.MonomorphicExpr());
     }
 
-    public IEnumerable<List<Type>> FunctionInstances(Function function)
+    public IEnumerable<List<Type>> NamedDeclarationInstantiations(NamedDeclaration decl)
     {
-      return functionInstantiations[function].Keys;
+      if (decl is Function function)
+      {
+        return functionInstantiations[function].Keys;
+      }
+      if (decl is TypeCtorDecl typeCtorDecl)
+      {
+        return typeInstantiations[typeCtorDecl].Keys;
+      }
+      throw new cce.UnreachableException();
     }
 
     public PolymorphicMapInfo RegisterPolymorphicMapType(Type type)
