@@ -297,8 +297,9 @@ namespace Microsoft.Boogie
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      if (node.TypeParameters.FormalTypeParams.Count > 0 && node.Fun is Function function)
+      if (node.TypeParameters.FormalTypeParams.Count > 0 && node.Fun is FunctionCall functionCall)
       {
+        var function = functionCall.Func;
         for (int i = 0; i < node.TypeParameters.FormalTypeParams.Count; i++)
         {
           if (node.TypeParameters[node.TypeParameters.FormalTypeParams[i]] is TypeVariable typeVariable
