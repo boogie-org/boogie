@@ -1199,9 +1199,11 @@ namespace Microsoft.Boogie
 
     private void FixpointOnBinderExprMonomorphizers()
     {
-      while (true)
+      var moreWorkNeeded = true;
+      while (moreWorkNeeded)
       {
-        var moreWorkNeeded = false;
+        moreWorkNeeded = false;
+
         // binderExprMonomorphizers is modified inside the loop so iterate over a copy of it
         var oldBinderExprMonomorphizers = new List<BinderExprMonomorphizer>(binderExprMonomorphizers);
         foreach (var binderExprMonomorphizer in oldBinderExprMonomorphizers)
@@ -1211,9 +1213,16 @@ namespace Microsoft.Boogie
             moreWorkNeeded = true;
           }
         }
-        if (!moreWorkNeeded && oldBinderExprMonomorphizers.Count == binderExprMonomorphizers.Count)
+
+        if (newInstantiatedDeclarations.Count > 0)
         {
-          break;
+          AddInstantiatedDeclarations();
+          moreWorkNeeded = true;
+        }
+
+        if (oldBinderExprMonomorphizers.Count < binderExprMonomorphizers.Count)
+        {
+          moreWorkNeeded = true;
         }
       }
     }
