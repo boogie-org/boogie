@@ -727,7 +727,7 @@ namespace Microsoft.Boogie
           .Select(x => monomorphizationVisitor.LookupType(x)).ToList();
       fieldAssignLhs.TypeParameters =
         SimpleTypeParamInstantiation.From(fieldAssignLhs.TypeParameters.FormalTypeParams, actualTypeParams);
-      if (actualTypeParams.OfType<TypeVariable>().Any())
+      if (actualTypeParams.Any(IsPolymorphic))
       {
         return fieldAssignLhs;
       }
@@ -754,7 +754,7 @@ namespace Microsoft.Boogie
           .Select(x => monomorphizationVisitor.LookupType(x)).ToList();
       mapAssignLhs.TypeParameters =
         SimpleTypeParamInstantiation.From(mapAssignLhs.TypeParameters.FormalTypeParams, actualTypeParams);
-      if (!actualTypeParams.OfType<TypeVariable>().Any() && actualTypeParams.Count > 0)
+      if (!actualTypeParams.Any(IsPolymorphic) && actualTypeParams.Count > 0)
       {
         monomorphizationVisitor.RegisterPolymorphicMapType(node.Map.Type);
       }
@@ -776,7 +776,7 @@ namespace Microsoft.Boogie
         return returnExpr.Args[0];
       }
 
-      if (actualTypeParams.OfType<TypeVariable>().Any())
+      if (actualTypeParams.Any(IsPolymorphic))
       {
         return returnExpr;
       }
@@ -914,7 +914,7 @@ namespace Microsoft.Boogie
         node.Arguments[i] = (Type)this.Visit(node.Arguments[i]);
       }
 
-      if (node.Arguments.OfType<TypeVariable>().Any())
+      if (node.Arguments.Any(IsPolymorphic))
       {
         return node;
       }
@@ -1051,6 +1051,28 @@ namespace Microsoft.Boogie
       }
 
       return expr;
+    }
+
+    private bool IsPolymorphic(Type type)
+    {
+      type = TypeProxy.FollowProxy(type).Expanded;
+      if (type is BasicType)
+      {
+        return false;
+      }
+      if (type is TypeVariable)
+      {
+        return true;
+      }
+      if (type is CtorType ctorType)
+      {
+        return ctorType.Arguments.Any(IsPolymorphic);
+      }
+      if (type is MapType mapType)
+      {
+        return mapType.Arguments.Any(IsPolymorphic) || IsPolymorphic(mapType.Result);
+      }
+      throw new cce.UnreachableException();
     }
   }
 
