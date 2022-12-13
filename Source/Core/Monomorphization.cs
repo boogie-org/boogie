@@ -1184,7 +1184,7 @@ namespace Microsoft.Boogie
       });
       monomorphizationVisitor.VisitProgram(program);
       monomorphizationVisitor.InstantiateAxioms();
-      monomorphizationVisitor.AddInstantiatedDeclarations(program);
+      monomorphizationVisitor.AddInstantiatedDeclarations();
       program.AddTopLevelDeclarations(typeCtorDecls);
       monomorphizationVisitor.FixpointOnBinderExprMonomorphizers();
       var polymorphicMapDatatypeCtorDecls =
@@ -1337,7 +1337,7 @@ namespace Microsoft.Boogie
       return functionInstantiations[func][actualTypeParams];
     }
 
-    private void AddInstantiatedDeclarations(Program program)
+    private void AddInstantiatedDeclarations()
     {
       program.AddTopLevelDeclarations(newInstantiatedDeclarations);
       newInstantiatedDeclarations = new HashSet<Declaration>();
@@ -1543,7 +1543,7 @@ namespace Microsoft.Boogie
       }
       var instantiatedFunction = InstantiateTypeCtorDecl(typeCtorDecl, actualTypeParams);
       InstantiateAxioms();
-      AddInstantiatedDeclarations(program);
+      AddInstantiatedDeclarations();
       return instantiatedFunction;
     }
     
@@ -1556,7 +1556,7 @@ namespace Microsoft.Boogie
       var actualTypeParams = function.TypeParameters.Select(tp => typeParamInstantiationMap[tp.Name]).ToList();
       var instantiatedFunction = InstantiateFunction(function, actualTypeParams);
       InstantiateAxioms();
-      AddInstantiatedDeclarations(program);
+      AddInstantiatedDeclarations();
       return instantiatedFunction;
     }
 
