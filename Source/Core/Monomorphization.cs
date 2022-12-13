@@ -182,7 +182,6 @@ namespace Microsoft.Boogie
           visitor.Visit(node.TypeParameters[t]);
         });
       }
-
       Visit(node.Type);
       return base.VisitNAryExpr(node);
     }
@@ -310,7 +309,6 @@ namespace Microsoft.Boogie
             {
               typeInstantiationHints[index][function] = new List<int>();
             }
-
             typeInstantiationHints[index][function].Add(i);
           }
         }
@@ -357,7 +355,6 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-
       polymorphicMapInfo.Instances.Skip(instanceExprs.Count).Iter(x =>
         instanceExprs[x] = monomorphizationVisitor.InstantiateBinderExpr(lambdaExpr, x));
       return true;
@@ -415,7 +412,6 @@ namespace Microsoft.Boogie
           instanceExprs[new List<Type>(actualTypeParams)] =
             monomorphizationVisitor.InstantiateBinderExpr(quantifierExpr, actualTypeParams);
         }
-
         return;
       }
 
@@ -1190,7 +1186,7 @@ namespace Microsoft.Boogie
       monomorphizationVisitor.InstantiateAxioms();
       monomorphizationVisitor.AddInstantiatedDeclarations(program);
       program.AddTopLevelDeclarations(typeCtorDecls);
-      monomorphizationVisitor.FixpointBinderExprs();
+      monomorphizationVisitor.FixpointOnBinderExprMonomorphizers();
       var polymorphicMapDatatypeCtorDecls =
         monomorphizationVisitor.polymorphicMapInfos.Values.Select(polymorphicMapInfo =>
           polymorphicMapInfo.CreateDatatypeTypeCtorDecl()).ToList();
@@ -1201,7 +1197,7 @@ namespace Microsoft.Boogie
       return monomorphizationVisitor;
     }
 
-    private void FixpointBinderExprs()
+    private void FixpointOnBinderExprMonomorphizers()
     {
       while (true)
       {
