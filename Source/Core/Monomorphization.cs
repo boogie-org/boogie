@@ -411,7 +411,7 @@ namespace Microsoft.Boogie
       {
         if (!instanceExprs.ContainsKey(actualTypeParams))
         {
-          instanceExprs[actualTypeParams] =
+          instanceExprs[new List<Type>(actualTypeParams)] =
             monomorphizationVisitor.InstantiateBinderExpr(quantifierExpr, actualTypeParams);
         }
 
@@ -1284,27 +1284,30 @@ namespace Microsoft.Boogie
 
     private Axiom InstantiateAxiom(Axiom axiom, List<Type> actualTypeParams)
     {
-      var forallExpr = (ForallExpr)InstantiateBinderExpr((BinderExpr)axiom.Expr, actualTypeParams);
-      var instantiatedAxiom = new Axiom(axiom.tok, forallExpr.Dummies.Count == 0 ? forallExpr.Body : forallExpr,
-        axiom.Comment, axiom.Attributes);
+      var axiomExpr = InstantiateBinderExpr((BinderExpr)axiom.Expr, actualTypeParams);
+      var instantiatedAxiom = new Axiom(axiom.tok, axiomExpr, axiom.Comment, axiom.Attributes);
       newInstantiatedDeclarations.Add(instantiatedAxiom);
       return instantiatedAxiom;
-    }  
+    }
 
-    public BinderExpr InstantiateBinderExpr(BinderExpr binderExpr, List<Type> actualTypeParams)
+    public Expr InstantiateBinderExpr(BinderExpr binderExpr, List<Type> actualTypeParams)
     {
       var binderExprTypeParameters = binderExpr.TypeParameters;
       binderExpr.TypeParameters = new List<TypeVariable>();
       var newBinderExpr = (BinderExpr)InstantiateAbsy(binderExpr, LinqExtender.Map(binderExprTypeParameters, actualTypeParams),
         new Dictionary<Variable, Variable>());
       binderExpr.TypeParameters = binderExprTypeParameters;
+      if (newBinderExpr is QuantifierExpr quantifierExpr && quantifierExpr.Dummies.Count == 0)
+      {
+        return quantifierExpr.Body;
+      }
       if (binderExpr is LambdaExpr)
       {
         var polymorphicMapInfo = RegisterPolymorphicMapType(newBinderExpr.Type);
         newBinderExpr.Type = polymorphicMapInfo.GetFieldType(actualTypeParams);
       }
       return newBinderExpr;
-    }  
+    }
       
     public Function InstantiateFunction(Function func, List<Type> actualTypeParams)
     {
