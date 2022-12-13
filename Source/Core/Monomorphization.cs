@@ -591,6 +591,7 @@ namespace Microsoft.Boogie
       var polymorphicMapDatatypeExpr = node.Args[0];
       var fieldAccessExpr = new NAryExpr(Token.NoToken, fieldAccess, new List<Expr> { polymorphicMapDatatypeExpr });
       fieldAccessExpr.Type = polymorphicMapInfo.GetFieldType(actualTypeParams);
+      fieldAccessExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
       node.Args[0] = fieldAccessExpr;
       node.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
       if (node.Fun is MapStore)
@@ -635,7 +636,22 @@ namespace Microsoft.Boogie
       }
       return base.VisitBinderExpr(node);
     }
-    
+
+    public override Expr VisitLambdaExpr(LambdaExpr node)
+    {
+      return VisitBinderExpr(node);
+    }
+
+    public override Expr VisitForallExpr(ForallExpr node)
+    {
+      return VisitBinderExpr(node);
+    }
+
+    public override Expr VisitExistsExpr(ExistsExpr node)
+    {
+      return VisitBinderExpr(node);
+    }
+
     public override Type VisitType(Type node)
     {
       return (Type)Visit(node);
@@ -1176,7 +1192,7 @@ namespace Microsoft.Boogie
       monomorphizationVisitor.FixpointBinderExprs();
       var polymorphicMapDatatypeCtorDecls =
         monomorphizationVisitor.polymorphicMapInfos.Values.Select(polymorphicMapInfo =>
-          polymorphicMapInfo.CreateDatatypeTypeCtorDecl());
+          polymorphicMapInfo.CreateDatatypeTypeCtorDecl()).ToList();
       var polymorphicMapSubstituter = new PolymorphicMapAndBinderSubstituter(monomorphizationVisitor);
       polymorphicMapSubstituter.Visit(program);
       program.AddTopLevelDeclarations(polymorphicMapDatatypeCtorDecls);
@@ -1188,16 +1204,17 @@ namespace Microsoft.Boogie
     {
       while (true)
       {
-        var binderExprMonomorphizersCount = binderExprMonomorphizers.Count;
         var moreWorkNeeded = false;
-        foreach (var binderExprMonomorphizer in binderExprMonomorphizers)
+        // binderExprMonomorphizers is modified inside the loop so iterate over a copy of it
+        var oldBinderExprMonomorphizers = new List<BinderExprMonomorphizer>(binderExprMonomorphizers);
+        foreach (var binderExprMonomorphizer in oldBinderExprMonomorphizers)
         {
           if (binderExprMonomorphizer.Instantiate())
           {
             moreWorkNeeded = true;
           }
         }
-        if (!moreWorkNeeded && binderExprMonomorphizersCount == binderExprMonomorphizers.Count)
+        if (!moreWorkNeeded && oldBinderExprMonomorphizers.Count == binderExprMonomorphizers.Count)
         {
           break;
         }
@@ -1276,10 +1293,17 @@ namespace Microsoft.Boogie
 
     public BinderExpr InstantiateBinderExpr(BinderExpr binderExpr, List<Type> actualTypeParams)
     {
-      binderExpr = (BinderExpr)InstantiateAbsy(binderExpr, LinqExtender.Map(binderExpr.TypeParameters, actualTypeParams),
-        new Dictionary<Variable, Variable>());
+      var binderExprTypeParameters = binderExpr.TypeParameters;
       binderExpr.TypeParameters = new List<TypeVariable>();
-      return binderExpr;
+      var newBinderExpr = (BinderExpr)InstantiateAbsy(binderExpr, LinqExtender.Map(binderExprTypeParameters, actualTypeParams),
+        new Dictionary<Variable, Variable>());
+      binderExpr.TypeParameters = binderExprTypeParameters;
+      if (binderExpr is LambdaExpr)
+      {
+        var polymorphicMapInfo = RegisterPolymorphicMapType(newBinderExpr.Type);
+        newBinderExpr.Type = polymorphicMapInfo.GetFieldType(actualTypeParams);
+      }
+      return newBinderExpr;
     }  
       
     public Function InstantiateFunction(Function func, List<Type> actualTypeParams)
