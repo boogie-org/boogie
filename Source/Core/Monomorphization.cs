@@ -548,6 +548,14 @@ namespace Microsoft.Boogie
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
+      if (node.Fun is BinaryOperator { Op: BinaryOperator.Opcode.Eq } && !node.Args[0].Type.Equals(node.Args[1].Type))
+      {
+        return Expr.False;
+      }
+      if (node.Fun is BinaryOperator { Op: BinaryOperator.Opcode.Neq } && !node.Args[0].Type.Equals(node.Args[1].Type))
+      {
+        return Expr.True;
+      }
       if (!(node.Fun is MapSelect || node.Fun is MapStore) || node.TypeParameters.FormalTypeParams.Count == 0)
       {
         return base.VisitNAryExpr(node);
@@ -598,11 +606,18 @@ namespace Microsoft.Boogie
 
     public override Expr VisitBinderExpr(BinderExpr node)
     {
-      if (binderExprSubstitution.ContainsKey(node))
+      var returnExpr = binderExprSubstitution.ContainsKey(node)
+        ? VisitExpr(binderExprSubstitution[node])
+        : base.VisitBinderExpr(node);
+      if (returnExpr is QuantifierExpr { Triggers: { } } quantifierExpr)
       {
-        return VisitExpr(binderExprSubstitution[node]);
+        quantifierExpr.Triggers = VisitTrigger(quantifierExpr.Triggers);
       }
-      return base.VisitBinderExpr(node);
+      if (returnExpr is BinderExpr { Attributes: { } } binderExpr)
+      {
+        binderExpr.Attributes = VisitQKeyValue(binderExpr.Attributes);
+      }
+      return returnExpr;
     }
 
     public override Expr VisitLambdaExpr(LambdaExpr node)
