@@ -117,12 +117,10 @@ namespace Microsoft.Boogie
   
   class MonomorphizableChecker : ReadOnlyVisitor
   {
-    public static MonomorphizableStatus IsMonomorphizable(Program program,
-      out Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, out HashSet<Axiom> polymorphicFunctionAxioms)
+    public static MonomorphizableStatus IsMonomorphizable(Program program, out HashSet<Axiom> polymorphicFunctionAxioms)
     {
       var checker = new MonomorphizableChecker(program);
       checker.VisitProgram(program);
-      axiomsToBeInstantiated = checker.axiomsToBeInstantiated;
       polymorphicFunctionAxioms = checker.polymorphicFunctionAxioms;
       if (!checker.isMonomorphizable)
       {
@@ -134,22 +132,18 @@ namespace Microsoft.Boogie
       }
       return MonomorphizableStatus.Monomorphizable;
     }
-
-    private Program program;
+    
     private bool isMonomorphizable;
-    private Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated;
     private HashSet<Axiom> polymorphicFunctionAxioms;
     private Graph<TypeVariable> typeVariableDependencyGraph; // (T,U) in this graph iff T flows to U
     private HashSet<Tuple<TypeVariable, TypeVariable>> strongDependencyEdges; // (T,U) in this set iff a type constructed from T flows into U
 
     private MonomorphizableChecker(Program program)
     {
-      this.program = program;
       this.isMonomorphizable = true;
       this.polymorphicFunctionAxioms = program.TopLevelDeclarations.OfType<Function>()
         .Where(f => f.TypeParameters.Count > 0 && f.DefinitionAxiom != null)
         .Select(f => f.DefinitionAxiom).ToHashSet();
-      this.axiomsToBeInstantiated = new Dictionary<Axiom, TypeCtorDecl>();
       this.typeVariableDependencyGraph = new Graph<TypeVariable>();
       this.strongDependencyEdges = new HashSet<Tuple<TypeVariable, TypeVariable>>();
     }
@@ -194,39 +188,6 @@ namespace Microsoft.Boogie
         visitor.Visit(node.TypeParameters[t]);
       });
       return base.VisitCallCmd(node);
-    }
-    
-    private void CheckTypeCtorInstantiatedAxiom(Axiom axiom, string typeCtorName)
-    {
-      var tcDecl = program.TopLevelDeclarations.OfType<TypeCtorDecl>().FirstOrDefault(tcd => tcd.Name == typeCtorName);
-      if (tcDecl == null)
-      {
-        isMonomorphizable = false;
-        return;
-      }
-      var forallExpr = (ForallExpr) axiom.Expr;
-      if (tcDecl.Arity != forallExpr.TypeParameters.Count)
-      {
-        isMonomorphizable = false;
-        return;
-      }
-      axiomsToBeInstantiated.Add(axiom, tcDecl);
-      VisitExpr(forallExpr.Body);
-    }
-
-    public override Axiom VisitAxiom(Axiom node)
-    {
-      if (polymorphicFunctionAxioms.Contains(node))
-      {
-        return node;
-      }
-      var typeCtorName = node.FindStringAttribute("ctor");
-      if (typeCtorName == null || !(node.Expr is ForallExpr))
-      {
-        return base.VisitAxiom(node);
-      }
-      CheckTypeCtorInstantiatedAxiom(node, typeCtorName);
-      return node;
     }
 
     public override Function VisitFunction(Function node)
@@ -930,8 +891,6 @@ namespace Microsoft.Boogie
       }
       
       var typeCtorDecl = node.Decl;
-      monomorphizationVisitor.AddTriggerType(typeCtorDecl, node);
-
       if (MonomorphismChecker.DoesTypeCtorDeclNeedMonomorphization(typeCtorDecl))
       {
         return new CtorType(node.tok, monomorphizationVisitor.InstantiateTypeCtorDecl(typeCtorDecl, node.Arguments),
@@ -1108,7 +1067,6 @@ namespace Microsoft.Boogie
     public CoreOptions Options { get; }
     
     private Program program;
-    private Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated;
     private Dictionary<string, Function> nameToFunction;
     private Dictionary<string, Procedure> nameToProcedure;
     private Dictionary<string, Implementation> nameToImplementation;
@@ -1122,18 +1080,14 @@ namespace Microsoft.Boogie
     private Dictionary<MapType, PolymorphicMapInfo> polymorphicMapInfos;
     private Dictionary<DeclWithFormals, Tuple<DeclWithFormals, Dictionary<string, Type>>> declWithFormalsToTypeInstantiation;
     private Dictionary<TypeCtorDecl, Tuple<TypeCtorDecl, List<Type>>> typeCtorDeclToTypeInstantiation;
-    private Dictionary<TypeCtorDecl, HashSet<CtorType>> triggerTypes;
-    private Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes;
     private HashSet<TypeCtorDecl> visitedTypeCtorDecls;
     private HashSet<Function> visitedFunctions;
     private Dictionary<Procedure, Implementation> procToImpl;
 
-    private MonomorphizationVisitor(CoreOptions options, Program program,
-      Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, HashSet<Axiom> polymorphicFunctionAxioms)
+    private MonomorphizationVisitor(CoreOptions options, Program program, HashSet<Axiom> polymorphicFunctionAxioms)
     {
       Options = options;
       this.program = program;
-      this.axiomsToBeInstantiated = axiomsToBeInstantiated;
       implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();
       nameToImplementation = new Dictionary<string, Implementation>();
       program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).Iter(
@@ -1172,13 +1126,6 @@ namespace Microsoft.Boogie
             nameToTypeCtorDecl.Add(typeCtorDecl.Name, typeCtorDecl);
             typeInstantiations.Add(typeCtorDecl, new Dictionary<List<Type>, TypeCtorDecl>(new ListComparer<Type>()));
           });
-      triggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
-      newTriggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
-      axiomsToBeInstantiated.Values.ToHashSet().Iter(typeCtorDecl =>
-      {
-        triggerTypes.Add(typeCtorDecl, new HashSet<CtorType>());
-        newTriggerTypes.Add(typeCtorDecl, new HashSet<CtorType>());
-      });
       this.visitedTypeCtorDecls = new HashSet<TypeCtorDecl>();
       this.visitedFunctions = new HashSet<Function>();
       this.procToImpl = new Dictionary<Procedure, Implementation>();
@@ -1189,14 +1136,12 @@ namespace Microsoft.Boogie
         decl is Function function && functionInstantiations.ContainsKey(function) ||
         decl is TypeCtorDecl typeCtorDecl && typeInstantiations.ContainsKey(typeCtorDecl) ||
         decl is TypeSynonymDecl typeSynonymDecl && typeSynonymDecl.TypeParameters.Count > 0 ||
-        decl is Axiom axiom && (axiomsToBeInstantiated.ContainsKey(axiom) || polymorphicFunctionAxioms.Contains(axiom)));
+        decl is Axiom axiom && polymorphicFunctionAxioms.Contains(axiom));
     }
     
-    public static MonomorphizationVisitor Initialize(CoreOptions options, Program program,
-      Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated,
-      HashSet<Axiom> polymorphicFunctionAxioms)
+    public static MonomorphizationVisitor Initialize(CoreOptions options, Program program, HashSet<Axiom> polymorphicFunctionAxioms)
     {
-      var monomorphizationVisitor = new MonomorphizationVisitor(options, program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
+      var monomorphizationVisitor = new MonomorphizationVisitor(options, program, polymorphicFunctionAxioms);
       // ctorTypes contains all the uninterpreted types created for monomorphizing top-level polymorphic implementations 
       // that must be verified. The types in ctorTypes are reused across different implementations.
       var ctorTypes = new List<Type>();
@@ -1215,7 +1160,6 @@ namespace Microsoft.Boogie
         instantiatedImpl.Proc = monomorphizationVisitor.InstantiateProcedure(impl.Proc, actualTypeParams);
       });
       monomorphizationVisitor.VisitProgram(program);
-      monomorphizationVisitor.InstantiateAxioms();
       monomorphizationVisitor.AddInstantiatedDeclarations();
       program.AddTopLevelDeclarations(typeCtorDecls);
       monomorphizationVisitor.FixpointOnBinderExprMonomorphizers();
@@ -1290,16 +1234,6 @@ namespace Microsoft.Boogie
     public void AddBinderExprMonomorphizer(BinderExprMonomorphizer binderExprMonomorphizer)
     {
       binderExprMonomorphizers.Add(binderExprMonomorphizer);
-    }
-
-    public void AddTriggerType(TypeCtorDecl typeCtorDecl, CtorType ctorType)
-    {
-      if (triggerTypes.ContainsKey(typeCtorDecl) &&
-          !triggerTypes[typeCtorDecl].Contains(ctorType))
-      {
-        triggerTypes[typeCtorDecl].Add(ctorType);
-        newTriggerTypes[typeCtorDecl].Add(ctorType);
-      }
     }
 
     public void InlineCallCmd(CallCmd callCmd, List<Type> actualTypeParams)
@@ -1591,7 +1525,6 @@ namespace Microsoft.Boogie
         return null;
       }
       var instantiatedFunction = InstantiateTypeCtorDecl(typeCtorDecl, actualTypeParams);
-      InstantiateAxioms();
       AddInstantiatedDeclarations();
       return instantiatedFunction;
     }
@@ -1604,23 +1537,8 @@ namespace Microsoft.Boogie
       }
       var actualTypeParams = function.TypeParameters.Select(tp => typeParamInstantiationMap[tp.Name]).ToList();
       var instantiatedFunction = InstantiateFunction(function, actualTypeParams);
-      InstantiateAxioms();
       AddInstantiatedDeclarations();
       return instantiatedFunction;
-    }
-
-    private void InstantiateAxioms()
-    {
-      while (newTriggerTypes.Any(x => x.Value.Count != 0))
-      {
-        var nextTriggerTypes = this.newTriggerTypes;
-        newTriggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
-        nextTriggerTypes.Iter(x => { newTriggerTypes.Add(x.Key, new HashSet<CtorType>()); });
-        foreach ((var axiom, var tcDecl) in axiomsToBeInstantiated)
-        {
-          nextTriggerTypes[tcDecl].Iter(trigger => InstantiateAxiom(axiom, trigger.Arguments));
-        }
-      }
     }
 
     public bool GetFunction(string functionName, out Function function)
@@ -1739,11 +1657,10 @@ namespace Microsoft.Boogie
   {
     public static MonomorphizableStatus Monomorphize(CoreOptions options, Program program)
     {
-      var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program, out var axiomsToBeInstantiated,
-        out var polymorphicFunctionAxioms);
+      var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program, out var polymorphicFunctionAxioms);
       if (monomorphizableStatus == MonomorphizableStatus.Monomorphizable)
       {
-        var monomorphizationVisitor = MonomorphizationVisitor.Initialize(options, program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
+        var monomorphizationVisitor = MonomorphizationVisitor.Initialize(options, program, polymorphicFunctionAxioms);
         program.monomorphizer = new Monomorphizer(monomorphizationVisitor);
       }
       return monomorphizableStatus;
