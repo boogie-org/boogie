@@ -1,14 +1,3 @@
-// 
-// Translation of Viper program.
-// 
-// Date:         2022-12-16 15:06:51
-// Tool:         carbon 1.0
-// Arguments: :  --print domains.bpl domains.vpr
-// Dependencies:
-//   Boogie , located at C:\Users\Gaurav\boogie_versions\boogie_dotnet_jenkins_artifact\Binaries\Boogie.exe.
-//   Z3 4.8.7 - 64 bit, located at C:\Users\Gaurav\z3_versions\z3-4.8.7-x64-win\bin\z3.exe.
-// 
-
 // ==================================================
 // Preamble of State module.
 // ==================================================

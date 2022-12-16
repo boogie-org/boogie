@@ -1,14 +1,3 @@
-// 
-// Translation of Viper program.
-// 
-// Date:         2022-12-16 14:05:37
-// Tool:         carbon 1.0
-// Arguments: :  --print linked-list-predicates.bpl .\linked-list-predicates.vpr
-// Dependencies:
-//   Boogie , located at C:\Users\Gaurav\boogie_versions\boogie_dotnet_jenkins_artifact\Binaries\Boogie.exe.
-//   Z3 4.8.7 - 64 bit, located at C:\Users\Gaurav\z3_versions\z3-4.8.7-x64-win\bin\z3.exe.
-// 
-
 // ==================================================
 // Preamble of State module.
 // ==================================================
