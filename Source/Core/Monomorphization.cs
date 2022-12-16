@@ -530,7 +530,7 @@ namespace Microsoft.Boogie
     }
   }
 
-  class PolymorphicMapAndBinderSubstituter : StandardVisitor
+  class PolymorphicMapAndBinderSubstituter : VarDeclOnceStandardVisitor
   {
     private MonomorphizationVisitor monomorphizationVisitor;
     private Dictionary<BinderExpr, Expr> binderExprSubstitution;
@@ -698,6 +698,11 @@ namespace Microsoft.Boogie
     {
       node.Body = VisitType(node.Body);
       return node;
+    }
+
+    public override Constant VisitConstant(Constant node)
+    {
+      return (Constant)VisitVariable(node);
     }
   }
 
@@ -947,8 +952,7 @@ namespace Microsoft.Boogie
 
     public override Type VisitTypeSynonymAnnotation(TypeSynonymAnnotation node)
     {
-      base.VisitTypeSynonymAnnotation(node);
-      return node.ExpandedType;
+      return VisitType(node.ExpandedType);
     }
 
     public override Type VisitType(Type node)
@@ -996,6 +1000,7 @@ namespace Microsoft.Boogie
       }
 
       var expr = (BinderExpr)base.VisitBinderExpr(node);
+      expr.Type = VisitType(expr.Type);
       expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
       // We process triggers of quantifier expressions here, because otherwise the
       // substitutions for bound variables have to be leaked outside this procedure.
@@ -1102,7 +1107,7 @@ namespace Microsoft.Boogie
     }
   }
 
-  class MonomorphizationVisitor : StandardVisitor
+  class MonomorphizationVisitor : VarDeclOnceStandardVisitor
   {
     /*
      * This class monomorphizes a Boogie program. Monomorphization starts from
@@ -1700,9 +1705,9 @@ namespace Microsoft.Boogie
 
     public override Constant VisitConstant(Constant node)
     {
-      node = base.VisitConstant(node);
+      node = (Constant)base.VisitVariable(node);
       node.TypedIdent = new TypedIdent(node.TypedIdent.tok, node.TypedIdent.Name,
-        new MonomorphizationDuplicator(this).VisitType(node.TypedIdent.Type));
+        new MonomorphizationDuplicator(this).VisitType(node.TypedIdent.Type), node.TypedIdent.WhereExpr);
       return node;
     }
   }
