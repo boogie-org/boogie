@@ -1856,22 +1856,7 @@ namespace Microsoft.Boogie
     // from all other constants.
     public readonly bool Unique;
 
-    // the <:-parents of the value of this constant. If the field is
-    // null, no information about the parents is provided, which means
-    // that the parental situation is unconstrained.
-    public readonly ReadOnlyCollection<ConstantParent /*!*/> Parents;
-
     public IList<Axiom> DefinitionAxioms { get; }
-    
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(cce.NonNullElements(Parents, true));
-    }
-
-    // if true, it is assumed that the immediate <:-children of the
-    // value of this constant are completely specified
-    public readonly bool ChildrenComplete;
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent)
       : this(tok, typedIdent, true)
@@ -1879,25 +1864,21 @@ namespace Microsoft.Boogie
     }
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent, bool unique)
-      : this(tok, typedIdent, unique, null, false, null, new List<Axiom>())
+      : this(tok, typedIdent, unique, null, new List<Axiom>())
     {
     }
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent,
       bool unique,
-      IEnumerable<ConstantParent /*!*/> parents = null, bool childrenComplete = false,
       QKeyValue kv = null,
       IList<Axiom> definitionAxioms = null)
       : base(tok, typedIdent, kv)
     {
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent != null);
-      Contract.Requires(cce.NonNullElements(parents, true));
       Contract.Requires(typedIdent.Name != null && typedIdent.Name.Length > 0);
       Contract.Requires(typedIdent.WhereExpr == null);
       this.Unique = unique;
-      this.Parents = parents == null ? null : new ReadOnlyCollection<ConstantParent>(parents.ToList());
-      this.ChildrenComplete = childrenComplete;
       this.DefinitionAxioms = definitionAxioms ?? new List<Axiom>();
     }
 
@@ -1915,30 +1896,6 @@ namespace Microsoft.Boogie
 
       EmitVitals(stream, level, false);
 
-      if (Parents != null || ChildrenComplete)
-      {
-        stream.Write(this, level, " extends");
-        string /*!*/
-          sep = " ";
-        foreach (ConstantParent /*!*/ p in cce.NonNull(Parents))
-        {
-          Contract.Assert(p != null);
-          stream.Write(this, level, sep);
-          sep = ", ";
-          if (p.Unique)
-          {
-            stream.Write(this, level, "unique ");
-          }
-
-          p.Parent.Emit(stream);
-        }
-
-        if (ChildrenComplete)
-        {
-          stream.Write(this, level, " complete");
-        }
-      }
-
       stream.WriteLine(";");
     }
 
@@ -1946,72 +1903,6 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(rc != null);
       rc.AddVariable(this);
-    }
-
-    public override void Resolve(ResolutionContext rc)
-    {
-      //Contract.Requires(rc != null);
-      base.Resolve(rc);
-      if (Parents != null)
-      {
-        foreach (ConstantParent /*!*/ p in Parents)
-        {
-          Contract.Assert(p != null);
-          p.Parent.Resolve(rc);
-          if (p.Parent.Decl != null && !(p.Parent.Decl is Constant))
-          {
-            rc.Error(p.Parent, "the parent of a constant has to be a constant");
-          }
-
-          if (this.Equals(p.Parent.Decl))
-          {
-            rc.Error(p.Parent, "constant cannot be its own parent");
-          }
-        }
-      }
-
-      // check that no parent occurs twice
-      // (could be optimised)
-      if (Parents != null)
-      {
-        for (int i = 0; i < Parents.Count; ++i)
-        {
-          if (Parents[i].Parent.Decl != null)
-          {
-            for (int j = i + 1; j < Parents.Count; ++j)
-            {
-              if (Parents[j].Parent.Decl != null &&
-                  cce.NonNull(Parents[i].Parent.Decl).Equals(Parents[j].Parent.Decl))
-              {
-                rc.Error(Parents[j].Parent,
-                  "{0} occurs more than once as parent",
-                  Parents[j].Parent.Decl);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    public override void Typecheck(TypecheckingContext tc)
-    {
-      //Contract.Requires(tc != null);
-      base.Typecheck(tc);
-
-      if (Parents != null)
-      {
-        foreach (ConstantParent /*!*/ p in Parents)
-        {
-          Contract.Assert(p != null);
-          p.Parent.Typecheck(tc);
-          if (!cce.NonNull(p.Parent.Decl).TypedIdent.Type.Unify(this.TypedIdent.Type))
-          {
-            tc.Error(p.Parent,
-              "parent of constant has incompatible type ({0} instead of {1})",
-              p.Parent.Decl.TypedIdent.Type, this.TypedIdent.Type);
-          }
-        }
-      }
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)

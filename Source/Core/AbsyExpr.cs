@@ -415,14 +415,6 @@ namespace Microsoft.Boogie
       return Binary(BinaryOperator.Opcode.Pow, e1, e2);
     }
 
-    public static NAryExpr Subtype(Expr e1, Expr e2)
-    {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
-      Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      return Binary(BinaryOperator.Opcode.Subtype, e1, e2);
-    }
-
     public static IdentifierExpr Ident(string name, Type type)
     {
       Contract.Requires(type != null);
@@ -2030,8 +2022,7 @@ namespace Microsoft.Boogie
       And,
       Or,
       Imp,
-      Iff,
-      Subtype
+      Iff
     }
 
     private Opcode op;
@@ -2114,8 +2105,6 @@ namespace Microsoft.Boogie
             return "==>";
           case Opcode.Iff:
             return "<==>";
-          case Opcode.Subtype:
-            return "<:";
         }
 
         System.Diagnostics.Debug.Fail("unknown binary operator: " + op.ToString());
@@ -2167,7 +2156,6 @@ namespace Microsoft.Boogie
         case Opcode.Ge:
         case Opcode.Lt:
         case Opcode.Le:
-        case Opcode.Subtype:
           opBindingStrength = 0x30;
           fragileLeftContext = fragileRightContext = true;
           break;
@@ -2230,8 +2218,6 @@ namespace Microsoft.Boogie
           case Opcode.RealDiv:
           case Opcode.Pow:
           case Opcode.Neq: // Neq is allowed, but not Eq
-          case Opcode.Subtype:
-            // These are fine
             break;
 
           case Opcode.Eq:
@@ -2393,15 +2379,6 @@ namespace Microsoft.Boogie
           }
 
           goto BAD_TYPE;
-        case Opcode.Subtype:
-          // Subtype is polymorphically typed and can compare things of
-          // arbitrary types (but both arguments must have the same type)
-          if (arg0type.Unify(arg1type))
-          {
-            return Type.Bool;
-          }
-
-          goto BAD_TYPE;
       }
 
       System.Diagnostics.Debug.Fail("unknown binary operator: " + op.ToString());
@@ -2444,7 +2421,6 @@ namespace Microsoft.Boogie
         case Opcode.Or:
         case Opcode.Imp:
         case Opcode.Iff:
-        case Opcode.Subtype:
           return Type.Bool;
 
         default:
@@ -2680,9 +2656,6 @@ namespace Microsoft.Boogie
           return Equals(e1, e2);
         case Opcode.Neq:
           return !Equals(e1, e2);
-
-        case Opcode.Subtype:
-          throw new System.NotImplementedException();
       }
 
       throw new System.InvalidOperationException("bad types to binary operator " + this.op);

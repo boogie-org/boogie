@@ -401,66 +401,21 @@ Consts<.out List<Declaration>/*!*/ ds.>
 = (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken/*!*/ y; List<TypedIdent>/*!*/ xs;
      ds = new List<Declaration>();
      var axioms = new List<Axiom>();
-     Axiom ax;
-     bool u = false; QKeyValue kv = null;
-     bool ChildrenComplete = false;
-     List<ConstantParent/*!*/> Parents = null; .)
+     Axiom axiom;
+     bool u = false; QKeyValue kv = null; .)
   "const"                 (. y = t; .)
   { Attribute<ref kv> }
   [ "unique"              (. u = true;  .)
   ]
   IdsType<out xs>
-  [ OrderSpec<out ChildrenComplete, out Parents> ]
-  ( ";" | "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}")
-  (. bool makeClone = false;
+  ( ";" | "uses" "{" { Axiom<out axiom>(. axioms.Add(axiom); ds.Add(axiom); .) } "}")
+  (.
      foreach(TypedIdent/*!*/ x in xs){
        Contract.Assert(x != null);
-
-       // ensure that no sharing is introduced
-       List<ConstantParent/*!*/> ParentsClone;
-       if (makeClone && Parents != null) {
-         ParentsClone = new List<ConstantParent/*!*/> ();
-         foreach (ConstantParent/*!*/ p in Parents){
-           Contract.Assert(p != null);
-           ParentsClone.Add(new ConstantParent (
-                            new IdentifierExpr (p.Parent.tok, p.Parent.Name),
-                            p.Unique));}
-       } else {
-         ParentsClone = Parents;
-       }
-       makeClone = true;
-       
-       var constant = new Constant(y, x, u, ParentsClone, ChildrenComplete, kv, axioms);
+       var constant = new Constant(y, x, u, kv, axioms);
        ds.Add(constant);
      }
-     foreach(var axiom in axioms) {
-       ds.Add(axiom);
-     }
   .)
-  .
-
-OrderSpec<.out bool ChildrenComplete, out List<ConstantParent/*!*/> Parents.>
-= (.Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out Parents),true)); ChildrenComplete = false;
-     Parents = null;
-     bool u;
-     IToken/*!*/ parent; .)
-  "extends"                (. Parents = new List<ConstantParent/*!*/> ();
-                              u = false; .)
-  [
-    [ "unique"             (. u = true; .)
-    ]
-    Ident<out parent>      (. Parents.Add(new ConstantParent (
-                                          new IdentifierExpr(parent, parent.val), u)); .)
-    {
-      ","                  (. u = false; .)
-      [ "unique"           (. u = true; .)
-      ]
-      Ident<out parent>    (. Parents.Add(new ConstantParent (
-                                          new IdentifierExpr(parent, parent.val), u)); .)
-    }
-  ]
-  [ "complete"             (. ChildrenComplete = true; .)
-  ]
   .
 
 /*------------------------------------------------------------------------*/
@@ -1165,7 +1120,6 @@ RelOp<out IToken/*!*/ x, out BinaryOperator.Opcode op>
   | "<="           (. x = t; op=BinaryOperator.Opcode.Le; .)
   | ">="           (. x = t; op=BinaryOperator.Opcode.Ge; .)
   | "!="           (. x = t; op=BinaryOperator.Opcode.Neq; .)
-  | "<:"           (. x = t; op=BinaryOperator.Opcode.Subtype; .)
   | '\u2260'       (. x = t; op=BinaryOperator.Opcode.Neq; .)
   | '\u2264'       (. x = t; op=BinaryOperator.Opcode.Le; .)
   | '\u2265'       (. x = t; op=BinaryOperator.Opcode.Ge; .)

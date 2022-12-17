@@ -1580,8 +1580,6 @@ namespace Microsoft.Boogie.VCExprAST
           return Gen.Function(VCExpressionGenerator.AndOp, args);
         case BinaryOperator.Opcode.Or:
           return Gen.Function(VCExpressionGenerator.OrOp, args);
-        case BinaryOperator.Opcode.Subtype:
-          return Gen.Function(VCExpressionGenerator.SubtypeOp, args);
         default:
           Contract.Assert(false);
           throw new cce.UnreachableException(); // unexpected binary operator
