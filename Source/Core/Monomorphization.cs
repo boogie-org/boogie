@@ -534,22 +534,46 @@ namespace Microsoft.Boogie
   {
     private MonomorphizationVisitor monomorphizationVisitor;
     private Dictionary<BinderExpr, BinderExprMonomorphizer> binderExprMonomorphizers;
+    private List<Axiom> splitAxioms;
 
     public PolymorphicMapAndBinderSubstituter(MonomorphizationVisitor monomorphizationVisitor)
     {
       this.monomorphizationVisitor = monomorphizationVisitor;
+      this.splitAxioms = new List<Axiom>();
     }
 
-    public void Substitute(Program program)
+    public List<Axiom> Substitute(Program program)
     {
       binderExprMonomorphizers = monomorphizationVisitor.GetBinderExprMonomorphizers();
       Visit(program);
+      return splitAxioms;
     }
 
     private List<Type> ActualTypeParams(TypeParamInstantiation typeParamInstantiation)
     {
       return typeParamInstantiation.FormalTypeParams.Select(x => TypeProxy.FollowProxy(typeParamInstantiation[x]))
         .Select(x => monomorphizationVisitor.LookupType(x)).ToList();
+    }
+
+    public override Axiom VisitAxiom(Axiom node)
+    {
+      var axiom = base.VisitAxiom(node);
+      var stack = new Stack<Expr>();
+      stack.Push(axiom.Expr);
+      while (stack.Count > 0)
+      {
+        var expr = stack.Pop();
+        if (expr is NAryExpr { Fun: BinaryOperator { Op: BinaryOperator.Opcode.And } } nAryExpr)
+        {
+          stack.Push(nAryExpr.Args[0]);
+          stack.Push(nAryExpr.Args[1]);
+        }
+        else
+        {
+          splitAxioms.Add(new Axiom(Token.NoToken, expr));
+        }
+      }
+      return axiom;
     }
 
     public override Expr VisitNAryExpr(NAryExpr node)
@@ -1229,7 +1253,9 @@ namespace Microsoft.Boogie
       var polymorphicMapDatatypeCtorDecls =
         monomorphizationVisitor.polymorphicMapInfos.Values.Select(polymorphicMapInfo =>
           polymorphicMapInfo.CreateDatatypeTypeCtorDecl(polymorphicMapAndBinderSubstituter)).ToList();
-      polymorphicMapAndBinderSubstituter.Substitute(program);
+      var splitAxioms = polymorphicMapAndBinderSubstituter.Substitute(program);
+      program.RemoveTopLevelDeclarations(decl => decl is Axiom);
+      program.AddTopLevelDeclarations(splitAxioms);
       program.AddTopLevelDeclarations(polymorphicMapDatatypeCtorDecls);
       Contract.Assert(MonomorphismChecker.IsMonomorphic(program));
       return monomorphizationVisitor;
