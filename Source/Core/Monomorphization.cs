@@ -303,7 +303,7 @@ namespace Microsoft.Boogie
 
     public abstract bool Instantiate();
 
-    public abstract Expr MonomorphicExpr();
+    public abstract Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter);
   }
 
   class LambdaExprMonomorphizer : BinderExprMonomorphizer
@@ -331,10 +331,10 @@ namespace Microsoft.Boogie
       return true;
     }
 
-    public override Expr MonomorphicExpr()
+    public override Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter)
     {
-      return monomorphizationVisitor.RegisterPolymorphicMapType(lambdaExpr.Type)
-        .GetLambdaConstructor(instanceExprs);
+      return substituter.VisitExpr(monomorphizationVisitor.RegisterPolymorphicMapType(lambdaExpr.Type)
+        .GetLambdaConstructor(instanceExprs));
     }
   }
 
@@ -403,9 +403,9 @@ namespace Microsoft.Boogie
     {
     }
 
-    public override Expr MonomorphicExpr()
+    public override Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter)
     {
-      return Expr.And(instanceExprs.Values);
+      return Expr.And(instanceExprs.Values.Select(x => substituter.VisitExpr(x)));
     }
   }
 
@@ -416,9 +416,9 @@ namespace Microsoft.Boogie
     {
     }
 
-    public override Expr MonomorphicExpr()
+    public override Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter)
     {
-      return Expr.Or(instanceExprs.Values);
+      return Expr.Or(instanceExprs.Values.Select(x => substituter.VisitExpr(x)));
     }
   }
 
@@ -533,7 +533,7 @@ namespace Microsoft.Boogie
   class PolymorphicMapAndBinderSubstituter : VarDeclOnceStandardVisitor
   {
     private MonomorphizationVisitor monomorphizationVisitor;
-    private Dictionary<BinderExpr, Expr> binderExprSubstitution;
+    private Dictionary<BinderExpr, BinderExprMonomorphizer> binderExprMonomorphizers;
 
     public PolymorphicMapAndBinderSubstituter(MonomorphizationVisitor monomorphizationVisitor)
     {
@@ -542,7 +542,7 @@ namespace Microsoft.Boogie
 
     public void Substitute(Program program)
     {
-      binderExprSubstitution = monomorphizationVisitor.SubstitututionForBinderExprs();
+      binderExprMonomorphizers = monomorphizationVisitor.GetBinderExprMonomorphizers();
       Visit(program);
     }
 
@@ -636,8 +636,8 @@ namespace Microsoft.Boogie
 
     public override Expr VisitBinderExpr(BinderExpr node)
     {
-      var returnExpr = binderExprSubstitution.ContainsKey(node)
-        ? VisitExpr(binderExprSubstitution[node])
+      var returnExpr = binderExprMonomorphizers.ContainsKey(node)
+        ? binderExprMonomorphizers[node].MonomorphicExpr(this)
         : base.VisitBinderExpr(node);
       if (returnExpr is QuantifierExpr { Triggers: { } } quantifierExpr)
       {
@@ -1265,9 +1265,9 @@ namespace Microsoft.Boogie
       }
     }
 
-    public Dictionary<BinderExpr, Expr> SubstitututionForBinderExprs()
+    public Dictionary<BinderExpr, BinderExprMonomorphizer> GetBinderExprMonomorphizers()
     {
-      return binderExprMonomorphizers.ToDictionary(x => x.BinderExpr, x => x.MonomorphicExpr());
+      return binderExprMonomorphizers.ToDictionary(x => x.BinderExpr, x => x);
     }
 
     public IEnumerable<List<Type>> NamedDeclarationInstantiations(NamedDeclaration decl)
