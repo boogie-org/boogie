@@ -9,6 +9,8 @@ namespace Microsoft.Boogie
 {
   public class MonomorphismChecker : ReadOnlyVisitor
   {
+    // This visitor checks if the program is already monomorphic.
+
     public static bool DoesTypeCtorDeclNeedMonomorphization(TypeCtorDecl typeCtorDecl)
     {
       return typeCtorDecl.Arity > 0 && typeCtorDecl.FindStringAttribute("builtin") == null;
@@ -67,6 +69,13 @@ namespace Microsoft.Boogie
 
   class TypeDependencyVisitor : ReadOnlyVisitor
   {
+    /*
+     * This visitor walks over a type T and adds an edge from any type variable nested inside T
+     * to the type variable "formal". The class MonomorphizableChecker uses this visitor to check
+     * that there are no expanding type cycles when a polymorphic function calls another
+     * polymorphic function or a polymorphic procedure calls another polymorphic procedure.
+     */
+
     private Graph<TypeVariable> typeVariableDependencyGraph;
     private HashSet<Tuple<TypeVariable, TypeVariable>> strongDependencyEdges;
     private TypeVariable formal;
@@ -117,6 +126,10 @@ namespace Microsoft.Boogie
   
   class MonomorphizableChecker : ReadOnlyVisitor
   {
+    /*
+     * This visitor checks if the program is monomorphizable. It calculates one status value from
+     * the enum MonomorphizableStatus for the program.
+     */
     public static MonomorphizableStatus IsMonomorphizable(Program program, out HashSet<Axiom> polymorphicFunctionAxioms)
     {
       var checker = new MonomorphizableChecker(program);
@@ -232,8 +245,12 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class InstantiationHintCollector : ReadOnlyVisitor
+  class InstantiationHintCollector : ReadOnlyVisitor
   {
+    /*
+     * This visitor walks over a polymorphic quantifier to collect hints for instantiating its type parameters.
+     */
+
     private Dictionary<TypeVariable, int> typeParameterIndexes;
     private List<Dictionary<NamedDeclaration, List<int>>> instantiationHints;
 
@@ -290,6 +307,11 @@ namespace Microsoft.Boogie
 
   abstract class BinderExprMonomorphizer
   {
+    /*
+     * This is the abstract class that is extended by classes for monomorphizing
+     * LambdaExpr, ForallExpr, and ExistsExpr.
+     */
+
     protected MonomorphizationVisitor monomorphizationVisitor;
     protected Dictionary<List<Type>, Expr> instanceExprs;
 
@@ -424,6 +446,14 @@ namespace Microsoft.Boogie
 
   class PolymorphicMapInfo
   {
+    /*
+     * An instance of this class is created for each polymorphic map type.
+     * This class implements the instantiation of the polymorphic map type
+     * for concrete instances encountered in the program. This class also
+     * creates the datatype that represents the polymorphic map type in the
+     * monomorphized program.
+     */
+
     class FieldInfo
     {
       public Type type;
@@ -532,6 +562,16 @@ namespace Microsoft.Boogie
 
   class PolymorphicMapAndBinderSubstituter : VarDeclOnceStandardVisitor
   {
+    /*
+     * This visitor finalizes the monomorphization of polymorphic maps and binders once
+     * all instantiations have been discovered. It accomplishes the following substitutions:
+     * - ach access to a polymorphic map with an access to corresponding datatype
+     * - each occurrence of a polymorphic map type with the corresponding datatype
+     * - each polymorphic lambda with a constructor call of corresponding datatype
+     * - each polymorphic forall quantifier with a conjunction
+     * - each polymorphic exists quantifier with a disjunction
+     */
+    
     private MonomorphizationVisitor monomorphizationVisitor;
     private Dictionary<BinderExpr, BinderExprMonomorphizer> binderExprMonomorphizers;
     private List<Axiom> splitAxioms;
@@ -732,6 +772,9 @@ namespace Microsoft.Boogie
 
   class MonomorphizationDuplicator : Duplicator
   {
+    // This class works together with MonomorphizationVisitor to accomplish monomorphization
+    // of a Boogie program.
+
     private MonomorphizationVisitor monomorphizationVisitor;
     private Dictionary<TypeVariable, Type> typeParamInstantiation;
     private Dictionary<Variable, Variable> variableMapping;
@@ -1740,6 +1783,11 @@ namespace Microsoft.Boogie
   
   public class Monomorphizer
   {
+    /*
+     * This class exposes monomorphization to rest of Boogie. After type checking a Boogie program,
+     * an instance of this class is created and stashed inside the program object.
+     */
+
     public static MonomorphizableStatus Monomorphize(CoreOptions options, Program program)
     {
       var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program, out var polymorphicFunctionAxioms);
