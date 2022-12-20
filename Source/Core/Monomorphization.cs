@@ -248,13 +248,17 @@ namespace Microsoft.Boogie
   class InstantiationHintCollector : ReadOnlyVisitor
   {
     /*
-     * This visitor walks over a polymorphic quantifier to collect hints for instantiating its type parameters.
+     * This visitor walks over a polymorphic quantifier to collect hints for instantiating its type parameters
+     * in the field instantiationHints. This field maps each type parameter T of the quantifier to a dictionary
+     * that maps a polymorphic type/function D to a list of integers, such that each integer in the list is a
+     * valid position in the list of type parameters of D. If position i is in the list corresponding to D,
+     * then the concrete type at position i among instances of D is a hint for T.
      */
+    
+    private HashSet<TypeVariable> typeParameters;
+    private Dictionary<TypeVariable, Dictionary<NamedDeclaration, List<int>>> instantiationHints;
 
-    private Dictionary<TypeVariable, int> typeParameterIndexes;
-    private List<Dictionary<NamedDeclaration, List<int>>> instantiationHints;
-
-    public static List<Dictionary<NamedDeclaration, List<int>>> CollectInstantiationHints(QuantifierExpr quantifierExpr)
+    public static Dictionary<TypeVariable, Dictionary<NamedDeclaration, List<int>>> CollectInstantiationHints(QuantifierExpr quantifierExpr)
     {
       var instantiationHintCollector = new InstantiationHintCollector(quantifierExpr);
       instantiationHintCollector.VisitExpr(quantifierExpr);
@@ -263,13 +267,9 @@ namespace Microsoft.Boogie
 
     private InstantiationHintCollector(QuantifierExpr quantifierExpr)
     {
-      typeParameterIndexes = new Dictionary<TypeVariable, int>();
-      for (int i = 0; i < quantifierExpr.TypeParameters.Count; i++)
-      {
-        typeParameterIndexes[quantifierExpr.TypeParameters[i]] = i;
-      }
-      instantiationHints = Enumerable.Range(0, quantifierExpr.TypeParameters.Count)
-        .Select(_ => new Dictionary<NamedDeclaration, List<int>>()).ToList();
+      typeParameters = new HashSet<TypeVariable>(quantifierExpr.TypeParameters);
+      instantiationHints = quantifierExpr.TypeParameters.ToDictionary(typeParameter => typeParameter,
+        _ => new Dictionary<NamedDeclaration, List<int>>());
     }
 
     public override Expr VisitNAryExpr(NAryExpr node)
@@ -292,14 +292,13 @@ namespace Microsoft.Boogie
     {
       for (int i = 0; i < actualTypeParams.Count; i++)
       {
-        if (actualTypeParams[i] is TypeVariable typeVariable && typeParameterIndexes.ContainsKey(typeVariable))
+        if (actualTypeParams[i] is TypeVariable typeVariable && typeParameters.Contains(typeVariable))
         {
-          var index = typeParameterIndexes[typeVariable];
-          if (!instantiationHints[index].ContainsKey(decl))
+          if (!instantiationHints[typeVariable].ContainsKey(decl))
           {
-            instantiationHints[index][decl] = new List<int>();
+            instantiationHints[typeVariable][decl] = new List<int>();
           }
-          instantiationHints[index][decl].Add(i);
+          instantiationHints[typeVariable][decl].Add(i);
         }
       }
     }
@@ -363,9 +362,9 @@ namespace Microsoft.Boogie
   abstract class QuantifierExprMonomorphizer : BinderExprMonomorphizer
   {
     private QuantifierExpr quantifierExpr;
-    private List<Dictionary<NamedDeclaration, List<int>>> instantiationHints;
+    private Dictionary<TypeVariable, Dictionary<NamedDeclaration, List<int>>> instantiationHints;
 
-    public QuantifierExprMonomorphizer(QuantifierExpr quantifierExpr, MonomorphizationVisitor monomorphizationVisitor) :
+    protected QuantifierExprMonomorphizer(QuantifierExpr quantifierExpr, MonomorphizationVisitor monomorphizationVisitor) :
       base(monomorphizationVisitor)
     {
       this.quantifierExpr = quantifierExpr;
@@ -381,7 +380,8 @@ namespace Microsoft.Boogie
         .Select(_ => new HashSet<Type>()).ToList();
       for (int typeParamterIndex = 0; typeParamterIndex < quantifierExpr.TypeParameters.Count; typeParamterIndex++)
       {
-        foreach (var (decl, actualIndexes) in instantiationHints[typeParamterIndex])
+        var typeParameter = quantifierExpr.TypeParameters[typeParamterIndex];
+        foreach (var (decl, actualIndexes) in instantiationHints[typeParameter])
         {
           foreach (var actualTypeParameters in monomorphizationVisitor.NamedDeclarationInstantiations(decl))
           {
